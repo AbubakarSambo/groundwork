@@ -29,7 +29,11 @@ describe('a request said in the check-in, as the person reads it', () => {
     expect((await w.turn("Can I take a day off on Friday?")).requestOffer).toEqual({ kind: 'leave', question: 'Shall I treat this as a leave request?', yes: 'Yes', no: 'No' });
     const yes = await w.turn('Yes');
     expect(yes.sayFirst).toBe("You can submit that through Leave here and it'll appear on your manager's board.");
-    expect(yes.openTheRequest).toEqual({ kind: 'leave', suiteIsOn: true, says: "You can submit that through Leave here and it'll appear on your manager's board.", button: 'Request leave' });
+    /* "on Friday" is a day she said, so the form is filled in with that one day; the rest of the answer is exactly the spec's. */
+    const day = yes.openTheRequest?.prefill?.startsOn;
+    expect(day).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(new Date(`${day}T00:00:00Z`).getUTCDay()).toBe(5);
+    expect(yes.openTheRequest).toEqual({ kind: 'leave', suiteIsOn: true, says: "You can submit that through Leave here and it'll appear on your manager's board.", button: 'Request leave', prefill: { startsOn: day, endsOn: day } });
     expect(w.items).toEqual([]);
   });
   it('spending, with Spending off, says the organisation has the option, and gives no button', async () => {
@@ -83,5 +87,36 @@ describe('hidden at release until the form can send (request 165)', () => {
     const w = world({ leaveOn: true, offerOn: false });
     expect(await w.turn('Can I take a day off on Friday?')).toEqual({});
     expect(w.items).toEqual([]);
+  });
+});
+
+describe('what the form is filled in with: only what the person said, never a guess (request 165)', () => {
+  it('leave: the days she gave, from her own words, and nothing for days that cannot be read without guessing', async () => {
+    const w = world({ leaveOn: true });
+    await w.turn('Can I take leave from 12 October to 14 October?');
+    const asked = (await w.turn('Yes')).openTheRequest?.prefill;
+    expect(asked?.startsOn).toMatch(/^\d{4}-10-12$/);
+    expect(asked?.endsOn).toMatch(/^\d{4}-10-14$/);
+    const vague = world({ leaveOn: true });
+    await vague.turn('I need Monday and Wednesday off next week.');
+    expect((await vague.turn('Yes')).openTheRequest?.prefill).toBeUndefined();
+  });
+
+  it('spending: the amount, what it is for and the currency she wrote', async () => {
+    const w = world({ spendOn: true });
+    await w.turn('Can I spend KES 15,000 on fuel for the van this week?');
+    expect((await w.turn('Yes')).openTheRequest?.prefill).toEqual({ amount: 15000, what: 'fuel for the van this week', currency: 'KES' });
+  });
+
+  it('spending: an amount with no reason fills in the amount only, and a currency she did not write is not filled in', async () => {
+    const w = world({ spendOn: true });
+    await w.turn('I need to spend 4,000.');
+    expect((await w.turn('Yes')).openTheRequest?.prefill).toEqual({ amount: 4000 });
+  });
+
+  it('is not served when the suite is off, because there is no form to fill in', async () => {
+    const w = world({ spendOn: false });
+    await w.turn('Can I spend KES 15,000 on fuel for the van this week?');
+    expect((await w.turn('Yes')).openTheRequest?.prefill).toBeUndefined();
   });
 });

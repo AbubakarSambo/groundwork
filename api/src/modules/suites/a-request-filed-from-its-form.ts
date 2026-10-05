@@ -1,0 +1,50 @@
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { LeaveBoardService } from './the-leave-board.service';
+import { SpendingService } from './the-spending.service';
+import { SpendSaid, spendingSent, aReasonInASentence } from './spend-said-in-chat';
+import { theLeaveRequestSent } from './leave-said-in-chat';
+
+/**
+ * A PERSON FILES THEIR OWN REQUEST FROM THE SUITE'S FORM (request 165; anchor pieces 26 and 27).
+ *
+ * When Groundwork offers a request inside a check-in and the person says yes, the button opens the suite's own form,
+ * filled in with what they said. These are the two routes that form sends to, for the signed-in person only.
+ *
+ * NOTHING NEW IS DECIDED HERE. A form is another way of asking, so it goes through the same two writers the chat
+ * uses (`LeaveBoardService.ask`, `SpendingService.ask`): the same checks, the same approver, the same refusals in the same
+ * sentences, the same record of who did what, and the same message to whoever decides. The sentence the person reads
+ * afterwards is the chat's own sentence, built by the same function.
+ */
+@Injectable()
+export class ARequestFiledFromItsForm {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly leave: LeaveBoardService,
+    private readonly spend: SpendingService,
+  ) {}
+
+  async leaveRequest(reader: { userId: string; organizationId: string }, input: { startsOn: string; endsOn: string; kind?: string | null; standInUserId?: string | null }): Promise<{ id: string; says: string }> {
+    const asked = {
+      startsOn: input.startsOn,
+      endsOn: input.endsOn,
+      ...(input.kind ? { kind: input.kind } : {}),
+      ...(input.standInUserId ? { standInUserId: input.standInUserId } : {}),
+    };
+    const created = await this.leave.ask(reader.organizationId, reader.userId, asked);
+    const says = await theLeaveRequestSent(this.prisma, reader, asked);
+    return { id: (created as { id: string }).id, says };
+  }
+
+  async spendingRequest(reader: { userId: string; organizationId: string }, input: { amount: number; what: string; category?: string | null }): Promise<{ id: string; says: string }> {
+    /* The same read the chat makes before it says anything: the suite is on, the person is in it, and who would approve. */
+    const facts = await this.spend.checkForChat(reader.organizationId, reader.userId, input.amount, new Date(), input.category ?? null);
+    const created = await this.spend.ask(reader.organizationId, reader.userId, {
+      amount: input.amount,
+      what: input.what,
+      ...(input.category ? { category: input.category } : {}),
+    });
+    const said: SpendSaid = { amount: input.amount, what: aReasonInASentence(input.what.trim()), currency: facts.currency };
+    return { id: (created as { id: string }).id, says: spendingSent(said, facts.currency, facts.approverFirstName) };
+  }
+}

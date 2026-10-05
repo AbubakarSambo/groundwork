@@ -1,7 +1,7 @@
 import { Body, Controller, Get, HttpStatus, Param, Post, Put, Query, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { IsArray, IsBoolean, IsNumber, IsObject, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsArray, IsBoolean, IsNumber, IsObject, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 import { CurrentUser, CurrentUserData } from '../../common';
 import { SuitesService } from './suites.service';
 import { OnboardingBoardService } from './the-onboarding-board.service';
@@ -12,6 +12,7 @@ import { LeavingBoardService } from './the-leaving-board.service';
 import { RoleMapService } from './the-role-map.service';
 import { SpendingService } from './the-spending.service';
 import { SpendingForFinanceService } from './the-spending-for-finance.service';
+import { ARequestFiledFromItsForm } from './a-request-filed-from-its-form';
 import { TodosService } from './the-todos.service';
 import { CustomersService } from './the-customers.service';
 import { EquipmentService } from './the-equipment.service';
@@ -103,6 +104,23 @@ class TimeRulesDto {
   @IsOptional() @IsObject() billable?: Record<string, unknown> | null;
 }
 
+/**
+ * A REQUEST FILED FROM ITS FORM (request 165). For the signed-in person only: there is no field for whose it is.
+ * The dates are the same plain days the chat reads; what is not valid is refused by the same writer, in the same words.
+ */
+class LeaveRequestDto {
+  @IsString() @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'Give a first and a last day, with the last day on or after the first.' }) startsOn!: string;
+  @IsString() @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'Give a first and a last day, with the last day on or after the first.' }) endsOn!: string;
+  @IsOptional() @IsString() @MaxLength(60) kind?: string | null;
+  @IsOptional() @IsString() @MaxLength(64) standInUserId?: string | null;
+}
+
+class SpendRequestDto {
+  @IsNumber({ allowNaN: false, allowInfinity: false }, { message: 'Give an amount of more than nothing.' }) amount!: number;
+  @IsString({ message: 'Say what the money is for.' }) @MaxLength(300) what!: string;
+  @IsOptional() @IsString() @MaxLength(80) category?: string | null;
+}
+
 class FinanceCodeDto {
   @IsString() @MaxLength(80) code!: string;
 }
@@ -140,6 +158,7 @@ export class SuitesController {
     private readonly customers: CustomersService,
     private readonly equipment: EquipmentService,
     private readonly finance: SpendingForFinanceService,
+    private readonly filed: ARequestFiledFromItsForm,
   ) {}
 
   @Get()
@@ -188,6 +207,18 @@ export class SuitesController {
   @ApiOperation({ summary: 'The person who asked for time off answers the question waiting for them. The request keeps waiting.' })
   answerAboutLeave(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: AnswerDto) {
     return this.leave.answerAQuestion({ userId: user.id, organizationId: user.organizationId }, id, dto.answer);
+  }
+
+  @Get('leave/form')
+  @ApiOperation({ summary: 'What the leave form may offer a person asking for time off: the kinds of leave and the people who could stand in. Names and keys only.' })
+  leaveForm(@CurrentUser() user: CurrentUserData) {
+    return this.suites.leaveForm({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Post('leave/requests')
+  @ApiOperation({ summary: 'A person asks for time off, from the leave form. Always their own request, by the same rules as asking in a chat.' })
+  fileLeave(@CurrentUser() user: CurrentUserData, @Body() dto: LeaveRequestDto) {
+    return this.filed.leaveRequest({ userId: user.id, organizationId: user.organizationId }, dto);
   }
 
   @Get('leave/rules')
@@ -438,6 +469,18 @@ export class SuitesController {
   @ApiOperation({ summary: 'An admin sets the approval steps or the working days for leave, time sheets or spending. A part given as null is cleared; one left out is kept.' })
   setWorkflows(@CurrentUser() user: CurrentUserData, @Body() dto: WorkflowsDto) {
     return this.suites.setWorkflows({ userId: user.id, organizationId: user.organizationId }, dto);
+  }
+
+  @Get('spend/form')
+  @ApiOperation({ summary: 'What the payment request form may offer a person asking to spend: the categories, and the currency. Names only.' })
+  spendForm(@CurrentUser() user: CurrentUserData) {
+    return this.suites.spendForm({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Post('spend/requests')
+  @ApiOperation({ summary: 'A person asks to spend money, from the payment request form. Always their own request, by the same rules as asking in a chat.' })
+  fileSpend(@CurrentUser() user: CurrentUserData, @Body() dto: SpendRequestDto) {
+    return this.filed.spendingRequest({ userId: user.id, organizationId: user.organizationId }, dto);
   }
 
   @Get('spend/rules')

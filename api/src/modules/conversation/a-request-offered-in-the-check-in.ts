@@ -1,6 +1,8 @@
 import { theAnchorScenarioIsOn, theRequestOfferIsShown } from '../admin/what-is-hidden-at-release';
 import { STARTED_FROM_THE_ANCHOR } from './the-anchor-weekly-check-in';
 import { looksLikeARequest, shallITreatThisAs } from '../public-api/a-whatsapp-message-is-routed';
+import { readLeaveDates } from '../suites/leave-said-in-chat';
+import { readSpending } from '../suites/spend-said-in-chat';
 
 /**
  * A REQUEST OFFERED IN THE CHECK-IN (anchor pieces 26 and 27; section 22; decision 105 item 4).
@@ -23,7 +25,25 @@ import { looksLikeARequest, shallITreatThisAs } from '../public-api/a-whatsapp-m
  * Hours are not in section 22, so an hours request is not offered here.
  */
 export type ARequestOffer = { kind: 'leave' | 'spending'; question: string; yes: string; no: string };
-export type ARequestToOpen = { kind: 'leave' | 'spending'; suiteIsOn: boolean; says: string; button: string | null };
+/**
+ * WHAT THE FORM IS FILLED IN WITH (request 165). Only what was read from the person's own words, and only where it was read:
+ * a day that could not be read without guessing, or an amount with no reason, leaves that field out. Nothing is ever guessed.
+ * Leave: `startsOn` and `endsOn`. Spending: `amount`, `what` and `currency` (the one they wrote, never the organisation's).
+ */
+export type ThePrefill = { startsOn?: string; endsOn?: string; amount?: number; what?: string; currency?: string };
+export type ARequestToOpen = { kind: 'leave' | 'spending'; suiteIsOn: boolean; says: string; button: string | null; prefill?: ThePrefill };
+
+/** What the person's own words give for the form: read by the same rules the chat uses, never by a model. */
+export function thePrefillFromTheirWords(kind: 'leave' | 'spending', message: string, today: Date = new Date()): ThePrefill {
+  if (kind === 'leave') {
+    const days = readLeaveDates(message, today);
+    return days ? { startsOn: days.startsOn, endsOn: days.endsOn } : {};
+  }
+  const read = readSpending(message, null);
+  if (read.kind === 'ok') return { amount: read.said.amount, what: read.said.what, ...(read.said.currency ? { currency: read.said.currency } : {}) };
+  if (read.kind === 'ask' && read.purpose) return { amount: read.purpose.amount, ...(read.purpose.currency ? { currency: read.purpose.currency } : {}) };
+  return {};
+}
 
 const YES = 'Yes';
 const NO = 'No';
@@ -63,12 +83,16 @@ export async function aRequestAfterTheirTurn(
         ? await prisma.organizationSuite?.findUnique?.({ where: { organizationId_suite: { organizationId: a.organizationId, suite: SUITE_KEY[kind] } }, select: { isOn: true } })?.catch?.(() => null)
         : null;
       const open = whatTheYesOpens(kind, !!suite?.isOn);
-      return { openTheRequest: open, sayFirst: open.says };
+      /* The form is filled in only when it opens: with the suite off there is no form. */
+      const prefill = (waiting[0].fields as { prefill?: ThePrefill } | null)?.prefill;
+      const filled = suite?.isOn && prefill && Object.keys(prefill).length ? { ...open, prefill } : open;
+      return { openTheRequest: filled, sayFirst: open.says };
     }
     if (a.sessionComplete) return {};
     const kind = looksLikeARequest(a.message);
     if (kind !== 'leave' && kind !== 'spending') return {};
-    await prisma.workItem.create({ data: { groundId: a.groundId, kind: 'request-offered', name: kind, ownerParticipantId: a.participantId } });
+    const prefill = thePrefillFromTheirWords(kind, a.message);
+    await prisma.workItem.create({ data: { groundId: a.groundId, kind: 'request-offered', name: kind, ownerParticipantId: a.participantId, ...(Object.keys(prefill).length ? { fields: { prefill } } : {}) } });
     return { requestOffer: { kind, question: shallITreatThisAs(kind), yes: YES, no: NO } };
   } catch {
     return {};

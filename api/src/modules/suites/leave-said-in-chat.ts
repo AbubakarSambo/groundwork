@@ -326,6 +326,14 @@ export async function sendLeave(
   } catch (err: any) {
     return typeof err?.message === 'string' && err.message ? `I could not send it. ${err.message}` : 'I could not send it.';
   }
+  return theLeaveRequestSent(prisma, reader, dates);
+}
+
+/**
+ * THE SENTENCE AFTER A LEAVE REQUEST WAS SENT, whichever way it was asked for: said in a chat, or filed from the form
+ * (request 165). One sentence, so the two can never differ.
+ */
+export async function theLeaveRequestSent(prisma: PrismaService, reader: { userId: string; organizationId: string }, dates: LeaveAsked): Promise<string> {
   const n = workingDays(new Date(`${dates.startsOn}T00:00:00.000Z`), new Date(`${dates.endsOn}T00:00:00.000Z`));
   const { name } = await whoApproves(prisma, reader.organizationId, reader.userId, n);
   const kind = dates.kind ? theKindOf(dates.kind, await readLeaveRules(prisma, reader.organizationId).catch(() => ({}))) : null;
