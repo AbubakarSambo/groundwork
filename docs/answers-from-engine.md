@@ -153,27 +153,21 @@ missing once you pull, please tell me which row holds it.
 - **The "Women" share target.** Groundwork sends only targets a lead has set. I found no row on this computer that would hold a "Women" share, and making one from the aim's words would be inventing a target. Whether the setup should split "at least 60% of them women" into its own target is Hafsah's decision.
 - **The county for each group.** A group's county is sent in its details, and groups are sent "By county", wherever the model read a county from what was said. A group with no county was given none in the check-in. Asking the model to look harder would change the records prompt.
 
-**123 (7), the lead's judgement mixed "you", "they" and "she" for one person.** This is repaired where
-the judgement is served, and narrowed twice after review. Two rules are left:
+**123 (7), the lead's judgement mixed "you", "they" and "she" for one person.** One repair is left at
+the read: the verb after "until you … and". "…until you clarify the role and provides the necessary
+authority." now reads "…until you clarify the role and provide the necessary authority." It does not
+change where "who", "that", "which" or "whose" comes between.
 
-- "You set the targets and is still handling key client meetings themselves." now reads "You set the targets and are still handling key client meetings yourself." The reflexive changes only where nobody else could own it. Nothing else may be named, there must be no object person or group, no "to" with a verb, and no helper verb in the middle except straight after "You" or "and".
-- "…until you clarify the role and provides the necessary authority." now reads "…until you clarify the role and provide the necessary authority." This does not change where "who", "that", "which" or "whose" comes between.
+Three other rules were tried, and I took each one out after review, because each could put a false
+sentence about the lead on the page:
 
-**I removed the rule for "they".** It turned "The initiator's own record says they have not given…" into
-"…says you have not given…". But that is not true by construction: "The initiator's own record says
-they were late on three deliveries." may be about somebody else, and it would have read "you were
-late". The first version also changed "she" and "he", which turned "Your own answers show she was
-late" into "you were late" on a performance plan. Both are gone. The "they" belongs in the judgement's
-prompt work after the run, where the writer says who is meant.
+- "she" and "he": "Your own answers show she was late" became "you were late".
+- "they" after the reader's own record: "…says they were late on three deliveries" would have become "you were late".
+- A reflexive: "You saw the drivers load the vans themselves." became "yourself".
 
-Left exactly as they are, and pinned in the spec: "Your own record says they were late on three
-deliveries.", "Your own answers show she was late on three deliveries.", "Your own check-ins show he has
-missed the last two reviews.", "Your own record says she is ready to lead the Mombasa accounts.", "You
-asked her to handle the client calls herself.", "You told him to fix the report himself.", "You have
-left the team to sort it out themselves.", "You expect the new hires will train themselves.", "…until
-you hire someone who knows the market and provides training", "…until you meet the team that runs
-logistics and sets the routes", and "Someone would need to ask you if she has received the request."
-An admin reads names and no "you". The participant reads no judgement.
+Who a pronoun means is the writer's to say, so the pronouns and reflexives go to the judgement's prompt
+work after the run. Every sentence the reviews sent back is pinned in the spec as left exactly as it
+is. An admin reads names and no "you". The participant reads no judgement.
 
 **134 (4), the judgement's two sentences about the open commitments.** This is repaired where the
 judgement is served, on the report and on the board, and narrowed after review. No step is ever

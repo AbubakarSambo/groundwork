@@ -1,17 +1,17 @@
 import { GroundScenario } from '@prisma/client';
 import { ReportsService } from './reports.service';
 import { boardAs, AMINA, BARAKA, JUMA } from '../board/the-switchboards-sections-harness';
-import { aReflexiveThatIsTheReaders, oldWordingPutPlain } from './a-stored-sentence-reads-right';
+import { oldWordingPutPlain } from './a-stored-sentence-reads-right';
 import { theVerbAgreesWithYou } from './party-labels';
 
 /**
  * REQUEST 123 ITEM 7: THE LEAD'S JUDGEMENT MIXED "YOU", "THEY" AND "SHE" FOR ONE PERSON.
  *
  * The model wrote about the lead's label, and serving turned the label into "you" and left the pronoun and
- * the verb behind. Two narrow shapes, where the pronoun is certainly the reader, now read right: a reflexive
- * that can only be the reader's, and a verb that shares "you" in its clause. Narrowed twice after review: a
- * first version rewrote "she" ("Your own answers show she was late" became "you were late"), and a second
- * rewrote "they" after the reader's own record, which is not certain either. Both are gone, and pinned. Read through the real report
+ * the verb behind. What is repaired at the read is only the verb that shares "you" in its clause ("until you
+ * clarify the role and provide ..."). Rules for "she"/"he", for "they", and for a reflexive were each tried and
+ * taken out after review, because each could put a false sentence about the lead on the page. Those go to the
+ * judgement's prompt. Every sentence the reviews sent back is pinned here as left as it is. Read through the real report
  * read and the real board read, as the lead, an admin, and the participant (who never reads the judgement).
  */
 const THE_JUDGEMENT_123_7 = {
@@ -106,7 +106,8 @@ describe('request 123 (7): Amina reads her own judgement as "you" throughout, wh
     const j: any = (await makeService(makeGround()).get('g1', 'user-1', 'org-1') as any).theJudgement;
     /* Changed after the second review: no "they" is turned into "you". It may be somebody else, and "you were late" would be false. */
     expect(j.theGap).toBe('Your own record says they were late on three deliveries.');
-    expect(j.whatToDo[0].because).toBe('You set the targets and are still handling key client meetings yourself.');
+    /* Changed after the third review: no reflexive is rewritten; the verb after "and" still agrees. */
+    expect(j.whatToDo[0].because).toBe('You set the targets and are still handling key client meetings themselves.');
     expect(j.whatToDo[0].move).toBe('Agree a date for Tobi Adewale to take over renewals, until you clarify the role and provide the necessary authority.');
     /* Not certain, so left for the writer. */
     expect(JSON.stringify(j.whatWeFailedToAsk)).toContain('ask you if she has received');
@@ -131,7 +132,7 @@ describe('request 123 (7), on the board', () => {
   it('Amina, who runs it, reads "you" with its verb', async () => {
     const b: any = await boardAs({ scenario: GroundScenario.OKR_ALIGNMENT, report } as any, ...AMINA);
     expect(b.theJudgement.theGap).toBe('Your own record says they were late on three deliveries.');
-    expect(b.theJudgement.whatToDo[0].because).toBe('You set the targets and are still handling key client meetings yourself.');
+    expect(b.theJudgement.whatToDo[0].because).toBe('You set the targets and are still handling key client meetings themselves.');
   });
   it('with "she" in place of "they", the lead\'s board leaves it, because "she" is never rewritten', async () => {
     const withShe = { ...report, theJudgement: { ...report.theJudgement, theGap: "The initiator's own record says she has not given participant A the authority to renew contracts." } };
@@ -149,11 +150,6 @@ describe('request 123 (7), on the board', () => {
 });
 
 describe('the rules leave alone what they cannot be sure of (every example the review sent back)', () => {
-  it('a helper straight after "You" is still the reader\'s', () => {
-    expect(aReflexiveThatIsTheReaders('You are still handling key client meetings themselves.')).toBe('You are still handling key client meetings yourself.');
-    expect(aReflexiveThatIsTheReaders('You set the targets and are still handling key client meetings themselves.')).toBe('You set the targets and are still handling key client meetings yourself.');
-  });
-
   it.each([
     "Your own record says they were late on three deliveries.",
     'Your own answers show she was late on three deliveries.',
@@ -162,7 +158,6 @@ describe('the rules leave alone what they cannot be sure of (every example the r
     'Your own record says they have not been told.',
   ])('after the names, the stored-sentence repair leaves "%s" as it is', (line) => {
     expect(oldWordingPutPlain(line)).toBe(line);
-    expect(aReflexiveThatIsTheReaders(line)).toBe(line);
   });
 
   it.each([
@@ -173,8 +168,15 @@ describe('the rules leave alone what they cannot be sure of (every example the r
     'You and Tobi Adewale handle the meetings themselves.',
     'You said you would do it yourself and that they would do it themselves.',
     'You expect the new hires will train themselves.',
-  ])('a reflexive somebody else could own is left: "%s"', (line) => {
-    expect(aReflexiveThatIsTheReaders(line)).toBe(line);
+    'You saw the drivers load the vans themselves.',
+    'You think they did it themselves.',
+    'You heard the agents talk among themselves.',
+    'You watched the sales staff close the deals themselves.',
+    'You left the drivers alone with the clients themselves.',
+    'You made the managers write the plans themselves.',
+    'You are still handling key client meetings themselves.',
+  ])('no reflexive is rewritten: "%s"', (line) => {
+    expect(oldWordingPutPlain(line)).toBe(line);
   });
 
   it.each([
@@ -186,6 +188,6 @@ describe('the rules leave alone what they cannot be sure of (every example the r
 
   it('Someone would need to ask you if she has received the request.', () => {
     const line = 'Someone would need to ask you if she has received the request.';
-    expect(oldWordingPutPlain(aReflexiveThatIsTheReaders(line))).toBe(line);
+    expect(oldWordingPutPlain(line)).toBe(line);
   });
 });

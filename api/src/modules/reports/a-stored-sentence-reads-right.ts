@@ -86,40 +86,15 @@ function aSentenceAboutTheReaderSaysYou(text: string): string {
   }).join('');
 }
 
-/**
- * A REFLEXIVE IN THE LEAD'S JUDGEMENT WHOSE ONLY POSSIBLE PERSON IS THE READER (request 123 item 7, narrowed twice
- * after review).
+/*
+ * NO PRONOUN OR REFLEXIVE IN THE LEAD'S JUDGEMENT IS REWRITTEN HERE (request 123 item 7, after three reviews).
  *
- * The model writes about labels, and serving turns the reader's label into "you" and leaves the pronoun behind:
- * "You set the targets and is still handling key client meetings themselves." That reflexive can only be the reader's,
- * so it reads "yourself". Not where anybody else could be meant: another clause, a name, an object person or group
- * ("You asked her to ...", "You have left the team to ..."), "to" and a verb, a helper or modal verb in the middle
- * ("You expect the new hires will train themselves"), or a sentence that already says "yourself".
- *
- * A RULE FOR "THEY" WAS TRIED AND TAKEN OUT. "The initiator's own record says they ..." looked like the reader, but it
- * is not true by construction: "The initiator's own record says they were late on three deliveries." may be about
- * somebody else, and would have read "you were late". The "they" belongs to the judgement's prompt work, where the
- * writer says who is meant. And "she" and "he" were never safe here: "Your own answers show she was late" on a
- * performance plan once became "you were late".
+ * Three rules were tried and each was taken out, because each could put a false sentence about the lead on the page:
+ * "she" and "he" ("Your own answers show she was late" became "you were late"), "they" after the reader's own record
+ * ("... says they were late on three deliveries"), and a reflexive ("You saw the drivers load the vans themselves"
+ * became "yourself"). Who a pronoun means is the writer's to say, so it goes to the judgement's prompt. What stays at
+ * the read is the verb after "until you ... and" (party-labels.ts), which names nobody.
  */
-const ANOTHER_CLAUSE_OR_A_NAME = /\b(?:that|who|whom|which|whether|because|while|if|when|where|whose|since|although|though|unless|until)\b|,\s*(?:and|but)\s+(?!(?:is|are|was|were|has|have|had|does|do|did|still|also)\b)[a-z]+\s|\s[A-Z][a-z]/;
-const A_HELPER_IN_THE_MIDDLE = /\b(?:will|would|can|could|should|must|may|might|is|are|was|were|has|have|do|does)\b/i;
-const SOMEBODY_ELSE_COULD_BE_MEANT = /\b(?:her|him|them|us|someone|somebody|people|everyone|everybody|anyone|anybody|nobody|the (?:team|staff|group|others|rest))\b|\bto [a-z]+\b/i;
-export function aReflexiveThatIsTheReaders(text: string): string {
-  if (!text || typeof text !== 'string') return text;
-  return text.split(/(?<=[.!?])(\s+)/).map((sentence, at) => {
-    if (at % 2 === 1 || !/^You\s/.test(sentence) || /\byourself\b/i.test(sentence)) return sentence;
-    const reflexive = sentence.search(/\b(?:themselves|themself)\b/);
-    if (reflexive < 0) return sentence;
-    const before = sentence.slice(3, reflexive);
-    if (ANOTHER_CLAUSE_OR_A_NAME.test(before) || SOMEBODY_ELSE_COULD_BE_MEANT.test(before)) return sentence;
-    /* A helper or modal verb in the middle may start somebody else's clause ("You expect the new hires will train
-       themselves"), except one straight after "You" or straight after "and", which is still the reader's. */
-    if (A_HELPER_IN_THE_MIDDLE.test(before.replace(/^\s*(?:still |also |now |already )?(?:will|would|can|could|should|must|may|might|is|are|was|were|has|have|do|does)\b/i, '')
-      .replace(/\band (?:still |also |now |already )?(?:will|would|can|could|should|must|may|might|is|are|was|were|has|have|do|does)\b/gi, ''))) return sentence;
-    return sentence.slice(0, reflexive) + sentence.slice(reflexive).replace(/\b(?:themselves|themself)\b/, 'yourself');
-  }).join('');
-}
 
 export function oldWordingPutPlain(text: string): string {
   let out = text;
