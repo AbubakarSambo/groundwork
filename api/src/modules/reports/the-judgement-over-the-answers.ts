@@ -377,6 +377,18 @@ export function fillTheJudgement(template: string, a: { whoIsReading: string; wh
     .split('{{theLeadLine}}').join(theLeadLine(a.leadName));
 }
 
+/*
+ * THREE RULES FOR THE WRITER, WHICH NO CHECK AT THE READ CAN MAKE SAFELY (requests 123 item 7, 134 item 4, 135 item 3,
+ * and the run of 5 October). Repairs at the read for each were tried and taken out, because each could put a false
+ * sentence about the lead on the page ("you were late"). Who a pronoun means, which thing a number belongs to, and what
+ * was promised by when, are the writer's to say.
+ */
+export const NEVER_A_PRONOUN_FOR_A_PERSON = 'NEVER A PRONOUN FOR A PERSON. Do not write he, she, him, her, his, hers, they, them, their, theirs or themselves about a person. Say the person\'s label again every time, even twice in one sentence: "Participant A said Participant A would send the sheets", never "Participant A said they would send the sheets". The reader may be one of these people. Their label becomes "you" when they read it, and a pronoun left behind then reads as somebody else: "You are holding up the office move, and your account does not show that they know it."';
+
+export const A_PROMISE_IS_ASKED_ABOUT_BY_ITS_DAY = 'A PROMISE IS ASKED ABOUT AS WHAT WAS PROMISED, BY ITS DAY. A block lists what the person said they would do, and the time they gave where they gave one. A move about it asks whether it happened by that time: "Ask Participant A whether the bundle was filed by Thursday 1 October." Never quote a promise back as a fragment, such as "the open commitment to \'I will file the bundle\'", and never write a line that only lists promises.';
+
+export const A_NUMBER_IS_ONE_A_BLOCK_HOLDS = 'A NUMBER IS ONE A BLOCK HOLDS, ON THE THING THE BLOCK PUTS IT ON. Write only the numbers, times and counts a block says. Never add, multiply or combine them: two crops in two places is two crops and two places, never "four activities". And a number keeps the thing it belongs to. If one person saw alerts at 7 AM and the alert nobody answered fired at 02:14, the alert nobody answered is the 02:14 one, never "the 7 AM alerts". Where you are not sure which thing a number belongs to, leave the number out.';
+
 export function theJudgementTemplate(): string {
   return [
     'You are writing the judgement over a check-in that {{whoIsReading}} ran. They are deciding: {{whatTheyAreDeciding}}',
@@ -404,6 +416,8 @@ export function theJudgementTemplate(): string {
     '4. WHAT THIS CANNOT TELL YOU. Every field the table marks THIN or SPLIT, and what it would take to know. A reader who cannot see the edge of the data calls the whole thing abstract.',
     '',
     '5. WHAT WE FAILED TO ASK. Every field marked WE_NEVER_ASKED, with the number of conversations that missed it. This is our failure, said plainly, and it is the instruction for the next round.',
+    '',
+    NEVER_A_PRONOUN_FOR_A_PERSON,
     '',
     PLAIN_WORDS,
     '',
@@ -476,8 +490,8 @@ export interface SomebodyInTheRoom {
    * Only the ones the lead may already read. See patterns/who-reads-a-pattern. Never a verdict.
    */
   patterns: { name: string; observation: string; seenInSessions: number[] }[];
-  /** What they said they would do and nobody has closed. */
-  openCommitments: string[];
+  /** What they said they would do and nobody has closed: as an action with the time they gave, or their words where it cannot be said that way. */
+  openCommitments: (string | { clause: string; when: string | null })[];
 }
 
 /** The room, as the model is given it. One block per person, and the differences between them. */
@@ -500,7 +514,11 @@ export function theRoom(
     for (const x of p.patterns) {
       lines.push(`    seen in sessions ${x.seenInSessions.join(', ')} (${x.name}): ${x.observation}`);
     }
-    for (const c of p.openCommitments.slice(0, 6)) lines.push(`    said they would, nobody has closed it: "${c}"`);
+    for (const c of p.openCommitments.slice(0, 6)) {
+      /* As what was promised, with the time they gave, so a move can ask whether it happened by then (request 134 item 4). */
+      if (typeof c === 'string') lines.push(`    said they would, nobody has closed it: "${c}"`);
+      else lines.push(`    said they would ${c.clause}${c.when ? `, and the time they gave was "${c.when}"` : ''}. Nobody has closed it.`);
+    }
     lines.push('');
   }
   if (differences.length) {
@@ -570,6 +588,12 @@ export function theRoomJudgementTemplate(): string {
     '4. WHAT THIS CANNOT TELL YOU. What is not on the record, and what it would take to know. Somebody who has said little is a gap in the record, not a finding about them.',
     '',
     '5. WHAT WE FAILED TO ASK. Anything the check-in should have asked and did not. Ours to own.',
+    '',
+    NEVER_A_PRONOUN_FOR_A_PERSON,
+    '',
+    A_PROMISE_IS_ASKED_ABOUT_BY_ITS_DAY,
+    '',
+    A_NUMBER_IS_ONE_A_BLOCK_HOLDS,
     '',
     PLAIN_WORDS,
     '',

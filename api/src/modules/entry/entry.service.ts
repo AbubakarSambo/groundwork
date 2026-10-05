@@ -2296,6 +2296,8 @@ from finishing at all.`;
     /* A check-in saved from the anchor conversation remembers it, once, so the weeks that follow read as the anchor's weeks. Only with the switch on. */
     if (dto.scenario === ANCHOR_ENTRY_SCENARIO && (await theAnchorScenarioIsOn(this.prisma))) {
       await this.prisma.ground.update({ where: { id: ground.id }, data: { startedFrom: STARTED_FROM_THE_ANCHOR } });
+      /* The anchor's one-month trial, given by billing only while its own setting is on (anchor piece 34). */
+      this.events?.emit?.(GroundworkEvents.ANCHOR_CHECK_IN_STARTED, { organizationId, groundId: ground.id });
     }
 
     // Find the session 1 check-in and the initiator participant just created.

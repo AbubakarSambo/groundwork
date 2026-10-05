@@ -12,6 +12,9 @@ export const GroundworkEvents = {
   /* WHAT SOMEBODY SAID ABOUT THEIR TEAM'S SIZE on "Create an organisation" (U.3), asked only while the
      free trial is on. Billing listens, and grants the trial to a team under its size (U.19). */
   ORG_SIZE_SAID: 'org.sizeSaid',
+  /* A CHECK-IN WAS STARTED FROM THE ANCHOR LINK, with the anchor switch on (anchor piece 34). Billing listens, and gives
+     the anchor's one-month trial while its own setting is on. */
+  ANCHOR_CHECK_IN_STARTED: 'anchor.checkInStarted',
   API_ACCESS_ASKED: 'apiAccess.asked',
   CALL_ASKED: 'call.asked',
   /** A session became open to somebody. The moment a host system can tell them, in their own channel. */
@@ -118,6 +121,11 @@ export interface BlockerEvent {
 /* A plain constant for the one file that may not carry the product's name (see
    nobody-connects-without-being-let-in.spec: no exemption for us anywhere in the access gate). */
 export const API_ACCESS_ASKED_EVENT = 'apiAccess.asked';
+
+export interface AnchorCheckInStartedEvent {
+  organizationId: string;
+  groundId: string;
+}
 
 export interface OrgSizeSaidEvent {
   organizationId: string;

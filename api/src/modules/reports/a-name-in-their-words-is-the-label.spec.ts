@@ -113,7 +113,10 @@ describe('a name in their words is the label', () => {
     /* And the quotes are put back from the record as it is, never from the labelled copy. */
     expect(src).toMatch(/theLinesAQuoteMayComeFrom\(\s*\[\s*\.\.\.\(theRecordAsItIs as any\[\]\)/);
     expect(src).toContain('.map((r) => theirWords(String(r.text ??');
-    expect(src).toContain('.map((c) => theirWords(String(c.text)))');
+    /* Changed with the judgement prompt work (25b2221f): an open promise now reaches the judgement as an action with its
+       time, and both forms still go through theirWords. */
+    expect(src).toContain('clause: theirWords(clause)');
+    expect(src).toContain(': theirWords(String(c.text));');
     expect(src).toMatch(/leadName: \(parties as any\[\]\)[^\n]*\n\s*namesInThisCheckIn,/);
   });
 });

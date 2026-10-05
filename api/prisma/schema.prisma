@@ -6047,13 +6047,14 @@ enum MembershipRequestStatus {
 /// person has no account and no organisation, and the whole point is that it is waiting for them.
 ///
 /// It is keyed by email, claimed once, and the clock starts at the claim rather than at the grant -
-/// so a promise made in September and taken up in November is still three whole months.
+/// so a promise made in September and taken up in November is still its whole length. One month by
+/// default: every free run is one month (Hafsah, 5 October 2026).
 model FreeRun {
   id              String           @id @default(uuid())
   /// Lowercased at the write, because an address is not case sensitive and a grant that misses is
   /// worse than no grant: the person signs up, sees nothing, and pays or leaves.
   email           String           @unique
-  months          Int              @default(3)
+  months          Int              @default(1)
   /// What the free run covers. Not a separate "unlimited" idea: it is one of the plans we sell, so
   /// the caps, the wording and the upgrade path are the ones that already exist.
   plan            SubscriptionPlan @default(GROWTH)

@@ -273,7 +273,9 @@ describe('a judgement never praises a claim the record\'s own numbers contradict
     const src = strip(readFileSync(join(__dirname, 'reports.service.ts'), 'utf8'));
     const worded = src.indexOf('aMoveForTheReader(x.move');
     const held = src.indexOf('praiseTheNumbersDoNotSupport(');
-    const returned = src.indexOf('return { judgement: kept, table }');
+    /* The judgement is now returned with the id of the prompt version that wrote it (d2e3e34b); the line is matched as
+       exactly as before, and the order it guards is the same: worded, then held to the numbers, then returned. */
+    const returned = src.indexOf('return { judgement: { ...kept, promptVersionId: stored?.id ?? null }, table }');
     expect(worded).toBeGreaterThan(-1);
     expect(held).toBeGreaterThan(worded);
     expect(returned).toBeGreaterThan(held);

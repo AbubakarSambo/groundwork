@@ -1,6 +1,54 @@
 # Morning report
 
+At `9f4dd902`, the new free-run migration applies on a fresh local database, so 360 of 360 migrations now apply, with nothing more to apply on a second run and no new drift. The two API tests that failed earlier now pass, and so does the whole billing folder: 264 of 264 tests in 28 files.
+
+At `accd1717`, 16,768 of the 16,772 API tests pass, with 2 failed and 2 skipped. Both failures are real and fail again when run alone. First, `pricing.anchorTrial` has no writer in the API (commit `42576e10`). Second, the praise test cannot find the judgement's old return line, because commit `d2e3e34b` changed it. The client has 4,221 of 4,223 passing, and both failures are the expected mirror test, which waits for the screens workspace. Both typechecks pass.
+
+The existing-clients checks were run again on a copy of the test database: scheduled check-ins still carry on unchanged. Two things need you (section 9 of `docs/existing-users.md`). First, 41 people marked as held for a seat who have already answered are now refused every page. Second, leads no longer read the stored pattern lines that today's live line shows them.
+
 The checks for the hosted line were run again at `ee99f19c` on this computer: all 359 migrations apply to a new database, the clean install and build pass for the API and the client, and the built API starts with every new setting missing (see section 7 of `docs/staging-compatibility.md`).
+
+## Needs Hafsah: existing clients and the live line (5 October, evening)
+
+**1. People held for a seat who have already answered (Finding 7).** Since commit `39b2c296` (privacy sweep finding 3, 5 October), anybody marked as held for a seat is refused the board, the report and the check-in page. They read "This check-in cannot start for you yet, because there is no seat for you on the plan." On the live line, such a person could still read all three. On a copy of the test database, 41 people on 20 check-ins are marked as held for a seat but have already finished sessions. All of those check-ins were made by journey runs on 18 and 19 September. In the comparison's sample, six of them lost 18 pages they used to read, 256 sentences and 42 names. If an existing client has people like this, they would lose every page on release day. Please decide which is right: should someone who has already answered keep reading while held, or should their hold be cleared? Before release, count them on a copy of the live data with this read-only query: `SELECT count(*) FROM ground_participants gp WHERE awaiting_seat AND EXISTS (SELECT 1 FROM check_ins c WHERE c.participant_id = gp.id AND c.status = 'COMPLETED')`.
+
+**2. The stored pattern lines that the live line now shows leads.** Today's `origin/main` shows a lead the pattern lines stored in the record over time, on the board and in the report. One example is "Upward reporting was optimistic while a major account was being lost." Our branch has not shown stored patterns to anybody since 27 September. A pattern reaches a page only live, through the rule for who reads a pattern. In the comparison's sample, this means leads of 81 check-ins no longer read 288 such lines (144 different lines, each on the board and in the report). Please confirm that leads should no longer read them. Section 7 of `docs/existing-users.md` says anything a lead loses blocks the release until it is understood.
+
+**3. `origin/main` moved 36 commits since 4 October, from `f5c07d39` to `824b7e3b`.** None of it is work our branch lacks. All 36 are already in `mine/wip/live-base` (your copy of the hosted line, at `5197f22d`, which the release merges into) and in our branch. The files at `824b7e3b` are exactly the same as at `5197f22d`. Of the 36, four are merge commits ("Merge pull request #321 from AbubakarSambo/staging", #320 "28926changes", #319, and #318 "product-only"). The other 32 are these:
+- `1138df4f` updates (Abubakar's three client fixes)
+- `ed2b4996` Working notes do not belong on the branch
+- `e25deb1e` Nineteen guards could be satisfied by a sentence
+- `199af488` The organisation-level read was listening to the wrong room
+- `4cd90137` "The Ikeja officer" is how a person names a person
+- `bbf7c478` The guard deleted every sentence that named a person
+- `4e8435b9` Four people are not a population, and a proportion of four hid all of it
+- `ac9ae000` Femi's report had Ngozi's pipeline in it, and I put it there this morning
+- `7307d0ef` The link sets invitedAt, so "not invited" never meant what I thought
+- `a83efdb0` Chidinma's trucks, published under Ibrahim's name
+- `62bede9d` Eleven people answered a check-in that had two people in it
+- `4a9d0e5c` The lead closes it. There is no agreement step
+- `e15d9378` There was no defect. I was reading 46 characters of a 312-character reply
+- `756b94f4` Their team checks in on their own number, and we never see a customer
+- `ea18bd46` The judgement is on the board, and it is the first thing on it
+- `3b7d801e` The conversation now collects the thing the lead asked for
+- `adc07378` I was wrong about the phone, and here is what was actually broken
+- `e3f86711` Two from the Context list: whose words, and somewhere to put them
+- `ab7b4c86` A colleague's number, on the Context tab, on the default setting
+- `b04d39c7` The risk shows, and the dead ones come back
+- `ea4528d5` A state a machine puts you in needs a way out a person can use
+- `3c801593` The weekend, and the thing we measured and never said
+- `026e12f6` A month given away was lifting nothing
+- `6f0ba08a` The report was not the fault
+- `b2796e14` A guard that runs before the sentence exists does not run
+- `ec0e9794` The notes arrived a minute after the conversation ended
+- `17a7f5d4` What a claim costs to prove
+- `4420644a` They can tell us what to ask, and now we follow
+- `0a5856be` The ground the brief asks us to cover
+- `d3823d60` The report is not ours to promise, and an answer does not stop belonging to anything
+- `020706fe` A roster row is not a life sentence
+- `9e3adcdd` It works on a phone, and the next question comes from the hole
+
+The only commits on `origin/main` that our branch does not have are old merge commits ("Merge pull request #298" to "#321 from AbubakarSambo/staging"), and they carry no change of their own. Nothing was merged.
 
 ## 5 October, 17:45: the 24-scenario run is back, and nothing got worse
 
@@ -36,9 +84,19 @@ database, and every one is complete, so the warning came too early and the numbe
 - The lead's judgement turns "The status of the open commitments to…" into "Check the status of…", and says a promise like 'I will file the bundle' as "file the bundle". After review it no longer drops any step, and leaves quotes that are not promises alone (134 item 4).
 - The judgement now has its own stored prompt versions, and each judgement records which version wrote it, so a prompt change can be proved. The code text is unchanged.
 - The lead is no longer told "Your own account of this is not in this check-in." about their own item. It reads "Only you can answer this.", on the report and the board. Found on the 5 October run's snapshot and project.
+- The judgement no longer keeps a line with a number that none of the people's accounts hold, such as "four different activities" for two crops in two places (135 item 3). A right number put on the wrong thing, like the crisis run's "7 AM alerts", is left to the new prompt.
+- The judgement's prompt now tells the writer to repeat a person's name instead of using "he", "she" or "they", to ask whether a promise happened by its day, and to write only numbers an account holds, on the thing it belongs to. Everything the prompt had is kept.
+- Anchor piece 22: the lead's month board now names, for each person, one thing they promised and did ("Rukia committed to send the deck to the client, and it is done."), and each person reads the same sentence about themselves. It is behind the anchor switch.
+- Anchor piece 34: the anchor's one-month trial for up to 20 people, the lead included, is built behind its own setting `pricing.anchorTrial`, which is off.
+- Anchor piece 35: a journey that reads an anchor check-in as the lead, a person in it and an admin who only reads, against the API on this computer, and a spec that holds the same rules for all four readers. It has not been run live yet.
+- Anchor piece 32: the end-of-month read now names the people who moved things, with the same sentences as the month board.
+- I stopped on anchor pieces 26 and 27 (suites offered inside a check-in). The offer would have to go into the check-in conversation's replies, which is prompt work or changes what the scorer measures. Ask Groundwork already offers leave and spending.
+- Every free run is now one month, as Hafsah answered tonight (decision 78). The staff gift "on the house" used to default to three months, and now defaults to one. Its file and route keep the old name, so nothing that calls them breaks. The regular trial was already one month in its setting and default. The local database's `pricing.freeTrial` row reads months 1.
 - I stopped on 139, the goal drawn as "Point to successfully renewed contracts", because no code writes that line and it is not in this computer's database. I asked the screens workspace which field carries it. I did not start 130 (b), 130 (d) or 131 (6), because none of them is small.
 
 ### Needs Hafsah
+
+**Decided (5 October): a free run that starts inside the anchor month counts from the day that month began, never from today.** Hafsah kept piece 34 as built. Whether the anchor month is for new organisations only is still open; both switches are off.
 
 **An organisation's admin who is not in a check-in reads people's exact words on its board.** Juma, an admin of the organisation who is not in the sales check-in and did not set it up, is sent everybody's own words in "Who owns what" and other sections, in quotation marks with their names. That was already so before today's work, and nothing I changed widened it. CLAUDE.md says what people say in check-ins can be shown word for word to the people in that check-in. The wall for an admin without access to a check-in (decision 60, point 4) covers only evaluation check-ins. Whether an admin who is not in a check-in should read people's exact words on every other kind is your call. I have changed nothing.
 

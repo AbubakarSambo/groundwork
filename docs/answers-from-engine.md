@@ -199,10 +199,130 @@ The fix in 048cea38 covered only a check-in of one person.
 
 Now, where the line above is about the lead, the lead reads "Only you can answer this." A line that is
 not about the lead keeps its sentence, and so does the case where the missing account is somebody
-else's. The lead's report now makes the same repairs as the board. Before, only the board did, so a
+else's. Narrowed after review: "your" before a person or a group does not count as being about the
+lead. "Your team has not said what the difficulties are." keeps "Your own account of this is not in this
+check-in." I was not sure what the true sentence is there (it may be the team's account that is
+missing), so I kept the old one. The lead's report now makes the same repairs as the board. Before, only the board did, so a
 heading that is only a piece becomes a sentence on the report too: "This check-in cannot tell you
 about your role in the client meetings." An admin and the participant are unaffected. The wording
 "Only you can answer this." is mine; there is no prototype screen for it.
+
+**135 (3), the judgement miscounts.** A number in the judgement must now be one the material it was
+given holds. In a room nothing used to check numbers. When the judgement is written, a line holding a
+number the blocks do not hold is left out, the same way a line naming nobody already is. "Participant
+A has named four different activities in two locations" is not stored about two crops in two places.
+"Two crops in two places" is kept, because "one", "two" and "three" are how a sentence counts what it
+names. A date, a year and words in quotation marks are not checked. In the gap, only the sentence with
+the bad number goes. If it is the gap's only sentence, it is kept and logged, because the gap is what
+the lead reads first.
+
+This check cannot catch a number that the material does hold but that is put on the wrong thing. On
+the 5 October run's crisis check-in, "nobody responded to the 7 AM alerts" used the lead's own "7 AM"
+for an alert that fired at 02:14. That is the writer's to keep right, and it goes into the new prompt.
+
+**The judgement's prompt now says who, what and when (123 item 7, 134 item 4, 135 item 3).** These
+are the rules that could not be made safe as repairs at the read. Three rules are added. Every key
+element the prompt had is kept, and a test checks that the old text is the new text with these three
+taken out.
+
+- **Never a pronoun for a person.** The label is said again every time. In both prompts.
+- **A promise is asked about as what was promised, by its day.** For example: "Ask Participant A whether the bundle was filed by Thursday 1 October." The room is now given each open promise as an action with the time the person gave ("said they would file the bundle, and the time they gave was 'Thursday 1 October'"), where it can be said that way.
+- **A number is one a block holds, on the thing the block puts it on.** It is never combined, and it is never moved to another thing. The run's crisis example is in the text: the alert nobody answered fired at 02:14, so it is never "the 7 AM alerts".
+
+The snapshot run's sentence "your account does not show that they know it" is the example in the
+pronoun rule. The new text is now stored and active in the local database `gw_pw9_1786222102`, and
+its content matches the code text byte for byte. The room version is `the_judgement_room` version 1, id
+`ae0c6fa4-76e5-4f20-a0cc-fd6fadb78217`. The population version is `the_judgement_population` version 1,
+id `53aad9c9-077e-4d14-9082-5d8f83e0cab9`. It reaches a judgement once the API is rebuilt and the three
+scenarios are run again, and each new judgement's `promptVersionId` will show the room id.
+
+**Anchor piece 22, hidden contributors, is served.** It is behind the anchor switch and only for a
+check-in started from the anchor link. Each person who closed something they promised in their own
+check-in gets one sentence, for the latest thing they closed. It never comes from what a colleague said
+about them, and it is never counted or ordered by how much each person did.
+
+- The lead, on `theMonthBoard.peopleHelpingThingsMove`, reads `{ name: "Rukia", sentence: "Rukia committed to send the deck to the client, and Rukia says it is done." }`, one entry per person, in the order people are in the check-in.
+- The person, on the board read as the new field `yourPartInMovingThings`, reads the same sentence about themselves, in "you" and "your": "You committed to send your manager the deck, and you say it is done." This follows decision 96 (9). It is null where they have closed nothing, and they never read anybody else's.
+- Changed after review, the sentence now says how it is known. Settled on their own word: "…, and Rukia says it is done." A document they added: "…, and a document Rukia added shows it is done." Confirmed: "…, and the colleague who was waiting on it confirmed it is done." The confirmer is not named, because the record keeps that it was confirmed and not by whom.
+- An admin who only reads, and an admin who set the check-in up, read no list and no sentence. With the switch off, or on any other check-in, the field is not sent at all.
+
+A promise a lead wrote or pasted is not counted, and neither is one the person did not make in their
+own name. The end-of-month `peopleWhoHelpedMoveTheThinking` is not filled yet.
+
+**Anchor piece 34, the anchor's one-month trial, is built and off.** It has its own setting,
+`pricing.anchorTrial` (`{ "on": false }`, read as off unless the row says on). When a check-in is
+started from the anchor link with the anchor switch on, and only while that setting is on too, the
+organisation gets one month on the plan that holds 20 people, the lead included (Small Team). It is
+given once, never on top of a free run and never to one that is paying, and nothing touches Stripe.
+`pricing.freeTrial` and the paid client are untouched. After review, it never shortens a free run.
+Where the regular trial would also be given, the organisation gets the longer of the two. Where it
+would not, the anchor month does not use up the regular trial. The regular trial, if given later
+inside the anchor month, runs from the day the anchor month started. Once the anchor month has ended,
+there is no second free run. A free run counts as an anchor month only if it was given as one: the
+anchor's plan, ending a month after an anchor check-in started. The public pricing read (`GET /billing/pricing`)
+now also sends `anchorTrial: { on, months: 1, people: 20 }`, so the anchor landing says "for a month"
+only while it is on.
+
+**A name said again where somebody else is in the sentence is said as a name.** The new judgement
+prompt repeats a person's label instead of using a pronoun. The read used to turn the repeat into
+"they" (request 129 item 6). Where a second person is named in the sentence, the name is now said
+again: "Amina Yusuf said, about Tobi Adewale, that Amina would send the sheets." With one person only,
+"they" stays, as request 129 asked, because it cannot be anybody else: "Amina Yusuf said they would send
+the sheets." The reader as "you" does not count as a second person ("Dr Amina Bello says they told you
+this").
+
+**Anchor piece 35, the anchor journey and its four readers.** The rules for who may read which anchor
+part are written once, in `api/journey/anchor/what-each-reader-may-be-served.ts`:
+
+- The lead reads the active line, the month board and, once the month is over, the end-of-month read.
+- A person in the check-in reads only their own recognition sentence, said as "you".
+- An admin with access reads the active line only.
+- An admin who only reads gets none of the lead's parts and no person's sentence.
+- Nobody reads a score, a rating or a label.
+
+Two things use these rules:
+
+- `api/journey/anchor/walk-the-anchor-as-each-reader.ts` signs in as each reader against an API on this computer with the anchor seed loaded, reads both anchor check-ins' boards, and reports any problem in a sentence. It writes nothing, and it refuses anything that is not localhost.
+- A spec, `the-anchor-as-each-of-its-readers.spec.ts`, holds the same rules against the board read in a test.
+
+The anchor seed now also loads `grace@anchor.test`, an admin of the organisation who is in neither
+check-in, as the fourth reader. I have not run the journey against the live API. The tester is
+rebuilding it, and the journey needs the seed loaded on that database.
+
+**Anchor piece 32, the end-of-month read's people, is filled.** `theEndOfMonthRead.peopleWhoHelpedMoveTheThinking`
+is now built from the same record and with the same sentence as the month board's people (piece 22),
+so the two never disagree: `{ name: "Rukia", sentence: "Rukia committed to send the deck to the client,
+and Rukia says it is done." }`. As before, only the lead reads the end-of-month read. A person in it,
+an admin with access and an admin who only reads are never sent it.
+
+**Anchor pieces 26 and 27, suites offered when needed: not built, and here is why.** Ask Groundwork
+already offers leave and spending from what a person says, in code, with the "switched off"
+sentences (`suites/leave-said-in-chat.ts`, `spend-said-in-chat.ts`). Section 22 asks for the offer
+inside the check-in conversation, which the model leads. Putting it there means either prompt text, or
+code that adds a sentence to the model's reply in a check-in. Code like that changes what a check-in
+says, which the scorer measures. Spotting a "recurring people issue" for the Performance offer also
+needs the conversation or the patterns, and patterns appear only from week three. I have stopped on
+both pieces. They belong with the conversation work, after the run.
+
+**Every free run is one month (Hafsah, 5 October; decision 78).** On the engine side:
+
+- The staff gift on the house now defaults to one month, where it was three (`billing/three-months-on-the-house.service.ts`, the `free_runs.months` column default, by migration `20261005200000_a_free_run_is_one_month`). The file, class and admin route keep their names, so nothing that calls them breaks. Staff can still type another length.
+- The regular trial's setting and default were already one month. The local database's `pricing.freeTrial` row reads `{"on": false, "months": 1, "teamsUnder": 20}`. The pricing read serves whatever the setting holds, so the screens say "1 month" today.
+
+**For you, in `client/`, which I may not edit:**
+
+- `pages/admin/AdminPage.tsx` line 621 starts the free-run form at `useState(3)`. It should start at 1. Its comment at lines 606 to 613 also says "three months".
+- `lib/the-free-trial.ts` line 3 comment says "3 months".
+- `pages/billing/what-plan-and-billing-says.ts` line 113 comment has the example "Your free 3 months end on 14 October".
+- `pages/auth/AuthPage.tsx` line 537, `pages/auth/what-is-waiting-for-this-address.ts` line 4 and `api/admin.ts` line 133 have comments saying three months.
+- Specs that mock `months: 3` in the served trial: `lib/the-free-trial.spec.ts` (it pins "Teams of fewer than 20 people get 3 months free."), `pages/auth/the-free-trial-on-sign-up.spec.tsx`, `pages/org/OrgNewPage.spec.tsx` and `pages/billing/the-pricing-page-as-each-reader-sees-it.spec.tsx`.
+- The prototype's pricing page (`docs/prototype/screens/F2-billing/pricing.txt`) still says 3 months. The decision overrides it.
+
+**The anchor trial can be switched from Admin.** It works like the free trial:
+`GET /admin/pricing/anchor-trial`, and `PATCH /admin/pricing/anchor-trial` with `{ "on": true }` or
+`{ "on": false }`. Only on or off can be set. It is always one month for up to 20 people, the lead
+included, and anything else sent is ignored. If you want it on Admin → System → Pricing beside the
+free trial, that is a screen to add.
 
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 

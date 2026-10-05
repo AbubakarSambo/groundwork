@@ -72,6 +72,16 @@ export function aNameSaidAgainInOneSentence(text: string, names: Iterable<string
   return text.split(/(?<=[.!?])(\s+)/).map((sentence) => {
     for (const full of people) {
       const forms = formsOf(full);
+      /*
+       * ONLY WHERE NOBODY ELSE IS IN THE SENTENCE (review of the judgement prompt, 5 October 2026). With a second person
+       * there ("Amina Yusuf said, about Tobi Adewale, that Amina would send the sheets"), "they" could mean either, so
+       * the name is said again instead. With one person only, "they" stays, as request 129 item 6 asked: it cannot be
+       * anybody else. The reader as "you" does not count as a second person here: "Dr Amina Bello says they told you
+       * this" cannot be read as "you" (a-name-after-says-is-said-once).
+       */
+      const others = people.filter((p) => p !== full).flatMap((p) => [p, theShortNameOf(p)]).filter((n) => n && n.length > 1);
+      const somebodyElseIsHere = others.some((o) => new RegExp(`(?<![\\p{L}])${escapeRe(o)}(?![\\p{L}])`, 'u').test(sentence));
+      if (somebodyElseIsHere) continue;
       /* "Aisha says that for refunds, Aisha closes the ticket" is "Aisha says that for refunds, they close the ticket" (request 129 item 6). */
       sentence = sentence.replace(
         new RegExp(`(?<![\\p{L}])((?:${forms})\\s+${REPORTING_VERBS}(?:\\s+that)?\\s+(?:[^,.;]{2,40}),\\s+)(?:${forms})\\s+(\\p{Ll}[\\p{L}'’]*)`, 'gu'),

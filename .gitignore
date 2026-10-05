@@ -109,6 +109,13 @@ api/journey/*
 !api/journey/seed-an-anchor-check-in.ts
 !api/journey/seed-a-hundred-check-ins.ts
 
+# THE ANCHOR JOURNEY AND ITS READER RULES (anchor piece 35). A spec in api/src imports the rules, so a computer
+# without them cannot even compile the tests. Read-only, and it refuses anything that is not this computer.
+!api/journey/anchor/
+api/journey/anchor/*
+!api/journey/anchor/what-each-reader-may-be-served.ts
+!api/journey/anchor/walk-the-anchor-as-each-reader.ts
+
 # AND THE 24-SCENARIO RUNNER, for the same reason, asked for by the screens workspace on
 # 26 September 2026: `api/journey/all-24/` only existed on one computer, so the other workspace
 # could not run the scenarios or the scorer - and no task on either list may be ticked without

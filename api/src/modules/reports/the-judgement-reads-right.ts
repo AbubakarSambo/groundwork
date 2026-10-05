@@ -48,7 +48,9 @@ const NOBODY_ELSE_ANSWERS = 'Nobody else answers this check-in, so there is no o
  *    project. Only where the line above says "you" or "your", and never where the thing is who somebody else is.
  */
 const ONLY_YOU_CAN_ANSWER = 'Only you can answer this.';
-const THE_LINE_IS_ABOUT_THE_READER = /\b(?:you|your|yours|yourself)\b/i;
+/* "you", or "your" before a thing of theirs, never "your" before a person or a group: "Your team has not said what the
+   difficulties are." is about the team, so the old sentence stays there (review of 10a8d3ae). */
+const THE_LINE_IS_ABOUT_THE_READER = /\b(?:you|yours|yourself)\b|\byour\b(?!\s+(?:own\s+)?(?:team|teams|staff|people|colleague|colleagues|manager|managers|lead|leads|report|reports|direct reports)\b)/i;
 
 /**
  * A STEP IS SOMETHING TO DO, AND A PROMISE IS SAID AS WHAT WAS PROMISED (request 134 item 4, narrowed after review).

@@ -1,6 +1,6 @@
 import type { TheEndOfMonthRead, TheContinueOption } from '../entry/the-anchor-served-shapes';
 import type { TheMonthRecord } from './the-anchor-month-record';
-import { aNumber, capital, aWaitInAWords, NO_IDEA_YET } from './the-anchor-month-board';
+import { aNumber, capital, aWaitInAWords, NO_IDEA_YET, aContributionSaid } from './the-anchor-month-board';
 
 /**
  * THE END-OF-MONTH READ (docs/anchor-scenario.md, sections 28 and 29; decision 96 item 4; request 149).
@@ -60,7 +60,8 @@ export function theEndOfMonthRead(input: { herWords: string; record: TheMonthRec
     whatTheyNowUnderstandDifferently: ['Groundwork does not yet keep how each person saw things at the start, so it cannot say what changed in what they understand.'],
     whatTheyAreDoingDifferently: doing.length ? doing : ['Nothing has been recorded yet that people are doing differently.'],
     whatYourTeamContributed: [NO_IDEA_YET],
-    peopleWhoHelpedMoveTheThinking: [],
+    /* From the same record and the same sentence as the month board's people (piece 22), so the two never disagree. */
+    peopleWhoHelpedMoveTheThinking: (r.doneByPerson ?? []).map((d) => ({ name: d.name, sentence: aContributionSaid(d.name, d.clause, d.settledBy) })),
     whatYouChangedAsALead: ['Groundwork does not yet keep what changed in how you lead, so it has nothing to say here.'],
     whatIsStillStuck: stuck.length ? stuck : ['Nobody has said that anything is still in their way.'],
     whatShouldHappenNext: next,

@@ -130,6 +130,19 @@ export class AdminController {
     return this.pricing.setFreeTrial(body ?? {}, userId);
   }
 
+  @Get('pricing/anchor-trial')
+  @ApiOperation({ summary: 'The anchor trial: whether it is on. One month, up to 20 people with the lead.' })
+  async getAnchorTrial() {
+    return this.pricing.getAnchorTrial();
+  }
+
+  /** Off until Hafsah turns it on. Only on or off: its length and size are fixed (anchor piece 34). */
+  @Patch('pricing/anchor-trial')
+  @ApiOperation({ summary: 'Switch the anchor trial on or off' })
+  async setAnchorTrial(@CurrentUser('id') userId: string, @Body() body: { on?: boolean }) {
+    return this.pricing.setAnchorTrial(body ?? {}, userId);
+  }
+
   @Patch('pricing/free-member-limit')
   @ApiOperation({ summary: 'Change the free member limit' })
   async setFreeMemberLimit(@CurrentUser('id') userId: string, @Body() body: { freeMemberLimit: number }) {
@@ -434,9 +447,10 @@ export class AdminController {
 
 
   /**
-   * THREE MONTHS ON THE HOUSE, GIVEN TO AN ADDRESS BEFORE THERE IS AN ORGANISATION.
+   * A FREE RUN ON THE HOUSE, GIVEN TO AN ADDRESS BEFORE THERE IS AN ORGANISATION. One month unless staff
+   * type another length: every free run is one month (Hafsah, 5 October 2026), where it used to be three.
    *
-   * Her words: "we put in someone's email and their org gets free use for three months, when they
+   * Her earlier words: "we put in someone's email and their org gets free use for three months, when they
    * sign-up, they see it." The promise waits on the address; the clock starts when they take it up.
    */
   @Get('free-runs')
