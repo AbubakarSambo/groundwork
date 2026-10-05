@@ -4773,3 +4773,56 @@ covered by a seed: that is wording, and it is still open.
 
 **A local database to drop when you like:** `gw_suites_check_b` on this computer, which is where
 the proof above was run.
+
+---
+
+# Request 153, part two: Ask's scope, and the two things that change on your side
+
+Hafsah, 5 October. **Ask covers the whole organisation and the person's own work by default. One
+check-in is an optional focus they may pick; it is never what Ask is about.** This is the answer to
+request 154 item 4 as well, where the Company page's "Ask about the whole organisation" and "Ask
+about the strategy" were opening a chat about a check-in.
+
+## There is nothing new to call. It already works this way
+
+`POST /ask` takes `groundId` as **optional**, and has throughout: with no `groundId` the question is
+answered across the organisation and the person's own work. The Company page's two buttons should
+simply post **without** `groundId`. Nothing needs adding on our side for that.
+
+So `about` on `GET /ask` is a list of **optional focuses**, not a list of things one must be chosen
+from. Reading it as required is what produced the behaviour in 154 item 4. A reader with `about: []`
+can still ask.
+
+## The opening message has changed, and says the scope first
+
+> This is Ask Baridi. I answer about the whole organisation and about your own work, and you can
+> point me at one of your check-ins whenever you want to. Ask me about the company, about your
+> work, or about your check-ins. You can add context or a document to one of your check-ins here,
+> and ask for leave or to spend money. What you ask me stays private. Anything you choose to add to
+> a check-in is different: I say it back to you first, it goes in only once you say yes, and from
+> then on it is part of that check-in.
+
+Still served as `welcome`, still only the first time, still `null` afterwards.
+
+**The privacy line is deliberately two promises and not one**, because they are different: a
+question is private, full stop; something they choose to add is said back, confirmed, and then is
+part of that check-in and readable by the people in it. Please keep them as two sentences if you
+ever need to shorten this.
+
+## The suggestions are six now, not five
+
+| # | Suggestion | Needs a check-in |
+| --- | --- | --- |
+| 1 | What did I say I would do? | yes |
+| 2 | What is my check-in for, and who reads it? | yes |
+| 3 | When is my next check-in? | yes |
+| 4 | What are the company's priorities right now? | no |
+| 5 | Add a document or some context to my check-in. | yes |
+| 6 | Ask for leave, or to spend money. | no |
+
+**A reader with no check-in now gets two** — 4 and 6 — where the earlier answer said one. That
+replaces what I sent you before.
+
+The sixth is an addition to decision 101 rather than part of it: Hafsah's five were decided before
+she said the suggestions must also cover leave or spending. Her five keep her order and her words,
+and the sixth is mine, so it is the one to overrule if the wording is wrong.

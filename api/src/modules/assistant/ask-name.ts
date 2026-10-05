@@ -17,10 +17,24 @@ export const ASK_CAPTION = 'Ask about the company, your work or your check-ins.'
 /** The one line under the caption. */
 export const ASK_ADD_LINE = 'You can also add context or documents to your check-ins here.';
 
-/** What the first time somebody opens Ask says (docs/ask-definition.md, "The first time you open it"). */
+/**
+ * What the first time somebody opens Ask says (docs/ask-definition.md, "The first time you open it").
+ *
+ * IT SAYS THE SCOPE FIRST, because the scope was the thing being misread (Hafsah, 5 October). Ask
+ * covers the whole organisation and the person's own work by default; one check-in is a focus they
+ * may pick, never the thing Ask is about. The screens had read it the other way round and the
+ * Company page's "Ask about the whole organisation" opened a chat about a check-in.
+ *
+ * Then what it can do, in the five areas she named - the company, their work, their check-ins,
+ * adding context or a document, and leave or spending - and then the two halves of the privacy
+ * line, which are different promises and must not be run together: a question stays private full
+ * stop; something they choose to add is said back, confirmed, and then is part of that check-in.
+ */
 export function askFirstWelcome(organisationName?: string | null): string {
   const name = askName(organisationName).replace(/^Ask /, '');
-  return `This is Ask ${name}. You can ask me about the company, your work or your check-ins, at any time. You can also add context or a document to one of your check-ins, and ask for leave or to spend money. What you ask here stays private. If you add something to a check-in, I will say it back to you first, and it only goes in once you say yes.`;
+  return `This is Ask ${name}. I answer about the whole organisation and about your own work, and you can point me at one of your check-ins whenever you want to. `
+    + `Ask me about the company, about your work, or about your check-ins. You can add context or a document to one of your check-ins here, and ask for leave or to spend money. `
+    + `What you ask me stays private. Anything you choose to add to a check-in is different: I say it back to you first, it goes in only once you say yes, and from then on it is part of that check-in.`;
 }
 
 /** Looks up the name of one organisation. A missing organisation gives "Ask Groundwork". */
@@ -60,6 +74,13 @@ const STARTERS = [
   { line: 'When is my next check-in?', needsACheckIn: true },
   { line: "What are the company's priorities right now?", needsACheckIn: false },
   { line: 'Add a document or some context to my check-in.', needsACheckIn: true },
+  /*
+   * THE SIXTH IS LEAVE AND SPENDING, and it is an addition to decision 101 rather than part of it.
+   * Hafsah's five were decided before she said the suggestions must also cover leave or spending
+   * (5 October). Her five keep her order, this goes after them, and it is written up as mine to
+   * be overruled. It needs no check-in, so it is the second thing somebody with none is offered.
+   */
+  { line: 'Ask for leave, or to spend money.', needsACheckIn: false },
 ] as const;
 
 export function askStarters(hasACheckIn: boolean): string[] {

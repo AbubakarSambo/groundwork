@@ -262,7 +262,7 @@ const BARIDI_ASK = {
   addLine: 'You can also add context or documents to your check-ins here.',
   /* Decision 101: four of the five need a check-in, so a reader with none is left with the one
      that does not. One true starter rather than four invented ones. */
-  starters: ["What are the company's priorities right now?"],
+  starters: ["What are the company's priorities right now?", 'Ask for leave, or to spend money.'],
 };
 /* And the five, in Hafsah's order, for somebody who has a check-in. */
 const STARTERS_WITH_A_CHECK_IN = [
@@ -271,8 +271,9 @@ const STARTERS_WITH_A_CHECK_IN = [
   'When is my next check-in?',
   "What are the company's priorities right now?",
   'Add a document or some context to my check-in.',
+  'Ask for leave, or to spend money.',
 ];
-const BARIDI_WELCOME = 'This is Ask Baridi. You can ask me about the company, your work or your check-ins, at any time. You can also add context or a document to one of your check-ins, and ask for leave or to spend money. What you ask here stays private. If you add something to a check-in, I will say it back to you first, and it only goes in once you say yes.';
+const BARIDI_WELCOME = 'This is Ask Baridi. I answer about the whole organisation and about your own work, and you can point me at one of your check-ins whenever you want to. Ask me about the company, about your work, or about your check-ins. You can add context or a document to one of your check-ins here, and ask for leave or to spend money. What you ask me stays private. Anything you choose to add to a check-in is different: I say it back to you first, it goes in only once you say yes, and from then on it is part of that check-in.';
 
 const everything = (x: unknown) => JSON.stringify(x);
 
