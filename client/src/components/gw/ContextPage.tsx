@@ -892,12 +892,16 @@ export function ContextPage({
                       {doc.uploadedAt && (
                         <Note>Added on {whenItWas(doc.uploadedAt, 'day')}.</Note>
                       )}
-                      <p className="gwui-panel-text gwui-pre-line gwui-mt-6">
+                      {/* WALKTHROUGH PASS 2, ITEM 3: A <p> INSIDE A <p>. `Note` already renders its
+                          own <p> (NoteEmpty.tsx), so wrapping it in another <p> here put one block
+                          element inside another of the same kind - invalid HTML, and a console error
+                          on the participant's Context tab. A <div> carries the same text classes. */}
+                      <div className="gwui-panel-text gwui-pre-line gwui-mt-6">
                         {doc.theContextWeHave.replace(/^Here is the context we have from [^\n]*\n*/, '')}
                         {(doc.holds?.forOnePerson?.length || doc.holds?.forEverybody?.length) ? (
                           <Note>These are on the board and in the report, against the people who hold them.</Note>
                         ) : null}
-                      </p>
+                      </div>
                     </details>
                   )}
                 </div>
