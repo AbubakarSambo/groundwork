@@ -69,6 +69,11 @@ answered "Invalid API Key provided". A real Stripe test key in the local `api/.e
 | upgrade, an access code | `POST /billing/contributor-codes/redeem` | None. |
 | The WhatsApp add-on | `GET` and `PATCH /billing/whatsapp` | Not on any F2 screen; the sentences above are the API's own. A lead or a person who takes part is served only `sending` and `says`, and the page only asks for it as an admin, so they never read why their check-ins stay in the app. In a trial with WhatsApp off they are served `sending: true` with nothing to say, because the old WhatsApp messages still go and only the three new ones wait for the add-on. |
 
+**Later the same evening, three of those gaps are served:**
+- `GET /billing/status` serves an admin `startedWith: { said, line, says }`, for example "When Baridi Appliances was set up, it had 20 or more people, so it began on a plan." A lead, a member and a guest are not served it.
+- `GET /billing/whatsapp` serves every reader `on`. When it is off and nothing is held, a lead or a participant reads "Your organisation has not turned on WhatsApp, so Groundwork does not send you reminders or summaries on WhatsApp." The page can ask for it as anybody, not only as an admin.
+- `POST /billing/remind-the-admins` with `{ groundId }` is the "Remind them" button. An admin, a lead or a member may press it; a guest is refused. It answers `{ reminded, says }`, where `says` is one of these: "We have reminded your admins that you are waiting. You can remind them again tomorrow." / "You already reminded your admins today. You can remind them again tomorrow." / "This check-in is not paused, so there is nobody to remind." / "Your organisation has no admin to remind yet. Tell the person who runs this check-in."
+
 ## 5 October, afternoon: Hafsah's two wording decisions, and what came after
 
 **123 (8), the outcome when somebody leaves a role.** Hafsah chose the prototype's sentence with the

@@ -1,5 +1,22 @@
 # The weekly plan after release
 
+## Next week (from 6 October 2026)
+
+**Stopped at release, to pick up first.**
+- "Use simpler words", a check-in setting the lead switches on. It was started and then taken out, so nothing of it is in the release and there is no switch to turn off. Still to build: a `grounds.simpler_words` column (off by default), a route to read and change it, the plain-words rule for everybody in the check-in, and plainer forms of the fixed sentences. The WhatsApp closing and the emails belong to other builders, so each gets a function from the engine rather than an edit.
+- The WhatsApp add-on in Stripe test mode. It could not be tried, because the local Stripe key is only a placeholder. With a real test key in the local `api/.env`, subscribe a team in its trial with card 4242, turn the add-on on, and check that nothing is charged until the trial ends.
+- The email behind "Remind them". The route sends the admins the existing "Add a card" email, which does not say who is waiting. A new email that names the person and the check-in belongs to whoever owns the email module.
+- Admins are emailed every time a paused check-in is opened. That should be at most once a day for each person, as "Remind them" already is.
+- A team that subscribes during its free trial pays from that day, and the rest of its free month is lost. Hafsah decides whether Stripe should be given the trial's end date.
+- The anchor baseline prompt (version 2) is stored only in the local database. It is not yet proven in a live run that the model asks all nine things before it closes.
+
+**Suites at scale for 100-person organisations.**
+1. Seed: run the 100-check-in seed (`api/journey/seed-a-hundred-check-ins.ts`) on a fresh local database, for one organisation of 100 people with leads, departments and a full year of leave, spending and reviews.
+2. The sidebar and People lists (request 157): read them as an admin, a lead and a participant at 100 people. Search, grouping by team, and paging where a list is longer than a screen. Time each read and keep it under one second.
+3. The suites boards: the leave board, the approvals board, spending, reviews and the role map, with 100 people. Check that the counts are right, that each approver sees only what waits for them, and that a month of leave stays readable on a phone.
+4. Approvals and leave at volume: 30 requests waiting at once, approvers away, and requests that wait too long. Check that the reminders go once and only to the right person.
+5. Fix what is slow by its query, never by hiding rows. Prove each fix by reading the served text as each reader.
+
 ## The work for the first client, in order (decisions 81, 82 and 83, 2 October 2026)
 
 One list, merged from every instruction since decision 81, without duplicates. Marked **done**, **in progress** or **not started**.
