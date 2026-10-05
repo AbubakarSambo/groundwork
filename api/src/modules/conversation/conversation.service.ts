@@ -1841,8 +1841,8 @@ export class ConversationService {
      * time, until the question limit ended her check-in. Only this check-in's own replies are read.
      */
     const repliesInThisCheckIn = herEarlierAiTurns.filter((r) => r.checkInId === checkIn.id).map((r) => r.content ?? '');
-    const aboutTheirDeadline = inTheBaseline ? null : whatToDoAboutTheirDeadline(message, new Date(), repliesInThisCheckIn);
-    if (aboutTheirDeadline) {
+    const aboutTheirDeadline = whatToDoAboutTheirDeadline(message, new Date(), repliesInThisCheckIn);
+    if (aboutTheirDeadline && !inTheBaseline) {
       this.logger.log(`Check-in ${checkIn.id}: they gave a time with no day; asking which.`);
     }
     const numbersGap = inTheBaseline ? null : theNumbersDoNotMeet(theirNumbers, message, alreadyTheirs, earlierAiTurnsForTheGap);
@@ -1850,7 +1850,7 @@ export class ConversationService {
       this.logger.log(`Check-in ${checkIn.id}: what they said does not meet the objective; asking which it is.`);
     }
 
-    const fullSystem = [composed, aboutTheirDeadline, numbersGap ? askWhichItIs(numbersGap) : null]
+    const fullSystem = [composed, inTheBaseline ? null : aboutTheirDeadline, numbersGap ? askWhichItIs(numbersGap) : null]
       .filter(Boolean)
       .join('\n\n')
       /* The anchor's short reminder, when it is in play, is read after everything else. */

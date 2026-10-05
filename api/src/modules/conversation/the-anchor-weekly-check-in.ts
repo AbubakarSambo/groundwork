@@ -70,6 +70,12 @@ export function aCheckInStartedFromTheAnchor(ground: { startedFrom?: string | nu
   return ground?.startedFrom === STARTED_FROM_THE_ANCHOR;
 }
 
+/** Whether the check-in with this id was started from the anchor link: read from its row, for a caller that was not handed it. */
+export async function theCheckInWasStartedFromTheAnchor(prisma: any, id: string): Promise<boolean> {
+  const row = await prisma.ground.findUnique({ where: { id }, select: { startedFrom: true } }).catch(() => null);
+  return aCheckInStartedFromTheAnchor(row);
+}
+
 /**
  * The guidance for somebody on the lead's team, or nothing. Nothing unless the switch is on, the
  * check-in was started from the anchor, the person is not the lead, and it is not their first session.

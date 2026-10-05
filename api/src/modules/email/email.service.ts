@@ -30,7 +30,7 @@ import { withWhatGroundworkIs } from './what-groundwork-is';
 import { whatTheTeamGets, whatTheLeadGets, THE_TEAM_BUTTON, THE_LEAD_BUTTON } from './one-line-one-link-one-report';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { theAnchorInvitation } from '../entry/the-anchor-people-step';
-import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
+import { STARTED_FROM_THE_ANCHOR, theCheckInWasStartedFromTheAnchor } from '../conversation/the-anchor-weekly-check-in';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 
 /**
@@ -1067,11 +1067,10 @@ export class EmailService implements OnModuleInit {
   /** Whether this invitation is for a check-in the anchor link started, with the anchor on. Read from the row when the caller did not pass it. */
   private async isAnAnchorCheckIn(theCheckIn: { startedFrom?: string | null }, context?: DeliveryContext): Promise<boolean> {
     try {
-      let from = theCheckIn.startedFrom;
-      if (from === undefined && context?.groundId) {
-        from = (await this.prisma.ground.findUnique({ where: { id: context.groundId }, select: { startedFrom: true } }))?.startedFrom ?? null;
-      }
-      return from === STARTED_FROM_THE_ANCHOR && (await theAnchorScenarioIsOn(this.prisma)) === true;
+      const started = theCheckIn.startedFrom !== undefined
+        ? theCheckIn.startedFrom === STARTED_FROM_THE_ANCHOR
+        : !!context?.groundId && (await theCheckInWasStartedFromTheAnchor(this.prisma, context.groundId));
+      return started && (await theAnchorScenarioIsOn(this.prisma)) === true;
     } catch {
       return false;
     }

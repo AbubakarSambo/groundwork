@@ -5813,7 +5813,9 @@ export class GroundsService {
           /* Their real account name, when they were picked from the colleague list rather than
              typed in cold. Every reader already prefers this to a guess from the address the
              moment `user.firstName` itself is not yet available (see theirName, party-labels.ts). */
-          ...(colleagueName ? { nameGiven: colleagueName } : dto.displayName?.trim() ? { nameGiven: dto.displayName.trim().slice(0, 120) } : {}),
+          ...(colleagueName ? { nameGiven: colleagueName } : {}),
+          /* What the lead calls this person, typed beside the address ("Name + email"), when they were not picked from the colleague list. */
+          ...(!colleagueName && dto.displayName?.trim() ? { nameGiven: dto.displayName.trim().slice(0, 120) } : {}),
           /* What they are accountable for, in the lead's words. It used to be emailed and then lost. */
           remitAsGiven: dto.note?.trim() || null,
           department: dto.department?.trim() || null,
