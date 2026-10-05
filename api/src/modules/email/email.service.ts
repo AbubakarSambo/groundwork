@@ -29,6 +29,9 @@ import { howLongInWords } from '../auth/how-long-a-link-lasts';
 import { withWhatGroundworkIs } from './what-groundwork-is';
 import { whatTheTeamGets, whatTheLeadGets, THE_TEAM_BUTTON, THE_LEAD_BUTTON } from './one-line-one-link-one-report';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
+import { theAnchorInvitation } from '../entry/the-anchor-people-step';
+import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
+import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 
 /**
  * Groundwork email library. Per the product rules, every message names
@@ -392,6 +395,8 @@ export class EmailService implements OnModuleInit {
     /** Which sender this is. Defaulted so nothing breaks, and every sender passes it. */
     sender?: string,
   ): Promise<string | undefined> {
+    /* What a builder wrote in a template for the next builder is never sent to a reader, whose mail client can show the source. */
+    options = { ...options, html: withoutDeveloperComments(options.html) };
     /*
      * AN ADDRESS NOBODY GAVE US IS NEVER WRITTEN TO.
      *
@@ -543,7 +548,7 @@ export class EmailService implements OnModuleInit {
   }
 
   private layout(body: string): string {
-    return `<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">${body}</div>`;
+    return `<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">${withoutDeveloperComments(body)}</div>`;
   }
 
   // --- Auth ---
@@ -1046,6 +1051,10 @@ export class EmailService implements OnModuleInit {
     context?: DeliveryContext,
     by: string | null = null,
   ): Promise<{ devUrl?: string }> {
+    /* A check-in started from the anchor link, with the anchor on, is invited in the anchor's own words. */
+    if (await this.isAnAnchorCheckIn(theCheckIn as { startedFrom?: string | null }, context)) {
+      return this.sendTheAnchorInvitation(email, leadName, theCheckIn.label, this.buildInviteUrl(token), context);
+    }
     const theOneLine = theCheckIn.scenario === 'TEAM_UPDATES' ? theCheckIn.brief?.trim() : '';
     if (!theOneLine) return this.sendParticipantInvite(email, leadName, theCheckIn.label, token, note, context);
     /* The trial line is carried on the note, which is where the setup form puts her sentence. */
@@ -1053,6 +1062,44 @@ export class EmailService implements OnModuleInit {
       email, leadName, theOneLine, this.buildInviteUrl(token), by,
       !!note && /trying this out/i.test(note), context,
     );
+  }
+
+  /** Whether this invitation is for a check-in the anchor link started, with the anchor on. Read from the row when the caller did not pass it. */
+  private async isAnAnchorCheckIn(theCheckIn: { startedFrom?: string | null }, context?: DeliveryContext): Promise<boolean> {
+    try {
+      let from = theCheckIn.startedFrom;
+      if (from === undefined && context?.groundId) {
+        from = (await this.prisma.ground.findUnique({ where: { id: context.groundId }, select: { startedFrom: true } }))?.startedFrom ?? null;
+      }
+      return from === STARTED_FROM_THE_ANCHOR && (await theAnchorScenarioIsOn(this.prisma)) === true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * THE ANCHOR'S INVITATION TO A PERSON ON THE TEAM (docs/anchor-scenario.md, section 14; decision 96, items 1 and 8). The words are
+   * `theAnchorInvitation`'s, the same ones the invitation page reads, so the email and the page cannot differ. The button is the spec's.
+   */
+  private async sendTheAnchorInvitation(email: string, leadName: string, groundLabel: string, url: string, context?: DeliveryContext): Promise<{ devUrl?: string }> {
+    const named = (leadName ?? '').trim();
+    /* The placeholders callers use when they do not know the lead's name are not a name. */
+    const words = theAnchorInvitation(!named || /^(your lead|a founder)$/i.test(named) ? null : named.split(' ')[0]);
+    const stopLine = await this.theWayToStopBeingChased(context?.participantId);
+    const devUrl = await this.sendEmail({
+      to: email,
+      subject: words.subject,
+      html: this.layout(
+        `<p><strong>${escapeHtml(words.heading)}</strong></p>` +
+        words.lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('') +
+        /* The same true sentence every invitation carries about who can read what is said in a check-in. */
+        `<p>${escapeHtml(await this.whoSeesWhatYouSay(context))}</p>` +
+        `<p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">${escapeHtml(words.button)} &rarr;</a></p>` +
+        `${await this.theWhatsAppLine(email, context)}` +
+        `${stopLine ?? ''}`,
+      ),
+    }, context ?? { kind: 'PARTICIPANT_INVITE' }, 'sendParticipantInvite');
+    return { devUrl };
   }
 
   /** The moment of value: everybody answered, and here is the one report. */
@@ -1689,6 +1736,11 @@ export function plainTextOf(html: string): string {
 /** Appended to every mail we decided to send. The link works with no sign-in (round-digest.service.ts#unsubscribe). */
 export const UNSUBSCRIBE_FOOTER = (url: string) =>
   `<p style="font-size:12px;color:#9B9590;margin-top:28px;">To stop these emails: <a href="${url}" style="color:#9B9590;">unsubscribe</a>. A link to sign in will still reach you if you ask for one.</p>`;
+
+/** Takes out `<!-- ... -->` comments. A conditional comment for a mail client (`<!--[if`) is left alone. */
+export function withoutDeveloperComments(html: string): string {
+  return html.replace(/<!--(?!\[if)[\s\S]*?-->/g, '');
+}
 
 export function escapeHtml(s: string): string {
   return s

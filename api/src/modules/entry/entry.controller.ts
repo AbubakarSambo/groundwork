@@ -212,6 +212,11 @@ class EntryReportDto {
   @IsArray()
   @IsString({ each: true })
   peopleNamed?: string[];
+
+  /* The anchor conversation only: what the lead's first conversation heard, under the seven keys it served, so the reveal says what she said. */
+  @IsOptional()
+  @IsObject()
+  anchorItems?: Record<string, unknown>;
 }
 
 class ContributorDto {
@@ -219,6 +224,8 @@ class ContributorDto {
   @ValidateIf((o: ContributorDto) => !o.colleagueId) @IsString() email: string;
   @IsOptional() @IsString() @MaxLength(64) colleagueId?: string;
   @IsOptional() @IsString() context?: string;
+  /* "Name + email" (anchor section 13): what the lead calls this person, kept beside the address. */
+  @IsOptional() @IsString() @MaxLength(120) displayName?: string;
   @IsOptional() @IsString() inviteToken?: string;
   @IsOptional() @IsString() note?: string;
 }
@@ -612,7 +619,7 @@ export class EntryController {
   @Post('report')
   @Throttle({ global: { limit: 20, ttl: 60000 } })
   async report(@Body() dto: EntryReportDto) {
-    const report = await this.service.report(dto.messages, dto.scenario, dto.groundLabel, dto.peopleNamed);
+    const report = await this.service.report(dto.messages, dto.scenario, dto.groundLabel, dto.anchorItems, dto.peopleNamed);
     return { report };
   }
 }

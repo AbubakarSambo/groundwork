@@ -2842,7 +2842,7 @@ const CRISIS_PACK_COMBINED = [
 ].join('\n\n');
 
 /** The scenarios whose packs carry role-specific questions for the person the check-in is about. */
-export const STARTING_SCENARIOS = new Set(['NEW_HIRE', 'NEW_COFOUNDER', 'NEW_ADVISOR', 'NEW_PROJECT', 'NEW_MANAGER', 'CONTRACT_RENEWAL', 'ROLE_HANDOVER']);
+export const STARTING_SCENARIOS = new Set(['NEW_HIRE', 'NEW_COFOUNDER', 'NEW_ADVISOR', 'NEW_PROJECT', 'HELP_TEAM_UNDERSTAND', 'NEW_MANAGER', 'CONTRACT_RENEWAL', 'ROLE_HANDOVER']);
 
 /**
  * THE PRODUCT'S OWN FIRST QUESTION TO A NON-LEAD IN A STARTING SCENARIO. See ConversationService.open.
@@ -2854,6 +2854,9 @@ export const WHO_ARE_YOU_IN_THIS =
 /** For the participant who is NOT the person the check-in is about. Their side of the shared work. */
 const SOMEBODY_ELSE_IN_THIS =
   '"From where you sit, what has this work looked like so far? What have you needed from them, or they from you, and did it arrive? Then separately: what would you point to in three months to say this had gone well from your side?"';
+
+/** The anchor's role questions are a project's, as they were before it had a situation of its own. */
+const startingRoleQuestionsFor = (scenario: string) => STARTING_ROLE_QUESTIONS[(scenario === 'HELP_TEAM_UNDERSTAND' ? 'NEW_PROJECT' : scenario) as keyof typeof STARTING_ROLE_QUESTIONS];
 
 function composeStartingPack(scenario: keyof typeof STARTING_ROLE_QUESTIONS): string {
   const role = STARTING_ROLE_QUESTIONS[scenario];
@@ -3500,6 +3503,7 @@ export const SCENARIO_PACKS: Record<GroundScenario, string> = {
   NEW_COFOUNDER: composeStartingPack('NEW_COFOUNDER'),
   NEW_ADVISOR: composeStartingPack('NEW_ADVISOR'),
   NEW_PROJECT: composeStartingPack('NEW_PROJECT'),
+  HELP_TEAM_UNDERSTAND: composeStartingPack('NEW_PROJECT'),
   NEW_MANAGER: composeStartingPack('NEW_MANAGER'),
   CONTRACT_RENEWAL: composeStartingPack('CONTRACT_RENEWAL'),
   CONTRACT_REVIEW: CONTRACT_REVIEW_PACK,
@@ -3565,6 +3569,7 @@ function theScenariosOwnPack(
     case GroundScenario.NEW_COFOUNDER:
     case GroundScenario.NEW_ADVISOR:
     case GroundScenario.NEW_PROJECT:
+    case GroundScenario.HELP_TEAM_UNDERSTAND:
     case GroundScenario.NEW_MANAGER:
     case GroundScenario.CONTRACT_RENEWAL:
     /*
@@ -3581,7 +3586,7 @@ function theScenariosOwnPack(
      * cases is at the bottom of this change - see every-scenario-is-reachable.spec.ts.
      */
     case GroundScenario.ROLE_HANDOVER: {
-      const role = STARTING_ROLE_QUESTIONS[scenario as keyof typeof STARTING_ROLE_QUESTIONS];
+      const role = startingRoleQuestionsFor(scenario);
       /*
        * SEVEN CARDS, SEVEN PROMISES, AND ONE LINE THAT ANSWERED NONE OF THEM.
        *
@@ -3968,6 +3973,7 @@ function situationTypeFromScenario(scenario: GroundScenario): string {
     case GroundScenario.NEW_COFOUNDER:
     case GroundScenario.NEW_ADVISOR:
     case GroundScenario.NEW_PROJECT:
+    case GroundScenario.HELP_TEAM_UNDERSTAND:
     case GroundScenario.NEW_MANAGER:
     case GroundScenario.CONTRACT_RENEWAL:
       return 'Starting';
@@ -4004,6 +4010,7 @@ function resolveRelationshipHistory(
     case GroundScenario.NEW_COFOUNDER:
     case GroundScenario.NEW_ADVISOR:
     case GroundScenario.NEW_PROJECT:
+    case GroundScenario.HELP_TEAM_UNDERSTAND:
     case GroundScenario.NEW_MANAGER:
       return 'new';
     case GroundScenario.DRIFT:
@@ -4033,7 +4040,8 @@ function relationshipTypeFromScenario(scenario: GroundScenario): string {
     case GroundScenario.NEW_HIRE: return 'new_hire';
     case GroundScenario.NEW_COFOUNDER: return 'cofounder';
     case GroundScenario.NEW_ADVISOR: return 'advisor';
-    case GroundScenario.NEW_PROJECT: return 'project_member';
+    case GroundScenario.NEW_PROJECT:
+    case GroundScenario.HELP_TEAM_UNDERSTAND: return 'project_member';
     case GroundScenario.NEW_MANAGER: return 'manager_contractor';
     case GroundScenario.CONTRACT_RENEWAL: return 'contract_renewal';
     case GroundScenario.DRIFT: return 'drifted_relationship';
@@ -4072,6 +4080,7 @@ function selectPathwayNumber(
     case GroundScenario.NEW_ADVISOR:
       return isInitiator ? 14 : 5;
     case GroundScenario.NEW_PROJECT:
+    case GroundScenario.HELP_TEAM_UNDERSTAND:
       return isInitiator ? 14 : 8;
     case GroundScenario.NEW_MANAGER:
       return isInitiator ? 14 : 7;

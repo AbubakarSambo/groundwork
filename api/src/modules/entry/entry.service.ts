@@ -70,7 +70,8 @@ import { PromptsService } from '../prompts';
 import { theAnchorGuidance, ANCHOR_ENTRY_SCENARIO } from '../conversation/the-anchor-lead-conversation';
 import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
-import { TheAnchorDoor } from './the-anchor-door';
+import { TheAnchorDoor, THE_ANCHOR_GROUND_LABEL } from './the-anchor-door';
+import { THE_EXTRACTION_SYSTEM, THE_EXTRACTION_TOOL, THE_CLOSING_REMINDER, allSevenAreHeard, theReadTheScreenAlreadyKnows, whatHasBeenHeard, whatTheConversationHasHeard, type TheSevenItems } from './the-anchor-setup';
 import { theLeadsReveal } from './the-anchor-reveal';
 import type { TheLeadsReveal } from './the-anchor-served-shapes';
 import { draftFromASetUp, type ASetUpToStartFrom } from './a-set-up-can-start-from-a-recommendation';
@@ -118,6 +119,16 @@ const scenarioLogger = new Logger('resolveScenario');
 export function theSituationSheChose(picked?: string | null): GroundScenario | null {
   if (!picked) return null;
   return Object.values(GroundScenario).includes(picked as GroundScenario) ? (picked as GroundScenario) : null;
+}
+
+/**
+ * WITHOUT THE SWITCH, THE ANCHOR'S SITUATION IS WHAT IT ALWAYS WAS BEFORE IT HAD ONE: A PROJECT.
+ * A stale link or a saved draft that still carries the anchor's key must keep exactly the behaviour it had, so with
+ * `release.anchorScenario` off every lookup here answers as it did when the key was unknown. Nothing else is affected.
+ */
+async function theSituationForThisDoor(prisma: any, input?: string): Promise<GroundScenario> {
+  if (input === ANCHOR_ENTRY_SCENARIO && !(await theAnchorScenarioIsOn(prisma))) return GroundScenario.NEW_PROJECT;
+  return resolveScenario(input);
 }
 
 function resolveScenario(input?: string): GroundScenario {
@@ -674,6 +685,12 @@ export class EntryService {
       .catch((err: any) => this.logger.warn(`Could not record an anonymous model call on ${route}: ${err?.message}`));
   }
 
+  /** The situation she picked, when it is one of ours. The anchor's key counts only while the anchor is on. */
+  private async chosenSituation(picked?: string): Promise<GroundScenario | null> {
+    if (picked === ANCHOR_ENTRY_SCENARIO && !(await theAnchorScenarioIsOn(this.prisma))) return null;
+    return theSituationSheChose(picked);
+  }
+
   /**
    * Which situation this is. The prompt, its precedence rule and the reading of the answer live in
    * which-situation-this-is.ts; below the confidence bar the scenario is null and the flow keeps the
@@ -686,7 +703,7 @@ export class EntryService {
      * July" as a project gone off track: the bar switched to DRIFT without asking her. A picked key
      * stands, and no model call is spent second-guessing it. Her way out is "It's something else".
      */
-    const chosen = theSituationSheChose(picked);
+    const chosen = await this.chosenSituation(picked);
     if (chosen) return { scenario: chosen, confidence: 'high' };
     description = withoutBankDetails(description);
     this.anonymousModelCall('classify-intent', description.length);
@@ -772,15 +789,26 @@ export class EntryService {
       goals?: string[];
       brief?: string;
       yourRole?: string;
-    };
+    } & TheSevenItems;
     ready: boolean;
     /** Party path only: setup can finish, but nobody has been named yet and they are told so. */
     needsPeople: boolean;
+    /** The anchor conversation only: which stored version of its words ran. */
+    promptVersionId?: string | null;
   }> {
     /* Decision 35: a bank or card number typed here is hidden before it is kept or read by a model. See documents/bank-details-are-never-kept. */
     messages = withoutBankDetailsAnywhere(messages);
     soFar = withoutBankDetailsAnywhere(soFar);
     if (!messages || messages.length === 0) throw new BadRequestException('messages required');
+
+    /*
+     * THE ANCHOR LEAD'S OWN CONVERSATION, ONLY WITH THE SWITCH ON. With it off, the anchor's key is ignored here exactly as it was
+     * before it was a situation, and everything below this block is what it always was.
+     */
+    if (scenarioInput === ANCHOR_ENTRY_SCENARIO) {
+      if (await theAnchorScenarioIsOn(this.prisma)) return this.onboardTheAnchorLead(messages, soFar, onDelta);
+      scenarioInput = undefined;
+    }
 
     /**
      * NO VOCABULARY_RULE HERE, DELIBERATELY, AND I ADDED IT BEFORE TAKING IT BACK OUT.
@@ -1366,6 +1394,39 @@ from finishing at all.`;
   }
 
   /**
+   * THE ANCHOR LEAD'S FIRST CONVERSATION (request 166). Model-led: the same stored words as the anchor's check-in run it. What is
+   * handed to the model on every turn is what it has already heard from the lead and what it has not (the-anchor-setup), so the
+   * second question never repeats the opening one, and what the screen reads back is the seven things in the lead's own words.
+   * The read runs first here, because a turn that learns the last of the seven has to close rather than ask one more thing.
+   */
+  private async onboardTheAnchorLead(messages: ChatTurn[], soFar: WhatSetupHasSoFar | null | undefined, onDelta?: (text: string) => void) {
+    const read = await this.anthropic
+      .extract<TheSevenItems & { peopleNamed?: string[]; initial?: string }>(THE_EXTRACTION_SYSTEM, messages, THE_EXTRACTION_TOOL, { thinkingBudget: CONVERSATION_THINKING_BUDGET_FOR_EXTRACT, fast: true })
+      .catch((err: Error) => { this.logger.warn(`The anchor read failed this turn: ${err?.message}`); return null; });
+    const heard = whatHasBeenHeard(read, soFar);
+    const peopleNamed = (read?.peopleNamed?.length ? read.peopleNamed : (soFar?.peopleNamed ?? [])).filter((n) => n?.trim());
+    const anchor = await theAnchorGuidance(() => theAnchorScenarioIsOn(this.prisma), this.prompts, ANCHOR_ENTRY_SCENARIO, messages);
+    const opening = messages[0]?.role === 'assistant' ? messages[0].content : undefined;
+    const closes = allSevenAreHeard(heard);
+    const theirLast = [...messages].reverse().find((m) => m.role === 'user')?.content ?? '';
+    const system = [
+      buildEntrySystemPrompt(GroundScenario.HELP_TEAM_UNDERSTAND, THE_ANCHOR_GROUND_LABEL, PartyType.INITIATOR, undefined, peopleNamed, anchor?.text),
+      whatTheConversationHasHeard(heard, opening),
+      theThingsThatCannotBeMissed(theirLast, theyPushedBackOnTheQuestions(theirLast)),
+      closes ? THE_CLOSING_REMINDER : (anchor?.last ?? ''),
+    ].filter(Boolean).join('\n\n---\n\n');
+    const reply = await this.guardedReply(system, messages, onDelta);
+    const ready = closes && !reply.includes('?');
+    return {
+      reply,
+      extracted: { ...theReadTheScreenAlreadyKnows(heard, { initial: read?.initial, peopleNamed }), ...heard },
+      ready,
+      needsPeople: peopleNamed.length === 0,
+      promptVersionId: anchor?.promptVersionId ?? null,
+    };
+  }
+
+  /**
    * THE BRIEF IS NOT SERVED TO A STRANGER. This took a `joinToken` from the body of a public route,
    * looked the ground up by it and put the organiser's own brief into the system prompt for whoever
    * supplied it. No client passed it any more - the join flow goes through join-confirm - so the
@@ -1401,7 +1462,7 @@ from finishing at all.`;
      * Third time a fix has landed on one of two paths in this file. The lesson each time is that
      * "the entry chat" is two prompts, not one.
      */
-    const mapped = resolveScenario(scenario);
+    const mapped = await theSituationForThisDoor(this.prisma, scenario);
     const theirLast = [...messages].reverse().find((m) => m.role === 'user')?.content ?? '';
     /*
      * THE ANCHOR LEAD'S GUIDANCE, ONLY WHEN THE SWITCH IS ON AND THIS IS THE ANCHOR CONVERSATION.
@@ -1647,11 +1708,11 @@ from finishing at all.`;
   }
 
 
-  async report(messages: ChatTurn[], scenario?: string, groundLabel?: string, peopleNamed?: string[]): Promise<EntryReport | null> {
+  async report(messages: ChatTurn[], scenario?: string, groundLabel?: string, anchorItems?: Record<string, unknown>, peopleNamed?: string[]): Promise<EntryReport | null> {
     messages = withoutBankDetailsAnywhere(messages);
     if (!messages || messages.length === 0) throw new BadRequestException('messages required');
 
-    const mapped = resolveScenario(scenario);
+    const mapped = await theSituationForThisDoor(this.prisma, scenario);
     const systemPrompt = buildEntrySystemPrompt(mapped, groundLabel || scenario || '');
 
     // Anthropic requires the conversation to end with a user message
@@ -1779,7 +1840,12 @@ from finishing at all.`;
      * any other situation, the report is exactly what it was, with no such key at all.
      */
     if (scenario === ANCHOR_ENTRY_SCENARIO && (await theAnchorScenarioIsOn(this.prisma))) {
-      return { ...served, leadsReveal: theLeadsReveal({ messages: messages as any, peopleNamed: [...alreadyNamed, ...served.mentionedPeople.map((m: any) => m.name)], reader: 'lead' }) } as EntryReport;
+      /* What she said about her world, in her words: what the screen already holds from her first conversation, and what the same read finds in these turns. */
+      const read = await this.anthropic
+        .extract<TheSevenItems>(THE_EXTRACTION_SYSTEM, trimmed, THE_EXTRACTION_TOOL, { thinkingBudget: CONVERSATION_THINKING_BUDGET_FOR_EXTRACT, fast: true })
+        .catch((err: Error) => { this.logger.warn(`The reveal could not read what the lead said: ${err?.message}`); return null; });
+      const heard = whatHasBeenHeard(read, anchorItems);
+      return { ...served, leadsReveal: theLeadsReveal({ messages: messages as any, peopleNamed: [...alreadyNamed, ...served.mentionedPeople.map((m: any) => m.name)], reader: 'lead', heard }) } as EntryReport;
     }
     return served;
   }
@@ -1851,7 +1917,7 @@ from finishing at all.`;
       /** The setter's own part in this, from the report's yourRole or typed by them. */
       roleAsDescribed?: string;
       /** `colleagueId` instead of `email` for a colleague picked from the list (U.4); resolved in commitInner. */
-      contributors: { email: string; colleagueId?: string; context?: string; inviteToken?: string; note?: string }[];
+      contributors: { email: string; colleagueId?: string; context?: string; displayName?: string; inviteToken?: string; note?: string }[];
     },
   ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string; waiting?: boolean }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[] }> {
     /* Decision 35: a bank or card number typed here is hidden before it is kept or read by a model. See documents/bank-details-are-never-kept. */
@@ -2110,7 +2176,7 @@ from finishing at all.`;
     if (!answer.may) throw new ForbiddenException(answer.because);
 
     const label = (dto.groundLabel ?? '').trim() || 'My first ground';
-    const scenario = resolveScenario(dto.scenario);
+    const scenario = await theSituationForThisDoor(this.prisma, dto.scenario);
 
     /* One number, in one file, with the reason - see how-many-people-one-check-in-holds. */
     const tooMany = tooManyPeopleFor(dto.contributors.length);
@@ -2499,6 +2565,7 @@ from finishing at all.`;
         const result = await this.grounds.addParticipant(ground.id, organizationId, initiatorId, {
           email: c.email,
           roleAsDescribed: c.context,
+          ...(c.displayName?.trim() ? { displayName: c.displayName.trim() } : {}),
           note: c.note,
           /* U.6 review: the check-in's start, so a future start holds the invitation until the
              morning it starts (the on-the-day cron sends it), as adding someone on the check-in's

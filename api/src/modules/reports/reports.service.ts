@@ -1560,6 +1560,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       GroundScenario.NEW_COFOUNDER,
       GroundScenario.NEW_ADVISOR,
       GroundScenario.NEW_PROJECT,
+      GroundScenario.HELP_TEAM_UNDERSTAND,
       GroundScenario.NEW_MANAGER,
     ];
     const activeSchema =

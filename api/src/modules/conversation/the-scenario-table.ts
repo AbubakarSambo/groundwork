@@ -99,6 +99,21 @@ export const THE_SCENARIO_TABLE: Partial<Record<GroundScenario, AScenarioRow>> =
       last: 'Reflect on what worked and what should happen next.',
     },
   },
+  /* The anchor's lead and team read as a project's did before it had a situation of its own; only its name is its own. */
+  [GroundScenario.HELP_TEAM_UNDERSTAND]: {
+    name: 'Help your team understand and move with you',
+    description: 'Help the people you work with see the bigger picture, and understand what you are carrying.',
+    lead: {
+      first: 'Set the project context and expectations.',
+      second: 'See whether the work is moving as expected.',
+      last: 'See what was achieved and what remains.',
+    },
+    participant: {
+      first: 'Understand their role and what they are meant to deliver.',
+      second: 'Share progress, blockers, and changes.',
+      last: 'Reflect on what worked and what should happen next.',
+    },
+  },
   [GroundScenario.NEW_COFOUNDER]: {
     name: 'Start a new partnership well',
     description: 'Build a shared understanding of a new co-founder or partner relationship.',

@@ -91,6 +91,8 @@ export enum BoardFamily {
 export const SCENARIO_FAMILY: Record<GroundScenario, BoardFamily> = {
   // Delivery: interlocking work, handoffs matter, transparency helps.
   NEW_PROJECT: BoardFamily.DELIVERY,
+  /* The anchor read as a project before it had a situation of its own, so its board is the same. */
+  HELP_TEAM_UNDERSTAND: BoardFamily.DELIVERY,
   /* Delivery, not onboarding. A handover is two people with interlocking work and a real handoff
      between them - which is the delivery shape exactly. The successor being new is incidental. */
   ROLE_HANDOVER: BoardFamily.DELIVERY,

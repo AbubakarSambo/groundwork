@@ -98,6 +98,13 @@ enum GroundScenario {
   /// this enum is an objective agreed at the start and a run of check-ins testing work against it.
   SNAPSHOT
 
+  /// THE ANCHOR SCENARIO: a lead who arrived from the shared link and brings up to 20 people for a month.
+  ///
+  /// It behaves exactly like NEW_PROJECT everywhere a situation decides something (every table that is keyed
+  /// by this enum copies NEW_PROJECT's row), and differs only in its own name. It is saved so that the check-in
+  /// keeps the situation it was started as, rather than being recorded as a project. Existing rows are untouched.
+  HELP_TEAM_UNDERSTAND
+
   /// ONE LINE, SOME EMAIL ADDRESSES, AND A RHYTHM. THE LIGHTEST THING IN THIS ENUM.
   ///
   /// Hafsah, 18 September 2026: "You write one line about what you want to know, drop in their
