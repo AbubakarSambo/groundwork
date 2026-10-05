@@ -1,4 +1,4 @@
-import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
+import { theAnchorScenarioIsOn, theRequestOfferIsShown } from '../admin/what-is-hidden-at-release';
 import { STARTED_FROM_THE_ANCHOR } from './the-anchor-weekly-check-in';
 import { looksLikeARequest, shallITreatThisAs } from '../public-api/a-whatsapp-message-is-routed';
 
@@ -53,6 +53,8 @@ export async function aRequestAfterTheirTurn(
   try {
     if (a.startedFrom !== STARTED_FROM_THE_ANCHOR || !a.participantId) return {};
     if (!(await theAnchorScenarioIsOn(prisma))) return {};
+    /* Hidden at release until the form's routes exist (request 165): no offer is made, and nothing is kept. */
+    if (!(await theRequestOfferIsShown(prisma))) return {};
     const waiting = ((await prisma.workItem?.findMany?.({ where: { groundId: a.groundId, kind: 'request-offered', ownerParticipantId: a.participantId } })?.catch?.(() => [])) ?? []) as any[];
     for (const w of waiting) await prisma.workItem.delete({ where: { id: w.id } }).catch(() => undefined);
     if (waiting.length && isYes(a.message)) {

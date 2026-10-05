@@ -19,6 +19,7 @@ export const BOARD_KINDS_OFFERED_KEY = 'release.boardKindsOffered';
 export const CONTEXT_IN_ASK_GROUNDWORK_KEY = 'release.contextInAskGroundwork';
 export const PLAN_AND_BILLING_NEW_PARTS_KEY = 'release.planAndBillingNewParts';
 export const ANCHOR_SCENARIO_KEY = 'release.anchorScenario';
+export const REQUEST_OFFER_IN_THE_CHECK_IN_KEY = 'release.requestOfferInTheCheckIn';
 
 /**
  * The kinds of work a NEW check-in may be given at release (decision 91, item 3). The paid client
@@ -73,6 +74,15 @@ async function aSwitch(prisma: Reader, key: string): Promise<boolean> {
 /** Off unless Hafsah has written `{ "on": true }`. */
 export const contextIsInAskGroundwork = (prisma: Reader) => aSwitch(prisma, CONTEXT_IN_ASK_GROUNDWORK_KEY);
 export const theNewBillingPartsAreShown = (prisma: Reader) => aSwitch(prisma, PLAN_AND_BILLING_NEW_PARTS_KEY);
+
+/**
+ * THE OFFER TO ASK FOR LEAVE OR SPENDING FROM INSIDE A CHECK-IN (anchor pieces 26 and 27), HIDDEN AT RELEASE. Its yes
+ * opens the request's form, and the routes that form needs (request 165: `POST /suites/leave/requests` and
+ * `POST /suites/spend/requests` for the signed-in person) are not built yet, so the offer would lead to a form that
+ * cannot send. Off unless the row says `{ "on": true }`. Leave and spending through Ask Groundwork and WhatsApp are
+ * unchanged.
+ */
+export const theRequestOfferIsShown = (prisma: Reader) => aSwitch(prisma, REQUEST_OFFER_IN_THE_CHECK_IN_KEY);
 
 /**
  * Whether a NEW anchor check-in can be started (docs/anchor-scenario-plan.md, section 3). Off unless

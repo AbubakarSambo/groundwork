@@ -6,10 +6,10 @@ import { withoutACannotApprove, aRequestAfterTheirTurn, whatTheYesOpens } from '
  * ANCHOR PIECES 26 AND 27: A REQUEST SAID IN THE CHECK-IN IS OFFERED THERE, AS WHATSAPP DOES (section 22; decision 105
  * item 4). The same reading and the same question; the yes is answered with the spec's sentence and a way to the form.
  */
-function world(opts: { on?: boolean; startedFrom?: string | null; leaveOn?: boolean; spendOn?: boolean } = {}) {
+function world(opts: { on?: boolean; offerOn?: boolean; startedFrom?: string | null; leaveOn?: boolean; spendOn?: boolean } = {}) {
   const items: any[] = [];
   const prisma: any = {
-    platformSetting: { findUnique: jest.fn(async () => (opts.on === false ? null : { value: { on: true } })) },
+    platformSetting: { findUnique: jest.fn(async ({ where }: any) => (opts.on === false ? null : where?.key === 'release.requestOfferInTheCheckIn' && opts.offerOn === false ? null : { value: { on: true } })) },
     organizationSuite: { findUnique: jest.fn(async ({ where }: any) => ({ isOn: where.organizationId_suite.suite === 'leave' ? !!opts.leaveOn : !!opts.spendOn })) },
     workItem: {
       findMany: jest.fn(async (a: any) => items.filter((i) => i.kind === a.where.kind && i.ownerParticipantId === a.where.ownerParticipantId)),
@@ -73,5 +73,13 @@ describe('the reply never contradicts the offer (review of pieces 26 and 27)', (
   it('leaves every other sentence alone, word for word', () => {
     const reply = 'Rukia approved the deck on Friday, so you can send it. What is still in your way?';
     expect(withoutACannotApprove(reply)).toEqual({ text: reply, cut: [] });
+  });
+});
+
+describe('hidden at release until the form can send (request 165)', () => {
+  it('with release.requestOfferInTheCheckIn off, Rukia is offered nothing and nothing is kept, on an anchor check-in', async () => {
+    const w = world({ leaveOn: true, offerOn: false });
+    expect(await w.turn('Can I take a day off on Friday?')).toEqual({});
+    expect(w.items).toEqual([]);
   });
 });
