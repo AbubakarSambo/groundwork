@@ -3,7 +3,7 @@ import { ConversationService } from './conversation.service';
 import { ConversationContextService } from './context.service';
 import { ANCHOR_BASELINE_PROMPT, ANCHOR_BASELINE_PROMPT_KEY, THE_BASELINE_GUIDANCE, THE_BASELINE_REMINDER, theAnchorBaselineGuidance } from './the-anchor-baseline';
 import { READ_THIS_LAST } from './the-anchor-lead-conversation';
-import { THE_NINE, THE_BASELINE_CLOSING_REMINDER, everythingIsLearned, whatIsLearnedFrom } from './the-baseline-so-far';
+import { THE_NINE, withoutAnExampleAnswer, THE_BASELINE_CLOSING_REMINDER, everythingIsLearned, whatIsLearnedFrom } from './the-baseline-so-far';
 
 /**
  * ANCHOR PIECE 14: THE TEAM BASELINE IS THE FIRST SESSION FOR SOMEBODY ON THE LEAD'S TEAM (section 15; decision 105
@@ -86,7 +86,7 @@ describe('anchor piece 14: the baseline, as the model reads it in the first sess
     expect(prompt).toContain('Do not ask for proof, numbers, dates, documents or examples to back up what they said, and do not ask how they know something.');
     /* And the line read last says it again, after everything else. */
     const last = prompt.slice(prompt.indexOf('# For this person, in this first conversation'));
-    expect(last).toContain('Do not ask for proof, numbers or examples. Do not close while one of the nine is still unasked.');
+    expect(last).toContain('Do not ask for proof, numbers or examples, and never give an example of an answer: no "for instance", no "such as", no "something like". Do not close while one of the nine is still unasked.');
   });
   it('gives only what this person has been told the check-in is for, never the lead\'s own brief', async () => {
     const prompt = await aWorld({ startedFrom: 'anchor', switchOn: true }).compose();
@@ -294,5 +294,18 @@ describe('the team baseline is never held at its close (6 October)', () => {
     const held = await theClose(null);
     expect(held.ready).toBe(false);
     expect(held.ask).toMatch(/one more question|What will you do|by when/i);
+  });
+});
+
+describe('a sentence that offers an example answer comes off a baseline reply (6 October)', () => {
+  it('takes off "For instance, something like invoices paid within five days" and keeps the question', () => {
+    const said = withoutAnExampleAnswer('What would success look like to you for these accounts? For instance, something like invoices paid within five days, or weekly check-ins with the clinic managers.');
+    expect(said.text).toBe('What would success look like to you for these accounts?');
+    expect(said.cut).toHaveLength(1);
+  });
+  it('leaves a reply with no example exactly as it is, and never leaves a reply that asks nothing', () => {
+    expect(withoutAnExampleAnswer('What matters most right now from where you sit?')).toEqual({ text: 'What matters most right now from where you sit?', cut: [] });
+    const only = 'For instance, something like paid invoices?';
+    expect(withoutAnExampleAnswer(only)).toEqual({ text: only, cut: [] });
   });
 });

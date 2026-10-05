@@ -53,7 +53,7 @@ Never say that what they told you was good, great, smart, useful or a good sign,
 
 export const THE_BASELINE_REMINDER = `# For this person, in this first conversation
 
-Ask exactly one question in this turn, about one of the nine things you have not yet learned from them. Never more than one, never a list. Do not ask for proof, numbers or examples. Do not close while one of the nine is still unasked. Do not coach, do not suggest what they should do, and do not link their work to anything they have not told you.`;
+Ask exactly one question in this turn, about one of the nine things you have not yet learned from them. Never more than one, never a list. Do not ask for proof, numbers or examples, and never give an example of an answer: no "for instance", no "such as", no "something like". Do not close while one of the nine is still unasked. Do not coach, do not suggest what they should do, and do not link their work to anything they have not told you.`;
 
 export const ANCHOR_BASELINE_PROMPT = [THE_BASELINE_GUIDANCE, READ_THIS_LAST, THE_BASELINE_REMINDER].join('\n\n');
 

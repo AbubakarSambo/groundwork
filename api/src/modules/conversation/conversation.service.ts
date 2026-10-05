@@ -78,7 +78,7 @@ export const DECLINED_TO_TAKE_PART = 'declined';
 import { mirrorCommitment } from '../assistant/a-commitment-carries-past-the-ground';
 import { STARTED_FROM_THE_ANCHOR, aCheckInStartedFromTheAnchor, theAnchorParticipantGuidance, whatTheyToldYouBefore, withoutAnAnnouncedAngle } from './the-anchor-weekly-check-in';
 import { theAnchorBaselineGuidance } from './the-anchor-baseline';
-import { THE_BASELINE_CLOSING_REMINDER, THE_BASELINE_READ_SYSTEM, THE_BASELINE_READ_TOOL, everythingIsLearned, whatIsLearnedFrom, whatTheBaselineHasLearned, type WhatIsLearned } from './the-baseline-so-far';
+import { withoutAnExampleAnswer, THE_BASELINE_CLOSING_REMINDER, THE_BASELINE_READ_SYSTEM, THE_BASELINE_READ_TOOL, everythingIsLearned, whatIsLearnedFrom, whatTheBaselineHasLearned, type WhatIsLearned } from './the-baseline-so-far';
 import { whatTheAnswerAgreedTo, hasAlreadyOffered, whatHappenedToTheOffer, weSayAboutTheOffer, whatIsStillOwedToThem, withoutTheSecondTellingOfIt, isAnOfferToWriteItDown, whatTheyJustSaidMayBeTheirOwnStep, YOU_HAVE_ALREADY_OFFERED } from './giving-the-person-agency';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { DocumentsService } from '../documents/documents.service';
@@ -2258,6 +2258,14 @@ export class ConversationService {
        * "repeat and going around in circles": nothing was wrong with any single reply, and half of
        * every one of them was the person's own last message. See asked-twice-and-told-no-twice.
        */
+      /* In the team baseline, a sentence that offers an example answer comes off: nothing is put in their mouth. */
+      if (this.anchorWeekForThisTurn.get(checkIn.id)?.isTheBaseline) {
+        const withoutExamples = withoutAnExampleAnswer(screened.text);
+        if (withoutExamples.cut.length && withoutExamples.text) {
+          this.logger.warn(`Check-in ${checkIn.id}: the baseline's reply offered an example answer; ${withoutExamples.cut.length} sentence(s) came off.`);
+          screened = { ...screened, text: withoutExamples.text };
+        }
+      }
       /* An offer to write their words down quotes those words on purpose: that is the offer, so it is not "saying it back". Only in the anchor's weekly check-in. */
       const anOfferIsBeingMade = !!this.anchorWeekForThisTurn.get(checkIn.id) && isAnOfferToWriteItDown(screened.text);
       if (!anOfferIsBeingMade && opensByRepeatingThem(message, screened.text)) {
