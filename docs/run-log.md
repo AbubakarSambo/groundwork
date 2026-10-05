@@ -2,6 +2,24 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## 5 October, 13:50 - three more request items closed while the run works
+
+**154 item 6, the same promise twice: fixed.** "Ask the warehouse to load my van by 7am" sat beside
+"Ask the warehouse on Tuesday 29 September to load my van by 7am." Request 96's rule folds a short
+promise into a fuller one when the short one's words sit whole inside it, and a date pushed into
+the middle breaks that. Containment is tested with dates taken out of both now - only the
+containment: two different dates are still two promises.
+
+**154 item 8, a suite that is off: fixed in eleven places.** They refused with a bare statement and
+nothing to act on. The test I wrote reads the folder rather than my list and immediately found an
+eleventh service I had missed by hand, which is the only reason it is eleven and not ten.
+
+**154 item 6's other half, when-words that are not dates, is not done** and is written up as such:
+those are what the person said, so the fix is to stop showing them where a date belongs rather than
+to rewrite them, and that needs to know what the screen does with the field.
+
+Scenario run: 1 of 24 at 13:27, no incomplete captures.
+
 ## 5 October, 13:35 - two open requests closed, one provisional call made
 
 **Request 152, both items: already done**, and the screens' list still said Open. `checkInLabel`
