@@ -34,3 +34,18 @@ describe('a number is not two sentences', () => {
     expect(aStoredSentenceReadsRight(unsure)).toContain('1. 5 million');
   });
 });
+
+/**
+ * AND THE TITLE FIX IS NOT HERE, DELIBERATELY. Run 32 also showed "Ngozi Eze is waiting on Mr." -
+ * cut off at the title. Dropping the stop would stop any splitter breaking there and is British
+ * style, and it made three board tests red: they pin "...waiting on Mr. Adebayo for a date for
+ * the credit decision", which is correct English. A change that rewrites three correct sentences
+ * to repair one broken one is not a fix. It belongs where the splitting happens, or in task 1.6's
+ * check of the rendered line.
+ */
+describe('a decimal repair never touches what somebody said', () => {
+  it('leaves a quotation exactly as it was written', () => {
+    const quoted = 'Ngozi said "we are at 0. 5% this month" in her check-in.';
+    expect(aStoredSentenceReadsRight(quoted)).toContain('"we are at 0. 5% this month"');
+  });
+});

@@ -125,9 +125,25 @@ export function aWaitSaidOnce(text: string): string {
  */
 const aNumberIsNotTwoSentences = (t: string) => t.replace(/(\d)\.\s+(\d+%)/g, '$1.$2');
 
+/*
+ * A TITLE IS NOT THE END OF A SENTENCE EITHER, AND I TOOK THAT FIX BACK OUT. Run 32 showed
+ * "Ngozi Eze is waiting on Mr." - cut off, because the stop after a title is a stop to a
+ * splitter. I dropped the stop, which is British style and would have stopped any splitter
+ * breaking there, and three board tests went red: they pin "Ngozi Eze is waiting on Mr. Adebayo
+ * for a date for the credit decision", which is correct English. The fix changed three correct
+ * sentences to repair one broken one, so it is not a fix.
+ *
+ * It belongs where the splitting happens, or in the per-reader check of task 1.6 which sees the
+ * rendered line. Not here, where it rewrites text that is already right.
+ */
+
 export function aStoredSentenceReadsRight(text: string, names?: readonly string[]): string {
   if (!text || typeof text !== 'string') return text;
-  return theQuotesKept(aNumberIsNotTwoSentences(aWaitSaidOnce(text)), (outside) => {
+  return theQuotesKept(aWaitSaidOnce(text), (outside) => {
+    /* Inside the callback, so it never touches what somebody actually said (Hafsah, 26 September:
+       people's own words stay exactly as they said them). My first version ran it over the whole
+       string, quotations included, which that decision forbids. */
+    outside = aNumberIsNotTwoSentences(outside);
     const plain = aLabelEndsWithoutAFullStop(oldWordingPutPlain(outside));
     /* A name is not said again in the sentence about that person (requests 129, 133, 135): "Amani Wekesa says Amani paid ...". */
     return names?.length ? aNameSaidAgainInOneSentence(plain, names) : plain;
