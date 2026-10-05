@@ -31,7 +31,25 @@ import { TEMPLATES, fill } from '../src/modules/whatsapp/a-message-outside-the-w
 
 const API = process.env.API ?? 'http://localhost:3006/api/v1';
 const DB_URL = process.env.DATABASE_URL ?? '';
-const SECRET = process.env.WHATSAPP_APP_SECRET ?? '';
+/*
+ * FROM THE BACK OFFICE (5 Oct 2026). With WHATSAPP_FROM_THE_BACK_OFFICE=1 the API is started with NO
+ * WHATSAPP_* keys at all (only WHATSAPP_GRAPH_BASE_URL and WHATSAPP_APPROVED_TEMPLATES, which the page
+ * does not hold, and SETTINGS_ENCRYPTION_KEY). This script makes TEST values here, a platform admin types
+ * them in at /admin/whatsapp/settings, switches WhatsApp on at /admin/whatsapp, and every message is
+ * signed with the app secret that was saved there. Without it, the old way: the secret from the env.
+ */
+const FROM_THE_BACK_OFFICE = process.env.WHATSAPP_FROM_THE_BACK_OFFICE === '1';
+const TEST = {
+  appSecret: `test-app-secret-${crypto.randomBytes(12).toString('hex')}`,
+  verifyToken: `test-verify-${crypto.randomBytes(12).toString('hex')}`,
+  accessToken: `TEST-access-token-${crypto.randomBytes(12).toString('hex')}`,
+  phoneNumberId: '100000000000002',
+  businessAccountId: '200000000000002',
+  displayNumber: '+44 7700 900123',
+};
+const SECRET = FROM_THE_BACK_OFFICE ? TEST.appSecret : (process.env.WHATSAPP_APP_SECRET ?? '');
+const VERIFY_TOKEN = FROM_THE_BACK_OFFICE ? TEST.verifyToken : (process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN ?? '');
+const PHONE_NUMBER_ID = FROM_THE_BACK_OFFICE ? TEST.phoneNumberId : process.env.WHATSAPP_PHONE_NUMBER_ID;
 const GRAPH = process.env.WHATSAPP_GRAPH_BASE_URL ?? '';
 const RECORDER_PORT = Number(new URL(GRAPH || 'http://127.0.0.1:3996').port || 3996);
 
@@ -43,6 +61,9 @@ const PW = 'WhatsAppJourneys123!';
 const DAY = 86_400_000;
 
 export async function runWhatsAppJourneys(opts: { quiet?: boolean } = {}): Promise<{ checks: Check[]; transcript: string[] }> {
+  if (FROM_THE_BACK_OFFICE && Object.keys(process.env).some((k) => /^WHATSAPP_(ACCESS_TOKEN|PHONE_NUMBER_ID|APP_SECRET|WEBHOOK_VERIFY_TOKEN|DISPLAY_NUMBER)$/.test(k))) {
+    throw new Error('Refusing: from the back office, no WHATSAPP_ key that the page holds may be set, or the run would not prove the saved settings are the ones used.');
+  }
   if (!/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(API) || !/@(localhost|127\.0\.0\.1)(:\d+)?\/gw_/.test(DB_URL) || !/^http:\/\/127\.0\.0\.1:\d+\//.test(GRAPH) || !SECRET) {
     throw new Error('Refusing: a local API, a local gw_ database, a loopback recorder address in WHATSAPP_GRAPH_BASE_URL and a test WHATSAPP_APP_SECRET are all required.');
   }
@@ -61,12 +82,16 @@ export async function runWhatsAppJourneys(opts: { quiet?: boolean } = {}): Promi
   // The recorder: Meta's Graph API, on this machine. Sends are recorded; media is served from memory.
   // ------------------------------------------------------------------------------------------------
   const outbox: Sent[] = [];
+  /* Which phone number ID and token every send used, so the run can prove they were the saved ones. */
+  const sentWith: { phoneNumberId: string; authorization: string }[] = [];
+  const tokenSeen: string[] = [];
   const files = new Map<string, { buffer: Buffer; mime: string }>();
   const readBody = (req: http.IncomingMessage) => new Promise<string>((res) => { let b = ''; req.on('data', (c) => (b += c)); req.on('end', () => res(b)); });
   const recorder = http.createServer(async (req, res) => {
     const url = new URL(req.url ?? '/', 'http://127.0.0.1');
     res.setHeader('content-type', 'application/json');
     if (req.method === 'POST' && /\/messages$/.test(url.pathname)) {
+      sentWith.push({ phoneNumberId: url.pathname.split('/').slice(-2)[0], authorization: String(req.headers.authorization ?? '') });
       const body = JSON.parse((await readBody(req)) || '{}');
       let text = '';
       let kind: Sent['kind'] = 'other';
@@ -85,6 +110,15 @@ export async function runWhatsAppJourneys(opts: { quiet?: boolean } = {}): Promi
       }
       outbox.push({ to: `+${body.to}`, kind, text, template, at: Date.now() });
       res.end(JSON.stringify({ messaging_product: 'whatsapp', messages: [{ id: `wamid.out.${outbox.length}` }] }));
+      return;
+    }
+    /* The back office's "Is it connected?": one read of the phone number ID with the saved token. */
+    const numberRead = url.pathname.match(/\/graph\/(\d+)$/);
+    if (req.method === 'GET' && numberRead) {
+      const ok = numberRead[1] === TEST.phoneNumberId && req.headers.authorization === `Bearer ${TEST.accessToken}`;
+      tokenSeen.push(String(req.headers.authorization ?? ''));
+      if (!ok) { res.statusCode = 401; res.end(JSON.stringify({ error: { type: 'OAuthException', code: 190 } })); return; }
+      res.end(JSON.stringify({ display_phone_number: TEST.displayNumber, verified_name: 'Groundwork', id: TEST.phoneNumberId }));
       return;
     }
     const media = url.pathname.match(/\/graph\/(media-[\w-]+)$/);
@@ -118,7 +152,7 @@ export async function runWhatsAppJourneys(opts: { quiet?: boolean } = {}): Promi
     }
   };
   const postOnce = async (value: any, o: { badSignature?: boolean; unsigned?: boolean } = {}) => {
-    const raw = JSON.stringify({ object: 'whatsapp_business_account', entry: [{ id: 'waba-test', changes: [{ field: 'messages', value: { messaging_product: 'whatsapp', metadata: { display_phone_number: '15550000001', phone_number_id: process.env.WHATSAPP_PHONE_NUMBER_ID }, ...value } }] }] });
+    const raw = JSON.stringify({ object: 'whatsapp_business_account', entry: [{ id: 'waba-test', changes: [{ field: 'messages', value: { messaging_product: 'whatsapp', metadata: { display_phone_number: '15550000001', phone_number_id: PHONE_NUMBER_ID }, ...value } }] }] });
     const sig = crypto.createHmac('sha256', o.badSignature ? 'not-the-secret' : SECRET).update(raw).digest('hex');
     const res = await fetch(`${API}/webhooks/whatsapp`, { method: 'POST', headers: { 'content-type': 'application/json', ...(o.unsigned ? {} : { 'x-hub-signature-256': `sha256=${sig}` }) }, body: raw });
     return res.status;
@@ -165,8 +199,68 @@ export async function runWhatsAppJourneys(opts: { quiet?: boolean } = {}): Promi
   // The world.
   // ------------------------------------------------------------------------------------------------
   heading('SETTING UP');
-  /* The platform's own switch, as a platform admin turns it on in the back office. */
-  await prisma.platformSetting.upsert({ where: { key: 'whatsapp_enabled' }, create: { key: 'whatsapp_enabled', value: true as any, updatedBy: 'whatsapp-journeys' }, update: { value: true as any } });
+  if (FROM_THE_BACK_OFFICE) await setUpFromTheBackOffice();
+  else {
+    /* The platform's own switch, as a platform admin turns it on in the back office. */
+    await prisma.platformSetting.upsert({ where: { key: 'whatsapp_enabled' }, create: { key: 'whatsapp_enabled', value: true as any, updatedBy: 'whatsapp-journeys' }, update: { value: true as any } });
+  }
+
+  /**
+   * GROUNDWORK'S NUMBER, TYPED IN BY STAFF. Ama is a platform admin (made here, on a gw_ copy). She has a
+   * week's back-office pass written straight into the copy, because the emailed code is a separate door
+   * this run is not about. Everything else goes through the routes the page calls.
+   */
+  async function setUpFromTheBackOffice() {
+    heading('0. GROUNDWORK STAFF SET GROUNDWORK\'S WHATSAPP NUMBER IN THE BACK OFFICE');
+    const staffOrg = await prisma.organization.create({ data: { name: `Groundwork staff ${stamp}`, slug: `gw-staff-${stamp}`, email: `staff.${stamp}@groundwork.test` } });
+    const email = `ama.${stamp}@groundwork.test`;
+    const ama = await prisma.user.create({ data: { email, organizationId: staffOrg.id, firstName: 'Ama', lastName: 'Staff', passwordHash: await bcrypt.hash(PW, 10), isEmailVerified: true, role: 'ADMIN', isPlatformAdmin: true } as any });
+    await prisma.organizationMembership.create({ data: { userId: ama.id, organizationId: staffOrg.id, role: 'ADMIN' as any } });
+    await (prisma as any).backOfficePass.create({ data: { userId: ama.id, via: 'email', expiresAt: new Date(Date.now() + 7 * DAY) } });
+    const login = await api('/auth/login', { body: { email, password: PW } });
+    const token = login?.accessToken;
+    if (!token) throw new Error(`Ama could not sign in: ${JSON.stringify(login).slice(0, 200)}`);
+    const orgAdminEmail = `ops.${stamp}@kito-admin.test`;
+    const notStaff = await prisma.user.create({ data: { email: orgAdminEmail, organizationId: staffOrg.id, firstName: 'Ops', lastName: 'Admin', passwordHash: await bcrypt.hash(PW, 10), isEmailVerified: true, role: 'ADMIN' } as any });
+    await prisma.organizationMembership.create({ data: { userId: notStaff.id, organizationId: staffOrg.id, role: 'ADMIN' as any } });
+    const notStaffToken = (await api('/auth/login', { body: { email: orgAdminEmail, password: PW } }))?.accessToken;
+
+    const before = await api('/admin/whatsapp/settings', { token });
+    log(`  Before anything is saved, the page says: ${before?.secrets?.accessToken?.saying} ${before?.switch?.saying}`);
+    check('Before anything is saved, nothing is set and WhatsApp is not live', before?.secrets?.accessToken?.state === 'not set' && before?.switch?.live === false, JSON.stringify(before).slice(0, 400));
+    const refused = await api('/admin/whatsapp/settings', { method: 'PUT', token: notStaffToken, body: { accessToken: 'x'.repeat(30) } });
+    check('An admin of an organisation who is not Groundwork staff is refused (403) and nothing is saved', refused?.refused === 403, JSON.stringify(refused));
+
+    const saved = await api('/admin/whatsapp/settings', { method: 'PUT', token, body: { displayNumber: TEST.displayNumber, phoneNumberId: TEST.phoneNumberId, businessAccountId: TEST.businessAccountId, accessToken: TEST.accessToken, appSecret: TEST.appSecret, verifyToken: TEST.verifyToken } });
+    log(`  Ama saves the number, the two IDs and the three secrets. The page says: ${saved?.saved}`);
+    for (const k of ['accessToken', 'appSecret', 'verifyToken']) log(`    ${saved?.secrets?.[k]?.saying}`);
+    log(`    ${saved?.webhook?.saying}`);
+    check('Each secret reads "set", saved here', ['accessToken', 'appSecret', 'verifyToken'].every((k) => saved?.secrets?.[k]?.state === 'set' && saved?.secrets?.[k]?.from === 'here'), JSON.stringify(saved?.secrets));
+    check('No secret comes back in what the page is served', ![TEST.accessToken, TEST.appSecret, TEST.verifyToken].some((s) => JSON.stringify(saved).includes(s)));
+    const row = await prisma.platformSetting.findUnique({ where: { key: 'whatsapp.groundworksNumber' } });
+    check('The stored row holds no secret in the clear', !!row && ![TEST.accessToken, TEST.appSecret, TEST.verifyToken].some((s) => JSON.stringify(row.value).includes(s)), JSON.stringify(row?.value).slice(0, 200));
+    check('The webhook address to give Meta is shown', /^The webhook address to give Meta is http.*\/api\/v1\/webhooks\/whatsapp\.$|PUBLIC_API_URL is not set/.test(saved?.webhook?.saying ?? ''), saved?.webhook?.saying);
+
+    const connection = await api('/admin/whatsapp/settings/connection', { token });
+    log(`  "Is it connected?" ${connection?.saying}`);
+    check('"Is it connected?" reads Connected, from one read of the saved number ID with the saved token', connection?.connected === true && connection?.saying === `Connected. Meta has this number as ${TEST.displayNumber}, under the name Groundwork.` && tokenSeen.at(-1) === `Bearer ${TEST.accessToken}`, JSON.stringify(connection));
+
+    const testFrom = outbox.length;
+    const test = await api('/admin/whatsapp/settings/test', { token, body: { to: '+44 7700 900999' } });
+    await waitQuiet();
+    const tested = since(testFrom);
+    log(`  The test message: ${test?.saying}`);
+    for (const t of tested) log(`    ${t.to} reads:\n        ${t.text}`);
+    check('The test message goes to the typed number only, from the saved number ID with the saved token', tested.length === 1 && tested[0].to === '+447700900999' && tested[0].text === "This is a test message from Groundwork. If you can read it, Groundwork's WhatsApp number is working." && sentWith.at(-1)?.phoneNumberId === TEST.phoneNumberId && sentWith.at(-1)?.authorization === `Bearer ${TEST.accessToken}`, JSON.stringify({ test, tested, with: sentWith.at(-1)?.phoneNumberId }));
+    const testRow = await prisma.whatsAppSend.findFirst({ where: { phone: '+447700900999' }, orderBy: { createdAt: 'desc' } });
+    check('The test is written down with the staff member who sent it', testRow?.kind === `admin-test:${ama.id}`, JSON.stringify(testRow?.kind));
+
+    const on = await api('/admin/whatsapp', { method: 'PATCH', token, body: { enabled: true } });
+    log(`  Ama switches WhatsApp on. live: ${on?.live}`);
+    const after = await api('/admin/whatsapp/settings', { token });
+    log(`  The page now says: ${after?.switch?.saying}`);
+    check('WhatsApp is live once Ama switches it on', on?.live === true && after?.switch?.saying === 'WhatsApp is on for everyone. Messages go from this number.', JSON.stringify(after?.switch));
+  }
 
   const orgs = {
     on: await prisma.organization.create({ data: { name: `Kito Foods ${stamp}`, slug: `kito-${stamp}`, email: `office.${stamp}@kito.test`, whatsappAddOnOn: true } }),
@@ -211,10 +305,17 @@ export async function runWhatsAppJourneys(opts: { quiet?: boolean } = {}): Promi
   const { GroundsCron } = await import('../src/modules/grounds/grounds.cron');
   const cron: any = app.get(GroundsCron, { strict: false });
 
-  const ctx = { slowest, app, make, signIn, prisma, api, outbox, since, writes, says, received, check, log, heading, post, message, files, cron, stamp, PW, orgs, grace, wairimu, amani, chidi, baraka, nia, otto, waitQuiet, DAY };
+  const ctx = { verifyToken: VERIFY_TOKEN, sentWith, TEST, FROM_THE_BACK_OFFICE, slowest, app, make, signIn, prisma, api, outbox, since, writes, says, received, check, log, heading, post, message, files, cron, stamp, PW, orgs, grace, wairimu, amani, chidi, baraka, nia, otto, waitQuiet, DAY };
   try {
     const { journeys } = await import('./whatsapp-journeys-steps');
     await journeys(ctx as any);
+    const { moreJourneys } = await import('./whatsapp-journeys-more');
+    await moreJourneys(ctx as any);
+    if (FROM_THE_BACK_OFFICE) {
+      heading('EVERY SEND USED THE SAVED NUMBER AND TOKEN');
+      const other = sentWith.filter((w) => w.phoneNumberId !== TEST.phoneNumberId || w.authorization !== `Bearer ${TEST.accessToken}`);
+      check(`All ${sentWith.length} sends went from the saved phone number ID with the saved access token`, sentWith.length > 0 && other.length === 0, JSON.stringify(other.slice(0, 3)));
+    }
   } finally {
     await app.close().catch(() => undefined);
     await new Promise<void>((ok) => recorder.close(() => ok()));
