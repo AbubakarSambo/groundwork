@@ -27,6 +27,13 @@ const turns = (n: number) => [
   { role: 'user' as const, content: 'My latest answer.' },
 ];
 
+/** A whole conversation: the hope question has been asked and she has answered it. */
+const whole = () => [
+  ...turns(5).slice(0, -1),
+  { role: 'assistant' as const, content: 'Imagine a month from now and this is meaningfully better. What would you notice people doing without you having to ask?' },
+  { role: 'user' as const, content: 'They would phone the families who missed a visit.' },
+];
+
 function world(switchOn: boolean, read: any, reply: string) {
   const prisma: any = { platformSetting: { findUnique: jest.fn(async () => (switchOn ? { value: { on: true } } : null)) } };
   const extractSeen: string[] = [];
@@ -70,18 +77,25 @@ describe('the lead’s first conversation, with the anchor on', () => {
   it('is ready only when all seven are heard and the reply has stopped asking', async () => {
     const closing = 'You are carrying the clinics and the families. Next you add the people you want to move, and Groundwork checks in with each of them one to one.';
     const done = world(true, HERS, closing);
-    const out: any = await done.service.onboard(turns(6) as any, 'HELP_TEAM_UNDERSTAND');
+    const out: any = await done.service.onboard(whole() as any, 'HELP_TEAM_UNDERSTAND');
     expect(out.ready).toBe(true);
     expect(done.seen[0]).toContain(THE_CLOSING_REMINDER);
     expect(done.seen[0]).toContain('Do not ask a question in this turn.');
     /* Everything heard but the reply still asks something: she must be able to answer it, so it is not ready. */
     const asking = world(true, HERS, 'Is there anything you would add?');
-    expect(((await asking.service.onboard(turns(6) as any, 'HELP_TEAM_UNDERSTAND')) as any).ready).toBe(false);
+    expect(((await asking.service.onboard(whole() as any, 'HELP_TEAM_UNDERSTAND')) as any).ready).toBe(false);
+  });
+
+  it('is not complete while she has not yet answered what better would look like, however much else is heard', async () => {
+    const early = world(true, HERS, 'Anything else?');
+    const out: any = await early.service.onboard(turns(6) as any, 'HELP_TEAM_UNDERSTAND');
+    expect(out.ready).toBe(false);
+    expect(early.seen[0]).not.toContain(THE_CLOSING_REMINDER);
   });
 
   it('gives the screen what its summary card and the next step already read, in the lead’s words', async () => {
     const { service } = world(true, { ...HERS, peopleNamed: ['Wanjiru'] }, 'x');
-    const out: any = await service.onboard(turns(6) as any, 'HELP_TEAM_UNDERSTAND');
+    const out: any = await service.onboard(whole() as any, 'HELP_TEAM_UNDERSTAND');
     expect(out.extracted.whoInvolved).toBe(HERS.tryingToMove);
     expect(out.extracted.decision).toBe(HERS.whyItBothersYou);
     expect(out.extracted.goals).toEqual([HERS.whatTheyWouldDoDifferently]);

@@ -94,7 +94,7 @@ export function whatTheConversationHasHeard(heard: TheSevenItems, openingQuestio
 export const THE_CLOSING_REMINDER = `# Everything is heard, so this turn closes the conversation
 
 Do not ask a question in this turn. Do not use a question mark anywhere in it.
-In two or three plain sentences, say back what you heard, using only words the lead used. Then say what happens next: the lead adds the people on the next step, and Groundwork then checks in with each of them one to one.`;
+Write two short sentences and no more. Do not list or repeat what the lead told you: the screen already shows it. In the first sentence, say in your own plain words the one thing that seemed to matter most to the lead. In the second, say what happens next: the lead adds the people she wants to move on the next step, and Groundwork then checks in with each of them one to one.`;
 
 export const THE_EXTRACTION_SYSTEM = `You are reading the first conversation between Groundwork and a lead who wants their team to understand more of what they see. Read only what the lead has said. Return only what has been clearly said, and leave out anything not yet said.
 

@@ -67,7 +67,7 @@ import { whatTheyAlreadyHave, ENOUGH_TO_RECOGNISE_THEM } from './setup-is-not-a-
 import { theSetupHasStoppedAsking } from './a-gate-that-can-never-open-is-shut';
 import { onboardingIsReady as theGate, whatSetupNeverGot, anAimIsOwedHere } from './a-check-in-with-no-aim-has-nothing-to-read-against';
 import { PromptsService } from '../prompts';
-import { theAnchorGuidance, ANCHOR_ENTRY_SCENARIO } from '../conversation/the-anchor-lead-conversation';
+import { theAnchorGuidance, theHopeWasAskedAndAnswered, ANCHOR_ENTRY_SCENARIO } from '../conversation/the-anchor-lead-conversation';
 import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { TheAnchorDoor, THE_ANCHOR_GROUND_LABEL } from './the-anchor-door';
@@ -1407,7 +1407,8 @@ from finishing at all.`;
     const peopleNamed = (read?.peopleNamed?.length ? read.peopleNamed : (soFar?.peopleNamed ?? [])).filter((n) => n?.trim());
     const anchor = await theAnchorGuidance(() => theAnchorScenarioIsOn(this.prisma), this.prompts, ANCHOR_ENTRY_SCENARIO, messages);
     const opening = messages[0]?.role === 'assistant' ? messages[0].content : undefined;
-    const closes = allSevenAreHeard(heard);
+    /* Complete only when all seven are heard and the lead has answered what better would look like: that answer is the last of the seven. */
+    const closes = allSevenAreHeard(heard) && theHopeWasAskedAndAnswered(messages as any);
     const theirLast = [...messages].reverse().find((m) => m.role === 'user')?.content ?? '';
     const system = [
       buildEntrySystemPrompt(GroundScenario.HELP_TEAM_UNDERSTAND, THE_ANCHOR_GROUND_LABEL, PartyType.INITIATOR, undefined, peopleNamed, anchor?.text),
