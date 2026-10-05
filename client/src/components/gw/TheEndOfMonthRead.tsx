@@ -110,12 +110,27 @@ export function TheEndOfMonthRead({ read, onContinue }: {
         )}
       </Stack>
 
-      <Panel heading="This started as one Ground.">
-        <Stack gap={6}>
-          {revealRows.map(([key, n]) => <Note key={key} tone="muted">{revealLine(key, n)}</Note>)}
-        </Stack>
-        <p className="gwui-panel-text" style={{ marginTop: 12, fontWeight: 700 }}>Your team has already started building its Groundwork.</p>
-      </Panel>
+      {/*
+       * FAULT 5: NEVER A COUNT LINE WHOSE NUMBER IS 0 (walk item 5).
+       *
+       * "0 shared objectives worth tracking" reads as a count of nothing, which is not a reveal -
+       * it is the absence of one. Rows with nothing to count are left out entirely rather than
+       * drawn at zero. If every row is empty there is nothing this panel can show, so the heading
+       * and "Your team has already started building its Groundwork." - which claims something
+       * already happened - are left out too, rather than drawn over an empty list.
+       */}
+      {(() => {
+        const rowsWithSomething = revealRows.filter(([, n]) => n > 0)
+        if (rowsWithSomething.length === 0) return null
+        return (
+          <Panel heading="This started as one Ground.">
+            <Stack gap={6}>
+              {rowsWithSomething.map(([key, n]) => <Note key={key} tone="muted">{revealLine(key, n)}</Note>)}
+            </Stack>
+            <p className="gwui-panel-text" style={{ marginTop: 12, fontWeight: 700 }}>Your team has already started building its Groundwork.</p>
+          </Panel>
+        )
+      })()}
 
       {read.continueOptions.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>

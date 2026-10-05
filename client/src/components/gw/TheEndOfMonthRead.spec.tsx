@@ -68,6 +68,28 @@ describe('TheEndOfMonthRead, piece 33', () => {
     expect(screen.queryByText(/^17$/)).toBeNull()
   })
 
+  it('fault 5: leaves out any reveal row whose count is 0, rather than drawing it at zero', () => {
+    render(<TheEndOfMonthRead read={{ ...fixture, reveal: { ...fixture.reveal, sharedObjectivesWorthTracking: 0 } }} onContinue={() => {}} />)
+    expect(screen.getByText('This started as one Ground.')).toBeTruthy()
+    expect(screen.queryByText(/shared objectives? worth tracking/)).toBeNull()
+    // The rest still draw, unaffected.
+    expect(screen.getByText('3 projects that could have their own Ground.')).toBeTruthy()
+  })
+
+  it('fault 5: leaves out the whole panel when every reveal count is 0', () => {
+    const noReveal = {
+      projectsThatCouldHaveTheirOwnGround: 0,
+      sharedObjectivesWorthTracking: 0,
+      workingRelationshipsNeedingAlignment: 0,
+      activeCommitments: 0,
+      teamGeneratedIdeas: 0,
+      suitesRelevantToWorkAlreadyBeingDone: 0,
+    }
+    render(<TheEndOfMonthRead read={{ ...fixture, reveal: noReveal }} onContinue={() => {}} />)
+    expect(screen.queryByText('This started as one Ground.')).toBeNull()
+    expect(screen.queryByText('Your team has already started building its Groundwork.')).toBeNull()
+  })
+
   it('draws at most one navy button, and calls back with the chosen option', () => {
     const onContinue = vi.fn()
     render(<TheEndOfMonthRead read={fixture} onContinue={onContinue} />)
