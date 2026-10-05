@@ -2,6 +2,14 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## 5 October, 14:13 - the client suite on the fully merged branch: 630 files, 4,223 tests, green
+
+The second merge from the screens workspace brought the billing changes and the WhatsApp add-on
+specs, and I had not run the client suite since. It passes, and both typechecks are clean.
+
+That closes the gap of merged-but-untested code on this branch. The API suite was last run green at
+16,542 before today's engine changes; it is re-run after the scenario run, with the journeys.
+
 ## 5 October, 14:20 - request 157 done, and the rule from this morning held
 
 The screens filed 157 overnight: a hundred check-ins, to test Hafsah's fault 4 (the sidebar and the
