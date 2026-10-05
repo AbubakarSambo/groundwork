@@ -239,3 +239,32 @@ describe('what nobody reads', () => {
     }
   })
 })
+
+/*
+ * WHAT A LEAD KEPT FOR THE WHOLE COMPANY (week 20, `whatWeKeep`). The Company page review with
+ * Kijani Foods found it served and never drawn. company-context.txt shows it as "Picked up from
+ * your check-in on 22 Sep" with the kind and the lead's words; it is already kept, so there is no
+ * Confirm, Edit or Not now. The server leaves it off for a member, so nothing is drawn for her.
+ */
+describe('kept from check-ins, on company context', () => {
+  const KEPT = {
+    readBy: 'Admins, leads and anyone who runs a check-in can read this. Everyone else cannot.',
+    items: [{ id: 'm1', kind: 'rule', says: 'Every quote over 1 million needs Amina’s sign-off', source: 'Picked up from your check-in on 22 September' }],
+  }
+
+  it('an admin reads the kind, the words in quotation marks, where it came from, and who reads it', async () => {
+    open(GRACE, '/company/context', { ...GRACES, whatWeKeep: KEPT } as any)
+    expect(await screen.findByRole('heading', { name: 'Kept from check-ins' })).toBeTruthy()
+    expect(screen.getByText(KEPT.readBy)).toBeTruthy()
+    expect(screen.getByText('Rule')).toBeTruthy()
+    expect(screen.getByText('“Every quote over 1 million needs Amina’s sign-off”')).toBeTruthy()
+    expect(screen.getByText('Picked up from your check-in on 22 September')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Confirm|Not now/ })).toBeNull()
+  })
+
+  it('a member, who is not served it, sees no such section', async () => {
+    open(MIRIAM, '/company/context', MIRIAMS)
+    await screen.findByRole('heading', { name: 'Priorities' })
+    expect(screen.queryByRole('heading', { name: 'Kept from check-ins' })).toBeNull()
+  })
+})

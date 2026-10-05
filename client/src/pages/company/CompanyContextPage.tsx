@@ -71,6 +71,26 @@ export function CompanyContextPage() {
         </Section>
       )}
 
+      {/* KEPT FROM CHECK-INS (company-context.txt, "Picked up from your check-in on 22 Sep"): what a
+          lead said that is true of the whole company, already kept on their yes in the
+          conversation. So there is no Confirm, Edit or Not now here: the yes was said there. Only
+          served to the readers the server allows; absent, not empty, for everyone else. */}
+      {page.data?.whatWeKeep && page.data.whatWeKeep.items.length > 0 && (
+        <Section heading="Kept from check-ins" note={page.data.whatWeKeep.readBy}>
+          <RowList label="Kept from check-ins">
+            {page.data.whatWeKeep.items.map(k => (
+              <Row key={k.id} columns="minmax(0, 1fr) minmax(0, 3fr)">
+                <b>{k.kind ? k.kind.charAt(0).toUpperCase() + k.kind.slice(1) : ''}</b>
+                <div>
+                  <div>{`“${k.says}”`}</div>
+                  <p className="gwui-panel-text-muted">{k.source}</p>
+                </div>
+              </Row>
+            ))}
+          </RowList>
+        </Section>
+      )}
+
       {cards.data && (
         <>
           {handbook.length > 0 && (

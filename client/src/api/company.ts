@@ -60,6 +60,12 @@ export interface CompanyPage {
   namedByTeams?: { id: string; title: string; touches?: string | null; teams: { team: string; says: string }[] }[]
   /** "What you say, and where the time goes": what leadership said, next to what the check-ins show. */
   saidAndShown?: { id: string; area: string; youSaid: string; checkInsShow: string }[]
+  /**
+   * What a lead said in a setup conversation that is true of the whole company, kept on their yes
+   * (week 20). Served to admins, leads and anyone who runs a check-in; absent for everyone else.
+   * `readBy` is a sentence ready to show; `source` is "Picked up from your check-in on 22 September".
+   */
+  whatWeKeep?: { readBy: string; items: { id: string; kind: string; says: string; source: string }[] }
 }
 
 /** One piece of how the company does things (GET /org/how-we-do-it), readable by everybody in it. */
