@@ -3,7 +3,7 @@ import { join } from 'path';
 import { PartyType } from '@prisma/client';
 import { afterTheirTurn, theirOwnIdea, THE_IDEA_QUESTION, IT_IS_CAPTURED, IDEA_SPOTTING_KEY, THE_IDEA_SPOTTING_PROMPT } from './ideas-from-the-team';
 import { person, answered, boardAs, AMINA, RUKIA, BARAKA, JUMA, type Setup } from '../board/the-switchboards-sections-harness';
-import { whatIsWrongForThisReader } from '../../../journey/anchor/what-each-reader-may-be-served';
+import { whatIsWrongForThisReader } from '../board/the-anchor-readers';
 
 /**
  * ANCHOR PIECE 19: AN IDEA IS SAID BACK IN THE SPEC'S WORDS, AND ONLY THE PERSON'S YES CAPTURES IT

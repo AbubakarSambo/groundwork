@@ -3,14 +3,17 @@
  *
  * Signs in as the lead, a person in the check-in, and an admin who only reads, against an API running on this computer
  * with the anchor seed loaded (journey/seed-an-anchor-check-in.ts), reads the live and the ended anchor check-in's
- * board as each, and checks every read with what-each-reader-may-be-served.ts. It writes nothing: it only reads.
+ * board as each, and checks every read with src/modules/board/the-anchor-readers.ts. It writes nothing: it only reads.
  *
  * IT ONLY TALKS TO THIS COMPUTER. Anything but localhost or 127.0.0.1 is refused before a request is made. The password
  * is the seed's local one. From api/:
  *
  *   npx ts-node -T journey/anchor/walk-the-anchor-as-each-reader.ts http://127.0.0.1:3000 <live ground id> <ended ground id>
  */
-import { whatIsWrongForThisReader, type AnAnchorReader } from './what-each-reader-may-be-served';
+import { whatIsWrongForThisReader, type AnAnchorReader } from '../../src/modules/board/the-anchor-readers';
+import { onThisComputer } from '../../src/common/on-this-computer';
+
+export { onThisComputer };
 
 const PASSWORD = 'anchor-local-only';
 const READERS: { reader: AnAnchorReader; email: string; name: string }[] = [
@@ -20,15 +23,6 @@ const READERS: { reader: AnAnchorReader; email: string; name: string }[] = [
   { reader: 'an admin who only reads', email: 'grace@anchor.test', name: 'Grace' },
 ];
 const EVERYONE = ['Rukia', 'Amani', 'Baraka', 'Neema', 'Juma'];
-
-export function onThisComputer(base: string): boolean {
-  try {
-    const u = new URL(base);
-    return ['localhost', '127.0.0.1', '[::1]'].includes(u.hostname);
-  } catch {
-    return false;
-  }
-}
 
 async function main() {
   const [base, live, ended] = process.argv.slice(2);

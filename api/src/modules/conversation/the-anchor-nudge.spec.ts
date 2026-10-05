@@ -5,7 +5,7 @@ import { GroundsCron } from '../grounds/grounds.cron';
 import { itFollowsUpTheirPromise, aPromiseForABlank, yourViewMatters } from '../whatsapp/what-goes-to-a-phone';
 import { TEMPLATES, FIRST_MESSAGES } from '../whatsapp/a-message-outside-the-window';
 import { EmailService } from '../email/email.service';
-import { whatIsWrongForThisReader } from '../../../journey/anchor/what-each-reader-may-be-served';
+import { whatIsWrongForThisReader } from '../board/the-anchor-readers';
 
 /**
  * ANCHOR PIECE 30: THE NUDGE REPEATS THE PERSON'S OWN PROMISE, TO THEM ONLY (section 26; decision 105 item 3).

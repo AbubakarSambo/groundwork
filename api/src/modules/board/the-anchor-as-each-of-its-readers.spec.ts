@@ -1,7 +1,7 @@
 import { PartyType } from '@prisma/client';
 import { person, answered, commitment, handoff, boardAs, AMINA, RUKIA, BARAKA, JUMA, SETUP_ADMIN, type Setup } from './the-switchboards-sections-harness';
-import { whatIsWrongForThisReader } from '../../../journey/anchor/what-each-reader-may-be-served';
-import { onThisComputer } from '../../../journey/anchor/walk-the-anchor-as-each-reader';
+import { whatIsWrongForThisReader } from './the-anchor-readers';
+import { onThisComputer } from '../../common/on-this-computer';
 
 /**
  * ANCHOR PIECE 35: THE ANCHOR CHECK-IN, READ BY ALL FOUR OF ITS READERS AT ONCE.
