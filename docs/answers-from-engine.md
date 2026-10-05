@@ -293,6 +293,15 @@ so the two never disagree: `{ name: "Rukia", sentence: "Rukia committed to send 
 and Rukia says it is done." }`. As before, only the lead reads the end-of-month read. A person in it,
 an admin with access and an admin who only reads are never sent it.
 
+**Anchor pieces 26 and 27, suites offered when needed: not built, and here is why.** Ask Groundwork
+already offers leave and spending from what a person says, in code, with the "switched off"
+sentences (`suites/leave-said-in-chat.ts`, `spend-said-in-chat.ts`). Section 22 asks for the offer
+inside the check-in conversation, which the model leads. Putting it there means either prompt text, or
+code that adds a sentence to the model's reply in a check-in. Code like that changes what a check-in
+says, which the scorer measures. Spotting a "recurring people issue" for the Performance offer also
+needs the conversation or the patterns, and patterns appear only from week three. I have stopped on
+both pieces. They belong with the conversation work, after the run.
+
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
 ```

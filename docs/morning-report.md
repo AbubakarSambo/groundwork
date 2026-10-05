@@ -86,6 +86,7 @@ database, and every one is complete, so the warning came too early and the numbe
 - Anchor piece 34: the anchor's one-month trial for up to 20 people, the lead included, is built behind its own setting `pricing.anchorTrial`, which is off.
 - Anchor piece 35: a journey that reads an anchor check-in as the lead, a person in it and an admin who only reads, against the API on this computer, and a spec that holds the same rules for all four readers. It has not been run live yet.
 - Anchor piece 32: the end-of-month read now names the people who moved things, with the same sentences as the month board.
+- I stopped on anchor pieces 26 and 27 (suites offered inside a check-in). The offer would have to go into the check-in conversation's replies, which is prompt work or changes what the scorer measures. Ask Groundwork already offers leave and spending.
 - I stopped on 139, the goal drawn as "Point to successfully renewed contracts", because no code writes that line and it is not in this computer's database. I asked the screens workspace which field carries it. I did not start 130 (b), 130 (d) or 131 (6), because none of them is small.
 
 ### Needs Hafsah
