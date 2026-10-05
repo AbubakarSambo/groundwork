@@ -153,6 +153,15 @@ All three are now on the list the Connections page asks an admin to submit (`the
 - **Why:** to tell the person that the decision and its reasons are written and waiting in the app. The decision itself is never sent. It goes once, the first time the review is decided. It counts as Groundwork writing first. Proposed by the engine on 2 October, for Hafsah to confirm.
 - **Checked against WhatsApp's rules:** passes.
 
+### `anchor_weekly_insight` (anchor piece 28; decision 105, item 2). The ninth, proposed
+
+- **Category:** Utility. **Language:** en.
+- **Body:** Hi {{1}}. {{2}} This week's picture is on the board at {{3}}, if you want the rest.
+- **Examples:** {{1}} Amina. {{2}} Your team is starting to move. This week, three of five people checked in, and two have said what they will do themselves. Rukia committed to send the deck to the client, and Rukia says it is done. One thing still needs attention. Baraka is waiting on Rukia for the sales deck. Groundwork is working on that with them. {{3}} https://myground.work/grounds/g-1/board
+- **Why:** the anchor lead's weekly insight. On Friday it goes at half past six in Lagos, before the daily summary, and it is the lead's one message of that day, so it replaces that day's summary. Only to the lead of a check-in started from the anchor link, only where the organisation has WhatsApp on, only while the anchor switch is on.
+- **What {{2}} holds:** only what the lead reads on the month board. Counts, one thing a person in that check-in did, said as a sentence about them with their name, and one thing still in the way. Nobody's words are quoted, and nobody outside that check-in is named.
+- **Checked against WhatsApp's rules:** the body ends with words, and the blanks are in order.
+
 ### `anchor_checkin_follow_up` (anchor piece 30; decision 105, item 3). Proposed, built, not sent
 
 - **Category:** Utility. **Language:** en.

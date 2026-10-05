@@ -334,6 +334,23 @@ only for a check-in started from the anchor link.
 
 The existing `activeLine` ("18/20 active · Groundwork has nudged the remaining 2.") is unchanged.
 
+**Anchor piece 28, the weekly lead WhatsApp insight, is built (decision 105, item 2).** It goes on Friday
+at 06:30 in Lagos to the lead of each anchor check-in, where the organisation has WhatsApp on, and
+only while the anchor switch is on. It is the lead's one message of that day, so the 07:00 daily
+summary is held back that day by the existing rule in `howOftenToday`. Amina reads:
+
+"Hi Amina. Your team is starting to move. This week, three of five people checked in, and two have
+said what they will do themselves. Rukia committed to send the deck to the client, and Rukia says it is
+done. One thing still needs attention. Baraka is waiting on Rukia for the sales deck. Groundwork is
+working on that with them. This week's picture is on the board at <link>, if you want the rest."
+
+Only what the lead reads on the month board goes into it, nobody's words are quoted, and only people
+in that check-in are named. People in the check-in and admins are never sent it. Nothing has a screen
+to add, because the link opens the board. The template, `anchor_weekly_insight`, is the ninth, proposed
+in `docs/whatsapp-templates.md`. It cannot go outside the 24-hour window until Meta approves it. "Free
+during the trial" depends on the organisation having WhatsApp on: an anchor trial does not switch the
+add-on on by itself, and nothing charges for it here.
+
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
 ```

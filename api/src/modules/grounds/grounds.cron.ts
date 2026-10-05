@@ -5,6 +5,7 @@ import { TimeSheetsService } from '../suites/the-time-sheets.service';
 import { SpendingService } from '../suites/the-spending.service';
 import { organisationsThatTurnedWhatsAppOn } from '../whatsapp/only-where-whatsapp-is-turned-on';
 import { sendTheLeadsDailySummaries } from '../whatsapp/the-leads-daily-summary';
+import { sendTheAnchorWeeklyInsights } from '../whatsapp/the-anchor-weekly-insight';
 import { sendTheLeadsWeeklyLetters } from '../email/the-leads-weekly-letter';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { onceAcrossCopies, theDay, theWeek } from '../prisma/once-across-copies';
@@ -821,6 +822,24 @@ export class GroundsCron implements OnApplicationBootstrap {
       now,
     ).catch((err: any) => { this.logger.warn(`The leads' daily summaries could not be sent: ${err?.message}`); return { tried: 0 }; });
     if (result.tried) this.logger.log(`WhatsApp: ${result.tried} lead summary message(s) tried.`);
+    return result;
+  }
+
+  /**
+   * THE ANCHOR'S WEEKLY INSIGHT ON WHATSAPP (anchor piece 28), Friday at half past six in the morning in Lagos, before
+   * the daily summary at seven, which it replaces that day (decision 105 item 2). Only while the anchor switch is on.
+   */
+  @Cron('30 6 * * 5', { timeZone: 'Africa/Lagos' })
+  async sendTheAnchorWeeklyInsights() {
+    await onceAcrossCopies(this.prisma, 'anchor-weekly-insight', theWeek(), () => this.sendTheAnchorWeeklyInsightsInner());
+  }
+
+  async sendTheAnchorWeeklyInsightsInner(now: Date = new Date()): Promise<{ tried: number }> {
+    const result = await sendTheAnchorWeeklyInsights(
+      { prisma: this.prisma, whatsapp: this.whatsapp, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
+      now,
+    ).catch((err: any) => { this.logger.warn(`The anchor's weekly insights could not be sent: ${err?.message}`); return { tried: 0 }; });
+    if (result.tried) this.logger.log(`WhatsApp: ${result.tried} anchor weekly insight(s) tried.`);
     return result;
   }
 

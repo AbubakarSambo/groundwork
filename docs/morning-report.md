@@ -93,6 +93,7 @@ database, and every one is complete, so the warning came too early and the numbe
 - I stopped on anchor pieces 26 and 27 (suites offered inside a check-in). The offer would have to go into the check-in conversation's replies, which is prompt work or changes what the scorer measures. Ask Groundwork already offers leave and spending.
 - Every free run is now one month, as Hafsah answered tonight (decision 78). The staff gift "on the house" used to default to three months, and now defaults to one. Its file and route keep the old name, so nothing that calls them breaks. The regular trial was already one month in its setting and default. The local database's `pricing.freeTrial` row reads months 1.
 - Anchor piece 30: the anchor's nudge repeats a person's own last open promise to them only, in the app and by email ("You mentioned you would send your manager the deck. I'd love to hear how it went."). The WhatsApp version is built as a proposed template and not sent.
+- Anchor piece 28: the lead's weekly WhatsApp insight is built. It goes Friday morning, names people in that check-in for what they did, quotes nobody, and replaces that day's daily summary. It is behind the anchor switch, and the template is proposed, not approved.
 - I stopped on 139, the goal drawn as "Point to successfully renewed contracts", because no code writes that line and it is not in this computer's database. I asked the screens workspace which field carries it. I did not start 130 (b), 130 (d) or 131 (6), because none of them is small.
 
 ### Needs Hafsah
