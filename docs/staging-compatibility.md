@@ -141,6 +141,43 @@ The checks in sections 3 and 5 were run again on branch `wip/release` at commit 
 - Later that evening a new migration, `20261005200000_a_free_run_is_one_month` (commit `ae1da732`), was applied to `gw_compat_oct5b` from `9f4dd902`. It only changes the default length of a free run to one month. Now 360 migrations have applied, none failed, and a second run had nothing to apply. The comparison with `schema.prisma` still shows only the `leaving_checklists` index name.
 - While this ran, two more commits landed on the branch: `e6234eca`, a scenario score, and `d2e3e34b`, the judgement reading a stored prompt version. Neither changes a package, a lock file, the deploy settings or a migration, so the results above should hold for them too, but they were not built here.
 
+## 8. The release's final check, 6 October, just after midnight, at `2bd25a9e`
+
+Run by tester A on this computer only, on commit `2bd25a9e` of `wip/release`. Nothing was deployed or merged, and no hosted database was touched. While it ran, one commit landed on the branch, `ca89aa5c` (a scheduled job's lock is held on one connection). So every result below was taken again, or checked, in a detached worktree of `2bd25a9e` itself.
+
+**Staging is still inside our branch.** `mine/wip/live-base` (`5197f22d`) is an ancestor of `2bd25a9e`. `git merge-tree --write-tree mine/wip/live-base 2bd25a9e` gives a merged tree with no conflicts and no messages.
+
+**What staging builds from has changed since section 7, in three small ways.** `api/package.json` gained one script, `check:production-start`, and no package. Two migrations were added: `20261005200000_a_free_run_is_one_month`, which changes a column default only, and `20261005230000_a_whatsapp_send_keeps_its_message_id`, which adds an empty column, `whatsapp_sends.provider_message_id`, and its index. Neither lock file changed, and neither did `railway.toml` or `vercel.json`.
+
+| Check | Result |
+| --- | --- |
+| Every migration on a new database, `gw_final_a` | All 361 applied, and none failed or was rolled back. The last is `20261005230000_a_whatsapp_send_keeps_its_message_id`. |
+| A second run | It said there were no migrations left to apply. |
+| Drift against `schema.prisma` | Only the known one: the `leaving_checklists` index name, shortened to 63 characters. |
+| `npm ci`, then `npm run build && npx prisma generate`, in `api/` | Passed. `dist/main.js`, `embed.js` and `panel.html` are there, and there is no `dist/src`. |
+| `npm ci`, then `npm run build`, in `client/` | Passed, with the same warning as before that the main script is 1.9 MB. |
+| `npm run check:production-start -- --database <gw_final_a>` | Passed. It said the server started, `/health` answered "ok", `/embed.js` answered 200, and the server was stopped. It needs `JWT_SECRET` in the environment. With no settings at all, the server stops at once and says "JWT_SECRET is not set. Put a long random value in the environment; there is no default." Staging already needs that setting. |
+| The built API on port 3014, with only `PORT`, `DATABASE_URL`, a test `JWT_SECRET` and `EMAIL_SENDS_FOR_REAL=false` | It said "Nest application successfully started". `/health` answered "ok" and `/embed.js` answered 200. It seeded 58 prompt versions, 293,928 characters in all, into the empty database. |
+
+**Every optional setting that was missing turned its own feature off, and nothing crashed.**
+
+| Missing | What the server did |
+| --- | --- |
+| `STRIPE_SECRET_KEY` | It warned that everything except billing works, and that anything that charges a card will refuse and say so. |
+| `STRIPE_WEBHOOK_SECRET` | A post to `/api/v1/billing/webhook` answered 500, and the log said "STRIPE_WEBHOOK_SECRET is required but not set". The server kept running. Staging has the same line (`stripe.service.ts` line 93 on `mine/wip/live-base`), so it is not new. |
+| `RESEND_API_KEY` | It warned that no mail leaves this deployment and that every send is logged instead. |
+| The model credentials file | The engine probe said it failed because the file is not there, and carried on. |
+| Every `WHATSAPP_*` setting | An unsigned post to `/api/v1/webhooks/whatsapp` answered 401, and a wrong verify token answered 403. |
+| The other new settings in section 4 | Nothing in the log. Each one reads as off. |
+
+The log also had the warning from section 7 about the old style of the route `api/org/v1/(.*)`. The server was stopped afterwards, and nothing is left on port 3014. Port 3000 and `gw_pw9_1786222102` were not touched.
+
+**One thing for whoever runs the release.** `docs/deploy.md` does not list the new migration `20261005230000_a_whatsapp_send_keeps_its_message_id`. And `api/journey/existing-clients-carry-on.spec.ts` still expects 83 migrations since the live main line, where there are now 84 (see `docs/existing-users.md` section 10). The migration itself only adds an empty column and an index.
+
+**Still not done.** The build ran on Node 26 and npm 11, not Node 20.
+
+**Left behind on this computer:** the databases `gw_final_a` and `gw_final_existing`, because `dropdb` is not allowed. The worktrees were removed.
+
 ## What I could not do
 
 1. Run our migrations on top of a database built at staging's schema with sample rows. The guard refused the command and I stopped, as told.

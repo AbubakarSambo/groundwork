@@ -307,6 +307,58 @@ On the new side the wording counts barely moved: internal labels 1,058, jargon 1
 
 **Left behind on this computer:** the database `gw_existing_oct5b`. `dropdb` is not allowed.
 
+## 10. The release's final check, 6 October, just after midnight, at `2bd25a9e`
+
+Sections 4, 5 and 7 were run again by tester A on commit `2bd25a9e`. One commit, `ca89aa5c`, landed on the branch during the run, so all three were run again in a detached worktree of `2bd25a9e`. The results were the same, line for line. Everything ran on this computer only, with the scripts' read-only guards on and the model, mailer and WhatsApp replaced by stand-ins.
+
+**The database.** `gw_pw9_1786222102` was only read, by `pg_dump`, into a new local database, `gw_final_existing`. The copy holds 1,846 check-ins, 10,996 sessions and 1,606 reports (at 20:00 there were 1,835, 10,940 and 1,600). The copy did not yet have the newest migration, `20261005230000_a_whatsapp_send_keeps_its_message_id`, so it was applied to the copy, as release night would.
+
+**Section 4, scheduled check-ins carry on. 9 of 10 tests pass. The one that fails is a count in the test, not the product.** A temporary copy of `existing-clients-carry-on.spec.ts` pointed at the copy was run, then deleted. The spec in the repository was not changed. The test "runs every migration since the live main line" expects 83 migrations and finds 84. The 84th is `20261005230000_a_whatsapp_send_keeps_its_message_id`, from `4e9145ea` (decision 106 item 1), which updated neither the count in the test nor the list in `docs/deploy.md`. It adds an empty column and an index, and touches no date, person, status or reminder stamp. All the tests that check what happens to existing check-ins pass: every column is the same before and after, no email, no announcement, no stall, and the stalled check-in stays stalled. Whoever owns the spec should raise the count to 84 and add the row to `docs/deploy.md`.
+
+**Section 5, the check script, oldest 150 check-ins.** No private material was served, nothing failed, nothing tried to write, and no stalled check-in is picked up.
+
+| | 5 October, 20:00 | Now |
+| --- | --- | --- |
+| Reads | 858 | 861 |
+| Served | 809 | 808 |
+| Refused on purpose | 49 | 53 |
+| Failed, or tried to write | 0 | 0 |
+| Leads, participants and admins served | 424 of 450, 357 of 369, 28 of 39 | 423 of 450, 358 of 372, 27 of 39 |
+| Next sessions that do not follow from the schedule | 12, the same journey runs | 12, the same ones |
+| People with a session open, and reminded on the next morning run | 255, and 0 | 253, and 0 |
+
+Why it moved: the oldest 150 is not the same set. Since 20:00, a journey run made a check-in called "Everyone pulling the same way (last month)" (`611fd4a9`) with its start date set back to 29 August. It went into the oldest 150 and pushed another one out. It is closed, has five people and has no report, so its lead, participants and admin are refused the report with "There is no report yet", which accounts for the extra refusals. The one "Report not found" refusal, to a lead, is for "Grow the pipeline" (`5feb92d1`), a check-in with nobody in it, which was in the sample at 20:00 too.
+
+**Section 7, the old code against the new.** The old code is `origin/main`, still `824b7e3b`, so it is compared with the right-hand column of section 9.
+
+| | 5 October, 20:00, old code `824b7e3b` | Now, old code `824b7e3b` |
+| --- | --- | --- |
+| Reads served, old then new | 1,482 / 1,464 | 1,482 / 1,464 |
+| Sentences the old code showed | 54,489 | 54,489 |
+| Still readable | 50,001 | 50,001 |
+| Not found: stock | 2,404 | 2,402 |
+| Not found: the lead's judgement, which a participant no longer reads | 2,150 | 2,150 |
+| Not found: later sessions waiting for the lead | 404 | 404 |
+| Not explained (participants, leads, admins) | 922 (552, 343, 27) | 924 (552, 345, 27) |
+| Named people no longer named | 224 | 224 |
+| Private material newly served | none | none |
+| Ask Groundwork answered, old then new | 210 / 105 | 210 / 105 |
+| Wording worse in | nothing | nothing |
+| FAULT lines | 18 | 18, the same three check-ins |
+
+The new side's wording counts are the same as at 20:00: internal labels 1,058, jargon 1,490, lower-case starts 19, text cut mid-word 84, "1 people" 2. The Company page was served 4,812 times and the suites page 3,218 times, with none failed. That is a few more than at 20:00, because there are more people on the database.
+
+**What moved, and why.**
+
+1. **Two sentences for leads moved from "stock" to "not explained" (2,404 to 2,402, and 343 to 345).** They are the lead's probes. The old code writes a wait as "Waiting for 29 days for who decides". The new code writes it as "for who decides since 6 September". A sentence counts as kept when most of its longer words and numbers are found. The old code's day count goes up by one each midnight, so a probe near the line can cross it. This run started after midnight, and the probes in the list are of this kind ("Waiting for 23 days for an answer, with no escalation on record."). No page and no wording changed.
+2. **The 18 FAULT lines are the same as at 20:00.** Six participants on `0f937d54`, `1d965e78` and `2502547e` are held for a seat but have already answered, and since `39b2c296` they are refused every page. On the copy, 41 people are in this state, as before. This is still Finding 7, for Hafsah.
+3. **The 288 stored pattern observations for leads are still not served.** This is item 4 of section 9, still for Hafsah to confirm.
+4. **The old code still cannot read the kind-of-work column.** The script catches that and carries on, as before.
+
+So nothing got worse since 20:00. Two things were already open and still are: Finding 7 and the stored pattern lines. One new thing came in: the migration count in the section 4 test.
+
+**Left behind on this computer:** the database `gw_final_existing`. `dropdb` is not allowed. The temporary spec copy was deleted, and the old-code worktrees were removed.
+
 ## Hafsah's decision 90 (4 October)
 
 - Existing clients get the whole new build on the same terms as the paid client. It must work at least as well as today on their existing data (check-ins, boards, reports, Company page, suites, Ask Groundwork); the check below proves it on existing local check-ins. Nothing gets worse, no use case is lost, running check-ins carry on as scheduled, and stalled check-ins stay as the live main line leaves them, with no messages.
