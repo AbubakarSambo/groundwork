@@ -2,6 +2,26 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## 5 October, 14:35 - a decimal split in two, and my own test stopped me shipping a worse fix
+
+Run 32's advisor report, both readers: "receiving 0. 5% for two years" - the model put a space
+inside a decimal, and every sentence splitter in the product then did the only thing it could with
+it. Two broken lines, the second starting lower case because it is the middle of a number.
+
+**My first rule was "a digit, a full stop, a space, a digit", and the test for a real sentence
+boundary went red**: "The target is 40. 12 shops have ordered." became "40.12 shops". A sentence
+can end in a number and the next begin with one, and nothing in the digits tells them apart. The
+rule now asks for a per cent sign on the far side and nothing else does; "1. 5 million" is left
+alone and pinned by a test, because it genuinely cannot be told from a boundary.
+
+Repaired where stored sentences are already repaired, before anything splits them, so it holds in
+all twenty splitters at once.
+
+**A known flake, named so nobody chases it.** `the-report-is-written-in-parallel` failed in the
+full run and passes alone; it did the same this morning. It is timing-sensitive under load.
+
+Scenario run: 5 of 24 at 14:35.
+
 ## 5 October, 14:30 - the run will not finish inside this session, and why
 
 3 of 24 at 14:28, started 13:52. One scenario per shard in 36 minutes, against 24 scenarios in 33
