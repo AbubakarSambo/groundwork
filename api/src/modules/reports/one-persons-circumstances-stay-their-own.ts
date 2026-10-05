@@ -131,6 +131,20 @@ function named(sentence: string, names: string[]): boolean {
 
 type TheKinds = { others: TheOthers; lead: string[]; ownVoice: boolean };
 
+/*
+ * SOMEBODY ELSE, NAMED BY THEIR ROLE OR NOT NAMED AT ALL (privacy sweep, second review, finding 1, still open on earlier sessions and the rounds).
+ * The stored texts of earlier sessions describe people by what they do: "Outbound Hire: 'I made forty calls this week.'", "One hire
+ * (inbound) is closing deals, has proactively shared a demo script", and a borrower's own words with no name on them ("I took a loan for
+ * battery cages ..."). A name is never found in them, and a word such as "shared" or "loan" made the whole sentence look like a pattern
+ * or the programme. So a sentence that is one person's, by role or in the first person, is not kept, whatever else it says; only the
+ * reader's own sentences, the lead's aim and what is plainly about several people stay.
+ */
+const ONE_PERSON_BY_ROLE_WORD = /\b(?:one|another|that|this|a|an|the)\s+(?:[a-z-]+\s+){0,2}(?:hire|employee|worker|teammate|rep|salesperson|engineer|agent|apprentice|intern|recruit)\b(?!s)/i;
+/* "Outbound Hire: ..." and "Partnerships Hire (3 sessions): ...": a quote with a role in front of it */
+const ONE_PERSON_BY_ROLE_LABEL = /^[\s"'“‘]*(?!(?:[Ii]nitiator|[Ll]ead|[Oo]rganis(?:er)?|[Oo]rganiz(?:er)?)\b)[A-Z][\w-]*(?:\s[A-Z][\w-]*){0,2}(?:\s*\([^)]{1,30}\))?\s*:\s*["'“‘]/;
+const ONE_PERSON_BY_ROLE = { test: (x: string) => ONE_PERSON_BY_ROLE_WORD.test(x) || ONE_PERSON_BY_ROLE_LABEL.test(x) };
+const A_LEADS_LABEL = /^[\s"'“‘]*(?:initiator|the\s+lead|lead|organiser|organizer)\b/i;
+
 /** Which of the three a sentence is, if any. */
 function whatItIsAbout(sentence: string, k: TheKinds): 'reader' | 'several' | 'purpose' | null {
   const s = sentence.trim().replace(/^[;:,\s]+/, '');
@@ -141,6 +155,8 @@ function whatItIsAbout(sentence: string, k: TheKinds): 'reader' | 'several' | 'p
      with the selection process for loan qualification"). */
   if (named(s, k.lead)) return THE_LEADS_DOUBT_OR_VIEW.test(s) ? null : 'purpose';
   if (THE_READER.test(s) || (k.ownVoice && THE_READER_IN_THEIR_OWN_VOICE.test(s))) return 'reader';
+  if (ONE_PERSON_BY_ROLE.test(s) && !A_LEADS_LABEL.test(s)) return null;
+  if (!k.ownVoice && THE_READER_IN_THEIR_OWN_VOICE.test(s) && !A_LEADS_LABEL.test(s)) return null;
   if (SEVERAL_PEOPLE.test(s)) return 'several';
   if (THE_SHARED_PURPOSE.test(s)) return 'purpose';
   return null;
@@ -198,6 +214,8 @@ function everySentenceKept(text: string, k: TheKinds): boolean {
 const THE_PICTURE_AND_ITS_LISTS = new Set([
   'sharedPicture', 'theOpening', 'sharedPictureLines', 'agreements', 'centralQuestion', 'networkPicture', 'divergences',
   'postReportGuide', 'finalSynthesis',
+  /* the session report's own copies of the picture and what it rests on, and the lists of what stands (second review, finding 1) */
+  'writtenPicture', 'restsOn', 'settled',
   /* the board's own copies of them */
   'whatTheAnswersSay', 'divergence', 'latestSummary',
 ]);

@@ -1,3 +1,4 @@
+import { THE_PEOPLE_STEP_RULES } from './the-anchor-people-step';
 import { NotFoundException } from '@nestjs/common';
 import { TheAnchorDoor, THE_SWITCH_IS_KEPT_FOR_MS, aSourceMark } from './the-anchor-door';
 import { EntryController } from './entry.controller';
@@ -32,7 +33,7 @@ describe('the anchor scenario front door', () => {
 
   it('starts an anchor draft with its marks when the switch is on', async () => {
     const out = await new TheAnchorDoor(prismaWith(true).prisma).start('Founders-WhatsApp');
-    expect(out).toEqual({ available: true, scenario: 'HELP_TEAM_UNDERSTAND', startedFrom: 'anchor', groundLabel: 'Help my team understand', source: 'founders-whatsapp' });
+    expect(out).toEqual({ available: true, scenario: 'HELP_TEAM_UNDERSTAND', startedFrom: 'anchor', groundLabel: 'Help my team understand', source: 'founders-whatsapp', thePeopleStep: THE_PEOPLE_STEP_RULES });
   });
 
   it('answers as unavailable and starts nothing when the switch is off', async () => {

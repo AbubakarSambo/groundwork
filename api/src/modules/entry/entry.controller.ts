@@ -326,6 +326,10 @@ class EntryReportSummaryDto {
   @IsOptional() @IsString() @MaxLength(2000)
   alsoCameUpNote?: string | null;
 
+  /* The anchor scenario's reveal, as the screen read it at the end of the conversation (request 149). Kept with the report the lead read; it is built from her own turns. */
+  @IsOptional() @IsObject()
+  leadsReveal?: Record<string, any> | null;
+
   @IsOptional() @IsArray() @ArrayMaxSize(50)
   @ValidateNested({ each: true }) @Type(() => SuggestedPartyDto)
   suggestedParties?: SuggestedPartyDto[];

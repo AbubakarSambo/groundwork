@@ -35,7 +35,7 @@ export function entry(id: string, type: string, text: string, participantId: str
   return { id, type, text, recallBased: false, anchoredOrigin: null, dimensionThreadKey: null, participantId, confirmedAt: null, anchoredDocumentId: null };
 }
 
-export function makeService(ground: any, opts: { userRole?: string; awaitingSeat?: boolean; rounds?: any[] } = {}) {
+export function makeService(ground: any, opts: { userRole?: string; awaitingSeat?: boolean; rounds?: any[]; snapshot?: any } = {}) {
   const clone = () => structuredClone(ground);
   const entries = [
     entry('e1', 'PROGRESS', LEADS_LINE_ABOUT_LOLA, 'lead'),
@@ -65,7 +65,7 @@ export function makeService(ground: any, opts: { userRole?: string; awaitingSeat
       findFirst: jest.fn(async () => ({ specificityLevel: null })),
       count: jest.fn(async () => 1),
     },
-    reportRound: { findUnique: jest.fn(async () => null), findMany: jest.fn(async () => opts.rounds ?? []) },
+    reportRound: { findUnique: jest.fn(async () => opts.snapshot ?? null), findMany: jest.fn(async () => opts.rounds ?? []) },
     reportActivation: { findMany: jest.fn(async () => []) },
     groundDocument: { findMany: jest.fn(async () => []) },
     groundBaseline: {

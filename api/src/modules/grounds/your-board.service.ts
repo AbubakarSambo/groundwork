@@ -1,4 +1,6 @@
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
+import { theCheckInsHeldForASeat } from '../participants/held-for-a-seat';
+import { WAITING_TO_BE_LET_IN } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { aWaitOnOneself } from '../board/a-thing-is-not-somebody';
 import { notToldYet, aWeekHasPassedSinceNotTold, whatThePersonReadsAfterAWeek } from './a-goal-not-told-stays-with-the-lead';
 import { areaOfGoalOrFallback } from './the-area-of-a-goal-is-worded-once';
@@ -48,8 +50,11 @@ export class YourBoardService {
 
     const list = ((await this.grounds.list(reader.organizationId, reader.userId, reader.email, reader.role)) ?? []) as any[];
     /* Only the check-ins in this organisation that you run or take part in, and only your own place in each. */
+    /* Nothing of a check-in the reader is held for a seat on: no goal, no report, no card (second review, new leak A; privacy row 5, kept by decision 93). */
+    const heldForASeat = await theCheckInsHeldForASeat(this.prisma as any, list.map((g) => g.id), reader.userId);
+    const heldForTheOrganisation = !!(await Promise.resolve((this.prisma as any).user?.findUnique?.({ where: { id: reader.userId }, select: { awaitingOrgApproval: true } })).catch(() => null))?.awaitingOrgApproval;
     const mine = list.filter(
-      (g) => g.organizationId === reader.organizationId
+      (g) => !heldForASeat.has(g.id) && g.organizationId === reader.organizationId
         && (g.initiatorId === reader.userId || (g.participants ?? []).some((p: any) => p.userId === reader.userId)),
     );
     const groundIds = mine.map((g) => g.id);
@@ -179,6 +184,7 @@ export class YourBoardService {
     const patterns = await this.servedPatternsAcrossGrounds(patternRows as any[]);
     return {
       ...board,
+      ...(heldForTheOrganisation ? { waitingToBeLetIn: WAITING_TO_BE_LET_IN } : {}),
       ...(aboutYou.length ? { suggestionsAboutYou: aboutYou } : {}),
       ...(asked ? { askedOfYou: asked } : {}),
       ...(patterns.length ? { patterns } : {}),

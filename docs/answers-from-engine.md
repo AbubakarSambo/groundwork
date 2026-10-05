@@ -4446,3 +4446,159 @@ Everyone who has been let in is unchanged.
 **What did not change.** A colleague and the person themselves read only what they read before. An admin without access to a review, a first 90 days, a renewal or a promotion is still told "Check-in not found". A decision the lead has to make about a person (Aisha's confirmation, for example) stays the lead's alone, on the page as on the board. The session report is unchanged.
 
 **Tests.** Five existing test files pinned the narrower reading and now pin this one, because the reading was a choice, not one of Hafsah's decisions: `an-admin-who-runs-a-check-in-reads-its-goals-on-the-page`, `a-hidden-target-cannot-slip-through`, `a-target-in-the-leads-words-stays-hidden`, `one-rule-for-whose-share-is-shown`, `a-number-with-a-name-on-it-goes-through-one-rule`.
+
+### 11. Where people do not see each other, a person named by role or not named at all is still one person (decision 75 item 14, second review, finding 1)
+
+**What changed for a reader.** The wall that keeps one person's circumstances from another already held on the latest report. On earlier sessions' reports and on the rounds it found a person only by name, so a cohort colleague still read other people's circumstances written by role ("Outbound Hire: 'I made forty calls this week and got four conversations.'", "One hire (inbound) is closing deals, has proactively shared a demo script...") or as a borrower's own words with no name on them ("I took a loan for battery cages to raise layers in Kaduna..."). A participant there now keeps a sentence only if it is about them, is plainly about several people ("Most people want a later due date.", "3 of 3 people have given an account."), or is the lead's aim or the shared purpose. A sentence about one hire by role, a quote with a role in front of it, and a first-person quote that is not theirs are left out. The session report's written picture, what each settled line and each open question rests on, and the settled list now go through the same wall, on every session and on the rounds. The lead and an admin who runs the check-in read everything whole. Where people can see each other nothing changes.
+
+**Tests.** `a-colleague-by-role-is-still-a-colleague.spec.ts`, which reads session 1's report and the rounds through the real service as Kwame, and the same report as the lead.
+
+## Request 149 (1 of 6): the lead's reveal is served on `/entry/report`
+
+**Done.** `EntryReport.leadsReveal`, only when the situation is `HELP_TEAM_UNDERSTAND` and `release.anchorScenario` is on. With the switch off, or for any other situation, the key is not there at all. Built with no model call, from the lead's own turns and the people she named (`entry/the-anchor-reveal.ts`).
+
+**What the lead reads now.**
+- Title "Help my team understand", subtitle "One-month Groundwork", and the eight fixed "How I'll work with your team" lines, as in section 12.
+- Who you're trying to move: "You are trying to move Amani Wekesa and Juma Otieno with you." (more than six: the first six and "2 other people"). With nobody named: "Groundwork has not yet heard who you are trying to move with you."
+- What meaningful change would look like: her own answer to the hope question, cut into the separate things she said, each as she wrote it. With no answer yet: "Groundwork has not yet heard what you would notice people doing without you having to ask."
+- What Groundwork will explore: "Groundwork will start by learning how each person currently sees their work and the wider outcome, and then set what they say beside what you have said."
+
+**What stays empty, and what will fill it.** "What you're carrying", "What you need the team to understand" and "What you're seeing today" read "Groundwork has not yet written down what you are carrying." (and the same for the other two). They need the seven things pulled out of the lead's words, which is a model step (answer 2 below), not built. `sharedWithTheTeam` is always false because nothing records that she has shared anything yet. For any reader who is not the lead, `carrying` and `seeingToday` are `null`, and `whatTheTeamNeedsToUnderstand` is `null` until shared (decision 96, item 8).
+
+**One fix beside it.** `EntryReportSummaryDto` did not declare `leadsReveal`, so saving the report the lead read would have been refused as an unknown field. It is declared now. This also fixes `the-report-you-read-is-kept.spec.ts`, which was already failing because the client's `EntryReport` had the key.
+
+**Tests.** `entry/the-anchor-reveal.spec.ts`: the served text through the real `EntryService.report` for the lead with the switch on and off and for another situation, and the builder as the lead and as the team (a participant or an admin).
+
+## Request 149 (2 of 6): the people step's rules are served when the anchor draft is started
+
+**Done.** `ThePeopleStepRules` is served as `thePeopleStep` on the answer of `GET /entry/anchor-start`, the one call that starts an anchor draft, so it exists only with `release.anchorScenario` on (with it off the call answers 404 and nothing else changes). Code: `entry/the-anchor-people-step.ts`, `entry/the-anchor-door.ts`. The screen can read it from the draft start instead of its own constant.
+
+**What the lead reads now.**
+- Heading: "Who needs to be part of this?"
+- "Add up to 20 people. They don’t need to report directly to you—they simply need to be part of the work you’re trying to move."
+- Label: "What do they do / why are they part of this?"
+- Button: "Start my Groundwork."
+- When she tries to add a twentieth other person: "This one-month Groundwork holds 20 people, and you are one of them, so you can add 19 more."
+
+**Not done, said plainly.** The server still holds 200 people per check-in (`how-many-people-one-check-in-holds.ts`). The 19-person limit for an anchor check-in is not enforced on commit yet; the screen enforces it. I did not change the commit in this step.
+
+**Test changed.** `the-anchor-door.spec.ts` compared the whole start answer with `toEqual`; it now includes `thePeopleStep`, because the answer has one more key. Tests: `entry/the-anchor-people-step.spec.ts`.
+
+## Request 149 (3 of 6): the anchor's invitation is served on the invitation preview
+
+**Done.** `InvitePreview.anchorInvitation`, on `GET /participants/preview`, only for a check-in with `started_from` "anchor" and only while `release.anchorScenario` is on. Otherwise the key is not there and the answer is exactly what it was. Code: `participants/participants.service.ts` (one block), words in `entry/the-anchor-people-step.ts`. The invitation email's own wording is not changed by this step.
+
+**What the invited person reads now** (for a lead called Hafsah; the first name is the lead's, never a title):
+- Heading: "Hafsah is trying a different way to help the team get on the same page."
+- "For the next month, Groundwork will check in with each person one to one about the work you’re doing, what you’re seeing, what’s getting in the way and how it connects to the bigger picture."
+- Fourth sentence, one of two. Today it is always: "Hafsah wants to hear your side." Once something records that the lead has shared what she is trying to get across, it is: "Hafsah has shared what they are trying to get across. Groundwork now wants to understand your side too." (`leadHasSharedWhatTheyAreSeeing` is false until then.)
+- "There aren’t right answers. The point is to help the team understand one another better and make the work move."
+- Button: "Start your first check-in"
+
+**What it never holds.** Nothing from the lead's private description of the person (`roleAsDescribed`, `remitAsGiven`), and never the word "privately" (decision 96, item 1). The page keeps the prototype's sentence about who can see what.
+
+**Tests.** `participants/the-anchor-invitation.spec.ts`: the text for an invited person and for an admin invited as a participant, the shared and not shared sentences, and the switch off and not-an-anchor cases. The whole participants folder passes.
+
+### 12. Someone held for a seat reads nothing of the check-in on Today, on You or on the list (privacy row 5, kept by decision 93; second review, new leak A)
+
+**What changed for a reader.** Today checked only whether a person was waiting for the organisation's approval, so a person held for a seat on "Sahar handing finance to Amina" still read the card "The report for Sahar handing finance to Amina is ready", the sentence "All three people agree that the finance role is being handed over from Sahar Bello to you, who is new to the work." and a "Read it" link that the report then refused. You listed the same check-in with its goals. The check-in list, Today and You now leave out, whole, every check-in the reader is held for a seat on. They read no card, no report sentence and no goal from it. They read the one sentence the invitation page gives, if they open the link:
+
+> This check-in cannot start for you yet, because there is no seat for you on the plan. You will get your invitation as soon as there is one.
+
+A person who has a seat reads Today and You as before.
+
+**Tests.** `nobody-held-for-a-seat-reads-the-check-in-on-today-or-you.spec.ts`, which reads the list, Today and You through the real services, as the person held and as a person with a seat.
+
+### 13. A member with no part in a check-in is told "Check-in not found" before its report exists too (GW-PRI-04, second review, new leak B)
+
+**What changed for a reader.** Before a check-in had a report, the report read counted any member of the organisation as having a part in it, so a member with no access read "There is no report yet." and how many people had not finished. Now anyone who may not read the check-in reads the same sentence every other route gives:
+
+> Check-in not found
+
+A person in the check-in, its lead, and an admin who may read it read what they read before. An admin without access to a first 90 days, a review, a renewal or a promotion reads "Check-in not found", as on every other route.
+
+**Tests.** `a-member-with-no-part-is-told-the-check-in-is-not-found.spec.ts`.
+
+## Request 149 (4 of 6): the active line is served on the board
+
+**Done.** `BoardPresent.activeLine`, on the board read, only for a check-in with `started_from` "anchor", only while `release.anchorScenario` is on, and only to whoever runs the check-in (the lead, the admin who set it up, an admin with access). A participant is served no `activeLine` key. With the switch off, or for any other check-in, the board is exactly what it was. Code: `board/the-anchor-active-line.ts`, `board/the-anchor-board-parts.ts` (the one door the anchor's board parts go through), and one call at the end of `board.service.ts` after every wall.
+
+**What the lead reads now.** For five people where three have answered and Groundwork has nudged the other two: "3/5 active · Groundwork has nudged the remaining 2." Hafsah's wording from the spec, as decision 98 says. The same counts are read by an admin, and they hold no name. The other two sentences, said plainly: "3/5 active · Groundwork has nudged 1 of the remaining 2." and "3/5 active · Groundwork has not nudged the remaining 2 yet." With everybody active: "4/4 active."
+
+**Where the numbers come from.** Active is the people who have answered the round that is open, counted exactly as "N of M have answered" counts them (nobody an admin has not let in, nobody away). Total is those same people, the lead included, never more than 20. Nudged is, of those who have not answered, the people whose last nudge (`last_nudged_at`) is since the round opened. It reads the record and writes nothing.
+
+**Tests.** `board/the-anchor-active-line.spec.ts`, through the real `BoardService.get`: the line as the lead and as an admin, no key for a participant, the partial and none cases, and switch off and not-an-anchor. I added two optional fields to the board test harness (`prismaExtras` and `groundRow`) so a spec can give the board a ground started from the anchor; no existing spec uses them.
+
+### 14. Nobody held for a seat is sent a reminder, a session-open message or a nudge (privacy row 5, kept by decision 93; second review, new leak C)
+
+**What changed for a reader.** The morning WhatsApp reminder, the "opens soon" message, the "your session is open" mail and message, the announcement that a round has opened and the reminder that a report is ready to open were sent to people who had not been given a seat yet, and their check-in then refused them. They are now left out of all five. Somebody held for a seat no longer reads, for example:
+
+> Hi there, your check-in for What are your three priorities this is overdue. It's still open, so you can answer here now.
+
+They are sent their invitation as soon as there is a seat for them, as before. People who have a seat read the same messages as before.
+
+**Tests.** `nobody-held-for-a-seat-is-reminded-on-whatsapp.spec.ts`, which runs the morning reminder over four people waiting, two of them held for a seat.
+
+## Request 149 (5 of 6): the month board is served on the board
+
+**Done.** `BoardPresent.theMonthBoard`, only for a check-in with `started_from` "anchor", only while `release.anchorScenario` is on, and **to the lead alone**, as the screens' contract says ("Lead only"). An admin who runs the check-in is served the active line but not this; a participant is served neither. If Hafsah wants an admin with access to read the month board too, it is one word in `board/the-anchor-board-parts.ts` (`readerIsTheLead`). Built from the record, no model call (`board/the-anchor-month-record.ts`, `board/the-anchor-month-board.ts`). The week of the month is read from the record's own clock (when the board last changed), never from the moment it is opened, so two reads of the same record are the same bytes.
+
+**What the lead reads now**, for five people where three have answered:
+- Week 1 of the month. "Are we moving together?"
+- Understanding: "Groundwork has heard from three of five people." Ownership: "Two of five people have said what they will do themselves." Contribution: "No idea from your team has been captured yet." Action: "One of the things people said they would do is done and one is still open. One handoff is still waiting on someone."
+- What's moving: "One of the things people said they would do is done." "One handoff that was waiting on someone has been cleared." "Two people have said what they will do themselves." With nothing: "Nothing has moved yet that the record can show."
+- What the team is contributing: "No idea from your team has been captured yet."
+- Where perspectives differ: each difference the board already holds, said as `You and Rukia Mwangi see "The renewals target" differently.` With none: "No two people have described the same thing differently so far." With fewer than two accounts: "Groundwork needs at least two accounts before it can show where they differ."
+- What's still getting in the way: "Baraka is waiting on Rukia for the sales deck." With none: "Nobody has said that anything is in their way." From week three it also holds what keeps coming up, in the words the board already serves the lead. In weeks one and two it never does (decision 96, item 14).
+- What Groundwork is working on next: "Groundwork is checking in with the two people who have not yet answered this round." "Groundwork will ask about the one thing people said they would do that is still open." "Groundwork will ask about the one handoff still waiting on someone." With nothing: "Groundwork is waiting for the first check-ins to come in."
+
+**What stays empty, and which piece fills it.** `peopleHelpingThingsMove` is `[]` until hidden contributors are built (piece 22). "What the team is contributing" says no idea has been captured until ideas are built (piece 19); the shape for them is pinned below. The four lenses are counts said as sentences, never a score; understanding is only "heard from N of M" because nothing yet records whether a person connected their work to the bigger picture (that needs the weekly check-in's own reading).
+
+**Tests.** `board/the-anchor-month-board.spec.ts`, through the real `BoardService.get`: the whole served text as the lead, nothing for a participant or an admin, the same bytes on two reads, week three at sixteen days, and switch off and not-an-anchor; plus the weeks, the patterns rule and the difference sentence on the builder.
+
+## Request 149 (6 of 6): the end of the month is served on the board; the four continue options
+
+**Done.** `BoardPresent.theEndOfMonthRead`, only for a check-in with `started_from` "anchor", only while `release.anchorScenario` is on, to the lead alone, and only once the month has run: twenty-eight days of the record's own clock, or the check-in has ended. Before that, the key is not there. It also needs the lead's own first words to begin with; with none, it is not served. Built from the record with no model call and read at the record's own clock, so opening it never rebuilds it and two reads of the same record are the same bytes (`board/the-anchor-end-of-month.ts`).
+
+**What the lead reads now**, for five people where three answered:
+- `yourOwnWords`: her first words to Groundwork, exactly as she wrote them (cut at a sentence end past 400 characters). These are her words alone, with no quotation marks and no lead-in: the screen already sets "You wanted your team to understand..." above them and quotes them, so the pinned comment on `yourOwnWords` in the shapes file, which says the lead-in is part of the field, is not what the screen reads. I followed the screen.
+- What we found: "Groundwork heard from three of five people over the month." (and, where there are some, "Two things are seen differently by different people.")
+- What they now understand differently: "Groundwork does not yet keep how each person saw things at the start, so it cannot say what changed in what they understand."
+- What they're doing differently: "Two people said what they would do themselves." "One of the things people said they would do was done." "One handoff that was waiting on someone was cleared." With nothing: "Nothing has been recorded yet that people are doing differently."
+- What your team contributed: "No idea from your team has been captured yet."
+- People who helped move the thinking: empty.
+- What you changed as a lead: "Groundwork does not yet keep what changed in how you lead, so it has nothing to say here."
+- What's still stuck: open handoffs and what keeps coming up, as in the month board. With none: "Nobody has said that anything is still in their way."
+- What should happen next: "Groundwork found one piece of work that could have a check-in of its own." and "One of the things people said they would do is still open." With neither: "Keep checking in each week, so the record carries on from here."
+- This started as one Ground: the counts come from the record. Projects, shared objectives and working relationships are the check-in offers Groundwork made (piece 24: a piece of work four people are tangled in, an aim nobody owns, two people who keep waiting on each other), the active commitments are the things people said they would do that are still open. Ideas and suites are 0 for now.
+- The four options, as written: "Keep this Ground running", "Start recommended Grounds", "Turn on relevant suites", "Continue Groundwork for the team".
+
+**What stays empty, and which piece fills it.** Ideas (piece 19) fill the idea count and "What your team contributed". Hidden contributors (piece 22) fill "People who helped move the thinking". A stored "before" at the start of the month (piece 25) fills "What they now understand differently", and the setup reading at the end (decision 64) fills "What you changed as a lead". The suites count waits for pieces 26 and 27.
+
+**Answer (3): where the four continue options should open, using routes that exist.**
+- "Keep this Ground running" opens the plan choice, `/settings/billing` (`BillingPage`, with `/billing/checkout` after it; Stripe in test mode only, decision 96 item 4).
+- "Continue Groundwork for the team" opens the same plan choice, `/settings/billing`. The two options are the same page today; that is honest until Hafsah says what "keep this Ground running" should do differently.
+- "Start recommended Grounds" opens the board `/grounds/:id/board`, where "Groundwork recommends" lists the offers (`GET /grounds/:id/recommended-check-ins`), and the lead's yes there goes to `/new/setup` through `POST /entry/draft-from-set-up`.
+- "Turn on relevant suites" opens the Suites page, `/settings/suites`.
+
+**Tests.** `board/the-anchor-end-of-month.spec.ts`, through the real `BoardService.get`: the whole served text as the lead, none for a participant or an admin, not served before the month has run, served early when the check-in has ended, and switch off, not-an-anchor and no words of hers.
+
+## Request 149, missing (1): the pinned shapes for "Ideas from your team" and the yes in the person's check-in. Shapes only
+
+**Shapes only. Nothing is stored or served.** Both are types in `api/src/modules/entry/the-anchor-served-shapes.ts`, with their keys pinned in `the-anchor-served-shapes.spec.ts`. Ideas need their own record (piece 19), so there is nothing to serve yet. Following decision 96, item 10: a captured idea is seen by everyone in that check-in, with "Raised by <name>", and only after the person says yes. Before the yes, nothing exists for anybody to read.
+
+**"Ideas from your team" (`TheIdeasFromYourTeam`), to be served as `BoardPresent.ideasFromYourTeam`.** `heading` "Ideas from your team"; `ideas`, each `{ id, title, raisedBy, similarNeedsSentence }`; `whenThereAreNone`. Example from the scenario: title "Client review one month before project close", `raisedBy` "Raised by Lucy.", `similarNeedsSentence` "Similar needs have appeared across three check-ins." (null when it has appeared once; it never names anybody). `whenThereAreNone` is "No idea from your team has been captured yet.", the same sentence the month board already uses.
+
+**The yes in the person's check-in (`TheIdeaOfferInTheCheckIn`), to be attached to the reply that offers it.** `{ idea, question, whoWillSeeIt, yes, no }`. `idea` is the person's own words, so they see exactly what would be captured. `question` is the scenario's: "That sounds like a concrete idea. Want me to capture it for the team?" `whoWillSeeIt` is a proposal: "Everyone in this check-in will see it, with your name on it." `yes` is a proposal: "Yes, capture it"; `no`: "Not now". It is served to that person alone, in their own check-in. A "Not now" leaves nothing behind. Please tell me if you want different button words.
+
+## Request 149, missing (2): the seven fields in the set-up conversation
+
+**Serving them needs the model, so I have left them for after the scenario run.** The seven things (`responsibleFor`, `tryingToMove`, `howItContributes`, `seeingToday`, `whyItBothersYou`, `whatTheyDontUnderstand`, `whatTheyWouldDoDifferently`) are the lead's words pulled apart by sense, which code alone cannot do without guessing (decision 12 and the rule that the conversation stays model-led). Until they are extracted, the reveal's "What you're carrying", "What you need the team to understand" and "What you're seeing today" say they are not written down yet, and `anchorItems` stays empty. Nothing is invented in their place. When they are built, the reveal's three parts fill from them with no change to the shape.
+
+## Privacy row 5 (kept by decision 93): someone waiting for the organisation's approval is held like someone held for a seat, on every list
+
+Someone waiting for an admin to let them into the organisation (`awaitingOrgApproval`) was still shown their check-ins on You ("You have not finished a check-in yet.") and on the check-in list. `theCheckInsHeldForASeat` in `participants/held-for-a-seat.ts` now holds back every check-in for such a person, as it does for someone held for a seat. The check-in list, Today and You all read through it, so none of them shows a title, goal or name. Ask Groundwork's "what is due" says the same one sentence instead of listing commitments. The WhatsApp reminder sweeps already skip people held for a seat. They do not yet skip people waiting for the organisation, which I have not changed here and flag for a separate task.
+
+**What the person reads.** On You, in a new field `waitingToBeLetIn`: "Your sign-in is ready, and one thing has to happen before you can start: an admin at the organisation that invited you has to approve you joining it. They have been asked. Nothing you do here is lost in the meantime, and you will be able to check in as soon as they answer." The screens can show it where the empty list would be. Ask Groundwork's "what is due" says the same sentence.
+
+**Tests.** `grounds/nobody-held-for-a-seat-reads-the-check-in-on-today-or-you.spec.ts`, through the real `GroundsService.list` and `YourBoardService`: the list is empty for the waiting person, You carries no name, title or summary, and the person who is in still reads everything.

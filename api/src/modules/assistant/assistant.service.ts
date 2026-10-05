@@ -1,3 +1,4 @@
+import { WAITING_TO_BE_LET_IN } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { NOTHING_FLAGGED } from '../detectors/who-needs-you-this-week';
 import { PrismaService } from '../prisma/prisma.service';
@@ -3666,6 +3667,11 @@ export class AssistantService {
   private async whatIsDue(organizationId: string, who: string | null, userId: string | null): Promise<Reply> {
     const lane = 'what_is_due';
     if (!who) return rules(lane, text('I cannot see you in your organisation records, so I have nothing to say is due.'));
+    /* Nobody waiting to be let in is told what came out of check-ins they cannot yet take part in (row 5, kept by decision 93). */
+    if (userId) {
+      const me: any = await Promise.resolve((this.prisma as any).user?.findUnique?.({ where: { id: userId }, select: { awaitingOrgApproval: true } })).catch(() => ({ awaitingOrgApproval: true }));
+      if (me?.awaitingOrgApproval === true) return rules(lane, text(WAITING_TO_BE_LET_IN));
+    }
     const [commitments, toDos, waiting] = await Promise.all([
       this.prisma.commitment.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN', ...notFromAKeptCheckIn(await keptInTheApp(this.prisma as any, organizationId), 'sourceGroundId') }, orderBy: [{ dueAt: 'asc' }, { statedAt: 'asc' }] }).then((rows) => withoutCommitmentsFromGoalsNotToldYet(this.prisma, rows)),
       this.prisma.todo.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN' }, orderBy: [{ dueAt: 'asc' }, { createdAt: 'asc' }] }),

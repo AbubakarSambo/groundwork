@@ -152,7 +152,7 @@ describe('what is offered, in other shapes of the same record', () => {
 
 describe('the public API does not list them', () => {
   it('leaves the anchor kinds out of the list and out of accept and decline', () => {
-    const src = readFileSync(join(__dirname, '../detectors/detectors.controller.ts'), 'utf8');
+    const src = readFileSync(join(__dirname, '../detectors/detectors.controller.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(src.match(/kind: \{ notIn: \[\.\.\.ANCHOR_KINDS\] \}/g)).toHaveLength(2);
   });
 });

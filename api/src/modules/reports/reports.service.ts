@@ -6959,10 +6959,12 @@ happened, and what is in the way.`;
      * this branch is reached before it, so it says nothing a participant list would not.
      */
     if (!ground.report) {
+      /* ANYBODY WHO MAY NOT READ THE CHECK-IN IS TOLD "Check-in not found" (second review, new leak B; GW-PRI-04). A member of the
+         organisation with no part in it is no more "mine" than a stranger; an admin is, as on every other read, only where an admin may read it. */
       const mine = ground.participants.some(
         (p) => p.userId === requestingUserId,
-      ) || ground.initiatorId === requestingUserId || (!!requestingUserOrgId && ground.organizationId === requestingUserOrgId);
-      if (!mine) throw new NotFoundException('Report not found');
+      ) || ground.initiatorId === requestingUserId || (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground, groundId).catch(() => false));
+      if (!mine) throw new NotFoundException('Check-in not found');
       const checkIns = await this.prisma.checkIn.findMany({
         where: { groundId },
         select: { status: true, participantId: true },

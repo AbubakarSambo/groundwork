@@ -157,6 +157,8 @@ export interface YourBoard {
   keptLately: KeptLately | null;
   /** "Something that keeps coming up": your own patterns, and nobody else's. Left off when there are none. */
   patterns?: YourPattern[];
+  /** Said only to somebody still waiting to be let into the organisation, who is shown no check-in at all. */
+  waitingToBeLetIn?: string;
 }
 
 export interface BoardReader {

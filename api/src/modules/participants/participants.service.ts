@@ -30,6 +30,10 @@ import { theFirstNameFrom } from '../reports/a-title-is-not-a-first-name';
 export const FRESH_LINK_REPLY =
   'If that is the address the invitation went to, a fresh link is on its way. Open it from your email.';
 
+import { theAnchorInvitation } from '../entry/the-anchor-people-step';
+import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
+import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
+
 @Injectable()
 export class ParticipantsService {
   private readonly logger = new Logger(ParticipantsService.name);
@@ -135,6 +139,10 @@ export class ParticipantsService {
       hasAnswered: await this.prisma.checkIn.count({ where: { participantId: participant.id, status: CheckInStatus.COMPLETED } }).then((n) => n > 0).catch(() => false),
       nameGiven: (participant as any).nameGiven ?? null,
       yourNumberIsSeenBy,
+      /* The anchor scenario's own invitation, only for a check-in started from the anchor link and only while the switch is on (request 149). Nothing else about this answer changes. */
+      ...((ground as any).startedFrom === STARTED_FROM_THE_ANCHOR && (await theAnchorScenarioIsOn(this.prisma))
+        ? { anchorInvitation: theAnchorInvitation(leadFirst) }
+        : {}),
     };
   }
 

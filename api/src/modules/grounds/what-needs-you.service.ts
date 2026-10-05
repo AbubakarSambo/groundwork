@@ -1,4 +1,5 @@
 import { Injectable, Optional } from '@nestjs/common';
+import { theCheckInsHeldForASeat } from '../participants/held-for-a-seat';
 import { ModuleRef } from '@nestjs/core';
 import { BoardService } from '../board/board.service';
 import { whatTheBoardAsksOfTheLead } from './what-the-board-asks-of-the-lead';
@@ -204,7 +205,9 @@ export class WhatNeedsYouService {
      * the reader takes part in, and Today used to lead with one of those, so "Today 3" disagreed with
      * "N new" on Choose an organisation. Another organisation's needs are counted there, not here.
      */
-    const here = (list as any[]).filter((g) => g.organizationId === organizationId);
+    /* AND NOTHING OF A CHECK-IN THE READER IS HELD FOR A SEAT ON (second review, new leak A; privacy row 5, kept by decision 93): no card, no report sentence, no link. */
+    const heldForASeat = await theCheckInsHeldForASeat(this.prisma as any, (list as any[]).map((g) => g.id), userId);
+    const here = (list as any[]).filter((g) => g.organizationId === organizationId && !heldForASeat.has(g.id));
     /*
      * SOMEBODY AN ADMIN DID NOT LET IN IS NEITHER COUNTED NOR NAMED (screens request 95). The same
      * rule the board reads (request 85): of the people still waiting for approval, those whose latest

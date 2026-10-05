@@ -44,6 +44,8 @@ describe('a board never serves an empty line', () => {
 
   it('the board is served through it, for every reader', () => {
     const src = readFileSync(join(__dirname, 'board.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-    expect(src).toContain('return aBoardWithNoEmptyLine(everyStoredSentenceReadsRight(');
+    /* The anchor's own parts (request 149) are added after it, so the board is held in `asServed` and returned with them. */
+    expect(src).toContain('const asServed = aBoardWithNoEmptyLine(everyStoredSentenceReadsRight(');
+    expect(src).toContain('return { ...asServed,');
   });
 });
