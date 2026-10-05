@@ -178,6 +178,8 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   /* The moment everybody has answered, which is the whole promise of that card. */
   sendTeamUpdateAllIn: 'asked for',
   sendGroundApproved: 'asked for',
+  /* The decision on a request the person made themselves (decision 106 item 7). */
+  sendRequestDecided: 'asked for',
   sendGroundDeclined: 'asked for',
   /* Both are answers to something the person or their lead set in motion, so neither is a mail we
      decided to send - and the way-back-in class is for account recovery, which this is not. */

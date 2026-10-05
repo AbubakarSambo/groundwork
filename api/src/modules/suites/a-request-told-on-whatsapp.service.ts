@@ -1,6 +1,7 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { EmailService } from '../email/email.service';
 import { aRequestIsWaiting, aRequestWasDecided } from '../whatsapp/what-goes-to-a-phone';
 import { theirRosterEntry } from './a-roster-entry-and-its-sign-in';
 import type { AWaitingRequest } from './a-request-in-words';
@@ -31,6 +32,8 @@ export class ARequestToldOnWhatsApp {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly whatsapp?: WhatsAppService,
+    /* Decision 106 item 7: a decision that cannot go by WhatsApp goes by email. */
+    @Optional() private readonly email?: EmailService,
   ) {}
 
   /** The approver, or every admin when an admin approves. Never the person who asked. */
@@ -67,6 +70,35 @@ export class ARequestToldOnWhatsApp {
    * read in the app.
    */
   async decided(organizationId: string, request: AWaitingRequest, outcome: 'approved' | 'declined', deciderUserId: string, reason?: string | null): Promise<boolean> {
+    if (!request.personUserId) return false;
+    const sent = this.whatsapp ? await this.decidedOnWhatsApp(organizationId, request, outcome, deciderUserId, reason) : false;
+    /*
+     * STOP STOPS WHATSAPP, NOT THE DECISION (decision 106 item 7). "Leave and spending decisions still
+     * reach you by email" is in the sentence a person reads when they say STOP, so it has to be true:
+     * whenever the WhatsApp message did not go, for whatever reason, the same sentence goes by email.
+     */
+    if (!sent) await this.decidedByEmail(organizationId, request, outcome, deciderUserId, reason);
+    return sent;
+  }
+
+  private async decidedByEmail(organizationId: string, request: AWaitingRequest, outcome: 'approved' | 'declined', deciderUserId: string, reason?: string | null): Promise<void> {
+    if (!this.email || !request.personUserId) return;
+    try {
+      const person = await this.prisma.user.findUnique({ where: { id: request.personUserId }, select: { email: true, firstName: true, deletedAt: true } });
+      if (!person?.email || person.deletedAt) return;
+      const decider = await this.prisma.user.findUnique({ where: { id: deciderUserId }, select: { firstName: true } }).catch(() => null);
+      const said = aRequestWasDecided(person.firstName?.trim() || request.firstName, request.what, outcome, decider?.firstName);
+      const sentence = outcome === 'declined' && reason?.trim()
+        ? said.text.replace(/ Open Groundwork to read it\.$/, ` ${aReasonSaid(decider?.firstName?.trim() || 'They', reason)} Open Groundwork to read it.`)
+        : said.text;
+      await this.email.sendRequestDecided(person.email, sentence, request.what, outcome);
+      await recordIt(this.prisma, { organizationId, suite: SUITE_OF_A_REQUEST[request.kind], ref: request.ref, kind: 'told', toUserId: request.personUserId, basis: { message: `${said.kind}:email` } });
+    } catch (err: any) {
+      this.logger.warn(`Could not email somebody that their ${request.kind} request was decided: ${err?.message}`);
+    }
+  }
+
+  private async decidedOnWhatsApp(organizationId: string, request: AWaitingRequest, outcome: 'approved' | 'declined', deciderUserId: string, reason?: string | null): Promise<boolean> {
     if (!this.whatsapp || !request.personUserId) return false;
     try {
       const to = await this.reach(organizationId, request.personUserId);

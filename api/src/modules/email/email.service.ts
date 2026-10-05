@@ -682,6 +682,19 @@ export class EmailService implements OnModuleInit {
    * whether anything happened - and the whole point of holding the invites is that
    * they cannot just carry on regardless.
    */
+  /**
+   * A LEAVE, HOURS OR SPENDING DECISION, BY EMAIL (decision 106 item 7). Sent when the WhatsApp message
+   * about it could not go: the person said STOP, has no number, or WhatsApp is off for them. The
+   * sentence is the same one WhatsApp would have carried.
+   */
+  async sendRequestDecided(email: string, sentence: string, what: string, outcome: 'approved' | 'declined'): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject: `Your request for ${what} was ${outcome}`,
+      html: this.layout(`<p>${escapeHtml(sentence)}</p>`),
+    }, undefined, 'sendRequestDecided');
+  }
+
   async sendGroundApproved(email: string, firstName: string, groundLabel: string, url: string): Promise<void> {
     await this.sendEmail({
       to: email,

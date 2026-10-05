@@ -332,7 +332,7 @@ export async function journeys(c: any): Promise<void> {
   const bn = await says(baraka, 'not now');
   check('"Not now" is answered in Hafsah\'s words', bn.text === 'All right. I will not write to you first again today. Your check-in is still open, and you can answer here whenever you are ready.', bn.text);
   const st = await says(chidi, 'stop');
-  check('"Stop" is answered, and says how to start again', st.text === 'Stopped. Nothing more comes to this number from Groundwork unless you reply START. Your check-ins are still in Groundwork.', st.text);
+  check('"Stop" is answered, and says how to start again', st.text === 'Stopped. Nothing more comes to this number from Groundwork unless you reply START. Your check-ins are still in Groundwork. Leave and spending decisions still reach you by email.', st.text);
   const chidiRow = await prisma.person.findUnique({ where: { id: chidi.personId }, select: { whatsappStoppedAt: true } });
   check('Chidi is recorded as stopped', !!chidiRow?.whatsappStoppedAt);
   await prisma.checkIn.updateMany({ where: { groundId: renewalsId, participant: { email: baraka.email } }, data: { createdAt: new Date(Date.now() - 6 * DAY) } });
