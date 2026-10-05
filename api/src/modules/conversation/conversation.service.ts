@@ -23,6 +23,8 @@ import { whatTheySaidAboutWhy } from './they-said-why-themselves';
 import { CANNOT_CHECK_IN_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { isThisTheSameAnswerAgain, STILL_ON_YOUR_LAST_ANSWER } from './a-second-press-is-not-a-second-answer';
 import { ConfigService } from '@nestjs/config';
+import { connectWhatsAppFor, type ConnectWhatsApp } from '../whatsapp/connect-whatsapp';
+import { keptOffThePhone } from '../whatsapp/a-check-in-kept-off-the-phone';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { blockerHasSubstance } from '../board/reads';
 import { PrismaService } from '../prisma/prisma.service';
@@ -121,7 +123,7 @@ import { familyFor, BoardFamily } from '../board/board-families';
 import { theOneWorthAsking, askAboutItBlockFor } from './what-keeps-happening-becomes-a-question';
 import { mayCoach } from './participation-timeline';
 import { theirApprovedLeave } from '../suites/who-is-away';
-import { afterTheirTurn } from './ideas-from-the-team';
+import { afterTheirTurn, anIdeaReadBackAsAPromise } from './ideas-from-the-team';
 import { aRequestAfterTheirTurn } from './a-request-offered-in-the-check-in';
 import { stillAsking } from './one-question-per-turn';
 import { oneThingAsked, wouldLeaveAQuestionOut, asksMoreThanOneThing, withTheOneMoreLine, ASK_ONE_THING } from './a-turn-asks-one-thing';
@@ -794,7 +796,17 @@ export class ConversationService {
       priorTurns: priorTurns.map(asRead),
       priorSessionNumber,
       priorRecordEntries,
+      /* "Connect WhatsApp" for the person reading their own check-in, or null (decision 106 item 4). Owner-only read. */
+      connectWhatsApp: await this.connectWhatsAppOn(checkIn.groundId, requestingUserId),
     };
+  }
+
+  /** The person's own "Connect WhatsApp" link on this check-in, or null. See whatsapp/connect-whatsapp.ts. */
+  private async connectWhatsAppOn(groundId: string, userId: string): Promise<ConnectWhatsApp> {
+    const g = await (this.prisma as any).ground?.findUnique?.({ where: { id: groundId }, select: { organizationId: true, overWhatsApp: true } })?.catch?.(() => null);
+    if (!g) return null;
+    const me = await (this.prisma as any).user?.findUnique?.({ where: { id: userId }, select: { email: true } })?.catch?.(() => null);
+    return connectWhatsAppFor(this.prisma, this.config, { organizationId: g.organizationId, userId, email: me?.email ?? null, keptInTheApp: keptOffThePhone(g) });
   }
 
   /**
@@ -2586,6 +2598,17 @@ export class ConversationService {
       for (const unmade of commitmentsTheyNeverMade(screened.text, [...theirWords, ...(this.theirEarlierWordsForThisTurn.get(checkIn.id) ?? [])], commitmentRows)) {
         this.logger.warn(`Check-in ${checkIn.id}: cut a commitment read back that this person never made: ${JSON.stringify(unmade)}`);
         const cutAlready = whatIsLeftToSend(screened.text, unmade, closingNow);
+        if (cutAlready) screened = { ...screened, text: cutAlready };
+      }
+
+      /* AND AN IDEA IS NEVER READ BACK AS THEIR PROMISE (review of anchor piece 19). See ideas-from-the-team. */
+      const participantIdHere = (checkIn as any).participantId ?? null;
+      const theirIdeas: string[] = participantIdHere
+        ? (((await (this.prisma as any).workItem?.findMany?.({ where: { groundId: checkIn.groundId, ownerParticipantId: participantIdHere, kind: { in: ['idea', 'idea-offered'] } }, select: { name: true } })?.catch?.(() => [])) ?? []) as { name: string }[]).map((w) => w.name)
+        : [];
+      for (const asAPromise of anIdeaReadBackAsAPromise(screened.text, theirIdeas, [...theirWords, ...(this.theirEarlierWordsForThisTurn.get(checkIn.id) ?? [])])) {
+        this.logger.warn(`Check-in ${checkIn.id}: cut an idea read back as a promise: ${JSON.stringify(asAPromise)}`);
+        const cutAlready = whatIsLeftToSend(screened.text, asAPromise, closingNow);
         if (cutAlready) screened = { ...screened, text: cutAlready };
       }
 
