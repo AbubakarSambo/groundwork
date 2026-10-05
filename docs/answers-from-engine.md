@@ -69,6 +69,17 @@ I left the line in `context.service.ts` alone, because it is inside a model inst
 that commit is already in `mine/wip/prototype-ui` (`git merge-base` confirms it), so you only need
 to pull.
 
+**134 (5), who is asked to find an owner.** Hafsah decided the lead finds the owner, and the person
+waiting is the reason. Where the thing a person waits on names nobody, the lead's row of "The team
+today" now reads, for Rukia, for Grace who set it up, and for Juma who only reads:
+"Find out who owns this, so that Neema Achieng is not left waiting." Where the name may not be
+shown, it reads "so that this colleague is not left waiting." Nobody who checks in is sent these
+rows, so no person reads it about themselves. Every other way through, such as speaking to somebody
+rather than writing, is still asked of the person waiting. The sentence is assembled by the engine
+in `whatToAskFor` (`board/where-each-person-is-against-their-number.ts`), not written by the model.
+The person's own coaching still tells them "Find out who owns this by name", because there they
+are the reader and it is advice to them.
+
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
 ```
