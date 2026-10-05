@@ -104,9 +104,30 @@ export function aWaitSaidOnce(text: string): string {
 }
 
 /** Both repairs, on everything outside the quotation marks. */
+/**
+ * A NUMBER IS NOT TWO SENTENCES (run 32, the advisor report).
+ *
+ * The model wrote "receiving 0. 5% for two years" - a space inside a decimal - and every sentence
+ * splitter in the product then did the only thing it could with it. The lead and the participant
+ * each read two broken lines: "...is 'receiving 0." and "5% for two years'.", the second starting
+ * lower case because it is the middle of a number.
+ *
+ * ONLY WHERE A PER CENT SIGN FOLLOWS, and my first attempt was wider than that. I wrote it as
+ * "a digit, a full stop, a space, a digit", and my own test caught it joining "The target is 40.
+ * 12 shops have ordered." into "40.12 shops" - a sentence can end in a number and the next can
+ * begin with one. There is no way to tell those apart from the digits alone.
+ *
+ * "0. 5%" has one: the digits after the space are followed immediately by a per cent sign, and no
+ * sentence begins "5% ..." after one ending in a bare number. Narrow and always right, which is
+ * worth more than wide and usually right.
+ *
+ * Repaired here rather than in twenty splitters, and before them, so it holds everywhere at once.
+ */
+const aNumberIsNotTwoSentences = (t: string) => t.replace(/(\d)\.\s+(\d+%)/g, '$1.$2');
+
 export function aStoredSentenceReadsRight(text: string, names?: readonly string[]): string {
   if (!text || typeof text !== 'string') return text;
-  return theQuotesKept(aWaitSaidOnce(text), (outside) => {
+  return theQuotesKept(aNumberIsNotTwoSentences(aWaitSaidOnce(text)), (outside) => {
     const plain = aLabelEndsWithoutAFullStop(oldWordingPutPlain(outside));
     /* A name is not said again in the sentence about that person (requests 129, 133, 135): "Amani Wekesa says Amani paid ...". */
     return names?.length ? aNameSaidAgainInOneSentence(plain, names) : plain;
