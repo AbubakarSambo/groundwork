@@ -4,6 +4,48 @@ The existing-clients checks were run again on a copy of the test database: sched
 
 The checks for the hosted line were run again at `ee99f19c` on this computer: all 359 migrations apply to a new database, the clean install and build pass for the API and the client, and the built API starts with every new setting missing (see section 7 of `docs/staging-compatibility.md`).
 
+## Needs Hafsah: existing clients and the live line (5 October, evening)
+
+**1. People held for a seat who have already answered (Finding 7).** Since commit `39b2c296` (privacy sweep finding 3, 5 October), anybody marked as held for a seat is refused the board, the report and the check-in page. They read "This check-in cannot start for you yet, because there is no seat for you on the plan." On the live line, such a person could still read all three. On a copy of the test database, 41 people on 20 check-ins are marked as held for a seat but have already finished sessions. All of those check-ins were made by journey runs on 18 and 19 September. In the comparison's sample, six of them lost 18 pages they used to read, 256 sentences and 42 names. If an existing client has people like this, they would lose every page on release day. Please decide which is right: should someone who has already answered keep reading while held, or should their hold be cleared? Before release, count them on a copy of the live data with this read-only query: `SELECT count(*) FROM ground_participants gp WHERE awaiting_seat AND EXISTS (SELECT 1 FROM check_ins c WHERE c.participant_id = gp.id AND c.status = 'COMPLETED')`.
+
+**2. The stored pattern lines that the live line now shows leads.** Today's `origin/main` shows a lead the pattern lines stored in the record over time, on the board and in the report. One example is "Upward reporting was optimistic while a major account was being lost." Our branch has not shown stored patterns to anybody since 27 September. A pattern reaches a page only live, through the rule for who reads a pattern. In the comparison's sample, this means leads of 81 check-ins no longer read 288 such lines (144 different lines, each on the board and in the report). Please confirm that leads should no longer read them. Section 7 of `docs/existing-users.md` says anything a lead loses blocks the release until it is understood.
+
+**3. `origin/main` moved 36 commits since 4 October, from `f5c07d39` to `824b7e3b`.** None of it is work our branch lacks. All 36 are already in `mine/wip/live-base` (your copy of the hosted line, at `5197f22d`, which the release merges into) and in our branch. The files at `824b7e3b` are exactly the same as at `5197f22d`. Of the 36, four are merge commits ("Merge pull request #321 from AbubakarSambo/staging", #320 "28926changes", #319, and #318 "product-only"). The other 32 are these:
+- `1138df4f` updates (Abubakar's three client fixes)
+- `ed2b4996` Working notes do not belong on the branch
+- `e25deb1e` Nineteen guards could be satisfied by a sentence
+- `199af488` The organisation-level read was listening to the wrong room
+- `4cd90137` "The Ikeja officer" is how a person names a person
+- `bbf7c478` The guard deleted every sentence that named a person
+- `4e8435b9` Four people are not a population, and a proportion of four hid all of it
+- `ac9ae000` Femi's report had Ngozi's pipeline in it, and I put it there this morning
+- `7307d0ef` The link sets invitedAt, so "not invited" never meant what I thought
+- `a83efdb0` Chidinma's trucks, published under Ibrahim's name
+- `62bede9d` Eleven people answered a check-in that had two people in it
+- `4a9d0e5c` The lead closes it. There is no agreement step
+- `e15d9378` There was no defect. I was reading 46 characters of a 312-character reply
+- `756b94f4` Their team checks in on their own number, and we never see a customer
+- `ea18bd46` The judgement is on the board, and it is the first thing on it
+- `3b7d801e` The conversation now collects the thing the lead asked for
+- `adc07378` I was wrong about the phone, and here is what was actually broken
+- `e3f86711` Two from the Context list: whose words, and somewhere to put them
+- `ab7b4c86` A colleague's number, on the Context tab, on the default setting
+- `b04d39c7` The risk shows, and the dead ones come back
+- `ea4528d5` A state a machine puts you in needs a way out a person can use
+- `3c801593` The weekend, and the thing we measured and never said
+- `026e12f6` A month given away was lifting nothing
+- `6f0ba08a` The report was not the fault
+- `b2796e14` A guard that runs before the sentence exists does not run
+- `ec0e9794` The notes arrived a minute after the conversation ended
+- `17a7f5d4` What a claim costs to prove
+- `4420644a` They can tell us what to ask, and now we follow
+- `0a5856be` The ground the brief asks us to cover
+- `d3823d60` The report is not ours to promise, and an answer does not stop belonging to anything
+- `020706fe` A roster row is not a life sentence
+- `9e3adcdd` It works on a phone, and the next question comes from the hole
+
+The only commits on `origin/main` that our branch does not have are old merge commits ("Merge pull request #298" to "#321 from AbubakarSambo/staging"), and they carry no change of their own. Nothing was merged.
+
 ## 5 October, 17:45: the 24-scenario run is back, and nothing got worse
 
 The run you allowed today, run-oct5b, finished with all 24 scenarios and no failures. It ran
