@@ -93,3 +93,36 @@ describe('five realistic ways to ask for leave, to spend, and to log hours', () 
     });
   });
 });
+
+describe('an amount written with its currency as a word (clean-install run, 6 October)', () => {
+  it.each([
+    ['Can I spend 15,000 shillings on fuel for the van this week?', 15000, 'fuel for the van this week', 'KES'],
+    ['I need to spend 20,000 shillings on printing', 20000, 'printing', 'KES'],
+    ['Can I spend 12,000 naira on fuel?', 12000, 'fuel', 'NGN'],
+    ['Can I buy a chair for 300 dollars?', 300, 'a chair', 'USD'],
+    ['Can I spend 800 cedis on fuel?', 800, 'fuel', 'GHS'],
+    ['Can I spend 5,000 rand on fuel?', 5000, 'fuel', 'ZAR'],
+  ])('%s', (q, amount, what, currency) => {
+    const read: any = readSpending(q, currency === 'KES' ? 'KES' : currency);
+    expect(read).toEqual({ kind: 'ok', said: { amount, what, currency } });
+  });
+
+  it('dollars are not taken for shillings', () => {
+    expect((readSpending('Can I spend 300 dollars on fuel?', 'KES') as any).say).toBe('Your organisation counts spending in KES, and you wrote USD. Tell me the amount in KES and I will ask again.');
+  });
+
+  it('Amani asks what the money is for, answers it, and the answer is taken as the reason, said back before it goes', async () => {
+    const s = svc();
+    const prisma: any = (s as any).prisma;
+    const first: any = await s.respond('org-a', 'p1', 'Can I spend 15,000 shillings this week?');
+    expect(first.blocks[0].body).toBe('What is the KES 15,000 for? Tell me in a few words and I will ask again.');
+    const parked = prisma.assistantProposal.create.mock.calls.map((c: any) => c[0].data).find((d: any) => d.kind === 'spend_purpose');
+    expect(parked.payload).toEqual({ amount: 15000, currency: 'KES' });
+    prisma.assistantProposal.findFirst.mockImplementationOnce(async () => ({ id: 'pp1', state: 'PENDING', createdAt: new Date(), ...parked }));
+    const second: any = await s.respond('org-a', 'p1', 'Fuel for the van to deliver the Fresh Basket order.');
+    expect(second.lane).toBe('ask_to_spend');
+    expect(second.blocks[0].body).toMatch(/^You asked to spend KES 15,000 on Fuel for the van to deliver the Fresh Basket order\./);
+    expect(JSON.stringify(second)).not.toContain('cannot answer');
+  });
+});
+
