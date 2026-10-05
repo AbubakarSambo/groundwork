@@ -51,6 +51,21 @@ const THE_DRAFT = [
   'Shall I log these hours and send them to Wairimu to approve?',
 ].join('\n');
 
+/* Review of 1d9ef0a5: an idea, or an offer waiting for a yes, is kept as a work item, and is not work Brian owns. */
+describe('an idea is never drafted as work', () => {
+  it('Brian\'s captured idea and a waiting request offer are not in his week', async () => {
+    const withAnIdea = { ...RECORD, workItems: [
+      ...(RECORD.workItems ?? []),
+      { ownerUserId: 'u-brian', name: 'send the price list to every shop on Monday', updatedAt: at('2026-10-06T12:00:00Z'), label: 'Installs', kind: 'idea' },
+      { ownerUserId: 'u-brian', name: 'leave', updatedAt: at('2026-10-06T12:00:00Z'), label: 'Installs', kind: 'request-offered' },
+    ] };
+    const o = aTimeSheetsOrganisation({ rules: RULES, record: withAnIdea });
+    const said = await o.says('u-brian', 'Can you draft my hours for this week?');
+    expect(said).toBe(THE_DRAFT);
+    expect(said).not.toMatch(/price list|"leave"/);
+  });
+});
+
 describe('Brian asks Groundwork to draft his week', () => {
   it('reads what was found, the draft, where its hours came from, and the question, and nothing is kept yet', async () => {
     const o = aTimeSheetsOrganisation({ rules: RULES, record: RECORD });

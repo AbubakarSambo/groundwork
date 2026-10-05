@@ -112,6 +112,12 @@ describe('every surface that hands out whose number it is', () => {
     /* Anchor piece 24: it reads the owner of an aim only to see whether an aim has no owner. It reads no
        number and no target, and what it writes is offered to the lead alone (the 'recommended check-ins'). */
     'modules/detectors/the-anchor-recommendations.ts': 'reads only whether an aim has an owner, never a number; the offer it writes is the lead\'s alone',
+    /* Anchor piece 19: ideas are work items of kind 'idea'. These read who raised an idea, never a target or a number,
+       and an idea is served only to the people in that check-in (decision 96 item 10). */
+    'modules/conversation/ideas-from-the-team.ts': 'reads who raised an idea (a work item), never a target or a number',
+    'modules/board/the-anchor-month-record.ts': 'reads who raised each captured idea, never a target or a number; served to the lead and to the people in that check-in',
+    /* Anchor pieces 26 and 27: a request offered in the check-in waits as a work item of its own; it holds no target and no number. */
+    'modules/conversation/a-request-offered-in-the-check-in.ts': 'keeps which request was offered to whom (a work item), never a target or a number',
     /* Request 117: the sales board as the fifth review read it; the board asks targetsFor over these rows. */
     'modules/board/__fixtures__/sales-board-review-5.ts': 'test rows for the request 117 specs; the board asks targetsFor',
   };

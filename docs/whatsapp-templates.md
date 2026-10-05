@@ -153,6 +153,26 @@ All three are now on the list the Connections page asks an admin to submit (`the
 - **Why:** to tell the person that the decision and its reasons are written and waiting in the app. The decision itself is never sent. It goes once, the first time the review is decided. It counts as Groundwork writing first. Proposed by the engine on 2 October, for Hafsah to confirm.
 - **Checked against WhatsApp's rules:** passes.
 
+### `anchor_weekly_insight` (anchor piece 28; decision 105, item 2). The ninth, proposed
+
+- **Category:** Utility. **Language:** en.
+- **Body:** Hi {{1}}. {{2}} This week's picture is on the board at {{3}}, if you want the rest.
+- **Examples:** {{1}} Amina. {{2}} Your team is starting to move. This week, three of five people checked in, and two have said what they will do themselves. Rukia committed to send the deck to the client, and Rukia says it is done. One thing still needs attention. Baraka is waiting on Rukia for the sales deck. Groundwork is working on that with them. {{3}} https://myground.work/grounds/g-1/board
+- **Why:** the anchor lead's weekly insight. On Friday it goes at half past six in Lagos, before the daily summary, and it is the lead's one message of that day, so it replaces that day's summary. Only to the lead of a check-in started from the anchor link, only where the organisation has WhatsApp on, only while the anchor switch is on.
+- **What {{2}} holds:** only what the lead reads on the month board. Counts, one thing a person in that check-in did, said as a sentence about them with their name, and one thing still in the way. Nobody's words are quoted, and nobody outside that check-in is named.
+- **Checked against WhatsApp's rules:** the body ends with words, and the blanks are in order.
+
+### `anchor_checkin_follow_up` (anchor piece 30; decision 105, item 3). Proposed, wired
+
+- **Category:** Utility. **Language:** en.
+- **Body:** Hi {{1}}, last time you said you would {{2}}. I'd love to hear how it went. Your check-in for {{3}} is open, and you can answer here.
+- **Examples:** {{1}} Rukia. {{2}} send your manager the deck. {{3}} Everyone pulling the same way.
+- **Why:** the anchor's nudge, which may repeat the person's own commitment, to that person only (decision 105, item 3). On an anchor check-in with the anchor switch on, it takes the place of the morning chase (`checkin_team_almost_in` or `checkin_your_view_matters`) for a person who has an open promise from their own check-in. A person with none gets the ordinary chase. {{2}} is only ever their own open promise, said back to them, never anybody else's words and never a promise a lead wrote.
+- **The same gates as every morning message:** only where the organisation has WhatsApp on, never to somebody on approved leave, never about a check-in kept off WhatsApp, never to a guest. The sender's own rules also apply: STOP, "Not now", one first message a day, the 24 hours, and the template being approved.
+- **{{2}} made safe:** no new line, no tab, no run of more than four spaces, cut at a word to 120 characters, with no full stop at the end.
+- **Checked against WhatsApp's rules:** text before the first blank and after the last, no two blanks side by side, blanks in order, and plain words.
+- **Until Meta approves it:** outside the 24 hours it is recorded as not sent, like every other template.
+
 ## Names no longer used
 
 `groundwork_session_ready`, `groundwork_check_in_opened` and `groundwork_check_in_nudge` were names in the code before decision 83. `checkin_open` replaces the first two. The third was for a check-in started and left, and is not needed: Groundwork already finishes a started check-in after 12 hours of quiet. None of the three needs submitting.

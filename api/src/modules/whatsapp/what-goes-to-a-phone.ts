@@ -32,6 +32,20 @@ export const itOpensSoon = (w: WhoAndWhat, opensAt: Date) => notice('opens-soon'
 export const itIsOverdue = (w: WhoAndWhat) => notice('overdue', [first(w), w.label]);
 /** checkin_team_almost_in: {{3}} of {{4}} people, never anything they said. */
 export const theTeamIsAlmostIn = (w: WhoAndWhat, answered: number, ofHowMany: number) => notice('team-almost-in', [first(w), w.label, String(answered), String(ofHowMany)]);
+/**
+ * THE ANCHOR'S NUDGE ON WHATSAPP (piece 30; decision 105 item 3): the person's own last open promise, to them only.
+ * The promise is made safe for a template blank: no new line, no tab, no run of more than four spaces, and cut at a
+ * word to 120 characters with no trailing stop, so the sentence around it still reads. A promise that was cut ends
+ * with "…", so the person can see it was shortened (review); the blank never starts or ends the body, so Meta allows it.
+ */
+export function aPromiseForABlank(promise: string): string {
+  const flat = String(promise ?? '').replace(/[\r\n\t]+/g, ' ').replace(/ {5,}/g, '    ').replace(/\s+/g, ' ').trim().replace(/[.!?]+$/, '');
+  if (flat.length <= 120) return flat;
+  const cut = flat.slice(0, 119);
+  return `${cut.slice(0, Math.max(cut.lastIndexOf(' '), 60)).replace(/[,;:\s]+$/, '')}…`;
+}
+export const itFollowsUpTheirPromise = (w: WhoAndWhat, theirOwnPromise: string) => notice('anchor-follow-up', [first(w), aPromiseForABlank(theirOwnPromise), w.label]);
+
 /** checkin_your_view_matters, with the lead's first name. */
 export const yourViewMatters = (w: WhoAndWhat, leadFirstName: string | null | undefined) => notice('your-view-matters', [first(w), w.label, leadFirstName?.trim() || 'your lead']);
 

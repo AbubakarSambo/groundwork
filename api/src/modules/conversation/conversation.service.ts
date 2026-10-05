@@ -75,6 +75,7 @@ export { CLOSED_BY_THE_CLOCK };
 export const DECLINED_TO_TAKE_PART = 'declined';
 import { mirrorCommitment } from '../assistant/a-commitment-carries-past-the-ground';
 import { theAnchorParticipantGuidance, whatTheyToldYouBefore, withoutAnAnnouncedAngle } from './the-anchor-weekly-check-in';
+import { theAnchorBaselineGuidance } from './the-anchor-baseline';
 import { whatTheAnswerAgreedTo, hasAlreadyOffered, whatHappenedToTheOffer, weSayAboutTheOffer, whatIsStillOwedToThem, withoutTheSecondTellingOfIt, isAnOfferToWriteItDown, whatTheyJustSaidMayBeTheirOwnStep, YOU_HAVE_ALREADY_OFFERED } from './giving-the-person-agency';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { DocumentsService } from '../documents/documents.service';
@@ -120,6 +121,8 @@ import { familyFor, BoardFamily } from '../board/board-families';
 import { theOneWorthAsking, askAboutItBlockFor } from './what-keeps-happening-becomes-a-question';
 import { mayCoach } from './participation-timeline';
 import { theirApprovedLeave } from '../suites/who-is-away';
+import { afterTheirTurn } from './ideas-from-the-team';
+import { aRequestAfterTheirTurn } from './a-request-offered-in-the-check-in';
 import { stillAsking } from './one-question-per-turn';
 import { oneThingAsked, wouldLeaveAQuestionOut, asksMoreThanOneThing, withTheOneMoreLine, ASK_ONE_THING } from './a-turn-asks-one-thing';
 import { A_CHECK_IN_TAKES_ANSWERS, theCeilingIsReached, howMuchRoomIsLeft } from './there-is-a-ceiling-and-it-is-not-a-surprise';
@@ -2908,12 +2911,37 @@ export class ConversationService {
      * turn and served on the transcript, where the screen picks it up.
      */
     if (sessionComplete) this.startTheEndCard(checkIn as any, aiTurn.id);
-    return {
+    /*
+     * AN IDEA, SAID BACK FOR A YES (anchor piece 19). Only on a check-in started from the anchor link, with the switch
+     * on: their yes captures the idea waiting for it, and a new idea in what they just wrote is offered in the spec's
+     * words. See ideas-from-the-team.
+     */
+    const startedFrom = (checkIn as any).ground?.startedFrom
+      ?? (await (this.prisma as any).ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { startedFrom: true } })?.catch?.(() => null))?.startedFrom
+      ?? null;
+    /* A request said in their own words is offered there, as WhatsApp does (anchor pieces 26 and 27). Read first, so a
+       leave request is never also offered as an idea. See a-request-offered-in-the-check-in. */
+    const organizationId = (checkIn as any).ground?.organizationId
+      ?? (await (this.prisma as any).ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { organizationId: true } })?.catch?.(() => null))?.organizationId
+      ?? null;
+    const request = startedFrom ? await aRequestAfterTheirTurn(this.prisma, { groundId: checkIn.groundId, organizationId, startedFrom, participantId: (checkIn as any).participantId ?? null, message, sessionComplete }) : {};
+    const idea = startedFrom && !request.requestOffer && !request.openTheRequest ? await afterTheirTurn(
+      { prisma: this.prisma, anthropic: this.anthropic as any, prompts: this.prompts as any },
+      { groundId: checkIn.groundId, startedFrom, participantId: (checkIn as any).participantId ?? null, message, sessionComplete },
+    ) : {};
+    const answer: any = {
       reply: [contextNotSaid, tookTheNumbers, whereToTakeIt, offerAnswered.weSay, withRoomLeft].filter(Boolean).join('\n\n'),
       sessionComplete,
       ...(suggestedAnswers.length ? { suggestedAnswers } : {}),
+      ...(idea.ideaOffer ? { ideaOffer: idea.ideaOffer } : {}),
+      ...(request.requestOffer ? { requestOffer: request.requestOffer } : {}),
+      ...(request.openTheRequest ? { openTheRequest: request.openTheRequest } : {}),
       ...(this.anchorVersionForThisTurn.get(checkIn.id) ? { promptVersionId: this.anchorVersionForThisTurn.get(checkIn.id) } : {}),
     };
+    if (request.sayFirst) answer.reply = [request.sayFirst, answer.reply].filter(Boolean).join('\n\n');
+    /* "I have captured it for the team." is said first, before anything else in the reply (anchor piece 19). */
+    if (idea.sayFirst) answer.reply = [idea.sayFirst, answer.reply].filter(Boolean).join('\n\n');
+    return answer;
   }
 
   /**
@@ -3126,7 +3154,7 @@ export class ConversationService {
    * written once, sanitized, after the stream completes.
    */
   async *sendMessageStream(checkInId: string, requestingUserId: string, message: string):
-    AsyncGenerator<{ type: 'delta'; text: string } | { type: 'done'; reply: string; sessionComplete: boolean; suggestedAnswers?: string[] }, void, unknown> {
+    AsyncGenerator<{ type: 'delta'; text: string } | { type: 'done'; reply: string; sessionComplete: boolean; suggestedAnswers?: string[]; ideaOffer?: any; requestOffer?: any; openTheRequest?: any }, void, unknown> {
     /*
      * THE SAME CODE AS THE PLAIN ROUTE, WITH THE DRAFT SHOWN AS IT IS WRITTEN. Hafsah, 28 September
      * 2026. What the person reads last is `done.reply`, which is exactly what sendMessage returns and
@@ -3160,6 +3188,10 @@ export class ConversationService {
       reply: r.reply,
       sessionComplete: !!r.sessionComplete,
       ...(Array.isArray(r.suggestedAnswers) && r.suggestedAnswers.length ? { suggestedAnswers: r.suggestedAnswers } : {}),
+      /* The idea offer rides on the last event too (anchor piece 19), and so do the request offer and its yes (26, 27). */
+      ...(r.ideaOffer ? { ideaOffer: r.ideaOffer } : {}),
+      ...(r.requestOffer ? { requestOffer: r.requestOffer } : {}),
+      ...(r.openTheRequest ? { openTheRequest: r.openTheRequest } : {}),
     };
   }
 
@@ -5362,7 +5394,23 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       isTheLead: checkIn.participant.partyType === PartyType.INITIATOR,
       sessionNumber: checkIn.sessionNumber,
     });
-    if (!guidance) return null;
+    if (!guidance) {
+      /*
+       * THE FIRST SESSION IS THE TEAM BASELINE (anchor piece 14; decision 105 item 6): the spec's nine things to learn,
+       * one at a time, never a list. Only what this person has been told the check-in is for goes with it.
+       */
+      const baseline = await theAnchorBaselineGuidance(() => theAnchorScenarioIsOn(this.prisma), this.prompts, {
+        ground,
+        isTheLead: checkIn.participant.partyType === PartyType.INITIATOR,
+        sessionNumber: checkIn.sessionNumber,
+      });
+      if (!baseline) return null;
+      const told = this.briefFor(ground, { participantId: checkIn.participantId, isLead: false }, untoldHere)?.says?.trim() || null;
+      const aboutIt = told ? `# What this person has been told this check-in is for
+
+${told}` : '';
+      return { text: baseline.text, block: aboutIt, last: baseline.last, promptVersionId: baseline.promptVersionId, agreed: null as any };
+    }
     const lastCheckIn = await this.prisma.checkIn.findFirst({
       where: { participantId: checkIn.participantId, sessionNumber: { lt: checkIn.sessionNumber }, status: CheckInStatus.COMPLETED },
       orderBy: { sessionNumber: 'desc' },

@@ -2,6 +2,29 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## Crisis, snapshot and project again, with the judgement's stored prompt (5 October, evening)
+
+I ran the three scenarios again on a build of 0e9157bd, made in a separate worktree so the builder's
+tree was not touched, into run-oct5c. The first try failed, and nothing in it counts. The worktree had
+no `credentials` folder, which is kept out of git, so every model call failed and every check-in was
+refused. I linked the folder and ran it again. The failed try is kept as run-oct5c-nocreds.
+
+All three judgements ran on the new stored prompt `the_judgement_room` version 1
+(`ae0c6fa4-76e5-4f20-a0cc-fd6fadb78217`), and the reports on report_synthesis version 8. Every report
+has one finding for each person who answered. The number check left nothing out in any of the three.
+
+Two of the three faults are gone. Crisis no longer says "7 AM alerts", and snapshot no longer calls
+the lead "they". The third is still there. Project still tells the lead "Your own account of this is
+not in this check-in." about whether they saw Rita's requirements, and crisis now says it too, about
+how Sarah knew, beside a broken sentence: "Sarah is not a person to this check-in".
+
+Against theDecision, snapshot is still right. Crisis drops from right to partly right: it finds a
+process that failed rather than a person, but never says the rota named somebody who had left. It
+also says Priya was not on call, while its own findings say she was. Project drops from right to
+partly right, because it leads with the missing credentials rather than the scope. These are fresh
+conversations, so some of that is the people answering differently, and three scenarios are too few
+to call a trend.
+
 ## The 24-scenario run, run-oct5b, scored (5 October)
 
 Hafsah said the run could start again, and it ran from 15:50 to 17:36 in three shards against the

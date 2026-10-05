@@ -1,3 +1,4 @@
+import { KINDS_THAT_ARE_NOT_WORK } from '../board/the-kind-of-work';
 import type { PrismaService } from '../prisma/prisma.service';
 import { hoursAsRead } from './hours-said-in-chat';
 import { lagosDay, lagosMonday, type TimeRules } from './the-time-sheet-rules';
@@ -110,10 +111,11 @@ export async function readTheWeeksRecord(
   }).catch(() => []) ?? [];
   if (mine.length) {
     const items: any[] = await p.workItem?.findMany?.({
-      where: { ownerParticipantId: { in: mine.map((m) => m.id) }, updatedAt: range },
-      select: { name: true, updatedAt: true, ground: { select: { label: true } } },
+      /* Never an idea or an offer: they are not work anybody owns (KINDS_THAT_ARE_NOT_WORK). */
+      where: { ownerParticipantId: { in: mine.map((m) => m.id) }, updatedAt: range, kind: { notIn: KINDS_THAT_ARE_NOT_WORK } },
+      select: { name: true, updatedAt: true, kind: true, ground: { select: { label: true } } },
     }).catch(() => []) ?? [];
-    for (const w of items) add(w.updatedAt, `the work you own, "${w.name}"`, [w.name, w.ground?.label]);
+    for (const w of items) if (!KINDS_THAT_ARE_NOT_WORK.includes(w.kind)) add(w.updatedAt, `the work you own, "${w.name}"`, [w.name, w.ground?.label]);
   }
   return out.sort((a, b) => a.day.localeCompare(b.day));
 }

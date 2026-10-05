@@ -22,6 +22,9 @@ export interface TheMonthRecord {
   notYetThisRound: number;
   /** How many people said at least one thing they will do themselves. */
   saidWhatTheyWillDo: number;
+  /** Of those who can answer, how many finished the round that is open, and how many said a thing they will do in it (the weekly insight's "this week"). */
+  checkedInThisRound?: number;
+  saidWhatTheyWillDoThisRound?: number;
   commitmentsDone: number;
   commitmentsOpen: number;
   /** Open handoffs, said by name. */
@@ -36,6 +39,8 @@ export interface TheMonthRecord {
    * person, the latest closed, from their own check-in promises only (never a colleague's mention of them), as an
    * action in our voice. Never counted or ordered per person.
    */
+  /** Ideas captured after the person's own yes (piece 19), with the first name of who raised each. */
+  ideas?: { id: string; name: string; ownerParticipantId: string | null; raisedBy: string | null }[];
   doneByPerson?: { participantId: string; name: string; clause: string; clauseToThem?: string | null; settledBy?: string | null; doneAt: Date | null }[];
 }
 
@@ -45,11 +50,13 @@ export async function readTheMonthRecord(prisma: any, groundId: string, openRoun
   const [people, finished, commitments, handoffs, offers, ground] = await Promise.all([
     prisma.groundParticipant.findMany({ where: { groundId }, select: { id: true, userId: true, managingOnly: true, nameGiven: true, createdAt: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } }),
     prisma.checkIn.findMany({ where: { groundId, status: CheckInStatus.COMPLETED }, select: { participantId: true, sessionNumber: true, isSetup: true, status: true } }),
-    prisma.groundCommitment.findMany({ where: { groundId }, select: { participantId: true, status: true, text: true, source: true, explicit: true, settledAt: true, settledBy: true, updatedAt: true } }),
+    prisma.groundCommitment.findMany({ where: { groundId }, select: { participantId: true, status: true, text: true, source: true, explicit: true, settledAt: true, settledBy: true, updatedAt: true, statedInSession: true } }),
     prisma.groundDependency.findMany({ where: { groundId }, select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, status: true } }),
     prisma.recommendation.findMany({ where: { subjectExternalId: `check-in:${groundId}`, kind: { in: Object.keys(THE_ANCHOR_OFFERS) }, state: { in: ['PROPOSED', 'ACCEPTED'] } }, select: { kind: true } }),
     prisma.ground.findUnique({ where: { id: groundId }, select: { startsAt: true, createdAt: true } }),
   ]);
+  /* Ideas, only after the yes: kind `idea`, never `idea-offered` (piece 19, ideas-from-the-team). */
+  const ideaRows = ((await prisma.workItem?.findMany?.({ where: { groundId, kind: 'idea' }, orderBy: { createdAt: 'asc' }, select: { id: true, name: true, ownerParticipantId: true, kind: true } })?.catch?.(() => [])) ?? []) as any[];
   const counted = (people as any[]).filter((p) => !p.managingOnly && !isNotLetInYet(p));
   const ids = new Set(counted.map((p) => p.id));
   const real = (finished as any[]).filter((c) => c.status === CheckInStatus.COMPLETED && !c.isSetup && ids.has(c.participantId));
@@ -69,12 +76,15 @@ export async function readTheMonthRecord(prisma: any, groundId: string, openRoun
     checkedIn: checkedInIds.size,
     notYetThisRound: counted.filter((p) => !answeredNow.has(p.id)).length,
     saidWhatTheyWillDo: new Set(mine.map((c) => c.participantId)).size,
+    checkedInThisRound: answeredNow.size,
+    saidWhatTheyWillDoThisRound: new Set(mine.filter((c) => c.statedInSession === openRound).map((c) => c.participantId)).size,
     commitmentsDone: mine.filter((c) => c.status === 'DONE').length,
     commitmentsOpen: mine.filter((c) => c.status === 'UNKNOWN').length,
     waiting: open.map((d) => ({ from: firstName(d.fromParticipantId) ?? 'Someone', on: d.onParticipantId ? firstName(d.onParticipantId) : (d.onLabel ?? null), what: d.what ?? null })),
     handoffsCleared: (handoffs as any[]).length - open.length,
     offers: byKind,
     startedOn,
+    ideas: ideaRows.filter((i) => i.kind === 'idea').map((i) => ({ id: i.id, name: i.name, ownerParticipantId: i.ownerParticipantId ?? null, raisedBy: firstName(i.ownerParticipantId ?? null) })),
     doneByPerson: (() => {
       type Done = { participantId: string; name: string; clause: string; clauseToThem: string | null; settledBy: string | null; doneAt: Date | null };
       const latest = new Map<string, Done>();

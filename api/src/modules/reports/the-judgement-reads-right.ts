@@ -48,6 +48,22 @@ const NOBODY_ELSE_ANSWERS = 'Nobody else answers this check-in, so there is no o
  *    project. Only where the line above says "you" or "your", and never where the thing is who somebody else is.
  */
 const ONLY_YOU_CAN_ANSWER = 'Only you can answer this.';
+/*
+ * AND WHERE THE QUESTION ITSELF IS ABOUT THE READER (run oct5c, the project board): "This check-in cannot tell you whether
+ * you ever saw or responded to Rita Adeleke's requirements from July." The line above it is about Rita, but the question
+ * is the reader's own, so only the reader can answer it. Read after the heading's own opening ("This check-in cannot tell
+ * you"), and only "whether you", "why you", "how you", "when you", "if you" or "what you": the reader as the subject. An
+ * admin reads the lead's name there, so this never fires for them.
+ */
+/* Not where something is done TO the reader ("whether you will get the budget from finance"): somebody else answers that. */
+const A_QUESTION_ABOUT_THE_READER = /\b(?:whether|why|how|when|if|what) you\b(?!\s+(?:will\s+(?:get|be\s+given|be\s+told|receive)|are\s+given)\b)/i;
+const withoutTheHeadingsOpening = (about: string) => about.replace(/^\s*This check-in cannot tell you (?:about )?/i, '');
+/*
+ * AND WHERE THE LINE ABOVE SAYS SOMEBODY IS NOT IN THE CHECK-IN (run oct5c, the crisis board): "Sarah is not in this check-in,
+ * and the record does not state Sarah's source of information." under "how Sarah knew". The account missing is Sarah's,
+ * never the reader's, so it says so with her name again: "Sarah's own account is not in this check-in."
+ */
+const SOMEBODY_IS_NOT_IN_IT = /^\s*(\p{Lu}[\p{L}'-]+(?: \p{Lu}[\p{L}'-]+)?) (?:is|was) not in this check-in\b/u;
 /* "you", or "your" before a thing of theirs, never "your" before a person or a group: "Your team has not said what the
    difficulties are." is about the team, so the old sentence stays there (review of 10a8d3ae). */
 const THE_LINE_IS_ABOUT_THE_READER = /\b(?:you|yours|yourself)\b|\byour\b(?!\s+(?:own\s+)?(?:team|teams|staff|people|colleague|colleagues|manager|managers|lead|leads|report|reports|direct reports)\b)/i;
@@ -111,10 +127,12 @@ export function aJudgementThatReadsRight<T>(judgement: T, opts: { theReaderIsThe
       if (!x || typeof x !== 'object') return x;
       const theLeadsOwn = typeof x.toKnow === 'string' && x.toKnow.trim() === THE_LEADS_OWN;
       const m = theLeadsOwn ? String(x.about ?? '').trim().match(WHO_SOMEBODY_ELSE_IS) : null;
+      const outside = theLeadsOwn ? String(x.why ?? '').match(SOMEBODY_IS_NOT_IN_IT) : null;
       const toKnow = m
         ? `That ${m[1].toLowerCase().split(' ')[0]}'s own account is not in this check-in.`
+        : outside ? `${outside[1]}'s own account is not in this check-in.`
         : theLeadsOwn && opts.theReaderIsTheOnlyPerson ? NOBODY_ELSE_ANSWERS
-          : theLeadsOwn && THE_LINE_IS_ABOUT_THE_READER.test(String(x.why ?? '')) ? ONLY_YOU_CAN_ANSWER
+          : theLeadsOwn && (THE_LINE_IS_ABOUT_THE_READER.test(String(x.why ?? '')) || A_QUESTION_ABOUT_THE_READER.test(withoutTheHeadingsOpening(String(x.about ?? '')))) ? ONLY_YOU_CAN_ANSWER
             : x.toKnow;
       const about = typeof x.about === 'string' ? aHeadingThatIsASentence(x.about) : x.about;
       return { ...x, about, toKnow };

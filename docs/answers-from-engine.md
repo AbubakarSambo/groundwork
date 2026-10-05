@@ -324,6 +324,87 @@ both pieces. They belong with the conversation work, after the run.
 included, and anything else sent is ignored. If you want it on Admin → System → Pricing beside the
 free trial, that is a screen to add.
 
+**Anchor piece 30, the nudge, is built (decision 105, item 3).** It is behind the anchor switch and
+only for a check-in started from the anchor link.
+
+- **In the app:** a person who has not yet checked in for the open round is served `aNudgeForYou` on their own board read. It is built from their own last open promise, said back to them: "You mentioned you would send your manager the deck. I'd love to hear how it went." With no open promise, it reads "It's been a few days since we spoke. What's changed since then?" It is null once they have checked in. Nobody else is ever served it: not the lead, not an admin with access, and not an admin who only reads.
+- **By email:** the reminder carries the same line, to that person only.
+- **On WhatsApp (changed, Hafsah 5 October):** it is now sent. The morning WhatsApp job sends it in place of the chase to a person with an open promise, through the same sender and gates as every morning message: WhatsApp on, not on leave, not kept off WhatsApp, STOP, "Not now", and one first message a day. Rukia reads "Hi Rukia, last time you said you would send your manager the deck. I'd love to hear how it went. Your check-in for Everyone pulling the same way is open, and you can answer here." The template is `anchor_checkin_follow_up`. Locally nothing really goes out, because no template is approved and there are no live keys.
+- Only the person's own promise from their own check-in is ever used. Never a promise a lead wrote, and never anybody else's words.
+
+The existing `activeLine` ("18/20 active · Groundwork has nudged the remaining 2.") is unchanged.
+
+**Anchor piece 28, the weekly lead WhatsApp insight, is built (decision 105, item 2).** It goes on Friday
+at 06:30 in Lagos to the lead of each anchor check-in, where the organisation has WhatsApp on, and
+only while the anchor switch is on. It is the lead's one message of that day, so the 07:00 daily
+summary is held back that day by the existing rule in `howOftenToday`. Amina reads:
+
+"Hi Amina. Your team is starting to move. This week, three of five people checked in, and two have
+said what they will do themselves. Rukia committed to send the deck to the client, and Rukia says it is
+done. One thing still needs attention. Baraka is waiting on Rukia for the sales deck. Groundwork is
+working on that with them. This week's picture is on the board at <link>, if you want the rest."
+
+Only what the lead reads on the month board goes into it, nobody's words are quoted, and only people
+in that check-in are named. Changed after review: "This week" now counts only the round that is open,
+by the board's own rule. It counts that round's check-ins and the things people said they would do in
+that round, never the whole month. People in the check-in and admins are never sent it. Nothing has a screen
+to add, because the link opens the board. The template, `anchor_weekly_insight`, is the ninth, proposed
+in `docs/whatsapp-templates.md`. It cannot go outside the 24-hour window until Meta approves it. "Free
+during the trial" depends on the organisation having WhatsApp on: an anchor trial does not switch the
+add-on on by itself, and nothing charges for it here.
+
+**Anchor piece 19, ideas from your team, is built (decision 105, item 5).** It is behind the anchor
+switch and only for a check-in started from the anchor link.
+
+- **In the person's check-in:** after their turn, a small model call looks for a concrete idea, and the idea must be their own words found in what they wrote. When there is one, the reply carries `ideaOffer`: `{ idea, question: "That sounds like a concrete idea. Want me to capture it for the team?", whoWillSeeIt: "If you say yes, everyone in this check-in will see it, with your name.", yes: "Yes, capture it", no: "Not now" }`. This is your `TheIdeaOfferInTheCheckIn`. It rides on the plain reply and on the stream's `done` event.
+- **Their yes (changed after review):** only the exact answer "Yes, capture it", sent as the next message, captures the idea. Your "Yes, capture it" button must send exactly that text, which is `ideaOffer.yes`. A free-text yes, such as "Yes, I sent the deck to Naivas", captures nothing, and the reply starts with "I have captured it for the team. Everyone in this check-in will see it, with your name." "Not now", or simply carrying on, leaves nothing behind.
+- **On the board:** `ideasFromYourTeam` (your `TheIdeasFromYourTeam`) is served to the lead and to everyone in the check-in. Each idea carries "Raised by Rukia.", or "Raised by you." for the person's own. `similarNeedsSentence` is null, because ideas are not grouped yet. An admin who only reads, and an admin with access who is not in the check-in, are not served it.
+- **Counts:** the month board's "What the team is contributing" and the contribution lens now count ideas ("One idea from your team has been captured."), and so does the end-of-month read.
+- **Not built:** the offer is not kept on the transcript, so it does not come back after a reload.
+- **Where ideas are kept:** an idea is a work item of kind `idea`, and an offer waiting for a yes is a work item of kind `idea-offered`. Neither belongs to any kind of work's sections, and no migration was needed.
+
+The prompt is new: `anchor_idea_spotting` version 1, id `3294fbe3-d3ef-4911-8737-89090d1ffe64`, active in
+the local database. Each offer keeps that id in its row. It touches no all-24 scenario, because none
+of them is an anchor check-in. It runs only on the anchor seed and the anchor journey.
+
+**Anchor piece 14, the team baseline, is built (decision 105, item 6).** For an anchor check-in only, a
+person's first session is the baseline. The model is given the spec's nine things to learn: what they
+work on, what matters most from where they sit, what they are responsible for, what success looks like
+to them, what they think the lead is most concerned about, what makes the work difficult, who they
+depend on, who depends on them, and what the team could do better. It asks about one at a time, in its
+own words, never as a list or a count, and it does not coach yet. It is given only what the person has
+been told the check-in is for. From their second session, the weekly check-in (piece 15) is used as
+before.
+
+There is no screen to change. The prompt is new: `anchor_participant_baseline` version 1, id
+`ad402fbe-9dcf-4eb6-a6f2-e34ac6a706e6`, active in the local database. The turn's `promptVersionId`
+shows it. It touches no all-24 scenario, because none of them is an anchor check-in. It runs only on
+the anchor seed and the anchor journey.
+
+**Anchor pieces 26 and 27, a request offered in the check-in, are built (decision 105, item 4).** They
+are behind the anchor switch and only for anchor check-ins. When a person asks for leave, or asks to
+spend money, in their own words in the check-in, the reply carries `requestOffer`:
+`{ kind: "leave" | "spending", question: "Shall I treat this as a leave request?" (or "... a spending request?"), yes: "Yes", no: "No" }`.
+It uses the same reading and the same question as WhatsApp.
+
+On their yes, the reply starts with the spec's sentence and carries `openTheRequest`:
+`{ kind, suiteIsOn, says, button }`. With Leave on: "You can submit that through Leave here and it'll
+appear on your manager's board.", with the button "Request leave". With Spending on: "I can turn that
+into a payment request so it appears on the appropriate board.", with "Create request". With the suite
+off: "Your organisation also has the option to manage leave through Groundwork." (or "spending
+requests"), and `button` is null. The button should open the suite's own request form. Nothing is filed
+for the person, so a date or a sum is never guessed. A no, or carrying on, leaves nothing.
+
+Both ride on the plain reply and the stream's `done`. A request is never also offered as an idea.
+There is no model and no prompt: the reading is WhatsApp's own. Its limit is that only a request is
+taken, so "I'm taking Friday off" alone is not read as one, while "Can I take a day off on Friday?" is.
+No PromptVersion is needed, and no all-24 scenario is touched.
+
+**Two lines from the re-run (run-oct5c), put right where they are served.**
+
+- **Project:** "This check-in cannot tell you whether you ever saw or responded to Rita Adeleke's requirements from July." used to keep "Your own account of this is not in this check-in." The question has the lead as its subject, so the lead now reads "Only you can answer this." An admin reads the lead's name there and keeps the old sentence.
+- **Crisis:** "Sarah is not a person to this check-in" came from the repair that replaces the word "party". "a party to this check-in" now becomes "in this check-in": "Sarah is not in this check-in, and the record does not state Sarah's source of information." Under it, the lead now reads "Sarah's own account is not in this check-in." instead of being told their own account is missing. Her name is said again, and no pronoun is guessed.
+
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
 ```

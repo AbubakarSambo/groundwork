@@ -42,7 +42,7 @@ import { contributionAsThisReaderMayRead } from './a-rating-goes-only-to-the-per
 import { coverageAsThisReaderMayRead, withNoRatingNumber } from './no-rating-is-served';
 import { theBoardKindsOffered, theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { theAnchorBoardParts } from './the-anchor-board-parts';
-import { oneOfTheKinds, plainFields, theSameName, theRecordSections, itemKindsFor, stagesFor, RECORDS_FOR_EACH_KIND, type AServedRecord, type KindOfWork } from './the-kind-of-work';
+import { oneOfTheKinds, plainFields, theSameName, theRecordSections, itemKindsFor, stagesFor, RECORDS_FOR_EACH_KIND, KINDS_THAT_ARE_NOT_WORK, type AServedRecord, type KindOfWork } from './the-kind-of-work';
 
 /** What the lead sends to add or change a record of the kind of work. */
 export interface WorkItemInput {
@@ -2224,7 +2224,7 @@ export class BoardService {
     {
       const kind = oneOfTheKinds((ground as any).kindOfWork);
       const items = kind
-        ? await ((this.prisma as any).workItem?.findMany?.({ where: { groundId }, orderBy: { createdAt: 'asc' } }) ?? Promise.resolve([])).catch(() => [])
+        ? await ((this.prisma as any).workItem?.findMany?.({ where: { groundId, kind: { notIn: KINDS_THAT_ARE_NOT_WORK } }, orderBy: { createdAt: 'asc' } }) ?? Promise.resolve([])).catch(() => [])
         : [];
       const sourceIds = (items as any[]).map((i) => i.sourceEntryId).filter(Boolean);
       const sources = sourceIds.length

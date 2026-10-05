@@ -5,6 +5,7 @@ import { TimeSheetsService } from '../suites/the-time-sheets.service';
 import { SpendingService } from '../suites/the-spending.service';
 import { organisationsThatTurnedWhatsAppOn } from '../whatsapp/only-where-whatsapp-is-turned-on';
 import { sendTheLeadsDailySummaries } from '../whatsapp/the-leads-daily-summary';
+import { sendTheAnchorWeeklyInsights } from '../whatsapp/the-anchor-weekly-insight';
 import { sendTheLeadsWeeklyLetters } from '../email/the-leads-weekly-letter';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { onceAcrossCopies, theDay, theWeek } from '../prisma/once-across-copies';
@@ -23,12 +24,14 @@ import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { keptOffThePhone } from '../whatsapp/a-check-in-kept-off-the-phone';
-import { whatToSendThisMorning, whichChase, whenItIsDue, itIsOverdue, itIsDueTomorrow, theTeamIsAlmostIn, yourViewMatters, itOpensSoon, MORNING_ORDER } from '../whatsapp/what-goes-to-a-phone';
+import { whatToSendThisMorning, whichChase, whenItIsDue, itIsOverdue, itIsDueTomorrow, theTeamIsAlmostIn, yourViewMatters, itOpensSoon, MORNING_ORDER, itFollowsUpTheirPromise } from '../whatsapp/what-goes-to-a-phone';
+import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
+import { theirOwnLastOpenPromise } from '../conversation/the-anchor-nudge';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { isNotLetInYet } from './who-an-admin-did-not-let-in';
 
 /* Every kind a morning message is recorded under, sent, held or as a template. */
-const MORNING_KINDS = ['overdue', 'due-tomorrow', 'team-almost-in', 'your-view-matters'].flatMap((k) => [k, `${k}:template`, `${k}:held`]);
+const MORNING_KINDS = ['overdue', 'due-tomorrow', 'team-almost-in', 'your-view-matters', 'anchor-follow-up'].flatMap((k) => [k, `${k}:template`, `${k}:held`]);
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { GroundStatus, CheckInStatus, TurnRole, PartyType, ReportActivationStatus } from '@prisma/client';
 import { PatternsService } from '../patterns/patterns.service';
@@ -733,7 +736,7 @@ export class GroundsCron implements OnApplicationBootstrap {
       },
       select: {
         id: true, groundId: true, sessionNumber: true, createdAt: true, availableFrom: true, participantId: true,
-        ground: { select: { label: true, scenario: true, organizationId: true, overWhatsApp: true, cadence: true, chaseAfterDays: true, chasingStopped: true, tellTheLead: true, initiator: { select: { firstName: true } } } },
+        ground: { select: { label: true, scenario: true, organizationId: true, overWhatsApp: true, cadence: true, chaseAfterDays: true, chasingStopped: true, tellTheLead: true, startedFrom: true, initiator: { select: { firstName: true } } } },
         participant: { select: { id: true, email: true, userId: true, user: { select: { firstName: true, email: true, phoneNumber: true, isActive: true, deletedAt: true } } } },
       },
       ...page,
@@ -763,7 +766,7 @@ export class GroundsCron implements OnApplicationBootstrap {
           select: { kind: true, createdAt: true },
         });
         const had = new Set(before.map((b) => (b.kind ?? '').split(':')[0]));
-        const lastChase = before.find((b) => /^(team-almost-in|your-view-matters)/.test(b.kind ?? ''));
+        const lastChase = before.find((b) => /^(team-almost-in|your-view-matters|anchor-follow-up)/.test(b.kind ?? ''));
         const dueAt = whenItIsDue(ci.availableFrom ?? ci.createdAt, ci.ground.cadence);
         const what = whatToSendThisMorning({
           policy: { days: ci.ground.chaseAfterDays, stopped: ci.ground.chasingStopped, tellTheLead: ci.ground.tellTheLead },
@@ -782,9 +785,19 @@ export class GroundsCron implements OnApplicationBootstrap {
         if (what === 'overdue') said = itIsOverdue(who);
         else if (what === 'due-tomorrow') said = itIsDueTomorrow(who, dueAt!);
         else {
-          const counts = await this.whoHasAnswered(ci.groundId, ci.sessionNumber);
-          const chase = whichChase({ ...counts, aboutOnePerson: isEvaluationCheckIn(ci.ground.scenario) });
-          said = chase === 'team-almost-in' ? theTeamIsAlmostIn(who, counts.answered, counts.ofHowMany) : yourViewMatters(who, ci.ground.initiator?.firstName);
+          /*
+           * ON AN ANCHOR CHECK-IN, THE ANCHOR'S NUDGE (piece 30; decision 105 item 3): the person's own last open promise,
+           * to them only, in place of the chase. Every gate above still holds, and the sender counts it as the day's one.
+           */
+          const theirs = ci.ground.startedFrom === STARTED_FROM_THE_ANCHOR && (await theAnchorScenarioIsOn(this.prisma))
+            ? await theirOwnLastOpenPromise(this.prisma, ci.groundId, ci.participantId)
+            : null;
+          if (theirs) said = itFollowsUpTheirPromise(who, theirs);
+          else {
+            const counts = await this.whoHasAnswered(ci.groundId, ci.sessionNumber);
+            const chase = whichChase({ ...counts, aboutOnePerson: isEvaluationCheckIn(ci.ground.scenario) });
+            said = chase === 'team-almost-in' ? theTeamIsAlmostIn(who, counts.answered, counts.ofHowMany) : yourViewMatters(who, ci.ground.initiator?.firstName);
+          }
         }
         const rank = MORNING_ORDER.indexOf(what);
         const key = ci.participant.userId ?? phone;
@@ -821,6 +834,24 @@ export class GroundsCron implements OnApplicationBootstrap {
       now,
     ).catch((err: any) => { this.logger.warn(`The leads' daily summaries could not be sent: ${err?.message}`); return { tried: 0 }; });
     if (result.tried) this.logger.log(`WhatsApp: ${result.tried} lead summary message(s) tried.`);
+    return result;
+  }
+
+  /**
+   * THE ANCHOR'S WEEKLY INSIGHT ON WHATSAPP (anchor piece 28), Friday at half past six in the morning in Lagos, before
+   * the daily summary at seven, which it replaces that day (decision 105 item 2). Only while the anchor switch is on.
+   */
+  @Cron('30 6 * * 5', { timeZone: 'Africa/Lagos' })
+  async sendTheAnchorWeeklyInsights() {
+    await onceAcrossCopies(this.prisma, 'anchor-weekly-insight', theWeek(), () => this.sendTheAnchorWeeklyInsightsInner());
+  }
+
+  async sendTheAnchorWeeklyInsightsInner(now: Date = new Date()): Promise<{ tried: number }> {
+    const result = await sendTheAnchorWeeklyInsights(
+      { prisma: this.prisma, whatsapp: this.whatsapp, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
+      now,
+    ).catch((err: any) => { this.logger.warn(`The anchor's weekly insights could not be sent: ${err?.message}`); return { tried: 0 }; });
+    if (result.tried) this.logger.log(`WhatsApp: ${result.tried} anchor weekly insight(s) tried.`);
     return result;
   }
 

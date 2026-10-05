@@ -1,5 +1,7 @@
 # Morning report
 
+**5 October, 21:20.** I ran crisis, snapshot and project again on the judgement's new stored prompt (ae0c6fa4), and it is the one that ran. "7 AM alerts" and "they" for the lead are gone, but "Your own account of this is not in this check-in." still reaches the lead, in project and now in crisis. Details are in the run log.
+
 At `9f4dd902`, the new free-run migration applies on a fresh local database, so 360 of 360 migrations now apply, with nothing more to apply on a second run and no new drift. The two API tests that failed earlier now pass, and so does the whole billing folder: 264 of 264 tests in 28 files.
 
 At `accd1717`, 16,768 of the 16,772 API tests pass, with 2 failed and 2 skipped. Both failures are real and fail again when run alone. First, `pricing.anchorTrial` has no writer in the API (commit `42576e10`). Second, the praise test cannot find the judgement's old return line, because commit `d2e3e34b` changed it. The client has 4,221 of 4,223 passing, and both failures are the expected mirror test, which waits for the screens workspace. Both typechecks pass.
@@ -92,9 +94,18 @@ database, and every one is complete, so the warning came too early and the numbe
 - Anchor piece 32: the end-of-month read now names the people who moved things, with the same sentences as the month board.
 - I stopped on anchor pieces 26 and 27 (suites offered inside a check-in). The offer would have to go into the check-in conversation's replies, which is prompt work or changes what the scorer measures. Ask Groundwork already offers leave and spending.
 - Every free run is now one month, as Hafsah answered tonight (decision 78). The staff gift "on the house" used to default to three months, and now defaults to one. Its file and route keep the old name, so nothing that calls them breaks. The regular trial was already one month in its setting and default. The local database's `pricing.freeTrial` row reads months 1.
+- Anchor piece 30: the anchor's nudge repeats a person's own last open promise to them only, in the app and by email ("You mentioned you would send your manager the deck. I'd love to hear how it went."). On WhatsApp it is now sent too, through the same sender and limits as every morning message, as the proposed template `anchor_checkin_follow_up`.
+- Anchor piece 28: the lead's weekly WhatsApp insight is built. It goes Friday morning, names people in that check-in for what they did, quotes nobody, and replaces that day's daily summary. It is behind the anchor switch, and the template is proposed, not approved.
+- Anchor piece 19: in an anchor check-in, a concrete idea in a person's own words is said back with "That sounds like a concrete idea. Want me to capture it for the team?", and only their yes captures it. Everyone in the check-in then sees it with "Raised by …". Prompt `anchor_idea_spotting` v1 (`3294fbe3-d3ef-4911-8737-89090d1ffe64`) is active locally. It touches no all-24 scenario.
+- Anchor piece 14: a person's first session in an anchor check-in is now the team baseline, with the spec's nine things to learn, asked one at a time and never as a list. Prompt `anchor_participant_baseline` v1 (`ad402fbe-9dcf-4eb6-a6f2-e34ac6a706e6`) is active locally. It touches no all-24 scenario.
+- Anchor pieces 26 and 27: in an anchor check-in, asking for leave or for money is offered as a request there, with WhatsApp's question ("Shall I treat this as a leave request?"). The yes gets the spec's sentence and a way to the form. There is no model and no prompt, and no all-24 scenario is touched.
+- Two lines from the re-run are put right. On the project board, the lead's own question now reads "Only you can answer this.". On the crisis board, "Sarah is not a person to this check-in" now reads "Sarah is not in this check-in", with "Sarah's own account is not in this check-in." under it.
+- After review: an idea is captured only on the button's "Yes, capture it". Ideas and offers are never read as work a person owns, which fixes a leak into the drafted week. A WhatsApp promise that is cut now ends with "…". "Only you can answer this." is not said about something done to the lead, such as "whether you will get the budget".
 - I stopped on 139, the goal drawn as "Point to successfully renewed contracts", because no code writes that line and it is not in this computer's database. I asked the screens workspace which field carries it. I did not start 130 (b), 130 (d) or 131 (6), because none of them is small.
 
 ### Needs Hafsah
+
+**Decided (5 October, decision 105):** the weekly lead WhatsApp insight (anchor Needs Hafsah 2) follows the spec with names, replaces one day's daily summary each week, and goes only to a lead with WhatsApp on. Nudges (Needs Hafsah 7) may repeat a person's own commitment to that person only. The three prompt pieces, ideas (19), the baseline (14) and suites offered in the check-in (26 and 27), follow the spec and are kept only if no engine number drops.
 
 **Decided (5 October): a free run that starts inside the anchor month counts from the day that month began, never from today.** Hafsah kept piece 34 as built. Whether the anchor month is for new organisations only is still open; both switches are off.
 

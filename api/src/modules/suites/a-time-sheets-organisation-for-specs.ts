@@ -63,7 +63,7 @@ export interface ARecordForSpecs {
   sessions?: { userId: string; label: string; startedAt?: Date | null; completedAt?: Date | null; isSetup?: boolean }[];
   commitments?: { personExternalId: string; text: string; state: string; resolvedAt: Date | null; subjectExternalId?: string | null }[];
   subjects?: { externalId: string; title: string; ownerExternalId: string | null; updatedAt: Date; sourceDeletedAt?: Date | null }[];
-  workItems?: { ownerUserId: string; name: string; updatedAt: Date; label: string }[];
+  workItems?: { ownerUserId: string; name: string; updatedAt: Date; label: string; kind?: string }[];
 }
 
 export function aTimeSheetsOrganisation(opts: { rules?: unknown; on?: boolean; workflows?: unknown; record?: ARecordForSpecs } = {}) {
@@ -135,7 +135,9 @@ export function aTimeSheetsOrganisation(opts: { rules?: unknown; on?: boolean; w
     workItem: {
       findMany: jest.fn(async ({ where }: any) => (opts.record?.workItems ?? [])
         .filter((w) => where.ownerParticipantId.in.includes(`gp-${w.ownerUserId}`) && matches(w, { updatedAt: where.updatedAt }))
-        .map((w) => ({ name: w.name, updatedAt: w.updatedAt, ground: { label: w.label } }))),
+        /* The query's own kind filter, as the database would apply it. */
+        .filter((w) => !(where.kind?.notIn ?? []).includes(w.kind ?? 'task'))
+        .map((w) => ({ name: w.name, updatedAt: w.updatedAt, kind: w.kind ?? 'task', ground: { label: w.label } }))),
     },
     assistantProposal: {
       findFirst: jest.fn(async ({ where }: any) => [...proposals].reverse().find((p) => p.state === 'PARKED' && p.personExternalId === where.personExternalId) ?? null),
