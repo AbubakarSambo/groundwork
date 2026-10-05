@@ -56,7 +56,10 @@ describe('the invite link a lead can actually get to', () => {
     // "Delivered" only means a mail server accepted it. Gating recovery on a
     // bounce leaves the commonest case - it arrived and they lost it - with no
     // way out.
-    expect(ADMIN_PAGE).toMatch(/isInitiator && !p\.userId && \(/)
+    //
+    // WALKTHROUGH PASS 2, ITEM 1: NOT FOR SOMEBODY WITH NO SEAT. Their invitation has never gone
+    // out, so there is no link yet to copy - `!p.awaitingSeat` was added alongside `!p.userId`.
+    expect(ADMIN_PAGE).toMatch(/isInitiator && !p\.userId && !p\.awaitingSeat && \(/)
   })
 })
 
