@@ -76,7 +76,7 @@ export { CLOSED_BY_THE_CLOCK };
 /** `CheckIn.closedReason` when the person declined to take part. */
 export const DECLINED_TO_TAKE_PART = 'declined';
 import { mirrorCommitment } from '../assistant/a-commitment-carries-past-the-ground';
-import { theAnchorParticipantGuidance, whatTheyToldYouBefore, withoutAnAnnouncedAngle } from './the-anchor-weekly-check-in';
+import { STARTED_FROM_THE_ANCHOR, theAnchorParticipantGuidance, whatTheyToldYouBefore, withoutAnAnnouncedAngle } from './the-anchor-weekly-check-in';
 import { theAnchorBaselineGuidance } from './the-anchor-baseline';
 import { whatTheAnswerAgreedTo, hasAlreadyOffered, whatHappenedToTheOffer, weSayAboutTheOffer, whatIsStillOwedToThem, withoutTheSecondTellingOfIt, isAnOfferToWriteItDown, whatTheyJustSaidMayBeTheirOwnStep, YOU_HAVE_ALREADY_OFFERED } from './giving-the-person-agency';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
@@ -350,6 +350,8 @@ const WHAT_THE_BRIEF_IS_READ_FROM = {
      showed nobody, because this select did not read it. */
   toldToParticipants: true,
   scenario: true,
+  /* So a check-in the anchor link started can be told apart: its lead's words are not served to the team (decision 96, item 8). */
+  startedFrom: true,
   initiatorId: true,
   /* AND WHOEVER THAT IS, BY NAME. The opener says "Bisi says your target is 12", never "the person
      who set this up said". See nothing-said-yet-cannot-be-quoted. */
@@ -540,7 +542,13 @@ export class ConversationService {
    * survive a reload. Empty when it asks nothing, and on any failure: a missing suggestion is never
    * an error the person sees. See suggested-answers.
    */
-  private async suggestedAnswersFor(turnId: string, turnText: string, theirLastAnswer: string | null): Promise<string[]> {
+  private async suggestedAnswersFor(turnId: string, turnText: string, theirLastAnswer: string | null, checkInId?: string): Promise<string[]> {
+    /*
+     * NOTHING IS SUGGESTED IN THE TEAM BASELINE (anchor piece 14). Its questions ask what the person sees from where they sit, what they
+     * think their lead is worried about, and who they depend on. A ready-made answer there ("I believe we are shipping the product.") is an
+     * answer put into their mouth, on the one conversation that exists to learn what is in theirs.
+     */
+    if (checkInId && this.anchorWeekForThisTurn.get(checkInId)?.isTheBaseline) return [];
     const answers = await suggestAnswers(this.anthropic as any, turnText, theirLastAnswer).catch(() => [] as string[]);
     if (answers.length) {
       await this.prisma.conversationTurn.update({ where: { id: turnId }, data: { suggestedAnswers: answers } as any }).catch(() => undefined);
@@ -949,6 +957,21 @@ export class ConversationService {
     untold: AnUntoldGoalRow[] = [],
   ): { subject: string | null; says: string | null; objectives: { name: string; target: number | null; direction: 'AIM' | 'LIMIT' | 'RATE' | 'DEADLINE' | 'ZERO' | null }[]; alsoSay?: string | null } | null {
     if (!ground) return null;
+    /*
+     * A CHECK-IN THE ANCHOR LINK STARTED TELLS THE TEAM NOTHING OF WHAT THE LEAD SAID IN HER OWN CONVERSATION (decision 96, item 8).
+     * What she is carrying and what she is seeing are hers alone, and what she needs the team to understand reaches them only once she
+     * says so, which nothing records yet. So her brief and the aims her words made are not served to anybody who is not the lead: the
+     * invitation has already said that she wants to hear their side. Her own reading of them is unchanged.
+     */
+    if (!reader?.isLead && (ground as any).startedFrom === STARTED_FROM_THE_ANCHOR) {
+      return {
+        subject: ground.label ?? null,
+        /* Only what the product was told to tell them, never the brief and never her aims. */
+        says: whatAParticipantIsToldAboutThis(null, [], { told: (ground as any).toldToParticipants ?? null, readerParticipantId: reader?.participantId ?? null, scenario: (ground as any).scenario ?? null }),
+        objectives: [],
+        alsoSay: null,
+      };
+    }
     const allowed = targetsFor(
       ground.objectives ?? [],
       reader?.participantId ?? null,
@@ -1262,9 +1285,11 @@ export class ConversationService {
        an invited person, so a row that holds only that sentence says nothing the conversation can
        use: they are asked, the same as somebody with no role at all. */
     const theRosterIsSilent = !theRosterAlreadySaysWhoTheyAre(aRoleInTheirOwnWords(checkIn.participant as any));
+    /* The team baseline opens with its own question about their work, never "are you the person this check-in is about": nothing here is about one person. */
+    const theBaselineIsRunning = !!this.anchorWeekForThisTurn.get(checkIn.id)?.isTheBaseline;
     const reply = alreadyWritten
       ? alreadyWritten
-      : startsSomething && notTheLead && firstSession && theRosterIsSilent && correctingSession == null && !(checkIn as any).isFinal
+      : startsSomething && notTheLead && firstSession && theRosterIsSilent && correctingSession == null && !(checkIn as any).isFinal && !theBaselineIsRunning
       ? WHO_ARE_YOU_IN_THIS
       : await this.anthropic.respond(openerSystem, [
           { role: 'user', content: beginMessage },
@@ -1317,7 +1342,7 @@ export class ConversationService {
     /* A session that opens after a document was attached opens with what we have from it. Once. */
     const contextAtTheTop = await this.theContextNotYetSaid(checkIn as any);
     /* Suggested answers under the opening question too. */
-    const suggestedAnswers = await this.suggestedAnswersFor(aiTurn.id, aiTurn.content ?? '', null);
+    const suggestedAnswers = await this.suggestedAnswersFor(aiTurn.id, aiTurn.content ?? '', null, checkIn.id);
     return { reply: contextAtTheTop ? `${contextAtTheTop}\n\n${aiTurn.content}` : aiTurn.content, theOpener: aiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any), await this.untoldGoalsOn(checkIn.groundId)), mayCompleteAfter: theFloorFor(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null), ...(suggestedAnswers.length ? { suggestedAnswers } : {}), ...(this.anchorVersionForThisTurn.get(checkIn.id) ? { promptVersionId: this.anchorVersionForThisTurn.get(checkIn.id) } : {}) };
   }
 
@@ -2932,7 +2957,7 @@ export class ConversationService {
     this.noteWhatTheySaid(checkIn.id, message).catch((err: any) =>
       this.logger?.warn?.(`Notes not updated for ${checkIn.id}: ${err?.message}`));
     /* Suggested answers under the question: task 2.6, screens request 7a. See suggested-answers. */
-    const suggestedAnswers = sessionComplete ? [] : await this.suggestedAnswersFor(aiTurn.id, aiTurn.content ?? '', message);
+    const suggestedAnswers = sessionComplete ? [] : await this.suggestedAnswersFor(aiTurn.id, aiTurn.content ?? '', message, checkIn.id);
     /*
      * WHAT IS NOW IN THEIR RECORD, SHOWN BEFORE THEY FINISH (task 2.7, screens request 7b). Built after
      * the goodbye and never in front of it: the record reader takes ten to forty-seven seconds on the
@@ -5410,9 +5435,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     return this._anchorVersionForThisTurn;
   }
   /* The anchor's weekly words for this turn, written by composeSystemPrompt and read by the reply path that puts them after the rest. */
-  private _anchorWeekForThisTurn?: Map<string, { text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo> } | null>;
+  private _anchorWeekForThisTurn?: Map<string, { text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo>; isTheBaseline?: boolean } | null>;
   private get anchorWeekForThisTurn() {
-    if (!this._anchorWeekForThisTurn) this._anchorWeekForThisTurn = new Map<string, { text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo> } | null>();
+    if (!this._anchorWeekForThisTurn) this._anchorWeekForThisTurn = new Map<string, { text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo>; isTheBaseline?: boolean } | null>();
     return this._anchorWeekForThisTurn;
   }
   /** The anchor's weekly words that go before the turn's own additions, and the ones that go after everything. Both empty unless the anchor is in play. */
@@ -5431,7 +5456,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     ground: any,
     untoldHere: AnUntoldGoalRow[],
     latestMessage: string,
-  ): Promise<{ text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo> } | null> {
+  ): Promise<{ text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo>; isTheBaseline?: boolean } | null> {
     const guidance = await theAnchorParticipantGuidance(() => theAnchorScenarioIsOn(this.prisma), this.prompts, {
       ground,
       isTheLead: checkIn.participant.partyType === PartyType.INITIATOR,
@@ -5452,7 +5477,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       const aboutIt = told ? `# What this person has been told this check-in is for
 
 ${told}` : '';
-      return { text: baseline.text, block: aboutIt, last: baseline.last, promptVersionId: baseline.promptVersionId, agreed: null as any };
+      return { text: baseline.text, block: aboutIt, last: baseline.last, promptVersionId: baseline.promptVersionId, agreed: null as any, isTheBaseline: true };
     }
     const lastCheckIn = await this.prisma.checkIn.findFirst({
       where: { participantId: checkIn.participantId, sessionNumber: { lt: checkIn.sessionNumber }, status: CheckInStatus.COMPLETED },

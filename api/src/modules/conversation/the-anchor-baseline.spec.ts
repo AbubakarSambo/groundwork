@@ -125,3 +125,86 @@ describe('anchor piece 14: who it is for, and who it is not for', () => {
     expect(await theAnchorBaselineGuidance(async () => true, undefined, { ground: { startedFrom: 'anchor' }, isTheLead: false, sessionNumber: 2 })).toBeNull();
   });
 });
+
+describe('the team baseline says nothing of the lead\'s own conversation, and does not open on who the check-in is about (6 October)', () => {
+  const opened = async (w: World) => {
+    const world = aWorld({ ...w, sessionNumber: 1 });
+    world.seed.checkIn.findUnique = jest.fn(async () => ({ ...world.checkIn, status: CheckInStatus.NOT_STARTED }));
+    (world.service as any).billing = { canStartSession: jest.fn(async () => ({ allowed: true, sessionsBalance: -1 })) };
+    (world.service as any).prompts.getActive = jest.fn(async () => ({ id: 'pv', content: 'STORED' }));
+    return world.service.open('ci2', 'user-1') as Promise<any>;
+  };
+
+  it('opens a person on the lead\'s team on a question about their work, never "are you the person this check-in is about"', async () => {
+    const out = await opened({ startedFrom: 'anchor', switchOn: true });
+    expect(out.reply).toBe('Thank you. What is taking most of your attention now?');
+    expect(out.reply).not.toMatch(/person this check-in is about/);
+  });
+
+  it('still asks that of a first session that is not the anchor\'s, exactly as before', async () => {
+    const out = await opened({ startedFrom: null, switchOn: true });
+    expect(out.reply).toMatch(/are you the person this check-in is about/);
+  });
+
+  it('tells a person on the team only what the product was told to say, and none of the aims the lead\'s words made', async () => {
+    const out = await opened({ startedFrom: 'anchor', switchOn: true });
+    expect(out.brief.says).toBe('This check-in is about why the quarterly donor reports matter for the programme team.');
+    expect(out.brief.objectives).toEqual([]);
+    expect(JSON.stringify(out.brief)).not.toMatch(/Amina will review|District reports reach the donor|Kano target/);
+  });
+
+  it('tells a person on the team nothing at all when the product was told nothing, and never the lead\'s brief in its place', async () => {
+    const world = aWorld({ startedFrom: 'anchor', switchOn: true });
+    (world.seed.ground.findUnique as jest.Mock).mockImplementation(async () => ({
+      id: 'g1', organizationId: 'org1', scenario: GroundScenario.HELP_TEAM_UNDERSTAND, label: 'Help my team understand', status: 'ACTIVE',
+      brief: 'You are carrying the delivery team and you see them stop at the handover.', toldToParticipants: null, initiatorId: 'p0', startedFrom: 'anchor',
+      objectives: [{ name: 'They would ask whether the client is happy', target: null, ownerParticipantId: null, isADecisionAboutAPerson: false, setByParticipantId: 'p0', direction: null }],
+      participants: [LEAD, PERSON], peersVisibleToEachOther: null, whoSeesTargets: null,
+    }));
+    world.seed.checkIn.findUnique = jest.fn(async () => ({ ...world.checkIn, status: CheckInStatus.NOT_STARTED }));
+    (world.service as any).billing = { canStartSession: jest.fn(async () => ({ allowed: true, sessionsBalance: -1 })) };
+    (world.service as any).prompts.getActive = jest.fn(async () => ({ id: 'pv', content: 'STORED' }));
+    const out: any = await world.service.open('ci2', 'user-1');
+    expect(out.brief.says).toBeNull();
+    expect(out.brief.objectives).toEqual([]);
+    expect(JSON.stringify(out.brief)).not.toMatch(/carrying the delivery team|stop at the handover|ask whether the client is happy/);
+  });
+
+  it('serves the lead her own words and her own aims, as it always did', async () => {
+    const world = aWorld({ startedFrom: 'anchor', switchOn: true, asTheLead: true });
+    const was = world.seed.ground.findUnique as jest.Mock;
+    const original = was.getMockImplementation()!;
+    was.mockImplementation(async (a: any) => ({ ...(await original(a)), initiatorId: 'user-1' }));
+    world.seed.checkIn.findUnique = jest.fn(async () => ({ ...world.checkIn, status: CheckInStatus.NOT_STARTED }));
+    (world.service as any).billing = { canStartSession: jest.fn(async () => ({ allowed: true, sessionsBalance: -1 })) };
+    (world.service as any).prompts.getActive = jest.fn(async () => ({ id: 'pv', content: 'STORED' }));
+    const out: any = await world.service.open('ci2', 'user-1');
+    expect(out.brief.says).toContain('Amina will review everyone in March');
+    expect(out.brief.objectives.length).toBeGreaterThan(0);
+  });
+});
+
+describe('the team baseline puts no ready-made answer into anybody\'s mouth (6 October)', () => {
+  function withSuggestions(w: World) {
+    const world = aWorld(w);
+    const extract = jest.fn(async () => ({ answers: ['I believe we are shipping the product.', 'We are stuck on the data.', 'I am not sure.'] }));
+    (world.service as any).anthropic = { respond: jest.fn(async () => 'What is taking most of your attention now?'), extract };
+    return { world, extract };
+  }
+  const reply = async (w: World) => {
+    const { world } = withSuggestions(w);
+    return (await world.service.sendMessage('ci2', 'user-1', 'It is moving slowly.')) as any;
+  };
+
+  it('offers none under a baseline question', async () => {
+    const out = await reply({ startedFrom: 'anchor', switchOn: true });
+    expect(out.suggestedAnswers).toBeUndefined();
+  });
+
+  it('offers them in the weekly check-in and in every other check-in, as before', async () => {
+    const weekly = await reply({ startedFrom: 'anchor', switchOn: true, sessionNumber: 2 });
+    expect(weekly.suggestedAnswers).toEqual(['I believe we are shipping the product.', 'We are stuck on the data.', 'I am not sure.']);
+    const other = await reply({ startedFrom: null, switchOn: true });
+    expect(other.suggestedAnswers?.length).toBeGreaterThan(0);
+  });
+});

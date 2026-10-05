@@ -560,7 +560,12 @@ export class GroundsService {
    * Awaited with a ceiling, so a slow model costs a few seconds at setup and never a hang; a failure or
    * an empty rewrite leaves the column null and the read falls back to the filtered brief.
    */
-  async tellParticipantsAboutThis(groundId: string, brief: string | null | undefined): Promise<void> {
+  async tellParticipantsAboutThis(groundId: string, brief: string | null | undefined, scenario?: string | null): Promise<void> {
+    /* The anchor lead's conversation is hers alone, so nothing is written from it for the team to read (decision 96, item 8). */
+    if (scenario === GroundScenario.HELP_TEAM_UNDERSTAND) {
+      this.logger.log(`Ground ${groundId}: the anchor's team is told nothing from the lead's own conversation.`);
+      return;
+    }
     try {
       const told = await this.composeWhatParticipantsAreTold(groundId, brief);
       await this.prisma.ground.update({ where: { id: groundId }, data: { toldToParticipants: told } as any });
@@ -790,7 +795,7 @@ export class GroundsService {
 
       return ground;
     });
-    await this.tellParticipantsAboutThis(ground.id, dto.brief);
+    await this.tellParticipantsAboutThis(ground.id, dto.brief, (dto as { scenario?: string }).scenario);
     /* The kind of work, read from what the lead said at setup (request 76). Not awaited: setup is saved either way. */
     void this.readTheKindOfWork(ground.id);
 
@@ -992,7 +997,7 @@ export class GroundsService {
     );
 
     this.usage.emit(UsageEventType.GROUND_CREATED, { organizationId, groundId: ground.id, userId: leadUser.id }).catch(() => undefined);
-    await this.tellParticipantsAboutThis(ground.id, dto.brief);
+    await this.tellParticipantsAboutThis(ground.id, dto.brief, (dto as { scenario?: string }).scenario);
     /* The kind of work, read from what the lead said at setup (request 76). Not awaited: setup is saved either way. */
     void this.readTheKindOfWork(ground.id);
 
