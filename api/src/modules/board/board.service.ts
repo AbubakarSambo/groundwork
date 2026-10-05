@@ -881,7 +881,12 @@ export class BoardService {
        * SHARED picture is not permission to hand round the reading of it.
        * See reports/the-judgement-is-the-leads.
        */
-      ...theBoardsJudgementFor((ground as any).report, { isLead: isInitiator }),
+      ...theBoardsJudgementFor((ground as any).report, {
+        isLead: isInitiator,
+        /* A check-in of one (request 136 item 7): the same reading the report uses, people who answer, not people managing. */
+        theReaderIsTheOnlyPerson: ((ground.participants as any[]) ?? []).filter((x) => !x.managingOnly).length === 1
+          && ((ground.participants as any[]) ?? []).filter((x) => !x.managingOnly)[0]?.userId === (ground as any).initiatorId,
+      }),
       /*
        * AND WHAT THE RECORD SHOWS ACROSS EVERY SESSION - commitments, dependencies, patterns, gaps,
        * what is still open. The lead's own surface, because it is the lead who has to decide

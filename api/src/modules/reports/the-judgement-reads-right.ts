@@ -31,15 +31,26 @@ export function aHeadingThatIsASentence(about: string): string {
   return `This check-in cannot tell you about ${inASentence(t)}.`;
 }
 
-export function aJudgementThatReadsRight<T>(judgement: T): T {
+/**
+ *  - "Your own account of this is not in this check-in." told to the only person in it (request 136 item 7). The
+ *    founder's own check-in has one person, and it was saying that about her own open commitments, which are the only
+ *    thing in there. What is actually missing is anybody else, so that is what it says. PROVISIONAL wording: nothing in
+ *    the prototype covers a check-in of one, so this is mine until Hafsah says otherwise.
+ */
+const NOBODY_ELSE_ANSWERS = 'Nobody else answers this check-in, so there is no other account to set this against.';
+
+export function aJudgementThatReadsRight<T>(judgement: T, opts: { theReaderIsTheOnlyPerson?: boolean } = {}): T {
   const j: any = judgement;
   if (!j || typeof j !== 'object' || !Array.isArray(j.whatThisCannotTellYou)) return judgement;
   return {
     ...j,
     whatThisCannotTellYou: j.whatThisCannotTellYou.map((x: any) => {
       if (!x || typeof x !== 'object') return x;
-      const m = typeof x.toKnow === 'string' && x.toKnow.trim() === THE_LEADS_OWN ? String(x.about ?? '').trim().match(WHO_SOMEBODY_ELSE_IS) : null;
-      const toKnow = m ? `That ${m[1].toLowerCase().split(' ')[0]}'s own account is not in this check-in.` : x.toKnow;
+      const theLeadsOwn = typeof x.toKnow === 'string' && x.toKnow.trim() === THE_LEADS_OWN;
+      const m = theLeadsOwn ? String(x.about ?? '').trim().match(WHO_SOMEBODY_ELSE_IS) : null;
+      const toKnow = m
+        ? `That ${m[1].toLowerCase().split(' ')[0]}'s own account is not in this check-in.`
+        : theLeadsOwn && opts.theReaderIsTheOnlyPerson ? NOBODY_ELSE_ANSWERS : x.toKnow;
       const about = typeof x.about === 'string' ? aHeadingThatIsASentence(x.about) : x.about;
       return { ...x, about, toKnow };
     }),
