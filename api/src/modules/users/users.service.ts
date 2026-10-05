@@ -16,6 +16,7 @@ import { addressesIn, namesIn, planFor, summarise, MOST_IN_ONE_PASTE, Row } from
 import { RolloutFacts } from './where-a-rollout-has-got-to';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { tidyANumberFor } from '../whatsapp/the-organisations-country';
+import { aSignInsNumberChanged, aRosterNumberChanged, refuseANumberOnSomebodyElse, aSignInWithNoNumberTakesTheRosters, theSignInOf } from '../whatsapp/one-number-for-a-person';
 import { theDomainOf, mayBeJoinedBy, effectiveJoinDomain } from '../../common/an-email-domain';
 import { isCovered } from '../../common/subscription';
 import { HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
@@ -800,7 +801,9 @@ export class UsersService {
     /* One stored form for every number, the way WhatsApp sends it (survey item 6). Tidied before the
        transaction, so a number that needs its country refuses with a sentence and nothing is half written. */
     const phoneNumber = dto.phoneNumber === undefined ? undefined : dto.phoneNumber?.trim() ? await tidyANumberFor(this.prisma as any, organizationId, dto.phoneNumber) : null;
-    return this.prisma.$transaction(async (tx) => {
+    /* A number on somebody else's sign-in is refused with a sentence, before anything is written (decision 106 item 3). */
+    if (phoneNumber !== undefined) await refuseANumberOnSomebodyElse(this.prisma, phoneNumber, id);
+    const done = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.user.update({
         where: { id },
         data: {
@@ -818,6 +821,9 @@ export class UsersService {
       await setRole(tx, id, organizationId, dto.role as RoleWrite);
       return { ...updated, role: dto.role as string };
     });
+    /* The roster entry follows the sign-in (decision 106 item 3). */
+    if (phoneNumber !== undefined) await aSignInsNumberChanged(this.prisma, id, phoneNumber);
+    return done;
   }
 
   async resendInvite(id: string, organizationId: string) {

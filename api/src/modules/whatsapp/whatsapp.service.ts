@@ -35,6 +35,7 @@ import { aLocalForm, callingCodeOf, formsOfTheSameNumber, tidyANumber } from './
 import { theCountryCodeOf, tidyANumberFor } from './the-organisations-country';
 import { WhichNumber, inboundKeysFrom, whichNumberOf } from './one-number-per-conversation';
 import { GroundworksOwnNumber, OurNumber } from './groundworks-own-number';
+import { aSignInsNumberChanged, refuseANumberOnSomebodyElse } from './one-number-for-a-person';
 import { ATemplate, insideTheServiceWindow, isBusinessInitiated, WENT_BEFORE_THIS_RELEASE, NOT_TURNED_ON_QUIETLY, templateFor, OUTSIDE_THE_WINDOW, THEY_SAID_STOP, FIRST_MESSAGES, APPROVALS, OPENING_OR_CLOSING, NOT_TODAY, THEY_SAID_NOT_NOW } from './a-message-outside-the-window';
 
 /**
@@ -846,9 +847,9 @@ export class WhatsAppService {
   /** Set (or clear) a user's WhatsApp number. Called from Settings (self) or org roster (admin/HR on someone's behalf). */
   async setPhoneNumber(userId: string, rawNumber: string | null): Promise<void> {
     const user = rawNumber?.trim() ? await this.prisma.user.findUnique({ where: { id: userId }, select: { organizationId: true } }) : null;
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { phoneNumber: rawNumber?.trim() ? await this.tidyFor(user?.organizationId ?? null, rawNumber) : null },
-    });
+    const number = rawNumber?.trim() ? await this.tidyFor(user?.organizationId ?? null, rawNumber) : null;
+    await refuseANumberOnSomebodyElse(this.prisma, number, userId);
+    await this.prisma.user.update({ where: { id: userId }, data: { phoneNumber: number } });
+    await aSignInsNumberChanged(this.prisma, userId, number);
   }
 }
