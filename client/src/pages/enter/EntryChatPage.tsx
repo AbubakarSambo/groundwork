@@ -24,10 +24,10 @@ import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { toast } from 'sonner'
 import AskYourTeamOneThing from './AskYourTeamOneThing'
 import { TheDoor } from './TheDoor'
-import { TheSetup, theDay, ANCHOR_PEOPLE_STEP_RULES, takeTheServedPeopleStep, THE_ANCHOR_FIRST_QUESTION, takeTheServedFirstQuestion, theAnchorStartSucceededForThisTab } from './TheSetup'
+import { TheSetup, theDay, ANCHOR_PEOPLE_STEP_RULES, takeTheServedPeopleStep, THE_ANCHOR_FIRST_QUESTION, takeTheServedFirstQuestion, theAnchorStartSucceededForThisTab, takeTheServedGroundLabel } from './TheSetup'
 import type { ThePeopleStepRules } from '@/api/anchorShapes'
 import { TheLeadsReveal } from '@/components/gw/TheLeadsReveal'
-import { FillsInAsYouTalk } from './FillsInAsYouTalk'
+import { FillsInAsYouTalk, type WhatTheAnchorConversationKnows } from './FillsInAsYouTalk'
 import { sentenceCase } from '@/pages/grounds/how-a-row-reads'
 import { EverySituation } from './EverySituation'
 import { scrollTo } from '@/lib/scroll-to'
@@ -96,6 +96,12 @@ interface OnboardingSelections {
   decision?: string
   brief?: string
   classifiedScenario?: string
+  /**
+   * THE ANCHOR'S SEVEN ITEMS, AS THE CONVERSATION HEARS THEM (fault 2; request 144 (2) and (3)).
+   * Not served yet - every one of the seven keys is optional, and this is `{}` until the engine
+   * sends them. Carried the same way as every other extracted field, so a reload keeps it.
+   */
+  anchorItems?: WhatTheAnchorConversationKnows
 }
 
 /**
@@ -1271,6 +1277,14 @@ export function EntryChatPage() {
    * fresh arrival from the anchor landing page, or from the saved draft on a reload.
    */
   const [thePeopleStepRules, setThePeopleStepRules] = useState<ThePeopleStepRules>(ANCHOR_PEOPLE_STEP_RULES)
+  /**
+   * THE ANCHOR'S OWN SITUATION NAME, DRAWN FROM WHAT THE LANDING PAGE WAS SERVED (request 144 (2)
+   * and (3)) - the exact same pattern as `thePeopleStepRules` above. `'Help my team understand'` is
+   * the fallback only, used until the served `groundLabel` is picked up below; it is also the
+   * engine's own served value, word for word, so nothing changes visually before it arrives. This is
+   * read instead of `SCENARIO_LABELS`, whose own entry for `HELP_TEAM_UNDERSTAND` is missing its "my".
+   */
+  const [anchorGroundLabel, setAnchorGroundLabel] = useState<string>('Help my team understand')
   const [onboardingHistory, setOnboardingHistory] = useState<Turn[]>([])
   const [onboardingReady, setOnboardingReady] = useState(false)
   const [onboardingLoading, setOnboardingLoading] = useState(false)
@@ -1624,6 +1638,9 @@ export function EntryChatPage() {
       if (saved.thePeopleStep) {
         setThePeopleStepRules(saved.thePeopleStep)
       }
+      if ((saved as any).anchorGroundLabel) {
+        setAnchorGroundLabel((saved as any).anchorGroundLabel)
+      }
       // A closed session stays closed across reloads - "this session's answers
       // then lock" must survive a refresh. (closed was saved but never restored,
       // so ended sessions reopened editable.)
@@ -1678,6 +1695,8 @@ export function EntryChatPage() {
        */
       const servedPeopleStep = takeTheServedPeopleStep()
       if (servedPeopleStep) setThePeopleStepRules(servedPeopleStep)
+      const servedGroundLabel = takeTheServedGroundLabel()
+      if (servedGroundLabel) setAnchorGroundLabel(servedGroundLabel)
       /*
        * THE SCENARIO KEY IS NOT A DESCRIPTION OF ANYTHING.
        *
@@ -1734,7 +1753,7 @@ export function EntryChatPage() {
      the cadence and the name lived in a plain zustand store and did not, so "12 sessions planned" came back
      as "1 session planned" - the number the person agreed to, replaced. */
   function persistOnboarding(h: Turn[], sels: OnboardingSelections, step: number, obHistory?: Turn[], obReady?: boolean) {
-    saveSession({ scenario, history: h, closed: false, onboardingStep: step, onboardingSelections: sels, sessions, cadence, cadenceChosen, groundName, plannedFrom, thePeopleStep: thePeopleStepRules, ...(obHistory !== undefined ? { onboardingHistory: obHistory, onboardingReady: obReady ?? false } : {}) } as any)
+    saveSession({ scenario, history: h, closed: false, onboardingStep: step, onboardingSelections: sels, sessions, cadence, cadenceChosen, groundName, plannedFrom, thePeopleStep: thePeopleStepRules, anchorGroundLabel, ...(obHistory !== undefined ? { onboardingHistory: obHistory, onboardingReady: obReady ?? false } : {}) } as any)
   }
 
   /*
@@ -1746,7 +1765,7 @@ export function EntryChatPage() {
    * came back as "1 session planned" after a reload, with the conversation intact above it.
    */
   function persistCheckin(h: Turn[], cl = false, rep = '') {
-    saveSession({ scenario, history: h, closed: cl, report: rep, onboardingStep: ONBOARDING_STEPS, onboardingSelections, sessions, cadence, cadenceChosen, groundName, plannedFrom, thePeopleStep: thePeopleStepRules } as any)
+    saveSession({ scenario, history: h, closed: cl, report: rep, onboardingStep: ONBOARDING_STEPS, onboardingSelections, sessions, cadence, cadenceChosen, groundName, plannedFrom, thePeopleStep: thePeopleStepRules, anchorGroundLabel } as any)
   }
 
   /*
@@ -1799,7 +1818,7 @@ export function EntryChatPage() {
        * spent four turns setting up a new hire was interviewed as though they were starting a
        * project. All the work making SETUP situation-aware stopped at the setup.
        */
-      }], onboardingSelections.classifiedScenario || pickedScenario || scenario || undefined, groundName || undefined)
+      }], isAnchorDraft() ? 'HELP_TEAM_UNDERSTAND' : (onboardingSelections.classifiedScenario || pickedScenario || scenario || undefined), groundName || undefined)
     },
     onSuccess: (res) => {
       const transition: Turn = { role: 'assistant', content: 'Good, I have what I need. Now let me ask you how it is actually going.' }
@@ -1820,7 +1839,7 @@ export function EntryChatPage() {
       let shown = ''
       return entryApi.chatStream(
         msgs,
-        onboardingSelections.classifiedScenario || pickedScenario || scenario || undefined,
+        isAnchorDraft() ? 'HELP_TEAM_UNDERSTAND' : (onboardingSelections.classifiedScenario || pickedScenario || scenario || undefined),
         groundName || undefined,
         (text) => {
           shown += text
@@ -2020,7 +2039,7 @@ export function EntryChatPage() {
       let draft = ''
       const res = await entryApi.onboardStream(
         withoutPickedOpener(newHistory) as Turn[],
-        onboardingSelections.classifiedScenario || (scenarioNow === undefined ? pickedScenario : scenarioNow) || scenario || undefined,
+        isAnchorDraft() ? 'HELP_TEAM_UNDERSTAND' : (onboardingSelections.classifiedScenario || (scenarioNow === undefined ? pickedScenario : scenarioNow) || scenario || undefined),
         onboardingSelections.mode === 'something_new' ? 'STARTING' : undefined,
         (text) => { draft += text; setOnboardingDraft(draft) },
         /*
@@ -2058,6 +2077,33 @@ export function EntryChatPage() {
           ...(res.extracted.decision ? { decision: res.extracted.decision! } : {}),
           ...(res.extracted.goals ? { goals: res.extracted.goals! } : {}),
           ...(res.extracted.brief !== undefined ? { brief: res.extracted.brief! } : {}),
+          /*
+           * FAULT 2: THE ANCHOR'S SEVEN ITEMS, WHICHEVER OF THEM THE ENGINE HAS SENT SO FAR.
+           * Not served yet, so this is a no-op today - every key below is `undefined` and the
+           * spread adds nothing. The moment the engine starts sending them, they merge here the
+           * same way every other extracted field does, and the panel already knows how to draw
+           * them (FillsInAsYouTalk.tsx's `theAnchorRows`).
+           */
+          ...((
+            res.extracted.responsibleFor !== undefined ||
+            res.extracted.tryingToMove !== undefined ||
+            res.extracted.howItContributes !== undefined ||
+            res.extracted.seeingToday !== undefined ||
+            res.extracted.whyItBothersYou !== undefined ||
+            res.extracted.whatTheyDontUnderstand !== undefined ||
+            res.extracted.whatTheyWouldDoDifferently !== undefined
+          ) ? {
+            anchorItems: {
+              ...prev.anchorItems,
+              ...(res.extracted.responsibleFor !== undefined ? { responsibleFor: res.extracted.responsibleFor } : {}),
+              ...(res.extracted.tryingToMove !== undefined ? { tryingToMove: res.extracted.tryingToMove } : {}),
+              ...(res.extracted.howItContributes !== undefined ? { howItContributes: res.extracted.howItContributes } : {}),
+              ...(res.extracted.seeingToday !== undefined ? { seeingToday: res.extracted.seeingToday } : {}),
+              ...(res.extracted.whyItBothersYou !== undefined ? { whyItBothersYou: res.extracted.whyItBothersYou } : {}),
+              ...(res.extracted.whatTheyDontUnderstand !== undefined ? { whatTheyDontUnderstand: res.extracted.whatTheyDontUnderstand } : {}),
+              ...(res.extracted.whatTheyWouldDoDifferently !== undefined ? { whatTheyWouldDoDifferently: res.extracted.whatTheyWouldDoDifferently } : {}),
+            },
+          } : {}),
         }))
 
         /**
@@ -2109,7 +2155,18 @@ export function EntryChatPage() {
           if (planned != null) { setSessions(planned); setPlannedFrom({ timelineDays: res.extracted.timelineDays, cadence: res.extracted.cadence ?? cadence }) }
         }
         // Background classify intent when we have initial
-        if (res.extracted.initial) {
+        if (res.extracted.initial && !isAnchorDraft()) {
+          /*
+           * FAULT 1(a): AN ANCHOR DRAFT IS NEVER RECLASSIFIED.
+           *
+           * The classifier is a guess from free text, and an anchor draft's situation
+           * (`HELP_TEAM_UNDERSTAND`) is not a guess - it is how the person arrived. Calling the
+           * classifier for an anchor draft used to let a confident wrong guess (e.g. "DRIFT")
+           * overwrite `classifiedScenario`, which then leaked into the "This sounds like ..."
+           * banner and into every later entry call and the commit's situation field. Skipping the
+           * call entirely for an anchor draft is simpler than calling it and discarding the
+           * answer, and it saves the request.
+           */
           entryApi.classifyIntent(res.extracted.initial, res.extracted.mode).then(r => {
             /* A low-confidence answer comes back as null and the card they picked stands. */
             const sure = r.scenario
@@ -2332,8 +2389,18 @@ export function EntryChatPage() {
         setupKey: theSetupKey(),
         groundLabel: groundName.trim() || fallbackGroundName(theSituationTheLeadPicked() ?? onboardingSelections.classifiedScenario, orgName.trim() || user?.organization?.name || undefined),
         orgName: orgName.trim() || undefined,
-        // Prefer the AI-classified scenario; fall back to mode key, then URL param.
-        scenario: onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario || undefined,
+        /*
+         * FAULT 1(b): AN ANCHOR DRAFT'S SITUATION NEVER LOSES TO `onboardingSelections.mode`.
+         *
+         * `mode` (e.g. "already_underway") is a question answered INSIDE the anchor conversation,
+         * not a different situation - but it used to be read ahead of the anchor key here, so the
+         * commit's `scenario` field said "already_underway" instead of `HELP_TEAM_UNDERSTAND`. For
+         * an anchor draft the anchor key always wins; every other draft keeps today's order
+         * (classified scenario, then mode, then the URL param).
+         */
+        scenario: isAnchorDraft()
+          ? 'HELP_TEAM_UNDERSTAND'
+          : (onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario || undefined),
         cadence,
         /* The page's default is not a choice; the server records only a confirmed pick as one. */
         cadenceChosen,
@@ -3054,7 +3121,15 @@ export function EntryChatPage() {
                 * Beside the way out, because the two belong together: this is what it chose, and
                 * here is how to change it.
                 */}
-              {phase === 'onboarding' && onboardingHistory.length > 1 && (() => {
+              {/*
+                * FAULT 1: NO "THIS SOUNDS LIKE ..." FOR AN ANCHOR DRAFT.
+                *
+                * The situation is not a guess here - it is how the person arrived
+                * (`HELP_TEAM_UNDERSTAND`), so there is nothing to confirm or reclassify, and
+                * "It's something else" would offer to pick a different situation that does not
+                * exist for this door.
+                */}
+              {phase === 'onboarding' && onboardingHistory.length > 1 && !isAnchorDraft() && (() => {
                 const chosen = onboardingSelections.classifiedScenario || pickedScenario || scenario
                 const label = chosen ? sentenceCase(scenarioLabel(chosen, onboardingSelections.brief)) : null
                 return (
@@ -3433,6 +3508,12 @@ export function EntryChatPage() {
               <FillsInAsYouTalk
                 name={groundName}
                 situation={(() => {
+                  /*
+                   * FAULT 2: THE PANEL'S SITUATION LINE, FOR AN ANCHOR DRAFT, IS THE ENGINE'S OWN
+                   * `groundLabel` ("Help my team understand") - not `SCENARIO_LABELS`' entry for
+                   * `HELP_TEAM_UNDERSTAND`, which is missing its "my".
+                   */
+                  if (isAnchorDraft()) return anchorGroundLabel
                   const chosen = onboardingSelections.classifiedScenario || pickedScenario || scenario
                   return chosen ? sentenceCase(scenarioLabel(chosen, onboardingSelections.brief)) : ''
                 })()}
@@ -3443,6 +3524,14 @@ export function EntryChatPage() {
                 endsOn={lastCheckInBy}
                 mentioned={onboardingSelections.peopleNamed ?? []}
                 added={inviteAdded.map((e) => shownAs(e.split(' - ')[0]))}
+                /*
+                 * FAULT 2: THE ANCHOR'S SEVEN ITEMS, NOT THE USUAL FOUR.
+                 *
+                 * Not served yet (docs/answers-from-engine.md, "Request 144 (2) and (3)"), so this is
+                 * `{}` for now - FillsInAsYouTalk already draws all seven headings, "0 of 7 set", the
+                 * moment it is handed an (even empty) `anchorItems` object, rather than the usual four.
+                 */
+                anchorItems={isAnchorDraft() ? (onboardingSelections.anchorItems ?? {}) : undefined}
               />
             </div>
           )}

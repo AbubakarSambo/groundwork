@@ -100,6 +100,32 @@ export function takeTheServedFirstQuestion(): string | undefined {
 }
 
 /**
+ * THE ANCHOR'S OWN SITUATION NAME, THE SAME WAY THE PEOPLE STEP AND FIRST QUESTION TRAVEL (request
+ * 144 (2) and (3)): `GET /entry/anchor-start` answers `groundLabel: "Help my team understand"`, and
+ * that served sentence - not `SCENARIO_LABELS`' own entry for `HELP_TEAM_UNDERSTAND`, which is
+ * missing its "my" - is what an anchor draft shows wherever it names its own situation (the side
+ * panel, and anywhere else `EntryChatPage.tsx` would otherwise have reached for a label map).
+ */
+const ANCHOR_GROUND_LABEL_SESSION_KEY = 'gw-anchor-ground-label'
+
+export function rememberTheServedGroundLabel(label: string | undefined) {
+  if (!label) return
+  try { sessionStorage.setItem(ANCHOR_GROUND_LABEL_SESSION_KEY, label) } catch { /* best effort */ }
+}
+
+/** Read once, then forget - the draft's own session state carries it from here on. */
+export function takeTheServedGroundLabel(): string | undefined {
+  try {
+    const raw = sessionStorage.getItem(ANCHOR_GROUND_LABEL_SESSION_KEY)
+    if (!raw) return undefined
+    sessionStorage.removeItem(ANCHOR_GROUND_LABEL_SESSION_KEY)
+    return raw
+  } catch {
+    return undefined
+  }
+}
+
+/**
  * WHETHER `GET /entry/anchor-start` ACTUALLY SUCCEEDED FOR THIS TAB (plan piece 2; the plan's "do it
  * only when the anchor switch is on").
  *
