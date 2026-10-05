@@ -61,7 +61,7 @@ export async function askGroundwork(page: Page, question: string) {
   const panel = page.getByRole('region', { name: /^Ask \S/ });
   if (!(await panel.isVisible().catch(() => false))) await page.getByRole('button', { name: /^Ask \S/ }).first().click();
   await expect(panel).toBeVisible();
-  const box = panel.getByRole('textbox', { name: /Ask about the company, your work or your check-ins|Ask a question|Ask about this check-in/ });
+  const box = panel.getByRole('textbox', { name: /Ask about the company, your work or your check-ins|Ask about this check-in/ });
   await box.fill(question);
   await box.press('Enter');
   return panel;

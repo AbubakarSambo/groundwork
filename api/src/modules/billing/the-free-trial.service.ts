@@ -110,6 +110,8 @@ export class TheFreeTrialService {
   @OnEvent(GroundworkEvents.ORG_SIGNED_UP)
   async whenAnOrganisationIsNamedOnTheForm(event: OrgSignedUpEvent): Promise<void> {
     if (!event.namedOnTheForm) return;
+    /* With the trial off a sign-up costs nothing: no lookups at all. */
+    if (!(await this.pricing.getFreeTrial().catch(() => null))?.on) return;
     for (let attempt = 0; attempt < 10; attempt++) {
       const found = await this.prisma.organization.findUnique({ where: { id: event.organizationId }, select: { id: true } }).catch(() => null);
       if (found) break;

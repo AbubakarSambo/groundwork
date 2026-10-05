@@ -161,5 +161,7 @@ describe('an organisation named on the sign-up form, which never asks its size (
     const b = baridi({ on: false });
     await b.svc.whenAnOrganisationIsNamedOnTheForm({ organizationId: 'o', organizationName: 'X', adminEmail: 'x@x.test', namedOnTheForm: true });
     expect(b.writes).toEqual([]);
+    /* With the trial off, the organisation is not even looked up. */
+    expect(b.prisma.organization.findUnique).not.toHaveBeenCalled();
   });
 });
