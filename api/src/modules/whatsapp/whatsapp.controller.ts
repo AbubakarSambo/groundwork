@@ -1,3 +1,4 @@
+import * as crypto from 'crypto';
 import { Controller, Get, Post, Query, Body, Logger, ForbiddenException, Req, Res } from '@nestjs/common';
 import type { RawBodyRequest } from '@nestjs/common';
 import type { Request, Response } from 'express';
@@ -43,11 +44,23 @@ export class WhatsAppController {
   ): Promise<void> {
     /* Saved in the back office first, then the server setting (groundworks-own-number.ts). */
     const expected = (await this.whatsapp.ours()).verifyToken;
-    if (mode === 'subscribe' && expected && token === expected) {
+    if (mode === 'subscribe' && expected && WhatsAppController.sameToken(token, expected)) {
       res.status(200).type('text/plain').send(challenge);
       return;
     }
     throw new ForbiddenException('Webhook verification failed');
+  }
+
+  /**
+   * THE VERIFY TOKEN, COMPARED IN CONSTANT TIME. A plain === stops at the first wrong character, so
+   * how long a refusal takes can say how much of a guess was right. Lengths first, because
+   * timingSafeEqual throws on unequal lengths rather than answering false.
+   */
+  static sameToken(given: string | undefined | null, expected: string): boolean {
+    if (typeof given !== 'string') return false;
+    const a = Buffer.from(given, 'utf8');
+    const b = Buffer.from(expected, 'utf8');
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
   }
 
   @Post()

@@ -1,5 +1,9 @@
 # Morning report
 
+**5 October, late.** When Meta first connects the webhook, it sends Groundwork's verify token back. That token is now compared in constant time, after a check that the lengths match.
+
+**5 October, late.** The free trial and the WhatsApp add-on are switched on at release by a release step after a check, not by a migration (`docs/deploy.md`, step 13a). Switching on gives the trial to nobody already here, sends no email and leaves an organisation on the free plan unchanged. But an organisation that already pays would have its WhatsApp held if its add-on is off, or be charged from the next night if it is on, so the check lists any such organisation for you to decide first. On the local test database a new small team got one month on Small Team, and its admin turned WhatsApp on and read that nothing is charged until the trial ends. Stripe test mode could not be tried: the local Stripe key is only a placeholder. A real Stripe test key in the local `api/.env` would let it be tried.
+
 **5 October, late.** The review asked for a stricter seal on the back office's WhatsApp secrets, and it is done. The tag must be exactly 16 bytes and the IV exactly 12. A key must be 32 bytes in base64 or hex, or at least 32 characters, and the page says so in a sentence when it is too short. Each secret is now bound to its own field. Nothing had been saved anywhere yet, so no old seal needs moving.
 
 **5 October, late.** `docs/whatsapp-settings.md` now has "How to set up WhatsApp in the back office", in nine plain steps. `SETTINGS_ENCRYPTION_KEY` is listed there and in section 4 of `docs/staging-compatibility.md`. No `.env` file was changed.

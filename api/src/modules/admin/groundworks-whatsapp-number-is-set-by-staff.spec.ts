@@ -218,6 +218,19 @@ describe('the sender and the webhook check use what was saved', () => {
   });
 });
 
+describe('the verify token is compared in constant time', () => {
+  it('uses timingSafeEqual after a length check, and refuses a near miss, a longer one and none', () => {
+    const spy = jest.spyOn(crypto, 'timingSafeEqual');
+    expect(WhatsAppController.sameToken(SAVED.verifyToken, SAVED.verifyToken)).toBe(true);
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(WhatsAppController.sameToken(SAVED.verifyToken.slice(0, -1) + 'x', SAVED.verifyToken)).toBe(false);
+    expect(WhatsAppController.sameToken(SAVED.verifyToken + 'x', SAVED.verifyToken)).toBe(false);
+    expect(WhatsAppController.sameToken(undefined, SAVED.verifyToken)).toBe(false);
+    const src = require('fs').readFileSync(require('path').join(__dirname, '../whatsapp/whatsapp.controller.ts'), 'utf8');
+    expect(src).not.toMatch(/token === expected/);
+  });
+});
+
 describe('nothing saved means today\'s behaviour', () => {
   it('the server settings are used for the send, the signature and the switch', async () => {
     const { whatsapp, rows } = aService();
