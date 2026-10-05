@@ -199,7 +199,10 @@ The fix in 048cea38 covered only a check-in of one person.
 
 Now, where the line above is about the lead, the lead reads "Only you can answer this." A line that is
 not about the lead keeps its sentence, and so does the case where the missing account is somebody
-else's. The lead's report now makes the same repairs as the board. Before, only the board did, so a
+else's. Narrowed after review: "your" before a person or a group does not count as being about the
+lead. "Your team has not said what the difficulties are." keeps "Your own account of this is not in this
+check-in." I was not sure what the true sentence is there (it may be the team's account that is
+missing), so I kept the old one. The lead's report now makes the same repairs as the board. Before, only the board did, so a
 heading that is only a piece becomes a sentence on the report too: "This check-in cannot tell you
 about your role in the client meetings." An admin and the participant are unaffected. The wording
 "Only you can answer this." is mine; there is no prototype screen for it.

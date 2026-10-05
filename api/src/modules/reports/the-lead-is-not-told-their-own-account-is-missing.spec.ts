@@ -134,6 +134,16 @@ describe('on the board', () => {
 });
 
 describe('what it leaves alone', () => {
+  it.each([
+    'Your team has not said what the difficulties are.',
+    'Your staff have not said why the orders are late.',
+    'Your manager has not said what the budget is.',
+    'Your direct reports have not said who owns the lease.',
+  ])('a line about the lead\'s people, not the lead: "%s" keeps the old sentence', (why) => {
+    const j: any = aJudgementThatReadsRight({ whatThisCannotTellYou: [{ why, about: 'The difficulties.', toKnow: 'Your own account of this is not in this check-in.' }] });
+    expect(j.whatThisCannotTellYou[0].toKnow).toBe('Your own account of this is not in this check-in.');
+  });
+
   it('whose account is missing, where the thing is who somebody else is', () => {
     const j: any = aJudgementThatReadsRight({ whatThisCannotTellYou: [{ why: 'You did not say.', about: 'Who the other trader with the broken freezer is.', toKnow: 'Your own account of this is not in this check-in.' }] });
     expect(j.whatThisCannotTellYou[0].toKnow).toBe("That trader's own account is not in this check-in.");
