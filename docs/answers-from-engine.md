@@ -4716,3 +4716,60 @@ There is no separate empty-state field, and you should not need one:
 **Still open on Ask, from request 154 and not part of 153:** the ordering of `GET /ask` turns
 (answer before question on a shared timestamp), replies saved without their options, and the
 Company page needing an organisation-wide choice to open. Those are next after 154 and 155.
+
+---
+
+# Request 154 item 1, done: a local organisation with every suite switched on
+
+Run this from `api/`, with your own connection string:
+
+```
+npx ts-node -T journey/seed-the-suites-for-the-screens.ts postgresql://localhost:5432/<your database>
+```
+
+It refuses anything that is not on the computer it runs on — the host must be exactly `localhost`
+or `127.0.0.1` — and nothing is read or written before that check. That is the same rule as the
+MarketView Q4 seed (decision 98, item 2), now shared between the two in
+`journey/a-database-on-this-computer.ts` rather than written twice.
+
+**Run it twice and nothing stacks up.** Proved here: four leave requests and four spending requests
+after two runs, in the four states, not eight.
+
+## Who signs in
+
+One password for all five, local only: **`suites-local-only`**
+
+| Email | Role | What they are for |
+| --- | --- | --- |
+| `amina@suites.test` | admin | The approver for leave and for spending |
+| `daniel@suites.test` | lead | Asks for leave and spending, and writes the reviews |
+| `grace@suites.test` | team | Has a request in most states, and a review of her own |
+| `peter@suites.test` | team | The declined ones, both with a reason |
+| `sara@suites.test` | team | **Has asked for nothing** — she is the empty states |
+
+The organisation is "Suites Test Company", slug `suites-for-the-screens`.
+
+## What is there to draw
+
+**Leave, spending and reviews are on** (`organization_suites`, `is_on`), with Amina as the
+approver, a 50,000 limit on spending and three categories.
+
+| Suite | What is waiting for you |
+| --- | --- |
+| Leave | 2 waiting — **one of them nine days old**, for the "waited too long" line — 1 approved, 1 declined with a reason in the decider's words |
+| Spending | 2 waiting — **one over the 50,000 limit**, so it takes the second step, and one eleven days old — 1 approved, 1 declined with a reason |
+| Reviews | 4, one at each stage: just started, the manager's words written, the person's answer given, and decided |
+
+The declined ones carry a real sentence rather than a blank, because a decline with no reason is
+its own screen and this seed is for the ordinary one.
+
+## What it does not do
+
+It does not switch on time sheets, customers or the other suites — request 154 asked for leave,
+finance requests and performance reviews. Say the word and the other suites go in the same way.
+
+**Item 8 of request 154** (the "not switched on" message giving an admin no next step) is not
+covered by a seed: that is wording, and it is still open.
+
+**A local database to drop when you like:** `gw_suites_check_b` on this computer, which is where
+the proof above was run.
