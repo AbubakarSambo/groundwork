@@ -142,6 +142,7 @@ import { howFarBehind } from './a-report-behind-the-answers';
 import {
   commitmentsOverTime, dependenciesOverTime, patternsOverTime, gapsOverTime, theOnesStillOpen,
   whatThisCannotTellYou, theRecordOverTime, toSettleFirst, overTimeForThisReader, WhatTheRecordShowsOverTime, aMeetingIsOnRecord, meetingsOnRecordFor,
+  inOurVoice, looksLikeATimeOrADate,
 } from './what-the-record-shows-over-time';
 /*
  * THE ONE WORDING RULEBOOK, SPLIT BY SURFACE. The post-report guide is written to one person in the
@@ -4724,7 +4725,7 @@ happened, and what is in the way.`;
     if (asARoom) {
       const open = await (this.prisma.groundCommitment?.findMany?.({
         where: { groundId, status: 'UNKNOWN' },
-        select: { text: true, participantId: true },
+        select: { text: true, participantId: true, whenSaid: true, whenSaidWordForWord: true },
       }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
       /* Only what the lead may already read, in plain words: see patterns/who-reads-a-pattern. None, and no read, while patterns are not served. */
       const seen = PATTERNS_ARE_SERVED
@@ -4790,7 +4791,12 @@ happened, and what is in the way.`;
           patterns: seen
             .filter((x) => x.participantId === p.participantId && !!x.whatHappened)
             .map((x) => ({ name: x.heading, observation: x.whatHappened as string, seenInSessions: x.sessions })),
-          openCommitments: (open as any[]).filter((c) => c.participantId === p.participantId).map((c) => theirWords(String(c.text))),
+          /* As an action with its time where it can be said that way (request 134 item 4), else their words as before. */
+          openCommitments: (open as any[]).filter((c) => c.participantId === p.participantId).map((c) => {
+            const clause = inOurVoice(String(c.text ?? ''), 'them');
+            const when = typeof c.whenSaid === 'string' && c.whenSaid.trim() && (c.whenSaidWordForWord === true || looksLikeATimeOrADate(c.whenSaid)) ? c.whenSaid.trim() : null;
+            return clause ? { clause: theirWords(clause), when } : theirWords(String(c.text));
+          }),
         })),
         room!.differences.map((d) => ({
           topic: theirWords(d.topic),

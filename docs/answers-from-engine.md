@@ -217,6 +217,19 @@ This check cannot catch a number that the material does hold but that is put on 
 the 5 October run's crisis check-in, "nobody responded to the 7 AM alerts" used the lead's own "7 AM"
 for an alert that fired at 02:14. That is the writer's to keep right, and it goes into the new prompt.
 
+**The judgement's prompt now says who, what and when (123 item 7, 134 item 4, 135 item 3).** These
+are the rules that could not be made safe as repairs at the read. Three rules are added. Every key
+element the prompt had is kept, and a test checks that the old text is the new text with these three
+taken out.
+
+- **Never a pronoun for a person.** The label is said again every time. In both prompts.
+- **A promise is asked about as what was promised, by its day.** For example: "Ask Participant A whether the bundle was filed by Thursday 1 October." The room is now given each open promise as an action with the time the person gave ("said they would file the bundle, and the time they gave was 'Thursday 1 October'"), where it can be said that way.
+- **A number is one a block holds, on the thing the block puts it on.** It is never combined, and it is never moved to another thing. The run's crisis example is in the text: the alert nobody answered fired at 02:14, so it is never "the 7 AM alerts".
+
+The snapshot run's sentence "your account does not show that they know it" is the example in the
+pronoun rule. The rules only reach a new judgement once this is active as a stored version and the
+three scenarios are run again.
+
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
 ```
