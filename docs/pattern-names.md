@@ -21,6 +21,20 @@ Two of them, E4 and F5, are on `ALIGNMENT_FEED_ONLY_CODES` and are **never named
 directly**. They have plain names here for completeness and for an internal screen only. They are
 marked, and they must not appear on anything a participant or a lead reads.
 
+## A1, reworded after you flagged it (PROVISIONAL)
+
+You approved "Does the coordinating other people skipped" and then found it reads as a broken
+sentence inside a line, which it does: "the coordinating other people skipped" is a reduced
+relative clause, fine on a label and dense in the middle of a sentence.
+
+**Changed to "Takes on coordination other people left undone."** It reads as a label on its own and
+inside a sentence: "Amani takes on coordination other people left undone." Marked provisional
+because it replaces wording you had already approved - say the word and it goes back, or say a
+better one.
+
+The other forty-eight were checked for the same fault. They begin with a plain verb and an ordinary
+object, which reads either way round; A1 was the only one with a clause hanging off its object.
+
 ## One place where your example and the code disagree
 
 You gave "Coordination Without Leverage" → "Coordinates without being in charge". The code means
@@ -48,7 +62,7 @@ as written here, the code's meaning.**
 
 | Code | Internal name | Plain name | What the record shows |
 | --- | --- | --- | --- |
-| A1 | Coordination Debt Absorber | Does the coordinating other people skipped | Which makes those people look more effective than they are. |
+| A1 | Coordination Debt Absorber | Takes on coordination other people left undone | Which makes those people look more effective than they are. |
 | A2 | Execution Rescuer | Steps in to stop things failing | Failures that should never have reached them. |
 | A3 | Contributor Suppression | Doing less than they used to, after a change | A strong contributor working below their previous level following a management or structural change. |
 
