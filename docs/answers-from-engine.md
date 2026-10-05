@@ -4826,3 +4826,56 @@ replaces what I sent you before.
 The sixth is an addition to decision 101 rather than part of it: Hafsah's five were decided before
 she said the suggestions must also cover leave or spending. Her five keep her order and her words,
 and the sixth is mine, so it is the one to overrule if the wording is wrong.
+
+---
+
+# A whole company to review the screens against: Kijani Foods
+
+Hafsah asked for this on 5 October: a proper company, a plan with priorities, at least eight
+check-ins of different kinds with people who have answered, and the suites on, so the Company page,
+the boards, Today and the suites all have something real in them.
+
+```
+npx ts-node -T journey/seed-a-company-for-review.ts postgresql://localhost:5432/<your database>
+```
+
+Same rule as the other seeds: **localhost or 127.0.0.1 only**, refused before anything is read or
+written. Running it twice leaves one company — proved here, the counts below are after two runs.
+
+## What is in it
+
+| | |
+| --- | --- |
+| Company | **Kijani Foods**, slug `kijani-foods` |
+| People | 8, with real titles: a managing director, two heads, two account managers, a depot supervisor, an engineer, a finance officer |
+| The plan | 4 priorities, each with a measure and a number — shops ordering weekly, days to deliver, cost per delivery, depots on the new system |
+| Check-ins | **9, in 9 different situations**: sales alignment, a new hire's first ninety days, a project across four depots, a contract renewal, drift, a workplan and budget, a pulse check, a recognition, a handover |
+| Answered | 13 completed check-ins carrying 29 things people actually said, in their own words |
+| Reports | 9, one per check-in, so the boards and Today are not empty |
+| Suites | leave, spending and reviews on, Naomi Kariuki approving, with requests waiting, approved and declined |
+
+## Who signs in
+
+One password, local only: **`review-local-only`**
+
+| Email | Who |
+| --- | --- |
+| `naomi@kijani.test` | Managing director — admin, and the approver |
+| `tendai@kijani.test` | Head of sales — runs three check-ins |
+| `bilal@kijani.test` | Head of operations — runs four |
+| `esther@kijani.test` · `kwesi@kijani.test` | Account managers |
+| `lindiwe@kijani.test` | Depot supervisor |
+| `arjun@kijani.test` | Engineer — the new hire |
+| `fatou@kijani.test` | Finance officer — the one handing over |
+
+## One thing to know before you judge anything by it
+
+**The sentences in it are mine, not the engine's.** No model is called: every line people "said"
+and every shared picture is written in the seed, so it loads in seconds and reads the same every
+time, which is what walking screens needs. It is good for layout, empty states, counts, long names
+and what a board does with nine different situations. It is **not** evidence about how the engine
+writes — the twenty-four scenario run is what judges that.
+
+Three of the check-ins deliberately carry a disagreement worth drawing: the two account managers
+count a signed shop differently, two plans both include the same 300,000 agency, and two people are
+waiting on the same approver who is on leave.
