@@ -1,5 +1,75 @@
 # Morning report
 
+## 5 October, afternoon: the three screens requests, the migrations, and what I got wrong
+
+Running unattended. Progress as it happens is in `docs/run-log.md`; this is the short version.
+
+### The screens workspace is unblocked
+
+| Request | What they get |
+| --- | --- |
+| **153** | Ask serves its own name, caption, line, greeting and six starter questions. Nothing left for a screen to word. |
+| **154** | A local organisation with every suite on, five sign-ins, and requests in every state a screen draws. |
+| **155** | Two anchor check-ins and the switch on: a live one in its second week, and an ended one for the end-of-month page. |
+| **plus** | **Kijani Foods** - a whole company: 8 people, a plan of 4 priorities, 9 check-ins in 9 situations, 29 things people said, a report each. |
+
+Every one was driven rather than read: they load, a second run does not double anything, and a
+hosted connection string is refused before a row is touched.
+
+### And I told you three of those were done when they were not
+
+The seed scripts never left this computer. The ignore rules cover everything under the journey
+folder, and adding an ignored path does nothing and says nothing, so three commits carried the
+instructions and not one carried the file. **The screens workspace found it**, not me (their
+request 156).
+
+This is the second time in two weeks that one rule has hidden a file somebody else needed. The
+standing check from here: nothing in that folder counts as pushed until git says it is tracked.
+
+### The release
+
+**The migrations question is answered.** A local database built from the live line's 290
+migrations, **with existing-client rows already in it** so "fails on existing data" was exercised
+rather than argued, then our 69 on top: **359 applied, 0 failed**, every pre-existing row
+unchanged. You should still run it once on real data after the backup - real data has shapes a seed
+does not - but it is no longer an unknown.
+
+**The two release-blocking judgements turned out to be one fault.** Both invented something and
+both passed every rule the judgement had, because every rule asked for a **person** to be named and
+both of them named one:
+
+> "Kwame Mensah is also blocked by the credit committee" - he had said he had not contacted Credit at all.
+>
+> "Make the decision about hiring more analysts" - that was the customer's problem, not the lead's.
+
+Two rules now say a reason is only a reason if somebody said it, and a move has to come from a line
+in a block. **Whether the model obeys them is for the run, not for me**, and the release document
+says so rather than ticking it.
+
+**"Proof asked for is 36 against 42" is measuring the wrong thing.** The scorer counts "picture" as
+asking for proof, and picture is this product's own word for shared understanding. Run-1: 31 of 54
+hits matched on it. Not one I read asks for a photograph. Both sides of that comparison are
+inflated by different amounts, and the real movement is roughly 34 against 19 - **a bigger fall
+than the row shows**. The scorer is on the never-edit list, so it is yours to decide.
+
+### Two things I deliberately did not do
+
+**The privacy question on evaluation check-ins (item 4) I left alone.** Your decision 86 and
+decision 99 item 3 both say a privacy restriction is not mine to add, and this is one. It stays a
+question for you.
+
+**The coordinated verbs** - "You see a lack of forward momentum and attributes it" - are still
+there. I wrote a regex for those on 25 September; it fixed three sentences, broke two, and I
+removed it. They belong in task 1.6's automatic check, where the reader is known and the line can
+be rewritten whole. I fixed only "does you own", which has no other reading.
+
+### Four provisional calls, all reversible
+
+101 (the five starters, now six), 102 (a goal somebody wrote themselves is not rewritten to "you"),
+103 (session counts are two true things, worded apart rather than reconciled), 104 (pattern A1
+reworded after you found it broken inside a line). Each is in `docs/decisions-merged.md` with the
+reasoning and the one line that undoes it.
+
 ## The release, 5 October 2026 (written as it goes)
 
 **Release-ready on everything this computer can check.** Three things only you can do come first: the migrations on a copy of the live data, a build on Node 20, and the two existing-client checks. There is also one privacy question for you (item 4 below).

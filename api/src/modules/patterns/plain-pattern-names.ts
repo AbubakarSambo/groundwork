@@ -41,7 +41,7 @@ export const PLAIN_PATTERN_NAMES: Readonly<Record<string, APlainName>> = {
   C3: { kind: 'good', name: 'Turns scattered information into something clear' },
 
   /* Carrying (3) */
-  A1: { kind: 'carrying', name: 'Does the coordinating other people skipped' },
+  A1: { kind: 'carrying', name: 'Takes on coordination other people left undone' },
   A2: { kind: 'carrying', name: 'Steps in to stop things failing' },
   A3: { kind: 'carrying', name: 'Doing less than they used to, after a change' },
 

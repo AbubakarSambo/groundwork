@@ -37,6 +37,24 @@ export function datesIn(p: APromise): Set<string> {
 const oneIsInTheOther = (a: Set<string>, b: Set<string>) => [...a].every((d) => b.has(d)) || [...b].every((d) => a.has(d));
 
 /**
+ * THE SAME WORDS WITH A DATE PUSHED INTO THE MIDDLE (screens request 154, item 6).
+ *
+ * The test below asks for the short promise to sit WHOLE inside the long one, and a date added in
+ * the middle breaks that however alike the two are. The You board showed both of these as separate
+ * promises:
+ *
+ *   Ask the warehouse to load my van by 7am
+ *   Ask the warehouse on Tuesday 29 September to load my van by 7am.
+ *
+ * So the containment is tested with the dates taken out of both, along with the little word that
+ * introduces one, which would otherwise be left stranded ("ask the warehouse on to load..."). The
+ * dates themselves are not ignored: `oneIsInTheOther` below still refuses to merge two promises
+ * that name two DIFFERENT dates, and the merged row still keeps whichever date was given.
+ */
+const A_DATE_AND_ITS_WORD = new RegExp(`\\b(?:on|by|before|after|from|until|due)\\s+(?:${A_DATE.source})|${A_DATE.source}`, 'g');
+const withoutItsDates = (key: string) => key.replace(A_DATE_AND_ITS_WORD, ' ').replace(/\s+/g, ' ').trim();
+
+/**
  * 'incoming' when the new one is the fuller, 'existing' when the stored one already is, null when
  * these are not the same promise said at two lengths (equal words are left to the writer's own rules).
  */
@@ -45,7 +63,9 @@ export function theFullerPromise(existing: APromise, incoming: APromise): 'incom
   const y = aCommitmentKey(incoming.text, incoming.when);
   if (!x || !y || x === y) return null;
   const [short, long, fuller] = x.length < y.length ? [x, y, 'incoming' as const] : [y, x, 'existing' as const];
-  if (short.split(' ').length < 3 || !` ${long} `.includes(` ${short} `)) return null;
+  const [s2, l2] = [withoutItsDates(short), withoutItsDates(long)];
+  const oneInsideTheOther = ` ${long} `.includes(` ${short} `) || (!!s2 && ` ${l2} `.includes(` ${s2} `));
+  if (short.split(' ').length < 3 || !oneInsideTheOther) return null;
   if (!oneIsInTheOther(datesIn(existing), datesIn(incoming))) return null;
   return fuller;
 }

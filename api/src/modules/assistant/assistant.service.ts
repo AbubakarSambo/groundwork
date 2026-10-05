@@ -1,4 +1,5 @@
 import { WAITING_TO_BE_LET_IN } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
+import { whatWasSaid } from './what-was-said-is-what-is-kept';
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { NOTHING_FLAGGED } from '../detectors/who-needs-you-this-week';
 import { PrismaService } from '../prisma/prisma.service';
@@ -173,6 +174,20 @@ const JUST_ADDED_A_DOCUMENT =
 
 /** The lanes that move the Context tab into Ask Groundwork. Hidden at release; the old context chat stays. */
 const THE_CONTEXT_LANES = new Set<string>(['add_context', 'context_line', 'lead_note', 'questions_for_people']);
+
+/**
+ * WHETHER A PIECE OF TEXT COULD BE SOMEBODY'S NAME. Four words at most, and no sentence inside it:
+ * a full stop, a comma, a question mark or a semicolon means somebody typed a sentence, not a name.
+ * Deliberately generous at the short end - one word is a first name - and strict about length,
+ * because the cost of guessing wrong is reading a person's question back to them as a colleague.
+ */
+export function looksLikeAName(q: string): boolean {
+  const t = (q ?? '').trim();
+  if (!t || t.length > 60) return false;
+  if (/[.,;:!?]/.test(t)) return false;
+  const words = t.split(/\s+/);
+  return words.length >= 1 && words.length <= 4;
+}
 
 @Injectable()
 export class AssistantService {
@@ -1458,6 +1473,26 @@ export class AssistantService {
       const mine = open.find((s) => s.groundId === groundId);
       if (mine) chosen = { groundId: mine.groundId, label: mine.label };
     }
+    /*
+     * AND RUNNING ONE COUNTS EVEN WHEN NO CHECK-IN WAS NAMED (screens request 154, item 2).
+     *
+     * The rule above was only applied when the screen sent a `groundId`. Ask now covers the whole
+     * organisation by default and is usually opened with no check-in chosen, so a lead fell
+     * straight through to "You have none open, so there is nowhere to put one yet." - read live by
+     * somebody running ten open check-ins. A document belongs to a check-in, not to a session, and
+     * she runs ten of them.
+     */
+    if (!chosen && !open.length && userId) {
+      const viewer = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, organizationId: true } });
+      const hers = await this.prisma.ground.findMany({
+        where: { organizationId, status: { notIn: A_GROUND_IS_OVER } },
+        select: { id: true, label: true, initiatorId: true, organizationId: true, createdByUserId: true, participants: { select: { userId: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      });
+      const runs = hers.find((g) => runsIt(userId, viewer, g as any));
+      if (runs) chosen = { groundId: runs.id, label: runs.label };
+    }
     if (!chosen) {
       const nowhere = whyThereIsNowhereToPutIt(open.length);
       if (nowhere) return rules('add_a_document', text(nowhere));
@@ -2689,13 +2724,12 @@ export class AssistantService {
 
   /** The running history, scoped to one person and never anybody else's turns. */
   private async remember(organizationId: string, who: string, message: string, reply: Reply) {
-    const said = reply.blocks.find((b) => b.type === 'text') as { body?: string } | undefined;
     await this.prisma.assistantTurn.createMany({
       data: [
         { organizationId, personExternalId: who, role: 'person', content: message },
         {
           organizationId, personExternalId: who, role: 'assistant',
-          content: said?.body ?? '', lane: reply.lane, composedBy: reply.composedBy,
+          content: whatWasSaid(reply), lane: reply.lane, composedBy: reply.composedBy,
         },
       ],
     });
@@ -4914,6 +4948,24 @@ export class AssistantService {
   private async whoIs(organizationId: string, query: string): Promise<Reply> {
     const q = query.replace(/[?.]+$/, '').trim();
     if (!q) return rules('who_is', text('Who did you mean?'));
+
+    /*
+     * AND IT HAS TO LOOK LIKE A NAME BEFORE IT IS CALLED ONE (screens request 154, item 2).
+     *
+     * This echoed whatever it was handed. Juma asked about looking after people while the road was
+     * closed and read back: 'I do not have anybody called "looking after them while the road is
+     * closed. ...". I only know the people your organisation has sent us.' A request to add some
+     * notes, read back to him as a missing colleague.
+     *
+     * The router put him here and that is worth fixing too, but the damage is done at this line,
+     * which is the place to hold it: a name is a few words with no sentence inside it. Anything
+     * else is not somebody we have failed to find, it is something we did not understand, and
+     * saying so with what Ask can do is both true and more use.
+     */
+    if (!looksLikeAName(q)) {
+      const { line, options } = whatICanDoWith(query);
+      return rules('unplaced', text(line), picker(options));
+    }
 
     const people = await this.prisma.person.findMany({
       where: { organizationId, active: true },

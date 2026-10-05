@@ -1,10 +1,10 @@
 <!-- key: scenario.realign_team.initiator
-     version: 6   activated: 2026-09-15 07:27:14.059
-     Exported from the database, 26 September 2026. THIS IS THE VERSION THAT RUNS TODAY.
+     version: 7   activated: 2026-09-27 08:22:34.980
+     Exported from the database, 5 October 2026. THIS IS THE VERSION THAT RUNS TODAY.
      Read-only: nothing re-seeds these from files, so editing this changes nothing.
      See docs/scenario-packs/README.md. -->
 
-MOMENT: Understand Where People See Things Differently.
+MOMENT: See where people see things differently.
 
 PURPOSE: People are describing the same situation in different ways. Each person gives their own account, on their own, before anybody tries to reconcile them. Nothing here assumes somebody is wrong: two people can both be doing what they agreed and still see it differently, and finding out where and why is the point.
 

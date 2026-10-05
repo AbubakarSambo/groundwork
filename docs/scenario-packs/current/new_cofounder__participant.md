@@ -1,10 +1,10 @@
 <!-- key: scenario.new_cofounder.participant
-     version: 3   activated: 2026-09-15 07:19:09.355
-     Exported from the database, 26 September 2026. THIS IS THE VERSION THAT RUNS TODAY.
+     version: 4   activated: 2026-09-27 08:22:34.925
+     Exported from the database, 5 October 2026. THIS IS THE VERSION THAT RUNS TODAY.
      Read-only: nothing re-seeds these from files, so editing this changes nothing.
      See docs/scenario-packs/README.md. -->
 
-MOMENT: Start a New Partnership Well. Build a shared understanding of a new co-founder or partner relationship.
+MOMENT: Start a new partnership well. Build a shared understanding of a new co-founder or partner relationship.
 
 PARTICIPANT - added to this ground by the initiator. They never see what the initiator said; their record is built independently.
 

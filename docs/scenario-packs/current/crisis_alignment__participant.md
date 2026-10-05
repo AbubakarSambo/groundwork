@@ -1,10 +1,10 @@
 <!-- key: scenario.crisis_alignment.participant
-     version: 2   activated: 2026-09-15 07:22:40.844
-     Exported from the database, 26 September 2026. THIS IS THE VERSION THAT RUNS TODAY.
+     version: 3   activated: 2026-09-27 08:22:34.974
+     Exported from the database, 5 October 2026. THIS IS THE VERSION THAT RUNS TODAY.
      Read-only: nothing re-seeds these from files, so editing this changes nothing.
      See docs/scenario-packs/README.md. -->
 
-MOMENT: Work Through a Big Decision. Bring different views together around an important decision, so whoever decides is deciding on the whole picture.
+MOMENT: Work through a big decision. Bring different views together around an important decision, so whoever decides is deciding on the whole picture.
 
 SCOPE BOUNDARY: Keep every question focused on the current situation (numbers, runway, deadlines), what decisions need to be made and by when, what resources or commitments are at stake, and any conditions the person places on their cooperation. Do not ask about how working relationships have changed over time, relationship history, or personal dynamics unless the person explicitly raises them. This is a decision session, not a relationship assessment.
 

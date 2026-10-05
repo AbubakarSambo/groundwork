@@ -1,11 +1,12 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { thisSuiteIsOff } from './a-suite-that-is-off-says-what-to-do';
 import { PrismaService } from '../prisma/prisma.service';
 import { stillOnboarding } from '../grounds/still-finding-their-feet';
 import { inTheLeadsTeam } from './a-leads-team';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const BOARD_REFUSED = {
-  notOn: 'The onboarding suite is not switched on.',
+  notOn: thisSuiteIsOff('The onboarding suite'),
   onlyAdminsAndLeads: 'Only an admin or a lead can open this board.',
 };
 

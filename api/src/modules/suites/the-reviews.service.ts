@@ -1,4 +1,5 @@
 import { notToldYet } from '../grounds/a-goal-not-told-stays-with-the-lead';
+import { thisSuiteIsOff } from './a-suite-that-is-off-says-what-to-do';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { inTheLeadsTeam } from './a-leads-team';
@@ -23,7 +24,7 @@ import {
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const REVIEW_REFUSED = {
-  notOn: 'The performance reviews suite is not switched on.',
+  notOn: thisSuiteIsOff('The performance reviews suite'),
   onlyAdminsAndLeads: 'Only an admin or a lead can open this board.',
   notFound: 'That review was not found.',
   notYours: 'You cannot open this review.',

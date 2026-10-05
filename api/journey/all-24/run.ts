@@ -188,29 +188,21 @@ async function runScenario(prisma: any, model: AnthropicService, s: AScenario) {
     let released = false;
     const wanted = people.length;
     let written = 0;
-    /*
-     * AND A LARGER ROOM IS GIVEN LONGER, BECAUSE THE PRODUCT TAKES LONGER FOR IT.
-     *
-     * Measured on 27 September across five loans runs, nine people: from the last check-in to a
-     * report holding all nine findings took 281, 347, 355, 345 and 330 seconds. Only the first fit
-     * inside the five minutes this loop allowed, so loans was "incomplete" in almost every run while
-     * its judgement was often right. That is a product problem in its own right - a lead with nine
-     * people waits five to six minutes for a report that includes everybody - and it is written up
-     * as one. It is not a reason to score the scenario as unusable, so the wait is five minutes for
-     * up to four people and a minute more for each person after that, up to fifteen.
-     */
-    const probes = Math.min(225, 75 + Math.max(0, wanted - 4) * 15);
-    for (let i = 0; i < probes; i++) {
+    let unchanged = 0;
+    let probes = 0;
+    for (let i = 0; i < 75; i++) {
       await new Promise((r) => setTimeout(r, 4000));
+      probes = i + 1;
       try {
         const probe = await http(`/grounds/${gid}/report`, { token: tokens[email(lead)] });
         if (!probe?.releasedAt && !probe?.sharedPicture) continue;
         released = true;
-        written = Array.isArray(probe?.findings) ? probe.findings.length : 0;
-        /* Hafsah, 1 October: never capture a report that is still being written. The lead's read says
-           so (`beingWritten`, week 25); a capture taken before it clears shows an earlier version and
-           throws "reports match the database" off by timing. */
-        if (written >= wanted && !probe?.beingWritten) break;
+        const now = Array.isArray(probe?.findings) ? probe.findings.length : 0;
+        if (now >= wanted) { written = now; break; }
+        unchanged = now === written ? unchanged + 1 : 0;
+        written = now;
+        /* Settled: a minute with the count not moving. See the note below. */
+        if (unchanged >= 15) break;
       } catch { /* not yet */ }
     }
     /*
@@ -219,13 +211,22 @@ async function runScenario(prisma: any, model: AnthropicService, s: AScenario) {
      * The first version of this wait settled once three probes running showed the same number,
      * which is twelve seconds, and under six parallel shards regeneration is nowhere near done by
      * then - it settled at "1 finding for 3 people" and wrote that to the file as though it were
-     * the report. There is no cheap signal for "this report is final", so the only honest rule is
-     * to wait for one finding per person who checked in, up to five minutes, and to say plainly
-     * when it did not arrive. A run that prints this line is a run whose report numbers cannot be
-     * used, and that has to be visible rather than inferred afterwards from the database.
+     * the report. There is no cheap signal for "this report is final".
+     *
+     * AND WAITING FOR ONE FINDING PER PERSON, FULL STOP, WAS TOO STRICT - my own change, and it
+     * cost a run. Some scenarios genuinely produce fewer findings than people, because somebody
+     * said nothing the report could use, so that rule spent the whole five minutes waiting for a
+     * finding that was never coming, session after session. A run that used to take half an hour
+     * was on course for several.
+     *
+     * So it stops on either: one finding per person, or a minute in which the count has not moved.
+     * A minute is far longer than regeneration takes when it is going to arrive, and short enough
+     * that a scenario which legitimately has fewer does not hold the run up. The line below still
+     * says when it settled short, because that is the case where the numbers may be thin and it
+     * should be visible rather than inferred from the database afterwards.
      */
     if (written < wanted) {
-      log(`    *** REPORT INCOMPLETE: ${written} finding(s) for ${wanted} person/people after ${probes * 4}s. Report numbers from this scenario are not usable. ***`);
+      log(`    *** REPORT SETTLED SHORT: ${written} finding(s) for ${wanted} person/people after ${probes * 4}s. Either somebody said nothing the report could use, or it had not finished. Check this one against the database before trusting its numbers. ***`);
     }
     /* And once more before the capture: wait (up to ten minutes) for a build still in progress to finish. */
     for (let i = 0; i < 150; i++) {

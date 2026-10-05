@@ -4799,8 +4799,8 @@ can still ask.
 > point me at one of your check-ins whenever you want to. Ask me about the company, about your
 > work, or about your check-ins. You can add context or a document to one of your check-ins here,
 > and ask for leave or to spend money. What you ask me stays private. Anything you choose to add to
-> a check-in is different: I say it back to you first, it goes in only once you say yes, and from
-> then on it is part of that check-in.
+> a check-in works differently. I say it back to you first, it goes in only once you say yes, and
+> from then on it is part of that check-in.
 
 Still served as `welcome`, still only the first time, still `null` afterwards.
 
@@ -4935,3 +4935,301 @@ worked. If an anchor screen ever shows nothing, check that column first.
 **Not every row cascades.** The lead's first words are a record entry hanging off a participant with
 no check-in, and that key has no cascade, so a second run could not clear the old rows. The seed
 clears children before parents now.
+
+---
+
+# Request 156, done, and you were right to raise it
+
+**The three seeds were never in any branch.** I wrote them, committed, pushed, and told you all
+three requests were done. `.gitignore` ignores `api/journey/*` and lets through only the files
+listed after it; `git add -A api/journey` on an ignored path does nothing and says nothing, so
+every one of those commits carried the instructions and none of them carried the file.
+
+All four are in the allow-list now and committed:
+
+- `journey/a-database-on-this-computer.ts` — the shared localhost-only rule
+- `journey/seed-the-suites-for-the-screens.ts` — request 154
+- `journey/seed-a-company-for-review.ts` — Kijani Foods
+- `journey/seed-an-anchor-check-in.ts` — request 155
+
+No JSON goes with any of them; every row is written in the script.
+
+The commands in the answers above are unchanged and now actually work on your branch. Please pull
+and run them — and if a seed ever prints its cheerful summary and a screen is still empty, tell me,
+because that is the other way this has bitten today.
+
+---
+
+# Request 152, both items: already done, nothing for you to wait on
+
+**Item 1, an action with an empty label.** `everyActionHasALabel` now wraps the board as it is
+served, so `action.label` is never empty on any reader's board. Your fallbacks ("Open your
+check-in", "Open the Context page") can go whenever you are next in that file.
+
+**Item 2, Today's rows when a reader is in several check-ins.** Every Today item carries
+**`checkInLabel`** — the check-in's own label, in its own words — on both builders, the one that
+makes items from a check-in and the one that makes them from the lead's board. It is optional on
+the type and absent only where an item is not about one check-in, so draw it when it is there.
+
+Both went in with the work that closed requests 151 and 152 on the engine side. I am noting them
+here because they were still marked Open on your list and you may have been waiting.
+
+---
+
+# Request 154 item 2, first part: the history reads in order now
+
+**"Each answer comes before its question, because both share one timestamp."** You were right about
+the cause. A question and its answer are written in the same moment, so `created_at` is equal on
+both rows, and the read was newest-first then reversed — within one timestamp the database is free
+to hand them back either way, so the pair came out backwards about half the time.
+
+There is no sequence column to fall back on; the id is a uuid and sorts randomly. The tie is broken
+on what the rows mean instead: **inside one instant, the person asked and Groundwork answered.**
+Real time still comes first, so an older answer still precedes a newer question.
+
+Nothing changes in the shape you receive — `turns` is still oldest first.
+
+**The other two parts of item 2 are not done yet** and are next: replies saved without their
+options (the "Here is what I can do with ..." turns that end with nothing after them), and the two
+wrong answers Juma and Rukia read. Those are about what is written at the time, not about reading
+it back, so they need the scenario run to finish before I touch that path.
+
+---
+
+# Request 154 items 5 and 6: what is fixed, and one thing left on purpose
+
+## Item 5, goals not written to the reader — half fixed, half a decision for Hafsah
+
+**Fixed:** a goal written *about* somebody — by their lead, or by Groundwork — is now written to
+the reader, as the goals beside it already were. That is the defect.
+
+**Left exactly as written:** a goal the person wrote themselves. Hafsah's standing decision of 26
+September is that people's own words stay exactly as they said them and only what Groundwork writes
+is fixed, and a test has pinned "I want it at 162,000 by December." unchanged since before your
+request. When I first applied the rewrite to everything, that test went red, which is it doing its
+job.
+
+So **the page can still read "I ..." beside "You ..."**, and that is now a wording decision rather
+than a defect — recorded as PROVISIONAL decision 102 for Hafsah to confirm or overrule. If she
+wants one voice throughout, one line in `your-board.ts` changes it and the pinned test goes with it.
+
+## Item 6, the same promise twice — fixed
+
+You saw:
+
+> Ask the warehouse to load my van by 7am
+> Ask the warehouse on Tuesday 29 September to load my van by 7am.
+
+Request 96's rule folds a short promise into a fuller one when the short one's words sit **whole**
+inside it. A date pushed into the middle breaks that, however alike the two are. The containment is
+now tested with dates taken out of both, and only the containment: two promises naming two
+different dates are still two promises, and the merged row still keeps whichever date was given.
+
+**"Plan shorter routes" twice is probably not the same bug.** Two identical promises are already
+folded together within one check-in; across two check-ins they are two promises, and now that every
+row carries `checkInLabel` you should be able to see which is which. If you still see it twice
+inside one check-in, send me the check-in and I will look again.
+
+**Item 6's other half, when-words that are not dates** ("if it happens again", "the same day"), is
+not done. Those are what the person said, so the fix is not to rewrite them but to stop showing
+them where a date belongs, and that needs to know what the screen does with the field.
+
+---
+
+# Request 154 item 8, done: a suite that is off says what to do about it
+
+Eleven suites refused with a bare statement and nothing a reader could act on — "The spending
+suite is not switched on." — which is why you were adding a next step yourselves. Two of them
+already said one in chat. They all say the same thing now:
+
+> The spending suite is not switched on. An admin switches it on under Suites.
+
+**One sentence for both readers.** An admin and somebody who is not an admin get the same words,
+because they are true for both: it tells an admin exactly where to go and tells everybody else who
+to ask. Making it reader-aware would mean threading who is reading through eleven services that do
+not know, for a sentence that would say nearly the same thing either way.
+
+You can drop the next step the screens add. If "under Suites" is not where it actually sits on your
+side, tell me the real path and I will change the one sentence.
+
+**A note on how the last one was found.** I listed the services by hand, changed ten, and wrote a
+test that reads the folder rather than my list — it immediately found an eleventh,
+`the-spending-for-finance.service.ts`, still saying the bare sentence. The test stays, so a new
+suite copying the old wording is caught rather than shipped.
+
+---
+
+# Request 154 item 7: one half fixed here, the other half is yours
+
+## "One kind of item worded two ways" — fixed
+
+> Your first check-in for Help a new hire get started
+> Your own check-in for Check how the same role is going
+
+You were right that these read as two kinds of thing. They were two different distinctions in one
+list: first-or-not, and own-or-somebody-else's. Both rows are the same thing — your own check-in,
+waiting for you — so they say so now and differ only on where in the run it is:
+
+> Your first check-in for ... · **Your next check-in for ...**
+
+## "Everything asked of you this week holds requests from 27 and 28 September" — the rows are right
+
+The engine sends **everything still open**, with no time window, and that is deliberate: a thing
+somebody asked of you a fortnight ago and is still waiting on matters more than this week's, not
+less. Dropping it after seven days would quietly hide the oldest wait on the page.
+
+So the heading is the thing to change, not the list. **"Everything asked of you"** is what the
+field actually holds.
+
+If you would rather the engine cut it to a window, say which one and I will add it — but I would
+not choose it, and whoever is still waiting would not either.
+
+---
+
+# Request 154 item 2, third part: the history keeps what you actually read
+
+You saw saved turns ending at
+
+> I cannot answer that one yet. Here is what I can do with "It should run for 13 weeks."
+
+and nothing after them. The person saw four choices under that line; the record kept only the first
+text block, so the history held a sentence that introduces something and then stops.
+
+**What is kept is now what was read**: every text block, and the choices written out as a sentence
+in the labels the person was shown —
+
+> ... You could Tell me what you can see, What am I on?, What is on my list? or Hold this against
+> my next check-in.
+
+Nothing is invented and the live reply is untouched: you still get the blocks and still draw
+buttons. This is only what goes into the record of the conversation, at all three places a turn is
+saved. A test reads those three places, so none of them can go back to keeping the first block
+alone.
+
+**Item 2 is now fully answered**, except Juma's `'I do not have anybody called "looking after them
+while the road is closed. ..."'` — a request to add notes being read as a name. That one is the
+router mistaking a long sentence for a person, and it is next.
+
+---
+
+# Request 154 item 2, last part: a sentence is no longer read back as a colleague
+
+Juma read:
+
+> I do not have anybody called "looking after them while the road is closed. ...". I only know the
+> people your organisation has sent us.
+
+A request to add some notes, read back to him as a missing colleague. The "who is" answer echoed
+whatever it was handed.
+
+**A name has to look like a name before it is called one**: four words at most, and no sentence
+punctuation inside it. Anything else is not somebody we failed to find, it is something we did not
+understand, so it gets the honest answer and the list of what Ask can do instead.
+
+The router putting a long sentence into "who is" in the first place is worth fixing too, and it is
+not fixed here. **I held it at the echo on purpose**, because that is where the damage is done and
+it holds however the router is changed later. If you still see a sentence routed oddly, the reply
+will now be "I cannot answer that one yet" with choices, which is wrong-but-harmless rather than
+wrong-and-insulting.
+
+**That closes every part of request 154 item 2.**
+
+---
+
+# Request 151 E10, the session counts that disagree: what the engine serves, and a provisional call
+
+You saw, on one screen or across two:
+
+> the list says "Session 2 of 12" while the check-in page says "Session 1 of 12"
+> "Get a project back on track" reads "Session 2 of 10" and "0 of 10 sessions done" in one row
+
+**These are two different true things wearing the same words.** "Where the team is" and "which of
+yours this is" are not the same number and never will be: the team can be on its second round while
+a person has not started theirs, and that is the state, not a fault.
+
+The engine already serves them as **two different sentences**, so they cannot be read as one
+contradiction:
+
+| Field | What it says | Where |
+| --- | --- | --- |
+| `whereItIs` | "It is on the second check-in of 12." | the glance / the list |
+| `howManyAreDone` | "Two of the 12 check-ins are done." | the line under it |
+| `yourCheckIn(n)` | "Your first check-in" | a person's own |
+
+`howManyAreDone` returns **null** when none are done and when all are, so "0 of 10 sessions done"
+cannot come from it, and "All three check-ins are finished." replaces the pair at the end.
+
+**The provisional call (mine, recorded as decision 103): the screens should print these sentences
+rather than compose "Session N of M" from the numbers.** My reasoning: the clash is caused by two
+different counts being given one shape, so agreeing a single clock would mean throwing away one of
+two true facts. Wording them apart keeps both and makes the difference legible.
+
+If any of the three sentences is not reaching a screen that needs it, tell me which screen and I
+will serve it there — that part is a gap worth fixing, and I could not tell from the walkthrough
+which page composed its own.
+
+---
+
+# Request 151 E11, one person with three names: all three are yours, and here is what we send
+
+The same seatless person reads as "A colleague… Has not given a name" on the board, "Zawadi U8" on
+the lead's Every session page, and "Somebody invited by email" on People and setup.
+
+**All three strings are composed in the client,** which is why this did not move when I looked for
+it in the engine:
+
+| String | Where |
+| --- | --- |
+| "Somebody invited by email" | `client/src/components/gw/RolesInThisCheckIn.tsx:69` and `client/src/lib/utils.ts` |
+| "Has not given a name" | `client/src/components/gw/where-each-person-is.tsx:211` |
+| "Zawadi U8" | the raw `who` printed as-is |
+
+## What the engine sends, so you can pick one
+
+- **`who`** — the name this reader may read. Where there is no name it is already **"A colleague"**,
+  never a made-up one, and for the reader themselves it is **"You"**.
+- **`nameIsTheirRole`** — true when `who` is a role or an identifier rather than a name somebody
+  gave. That is the flag behind "Zawadi U8": it is set, and the screen is printing `who` anyway.
+- **`subjectFor(row)`** — the engine's own sentence for exactly this case: **"the person listed as
+  Zawadi U8"**. It exists because a bare identifier reads as a name and is not one.
+
+So the engine already distinguishes the three situations and already has a sentence for the hard
+one. **My suggestion: use `who`, and where `nameIsTheirRole` is true use `subjectFor`'s phrasing
+rather than the raw value.** That gives one wording everywhere and keeps "A colleague" for the
+privacy case, where it means something different and must not be merged with the other two.
+
+I have not changed anything in `client/`, because those files are yours and I would only conflict
+with the work you are doing in them. Say the word if you would rather the engine sent one
+pre-composed string for the seatless case and I will add it.
+
+---
+
+# Request 157, done: an organisation with a hundred check-ins
+
+```
+npx ts-node -T journey/seed-a-hundred-check-ins.ts postgresql://localhost:5432/<your database>
+```
+
+Localhost only, refused before anything is read or written, and **on the allow-list** so it is
+actually in the branch this time — checked with `git ls-files`, not assumed.
+
+**Harambee Logistics**, slug `a-hundred-check-ins`: 30 people, **100 check-ins** across 16
+situations, 340 people-in-check-ins, 75 reports, 25 closed. Counts are after two runs, so a second
+run replaces rather than doubles.
+
+| Email | Who, and why they are there |
+| --- | --- |
+| `zuri@harambee.test` | Admin — sees all 100, which is the worst case for any list |
+| `kofi@harambee.test` | The busy lead — **20 are waiting on him**, and **20 he is not in at all** |
+| `imani@harambee.test` | A participant in **15** — the case where "all check-ins" is mostly not yours |
+
+Password **`hundred-local-only`**, local only.
+
+**The states are mixed on purpose**, because that is what the sidebar has to tell apart: a quarter
+closed, a third not started (so they are waiting on whoever reads them), the rest answered with a
+report. A fifth leave the busy lead out entirely — a person who is in everything tests nothing
+about which ones are theirs.
+
+**The words in it are mine, not the engine's.** No model is called. It is for what a list does at a
+hundred, what search has to cope with, and which check-ins should come first. It says nothing about
+how the engine writes.

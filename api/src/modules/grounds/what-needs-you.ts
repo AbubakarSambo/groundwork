@@ -223,7 +223,14 @@ export function whatNeedsYou(
         const need: Need = {
           key: `turn-${g.id}`,
           kind: 'your_turn',
-          title: next.sessionNumber === 1 ? `Your first check-in for ${g.label}` : `Your own check-in for ${g.label}`,
+          /*
+           * ONE KIND OF ITEM, WORDED ONE WAY, AT TWO STAGES (screens request 154, item 7). This
+           * read "Your first check-in for X" beside "Your own check-in for X", which is two
+           * different distinctions in one list: first-or-not, and own-or-somebody-else's. Both
+           * rows are the same thing - your own check-in, waiting for you - so they say so, and
+           * differ only on where in the run it is.
+           */
+          title: next.sessionNumber === 1 ? `Your first check-in for ${g.label}` : `Your next check-in for ${g.label}`,
           /*
            * The prototype's second line (today-lead.txt). "Everyone else's answers are read against
            * yours" is true only of the lead's own first check-in, so only they are told it. Nothing

@@ -74,7 +74,7 @@ describe('Today, as the lead who runs the sales team', () => {
     expect(titles(r)).toEqual([
       'Your first check-in for Faith, first 90 days',
       'Decide how Kwame, first 90 days ends',
-      'Your own check-in for Leadership, Q3',
+      'Your next check-in for Leadership, Q3',
     ]);
     expect(r.needs.map((n) => [n.detail, n.action.label, n.action.to])).toEqual([
       ['About two minutes. Everyone else’s answers are read against yours.', 'Start it', '/checkin/f1'],
@@ -116,7 +116,7 @@ describe('Today, as Miriam, who takes part in the sales team', () => {
     open.checkIns = open.checkIns.filter((c) => c.id !== 'c4');
     const mine = whatNeedsYou([open], { userId: MIRIAM, role: 'MEMBER', organizationId: 'org' }, [], NOW);
     expect(mine.line).toBe('Your check-in for Sales team, Q3 is open.');
-    expect(mine.needs[0]).toMatchObject({ title: 'Your own check-in for Sales team, Q3', detail: 'About two minutes. It opened on 14 September.' });
+    expect(mine.needs[0]).toMatchObject({ title: 'Your next check-in for Sales team, Q3', detail: 'About two minutes. It opened on 14 September.' });
   });
 });
 
@@ -196,7 +196,7 @@ describe('Today, for a session that was started before its own date', () => {
 
   it('Amani, who is in the middle of it, is told to carry on, and is not told it opens later', () => {
     const r = whatNeedsYou([started], { userId: AMANI, role: 'MEMBER', organizationId: 'org' }, [], NOW);
-    expect(titles(r)).toEqual(['Your own check-in for Sales team, Q3']);
+    expect(titles(r)).toEqual(['Your next check-in for Sales team, Q3']);
     expect(r.needs[0].action).toEqual({ label: 'Start it', to: '/checkin/e3' });
     expect(r.comingUp).toEqual([]);
   });

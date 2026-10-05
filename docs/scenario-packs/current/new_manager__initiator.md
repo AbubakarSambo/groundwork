@@ -1,10 +1,10 @@
 <!-- key: scenario.new_manager.initiator
-     version: 7   activated: 2026-09-15 07:19:09.374
-     Exported from the database, 26 September 2026. THIS IS THE VERSION THAT RUNS TODAY.
+     version: 8   activated: 2026-09-27 08:22:34.943
+     Exported from the database, 5 October 2026. THIS IS THE VERSION THAT RUNS TODAY.
      Read-only: nothing re-seeds these from files, so editing this changes nothing.
      See docs/scenario-packs/README.md. -->
 
-MOMENT: Help a New Manager Take Over. Help a new manager understand the team and how the work is going.
+MOMENT: Help a new manager take over. Help a new manager understand the team and how the work is going.
 
 VALIDATION (deliver ONLY if the person is uncertain or general in their first response; skip if they arrive specific):
 "The conversations that save the most time happen before work starts, not after something goes wrong. You are here at the right moment."

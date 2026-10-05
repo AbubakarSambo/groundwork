@@ -1,10 +1,10 @@
 <!-- key: scenario.recognition.initiator
-     version: 2   activated: 2026-09-15 07:20:14.735
-     Exported from the database, 26 September 2026. THIS IS THE VERSION THAT RUNS TODAY.
+     version: 3   activated: 2026-09-27 08:22:34.957
+     Exported from the database, 5 October 2026. THIS IS THE VERSION THAT RUNS TODAY.
      Read-only: nothing re-seeds these from files, so editing this changes nothing.
      See docs/scenario-packs/README.md. -->
 
-MOMENT: Support a Raise, Promotion, or Recognition. Understand someone's contribution and experience before making a recognition decision.
+MOMENT: Support a raise, promotion or recognition. Understand someone's contribution and experience before making a recognition decision.
 
 PURPOSE: Build an honest picture of what this person has actually done and how they experience the work, so a decision rests on the record rather than on who asked loudest or most recently.
 

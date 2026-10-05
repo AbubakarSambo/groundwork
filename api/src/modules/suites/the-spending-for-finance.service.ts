@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { thisSuiteIsOff } from './a-suite-that-is-off-says-what-to-do';
 import { PrismaService } from '../prisma/prisma.service';
 import { readDuties } from './who-holds-each-duty';
 import { recordIt, saidAsADate } from './a-request-is-recorded';
@@ -27,7 +28,7 @@ const XLSX = require('xlsx') as typeof import('xlsx');
  * opens any other board to finance.
  */
 export const FINANCE_REFUSED = {
-  notOn: 'The spending suite is not switched on.',
+  notOn: thisSuiteIsOff('The spending suite'),
   onlyFinance: 'Only whoever looks after finance, or an admin, can do this.',
   notFound: 'That request was not found.',
   notApproved: 'Only a request that has been approved comes to finance.',

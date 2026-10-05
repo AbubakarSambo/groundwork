@@ -1,6 +1,6 @@
 <!-- key: scenario.cohort_check.starting.initiator
      version: 2   activated: 2026-09-08 07:15:41.473
-     Exported from the database, 26 September 2026. THIS IS THE VERSION THAT RUNS TODAY.
+     Exported from the database, 5 October 2026. THIS IS THE VERSION THAT RUNS TODAY.
      Read-only: nothing re-seeds these from files, so editing this changes nothing.
      See docs/scenario-packs/README.md. -->
 

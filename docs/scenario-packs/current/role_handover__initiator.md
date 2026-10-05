@@ -1,10 +1,10 @@
 <!-- key: scenario.role_handover.initiator
-     version: 3   activated: 2026-09-15 07:19:09.393
-     Exported from the database, 26 September 2026. THIS IS THE VERSION THAT RUNS TODAY.
+     version: 4   activated: 2026-09-27 08:22:34.992
+     Exported from the database, 5 October 2026. THIS IS THE VERSION THAT RUNS TODAY.
      Read-only: nothing re-seeds these from files, so editing this changes nothing.
      See docs/scenario-packs/README.md. -->
 
-MOMENT: Hand Over a Role Smoothly. Help someone take over a role without losing important context or work.
+MOMENT: Hand over a role smoothly. Help someone take over a role without losing important context or work.
 
 VALIDATION (deliver ONLY if the person is uncertain or general in their first response; skip if they arrive specific):
 "The conversations that save the most time happen before work starts, not after something goes wrong. You are here at the right moment."

@@ -1,10 +1,10 @@
 <!-- key: scenario.new_manager.participant
-     version: 2   activated: 2026-09-15 07:19:09.377
-     Exported from the database, 26 September 2026. THIS IS THE VERSION THAT RUNS TODAY.
+     version: 3   activated: 2026-09-27 08:22:34.947
+     Exported from the database, 5 October 2026. THIS IS THE VERSION THAT RUNS TODAY.
      Read-only: nothing re-seeds these from files, so editing this changes nothing.
      See docs/scenario-packs/README.md. -->
 
-MOMENT: Help a New Manager Take Over. Help a new manager understand the team and how the work is going.
+MOMENT: Help a new manager take over. Help a new manager understand the team and how the work is going.
 
 PARTICIPANT - added to this ground by the initiator. They never see what the initiator said; their record is built independently.
 

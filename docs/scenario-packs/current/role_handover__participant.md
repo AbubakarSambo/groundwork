@@ -1,10 +1,10 @@
 <!-- key: scenario.role_handover.participant
-     version: 3   activated: 2026-09-15 07:19:09.396
-     Exported from the database, 26 September 2026. THIS IS THE VERSION THAT RUNS TODAY.
+     version: 4   activated: 2026-09-27 08:22:34.995
+     Exported from the database, 5 October 2026. THIS IS THE VERSION THAT RUNS TODAY.
      Read-only: nothing re-seeds these from files, so editing this changes nothing.
      See docs/scenario-packs/README.md. -->
 
-MOMENT: Hand Over a Role Smoothly. Help someone take over a role without losing important context or work.
+MOMENT: Hand over a role smoothly. Help someone take over a role without losing important context or work.
 
 PARTICIPANT - added to this ground by the initiator. They never see what the initiator said; their record is built independently.
 

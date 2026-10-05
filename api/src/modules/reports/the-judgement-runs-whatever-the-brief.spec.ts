@@ -66,3 +66,51 @@ describe('what the room judgement is told', () => {
     expect(thisIsARoom(3)).toBe(true);
   });
 });
+
+/**
+ * THE TWO RELEASE-BLOCKING FINDINGS OF RUN 32, both the same class.
+ *
+ *   sales s3   "Kwame Mensah is also blocked by the credit committee."
+ *              Kwame had said "I haven't actually checked in with Credit about those specific 19
+ *              applications yet." He is not blocked; he has not understood what is being counted.
+ *
+ *   discovery  "Make the decision about hiring more analysts." / "Martin Vogel is waiting on a
+ *              decision to hire more analysts."
+ *              Hiring analysts is the CUSTOMER's problem that Martin reported. It became an
+ *              instruction to the lead.
+ *
+ * Naming a person is not the same as being right about them, and the existing rules only asked for
+ * a person to be named. These are on the instruction, because that is where the gap was.
+ */
+describe('the judgement does not invent a reason or a move', () => {
+  const it_ = theJudgementOverARoom('whoever called this check-in', 'what to do next', 'Julia Fernandes');
+
+  it('says a reason has to come from somebody, and that their own words win', () => {
+    expect(it_).toContain('A REASON IS ONLY A REASON IF SOMEBODY SAID IT');
+    expect(it_).toContain('one block must say so in their own words');
+    expect(it_).toContain('Where their words say the opposite, their words win');
+  });
+
+  it('carries the sentence about Kwame, with what he actually said beside it', () => {
+    expect(it_).toContain('Kwame Mensah is also blocked by the credit committee');
+    expect(it_).toContain("I haven't actually checked in with Credit about those specific 19 applications yet");
+  });
+
+  it('says a move has to come from a line in a block', () => {
+    expect(it_).toContain("A MOVE IS ABOUT THIS CHECK-IN, NEVER ABOUT SOMEBODY ELSE'S PROBLEM");
+    expect(it_).toContain('find the line in a block it comes from');
+    expect(it_).toContain('it is not a move, however sensible it sounds');
+  });
+
+  it('carries the analysts sentence, and says whose problem it actually was', () => {
+    expect(it_).toContain('Make the decision about hiring more analysts');
+    expect(it_).toContain("the customer cannot hire analysts");
+  });
+
+  it('and none of the rules it already had were traded for these', () => {
+    expect(it_).toContain('THE ONE RULE: every sentence names a PERSON');
+    expect(it_).toContain("NOTHING IS ANYBODY'S FAULT UNLESS AN ACCOUNT SAYS SO");
+    expect(it_).toContain('THE SAME THING IN TWO BLOCKS IS USUALLY THE FINDING');
+    expect(it_).toContain('NEVER DECIDE ABOUT A PERSON');
+  });
+});

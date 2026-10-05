@@ -273,7 +273,7 @@ const STARTERS_WITH_A_CHECK_IN = [
   'Add a document or some context to my check-in.',
   'Ask for leave, or to spend money.',
 ];
-const BARIDI_WELCOME = 'This is Ask Baridi. I answer about the whole organisation and about your own work, and you can point me at one of your check-ins whenever you want to. Ask me about the company, about your work, or about your check-ins. You can add context or a document to one of your check-ins here, and ask for leave or to spend money. What you ask me stays private. Anything you choose to add to a check-in is different: I say it back to you first, it goes in only once you say yes, and from then on it is part of that check-in.';
+const BARIDI_WELCOME = 'This is Ask Baridi. I answer about the whole organisation and about your own work, and you can point me at one of your check-ins whenever you want to. Ask me about the company, about your work, or about your check-ins. You can add context or a document to one of your check-ins here, and ask for leave or to spend money. What you ask me stays private. Anything you choose to add to a check-in works differently. I say it back to you first, it goes in only once you say yes, and from then on it is part of that check-in.';
 
 const everything = (x: unknown) => JSON.stringify(x);
 

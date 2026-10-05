@@ -1,10 +1,10 @@
 <!-- key: scenario.new_advisor.initiator
-     version: 8   activated: 2026-09-15 07:19:09.359
-     Exported from the database, 26 September 2026. THIS IS THE VERSION THAT RUNS TODAY.
+     version: 9   activated: 2026-09-27 08:22:34.928
+     Exported from the database, 5 October 2026. THIS IS THE VERSION THAT RUNS TODAY.
      Read-only: nothing re-seeds these from files, so editing this changes nothing.
      See docs/scenario-packs/README.md. -->
 
-MOMENT: Start a New Advisor or Board Relationship. Build a shared understanding of the role, expectations, and contribution.
+MOMENT: Start an advisor or board relationship. Build a shared understanding of the role, expectations, and contribution.
 
 VALIDATION (deliver ONLY if the person is uncertain or general in their first response; skip if they arrive specific):
 "The conversations that save the most time happen before work starts, not after something goes wrong. You are here at the right moment."

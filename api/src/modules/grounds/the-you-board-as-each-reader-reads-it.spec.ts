@@ -125,7 +125,7 @@ describe('Miriam reads her own You board', () => {
       { id: 'g-sales', label: 'Sales team, Q3', youRunIt: false, line: 'You have finished two check-ins.', to: '/grounds/g-sales' },
     ]);
     expect(b.turns.map((t) => [t.title, t.action.label, t.action.to])).toEqual([
-      ['Your own check-in for Sales team, Q3', 'Start it', '/checkin/c-m3'],
+      ['Your next check-in for Sales team, Q3', 'Start it', '/checkin/c-m3'],
     ]);
     expect(b.goals.map((g) => g.says)).toEqual([
       'Close Westgate Deli and Lakeside Supermarket this quarter.',
@@ -304,5 +304,32 @@ describe('Groundwork’s suggestions about you, on your own You board (C3, U.13)
       expect(b).not.toHaveProperty('suggestionsAboutYou');
       await expect(svc.forReader({ ...people[who], organizationId: ORG }, 'u-miriam')).rejects.toThrow(NOT_YOURS);
     }
+  });
+});
+
+/**
+ * EVERY GOAL ON THE YOU BOARD IS WRITTEN TO THE PERSON READING IT (request 154, item 5).
+ *
+ * A goal taken from a target already went through `asTheReader`. One taken from an objective did
+ * not, so the page served a person their own words back in the first person while the goal
+ * directly beside it said "you". Amani read "I am aiming for 3 shops in Kilimani by 20 December."
+ * and "My job is to deliver every order"; Rukia read "Four shops for me by 20 December."
+ *
+ * On the function the page is built from, because the defect was in one branch of two.
+ */
+describe('a goal from an objective is written to its reader, as one from a target already was', () => {
+  const { asTheReader } = require('./what-a-participant-is-told-about-this');
+
+  it('turns the first person into the second, which is what the page did not do', () => {
+    expect(asTheReader('I am aiming for 3 shops in Kilimani by 20 December.')).toBe('You are aiming for 3 shops in Kilimani by 20 December.');
+    expect(asTheReader('My job is to deliver every order on the day it is placed.')).toBe('Your job is to deliver every order on the day it is placed.');
+  });
+
+  it('and the page calls it on what somebody else wrote, never on the person\'s own words', () => {
+    const src = require('fs').readFileSync(__dirname + '/your-board.ts', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    /* `authoredBy: 'self'` is the person's own sentence and is served exactly as they wrote it
+       (Hafsah, 26 September). Everything else is written to the reader. */
+    expect(src).toContain("const theirOwnWords = o.authoredBy === 'self'");
+    expect(src).toContain('theirOwnWords ? text : asTheReader(text)');
   });
 });

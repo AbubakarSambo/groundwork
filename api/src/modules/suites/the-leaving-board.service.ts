@@ -1,9 +1,10 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { thisSuiteIsOff } from './a-suite-that-is-off-says-what-to-do';
 import { PrismaService } from '../prisma/prisma.service';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const LEAVING_REFUSED = {
-  notOn: 'The suite for when someone leaves is not switched on.',
+  notOn: thisSuiteIsOff('The suite for when someone leaves'),
   onlyAnAdmin: 'Only an admin can open this board.',
   notFound: 'That list was not found.',
   noSuchPerson: 'Choose somebody in your organisation.',

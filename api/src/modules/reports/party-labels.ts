@@ -1034,6 +1034,26 @@ function theVerbForYou(verb: string): string {
 
 export function theVerbAgreesWithYouIn(input: string): string {
   let text = input;
+  /*
+   * THE AUXILIARY THAT STAYED IN THE THIRD PERSON (run 32: "what specific decisions about the
+   * product does you own?").
+   *
+   * A question written about "Ada" becomes a question about "you", and `does` is left behind.
+   * This is the one case that needs no judgement at all: an auxiliary immediately before "you"
+   * with a bare verb after it has only one correct form, and there is no reading where "does you
+   * own" is right.
+   *
+   * DELIBERATELY ONLY THE AUXILIARY. The same run shows coordinated verbs left behind too - "You
+   * see a lack of forward momentum and attributes it to the team's culture" - and those are NOT
+   * touched here. A regex for them was written on 25 September, fixed three sentences, broke two
+   * ("each person is working on an individual goal and are blocked"), and was removed. They belong
+   * in the automatic check of task 1.6, where the reader is known and the line can be rewritten
+   * whole. A narrow rule that is always right beats a broad one that is usually right.
+   */
+  text = text
+    .replace(/\bdoes you\b(?=\s+[a-z])/g, 'do you')
+    .replace(/\bDoes you\b(?=\s+[a-z])/g, 'Do you')
+    .replace(/\bdoesn['’]t you\b(?=\s+[a-z])/g, "don't you");
   text = text
     /**
      * AND THE PRONOUN THAT FOLLOWS, NARROWLY.

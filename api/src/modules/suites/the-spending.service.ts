@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { thisSuiteIsOff } from './a-suite-that-is-off-says-what-to-do';
 import { PrismaService } from '../prisma/prisma.service';
 import { askNameOf } from '../assistant/ask-name';
 import { theirRosterEntry, withTheirSignIns } from './a-roster-entry-and-its-sign-in';
@@ -18,7 +19,7 @@ import {
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const SPEND_REFUSED = {
-  notOn: 'The spending suite is not switched on.',
+  notOn: thisSuiteIsOff('The spending suite'),
   onlyAdminsAndLeads: 'Only an admin or a lead can open this board.',
   onlyAnAdmin: 'Only an admin can set a budget.',
   notInIt: 'Only people in this organisation can ask to spend here.',
