@@ -400,6 +400,11 @@ There is no model and no prompt: the reading is WhatsApp's own. Its limit is tha
 taken, so "I'm taking Friday off" alone is not read as one, while "Can I take a day off on Friday?" is.
 No PromptVersion is needed, and no all-24 scenario is touched.
 
+**Two lines from the re-run (run-oct5c), put right where they are served.**
+
+- **Project:** "This check-in cannot tell you whether you ever saw or responded to Rita Adeleke's requirements from July." used to keep "Your own account of this is not in this check-in." The question has the lead as its subject, so the lead now reads "Only you can answer this." An admin reads the lead's name there and keeps the old sentence.
+- **Crisis:** "Sarah is not a person to this check-in" came from the repair that replaces the word "party". "a party to this check-in" now becomes "in this check-in": "Sarah is not in this check-in, and the record does not state Sarah's source of information." Under it, the lead now reads "Sarah's own account is not in this check-in." instead of being told their own account is missing. Her name is said again, and no pronoun is guessed.
+
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
 ```

@@ -82,6 +82,9 @@ function partyOutsideTheQuotes(text: string): string {
     });
   }
 
+  /* "Sarah is not a party to this check-in" is "Sarah is not in this check-in" (run oct5c, crisis): "a person to this
+     check-in" is not English, and somebody outside a check-in is simply not in it. Before the word rules below. */
+  out = out.replace(/\b(is|was|are|were)( not)? a party to (this|the) check-in\b/gi, (_m, verb: string, not: string | undefined, which: string) => `${verb}${not ?? ''} in ${which} check-in`);
   for (const [pattern, word] of REPLACEMENTS) out = out.replace(pattern, (m) => likeFor(m, word));
 
   return out.replace(/\u0000(\d+)\u0000/g, (_m, i) => held[Number(i)]);
