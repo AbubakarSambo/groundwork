@@ -1,5 +1,7 @@
 # Morning report
 
+**5 October, 21:20.** I ran crisis, snapshot and project again on the judgement's new stored prompt (ae0c6fa4), and it is the one that ran. "7 AM alerts" and "they" for the lead are gone, but "Your own account of this is not in this check-in." still reaches the lead, in project and now in crisis. Details are in the run log.
+
 At `9f4dd902`, the new free-run migration applies on a fresh local database, so 360 of 360 migrations now apply, with nothing more to apply on a second run and no new drift. The two API tests that failed earlier now pass, and so does the whole billing folder: 264 of 264 tests in 28 files.
 
 At `accd1717`, 16,768 of the 16,772 API tests pass, with 2 failed and 2 skipped. Both failures are real and fail again when run alone. First, `pricing.anchorTrial` has no writer in the API (commit `42576e10`). Second, the praise test cannot find the judgement's old return line, because commit `d2e3e34b` changed it. The client has 4,221 of 4,223 passing, and both failures are the expected mirror test, which waits for the screens workspace. Both typechecks pass.
