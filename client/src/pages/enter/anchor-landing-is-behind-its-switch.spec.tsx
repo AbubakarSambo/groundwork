@@ -74,6 +74,29 @@ describe('the anchor landing page', () => {
   })
 
   /**
+   * FAULT 2 (live walk, 6 October 2026): at 1440 and 375 the heading sat against the very top of
+   * the page, and at 375 it and the panel touched both side edges with no gutter; there was also no
+   * Groundwork mark and no way to sign in. The page is rebuilt on `Page narrow` (the shared frame
+   * that gives every signed-out arrival page its gutter) with `Mark` and a plain "Sign in" link, the
+   * same row `EntryChatPage.tsx` draws at its own door.
+   */
+  it('has the Groundwork mark, a way to sign in, and the page frame that gives it its gutter', async () => {
+    mockAvailable.mockResolvedValue({ available: true })
+    mockStart.mockResolvedValue({
+      available: true, scenario: 'HELP_TEAM_UNDERSTAND', startedFrom: 'anchor',
+      groundLabel: 'Help my team understand', source: null,
+    })
+    const { container } = renderAt('/start/team')
+    await waitFor(() => expect(screen.getByText(THE_ANCHOR_HOOK.heading)).toBeTruthy())
+    expect(screen.getByRole('link', { name: 'Groundwork' })).toBeTruthy()
+    const signIn = screen.getByRole('link', { name: 'Sign in' })
+    expect(signIn.getAttribute('href')).toBe('/auth')
+    // `Page narrow`, the same shared frame InvitePage.tsx and the join pages use for their gutter.
+    expect(container.querySelector('.gwui-page-main')).toBeTruthy()
+    expect(container.querySelector('.gwui-page-narrow')).toBeTruthy()
+  })
+
+  /**
    * ITEM 2: `thePeopleStep` IS KEPT FOR THE ENTRY CHAT'S PEOPLE STEP (docs/answers-from-engine.md,
    * "Request 149 (2 of 6)"). The button is a fresh page load into `EntryChatPage.tsx`, so this is
    * handed off through `sessionStorage` - the one thing `EntryChatPage.tsx` reads on a fresh mount.
@@ -132,13 +155,21 @@ describe('the anchor landing page', () => {
     expect(sessionStorage.getItem('gw-anchor-first-question')).toBeNull()
   })
 
-  it('shows the engine’s sentence and a link to /start when anchor-start answers 404', async () => {
+  /*
+   * FAULT 2 (live walk, 6 October 2026): this used `getByRole('link')` for a single link, which
+   * stopped being true the moment the page gained its own mark and "Sign in" (fault 2 below) -
+   * there are now three links on this state (the mark, "Sign in", and "Go to Groundwork"). Updated
+   * to ask for the one that matters by name, and to check the other two are there too.
+   */
+  it('shows the engine’s sentence, the mark and a way to sign in, and a link to /start when anchor-start answers 404', async () => {
     mockAvailable.mockResolvedValue({ available: true })
     mockStart.mockRejectedValue(new Error('404'))
     renderAt('/start/team')
     await waitFor(() => expect(screen.getByText('This way in is not open yet.')).toBeTruthy())
     expect(screen.queryByText(THE_ANCHOR_HOOK.heading)).toBeNull()
-    const link = screen.getByRole('link')
+    expect(screen.getByRole('link', { name: 'Groundwork' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Sign in' })).toBeTruthy()
+    const link = screen.getByRole('link', { name: 'Go to Groundwork' })
     expect(link.getAttribute('href')).toBe('/start')
   })
 })

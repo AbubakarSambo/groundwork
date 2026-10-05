@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
-import { Navigate, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Panel, PageTitle, Button, Stack, Note } from '@/components/gw/ui'
+import { Page, Mark, Panel, PageTitle, Button, Stack, Note } from '@/components/gw/ui'
 import { THE_ANCHOR_HOOK } from './the-anchor-hook'
 import { useAnchorScenarioIsOnForAStranger } from './anchor-scenario-is-on'
 import { entryAnchorApi } from '@/api/entry'
@@ -77,16 +77,31 @@ export function AnchorLandingPage() {
     return <Navigate to="/start" replace />
   }
 
+  /*
+   * FAULT 2 (request, 6 October 2026, live walk): at 1440 and 375 the heading sat against the very
+   * top of the page, and at 375 the heading and the panel touched both side edges with no gutter -
+   * there was no `Page` wrapper giving it one (AppShell's `!showSidebar` branch renders a signed-
+   * out page's children with no padding of its own; see Page.tsx). There was also no Groundwork
+   * mark and no way to sign in, unlike every other signed-out arrival page (TheDoor.tsx and
+   * EntryChatPage.tsx's own `.gwui-mark-row`). `Page narrow` is the shared one-column frame every
+   * other arrival screen uses (InvitePage.tsx, join/*), which gives this page its top and side
+   * gutter for free; `Mark` plus a plain "Sign in" link, in the same row EntryChatPage draws at its
+   * own door, give a stranger the way in and the way to sign in that every other door has.
+   */
   if (isError) {
     return (
-      <div className="gwui-door">
+      <Page narrow>
+        <div className="gwui-mark-row">
+          <Mark />
+          <Link to="/auth" className="gwui-plain-link">Sign in</Link>
+        </div>
         <Panel>
           <Stack gap={10}>
             <Note>{THE_WAY_IN_IS_NOT_OPEN_YET}</Note>
             <Button to="/start">Go to Groundwork</Button>
           </Stack>
         </Panel>
-      </div>
+      </Page>
     )
   }
 
@@ -95,7 +110,11 @@ export function AnchorLandingPage() {
     : '/start'
 
   return (
-    <div className="gwui-door">
+    <Page narrow>
+      <div className="gwui-mark-row">
+        <Mark />
+        <Link to="/auth" className="gwui-plain-link">Sign in</Link>
+      </div>
       <PageTitle title={THE_ANCHOR_HOOK.heading} />
       <Panel>
         <Stack gap={10}>
@@ -105,6 +124,6 @@ export function AnchorLandingPage() {
           <Button to={enterHref}>{THE_ANCHOR_HOOK.button}</Button>
         </Stack>
       </Panel>
-    </div>
+    </Page>
   )
 }
