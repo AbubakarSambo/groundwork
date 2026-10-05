@@ -110,19 +110,19 @@ describe('the chat as it first opens (signed out, atTheDoor)', () => {
   /**
    * FAULT 5 (live walk, 6 October 2026): THE SIGNED-OUT HEADER'S OWN SIDE GUTTER, AT 375.
    *
-   * The mark and "Sign in" sat flush to the screen edges while the body text beside it (inside
-   * `.gwui-ec-messages`, padded 20px either side) did not. No layout engine runs in jsdom, so this
-   * cannot assert the rendered pixels - it asserts the fix itself: the existing `gwui-pl-20`/
-   * `gwui-pr-20` utility classes (used elsewhere in this same file, never invented for this) are on
-   * the row, which is what actually produces that padding (gw-ui.css).
+   * The mark and "Sign in" sat flush to the screen edges while the body text below (inside
+   * `.gwui-ec-messages`, padded 20px either side) did not. jsdom lays nothing out, so this checks
+   * the two things that produce the gutter: the row is a direct child of `.gwui-ec-frame`, and
+   * gw-ui.css gives exactly that pairing the body's own 20px either side.
    */
   it('gives the mark and "Sign in" the same side gutter the body already has', async () => {
     const { container } = renderPage()
-    await waitFor(() => expect(screen.getByText('Groundwork')).toBeTruthy())
-    const markRow = container.querySelector('.gwui-mark-row')
+    await waitFor(() => expect(screen.getByText('Sign in')).toBeTruthy())
+    const markRow = container.querySelector('.gwui-ec-frame > .gwui-mark-row')
     expect(markRow).toBeTruthy()
-    expect(markRow!.className).toContain('gwui-pl-20')
-    expect(markRow!.className).toContain('gwui-pr-20')
+    const css = readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'ui', 'gw-ui.css'), 'utf8')
+    expect(css).toMatch(/\.gwui-ec-frame > \.gwui-mark-row \{ padding-left: 20px; padding-right: 20px; \}/)
+    expect(css).toMatch(/\.gwui-ec-messages \{\s*flex: 1; overflow-y: auto; padding: 18px 20px;/)
   })
 })
 

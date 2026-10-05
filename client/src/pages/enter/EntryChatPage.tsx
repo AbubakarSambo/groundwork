@@ -3147,18 +3147,14 @@ export function EntryChatPage() {
         check keeps it from reappearing beside the session header once the check-in itself starts.
       */}
       {/*
-        FAULT 5 (live walk, 6 October 2026): THE SAME SIDE GUTTER THE BODY ALREADY HAS, AT 375.
-        `.gwui-mark-row` carries no side padding of its own (it is also used inside `Page narrow`,
-        which already supplies one - AnchorLandingPage.tsx) - but here, at the signed-out door, it
-        sits directly inside `.gwui-ec-frame`, which supplies none either, so the mark and "Sign in"
-        ran flush to the screen edges while the body text below (inside `.gwui-ec-messages`, padded
-        `18px 20px`) did not. `gwui-pl-20`/`gwui-pr-20` are the same existing utility classes used
-        elsewhere in this file - not a new one-off class, and not an inline style - and 20px is the
-        body's own real gutter here (measured against `.gwui-ec-messages`, not the prototype's
-        unrelated 16px convention used elsewhere).
+        FAULT 5 (live walk, 6 October 2026): the mark and "Sign in" here sit directly inside
+        `.gwui-ec-frame`, which pads nothing, so at 375 they ran flush to the screen edges while the
+        body text below (inside `.gwui-ec-messages`, padded 20px either side) did not. The gutter
+        comes from gw-ui.css's `.gwui-ec-frame > .gwui-mark-row` rule - the same shared mark row,
+        given the body's own gutter only where no `Page` frame already gives it one.
       */}
       {!user && (atTheDoor || (anchorConversationOpensDirectly() && phase === 'onboarding')) && (
-        <div className="gwui-mark-row gwui-pl-20 gwui-pr-20">
+        <div className="gwui-mark-row">
           <Mark />
           <Link to="/auth" className="gwui-plain-link">Sign in</Link>
         </div>
