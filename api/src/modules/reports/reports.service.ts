@@ -174,7 +174,12 @@ import { periodOf, periodsTheRecordHolds, aTruePeriodCount } from '../patterns/p
 import { plainNameOf as plainPatternNameOf } from '../patterns/plain-pattern-names';
 import { whatMoreThanOnePersonNamed, namedByMoreThanOne } from './what-more-than-one-person-named';
 import { decide, RoundPicture } from './what-the-report-said-at-the-time';
-import { aStoredSentenceReadsRight } from './a-stored-sentence-reads-right';
+import { aStoredSentenceReadsRight, theReaderAloneSaysYou } from './a-stored-sentence-reads-right';
+/** The same repair over every string in a served object, leaving everything else as it is. */
+const everyStringIn = (v: any, fix: (s: string) => string): any => (typeof v === 'string' ? fix(v)
+  : Array.isArray(v) ? v.map((x) => everyStringIn(x, fix))
+    : v && typeof v === 'object' && (Object.getPrototypeOf(v) === Object.prototype || Object.getPrototypeOf(v) === null)
+      ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, everyStringIn(x, fix)])) : v);
 import { whyNot } from './why-it-is-not-happening';
 import { howThisHasMoved } from './how-this-has-moved';
 import { doesThisReportMarkItsInferences } from './a-report-that-marks-nothing';
@@ -5449,6 +5454,8 @@ happened, and what is in the way.`;
         whatToDo: named.theJudgement.whatToDo.filter((m: any) => !(m && typeof m.move === 'string' && YOUR_OWN_ACCOUNT_IS_NOT_HERE.test(m.move))),
       };
     }
+    /* And a pronoun that is certainly the reader says "you", as the board does (request 123 item 7). After the names are in. */
+    if (named?.theJudgement) named.theJudgement = everyStringIn(named.theJudgement, theReaderAloneSaysYou);
     return {
       ...named,
       sharedPicture: t(report.sharedPicture),

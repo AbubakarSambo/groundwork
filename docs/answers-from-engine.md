@@ -153,6 +153,20 @@ missing once you pull, please tell me which row holds it.
 - **The "Women" share target.** Groundwork sends only targets a lead has set. I found no row on this computer that would hold a "Women" share, and making one from the aim's words would be inventing a target. Whether the setup should split "at least 60% of them women" into its own target is Hafsah's decision.
 - **The county for each group.** A group's county is sent in its details, and groups are sent "By county", wherever the model read a county from what was said. A group with no county was given none in the check-in. Asking the model to look harder would change the records prompt.
 
+**123 (7), the lead's judgement mixed "you", "they" and "she" for one person.** This is repaired where
+the judgement is served, on the report and on the board, after the names are put in. The prompt is
+untouched. Only three shapes are changed, because only in these is it certain the pronoun is the
+reader:
+
+- "Your own record says they have not given Tobi Adewale the authority to renew contracts." now reads "Your own record says you have not given Tobi Adewale the authority to renew contracts."
+- "You set the targets and is still handling key client meetings themselves." now reads "You set the targets and are still handling key client meetings yourself."
+- "…until you clarify the role and provides the necessary authority." now reads "…until you clarify the role and provide the necessary authority."
+
+"Someone would need to ask you if she has received Tobi Adewale's request." is left as it is, because
+nothing in the sentence makes it certain that "she" is the reader. The fix for that one is the prompt
+change I have planned for after the run. An admin reads the names and no "you". The participant
+reads no judgement at all, as before.
+
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
 ```

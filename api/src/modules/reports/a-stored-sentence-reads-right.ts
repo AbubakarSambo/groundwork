@@ -86,10 +86,42 @@ function aSentenceAboutTheReaderSaysYou(text: string): string {
   }).join('');
 }
 
+/**
+ * AND TWO MORE SHAPES WHERE THE PERSON IS CERTAINLY THE READER (request 123 item 7). The lead's judgement mixed "you",
+ * "they" and "she" for Amina, because the model wrote about her label and serving turned the label into "you" and left
+ * the pronoun. Only two shapes are changed, because only in these is it certain who the pronoun is:
+ *
+ *  - "Your own record says they have not given Tobi the authority": what the reader's own record says about somebody,
+ *    said as "they" or "she" or "he" straight after it, is the reader. It reads "Your own record says you have not given
+ *    Tobi the authority", and the verb agrees.
+ *  - "You ... are still handling key client meetings themselves": a reflexive in a sentence whose only subject is "you"
+ *    (it opens with "You", and nothing before the reflexive starts another clause or names anybody) is the reader's:
+ *    "yourself".
+ *
+ * Everything else is left as it is: "Someone would need to ask you if she has received Tobi Adewale's request" may be
+ * about the reader, but nothing in the sentence makes it certain, so the writer has to say it.
+ */
+const THE_READERS_OWN_RECORD_SAYS = /\b(Your|your) own (record|account|words|answers?|check-ins?) (says?|shows?) (?:that )?(they|she|he) (has|have|is|are|was|were|does|do)\b/g;
+const A_NEW_CLAUSE_OR_A_NAME = /\b(?:that|who|whom|which|whether|because|while|if|when|where|whose|since|although|though|unless|until)\b|,\s*(?:and|but)\s+(?!(?:is|are|was|were|has|have|had|does|do|did|still|also)\b)[a-z]+\s|\s[A-Z][a-z]/;
+export function theReaderAloneSaysYou(text: string): string {
+  if (!text || typeof text !== 'string') return text;
+  const youFor: Record<string, string> = { has: 'have', have: 'have', is: 'are', are: 'are', was: 'were', were: 'were', does: 'do', do: 'do' };
+  let out = text.replace(THE_READERS_OWN_RECORD_SAYS, (_m, your: string, what: string, says: string, _who: string, verb: string) =>
+    `${your} own ${what} ${says} you ${youFor[verb.toLowerCase()]}`);
+  out = out.split(/(?<=[.!?])(\s+)/).map((sentence, at) => {
+    if (at % 2 === 1 || !/^You\s/.test(sentence)) return sentence;
+    const reflexive = sentence.search(/\b(?:themselves|themself|himself|herself)\b/);
+    if (reflexive < 0) return sentence;
+    if (A_NEW_CLAUSE_OR_A_NAME.test(sentence.slice(3, reflexive))) return sentence;
+    return sentence.slice(0, reflexive) + sentence.slice(reflexive).replace(/\b(?:themselves|themself|himself|herself)\b/, 'yourself');
+  }).join('');
+  return out;
+}
+
 export function oldWordingPutPlain(text: string): string {
   let out = text;
   for (const [pattern, to] of OLD_WORDING) out = out.replace(pattern, to as any);
-  return aSentenceAboutTheReaderSaysYou(out);
+  return theReaderAloneSaysYou(aSentenceAboutTheReaderSaysYou(out));
 }
 
 /**
