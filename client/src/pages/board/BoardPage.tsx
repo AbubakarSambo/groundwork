@@ -603,7 +603,7 @@ function FoldEverythingElseUnless({ alreadyFolded, children }: { alreadyFolded: 
  * null when this reader has no report of their own yet), and "Read your own report" is drawn only
  * then, as the prototype shows it only once there is one to read.
  */
-function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords, myParticipantId, leadFirstName, yourShare, yourShareSays }: {
+function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords, myParticipantId, leadFirstName, yourShare, yourShareSays, myLatestCheckInId }: {
   groundId: string
   teamPicture: BoardPresent['teamPicture']
   kindOfWork: string | null
@@ -613,6 +613,17 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
   yourShare: BoardPresent['yourShare']
   /** REQUEST 110 (a): "There is no number of yours on this board yet, so there is no share to show." - sent only when `yourShare` is `[]`. */
   yourShareSays?: string | null
+  /**
+   * RELEASE WALKTHROUGH A, FIX 1: "READ YOUR OWN REPORT" OPENED AN EMPTY PAGE.
+   *
+   * This used to send a reader to `/grounds/:id?tab=report` - a fold of the whole check-in with no
+   * report in it for a party (the team report, when there is one, lives at `/grounds/:id/report`;
+   * a party's OWN report lives on its own session's page). The reader's own report is
+   * `/checkin/:id/report`, keyed by their own latest completed session's check-in id - the same id
+   * `sessionRows`/`myCheckInId` already carries for the "Reports" table further down this page.
+   * `null` when no session of theirs has completed yet, and the button is not drawn then.
+   */
+  myLatestCheckInId: string | null
 }) {
   const shared = teamPicture?.shared === true
   /*
@@ -675,7 +686,7 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
               Open today’s team picture.
             </Link>
           )}
-          {(shared || (teamPicture && 'yourOwnReport' in teamPicture && teamPicture.yourOwnReport)) && (
+          {(shared || (teamPicture && 'yourOwnReport' in teamPicture && teamPicture.yourOwnReport)) && !!myLatestCheckInId && (
             <>
               {/* The prototype's own words, directly before the button (board-as-participant.txt:
                   "...Your own report is ready now. / Read your own report"). The non-shared branch
@@ -683,7 +694,7 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
                   branch had none at all. */}
               {shared && <div className="gwui-fs-15 gwui-ink-sub gwui-mt-4" style={{lineHeight: 1.55}}>Your own report is ready now.</div>}
               <div className="gwui-mt-10">
-                <UIButton kind="secondary" to={`/grounds/${groundId}/report`}>Read your own report</UIButton>
+                <UIButton kind="secondary" to={`/checkin/${myLatestCheckInId}/report`}>Read your own report</UIButton>
               </div>
             </>
           )}
@@ -2349,6 +2360,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
             yourShare={b.yourShare}
             yourShareSays={(b as any).yourShareSays ?? null}
+            /* The reader's own most recently completed session - `sessionRows` is already sorted
+               newest first (session-rows.ts), so the first row carrying a `myCheckInId` is it. */
+            myLatestCheckInId={sessionRows.find((r) => r.myCheckInId)?.myCheckInId ?? null}
           />
         )}
 

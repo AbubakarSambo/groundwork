@@ -94,8 +94,8 @@ function renderBoard(payload: any, ground: any = {
   initiatorId: 'u-wairimu', leadFirstName: 'Wairimu', scenario: 'NOT_A_REAL_SCENARIO',
   participants: GROUND_PARTICIPANTS,
   checkIns: [
-    { sessionNumber: 1, participantId: 'p-wairimu', status: 'COMPLETED', completedAt: '2026-09-23T10:00:00.000Z' },
-    { sessionNumber: 1, participantId: 'p-miriam', status: 'COMPLETED', completedAt: '2026-09-23T10:05:00.000Z' },
+    { id: 'ci-wairimu-1', sessionNumber: 1, participantId: 'p-wairimu', status: 'COMPLETED', completedAt: '2026-09-23T10:00:00.000Z' },
+    { id: 'ci-miriam-1', sessionNumber: 1, participantId: 'p-miriam', status: 'COMPLETED', completedAt: '2026-09-23T10:05:00.000Z' },
     // Aisha has not checked in yet, so session 1 has not closed.
   ],
   roundCompletions: [],
@@ -121,7 +121,13 @@ describe('the participant’s own view, first (board-as-participant.txt)', () =>
     // Nothing has been shared yet (the round has not closed): says so, and names the lead.
     expect(screen.getByText('Today’s team picture isn’t shared yet.')).toBeTruthy()
     expect(screen.getByText('Wairimu shares it. Your own report is ready now.')).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Read your own report' })).toHaveAttribute('href', '/grounds/g1/report')
+    /*
+     * RELEASE WALKTHROUGH A, FIX 1: "READ YOUR OWN REPORT" USED TO GO TO `/grounds/:id/report`
+     * (`?tab=report`) - a fold of the whole check-in with no report of Miriam's own in it. It now
+     * opens her own latest finished session's report directly, by the check-in id `sessionRows`
+     * already carries (`myCheckInId`, lib/session-rows.ts) - the newest one for which it is set.
+     */
+    expect(screen.getByRole('link', { name: 'Read your own report' })).toHaveAttribute('href', '/checkin/ci-miriam-1/report')
 
     // Her own deal, marked "Only yours" - in her own personal section, above the fold, under the
     // prototype's own heading (board-as-participant.txt: "Your deals, day by day" - board fix,
