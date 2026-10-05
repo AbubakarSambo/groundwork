@@ -271,6 +271,7 @@ describe('anchor piece 8 and the guarded lead: what the model is given', () => {
     expect(ANCHOR_LEAD_PROMPT).toContain('Never argue, never defend Groundwork, and never treat the lead as difficult.');
     expect(ANCHOR_LEAD_PROMPT).toContain('"revenue is sales\' job"');
     expect(ANCHOR_LEAD_PROMPT).toContain('do not correct them and do not agree');
+    expect(ANCHOR_LEAD_PROMPT).toContain('never remark on how short or long an answer is');
   });
 
   it('says what Groundwork does in one honest sentence when asked, and never judges the lead\'s team or agrees with the lead about it', () => {
