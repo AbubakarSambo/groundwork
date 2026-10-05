@@ -263,6 +263,30 @@ describe('Grace, an admin, reads Connections', () => {
     await screen.findByRole('region', { name: 'WhatsApp' })
     expect(document.body.textContent).not.toMatch(/\b(PIP|exit|at risk|score:|rating)\b/i)
   })
+
+  /*
+   * WALKTHROUGH PASS 2, ITEM 6: THE EXAMPLE CONSOLE'S PEOPLE ARE MADE UP, AND ITS CAPTIONS ARE FULL
+   * SENTENCES. The tools page (IntegrationsPage.tsx) already warns that the people and companies in
+   * its own examples are made up; the same two examples appear here, so the same warning applies.
+   */
+  it('says the people in the examples are made up, and reads the captions as full sentences', async () => {
+    serve({ connection: CONNECTED })
+    open(GRACE)
+    const section = await screen.findByRole('region', { name: 'What these look like' })
+    expect(within(section).getByText('Two examples. The people and companies in them are made up.')).toBeTruthy()
+    expect(within(section).getByText('This is what it looks like on WhatsApp.')).toBeTruthy()
+    expect(within(section).getByText('This is what it looks like inside your own tool.')).toBeTruthy()
+  })
+
+  it('names only one example when WhatsApp is not shown', async () => {
+    whatsappOn = false
+    serve({ connection: null })
+    open(GRACE)
+    const section = await screen.findByRole('region', { name: 'What these look like' })
+    expect(within(section).getByText('One example. The people and companies in them are made up.')).toBeTruthy()
+    expect(within(section).queryByText('This is what it looks like on WhatsApp.')).toBeNull()
+    whatsappOn = true
+  })
 })
 
 describe('Grace, an admin, connects WhatsApp step by step', () => {

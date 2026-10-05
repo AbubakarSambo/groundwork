@@ -183,20 +183,25 @@ export function ConnectionsPage() {
         </div>
       </Section>
 
-      <Section heading="What these look like">
+      {/*
+        * WALKTHROUGH PASS 2, ITEM 6: THE PEOPLE IN THE EXAMPLE CONSOLE ARE MADE UP, SAID HERE TOO.
+        * The tools page already says this (IntegrationsPage.tsx, "How it looks inside your own
+        * tool"); the same examples appear here, so the same warning applies, in its own words.
+        */}
+      <Section heading="What these look like" note={`${showWhatsApp ? 'Two examples' : 'One example'}. The people and companies in them are made up.`}>
         <div className="gwui-two-up">
           {showWhatsApp && (
             <Panel pad={false}>
               <figure>
                 <div className="gwui-console-frame"><WhatsAppConversationExample /></div>
-                <figcaption className="gwui-panel-row"><b>On WhatsApp</b></figcaption>
+                <figcaption className="gwui-panel-row"><b>This is what it looks like on WhatsApp.</b></figcaption>
               </figure>
             </Panel>
           )}
           <Panel pad={false}>
             <figure>
               <div className="gwui-console-frame"><OpsConsoleExample /></div>
-              <figcaption className="gwui-panel-row"><b>Inside your own tool</b></figcaption>
+              <figcaption className="gwui-panel-row"><b>This is what it looks like inside your own tool.</b></figcaption>
             </figure>
           </Panel>
         </div>

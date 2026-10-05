@@ -26,7 +26,12 @@ export function FieldRows({ labelWidth, flush, children }: { labelWidth?: number
 }
 
 export function FieldRow({ label, value, action }: {
-  label: string
+  /**
+   * Usually a plain string. `React.ReactNode` too (walkthrough pass 2, item 6, Plan and billing's
+   * "In progress" list): a label that is itself a link to the thing the row is about, e.g. a
+   * check-in's own name linking to that check-in.
+   */
+  label: React.ReactNode
   value: React.ReactNode
   action?: React.ReactNode
 }) {
