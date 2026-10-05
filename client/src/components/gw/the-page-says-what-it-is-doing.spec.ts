@@ -49,7 +49,9 @@ describe('waits are statuses', () => {
          role, so the explicit attribute was redundant and is not reproduced. Still the only thing on
          the screen while the report loads. */
       ['pages/report/SessionReportPage.tsx', /<Note role="status">Getting your report\.\.\.<\/Note>/],
-      ['pages/board/BoardPage.tsx', /<div role="status"[^>]*>Loading the board…<\/div>/],
+      /* U.20: the prototype's own word for this wait (F4-small-states/states.txt, "Getting the
+         board"), in place of the page's earlier "Loading the board…". */
+      ['pages/board/BoardPage.tsx', /<div role="status"[^>]*>Getting the board<\/div>/],
       /* U.8 review: opening a session can take up to a minute, and after four seconds of silence
          the status now also says so ("Getting your first question ready. This can take up to a
          minute."), nested inside the same status element rather than a second live region - so

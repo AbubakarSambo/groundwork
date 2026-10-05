@@ -147,9 +147,12 @@ describe('every page is painted with the page colour, not the card fill', () => 
      * GroundAdminPage.tsx's own equivalent states already use), so this file no longer matches the
      * search at all and the floor drops by the one file it was. This still proves the search finds
      * real pages, not nothing: 14 files still paint themselves with the page colour inline.
+     *
+     * U.20: `NotFoundPage.tsx` moved its own one onto the shared `Page narrow` component too (the
+     * small-states rebuild, F4-small-states), so the floor drops again, by that one file, to 13.
      */
     const onThePage = files.filter(f => /background: 'var\(--gw-page\)'/.test(readFileSync(f, 'utf8')))
-    expect(onThePage.length).toBeGreaterThan(14)
+    expect(onThePage.length).toBeGreaterThan(13)
   })
 })
 

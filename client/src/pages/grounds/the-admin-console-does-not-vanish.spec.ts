@@ -44,7 +44,13 @@ describe('one action, one button', () => {
      */
     const code = LIST.replace(/\/\*[\s\S]*?\*\//g, ' ')
     expect(code).not.toContain('Open your first check-in')
-    /* The words stay: they say what a check-in is for. */
-    expect(code).toContain('Open a check-in for a new hire')
+    /*
+     * U.20: the empty state's own words are now the prototype's exact sentence
+     * (F4-small-states/states.txt, "No check-ins yet, a lead"), in place of this page's earlier,
+     * unmatched one ("Open a check-in for a new hire, a cofounder conversation, or a team that
+     * needs alignment.") - the thing being checked (one explanation of what a check-in is for,
+     * not a third button) is unchanged.
+     */
+    expect(code).toContain('Describe what you want your team to check in about')
   })
 })

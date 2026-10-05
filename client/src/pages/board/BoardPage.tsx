@@ -1150,8 +1150,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     onError: () => toast.error('Your availability did not change - try again.'),
   })
 
+  /* U.20 (F4-small-states/states.txt, "Loading"/"Getting the board"): the prototype's own word
+     for this wait, in place of the page's earlier, unmatched "Loading the board…". */
   if (isLoading) {
-    return <div role="status" className="gwui-pt-40 gwui-pr-40 gwui-pb-40 gwui-pl-40 gwui-ink-muted" style={{textAlign: 'center'}}>Loading the board…</div>
+    return <div role="status" className="gwui-pt-40 gwui-pr-40 gwui-pb-40 gwui-pl-40 gwui-ink-muted" style={{textAlign: 'center'}}>Getting the board</div>
   }
   /*
    * PRIMARY-BUTTONS-NEVER-TOGETHER: the four `kind="primary"` buttons below ("Try again", "Read
@@ -1169,10 +1171,19 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
      * words here, and Try again where trying again can work.
      */
     const why = whyYouCannotSeeThis(whatWentWrong(error))
+    /*
+     * U.20 (F4-small-states/states.txt, "It didn't load"/"The board didn't load"): the prototype's
+     * own words, for the one case they are true of - a connection problem, where trying again can
+     * work (`why.canRetry`). For every other failure (403, 404, a signed-out session) `why.say`
+     * already gives a specific, true sentence for THAT failure - a connection sentence would be
+     * wrong for those, so this only replaces the generic heading and body, never `why.say` itself.
+     */
     return (
       <div className="gwui-mt-48 gwui-mr-auto gwui-mb-48 gwui-ml-auto gwui-pt-0 gwui-pr-20 gwui-pb-0 gwui-pl-20" style={{maxWidth: 620, textAlign: 'center'}}>
-        <div className="gwui-fs-15 gwui-mb-6" style={{fontWeight: 700}}>This board could not be loaded.</div>
-        <div className="gwui-fs-15 gwui-ink-sub gwui-mb-16">{why.say}</div>
+        <div className="gwui-fs-15 gwui-mb-6" style={{fontWeight: 700}}>{why.canRetry ? 'The board didn’t load' : 'This board could not be loaded.'}</div>
+        <div className="gwui-fs-15 gwui-ink-sub gwui-mb-16">
+          {why.canRetry ? 'Nothing is lost; your check-ins are saved. It’s usually the connection.' : why.say}
+        </div>
         <div className="gwui-gap-8" style={{display: 'flex', justifyContent: 'center'}}>
           {why.canRetry && <UIButton kind="primary" onClick={() => refetch()}>Try again</UIButton>}
           <UIButton kind={why.canRetry ? 'secondary' : 'primary'} onClick={() => navigate('/grounds')}>Back to check-ins</UIButton>

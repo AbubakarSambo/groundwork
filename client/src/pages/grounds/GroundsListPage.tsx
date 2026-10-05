@@ -209,16 +209,34 @@ export function GroundsListPage() {
 
       {!isLoading && !isError && grounds.length === 0 && (
         <>
-          {isAdmin ? (
+          {/*
+           * TWO EMPTY STATES, FROM THE PROTOTYPE (F4-small-states/states.txt, "No check-ins yet,
+           * a lead" / "No check-ins yet, anyone else") - keyed on whether this reader may open a
+           * check-in at all (`mayOpenCheckIns`), not on `isAdmin`: the setting that decides who
+           * may start one is independent of role (docs/backend-map.md, "who may open check-ins").
+           * The prototype's "anyone else" state still offers "Set up one of your own"; that is
+           * only true here when the reader actually can, so it is left off when they cannot - the
+           * same door every other "Start a check-in" control already checks (`App.tsx`,
+           * `AppShell.tsx`).
+           */}
+          {user?.mayOpenCheckIns !== false ? (
             <Empty
-              title="Your first check-in is one tap away."
-              action={<button type="button" className="gwui-plain-link" onClick={() => useHelpStore.getState().show(4)}>Or try it on your own first</button>}
+              title="No check-ins yet"
+              action={
+                <div className="gwui-button-row">
+                  {/* Not this screen's primary (navy) button: "Start a check-in", above in
+                      PageTitle's own action, already is (U.5 review, "one primary action per
+                      screen"), so this stays secondary even with nothing else to press here. */}
+                  <Button kind="secondary" to="/start?new=1">Set up a check-in</Button>
+                  <button type="button" className="gwui-plain-link" onClick={() => useHelpStore.getState().show(4)}>Try one on your own</button>
+                </div>
+              }
             >
-              Open a check-in for a new hire, a cofounder conversation, or a team that needs alignment.
+              Describe what you want your team to check in about, and it’s set up as you talk.
             </Empty>
           ) : (
-            <Empty title="Nothing here yet.">
-              You will see check-ins here when someone invites you, or when you open one yourself.
+            <Empty title="Nothing here yet">
+              Check-ins appear here when someone adds you to one. You’ll also get an email.
             </Empty>
           )}
         </>
