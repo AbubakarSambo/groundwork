@@ -473,7 +473,7 @@ export async function journeys(c: any): Promise<void> {
   /* (e) Somebody whose number is nobody's. */
   const stranger = { first: 'A stranger', phone: '+254799999999' };
   const strangerReads = await says(stranger, 'Hello, can I join?');
-  check('A number that is on no roster is told how to be added, not left in silence', strangerReads.text === "We don't recognize this number yet. Add it in your Groundwork Settings, then message us again.", strangerReads.text);
+  check('A number that is on no roster is told how to be added, not left in silence', strangerReads.text === 'Groundwork does not know this number yet. If you use Groundwork, add this number under Settings, or ask your admin to add it, then write again.', strangerReads.text);
 }
 
 /** The sender, from the same application the API runs. */

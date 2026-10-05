@@ -180,5 +180,7 @@ export const THEY_SAID_STOP = 'This person said STOP on WhatsApp; not sent';
 export const A_STOP_WORD = /^\s*(stop|unsubscribe|opt\s*out)\s*[.!]?\s*$/i;
 export const A_START_WORD = /^\s*(start|unstop|resume|opt\s*in)\s*[.!]?\s*$/i;
 
+/** A number Groundwork does not know (decision 106, item 5). */
+export const UNKNOWN_NUMBER_SAYING = 'Groundwork does not know this number yet. If you use Groundwork, add this number under Settings, or ask your admin to add it, then write again.';
 export const STOPPED_SAYING = 'Stopped. Nothing more comes to this number from Groundwork unless you reply START. Your check-ins are still in Groundwork.';
 export const RESUMED_SAYING = 'Resumed. Your check-in notices come here again.';

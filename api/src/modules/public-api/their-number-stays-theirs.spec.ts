@@ -26,7 +26,7 @@ describe('a message from somebody who is not on their roster', () => {
    * supplier, about a roster they have never heard of.
    */
   it('and never hears a sentence meant for somebody who wrote to us', () => {
-    const roster = "This number is not on your organisation's roster yet. Ask your admin to add it.";
+    const roster = 'Groundwork does not know this number yet. If you use Groundwork, add this number under Settings, or ask your admin to add it, then write again.';
     expect(aStrangerHearsNothing(roster, 'they do')).toBe(true);
     expect(aStrangerHearsNothing(roster, 'we do')).toBe(false);
     expect(ONLY_ON_OUR_OWN_NUMBER.length).toBeGreaterThan(1);

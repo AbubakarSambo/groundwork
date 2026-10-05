@@ -7,6 +7,7 @@ import { Public } from '../../common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { WhatsAppService } from './whatsapp.service';
+import { UNKNOWN_NUMBER_SAYING } from './a-message-outside-the-window';
 import { WhatsAppForAnOrganisationService } from '../public-api/whatsapp-for-an-organisation.service';
 import { pickWasAsked, pickedOrganisation, whichOrganisationAsText, A_SWITCH_WORD } from '../public-api/a-whatsapp-message-is-routed';
 
@@ -122,7 +123,7 @@ export class WhatsAppController {
   private async whichOrganisation(fromNumber: string, message: any): Promise<string | null> {
     const orgs = await this.whatsapp.whichOrganisations(fromNumber);
     if (orgs.length === 0) {
-      await this.whatsapp.sendMessage(fromNumber, "We don't recognize this number yet. Add it in your Groundwork Settings, then message us again.", { kind: 'refusal' });
+      await this.whatsapp.sendMessage(fromNumber, UNKNOWN_NUMBER_SAYING, { kind: 'refusal' });
       return null;
     }
     if (orgs.length === 1) return orgs[0].id;
