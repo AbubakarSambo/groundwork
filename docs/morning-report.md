@@ -36,6 +36,7 @@ database, and every one is complete, so the warning came too early and the numbe
 - The lead's judgement turns "The status of the open commitments to…" into "Check the status of…", and says a promise like 'I will file the bundle' as "file the bundle". After review it no longer drops any step, and leaves quotes that are not promises alone (134 item 4).
 - The judgement now has its own stored prompt versions, and each judgement records which version wrote it, so a prompt change can be proved. The code text is unchanged.
 - The lead is no longer told "Your own account of this is not in this check-in." about their own item. It reads "Only you can answer this.", on the report and the board. Found on the 5 October run's snapshot and project.
+- The judgement no longer keeps a line with a number that none of the people's accounts hold, such as "four different activities" for two crops in two places (135 item 3). A right number put on the wrong thing, like the crisis run's "7 AM alerts", is left to the new prompt.
 - I stopped on 139, the goal drawn as "Point to successfully renewed contracts", because no code writes that line and it is not in this computer's database. I asked the screens workspace which field carries it. I did not start 130 (b), 130 (d) or 131 (6), because none of them is small.
 
 ### Needs Hafsah

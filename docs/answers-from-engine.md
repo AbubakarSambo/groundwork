@@ -204,6 +204,19 @@ heading that is only a piece becomes a sentence on the report too: "This check-i
 about your role in the client meetings." An admin and the participant are unaffected. The wording
 "Only you can answer this." is mine; there is no prototype screen for it.
 
+**135 (3), the judgement miscounts.** A number in the judgement must now be one the material it was
+given holds. In a room nothing used to check numbers. When the judgement is written, a line holding a
+number the blocks do not hold is left out, the same way a line naming nobody already is. "Participant
+A has named four different activities in two locations" is not stored about two crops in two places.
+"Two crops in two places" is kept, because "one", "two" and "three" are how a sentence counts what it
+names. A date, a year and words in quotation marks are not checked. In the gap, only the sentence with
+the bad number goes. If it is the gap's only sentence, it is kept and logged, because the gap is what
+the lead reads first.
+
+This check cannot catch a number that the material does hold but that is put on the wrong thing. On
+the 5 October run's crisis check-in, "nobody responded to the 7 AM alerts" used the lead's own "7 AM"
+for an alert that fired at 02:14. That is the writer's to keep right, and it goes into the new prompt.
+
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
 ```

@@ -177,6 +177,7 @@ import { whatMoreThanOnePersonNamed, namedByMoreThanOne } from './what-more-than
 import { decide, RoundPicture } from './what-the-report-said-at-the-time';
 import { aStoredSentenceReadsRight } from './a-stored-sentence-reads-right';
 import { aJudgementThatReadsRight } from './the-judgement-reads-right';
+import { onlyNumbersTheBlocksHold } from './a-number-the-blocks-hold';
 import { whyNot } from './why-it-is-not-happening';
 import { howThisHasMoved } from './how-this-has-moved';
 import { doesThisReportMarkItsInferences } from './a-report-that-marks-nothing';
@@ -4910,6 +4911,16 @@ happened, and what is in the way.`;
       this.logger.warn(`The judgement on ${groundId}: held back ${praise.heldBack.length} line(s) of praise the record's numbers do not support: ${praise.heldBack.map((x) => `"${x}"`).join(', ')}`);
     }
     if (parables.length) this.logger.warn(`The judgement on ${groundId} used ${parables.length} phrase(s) a person would not: ${parables.join(', ')}`);
+    /*
+     * AND A NUMBER IS ONE THE BLOCKS HOLD (request 135 item 3). In a room nothing checked a number, so "four different
+     * activities in two locations" reached the lead about two crops in two places. A line with a number the material
+     * does not hold is left out, as a line naming nobody is. See a-number-the-blocks-hold.
+     */
+    if (asARoom) {
+      const numbers = onlyNumbersTheBlocksHold(kept, material);
+      kept = numbers.judgement;
+      if (numbers.leftOut.length) this.logger.warn(`The judgement on ${groundId}: left out ${numbers.leftOut.length} line(s) with a number no block holds: ${numbers.leftOut.map((x) => `"${x}"`).join(', ')}`);
+    }
     this.logger.log(`Judged ${answers.length} answer(s) on ${groundId} over ${frame.length} fields.`);
     /* Which instruction wrote it: the stored version's id, or null where the code text ran. */
     return { judgement: { ...kept, promptVersionId: stored?.id ?? null }, table };
