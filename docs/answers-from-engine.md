@@ -95,14 +95,17 @@ the engine's reading of what she said, not a setting. The coaching now reads "Th
 person it is written for reads it. Where somebody gave their own role, it still reads "This is
 session 1 of 4 of your work as poultry farmer." The engine still coaches from the same role map.
 
-**127 (7), a count of worries with nothing behind it.** A worry is only shown in the words it was
-said, and only to somebody who may read those words. Where no worry can be shown, the Blockers tile
-used to give the number alone: "13 worries are on record, and nobody is waiting on anybody." It now
-says why the reader cannot find one: "13 worries are on record. None of them can be shown to you
-word for word. Nobody is waiting on anybody." With one worry it reads "1 worry is on record. It
-cannot be shown to you word for word." Where an earlier wait is open, the last sentence says that
-instead. Every reader of the tile reads the same sentence. Showing a worry that was not kept word
-for word, in other words, would be a new rule, and that is Hafsah's to decide, so I did not.
+**127 (7), a count of worries with nothing behind it.** Changed again after review, because "cannot
+be shown to you" was false for a lead whose worries were simply never kept word for word. Where
+there are worries and none is named, the Blockers tile now says the true reason:
+
+- To somebody walled from other people's words, such as the person an evaluation is about, or a person who does not see the others: "13 worries are on record. They are other people's words, so they are not shown to you." With one: "1 worry is on record. It is another person's words, so it is not shown to you."
+- To any reader, the lead included, where none was kept in the words it was said: "13 worries are on record. None was kept in the words it was said, so none is quoted here." With one: "1 worry is on record. It was not kept in the words it was said, so it is not quoted here."
+
+The sentence about waits follows, unchanged. The reason is worked out in `whatThisSessionHolds`
+(`whyNoWorryIsShown`) and carried to the tile on the board and in the session report. I did not add
+a sentence pointing elsewhere, because I found no other place that shows these worries to the same
+reader.
 
 **139, "Point to successfully renewed contracts" drawn as a goal.** I have stopped on this one for
 now, because I cannot find where the line comes from. No code writes it, and it is not in the local

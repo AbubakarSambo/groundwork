@@ -1875,6 +1875,7 @@ export class BoardService {
           theBlocker: held.theFirstBlocker,
           worries: held.worries,
           theWorry: held.theFirstWorry,
+          whyNoWorry: held.whyNoWorryIsShown,
           waitsFromEarlier: held.waitsFromEarlier,
         });
       }
@@ -4024,6 +4025,7 @@ export class BoardService {
       theFirstBlocker: held.theFirstBlocker,
       worries: held.worries,
       theFirstWorry: held.theFirstWorry,
+      whyNoWorryIsShown: held.whyNoWorryIsShown,
       waitsFromEarlier: held.waitsFromEarlier,
       answeredThisSession: answered.map((p: any) => ({ who: nameOf(p.id) ?? 'A colleague', isYou: false })),
       peopleInAll: whoAnswered.expected,

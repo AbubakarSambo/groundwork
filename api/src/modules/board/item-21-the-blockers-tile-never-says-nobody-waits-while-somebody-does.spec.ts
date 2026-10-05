@@ -107,7 +107,7 @@ describe('the tile itself', () => {
   it('with nothing waiting anywhere, nobody waits, as before', () => {
     expect(atAGlanceTiles({ ...base, worries: 1, theWorry: null }).find((t) => t.label === 'Blockers')!.sub)
       /* Changed 5 Oct 2026 (request 127 item 7): the count says why no worry is shown. */
-      .toBe('1 worry is on record. It cannot be shown to you word for word. Nobody is waiting on anybody.');
+      .toBe('1 worry is on record. It was not kept in the words it was said, so it is not quoted here. Nobody is waiting on anybody.');
   });
   it('with one earlier wait and no worry, it says so', () => {
     expect(atAGlanceTiles({ ...base, waitsFromEarlier: 1 }).find((t) => t.label === 'Blockers')!.sub)

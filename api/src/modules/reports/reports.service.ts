@@ -3404,6 +3404,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       theFirstBlocker: held.theFirstBlocker,
       worries: held.worries,
       theFirstWorry: held.theFirstWorry,
+      whyNoWorryIsShown: held.whyNoWorryIsShown,
       waitsFromEarlier: held.waitsFromEarlier,
       saidInAll,
       documentedInAll,

@@ -123,6 +123,12 @@ export interface WhatThisSessionHolds {
   worries: number;
   theFirstWorry: string | null;
   /**
+   * WHY NO WORRY IS NAMED, where there are worries and none is (request 127 item 7, review). 'walled' where
+   * the ones kept word for word are other people's words this reader may not read; 'not kept' where none
+   * was kept in the words it was said, which is true for the lead as well. Null where one is named.
+   */
+  whyNoWorryIsShown: WhyNoWorryIsShown;
+  /**
    * WAITS RAISED IN AN EARLIER SESSION AND STILL OPEN (item 21, the founder's board). The tile said
    * "There is 1 more worry on record, and nobody is waiting on anybody." to Ada, while Tunde was
    * waiting on her for three things raised two sessions before. This session raised no wait, but
@@ -287,13 +293,14 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
     const name = pid ? visible.get(labels.get(pid) ?? '') : null;
     return name?.trim() || 'A colleague';
   };
-  const theFirstWorry = worried
-    .filter((w: any) => w.saidWordForWord === true)
+  const keptWordForWord = worried.filter((w: any) => w.saidWordForWord === true);
+  const mayBeRead = keptWordForWord
     .filter((w: any) => !reader.colleaguesWordsWalled || (!!w.participantId && w.participantId === reader.participantId))
     /* A participant never reads the lead's judgement (run-26: Sunday's tile quoted Amaka's doubt about who should have
        qualified for a loan). Where people do not see each other the tile holds only the reader's own worries; and
        where people see each other the lead's words are said in her name, as a colleague's are (decisions 4 and 88). The count stays. */
-    .filter((w: any) => !(reader.ownWaitsOnly && !reader.isLead) || (!!w.participantId && w.participantId === reader.participantId))
+    .filter((w: any) => !(reader.ownWaitsOnly && !reader.isLead) || (!!w.participantId && w.participantId === reader.participantId));
+  const theFirstWorry = mayBeRead
     .map((w: any) => ({ who: w.participantId as string | null, line: theFirstSentenceThatFits(w?.text ? cleanText(w.text) : null) }))
     .filter((w): w is { who: string | null; line: string } => !!w.line && !/["“”]/.test(w.line) && quotesBuiltAtTheRead(w.line, quotable) === w.line)
     .map((w) => `${whoSaid(w.who)} said, "${/[.!?]$/.test(w.line) ? w.line : `${w.line}.`}"`)[0] ?? null;
@@ -332,8 +339,16 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
    * EVERY TARGET THIS READER IS LISTED, and how many of them have a number (request 109 c). The tile read "1
    * target is set" above a list of three, because it counted only the ones with a number. Both are said.
    */
-  return { movedOnTargets, blocked, waiting, theFirstBlocker, worries, theFirstWorry, waitsFromEarlier, targetsSet: objectives.length, targetsWithANumber: objectives.filter((o) => o.target != null).length, targetsMoved };
+  /* The true reason where worries exist and none is named. Kept word for word but walled from this reader is
+     "other people's words"; anything else - never kept, or kept in a shape the quote rule cannot stand - is
+     "not kept in the words it was said". */
+  const whyNoWorryIsShown: WhyNoWorryIsShown = worries > 0 && !theFirstWorry
+    ? (keptWordForWord.length > 0 && mayBeRead.length === 0 ? 'walled' : 'not kept')
+    : null;
+  return { movedOnTargets, blocked, waiting, theFirstBlocker, worries, theFirstWorry, whyNoWorryIsShown, waitsFromEarlier, targetsSet: objectives.length, targetsWithANumber: objectives.filter((o) => o.target != null).length, targetsMoved };
 }
+
+export type WhyNoWorryIsShown = 'walled' | 'not kept' | null;
 
 /** The four tiles, from the counts. The one builder both the report and the board call. */
 export function atAGlanceTiles(a: {
@@ -373,6 +388,8 @@ export function atAGlanceTiles(a: {
   /** Worries said this round, for when nothing is blocked: the tile says so instead of "None". */
   worries?: number;
   theWorry?: string | null;
+  /** Why no worry is named, from whatThisSessionHolds. Left out, the tile says none was kept in the words it was said. */
+  whyNoWorry?: WhyNoWorryIsShown;
   /** Waits raised before this session and still open, so the tile never says nobody waits while somebody does. */
   waitsFromEarlier?: number;
 }): AGlanceRead[] {
@@ -479,10 +496,13 @@ export function atAGlanceTiles(a: {
               /*
                * A COUNT IS NEVER LEFT WITH NOTHING BEHIND IT (request 127 item 7). "13 worries are on record,
                * and nobody is waiting on anybody." was read where no worry is shown anywhere. A worry is only
-               * shown in the words it was said, and only to somebody who may read them, so where none can
-               * be, the tile says that, instead of a number the reader can find nowhere.
+               * shown in the words it was said, and only to somebody who may read them, so where none is, the
+               * tile says the true reason: other people's words walled from this reader, or none kept word
+               * for word (true for the lead as well, so "cannot be shown to you" was not said to everyone).
                */
-              : `${worries === 1 ? '1 worry is on record. It cannot be shown to you word for word.' : `${worries} worries are on record. None of them can be shown to you word for word.`} ${earlier > 0
+              : `${a.whyNoWorry === 'walled'
+                ? (worries === 1 ? '1 worry is on record. It is another person\'s words, so it is not shown to you.' : `${worries} worries are on record. They are other people's words, so they are not shown to you.`)
+                : (worries === 1 ? '1 worry is on record. It was not kept in the words it was said, so it is not quoted here.' : `${worries} worries are on record. None was kept in the words it was said, so none is quoted here.`)} ${earlier > 0
                 ? `Nobody named a new wait this session, and ${earlier === 1 ? '1 wait from an earlier session is' : `${earlier} waits from earlier sessions are`} still open.`
                 : 'Nobody is waiting on anybody.'}`)
             : earlier > 0
