@@ -2431,6 +2431,22 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         )}
 
         {/*
+          ANCHOR PIECE 22, A PERSON'S OWN RECOGNITION SENTENCE, "Helping the team move"
+          (docs/anchor-scenario.md section 19; docs/answers-from-engine.md, "Anchor piece 22,
+          hidden contributors, is served"). The lead reads the same sentence about this person on
+          `TheMonthBoard`'s own "People helping things move"; a person reads only their own, said
+          as "you" - never anybody else's, and the server sends nothing for anybody else's share of
+          it. Drawn only for a participant, and only while the engine actually sends a sentence -
+          `null` (closed nothing this month) or absent (any other check-in, or the switch off)
+          draws nothing, never an empty heading.
+        */}
+        {isParticipantView && b.yourPartInMovingThings && (
+          <Section heading="Helping the team move">
+            <Note>{b.yourPartInMovingThings}</Note>
+          </Section>
+        )}
+
+        {/*
           BOARD FIX (sales B, item 3d): "EVERY SESSION" SITS OUTSIDE THE FOLD, AFTER "YOUR SHARE"
           (board-as-participant.txt ends on "Every session" then "Ask", neither of them behind
           "The whole check-in"). This used to sit lower on the page, inside `MaybeFolded`, where a
