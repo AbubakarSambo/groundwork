@@ -92,6 +92,11 @@ describe('a protocol reaches the conversation it was written for, and no others'
    * rulebook growing, so the ceiling moves by them and no further - 119,000 against 118,412
    * leaves under six hundred characters of headroom, a fraction of either protocol.
    *
+   * AND A THIRD TIME, 5 October, for the rule that nobody reading a report is called a
+   * participant (run 32: "the other two participants report..."). 119,500 against 119,185, which
+   * is the same discipline again: it moves by what the rulebook gained and leaves three hundred
+   * characters, nowhere near the seven thousand a protocol would need.
+   *
    * THE SIZE IS A PROXY, SO THE THING ITSELF IS NOW ASSERTED TOO. A ceiling that has to be raised
    * whenever the rulebook grows is a ceiling that will eventually be raised past a protocol
    * without anybody noticing. The two lines below say outright that neither protocol is in the
@@ -101,7 +106,7 @@ describe('a protocol reaches the conversation it was written for, and no others'
     expect(FAILING_RELATIONSHIP_PROTOCOL.length + RECALL_SESSION_PROTOCOL.length).toBeGreaterThan(7000);
     expect(ENGINE_RULES).not.toContain(FAILING_RELATIONSHIP_PROTOCOL);
     expect(ENGINE_RULES).not.toContain(RECALL_SESSION_PROTOCOL);
-    expect(ENGINE_RULES.length).toBeLessThan(119000);
+    expect(ENGINE_RULES.length).toBeLessThan(119500);
   });
 
   /* And the rulebook is in it, imported rather than retyped, which is the reason it grew. */

@@ -40,6 +40,10 @@ followed by a colon and an answer.
 
 Use people's names. Never use somebody's job description as their name.
 
+Never call anybody a participant. That is our word for a row in a database, not a word anybody
+uses about a colleague. Name them, or say "people": "the other two people in this check-in", never
+"the other two participants". The same goes for "party", "the initiator" and "the respondent".
+
 Never join pieces with colons, dots, arrows or slashes. Never write a list of labels and fragments.
 
 Use the words the team itself used. Avoid management jargon. Do not write bottleneck, alignment,

@@ -5233,3 +5233,22 @@ about which ones are theirs.
 **The words in it are mine, not the engine's.** No model is called. It is for what a list does at a
 hundred, what search has to cope with, and which check-ins should come first. It says nothing about
 how the engine writes.
+
+---
+
+# From run 32, not from a request: nobody reading a report is called a participant
+
+The review of run 32 shows, in several scenarios:
+
+> the other two **participants** report... · both branch **participants** · two other
+> **participants** report that the company's CEO...
+
+**Participant is our word for a row in a database.** Nobody says it about a colleague. It was in
+none of the wording rules, and the scorer's label check only catches "Participant A", so the bare
+noun passed everything and reached readers.
+
+The rulebook now says to name them or say "people", with the sentence both ways, and covers the
+other three words of ours that mean a row: "party", "the initiator" and "the respondent".
+
+If any screen composes a sentence with "participant" in it, that one is yours — the engine will
+stop sending them.
