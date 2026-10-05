@@ -236,6 +236,19 @@ const A_DAY = /\b(\d{1,2}(st|nd|rd|th)?\s+(of\s+)?(jan|feb|mar|apr|may|jun|jul|a
 const LOG_HOURS = /^\s*(please\s+)?(log|record|put\s+down|add)\s+(\d+(?:[.,]\d+)?|an?|half\s+an)\s*(hours?|hrs?|h)\b/i;
 const SPEND = /\b(i\s+(need|want|would\s+like|have)\s+to\s+spend|i'd\s+like\s+to\s+spend|(can|may|could)\s+(i|we)\s+spend|request\s+to\s+spend|approve\s+(spending|a\s+spend))\b/i;
 const A_SUM = /\d/;
+/*
+ * SPENDING ASKED FOR WITHOUT THE WORD "SPEND" (the coordinator, 5 October): "I need 15,000 shillings
+ * approved for fuel for the van this week." got no offer. A sum of money (a currency, or "k", "thousand",
+ * "million") asked for in the person's own words. Telling ("I spent 12,000 on fuel") still is not one.
+ */
+const MONEY = String.raw`(?:(?:KES|KSh|Ksh|NGN|N|₦|\$|USD|GHS|£|GBP|€|EUR|ZAR|R)\s?\d[\d,.]*\s*(?:k|m|thousand|million)?|\d[\d,.]*\s*(?:k|m|thousand|million)?\s*(?:shillings?|bob|naira|dollars?|pounds?|euros?|cedis?|rand|KES|KSh|NGN|USD|GHS)|\d[\d,.]*\s*(?:k|thousand|million)\b)`;
+const SPENDING_ASKED = [
+  new RegExp(String.raw`\bi\s+need\s+(?:about\s+|around\s+)?${MONEY}[^.?!]*\b(?:approved|for)\b`, 'i'),
+  new RegExp(String.raw`\b(?:can|could|may)\s+(?:i|we)\s+(?:get|have)\s+(?:about\s+|around\s+)?${MONEY}\s+(?:for|to)\b`, 'i'),
+  new RegExp(String.raw`\bplease\s+approve\b[^.?!]*${MONEY}`, 'i'),
+  new RegExp(String.raw`\brequesting\s+(?:about\s+|around\s+)?${MONEY}`, 'i'),
+  new RegExp(String.raw`\bcan\s+you\s+approve\b[^.?!]*${MONEY}`, 'i'),
+];
 
 /**
  * WHETHER A MESSAGE IS PLAINLY A LEAVE, HOURS OR SPENDING REQUEST, rather than an answer. Narrow on
@@ -248,6 +261,7 @@ export function looksLikeARequest(text: string): ARequest | null {
   if (!t) return null;
   if (LOG_HOURS.test(t)) return 'hours';
   if (SPEND.test(t) && A_SUM.test(t)) return 'spending';
+  if (SPENDING_ASKED.some((rx) => rx.test(t))) return 'spending';
   if (LEAVE.test(t) && ASKS.test(t) && A_DAY.test(t)) return 'leave';
   return null;
 }
