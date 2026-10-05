@@ -333,7 +333,9 @@ export class WhatsAppAddOnService {
      * So they read that, plainly, and whether it is on.
      */
     const offSays = !s.addOnOn ? WHATSAPP_REMINDERS_ARE_OFF : null;
-    if (!isAdmin || !(await theNewBillingPartsAreShown(this.prisma))) return { on: s.addOnOn, sending: s.sending, says: personSays ?? offSays };
+    if (!isAdmin || !(await theNewBillingPartsAreShown(this.prisma))) /* Exactly what a member reads, with no `on`: the screen takes an answer that has `on` for the admin's full one, so an
+       admin with the switch off would read an empty part (clean-install run, 6 October). */
+      return { sending: s.sending, says: personSays ?? offSays };
 
     const label = s.plan ? PLAN_LABELS[s.plan] : null;
     const says: Record<string, string | null> = {
