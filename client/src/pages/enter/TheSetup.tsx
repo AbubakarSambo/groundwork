@@ -67,6 +67,68 @@ export function takeTheServedPeopleStep(): ThePeopleStepRules | undefined {
   }
 }
 
+/**
+ * THE ANCHOR'S FIRST QUESTION, THE SAME WAY THE PEOPLE STEP TRAVELS (request 163, item 9).
+ *
+ * The plan's own wording (docs/anchor-scenario-plan.md section 6; docs/anchor-scenario.md): "the
+ * first psychological trigger: recognition". This is the FALLBACK ONLY - `AnchorLandingPage.tsx`
+ * remembers the engine's served `firstQuestion` (`GET /entry/anchor-start`) across the one
+ * navigation into `EntryChatPage.tsx`, exactly as it does for `ThePeopleStepRules` above; this
+ * constant is drawn only when nothing was served (the engine has not built it yet, an older link,
+ * or the call failed).
+ */
+export const THE_ANCHOR_FIRST_QUESTION =
+  "What's happening right now that makes you wish your team saw more of what you see?"
+
+const ANCHOR_FIRST_QUESTION_SESSION_KEY = 'gw-anchor-first-question'
+
+export function rememberTheServedFirstQuestion(question: string | undefined) {
+  if (!question) return
+  try { sessionStorage.setItem(ANCHOR_FIRST_QUESTION_SESSION_KEY, question) } catch { /* best effort */ }
+}
+
+/** Read once, then forget - the draft's own onboarding history carries it from here on. */
+export function takeTheServedFirstQuestion(): string | undefined {
+  try {
+    const raw = sessionStorage.getItem(ANCHOR_FIRST_QUESTION_SESSION_KEY)
+    if (!raw) return undefined
+    sessionStorage.removeItem(ANCHOR_FIRST_QUESTION_SESSION_KEY)
+    return raw
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * WHETHER `GET /entry/anchor-start` ACTUALLY SUCCEEDED FOR THIS TAB (plan piece 2; the plan's "do it
+ * only when the anchor switch is on").
+ *
+ * `EntryChatPage.tsx` opens straight onto the anchor's own conversation - no door, no picker - the
+ * moment it sees `?scenario=HELP_TEAM_UNDERSTAND`, which is only right while `release.anchorScenario`
+ * is really on: a STALE such link, kept from before Hafsah switches it off, must fall back to
+ * today's ordinary door rather than open a conversation the engine no longer runs. `anchor-start`
+ * answers 404 whenever the switch is off (`AnchorLandingPage.tsx`'s own `isError`), so whether it
+ * succeeded is the plan's own stand-in for the switch, carried the same way the people step and the
+ * first question are. This is read, not taken: every place that opens the door checks it fresh,
+ * rather than consuming it once into component state, so it cannot go stale depending on which of
+ * two effects happens to run first on the same mount (`takeTheServedFirstQuestion` above is
+ * genuinely single-use - the onboarding history it seeds is itself then kept across reloads - but a
+ * yes/no switch reading has nothing to hand off once read, so there is nothing to lose by checking
+ * it again). Reading the switch directly from `EntryChatPage.tsx` (`useAnchorScenarioIsOnForAStranger`)
+ * was the other option the plan allows, but that is a live network call from an already very large,
+ * widely-mocked component, and `@/api/entry` is replaced wholesale (no `entryAnchorApi`) by over a
+ * dozen of its own specs - this reads a plain boolean instead and touches none of them.
+ */
+const ANCHOR_START_CONFIRMED_SESSION_KEY = 'gw-anchor-start-confirmed'
+
+export function rememberTheAnchorStartSucceeded() {
+  try { sessionStorage.setItem(ANCHOR_START_CONFIRMED_SESSION_KEY, '1') } catch { /* best effort */ }
+}
+
+export function theAnchorStartSucceededForThisTab(): boolean {
+  try { return sessionStorage.getItem(ANCHOR_START_CONFIRMED_SESSION_KEY) === '1' } catch { return false }
+}
+
 export const THE_SETUP = {
   whenItStarts: 'When it starts',
   opensAtTheStart: 'The first check-in opens at the start time.',

@@ -5,7 +5,7 @@ import { Panel, PageTitle, Button, Stack, Note } from '@/components/gw/ui'
 import { THE_ANCHOR_HOOK } from './the-anchor-hook'
 import { useAnchorScenarioIsOnForAStranger } from './anchor-scenario-is-on'
 import { entryAnchorApi } from '@/api/entry'
-import { rememberTheServedPeopleStep } from './TheSetup'
+import { rememberTheServedPeopleStep, rememberTheServedFirstQuestion, rememberTheAnchorStartSucceeded } from './TheSetup'
 
 /** The engine's own sentence for a visitor who reaches this page while the way in is closed (request 144 (2) and (3)). */
 const THE_WAY_IN_IS_NOT_OPEN_YET = 'This way in is not open yet.'
@@ -55,12 +55,18 @@ export function AnchorLandingPage() {
   })
 
   /**
-   * CARRYING `thePeopleStep` ON TO THE ENTRY CHAT (item 2; docs/answers-from-engine.md, "Request
-   * 149 (2 of 6)"). This is the one call that gets it, and the button below is a fresh page load
-   * into `EntryChatPage.tsx`, so it is handed off through `sessionStorage` rather than kept here.
+   * CARRYING `thePeopleStep` AND `firstQuestion` ON TO THE ENTRY CHAT (item 2; docs/answers-from-
+   * engine.md, "Request 149 (2 of 6)"; request 163 item 9), AND CONFIRMING THE SWITCH IS ON FOR
+   * THIS TAB (fault 1's own gate, `EntryChatPage.tsx`'s `anchorConversationOpensDirectly()`). This
+   * is the one call that gets all three, and the button below is a fresh page load into
+   * `EntryChatPage.tsx`, so each is handed off through `sessionStorage` rather than kept here.
+   * `started` only exists once `GET /entry/anchor-start` has actually answered (not 404'd), which is
+   * exactly the plan's own stand-in for "the anchor switch is on".
    */
   useEffect(() => {
+    if (started) rememberTheAnchorStartSucceeded()
     rememberTheServedPeopleStep(started?.thePeopleStep)
+    rememberTheServedFirstQuestion(started?.firstQuestion)
   }, [started])
 
   // While the public switch is still loading, nothing is drawn - never a half-answered page, and

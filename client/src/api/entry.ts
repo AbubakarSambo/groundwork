@@ -313,6 +313,11 @@ export const entryAnchorApi = {
    * context label, button and limit sentence, carried from here through to the entry chat's people
    * step rather than read off the fixed `ANCHOR_PEOPLE_STEP_RULES`. With the switch off it answers
    * 404 - the caller is expected to show the engine's own sentence rather than invent one.
+   *
+   * `firstQuestion` (request 163, item 9): the engine's own opening line for the anchor
+   * conversation, "What's happening right now that makes you wish your team saw more of what you
+   * see?". Not served yet - the caller falls back to `THE_ANCHOR_FIRST_QUESTION` (TheSetup.tsx)
+   * until it is.
    */
   start: (source?: string | null): Promise<{
     available: true
@@ -321,6 +326,7 @@ export const entryAnchorApi = {
     groundLabel: string
     source: string | null
     thePeopleStep?: ThePeopleStepRules
+    firstQuestion?: string
   }> =>
     apiClient.get('/entry/anchor-start', {
       params: source ? { source } : undefined,

@@ -105,6 +105,33 @@ describe('the anchor landing page', () => {
     expect(sessionStorage.getItem('gw-anchor-people-step')).toBeNull()
   })
 
+  /**
+   * FAULT 1, ITEM 9: THE ENGINE'S `firstQuestion`, CARRIED THE SAME WAY (request 163 item 9).
+   * `EntryChatPage.tsx` reads this once, on a fresh mount, through `takeTheServedFirstQuestion`.
+   */
+  it('keeps the served firstQuestion for the entry chat to open on', async () => {
+    mockAvailable.mockResolvedValue({ available: true })
+    mockStart.mockResolvedValue({
+      available: true, scenario: 'HELP_TEAM_UNDERSTAND', startedFrom: 'anchor',
+      groundLabel: 'Help my team understand', source: null,
+      firstQuestion: 'What is really happening here?',
+    })
+    renderAt('/start/team')
+    await waitFor(() => expect(screen.getByText(THE_ANCHOR_HOOK.heading)).toBeTruthy())
+    await waitFor(() => expect(sessionStorage.getItem('gw-anchor-first-question')).toBe('What is really happening here?'))
+  })
+
+  it('leaves nothing behind when anchor-start does not serve firstQuestion', async () => {
+    mockAvailable.mockResolvedValue({ available: true })
+    mockStart.mockResolvedValue({
+      available: true, scenario: 'HELP_TEAM_UNDERSTAND', startedFrom: 'anchor',
+      groundLabel: 'Help my team understand', source: null,
+    })
+    renderAt('/start/team')
+    await waitFor(() => expect(screen.getByText(THE_ANCHOR_HOOK.heading)).toBeTruthy())
+    expect(sessionStorage.getItem('gw-anchor-first-question')).toBeNull()
+  })
+
   it('shows the engine’s sentence and a link to /start when anchor-start answers 404', async () => {
     mockAvailable.mockResolvedValue({ available: true })
     mockStart.mockRejectedValue(new Error('404'))

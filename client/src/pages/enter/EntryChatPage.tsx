@@ -24,7 +24,7 @@ import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { toast } from 'sonner'
 import AskYourTeamOneThing from './AskYourTeamOneThing'
 import { TheDoor } from './TheDoor'
-import { TheSetup, theDay, ANCHOR_PEOPLE_STEP_RULES, takeTheServedPeopleStep } from './TheSetup'
+import { TheSetup, theDay, ANCHOR_PEOPLE_STEP_RULES, takeTheServedPeopleStep, THE_ANCHOR_FIRST_QUESTION, takeTheServedFirstQuestion, theAnchorStartSucceededForThisTab } from './TheSetup'
 import type { ThePeopleStepRules } from '@/api/anchorShapes'
 import { TheLeadsReveal } from '@/components/gw/TheLeadsReveal'
 import { FillsInAsYouTalk } from './FillsInAsYouTalk'
@@ -1390,6 +1390,26 @@ export function EntryChatPage() {
   }
 
   /**
+   * FAULT 1: OPEN THE ANCHOR'S CONVERSATION DIRECTLY ONLY WHILE THE SWITCH IS REALLY ON.
+   *
+   * `isAnchorDraft()` alone is just the URL's `?scenario=HELP_TEAM_UNDERSTAND` (or its classified
+   * equivalent), which survives in a bookmark or a forwarded link long after Hafsah might switch
+   * `release.anchorScenario` back off - and the engine then no longer runs the anchor conversation
+   * for that key. Skipping the door and the situation picker is only right while the switch is
+   * genuinely on, so this also checks `theAnchorStartSucceededForThisTab()` (TheSetup.tsx): whether
+   * `GET /entry/anchor-start` actually answered, for this browser tab, which `AnchorLandingPage.tsx`
+   * only ever reaches once the switch has said yes. A stale link with the switch off never gets that
+   * confirmation, so this reads false and the page falls back to today's ordinary door - exactly the
+   * plan's own rule ("Do it only when the anchor switch is on... a stale link... keeps today's
+   * behaviour"). Every OTHER anchor-only behaviour on this page (the people step, the reveal, the
+   * invite wording) still reads the plain `isAnchorDraft()` above, unchanged - it is only the door
+   * itself, and the question that replaces it, this one extra check guards.
+   */
+  function anchorConversationOpensDirectly(): boolean {
+    return isAnchorDraft() && theAnchorStartSucceededForThisTab()
+  }
+
+  /**
    * THE 19-PERSON LIMIT (the lead plus 19 is 20, decision 96 item 3; `thePeopleStepRules.mayAdd`,
    * served or else `ANCHOR_PEOPLE_STEP_RULES`), for an anchor draft only. `true` means the add
    * actually happened; every place that adds a contributor checks this first and shows the engine's
@@ -2199,7 +2219,20 @@ export function EntryChatPage() {
 
   useEffect(() => {
     if (phase !== 'onboarding') return
-    const INTRO = THE_OPENING_QUESTION
+    /*
+     * FAULT 1 (the anchor's own first question, no door). An anchor arrival (`?scenario=
+     * HELP_TEAM_UNDERSTAND`, with the switch confirmed on - `anchorConversationOpensDirectly()`,
+     * above) opens on the engine's own opening line, never the ordinary picker's
+     * `THE_OPENING_QUESTION`. `takeTheServedFirstQuestion()` reads what `AnchorLandingPage.tsx`
+     * carried across from `GET /entry/anchor-start` (request 163 item 9); until the engine serves
+     * it, `THE_ANCHOR_FIRST_QUESTION` is the plan's own wording (docs/anchor-scenario-plan.md
+     * section 6). This is the ONLY assistant turn ever placed in this draft's history for an anchor
+     * arrival - nothing below sends a word on the lead's behalf; she types the first answer herself,
+     * into the ordinary composer, which carries `scenario` (this page's own URL-derived constant)
+     * straight through `sendOnboarding` to `entryApi.onboardStream`'s `scenario` field (see
+     * `atTheDoor`, below, for where the door itself is skipped).
+     */
+    const INTRO = anchorConversationOpensDirectly() ? (takeTheServedFirstQuestion() ?? THE_ANCHOR_FIRST_QUESTION) : THE_OPENING_QUESTION
     // If URL params pre-populate, inject as first user message
     if (urlInitial) {
       setOnboardingHistory(prev => {
@@ -2738,7 +2771,15 @@ export function EntryChatPage() {
     const t = new Date(); const today = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
     return checkInBy > today
   })()
-  const atTheDoor = phase === 'onboarding' && onboardingHistory.length === 1 && !onboardingLoading && !pickedSituation
+  /*
+   * FAULT 1: AN ANCHOR ARRIVAL IS NEVER AT THE DOOR. `isAnchorDraft()` is true from the first
+   * render (`?scenario=HELP_TEAM_UNDERSTAND`), before anything has been picked or sent, so without
+   * this the door and its five examples showed underneath the anchor's own opening line (the
+   * `history.length === 1 && !pickedSituation` condition was true for every fresh arrival, anchor
+   * or not). The plan says the landing "enters the scenario at once" - no door, no situation
+   * picker, straight onto the conversation.
+   */
+  const atTheDoor = phase === 'onboarding' && onboardingHistory.length === 1 && !onboardingLoading && !pickedSituation && !anchorConversationOpensDirectly()
   /** Words typed at the door, or on the list, open the conversation as describing it yourself. */
   function describeItInYourOwnWords(text: string) {
     setSeeingEverySituation(false)
@@ -2820,8 +2861,15 @@ export function EntryChatPage() {
         in this reader has on /start. Not shown once there is a session header below (a stranger
         partway into onboarding still has no account, but by then they are mid-conversation, not
         at the door, and the session header already carries its own way out).
+
+        `anchorConversationOpensDirectly() && phase === 'onboarding'` (fault 1) is kept alongside
+        `atTheDoor` on purpose: an anchor arrival is never "at the door", but it is still a
+        stranger's very first
+        screen, with nothing below it yet either - so it needs the same mark and the same way to
+        sign in, from her first render, not only once `atTheDoor` happened to be true. The `phase`
+        check keeps it from reappearing beside the session header once the check-in itself starts.
       */}
-      {!user && atTheDoor && (
+      {!user && (atTheDoor || (anchorConversationOpensDirectly() && phase === 'onboarding')) && (
         <div className="gwui-mark-row">
           <Mark />
           <Link to="/auth" className="gwui-plain-link">Sign in</Link>
@@ -3098,8 +3146,9 @@ export function EntryChatPage() {
               aria-live="polite"
               // The picker needs the width for a multi-column grid so all 8
               // cards sit above the fold at laptop heights; conversation
-              // bubbles keep the narrow reading column.
-              className={`gwui-ec-messages ${onboardingHistory.length === 1 && !pickedSituation && phase === 'onboarding' ? 'gwui-ec-messages-wide' : 'gwui-ec-messages-narrow'}`}
+              // bubbles keep the narrow reading column. An anchor arrival has no picker to be wide
+              // for (fault 1): it goes straight to the narrow, conversational column.
+              className={`gwui-ec-messages ${onboardingHistory.length === 1 && !pickedSituation && !anchorConversationOpensDirectly() && phase === 'onboarding' ? 'gwui-ec-messages-wide' : 'gwui-ec-messages-narrow'}`}
             >
               {onboardingHistory.map((m, i) => {
                 /*
@@ -3308,8 +3357,11 @@ export function EntryChatPage() {
               )}
             </div>
 
-            {/* Text input for onboarding - hidden once ready, loading checkin, or cards not yet dismissed */}
-            {!startCheckin.isPending && !onboardingReady && !(onboardingHistory.length === 1 && !pickedSituation) && (
+            {/* Text input for onboarding - hidden once ready, loading checkin, or cards not yet dismissed.
+                An anchor arrival has no cards to dismiss (fault 1): the composer is there from the
+                first render, open on the engine's own opening line, so the lead can only ever type
+                her own first answer - never a word she did not write. */}
+            {!startCheckin.isPending && !onboardingReady && !(onboardingHistory.length === 1 && !pickedSituation && !anchorConversationOpensDirectly()) && (
               <div className="gwui-ec-composer-wrap">
                 {/* Doc-add panel: paste or upload a document + context; the AI reads it. */}
                 {showDocPanel && (
