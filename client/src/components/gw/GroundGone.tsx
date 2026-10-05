@@ -17,15 +17,11 @@ import { Page, Empty, Button } from '@/components/gw/ui'
  * a set, never which one applies, and never asserts a history ("it was ended", "you wrote
  * something here before") that would not be true of every one of them.
  *
- * WORDING, FROM THE PROTOTYPE (F4-small-states/c-gone-board.txt): the title, "This check-in
- * isn't available any more", and its two ways out, "Open my work" (the reader's own board,
- * `/you`) and "Go to Check-ins" (the list, `/grounds`). The prototype's own body sentence,
- * "Whoever ran it ended it or removed it. What you wrote is kept in your own history.",
- * is not drawn as written: it states a specific, definite history that is not true every
- * time this screen shows (a link that was never this reader's, or never existed, has no
- * "whoever ran it" and nothing of theirs to keep). The sentence below says the same two
- * things - why, and that nothing of the reader's is lost - without claiming more than is
- * true for every cause.
+ * WORDING, FROM THE PROTOTYPE (F4-small-states/c-gone-board.txt): the title, the body's two
+ * sentences, and its two ways out, word for word. The same words show for every cause, so they
+ * never tell a stranger whether something real sits behind the link (GW-PRI-04 holds: nothing
+ * on this screen changes with the reason). One sentence is kept from the page before (W8-65):
+ * switching organisation is how most people get here, and naming it tells them where it went.
  */
 export function GroundGone() {
   return (
@@ -39,9 +35,8 @@ export function GroundGone() {
           </div>
         }
       >
-        It may have been ended or removed, it may belong to an organisation you have since
-        switched away from, or it may simply not be one of yours. Anything you wrote stays in
-        your own history.
+        Whoever ran it ended it or removed it. What you wrote is kept in your own history. If you
+        have just switched organisation, it may belong to the one you switched away from.
       </Empty>
     </Page>
   )

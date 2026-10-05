@@ -359,7 +359,7 @@ export function GroundParticipantPage() {
         <Empty
           title="You’re not in this check-in"
           action={askToJoin.isSuccess ? (
-            <Note tone="muted">Asked. {lead ?? 'Whoever runs it'} has your request.</Note>
+            <Note tone="muted">You asked to join. {lead ?? 'Whoever runs it'} has your request.</Note>
           ) : (
             <Button kind="secondary" onClick={() => askToJoin.mutate()} disabled={askToJoin.isPending}>
               {askToJoin.isPending ? 'Asking…' : 'Ask to join'}

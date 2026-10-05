@@ -40,9 +40,9 @@ describe('the check-in-not-open state', () => {
     expect(screen.getByText(/switched away from/)).toBeTruthy()
   })
 
-  it('says what was written is not lost, without claiming a specific history', () => {
+  it('says what was written is not lost, in the prototype\u2019s words', () => {
     show()
-    expect(screen.getByText(/Anything you wrote stays in your own history/)).toBeTruthy()
+    expect(screen.getByText(/Whoever ran it ended it or removed it\. What you wrote is kept in your own history\./)).toBeTruthy()
   })
 
   it('and does not say "not found", which reads as the product losing it', () => {
