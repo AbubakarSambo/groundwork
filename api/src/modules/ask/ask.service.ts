@@ -1,4 +1,5 @@
 import { askName, askNameOf, askFirstWelcome, ASK_CAPTION, ASK_ADD_LINE, askStarters } from '../assistant/ask-name';
+import { whatWasSaid } from '../assistant/what-was-said-is-what-is-kept';
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AssistantService } from '../assistant/assistant.service';
@@ -353,12 +354,11 @@ export class AskService {
       reply = answerAGuest(question, ground.label, {}, new Date(), await askNameOf(this.prisma, asker.organizationId));
     }
 
-    const said = (reply.blocks as any[]).find((b: any) => b.type === 'text') as { body?: string } | undefined;
     const key = aGuestsOwnKey(asker.userId);
     await this.prisma.assistantTurn.createMany({
       data: [
         { organizationId: asker.organizationId, personExternalId: key, role: 'person', content: message },
-        { organizationId: asker.organizationId, personExternalId: key, role: 'assistant', content: said?.body ?? '', lane: reply.lane, composedBy: reply.composedBy },
+        { organizationId: asker.organizationId, personExternalId: key, role: 'assistant', content: whatWasSaid(reply), lane: reply.lane, composedBy: reply.composedBy },
       ],
     }).catch(() => undefined);
     return reply;
@@ -469,11 +469,10 @@ export class AskService {
     const settle = (state: 'ACCEPTED' | 'DECLINED' | 'DROPPED') =>
       this.prisma.assistantProposal.update({ where: { id: waiting.id }, data: { state, resolvedAt: new Date() } });
     const keep = async (reply: Reply) => {
-      const said = reply.blocks.find((b) => b.type === 'text') as { body?: string } | undefined;
       await this.prisma.assistantTurn.createMany({
         data: [
           { organizationId: asker.organizationId, personExternalId: key, role: 'person', content: input.answer === 'yes' ? 'Yes' : 'No' },
-          { organizationId: asker.organizationId, personExternalId: key, role: 'assistant', content: said?.body ?? '', lane: reply.lane, composedBy: reply.composedBy },
+          { organizationId: asker.organizationId, personExternalId: key, role: 'assistant', content: whatWasSaid(reply), lane: reply.lane, composedBy: reply.composedBy },
         ],
       }).catch(() => undefined);
       return reply;

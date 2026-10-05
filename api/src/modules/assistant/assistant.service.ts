@@ -1,4 +1,5 @@
 import { WAITING_TO_BE_LET_IN } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
+import { whatWasSaid } from './what-was-said-is-what-is-kept';
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { NOTHING_FLAGGED } from '../detectors/who-needs-you-this-week';
 import { PrismaService } from '../prisma/prisma.service';
@@ -2709,13 +2710,12 @@ export class AssistantService {
 
   /** The running history, scoped to one person and never anybody else's turns. */
   private async remember(organizationId: string, who: string, message: string, reply: Reply) {
-    const said = reply.blocks.find((b) => b.type === 'text') as { body?: string } | undefined;
     await this.prisma.assistantTurn.createMany({
       data: [
         { organizationId, personExternalId: who, role: 'person', content: message },
         {
           organizationId, personExternalId: who, role: 'assistant',
-          content: said?.body ?? '', lane: reply.lane, composedBy: reply.composedBy,
+          content: whatWasSaid(reply), lane: reply.lane, composedBy: reply.composedBy,
         },
       ],
     });

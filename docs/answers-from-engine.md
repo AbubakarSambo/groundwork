@@ -5083,3 +5083,29 @@ field actually holds.
 
 If you would rather the engine cut it to a window, say which one and I will add it — but I would
 not choose it, and whoever is still waiting would not either.
+
+---
+
+# Request 154 item 2, third part: the history keeps what you actually read
+
+You saw saved turns ending at
+
+> I cannot answer that one yet. Here is what I can do with "It should run for 13 weeks."
+
+and nothing after them. The person saw four choices under that line; the record kept only the first
+text block, so the history held a sentence that introduces something and then stops.
+
+**What is kept is now what was read**: every text block, and the choices written out as a sentence
+in the labels the person was shown —
+
+> ... You could Tell me what you can see, What am I on?, What is on my list? or Hold this against
+> my next check-in.
+
+Nothing is invented and the live reply is untouched: you still get the blocks and still draw
+buttons. This is only what goes into the record of the conversation, at all three places a turn is
+saved. A test reads those three places, so none of them can go back to keeping the first block
+alone.
+
+**Item 2 is now fully answered**, except Juma's `'I do not have anybody called "looking after them
+while the road is closed. ..."'` — a request to add notes being read as a name. That one is the
+router mistaking a long sentence for a person, and it is next.
