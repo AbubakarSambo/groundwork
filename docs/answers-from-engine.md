@@ -353,6 +353,20 @@ in `docs/whatsapp-templates.md`. It cannot go outside the 24-hour window until M
 during the trial" depends on the organisation having WhatsApp on: an anchor trial does not switch the
 add-on on by itself, and nothing charges for it here.
 
+**Anchor piece 19, ideas from your team, is built (decision 105, item 5).** It is behind the anchor
+switch and only for a check-in started from the anchor link.
+
+- **In the person's check-in:** after their turn, a small model call looks for a concrete idea, and the idea must be their own words found in what they wrote. When there is one, the reply carries `ideaOffer`: `{ idea, question: "That sounds like a concrete idea. Want me to capture it for the team?", whoWillSeeIt: "If you say yes, everyone in this check-in will see it, with your name.", yes: "Yes, capture it", no: "Not now" }`. This is your `TheIdeaOfferInTheCheckIn`. It rides on the plain reply and on the stream's `done` event.
+- **Their yes:** the next message ("Yes, capture it", or a plain yes) captures the idea, and the reply starts with "I have captured it for the team. Everyone in this check-in will see it, with your name." "Not now", or simply carrying on, leaves nothing behind.
+- **On the board:** `ideasFromYourTeam` (your `TheIdeasFromYourTeam`) is served to the lead and to everyone in the check-in. Each idea carries "Raised by Rukia.", or "Raised by you." for the person's own. `similarNeedsSentence` is null, because ideas are not grouped yet. An admin who only reads, and an admin with access who is not in the check-in, are not served it.
+- **Counts:** the month board's "What the team is contributing" and the contribution lens now count ideas ("One idea from your team has been captured."), and so does the end-of-month read.
+- **Not built:** the offer is not kept on the transcript, so it does not come back after a reload.
+- **Where ideas are kept:** an idea is a work item of kind `idea`, and an offer waiting for a yes is a work item of kind `idea-offered`. Neither belongs to any kind of work's sections, and no migration was needed.
+
+The prompt is new: `anchor_idea_spotting` version 1, id `3294fbe3-d3ef-4911-8737-89090d1ffe64`, active in
+the local database. Each offer keeps that id in its row. It touches no all-24 scenario, because none
+of them is an anchor check-in. It runs only on the anchor seed and the anchor journey.
+
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
 ```

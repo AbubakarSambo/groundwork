@@ -39,6 +39,8 @@ export interface TheMonthRecord {
    * person, the latest closed, from their own check-in promises only (never a colleague's mention of them), as an
    * action in our voice. Never counted or ordered per person.
    */
+  /** Ideas captured after the person's own yes (piece 19), with the first name of who raised each. */
+  ideas?: { id: string; name: string; ownerParticipantId: string | null; raisedBy: string | null }[];
   doneByPerson?: { participantId: string; name: string; clause: string; clauseToThem?: string | null; settledBy?: string | null; doneAt: Date | null }[];
 }
 
@@ -53,6 +55,8 @@ export async function readTheMonthRecord(prisma: any, groundId: string, openRoun
     prisma.recommendation.findMany({ where: { subjectExternalId: `check-in:${groundId}`, kind: { in: Object.keys(THE_ANCHOR_OFFERS) }, state: { in: ['PROPOSED', 'ACCEPTED'] } }, select: { kind: true } }),
     prisma.ground.findUnique({ where: { id: groundId }, select: { startsAt: true, createdAt: true } }),
   ]);
+  /* Ideas, only after the yes: kind `idea`, never `idea-offered` (piece 19, ideas-from-the-team). */
+  const ideaRows = ((await prisma.workItem?.findMany?.({ where: { groundId, kind: 'idea' }, orderBy: { createdAt: 'asc' }, select: { id: true, name: true, ownerParticipantId: true, kind: true } })?.catch?.(() => [])) ?? []) as any[];
   const counted = (people as any[]).filter((p) => !p.managingOnly && !isNotLetInYet(p));
   const ids = new Set(counted.map((p) => p.id));
   const real = (finished as any[]).filter((c) => c.status === CheckInStatus.COMPLETED && !c.isSetup && ids.has(c.participantId));
@@ -80,6 +84,7 @@ export async function readTheMonthRecord(prisma: any, groundId: string, openRoun
     handoffsCleared: (handoffs as any[]).length - open.length,
     offers: byKind,
     startedOn,
+    ideas: ideaRows.filter((i) => i.kind === 'idea').map((i) => ({ id: i.id, name: i.name, ownerParticipantId: i.ownerParticipantId ?? null, raisedBy: firstName(i.ownerParticipantId ?? null) })),
     doneByPerson: (() => {
       type Done = { participantId: string; name: string; clause: string; clauseToThem: string | null; settledBy: string | null; doneAt: Date | null };
       const latest = new Map<string, Done>();

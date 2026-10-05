@@ -120,6 +120,7 @@ import { familyFor, BoardFamily } from '../board/board-families';
 import { theOneWorthAsking, askAboutItBlockFor } from './what-keeps-happening-becomes-a-question';
 import { mayCoach } from './participation-timeline';
 import { theirApprovedLeave } from '../suites/who-is-away';
+import { afterTheirTurn } from './ideas-from-the-team';
 import { stillAsking } from './one-question-per-turn';
 import { oneThingAsked, wouldLeaveAQuestionOut, asksMoreThanOneThing, withTheOneMoreLine, ASK_ONE_THING } from './a-turn-asks-one-thing';
 import { A_CHECK_IN_TAKES_ANSWERS, theCeilingIsReached, howMuchRoomIsLeft } from './there-is-a-ceiling-and-it-is-not-a-surprise';
@@ -2908,12 +2909,28 @@ export class ConversationService {
      * turn and served on the transcript, where the screen picks it up.
      */
     if (sessionComplete) this.startTheEndCard(checkIn as any, aiTurn.id);
-    return {
+    /*
+     * AN IDEA, SAID BACK FOR A YES (anchor piece 19). Only on a check-in started from the anchor link, with the switch
+     * on: their yes captures the idea waiting for it, and a new idea in what they just wrote is offered in the spec's
+     * words. See ideas-from-the-team.
+     */
+    const startedFrom = (checkIn as any).ground?.startedFrom
+      ?? (await (this.prisma as any).ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { startedFrom: true } })?.catch?.(() => null))?.startedFrom
+      ?? null;
+    const idea = startedFrom ? await afterTheirTurn(
+      { prisma: this.prisma, anthropic: this.anthropic as any, prompts: this.prompts as any },
+      { groundId: checkIn.groundId, startedFrom, participantId: (checkIn as any).participantId ?? null, message, sessionComplete },
+    ) : {};
+    const answer: any = {
       reply: [contextNotSaid, tookTheNumbers, whereToTakeIt, offerAnswered.weSay, withRoomLeft].filter(Boolean).join('\n\n'),
       sessionComplete,
       ...(suggestedAnswers.length ? { suggestedAnswers } : {}),
+      ...(idea.ideaOffer ? { ideaOffer: idea.ideaOffer } : {}),
       ...(this.anchorVersionForThisTurn.get(checkIn.id) ? { promptVersionId: this.anchorVersionForThisTurn.get(checkIn.id) } : {}),
     };
+    /* "I have captured it for the team." is said first, before anything else in the reply (anchor piece 19). */
+    if (idea.sayFirst) answer.reply = [idea.sayFirst, answer.reply].filter(Boolean).join('\n\n');
+    return answer;
   }
 
   /**
@@ -3126,7 +3143,7 @@ export class ConversationService {
    * written once, sanitized, after the stream completes.
    */
   async *sendMessageStream(checkInId: string, requestingUserId: string, message: string):
-    AsyncGenerator<{ type: 'delta'; text: string } | { type: 'done'; reply: string; sessionComplete: boolean; suggestedAnswers?: string[] }, void, unknown> {
+    AsyncGenerator<{ type: 'delta'; text: string } | { type: 'done'; reply: string; sessionComplete: boolean; suggestedAnswers?: string[]; ideaOffer?: any }, void, unknown> {
     /*
      * THE SAME CODE AS THE PLAIN ROUTE, WITH THE DRAFT SHOWN AS IT IS WRITTEN. Hafsah, 28 September
      * 2026. What the person reads last is `done.reply`, which is exactly what sendMessage returns and
@@ -3160,6 +3177,8 @@ export class ConversationService {
       reply: r.reply,
       sessionComplete: !!r.sessionComplete,
       ...(Array.isArray(r.suggestedAnswers) && r.suggestedAnswers.length ? { suggestedAnswers: r.suggestedAnswers } : {}),
+      /* The idea offer rides on the last event too (anchor piece 19). */
+      ...(r.ideaOffer ? { ideaOffer: r.ideaOffer } : {}),
     };
   }
 

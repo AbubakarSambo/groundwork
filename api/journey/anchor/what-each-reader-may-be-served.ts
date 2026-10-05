@@ -48,6 +48,7 @@ export function whatIsWrongForThisReader(reader: AnAnchorReader, board: Record<s
   }
   if (has('yourPartInMovingThings')) problems.push(`${reader === 'an admin with access' ? 'An admin with access' : 'An admin who only reads'} is served a person's recognition sentence.`);
   if (has('aNudgeForYou')) problems.push(`${reader === 'an admin with access' ? 'An admin with access' : 'An admin who only reads'} is served a person's nudge.`);
+  if (reader === 'an admin who only reads' && has('ideasFromYourTeam')) problems.push('An admin who only reads is served the ideas, which are for the people in the check-in.');
   if (reader === 'an admin who only reads' && has('activeLine')) {
     /* An admin of the organisation reads the active line on a check-in they can open (decision 93 row 14); it holds counts only. */
     if (/[A-Z][a-z]+ [A-Z][a-z]+/.test(String(board.activeLine?.line ?? ''))) problems.push('The active line names a person to an admin who only reads.');

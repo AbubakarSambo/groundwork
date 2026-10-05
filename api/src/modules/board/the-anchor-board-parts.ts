@@ -6,7 +6,8 @@ import { theMonthBoard, aDifferenceInAWords, aContributionSaid } from './the-anc
 import { theEndOfMonthRead, theMonthIsOver, herOwnWords } from './the-anchor-end-of-month';
 import { hasEnded } from '../grounds/a-ground-that-has-ended';
 import { theAnchorNudgeLine, theirOwnLastOpenPromise } from '../conversation/the-anchor-nudge';
-import type { TheActiveLine, TheMonthBoard, TheEndOfMonthRead } from '../entry/the-anchor-served-shapes';
+import type { TheActiveLine, TheMonthBoard, TheEndOfMonthRead, TheIdeasFromYourTeam } from '../entry/the-anchor-served-shapes';
+import { theIdeasFromYourTeam } from '../conversation/ideas-from-the-team';
 
 /**
  * THE ANCHOR SCENARIO'S PARTS OF THE BOARD (request 149). One door, so `board.service.ts` carries a single call.
@@ -16,7 +17,7 @@ import type { TheActiveLine, TheMonthBoard, TheEndOfMonthRead } from '../entry/t
  * end-of-month read are the lead's own, as the screens' contract says ("Lead only"), so they go to the lead alone.
  * For anybody else, and for every other check-in, this returns nothing, so the board is exactly what it was.
  */
-export type TheAnchorParts = { activeLine?: TheActiveLine; theMonthBoard?: TheMonthBoard; theEndOfMonthRead?: TheEndOfMonthRead; yourPartInMovingThings?: string | null; aNudgeForYou?: string | null };
+export type TheAnchorParts = { activeLine?: TheActiveLine; theMonthBoard?: TheMonthBoard; theEndOfMonthRead?: TheEndOfMonthRead; yourPartInMovingThings?: string | null; aNudgeForYou?: string | null; ideasFromYourTeam?: TheIdeasFromYourTeam };
 
 export async function theAnchorBoardParts(args: {
   prisma: any;
@@ -47,7 +48,9 @@ export async function theAnchorBoardParts(args: {
     /* In the app, the same nudge the email carries (piece 30), to them alone, while their check-in for the open round is not done. */
     const answered = ((await prisma.checkIn?.findFirst?.({ where: { groundId: ground.id, participantId: args.readerParticipantId, sessionNumber: args.openRound, status: 'COMPLETED' }, select: { id: true } })?.catch?.(() => null)) ?? null);
     const nudge = answered ? null : theAnchorNudgeLine(await theirOwnLastOpenPromise(prisma, ground.id, args.readerParticipantId));
-    return { yourPartInMovingThings: mine ? aContributionSaid(null, mine.clauseToThem ?? mine.clause, mine.settledBy) : null, aNudgeForYou: nudge };
+    /* Ideas from the team, to everyone in the check-in, each with who raised it (piece 19; decision 96 item 10). */
+    const ideas = theIdeasFromYourTeam(record.ideas ?? [], args.readerParticipantId, (pid) => (record.ideas ?? []).find((i) => i.ownerParticipantId === pid)?.raisedBy ?? null);
+    return { yourPartInMovingThings: mine ? aContributionSaid(null, mine.clauseToThem ?? mine.clause, mine.settledBy) : null, aNudgeForYou: nudge, ideasFromYourTeam: ideas };
   }
   if (!(await theAnchorScenarioIsOn(prisma))) return {};
   const parts: TheAnchorParts = { activeLine: await theActiveLineFor(prisma, ground.id, args.openRound, args.roundOpenedAt) };
@@ -55,6 +58,7 @@ export async function theAnchorBoardParts(args: {
     const record = await readTheMonthRecord(prisma, ground.id, args.openRound);
     const differences = (args.served.divergence?.items ?? []).map(aDifferenceInAWords).filter((x): x is string => !!x);
     parts.theMonthBoard = theMonthBoard({ record, clock: args.clock, differences, patterns: args.patterns });
+    parts.ideasFromYourTeam = theIdeasFromYourTeam(record.ideas ?? [], args.readerParticipantId ?? null, (pid) => (record.ideas ?? []).find((i) => i.ownerParticipantId === pid)?.raisedBy ?? null);
     /* The month's end: twenty-eight days of the record's own clock, or the check-in has ended. Needs her own first words to begin with. */
     if (theMonthIsOver(record.startedOn, args.clock, hasEnded(ground.status ?? null))) {
       const herWords = await herOwnWords(prisma, ground.id, ground.initiatorId ?? null);

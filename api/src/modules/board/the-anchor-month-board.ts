@@ -52,6 +52,12 @@ const THE_QUESTIONS = {
 
 export const NO_IDEA_YET = 'No idea from your team has been captured yet.';
 
+/** How many ideas the team has captured (piece 19), as a sentence. Never who raised the most. */
+export function ideasSaid(r: { ideas?: unknown[] }): string {
+  const n = (r.ideas ?? []).length;
+  return n ? `${capital(aNumber(n))} ${n === 1 ? 'idea' : 'ideas'} from your team ${n === 1 ? 'has' : 'have'} been captured.` : NO_IDEA_YET;
+}
+
 export function theLenses(r: TheMonthRecord, differences: string[]): TheLens[] {
   const heard = r.checkedIn === 0
     ? 'Nobody has given Groundwork an account yet, so there is nothing to compare with what you said.'
@@ -65,7 +71,7 @@ export function theLenses(r: TheMonthRecord, differences: string[]): TheLens[] {
   return [
     { key: 'understanding', heading: 'Understanding', question: THE_QUESTIONS.understanding, reading: heard },
     { key: 'ownership', heading: 'Ownership', question: THE_QUESTIONS.ownership, reading: owns },
-    { key: 'contribution', heading: 'Contribution', question: THE_QUESTIONS.contribution, reading: NO_IDEA_YET },
+    { key: 'contribution', heading: 'Contribution', question: THE_QUESTIONS.contribution, reading: ideasSaid(r) },
     { key: 'action', heading: 'Action', question: THE_QUESTIONS.action, reading: moved },
   ];
 }
@@ -125,7 +131,7 @@ export function theMonthBoard(input: {
     weekOfTheMonth: week,
     lenses: theLenses(r, input.differences),
     whatIsMoving: whatIsMoving(r),
-    whatTheTeamIsContributing: [NO_IDEA_YET],
+    whatTheTeamIsContributing: [ideasSaid(r)],
     peopleHelpingThingsMove: people,
     wherePerspectivesDiffer: input.differences.length
       ? input.differences
