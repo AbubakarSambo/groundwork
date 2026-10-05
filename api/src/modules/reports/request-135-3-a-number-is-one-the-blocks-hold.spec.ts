@@ -90,6 +90,10 @@ describe('a number written another way is the same number', () => {
     ['The first alert came at 7 AM.', 'The first alert came at 07:00.'],
     ['The first alert came at 07:00.', 'The first alert came at 7am.'],
     ['The van left at 7 pm.', 'The van left at 19:00.'],
+    /* Review of 7e693c97: a time with a full stop, and a bare "m" that is not money. */
+    ['The second came at 7.30pm.', 'The second alert came at 19:30.'],
+    ['The store is 5m wide.', 'The store is 5 metres wide.'],
+    ['The fund holds KES 2m.', 'The fund holds KES 2,000,000.'],
   ])('keeps "%s" where the material says "%s"', (line, material) => {
     expect(numbersNotHeld(line, theNumbersTheMaterialHolds(material))).toEqual([]);
   });
@@ -98,6 +102,7 @@ describe('a number written another way is the same number', () => {
     ['Sales came to 1,700 across both shops.', 'Shop one sold 1,200 and shop two sold 500.'],
     ['Shop one sold 700 more than shop two.', 'Shop one sold 1,200 and shop two sold 500.'],
     ['That is 70 percent of the target.', 'Shop one sold 1,200 against a target of 2,000.'],
+    ['The van left at 14pm.', 'The van left at 2pm.'],
   ])('still leaves out a total, a difference or a percentage the model made: "%s"', (line, material) => {
     expect(numbersNotHeld(line, theNumbersTheMaterialHolds(material)).length).toBeGreaterThan(0);
   });

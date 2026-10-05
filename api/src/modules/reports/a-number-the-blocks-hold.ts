@@ -36,17 +36,29 @@ const SCALE: Record<string, number> = { k: 1e3, thousand: 1e3, m: 1e6, mn: 1e6, 
  */
 export function oneWayOfWritingNumbers(text: string): string {
   let t = String(text ?? '');
-  /* A time with am or pm, in the twenty-four hour form. */
-  t = t.replace(/\b(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)(?=[\s,;!?)]|\.?$|\.\s)/gi, (_m, h: string, mm: string | undefined, ap: string) => {
+  /*
+   * A time with am or pm, in the twenty-four hour form, read before anything else so "7.30pm" is never a decimal.
+   * Only an hour of 12 or less takes am or pm: "14pm" is not a time anybody writes, and is left as it is.
+   */
+  t = t.replace(/\b(\d{1,2})(?:[.:](\d{2}))?\s*(a\.?m\.?|p\.?m\.?)(?=[\s,;!?)]|\.?$|\.\s)/gi, (whole, h: string, mm: string | undefined, ap: string) => {
+    if (Number(h) > 12 || Number(h) < 1) return whole;
     let hour = Number(h) % 12;
     if (/^p/i.test(ap)) hour += 12;
     return `${hour}:${mm ?? '00'}`;
   });
   /* A leading zero on an hour is not a different time. */
   t = t.replace(/\b0(\d):(\d{2})\b/g, '$1:$2');
-  /* A short or worded scale: 1.2m, 1.2 million, 450k, 2 billion. */
-  t = t.replace(/\b(\d[\d,]*(?:\.\d+)?)\s?(k|thousand|m|mn|million|bn|b|billion)\b/gi, (_m, n: string, sc: string) =>
+  /* A worded scale is always a scale: 1.2 million, 2 billion, 450 thousand, 3mn, 2bn. */
+  t = t.replace(/\b(\d[\d,]*(?:\.\d+)?)\s?(thousand|million|billion|mn|bn)\b/gi, (_m, n: string, sc: string) =>
     String(Math.round(Number(n.replace(/,/g, '')) * SCALE[sc.toLowerCase()])));
+  /* A bare k, m or b is a scale only after a currency marker: "KES 1.2m", "$450k". "5m wide" is five metres. */
+  t = t.replace(/((?:KES|Ksh|USD|NGN|N|\$|\u20a6|\u00a3|\u20ac)\s?)(\d[\d,]*(?:\.\d+)?)\s?(k|m|b)\b/gi, (_m, cur: string, n: string, sc: string) =>
+    `${cur}${Math.round(Number(n.replace(/,/g, '')) * SCALE[sc.toLowerCase()])}`);
+  /* Without one, both readings are kept, joined, so the line is kept if either is held ("5m" is 5 or 5000000). */
+  t = t.replace(/\b(\d[\d,]*(?:\.\d+)?)(k|m|b)\b/gi, (_m, n: string, sc: string) => {
+    const plain = n.replace(/,/g, '');
+    return `${plain}|${Math.round(Number(plain) * SCALE[sc.toLowerCase()])}`;
+  });
   /* Tens and a unit in words, joined by a hyphen or a space: twenty-five, thirty two. */
   t = t.replace(/\b(twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)[\s-](one|two|three|four|five|six|seven|eight|nine)\b/gi, (_m, tens: string, unit: string) =>
     String(TENS[tens.toLowerCase()] + UNITS[unit.toLowerCase()]));
@@ -58,7 +70,7 @@ export function theNumbersIn(text: string, opts: { words?: boolean } = { words: 
   const t = oneWayOfWritingNumbers(String(text ?? '').replace(IN_QUOTES, ' ').replace(A_DATE, ' '));
   const out: string[] = [];
   for (const m of t.matchAll(/\b\d{1,2}:\d{2}\b/g)) out.push(m[0].replace(/^0(\d)/, '$1'));
-  for (const m of t.replace(/\b\d{1,2}:\d{2}\b/g, ' ').matchAll(/\d[\d,]*(?:\.\d+)?/g)) out.push(m[0].replace(/,/g, '').replace(/\.0+$/, ''));
+  for (const m of t.replace(/\b\d{1,2}:\d{2}\b/g, ' ').matchAll(/\d[\d,]*(?:\.\d+)?(?:\|\d+)?/g)) out.push(m[0].replace(/,/g, '').replace(/\.0+(?=\||$)/, ''));
   if (opts.words !== false) {
     for (const m of t.toLowerCase().matchAll(/\b[a-z]+\b/g)) if (WORDS[m[0]] != null) out.push(String(WORDS[m[0]]));
   }
@@ -67,14 +79,16 @@ export function theNumbersIn(text: string, opts: { words?: boolean } = { words: 
 
 /** The numbers the material holds, words of any size included, so "four" in a block supports "4" and the other way round. */
 export function theNumbersTheMaterialHolds(material: string): Set<string> {
-  const held = new Set<string>(theNumbersIn(material));
+  /* Both readings of an unclear "5m" are held. */
+  const held = new Set<string>(theNumbersIn(material).flatMap((n) => n.split('|')));
   for (const m of String(material ?? '').toLowerCase().matchAll(/\b(one|two|three)\b/g)) held.add(String({ one: 1, two: 2, three: 3 }[m[1] as 'one' | 'two' | 'three']));
   return held;
 }
 
 /** The numbers in a line the material does not hold. Empty where every one is held. */
 export function numbersNotHeld(line: string | null | undefined, held: Set<string>): string[] {
-  return [...new Set(theNumbersIn(String(line ?? '')))].filter((n) => !held.has(n));
+  /* A number with two readings is held if either is. */
+  return [...new Set(theNumbersIn(String(line ?? '')))].filter((n) => !n.split('|').some((x) => held.has(x)));
 }
 
 const LINES_IN: Record<string, string[]> = {
