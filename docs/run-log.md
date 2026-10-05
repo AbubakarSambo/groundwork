@@ -2,6 +2,25 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## The judgement on a check-in of one, and a decision I did not make (5 October)
+
+Request 136 item 7 is fixed: the founder, the only person in her own check-in, was
+being told "Your own account of this is not in this check-in." about her own
+commitments. It now says nobody else answers it, which is the true thing. The wording
+is mine and marked PROVISIONAL — the prototype has no screen for a check-in of one.
+
+Doing it meant adding an argument to a call whose exact source text one test pinned, so
+that test now pins what matters (the judgement goes through the lead-only wrapper, with
+isLead from isInitiator) rather than the line's formatting. That is the same change the
+screens workspace asked for in request 138.
+
+PROVISIONAL DECISION, logged rather than done: I have not restarted the 24-scenario
+run. It is the next thing in the queue and the machine is quiet again, but Hafsah
+stopped that exact run an hour ago because the computer was slow, and restarting it
+unasked is the one thing that plainly contradicts "stop every one that isn't needed
+right now". It takes hours and would block everything else. It is ready to start the
+moment she says so.
+
 ## Two more fixed, and six of my "open" items were not open (5 October)
 
 Fixed and pushed: the founder's aim "Get to 20 paying customers by December." now holds
