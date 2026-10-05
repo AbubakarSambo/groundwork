@@ -2,6 +2,23 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## 5 October, 14:06 - the WhatsApp journey database is current, and a false alarm worth writing down
+
+Migrated last night's `gw_whatsapp_journeys_d92` forward so the journeys can start the moment the
+scenario run lands. It applied the newest migration cleanly.
+
+**A count worth not panicking about.** That database shows 364 migration rows for 359 migrations,
+and two with no finish time. Both are **rolled back** - one from 31 August, one from 10 September -
+so they are history, not pending failures, and the duplicate rows are the same migrations
+reapplied after. If anybody runs the same check on a database that has been through a few of these
+rounds and sees "failed=2", that is what it is.
+
+**The scenario run is slower than I first read.** Each shard is on its FIRST scenario at 14:05,
+not its fifth - the runner takes the keys in its own order, so the header I saw was not the fifth
+of eight. Four people times ten questions each, with real model calls, is most of the time. On
+course to finish around 15:35. The settle rule is working: "REPORT SETTLED SHORT ... after 64s"
+rather than the 300s it used to spend.
+
 ## 5 October, 14:10 - queued, not done: "participants" is leaking into what people read
 
 Run 32 shows "the other two participants report...", "both branch participants", "two other
