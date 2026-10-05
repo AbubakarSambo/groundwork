@@ -8,6 +8,7 @@
 - A person's own coaching no longer says "session 1 of 4 of founder or CEO work" as if somebody had set it; it reads "This is session 1 of 4. What you have said so far reads as founder or CEO work." (127 item 6).
 - I stopped on 127 item 5, "at their own request": the board says the request was Nadia Haddad's, so changing it to "your own request" could be false. It belongs with the judgement work.
 - Where no worry can be shown, the Blockers tile now says so: "13 worries are on record. None of them can be shown to you word for word." (127 item 7). Whether a worry not kept word for word should ever be shown is yours to decide.
+- I stopped on 139, the goal drawn as "Point to successfully renewed contracts", because no code writes that line and it is not in this computer's database. I asked the screens workspace which field carries it. I did not start 130 (b), 130 (d) or 131 (6), because none of them is small.
 
 ## 5 October, 15:30: where I am, for your fresh session
 

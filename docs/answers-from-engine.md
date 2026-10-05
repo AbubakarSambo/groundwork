@@ -103,6 +103,13 @@ cannot be shown to you word for word." Where an earlier wait is open, the last s
 instead. Every reader of the tile reads the same sentence. Showing a worry that was not kept word
 for word, in other words, would be a new rule, and that is Hafsah's to decide, so I did not.
 
+**139, "Point to successfully renewed contracts" drawn as a goal.** I have stopped on this one for
+now, because I cannot find where the line comes from. No code writes it, and it is not in the local
+database on this computer, so it was written by the model or typed by somebody on your onboarding
+check-in (e2cfd3d8). Please tell me which field of the board carries it (for example `aims`,
+`startingState`, or a target's `name`), and I will fix it at the place that writes it. I have not
+started 130 (b), 130 (d) or 131 (6) either, because none of them is small.
+
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
 ```
