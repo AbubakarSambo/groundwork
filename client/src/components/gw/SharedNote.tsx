@@ -19,14 +19,17 @@ import { Section } from '@/components/gw/ui'
  * query that fetches it, not here; this component only has to avoid implying otherwise, which is why
  * it never presents the note as a fact about the check-in.
  */
-export function SharedNote({ text, leadName }: { text?: string | null; leadName?: string | null }) {
+export function SharedNote({ text, leadName, isViewerTheLead }: { text?: string | null; leadName?: string | null; isViewerTheLead?: boolean }) {
   const body = text?.trim()
   if (!body) return null
 
   const who = leadName?.trim()
+  /* To the lead, these are her own words read back at her, not a third person's (walkthrough pass
+     2, item 1): "Your words", never "Rukia Otieno's words" to Rukia herself. */
+  const whoseWords = isViewerTheLead ? 'Your words' : who ? `${who}'s words` : 'the lead’s words'
   return (
     <div style={{ marginBottom: 22 }}>
-      <Section heading="How this is being framed" note={who ? `${who}'s words, read by everyone here` : 'the lead’s words, read by everyone here'} />
+      <Section heading="How this is being framed" note={`${whoseWords}, read by everyone here`} />
       <div
         style={{
           background: 'white',

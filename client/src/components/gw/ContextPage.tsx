@@ -589,7 +589,7 @@ export function ContextPage({
               THE LEAD'S FRAMING, under what this is for and above the people. It is the sentence that
               tells everybody what the situation is, in the lead's own words, and it is never quotable.
             */}
-            <SharedNote text={(ground.leadContextNotes ?? []).find((n: any) => n.audience === 'EVERYONE' && !n.participantId)?.text} leadName={personLabel(ground.participants?.find((p: any) => p.partyType === 'INITIATOR'))} />
+            <SharedNote text={(ground.leadContextNotes ?? []).find((n: any) => n.audience === 'EVERYONE' && !n.participantId)?.text} leadName={personLabel(ground.participants?.find((p: any) => p.partyType === 'INITIATOR'))} isViewerTheLead={isTheLead} />
 
             {/* 2 - PERSON BY PERSON */}
             {/*
