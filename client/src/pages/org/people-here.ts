@@ -1,5 +1,6 @@
 import { apiClient } from '@/api/client'
 import { roleWord as theRoleWord } from '@/components/gw/your-organisations'
+import { whatTellsItApart, type HasLabelAndStart } from '@/lib/tell-apart-the-same-name'
 
 /**
  * THE PEOPLE IN THIS ORGANISATION, AS AN ADMIN READS THEM (U.4, A4 people.txt and one-person.txt).
@@ -128,6 +129,24 @@ export function whereTheySitLine(m: Pick<OrgMember, 'level' | 'reportsTo'>): str
 export function checkInsWord(m: Pick<OrgMember, 'checkIns'>): string {
   const labels = (m.checkIns ?? []).map((c) => c.label ?? 'A check-in with no name yet')
   return labels.length ? labels.join(', ') : 'None'
+}
+
+/**
+ * THE SAME CELL, WITH TWO OF A PERSON'S OWN CHECK-INS TOLD APART WHEN THEY SHARE A LABEL
+ * (walkthrough pass 2, item 5). A person's own check-ins cell can hold the same label twice
+ * ("Help a new hire get started" more than once in one row) with nothing to say which is which.
+ * `m.checkIns` itself carries no date (users.service.ts sends only `id`, `label`, `runsIt`), so
+ * this reads it from the grounds this reader already has, by id - the same join YouPage.tsx makes
+ * for its own "Your work in each" list.
+ */
+export function checkInsWordApart(m: Pick<OrgMember, 'checkIns'>, startOf: Map<string, { startsAt?: string | null; createdAt?: string | null }>): string {
+  const checkIns = m.checkIns ?? []
+  if (checkIns.length === 0) return 'None'
+  const withDates: HasLabelAndStart[] = checkIns.map((c) => ({ id: c.id, label: c.label ?? 'A check-in with no name yet', ...startOf.get(c.id) }))
+  return withDates.map((c) => {
+    const apart = whatTellsItApart(withDates, c)
+    return apart ? `${c.label}, ${apart}` : c.label
+  }).join(', ')
 }
 
 export const A_FAILURE = 'That did not go through, and nothing has changed. Try again.'

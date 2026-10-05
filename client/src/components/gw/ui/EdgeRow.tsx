@@ -17,10 +17,14 @@ export type EdgeKind = 'ready' | 'decide' | 'look' | 'concern'
  * sentence, since neither says what decision or what to look at; the title that follows is already
  * a full sentence of its own. See kit.tsx's own `NEED_REASON`, the same fix there. "Ready to read."
  * and "A problem." are kept: both name a real state the title does not otherwise carry.
+ *
+ * WALKTHROUGH PASS 2, ITEM 5: "A problem." IS A FRAGMENT, NOT A SENTENCE. It has no subject and no
+ * verb, unlike "Ready to read." (which is a complete imperative). Said in full instead: "There is a
+ * problem."
  */
 const EDGE_REASON: Partial<Record<EdgeKind, string>> = {
   ready: 'Ready to read.',
-  concern: 'A problem.',
+  concern: 'There is a problem.',
 }
 
 export function EdgeRow({ kind, title, detail, actions }: {

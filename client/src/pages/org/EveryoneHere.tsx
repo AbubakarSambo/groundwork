@@ -3,13 +3,14 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { apiClient } from '@/api/client'
 import { PLAN_LABELS, type SubscriptionPlan } from '@/api/billing'
+import { groundsApi } from '@/api/grounds'
 import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
 import {
   Section, Stack, Folded, TextField, Select, Choices, PeopleTable, PeopleTableHead, PersonRow, Tag, Note, Empty,
   type TagTone,
 } from '@/components/gw/ui'
 import {
-  type OrgMember, fetchMembers, nameOf, firstNameOf, initialsOf, roleWord, statusWord, needsSomething, whereTheySitLine, checkInsWord,
+  type OrgMember, fetchMembers, nameOf, firstNameOf, initialsOf, roleWord, statusWord, needsSomething, whereTheySitLine, checkInsWordApart,
 } from './people-here'
 
 /**
@@ -135,6 +136,10 @@ function TheTree({ people }: { people: OrgMember[] }) {
 
 export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: string | null }) {
   const { data, isLoading, isError } = useQuery({ queryKey: ['org-members'], queryFn: fetchMembers })
+  /* Same query the sidebar already makes (AppShell.tsx), read here only for when each check-in
+     started, so a person's own check-ins cell can tell two of the same label apart. */
+  const grounds = useQuery({ queryKey: ['grounds'], queryFn: groundsApi.list })
+  const startOf = useMemo(() => new Map((grounds.data ?? []).map((g) => [g.id, { startsAt: g.startsAt, createdAt: g.createdAt }])), [grounds.data])
   const status = useQuery({
     queryKey: ['billing-status-people'],
     queryFn: () => apiClient.get('/billing/status').then((r: any) => (r.data.data ?? r.data) as { people?: { count: number; cap: number | null }; subscription?: { plan: string | null }; onTheHouse?: { plan: string } | null }),
@@ -246,7 +251,7 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
                       <span>{m.team?.trim() || 'No team'}</span>
                       <Tag tone={roleTagTone(role)}>{role}</Tag>
                       <Tag tone={statusTagTone(st)}>{st}</Tag>
-                      <span>{checkInsWord(m)}</span>
+                      <span>{checkInsWordApart(m, startOf)}</span>
                       {/* Nothing has been written for them yet, so there is no page to open (U.4
                           people-group review, item 2: Zawadi's row, held for a seat). */}
                       {/* HAFSAH, 30 SEPTEMBER, ITEM 2: A PLAIN LINK, NOT A BUTTON. The prototype

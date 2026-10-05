@@ -397,15 +397,20 @@ describe('the head count keeps up', () => {
 })
 
 describe('the people with no seat say who added them', () => {
-  it('one person added them all: their name', async () => {
+  it('one person added them all: their name, and says who "them" is', async () => {
     const { whoAddedThem } = await import('./OrgMembersPage')
-    expect(whoAddedThem([{ addedBy: 'Nadia Owino' }, { addedBy: 'Nadia Owino' }]))
-      .toBe('Nadia Owino added them and your plan is full, so nothing has been sent to them. Free a seat or move to a larger plan, then send the invitations. They have not been told any of this.')
+    expect(whoAddedThem([{ addedBy: 'Nadia Owino', email: 'tom@baridi.co.ke' }, { addedBy: 'Nadia Owino', email: 'ama@baridi.co.ke' }]))
+      .toBe('Nadia Owino added tom@baridi.co.ke and ama@baridi.co.ke and your plan is full, so nothing has been sent to them. Free a seat or move to a larger plan, then send the invitations. They have not been told any of this.')
   })
   it('several people, or nobody recorded: a sentence true of all of them, never "A lead"', async () => {
     const { whoAddedThem } = await import('./OrgMembersPage')
-    expect(whoAddedThem([{ addedBy: 'Nadia Owino' }, { addedBy: 'Wairimu Kamau' }])).toMatch(/^Someone on your team added them/)
-    expect(whoAddedThem([{ addedBy: null }])).toMatch(/^Someone on your team added them/)
+    expect(whoAddedThem([{ addedBy: 'Nadia Owino', email: 'tom@baridi.co.ke' }, { addedBy: 'Wairimu Kamau', email: 'ama@baridi.co.ke' }])).toMatch(/^Someone on your team added tom@baridi\.co\.ke and ama@baridi\.co\.ke/)
+    expect(whoAddedThem([{ addedBy: null, email: 'zawadi@baridi.co.ke' }])).toMatch(/^Someone on your team added zawadi@baridi\.co\.ke/)
+  })
+  it('names the one person, from what is served, when only one is waiting', async () => {
+    const { whoAddedThem } = await import('./OrgMembersPage')
+    expect(whoAddedThem([{ addedBy: 'Nadia Owino', email: 'tom@baridi.co.ke' }]))
+      .toBe('Nadia Owino added tom@baridi.co.ke and your plan is full, so nothing has been sent to them. Free a seat or move to a larger plan, then send the invitations. They have not been told any of this.')
   })
   it('on the page, with each person\'s line', async () => {
     open()
@@ -419,7 +424,7 @@ describe('the people with no seat say who added them', () => {
     vi.spyOn(authApi, 'waitingForASeat').mockResolvedValue([{ id: 'p1', email: 'tom@baridi.co.ke', addedBy: 'Nadia Owino', forCheckIn: 'Sales team, Q3' }] as any)
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(<QueryClientProvider client={qc}><MemoryRouter><OrgMembersPage /></MemoryRouter></QueryClientProvider>)
-    expect(await screen.findByText(/^Nadia Owino added them and your plan is full/)).toBeTruthy()
+    expect(await screen.findByText(/^Nadia Owino added tom@baridi\.co\.ke and your plan is full/)).toBeTruthy()
     expect(screen.getByText('Added by Nadia Owino for Sales team, Q3.')).toBeTruthy()
     expect(screen.queryByText(/A lead added them/)).toBeNull()
   })
