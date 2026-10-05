@@ -58,6 +58,28 @@ export function ideasSaid(r: { ideas?: unknown[] }): string {
   return n ? `${capital(aNumber(n))} ${n === 1 ? 'idea' : 'ideas'} from your team ${n === 1 ? 'has' : 'have'} been captured.` : NO_IDEA_YET;
 }
 
+/*
+ * THE ACTION LENS, WITH A SENTENCE OF ITS OWN FOR NONE (request 163, item 1). It read "One of the things people said
+ * they would do is done and no are still open.", because aNumber(0) is "no". Each count is now its own sentence, and
+ * a count of none says so in words, or is left out where saying it adds nothing.
+ */
+export function theMovement(r: Pick<TheMonthRecord, 'commitmentsDone' | 'commitmentsOpen' | 'waiting'>): string {
+  const said = r.commitmentsDone + r.commitmentsOpen;
+  const parts: string[] = [];
+  if (said > 0) {
+    if (r.commitmentsDone === 0) {
+      parts.push(said === 1 ? 'The one thing people said they would do is not done yet.'
+        : said === 2 ? 'Neither of the two things people said they would do is done yet.'
+          : `None of the ${aNumber(said)} things people said they would do is done yet.`);
+    }
+    else if (r.commitmentsOpen === 0) parts.push(r.commitmentsDone === 1 ? 'The one thing people said they would do is done.' : `All ${aNumber(r.commitmentsDone)} of the things people said they would do are done.`);
+    else parts.push(`${capital(aNumber(r.commitmentsDone))} of the things people said they would do ${plural(r.commitmentsDone, 'is', 'are')} done and ${aNumber(r.commitmentsOpen)} ${plural(r.commitmentsOpen, 'is', 'are')} still open.`);
+  }
+  if (r.waiting.length > 0) parts.push(`${capital(aNumber(r.waiting.length))} ${plural(r.waiting.length, 'handoff is', 'handoffs are')} still waiting on someone.`);
+  else if (said > 0) parts.push('No handoff is waiting on anyone.');
+  return parts.join(' ') || 'Nothing people said they would do is open, and no handoff is waiting on anyone.';
+}
+
 export function theLenses(r: TheMonthRecord, differences: string[]): TheLens[] {
   const heard = r.checkedIn === 0
     ? 'Nobody has given Groundwork an account yet, so there is nothing to compare with what you said.'
@@ -67,7 +89,7 @@ export function theLenses(r: TheMonthRecord, differences: string[]): TheLens[] {
     : `${capital(aNumber(r.saidWhatTheyWillDo))} of ${aNumber(r.ofHowMany)} ${plural(r.ofHowMany, 'person has', 'people have')} said what they will do themselves.`;
   const moved = r.commitmentsDone + r.commitmentsOpen + r.waiting.length + r.handoffsCleared === 0
     ? 'Nobody has said they would do anything yet, so there is no movement to read yet.'
-    : `${capital(aNumber(r.commitmentsDone))} of the things people said they would do ${plural(r.commitmentsDone, 'is', 'are')} done and ${aNumber(r.commitmentsOpen)} ${plural(r.commitmentsOpen, 'is', 'are')} still open. ${capital(aNumber(r.waiting.length))} ${plural(r.waiting.length, 'handoff is', 'handoffs are')} still waiting on someone.`;
+    : theMovement(r);
   return [
     { key: 'understanding', heading: 'Understanding', question: THE_QUESTIONS.understanding, reading: heard },
     { key: 'ownership', heading: 'Ownership', question: THE_QUESTIONS.ownership, reading: owns },

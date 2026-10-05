@@ -196,3 +196,17 @@ describe('piece 22, as the review asked', () => {
     expect((await boardAs(withOne({ settledBy }), ...RUKIA)).yourPartInMovingThings).toBe(rukia);
   });
 });
+
+describe('the action lens never says "no are still open" (request 163, item 1)', () => {
+  const { theMovement } = require('./the-anchor-month-board');
+  it('says each count in words, with its own sentence for none', () => {
+    expect(theMovement({ commitmentsDone: 1, commitmentsOpen: 0, waiting: [] })).toBe('The one thing people said they would do is done. No handoff is waiting on anyone.');
+    expect(theMovement({ commitmentsDone: 3, commitmentsOpen: 0, waiting: [{}] })).toBe('All three of the things people said they would do are done. One handoff is still waiting on someone.');
+    expect(theMovement({ commitmentsDone: 0, commitmentsOpen: 2, waiting: [] })).toBe('Neither of the two things people said they would do is done yet. No handoff is waiting on anyone.');
+    expect(theMovement({ commitmentsDone: 0, commitmentsOpen: 1, waiting: [] })).toBe('The one thing people said they would do is not done yet. No handoff is waiting on anyone.');
+    expect(theMovement({ commitmentsDone: 0, commitmentsOpen: 0, waiting: [{}, {}] })).toBe('Two handoffs are still waiting on someone.');
+    for (const r of [{ commitmentsDone: 1, commitmentsOpen: 0, waiting: [] }, { commitmentsDone: 0, commitmentsOpen: 1, waiting: [] }]) {
+      expect(theMovement(r)).not.toMatch(/\bno (?:are|is)\b/i);
+    }
+  });
+});
