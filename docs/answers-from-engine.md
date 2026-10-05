@@ -37,10 +37,18 @@ The name comes through the same `namesVisibleTo` every other part of the check-i
 `resolution/who-the-ending-is-about.ts`. With more than one other person in the check-in, nothing on
 record says which of them it is about, so the ending stays neutral.
 
+**And when the person stays (after review).** The new-hire ending "The new person stays in the role."
+now names the person the same way: Wairimu reads "Kwame stays in the role.", Kwame reads "You stay in
+the role.", and Grace, or a door that refuses somebody, reads "The person stays in the role." The
+closing email says "The outcome is that Kwame stays in the role." to Wairimu and "The outcome is
+that you stay in the role." to Kwame. "The role is set up differently." and "The time to decide is
+made longer." name nobody and are true as they are, so I left them.
+
 **One thing for you to do.** Your mirror, `client/src/lib/end-states.ts`, still holds the two old
 labels, so `end-state-mirror.spec.ts` fails until you change them. I was not allowed to edit your
 files. Both `EXIT` labels, on `NEW_HIRE` and on `DRIFT`, should now read
-`'The role does not continue. The person\'s history stays as it is.'` Your screens read the
+`'The role does not continue. The person\'s history stays as it is.'`, and the `NEW_HIRE` `KEEP`
+label should read `'The person stays in the role.'` Your screens read the
 labels the API serves, not the mirror, so nothing a person sees waits on it.
 
 **141, the wording guard, fixed for good from the engine side.** Your guard counts lines in

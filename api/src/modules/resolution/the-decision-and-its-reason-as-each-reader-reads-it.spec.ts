@@ -205,16 +205,17 @@ describe('decision 75, item 48: every ending is one plain sentence, read the sam
   /* Changed on 5 October (request 123 item 8): "The new person leaves the role." is now the prototype's
      "The role doesn't continue. His history stays as it is.", which Hafsah chose, with the person's
      name, said as each reader may read it. */
+  /* And on 5 October the KEEP ending names him the same way (reviewer): "The new person stays in the role." before. */
   it.each([
-    ['Wairimu, who runs it', WAIRIMU, "Kwame's role does not continue. Kwame's history stays as it is."],
-    ['Kwame, the person it is about', KWAME, 'Your role does not continue. Your history stays as it is.'],
+    ['Wairimu, who runs it', WAIRIMU, "Kwame's role does not continue. Kwame's history stays as it is.", 'Kwame stays in the role.'],
+    ['Kwame, the person it is about', KWAME, 'Your role does not continue. Your history stays as it is.', 'You stay in the role.'],
     /* Grace is not in the check-in, and this panel shows her Kwame's role rather than his name, so the ending does too. */
-    ['Grace, the admin who set it up', GRACE, "The role does not continue. The person's history stays as it is."],
-  ])('%s reads the same sentences on the resolution panel of a first 90 days', async (_who, userId, theRoleEnds) => {
+    ['Grace, the admin who set it up', GRACE, "The role does not continue. The person's history stays as it is.", 'The person stays in the role.'],
+  ])('%s reads the same sentences on the resolution panel of a first 90 days', async (_who, userId, theRoleEnds, theyStay) => {
     const { svc } = world({ closed: false });
     const state: any = await svc.get('g1', userId);
     expect(state.options.map((o: any) => o.label)).toEqual([
-      'The new person stays in the role.',
+      theyStay,
       'The role is set up differently.',
       theRoleEnds,
       'The time to decide is made longer.',
@@ -273,6 +274,14 @@ describe('request 123 item 8: the ending when Kwame leaves the role, as each per
     expect(toWairimu.html).toContain('The outcome is that Kwame\'s role does not continue. Kwame\'s history stays as it is.');
     expect(toKwame.html).toContain('The outcome is that your role does not continue. Your history stays as it is.');
     for (const m of [toWairimu, toKwame]) expect(m.html).not.toMatch(/leaves the role|\b(?:his|her)\b history/i);
+  });
+
+  it('the closing email when Kwame stays: his name to Wairimu, "you" to Kwame', async () => {
+    const { email, out } = withRealEmail();
+    const { svc } = world({ closed: false, email });
+    await svc.propose('g1', WAIRIMU, 'KEEP', REASON);
+    expect(out.find((m) => m.to === 'wairimu@baridi.test')!.html).toContain('The outcome is that Kwame stays in the role.');
+    expect(out.find((m) => m.to === 'kwame@baridi.test')!.html).toContain('The outcome is that you stay in the role.');
   });
 
   it('on a drift check-in with one other person, the board names them to the lead once it is decided', () => {

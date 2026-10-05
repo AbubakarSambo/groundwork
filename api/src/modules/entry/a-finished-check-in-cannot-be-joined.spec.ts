@@ -49,7 +49,7 @@ describe('the preview', () => {
   it('refuses a closed ground in the words of the decision that closed it', async () => {
     /* It used to read "This check-in ended: keep.", the stored value after a colon. The ending is now
        its own sentence (decision 75, item 48). */
-    await expect(grounds(closed).getJoinPreview('jt')).rejects.toThrow('This check-in has ended. The new person stays in the role.');
+    await expect(grounds(closed).getJoinPreview('jt')).rejects.toThrow('This check-in has ended. The person stays in the role.'); /* Changed 5 Oct 2026: the KEEP ending's neutral form. */
   });
   it('refuses a held ground as on hold', async () => {
     await expect(grounds(held).getJoinPreview('jt')).rejects.toThrow(/on hold/);
