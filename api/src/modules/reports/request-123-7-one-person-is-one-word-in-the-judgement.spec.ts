@@ -1,20 +1,21 @@
 import { GroundScenario } from '@prisma/client';
 import { ReportsService } from './reports.service';
 import { boardAs, AMINA, BARAKA, JUMA } from '../board/the-switchboards-sections-harness';
-import { theReadersOwnRecordSaysThey, aReflexiveThatIsTheReaders, oldWordingPutPlain } from './a-stored-sentence-reads-right';
+import { aReflexiveThatIsTheReaders, oldWordingPutPlain } from './a-stored-sentence-reads-right';
 import { theVerbAgreesWithYou } from './party-labels';
 
 /**
  * REQUEST 123 ITEM 7: THE LEAD'S JUDGEMENT MIXED "YOU", "THEY" AND "SHE" FOR ONE PERSON.
  *
  * The model wrote about the lead's label, and serving turned the label into "you" and left the pronoun and
- * the verb behind. Three narrow shapes, where the pronoun is certainly the reader, now say "you" through.
- * Narrowed after review: a first version also rewrote "she" after "Your own answers show", which on a
- * performance plan turned "she was late" into "you were late". Every such sentence is now pinned as left alone. Read through the real report
+ * the verb behind. Two narrow shapes, where the pronoun is certainly the reader, now read right: a reflexive
+ * that can only be the reader's, and a verb that shares "you" in its clause. Narrowed twice after review: a
+ * first version rewrote "she" ("Your own answers show she was late" became "you were late"), and a second
+ * rewrote "they" after the reader's own record, which is not certain either. Both are gone, and pinned. Read through the real report
  * read and the real board read, as the lead, an admin, and the participant (who never reads the judgement).
  */
 const THE_JUDGEMENT_123_7 = {
-  theGap: "The initiator's own record says they have not given participant A the authority to renew contracts.",
+  theGap: "The initiator's own record says they were late on three deliveries.",
   whatToDo: [
     { move: 'Agree a date for participant A to take over renewals, until the initiator clarifies the role and provides the necessary authority.', because: 'The initiator set the targets and is still handling key client meetings themselves.', startWith: 'participant A' },
   ],
@@ -103,7 +104,8 @@ function makeService(ground: any, userRole: 'ADMIN' | 'MEMBER' = 'MEMBER', untol
 describe('request 123 (7): Amina reads her own judgement as "you" throughout, where it is certainly her', () => {
   it('on her report', async () => {
     const j: any = (await makeService(makeGround()).get('g1', 'user-1', 'org-1') as any).theJudgement;
-    expect(j.theGap).toBe('Your own record says you have not given Tobi Adewale the authority to renew contracts.');
+    /* Changed after the second review: no "they" is turned into "you". It may be somebody else, and "you were late" would be false. */
+    expect(j.theGap).toBe('Your own record says they were late on three deliveries.');
     expect(j.whatToDo[0].because).toBe('You set the targets and are still handling key client meetings yourself.');
     expect(j.whatToDo[0].move).toBe('Agree a date for Tobi Adewale to take over renewals, until you clarify the role and provide the necessary authority.');
     /* Not certain, so left for the writer. */
@@ -128,7 +130,7 @@ describe('request 123 (7), on the board', () => {
   } };
   it('Amina, who runs it, reads "you" with its verb', async () => {
     const b: any = await boardAs({ scenario: GroundScenario.OKR_ALIGNMENT, report } as any, ...AMINA);
-    expect(b.theJudgement.theGap).toBe('Your own record says you have not given Baraka Otieno the authority to renew contracts.');
+    expect(b.theJudgement.theGap).toBe('Your own record says they were late on three deliveries.');
     expect(b.theJudgement.whatToDo[0].because).toBe('You set the targets and are still handling key client meetings yourself.');
   });
   it('with "she" in place of "they", the lead\'s board leaves it, because "she" is never rewritten', async () => {
@@ -147,7 +149,13 @@ describe('request 123 (7), on the board', () => {
 });
 
 describe('the rules leave alone what they cannot be sure of (every example the review sent back)', () => {
+  it('a helper straight after "You" is still the reader\'s', () => {
+    expect(aReflexiveThatIsTheReaders('You are still handling key client meetings themselves.')).toBe('You are still handling key client meetings yourself.');
+    expect(aReflexiveThatIsTheReaders('You set the targets and are still handling key client meetings themselves.')).toBe('You set the targets and are still handling key client meetings yourself.');
+  });
+
   it.each([
+    "Your own record says they were late on three deliveries.",
     'Your own answers show she was late on three deliveries.',
     'Your own check-ins show he has missed the last two reviews.',
     'Your own record says she is ready to lead the Mombasa accounts.',
@@ -158,19 +166,13 @@ describe('the rules leave alone what they cannot be sure of (every example the r
   });
 
   it.each([
-    "The initiator's own answers show she was late on three deliveries.",
-    "Participant A's own record says they have not given the initiator the figures.",
-  ])('before the names, only "they" after the reader\'s own label is said again: "%s" is left', (line) => {
-    expect(theReadersOwnRecordSaysThey(line, 'the initiator')).toBe(line);
-  });
-
-  it.each([
     'You asked her to handle the client calls herself.',
     'You told him to fix the report himself.',
     'You have left the team to sort it out themselves.',
     'You asked the supplier whether they could deliver it themselves.',
     'You and Tobi Adewale handle the meetings themselves.',
     'You said you would do it yourself and that they would do it themselves.',
+    'You expect the new hires will train themselves.',
   ])('a reflexive somebody else could own is left: "%s"', (line) => {
     expect(aReflexiveThatIsTheReaders(line)).toBe(line);
   });

@@ -174,7 +174,7 @@ import { periodOf, periodsTheRecordHolds, aTruePeriodCount } from '../patterns/p
 import { plainNameOf as plainPatternNameOf } from '../patterns/plain-pattern-names';
 import { whatMoreThanOnePersonNamed, namedByMoreThanOne } from './what-more-than-one-person-named';
 import { decide, RoundPicture } from './what-the-report-said-at-the-time';
-import { aStoredSentenceReadsRight, theReadersOwnRecordSaysThey, aReflexiveThatIsTheReaders } from './a-stored-sentence-reads-right';
+import { aStoredSentenceReadsRight, aReflexiveThatIsTheReaders } from './a-stored-sentence-reads-right';
 import { aJudgementWithNoPieces } from './the-judgement-reads-right';
 /** The same repair over every string in a served object, leaving everything else as it is. */
 const everyStringIn = (v: any, fix: (s: string) => string): any => (typeof v === 'string' ? fix(v)
@@ -5444,11 +5444,7 @@ happened, and what is in the way.`;
      * a side assigned to each position before names go in, and `engagement` gets a name carried
      * beside the label rather than into it.
      */
-    /* "The initiator's own record says they ..." is the reader's own label, said again before the names go in, so it reads
-       "Your own record says you ..." to them (request 123 item 7). Only "they", only the reader's own label. */
-    const named = walkTextOnly(report?.theJudgement && readerLabel
-      ? { ...report, theJudgement: everyStringIn(report.theJudgement, (x: string) => theReadersOwnRecordSaysThey(x, readerLabel)) }
-      : report);
+    const named = walkTextOnly(report);
     /*
      * A STEP THAT ONLY ASKED THE READER TO ASK THEMSELVES IS NOT A STEP (the 1 October review). Once
      * their own name is "you", withNames writes it as what is missing ("Your own account of ... is

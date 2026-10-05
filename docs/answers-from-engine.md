@@ -154,21 +154,26 @@ missing once you pull, please tell me which row holds it.
 - **The county for each group.** A group's county is sent in its details, and groups are sent "By county", wherever the model read a county from what was said. A group with no county was given none in the check-in. Asking the model to look harder would change the records prompt.
 
 **123 (7), the lead's judgement mixed "you", "they" and "she" for one person.** This is repaired where
-the judgement is served, and narrowed after review. My first version also rewrote "she" and "he", and
-on a performance plan it turned "Your own answers show she was late" into "show you were late". That
-was a false sentence about the lead. The rule now changes only what is certainly the reader:
+the judgement is served, and narrowed twice after review. Two rules are left:
 
-- "Your own record says they have not given Tobi Adewale the authority to renew contracts." now reads "Your own record says you have not given Tobi Adewale the authority to renew contracts." This happens only before the names go in, only for "they", and only after the reader's own label ("The initiator's own record says they …").
-- "You set the targets and is still handling key client meetings themselves." now reads "You set the targets and are still handling key client meetings yourself." This changes only where nobody else could own the reflexive.
-- "…until you clarify the role and provides the necessary authority." now reads "…until you clarify the role and provide the necessary authority." This changes only where no "who", "that", "which" or "whose" comes between.
+- "You set the targets and is still handling key client meetings themselves." now reads "You set the targets and are still handling key client meetings yourself." The reflexive changes only where nobody else could own it. Nothing else may be named, there must be no object person or group, no "to" with a verb, and no helper verb in the middle except straight after "You" or "and".
+- "…until you clarify the role and provides the necessary authority." now reads "…until you clarify the role and provide the necessary authority." This does not change where "who", "that", "which" or "whose" comes between.
 
-Left exactly as they are, and pinned in the spec: "Your own answers show she was late on three
-deliveries.", "Your own check-ins show he has missed the last two reviews.", "Your own record says
-she is ready to lead the Mombasa accounts.", "You asked her to handle the client calls herself.",
-"You told him to fix the report himself.", "You have left the team to sort it out themselves.",
-"…until you hire someone who knows the market and provides training", "…until you meet the team
-that runs logistics and sets the routes", and "Someone would need to ask you if she has received the
-request." An admin reads names and no "you". The participant reads no judgement.
+**I removed the rule for "they".** It turned "The initiator's own record says they have not given…" into
+"…says you have not given…". But that is not true by construction: "The initiator's own record says
+they were late on three deliveries." may be about somebody else, and it would have read "you were
+late". The first version also changed "she" and "he", which turned "Your own answers show she was
+late" into "you were late" on a performance plan. Both are gone. The "they" belongs in the judgement's
+prompt work after the run, where the writer says who is meant.
+
+Left exactly as they are, and pinned in the spec: "Your own record says they were late on three
+deliveries.", "Your own answers show she was late on three deliveries.", "Your own check-ins show he has
+missed the last two reviews.", "Your own record says she is ready to lead the Mombasa accounts.", "You
+asked her to handle the client calls herself.", "You told him to fix the report himself.", "You have
+left the team to sort it out themselves.", "You expect the new hires will train themselves.", "…until
+you hire someone who knows the market and provides training", "…until you meet the team that runs
+logistics and sets the routes", and "Someone would need to ask you if she has received the request."
+An admin reads names and no "you". The participant reads no judgement.
 
 **134 (4), the judgement's two sentences about the open commitments.** This is repaired where the
 judgement is served, on the report and on the board, and narrowed after review. No step is ever
