@@ -21,7 +21,7 @@ const MAX_PLAN_MEMBER_CAP = 100000;
 /** The most WhatsApp messages a plan may allow in a month, against a typed extra zero. */
 const MAX_WHATSAPP_MONTHLY_LIMIT = 10_000_000;
 import { SubscriptionPlan, ApiAccessStatus } from '@prisma/client';
-
+import { whatTheStripeKeyIs } from '../billing/what-kind-of-stripe-key';
 // ---------------------------------------------------------------------------
 // OTP guard - reads X-Admin-OTP header and verifies it against the requesting
 // user's stored OTP before allowing destructive operations.
@@ -252,12 +252,9 @@ export class AdminController {
   @Get('stripe')
   @ApiOperation({ summary: 'Whether a Stripe key is configured on this deployment. Never the key.' })
   stripeStatus() {
-    return {
-      isConfigured: this.stripe.isConfigured,
-      says: this.stripe.isConfigured
-        ? 'A Stripe key is set. Checkout and subscriptions will reach Stripe.'
-        : 'No Stripe key is set here, so nothing can be charged. Prices below can still be edited; they will apply when a key is set.',
-    };
+    const kind = this.stripe.keyKind ?? (this.stripe.isConfigured ? 'unknown' : 'none');
+    /* A placeholder is not a key that works, so it is not "configured" for anything that needs to charge. */
+    return { isConfigured: this.stripe.isConfigured && kind !== 'placeholder', keyKind: kind, ...whatTheStripeKeyIs(kind) };
   }
 
   @Get('whatsapp')

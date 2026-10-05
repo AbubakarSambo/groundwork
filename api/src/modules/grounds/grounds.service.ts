@@ -118,6 +118,7 @@ export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
   NEW_COFOUNDER: 90,
   NEW_ADVISOR: 365,
   NEW_PROJECT: 90,
+  HELP_TEAM_UNDERSTAND: 90, // the anchor behaves as NEW_PROJECT did
   NEW_MANAGER: 90,
   CONTRACT_RENEWAL: 60,
   /** Short, and it has an end: it finishes when the contract is signed. A review that runs for a
@@ -219,6 +220,7 @@ export const RECOMMENDED_MOMENT: Record<GroundScenario, GroundMoment> = {
   NEW_HIRE: GroundMoment.STARTING,
   ROLE_HANDOVER: GroundMoment.STARTING,
   NEW_PROJECT: GroundMoment.STARTING,
+  HELP_TEAM_UNDERSTAND: GroundMoment.STARTING,
   NEW_COFOUNDER: GroundMoment.STARTING,
   NEW_MANAGER: GroundMoment.STARTING,
   NEW_ADVISOR: GroundMoment.STARTING,
@@ -264,6 +266,7 @@ export const RECOMMENDED_CADENCE: Record<GroundScenario, Cadence> = {
   /** Weekly, because the window is 30 days and the leaver is walking out of it. */
   ROLE_HANDOVER: Cadence.WEEKLY,
   NEW_PROJECT: Cadence.FORTNIGHTLY,
+  HELP_TEAM_UNDERSTAND: Cadence.FORTNIGHTLY,
   NEW_COFOUNDER: Cadence.FORTNIGHTLY,
   NEW_MANAGER: Cadence.FORTNIGHTLY,
   /** Monthly, not fortnightly: 26 check-ins a year is a job, not an advisory relationship. */
@@ -5805,7 +5808,7 @@ export class GroundsService {
           /* Their real account name, when they were picked from the colleague list rather than
              typed in cold. Every reader already prefers this to a guess from the address the
              moment `user.firstName` itself is not yet available (see theirName, party-labels.ts). */
-          ...(colleagueName ? { nameGiven: colleagueName } : {}),
+          ...(colleagueName ? { nameGiven: colleagueName } : dto.displayName?.trim() ? { nameGiven: dto.displayName.trim().slice(0, 120) } : {}),
           /* What they are accountable for, in the lead's words. It used to be emailed and then lost. */
           remitAsGiven: dto.note?.trim() || null,
           department: dto.department?.trim() || null,

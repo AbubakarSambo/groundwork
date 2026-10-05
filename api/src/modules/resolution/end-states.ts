@@ -57,6 +57,12 @@ export const END_STATES: Record<GroundScenario, { value: string; label: string; 
     { value: 'END', label: 'The work with the adviser ends.' },
     { value: 'NOT_YET', label: 'It is not decided yet, and what is missing is named so it can be looked at again.' },
   ],
+  HELP_TEAM_UNDERSTAND: [
+    { value: 'COMPLETE', label: 'The project is complete.' },
+    { value: 'CONTINUE', label: 'The project carries on.' },
+    { value: 'DESCOPE', label: 'The project carries on with less in it.' },
+    { value: 'STOP', label: 'The project stops.' },
+  ],
   NEW_PROJECT: [
     { value: 'COMPLETE', label: 'The project is complete.' },
     { value: 'CONTINUE', label: 'The project carries on.' },

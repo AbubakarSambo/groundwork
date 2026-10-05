@@ -88,6 +88,9 @@ const NOT_WIRED_ON_PURPOSE: Record<string, string> = {
    * the phases finish, the overhaul stopped halfway and this line is the evidence.
    */
   'the-four-reports.ts': 'report overhaul phase 1: the map, argued with before anything moved. Comes out when the first surface assembles from it.',
+  // Kept in src on purpose (nothing under src may import from outside it), and read by the journey scripts in api/journey/, which are not part of the build.
+  'on-this-computer.ts': 'the check the journey scripts run before they talk to a running API, kept in src so a spec can prove it; the journeys import it, the product does not',
+  'the-anchor-readers.ts': 'what each reader of an anchor check-in may be served, said once for the journey runner in api/journey/anchor/ and the cross-reader specs; a rule read by scripts and tests, not served',
   'a-hypothesis-is-not-a-finding.ts': "the lead-context corroboration rules, stated as a boundary and asserted by its spec. The behaviour it describes is now enforced by a-lead-note-is-not-evidence.ts, which does the arithmetic on real findings - so this stays as the statement of the rule rather than its implementation.",
 };
 

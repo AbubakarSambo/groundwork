@@ -3,7 +3,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { SubscriptionPlan } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PricingService } from './pricing.service';
-import { GroundworkEvents, type OrgSizeSaidEvent, type AnchorCheckInStartedEvent } from '../../common/events';
+import { GroundworkEvents, type OrgSizeSaidEvent, type OrgSignedUpEvent, type AnchorCheckInStartedEvent } from '../../common/events';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { aFreeRunEndsOn, whatCoversThem } from '../../common/subscription';
 import { seatsIn } from '../../common/seats';
@@ -98,6 +98,26 @@ export class TheFreeTrialService {
   @OnEvent(GroundworkEvents.ORG_SIZE_SAID)
   async whenTheySayTheirSize(event: OrgSizeSaidEvent): Promise<void> {
     await this.grantIfItApplies(event.organizationId, event.said);
+  }
+
+  /**
+   * AN ORGANISATION NAMED ON THE SIGN-UP FORM IS NEVER ASKED ITS SIZE (clean-install run, 6 October). Once billing is
+   * on, that left it with no plan and no trial, and unable to open a check-in. So the server applies the rule itself:
+   * the sign-up form promises the month to "teams of fewer than 20 people", and `grantIfItApplies` checks that against
+   * who is really in the organisation. One that says its size later, on `/org-new?naming=1`, is handled as before.
+   * The event is sent from inside the transaction that creates the organisation, so it is looked for again for a moment.
+   */
+  @OnEvent(GroundworkEvents.ORG_SIGNED_UP)
+  async whenAnOrganisationIsNamedOnTheForm(event: OrgSignedUpEvent): Promise<void> {
+    if (!event.namedOnTheForm) return;
+    /* With the trial off a sign-up costs nothing: no lookups at all. */
+    if (!(await this.pricing.getFreeTrial().catch(() => null))?.on) return;
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const found = await this.prisma.organization.findUnique({ where: { id: event.organizationId }, select: { id: true } }).catch(() => null);
+      if (found) break;
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    await this.grantIfItApplies(event.organizationId, 'fewer');
   }
 
   /**

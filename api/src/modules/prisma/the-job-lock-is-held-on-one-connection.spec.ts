@@ -57,8 +57,10 @@ describeLocal('the job lock is held on one connection for the whole job', () => 
   });
 });
 
+const withoutComments = (t: string): string => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
 describe('the job lock, as written', () => {
-  const src = require('fs').readFileSync(require('path').join(__dirname, 'prisma.service.ts'), 'utf8') as string;
+  const src = withoutComments(require('fs').readFileSync(require('path').join(__dirname, 'prisma.service.ts'), 'utf8')) as string;
 
   it('takes a transaction lock inside one transaction, and never a session lock with a separate unlock', () => {
     expect(src).toContain('pg_try_advisory_xact_lock');

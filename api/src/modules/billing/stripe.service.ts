@@ -1,5 +1,6 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { theKindOfStripeKey, type TheKindOfKey } from './what-kind-of-stripe-key';
 import Stripe from 'stripe';
 
 /** Thin Stripe wrapper. USD. */
@@ -13,9 +14,13 @@ export class StripeService {
   /** Whether this deployment can take money. Readable without triggering a throw. */
   readonly isConfigured: boolean;
 
+  /** Test, live or a placeholder, from the key's own prefix. Never the key. */
+  readonly keyKind: TheKindOfKey;
+
   constructor(private config: ConfigService) {
     const secretKey = this.config.get<string>('stripe.secretKey');
     this.isConfigured = Boolean(secretKey);
+    this.keyKind = theKindOfStripeKey(secretKey);
 
     /*
      * NO KEY MEANS NO CLIENT, RATHER THAN A CLIENT BUILT ON A FAKE ONE.

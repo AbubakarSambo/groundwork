@@ -66,7 +66,12 @@ describe('and an empty workspace says so', () => {
   it('offers it beside the one instruction that screen used to have', () => {
     /* "Your first check-in is one tap away" means asking real colleagues to write about real work
        before seeing anything the product produces. */
-    expect(LIST).toContain('Or try it on your own first');
+    /*
+     * UPDATED, F4 SMALL STATES (e8d5de11): the screens workspace rewrote this empty state to the prototype's own, so the
+     * line "Or try it on your own first" is now a link reading "Try one on your own", beside "Set up a check-in". It still
+     * opens the same help page (step 4) and is shown only to somebody who may open a check-in. The capability is unchanged.
+     */
+    expect(LIST).toContain('Try one on your own');
     expect(LIST).toContain('useHelpStore.getState().show(4)');
   });
 
@@ -81,7 +86,7 @@ describe('and an empty workspace says so', () => {
      * used throughout it) alongside `border: none`. The promise itself is unchanged: no fill, no
      * border, underlined.
      */
-    const at = LIST.indexOf('Or try it on your own first');
+    const at = LIST.indexOf('Try one on your own');
     const open = LIST.lastIndexOf('<button', at);
     const tag = LIST.slice(open, at);
     const cls = (tag.match(/className="([^"]+)"/) ?? [])[1];

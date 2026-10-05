@@ -240,10 +240,11 @@ describe('with the switch off, nothing changes anywhere', () => {
   const every: (GroundScenario | undefined)[] = [undefined, ...Object.values(GroundScenario)];
 
   it.each(every.map((s) => [s ?? 'no situation', s]))('the prompt for %s is exactly what it was, with the switch off or on', async (_n, s) => {
-    for (const on of [false, true]) {
+    /* The anchor's own situation is the one that is allowed to read differently, and only while the switch is on: it has its own tests above. With it off it is a project, as it was before it was a situation. */
+    for (const on of s === GroundScenario.HELP_TEAM_UNDERSTAND ? [false] : [false, true]) {
       const { service, seen } = world(on, { id: 'pv-7', content: 'STORED ANCHOR WORDS' });
       const out = await service.chat(said, s as string | undefined, 'A label');
-      const expected = oldWay((s as GroundScenario | undefined) ?? GroundScenario.NEW_PROJECT, 'A label');
+      const expected = oldWay(s === GroundScenario.HELP_TEAM_UNDERSTAND || !s ? GroundScenario.NEW_PROJECT : (s as GroundScenario), 'A label');
       expect(seen[0]).toBe(expected);
       expect(out.promptVersionId).toBeUndefined();
     }

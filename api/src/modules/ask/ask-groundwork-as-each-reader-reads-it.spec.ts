@@ -1,3 +1,4 @@
+import { askStarters } from '../assistant/ask-name';
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { readFileSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
@@ -90,7 +91,7 @@ const STORED_REPORTS: Record<string, any> = {
 /* Kofi's next check-in opens in three days. */
 const KOFI_NEXT = new Date(Date.now() + 3 * 24 * 3600 * 1000);
 
-function fixture(opts: { leakyReport?: boolean } = {}) {
+function fixture(opts: { leakyReport?: boolean; contextInAsk?: boolean } = {}) {
   const db: Record<string, any[]> = {
     organization: [{ id: ORG, name: 'Baridi' }],
     person: [
@@ -199,6 +200,8 @@ function fixture(opts: { leakyReport?: boolean } = {}) {
       : r.id === where.id)) ?? null, select)),
   });
   const prisma: any = Object.fromEntries(Object.keys(db).map((k) => [k, table(k)]));
+  /* `release.contextInAskGroundwork` is off as shipped: the line about adding context is read only when it is on. */
+  prisma.platformSetting = { findUnique: jest.fn(async ({ where }: any) => (opts.contextInAsk && where.key === 'release.contextInAskGroundwork' ? { value: { on: true } } : null)) };
   prisma.subject = { findMany: jest.fn(async () => []), count: jest.fn(async () => 0) };
   prisma.detectionQuietPeriod = { findMany: jest.fn(async () => []) };
 
@@ -259,13 +262,15 @@ function fixture(opts: { leakyReport?: boolean } = {}) {
 const BARIDI_ASK = {
   askName: 'Ask Baridi',
   caption: 'Ask about the company, your work or your check-ins.',
-  addLine: 'You can also add context or documents to your check-ins here.',
+  /* Left out while `release.contextInAskGroundwork` is off, which is how it ships. */
+  addLine: null,
   /* Decision 101: four of the five need a check-in, so a reader with none is left with the one
      that does not. One true starter rather than four invented ones. */
   starters: ["What are the company's priorities right now?", 'Ask for leave, or to spend money.'],
 };
 /* And the five, in Hafsah's order, for somebody who has a check-in. */
-const STARTERS_WITH_A_CHECK_IN = [
+/* As shipped, with the switch for context in Ask off, the starter about adding context is left out. */
+const STARTERS_WITH_A_CHECK_IN_AND_CONTEXT = [
   'What did I say I would do?',
   'What is my check-in for, and who reads it?',
   'When is my next check-in?',
@@ -273,7 +278,10 @@ const STARTERS_WITH_A_CHECK_IN = [
   'Add a document or some context to my check-in.',
   'Ask for leave, or to spend money.',
 ];
-const BARIDI_WELCOME = 'This is Ask Baridi. I answer about the whole organisation and about your own work, and you can point me at one of your check-ins whenever you want to. Ask me about the company, about your work, or about your check-ins. You can add context or a document to one of your check-ins here, and ask for leave or to spend money. What you ask me stays private. Anything you choose to add to a check-in works differently. I say it back to you first, it goes in only once you say yes, and from then on it is part of that check-in.';
+const STARTERS_WITH_A_CHECK_IN = STARTERS_WITH_A_CHECK_IN_AND_CONTEXT.filter((l) => !/context/.test(l));
+/* As shipped, with adding context hidden (`release.contextInAskGroundwork` off): nothing is offered that cannot be done. */
+const BARIDI_WELCOME = 'This is Ask Baridi. I answer about the whole organisation and about your own work, and you can point me at one of your check-ins whenever you want to. Ask me about the company, about your work, or about your check-ins. You can also ask me for leave or to spend money. What you ask me stays private.';
+const BARIDI_WELCOME_WITH_CONTEXT = 'This is Ask Baridi. I answer about the whole organisation and about your own work, and you can point me at one of your check-ins whenever you want to. Ask me about the company, about your work, or about your check-ins. You can add context or a document to one of your check-ins here, and ask for leave or to spend money. What you ask me stays private. Anything you choose to add to a check-in works differently. I say it back to you first, it goes in only once you say yes, and from then on it is part of that check-in.';
 
 const everything = (x: unknown) => JSON.stringify(x);
 
@@ -973,12 +981,28 @@ describe('the detectors', () => {
 
 describe('Ask is named for the organisation, and tells a person what it can do the first time (decision 100)', () => {
   it('a member with no questions yet reads the name, the caption, the one line and the welcome', async () => {
-    const { controller, asUser } = fixture();
+    const { controller, asUser } = fixture({ contextInAsk: true });
     const tom: any = await controller.mine(asUser(readers.tom));
     expect(tom.askName).toBe('Ask Baridi');
     expect(tom.caption).toBe('Ask about the company, your work or your check-ins.');
     expect(tom.addLine).toBe('You can also add context or documents to your check-ins here.');
+    expect(tom.welcome).toBe(BARIDI_WELCOME_WITH_CONTEXT);
+  });
+
+  it('while the switch for context in Ask is off, nobody is told they can add context or documents here', async () => {
+    const { controller, asUser } = fixture();
+    const tom: any = await controller.mine(asUser(readers.tom));
+    expect(tom.addLine).toBeNull();
+    expect(JSON.stringify(tom)).not.toContain('add context or documents');
+    expect(tom.welcome).not.toContain('add context');
     expect(tom.welcome).toBe(BARIDI_WELCOME);
+  });
+
+  it('the starter about adding a document or context is offered only while that part is on', () => {
+    const line = 'Add a document or some context to my check-in.';
+    expect(askStarters(true, false)).not.toContain(line);
+    expect(askStarters(true, true)).toContain(line);
+    expect(askStarters(true, false)).toHaveLength(askStarters(true, true).length - 1);
   });
 
   it('a member who has already asked is not welcomed again, and still reads the name', async () => {

@@ -60,7 +60,7 @@ import { LEAVE_ANSWER_KIND, LEAVE_QUESTION_KIND, LONGEST, NO_QUESTION_WAITING, Q
 import { HOURS_CAN_BE_TOLD_HERE, HOURS_NOT_SENT, HOURS_NOTHING_WAITING, HOURS_SUITE_OFF, asksWhereMyHoursStand, hoursSaidBack, hoursSent, readHours, soundsLikeHours, type HoursSaid } from '../suites/hours-said-in-chat';
 import { billableSaidBack, billableSaidIn, type TimeRules } from '../suites/the-time-sheet-rules';
 import { DRAFT_CHANGE_NOT_READ, DRAFT_NOT_SENT, HOURS_WEEK_DRAFT_KIND, aLineRemoved, asksToDraftMyWeek, theClientNamedIn, theDraftChanged, theDraftSaidBack, theDraftSent, type ADraftEntry } from '../suites/a-week-drafted-from-the-record';
-import { SPEND_MISSING_KIND, SPEND_NOT_SENT, SPEND_NOTHING_WAITING, SPEND_SUITE_OFF, readSpending, soundsLikeSpending, spendingSaidBack, spendingSent, type SpendSaid } from '../suites/spend-said-in-chat';
+import { aReasonInASentence, SPEND_PURPOSE_KIND, SPEND_MISSING_KIND, SPEND_NOT_SENT, SPEND_NOTHING_WAITING, SPEND_SUITE_OFF, readSpending, soundsLikeSpending, spendingSaidBack, spendingSent, type SpendSaid } from '../suites/spend-said-in-chat';
 import { theCategoryCalled, theCategoryIn, whichCategory, whichCategoryAgain, type SpendRules } from '../suites/the-spending-rules';
 import { NOT_KEPT } from '../knowledge/what-the-organisation-keeps';
 import { howLongAgo, splitBySession } from './what-you-told-me-before';
@@ -2185,6 +2185,10 @@ export class AssistantService {
     if (parked.kind === SPEND_MISSING_KIND) {
       return this.resolveParkedSpendMissing(organizationId, personId, who, parked, message);
     }
+    /* WHAT AN AMOUNT IS FOR, asked because the words did not say: what they type next is the reason. */
+    if (parked.kind === SPEND_PURPOSE_KIND) {
+      return this.resolveParkedSpendPurpose(organizationId, personId, who, parked, message);
+    }
 
     /*
      * A WEEK OF HOURS DRAFTED FROM THE RECORD (build step 11): the reply can change a line ("6 hours on
@@ -3491,7 +3495,62 @@ export class AssistantService {
     try { first = await this.spending.checkForChat(organizationId, userId, 1, today); } catch { return rules('ask_to_spend', text(SPEND_SUITE_OFF)); }
     const read = readSpending(message, first.currency);
     if (read.kind === 'none') return null;
+    if (read.kind === 'ask' && read.purpose) {
+      /* Only the reason is missing, so the amount is kept and the next reply is taken as the reason. */
+      await this.prisma.assistantProposal.create({
+        data: { organizationId, personExternalId: who, kind: SPEND_PURPOSE_KIND, summary: read.say, payload: { ...read.purpose } as never },
+        select: { id: true },
+      });
+      return rules('ask_to_spend', text(read.say));
+    }
     if (read.kind === 'ask') return rules('ask_to_spend', text(read.say));
+    return this.carryOnWithSpending(organizationId, who, userId, message, read.said, first);
+  }
+
+  /** What a person typed after "What is it for?" is the reason; anything that is plainly something else is answered as it would be. */
+  private async resolveParkedSpendPurpose(organizationId: string, personId: string, who: string, parked: any, message: string): Promise<Reply> {
+    const typed = (message ?? '').trim();
+    const kept = parked.payload as { amount?: number; currency?: string | null };
+    const drop = (state: 'DROPPED' | 'DECLINED' | 'ACCEPTED') => this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state, resolvedAt: new Date() } });
+    if (resolveConfirmation(typed) === 'decline') { await drop('DECLINED'); return rules('ask_to_spend', text(SPEND_NOT_SENT)); }
+    const me = await this.theSignInOf(organizationId, who);
+    /* A reason is not a yes, a greeting, thanks, a question, or an answer to something asked half an hour ago. */
+    const stale = parked.createdAt && Date.now() - new Date(parked.createdAt).getTime() > 30 * 60 * 1000;
+    if (stale || resolveConfirmation(typed) === 'accept' || /^(hi|hello|hey|thanks?|thank you|ok(ay)?|good (morning|afternoon|evening))\b/i.test(typed) || /^(who|what|when|how|why|can|is|do)\b/i.test(typed)
+      || !typed || !(kept?.amount && kept.amount > 0) || !this.spending || !me.linkedUserId
+      || aDecisionIn(typed) || soundsLikeLeave(typed) || soundsLikeHours(typed) || soundsLikeSpending(typed) || /\?\s*$/.test(typed)) {
+      await drop('DROPPED');
+      return this.answer(organizationId, personId, who, message, true);
+    }
+    let first: Awaited<ReturnType<SpendingService['checkForChat']>>;
+    try { first = await this.spending.checkForChat(organizationId, me.linkedUserId, 1, new Date()); } catch { await drop('DROPPED'); return rules('ask_to_spend', text(SPEND_SUITE_OFF)); }
+    await drop('ACCEPTED');
+    const names = await this.theNamesTheOrganisationKnows(organizationId, me.linkedUserId);
+    const what = aReasonInASentence(typed.replace(/^\s*(?:it(?:'s| is)\s+|that(?:'s| is)\s+|for\s+|on\s+)/i, '').replace(/[.!]+$/, '').replace(/\s+/g, ' ').trim().slice(0, 300), names);
+    return this.carryOnWithSpending(organizationId, who, me.linkedUserId, typed, { amount: kept.amount!, what, currency: kept.currency ?? first.currency }, first);
+  }
+
+  /**
+   * THE NAMES THE ORGANISATION KNOWS, so a person's own capital letter is kept: people (first, last and display names), customers and
+   * other counterparties, departments (the teams), and the clients on the time sheet. Read-only, best effort, and only ever used to
+   * decide whether a word keeps its capital.
+   */
+  private async theNamesTheOrganisationKnows(organizationId: string, userId: string): Promise<string[]> {
+    const p: any = this.prisma;
+    const names: string[] = [];
+    const take = async (f: () => Promise<any[] | undefined>, pick: (r: any) => any[]) => {
+      try { for (const r of (await f()) ?? []) for (const v of pick(r)) if (typeof v === 'string' && v.trim()) names.push(v.trim()); } catch { /* a name we cannot read is one we do not keep */ }
+    };
+    await take(() => p.person?.findMany?.({ where: { organizationId }, select: { givenName: true, familyName: true, displayName: true, department: true }, take: 2000 }), (r) => [r.givenName, r.familyName, r.displayName, r.department]);
+    await take(() => p.subject?.findMany?.({ where: { organizationId, type: 'COUNTERPARTY' }, select: { title: true }, take: 2000 }), (r) => [r.title]);
+    try { names.push(...(((await this.timeSheets?.forChat(organizationId, userId)) as any)?.clients ?? [])); } catch { /* as above */ }
+    return names;
+  }
+
+  /** A request to spend that is read in full goes on to the rules, and then to the say-back. */
+  private async carryOnWithSpending(organizationId: string, who: string, userId: string, message: string, said: SpendSaid, first: Awaited<ReturnType<SpendingService['checkForChat']>>): Promise<Reply> {
+    const read = { said };
+    const today = new Date();
     /*
      * THE SPENDING RULES (build step 9). When the admin named categories and the words name none of
      * them, that one thing is asked for ("Which project is this for?"), and nothing else.

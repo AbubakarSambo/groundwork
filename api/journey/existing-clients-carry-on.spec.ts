@@ -313,8 +313,10 @@ describe('release night, for a check-in that already exists', () => {
   it('runs every migration since the live main line, and the data changes are the ones in docs/deploy.md', needsTheDatabase((o) => {
     const names = theNewMigrations();
     /* 82 since 4 October: the anchor scenario's empty started_from column (docs/deploy.md row 82).
-       83 since 5 October: every free run is one month, a column default only (docs/deploy.md row 83). */
-    expect(names).toHaveLength(83);
+       83 since 5 October: every free run is one month, a column default only (docs/deploy.md row 83).
+       84 since 6 October: a WhatsApp send keeps the id Meta gave it, a nullable column and its index (docs/deploy.md row 84).
+       85 since 6 October: the anchor's situation is an allowed value, so the check-in keeps it (docs/deploy.md row 85). */
+    expect(names).toHaveLength(85);
     // The six statements deploy.md lists, plus the WhatsApp prices (five updates and one insert).
     expect(o.dataChangesRun).toBeGreaterThanOrEqual(8);
   }));

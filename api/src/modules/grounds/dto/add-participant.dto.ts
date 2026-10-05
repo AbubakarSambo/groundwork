@@ -34,6 +34,13 @@ export class AddParticipantDto {
   @MaxLength(120)
   department?: string;
 
+  /** The name the lead gives this person, kept beside the address ("Name + email", the anchor's people step). Never read from the address. */
+  @ApiPropertyOptional({ example: 'Amani Wekesa', description: 'What the lead calls this person. Optional.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  displayName?: string;
+
   @ApiPropertyOptional({ example: 'Looking forward to aligning on the roadmap with you.', description: 'Optional personal note included in the invite email' })
   @IsOptional()
   @IsString()

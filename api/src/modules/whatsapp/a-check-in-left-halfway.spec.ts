@@ -20,6 +20,8 @@ function aWorld(o: { overWhatsApp?: boolean | null; wroteOnWhatsApp?: boolean; r
 }
 const lastAsked = (hoursAgo: number) => ({ role: 'AI', createdAt: new Date(NOON_LAGOS.getTime() - hoursAgo * HOUR) });
 
+const withoutComments = (t: string): string => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
 describe('Amani, who stopped halfway on WhatsApp', () => {
   it('is reminded once, after three hours of quiet', async () => {
     const w = aWorld();
@@ -70,7 +72,7 @@ describe('off at release', () => {
   it('the switch reads off with no row, and every one of the three asks it first', async () => {
     const { theHalfwayMessagesAreOn } = require('../admin/what-is-hidden-at-release');
     expect(await theHalfwayMessagesAreOn({ platformSetting: { findUnique: async () => null } })).toBe(false);
-    const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'grounds', 'grounds.cron.ts'), 'utf8');
+    const src = withoutComments(require('fs').readFileSync(require('path').join(__dirname, '..', 'grounds', 'grounds.cron.ts'), 'utf8'));
     expect(src).toContain('this.whatsapp && (await theHalfwayMessagesAreOn(this.prisma)) ? tellThemTheClockClosedIt(');
     expect(src).toContain('if (this.whatsapp && (await theHalfwayMessagesAreOn(this.prisma))) await warnTheirPhone(');
     expect(src).toContain('if (!this.whatsapp || !(await theHalfwayMessagesAreOn(this.prisma))) return { sent: 0 };');

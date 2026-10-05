@@ -1,5 +1,6 @@
 import { HOW_I_WILL_WORK_WITH_YOUR_TEAM } from './the-anchor-served-shapes';
 import type { TheLeadsReveal } from './the-anchor-served-shapes';
+import type { TheSevenItems } from './the-anchor-setup';
 
 /**
  * THE LEAD'S REVEAL, "Help my team understand" (docs/anchor-scenario.md, sections 11 and 12; plan piece 8;
@@ -71,20 +72,36 @@ export const WHAT_GROUNDWORK_WILL_EXPLORE = [
 
 export type TheRevealReader = 'lead' | 'team';
 
-export function theLeadsReveal(input: { messages: Turn[]; peopleNamed?: string[]; reader?: TheRevealReader; sharedWithTheTeam?: boolean }): TheLeadsReveal {
+/** A sentence as the lead reads it: a capital letter to start and one full stop to end, nothing else changed. */
+export const asASentence = (t: string): string => {
+  const x = t.trim();
+  if (!x) return '';
+  const up = x[0].toUpperCase() + x.slice(1);
+  return /[.!?]$/.test(up) ? up : `${up}.`;
+};
+
+/** What she is carrying: what sits with her, and why it bothers her, in the words she gave. Nothing when she gave neither. */
+const whatSheIsCarrying = (h: TheSevenItems): string | null => {
+  const parts = [h.responsibleFor, h.whyItBothersYou].map((p) => asASentence(p ?? '')).filter(Boolean);
+  return parts.length ? parts.join(' ') : null;
+};
+
+export function theLeadsReveal(input: { messages: Turn[]; peopleNamed?: string[]; reader?: TheRevealReader; sharedWithTheTeam?: boolean; heard?: TheSevenItems }): TheLeadsReveal {
   const reader = input.reader ?? 'lead';
   const shared = input.sharedWithTheTeam === true;
   const hers = herAnswerToTheHopeQuestion(input.messages);
-  const change = hers ? whatSheSaidOneAtATime(hers) : [];
+  const heard = input.heard ?? {};
+  const change = hers ? whatSheSaidOneAtATime(hers) : heard.whatTheyWouldDoDifferently ? whatSheSaidOneAtATime(heard.whatTheyWouldDoDifferently) : [];
+  const named = (input.peopleNamed ?? []).some((n) => (n ?? '').trim());
   const forTheLead = reader === 'lead';
   return {
     title: 'Help my team understand',
     subtitle: 'One-month Groundwork',
-    carrying: forTheLead ? NOT_WRITTEN_DOWN.carrying : null,
-    whatTheTeamNeedsToUnderstand: forTheLead ? NOT_WRITTEN_DOWN.whatTheTeamNeedsToUnderstand : null,
+    carrying: forTheLead ? whatSheIsCarrying(heard) ?? NOT_WRITTEN_DOWN.carrying : null,
+    whatTheTeamNeedsToUnderstand: forTheLead ? (heard.whatTheyDontUnderstand ? asASentence(heard.whatTheyDontUnderstand) : NOT_WRITTEN_DOWN.whatTheTeamNeedsToUnderstand) : null,
     sharedWithTheTeam: shared,
-    whoYouAreTryingToMove: whoSheIsTryingToMove(input.peopleNamed ?? []),
-    seeingToday: forTheLead ? NOT_WRITTEN_DOWN.seeingToday : null,
+    whoYouAreTryingToMove: !named && heard.tryingToMove ? asASentence(heard.tryingToMove) : whoSheIsTryingToMove(input.peopleNamed ?? []),
+    seeingToday: forTheLead ? (heard.seeingToday ? asASentence(heard.seeingToday) : NOT_WRITTEN_DOWN.seeingToday) : null,
     whatMeaningfulChangeWouldLookLike: change.length ? change : [NOT_WRITTEN_DOWN.change],
     whatGroundworkWillExplore: [...WHAT_GROUNDWORK_WILL_EXPLORE],
     howIWillWorkWithYourTeam: HOW_I_WILL_WORK_WITH_YOUR_TEAM.map((w) => ({ ...w })),

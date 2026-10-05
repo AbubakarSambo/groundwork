@@ -106,6 +106,8 @@ afterEach(() => {
   Logger.overrideLogger(false as any);
 });
 
+const withoutComments = (t: string): string => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
 describe('what a member of staff reads on the page', () => {
   it('with nothing saved, the page says where each value comes from and shows no secret', async () => {
     const { whatsapp } = aService();
@@ -237,7 +239,7 @@ describe('the verify token is compared in constant time', () => {
     expect(WhatsAppController.sameToken(SAVED.verifyToken.slice(0, -1) + 'x', SAVED.verifyToken)).toBe(false);
     expect(WhatsAppController.sameToken(SAVED.verifyToken + 'x', SAVED.verifyToken)).toBe(false);
     expect(WhatsAppController.sameToken(undefined, SAVED.verifyToken)).toBe(false);
-    const src = require('fs').readFileSync(require('path').join(__dirname, '../whatsapp/whatsapp.controller.ts'), 'utf8');
+    const src = withoutComments(require('fs').readFileSync(require('path').join(__dirname, '../whatsapp/whatsapp.controller.ts'), 'utf8'));
     expect(src).not.toMatch(/token === expected/);
   });
 });

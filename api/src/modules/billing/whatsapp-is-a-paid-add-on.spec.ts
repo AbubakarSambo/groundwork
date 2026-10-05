@@ -201,7 +201,7 @@ describe('while the free trial’s switch is off, which is how it ships', () => 
 });
 
 describe('Baridi in its free trial', () => {
-  it('WhatsApp goes, nothing is charged, and Grace reads the month and the day it ends', async () => {
+  it('WhatsApp goes, nothing is charged, and Grace reads the month and the page names the end of the trial only once', async () => {
     const { addOn, stripeCalls } = world({ org: { ...IN_ITS_TRIAL, whatsappAddOnOn: true } });
     expect(await addOn.mayWeSend('org-baridi', NOW)).toEqual({ send: true });
     await addOn.syncTheStripeLine('org-baridi', NOW);
@@ -211,7 +211,8 @@ describe('Baridi in its free trial', () => {
     expect(read.says).toEqual({
       onOrOff: 'WhatsApp is on for your organisation.',
       price: 'WhatsApp costs $72 a month on your Small Team plan.',
-      charge: 'Your free trial lasts 1 month and ends on 1 November 2026. Nothing is charged for WhatsApp until then.',
+      charge: 'Your free trial lasts 1 month. Nothing is charged for WhatsApp until it ends.',
+      /* One date on the page: the sentence names no day, so it cannot disagree with the plan line (clean-install run, 6 October). */
       use: 'Your organisation has sent 0 of its 2,000 WhatsApp messages this month.',
       atTheLimit: 'If your organisation sends all 2,000 messages in a month, nothing more is sent by WhatsApp until the next month begins. Check-ins carry on in the app, and you are told once.',
       reachedTheLimit: null,
@@ -225,7 +226,6 @@ describe('Baridi after its trial, paying for Small Team, without the add-on', ()
     const { addOn } = world();
     expect(await addOn.mayWeSend('org-baridi', NOW)).toEqual({ send: false, why: 'not turned on', saying: WHATSAPP_NOT_TURNED_ON });
     expect(await addOn.whatTheyRead('org-baridi', false, NOW)).toEqual({
-      on: false,
       sending: false,
       says: 'Your organisation has not turned on WhatsApp, so this check-in stays in the app.',
     });
@@ -343,7 +343,7 @@ describe('Baridi at its monthly limit', () => {
     const grace: any = await addOn.whatTheyRead('org-baridi', true, NOW);
     expect(grace.says.use).toBe('Your organisation has sent 2,000 of its 2,000 WhatsApp messages this month.');
     expect(grace.says.reachedTheLimit).toMatch(/^Your organisation has used all 2,000 of its WhatsApp messages for October\./);
-    expect(await addOn.whatTheyRead('org-baridi', false, NOW)).toEqual({ on: true, sending: false, says: may.send ? null : may.saying });
+    expect(await addOn.whatTheyRead('org-baridi', false, NOW)).toEqual({ sending: false, says: may.send ? null : may.saying });
   });
 
   it('a new month starts again from nothing', async () => {
@@ -376,7 +376,6 @@ describe('a lead or a person in a check-in, in a free trial with WhatsApp off (s
   it('Wairimu and Miriam read that it is off and why no reminder comes, where they were served nothing to say', async () => {
     const { addOn } = world({ org: IN_ITS_TRIAL });
     expect(await addOn.whatTheyRead('org-baridi', false, NOW)).toEqual({
-      on: false,
       sending: true,
       says: 'Your organisation has not turned on WhatsApp, so Groundwork does not send you reminders or summaries on WhatsApp.',
     });
@@ -384,6 +383,6 @@ describe('a lead or a person in a check-in, in a free trial with WhatsApp off (s
 
   it('with it turned on they read that it is on and nothing more', async () => {
     const { addOn } = world({ org: { ...IN_ITS_TRIAL, whatsappAddOnOn: true } });
-    expect(await addOn.whatTheyRead('org-baridi', false, NOW)).toEqual({ on: true, sending: true, says: null });
+    expect(await addOn.whatTheyRead('org-baridi', false, NOW)).toEqual({ sending: true, says: null });
   });
 });

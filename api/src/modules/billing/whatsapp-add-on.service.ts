@@ -333,7 +333,9 @@ export class WhatsAppAddOnService {
      * So they read that, plainly, and whether it is on.
      */
     const offSays = !s.addOnOn ? WHATSAPP_REMINDERS_ARE_OFF : null;
-    if (!isAdmin || !(await theNewBillingPartsAreShown(this.prisma))) return { on: s.addOnOn, sending: s.sending, says: personSays ?? offSays };
+    if (!isAdmin || !(await theNewBillingPartsAreShown(this.prisma))) /* Exactly what a member reads, with no `on`: the screen takes an answer that has `on` for the admin's full one, so an
+       admin with the switch off would read an empty part (clean-install run, 6 October). */
+      return { sending: s.sending, says: personSays ?? offSays };
 
     const label = s.plan ? PLAN_LABELS[s.plan] : null;
     const says: Record<string, string | null> = {
@@ -350,7 +352,8 @@ export class WhatsAppAddOnService {
         : s.onTheFreePlan
           ? 'Nothing is charged for WhatsApp while you are on the free plan.'
           : s.inAFreeRun && s.freeTrial
-            ? `Your free trial lasts ${s.freeTrial.months} ${s.freeTrial.months === 1 ? 'month' : 'months'} and ends on ${aDay(s.freeTrial.endsOn)}. Nothing is charged for WhatsApp until then.`
+            /* No date here: the plan line on the same page already says when it ends, and two calendars (the screen's and the server's UTC) gave two different days (clean-install run, 6 October). */
+            ? `Your free trial lasts ${s.freeTrial.months} ${s.freeTrial.months === 1 ? 'month' : 'months'}. Nothing is charged for WhatsApp until it ends.`
             : s.inAFreeRun
               ? 'Nothing is charged for WhatsApp while your free months last.'
               : s.charged
