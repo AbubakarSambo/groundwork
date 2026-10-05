@@ -254,7 +254,10 @@ own name. The end-of-month `peopleWhoHelpedMoveTheThinking` is not filled yet.
 started from the anchor link with the anchor switch on, and only while that setting is on too, the
 organisation gets one month on the plan that holds 20 people, the lead included (Small Team). It is
 given once, never on top of a free run and never to one that is paying, and nothing touches Stripe.
-`pricing.freeTrial` and the paid client are untouched. The public pricing read (`GET /billing/pricing`)
+`pricing.freeTrial` and the paid client are untouched. After review, it never shortens a free run.
+Where the regular trial would also be given, the organisation gets the longer of the two. Where it
+would not, the anchor month does not use up the regular trial, which can still be given later in
+full. The public pricing read (`GET /billing/pricing`)
 now also sends `anchorTrial: { on, months: 1, people: 20 }`, so the anchor landing says "for a month"
 only while it is on.
 

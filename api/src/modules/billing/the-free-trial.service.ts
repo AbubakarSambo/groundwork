@@ -70,13 +70,24 @@ export class TheFreeTrialService {
       /* Twenty people, the lead included: a plan whose seat limit is at least 20. */
       const plan = await this.thePlanItCovers(trial.people + 1);
       if (!plan) return { granted: false, why: 'no plan holds a team of that size' };
-      const until = aFreeRunEndsOn(now, trial.months);
+      /*
+       * NEVER SHORTER THAN THE REGULAR TRIAL (review of piece 34). Where the organisation would also be given the regular
+       * trial today, it is given the longer of the two, and that counts as its regular trial. Where it would not (the
+       * regular trial is off, or the team is not under its size), the anchor month is given on its own and does not use
+       * up the regular trial: `freeTrialStartedAt` stays empty, so the regular trial can still be given later, and then
+       * it runs its full length from that day (see grantIfItApplies).
+       */
+      const regular = this.pricing.getFreeTrial ? await this.pricing.getFreeTrial().catch(() => null) : null;
+      const seats: number = regular?.on ? ((await (this.prisma as any).user?.count?.({ where: seatsIn(organizationId) })?.catch?.(() => Infinity)) ?? Infinity) : Infinity;
+      const alsoTheRegular = !!regular?.on && seats < regular.teamsUnder;
+      const months = alsoTheRegular ? Math.max(trial.months, regular!.months) : trial.months;
+      const until = aFreeRunEndsOn(now, months);
       const written = await this.prisma.organization.updateMany({
         where: { id: organizationId, freeTrialStartedAt: null, freeUntil: null },
-        data: { freeTrialStartedAt: now, freeUntil: until, freePlan: plan },
+        data: { ...(alsoTheRegular ? { freeTrialStartedAt: now } : {}), freeUntil: until, freePlan: plan },
       });
       if (!written.count) return { granted: false, why: 'it changed while we looked' };
-      this.logger.log(`Anchor trial given to ${organizationId}: ${trial.months} month on ${plan}, ending ${until.toISOString().slice(0, 10)}.`);
+      this.logger.log(`Anchor trial given to ${organizationId}: ${months} month(s) on ${plan}, ending ${until.toISOString().slice(0, 10)}${alsoTheRegular ? ', which is also its regular trial' : ''}.`);
       return { granted: true, plan, until };
     } catch (err: any) {
       this.logger.error(`The anchor trial could not be given to ${organizationId}: ${err?.message}`);
@@ -110,7 +121,14 @@ export class TheFreeTrialService {
       if (!org) return { granted: false, why: 'no such organisation' };
       if (org.freeTrialStartedAt) return { granted: false, why: 'it has had the trial already' };
       if (whatCoversThem(org, now).covers === 'paid') return { granted: false, why: 'it is paying' };
-      if (org.freeUntil) return { granted: false, why: 'it has a free run of its own' };
+      /*
+       * AN ANCHOR MONTH DOES NOT USE UP THE REGULAR TRIAL (review of piece 34). A free run that is the anchor's month (the
+       * organisation started a check-in from the anchor link, and has not had the regular trial) is lengthened to the
+       * regular trial's full length from today, never shortened. Any other free run of its own is left alone, as before.
+       */
+      const anchorMonth = !!org.freeUntil && !org.freeTrialStartedAt
+        && ((await (this.prisma as any).ground?.count?.({ where: { organizationId, startedFrom: 'anchor' } }).catch(() => 0)) ?? 0) > 0;
+      if (org.freeUntil && !anchorMonth) return { granted: false, why: 'it has a free run of its own' };
 
       /* What they said is checked against who is really here, counted as billing counts a seat. */
       const seats = await this.prisma.user.count({ where: seatsIn(organizationId) });
@@ -122,10 +140,12 @@ export class TheFreeTrialService {
         return { granted: false, why: 'no plan holds a team of that size' };
       }
 
-      const until = aFreeRunEndsOn(now, trial.months);
+      const full = aFreeRunEndsOn(now, trial.months);
+      /* Never shorter than the free run it already has. */
+      const until = anchorMonth && org.freeUntil && new Date(org.freeUntil).getTime() > full.getTime() ? new Date(org.freeUntil) : full;
       /* Only if still untouched, so two answers at once cannot give it twice or overwrite a free run. */
       const written = await this.prisma.organization.updateMany({
-        where: { id: organizationId, freeTrialStartedAt: null, freeUntil: null },
+        where: { id: organizationId, freeTrialStartedAt: null, freeUntil: anchorMonth ? org.freeUntil : null },
         data: { freeTrialStartedAt: now, freeUntil: until, freePlan: plan },
       });
       if (!written.count) return { granted: false, why: 'it changed while we looked' };

@@ -89,6 +89,8 @@ database, and every one is complete, so the warning came too early and the numbe
 
 ### Needs Hafsah
 
+**Is the anchor month for new organisations only?** The anchor's one-month trial (`pricing.anchorTrial`) is given to any organisation that starts a check-in from the anchor link, including one already on the free plan, as long as it has not had a trial, is not paying, and has no free run of its own. Both switches are off, so nothing happens until you turn them on. If the anchor month should be for new organisations only, say so and I will add the rule. After review, the anchor month never shortens a free run, and it does not use up the regular trial: if the regular trial would also be given, they get the longer of the two; if not, the regular trial can still be given later, in full.
+
 **An organisation's admin who is not in a check-in reads people's exact words on its board.** Juma, an admin of the organisation who is not in the sales check-in and did not set it up, is sent everybody's own words in "Who owns what" and other sections, in quotation marks with their names. That was already so before today's work, and nothing I changed widened it. CLAUDE.md says what people say in check-ins can be shown word for word to the people in that check-in. The wall for an admin without access to a check-in (decision 60, point 4) covers only evaluation check-ins. Whether an admin who is not in a check-in should read people's exact words on every other kind is your call. I have changed nothing.
 
 ## 5 October, 15:30: where I am, for your fresh session
