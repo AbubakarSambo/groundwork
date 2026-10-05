@@ -1021,7 +1021,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * there is nothing to gate here beyond that - `recommendedCheckInsApi.list` is itself refused for
    * anybody who is not the lead.
    */
-  const anchorRecommendationsOn = viewerRunsThisCheckIn && !!(data as any)?.anchorScenarioOn
+  /** Whether this check-in was itself started as the anchor scenario - read once, for every reader. */
+  const anchorScenarioOn = !!(data as any)?.anchorScenarioOn
+  const anchorRecommendationsOn = viewerRunsThisCheckIn && anchorScenarioOn
 
   /**
    * PIECES 12, 13 AND 20: THE MONTH BOARD, "Are we moving together?" (section 24;
@@ -1031,7 +1033,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * early return below). `theMonthBoardForTheLead` is `undefined` for anybody else, or for a board
    * the engine does not serve it on, and the component below draws nothing then.
    */
-  const theMonthBoardForTheLead = viewerRunsThisCheckIn && !!(data as any)?.anchorScenarioOn
+  const theMonthBoardForTheLead = viewerRunsThisCheckIn && anchorScenarioOn
     ? (data as any)?.theMonthBoard
     : undefined
 
@@ -2481,6 +2483,17 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         {!shown.checkInGrid && b.myParticipantId && kindOfWorkKey !== 'MarketView where next' && everySessionLink()}
 
+        {/*
+          FAULT 4 (live walk, 6 October 2026): FOR AN ANCHOR CHECK-IN, "IDEAS FROM YOUR TEAM" SITS
+          OUTSIDE ANY FOLD, THE SAME MOVE AS "EVERY SESSION" JUST ABOVE.
+          `MaybeFolded` only ever closes anything for a sales-org participant
+          (`participantFoldsWhole`), so an anchor check-in's own lead already saw this open - but a
+          sales-org anchor's own PARTICIPANT would have had to open "The whole check-in" to reach it,
+          same bug, same fix: draw it here, before the fold, for an anchor check-in only. Every other
+          check-in keeps drawing it exactly where it always has, inside `MaybeFolded`, below.
+        */}
+        {anchorScenarioOn && <TheIdeasFromYourTeam ideasFromYourTeam={ideasFromYourTeam} />}
+
         <MaybeFolded fold={participantFoldsWhole}>
 
         {/*
@@ -2491,9 +2504,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {/*
           PIECE 19/20, "IDEAS FROM YOUR TEAM" (plan section 5, row 7). To everyone in the check-in;
-          draws nothing while `ideasFromYourTeam` is undefined.
+          draws nothing while `ideasFromYourTeam` is undefined. Not drawn here for an anchor
+          check-in (fault 4) - it already drew above, before the fold.
         */}
-        <TheIdeasFromYourTeam ideasFromYourTeam={ideasFromYourTeam} />
+        {!anchorScenarioOn && <TheIdeasFromYourTeam ideasFromYourTeam={ideasFromYourTeam} />}
 
         {/*
           THE HEADLINE QUESTION, WITH ITS ANSWER AND ITS BAR (request 108 a; board-as-lead.txt:

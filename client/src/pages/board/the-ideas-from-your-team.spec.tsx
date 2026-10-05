@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BoardPage } from './BoardPage'
@@ -33,7 +33,7 @@ const ideasFixture: TheIdeasFromYourTeam = {
   whenThereAreNone: 'No idea from your team has been captured yet.',
 }
 
-const board = (opts?: { ideasFromYourTeam?: TheIdeasFromYourTeam }) => ({
+const board = (opts?: { ideasFromYourTeam?: TheIdeasFromYourTeam; kindOfWork?: string; anchorScenarioOn?: boolean }) => ({
   groundId: 'g1',
   renders: true,
   mode: 'SHARED',
@@ -46,7 +46,8 @@ const board = (opts?: { ideasFromYourTeam?: TheIdeasFromYourTeam }) => ({
   canEditFrame: false,
   readOnlyNote: '',
   eachPerson: [],
-  anchorScenarioOn: true,
+  anchorScenarioOn: opts?.anchorScenarioOn ?? true,
+  ...(opts?.kindOfWork ? { kindOfWork: opts.kindOfWork } : {}),
   ...(opts?.ideasFromYourTeam ? { ideasFromYourTeam: opts.ideasFromYourTeam } : {}),
   participants: [
     { id: 'p1', name: 'Hafsah', role: null, managingOnly: false, signedOffAt: null },
@@ -101,5 +102,33 @@ describe('"Ideas from your team", for a participant, not the lead', () => {
     renderBoard()
     expect(await screen.findByText('Ideas from your team')).toBeTruthy()
     expect(screen.getByText('Client review one month before project close')).toBeTruthy()
+  })
+
+  /**
+   * FAULT 4 (live walk, 6 October 2026): A SALES-ORG PARTICIPANT IS THE ONE READER WHO CAN HAVE
+   * "THE WHOLE CHECK-IN" CLOSED AROUND THIS SECTION (`participantFoldsWhole`,
+   * `BoardPage.tsx`) - every other reader already saw it in the open, which is why the two tests
+   * above (using `findByText`) could not tell the difference: a closed `<details>` still keeps its
+   * children in the DOM, just visually hidden, so finding the text proves nothing about which side
+   * of the fold it is on. These two walk all the way to the actual `<details>` element.
+   */
+  it('for a sales-org participant WITHOUT the anchor scenario, still sits inside the closed "whole check-in" fold, as today', async () => {
+    ;(boardApi.get as any).mockResolvedValue(board({ ideasFromYourTeam: ideasFixture, kindOfWork: 'sales org', anchorScenarioOn: false }))
+    ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u1', participants: [] })
+    renderBoard()
+    const fold = (await screen.findByText('The whole check-in')).closest('details') as HTMLDetailsElement
+    expect(fold).toBeTruthy()
+    expect(fold.open).toBe(false)
+    expect(within(fold).getByText('Ideas from your team')).toBeTruthy()
+  })
+
+  it('for a sales-org participant WITH the anchor scenario, sits outside the fold entirely - open, with no fold to find it in', async () => {
+    ;(boardApi.get as any).mockResolvedValue(board({ ideasFromYourTeam: ideasFixture, kindOfWork: 'sales org', anchorScenarioOn: true }))
+    ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u1', participants: [] })
+    renderBoard()
+    expect(await screen.findByText('Ideas from your team')).toBeTruthy()
+    const fold = screen.getByText('The whole check-in').closest('details') as HTMLDetailsElement
+    expect(fold).toBeTruthy()
+    expect(within(fold).queryByText('Ideas from your team')).toBeNull()
   })
 })
