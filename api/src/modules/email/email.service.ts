@@ -1047,7 +1047,7 @@ export class EmailService implements OnModuleInit {
    * chased depended on which engine chased them; and the stop itself is honoured in sendEmail through
    * the context, so it has to be there.
    */
-  async sendNudge(email: string, groundLabel: string, checkInUrl: string, scenario: string | undefined, otherPartyCompleted: boolean | undefined, participantId: string): Promise<void> {
+  async sendNudge(email: string, groundLabel: string, checkInUrl: string, scenario: string | undefined, otherPartyCompleted: boolean | undefined, theAnchorLine: string | null | undefined, participantId: string): Promise<void> {
     const subjectMap: Record<string, string> = {
       NEW_HIRE: 'Your 90-day check-in is waiting',
       NEW_COFOUNDER: 'Your cofounder check-in is open',
@@ -1069,7 +1069,8 @@ export class EmailService implements OnModuleInit {
       to: email,
       subject,
       /* A reminder with no way to stop it is the whole defect. This is the second mail it goes on. */
-      html: this.layout(`<p>Your check-in for <strong>${escapeHtml(groundLabel)}</strong> is still open.</p>${otherPartyNote}<p><a href="${checkInUrl}">Check in</a></p>${(await this.theWayToStopBeingChased(participantId)) ?? ''}`),
+      /* On an anchor check-in, the anchor's own line (piece 30): their own open promise said back to them, or what has changed. */
+      html: this.layout(`<p>Your check-in for <strong>${escapeHtml(groundLabel)}</strong> is still open.</p>${theAnchorLine ? `<p>${escapeHtml(theAnchorLine)}</p>` : ''}${otherPartyNote}<p><a href="${checkInUrl}">Check in</a></p>${(await this.theWayToStopBeingChased(participantId)) ?? ''}`),
     }, { kind: 'REMINDER', participantId }, 'sendNudge');
   }
 

@@ -324,6 +324,16 @@ both pieces. They belong with the conversation work, after the run.
 included, and anything else sent is ignored. If you want it on Admin → System → Pricing beside the
 free trial, that is a screen to add.
 
+**Anchor piece 30, the nudge, is built (decision 105, item 3).** It is behind the anchor switch and
+only for a check-in started from the anchor link.
+
+- **In the app:** a person who has not yet checked in for the open round is served `aNudgeForYou` on their own board read. It is built from their own last open promise, said back to them: "You mentioned you would send your manager the deck. I'd love to hear how it went." With no open promise, it reads "It's been a few days since we spoke. What's changed since then?" It is null once they have checked in. Nobody else is ever served it: not the lead, not an admin with access, and not an admin who only reads.
+- **By email:** the reminder carries the same line, to that person only.
+- **On WhatsApp:** a ninth proposed template, `anchor_checkin_follow_up`, is built as a template's shape and not sent (`docs/whatsapp-templates.md`).
+- Only the person's own promise from their own check-in is ever used. Never a promise a lead wrote, and never anybody else's words.
+
+The existing `activeLine` ("18/20 active · Groundwork has nudged the remaining 2.") is unchanged.
+
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
 ```

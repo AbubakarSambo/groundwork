@@ -153,6 +153,14 @@ All three are now on the list the Connections page asks an admin to submit (`the
 - **Why:** to tell the person that the decision and its reasons are written and waiting in the app. The decision itself is never sent. It goes once, the first time the review is decided. It counts as Groundwork writing first. Proposed by the engine on 2 October, for Hafsah to confirm.
 - **Checked against WhatsApp's rules:** passes.
 
+### `anchor_checkin_follow_up` (anchor piece 30; decision 105, item 3). Proposed, built, not sent
+
+- **Category:** Utility. **Language:** en.
+- **Body:** Hi {{1}}, last time you said you would {{2}}. I'd love to hear how it went. Your check-in for {{3}} is open, and you can answer here.
+- **Examples:** {{1}} Rukia. {{2}} send your manager the deck. {{3}} Everyone pulling the same way.
+- **Why:** the anchor's nudge, which may repeat the person's own commitment, to that person only (decision 105, item 3). {{2}} is only ever their own open promise from their own check-in, said back to them. Never anybody else's words, never a promise a lead wrote. Where they have no open promise, `checkin_your_view_matters` is used instead.
+- **Not sent:** it is built in `conversation/the-anchor-nudge.ts` as a template's shape, and nothing sends it until it is approved and wired.
+
 ## Names no longer used
 
 `groundwork_session_ready`, `groundwork_check_in_opened` and `groundwork_check_in_nudge` were names in the code before decision 83. `checkin_open` replaces the first two. The third was for a check-in started and left, and is not needed: Groundwork already finishes a started check-in after 12 hours of quiet. None of the three needs submitting.

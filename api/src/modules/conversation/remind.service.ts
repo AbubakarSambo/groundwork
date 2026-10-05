@@ -6,6 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CheckInStatus } from '@prisma/client';
 import { worthNudging, whatToSendThem } from './who-is-worth-nudging';
+import { theAnchorNudgeFor } from './the-anchor-nudge';
 import { WorkspaceNotifierService } from '../workspace/workspace-notifier.service';
 import {
   whatToDoToday,
@@ -52,7 +53,7 @@ export class RemindService {
 
     const ground = await this.prisma.ground.findUnique({
       where: { id: checkIn.groundId },
-      select: { id: true, label: true },
+      select: { id: true, label: true, startedFrom: true },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
 
@@ -187,7 +188,9 @@ export class RemindService {
       const checkInUrl = this.email.buildCheckInUrl(participant.session!.id);
 
       // #34: Pass otherPartyCompleted so the email includes the appropriate note.
-      await this.email.sendNudge(participant.email, specificThing, checkInUrl, undefined, otherPartyCompleted, participant.id);
+      /* Their own last open promise, to them only, on an anchor check-in (piece 30). */
+      const theAnchorLine = await theAnchorNudgeFor(this.prisma, ground as any, participant.id);
+      await this.email.sendNudge(participant.email, specificThing, checkInUrl, undefined, otherPartyCompleted, theAnchorLine, participant.id);
 
       await this.prisma.groundParticipant.update({
         where: { id: participant.id },
@@ -246,6 +249,8 @@ export class RemindService {
         ground: {
           select: {
             label: true,
+            /* Whether it is an anchor check-in, for the anchor's nudge (piece 30). */
+            startedFrom: true,
             /* For the channel notice: `tell` is scoped to an organisation. */
             organizationId: true,
             chaseAfterDays: true,
@@ -365,6 +370,8 @@ export class RemindService {
           checkInUrl,
           undefined,
           otherPartyCompleted,
+          /* Their own last open promise, to them only, on an anchor check-in (piece 30). */
+          await theAnchorNudgeFor(this.prisma, { id: checkIn.groundId, startedFrom: (checkIn.ground as any).startedFrom }, participant.id),
           /* So the reminder carries its own way out. */
           participant.id,
         );

@@ -158,6 +158,7 @@ Every migration, in order, in one sentence each:
 | 80 | `20261003230000_time_sheet_rules_billable_entries` | Decision 85, build step 11. Adds one empty column `billable` to hours (`time_entries`): billable or not, only when the person said so of that entry. Empty means it follows the time sheet rules for its client or project, and with no rules every hour is billable. The rules themselves are kept in the existing `organization_suites` table (a `timeRules` row), so they need no table. | Untouched |
 | 81 | `20261004000000_a_review_reads_the_record_and_the_person_corrects_it` | Decision 85, build step 12. Adds two empty columns to `performance_reviews`: what Groundwork understands from the record for the review's period (`record_read`, facts with ids, written once when a review starts) and the first day of that period (`record_from`); and a new, empty table `performance_review_corrections`, each line the person marks as wrong with what they say is true, kept beside the line. Reviews already started keep no record and read as before. | Untouched |
 | 82 | `20261004100000_a_check_in_remembers_it_began_at_the_anchor_link` | Anchor scenario, piece 15. Adds one empty column `started_from` to `grounds`. It is written (with the word "anchor") only when a lead saves a check-in from the anchor conversation while `release.anchorScenario` is on, which is off. Every check-in that exists keeps it empty, and nothing reads it with the switch off. | Untouched |
+| 83 | `20261005200000_a_free_run_is_one_month` | Every free run is one month (Hafsah, 5 October; decision 105). Changes only the default of `free_runs.months` from 3 to 1. A free run already promised or running keeps the length it was given. No data is changed. | Untouched |
 
 The prices and limits migration 71 writes, all editable afterwards at Admin, System, Pricing (`PATCH /admin/pricing/:plan` with `whatsappAddOnCents` and `whatsappMonthlyLimit`):
 
@@ -176,7 +177,7 @@ Things worth knowing about how they run:
 - Columns added with a fixed default (`false`, an empty list) do not rewrite the table on Postgres 11 or later, so none of these should lock a table for long.
 - The new unique indexes on existing tables (`organizations.join_domain`, `organizations.invite_link_code`) are on new columns that start empty, so they cannot fail on existing data.
 - Two pairs of migrations share a timestamp (`20260927180000_*` and `20260927190000_*`). Prisma runs them in full name order, which is the order above.
-- The local test database (`gw_pw9_1786222102`) has every one of them applied (checked on 5 October: all 82), up to `20261004100000_a_check_in_remembers_it_began_at_the_anchor_link`.
+- The local test database (`gw_pw9_1786222102`) has every one of them applied (checked on 5 October: all 82), up to `20261004100000_a_check_in_remembers_it_began_at_the_anchor_link`. Migration 83, `20261005200000_a_free_run_is_one_month`, is written and not yet applied there (its default still reads 3).
 
 ## 3. Settings and environment variables
 

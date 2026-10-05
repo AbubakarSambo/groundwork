@@ -5,6 +5,7 @@ import { readTheMonthRecord } from './the-anchor-month-record';
 import { theMonthBoard, aDifferenceInAWords, aContributionSaid } from './the-anchor-month-board';
 import { theEndOfMonthRead, theMonthIsOver, herOwnWords } from './the-anchor-end-of-month';
 import { hasEnded } from '../grounds/a-ground-that-has-ended';
+import { theAnchorNudgeLine, theirOwnLastOpenPromise } from '../conversation/the-anchor-nudge';
 import type { TheActiveLine, TheMonthBoard, TheEndOfMonthRead } from '../entry/the-anchor-served-shapes';
 
 /**
@@ -15,7 +16,7 @@ import type { TheActiveLine, TheMonthBoard, TheEndOfMonthRead } from '../entry/t
  * end-of-month read are the lead's own, as the screens' contract says ("Lead only"), so they go to the lead alone.
  * For anybody else, and for every other check-in, this returns nothing, so the board is exactly what it was.
  */
-export type TheAnchorParts = { activeLine?: TheActiveLine; theMonthBoard?: TheMonthBoard; theEndOfMonthRead?: TheEndOfMonthRead; yourPartInMovingThings?: string | null };
+export type TheAnchorParts = { activeLine?: TheActiveLine; theMonthBoard?: TheMonthBoard; theEndOfMonthRead?: TheEndOfMonthRead; yourPartInMovingThings?: string | null; aNudgeForYou?: string | null };
 
 export async function theAnchorBoardParts(args: {
   prisma: any;
@@ -43,7 +44,10 @@ export async function theAnchorBoardParts(args: {
     if (!args.readerParticipantId || !(await theAnchorScenarioIsOn(prisma))) return {};
     const record = await readTheMonthRecord(prisma, ground.id, args.openRound);
     const mine = (record.doneByPerson ?? []).find((d) => d.participantId === args.readerParticipantId);
-    return { yourPartInMovingThings: mine ? aContributionSaid(null, mine.clauseToThem ?? mine.clause, mine.settledBy) : null };
+    /* In the app, the same nudge the email carries (piece 30), to them alone, while their check-in for the open round is not done. */
+    const answered = ((await prisma.checkIn?.findFirst?.({ where: { groundId: ground.id, participantId: args.readerParticipantId, sessionNumber: args.openRound, status: 'COMPLETED' }, select: { id: true } })?.catch?.(() => null)) ?? null);
+    const nudge = answered ? null : theAnchorNudgeLine(await theirOwnLastOpenPromise(prisma, ground.id, args.readerParticipantId));
+    return { yourPartInMovingThings: mine ? aContributionSaid(null, mine.clauseToThem ?? mine.clause, mine.settledBy) : null, aNudgeForYou: nudge };
   }
   if (!(await theAnchorScenarioIsOn(prisma))) return {};
   const parts: TheAnchorParts = { activeLine: await theActiveLineFor(prisma, ground.id, args.openRound, args.roundOpenedAt) };
