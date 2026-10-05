@@ -32,7 +32,7 @@ export function SessionPaywallModal({
   const remindTheAdmins = useMutation({
     mutationFn: () => billingApi.remindTheAdmins(groundId!),
     onSuccess: (r) => setRemindedSays(r.says),
-    onError: () => toast.error('Could not send the reminder. Try again.'),
+    onError: () => toast.error('Could not send the reminder. Nothing has changed - try again.'),
   })
   if (!paywall.show) return null
   return (
