@@ -95,7 +95,7 @@ the thing to read: it is written as the reader, not as the function.
 | 132 (f) the thing and the person run into one another | Fixed | "…who can provide the fuel allowance for October **that** Aisha Wanjiku is waiting for". Two expectations in `lead-actions-on-the-board-as-each-reader-reads-them.spec.ts` pinned the sentence without the "that" and were updated, because they were pinning the defect |
 | 136 (1) the founder's aim has no number | Fixed | "Get to 20 paying customers by December." now aims at 20: `AIMS_AT_BY_GOING_TO` in `an-aim-said-twice-is-one-aim.ts`, kept narrow, with the refusals ("Get to 12 percent", "Grow to 5 million in revenue") tested as refusals |
 
-### Still open: fourteen items, checked properly this time
+### Still open: eleven items, checked properly this time
 
 My first list was guesswork — I read it off whether a test file was named after the request, which
 is not the same thing, and six items I called open had fixes. This list is made the other way
@@ -104,10 +104,8 @@ file that would hold it.
 
 | Still open | What it is |
 | --- | --- |
-| 123 (2) | `kindOfWork` null on the new hire's board, so every `workRecords` entry is "not known" while the coaching talks about sales |
 | 123 (7) | the lead's judgement mixes "you", "they" and "she" for one person |
 | 123 (8) | a label on the new hire ("not yet equipped to…"), and the outcome when somebody leaves — see below |
-| 123 (12) | one rule for the lead's words: drop the sentence saying they are hidden, rather than hiding the quotes |
 | 127 (5) | "their" for the reader, outside the shapes the rule covers |
 | 127 (6) | "session 1 of 4 of founder or CEO work" where no kind of work is set |
 | 127 (7) | "13 worries are on record" with no worry shown anywhere |
@@ -117,7 +115,6 @@ file that would hold it.
 | 133 (1) | a sales question on a loans check-in — see below |
 | 134 (4) (5) | the judgement's two sentences about the open commitments, and who is asked to find an owner |
 | 135 (3) | the judgement miscounts: "four different activities in two locations" for two crops in two places |
-| 136 (7) | the judgement contradicts itself about her own commitments |
 
 Seven of those fourteen are the judgement, which is the model's own writing rather than a sentence
 assembled from rows. The repairs at the read (`the-judgement-reads-right.ts`) can only fix shapes,
@@ -140,9 +137,25 @@ Two of the fourteen are decisions rather than defects, and I have not made them 
   already tells the lead separately to find out who can provide it. Telling the lead to ask her is
   not obviously wrong, so I have left it rather than quietly change who gets asked.
 
-And one that was on my first list and is not open: **130 (f)**, the outcomes. `END_STATES` for this
-kind already reads "The team is on course.", "The team can reach it, with a change in how the work
-is done." and "The target needs to change." — the prototype's three, said as full sentences.
+Three more came off the list while I was writing it:
+
+- **130 (f), the outcomes.** `END_STATES` for this kind already reads "The team is on course.",
+  "The team can reach it, with a change in how the work is done." and "The target needs to change."
+  — the prototype's three, said as full sentences.
+- **123 (12), one rule for the lead's words.** The sentence is already gone on a new hire's board:
+  `request-124-1-the-new-hire-reads-the-leads-own-words-and-row.spec.ts` checks that "The words
+  your lead used are not shown to you here" does not appear, and that Tobi reads Amina's own words
+  and her row. It still appears where a colleague's words really are walled, which is its own rule.
+- **123 (2), `kindOfWork` null.** Not a defect in what is served — the check-in was made before the
+  kinds of work existed, so its row has none. `journey/give-each-check-in-its-kind-of-work.ts`
+  gives each existing check-in its kind, using the one reading a new check-in gets at setup, with
+  the answers cached so a second run is free and identical. Dry run by default; `--write` to write.
+  Run that against your database and the board stops saying "not known".
+
+And **136 (7) is fixed since I wrote this list**: the founder, the only person in her own check-in,
+was told "Your own account of this is not in this check-in." about her own commitments. It now says
+nobody else answers it. That wording is mine and PROVISIONAL — the prototype has no screen for a
+check-in of one.
 
 ## The meetings line is out of the stored row, not only out of what is served (127, 129–136, and 140 item 1)
 
