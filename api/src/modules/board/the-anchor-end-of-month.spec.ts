@@ -1,6 +1,6 @@
 import { PartyType } from '@prisma/client';
 import { person, answered, commitment, handoff, boardAs, AMINA, RUKIA, JUMA, type Setup } from './the-switchboards-sections-harness';
-import { theEndOfMonthRead, theMonthIsOver, herFirstWords, THE_CONTINUE_OPTIONS } from './the-anchor-end-of-month';
+import { theEndOfMonthRead, theMonthIsOver, herFirstWords, herOwnWords, THE_CONTINUE_OPTIONS } from './the-anchor-end-of-month';
 import { THE_SHAPES_KEYS } from '../entry/the-anchor-served-shapes';
 
 /**
@@ -117,5 +117,23 @@ describe('the pieces', () => {
     expect(e.whatTheyAreDoingDifferently).toEqual(['Nothing has been recorded yet that people are doing differently.']);
     expect(e.whatShouldHappenNext).toEqual(['Groundwork found one piece of work that could have a check-in of its own.']);
     expect(THE_CONTINUE_OPTIONS).toHaveLength(4);
+  });
+});
+
+describe('her own words, where she said them first', () => {
+  const stub = (turns: string[], entries: string[], brief: string | null) => ({
+    conversationTurn: { findMany: jest.fn(async () => turns.map((content) => ({ content }))) },
+    recordEntry: { findMany: jest.fn(async (q: any) => (q.where.disputedAt === null && q.where.participant.userId === 'u-amina' ? entries.map((text) => ({ text })) : [])) },
+    ground: { findUnique: jest.fn(async () => ({ brief })) },
+  });
+
+  it('reads her first line on the record when she typed nothing in a turn and the brief is empty', async () => {
+    expect(await herOwnWords(stub([], [HER_WORDS], null), 'g-1', 'u-amina')).toBe(HER_WORDS);
+  });
+
+  it('still reads her first typed words before the record, and the brief only when neither has anything', async () => {
+    expect(await herOwnWords(stub(['I want the team to stop waiting on each other.'], [HER_WORDS], 'The brief.'), 'g-1', 'u-amina')).toBe('I want the team to stop waiting on each other.');
+    expect(await herOwnWords(stub([], [], 'The brief.'), 'g-1', 'u-amina')).toBe('The brief.');
+    expect(await herOwnWords(stub([], [], null), 'g-1', 'u-amina')).toBeNull();
   });
 });

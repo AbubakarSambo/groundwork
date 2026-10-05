@@ -77,7 +77,11 @@ export function theEndOfMonthRead(input: { herWords: string; record: TheMonthRec
   };
 }
 
-/** The lead's own first words to Groundwork: the first thing she typed in her own check-in, or the brief she gave. Read only. */
+/**
+ * The lead's own first words to Groundwork: the first thing she typed in her own check-in, else the first line of her own
+ * on the record (when what she said first reached the record and not a turn, for example by WhatsApp or a document), else
+ * the brief she gave. A line she disputed is not hers. Read only.
+ */
 export async function herOwnWords(prisma: any, groundId: string, leadUserId: string | null): Promise<string | null> {
   if (leadUserId) {
     const turns: { content: string }[] = await prisma.conversationTurn.findMany({
@@ -88,6 +92,14 @@ export async function herOwnWords(prisma: any, groundId: string, leadUserId: str
     });
     const first = herFirstWords(turns?.[0]?.content);
     if (first) return first;
+    const entries: { text: string }[] = (await prisma.recordEntry?.findMany?.({
+      where: { disputedAt: null, participant: { groundId, userId: leadUserId } },
+      orderBy: { createdAt: 'asc' },
+      take: 1,
+      select: { text: true },
+    })) ?? [];
+    const onTheRecord = herFirstWords(entries?.[0]?.text);
+    if (onTheRecord) return onTheRecord;
   }
   const ground = await prisma.ground.findUnique({ where: { id: groundId }, select: { brief: true } });
   return herFirstWords(ground?.brief);
