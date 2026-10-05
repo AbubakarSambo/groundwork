@@ -131,15 +131,23 @@ describe('the judgement does not turn two facts into a cause', () => {
 
   it('says it plainly, and says what to do instead', () => {
     expect(it_).toContain('TWO FACTS SIDE BY SIDE ARE NOT A CAUSE');
-    expect(it_).toContain('put them in order and say what order they happened in');
+    expect(it_).toContain('leave them unjoined and put them in order');
   });
 
-  it('carries the sentence it wrote and what Hana actually said', () => {
-    expect(it_).toContain('support tickets went from 9 to 31 about one broken export');
-    expect(it_).toContain('a cause she never named');
+  it('names what the invention costs: everything said on top of it', () => {
+    expect(it_).toContain("puts a claim in somebody's mouth that they did not make");
+    expect(it_).toContain('built on your own invention');
   });
 
-  it('shows the timeline that was the right answer', () => {
-    expect(it_).toContain('Two quarterly reviews were missed, the champion left in July, and tickets tripled in August');
+  /*
+   * AND IT SAYS NONE OF THIS IN THE SCENARIO'S OWN WORDS. My first version used the shock run's
+   * vocabulary - quarterly reviews, a champion, tickets - and `a-room-is-not-a-population` went
+   * red: the rules are about any room, so the runs they came from must not leak into the words,
+   * or the instruction primes the model towards one kind of work. It also duplicated the rule on
+   * pieces of one story, which was already there; it points at it now instead.
+   */
+  it('says it without a word from the run it came from, and defers to the rule already there', () => {
+    expect(it_).not.toMatch(/quarterly review|champion|ticket/i);
+    expect(it_).toContain('as the rule on pieces of one story says');
   });
 });
