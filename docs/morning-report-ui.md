@@ -38,8 +38,17 @@ same file.
 - Request 155: a local anchor seed, to use the anchor screens live.
 - Requests 150 to 152: served wording and counts found in the walkthrough.
 
-**Needs Hafsah**
-- Nothing new is decided for you to confirm tonight. Your answers on the anchor plan, the four board decisions and "Ask <organisation name>" are recorded under "Hafsah's decisions".
+**Since then (6 October, later)**
+- **Done.** The small states and error pages (U.20) match F4-small-states, after one review and its fixes. The lists were walked live with the hundred-check-in organisation as Zuri, Kofi and Imani at 1440, 1280, 1024 and 375. The sidebar, list, search and privacy pass, and the two People layout faults found are fixed. The client tests pass, 4,262 of 4,262, at 23407ca1.
+- **Asked of the engine.** 158 was fixed: the seeds now make people members. 159 asks that someone who may read a check-in can ask to join it. 160 covers the seed's old "report ready" rows and Imani's role.
+- **Next.** The Company page with Kijani Foods, then the suites, then the anchor screens, live.
+
+**Decided for Hafsah to confirm**
+- **The crash page** says "Everything you had already sent is saved.", not the prototype's "Nothing you wrote is lost; it was saved before this happened.", because an answer typed but not sent is not saved. "We’ve been told." is left out, because no crash reaches us.
+- **The gone check-in page** uses the prototype's two sentences, then keeps one more: "If you have just switched organisation, it may belong to the one you switched away from." That is how most people get there.
+- **"Ask to join" is not shown** under "You’re not in this check-in" until the server allows it (request 159). Only "<name> runs it and can add you." shows.
+- **An admin's sidebar** shows no check-in rows when nothing waits on her and she has opened none. It shows only "All check-ins (n)". The prototype's admin is in check-ins of her own, so it shows rows.
+- **Left as they are:** the offline state (there is no offline queue), the end-of-check-in states (each is its own reviewed flow) and "Not saved" (it works as a message).
 
 ## Morning, 5 October: in short
 
