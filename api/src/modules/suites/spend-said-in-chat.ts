@@ -115,7 +115,12 @@ export function readSpending(message: string, suiteCurrency: string | null): Spe
   }
   const said = first[1] ?? first[5];
   /* "shillings" alone does not say which country's, so it is taken as the organisation's own currency. */
-  const currency = said ? codeOf(said) : first[6] ? (WORD_CODE[first[6].toLowerCase()] ?? null) : null;
+  const word = first[6]?.toLowerCase() ?? null;
+  const currency = said ? codeOf(said) : word ? (WORD_CODE[word] ?? null) : null;
+  /* Shillings are Kenya's, Uganda's and Tanzania's: they are the organisation's own only when it counts in one of those. */
+  if (word && /^shillings?$/.test(word) && suiteCurrency && !['KES', 'UGX', 'TZS'].includes(suiteCurrency.toUpperCase())) {
+    return { kind: 'ask', say: `Your organisation counts spending in ${suiteCurrency}, and you wrote shillings. Tell me the amount in ${suiteCurrency} and I will ask again.` };
+  }
   if (currency && suiteCurrency && currency !== suiteCurrency.toUpperCase()) {
     return { kind: 'ask', say: `Your organisation counts spending in ${suiteCurrency}, and you wrote ${currency}. Tell me the amount in ${suiteCurrency} and I will ask again.` };
   }
@@ -195,4 +200,11 @@ export function spendingSaidBack(said: SpendSaid, facts: SpendFacts, month: stri
 
 export function spendingSent(said: SpendSaid, currency: string | null, approverFirstName: string | null): string {
   return `I have sent your request to spend ${money(currency ?? said.currency, said.amount)} on ${said.what} to ${approverFirstName ?? 'an admin'}. It is not approved until they decide, and nothing is spent until then.`;
+}
+
+/** The reason as it joins "on ...": the first letter is lower-case unless the first word is a name or an acronym. */
+export function aReasonInASentence(what: string): string {
+  const first = what.split(/\s+/)[0] ?? '';
+  const aName = first === 'I' || /^[A-Z]{2,}\b/.test(first) || /^.[A-Z]/.test(first);
+  return !what || aName ? what : what[0].toLowerCase() + what.slice(1);
 }

@@ -121,8 +121,41 @@ describe('an amount written with its currency as a word (clean-install run, 6 Oc
     prisma.assistantProposal.findFirst.mockImplementationOnce(async () => ({ id: 'pp1', state: 'PENDING', createdAt: new Date(), ...parked }));
     const second: any = await s.respond('org-a', 'p1', 'Fuel for the van to deliver the Fresh Basket order.');
     expect(second.lane).toBe('ask_to_spend');
-    expect(second.blocks[0].body).toMatch(/^You asked to spend KES 15,000 on Fuel for the van to deliver the Fresh Basket order\./);
+    expect(second.blocks[0].body).toMatch(/^You asked to spend KES 15,000 on fuel for the van to deliver the Fresh Basket order\./);
     expect(JSON.stringify(second)).not.toContain('cannot answer');
+  });
+
+  it('shillings are the organisation\'s own only when it counts in KES, UGX or TZS', () => {
+    expect(readSpending('Can I spend 15,000 shillings on fuel?', 'UGX')).toEqual({ kind: 'ok', said: { amount: 15000, what: 'fuel', currency: 'UGX' } });
+    expect((readSpending('Can I spend 15,000 shillings on fuel?', 'NGN') as any).say).toBe('Your organisation counts spending in NGN, and you wrote shillings. Tell me the amount in NGN and I will ask again.');
+  });
+
+  it('the reason is lower-case in the sentence, unless it starts with a name or an acronym', async () => {
+    const { aReasonInASentence } = await import('../suites/spend-said-in-chat');
+    expect(aReasonInASentence('Fuel for the van')).toBe('fuel for the van');
+    expect(aReasonInASentence('KRA fees')).toBe('KRA fees');
+    expect(aReasonInASentence('iPhone cases')).toBe('iPhone cases');
+  });
+
+  describe('what is parked as "what is it for?" is not taken for a reason that was not one', () => {
+    async function second(typed: string, ageMinutes = 1) {
+      const s = svc();
+      const prisma: any = (s as any).prisma;
+      await s.respond('org-a', 'p1', 'Can I spend 15,000 shillings this week?');
+      const parked = prisma.assistantProposal.create.mock.calls.map((c: any) => c[0].data).find((d: any) => d.kind === 'spend_purpose');
+      prisma.assistantProposal.findFirst.mockImplementationOnce(async () => ({ id: 'pp1', state: 'PENDING', createdAt: new Date(Date.now() - ageMinutes * 60_000), ...parked }));
+      const r: any = await s.respond('org-a', 'p1', typed);
+      return r.blocks.filter((b: any) => b.type === 'text').map((b: any) => b.body).join('\n');
+    }
+    it.each(['yes', 'Hello', 'Thanks!', 'Good morning', 'What is my next check-in?', 'Can I take Friday off?'])('%s is not the reason', async (typed) => {
+      expect(await second(typed)).not.toMatch(/^You asked to spend KES 15,000 on /);
+    });
+    it('an answer to a question asked more than half an hour ago is answered fresh', async () => {
+      expect(await second('Fuel for the van', 45)).not.toMatch(/^You asked to spend KES 15,000 on /);
+    });
+    it('an answer within half an hour is the reason', async () => {
+      expect(await second('Fuel for the van', 5)).toMatch(/^You asked to spend KES 15,000 on fuel for the van\./);
+    });
   });
 });
 

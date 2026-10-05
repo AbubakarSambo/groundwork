@@ -60,7 +60,7 @@ import { LEAVE_ANSWER_KIND, LEAVE_QUESTION_KIND, LONGEST, NO_QUESTION_WAITING, Q
 import { HOURS_CAN_BE_TOLD_HERE, HOURS_NOT_SENT, HOURS_NOTHING_WAITING, HOURS_SUITE_OFF, asksWhereMyHoursStand, hoursSaidBack, hoursSent, readHours, soundsLikeHours, type HoursSaid } from '../suites/hours-said-in-chat';
 import { billableSaidBack, billableSaidIn, type TimeRules } from '../suites/the-time-sheet-rules';
 import { DRAFT_CHANGE_NOT_READ, DRAFT_NOT_SENT, HOURS_WEEK_DRAFT_KIND, aLineRemoved, asksToDraftMyWeek, theClientNamedIn, theDraftChanged, theDraftSaidBack, theDraftSent, type ADraftEntry } from '../suites/a-week-drafted-from-the-record';
-import { SPEND_PURPOSE_KIND, SPEND_MISSING_KIND, SPEND_NOT_SENT, SPEND_NOTHING_WAITING, SPEND_SUITE_OFF, readSpending, soundsLikeSpending, spendingSaidBack, spendingSent, type SpendSaid } from '../suites/spend-said-in-chat';
+import { aReasonInASentence, SPEND_PURPOSE_KIND, SPEND_MISSING_KIND, SPEND_NOT_SENT, SPEND_NOTHING_WAITING, SPEND_SUITE_OFF, readSpending, soundsLikeSpending, spendingSaidBack, spendingSent, type SpendSaid } from '../suites/spend-said-in-chat';
 import { theCategoryCalled, theCategoryIn, whichCategory, whichCategoryAgain, type SpendRules } from '../suites/the-spending-rules';
 import { NOT_KEPT } from '../knowledge/what-the-organisation-keeps';
 import { howLongAgo, splitBySession } from './what-you-told-me-before';
@@ -3514,7 +3514,10 @@ export class AssistantService {
     const drop = (state: 'DROPPED' | 'DECLINED' | 'ACCEPTED') => this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state, resolvedAt: new Date() } });
     if (resolveConfirmation(typed) === 'decline') { await drop('DECLINED'); return rules('ask_to_spend', text(SPEND_NOT_SENT)); }
     const me = await this.theSignInOf(organizationId, who);
-    if (!typed || !(kept?.amount && kept.amount > 0) || !this.spending || !me.linkedUserId
+    /* A reason is not a yes, a greeting, thanks, a question, or an answer to something asked half an hour ago. */
+    const stale = parked.createdAt && Date.now() - new Date(parked.createdAt).getTime() > 30 * 60 * 1000;
+    if (stale || resolveConfirmation(typed) === 'accept' || /^(hi|hello|hey|thanks?|thank you|ok(ay)?|good (morning|afternoon|evening))\b/i.test(typed) || /^(who|what|when|how|why|can|is|do)\b/i.test(typed)
+      || !typed || !(kept?.amount && kept.amount > 0) || !this.spending || !me.linkedUserId
       || aDecisionIn(typed) || soundsLikeLeave(typed) || soundsLikeHours(typed) || soundsLikeSpending(typed) || /\?\s*$/.test(typed)) {
       await drop('DROPPED');
       return this.answer(organizationId, personId, who, message, true);
@@ -3522,7 +3525,7 @@ export class AssistantService {
     let first: Awaited<ReturnType<SpendingService['checkForChat']>>;
     try { first = await this.spending.checkForChat(organizationId, me.linkedUserId, 1, new Date()); } catch { await drop('DROPPED'); return rules('ask_to_spend', text(SPEND_SUITE_OFF)); }
     await drop('ACCEPTED');
-    const what = typed.replace(/^\s*(?:it(?:'s| is)\s+|that(?:'s| is)\s+|for\s+|on\s+)/i, '').replace(/[.!]+$/, '').replace(/\s+/g, ' ').trim().slice(0, 300);
+    const what = aReasonInASentence(typed.replace(/^\s*(?:it(?:'s| is)\s+|that(?:'s| is)\s+|for\s+|on\s+)/i, '').replace(/[.!]+$/, '').replace(/\s+/g, ' ').trim().slice(0, 300));
     return this.carryOnWithSpending(organizationId, who, me.linkedUserId, typed, { amount: kept.amount!, what, currency: kept.currency ?? first.currency }, first);
   }
 
