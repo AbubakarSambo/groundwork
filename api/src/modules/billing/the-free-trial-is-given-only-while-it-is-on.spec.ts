@@ -145,3 +145,21 @@ describe('what Plan and billing serves once the trial is given', () => {
     expect(status.subscription.plan).toBeNull();
   });
 });
+
+describe('an organisation named on the sign-up form, which never asks its size (clean-install run, 6 October)', () => {
+  it('Wanjiru names her team on the form and gets the month, so she can open a check-in', async () => {
+    const { svc, writes } = baridi({ on: true, seats: 1 });
+    await svc.whenAnOrganisationIsNamedOnTheForm({ organizationId: 'org-baridi', organizationName: 'Baridi Appliances', adminEmail: 'wanjiru@baridi.test', namedOnTheForm: true });
+    expect(writes).toHaveLength(1);
+    expect(writes[0].data.freePlan).toBe('SMALL_TEAM');
+  });
+
+  it('an organisation made another way, or while the trial is off, is left alone', async () => {
+    const a = baridi({ on: true });
+    await a.svc.whenAnOrganisationIsNamedOnTheForm({ organizationId: 'o', organizationName: 'X', adminEmail: 'x@x.test' });
+    expect(a.writes).toEqual([]);
+    const b = baridi({ on: false });
+    await b.svc.whenAnOrganisationIsNamedOnTheForm({ organizationId: 'o', organizationName: 'X', adminEmail: 'x@x.test', namedOnTheForm: true });
+    expect(b.writes).toEqual([]);
+  });
+});

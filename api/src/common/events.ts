@@ -138,6 +138,8 @@ export interface OrgSignedUpEvent {
   organizationId: string;
   organizationName: string;
   adminEmail: string;
+  /** True when the organisation was named on the sign-up form, which never asks the team's size. */
+  namedOnTheForm?: boolean;
 }
 
 export interface ApiAccessAskedEvent {

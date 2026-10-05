@@ -156,9 +156,9 @@ export class AuthService {
   }
 
   /** The back office hears about every new organisation. Best-effort; a sign-up never fails on it. */
-  private signedUp(org: { id: string; name: string }, adminEmail: string) {
+  private signedUp(org: { id: string; name: string }, adminEmail: string, namedOnTheForm = false) {
     try {
-      this.events.emit(GroundworkEvents.ORG_SIGNED_UP, { organizationId: org.id, organizationName: org.name, adminEmail } satisfies OrgSignedUpEvent);
+      this.events.emit(GroundworkEvents.ORG_SIGNED_UP, { organizationId: org.id, organizationName: org.name, adminEmail, ...(namedOnTheForm ? { namedOnTheForm: true } : {}) } satisfies OrgSignedUpEvent);
     } catch (err: any) {
       this.logger.warn(`org.signedUp did not emit for ${org.id}: ${err?.message}`);
     }
@@ -545,7 +545,8 @@ export class AuthService {
       const created = await this.prisma.$transaction(async (tx) => {
         /* The contact email is the admin's until they say otherwise - see the note on register. */
         const org = await tx.organization.create({ data: { name: orgName, slug, email: pending.email } });
-        this.signedUp(org, pending.email);
+        /* Named on the sign-up form means the team's size was never asked, so billing applies the trial rule itself. */
+        this.signedUp(org, pending.email, !!(!onlySuggested && pending.orgName?.trim()));
         const u = await tx.user.create({
           data: {
             organizationId: org.id,
