@@ -267,6 +267,46 @@ and in the lead's own session, after a pasted update of 400 characters or more:
 - A question the lead writes to themselves in a dump ("Amina - which accounts actually have a buying process?" when Amina is the lead) is kept as a question for the lead in their own check-in. It is not asked of anyone until the lead confirms it.
 - Ask Groundwork's setup lane is off at release, so at release the way in for a dump is the setup chat on the check-in page, and a document the lead adds is read for its numbers there. Everything above through Ask Groundwork needs `release.contextInAskGroundwork` on.
 
+## 9. Checked again on 5 October, evening
+
+Sections 4, 5 and 7 were run again on 5 October between about 20:00 and 20:40, with the code of `wip/release` as it stood then (from `aa2f4d3c` to `42576e10`, while other work was still being committed). Everything ran on this computer only. No hosted database, live key or real email was used. The scripts' own read-only guards were on, and the model, mailer and WhatsApp were stand-ins.
+
+**The database.** Nothing ran on `gw_pw9_1786222102`, because the API on port 3000 uses it. It was copied with `pg_dump` into a new local database, `gw_existing_oct5b`. The copy holds 1,835 check-ins, 10,940 sessions and 1,600 reports, and every migration. On 4 October there were 1,692 check-ins.
+
+**Section 4, scheduled check-ins carry on. It passes, unchanged.** `existing-clients-carry-on.spec.ts` names `gw_pw9_1786222102` inside the file. So that it did not touch that database, a temporary copy of the spec pointed at the copy was run, then deleted. The spec in the repository was not changed. All 10 tests pass, Findings 1 and 2 included. The copy's counts were the same afterwards, because the spec rolls back.
+
+**Section 5, the check script, oldest 150 check-ins.** It printed exactly what it printed on 4 October: 858 reads, 809 served, 49 refused on purpose, 0 failed, 0 tried to write; nothing private served; no stalled check-in picked up; the same 12 next sessions left behind by the journey runs. It also now says 255 people have a session open, and 0 would be reminded on the next morning run.
+
+**Section 7, the old code against the new.** The section says to use `origin/main` as the old code. `origin/main` is now `824b7e3b`, 36 commits after the `f5c07d39` used on 4 October, because the live line's latest work was merged into it. So the comparison was run twice on the same copy: once against `f5c07d39`, to compare like with like, and once against `824b7e3b`.
+
+| | 4 October | Now, old code `f5c07d39` | Now, old code `824b7e3b` |
+| --- | --- | --- | --- |
+| Reads served, old then new | 1,476 / 1,476 | 1,482 / 1,464 | 1,482 / 1,464 |
+| Sentences the old code showed | 40,450 | 40,739 | 54,489 |
+| Still readable | 37,189 | 37,028 | 50,001 |
+| Not found: stock | 2,000 | 2,170 | 2,404 |
+| Not found: the lead's judgement, which a participant no longer reads | 1,198 | 1,334 | 2,150 |
+| Not found: later sessions waiting for the lead | 411 | 418 | 404 |
+| Not explained (participants, leads, admins) | 351 (273, 48, 30) | 633 (554, 51, 28) | 922 (552, 343, 27) |
+| Named people no longer named | 10 | 224 | 224 |
+| Private material newly served | none | none | none |
+| Ask Groundwork answered, old then new | 210 / 105 | 210 / 105 | 210 / 105 |
+| Wording worse in | nothing | nothing | nothing |
+
+On the new side the wording counts barely moved: internal labels 1,058, jargon 1,490, lower-case starts 19, text cut mid-word 84. The old side against `824b7e3b` counts far more faults (internal labels 38,151, machine table words 7,705, lower-case starts 843), because that code serves the stored record over time as it is. The Company page was served 4,781 times and the suites page 3,197 times, with none failed. There are more people on the database now.
+
+**What moved, and why.**
+
+1. **18 reads that used to be served are now refused (FAULT lines). It is a rule added on purpose, but it shows something about the data.** Six participants on three check-ins (`0f937d54`, `1d965e78`, `2502547e`) are marked as held for a seat (`awaiting_seat`), but they have already answered sessions. Since `39b2c296` (5 October, privacy sweep finding 3), anyone held for a seat is refused the board, the report and the check-in page with "This check-in cannot start for you yet, because there is no seat for you on the plan." On the live line they could still read all three. On this database 41 people on 20 check-ins (made on 18 and 19 September by journey runs) are held for a seat and have answered. On release, any such person at an existing client would lose every page they can read today. **This is Finding 7, for Hafsah.** Should someone who has already answered keep reading while held, or should the hold be cleared? Count them on a copy of the live data with `SELECT count(*) FROM ground_participants gp WHERE awaiting_seat AND EXISTS (SELECT 1 FROM check_ins c WHERE c.participant_id = gp.id AND c.status = 'COMPLETED')` (read only). These six people also account for 256 of the 554 unexplained participant sentences and 42 of the 224 lost names.
+2. **Without those six people, the unexplained count is close to 4 October's: 377 (participants 298, leads 51, admins 28) against 351.** The largest group is the same one, colleagues' success definitions on a participant's "who owns what" (158, was about 154). The rest are in the same places as before.
+3. **Named people no longer named: 224, was 10.** Besides the 42 above, 126 are in cohort check-ins (`COHORT_CHECK`). There, a participant's page now lists an aim or a thing as "You", the lead and "and 3 others", where the old page named every member of the cohort. This comes from the wall where people do not see each other (decision 75 item 14, work committed on 5 October). The other 56 are participants' boards in other check-ins: colleagues' names in "who owns what" and the waits, Group A in section 7. All of it is on purpose. Since a participant used to read these names, it belongs with the open question on Group A.
+4. **Against today's `origin/main`, leads have 292 more unexplained sentences.** 288 of them are the stored record over time's pattern observations ("Upward reporting was optimistic while a major account was being lost."), on the board and the report for leads of 81 check-ins. The live line now serves those to a lead. This branch has not served stored patterns to anybody since 27 September (`overTimeAsServed` in `what-the-record-shows-over-time.ts`): a pattern reaches a page only live, through who-reads-a-pattern. This is a lead-facing difference, and section 7 says anything about a lead blocks the release until it is understood. **For Hafsah: confirm that a lead should no longer read the stored pattern lines the live line now shows them.**
+5. **The rest is the database growing:** 6 more reads in the sample, 289 more sentences, and 1,023 of 1,835 check-ins with no kind of work (was 920 of 1,692). Ask Groundwork is unchanged.
+
+**Also seen.** In the old-code run, the old code cannot read the kind-of-work column. The script catches that and carries on, as on 4 October. The temporary spec copy was deleted, and both old-code worktrees were removed.
+
+**Left behind on this computer:** the database `gw_existing_oct5b`. `dropdb` is not allowed.
+
 ## Hafsah's decision 90 (4 October)
 
 - Existing clients get the whole new build on the same terms as the paid client. It must work at least as well as today on their existing data (check-ins, boards, reports, Company page, suites, Ask Groundwork); the check below proves it on existing local check-ins. Nothing gets worse, no use case is lost, running check-ins carry on as scheduled, and stalled check-ins stay as the live main line leaves them, with no messages.

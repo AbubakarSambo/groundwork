@@ -1,5 +1,7 @@
 # Morning report
 
+The existing-clients checks were run again on a copy of the test database: scheduled check-ins still carry on unchanged. Two things need you (section 9 of `docs/existing-users.md`). First, 41 people marked as held for a seat who have already answered are now refused every page. Second, leads no longer read the stored pattern lines that today's live line shows them.
+
 The checks for the hosted line were run again at `ee99f19c` on this computer: all 359 migrations apply to a new database, the clean install and build pass for the API and the client, and the built API starts with every new setting missing (see section 7 of `docs/staging-compatibility.md`).
 
 ## 5 October, 17:45: the 24-scenario run is back, and nothing got worse
