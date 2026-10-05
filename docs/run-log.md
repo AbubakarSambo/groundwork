@@ -2,6 +2,26 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## 5 October, 14:20 - request 157 done, and the rule from this morning held
+
+The screens filed 157 overnight: a hundred check-ins, to test Hafsah's fault 4 (the sidebar and the
+People page listed every one, unusable at that size). **Harambee Logistics** gives them 30 people,
+100 check-ins across 16 situations, 340 people-in-check-ins, 75 reports, 25 closed.
+
+The states are mixed because that is what a list has to tell apart, and a fifth leave the busy lead
+out entirely - somebody who is in everything tests nothing about which ones are theirs. Three
+sign-ins: an admin who sees all 100, a lead with 20 waiting on him and 20 he is not in, a
+participant in 15.
+
+**This one went on the allow-list before the commit, and `git ls-files` confirmed it after.** That
+is the rule I wrote this morning after shipping three seeds that never left this computer, and it
+is the first time it has been applied rather than written down.
+
+One real fault found by driving it: a person could be picked twice for the same check-in, and
+(ground_id, email) is unique. Deduped over the whole list rather than in part.
+
+Every request on the screens workspace's list is now answered: 146 to 157.
+
 ## 5 October, 14:12 - the exported scenario packs had gone stale, and I caught it before using them
 
 I was about to start the before-and-after document Hafsah asked for on 26 September, and checked
