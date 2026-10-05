@@ -141,7 +141,7 @@ export const adminApi = {
 
   /** Whether this deployment can take money. Never the key itself. */
   getStripeStatus: () =>
-    apiClient.get<{ isConfigured: boolean; says: string; badge?: string }>('/admin/stripe').then(r => r.data),
+    apiClient.get<{ isConfigured: boolean; says: string; badge?: string; keyKind?: 'none' | 'placeholder' | 'test' | 'live' | 'unknown' }>('/admin/stripe').then(r => r.data),
 
   /**
    * ONE MONTH ON THE HOUSE (decision 78; the route keeps its old name). An address is promised a

@@ -246,7 +246,7 @@ function StripeStatus() {
           fontSize: 11,
           marginTop: 8,
           fontWeight: 700,
-          color: data.isConfigured ? 'var(--gw-green-t)' : 'var(--gw-muted)',
+          color: data.keyKind === 'live' || data.keyKind === 'test' ? 'var(--gw-green-t)' : 'var(--gw-muted)',
         }}
       >
         {data.badge ?? (data.isConfigured ? 'Test or live' : 'No key set')}

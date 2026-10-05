@@ -15,7 +15,8 @@ export function theKindOfStripeKey(key: string | null | undefined): TheKindOfKey
   if (!m) return 'unknown';
   const rest = m[2];
   /* Real keys are long runs of letters and digits; a placeholder is dots, a word, or too short to be one. */
-  if (rest.length < 16 || /[.\s<>*]/.test(rest) || /placeholder|your|example|changeme|xxx|replace/i.test(rest)) return 'placeholder';
+  /* Only when the WHOLE remainder is placeholder-like: a real key that happens to hold "xxx" somewhere is a real key. */
+  if (rest.length < 16 || /^(x+|\.+|\*+|placeholder|your.*key.*|changeme|example|replace.*)$/i.test(rest)) return 'placeholder';
   return m[1] as 'test' | 'live';
 }
 
@@ -27,10 +28,10 @@ export function whatTheStripeKeyIs(kind: TheKindOfKey): { says: string; badge: s
     case 'test':
       return { says: 'A Stripe test key is set. Checkout and subscriptions reach Stripe, but no real money moves.', badge: 'Test' };
     case 'placeholder':
-      return { says: 'The Stripe key that is set is a placeholder, not a real key, so nothing can be charged. Prices below can still be edited; they will apply when a real key is set.', badge: 'Not a real key' };
+      return { says: 'The Stripe key that is set is a placeholder, not a real key, so nothing can be charged. Prices below can still be edited. They will apply when a real key is set.', badge: 'Not a real key' };
     case 'unknown':
       return { says: 'A Stripe key is set, but it does not look like a Stripe secret key, so it may not work. Check it before anyone is asked to pay.', badge: 'Check the key' };
     default:
-      return { says: 'No Stripe key is set here, so nothing can be charged. Prices below can still be edited; they will apply when a key is set.', badge: 'No key set' };
+      return { says: 'No Stripe key is set here, so nothing can be charged. Prices below can still be edited. They will apply when a key is set.', badge: 'No key set' };
   }
 }
