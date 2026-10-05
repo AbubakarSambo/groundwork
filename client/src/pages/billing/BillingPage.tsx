@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { billingApi, PLAN_LABELS, PLAN_PRICES, formatMemberCap, formatMonthlyPrice, formatDollars, type SubscriptionPlan, FALLBACK_FREE_LIMITS } from '@/api/billing'
+import { billingApi, PLAN_LABELS, PLAN_PRICES, formatMemberCap, formatMonthlyPrice, formatDollars, isWhatsAppBillingAdmin, type SubscriptionPlan, FALLBACK_FREE_LIMITS } from '@/api/billing'
 import { theFreeTrialSentence } from '@/lib/the-free-trial'
 import { whatCoversThem, thePlanLine, theNextPaymentLine, whoCounts, theTrialNotices } from './what-plan-and-billing-says'
 import { groundsApi } from '@/api/grounds'
@@ -12,7 +12,7 @@ import { copy } from '@/components/gw/copying-can-fail'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { scrollToId } from '@/lib/scroll-to'
 import {
-  Page, PageTitle, Section, Panel, Stack, FieldRows, FieldRow, Button, Tag, Note, TextField, FieldLabel,
+  Page, PageTitle, Section, Panel, Stack, FieldRows, FieldRow, Button, Tag, Note, TextField, FieldLabel, SwitchRow,
 } from '@/components/gw/ui'
 
 const PLANS: SubscriptionPlan[] = ['STARTER', 'SMALL_TEAM', 'GROWTH', 'BUSINESS', 'SCALE', 'ENTERPRISE']
@@ -126,6 +126,12 @@ export function BillingPage() {
   const { data: codes = [], isLoading: codesLoading } = useQuery({ queryKey: ['contributor-codes'], queryFn: billingApi.getContributorCodes, enabled: isAdmin })
   const { data: billingStatus } = useQuery({ queryKey: ['billing-status'], queryFn: billingApi.status, enabled: isAdmin })
   const { data: livePricing } = useQuery({ queryKey: ['public-pricing'], queryFn: billingApi.getPricing, enabled: isAdmin, staleTime: 60 * 1000 })
+  const { data: whatsapp } = useQuery({ queryKey: ['billing-whatsapp'], queryFn: billingApi.getWhatsApp, enabled: isAdmin })
+  const setWhatsAppMut = useMutation({
+    mutationFn: (on: boolean) => billingApi.setWhatsApp(on),
+    onSuccess: (r) => qc.setQueryData(['billing-whatsapp'], r),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'WhatsApp did not change. Try again.'),
+  })
 
   const freeGrounds = livePricing?.free.groundLimit ?? FALLBACK_FREE_LIMITS.groundLimit
   const freeTeam = livePricing?.free.memberLimit ?? FALLBACK_FREE_LIMITS.memberLimit
@@ -286,6 +292,39 @@ export function BillingPage() {
           )}
         </FieldRows>
       </Section>
+
+      {/*
+       * WHATSAPP, THE PAID ADD-ON (decision 78, 2 October). Behind `release.planAndBillingNewParts`,
+       * as the server decides: while it is off, `GET /billing/whatsapp` serves only `{ sending,
+       * says }` even to an admin (`isWhatsAppBillingAdmin` reads false), so nothing here shows.
+       * Every price, limit and use figure is the server's own sentence (`whatsapp-add-on.service.ts`,
+       * "WHAT PLAN AND BILLING SAYS ABOUT WHATSAPP") - this draws `says` exactly as it comes and
+       * holds no number of its own.
+       */}
+      {isWhatsAppBillingAdmin(whatsapp) && (
+        <Section heading="WhatsApp">
+          <Panel>
+            <Stack gap={12}>
+              <SwitchRow
+                title={whatsapp.says.onOrOff}
+                on={whatsapp.on}
+                onChange={(on) => setWhatsAppMut.mutate(on)}
+                disabled={setWhatsAppMut.isPending}
+              />
+              <FieldRows>
+                {whatsapp.says.price && <FieldRow label="Price" value={whatsapp.says.price} />}
+                <FieldRow label="What is charged" value={whatsapp.says.charge} />
+                <FieldRow label="This month" value={whatsapp.says.use} />
+                {whatsapp.says.reachedTheLimit ? (
+                  <FieldRow label="Reached" value={whatsapp.says.reachedTheLimit} />
+                ) : whatsapp.says.atTheLimit ? (
+                  <FieldRow label="At the limit" value={whatsapp.says.atTheLimit} />
+                ) : null}
+              </FieldRows>
+            </Stack>
+          </Panel>
+        </Section>
+      )}
 
       {!hasBillingHistory && covers === 'free' && (
         <Panel>

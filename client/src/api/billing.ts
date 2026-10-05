@@ -209,6 +209,46 @@ export interface CodeShareCard {
   allowCodeCreation: boolean
 }
 
+/**
+ * WHATSAPP, THE PAID ADD-ON (decision 78, 2 October). `GET /billing/whatsapp` serves one of two
+ * shapes, and the server decides which, not the screen: an admin, while `release.planAndBillingNewParts`
+ * is on, reads `WhatsAppBillingAdmin`; everybody else, and an admin while that switch is off, reads
+ * only `WhatsAppBillingMinimal`. Nothing here holds a price, a limit or a number of its own - every
+ * sentence in `says` is built by the server and shown exactly as it comes.
+ */
+export interface WhatsAppBillingMinimal {
+  sending: boolean
+  says: string | null
+}
+
+export interface WhatsAppBillingAdmin {
+  on: boolean
+  plan: SubscriptionPlan | null
+  price: { amountCents: number; currency: 'USD' } | null
+  charged: boolean
+  freeTrial: { months: number; endsOn: string } | null
+  onTheFreePlan: boolean
+  use: { month: string; sent: number; limit: number | null; startsAgainOn: string }
+  sending: boolean
+  heldBecause: 'not turned on' | 'not on a paid plan' | 'at the limit' | null
+  says: {
+    onOrOff: string
+    price: string | null
+    charge: string
+    use: string
+    atTheLimit: string | null
+    reachedTheLimit: string | null
+    held: string | null
+  }
+}
+
+export type WhatsAppBilling = WhatsAppBillingMinimal | WhatsAppBillingAdmin
+
+/** True only for the full admin shape (the `says` field differs in shape, `on` only exists here). */
+export function isWhatsAppBillingAdmin(w: WhatsAppBilling | undefined): w is WhatsAppBillingAdmin {
+  return !!w && typeof (w as WhatsAppBillingAdmin).on === 'boolean'
+}
+
 export const billingApi = {
   /**
    * Live prices - what a checkout actually charges (Admin -> System -> Pricing).
@@ -281,6 +321,14 @@ export const billingApi = {
 
   getContributorCodeShareCard: (codeId: string) =>
     apiClient.get<CodeShareCard>(`/billing/contributor-codes/${codeId}/share-card`).then(r => r.data),
+
+  /** WhatsApp, the paid add-on (decision 78). The server decides the shape; see `WhatsAppBilling` above. */
+  getWhatsApp: () =>
+    apiClient.get<WhatsAppBilling>('/billing/whatsapp').then(r => r.data),
+
+  /** An admin only; a lead or member is refused by the server. */
+  setWhatsApp: (on: boolean) =>
+    apiClient.patch<WhatsAppBilling>('/billing/whatsapp', { on }).then(r => r.data),
 
   checkCanCreateGround: (accessCode?: string) =>
     apiClient.get<CanCreateGroundResult>('/billing/can-create-ground', {
