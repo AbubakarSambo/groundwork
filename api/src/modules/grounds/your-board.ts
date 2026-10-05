@@ -400,8 +400,27 @@ export function yourBoard(
     if ((o.status ?? 'OPEN') !== 'OPEN') continue;
     if (o.kind && NOT_ABOUT_ONE_PERSON.has(o.kind)) continue;
     if (o.kind && THINGS_TO_DO.has(o.kind) && o.authoredBy === 'self') continue;
+    /*
+     * WRITTEN TO THE READER, like every other goal on this page (request 154, item 5).
+     *
+     * A goal taken from a target already went through `asTheReader` inside `goalFromTarget`; one
+     * taken from an objective did not, so a goal written ABOUT somebody by their lead arrived in
+     * the first person beside a goal that said "you".
+     *
+     * BUT NOT A GOAL THE PERSON WROTE THEMSELVES, and that is the whole of the care here. Hafsah,
+     * 26 September: "People's own words stay exactly as they said them. Never change a quote to
+     * improve a score. Only fix what Groundwork itself writes." A goal with `authoredBy: 'self'`
+     * is the person's own sentence - "I want it at 162,000 by December." stays exactly that, and
+     * a test has pinned it since before this request.
+     *
+     * So the rewrite is on what somebody else wrote about them, which is the half that was wrong.
+     * It leaves part of request 154 item 5 standing on purpose: where a person's own words sit
+     * beside a sentence addressed to them, the two still read differently, and that is a wording
+     * decision for Hafsah rather than a licence to edit what somebody said.
+     */
     const text = (o.text ?? '').trim();
-    if (text) goals.push({ id: o.id, says: asASentence(text), checkIn: labelOf.get(o.groundId)! });
+    const theirOwnWords = o.authoredBy === 'self';
+    if (text) goals.push({ id: o.id, says: asASentence(theirOwnWords ? text : asTheReader(text)), checkIn: labelOf.get(o.groundId)! });
   }
   for (const t of rows.ownedTargets) {
     if (!labelOf.has(t.groundId) || !(t.name ?? '').trim()) continue;

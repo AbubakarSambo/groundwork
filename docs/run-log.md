@@ -2,6 +2,30 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## 5 October, 13:35 - two open requests closed, one provisional call made
+
+**Request 152, both items: already done**, and the screens' list still said Open. `checkInLabel`
+is on every Today row from both builders, and `everyActionHasALabel` wraps the board as served.
+Written up rather than rebuilt.
+
+**Request 154 item 2, first part: Ask's history reads in order.** A question and its answer share a
+timestamp, the read was newest-first then reversed, and within one timestamp the database may
+return either order - so the pair came out backwards about half the time. No sequence column to
+fall back on, so the tie is broken on meaning: inside one instant the person asked and Groundwork
+answered.
+
+**Request 154 item 5: half fixed, half declined, recorded as PROVISIONAL decision 102.** A goal
+written about somebody by their lead is now written to the reader. A goal the person wrote
+themselves is left exactly as written, because the standing decision of 26 September says people's
+own words stay as they said them, and a test has pinned "I want it at 162,000 by December."
+unchanged since before the request. The page can still read "I ..." beside "You ...", and whether
+that is acceptable is a wording decision rather than a defect. One line changes it if Hafsah
+disagrees.
+
+Grounds module: 197 suites, 1,964 tests green.
+
+Next: the scenario run is still going; the remaining parts of 154 item 2 wait for it.
+
 ## 5 October, 13:20 - the migrations check against the live line's schema: passes
 
 The one thing `docs/staging-compatibility.md` had open. Built a local database from the live line's
