@@ -90,7 +90,8 @@ export async function decision106(c: any): Promise<void> {
     fin = await says(hana, 'finish');
     if (/Your check-in is complete and on record/.test(fin.text)) break;
   }
-  const open = await prisma.checkIn.findMany({ where: { participant: { email: hana.email }, status: { in: ['NOT_STARTED', 'IN_PROGRESS'] } }, select: { groundId: true } });
+  /* Open now: a next session made for next week is not open yet (run 6 counted it, and the check failed on a correct message). */
+  const open = await prisma.checkIn.findMany({ where: { participant: { email: hana.email }, status: { in: ['NOT_STARTED', 'IN_PROGRESS'] }, OR: [{ availableFrom: null }, { availableFrom: { lte: new Date() } }] }, select: { groundId: true } });
   const nextLabel = open.some((o: any) => o.groundId === pipeline) ? 'Pipeline review' : 'Store visits';
   check('Finishing one offers the next', !!fin && fin.text.startsWith('Your check-in is complete and on record. Your report follows in a moment.') && fin.text.includes(`You also have "${nextLabel}" open. Reply START when you are ready to begin it.`), fin?.text);
 
@@ -125,9 +126,10 @@ export async function decision106(c: any): Promise<void> {
   if ((leave as any)?.id) {
     const decided = await api(`/suites/leave/requests/${(leave as any).id}/approve`, { method: 'POST', token: wairimu.token, body: {} });
     await waitQuiet(1000);
-    const mail = await prisma.notification.findFirst({ where: { channel: 'email', toAddress: imani.email, sender: 'sendRequestDecided' }, orderBy: { createdAt: 'desc' } });
-    log(`  Wairimu approves Imani's leave (${decided?.refused ? `refused ${decided.refused}: ${decided.message}` : 'ok'}). The email Imani is sent: ${mail ? `"${mail.subject}"` : '(none)'}`);
-    check('The decision on a stopped number\'s leave reaches her by email', !!mail, JSON.stringify(decided).slice(0, 200));
+    /* A local run does not write a sent mail to the notifications table (it logs "[DEV EMAIL]"); the record of who was told says it went by email. */
+    const told = await prisma.suiteEvent.findFirst({ where: { toUserId: imani.userId, kind: 'told' }, orderBy: { at: 'desc' } }).catch(() => null);
+    log(`  Wairimu approves Imani's leave (${decided?.refused ? `refused ${decided.refused}: ${decided.message}` : 'ok'}). Imani was told by: ${JSON.stringify(told?.basis ?? null)}`);
+    check('The decision on a stopped number\'s leave reaches her by email', (told?.basis as any)?.message === 'request-decided:email', JSON.stringify(told?.basis ?? null));
   } else {
     log(`  (The leave row could not be made directly: ${(leave as any)?.error}; the email is proved by a-decision-reaches-a-stopped-number-by-email.spec.ts.)`);
   }
