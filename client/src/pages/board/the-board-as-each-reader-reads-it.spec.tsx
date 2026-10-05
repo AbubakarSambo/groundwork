@@ -164,6 +164,28 @@ describe('the board, as each reader reads it', () => {
     expect(screen.queryByText('Your check-in')).toBeNull()
   })
 
+  /**
+   * FAULT 6 (live walk, 6 October 2026): NEVER "START MY CHECK-IN" ON AN ENDED CHECK-IN.
+   *
+   * Amani, a member on a check-in that had already ended, still read "Start my check-in" in the
+   * header - pressing it opened "No check-in open right now", because there was none. The header
+   * read `groundEnded` (`hasEnded`, `lib/a-ground-that-has-ended.ts`) for the clock under the
+   * title already; it just never gated this button on it.
+   */
+  it('Miriam gets no "Start my check-in" once the check-in has ended, even though she is a member', async () => {
+    me = { id: 'u-miriam', firstName: 'Miriam', role: 'MEMBER' }
+    renderBoard({ ...AS_MIRIAM, groundStatus: 'CLOSED' })
+    await screen.findByRole('tab', { name: 'Check-in' })
+    expect(screen.queryByText('Start my check-in')).toBeNull()
+  })
+
+  it('Wairimu, who runs an ended check-in, still gets "Your check-in"', async () => {
+    me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
+    renderBoard({ ...AS_THE_LEAD, groundStatus: 'CLOSED' })
+    await screen.findByRole('tab', { name: 'Check-in' })
+    expect(screen.getByText('Your check-in')).toBeTruthy()
+  })
+
   it('with no time on record yet, it still says the board only changes when something new comes in', async () => {
     me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
     renderBoard({ ...AS_THE_LEAD, lastChangedAt: null })

@@ -2352,8 +2352,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 her own action regardless - she always has something to do here, open session or
                 not - but a participant with nothing open now reads when the next one does instead,
                 in the engine's own words.
+
+                FAULT 6 (live walk, 6 October 2026): NEVER "START MY CHECK-IN" ON AN ENDED CHECK-IN.
+                Amani, a member on a check-in that had already ended, still read "Start my check-in"
+                here - pressing it opened "No check-in open right now", because there is none. A
+                participant gets no action at all once `groundEnded`; the lead keeps "Your check-in"
+                either way, since she has other reasons to open it (reading past sessions).
               */}
-              {(viewerRunsThisCheckIn || isAParty) && (
+              {(viewerRunsThisCheckIn || (isAParty && !groundEnded)) && (
                 !viewerRunsThisCheckIn && (noSessionOpenForReader || noSessionOpenForReaderFallback) ? (
                   (whenTheNextSessionOpens ?? whenTheNextSessionOpensFallback) && <Note tone="muted">{whenTheNextSessionOpens ?? whenTheNextSessionOpensFallback}</Note>
                 ) : (
@@ -2457,8 +2463,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           Served only to a person in an anchor check-in who has not yet checked in for the open
           round; `null` once they have, and absent for anybody else or any other check-in - the
           screen draws nothing then either way.
+
+          FAULT 6 (live walk, 6 October 2026): NOT ONCE THE CHECK-IN HAS ENDED. The nudge is built
+          from the open round's own state and can still be sent stale; `!groundEnded` keeps it from
+          ever offering "Start my check-in" with nothing left to start.
         */}
-        {isParticipantView && b.aNudgeForYou && (
+        {isParticipantView && b.aNudgeForYou && !groundEnded && (
           <Panel>
             <Stack gap={12}>
               <Callout tone="info">{b.aNudgeForYou}</Callout>
