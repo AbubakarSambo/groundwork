@@ -36,7 +36,7 @@ export interface TheMonthRecord {
    * person, the latest closed, from their own check-in promises only (never a colleague's mention of them), as an
    * action in our voice. Never counted or ordered per person.
    */
-  doneByPerson?: { participantId: string; name: string; clause: string; doneAt: Date | null }[];
+  doneByPerson?: { participantId: string; name: string; clause: string; clauseToThem?: string | null; settledBy?: string | null; doneAt: Date | null }[];
 }
 
 const THE_ANCHOR_OFFERS = { anchor_pair_check_in: 'pair', anchor_project_check_in: 'project', anchor_aim_check_in: 'aim' } as const;
@@ -45,7 +45,7 @@ export async function readTheMonthRecord(prisma: any, groundId: string, openRoun
   const [people, finished, commitments, handoffs, offers, ground] = await Promise.all([
     prisma.groundParticipant.findMany({ where: { groundId }, select: { id: true, userId: true, managingOnly: true, nameGiven: true, createdAt: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } }),
     prisma.checkIn.findMany({ where: { groundId, status: CheckInStatus.COMPLETED }, select: { participantId: true, sessionNumber: true, isSetup: true, status: true } }),
-    prisma.groundCommitment.findMany({ where: { groundId }, select: { participantId: true, status: true, text: true, source: true, explicit: true, settledAt: true, updatedAt: true } }),
+    prisma.groundCommitment.findMany({ where: { groundId }, select: { participantId: true, status: true, text: true, source: true, explicit: true, settledAt: true, settledBy: true, updatedAt: true } }),
     prisma.groundDependency.findMany({ where: { groundId }, select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, status: true } }),
     prisma.recommendation.findMany({ where: { subjectExternalId: `check-in:${groundId}`, kind: { in: Object.keys(THE_ANCHOR_OFFERS) }, state: { in: ['PROPOSED', 'ACCEPTED'] } }, select: { kind: true } }),
     prisma.ground.findUnique({ where: { id: groundId }, select: { startsAt: true, createdAt: true } }),
@@ -76,7 +76,8 @@ export async function readTheMonthRecord(prisma: any, groundId: string, openRoun
     offers: byKind,
     startedOn,
     doneByPerson: (() => {
-      const latest = new Map<string, { participantId: string; name: string; clause: string; doneAt: Date | null }>();
+      type Done = { participantId: string; name: string; clause: string; clauseToThem: string | null; settledBy: string | null; doneAt: Date | null };
+      const latest = new Map<string, Done>();
       for (const c of mine) {
         if (c.status !== 'DONE' || c.source !== 'CHECK_IN' || c.explicit === false) continue;
         const clause = inOurVoice(String(c.text ?? ''), 'them');
@@ -84,10 +85,12 @@ export async function readTheMonthRecord(prisma: any, groundId: string, openRoun
         if (!clause || !name) continue;
         const doneAt = (c.settledAt ?? c.updatedAt ?? null) as Date | null;
         const had = latest.get(c.participantId);
-        if (!had || (doneAt && (!had.doneAt || new Date(doneAt).getTime() > new Date(had.doneAt).getTime()))) latest.set(c.participantId, { participantId: c.participantId, name, clause, doneAt });
+        /* Said to the person themselves, "my manager" is "your manager" (review of piece 22). */
+        const clauseToThem = inOurVoice(String(c.text ?? ''), 'you');
+        if (!had || (doneAt && (!had.doneAt || new Date(doneAt).getTime() > new Date(had.doneAt).getTime()))) latest.set(c.participantId, { participantId: c.participantId, name, clause, clauseToThem, settledBy: c.settledBy ?? null, doneAt });
       }
       /* In the order the people are in the check-in, never by how much each did. */
-      return counted.map((p) => latest.get(p.id)).filter((x): x is { participantId: string; name: string; clause: string; doneAt: Date | null } => !!x);
+      return counted.map((p) => latest.get(p.id)).filter((x): x is Done => !!x);
     })(),
   };
 }

@@ -43,7 +43,7 @@ export async function theAnchorBoardParts(args: {
     if (!args.readerParticipantId || !(await theAnchorScenarioIsOn(prisma))) return {};
     const record = await readTheMonthRecord(prisma, ground.id, args.openRound);
     const mine = (record.doneByPerson ?? []).find((d) => d.participantId === args.readerParticipantId);
-    return { yourPartInMovingThings: mine ? aContributionSaid(null, mine.clause) : null };
+    return { yourPartInMovingThings: mine ? aContributionSaid(null, mine.clauseToThem ?? mine.clause, mine.settledBy) : null };
   }
   if (!(await theAnchorScenarioIsOn(prisma))) return {};
   const parts: TheAnchorParts = { activeLine: await theActiveLineFor(prisma, ground.id, args.openRound, args.roundOpenedAt) };

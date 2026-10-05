@@ -74,7 +74,7 @@ describe('the month board, as the lead reads it', () => {
     ]);
     expect(b.whatTheTeamIsContributing).toEqual(['No idea from your team has been captured yet.']);
     /* Changed with piece 22 (hidden contributors): Rukia's own promise, closed, is her line here. */
-    expect(b.peopleHelpingThingsMove).toEqual([{ name: 'Rukia', sentence: 'Rukia committed to send the deck to the client, and it is done.' }]);
+    expect(b.peopleHelpingThingsMove).toEqual([{ name: 'Rukia', sentence: 'Rukia committed to send the deck to the client, and Rukia says it is done.' }]);
     expect(b.wherePerspectivesDiffer).toEqual(['No two people have described the same thing differently so far.']);
     expect(b.whatIsStillGettingInTheWay).toEqual(['Baraka is waiting on Rukia for the sales deck.']);
     expect(b.whatGroundworkIsWorkingOnNext).toEqual([
@@ -142,23 +142,23 @@ describe('the weeks and the patterns', () => {
 describe('piece 22: people helping the team move, as each reader reads it', () => {
   it('Amina, the lead, reads Rukia\'s line', async () => {
     const b = (await boardAs(anchor(true, 'anchor'), ...AMINA)).theMonthBoard;
-    expect(b.peopleHelpingThingsMove).toEqual([{ name: 'Rukia', sentence: 'Rukia committed to send the deck to the client, and it is done.' }]);
+    expect(b.peopleHelpingThingsMove).toEqual([{ name: 'Rukia', sentence: 'Rukia committed to send the deck to the client, and Rukia says it is done.' }]);
   });
   it('Rukia reads the same sentence about herself, as "you", and no month board', async () => {
     const b = await boardAs(anchor(true, 'anchor'), ...RUKIA);
-    expect(b.yourPartInMovingThings).toBe('You committed to send the deck to the client, and it is done.');
+    expect(b.yourPartInMovingThings).toBe('You committed to send the deck to the client, and you say it is done.');
     expect('theMonthBoard' in b).toBe(false);
   });
   it('Baraka, whose promise is still open, reads nothing, and never Rukia\'s', async () => {
     const b = await boardAs(anchor(true, 'anchor'), ...BARAKA);
     expect(b.yourPartInMovingThings).toBeNull();
-    expect(JSON.stringify(b)).not.toContain('send the deck to the client, and it is done');
+    expect(JSON.stringify(b)).not.toMatch(/says it is done|say it is done/);
   });
   it('an admin who only reads reads no one\'s line', async () => {
     const b = await boardAs(anchor(true, 'anchor'), ...JUMA);
     expect('theMonthBoard' in b).toBe(false);
     expect(b.yourPartInMovingThings).toBeUndefined();
-    expect(JSON.stringify(b)).not.toContain('and it is done');
+    expect(JSON.stringify(b)).not.toMatch(/says it is done|say it is done/);
   });
   it('an admin who set it up is not the lead, and reads no list either', async () => {
     const b = await boardAs({ ...anchor(true, 'anchor'), createdByUserId: 'u-setup' } as any, ...SETUP_ADMIN);
@@ -173,5 +173,26 @@ describe('piece 22: people helping the team move, as each reader reads it', () =
     const commitments = (s.commitments as any[]).map((c) => ({ ...c, source: 'LEAD' }));
     const b = (await boardAs({ ...s, commitments } as any, ...AMINA)).theMonthBoard;
     expect(b.peopleHelpingThingsMove).toEqual([]);
+  });
+});
+
+/* Review of piece 22: the person's own sentence says "your", and every sentence says how it is known. */
+describe('piece 22, as the review asked', () => {
+  const withOne = (more: Record<string, any>) => {
+    const s = anchor(true, 'anchor');
+    const commitments = (s.commitments as any[]).map((c) => (c.participantId === 'p-rukia' ? { ...c, ...more } : c));
+    return { ...s, commitments } as any;
+  };
+  it('Rukia reads "your manager" for her own "my manager"', async () => {
+    const b = await boardAs(withOne({ text: 'I will send my manager the deck.' }), ...RUKIA);
+    expect(b.yourPartInMovingThings).toBe('You committed to send your manager the deck, and you say it is done.');
+  });
+  it.each([
+    ['PROVEN', 'Rukia committed to send the deck to the client, and a document Rukia added shows it is done.', 'You committed to send the deck to the client, and a document you added shows it is done.'],
+    ['CONFIRMED', 'Rukia committed to send the deck to the client, and the colleague who was waiting on it confirmed it is done.', 'You committed to send the deck to the client, and the colleague who was waiting on it confirmed it is done.'],
+    ['SAID', 'Rukia committed to send the deck to the client, and Rukia says it is done.', 'You committed to send the deck to the client, and you say it is done.'],
+  ])('settled %s: the lead and Rukia read how it is known', async (settledBy, lead, rukia) => {
+    expect((await boardAs(withOne({ settledBy }), ...AMINA)).theMonthBoard.peopleHelpingThingsMove[0].sentence).toBe(lead);
+    expect((await boardAs(withOne({ settledBy }), ...RUKIA)).yourPartInMovingThings).toBe(rukia);
   });
 });

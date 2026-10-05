@@ -241,8 +241,9 @@ check-in started from the anchor link. Each person who closed something they pro
 check-in gets one sentence, for the latest thing they closed. It never comes from what a colleague said
 about them, and it is never counted or ordered by how much each person did.
 
-- The lead, on `theMonthBoard.peopleHelpingThingsMove`, reads `{ name: "Rukia", sentence: "Rukia committed to send the deck to the client, and it is done." }`, one entry per person, in the order people are in the check-in.
-- The person, on the board read as the new field `yourPartInMovingThings`, reads the same sentence about themselves: "You committed to send the deck to the client, and it is done." This follows decision 96 (9). It is null where they have closed nothing, and they never read anybody else's.
+- The lead, on `theMonthBoard.peopleHelpingThingsMove`, reads `{ name: "Rukia", sentence: "Rukia committed to send the deck to the client, and Rukia says it is done." }`, one entry per person, in the order people are in the check-in.
+- The person, on the board read as the new field `yourPartInMovingThings`, reads the same sentence about themselves, in "you" and "your": "You committed to send your manager the deck, and you say it is done." This follows decision 96 (9). It is null where they have closed nothing, and they never read anybody else's.
+- Changed after review, the sentence now says how it is known. Settled on their own word: "…, and Rukia says it is done." A document they added: "…, and a document Rukia added shows it is done." Confirmed: "…, and the colleague who was waiting on it confirmed it is done." The confirmer is not named, because the record keeps that it was confirmed and not by whom.
 - An admin who only reads, and an admin who set the check-in up, read no list and no sentence. With the switch off, or on any other check-in, the field is not sent at all.
 
 A promise a lead wrote or pasted is not counted, and neither is one the person did not make in their
