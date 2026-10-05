@@ -2,6 +2,28 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## The 24-scenario run, run-oct5b, scored (5 October)
+
+Hafsah said the run could start again, and it ran from 15:50 to 17:36 in three shards against the
+local API and the local database only. It measures the code at d59a8b17, built at 15:48. The
+judgement work committed after that, from a0992885 onward, was not in the running API, so this run
+says nothing about it.
+
+All 24 scenarios finished and none failed. The runner printed "settled short" 24 times, but every
+captured report has one finding for each person who answered, nobody is left behind, and the
+database agrees for sales (4 findings) and seniorhire (2). So the warning fired while the report was
+still being written, and the numbers can be trusted. Every report ran on report_synthesis version 8,
+`dfce4b13-2929-4c58-ad2e-485bf60d08ff`, and all 58 active stored prompts match the file word for word.
+
+The scorer says nothing got worse than the baseline. All eleven problems are at 0. Ten of the eleven
+engine-value numbers are level or up. "Proof asked for" is 41 against 42, which is inside the
+scorer's 10% margin, and 27 of those 41 count only the word "picture", as in "a clear picture of
+what happened". That leaves about 14 real requests for proof, so the true number is well below the
+baseline, and how to count it is still with Hafsah.
+
+Against theDecision, judged strictly: 15 of 24 are clearly right, 7 are partly right and 2 miss
+(recognition and shock).
+
 ## The judgement on a check-in of one, and a decision I did not make (5 October)
 
 Request 136 item 7 is fixed: the founder, the only person in her own check-in, was

@@ -141,7 +141,9 @@ describe('Amina, who runs the check-in, reads her own judgement about "you"', ()
       'Your own account of the role you play with the five largest clients is not in this check-in.',
       'Ask Tobi Adewale to account for how the role was first defined.',
     ]);
-    expect(j.whatThisCannotTellYou[0].about).toBe('Your role in the client meetings.');
+    /* Changed 5 October 2026: the report now makes the same repairs as the board, so a heading that is a piece is a
+       sentence here too (request 131 item 5). */
+    expect(j.whatThisCannotTellYou[0].about).toBe('This check-in cannot tell you about your role in the client meetings.');
   });
 
   it('every verb after "you" agrees with it, in the differences she reads', async () => {

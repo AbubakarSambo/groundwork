@@ -183,6 +183,27 @@ commitment to 'Amina will send the sheets'." The lead and an admin with access r
 The participant reads no judgement. The day a promise was due comes with the prompt work after the
 run.
 
+**The judgement now has a stored version, so it can be proved which instruction wrote it.** Before, the
+judgement was the one prompt with no `PromptVersion` key, and a report's `promptVersionId` said only which
+synthesis prompt ran. The judgement now reads `the_judgement_room` (or `the_judgement_population`
+for 20 people or more) and falls back to the code text where none is active. It keeps the id of the
+version that ran inside the stored judgement, as `theJudgement.promptVersionId`, or null where the
+code text ran. The code text is unchanged, word for word, and a test proves it. Nothing a person reads
+changed with this step.
+
+**The lead is no longer told "Your own account of this is not in this check-in." about their own
+item.** Found on the run of 5 October, on the snapshot and the project boards. Under "What this cannot
+tell you" the snapshot's lead read "You have said that hiring is hard, but not what the difficulties
+are." and then "Your own account of this is not in this check-in." Their account is partly there.
+The fix in 048cea38 covered only a check-in of one person.
+
+Now, where the line above is about the lead, the lead reads "Only you can answer this." A line that is
+not about the lead keeps its sentence, and so does the case where the missing account is somebody
+else's. The lead's report now makes the same repairs as the board. Before, only the board did, so a
+heading that is only a piece becomes a sentence on the report too: "This check-in cannot tell you
+about your role in the client meetings." An admin and the participant are unaffected. The wording
+"Only you can answer this." is mine; there is no prototype screen for it.
+
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
 ```

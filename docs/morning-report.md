@@ -1,5 +1,24 @@
 # Morning report
 
+The checks for the hosted line were run again at `ee99f19c` on this computer: all 359 migrations apply to a new database, the clean install and build pass for the API and the client, and the built API starts with every new setting missing (see section 7 of `docs/staging-compatibility.md`).
+
+## 5 October, 17:45: the 24-scenario run is back, and nothing got worse
+
+The run you allowed today, run-oct5b, finished with all 24 scenarios and no failures. It ran
+against the local API and database only, on the code at d59a8b17. The judgement fixes committed
+after 15:48 (a0992885 onward) were not in it, so they still need a run of their own.
+
+| | |
+| --- | --- |
+| **Scorer verdict** | Nothing got worse than the baseline. All eleven problems are at 0. |
+| **Engine value** | Ten of the eleven numbers are level or up. Commitments went from 33 to 56, agreements from 56 to 77 and judgements from 21 to 29. |
+| **The one drop** | "Proof asked for" is 41 against 42. It is inside the scorer's margin, but 27 of the 41 count only the word "picture", so about 14 are real requests for proof. This is your decision about the scorer, and I have not changed it. |
+| **Prompt that ran** | report_synthesis version 8, `dfce4b13-…`, on every report. |
+| **Right answers** | 15 of 24 clearly right, 7 partly right, and 2 missed. Recognition never names the contractor, and shock names one warning sign instead of three. |
+
+The runner warned "settled short" on many reports. I checked the captured reports and the
+database, and every one is complete, so the warning came too early and the numbers stand.
+
 ## 5 October, after 16:00: your two wording decisions, and the work after them
 
 - When somebody leaves a role, the lead now reads "Kwame's role does not continue. Kwame's history stays as it is.", Kwame reads "Your role does not continue. Your history stays as it is.", and anybody who may not see his name reads "The role does not continue. The person's history stays as it is." (123 item 8). The screens workspace needs to copy the new label into its mirror file, which I was not allowed to edit.
@@ -15,6 +34,8 @@
 - The headline question puts a comma before its day when the aim has a clause of its own: "…, at least 60% of them women, by 28 February 2027?"
 - At the read, the lead's judgement now fixes only the verb after "until you … and" (123 item 7). I took out the rules for "she", "he", "they" and for reflexives after three reviews, because each could put a false sentence about the lead on the page. The pronouns go to the prompt work after the run.
 - The lead's judgement turns "The status of the open commitments to…" into "Check the status of…", and says a promise like 'I will file the bundle' as "file the bundle". After review it no longer drops any step, and leaves quotes that are not promises alone (134 item 4).
+- The judgement now has its own stored prompt versions, and each judgement records which version wrote it, so a prompt change can be proved. The code text is unchanged.
+- The lead is no longer told "Your own account of this is not in this check-in." about their own item. It reads "Only you can answer this.", on the report and the board. Found on the 5 October run's snapshot and project.
 - I stopped on 139, the goal drawn as "Point to successfully renewed contracts", because no code writes that line and it is not in this computer's database. I asked the screens workspace which field carries it. I did not start 130 (b), 130 (d) or 131 (6), because none of them is small.
 
 ### Needs Hafsah
