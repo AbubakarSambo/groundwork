@@ -2484,6 +2484,18 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {!shown.checkInGrid && b.myParticipantId && kindOfWorkKey !== 'MarketView where next' && everySessionLink()}
 
         {/*
+          FAULT 4 (live walk, 6 October 2026): FOR THE LEAD, "ARE WE MOVING TOGETHER?" COMES
+          BEFORE "IDEAS FROM YOUR TEAM", NOT AFTER.
+          Section 24 makes the month board the top question for the lead. Both already draw open,
+          never folded (see the fault 4 note just below this one, live walk 6 October 2026) - this
+          only changes which of the two comes first, by drawing the month board here, ahead of the
+          ideas block. `theMonthBoardForTheLead` is undefined for anybody but the lead, so a member
+          sees no change at all: the ideas block below is still the first thing in this region for
+          them, open exactly where it was.
+        */}
+        {theMonthBoardForTheLead && <TheMonthBoard monthBoard={theMonthBoardForTheLead} />}
+
+        {/*
           FAULT 4 (live walk, 6 October 2026): FOR AN ANCHOR CHECK-IN, "IDEAS FROM YOUR TEAM" SITS
           OUTSIDE ANY FOLD, THE SAME MOVE AS "EVERY SESSION" JUST ABOVE.
           `MaybeFolded` only ever closes anything for a sales-org participant
@@ -2500,10 +2512,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         <MaybeFolded fold={participantFoldsWhole}>
 
         {/*
-          PIECES 12, 13 AND 20: THE MONTH BOARD, "Are we moving together?", AT THE TOP (plan
-          section 5, row 6). Lead only; draws nothing while `theMonthBoardForTheLead` is undefined.
+          PIECES 12, 13 AND 20: THE MONTH BOARD, "Are we moving together?" (plan section 5, row 6).
+          Moved above, before "Ideas from your team" (fault 4) - this fold no longer draws it a
+          second time; `theMonthBoardForTheLead` already drew it, or there was nothing to draw.
         */}
-        {theMonthBoardForTheLead && <TheMonthBoard monthBoard={theMonthBoardForTheLead} />}
 
         {/*
           PIECE 19/20, "IDEAS FROM YOUR TEAM" (plan section 5, row 7). To everyone in the check-in;
