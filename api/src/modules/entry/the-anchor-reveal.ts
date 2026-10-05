@@ -91,8 +91,8 @@ export function theLeadsReveal(input: { messages: Turn[]; peopleNamed?: string[]
   const shared = input.sharedWithTheTeam === true;
   const hers = herAnswerToTheHopeQuestion(input.messages);
   const heard = input.heard ?? {};
-  const change = hers ? whatSheSaidOneAtATime(hers) : heard.whatTheyWouldDoDifferently ? whatSheSaidOneAtATime(heard.whatTheyWouldDoDifferently) : [];
-  const named = (input.peopleNamed ?? []).some((n) => (n ?? '').trim());
+  /* Her answer as the read wrote it to her ("you", one thing to a sentence), else exactly as she wrote it. */
+  const change = heard.whatTheyWouldDoDifferently ? whatSheSaidOneAtATime(heard.whatTheyWouldDoDifferently) : hers ? whatSheSaidOneAtATime(hers) : [];
   const forTheLead = reader === 'lead';
   return {
     title: 'Help my team understand',
@@ -100,7 +100,7 @@ export function theLeadsReveal(input: { messages: Turn[]; peopleNamed?: string[]
     carrying: forTheLead ? whatSheIsCarrying(heard) ?? NOT_WRITTEN_DOWN.carrying : null,
     whatTheTeamNeedsToUnderstand: forTheLead ? (heard.whatTheyDontUnderstand ? asASentence(heard.whatTheyDontUnderstand) : NOT_WRITTEN_DOWN.whatTheTeamNeedsToUnderstand) : null,
     sharedWithTheTeam: shared,
-    whoYouAreTryingToMove: !named && heard.tryingToMove ? asASentence(heard.tryingToMove) : whoSheIsTryingToMove(input.peopleNamed ?? []),
+    whoYouAreTryingToMove: heard.tryingToMove ? asASentence(heard.tryingToMove) : whoSheIsTryingToMove(input.peopleNamed ?? []),
     seeingToday: forTheLead ? (heard.seeingToday ? asASentence(heard.seeingToday) : NOT_WRITTEN_DOWN.seeingToday) : null,
     whatMeaningfulChangeWouldLookLike: change.length ? change : [NOT_WRITTEN_DOWN.change],
     whatGroundworkWillExplore: [...WHAT_GROUNDWORK_WILL_EXPLORE],

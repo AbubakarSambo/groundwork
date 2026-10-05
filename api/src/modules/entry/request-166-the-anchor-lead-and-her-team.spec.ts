@@ -1,5 +1,6 @@
 import { EntryService } from './entry.service';
 import { EmailService } from '../email/email.service';
+import { theLeadsReveal } from './the-anchor-reveal';
 import { THE_SEVEN, whatHasBeenHeard, whatTheConversationHasHeard, THE_CLOSING_REMINDER } from './the-anchor-setup';
 
 /**
@@ -251,5 +252,17 @@ describe('the invitation a person on the team reads', () => {
     const { svc, sent } = anEmail('anchor');
     await svc.sendTheInviteThisGroundSends(theCheckIn, 'amani@sokoni.test', 'Your lead', 'tok', undefined, { kind: 'PARTICIPANT_INVITE', groundId: 'g1' });
     expect(sent[0].subject).toBe('Your lead is trying a different way to help the team get on the same page.');
+  });
+});
+
+describe('what the reveal says about who she is moving, and what better would look like', () => {
+  it('says it in her words even when the read of the turns also listed a group as if it were a person', () => {
+    const r = theLeadsReveal({
+      messages: [],
+      peopleNamed: ['The operations team'],
+      heard: { tryingToMove: 'you are trying to move the operations team, fifteen people in warehouse and dispatch', whatTheyWouldDoDifferently: 'You would notice people telling you before a truck is late. You would notice dispatch phoning the shop themselves.' },
+    });
+    expect(r.whoYouAreTryingToMove).toBe('You are trying to move the operations team, fifteen people in warehouse and dispatch.');
+    expect(r.whatMeaningfulChangeWouldLookLike).toEqual(['You would notice people telling you before a truck is late.', 'You would notice dispatch phoning the shop themselves.']);
   });
 });
