@@ -1,0 +1,43 @@
+import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'fs'
+import { join } from 'path'
+
+/**
+ * RELEASE WALKTHROUGH, 5 OCTOBER: TAP AREAS UNDER 40px AT PHONE WIDTH.
+ *
+ * Measured live (scratchpad captures, walk-A): "Change this" (TargetsBand.tsx, 19px), "Read"
+ * (YourWork.tsx, 19px), "← Every session" (RoundReportPage.tsx, 19px), "Attach something" /
+ * "Attach it" (EachPerson.tsx's `Small`, 17px), "Share with everyone" (WhatYouAreCarryingForward.tsx,
+ * 32px), the attach-a-document button (ContextChat.tsx, 34px square), and the switches on People
+ * and setup (Toggle, 28px tall). Same technique `.gwui-plain-link` already uses for "Ask" and
+ * friends - `min-height`/`inline-flex` where the control's own look does not need to change, an
+ * invisible hit-area extension where it does (the toggle's own 48x28 pill, the attach button's own
+ * fixed square).
+ */
+const CSS = readFileSync(join(__dirname, 'gw-ui.css'), 'utf8')
+
+describe('phone tap targets, release walkthrough 5 October', () => {
+  it('.gwui-tap-40 gives any control a 40px floor at phone width without changing its own look', () => {
+    expect(CSS).toMatch(/@media \(max-width: 640px\) \{\s*\.gwui-tap-40 \{ min-height: 40px; display: inline-flex; align-items: center; \}/)
+  })
+
+  it('.gwui-icon-btn keeps the attach button\'s 34px square above 640px, and grows it to 40px at phone width', () => {
+    expect(CSS).toMatch(/\.gwui-icon-btn \{[^}]*width: 34px; height: 34px/)
+    expect(CSS).toMatch(/@media \(max-width: 640px\) \{\s*\.gwui-icon-btn \{ width: 40px; height: 40px; \}/)
+  })
+
+  it('.gwui-toggle keeps its own 48x28 pill, with an invisible hit area past it at phone width', () => {
+    expect(CSS).toMatch(/\.gwui-toggle \{[^}]*width: 48px; height: 28px/)
+    expect(CSS).toMatch(/@media \(max-width: 640px\) \{\s*\.gwui-toggle::after \{ content: ''; position: absolute; inset: -6px; \}/)
+  })
+
+  it('each flagged control actually takes the new class', () => {
+    const read = (p: string) => readFileSync(join(__dirname, '../../../', p), 'utf8')
+    expect(read('components/gw/TargetsBand.tsx')).toMatch(/gwui-fs-13 gwui-ink-sub gwui-p-0 gwui-rule-none gwui-tap-40/)
+    expect(read('components/gw/EachPerson.tsx')).toMatch(/function Small[\s\S]*?className="gwui-tap-40"/)
+    expect(read('pages/report/RoundReportPage.tsx')).toMatch(/className="gwui-tap-40"[\s\S]*?Every session/)
+    expect(read('components/gw/checkin/YourWork.tsx')).toMatch(/className="gwui-tap-40" style=\{\{ fontSize: 12\.5[\s\S]*?\}\}>Read<\/Link>/)
+    expect(read('components/gw/WhatYouAreCarryingForward.tsx')).toMatch(/className="gwui-tap-40"[\s\S]*?Share with everyone/)
+    expect(read('components/gw/ContextChat.tsx')).toMatch(/className="gwui-icon-btn"/)
+  })
+})

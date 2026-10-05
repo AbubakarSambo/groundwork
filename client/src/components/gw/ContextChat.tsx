@@ -431,7 +431,8 @@ export function ContextChat({ groundId }: { groundId: string }) {
             disabled={attach.isPending}
             title="Attach a document to this check-in"
             aria-label="Attach a document to this check-in"
-            style={{ width: 34, height: 34, borderRadius: 8, background: 'none', border: 'none', color: 'var(--gw-sub)', fontSize: 16, cursor: attach.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
+            className="gwui-icon-btn"
+            style={{ cursor: attach.isPending ? 'wait' : 'pointer' }}
           >
             {attach.isPending ? '…' : '📎'}
           </button>

@@ -123,7 +123,7 @@ export function TargetsBand({
             {onChangeTarget && (
               <button
                 onClick={() => onChangeTarget(t)}
-                className="gwui-fs-13 gwui-ink-sub gwui-p-0 gwui-rule-none"
+                className="gwui-fs-13 gwui-ink-sub gwui-p-0 gwui-rule-none gwui-tap-40"
                 style={{ background: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Change this

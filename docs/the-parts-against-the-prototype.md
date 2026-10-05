@@ -622,3 +622,39 @@ group row in `WorkRecords.tsx` (`dealGroups.map`). Not an inline style - `WorkRe
 rebuilt page, where `the-rebuilt-pages-use-only-the-new-parts.spec.ts` fails any inline
 `padding`/`margin`/`color`/`fontSize`/`gap` - and not one of the atomic one-off `gwui-pt-*` etc.
 classes, which `one-off-uses-only-go-down.spec.ts` freezes the per-file count of.
+
+## Release walkthrough, 5 October: two new shared classes for a tap target under 40px
+
+Three fixes from the release walkthrough's own captures (`pictures/walk-A/`). No prototype class
+covers either, since the prototype was never measured for a finger's own size - both are this
+product's own addition, the same technique `.gwui-plain-link` already uses for "Ask" and its
+neighbours, under their own names because they cannot take that class's look.
+
+**`.gwui-tap-40`** (gw-ui.css, beside `.gwui-plain-link`): `min-height: 40px; display: inline-flex;
+align-items: center;` at `max-width: 640px` only - the same floor `.gwui-plain-link` sets, for a
+control that already carries its own size, weight or colour for a reason and so cannot borrow that
+class's navy, bold, underlined look. Used on: `TargetsBand.tsx`'s row-level "Change this" (19px),
+`EachPerson.tsx`'s `Small` ("Attach it" / "Attach something", 17px), `RoundReportPage.tsx`'s "←
+Every session" (19px), `YourWork.tsx`'s three "Read" links (19px), and
+`WhatYouAreCarryingForward.tsx`'s "Share with everyone" (32px).
+
+**`.gwui-icon-btn`** (gw-ui.css, just below `.gwui-tap-40`): the Context chat's own "attach a
+document" button (`ContextChat.tsx`, the 📎), 34px square at every width before this fix - a fixed
+inline `width`/`height`, which a later stylesheet rule cannot widen (an inline style always beats a
+stylesheet's own `min-width`/`min-height`). Moved into this class so phone width can grow it: 34px
+square above 640px, unchanged; 40px square at `max-width: 640px`.
+
+**`.gwui-toggle`** (existing part, not a new class): the switches on People and setup ("Each
+other's check-ins", "Targets", "What we ask them", ...) measured 28px tall, the prototype's own
+switch size this part already follows (see the Toggle row, above). Widening the pill itself would
+change what the prototype draws, so the fix is an invisible `::after` at `inset: -6px`, phone width
+only - a 60 by 40px hit area around the same 48 by 28px pill, nothing added to what is drawn.
+
+Also fixed in `BoardPage.tsx`'s `ActionButtons`: two links with no text and no accessible name
+(`action.label` sent empty by a real board, against its own typed `label: string`), both to
+`/grounds/<id>?tab=chat`. Not a new class - `ActionButtons` now falls back to a plain sentence built
+from `action.goesTo` when the engine's own label is empty, the same way it already falls back to
+"Open" when there is no `action` at all. And the floating Feedback pill (`AppShell.tsx`'s
+`FeedbackWidget`) no longer covers the board's own "Ask about this board" bar at 1440 (a raised
+resting `bottom`, board page only) or the ground page's own check-in tab's suggestion chips at 375
+(folded into the same top-of-page rest position `/chat/:id` and `/start` already use).
