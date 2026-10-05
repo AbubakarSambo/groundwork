@@ -555,9 +555,18 @@ function ActionButtons({ groundId, action }: { groundId: string; action?: AnActi
       </>
     )
   }
+  /*
+   * RELEASE WALKTHROUGH, 5 OCTOBER: TWO LINKS WITH NO TEXT AND NO ACCESSIBLE NAME. `action.label`
+   * is typed as a required `string` (api/src/modules/board/what-needs-you-and-what-to-do.ts), but
+   * a real board sent it empty for two rows - a `<Link>` with nothing inside reads to nobody using
+   * a screen reader, and shows nothing to point at on screen either. Said plainly from `goesTo`
+   * instead of rendering silence: the same two sentences this fallback already reaches for when
+   * there is no `action` at all, just below, phrased for where this one actually goes.
+   */
+  const label = action.label || (action.goesTo === 'context' ? 'Open the Context page' : 'Open your check-in')
   return (
     <UIButton kind="secondary" size="small" to={`/grounds/${groundId}?tab=${action.goesTo === 'context' ? 'context' : 'chat'}`}>
-      {action.label}
+      {label}
     </UIButton>
   )
 }
