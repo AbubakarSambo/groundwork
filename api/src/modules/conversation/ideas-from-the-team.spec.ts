@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { PartyType } from '@prisma/client';
-import { anIdeaReadBackAsAPromise, afterTheirTurn, theirOwnIdea, THE_IDEA_QUESTION, IT_IS_CAPTURED, IDEA_SPOTTING_KEY, THE_IDEA_SPOTTING_PROMPT } from './ideas-from-the-team';
+import { withoutAskingWhatToCapture, anIdeaReadBackAsAPromise, afterTheirTurn, theirOwnIdea, THE_IDEA_QUESTION, IT_IS_CAPTURED, IDEA_SPOTTING_KEY, THE_IDEA_SPOTTING_PROMPT } from './ideas-from-the-team';
 import { person, answered, boardAs, AMINA, RUKIA, BARAKA, JUMA, type Setup } from '../board/the-switchboards-sections-harness';
 import { whatIsWrongForThisReader } from '../board/the-anchor-readers';
 
@@ -81,7 +81,7 @@ describe('the offer, in the person\'s own check-in', () => {
   it('the check-in\'s reply carries the offer and says the capture first', () => {
     const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
     expect(src).toContain('...(idea.ideaOffer ? { ideaOffer: idea.ideaOffer } : {}),');
-    expect(src).toContain('if (idea.sayFirst) answer.reply = [idea.sayFirst, answer.reply]');
+    expect(src).toContain('answer.reply = [idea.sayFirst, notAsked.text].filter(Boolean)');
   });
 });
 
@@ -143,5 +143,17 @@ describe('an idea is never read back as a promise (review of piece 19)', () => {
     expect(anIdeaReadBackAsAPromise('You said you will call Naivas on Friday about the late payment.', [IDEA], [SAID, 'I will call Naivas on Friday.'])).toEqual([]);
     expect(anIdeaReadBackAsAPromise('I have captured it for the team. What else got in your way this week?', [IDEA], [SAID])).toEqual([]);
     expect(anIdeaReadBackAsAPromise('You said you will send the updated price list to every shop on Monday morning.', [], [SAID])).toEqual([]);
+  });
+});
+
+describe('once it is captured, nothing asks what to capture (release walk)', () => {
+  it('takes off "Capture what, specifically?" and keeps the rest of the turn', () => {
+    expect(withoutAskingWhatToCapture('Capture what, specifically? What else got in your way this week?')).toEqual({
+      text: 'What else got in your way this week?', cut: ['Capture what, specifically?'],
+    });
+  });
+  it('leaves a turn with nothing about capturing alone', () => {
+    const t = 'What else got in your way this week?';
+    expect(withoutAskingWhatToCapture(t)).toEqual({ text: t, cut: [] });
   });
 });

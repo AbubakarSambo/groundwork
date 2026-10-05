@@ -176,3 +176,23 @@ export function anIdeaReadBackAsAPromise(reply: string, theirIdeas: string[], th
   }
   return out;
 }
+
+/*
+ * ONCE IT IS CAPTURED, NOTHING ASKS WHAT TO CAPTURE (release walk, 5 October). After "Yes, capture it" the reply said
+ * "I have captured it for the team." and the model's own turn went on "Capture what, specifically?". The idea is
+ * already captured, in their words, so a sentence of the model's that asks about capturing is taken off. Read-side
+ * and narrow: only on the turn that captured, and only sentences about capturing.
+ */
+const ASKS_ABOUT_CAPTURING = /\bcaptur(?:e|ed|es|ing)\b/i;
+export function withoutAskingWhatToCapture(reply: string): { text: string; cut: string[] } {
+  const cut: string[] = [];
+  const paragraphs = String(reply ?? '').split(/\n{2,}/).map((p) => {
+    const sentences = p.match(/[^.!?]+(?:[.!?]+["'”’)]*|$)/g) ?? [p];
+    return sentences.filter((x) => {
+      const hit = ASKS_ABOUT_CAPTURING.test(x);
+      if (hit) cut.push(x.trim());
+      return !hit;
+    }).join('').trim();
+  });
+  return { text: paragraphs.filter(Boolean).join('\n\n'), cut };
+}

@@ -176,7 +176,7 @@ export class WhatsAppForAnOrganisationService {
      */
     if (arrived.kind === 'text' && A_STOP_WORD.test(arrived.text)) {
       if (who.personId) await this.prisma.person.update({ where: { id: who.personId }, data: { whatsappStoppedAt: new Date() } }).catch(() => undefined);
-      await this.whatsapp.stopOrResume?.(organizationId, from, 'stopped');
+      await this.whatsapp.stopOrResume(organizationId, from, 'stopped');
       await say(STOPPED_SAYING);
       return;
     }
@@ -186,10 +186,10 @@ export class WhatsAppForAnOrganisationService {
      */
     if (arrived.kind === 'text' && A_START_WORD.test(arrived.text)) {
       const me = who.personId ? await this.prisma.person.findUnique({ where: { id: who.personId }, select: { whatsappStoppedAt: true } }).catch(() => null) : null;
-      const stoppedHere = (await this.whatsapp.hasSaidStop?.(from).catch?.(() => false)) ?? false;
+      const stoppedHere = await this.whatsapp.hasSaidStop(from).catch(() => false);
       if (me?.whatsappStoppedAt || stoppedHere) {
         if (who.personId) await this.prisma.person.update({ where: { id: who.personId }, data: { whatsappStoppedAt: null, whatsappConsentAt: new Date() } }).catch(() => undefined);
-        await this.whatsapp.stopOrResume?.(organizationId, from, 'resumed');
+        await this.whatsapp.stopOrResume(organizationId, from, 'resumed');
         await say(RESUMED_SAYING);
         return;
       }

@@ -153,7 +153,8 @@ describe('plan and billing\'s new parts', () => {
     const prisma: any = settings(on ? { 'release.planAndBillingNewParts': { on: true } } : {});
     const svc = new WhatsAppAddOnService(prisma, {} as any, {} as any);
     (svc as any).standing = async () => ({
-      sending: true, heldBecause: null, addOnOn: false, plan: 'STARTER', addOnCents: 2000, switchOn: false, onTheFreePlan: true,
+      /* An organisation that pays for Starter: a free one is never told a plan's price (release blocker, 5 October). */
+      sending: true, heldBecause: null, addOnOn: false, plan: 'STARTER', addOnCents: 2000, switchOn: false, onTheFreePlan: false,
       inAFreeRun: false, freeTrial: null, charged: false, limit: 100, sent: 3, month: '2026-10',
     });
     return svc.whatTheyRead('org1', isAdmin);

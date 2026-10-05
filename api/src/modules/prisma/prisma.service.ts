@@ -59,22 +59,44 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
    * `key`. Across multiple API replicas, exactly one wins the lock and runs the
    * body; the others skip. This prevents crons from double-charging, double-
    * sending email, or double-sweeping when the app is scaled horizontally.
-   * (GW-60.) The lock is session-scoped and released in `finally`.
+   * (GW-60.) The lock is a transaction lock on one connection, released when the job ends.
    */
   async withAdvisoryLock(key: number, fn: () => Promise<void>): Promise<boolean> {
-    const rows = await this.$queryRaw<{ locked: boolean }[]>`SELECT pg_try_advisory_lock(${key}) AS locked`;
-    if (!rows[0]?.locked) {
-      this.logger.debug(`Advisory lock ${key} held elsewhere - skipping this run`);
-      return false;
-    }
-    try {
-      await fn();
-      return true;
-    } finally {
-      await this.$queryRaw`SELECT pg_advisory_unlock(${key})`;
-    }
+    /*
+     * THE LOCK IS HELD ON ONE CONNECTION FOR THE WHOLE JOB (6 October).
+     *
+     * This took `pg_try_advisory_lock` and `pg_advisory_unlock` as two separate queries, and each went
+     * through whichever pooled connection was free. When the unlock went through a different
+     * connection it released nothing, the lock stayed on the first connection for as long as that
+     * connection lived, and every later run that landed on another connection was told "held
+     * elsewhere" and skipped without a word. The WhatsApp builder saw the half-hour warning skip for
+     * exactly this reason, and reminders and the lead's daily summary run under the same helper.
+     *
+     * Now the lock is a transaction lock, taken inside one interactive transaction: one connection,
+     * held while the job runs, and released by Postgres itself when the transaction ends, whether the
+     * job finished or threw. Nothing is written inside the transaction; the job does its own work on
+     * the ordinary client, so a failing job rolls back nothing of its own.
+     */
+    let ran = false;
+    await this.$transaction(
+      async (tx) => {
+        const rows = await tx.$queryRaw<{ locked: boolean }[]>`SELECT pg_try_advisory_xact_lock(${key}) AS locked`;
+        if (!rows[0]?.locked) {
+          this.logger.debug(`Advisory lock ${key} held elsewhere - skipping this run`);
+          return;
+        }
+        await fn();
+        ran = true;
+      },
+      /* A job may make model calls and send mail for a while; the lock must outlast it. */
+      { maxWait: 10_000, timeout: A_JOB_MAY_HOLD_ITS_LOCK_FOR_MS },
+    );
+    return ran;
   }
 }
+
+/** How long one scheduled job may hold its lock before Postgres takes it back: one hour. */
+export const A_JOB_MAY_HOLD_ITS_LOCK_FOR_MS = 60 * 60 * 1000;
 
 /** Stable advisory-lock keys, one per scheduled job. Arbitrary but distinct. */
 export const CronLock = {

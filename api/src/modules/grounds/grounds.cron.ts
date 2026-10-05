@@ -7,7 +7,7 @@ import { organisationsThatTurnedWhatsAppOn } from '../whatsapp/only-where-whatsa
 import { sendTheLeadsDailySummaries } from '../whatsapp/the-leads-daily-summary';
 import { sendTheAnchorWeeklyInsights } from '../whatsapp/the-anchor-weekly-insight';
 import { sendTheLeadsWeeklyLetters } from '../email/the-leads-weekly-letter';
-import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
+import { theAnchorScenarioIsOn, theHalfwayMessagesAreOn } from '../admin/what-is-hidden-at-release';
 import { onceAcrossCopies, theDay, theWeek } from '../prisma/once-across-copies';
 import { theReleaseMoment, reachedTheWarningPointBefore } from './the-release-moment';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
@@ -479,7 +479,7 @@ export class GroundsCron implements OnApplicationBootstrap {
          * this decides only that it is time. See ConversationService.closeByTheClock.
          */
         /* Their phone is told it closed, with what they said kept, before the report follows (a-check-in-left-halfway.ts). */
-        const toldTheirPhone = this.whatsapp ? tellThemTheClockClosedIt(this.prisma, this.whatsapp, checkIn.id).catch(() => false) : Promise.resolve(false);
+        const toldTheirPhone = this.whatsapp && (await theHalfwayMessagesAreOn(this.prisma)) ? tellThemTheClockClosedIt(this.prisma, this.whatsapp, checkIn.id).catch(() => false) : Promise.resolve(false);
         await toldTheirPhone;
         await this.conversation.closeByTheClock(checkIn.id);
 
@@ -537,7 +537,8 @@ export class GroundsCron implements OnApplicationBootstrap {
   }
 
   async remindThoseWhoStoppedHalfwayInner(now: Date): Promise<{ sent: number }> {
-    if (!this.whatsapp) return { sent: 0 };
+    /* Off at release (release.whatsappHalfwayMessages); see what-is-hidden-at-release.ts. */
+    if (!this.whatsapp || !(await theHalfwayMessagesAreOn(this.prisma))) return { sent: 0 };
     const open = await this.prisma.checkIn.findMany({
       where: { status: CheckInStatus.IN_PROGRESS, ground: { status: { notIn: HELD } } },
       select: { id: true },
@@ -604,7 +605,7 @@ export class GroundsCron implements OnApplicationBootstrap {
           data: { warningFiredAt: now },
         });
         /* And to their phone, when they were doing this session on WhatsApp (a-check-in-left-halfway.ts). */
-        if (this.whatsapp) await warnTheirPhone(this.prisma, this.whatsapp, checkIn.id).catch(() => false);
+        if (this.whatsapp && (await theHalfwayMessagesAreOn(this.prisma))) await warnTheirPhone(this.prisma, this.whatsapp, checkIn.id).catch(() => false);
 
         this.logger.log(`Session-closing warning injected for check-in ${checkIn.id} (inactive ~${Math.round(inactiveMs / 3_600_000)}h)`);
         warned++;

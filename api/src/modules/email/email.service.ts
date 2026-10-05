@@ -1,5 +1,16 @@
 import { theEndingSaid, theOutcomeIsThat, TheEndingIsAbout } from '../resolution/end-states';
 import { connectWhatsAppFor, youCanAlsoAnswerOnWhatsApp } from '../whatsapp/connect-whatsapp';
+import { askName } from '../assistant/ask-name';
+import { peersAreNamedByDefaultOn } from '../reports/peers-are-named';
+
+/** The sentence about who sees what you say, for a check-in (whoSeesWhatYouSay). */
+export function whoSeesWhatYouSayIn(g: { scenario?: any; peersVisibleToEachOther?: boolean | null; organization?: { name?: string | null } | null } | null | undefined): string {
+  const ask = askName(g?.organization?.name ?? null);
+  const together = g ? (g.peersVisibleToEachOther ?? peersAreNamedByDefaultOn(g)) : true;
+  return together
+    ? `The people in this check-in, including your manager, can see what you say in it. Your questions to ${ask} stay private.`
+    : `Whoever runs this check-in can see what you say in it. The other people taking part do not see what you say. Your questions to ${ask} stay private.`;
+}
 import { keptOffThePhone } from '../whatsapp/a-check-in-kept-off-the-phone';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -57,6 +68,19 @@ export class EmailService implements OnModuleInit {
     } catch {
       return '';
     }
+  }
+
+  /**
+   * WHO SEES WHAT YOU SAY, AS AN INVITATION SAYS IT (5 October, a release blocker). The invitation said
+   * "Nobody on your team sees what you write", which is not true: what people say in a check-in can be
+   * shown word for word to the people in it (the privacy rule). The prototype's sentence (join-invite)
+   * where people see each other; where they do not (a cohort, a review), what is true there.
+   */
+  async whoSeesWhatYouSay(context?: DeliveryContext): Promise<string> {
+    const g = context?.groundId
+      ? await (this.prisma as any).ground?.findUnique?.({ where: { id: context.groundId }, select: { scenario: true, peersVisibleToEachOther: true, organization: { select: { name: true } } } })?.catch?.(() => null)
+      : null;
+    return whoSeesWhatYouSayIn(g);
   }
 
   buildInviteUrl(inviteToken: string): string {
@@ -636,7 +660,7 @@ export class EmailService implements OnModuleInit {
     await this.sendEmail({
       to: email,
       subject: `You've been added to ${orgName} on Groundwork`,
-      html: this.layout(`<p>${greeting(firstName)}</p><p>${escapeHtml(orgName)} added you to their Groundwork workspace. Groundwork runs structured check-ins across a team and surfaces alignment and gaps in a shared report. Your contributions stay private until the report is ready.</p><p><a href="${url}">Accept invite</a></p><p style="color:#888;font-size:12px;">If you were not expecting this, you can ignore this email. Nothing is active until you click the link.</p>`),
+      html: this.layout(`<p>${greeting(firstName)}</p><p>${escapeHtml(orgName)} added you to their Groundwork workspace. Groundwork runs structured check-ins across a team and surfaces alignment and gaps in a shared report. The people in each check-in you join can see what you say in it. Your questions to ${escapeHtml(askName(orgName))} stay private.</p><p><a href="${url}">Accept invite</a></p><p style="color:#888;font-size:12px;">If you were not expecting this, you can ignore this email. Nothing is active until you click the link.</p>`),
     }, undefined, 'sendUserInvite');
   }
 
@@ -670,7 +694,8 @@ export class EmailService implements OnModuleInit {
       html: this.layout(
         `<p>Hi,</p>
          <p><strong>${escapeHtml(founderName)}</strong> would like to know what you are seeing in <strong>${escapeHtml(groundLabel)}</strong>.</p>
-         <p>It is a short private check-in, about ten minutes, where you say what is actually going on from where you sit. Nobody on your team sees what you write. The shared picture shows where what you said and what everybody else said line up, and where they do not, and it never quotes you.</p>
+         <p>It is a short check-in, about ten minutes, where you say what is actually going on from where you sit.</p>
+         <p>${escapeHtml(await this.whoSeesWhatYouSay(context))}</p>
          <p>You are not being asked to be fair or balanced. You are being asked to be honest. What you share here is yours.</p>
          ${noteHtml}
          <!--
@@ -986,9 +1011,8 @@ export class EmailService implements OnModuleInit {
         /*
          * IT DID NOT GO INTO ONE SUMMARY UNREAD.
          *
-         * "Nobody on your team sees what you write" is true of a private alignment check-in, where
-         * the shared picture never quotes anybody - see the invite above, which says exactly that
-         * and may keep saying it. It is NOT true of a team update: the person who asked reads every
+         * "Nobody on your team sees what you write" was never true here, and since 5 October it is not
+         * said in any invitation (see whoSeesWhatYouSay). It is NOT true of a team update: the person who asked reads every
          * answer, and the report built from them goes back out to everybody who asked for it.
          *
          * Hafsah had the same sentence removed from the answering screen on 23 September 2026. It
@@ -1153,7 +1177,7 @@ export class EmailService implements OnModuleInit {
       subject: `The shared picture for "${groundLabel}" is waiting for you`,
       html: this.layout(
         `<p>All accounts are in for <strong>${escapeHtml(groundLabel)}</strong> and the shared report has been generated.</p>
-         <p>The report shows where accounts agree, where they differ, and what is still unresolved. Nobody's words are quoted - it draws on what was said without showing the raw text.</p>
+         <p>The report shows where accounts agree, where they differ, and what is still unresolved. The people in the check-in can read what each person said.</p>
          <p>Open the check-in to read and release the report to all parties.</p>
          <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Read and release the report →</a></p>`,
       ),
@@ -1191,7 +1215,7 @@ export class EmailService implements OnModuleInit {
         `<p><strong>${escapeHtml(participantName)}</strong> has checked in on <strong>${escapeHtml(groundLabel)}</strong>. That is theirs done.</p>
          ${pendingNote}
          <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View check-in →</a></p>
-         <p style="font-size:12px;color:#9B9590;">You can see who has checked in, and the shared picture once it is ready. You cannot see what anybody wrote: what people say stays private, and everybody in it is told the moment the picture is ready.</p>`,
+         <p style="font-size:12px;color:#9B9590;">You can see who has checked in and read what they said in the check-in, and the shared picture once it is ready. Everybody in it is told the moment the picture is ready.</p>`,
       ),
     }, undefined, 'sendParticipantCheckedIn');
   }
@@ -1554,7 +1578,7 @@ export class EmailService implements OnModuleInit {
         */
        `<p>${greeting(name)}</p>
          <p>We have not heard from you on <strong>${groundName}</strong> in a while.</p>
-         <p>There is still time. The shared picture cannot show what you are seeing until you say it, and what you write stays private until everybody is in. It belongs to you, not to the organisation.</p>
+         <p>There is still time. The shared picture cannot show what you are seeing until you say it. The people in this check-in can see what you say in it.</p>
          <p><a href="${checkInUrl}">Say how it is going</a></p>`,
       ),
     }, undefined, 'sendAbsenceReminder');

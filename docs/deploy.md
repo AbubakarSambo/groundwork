@@ -340,6 +340,12 @@ Every report updated after the release should name the newest `report_synthesis`
 
 ## 7. The checks to run after deploy
 
+**Before the release, on this computer: does the production start command work?** Run, from `api/`:
+
+    npm run check:production-start -- --database postgresql://you@localhost:5432/your_local_db --env .env
+
+It builds the API exactly as production does (`nest build`) in a temporary folder, never in `api/dist`. It checks that `dist/main.js` and the embed's `embed.js` and `panel.html` are there and that there is no `dist/src`. Then it starts `node dist/main` on a spare port against the local database you give it (it refuses any other), waits for `/health` to answer "ok", reads `/embed.js`, and stops the server. It writes nothing. On 5 October every test passed while `node dist/main` could not start, because three specs imported from `journey/` and the server was built to `dist/src/main.js`. `api/src/nothing-in-src-imports-from-outside-src.spec.ts` stops that cause, and this check proves the result. On `wip/release` at 5 October it printed: "node dist/main started on port 52689, /health answered "ok", /embed.js answered 200, and the server was stopped."
+
 **Before any person reads anything:**
 1. `SELECT migration_name, finished_at FROM _prisma_migrations ORDER BY started_at DESC LIMIT 90;` shows all 82 new migrations finished, and none failed.
 2. The API answers `/health`.
@@ -384,7 +390,7 @@ There is no `render.yaml`, `fly.toml`, `railway.json`, `Procfile` or `app.json` 
 
 ## Hidden at release
 
-The release hides five things from anything new. It hides nothing an existing client uses today (decisions 88 and 90): every setting below reads as "hidden" when its row is missing, and a check-in or organisation that already has the thing, or already uses the old way, is unchanged. Each setting is one row in the `platform_settings` table (key, JSON value). They are read in one file, `api/src/modules/admin/what-is-hidden-at-release.ts`, and a broken row reads as the default. Hafsah turns one on by writing the row (for example in the database console, with `INSERT ... ON CONFLICT (key) DO UPDATE`), and nothing needs a deploy.
+The release hides six things from anything new. It hides nothing an existing client uses today (decisions 88 and 90): every setting below reads as "hidden" when its row is missing, and a check-in or organisation that already has the thing, or already uses the old way, is unchanged. Each setting is one row in the `platform_settings` table (key, JSON value). They are read in one file, `api/src/modules/admin/what-is-hidden-at-release.ts`, and a broken row reads as the default. Hafsah turns one on by writing the row (for example in the database console, with `INSERT ... ON CONFLICT (key) DO UPDATE`), and nothing needs a deploy.
 
 | What is hidden | Setting (key) | Default | To turn it on |
 | --- | --- | --- | --- |
@@ -393,6 +399,7 @@ The release hides five things from anything new. It hides nothing an existing cl
 | The Context tab's move to Ask Groundwork | `release.contextInAskGroundwork`, value `{"on": false}` | Off. | Write `{"on": true}`. |
 | Plan and billing's new parts | `release.planAndBillingNewParts`, value `{"on": false}`; and `pricing.freeTrial`, value `{"on": false, ...}` | Both off when the migrations run. | Both are switched on together in this release, by step 13a ("Switching billing on at release"), after its check. |
 | The anchor scenario (a new check-in started from the anchor link) | `release.anchorScenario`, value `{"on": false}` | Off. A missing or broken row reads as off. | Write `{"on": true}`. |
+| The offer to ask for leave or spending from inside a check-in (anchor pieces 26 and 27) | `release.requestOfferInTheCheckIn`, value `{"on": false}` | Off. A missing or broken row reads as off. Its yes opens a form whose routes (request 165) are not built yet. Leave and spending through Ask Groundwork and WhatsApp are unchanged. | Write `{"on": true}` only once `POST /suites/leave/requests` and `POST /suites/spend/requests` exist. |
 
 **1. Boards for kinds of work nobody uses yet.** The eleven kinds of work (sales org, engineering release, support desk, and so on) are new in this release. No existing check-in has one until that script runs, because the column did not exist. A new check-in can be given only an offered kind: the lead choosing one (`PATCH /grounds/:id/kind-of-work`) is refused with "Groundwork does not offer that kind of work yet. Choose one of these: sales org, engineering release.", and the read at setup never picks one that is not offered. The one exception is the script that gives existing check-ins their kind of work (`api/journey/give-each-check-in-its-kind-of-work.ts`, decision 91, item 1): decision 91 says existing check-ins move to the new boards, so it may give an existing check-in any of the eleven kinds, offered or not. It is a release step run once by whoever runs the release, never by the read at setup or by a lead. A check-in that already holds a kind that is not offered keeps it: the read at setup leaves it alone, the lead can save it again, its board and records are served exactly as before. The board now also carries `kindsOffered` so the dialog can list only those (a request to the screens workspace is in `docs/answers-from-engine.md`, because the dialog is in `pages/board/`, which the engine workspace does not edit). The onboarding and project boards are chosen by the situation (a new hire, a new manager, a new advisor, a new project), not by a kind, so a new check-in of those situations gets its board with or without a kind, and they are not hidden. The project board's task and release grid is the engineering kind's records, which is why that kind is offered (decision 91, item 3). Tests: `api/src/modules/admin/hidden-at-release.spec.ts`.
 
