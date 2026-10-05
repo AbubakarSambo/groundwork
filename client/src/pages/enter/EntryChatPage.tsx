@@ -1610,6 +1610,22 @@ export function EntryChatPage() {
   const theSituationSaved = (onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario || '') as ScenarioKey
   const [endChosen, setEndChosen] = useState(false)
   useEffect(() => {
+    /*
+     * FAULT 2: THE ANCHOR IS ONE MONTH, WEEKLY (section 20). `HELP_TEAM_UNDERSTAND` is not in
+     * SCENARIO_FACTS at all (it is the anchor's own situation key, not a picker card), so without
+     * this the lookup below found nothing, the cadence stayed the component's bare 'FORTNIGHTLY'
+     * default and no end date was ever set - the save card showed "every 2 weeks" with no end, and
+     * the saved check-in carried `ends_at: null`. The lead can still change either.
+     */
+    if (isAnchorDraft()) {
+      if (!cadenceChosen) setCadence('WEEKLY')
+      if (!endChosen) {
+        const from = checkInBy ? new Date(`${checkInBy}T00:00:00`) : new Date()
+        const end = new Date(from.getFullYear(), from.getMonth() + 1, from.getDate())
+        setLastCheckInBy(`${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`)
+      }
+      return
+    }
     const facts = SCENARIO_FACTS[theSituationSaved]
     if (!facts) return
     if (!cadenceChosen) setCadence(CADENCE_VALUE[facts.cadence] as typeof cadence)
@@ -1625,7 +1641,7 @@ export function EntryChatPage() {
         : new Date(from.getFullYear(), from.getMonth(), from.getDate() + gap * (n - 1))
       setLastCheckInBy(`${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`)
     }
-  }, [theSituationSaved, cadenceChosen, cadence, endChosen, checkInBy, plannedFrom?.timelineDays])
+  }, [theSituationSaved, cadenceChosen, cadence, endChosen, checkInBy, plannedFrom?.timelineDays, onboardingSelections.classifiedScenario, scenario, pickedSituation])
 
   /*
    * PUTS BACK THE SETUP THIS DEVICE KEPT.
