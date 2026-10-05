@@ -2,6 +2,8 @@
 
 For the first client, who starts on Groundwork's own WhatsApp number (decision 82). Every value below goes into the hosted API's settings (its environment variables), set by whoever runs the hosting. None of them goes in the code, on a screen, in a document, or in a chat. This file names each setting and says where to find its value; it never holds a value.
 
+Since 5 October, Groundwork staff can also type the number, its IDs and its secrets into the back office instead (see "How to set up WhatsApp in the back office" below). A value saved there is used first. When nothing is saved there, the server's settings below are used, exactly as before.
+
 The secret ones are marked **secret**. Anyone who has a secret can send messages as Groundwork or pretend to be WhatsApp, so treat each like a password: copy it straight from Meta into the server's settings, and nowhere else.
 
 ## The settings
@@ -14,6 +16,7 @@ The secret ones are marked **secret**. Anyone who has a secret can send messages
 | `WHATSAPP_WEBHOOK_VERIFY_TOKEN` | A word or phrase Groundwork's side chooses. Meta sends it back once, when the webhook is first connected, to prove it is talking to the right server. | **Secret.** | Not found in Meta: whoever runs the hosting makes it up (a long random string), puts it in the server's settings, and types the same string into **developers.facebook.com** → Groundwork's app → **WhatsApp** → **Configuration** → **Webhook** → Edit → **Verify token**. |
 | `WHATSAPP_APPROVED_TEMPLATES` | The names of the message templates Meta has approved, separated by commas. Groundwork can only write first to someone, or write more than 24 hours after they last wrote, through an approved template; it records anything else as not sent. The 13 names the code expects are listed under "The templates" below. | No. | **business.facebook.com** → **WhatsApp Manager** → **Message templates**. Copy the name of each template whose status is **Active**, exactly as written. The wording to submit is in `docs/whatsapp-templates.md`. |
 | `WHATSAPP_DISPLAY_NUMBER` | Groundwork's WhatsApp number as people should read it, for example "+44 7700 900123", shown on the Connections page. | No. | **WhatsApp Manager** → **Phone numbers**: the number as listed. |
+| `SETTINGS_ENCRYPTION_KEY` | The key the back office uses to encrypt the secrets typed into it before they are stored. Without it, the back office can save the number and its IDs, but not the secrets. If it changes, every secret saved in the back office has to be typed in again. | **Secret.** | Not in Meta: whoever runs the hosting makes it up, for example with `openssl rand -base64 32`, and keeps it the same from then on. |
 | `PUBLIC_API_URL` | The hosted API's public address, for example "https://api.example.com", used to build the webhook address shown to admins. | No. | Not in Meta: it is wherever the API is hosted. |
 
 ## The templates
@@ -47,6 +50,22 @@ In **developers.facebook.com** → Groundwork's app → **WhatsApp** → **Confi
 - Then, under **Webhook fields**, subscribe to **messages**.
 
 Meta checks the address straight away by calling it with the verify token, so the API must already be running with the settings above before this step.
+
+## How to set up WhatsApp in the back office
+
+You need to be Groundwork staff (a platform admin). Nobody else can open this page, and the server refuses everyone else too.
+
+1. Ask whoever runs the hosting to make sure `SETTINGS_ENCRYPTION_KEY` and `PUBLIC_API_URL` are set on the server. You only need to do this once.
+2. Open the back office at `/admin`. On the System tab, under the WhatsApp switch, choose "Set Groundwork's WhatsApp number, its keys and the webhook". This opens `/admin/whatsapp`.
+3. Type in the WhatsApp number as people should read it, for example +44 7700 900123.
+4. Type in the phone number ID and the business account ID. Both are on the WhatsApp API Setup page in Meta (see the table above for where).
+5. Type in the access token, the app secret and the verify token. The verify token is a long word you make up. Then press Save. The secrets are stored encrypted and are never shown again. The page only says "Set" or "Not set" beside each one. To change one, type the new one and press Save again.
+6. Look at "Is it connected?". It should say "Connected" and show the number Meta has. If it says "Not connected", check the access token and the phone number ID, then press "Check again".
+7. Copy the webhook address from the page. In Meta, open the app's WhatsApp settings, then Configuration, then Webhook, and choose Edit. Paste the address as the callback address, type the same verify token you saved, and subscribe to **messages**.
+8. Type your own number, with its country code, under "Send a test message", and press the button. The message goes only to that number, even while WhatsApp is switched off. Check that it arrives. If it does not, and your number has not written to Groundwork's number in the last 24 hours, write to it first and try again, because Meta may refuse a message that is not a template.
+9. When the test message arrives, go back to the System tab and switch WhatsApp on.
+
+If nothing is saved on this page, Groundwork uses the server's `WHATSAPP_*` settings, as it always did. If nothing is set in either place, WhatsApp stays off.
 
 ## Then, in Groundwork
 
