@@ -82,6 +82,8 @@ function world(org: any, trial: any = { on: true, teamsUnder: 20, months: 1, onS
   return { row, addOn, stripeCalls, emails };
 }
 
+const withoutComments = (t: string): string => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
 describe('an existing client on the free plan', () => {
   it('keeps WhatsApp, is charged nothing, is emailed nothing, and the nightly sweep never reaches Stripe', async () => {
     const { addOn, stripeCalls, emails } = world(ON_THE_FREE_PLAN);
@@ -134,7 +136,7 @@ describe('an existing client that pays: why the switch is a release step after a
 
 describe('the switch itself gives nothing to anybody already here', () => {
   it('the trial is given only when somebody says their team size, never by the switch, a cron or a migration', () => {
-    const src = readFileSync(join(__dirname, 'the-free-trial.service.ts'), 'utf8');
+    const src = withoutComments(readFileSync(join(__dirname, 'the-free-trial.service.ts'), 'utf8'));
     expect(src).toMatch(/@OnEvent\(GroundworkEvents\.ORG_SIZE_SAID\)\s*\n\s*async whenTheySayTheirSize/);
     expect(src).not.toMatch(/@Cron\(/);
     const callers: string[] = [];
@@ -142,7 +144,7 @@ describe('the switch itself gives nothing to anybody already here', () => {
       for (const f of readdirSync(dir)) {
         const p = join(dir, f);
         if (statSync(p).isDirectory()) walk(p);
-        else if (f.endsWith('.ts') && !f.endsWith('.spec.ts') && /grantIfItApplies\(/.test(readFileSync(p, 'utf8'))) callers.push(f);
+        else if (f.endsWith('.ts') && !f.endsWith('.spec.ts') && /grantIfItApplies\(/.test(withoutComments(readFileSync(p, 'utf8')))) callers.push(f);
       }
     };
     walk(join(__dirname, '..', '..'));

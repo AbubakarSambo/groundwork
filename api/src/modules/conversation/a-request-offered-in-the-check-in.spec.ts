@@ -21,6 +21,8 @@ function world(opts: { on?: boolean; offerOn?: boolean; startedFrom?: string | n
   return { turn, items };
 }
 
+const withoutComments = (t: string): string => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
 describe('a request said in the check-in, as the person reads it', () => {
   it('leave is offered with the WhatsApp question, and the yes opens Leave in the spec\'s words', async () => {
     const w = world({ leaveOn: true });
@@ -51,7 +53,7 @@ describe('a request said in the check-in, as the person reads it', () => {
     expect(whatTheYesOpens('leave', false).says).toBe('Your organisation also has the option to manage leave through Groundwork.');
   });
   it('the check-in reply carries both, says the yes first, and a request is never also offered as an idea', () => {
-    const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
+    const src = withoutComments(readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8'));
     expect(src).toContain('...(request.requestOffer ? { requestOffer: request.requestOffer } : {}),');
     expect(src).toContain('if (request.sayFirst) answer.reply = [request.sayFirst, answer.reply]');
     expect(src).toContain('const idea = startedFrom && !request.requestOffer && !request.openTheRequest ? await afterTheirTurn(');

@@ -23,6 +23,8 @@ function aWorld(o: { switchedOn?: boolean; addOn?: boolean; display?: string | n
 }
 const AMANI = { organizationId: 'org-1', userId: 'u-amani', email: 'amani@kito.test' };
 
+const withoutComments = (t: string): string => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
 describe('the link Amani is offered', () => {
   it('opens WhatsApp with Hi typed to Groundwork\'s number, digits only', async () => {
     const { prisma, config } = aWorld();
@@ -74,16 +76,16 @@ describe('nobody else\'s read carries it', () => {
   const SRC = join(__dirname, '..', '..');
   const every = (dir: string): string[] => readdirSync(dir).flatMap((n) => { const p = join(dir, n); return statSync(p).isDirectory() ? every(p) : p.endsWith('.ts') && !p.endsWith('.spec.ts') ? [p] : []; });
   it('only the person\'s own profile, their own check-in read and the invitation compute it', () => {
-    const users = every(SRC).filter((p) => /connectWhatsAppFor\(/.test(readFileSync(p, 'utf8'))).map((p) => p.replace(SRC + '/', '')).sort();
+    const users = every(SRC).filter((p) => /connectWhatsAppFor\(/.test(withoutComments(readFileSync(p, 'utf8')))).map((p) => p.replace(SRC + '/', '')).sort();
     expect(users).toEqual(['modules/auth/auth.service.ts', 'modules/conversation/conversation.service.ts', 'modules/email/email.service.ts', 'modules/whatsapp/connect-whatsapp.ts']);
   });
   it('the check-in read is the owner-only one, and the profile is /auth/me, which is the signed-in person', () => {
-    const conv = readFileSync(join(SRC, 'modules/conversation/conversation.service.ts'), 'utf8');
+    const conv = withoutComments(readFileSync(join(SRC, 'modules/conversation/conversation.service.ts'), 'utf8'));
     const t = conv.slice(conv.indexOf('async getTranscript('));
     expect(t.indexOf('loadOwnedCheckIn(checkInId, requestingUserId)')).toBeGreaterThan(-1);
     expect(t.indexOf('loadOwnedCheckIn(checkInId, requestingUserId)')).toBeLessThan(t.indexOf('connectWhatsApp:'));
     expect(t).toContain('this.connectWhatsAppOn(checkIn.groundId, requestingUserId)');
-    const ctrl = readFileSync(join(SRC, 'modules/auth/auth.controller.ts'), 'utf8');
+    const ctrl = withoutComments(readFileSync(join(SRC, 'modules/auth/auth.controller.ts'), 'utf8'));
     expect(ctrl).toMatch(/getProfile\(@CurrentUser\(\) user: CurrentUserData\) \{\s*return this\.authService\.getProfile\(user\.id\);/);
   });
 });

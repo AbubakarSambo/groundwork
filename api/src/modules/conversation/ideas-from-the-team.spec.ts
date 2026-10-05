@@ -27,6 +27,8 @@ function world(opts: { on?: boolean; startedFrom?: string | null; model?: any; i
   return { turn, items, anthropic, prompts };
 }
 
+const withoutComments = (t: string): string => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
 describe('the offer, in the person\'s own check-in', () => {
   it('says the idea back in their own words, with the spec\'s question, and keeps nothing yet', async () => {
     const { turn, items, prompts } = world();
@@ -79,7 +81,7 @@ describe('the offer, in the person\'s own check-in', () => {
     }
   });
   it('the check-in\'s reply carries the offer and says the capture first', () => {
-    const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
+    const src = withoutComments(readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8'));
     expect(src).toContain('...(idea.ideaOffer ? { ideaOffer: idea.ideaOffer } : {}),');
     expect(src).toContain('answer.reply = [idea.sayFirst, notAsked.text].filter(Boolean)');
   });
