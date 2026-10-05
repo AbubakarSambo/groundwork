@@ -37,6 +37,7 @@ import { GroundStatus, CheckInStatus, TurnRole, PartyType, ReportActivationStatu
 import { PatternsService } from '../patterns/patterns.service';
 import { ConversationService } from '../conversation/conversation.service';
 import { WARN_BEFORE_IT_LAPSES_DAYS } from '../participants/how-long-an-invite-lasts';
+import { remindThemToCarryOn, warnTheirPhone, tellThemTheClockClosedIt } from '../whatsapp/a-check-in-left-halfway';
 
 const INACTIVITY_AUTO_CLOSE_MS = 12 * 60 * 60 * 1000;     // 12 hours
 const MAX_SESSION_AGE_MS = 48 * 60 * 60 * 1000;            // 48 hours
@@ -477,6 +478,9 @@ export class GroundsCron implements OnApplicationBootstrap {
          * walked away had an empty record and no next session. One place finishes a session now;
          * this decides only that it is time. See ConversationService.closeByTheClock.
          */
+        /* Their phone is told it closed, with what they said kept, before the report follows (a-check-in-left-halfway.ts). */
+        const toldTheirPhone = this.whatsapp ? tellThemTheClockClosedIt(this.prisma, this.whatsapp, checkIn.id).catch(() => false) : Promise.resolve(false);
+        await toldTheirPhone;
         await this.conversation.closeByTheClock(checkIn.id);
 
         this.logger.warn(`Auto-closed check-in ${checkIn.id} (session ${checkIn.sessionNumber}): ${reason}`);
@@ -521,6 +525,35 @@ export class GroundsCron implements OnApplicationBootstrap {
     if (orphaned.length > 0) {
       this.logger.warn(`${orphaned.length} check-in(s) hold a person's turn with no reply after an hour: ${orphaned.join(', ')}`);
     }
+  }
+
+  /**
+   * ONE REMINDER TO CARRY ON, for somebody who stopped halfway on WhatsApp (Hafsah, 5 October, night). After
+   * three hours of quiet in the day, once per session. See whatsapp/a-check-in-left-halfway.ts.
+   */
+  @Cron('*/30 * * * *', { timeZone: 'UTC' })
+  async remindThoseWhoStoppedHalfway() {
+    await this.remindThoseWhoStoppedHalfwayInner(new Date());
+  }
+
+  async remindThoseWhoStoppedHalfwayInner(now: Date): Promise<{ sent: number }> {
+    if (!this.whatsapp) return { sent: 0 };
+    const open = await this.prisma.checkIn.findMany({
+      where: { status: CheckInStatus.IN_PROGRESS, ground: { status: { notIn: HELD } } },
+      select: { id: true },
+    });
+    let sent = 0;
+    for (const c of open) {
+      try {
+        const last = await this.prisma.conversationTurn.findFirst({ where: { checkInId: c.id }, orderBy: { createdAt: 'desc' }, select: { createdAt: true, role: true } });
+        if (last && now.getTime() - last.createdAt.getTime() >= WARNING_WINDOW_START_MS) continue;
+        if (await remindThemToCarryOn(this.prisma, this.whatsapp, c, last as any, now)) sent++;
+      } catch (err: any) {
+        this.logger.warn(`The reminder to carry on could not be sent for check-in ${c.id}: ${err?.message}`);
+      }
+    }
+    if (sent) this.logger.log(`WhatsApp: ${sent} reminder(s) to carry on a check-in.`);
+    return { sent };
   }
 
   /**
@@ -570,6 +603,8 @@ export class GroundsCron implements OnApplicationBootstrap {
           where: { id: checkIn.id },
           data: { warningFiredAt: now },
         });
+        /* And to their phone, when they were doing this session on WhatsApp (a-check-in-left-halfway.ts). */
+        if (this.whatsapp) await warnTheirPhone(this.prisma, this.whatsapp, checkIn.id).catch(() => false);
 
         this.logger.log(`Session-closing warning injected for check-in ${checkIn.id} (inactive ~${Math.round(inactiveMs / 3_600_000)}h)`);
         warned++;

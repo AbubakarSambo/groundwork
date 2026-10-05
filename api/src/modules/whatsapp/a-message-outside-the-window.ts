@@ -27,6 +27,8 @@ export const BUSINESS_INITIATED: ReadonlySet<string> = new Set([
   'checkin-open', 'due-tomorrow', 'opens-soon', 'closes-soon', 'overdue', 'team-almost-in', 'your-view-matters', 'lead-summary',
   'anchor-weekly-insight', 'anchor-follow-up',
   'report', 'report-retry', 'request-waiting', 'request-decided', 'review-started', 'review-decided',
+  /* A check-in left halfway (a-check-in-left-halfway.ts): the reminder to carry on, the half-hour warning, and the clock closing it. */
+  'carry-on', 'closes-in-half-an-hour', 'closed-by-the-clock',
 ]);
 
 /**
@@ -56,6 +58,8 @@ export const FIRST_MESSAGES: ReadonlySet<string> = new Set([
   'anchor-weekly-insight',
   /* The anchor's nudge (piece 30; decision 105 item 3): one of the morning's chases, so it counts the same way. */
   'anchor-follow-up',
+  /* A check-in left halfway: the one reminder to carry on is the day's first message; the half-hour warning is a closing. */
+  'carry-on', 'closes-in-half-an-hour',
 ]);
 /**
  * APPROVALS GO STRAIGHT AWAY (decision 92, item 3). Telling an approver that a request waits for them
@@ -65,7 +69,7 @@ export const FIRST_MESSAGES: ReadonlySet<string> = new Set([
  */
 export const APPROVALS: ReadonlySet<string> = new Set(['request-waiting']);
 /** The messages that mark a day a check-in opens or closes, when two may go. */
-export const OPENING_OR_CLOSING: ReadonlySet<string> = new Set(['checkin-open', 'opens-soon', 'closes-soon']);
+export const OPENING_OR_CLOSING: ReadonlySet<string> = new Set(['checkin-open', 'opens-soon', 'closes-soon', 'closes-in-half-an-hour']);
 /**
  * THE MESSAGES THAT WENT BEFORE THIS RELEASE: the report after a session closes. Every other message
  * Groundwork starts is new, and goes to an organisation only once it has turned WhatsApp on (decisions
