@@ -80,6 +80,20 @@ in `whatToAskFor` (`board/where-each-person-is-against-their-number.ts`), not wr
 The person's own coaching still tells them "Find out who owns this by name", because there they
 are the reader and it is advice to them.
 
+**127 (5), "their" for the reader, is not changed, and here is why.** The line left is "…while you
+have been working on a different task at their own request." "Their own" would normally point back to
+"you", which would make it "at your own request". But the same board says the change was "as
+requested by Nadia Haddad". So "your own request" could well be false, and I cannot tell from the
+sentence whose request it was. That sentence is the model's, so the fix belongs with the judgement
+and prompt work, not in a rule that guesses. I have stopped on it.
+
+**127 (6), a kind of work nobody set.** The person's own coaching said "This is session 1 of 4 of
+founder or CEO work." while the board says the kind of work is not set. Both were true: the label is
+the engine's reading of what she said, not a setting. The coaching now reads "This is session 1 of
+4. What you have said so far reads as founder or CEO work." The coaching is private, so only the
+person it is written for reads it. Where somebody gave their own role, it still reads "This is
+session 1 of 4 of your work as poultry farmer." The engine still coaches from the same role map.
+
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
 ```
