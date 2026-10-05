@@ -1,4 +1,5 @@
 import { TheFreeTrialService } from './the-free-trial.service';
+import { BadRequestException } from '@nestjs/common';
 import { PricingService, ANCHOR_TRIAL_KEY } from './pricing.service';
 
 /**
@@ -135,5 +136,16 @@ describe('the anchor month and the regular trial', () => {
     };
     const pricing: any = { getFreeTrial: jest.fn(async () => ({ on: true, teamsUnder: 20, months: 1 })), listPlans: jest.fn(async () => PLANS) };
     expect(await new TheFreeTrialService(prisma, pricing).grantIfItApplies('o', 'fewer', NOW)).toEqual({ granted: false, why: 'it has a free run of its own' });
+  });
+});
+
+describe('the setting is written from Admin, as the free trial is', () => {
+  it('only on or off: its month and its twenty people are not settings', async () => {
+    const upserts: any[] = [];
+    const svc = new PricingService({ platformSetting: { upsert: jest.fn(async (q: any) => { upserts.push(q); return {}; }) } } as any, {} as any);
+    expect(await svc.setAnchorTrial({ on: true }, 'admin-1')).toEqual({ on: true, months: 1, people: 20 });
+    expect(upserts[0].where).toEqual({ key: ANCHOR_TRIAL_KEY });
+    expect(await svc.setAnchorTrial({ on: false, months: 6, people: 50 } as any, 'admin-1')).toEqual({ on: false, months: 1, people: 20 });
+    await expect(svc.setAnchorTrial({ on: 'yes' }, 'admin-1')).rejects.toThrow(BadRequestException);
   });
 });

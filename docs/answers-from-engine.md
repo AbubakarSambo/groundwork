@@ -318,6 +318,12 @@ both pieces. They belong with the conversation work, after the run.
 - Specs that mock `months: 3` in the served trial: `lib/the-free-trial.spec.ts` (it pins "Teams of fewer than 20 people get 3 months free."), `pages/auth/the-free-trial-on-sign-up.spec.tsx`, `pages/org/OrgNewPage.spec.tsx` and `pages/billing/the-pricing-page-as-each-reader-sees-it.spec.tsx`.
 - The prototype's pricing page (`docs/prototype/screens/F2-billing/pricing.txt`) still says 3 months. The decision overrides it.
 
+**The anchor trial can be switched from Admin.** It works like the free trial:
+`GET /admin/pricing/anchor-trial`, and `PATCH /admin/pricing/anchor-trial` with `{ "on": true }` or
+`{ "on": false }`. Only on or off can be set. It is always one month for up to 20 people, the lead
+included, and anything else sent is ignored. If you want it on Admin → System → Pricing beside the
+free trial, that is a screen to add.
+
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
 ```

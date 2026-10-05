@@ -206,6 +206,23 @@ export class PricingService {
     return next;
   }
 
+  /**
+   * SWITCH THE ANCHOR TRIAL ON OR OFF, from Admin → System → Pricing, as the free trial is (anchor piece 34). Only `on`
+   * is set: the anchor trial is one month for up to 20 people, the lead included (decision 96 item 3; every free run is
+   * one month, 5 October 2026), so its months and its size are not settings anybody can change here.
+   */
+  async setAnchorTrial(input: { on?: unknown }, adminUserId: string): Promise<AnchorTrial> {
+    if (typeof input?.on !== 'boolean') throw new BadRequestException('Say whether the anchor trial is on or off.');
+    const next: AnchorTrial = { ...DEFAULT_ANCHOR_TRIAL, on: input.on };
+    await this.prisma.platformSetting.upsert({
+      where: { key: ANCHOR_TRIAL_KEY },
+      create: { key: ANCHOR_TRIAL_KEY, value: next as any, updatedBy: adminUserId },
+      update: { value: next as any, updatedBy: adminUserId },
+    });
+    this.logger.log(`Anchor trial set to ${JSON.stringify(next)} by ${adminUserId}`);
+    return next;
+  }
+
   /** The seat cap for a plan, or null for unlimited. Throws for a plan with no row. */
   async memberCapFor(plan: SubscriptionPlan): Promise<number | null> {
     const row = await this.prisma.pricingPlan.findUnique({ where: { plan }, select: { memberCap: true } });
