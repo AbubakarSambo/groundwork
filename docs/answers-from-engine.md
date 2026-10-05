@@ -257,6 +257,14 @@ given once, never on top of a free run and never to one that is paying, and noth
 now also sends `anchorTrial: { on, months: 1, people: 20 }`, so the anchor landing says "for a month"
 only while it is on.
 
+**A name said again where somebody else is in the sentence is said as a name.** The new judgement
+prompt repeats a person's label instead of using a pronoun. The read used to turn the repeat into
+"they" (request 129 item 6). Where a second person is named in the sentence, the name is now said
+again: "Amina Yusuf said, about Tobi Adewale, that Amina would send the sheets." With one person only,
+"they" stays, as request 129 asked, because it cannot be anybody else: "Amina Yusuf said they would send
+the sheets." The reader as "you" does not count as a second person ("Dr Amina Bello says they told you
+this").
+
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
 ```
