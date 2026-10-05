@@ -87,6 +87,8 @@ export function anInboundHarness(opts: {
     fetchMediaOn: jest.fn(async () => null),
     lastWroteTo: jest.fn(async () => null),
     notNow: jest.fn(async () => undefined),
+    stopOrResume: jest.fn(async () => undefined),
+    hasSaidStop: jest.fn(async () => false),
   };
   const conversation: any = {
     open: jest.fn(async () => ({ reply: 'What moved since last time?' })),
