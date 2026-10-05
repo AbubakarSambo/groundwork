@@ -87,7 +87,8 @@ describe('somebody can find out without pressing Pay', () => {
   it('and is never told the key itself', () => {
     const route = CONTROLLER.slice(CONTROLLER.indexOf("@Get('stripe')"), CONTROLLER.indexOf("@Get('whatsapp')"));
     expect(route).not.toMatch(/secretKey/);
-    expect(route).not.toMatch(/\.stripe\b(?!\.isConfigured)/);
+    /* The route may read whether a key is set and what kind (`keyKind`: test, live or placeholder, a word from its prefix), never the key. */
+    expect(route).not.toMatch(/\.stripe\b(?!\.isConfigured|\.keyKind)/);
   });
 });
 
