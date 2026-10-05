@@ -249,7 +249,7 @@ function StripeStatus() {
           color: data.isConfigured ? 'var(--gw-green-t)' : 'var(--gw-muted)',
         }}
       >
-        {data.isConfigured ? 'Live' : 'No key set'}
+        {data.badge ?? (data.isConfigured ? 'Test or live' : 'No key set')}
       </div>
     </div>
   )
