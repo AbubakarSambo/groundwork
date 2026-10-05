@@ -1710,6 +1710,33 @@ export class BoardService {
         (entries as any[]).map((e) => ({ fromParticipantId: e.participantId, sourceCheckInId: e.checkInId })),
         checkIns as any[],
       );
+      /*
+       * AND WHAT THEY PROMISED IN A CHECK-IN (request 130 b). A commitment said in a check-in is stored as
+       * its own row (GroundCommitment, source CHECK_IN), and this panel read only record lines, so a person
+       * whose promise was stored there and nowhere else had an empty list here: Aisha committed to a photo
+       * of the delivery sheets and "Who owns what" sent her nothing. Only the person's own check-in promises
+       * (never a paste or a lead's line), never one that was dropped, and never one already here in the same
+       * words. Quoted only where the row says it is their words, word for word.
+       */
+      const promisedInACheckIn = (((await ((this.prisma as any).groundCommitment?.findMany?.({
+        where: { groundId, source: 'CHECK_IN', participantId: { not: null } },
+        orderBy: { createdAt: 'asc' },
+      }) ?? Promise.resolve([])).catch(() => [])) ?? []) as any[])
+        .filter((c) => c?.source === 'CHECK_IN' && !!c.participantId && c.status !== 'DROPPED' && typeof c.text === 'string' && c.text.trim());
+      const sameWords = (a: string, b: string) => a.trim().replace(/[.!?]+$/, '').toLowerCase() === b.trim().replace(/[.!?]+$/, '').toLowerCase();
+      const theirPromises = (pid: string) => promisedInACheckIn
+        .filter((c) => c.participantId === pid)
+        .filter((c) => !entries.some((e) => e.participantId === pid && e.type === 'COMMITMENT' && sameWords(cleanText(e.text), cleanText(c.text))))
+        .map((c) => {
+          const text = cleanText(c.text);
+          const mark = theMarkOf({ type: 'COMMITMENT', text, recallBased: false, participantId: pid } as any, whoAdded);
+          return {
+            id: c.id, type: 'COMMITMENT', text,
+            saidAs: (c.saidWordForWord === true ? 'their-words' : 'not-their-words') as 'their-words' | 'not-their-words',
+            mark, markSays: WHAT_EACH_MARK_SAYS[mark],
+            sessionNumber: typeof c.statedInSession === 'number' ? c.statedInSession : null,
+          };
+        });
       out.whoOwnsWhat = ground.participants
         .filter((p) => !p.managingOnly)
         .map((p) => ({
@@ -1731,7 +1758,7 @@ export class BoardService {
             mark: theMarkOf({ ...(e as any), text: cleanText(e.text) }, whoAdded),
             markSays: WHAT_EACH_MARK_SAYS[theMarkOf({ ...(e as any), text: cleanText(e.text) }, whoAdded)],
             sessionNumber: checkIns.find((c) => c.id === e.checkInId)?.sessionNumber ?? null,
-          })),
+          })).concat(theirPromises(p.id) as any[]),
         }));
     }
 

@@ -10,6 +10,7 @@
 - A person's own coaching no longer says "session 1 of 4 of founder or CEO work" as if somebody had set it; it reads "This is session 1 of 4. What you have said so far reads as founder or CEO work." (127 item 6).
 - I stopped on 127 item 5, "at their own request": the board says the request was Nadia Haddad's, so changing it to "your own request" could be false. It belongs with the judgement work.
 - Where no worry is named, the Blockers tile now says the true reason: other people's words this reader may not read, or none kept in the words it was said, which is true for the lead too (127 item 7, changed after review). After a second review it also says when some are other people's words and the rest were not kept, and when a kept worry cannot be quoted whole.
+- "Who owns what" now includes the promises people made in their check-ins. Before, 59 people on this computer's database had an empty list because their promise was stored only as a promise (130 b).
 - I stopped on 139, the goal drawn as "Point to successfully renewed contracts", because no code writes that line and it is not in this computer's database. I asked the screens workspace which field carries it. I did not start 130 (b), 130 (d) or 131 (6), because none of them is small.
 
 ## 5 October, 15:30: where I am, for your fresh session

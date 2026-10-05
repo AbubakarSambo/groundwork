@@ -126,6 +126,21 @@ check-in (e2cfd3d8). Please tell me which field of the board carries it (for exa
 `startingState`, or a target's `name`), and I will fix it at the place that writes it. I have not
 started 130 (b), 130 (d) or 131 (6) either, because none of them is small.
 
+**130 (b), "Who owns what" was empty for Aisha.** A promise said in a check-in is stored as its own
+row, and this panel read only the record's lines. Aisha's promise of a photo of the delivery sheets
+was stored as a promise and nowhere else, so her list was empty. On this computer's database, 59
+people had promises like this and an empty list. The panel now also sends each person's own promises
+from their check-ins:
+
+- Rukia (the lead), Grace and Juma (admins) read "Neema Achieng said, "I will send a photo of the delivery sheets on Friday.""
+- Neema reads "You said, "I will send a photo of the delivery sheets on Friday.""
+- A promise not kept word for word reads "Neema Achieng has made a commitment here.", with none of her words.
+- Where people do not see each other, nobody else is sent it. A dropped promise is not sent, and a promise already on the list in the same words is not sent twice.
+
+Promises a lead pasted or wrote are not added, because they are not the person's own. I could not
+check "42 drops, missed 9" on your check-in, because it is not on this computer. If it is still
+missing once you pull, please tell me which row holds it.
+
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
 ```
