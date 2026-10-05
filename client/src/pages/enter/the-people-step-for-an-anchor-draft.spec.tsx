@@ -105,6 +105,40 @@ describe('the people step, for an anchor draft', () => {
     expect(screen.queryByText('Invite people')).toBeNull()
   })
 
+  /**
+   * ITEM 2: THE PEOPLE STEP'S RULES NOW TRAVEL FROM THE SERVED DRAFT, NOT A FIXED COPY
+   * (docs/answers-from-engine.md, "Request 149 (2 of 6)"). `GET /entry/anchor-start` serves
+   * `thePeopleStep`; `AnchorLandingPage.tsx` carries it to this page, which folds it into the
+   * draft's own saved session (`thePeopleStep`) from then on. A served value with different words
+   * from `ANCHOR_PEOPLE_STEP_RULES` is what this page draws - proof it is reading the carried value,
+   * not the fixed fallback.
+   */
+  it('draws a served thePeopleStep from the draft’s own session, not the fixed fallback', async () => {
+    const served = {
+      limit: 20 as const, theLeadCounts: true as const, mayAdd: 19 as const,
+      heading: 'Served: who needs to be part of this?',
+      intro: 'Served: add up to 20 people from the engine itself.',
+      contextLabel: 'Served: what do they do?',
+      button: 'Served: start my Groundwork.',
+      limitSentence: 'Served: this Groundwork holds 20 people.',
+    }
+    localStorage.setItem('gw_entry_session', JSON.stringify({
+      closed: true, onboardingStep: 7,
+      history: [{ role: 'assistant', content: 'hi' }, { role: 'user', content: 'ship it' }],
+      report: JSON.stringify({ alignmentStatus: 'Clear', whatGroundworkSaw: 'x', alignmentBasis: '', areasRequiringAlignment: [], alignmentReached: [], honestClose: { aligned: '', open: '', revisit: '', risk: '' }, mentionedPeople: [], suggestedParties: [] }),
+      onboardingSelections: { mode: 'new', initial: 'Help my team understand', classifiedScenario: 'HELP_TEAM_UNDERSTAND' },
+      thePeopleStep: served,
+    }))
+    renderPage()
+    const emailInput = await screen.findByPlaceholderText('your@email.com')
+    fireEvent.change(emailInput, { target: { value: 'lead@example.test' } })
+    fireEvent.submit(emailInput.closest('form')!)
+    await waitFor(() => expect(authApi.entrySave).toHaveBeenCalled())
+    expect(await screen.findByText('Served: who needs to be part of this?')).toBeTruthy()
+    expect(screen.getByText('Served: add up to 20 people from the engine itself.')).toBeTruthy()
+    expect(screen.queryByText('Who needs to be part of this?')).toBeNull()
+  })
+
   it('adds up to the shrunk mayAdd of 2, then refuses the next one with the engine’s own sentence', async () => {
     await openInviteBlock(true)
     for (let i = 0; i < 2; i++) {
@@ -141,7 +175,7 @@ describe('the limit is enforced at every place a contributor is actually added',
   })
 
   it('the colleague picker\'s multi-select slices to the room actually left, not once per item', () => {
-    expect(src).toContain('const room = isAnchorDraft() ? Math.max(0, ANCHOR_PEOPLE_STEP_RULES.mayAdd - inviteAdded.length) : picked.length')
+    expect(src).toContain('const room = isAnchorDraft() ? Math.max(0, thePeopleStepRules.mayAdd - inviteAdded.length) : picked.length')
   })
 
   it('submitInviteContext (the "Add person" button) checks the limit first', () => {
@@ -153,7 +187,7 @@ describe('the limit is enforced at every place a contributor is actually added',
   })
 
   it('the pasted-list "Add all" button slices to the room actually left', () => {
-    expect(src).toContain('const room = isAnchorDraft() ? Math.max(0, ANCHOR_PEOPLE_STEP_RULES.mayAdd - inviteAdded.length) : allEmails.length')
+    expect(src).toContain('const room = isAnchorDraft() ? Math.max(0, thePeopleStepRules.mayAdd - inviteAdded.length) : allEmails.length')
   })
 })
 

@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { TheLeadsReveal } from './anchorShapes';
+import type { TheLeadsReveal, ThePeopleStepRules } from './anchorShapes';
 
 const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api/v1` : '/api/v1'
 
@@ -31,10 +31,13 @@ export interface EntryReport {
   suggestedParties: { role: string; reason: string }[]
   /**
    * PIECE 8/9: THE LEAD'S REVEAL, "Help my team understand" (plan section 5, row 3;
-   * docs/answers-from-engine.md, "Request 147", `TheLeadsReveal`). Shape only - not served yet, so
-   * this is `undefined` on every report today. Present only on an anchor draft's own report
-   * (`scenario === 'HELP_TEAM_UNDERSTAND'`), and only for the lead: there is no other reader of a
-   * setup report, since it is read before anybody else has joined.
+   * docs/answers-from-engine.md, "Request 149 (1 of 6)", `TheLeadsReveal`). Served now, only on an
+   * anchor draft's own report (`scenario === 'HELP_TEAM_UNDERSTAND'`) and only while
+   * `release.anchorScenario` is on - the key is absent otherwise, never `undefined` with the switch
+   * on. Present only for the lead: there is no other reader of a setup report, since it is read
+   * before anybody else has joined. `carrying`, `whatTheTeamNeedsToUnderstand` and `seeingToday`
+   * still read their "not written down yet" sentence until the seven fields are pulled from the
+   * lead's words (a model step, request 149 missing (2)).
    */
   leadsReveal?: TheLeadsReveal | null
 }
@@ -304,9 +307,12 @@ export const entryAnchorApi = {
 
   /**
    * `GET /entry/anchor-start?source=<mark>`: called once on arrival at `/start/team`. With the
-   * switch on it answers the situation key (`HELP_TEAM_UNDERSTAND`), a label for the ground, and the
-   * source mark read back exactly as sent (or `null`). With the switch off it answers 404 - the
-   * caller is expected to show the engine's own sentence rather than invent one.
+   * switch on it answers the situation key (`HELP_TEAM_UNDERSTAND`), a label for the ground, the
+   * source mark read back exactly as sent (or `null`), and `thePeopleStep`
+   * (docs/answers-from-engine.md, "Request 149 (2 of 6)") - the people step's own heading, intro,
+   * context label, button and limit sentence, carried from here through to the entry chat's people
+   * step rather than read off the fixed `ANCHOR_PEOPLE_STEP_RULES`. With the switch off it answers
+   * 404 - the caller is expected to show the engine's own sentence rather than invent one.
    */
   start: (source?: string | null): Promise<{
     available: true
@@ -314,6 +320,7 @@ export const entryAnchorApi = {
     startedFrom: 'anchor'
     groundLabel: string
     source: string | null
+    thePeopleStep?: ThePeopleStepRules
   }> =>
     apiClient.get('/entry/anchor-start', {
       params: source ? { source } : undefined,
