@@ -1,6 +1,6 @@
 <!-- key: scenario.open_read.participant
      version: 1   activated: 2026-08-26 12:19:09.897
-     Exported from the database, 26 September 2026. THIS IS THE VERSION THAT RUNS TODAY.
+     Exported from the database, 5 October 2026. THIS IS THE VERSION THAT RUNS TODAY.
      Read-only: nothing re-seeds these from files, so editing this changes nothing.
      See docs/scenario-packs/README.md. -->
 

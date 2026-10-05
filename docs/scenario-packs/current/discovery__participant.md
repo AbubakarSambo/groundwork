@@ -1,6 +1,6 @@
 <!-- key: scenario.discovery.participant
      version: 3   activated: 2026-09-20 14:23:43.737
-     Exported from the database, 26 September 2026. THIS IS THE VERSION THAT RUNS TODAY.
+     Exported from the database, 5 October 2026. THIS IS THE VERSION THAT RUNS TODAY.
      Read-only: nothing re-seeds these from files, so editing this changes nothing.
      See docs/scenario-packs/README.md. -->
 

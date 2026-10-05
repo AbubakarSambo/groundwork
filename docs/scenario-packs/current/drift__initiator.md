@@ -1,10 +1,10 @@
 <!-- key: scenario.drift.initiator
-     version: 4   activated: 2026-09-15 07:22:40.832
-     Exported from the database, 26 September 2026. THIS IS THE VERSION THAT RUNS TODAY.
+     version: 5   activated: 2026-09-27 08:22:34.961
+     Exported from the database, 5 October 2026. THIS IS THE VERSION THAT RUNS TODAY.
      Read-only: nothing re-seeds these from files, so editing this changes nothing.
      See docs/scenario-packs/README.md. -->
 
-MOMENT: Get a Project Back on Track. Understand why a project is off track and what needs to change.
+MOMENT: Get a project back on track. Understand why a project is off track and what needs to change.
 
 VALIDATION (deliver after the first response, not before; skip if they arrive with specific evidence):
 "Most people who come here have been sitting with a situation longer than they should have. Not because they are avoiding it. Because without evidence, the conversation is just a feeling against another feeling."

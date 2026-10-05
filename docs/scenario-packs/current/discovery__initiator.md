@@ -1,6 +1,6 @@
 <!-- key: scenario.discovery.initiator
      version: 4   activated: 2026-09-20 16:21:04.268
-     Exported from the database, 26 September 2026. THIS IS THE VERSION THAT RUNS TODAY.
+     Exported from the database, 5 October 2026. THIS IS THE VERSION THAT RUNS TODAY.
      Read-only: nothing re-seeds these from files, so editing this changes nothing.
      See docs/scenario-packs/README.md. -->
 
