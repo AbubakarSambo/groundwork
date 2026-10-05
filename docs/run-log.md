@@ -2,6 +2,25 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## The meetings line, and the one heavy task at a time (5 October)
+
+`bring-a-check-in-up-to-date.ts` now has a rule 7: where no meeting is on the record it
+takes the meetings line out of the stored report's row. The screens workspace asked for
+this twice and my earlier answer pointed them at a script that had no such rule, which
+was wrong of me. Proved on a local database loaded from the MarketView Q4 seed: two
+lines before, none after, everything else in the row intact, second dry run clean.
+
+That seed also answers Hafsah's second ask in request 140 — the Q4 check-in is
+`6e84ca43-31d4-4e33-bf38-91defee0543a`, led by wairimu, with otieno and naliaka
+checking in, the same ids on any computer.
+
+While reading the rest of 121 to 140 I found two of the items Hafsah named — the
+headline question (127, 129, 133) and the first count read as a rise (130 a) — already
+fixed and tested at this head. So the next step is not to rebuild them but to check
+every item of 121 to 140 against this code and say which still happen. One helper for
+that, once the full API suite (her third ask) has finished, because that is the one
+heavy thing running.
+
 ## Eight of the screens' open requests were already fixed (5 October)
 
 Checked each one at `72a2f1a2` instead of assuming: 119, 120, 126, 137, 138, 141, 146
