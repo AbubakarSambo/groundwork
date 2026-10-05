@@ -1,6 +1,7 @@
-import { useEffect } from 'react'
+import { useEffect, useLayoutEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth'
+import { useNoRailStore } from '@/stores/no-rail'
 import { Page, Mark, PageTitle, Button } from '@/components/gw/ui'
 
 /**
@@ -22,6 +23,13 @@ import { Page, Mark, PageTitle, Button } from '@/components/gw/ui'
 export function NotFoundPage() {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   const location = useLocation()
+  const askForNoRail = useNoRailStore(s => s.set)
+
+  /* As the prototype draws it: a card of its own, with no sidebar. */
+  useLayoutEffect(() => {
+    askForNoRail(true)
+    return () => askForNoRail(false)
+  }, [askForNoRail])
 
   useEffect(() => {
     // Visible in server/console logs so a bad link shows up without anyone

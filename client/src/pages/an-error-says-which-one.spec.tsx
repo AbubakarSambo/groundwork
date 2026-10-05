@@ -26,7 +26,10 @@ describe('the shared rule', () => {
 describe('the screens', () => {
   it('the board asks the rule and offers Try again where it can', () => {
     const board = read('board/BoardPage.tsx')
-    expect(board).toContain('whyYouCannotSeeThis(whatWentWrong(error))')
+    /* U.20: the call is split in two so a 404 can show the prototype's gone check-in first; the
+       board still asks the same rule for every other failure. */
+    expect(board).toContain('const what = whatWentWrong(error)')
+    expect(board).toContain('const why = whyYouCannotSeeThis(what)')
     /* U.10 (d): the board's own <button> is now the shared Button (UIButton), rebuilt from the
        parts - the offer itself ("Try again", only when `why.canRetry`) is unchanged. */
     expect(board).toMatch(/\{why\.canRetry && <UIButton kind="primary" onClick=\{\(\) => refetch\(\)\}/)

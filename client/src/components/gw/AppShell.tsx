@@ -1,3 +1,4 @@
+import { useNoRailStore } from '@/stores/no-rail'
 import { toast } from 'sonner'
 import { mayRenameACheckIn } from '@/lib/who-may-rename-a-check-in'
 import { MARKETING_URL } from '@/lib/marketing'
@@ -1383,8 +1384,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   /* The pages a link in an email opens, with a token in the address (U.3). They are a card of their
      own, as the prototype draws them, whoever happens to be signed in on this browser. */
   const fromAnEmail = ['/stop-reminders/', '/unsubscribe/', '/j/'].some(p => location.pathname.startsWith(p))
+  /* A page with no address of its own that the prototype draws with no sidebar: the not-found page. */
+  const aPageAskedForNoRail = useNoRailStore(s => s.asked)
   const showSidebar =
-    isAuthenticated && !CHROMELESS.includes(location.pathname) && !isBackOffice && !bare && !fromAnEmail
+    isAuthenticated && !CHROMELESS.includes(location.pathname) && !isBackOffice && !bare && !fromAnEmail && !aPageAskedForNoRail
 
   if (!showSidebar) return <main id="main">{children}</main>
 

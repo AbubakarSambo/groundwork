@@ -24,6 +24,7 @@ import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
 import { OutcomeFeedback } from '@/components/gw/OutcomeFeedback'
 import { useAreYouSure, Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
 import { whatWentWrong, whyYouCannotSeeThis } from '@/pages/report/why-you-cannot-see-this'
+import { GroundGone } from '@/components/gw/GroundGone'
 import { TheJudgement } from '@/components/gw/TheJudgement'
 import { WhatTheRecordShows } from '@/components/gw/WhatTheRecordShows'
 import { WhatTheNetworkSaid } from '@/components/gw/WhatTheNetworkSaid'
@@ -1170,7 +1171,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
      * board. The report page already knows how to say which (why-you-cannot-see-this.ts): the same
      * words here, and Try again where trying again can work.
      */
-    const why = whyYouCannotSeeThis(whatWentWrong(error))
+    const what = whatWentWrong(error)
+    const why = whyYouCannotSeeThis(what)
+    /* A 404 is the prototype's own "a check-in that's gone" (F4-small-states/c-gone-board): the
+       board's address, with the sidebar, and the same words whether the check-in was ended,
+       removed, or was never this reader's (GW-PRI-04: the server answers all of them alike). */
+    if (what.status === 404) return <GroundGone />
     /*
      * U.20 (F4-small-states/states.txt, "It didn't load"/"The board didn't load"): the prototype's
      * own words, for the one case they are true of - a connection problem, where trying again can

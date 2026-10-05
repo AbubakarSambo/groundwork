@@ -61,4 +61,14 @@ describe('when the board fails to load', () => {
     expect(screen.queryByText(/usually the connection/)).toBeNull()
     expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
   })
+
+  it('a board that answers 404 is the prototype’s gone check-in, the same words for every cause', async () => {
+    ;(boardApi.get as any).mockRejectedValue(Object.assign(new Error('not found'), { response: { status: 404, data: { message: 'Check-in not found' } } }))
+    renderBoard()
+    expect(await screen.findByRole('heading', { name: 'This check-in isn’t available any more' })).toBeTruthy()
+    expect(screen.getByText(/Whoever ran it ended it or removed it\. What you wrote is kept in your own history\./)).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Open my work' })).toHaveAttribute('href', '/you')
+    expect(screen.getByRole('link', { name: 'Go to Check-ins' })).toHaveAttribute('href', '/grounds')
+    expect(screen.queryByText(/Check-in not found/)).toBeNull()
+  })
 })
