@@ -15,6 +15,8 @@ export interface AnOpenCheckIn {
   label: string;
   /** The lead keeps this check-in in the app (`overWhatsApp = false`). It is never answered from the phone. */
   keptOffThePhone?: boolean;
+  /** When it is due, for "the one closing soonest first" (decision 106 item 1). */
+  dueAt?: Date | null;
 }
 
 /** "September sprint, session 3." One line, so somebody on three grounds knows which this is. */

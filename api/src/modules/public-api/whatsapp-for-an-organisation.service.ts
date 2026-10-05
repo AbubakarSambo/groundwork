@@ -21,6 +21,9 @@ import { aDecisionIn } from '../suites/a-request-in-words';
 import { aQuestionAskedAboutARequest } from '../suites/an-approver-asks-by-saying-so';
 import { BACK_TO_THE_CHECK_IN, YES_OR_NO_TO_AN_ANSWER, isThisYourAnswer, type AQuestionWaiting } from '../suites/a-question-about-a-request';
 import { plainlyEnglish } from './plainly-english';
+import { closingSoonestFirst, oneAtATime, theNextOne } from './several-check-ins-open';
+import { whenItIsDue } from '../whatsapp/what-goes-to-a-phone';
+import { formsOfTheSameNumber } from '../whatsapp/a-number-whatsapp-can-reach';
 import { AnOpenCheckIn, whatTheFileIsCalled, sessionHeader, whichOneRows, whichOneAsText, pickedOne, pickedFromText, whatArrived, reportAsText, reportAsTemplateBlanks, LANGUAGES_WE_CONVERSE_IN, A_FINISH_WORD, A_GREETING_ALONE, A_NOT_NOW, NOT_NOW_SAYING,
   NOT_ENOUGH_YET_TO_FINISH, isAnAskWord, A_BACK_WORD, A_SWITCH_WORD, A_YES, A_NO, THE_WORDS, NOW_ASKING, ASKING_NEEDS_A_ROSTER_ENTRY, ASK_READS_WORDS,
   ONLY_ONE_OPEN, NONE_OPEN, BACK_IN, BACK_TO_NOTHING, ASKING, isAsking, wasIn, namedCheckIn, looksLikeARequest, shallITreatThisAs, YES_OR_NO, HELD_WORDS_PUT_IN, heldWordsNotPut, type ARequest,
@@ -72,6 +75,8 @@ export class WhatsAppForAnOrganisationService {
     if (message.id && !(await this.firstTimeWeSeeThis(organizationId, anInboundKey(via, WhatsAppService.normalize(from), String(message.id))))) return;
     if (via === 'theirs') await this.prisma.whatsAppConnection.update({ where: { organizationId }, data: { lastInboundAt: new Date() } }).catch(() => undefined);
     await this.route(organizationId, from, whatArrived(message), {
+      /* A reply quoting one of our messages, or a template's button, carries that message's id (decision 106 item 1). */
+      repliesTo: typeof message.context?.id === 'string' ? message.context.id : null,
       who: 'we do',
       say: (text) => this.whatsapp.sendOn(via, organizationId, from, text),
       list: (prompt, rows, asText) => this.whatsapp.sendListOn(via, organizationId, from, prompt, rows, asText),
@@ -127,6 +132,7 @@ export class WhatsAppForAnOrganisationService {
     from: string,
     arrived: ReturnType<typeof whatArrived>,
     out: {
+      repliesTo?: string | null;
       who: WhoHoldsTheNumber;
       say: (text: string) => Promise<unknown>;
       list: (prompt: string, rows: any[], asText: string) => Promise<unknown>;
@@ -135,9 +141,13 @@ export class WhatsAppForAnOrganisationService {
   ): Promise<void> {
     /* Everything below is the same routing whoever holds the number - the only difference is where
        the words go, and the one sentence a stranger must never be sent from their business. */
+    /* Said once, before the next thing said: "You have two check-ins open: ... Let's start with ..." (decision 106 item 1). */
+    let intro = '';
     const say = async (text: string) => {
       if (aStrangerHearsNothing(text, out.who)) return;
-      await out.say(text);
+      const t = intro ? `${intro}\n\n${text}` : text;
+      intro = '';
+      await out.say(t);
     };
 
     if (arrived.kind === 'other') { await say('I can read text, photos and documents here. Say it in words, or send the file.'); return; }
@@ -291,11 +301,24 @@ export class WhatsAppForAnOrganisationService {
       return;
     }
 
-    /* Which one. A pick (tapped or typed) settles it; a remembered pick holds; two or more with neither asks. */
+    /*
+     * WHICH ONE (decision 106 item 1). A pick (tapped, or a number typed while the list is fresh) settles it.
+     * Then a reply to one of our messages about a check-in, or its Start button: that check-in. Then START
+     * after an opening notice newer than where they were: the check-in that notice was about. Then where
+     * they were: they stay in it until they finish or write "switch". Then the only one. With several and
+     * none of these, one at a time, the one closing soonest first, said in a sentence. The numbered list
+     * is only for "switch", when Groundwork genuinely cannot tell.
+     */
     let current: AnOpenCheckIn | null = null;
     /* A typed number is a pick only while the question is fresh (a-whatsapp-message-is-routed.ts). */
     const picked = arrived.kind === 'pick' ? pickedOne(arrived.id, open) : arrived.kind === 'text' && open.length > 1 ? pickedFromText(arrived.text, open, thread?.pickPendingAt) : null;
-    if (picked) {
+    const repliedTo = !picked && open.length > 1 ? await this.theCheckInARepliedMessageWasAbout(out.repliesTo, open) : null;
+    const remembered = thread && open.some((c) => c.id === thread.checkInId) ? open.find((c) => c.id === thread.checkInId)! : null;
+    const announced = !picked && !repliedTo && beginning && open.length > 1 ? await this.theLastOpeningNoticeTo(from, open, remembered ? thread!.updatedAt : null) : null;
+    if (repliedTo || announced) {
+      current = (repliedTo ?? announced)!;
+      await this.remember(organizationId, from, current.id);
+    } else if (picked) {
       current = picked;
       await this.remember(organizationId, from, picked.id);
       if (arrived.kind === 'pick' || /^\s*\d{1,2}\s*$/.test(arrived.kind === 'text' ? arrived.text : '')) {
@@ -304,15 +327,16 @@ export class WhatsAppForAnOrganisationService {
         await say(`${sessionHeader(current)}${opened ? ` ${THE_WORDS(ask)}\n\n${opened}` : ' Carry on where you left off.'}`);
         return;
       }
-    } else if (thread && open.some((c) => c.id === thread.checkInId)) {
-      current = open.find((c) => c.id === thread.checkInId)!;
+    } else if (remembered) {
+      current = remembered;
     } else if (open.length === 1) {
       current = open[0];
       await this.remember(organizationId, from, current.id);
     } else {
-      await this.askWhichOne(organizationId, from);
-      await out.list('You have more than one check-in open. Which is this for?', whichOneRows(open), whichOneAsText(open));
-      return;
+      const ordered = closingSoonestFirst(open);
+      current = ordered[0];
+      await this.remember(organizationId, from, current.id);
+      intro = oneAtATime(ordered);
     }
 
     /* Their language, read once from the first thing they wrote. */
@@ -424,10 +448,13 @@ export class WhatsAppForAnOrganisationService {
         /* Not waiting for the end card: Meta's webhook will not hold a reply for fifty seconds. */
         await this.conversation.complete(current.id, userId!, { waitForTheCard: false });
         await this.prisma.whatsAppThread.deleteMany({ where: { organizationId, checkInId: current.id } }).catch(() => undefined);
+        /* When it finishes, the next one is offered, and remembered, so START or an answer goes to it (decision 106 item 1). */
+        const next = closingSoonestFirst(open.filter((c) => c.id !== current!.id))[0] ?? null;
+        if (next) await this.remember(organizationId, from, next.id);
         /* The report comes from the completion listener below, off this request: four polls at four
            seconds each and a translation held Meta's webhook past its patience, and the redelivery
            was another answer. Acknowledge, and let the listener send. */
-        await say('Your check-in is complete and on record. Your report follows in a moment.');
+        await say(`Your check-in is complete and on record. Your report follows in a moment.${next ? `\n\n${theNextOne(next)}` : ''}`);
       } catch (e: any) {
         /* "Not enough yet" asks for something the person can give, so it is said in the words of this door ("finish"), not the app's ("complete", "the record is still thin"). */
         await say(e?.response?.canContinue ? NOT_ENOUGH_YET_TO_FINISH : (e?.response?.message ?? e?.message ?? 'That could not be completed yet.'));
@@ -587,9 +614,13 @@ export class WhatsAppForAnOrganisationService {
         OR: [{ availableFrom: null }, { availableFrom: { lte: new Date() } }],
       },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, status: true, sessionNumber: true, ground: { select: { label: true, overWhatsApp: true } } },
+      select: { id: true, status: true, sessionNumber: true, availableFrom: true, createdAt: true, ground: { select: { label: true, overWhatsApp: true, cadence: true } } },
     });
-    return rows.map((r) => ({ id: r.id, status: r.status, sessionNumber: r.sessionNumber, label: r.ground.label, keptOffThePhone: keptOffThePhone(r.ground) }));
+    /* The one closing soonest first (decision 106 item 1), by the same due date the reminders use. */
+    return closingSoonestFirst(rows.map((r) => ({
+      id: r.id, status: r.status, sessionNumber: r.sessionNumber, label: r.ground.label, keptOffThePhone: keptOffThePhone(r.ground),
+      dueAt: whenItIsDue(r.availableFrom ?? r.createdAt, r.ground.cadence),
+    })));
   }
 
   private async invitationWaitingFor(organizationId: string, personId: string | null): Promise<string | null> {
@@ -602,6 +633,23 @@ export class WhatsAppForAnOrganisationService {
       orderBy: { createdAt: 'desc' },
     }).catch(() => null);
     return waiting?.ground.label ?? null;
+  }
+
+  /** The open check-in a message we sent was about, when the person replied to it (its id is the reply's context). */
+  private async theCheckInARepliedMessageWasAbout(messageId: string | null | undefined, open: AnOpenCheckIn[]): Promise<AnOpenCheckIn | null> {
+    if (!messageId) return null;
+    const sent = await (this.prisma.whatsAppSend as any).findFirst?.({ where: { providerMessageId: messageId }, select: { checkInId: true } })?.catch?.(() => null);
+    return sent?.checkInId ? open.find((c) => c.id === sent.checkInId) ?? null : null;
+  }
+
+  /** The open check-in the last opening notice to this number was about, when it came after where the person was. */
+  private async theLastOpeningNoticeTo(from: string, open: AnOpenCheckIn[], sinceTheyWereIn: Date | null): Promise<AnOpenCheckIn | null> {
+    const last = await (this.prisma.whatsAppSend as any).findFirst?.({
+      where: { phone: { in: formsOfTheSameNumber(from) }, kind: { startsWith: 'checkin-open' }, sentAt: { not: null }, checkInId: { in: open.map((c) => c.id) }, ...(sinceTheyWereIn ? { createdAt: { gt: sinceTheyWereIn } } : {}) },
+      orderBy: { createdAt: 'desc' },
+      select: { checkInId: true },
+    })?.catch?.(() => null);
+    return last?.checkInId ? open.find((c) => c.id === last.checkInId) ?? null : null;
   }
 
   private async remember(organizationId: string, from: string, checkInId: string) {

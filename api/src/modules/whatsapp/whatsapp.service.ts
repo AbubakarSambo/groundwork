@@ -3,7 +3,17 @@ import { Injectable, Logger, UnauthorizedException, BadRequestException, Optiona
 import { ConfigService } from '@nestjs/config';
 
 /** Did it go. One shape from both numbers; see sendMessage. */
-export type SendResult = { sent: boolean; status?: number; error?: string };
+export type SendResult = { sent: boolean; status?: number; error?: string; /** Meta's id for the message, so a reply to it can be traced back (decision 106 item 1). */ messageId?: string };
+
+/** The body Meta answered with, or nothing when it cannot be read. Never throws. */
+async function readTheBody(res: any): Promise<string> {
+  try { return typeof res?.text === 'function' ? String((await res.text()) ?? '') : ''; } catch { return ''; }
+}
+
+/** Meta's id for a message it accepted, from the body it answered with. Undefined when there is none. */
+export function theMessageIdIn(body: string): string | undefined {
+  try { const id = JSON.parse(body)?.messages?.[0]?.id; return typeof id === 'string' && id ? id : undefined; } catch { return undefined; }
+}
 /** What a send was for, so the row can be found later. Both optional: a notice has no check-in. */
 export type SendContext = {
   checkInId?: string | null;
@@ -423,7 +433,8 @@ export class WhatsAppService {
         this.logger.error(`WhatsApp send failed for ${to}: ${res.status} ${metaErrorCode(body)}`);
         return { sent: false, status: res.status, error: body.slice(0, 500) || `HTTP ${res.status}` };
       }
-      return { sent: true, status: res.status };
+      const accepted = await readTheBody(res);
+      return { sent: true, status: res.status, messageId: theMessageIdIn(accepted) };
     } catch (err: any) {
       this.logger.error(`WhatsApp send failed for ${to}: ${err?.message}`);
       return { sent: false, error: String(err?.message ?? err).slice(0, 500) };
@@ -443,6 +454,7 @@ export class WhatsAppService {
           failedAt: result.sent ? null : new Date(),
           status: result.status ?? null,
           error: result.error ?? null,
+          ...(result.messageId ? { providerMessageId: result.messageId } : {}),
         },
       })
       .catch((err: any) => this.logger.warn(`Could not record a WhatsApp send to ${phone}: ${err?.message}`));
@@ -713,7 +725,7 @@ export class WhatsAppService {
           template: { name: template.name, language: { code: template.language }, components: template.components(text, context.params) },
         }),
       });
-      result = res.ok ? { sent: true, status: res.status } : { sent: false, status: res.status, error: (await res.text().catch(() => '')).slice(0, 500) };
+      result = res.ok ? { sent: true, status: res.status, messageId: theMessageIdIn(await readTheBody(res)) } : { sent: false, status: res.status, error: (await res.text().catch(() => '')).slice(0, 500) };
     } catch (err: any) {
       result = { sent: false, error: err?.message ?? 'template send failed' };
     }

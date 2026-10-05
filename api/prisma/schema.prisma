@@ -3285,10 +3285,13 @@ model WhatsAppSend {
   failedAt       DateTime? @map("failed_at")
   status         Int?
   error          String?   @db.Text
+  /// The id Meta gave the message (decision 106 item 1). A reply to it carries this id, so it reaches the check-in it was about.
+  providerMessageId String? @map("provider_message_id")
   createdAt      DateTime  @default(now()) @map("created_at")
 
   @@index([organizationId, createdAt])
   @@index([failedAt])
+  @@index([providerMessageId])
   @@map("whatsapp_sends")
 }
 
