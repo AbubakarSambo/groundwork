@@ -55,7 +55,15 @@ describe('one word per object, on the screens', () => {
        press that finishes says "That’s right, finish". */
     expect(read('chat/ChatPage.tsx')).toContain('<TheEndCard')
     expect(readFileSync(join(__dirname, 'checkin', 'TheEndCard.tsx'), 'utf8')).toContain('That’s right, finish')
-    expect(read('report/SessionReportPage.tsx')).toContain('Start a new check-in')
+    /*
+     * RELEASE WALKTHROUGH A, FIX 4: "START A NEW CHECK-IN" IS GONE FROM THIS PAGE, NOT RENAMED.
+     * This assertion used to pin the button's wording; the button itself opened `/grounds/new`, a
+     * brand-new, unrelated check-in, which most readers of their own report (a participant, almost
+     * always) have no way to start at all - and which neither of the prototype's own report screens
+     * (own-report.txt, one-session.txt) offers at the foot of a report. It is removed, not reworded,
+     * so there is no wording left here to pin.
+     */
+    expect(read('report/SessionReportPage.tsx')).not.toContain('Start a new check-in')
     expect(read('join/JoinPage.tsx')).toContain('Email me my link')
   })
 })

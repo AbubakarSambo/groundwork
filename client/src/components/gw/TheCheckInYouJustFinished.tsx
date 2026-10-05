@@ -557,9 +557,17 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
             </div>
           </div>
         )}
-        {/* Everyone reads the same report - true at two people and at twelve. */}
+        {/*
+          RELEASE WALKTHROUGH A, FIX 4 (engine request 151, E5): THIS SESSION'S OWN RELEASE, NOT
+          THE GROUND'S LAST ONE. `r?.releasedAt` is the whole ground report's most recent release -
+          true for ever once any round has gone out, including while THIS session's own round is
+          still forming. Walked live: session 2 read "The shared picture is open, and everyone
+          reads the same report" while session 2 was not shared, because session 1's release had
+          already set it. `d?.released` is the per-session shaped read (reportsApi.sessionReport),
+          already scoped to `sessionNumber` above - this session's own state, not the ground's.
+        */}
         <div className="gw-mini" style={{ color: 'var(--gw-sub)', maxWidth: '68ch' }}>
-          {r?.releasedAt
+          {d?.released
             ? 'The shared picture is open, and everyone reads the same report.'
             : 'This half is yours. The shared picture opens to everybody at the same moment.'}
         </div>
