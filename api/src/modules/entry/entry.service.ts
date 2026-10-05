@@ -1,4 +1,5 @@
 import { tooManyPeopleFor } from './how-many-people-one-check-in-holds';
+import { tooManyForTheAnchor } from './the-anchor-people-step';
 import { theAddressOfAColleague, NOT_SOMEONE_HERE } from '../../common/colleagues';
 import { theyJustPastedSomething, withoutAskingForWhatTheyGave } from './they-just-gave-you-that';
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
@@ -2114,6 +2115,12 @@ from finishing at all.`;
     /* One number, in one file, with the reason - see how-many-people-one-check-in-holds. */
     const tooMany = tooManyPeopleFor(dto.contributors.length);
     if (tooMany) throw new BadRequestException(tooMany);
+    /* The anchor's own limit: the lead plus 19 (decision 99, item 2). */
+    if (dto.scenario === ANCHOR_ENTRY_SCENARIO) {
+      const lead = await Promise.resolve(this.prisma.user?.findUnique?.({ where: { id: initiatorId }, select: { email: true } })).catch(() => null);
+      const tooManyForThisOne = tooManyForTheAnchor(dto.contributors.map((c) => c.email), lead?.email);
+      if (tooManyForThisOne) throw new BadRequestException(tooManyForThisOne);
+    }
 
     // Update org name if the admin filled it in.
     if (dto.orgName?.trim()) {
