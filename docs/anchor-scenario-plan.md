@@ -299,7 +299,7 @@ Nothing below has been decided by this plan. Each one has the scenario's words, 
 - *Decision 4 and the prototype:* what people say in check-ins can be shown word for word to the people in that check-in, and there is no switch for it. The invitation page says: "The people in this check-in, including your manager, can see what you say in it. Your questions to Ask Groundwork stay private."
 - *Recommendation:* use "one to one" instead of "privately" in the hook and email ("Groundwork will check in with each person one to one"), and keep the prototype's sentence on the invitation page. The promise "privately" is one the product would not keep for the lead's reading. Decision 86 forbids adding a restriction that is not Hafsah's, so the other way, hiding the words from the lead, is not recommended unless Hafsah says so.
 
-**2. The weekly lead WhatsApp insight next to the daily summary.**
+**2. The weekly lead WhatsApp insight next to the daily summary.** **Decided 5 October (decision 105, item 2): it follows the spec, names included; on one chosen day a week it replaces that day's daily summary; only to a lead with WhatsApp on; free during the trial.**
 - *Scenario (section 23):* once a week, a WhatsApp that names what people did ("Lucy surfaced a customer risk nobody else had raised") and counts people ("8 people connected their work ...").
 - *Decisions 13, 82 item 9, 83:* Groundwork writes first on its own at most once a day. The daily summary is "Groundwork's one message of the day for that lead" and carries only what the lead can see in the app, saying "nothing anybody said". Decision 83 fixes eight templates and at most one message a day, two on opening or closing days. Decision 78: WhatsApp is a paid add-on. Meta has not approved any template yet.
 - *Recommendation:* make the weekly insight the one message on one chosen day each week for an anchor lead (replacing that day's daily summary, so the limit is kept). A ninth template, sent only on the lead's WhatsApp opt-in, included in the trial without the add-on's charge. In the WhatsApp itself, counts and one sentence about what Groundwork is working on, with names on the board only. If Hafsah wants names in the WhatsApp, she should say so, because it breaks "nothing anybody said" for that message. The fuller version goes by email, as the prototype's weekly letter.
@@ -314,7 +314,7 @@ Nothing below has been decided by this plan. Each one has the scenario's words, 
 - *Decision 78 item 4:* Stripe in test mode only. Nothing about real billing changes until the trial setting is switched on. Billing's live wiring is Abubakar's.
 - *Recommendation:* build the four options to the existing plan choice (`F2-billing/upgrade.txt`) and test mode. Real charging waits for Abubakar and for Hafsah to switch the trial on. Piece 33 is not blocked from being built, only from being turned on.
 
-**5. The carrot principle against the rule that Groundwork never praises.**
+**5. The carrot principle against the rule that Groundwork never praises.** (Not answered by decision 105.)
 - *Scenario (section 17):* "That's useful—you've connected something happening in delivery to a wider customer consequence." and "That's useful ownership."
 - *Existing rule:* `NOTHING_HERE_IS_PLEASED_WITH_YOU`: never call a plan good, great or smart, never "enthusiasm you do not have", recognise what someone is carrying but never rate what they have done.
 - *Recommendation:* allow, in this scenario's participant sessions only, one plain sentence that says what the person did and what it affected, with no grading adjective ("That connects the delay in delivery to the customer's renewal."). Keep the ban on praising plans and on enthusiasm everywhere else. The scenario's own wording uses "useful", which is closer to a grade than to a fact, so Hafsah should say whether "useful" is allowed.
@@ -324,7 +324,7 @@ Nothing below has been decided by this plan. Each one has the scenario's words, 
 - *Decision 12 and the scorer:* claims are checked systems first, then proof, and until then they are the person's word, followed up. "Asks for proof" is a measured number in `docs/engine-value.md`.
 - *Recommendation:* use the scenario's words for the ask in this scenario, keep the order (systems, then proof, then the person's word), and prove on the scorer that the number does not drop.
 
-**7. Nudges and messages that repeat a person's own words.**
+**7. Nudges and messages that repeat a person's own words.** **Decided 5 October (decision 105, item 3): a nudge may repeat the person's own commitment, to that person only, in the app, by email and on WhatsApp. Nobody else's words ever go into a message.**
 - *Scenario (section 26):* "You mentioned you'd try something with the client this week."
 - *Prototype:* "Every email and WhatsApp message says what it's for, never includes what anyone said" (`C1/every-email-and-message.txt`). The same screen shows a weekly letter that tells a person what they themselves did.
 - *Recommendation:* a nudge inside the app, or in the person's own weekly letter, may repeat that person's own commitment to them and to nobody else. A WhatsApp template carries no one's words and says only that the check-in is open and starts from last time, as `checkin_open` does today.
@@ -452,6 +452,7 @@ Pieces 2 and 3, 9, 11, 18, 21, 23, 25, 27 (screens half), 31 and 33 are the scre
 - Pieces 18, 22, 23 and 32: 9 (piece 32 also 4).
 - Pieces 19, 20 and 21: 10.
 - Pieces 26 and 27: 11. Piece 28: 2. Piece 30: 7. Piece 33: 4. Piece 34: 3.
+- Decided 5 October (decision 105): Needs Hafsah 2 and 7, and the three prompt pieces, 14 (the baseline replaces the first session for anchor check-ins, one question at a time), 19 (the spec's words for an idea) and 26 and 27 (the request offered in the check-in, reusing the WhatsApp wording). Pieces 19, 14, 26 and 27 are kept only if no engine number drops.
 - Not blocked: pieces 0, 3, 5, 6, 7, 9, 15, 17, 24, 25, 29, 31 and 35.
 
 ---

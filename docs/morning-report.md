@@ -96,6 +96,8 @@ database, and every one is complete, so the warning came too early and the numbe
 
 ### Needs Hafsah
 
+**Decided (5 October, decision 105):** the weekly lead WhatsApp insight (anchor Needs Hafsah 2) follows the spec with names, replaces one day's daily summary each week, and goes only to a lead with WhatsApp on. Nudges (Needs Hafsah 7) may repeat a person's own commitment to that person only. The three prompt pieces, ideas (19), the baseline (14) and suites offered in the check-in (26 and 27), follow the spec and are kept only if no engine number drops.
+
 **Decided (5 October): a free run that starts inside the anchor month counts from the day that month began, never from today.** Hafsah kept piece 34 as built. Whether the anchor month is for new organisations only is still open; both switches are off.
 
 **An organisation's admin who is not in a check-in reads people's exact words on its board.** Juma, an admin of the organisation who is not in the sales check-in and did not set it up, is sent everybody's own words in "Who owns what" and other sections, in quotation marks with their names. That was already so before today's work, and nothing I changed widened it. CLAUDE.md says what people say in check-ins can be shown word for word to the people in that check-in. The wall for an admin without access to a check-in (decision 60, point 4) covers only evaluation check-ins. Whether an admin who is not in a check-in should read people's exact words on every other kind is your call. I have changed nothing.
