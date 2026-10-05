@@ -56,7 +56,9 @@ describe('every way in says why it refused', () => {
 
   it('and still has a fallback, for a failure with no sentence in it', () => {
     /* A network error carries no body, and an empty toast is worse than a plain one. */
-    expect(SCREENS['the roster']).toContain("?? 'Could not add them.'")
-    expect(SCREENS['the roster']).toContain("?? 'Could not add participant.'")
+    /* Both add paths now fall back to the same sentence: the engine stopped saying "participant"
+       (its rulebook, October), and the screens' own sentences follow. */
+    expect([...SCREENS['the roster'].matchAll(/\?\? 'Could not add them\.'/g)]).toHaveLength(2)
+    expect(SCREENS['the roster']).not.toContain("'Could not add participant.'")
   })
 })

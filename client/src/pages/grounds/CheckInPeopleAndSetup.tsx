@@ -506,10 +506,10 @@ export function CheckInPeopleAndSetup(props: {
           disabled={!canEditRunOrAdmin || props.setPeerVisibility.isPending}
         />
         <SwitchRow
-          title="Hide email addresses between participants"
+          title="Hide email addresses from each other"
           detail={props.contactHidden
-            ? "Participants can't see each other's email addresses."
-            : "Participants can see each other's email addresses. Turning this off lets participants contact each other directly."}
+            ? "The people in this check-in can’t see each other’s email addresses."
+            : "The people in this check-in can see each other’s email addresses, so they can contact each other directly."}
           on={props.contactHidden}
           onChange={(on) => props.setContactVisibility.mutate(on)}
           disabled={!canEditLeadOnly || props.setContactVisibility.isPending}
