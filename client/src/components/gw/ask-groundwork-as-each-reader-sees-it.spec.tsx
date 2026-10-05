@@ -17,7 +17,9 @@ import type { AskPage as AskPageData } from '@/api/ask'
  * what each person reads, and that the screen sends the yes only for the request it was shown.
  */
 vi.mock('@/api/ask', () => ({ askApi: { mine: vi.fn(), ask: vi.fn(), answer: vi.fn() } }))
+vi.mock('@/api/grounds', () => ({ groundsApi: { list: vi.fn().mockResolvedValue([]) } }))
 import { askApi } from '@/api/ask'
+import { groundsApi } from '@/api/grounds'
 
 const PRIVATE = 'Your questions and the answers are private. Only you see them. They are never part of your check-in or a report.'
 
@@ -129,6 +131,31 @@ describe('Wairimu, who runs several check-ins', () => {
     expect([...about.options].map(o => o.textContent)).toEqual(['Faith, first 90 days', 'Sales team, Q3', 'Leadership, Q3'])
     fireEvent.change(about, { target: { value: 'g-sales' } })
     expect(screen.getByText('Ask me about Sales team, Q3: a deal, a target, or what to do next.')).toBeInTheDocument()
+  })
+})
+
+/*
+ * WALKTHROUGH PASS 2, ITEM 7: TWO CHECK-INS ON "ABOUT" SHARE ONE LABEL.
+ */
+describe('two check-ins on "About" share one label', () => {
+  it('tells them apart by when each one started, read from the grounds list by id', async () => {
+    vi.mocked(groundsApi.list).mockResolvedValue([
+      { id: 'g-a', label: 'Help a new hire get started', startsAt: new Date(2026, 8, 20).toISOString() } as any,
+      { id: 'g-b', label: 'Help a new hire get started', startsAt: new Date(2026, 8, 27).toISOString() } as any,
+    ])
+    panel({
+      canAsk: true,
+      about: [
+        { id: 'g-a', label: 'Help a new hire get started' },
+        { id: 'g-b', label: 'Help a new hire get started' },
+      ],
+      turns: [],
+    }, '/grounds/g-a')
+    const about = await screen.findByRole('combobox', { name: 'About' }) as HTMLSelectElement
+    await waitFor(() => expect([...about.options].map(o => o.textContent)).toEqual([
+      'Help a new hire get started, started 20 September',
+      'Help a new hire get started, started 27 September',
+    ]))
   })
 })
 

@@ -108,8 +108,11 @@ describe('Grace, an admin, reads the Company page', () => {
     open(GRACE, '/company', GRACES)
     expect(await screen.findByText('2 teams and 5 people work here, and there were 3 check-ins this week.')).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 1, name: 'Baridi Appliances' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Ask about the whole organisation' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Ask about the strategy' })).toBeInTheDocument()
+    /* Walkthrough pass 2, item 7 (request 154, item 4): both buttons open a chat about one
+       check-in, not the whole organisation or the strategy - labelled for what actually opens
+       until the engine gives Ask that wider choice. */
+    expect(screen.getByRole('button', { name: 'Ask about a check-in' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Ask Groundwork' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Company context' })).toHaveAttribute('href', '/company/context')
     expect(screen.getByRole('heading', { level: 2, name: 'Is the strategy moving?' })).toBeInTheDocument()
 
@@ -119,12 +122,12 @@ describe('Grace, an admin, reads the Company page', () => {
     expect(priority(3).textContent).toBe('Priority 3Nobody owns it yetBuild a stronger organisationNo team feeds it')
   })
 
-  it('asking about the whole organisation or the strategy opens Ask Groundwork', async () => {
+  it('either button opens Ask Groundwork, about a check-in', async () => {
     open(GRACE, '/company', GRACES)
-    fireEvent.click(await screen.findByRole('button', { name: 'Ask about the strategy' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Ask Groundwork' }))
     expect(useAskStore.getState().open).toBe(true)
     useAskStore.setState({ open: false })
-    fireEvent.click(screen.getByRole('button', { name: 'Ask about the whole organisation' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ask about a check-in' }))
     expect(useAskStore.getState().open).toBe(true)
   })
 
@@ -197,7 +200,7 @@ describe('Kofi, a guest from another company', () => {
   it('reads the server\'s refusal, and nothing else', async () => {
     open(KOFI, '/company', refusal())
     expect(await screen.findByRole('alert')).toHaveTextContent('Only people in this organisation can read its company page.')
-    expect(screen.queryByRole('button', { name: 'Ask about the whole organisation' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Ask about a check-in' })).toBeNull()
   })
 
   it('is not even asked for the company\'s handbook on company context', async () => {

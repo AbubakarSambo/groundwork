@@ -4,7 +4,7 @@ import { create } from 'zustand'
 interface AskStore {
   open: boolean
   toggle: () => void
-  /** Opens it, from a button that asks about something (the Company page's "Ask about the whole organisation"). */
+  /** Opens it, from a button that asks about something (the Company page's "Ask about a check-in"). */
   show: () => void
   hide: () => void
   /**
