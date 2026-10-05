@@ -77,6 +77,23 @@ export interface IdeaDeps {
 }
 
 /**
+ * THE READING THAT SPOTS AN IDEA, ON ITS OWN: the idea in what the person just wrote, in their own words, with the stored version that read it, or null.
+ * Used after their turn, and by the team baseline's close, which waits for the offer rather than say goodbye over an idea.
+ */
+export async function aNewIdeaIn(deps: IdeaDeps, message: string): Promise<{ idea: string; stored: { id: string; content: string } | null } | null> {
+  const stored = deps.prompts?.getActive ? await deps.prompts.getActive(IDEA_SPOTTING_KEY).catch(() => null) : null;
+  const read = await deps.anthropic.extract<{ isAConcreteIdea?: boolean; idea?: string }>(
+    stored?.content ?? THE_IDEA_SPOTTING_PROMPT,
+    [{ role: 'user', content: message }],
+    THE_IDEA_SCHEMA,
+    { fast: true },
+  ).catch(() => null);
+  if (!read?.isAConcreteIdea) return null;
+  const idea = theirOwnIdea(message, read.idea);
+  return idea ? { idea, stored } : null;
+}
+
+/**
  * After the person's turn: their yes captures the offer that was waiting, their no or anything else leaves nothing
  * behind, and a new message may bring a new offer. Never throws; the check-in never fails over an idea.
  */
@@ -99,16 +116,9 @@ export async function afterTheirTurn(
       if (isTheNo(a.message)) return {};
     }
     if (a.sessionComplete) return {};
-    const stored = deps.prompts?.getActive ? await deps.prompts.getActive(IDEA_SPOTTING_KEY).catch(() => null) : null;
-    const read = await deps.anthropic.extract<{ isAConcreteIdea?: boolean; idea?: string }>(
-      stored?.content ?? THE_IDEA_SPOTTING_PROMPT,
-      [{ role: 'user', content: a.message }],
-      THE_IDEA_SCHEMA,
-      { fast: true },
-    ).catch(() => null);
-    if (!read?.isAConcreteIdea) return {};
-    const idea = theirOwnIdea(a.message, read.idea);
-    if (!idea) return {};
+    const spotted = await aNewIdeaIn(deps, a.message);
+    if (!spotted) return {};
+    const { idea, stored } = spotted;
     await deps.prisma.workItem.create({ data: { groundId: a.groundId, kind: 'idea-offered', name: idea, ownerParticipantId: a.participantId, fields: { promptVersionId: stored?.id ?? null } } });
     return { ideaOffer: theOffer(idea), promptVersionId: stored?.id ?? null };
   } catch {

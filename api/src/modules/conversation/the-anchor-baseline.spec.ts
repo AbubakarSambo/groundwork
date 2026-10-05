@@ -293,6 +293,13 @@ describe('the team baseline is never held at its close (6 October)', () => {
     expect(await theClose('anchor')).toEqual({ ready: true });
   });
 
+  it('waits for the offer when their last answer holds a concrete idea, so there is a turn in which to say yes', async () => {
+    const world = aWorld({ startedFrom: 'anchor', switchOn: true, turns: [...SAID.slice(0, -1), 'Maybe we should do a review with every shop one month before their contract ends.'].flatMap((t, i) => [{ role: 'AI', content: `Question ${i}` }, { role: 'PERSON', content: t }]) });
+    world.seed.checkIn.findUnique = jest.fn(async () => ({ closeHeldAt: null, participantId: 'p1', startedAt: new Date(), isClarification: false, sessionNumber: 1, participant: { partyType: PartyType.PARTICIPANT }, ground: { cadence: 'WEEKLY', scenario: GroundScenario.HELP_TEAM_UNDERSTAND, startedFrom: 'anchor' } }));
+    (world.service as any).anthropic = { extract: jest.fn(async () => ({ isAConcreteIdea: true, idea: 'do a review with every shop one month before their contract ends' })) };
+    expect(await (world.service as any).mayClose('ci2')).toEqual({ ready: false });
+  });
+
   it('still holds an ordinary first session once, as before', async () => {
     const held = await theClose(null);
     expect(held.ready).toBe(false);
