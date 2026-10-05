@@ -122,12 +122,13 @@ export class TheFreeTrialService {
       if (org.freeTrialStartedAt) return { granted: false, why: 'it has had the trial already' };
       if (whatCoversThem(org, now).covers === 'paid') return { granted: false, why: 'it is paying' };
       /*
-       * AN ANCHOR MONTH DOES NOT USE UP THE REGULAR TRIAL (review of piece 34). A free run that is the anchor's month (the
-       * organisation started a check-in from the anchor link, and has not had the regular trial) is lengthened to the
-       * regular trial's full length from today, never shortened. Any other free run of its own is left alone, as before.
+       * AN ANCHOR MONTH DOES NOT USE UP THE REGULAR TRIAL, AND NOTHING ELSE IS TAKEN FOR ONE (review of piece 34, twice).
+       * A free run counts as the anchor's month only if it was given as one: it is still running, it has not had the
+       * regular trial, its plan is the anchor's plan, and it ends within a day of an anchor check-in's start plus the
+       * anchor's months. A free run given any other way (by staff, or with the anchor trial off) is left alone, as is an
+       * anchor month that has ended: the organisation has had its free month. See theAnchorMonthOf.
        */
-      const anchorMonth = !!org.freeUntil && !org.freeTrialStartedAt
-        && ((await (this.prisma as any).ground?.count?.({ where: { organizationId, startedFrom: 'anchor' } }).catch(() => 0)) ?? 0) > 0;
+      const anchorMonth = await this.theAnchorMonthOf(organizationId, org, now);
       if (org.freeUntil && !anchorMonth) return { granted: false, why: 'it has a free run of its own' };
 
       /* What they said is checked against who is really here, counted as billing counts a seat. */
@@ -140,8 +141,12 @@ export class TheFreeTrialService {
         return { granted: false, why: 'no plan holds a team of that size' };
       }
 
-      const full = aFreeRunEndsOn(now, trial.months);
-      /* Never shorter than the free run it already has. */
+      /*
+       * INSIDE AN ANCHOR MONTH, THE REGULAR TRIAL RUNS FROM THE DAY THAT MONTH STARTED, so the two together are never more
+       * than the regular trial's length. The conservative choice; whether it should run from today is Hafsah's (morning
+       * report, Needs Hafsah). Never shorter than the free run it already has.
+       */
+      const full = aFreeRunEndsOn(anchorMonth ? anchorMonth.startedOn : now, trial.months);
       const until = anchorMonth && org.freeUntil && new Date(org.freeUntil).getTime() > full.getTime() ? new Date(org.freeUntil) : full;
       /* Only if still untouched, so two answers at once cannot give it twice or overwrite a free run. */
       const written = await this.prisma.organization.updateMany({
@@ -155,6 +160,25 @@ export class TheFreeTrialService {
       this.logger.error(`The free trial could not be given to ${organizationId}: ${err?.message}`);
       return { granted: false, why: 'something failed' };
     }
+  }
+
+  /**
+   * Whether this organisation's free run is the anchor's month, as given by grantTheAnchorTrial, and the day it began.
+   * Read from what is stored, with no new column: the plan is the anchor's plan, and the end is within a day of an
+   * anchor check-in's start plus the anchor's months. Null for anything else, and for one that has ended.
+   */
+  private async theAnchorMonthOf(organizationId: string, org: { freeUntil: Date | null; freePlan: unknown; freeTrialStartedAt: Date | null }, now: Date): Promise<{ startedOn: Date } | null> {
+    if (!org.freeUntil || org.freeTrialStartedAt) return null;
+    const ends = new Date(org.freeUntil);
+    if (ends.getTime() <= now.getTime()) return null;
+    const anchor = this.pricing.getAnchorTrial ? await this.pricing.getAnchorTrial().catch(() => null) : null;
+    if (!anchor) return null;
+    const plan = await this.thePlanItCovers(anchor.people + 1);
+    if (!plan || org.freePlan !== plan) return null;
+    const starts = ((await (this.prisma as any).ground?.findMany?.({ where: { organizationId, startedFrom: 'anchor' }, select: { createdAt: true } })?.catch?.(() => [])) ?? []) as { createdAt: Date }[];
+    const A_DAY = 24 * 60 * 60 * 1000;
+    const match = starts.find((g) => Math.abs(aFreeRunEndsOn(new Date(g.createdAt), anchor.months).getTime() - ends.getTime()) <= A_DAY);
+    return match ? { startedOn: new Date(match.createdAt) } : null;
   }
 
   /** The smallest priced plan whose seat limit holds a team of `teamsUnder - 1` people. */

@@ -79,29 +79,57 @@ describe('the anchor month and the regular trial', () => {
     expect(org.freeUntil.toISOString().slice(0, 10)).toBe('2027-01-05');
     expect(org.freeTrialStartedAt).toEqual(NOW);
   });
-  it('where it would not, the anchor month leaves the regular trial to be given later, in full from that day', async () => {
+  /* A later answer, with the regular trial switched on at three months, against Baridi's free run as it stands. */
+  const later = async (org: any, at: Date, anchorStartedOn: Date | null = NOW) => {
+    const pricing: any = {
+      getFreeTrial: jest.fn(async () => ({ on: true, teamsUnder: 20, months: 3 })),
+      getAnchorTrial: jest.fn(async () => ({ on: true, months: 1, people: 20 })),
+      listPlans: jest.fn(async () => PLANS),
+    };
+    const prisma: any = {
+      organization: { findUnique: jest.fn(async () => org), updateMany: jest.fn(async (q: any) => { Object.assign(org, q.data); return { count: 1 }; }) },
+      user: { count: jest.fn(async () => 4) },
+      ground: { findMany: jest.fn(async () => (anchorStartedOn ? [{ createdAt: anchorStartedOn }] : [])) },
+    };
+    return new TheFreeTrialService(prisma, pricing).grantIfItApplies('org-baridi', 'fewer', at);
+  };
+  const anAnchorMonth = () => ({ subscriptionPlan: null, subscriptionStatus: null, freeUntil: new Date('2026-11-05T10:00:00Z'), freePlan: 'SMALL_TEAM', freeTrialStartedAt: null });
+
+  it('where it would not, the anchor month leaves the regular trial to be given later', async () => {
     const { svc, org } = baridi({ anchorOn: true, trialOn: true, regular: { on: false, teamsUnder: 20, months: 3 } });
     await svc.grantTheAnchorTrial('org-baridi', NOW);
     expect(org.freeTrialStartedAt).toBeNull();
     expect(org.freeUntil.toISOString().slice(0, 10)).toBe('2026-11-05');
-    /* Later the regular trial is switched on, three months, and the team says it is small. */
-    const later = new Date('2026-10-20T10:00:00Z');
-    const pricing: any = { getFreeTrial: jest.fn(async () => ({ on: true, teamsUnder: 20, months: 3 })), listPlans: jest.fn(async () => PLANS) };
-    const prisma: any = {
-      organization: { findUnique: jest.fn(async () => org), updateMany: jest.fn(async (q: any) => { Object.assign(org, q.data); return { count: 1 }; }) },
-      user: { count: jest.fn(async () => 4) },
-      ground: { count: jest.fn(async () => 1) },
-    };
-    const got: any = await new TheFreeTrialService(prisma, pricing).grantIfItApplies('org-baridi', 'fewer', later);
-    expect(got.granted).toBe(true);
-    expect(org.freeUntil.toISOString().slice(0, 10)).toBe('2027-01-20');
   });
+
+  it('fault 1: inside the anchor month, the regular trial runs from the day the month started, never longer in total', async () => {
+    const org = anAnchorMonth();
+    const got: any = await later(org, new Date('2026-10-20T10:00:00Z'));
+    expect(got.granted).toBe(true);
+    /* Three months from 5 October, when the anchor month began, not from 20 October. */
+    expect(org.freeUntil.toISOString().slice(0, 10)).toBe('2027-01-05');
+  });
+
+  it('fault 1: once the anchor month has ended, a later answer gives no second free run', async () => {
+    const org = anAnchorMonth();
+    expect(await later(org, new Date('2026-11-20T10:00:00Z'))).toEqual({ granted: false, why: 'it has a free run of its own' });
+  });
+
+  it('fault 2: a free run on another plan, or that does not end a month after an anchor start, is not taken for one', async () => {
+    const onGrowth = { ...anAnchorMonth(), freePlan: 'GROWTH' };
+    expect(await later(onGrowth, new Date('2026-10-20T10:00:00Z'))).toEqual({ granted: false, why: 'it has a free run of its own' });
+    const givenByStaff = { ...anAnchorMonth(), freeUntil: new Date('2026-12-15T10:00:00Z') };
+    expect(await later(givenByStaff, new Date('2026-10-20T10:00:00Z'))).toEqual({ granted: false, why: 'it has a free run of its own' });
+    const noAnchorCheckIn = anAnchorMonth();
+    expect(await later(noAnchorCheckIn, new Date('2026-10-20T10:00:00Z'), null)).toEqual({ granted: false, why: 'it has a free run of its own' });
+  });
+
   it('another free run of its own is left alone by the regular trial, as before', async () => {
     const org: any = { subscriptionPlan: null, subscriptionStatus: null, freeUntil: new Date('2026-12-01'), freePlan: 'GROWTH', freeTrialStartedAt: null };
     const prisma: any = {
       organization: { findUnique: jest.fn(async () => org), updateMany: jest.fn() },
       user: { count: jest.fn(async () => 4) },
-      ground: { count: jest.fn(async () => 0) },
+      ground: { findMany: jest.fn(async () => []) },
     };
     const pricing: any = { getFreeTrial: jest.fn(async () => ({ on: true, teamsUnder: 20, months: 3 })), listPlans: jest.fn(async () => PLANS) };
     expect(await new TheFreeTrialService(prisma, pricing).grantIfItApplies('o', 'fewer', NOW)).toEqual({ granted: false, why: 'it has a free run of its own' });

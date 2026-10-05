@@ -256,8 +256,10 @@ organisation gets one month on the plan that holds 20 people, the lead included 
 given once, never on top of a free run and never to one that is paying, and nothing touches Stripe.
 `pricing.freeTrial` and the paid client are untouched. After review, it never shortens a free run.
 Where the regular trial would also be given, the organisation gets the longer of the two. Where it
-would not, the anchor month does not use up the regular trial, which can still be given later in
-full. The public pricing read (`GET /billing/pricing`)
+would not, the anchor month does not use up the regular trial. The regular trial, if given later
+inside the anchor month, runs from the day the anchor month started. Once the anchor month has ended,
+there is no second free run. A free run counts as an anchor month only if it was given as one: the
+anchor's plan, ending a month after an anchor check-in started. The public pricing read (`GET /billing/pricing`)
 now also sends `anchorTrial: { on, months: 1, people: 20 }`, so the anchor landing says "for a month"
 only while it is on.
 
