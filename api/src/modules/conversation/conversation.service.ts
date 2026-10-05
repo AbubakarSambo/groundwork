@@ -75,6 +75,7 @@ export { CLOSED_BY_THE_CLOCK };
 export const DECLINED_TO_TAKE_PART = 'declined';
 import { mirrorCommitment } from '../assistant/a-commitment-carries-past-the-ground';
 import { theAnchorParticipantGuidance, whatTheyToldYouBefore, withoutAnAnnouncedAngle } from './the-anchor-weekly-check-in';
+import { theAnchorBaselineGuidance } from './the-anchor-baseline';
 import { whatTheAnswerAgreedTo, hasAlreadyOffered, whatHappenedToTheOffer, weSayAboutTheOffer, whatIsStillOwedToThem, withoutTheSecondTellingOfIt, isAnOfferToWriteItDown, whatTheyJustSaidMayBeTheirOwnStep, YOU_HAVE_ALREADY_OFFERED } from './giving-the-person-agency';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { DocumentsService } from '../documents/documents.service';
@@ -5381,7 +5382,23 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       isTheLead: checkIn.participant.partyType === PartyType.INITIATOR,
       sessionNumber: checkIn.sessionNumber,
     });
-    if (!guidance) return null;
+    if (!guidance) {
+      /*
+       * THE FIRST SESSION IS THE TEAM BASELINE (anchor piece 14; decision 105 item 6): the spec's nine things to learn,
+       * one at a time, never a list. Only what this person has been told the check-in is for goes with it.
+       */
+      const baseline = await theAnchorBaselineGuidance(() => theAnchorScenarioIsOn(this.prisma), this.prompts, {
+        ground,
+        isTheLead: checkIn.participant.partyType === PartyType.INITIATOR,
+        sessionNumber: checkIn.sessionNumber,
+      });
+      if (!baseline) return null;
+      const told = this.briefFor(ground, { participantId: checkIn.participantId, isLead: false }, untoldHere)?.says?.trim() || null;
+      const aboutIt = told ? `# What this person has been told this check-in is for
+
+${told}` : '';
+      return { text: baseline.text, block: aboutIt, last: baseline.last, promptVersionId: baseline.promptVersionId, agreed: null as any };
+    }
     const lastCheckIn = await this.prisma.checkIn.findFirst({
       where: { participantId: checkIn.participantId, sessionNumber: { lt: checkIn.sessionNumber }, status: CheckInStatus.COMPLETED },
       orderBy: { sessionNumber: 'desc' },

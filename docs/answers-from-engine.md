@@ -367,6 +367,20 @@ The prompt is new: `anchor_idea_spotting` version 1, id `3294fbe3-d3ef-4911-8737
 the local database. Each offer keeps that id in its row. It touches no all-24 scenario, because none
 of them is an anchor check-in. It runs only on the anchor seed and the anchor journey.
 
+**Anchor piece 14, the team baseline, is built (decision 105, item 6).** For an anchor check-in only, a
+person's first session is the baseline. The model is given the spec's nine things to learn: what they
+work on, what matters most from where they sit, what they are responsible for, what success looks like
+to them, what they think the lead is most concerned about, what makes the work difficult, who they
+depend on, who depends on them, and what the team could do better. It asks about one at a time, in its
+own words, never as a list or a count, and it does not coach yet. It is given only what the person has
+been told the check-in is for. From their second session, the weekly check-in (piece 15) is used as
+before.
+
+There is no screen to change. The prompt is new: `anchor_participant_baseline` version 1, id
+`ad402fbe-9dcf-4eb6-a6f2-e34ac6a706e6`, active in the local database. The turn's `promptVersionId`
+shows it. It touches no all-24 scenario, because none of them is an anchor check-in. It runs only on
+the anchor seed and the anchor journey.
+
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
 ```
