@@ -981,12 +981,12 @@ export function AppSidebar() {
                 )}
                 <ul className="gw-rl-list">{shownUnpinned.map(rowFor)}</ul>
                 {/* HAFSAH'S FAULT 4: the way to the whole list, whether or not the rows above left
-                    anything out - with how many there are only when they did. */}
-                {unpinned.length > 0 && (
-                  <NavLink to="/grounds" className="gw-rl-nav">
-                    {hiddenCount > 0 ? `All check-ins (${grounds.length})` : 'All check-ins'}
-                  </NavLink>
-                )}
+                    anything out - with how many there are only when they did. ALWAYS shown (Hafsah,
+                    6 October): an admin with nothing waiting and nothing opened has no rows, and
+                    this is then her way to every check-in. */}
+                <NavLink to="/grounds" className="gw-rl-nav">
+                  {hiddenCount > 0 ? `All check-ins (${grounds.length})` : 'All check-ins'}
+                </NavLink>
                 {closed.length > 0 && (
                   <>
                     <button

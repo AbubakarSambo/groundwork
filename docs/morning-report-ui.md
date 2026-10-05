@@ -47,7 +47,7 @@ same file.
   - **The anchor screens.** The landing now opens straight into the anchor's first question, the landing has its mark and edges, and a closed check-in is never offered "end it". The engine's and seed's faults are in request 163.
 - **Ready.** "Screens ready for the release branch." is written in `docs/answers-from-engine.md` at bce7f21d. The client tests pass, 4,283 of 4,283, and the browser tests pass, 57 of 57.
 
-**Decided for Hafsah to confirm**
+**Decided for Hafsah to confirm**: *all four confirmed by Hafsah, 6 October. For the admin's sidebar she added that "All check-ins" is always shown, even with no rows; that is done.*
 - **The crash page** says "Everything you had already sent is saved.", not the prototype's "Nothing you wrote is lost; it was saved before this happened.", because an answer typed but not sent is not saved. "We’ve been told." is left out, because no crash reaches us.
 - **The gone check-in page** uses the prototype's two sentences, then keeps one more: "If you have just switched organisation, it may belong to the one you switched away from." That is how most people get there.
 - **"Ask to join" is not shown** under "You’re not in this check-in" until the server allows it (request 159). Only "<name> runs it and can add you." shows.

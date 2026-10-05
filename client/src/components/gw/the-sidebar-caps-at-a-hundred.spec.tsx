@@ -135,4 +135,16 @@ describe('the sidebar at a hundred check-ins', () => {
     expect(rowNames(rail)).toEqual(['Check-in 10', 'Check-in 11', 'Check-in 12', 'Check-in 13'])
     expect(within(rail).getByRole('link', { name: 'All check-ins' })).toHaveAttribute('href', '/grounds')
   })
+
+  it('always offers "All check-ins", even with no rows at all: an admin with nothing waiting and nothing opened (Hafsah, 6 October)', () => {
+    const notHers = aHundredGrounds([]).map(g => ({ ...g, initiatorId: 'u-someone', participants: [{ id: `x-${g.id}`, userId: 'u-someone' }] }))
+    const { rail } = mount(notHers)
+    expect(rowNames(rail)).toHaveLength(0)
+    expect(within(rail).getByRole('link', { name: /All check-ins \(100\)/ })).toHaveAttribute('href', '/grounds')
+  })
+
+  it('and when every open check-in is pinned or none is open', () => {
+    const { rail } = mount([])
+    expect(within(rail).getByRole('link', { name: 'All check-ins' })).toHaveAttribute('href', '/grounds')
+  })
 })
