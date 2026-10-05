@@ -381,6 +381,25 @@ There is no screen to change. The prompt is new: `anchor_participant_baseline` v
 shows it. It touches no all-24 scenario, because none of them is an anchor check-in. It runs only on
 the anchor seed and the anchor journey.
 
+**Anchor pieces 26 and 27, a request offered in the check-in, are built (decision 105, item 4).** They
+are behind the anchor switch and only for anchor check-ins. When a person asks for leave, or asks to
+spend money, in their own words in the check-in, the reply carries `requestOffer`:
+`{ kind: "leave" | "spending", question: "Shall I treat this as a leave request?" (or "... a spending request?"), yes: "Yes", no: "No" }`.
+It uses the same reading and the same question as WhatsApp.
+
+On their yes, the reply starts with the spec's sentence and carries `openTheRequest`:
+`{ kind, suiteIsOn, says, button }`. With Leave on: "You can submit that through Leave here and it'll
+appear on your manager's board.", with the button "Request leave". With Spending on: "I can turn that
+into a payment request so it appears on the appropriate board.", with "Create request". With the suite
+off: "Your organisation also has the option to manage leave through Groundwork." (or "spending
+requests"), and `button` is null. The button should open the suite's own request form. Nothing is filed
+for the person, so a date or a sum is never guessed. A no, or carrying on, leaves nothing.
+
+Both ride on the plain reply and the stream's `done`. A request is never also offered as an idea.
+There is no model and no prompt: the reading is WhatsApp's own. Its limit is that only a request is
+taken, so "I'm taking Friday off" alone is not read as one, while "Can I take a day off on Friday?" is.
+No PromptVersion is needed, and no all-24 scenario is touched.
+
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
 ```

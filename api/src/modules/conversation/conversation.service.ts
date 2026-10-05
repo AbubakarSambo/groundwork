@@ -122,6 +122,7 @@ import { theOneWorthAsking, askAboutItBlockFor } from './what-keeps-happening-be
 import { mayCoach } from './participation-timeline';
 import { theirApprovedLeave } from '../suites/who-is-away';
 import { afterTheirTurn } from './ideas-from-the-team';
+import { aRequestAfterTheirTurn } from './a-request-offered-in-the-check-in';
 import { stillAsking } from './one-question-per-turn';
 import { oneThingAsked, wouldLeaveAQuestionOut, asksMoreThanOneThing, withTheOneMoreLine, ASK_ONE_THING } from './a-turn-asks-one-thing';
 import { A_CHECK_IN_TAKES_ANSWERS, theCeilingIsReached, howMuchRoomIsLeft } from './there-is-a-ceiling-and-it-is-not-a-surprise';
@@ -2918,7 +2919,13 @@ export class ConversationService {
     const startedFrom = (checkIn as any).ground?.startedFrom
       ?? (await (this.prisma as any).ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { startedFrom: true } })?.catch?.(() => null))?.startedFrom
       ?? null;
-    const idea = startedFrom ? await afterTheirTurn(
+    /* A request said in their own words is offered there, as WhatsApp does (anchor pieces 26 and 27). Read first, so a
+       leave request is never also offered as an idea. See a-request-offered-in-the-check-in. */
+    const organizationId = (checkIn as any).ground?.organizationId
+      ?? (await (this.prisma as any).ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { organizationId: true } })?.catch?.(() => null))?.organizationId
+      ?? null;
+    const request = startedFrom ? await aRequestAfterTheirTurn(this.prisma, { groundId: checkIn.groundId, organizationId, startedFrom, participantId: (checkIn as any).participantId ?? null, message, sessionComplete }) : {};
+    const idea = startedFrom && !request.requestOffer && !request.openTheRequest ? await afterTheirTurn(
       { prisma: this.prisma, anthropic: this.anthropic as any, prompts: this.prompts as any },
       { groundId: checkIn.groundId, startedFrom, participantId: (checkIn as any).participantId ?? null, message, sessionComplete },
     ) : {};
@@ -2927,8 +2934,11 @@ export class ConversationService {
       sessionComplete,
       ...(suggestedAnswers.length ? { suggestedAnswers } : {}),
       ...(idea.ideaOffer ? { ideaOffer: idea.ideaOffer } : {}),
+      ...(request.requestOffer ? { requestOffer: request.requestOffer } : {}),
+      ...(request.openTheRequest ? { openTheRequest: request.openTheRequest } : {}),
       ...(this.anchorVersionForThisTurn.get(checkIn.id) ? { promptVersionId: this.anchorVersionForThisTurn.get(checkIn.id) } : {}),
     };
+    if (request.sayFirst) answer.reply = [request.sayFirst, answer.reply].filter(Boolean).join('\n\n');
     /* "I have captured it for the team." is said first, before anything else in the reply (anchor piece 19). */
     if (idea.sayFirst) answer.reply = [idea.sayFirst, answer.reply].filter(Boolean).join('\n\n');
     return answer;
@@ -3144,7 +3154,7 @@ export class ConversationService {
    * written once, sanitized, after the stream completes.
    */
   async *sendMessageStream(checkInId: string, requestingUserId: string, message: string):
-    AsyncGenerator<{ type: 'delta'; text: string } | { type: 'done'; reply: string; sessionComplete: boolean; suggestedAnswers?: string[]; ideaOffer?: any }, void, unknown> {
+    AsyncGenerator<{ type: 'delta'; text: string } | { type: 'done'; reply: string; sessionComplete: boolean; suggestedAnswers?: string[]; ideaOffer?: any; requestOffer?: any; openTheRequest?: any }, void, unknown> {
     /*
      * THE SAME CODE AS THE PLAIN ROUTE, WITH THE DRAFT SHOWN AS IT IS WRITTEN. Hafsah, 28 September
      * 2026. What the person reads last is `done.reply`, which is exactly what sendMessage returns and
@@ -3178,8 +3188,10 @@ export class ConversationService {
       reply: r.reply,
       sessionComplete: !!r.sessionComplete,
       ...(Array.isArray(r.suggestedAnswers) && r.suggestedAnswers.length ? { suggestedAnswers: r.suggestedAnswers } : {}),
-      /* The idea offer rides on the last event too (anchor piece 19). */
+      /* The idea offer rides on the last event too (anchor piece 19), and so do the request offer and its yes (26, 27). */
       ...(r.ideaOffer ? { ideaOffer: r.ideaOffer } : {}),
+      ...(r.requestOffer ? { requestOffer: r.requestOffer } : {}),
+      ...(r.openTheRequest ? { openTheRequest: r.openTheRequest } : {}),
     };
   }
 
