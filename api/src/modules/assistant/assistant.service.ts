@@ -1458,6 +1458,26 @@ export class AssistantService {
       const mine = open.find((s) => s.groundId === groundId);
       if (mine) chosen = { groundId: mine.groundId, label: mine.label };
     }
+    /*
+     * AND RUNNING ONE COUNTS EVEN WHEN NO CHECK-IN WAS NAMED (screens request 154, item 2).
+     *
+     * The rule above was only applied when the screen sent a `groundId`. Ask now covers the whole
+     * organisation by default and is usually opened with no check-in chosen, so a lead fell
+     * straight through to "You have none open, so there is nowhere to put one yet." - read live by
+     * somebody running ten open check-ins. A document belongs to a check-in, not to a session, and
+     * she runs ten of them.
+     */
+    if (!chosen && !open.length && userId) {
+      const viewer = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, organizationId: true } });
+      const hers = await this.prisma.ground.findMany({
+        where: { organizationId, status: { notIn: A_GROUND_IS_OVER } },
+        select: { id: true, label: true, initiatorId: true, organizationId: true, createdByUserId: true, participants: { select: { userId: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      });
+      const runs = hers.find((g) => runsIt(userId, viewer, g as any));
+      if (runs) chosen = { groundId: runs.id, label: runs.label };
+    }
     if (!chosen) {
       const nowhere = whyThereIsNowhereToPutIt(open.length);
       if (nowhere) return rules('add_a_document', text(nowhere));
