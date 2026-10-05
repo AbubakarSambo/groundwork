@@ -186,7 +186,7 @@ export async function howItEnds(c: any): Promise<string[]> {
     const people = names.map((n) => make(n, 'Mwangi', 'MEMBER', orgs.on, 'kito', { department: 'Sales', manager: wairimu.externalId }));
     const [done, early, halfway] = await Promise.all(people);
     for (const p of [done, early, halfway]) await signIn(p);
-    const g = await api('/grounds', { token: wairimu.token, body: { label: k.label, moment: 'STARTING', timelineDays: 84, brief: `This check-in is about ${k.kind}: what moved this week, what is stuck, and what each person needs.`, ...(k.keptInTheApp ? { overWhatsApp: false } : {}), ...k.body } });
+    const g = await api('/grounds', { token: wairimu.token, body: { label: k.label, moment: 'STARTING', timelineDays: 84, brief: `This check-in is about ${k.kind}: what moved this week, what is stuck, and what each person needs.`, ...k.body } });
     if (!g?.id) { keep(`- The check-in could not be created: ${JSON.stringify(g).slice(0, 200)}`); continue; }
     if (g.status === 'AWAITING_APPROVAL') await api(`/grounds/${g.id}/approve`, { token: grace.token, body: {} });
     if (k.anchor) await prisma.ground.update({ where: { id: g.id }, data: { startedFrom: 'anchor' } });
