@@ -24,7 +24,8 @@ vi.mock('@/api/billing', () => ({ billingApi: { getPricing: vi.fn() } }))
 const setAuth = vi.fn()
 vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ setAuth }) }))
 
-const pricing = (on: boolean) => ({ plans: [], free: { groundLimit: 10, memberLimit: 5 }, trial: { on, teamsUnder: 20, months: 3 } })
+/* Served months changed from 3 to 1 (decision 78, 5 October: every free run is one month). */
+const pricing = (on: boolean) => ({ plans: [], free: { groundLimit: 10, memberLimit: 5 }, trial: { on, teamsUnder: 20, months: 1 } })
 
 function open(path = '/org-new') {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -74,7 +75,7 @@ describe('what the person reads', () => {
     open()
     const size = await screen.findByLabelText('How many people will use it?')
     expect([...(size as HTMLSelectElement).options].map(o => o.textContent)).toEqual(['Fewer than 20', '20 or more'])
-    expect(screen.getByText('Teams of fewer than 20 people get 3 months free. No card needed.')).toBeTruthy()
+    expect(screen.getByText('Teams of fewer than 20 people get 1 month free. No card needed.')).toBeTruthy()
   })
 })
 

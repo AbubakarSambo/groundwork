@@ -534,7 +534,7 @@ export function AuthPage() {
     return (
       <AuthCard title="Create your account" sub={trialSentence ?? 'We send you a link to confirm your email. Your account is made when you open it.'}>
         {/*
-          WHAT IS WAITING FOR THIS ADDRESS. Somebody promised three months on the house should
+          WHAT IS WAITING FOR THIS ADDRESS. Somebody promised a month on the house should
           read it here, while they are deciding, rather than find out on their first invoice.
           See what-is-waiting-for-this-address.ts and the API's on-the-house route.
         */}

@@ -110,7 +110,7 @@ export interface ATrialNotice {
  * organisation inside the free trial's months (not a free run given by hand), and only while the
  * trial setting is on, so the size and the length are the setting's.
  *
- *   7 days before: "Your free 3 months end on 14 October", and the plan that keeps it running.
+ *   7 days before: "Your free 1 month ends on 14 October", and the plan that keeps it running.
  *   Past the size: "You now have 20 people", and the plan needed after the end date.
  */
 export function theTrialNotices(status: BillingStatus | undefined, pricing: LivePricing | undefined, now: Date = new Date()): ATrialNotice[] {

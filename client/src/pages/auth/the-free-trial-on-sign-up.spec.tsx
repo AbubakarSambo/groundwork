@@ -30,17 +30,18 @@ beforeEach(() => { vi.clearAllMocks() })
 
 describe('the free trial on sign-up', () => {
   it('off (as it is until billing grants it): nothing about a trial, and the plain sentence', async () => {
-    ;(billingApi.getPricing as any).mockResolvedValue(pricing({ on: false, teamsUnder: 20, months: 3 }))
+    ;(billingApi.getPricing as any).mockResolvedValue(pricing({ on: false, teamsUnder: 20, months: 1 }))
     renderSignUp()
     await waitFor(() => expect(billingApi.getPricing).toHaveBeenCalled())
     expect(await screen.findByText('We send you a link to confirm your email. Your account is made when you open it.')).toBeTruthy()
     expect(screen.queryByText(/months free|No card/)).toBeNull()
   })
 
+  /* Served months changed from 3 to 1 (decision 78, 5 October: every free run is one month). */
   it('on: the prototype\'s sentence, built from the server\'s numbers', async () => {
-    ;(billingApi.getPricing as any).mockResolvedValue(pricing({ on: true, teamsUnder: 20, months: 3 }))
+    ;(billingApi.getPricing as any).mockResolvedValue(pricing({ on: true, teamsUnder: 20, months: 1 }))
     renderSignUp()
-    expect(await screen.findByText('Teams of fewer than 20 people get 3 months free. No card needed.')).toBeTruthy()
+    expect(await screen.findByText('Teams of fewer than 20 people get 1 month free. No card needed.')).toBeTruthy()
   })
 
   it('with other numbers, the same sentence with those numbers', async () => {
