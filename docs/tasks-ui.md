@@ -55,7 +55,7 @@ Tick each box (`[x]`) when it passes the tester and the reviewer. If a task is s
 - [ ] **U.17** E The Suites page, then each suite, one at a time: onboarding, leave (with a stand-in), time sheets, reviews, when someone leaves, role map, spending and budgets, to-dos, customers and deals, equipment *(The Suites page and all ten suites built and tested on 27 September, apart from the engine's parts (requests 20 to 29) and what waits for Hafsah (item 28). Not ticked: the review could not sign in; see item 14.)*
 - [ ] **U.18** F1 Connections and channels *(Built and tested on 27 September, apart from what waits for Hafsah (item 29). Not ticked: the review could not sign in; see item 14.)*
 - [ ] **U.19** F2 Billing (keep Stripe exactly as it is; take plans and prices from the database) *(Built and tested on 27 September, apart from what waits for Hafsah (item 30). Not ticked until its review.)*
-- [ ] **U.20** F4 Small states and errors
+- [x] **U.20** F4 Small states and errors *(6 October: built, one review and its fixes, checked live)*
 - [ ] **U.21** F5 Groundwork staff
 
 F3, the public site, is a separate project. Leave it.

@@ -13,6 +13,7 @@ import { LinkProblem } from '@/components/gw/LinkProblem'
 import { toast } from 'sonner'
 import { opensStraightOnTheQuestion, whereTheLinkGoes } from './the-link-opens-on-the-question'
 import { isEvaluationScenario } from '@/lib/scenario-catalog'
+import { askNameFor } from '@/lib/ask-name'
 
 /**
  * The participant invite landing. ONE PATH: accepting the invite signs the
@@ -329,7 +330,7 @@ export function InvitePage() {
         <PageTitle title={preview.anchorInvitation?.heading ?? theInvitation(preview)} subtitle={(preview.organisationName || preview.endsAt) ? whereAndUntil(preview) : undefined} />
 
         <Stack gap={19}>
-          <Callout>{whoCanReadThis(preview.scenario)}</Callout>
+          <Callout>{whoCanReadThis(preview.scenario, preview.organisationName)}</Callout>
 
           {/*
             ANCHOR PIECE 11, THE INVITATION (docs/anchor-scenario-plan.md section 5 row 5;
@@ -456,7 +457,7 @@ export function InvitePage() {
             */}
             <div>
               <SubHeading>Who can read what you write</SubHeading>
-              <p className="gwui-note">{whoCanReadThis(preview.scenario)}</p>
+              <p className="gwui-note">{whoCanReadThis(preview.scenario, preview.organisationName)}</p>
             </div>
             <div>
               <SubHeading>We cannot show it to ourselves either</SubHeading>
@@ -529,11 +530,11 @@ export function heldForASeatCard(saying: string): { heading: string; sub?: strin
  * client-side stand-in for a field the engine does not send yet (request 78); once it does, this
  * should read that field instead of guessing from the scenario.
  */
-export function whoCanReadThis(scenario: GroundScenario | null | undefined): string {
+export function whoCanReadThis(scenario: GroundScenario | null | undefined, organisationName?: string | null): string {
   const admins = !scenario || isEvaluationScenario(scenario)
     ? ''
     : ' Admins in your organisation can read every check-in.'
-  return `The people in this check-in, including your manager, can see what you say in it.${admins} Your own report and your questions to Ask Groundwork stay private.`
+  return `The people in this check-in, including your manager, can see what you say in it.${admins} Your own report and your questions to ${askNameFor(organisationName)} stay private.`
 }
 
 /** "Wairimu invited you to the sales team's check-in", with the check-in's own name. */

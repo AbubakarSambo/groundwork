@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { leaveBoardApi, type LeaveWaiting } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
-import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row, Tag } from '@/components/gw/ui'
+import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row, Tag, ExampleExchange, FieldLabel, TextArea } from '@/components/gw/ui'
 import { theDaysInFull, theDaysShort } from './the-days-someone-is-off'
 import { AskAQuestion } from './AskAQuestion'
 import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
@@ -92,6 +92,13 @@ export function LeaveBoardPage() {
           </Section>
 
           <Section heading="How people ask">
+            <ExampleExchange
+              label="An example: someone asks Groundwork for leave in chat, and is told how many days they have left and who else is off, before it is sent to the right approver."
+              lines={[
+                { mine: true, text: 'I need next Thursday and Friday off.' },
+                { mine: false, text: 'You have 16 days left and nobody else in your team is off then. Shall I send it to your manager?' },
+              ]}
+            />
             <p className="gwui-panel-text">In their check-in, in chat, or on WhatsApp. Nobody fills in a form.</p>
           </Section>
 
@@ -102,7 +109,10 @@ export function LeaveBoardPage() {
                   <Row key={t.id} columns="minmax(0, 1fr)">
                     <div>
                       <b>{`${t.name}: ${theDaysInFull(t.startsOn, t.endsOn)}`}</b>
-                      {t.said.map((line, i) => <p key={i} className="gwui-panel-text">{line}</p>)}
+                      {/* said[0] is the "<name> asked for leave from ... which is N working days."
+                          sentence - the same dates the title above already gives, in another shape
+                          (fault 5 of the live walk: shown once, not twice). */}
+                      {t.said.slice(1).map((line, i) => <p key={i} className="gwui-panel-text">{line}</p>)}
                     </div>
                   </Row>
                 ))}
@@ -118,30 +128,48 @@ export function LeaveBoardPage() {
 function ARequest({ w }: { w: LeaveWaiting }) {
   const qc = useQueryClient()
   const [problem, setProblem] = useState<string | null>(null)
+  const [declining, setDeclining] = useState(false)
+  const [reason, setReason] = useState('')
   const decide = useMutation({
-    mutationFn: (outcome: 'approve' | 'decline') => leaveBoardApi.decide(w.id, outcome),
+    mutationFn: (outcome: 'approve' | 'decline') =>
+      outcome === 'decline' ? leaveBoardApi.decide(w.id, outcome, reason.trim() || undefined) : leaveBoardApi.decide(w.id, outcome),
     onSuccess: (board) => { setProblem(null); qc.setQueryData(['suite-leave'], board) },
     onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
   })
   /* Everything under the title is the server's own sentences: where the request stands, then the request as this
-     reader reads it (the days left, who else is off, the stand-in, what the person owns, the rules, the questions). */
+     reader reads it (the days left, who else is off, the stand-in, what the person owns, the rules, the questions).
+     said[0] is dropped: it is the "<name> asked for leave from ... which is N working days." sentence, the same
+     dates the title above already gives, in another shape (fault 5 of the live walk: shown once, not twice). */
   return (
     <Row columns="minmax(0, 1fr) auto">
       <div>
         <b>{`${w.name}: ${theDaysInFull(w.startsOn, w.endsOn)}`}</b>
         {w.leaveKind && <Tag>{w.leaveKind}</Tag>}
         <p className="gwui-panel-text">{w.where}</p>
-        {w.said.map((line, i) => <p key={i} className="gwui-panel-text">{line}</p>)}
+        {w.said.slice(1).map((line, i) => <p key={i} className="gwui-panel-text">{line}</p>)}
         {w.mayDecide && (
           <AskAQuestion id={w.id} who={w.name} send={async q => qc.setQueryData(['suite-leave'], await leaveBoardApi.ask(w.id, q))} />
         )}
+        {/* As spending's Decline (live walk, fault 6): an optional reason first, which the person is told. */}
+        {declining && (
+          <form className="gwui-suite-ask" onSubmit={e => { e.preventDefault(); decide.mutate('decline') }}>
+            <div className="gwui-suite-q">
+              <FieldLabel htmlFor={`leave-decline-${w.id}`}>Say why (optional)</FieldLabel>
+              <TextArea id={`leave-decline-${w.id}`} rows={2} value={reason} onChange={e => setReason(e.target.value)} maxLength={1000} />
+            </div>
+            <div className="gwui-edge-acts">
+              <Button kind="secondary" size="small" type="submit" disabled={decide.isPending}>Decline</Button>
+              <Button kind="quiet" size="small" onClick={() => { setDeclining(false); setReason(''); setProblem(null) }}>Cancel</Button>
+            </div>
+          </form>
+        )}
         {problem && <Note tone="error">{problem}</Note>}
       </div>
-      {w.mayDecide && (
+      {w.mayDecide && !declining && (
         <div className="gwui-edge-acts">
           <Button kind="secondary" size="small" onClick={() => decide.mutate('approve')} disabled={decide.isPending}
             aria-label={`Approve ${w.name}’s request`}>Approve</Button>
-          <Button kind="quiet" size="small" onClick={() => decide.mutate('decline')} disabled={decide.isPending}
+          <Button kind="quiet" size="small" onClick={() => setDeclining(true)} disabled={decide.isPending}
             aria-label={`Decline ${w.name}’s request`}>Decline</Button>
         </div>
       )}

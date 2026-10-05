@@ -108,11 +108,11 @@ describe('Grace, an admin, reads the Company page', () => {
     open(GRACE, '/company', GRACES)
     expect(await screen.findByText('2 teams and 5 people work here, and there were 3 check-ins this week.')).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 1, name: 'Baridi Appliances' })).toBeInTheDocument()
-    /* Walkthrough pass 2, item 7 (request 154, item 4): both buttons open a chat about one
-       check-in, not the whole organisation or the strategy - labelled for what actually opens
-       until the engine gives Ask that wider choice. */
-    expect(screen.getByRole('button', { name: 'Ask about a check-in' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Ask Groundwork' })).toBeInTheDocument()
+    /* Request 153, part two, done: Ask covers the whole organisation and the person's own work by
+       default, and these two buttons - the prototype's own labels - open it there, not on a
+       check-in (request 154, item 4, now fixed). */
+    expect(screen.getByRole('button', { name: 'Ask about the whole organisation' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Ask about the strategy' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Company context' })).toHaveAttribute('href', '/company/context')
     expect(screen.getByRole('heading', { level: 2, name: 'Is the strategy moving?' })).toBeInTheDocument()
 
@@ -122,12 +122,12 @@ describe('Grace, an admin, reads the Company page', () => {
     expect(priority(3).textContent).toBe('Priority 3Nobody owns it yetBuild a stronger organisationNo team feeds it')
   })
 
-  it('either button opens Ask Groundwork, about a check-in', async () => {
+  it('either button opens Ask, on the organisation', async () => {
     open(GRACE, '/company', GRACES)
-    fireEvent.click(await screen.findByRole('button', { name: 'Ask Groundwork' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Ask about the strategy' }))
     expect(useAskStore.getState().open).toBe(true)
     useAskStore.setState({ open: false })
-    fireEvent.click(screen.getByRole('button', { name: 'Ask about a check-in' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ask about the whole organisation' }))
     expect(useAskStore.getState().open).toBe(true)
   })
 
@@ -170,7 +170,8 @@ describe('Grace, an admin, reads the Company page', () => {
     expect(priority(1).textContent).toBe('Priority 1Grow revenue 50%, enterprise firstWhat success looks like Leadership onlyQualified enterprise deals12 this quarterOwner: Wairimu Kamau')
     expect(priority(3).textContent).toBe('Priority 3Build a stronger organisationOwner: No owner yet')
     expect(await screen.findByRole('heading', { name: 'The staff handbook, short and simple' })).toBeInTheDocument()
-    expect(screen.getByText('Ask Groundwork answers from this, and says so')).toBeInTheDocument()
+    /* Ask is named for the organisation (decision 100) - "Ask Baridi Appliances", not "Ask Groundwork". */
+    expect(screen.getByText('Ask Baridi Appliances answers from this, and says so')).toBeInTheDocument()
     expect(screen.getByText('21 days a year. Ask your manager at least 2 weeks before.')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Resources' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'What Baridi Appliances has learned, promised and has to hand' })).toBeInTheDocument()
@@ -200,7 +201,7 @@ describe('Kofi, a guest from another company', () => {
   it('reads the server\'s refusal, and nothing else', async () => {
     open(KOFI, '/company', refusal())
     expect(await screen.findByRole('alert')).toHaveTextContent('Only people in this organisation can read its company page.')
-    expect(screen.queryByRole('button', { name: 'Ask about a check-in' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Ask about the whole organisation' })).toBeNull()
   })
 
   it('is not even asked for the company\'s handbook on company context', async () => {
@@ -236,5 +237,34 @@ describe('what nobody reads', () => {
       expect(document.body.textContent).not.toMatch(/checkab|rating|score|\bPIP\b|exit/i)
       unmount()
     }
+  })
+})
+
+/*
+ * WHAT A LEAD KEPT FOR THE WHOLE COMPANY (week 20, `whatWeKeep`). The Company page review with
+ * Kijani Foods found it served and never drawn. company-context.txt shows it as "Picked up from
+ * your check-in on 22 Sep" with the kind and the lead's words; it is already kept, so there is no
+ * Confirm, Edit or Not now. The server leaves it off for a member, so nothing is drawn for her.
+ */
+describe('kept from check-ins, on company context', () => {
+  const KEPT = {
+    readBy: 'Admins, leads and anyone who runs a check-in can read this. Everyone else cannot.',
+    items: [{ id: 'm1', kind: 'rule', says: 'Every quote over 1 million needs Amina’s sign-off', source: 'Picked up from your check-in on 22 September' }],
+  }
+
+  it('an admin reads the kind, the words in quotation marks, where it came from, and who reads it', async () => {
+    open(GRACE, '/company/context', { ...GRACES, whatWeKeep: KEPT } as any)
+    expect(await screen.findByRole('heading', { name: 'Kept from check-ins' })).toBeTruthy()
+    expect(screen.getByText(KEPT.readBy)).toBeTruthy()
+    expect(screen.getByText('Rule')).toBeTruthy()
+    expect(screen.getByText('“Every quote over 1 million needs Amina’s sign-off”')).toBeTruthy()
+    expect(screen.getByText('Picked up from your check-in on 22 September')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Confirm|Not now/ })).toBeNull()
+  })
+
+  it('a member, who is not served it, sees no such section', async () => {
+    open(MIRIAM, '/company/context', MIRIAMS)
+    await screen.findByRole('heading', { name: 'Priorities' })
+    expect(screen.queryByRole('heading', { name: 'Kept from check-ins' })).toBeNull()
   })
 })

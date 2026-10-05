@@ -353,7 +353,7 @@ export function MagicVerifyPage() {
           if ('accessToken' in res && res.accessToken) forgetThePasswordKey()
         } catch (err: any) {
           /* A link that ran out gets its own page (A2, "That link has expired"); anything else stays
-             with "This link did not work" (LinkDidNotWork). */
+             with "That link didn’t work" (LinkDidNotWork). */
           const said = err?.response?.data?.message
           const what = whatTheLinkDid(said)
           if (what === 'expired' || what === 'resent') return { kind: 'deadLink', what, sentence: typeof said === 'string' && what === 'resent' ? said : WE_SENT_A_NEW_ONE }

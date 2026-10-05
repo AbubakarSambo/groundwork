@@ -94,14 +94,14 @@ describe('an old sign-in link (/verify-email)', () => {
     expect(authApi.entrySave).not.toHaveBeenCalled()
   })
 
-  it('a link already used gets "This link did not work" on the card, with a way to ask for a new one', async () => {
+  it('a link already used gets "That link didn’t work" on the card, with a way to ask for a new one', async () => {
     /* U.2 review: this used to be LinkProblem under the old header, with the server's sentence. */
     ;(authApi.verifyEmail as any).mockRejectedValue(refused('This link has already been used, so your address is confirmed. Sign in from the sign-in page.'))
     const { container } = renderAt('/verify-email?token=t3')
-    await screen.findByRole('heading', { name: 'This link did not work' })
+    await screen.findByRole('heading', { name: 'That link didn’t work' })
     expect(readable(container)).toBe(
-      'Groundwork' + 'This link did not work' +
-      'Each link works only once, and only for a short while. Open the newest one in your inbox, or ask for a new one below.' +
+      'Groundwork' + 'That link didn’t work' +
+      'It may have been cut short when it was copied, or it has already been used. Open it again from the email, or ask for a new one.' +
       'Email' + 'Send me a new link',
     )
     expect(screen.queryByText('That link has expired')).toBeNull()
@@ -213,11 +213,11 @@ describe('as the page opens, when the server already says the link has run out',
   })
 
   /* Changed in the U.2 re-review: a link replaced by a newer one, used or unknown used to keep the form
-     until Save. It now opens on "This link did not work", as an expired one opens on its card. */
-  it('a used, replaced or unknown link ({ valid: false } and nothing else) opens on "This link did not work"', async () => {
+     until Save. It now opens on "That link didn’t work", as an expired one opens on its card. */
+  it('a used, replaced or unknown link ({ valid: false } and nothing else) opens on "That link didn’t work"', async () => {
     ;(authApi.validateToken as any).mockResolvedValue({ valid: false })
     renderAt('/reset-password?token=used-one')
-    expect(await screen.findByRole('heading', { name: 'This link did not work' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'That link didn’t work' })).toBeTruthy()
     expect(screen.queryByLabelText('New password')).toBeNull()
   })
 
@@ -229,12 +229,15 @@ describe('as the page opens, when the server already says the link has run out',
   })
 })
 
-describe('"This link did not work", for a used, unknown or missing link (U.2 review)', () => {
+describe('"That link didn’t work", for a used, unknown or missing link (U.2 review)', () => {
+  /* This is the server's own sentence (api/src/modules/auth/how-long-a-link-lasts.ts), not the
+     page's wording - the page's own "That link didn't work" card renders its own fixed sentence
+     regardless of what the server says, so this stays the API's exact text, unchanged by U.20. */
   const DID_NOT_WORK = 'This link did not work. Each link works only once, and only for a short while. Open the newest one in your inbox, or ask for a new one from the sign-in page.'
 
   it('/verify-email with no token at all', async () => {
     renderAt('/verify-email')
-    expect(await screen.findByRole('heading', { name: 'This link did not work' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'That link didn’t work' })).toBeTruthy()
     expect(authApi.verifyEmail).not.toHaveBeenCalled()
   })
 
@@ -244,7 +247,7 @@ describe('"This link did not work", for a used, unknown or missing link (U.2 rev
     fireEvent.change(screen.getByLabelText('New password'), { target: { value: 'Harbour7lamp' } })
     fireEvent.change(screen.getByLabelText('Type it again'), { target: { value: 'Harbour7lamp' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save password' }))
-    await screen.findByRole('heading', { name: 'This link did not work' })
+    await screen.findByRole('heading', { name: 'That link didn’t work' })
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'wairimu@baridi.test' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send me a new link' }))
     await screen.findByRole('heading', { name: 'Check your email' })

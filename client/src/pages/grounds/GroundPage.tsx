@@ -1,9 +1,11 @@
+import { useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
 import { useAuthStore } from '@/stores/auth'
 import { GroundAdminPage } from './GroundAdminPage'
 import { GroundParticipantPage } from './GroundParticipantPage'
+import { rememberOpened } from '@/components/gw/recently-opened-check-ins'
 
 /**
  * ONE URL FOR A GROUND, AND IT LANDS YOU ON YOUR OWN VIEW.
@@ -33,6 +35,12 @@ import { GroundParticipantPage } from './GroundParticipantPage'
 export function GroundPage() {
   const { id } = useParams<{ id: string }>()
   const user = useAuthStore(s => s.user)
+
+  /* The sidebar's "recently opened" fallback (HAFSAH'S FAULT 4): remembered here, the one place
+     every way into a check-in - the rail, "Jump to", the People page, a link in Today - lands. */
+  useEffect(() => {
+    if (id) rememberOpened(user?.id, id)
+  }, [id, user?.id])
 
   const { data: ground, isLoading } = useQuery({
     queryKey: ['ground', id],

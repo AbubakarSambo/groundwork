@@ -111,6 +111,26 @@ describe('Aisha reads her own requests', () => {
     expect(screen.queryByRole('link', { name: 'Suites' })).toBeNull()
   })
 
+  /*
+   * Fault 8 of the live walk: at 375 wide, "Waiting" and "Approved" stretched to the row's full
+   * width once `Row`'s grid collapses to one column there (its default `stretch` on every item).
+   * The fix is in gw-ui.css ("A BARE TAG" rule, beside the existing bare-Button one), which only
+   * takes effect through real CSS layout a browser applies - jsdom does not run layout, so what is
+   * checked here is the one thing a render test can prove: each tag is still `Row`'s own direct
+   * child, with no override of the shared `.gwui-tag` class the CSS rule is scoped to, so the fix
+   * keeps reaching it.
+   */
+  it('keeps each status tag as a plain, direct child of its row, so the row’s own width fix still reaches it', async () => {
+    open(LEAVE, SPENDING)
+    await screen.findByText('Your leave from Monday 12 October to Friday 16 October is waiting for Wairimu.')
+    for (const label of ['Waiting', 'Declined', 'Approved']) {
+      const tag = screen.getByText(label)
+      expect(tag.parentElement).toHaveClass('gwui-row')
+      expect(tag).toHaveClass('gwui-tag')
+      expect(tag.getAttribute('style')).toBeFalsy()
+    }
+  })
+
   it('is told, and can try again, when a list did not load', async () => {
     open(Object.assign(new Error('x'), { response: { status: 500, data: {} } }), SPENDING)
     expect(await screen.findByText('Your requests did not load.')).toBeTruthy()

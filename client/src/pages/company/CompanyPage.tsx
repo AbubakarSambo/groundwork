@@ -71,18 +71,22 @@ export function CompanyPage() {
       {data && (
         <>
           {/*
-            * WALKTHROUGH PASS 2, ITEM 7 (request 154, item 4): THESE BOTH OPEN A CHAT ABOUT ONE
-            * CHECK-IN, NOT THE WHOLE ORGANISATION OR THE STRATEGY. `showAsk` opens the same Ask
-            * Groundwork panel the rest of the product does, scoped to whichever check-in it last
-            * had or the reader then chooses from "About" - there is no organisation-wide or
-            * strategy-wide question yet. Labelled for what actually opens until the engine gives
-            * Ask that wider choice.
+            * REQUEST 153, PART TWO, DONE: ASK COVERS THE WHOLE ORGANISATION AND THE PERSON'S OWN
+            * WORK BY DEFAULT; A CHECK-IN IS ONLY AN OPTIONAL FOCUS THEY MAY PICK
+            * (docs/answers-from-engine.md, "Request 153, part two"). `showAsk` opens the same Ask
+            * panel the rest of the product does; it opens on the organisation because the panel's
+            * own default (AskGroundwork.tsx) no longer falls back to the first check-in on
+            * "About" when the page it opened from isn't about one, and the Company page never is.
+            * The labels are the prototype's own two ("Ask about the whole organisation",
+            * "Ask about the strategy" - docs/prototype/screens/D2-company/company.txt), which used
+            * to open a chat about one check-in (request 154, item 4) and now open on the
+            * organisation, as both always said they did.
             */}
           <div className="gwui-sentence-row">
-            <Button kind="secondary" onClick={showAsk}>Ask about a check-in</Button>
+            <Button kind="secondary" onClick={showAsk}>Ask about the whole organisation</Button>
             <div className="gwui-edge-acts">
               <Button kind="secondary" to="/company/context">Company context</Button>
-              <Button kind="secondary" onClick={showAsk}>Ask Groundwork</Button>
+              <Button kind="secondary" onClick={showAsk}>Ask about the strategy</Button>
             </div>
           </div>
           {data.line && <Note>{data.line}</Note>}

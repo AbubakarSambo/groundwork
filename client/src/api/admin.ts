@@ -30,6 +30,20 @@ export interface CorrectionWindow {
   max: number
 }
 
+/** The regular free trial: whether it is on, the team size it is for, and how many months (decision 78: always 1 today). */
+export interface AdminFreeTrial {
+  on: boolean
+  teamsUnder: number
+  months: number
+}
+
+/** The anchor's own trial (anchor piece 34): whether it is on. Only on or off - its one month, for up to 20 people, is fixed. */
+export interface AdminAnchorTrial {
+  on: boolean
+  months: number
+  people: number
+}
+
 export interface FreeRunRow {
   id: string
   email: string
@@ -130,8 +144,9 @@ export const adminApi = {
     apiClient.get<{ isConfigured: boolean; says: string }>('/admin/stripe').then(r => r.data),
 
   /**
-   * THREE MONTHS ON THE HOUSE. An address is promised a free run before there is an organisation to
-   * give it to; the clock starts when they sign up. See the API's three-months-on-the-house.
+   * ONE MONTH ON THE HOUSE (decision 78; the route keeps its old name). An address is promised a
+   * free run before there is an organisation to give it to; the clock starts when they sign up.
+   * See the API's three-months-on-the-house.
    */
   listFreeRuns: () =>
     apiClient.get<FreeRunRow[]>('/admin/free-runs').then(r => r.data),
@@ -156,6 +171,20 @@ export const adminApi = {
 
   setFreeMemberLimit: (freeMemberLimit: number) =>
     apiClient.patch<{ freeMemberLimit: number }>('/admin/pricing/free-member-limit', { freeMemberLimit }).then(r => r.data),
+
+  getFreeTrial: () =>
+    apiClient.get<AdminFreeTrial>('/admin/pricing/free-trial').then(r => r.data),
+
+  /** Only `on` is switched here - every free run is one month (decision 78), so the months never change from this screen. */
+  setFreeTrial: (on: boolean) =>
+    apiClient.patch<AdminFreeTrial>('/admin/pricing/free-trial', { on }).then(r => r.data),
+
+  getAnchorTrial: () =>
+    apiClient.get<AdminAnchorTrial>('/admin/pricing/anchor-trial').then(r => r.data),
+
+  /** Only on or off: the anchor trial's one month, for up to 20 people, is fixed (anchor piece 34). */
+  setAnchorTrial: (on: boolean) =>
+    apiClient.patch<AdminAnchorTrial>('/admin/pricing/anchor-trial', { on }).then(r => r.data),
 
   /** Either field alone, or both. `memberCap: null` means unlimited, which is a value not an absence. */
   setPlanLimits: (plan: SubscriptionPlan, body: { amountCents?: number; memberCap?: number | null }) =>

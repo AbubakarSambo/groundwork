@@ -1,6 +1,7 @@
 /**
  * THE ONE SENTENCE ABOUT THE FREE TRIAL. Hafsah's decision of 26 September: teams under 20 people get
- * Groundwork free for 3 months.
+ * Groundwork free for 1 month (decision 78, 5 October: every free run is one month, where it was
+ * three).
  *
  * The numbers come from the server (`trial` on GET /billing/pricing), never from a screen, and every
  * screen that mentions the trial uses this, so they all say it the same way. It gives nothing while

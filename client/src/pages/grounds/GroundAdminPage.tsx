@@ -605,10 +605,10 @@ export function GroundAdminPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['participant-requests', id] })
       qc.invalidateQueries({ queryKey: ['ground', id] })
-      toast.success('Participant added')
+      toast.success('They have been added to the check-in.')
     },
     /* See below: the server's own sentence, for the same reason. */
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not add participant.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not add them.'),
   })
 
   const dismissRequest = useMutation({
@@ -1049,7 +1049,7 @@ export function GroundAdminPage() {
           Setting up a check-in, inviting people and releasing the report belong to its lead, or to
           an admin in your organisation. {amAParty
             ? 'Your own check-ins and the record are on your page.'
-            : 'You are not a participant in this check-in, so there is nothing here for you.'}
+            : 'You are not in this check-in, so there is nothing here for you.'}
         </Empty>
       </Page>
     )
@@ -1761,7 +1761,7 @@ export function GroundAdminPage() {
           <Stack gap={18}>
             {/* Who is overdue belongs with who has answered, and Remind is on the rows just below. */}
             {(ground.overdue ?? 0) > 0 && (
-              <Callout tone="info" title={`${ground.overdue} ${ground.overdue === 1 ? 'participant is' : 'participants are'} overdue.`}>
+              <Callout tone="info" title={`${ground.overdue} ${ground.overdue === 1 ? 'person is' : 'people are'} overdue.`}>
                 A missed session is not a lost session. Use Remind. The most common reason a
                 session is missed is that the email went to spam. Their next check-in picks up
                 where they left off.
@@ -1789,7 +1789,7 @@ export function GroundAdminPage() {
                   </Callout>
                 )
               })()}
-              <SubHeading>Participants</SubHeading>
+              <SubHeading>People</SubHeading>
               <Stack gap={10}>
                 {ground.participants.map((p: any) => {
                   const myCheckIn = ground.checkIns?.find(c => c.participantId === p.id)

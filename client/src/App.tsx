@@ -44,6 +44,8 @@ import { SuitesPage } from '@/pages/suites/SuitesPage'
 import { OnboardingBoardPage } from '@/pages/suites/OnboardingBoardPage'
 import { LeaveBoardPage } from '@/pages/suites/LeaveBoardPage'
 import { YourRequestsPage } from '@/pages/suites/YourRequestsPage'
+import { LeaveRequestNewPage } from '@/pages/suites/LeaveRequestNewPage'
+import { SpendRequestNewPage } from '@/pages/suites/SpendRequestNewPage'
 import { TimeSheetsPage } from '@/pages/suites/TimeSheetsPage'
 import { ReviewsBoardPage } from '@/pages/suites/ReviewsBoardPage'
 import { ReviewPage } from '@/pages/suites/ReviewPage'
@@ -403,9 +405,10 @@ export default function App() {
           <a href="#main" className="gw-skip">Skip to content</a>
           <Toaster position="top-right" richColors />
           <HelpModal />
-          <AppShell>
-          {/* A render error in one page used to blank the entire app. W8-63. */}
+          {/* A render error in one page used to blank the entire app. W8-63. Outside the shell, so
+              the crash card takes the whole window (crash.jpg) and a broken sidebar is caught too. */}
           <PageCrash>
+          <AppShell>
           <Routes>
             {/* Public */}
             <Route path="/" element={<RootRoute />} />
@@ -489,6 +492,8 @@ export default function App() {
             <Route path="/settings/suites" element={<RequireOrgSetup><SuitesPage /></RequireOrgSetup>} />
             <Route path="/suite/onboard" element={<RequireOrgSetup><OnboardingBoardPage /></RequireOrgSetup>} />
             <Route path="/suite/mine" element={<RequireOrgSetup><YourRequestsPage /></RequireOrgSetup>} />
+            <Route path="/suite/leave/new" element={<RequireOrgSetup><LeaveRequestNewPage /></RequireOrgSetup>} />
+            <Route path="/suite/spend/new" element={<RequireOrgSetup><SpendRequestNewPage /></RequireOrgSetup>} />
             <Route path="/suite/leave" element={<RequireOrgSetup><LeaveBoardPage /></RequireOrgSetup>} />
             <Route path="/suite/time" element={<RequireOrgSetup><TimeSheetsPage /></RequireOrgSetup>} />
             <Route path="/suite/reviews" element={<RequireOrgSetup><ReviewsBoardPage /></RequireOrgSetup>} />
@@ -703,8 +708,8 @@ export default function App() {
             <Route path="/stop-reminders/:token" element={<StopRemindersPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
-          </PageCrash>
           </AppShell>
+          </PageCrash>
         </SessionGuard>
       </BrowserRouter>
     </QueryClientProvider>

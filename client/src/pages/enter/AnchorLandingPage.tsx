@@ -1,11 +1,12 @@
+import { useAuthStore } from '@/stores/auth'
 import { useEffect } from 'react'
-import { Navigate, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Panel, PageTitle, Button, Stack, Note } from '@/components/gw/ui'
+import { Page, Mark, Panel, PageTitle, Button, Stack, Note } from '@/components/gw/ui'
 import { THE_ANCHOR_HOOK } from './the-anchor-hook'
 import { useAnchorScenarioIsOnForAStranger } from './anchor-scenario-is-on'
 import { entryAnchorApi } from '@/api/entry'
-import { rememberTheServedPeopleStep } from './TheSetup'
+import { rememberTheServedPeopleStep, rememberTheServedFirstQuestion, rememberTheAnchorStartSucceeded } from './TheSetup'
 
 /** The engine's own sentence for a visitor who reaches this page while the way in is closed (request 144 (2) and (3)). */
 const THE_WAY_IN_IS_NOT_OPEN_YET = 'This way in is not open yet.'
@@ -43,6 +44,8 @@ const THE_WAY_IN_IS_NOT_OPEN_YET = 'This way in is not open yet.'
  * work, not sent on as though nothing happened.
  */
 export function AnchorLandingPage() {
+  /* Somebody already signed in is not offered "Sign in" (picture check, 6 October). */
+  const signedIn = useAuthStore(st => st.isAuthenticated)
   const [params] = useSearchParams()
   const source = params.get('source')
   const on = useAnchorScenarioIsOnForAStranger()
@@ -55,12 +58,18 @@ export function AnchorLandingPage() {
   })
 
   /**
-   * CARRYING `thePeopleStep` ON TO THE ENTRY CHAT (item 2; docs/answers-from-engine.md, "Request
-   * 149 (2 of 6)"). This is the one call that gets it, and the button below is a fresh page load
-   * into `EntryChatPage.tsx`, so it is handed off through `sessionStorage` rather than kept here.
+   * CARRYING `thePeopleStep` AND `firstQuestion` ON TO THE ENTRY CHAT (item 2; docs/answers-from-
+   * engine.md, "Request 149 (2 of 6)"; request 163 item 9), AND CONFIRMING THE SWITCH IS ON FOR
+   * THIS TAB (fault 1's own gate, `EntryChatPage.tsx`'s `anchorConversationOpensDirectly()`). This
+   * is the one call that gets all three, and the button below is a fresh page load into
+   * `EntryChatPage.tsx`, so each is handed off through `sessionStorage` rather than kept here.
+   * `started` only exists once `GET /entry/anchor-start` has actually answered (not 404'd), which is
+   * exactly the plan's own stand-in for "the anchor switch is on".
    */
   useEffect(() => {
+    if (started) rememberTheAnchorStartSucceeded()
     rememberTheServedPeopleStep(started?.thePeopleStep)
+    rememberTheServedFirstQuestion(started?.firstQuestion)
   }, [started])
 
   // While the public switch is still loading, nothing is drawn - never a half-answered page, and
@@ -71,16 +80,31 @@ export function AnchorLandingPage() {
     return <Navigate to="/start" replace />
   }
 
+  /*
+   * FAULT 2 (request, 6 October 2026, live walk): at 1440 and 375 the heading sat against the very
+   * top of the page, and at 375 the heading and the panel touched both side edges with no gutter -
+   * there was no `Page` wrapper giving it one (AppShell's `!showSidebar` branch renders a signed-
+   * out page's children with no padding of its own; see Page.tsx). There was also no Groundwork
+   * mark and no way to sign in, unlike every other signed-out arrival page (TheDoor.tsx and
+   * EntryChatPage.tsx's own `.gwui-mark-row`). `Page narrow` is the shared one-column frame every
+   * other arrival screen uses (InvitePage.tsx, join/*), which gives this page its top and side
+   * gutter for free; `Mark` plus a plain "Sign in" link, in the same row EntryChatPage draws at its
+   * own door, give a stranger the way in and the way to sign in that every other door has.
+   */
   if (isError) {
     return (
-      <div className="gwui-door">
+      <Page narrow>
+        <div className="gwui-mark-row">
+          <Mark />
+          {!signedIn && <Link to="/auth" className="gwui-plain-link">Sign in</Link>}
+        </div>
         <Panel>
           <Stack gap={10}>
             <Note>{THE_WAY_IN_IS_NOT_OPEN_YET}</Note>
             <Button to="/start">Go to Groundwork</Button>
           </Stack>
         </Panel>
-      </div>
+      </Page>
     )
   }
 
@@ -89,7 +113,11 @@ export function AnchorLandingPage() {
     : '/start'
 
   return (
-    <div className="gwui-door">
+    <Page narrow>
+      <div className="gwui-mark-row">
+        <Mark />
+        {!signedIn && <Link to="/auth" className="gwui-plain-link">Sign in</Link>}
+      </div>
       <PageTitle title={THE_ANCHOR_HOOK.heading} />
       <Panel>
         <Stack gap={10}>
@@ -99,6 +127,6 @@ export function AnchorLandingPage() {
           <Button to={enterHref}>{THE_ANCHOR_HOOK.button}</Button>
         </Stack>
       </Panel>
-    </div>
+    </Page>
   )
 }

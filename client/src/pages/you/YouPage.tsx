@@ -226,9 +226,18 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
 
       {b.saidYoudDo.length > 0 && (
         <Section heading="What you said you’d do" note="From every check-in">
+          {/*
+            WIDTH CHECK, ITEM 11: AT 1024 THE DUE-DATE WRAPPED ("Tuesday 29\nSeptember"). The
+            date's own column shared an even `minmax(0, 1fr)` with "which check-in", so once four
+            columns and a gap had to fit the page's narrower 1024px width, a plain date (the
+            longest ordinary value this column ever holds) was the one column forced to wrap.
+            A 150px floor is room enough for that longest date on one line, taken from the row's
+            own shrinking - not from the check-in column beside it, which already holds shorter
+            names.
+          */}
           <RowList label="What you said you’d do">
             {b.saidYoudDo.map(s => (
-              <Row key={s.id} columns="minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto">
+              <Row key={s.id} columns="minmax(0, 2fr) minmax(0, 1fr) minmax(150px, 1fr) auto">
                 <b>{s.text}</b>
                 <span>{s.checkIn}</span>
                 <span>{s.when ?? ''}</span>

@@ -124,7 +124,7 @@ describe('who can read this, built from the check-in\'s own scenario (item 11, c
     await screen.findByText('Who sees your answers')
     const text = document.body.textContent ?? ''
     expect(text).not.toMatch(/Admins in your organisation can read every check-in\./)
-    expect(screen.getByText(/The people in this check-in, including your manager, can see what you say in it\. Your own report and your questions to Ask\s+Groundwork stay private\./)).toBeTruthy()
+    expect(screen.getByText('The people in this check-in, including your manager, can see what you say in it. Your own report and your questions to Ask Baridi Appliances stay private.')).toBeTruthy()
   })
 
   it('leaves the admins line out too when the scenario is not known - the more private reading', async () => {

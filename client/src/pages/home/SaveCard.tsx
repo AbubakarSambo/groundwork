@@ -235,7 +235,7 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
 
       {/* Section 3: send directly by email */}
       <div className="gwui-panel-row">
-        <SubHeading>Invite a participant</SubHeading>
+        <SubHeading>Invite someone to answer</SubHeading>
         <p className="gwui-panel-text-muted">
           Add their email and we will send them an invite once you have saved.
         </p>

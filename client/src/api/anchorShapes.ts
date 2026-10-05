@@ -183,3 +183,41 @@ export type TheIdeaOfferInTheCheckIn = {
   yes: string
   no: string
 }
+
+/* ------------------------------------------------------------------------------------------------
+ * ANCHOR PIECES 26 AND 27. A REQUEST OFFERED IN THE CHECK-IN (section 22; docs/anchor-scenario.md;
+ * docs/answers-from-engine.md, "Anchor pieces 26 and 27, a request offered in the check-in, are
+ * built"; engine's `ARequestOffer` / `ARequestToOpen`,
+ * `api/src/modules/conversation/a-request-offered-in-the-check-in.ts`). Only for a check-in started
+ * from the anchor link, only while the anchor switch is on. When a person asks for leave, or asks
+ * to spend money, in their own words, the reply carries `requestOffer`: "Shall I treat this as a
+ * leave request?" (or a spending request), with "Yes" and "No". Their yes is answered with the
+ * spec's sentence and `openTheRequest`; a no, or carrying on, leaves nothing. Nothing is filed for
+ * the person - a date or a sum is never guessed - so `openTheRequest.button`, when it is not null,
+ * opens the suite's own request form rather than sending anything itself. A request is never also
+ * offered as an idea, so only one of `ideaOffer` and `requestOffer` ever rides on the same reply.
+ * ---------------------------------------------------------------------------------------------- */
+export type TheRequestOfferInTheCheckIn = {
+  kind: 'leave' | 'spending'
+  /** "Shall I treat this as a leave request?" / "... a spending request?" */
+  question: string
+  yes: string
+  no: string
+}
+export type TheRequestToOpen = {
+  kind: 'leave' | 'spending'
+  /** Whether that suite is switched on for this organisation - decides which sentence, and whether there is a button. */
+  suiteIsOn: boolean
+  /** The spec's sentence, said first. */
+  says: string
+  /** Null when the suite is off: there is nowhere for the button to open. */
+  button: string | null
+  /**
+   * REQUEST 165 (Hafsah, 6 October): what was read from the person's own words, only where it was
+   * read and never guessed - `{ startsOn?, endsOn? }` for leave, `{ amount?, what?, currency? }`
+   * for spending. The button opens the suite's own request form (`/suite/leave/new` or
+   * `/suite/spend/new`), carried in router state, and the form starts from it; with nothing here,
+   * or the field absent, the form starts empty.
+   */
+  prefill?: { startsOn?: string; endsOn?: string; amount?: number; what?: string; currency?: string } | null
+}

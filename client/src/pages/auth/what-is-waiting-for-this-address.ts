@@ -2,7 +2,8 @@
  * WHAT IS WAITING FOR THIS ADDRESS.
  *
  * "We put in someone's email and their org gets free use for three months, when they sign-up, they
- * see it." Seeing it is the half that is easy to skip and the half she asked for: a promise nobody
+ * see it." She later decided one month (decision 78), so this reads it from the server, never
+ * three. Seeing it is the half that is easy to skip and the half she asked for: a promise nobody
  * mentions at the moment of signing up is a discount they find out about on their first invoice.
  *
  * ASKED ONLY ONCE THE ADDRESS LOOKS LIKE ONE, and debounced, because this runs while somebody is

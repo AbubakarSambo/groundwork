@@ -2,10 +2,13 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
 import { boardApi } from '@/api/board'
+import { resolutionApi } from '@/api/resolution'
 import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
 import { SuggestionsForTheLead } from '@/components/gw/Suggestions'
 import { TheEndOfMonthRead } from '@/components/gw/TheEndOfMonthRead'
 import type { TheContinueOption } from '@/api/anchorShapes'
+import { hasEnded } from '@/lib/a-ground-that-has-ended'
+import { Panel, Note, Button as UIButton, Stack } from '@/components/gw/ui'
 
 /**
  * HOW DOES THIS END? (U.11, B6, ending-and-probation-review.txt, #/c/kwame/end)
@@ -50,6 +53,37 @@ export default function EndingPage() {
     : undefined
 
   /**
+   * FAULT 3 (live walk, 6 October 2026): A CLOSED CHECK-IN WAS STILL OFFERED "SAVE THE OUTCOME AND
+   * END IT". `ResolutionPanel` (rendered unconditionally below) only knows a check-in has ended once
+   * somebody has actually proposed and confirmed an outcome through its own flow (`resolution.
+   * closedAt`); the anchor's month ends on its own clock, with no such proposal ever made, so the
+   * panel still showed its "How does this end?" form and the primary "Save the outcome and end it"
+   * button - offering to end something already over. The ground's own status is read the same way
+   * `BoardPage.tsx` reads it (`hasEnded`, `lib/a-ground-that-has-ended.ts`), from the same board
+   * response this page already fetches, so this needs no new call.
+   *
+   * When the ground has ended, `ResolutionPanel` is still given `place="board-top"` - its own
+   * read-only branch, the same one the board itself uses - so an outcome that WAS recorded through
+   * the ordinary flow still reads here in full ("How this ended", the reason, the date). It draws
+   * nothing when no outcome was ever recorded (the anchor's case), and this page's own plain
+   * sentence fills that gap instead, with a way back to the board.
+   */
+  const groundClosed = hasEnded((board as any)?.groundStatus)
+
+  /*
+   * THE SAME QUERY `ResolutionPanel` MAKES, so this costs nothing extra: React Query shares one
+   * cached answer for the same `['resolution', id]` key, and this page's own read of it decides
+   * only whether to draw the plain fallback sentence, never what `ResolutionPanel` itself shows.
+   */
+  const { data: resolutionState } = useQuery({
+    queryKey: ['resolution', id],
+    queryFn: () => resolutionApi.get(id!),
+    enabled: !!id && groundClosed,
+    retry: false,
+  })
+  const outcomeWasRecorded = !!(resolutionState as any)?.resolution?.closedAt
+
+  /**
    * WHERE THE FOUR CONTINUE OPTIONS GO (docs/answers-from-engine.md, "Request 149 (6 of 6)",
    * "Answer (3)"), using routes that already exist:
    *   - "Keep this Ground running" and "Continue Groundwork for the team" both open the plan
@@ -87,8 +121,18 @@ export default function EndingPage() {
           <TheEndOfMonthRead read={monthReadForTheLead} onContinue={onContinue} />
         </div>
       )}
-      {!!id && <SuggestionsForTheLead groundId={id} where="ending" />}
-      {!!id && <ResolutionPanel groundId={id} />}
+      {/* FAULT 3: a closed check-in with no month-in-review read gets a plain sentence that it has
+          ended, never the "decide how it ends" form - see the comment on `groundClosed` above. */}
+      {!monthReadForTheLead && groundClosed && !outcomeWasRecorded && !!id && (
+        <Panel>
+          <Stack gap={10}>
+            <Note>This check-in has ended.</Note>
+            <UIButton to={`/grounds/${id}/board`}>See the board</UIButton>
+          </Stack>
+        </Panel>
+      )}
+      {!groundClosed && !!id && <SuggestionsForTheLead groundId={id} where="ending" />}
+      {!!id && <ResolutionPanel groundId={id} place={groundClosed ? 'board-top' : undefined} />}
     </div>
   )
 }

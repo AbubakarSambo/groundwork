@@ -79,12 +79,17 @@ describe('Wairimu, the lead who approves, reads the leave board', () => {
     expect(screen.getByText('People ask for time off in their check-in or chat. Groundwork checks their balance and who else is off, and sends it to the right approver.')).toBeInTheDocument()
   })
 
+  /*
+   * Fault 5 of the live walk: said[0] ("Aisha asked for leave from ... which is 2 working days.")
+   * repeats the same dates the bold title above it already gives, as a second sentence under the
+   * same title. It is dropped here, so each row's dates are said once.
+   */
   it('reads each request as the prototype has it, with Approve and Decline', async () => {
     open(WAIRIMU, WAIRIMUS)
     await screen.findByRole('heading', { level: 2, name: 'Waiting for approval' })
     expect(rows().map(r => [r.querySelector('b')?.textContent, [...r.querySelectorAll('p')].map(p => p.textContent)])).toEqual([
-      ['Aisha Otieno: Thursday 1 and Friday 2 October', ['It is waiting for you.', ...AISHA.said]],
-      ['Samuel Njoroge: Monday 5 October', ['Wairimu has approved it, and it is now waiting for you.', ...SAMUEL.said]],
+      ['Aisha Otieno: Thursday 1 and Friday 2 October', ['It is waiting for you.', ...AISHA.said.slice(1)]],
+      ['Samuel Njoroge: Monday 5 October', ['Wairimu has approved it, and it is now waiting for you.', ...SAMUEL.said.slice(1)]],
     ])
     expect(within(rows()[0]).getByRole('button', { name: 'Approve Aisha Otieno’s request' })).toHaveTextContent('Approve')
     expect(within(rows()[0]).getByRole('button', { name: 'Decline Aisha Otieno’s request' })).toHaveTextContent('Decline')
@@ -112,17 +117,34 @@ describe('Wairimu, the lead who approves, reads the leave board', () => {
     open(WAIRIMU, WAIRIMUS)
     ;(leaveBoardApi.decide as any).mockRejectedValue(refusal(400, 'This request has already been decided.'))
     fireEvent.click(await screen.findByRole('button', { name: 'Decline Aisha Otieno’s request' }))
+    /* Decline now asks "Say why" first, as spending does (live walk); the decline is sent from there. */
+    fireEvent.click(within(rows()[0]).getByRole('button', { name: 'Decline' }))
     expect(await within(rows()[0]).findByRole('alert')).toHaveTextContent('This request has already been decided.')
   })
 
-  /* Changed: this used to say the page never mentions how people ask, because asking in chat did not work
-     yet (requests 21 and 26). Both are done, so the page now says where people ask. The example chat stays
-     out, as it is made-up days and names. */
-  it('says where people ask, without the prototype’s example chat, which is sample data', async () => {
+  it('asks why before declining, and sends what was said as the reason the person is told', async () => {
+    open(WAIRIMU, WAIRIMUS)
+    ;(leaveBoardApi.decide as any).mockResolvedValue({ ...WAIRIMUS, waiting: [SAMUEL] })
+    fireEvent.click(await screen.findByRole('button', { name: 'Decline Aisha Otieno’s request' }))
+    expect(leaveBoardApi.decide).not.toHaveBeenCalled()
+    fireEvent.change(screen.getByLabelText('Say why (optional)'), { target: { value: 'Two of the team are already off that week.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Decline' }))
+    await waitFor(() => expect(leaveBoardApi.decide).toHaveBeenCalledWith('r-aisha', 'decline', 'Two of the team are already off that week.'))
+  })
+
+  /*
+   * Fault 5 of the live walk: "How people ask" dropped the prototype's own example chat. It is back
+   * now, drawn with the shared Bubble, but never with a real person from this organisation in it -
+   * the prototype's own "Wairimu" becomes the neutral "your manager" (Wairimu is this organisation's
+   * own lead in this test, so the old text would have named a real colleague).
+   */
+  it('says where people ask, with the prototype’s example chat, in neutral words, never a real colleague’s name', async () => {
     open(WAIRIMU, WAIRIMUS)
     const how = await screen.findByRole('region', { name: 'How people ask' })
-    expect(how.textContent).toBe('How people askIn their check-in, in chat, or on WhatsApp. Nobody fills in a form.')
-    expect(text()).not.toMatch(/I need next Thursday|Shall I send it to/)
+    expect(within(how).getByText('I need next Thursday and Friday off.')).toBeInTheDocument()
+    expect(within(how).getByText('You have 16 days left and nobody else in your team is off then. Shall I send it to your manager?')).toBeInTheDocument()
+    expect(within(how).getByText('In their check-in, in chat, or on WhatsApp. Nobody fills in a form.')).toBeInTheDocument()
+    expect(how.textContent).not.toContain('Wairimu')
   })
 
   it('a request waiting for finance never says the lead can approve it: the server’s sentence is drawn', async () => {
@@ -190,7 +212,9 @@ describe('Wairimu, the lead who approves, reads the leave board', () => {
     const region = await screen.findByRole('region', { name: 'Leave you are told about' })
     expect(within(region).getByText('Because you look after HR.')).toBeInTheDocument()
     expect(within(region).getByText('Aisha Otieno: Thursday 8 and Friday 9 October')).toBeInTheDocument()
-    expect(within(region).getByText('Aisha Otieno asked for annual leave from Thursday 8 October to Friday 9 October, which is 2 working days.')).toBeInTheDocument()
+    /* said[0] ("Aisha Otieno asked for annual leave from ... which is 2 working days.") repeats the
+       title above it, so it is dropped here too (fault 5). */
+    expect(within(region).queryByText('Aisha Otieno asked for annual leave from Thursday 8 October to Friday 9 October, which is 2 working days.')).toBeNull()
     expect(within(region).getByText('Wairimu approved it.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Approve|Decline/ })).toBeNull()
   })

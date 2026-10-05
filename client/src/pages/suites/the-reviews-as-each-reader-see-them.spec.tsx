@@ -39,12 +39,29 @@ const FOR_WAIRIMU: AReview = {
 const FOR_GRACE: AReview = { ...FOR_WAIRIMU, reader: 'admin', mayWrite: false }
 const FOR_AISHA: AReview = {
   reader: 'person', id: 'r-a', firstName: 'Aisha', writtenWithFirstName: 'Wairimu', dueOn: '2027-03-01', noticed: NOTICED,
-  theirView: null, decision: { says: 'Aisha leads the supermarket accounts from April.', reasons: 'She closed 9 sales, all paid.' },
+  theirView: null,
+  managersWords: 'Aisha is our strongest closer with butcheries. I want her to lead supermarkets next.',
+  managersWordsHeading: 'What Wairimu writes',
+  whereYouDiffer: null,
+  decision: { says: 'Aisha leads the supermarket accounts from April.', reasons: 'She closed 9 sales, all paid.' },
 }
 
 const GRACE = { id: 'u-g', firstName: 'Grace', role: 'ADMIN', organizationName: 'Baridi Appliances' }
 const WAIRIMU = { id: 'u-w', firstName: 'Wairimu', role: 'LEAD', organizationName: 'Baridi Appliances' }
 const AISHA = { id: 'u-a', firstName: 'Aisha', role: 'MEMBER', organizationName: 'Baridi Appliances' }
+const AMINA = { id: 'u-am', firstName: 'Amina', role: 'ADMIN', organizationName: 'Baridi Appliances' }
+
+/*
+ * Fault 3 of the live walk: Peter's review, started by Daniel, his manager, who had already written
+ * his words; Amina, an admin the rules now also name to write it, read "What you write" with Daniel's
+ * words pre-filled, so saving would have overwritten Daniel's words as her own.
+ */
+const FOR_AMINA_ON_PETER: AReview = {
+  reader: 'writer', id: 'r-p', name: 'Peter Otieno', firstName: 'Peter', writtenWith: 'Daniel Kiprotich', writtenWithFirstName: 'Daniel',
+  dueOn: '2027-03-01', noticed: [],
+  managersWords: 'Peter has carried the Kisumu route on his own since June.',
+  theirView: null, decision: null, mayWrite: true,
+}
 
 function open(user: any, at: string) {
   useAuthStore.setState({ user, token: 't', isAuthenticated: true } as any)
@@ -84,10 +101,18 @@ describe('the board of the next reviews', () => {
     const region = await screen.findByRole('region', { name: 'The next reviews' })
     expect(within(region).getByText('March 2027')).toBeInTheDocument()
     const rows = [...region.querySelectorAll('tr')].map(tr => [...tr.children].map(c => c.textContent))
+    /*
+     * Fault 7 of the live walk: at 375 wide, the table stacks with no column beside each cell any
+     * more, so a bare name read as "Daniel Park" with nothing to say whether that was the person or
+     * who wrote the review with them. Each of the first two cells now carries its own visible label
+     * too ("Person", "Written with"), on top of the real, visually-hidden `<th scope="col">` a
+     * screen reader always had - so the two labels show up in a plain `textContent` read here even
+     * though the table is not actually stacked at this test's own (unset) width.
+     */
     expect(rows).toEqual([
       ['Person', 'Written with', 'Where it stands', 'What you can do'],
-      ['Aisha Otieno', 'Wairimu Kamau', 'Started on 2 October. Aisha can read it and add a view of her own.', 'Open it'],
-      ['Miriam Wanjiku', 'Wairimu Kamau', 'Ready to start.', 'Start it'],
+      ['PersonAisha Otieno', 'Written withWairimu Kamau', 'Started on 2 October. Aisha can read it and add a view of her own.', 'Open it'],
+      ['PersonMiriam Wanjiku', 'Written withWairimu Kamau', 'Ready to start.', 'Start it'],
     ])
     expect(within(region).getByRole('link', { name: 'Open Aisha Otieno’s review' })).toHaveAttribute('href', '/suite/reviews/r-a')
   })
@@ -97,9 +122,23 @@ describe('the board of the next reviews', () => {
     open(WAIRIMU, '/suite/reviews')
     const region = await screen.findByRole('region', { name: 'The next reviews' })
     const kwame = [...region.querySelectorAll('tr')].find(tr => tr.textContent?.includes('Kwame'))!
-    expect([...kwame.children].map(c => c.textContent)).toEqual(['Kwame Boateng', 'Wairimu Kamau', 'After “Kwame, first 90 days” is decided.', 'Not yet'])
+    expect([...kwame.children].map(c => c.textContent)).toEqual(['PersonKwame Boateng', 'Written withWairimu Kamau', 'After “Kwame, first 90 days” is decided.', 'Not yet'])
     expect(within(kwame as HTMLElement).queryByRole('button')).toBeNull()
     expect(text()).not.toContain('Decided.')
+  })
+
+  /*
+   * Fault 7 of the live walk: aria-hidden on these labels, because the stacked width is where they
+   * are needed and a screen reader already has the real column headers (visually hidden, not
+   * removed) at every width.
+   */
+  it('each stacked value carries its own visible label, marked aria-hidden since a screen reader already has the real column headers', async () => {
+    ;(reviewsApi.board as any).mockResolvedValue(BOARD)
+    open(WAIRIMU, '/suite/reviews')
+    const region = await screen.findByRole('region', { name: 'The next reviews' })
+    const labels = [...region.querySelectorAll('.gwui-record-table-label')]
+    expect(labels.map(l => l.textContent)).toEqual(['Person', 'Written with', 'Person', 'Written with'])
+    expect(labels.every(l => l.getAttribute('aria-hidden') === 'true')).toBe(true)
   })
 
   it('a review Groundwork proposed says why under where it stands, and that nothing reaches the person until a yes', async () => {
@@ -214,29 +253,40 @@ describe('one review', () => {
     expect(await screen.findByText('Aisha sees your decision and your reasons.')).toBeInTheDocument()
   })
 
-  it('Aisha reads the facts, the decision with its reasons, and writes her own view; never Wairimu’s words', async () => {
+  /*
+   * Fault 1 and fault 2 of the live walk of the suites: the server has sent `managersWords` and
+   * `managersWordsHeading` to the person a review is about since decision 93 row 15, but the screen
+   * never drew them, and a decided review still showed "Your own view" as an editable box with a
+   * Save button. This replaces the old test, which pinned both faults ("never Wairimu’s words", and
+   * an editable view after the decision was already made) and had no breadcrumb either.
+   */
+  it('Aisha reads the facts, what Wairimu writes, and the decision with its reasons, all read-only once it is decided', async () => {
     ;(reviewsApi.one as any).mockResolvedValue(FOR_AISHA)
-    ;(reviewsApi.view as any).mockResolvedValue({ ...FOR_AISHA, theirView: 'I want to lead the supermarket accounts.' })
     open(AISHA, '/suite/reviews/r-a')
     expect(await screen.findByRole('heading', { level: 1, name: 'Your review, March' })).toBeInTheDocument()
-    expect(screen.queryByRole('navigation', { name: 'Breadcrumb' })).toBeNull()
-    expect(screen.queryByRole('region', { name: /writes/ })).toBeNull()
+    expect(screen.getByRole('navigation', { name: 'Where you are' }).textContent).toBe('Suites/Performance reviews/Your review')
+    expect(within(screen.getByRole('region', { name: 'What Wairimu writes' })).getByText('“Aisha is our strongest closer with butcheries. I want her to lead supermarkets next.”')).toBeInTheDocument()
     const decision = screen.getByRole('region', { name: 'The decision' })
     expect(within(decision).getByText('Aisha leads the supermarket accounts from April.')).toBeInTheDocument()
     expect(within(decision).getByText('She closed 9 sales, all paid.')).toBeInTheDocument()
     expect(screen.getByText('No scores. You and Wairimu talk it through, and Wairimu decides.')).toBeInTheDocument()
     const view = screen.getByRole('region', { name: 'Your own view' })
-    fireEvent.change(within(view).getByLabelText('Your own view'), { target: { value: 'I want to lead the supermarket accounts.' } })
-    fireEvent.click(within(view).getByRole('button', { name: 'Save' }))
-    await waitFor(() => expect(reviewsApi.view).toHaveBeenCalledWith('r-a', 'I want to lead the supermarket accounts.'))
+    expect(within(view).getByText('You have not written your view yet.')).toBeInTheDocument()
+    expect(within(view).queryByRole('textbox')).toBeNull()
+    expect(within(view).queryByRole('button', { name: 'Save' })).toBeNull()
   })
 
+  /*
+   * Fault 4 of the live walk: "Peter has not written their view yet." read oddly ("their" beside a
+   * known name). With the person's name known, it now reads "<name>’s own view is not in yet.",
+   * never assuming a gender with "his" or "her".
+   */
   it('before the engine writes it, says so plainly', async () => {
     ;(reviewsApi.one as any).mockResolvedValue({ ...FOR_GRACE, noticed: [], managersWords: null, theirView: null })
     open(GRACE, '/suite/reviews/r-a')
     expect(await screen.findByText('Groundwork has not written this part yet.')).toBeInTheDocument()
     expect(screen.getByText('Wairimu has not written anything yet.')).toBeInTheDocument()
-    expect(screen.getByText('Aisha has not written their view yet.')).toBeInTheDocument()
+    expect(screen.getByText('Aisha’s own view is not in yet.')).toBeInTheDocument()
   })
 
   it('a colleague reads the server’s refusal', async () => {
@@ -253,5 +303,40 @@ describe('one review', () => {
       expect(text()).not.toMatch(LABELS)
       unmount()
     }
+  })
+
+  it('Aisha reads where she and Wairimu differ, once both have written their own view', async () => {
+    const withBoth: AReview = {
+      ...FOR_AISHA, theirView: 'I want to lead the supermarket accounts, but I need faster stock.',
+      whereYouDiffer: {
+        says: 'Wairimu and you have each written your own view of your work. Here they are side by side, so you can see where they differ before you meet.',
+        managersWords: 'Aisha is our strongest closer with butcheries. I want her to lead supermarkets next.',
+        yourView: 'I want to lead the supermarket accounts, but I need faster stock.',
+      },
+    }
+    ;(reviewsApi.one as any).mockResolvedValue(withBoth)
+    open(AISHA, '/suite/reviews/r-a')
+    const differ = await screen.findByRole('region', { name: 'Where you differ' })
+    expect(within(differ).getByText(withBoth.whereYouDiffer!.says)).toBeInTheDocument()
+    expect(within(differ).getByText('“Aisha is our strongest closer with butcheries. I want her to lead supermarkets next.”')).toBeInTheDocument()
+    expect(within(differ).getByText('“I want to lead the supermarket accounts, but I need faster stock.”')).toBeInTheDocument()
+  })
+
+  /*
+   * Fault 3, fixed: Daniel's words are shown read-only, attributed to him by name, never pre-filled
+   * into Amina's own box. Amina's own box starts empty, so saving it can never pass Daniel's words off
+   * as hers.
+   */
+  it('Amina, who may also now write Peter’s review, reads Daniel’s words read-only and is offered her own, empty', async () => {
+    ;(reviewsApi.one as any).mockResolvedValue(FOR_AMINA_ON_PETER)
+    open(AMINA, '/suite/reviews/r-p')
+    const words = await screen.findByRole('region', { name: 'What Daniel writes' })
+    expect(within(words).getByText('“Peter has carried the Kisumu route on his own since June.”')).toBeInTheDocument()
+    const own = within(words).getByLabelText('What you write') as HTMLTextAreaElement
+    expect(own.value).toBe('')
+    const save = within(words).getByRole('button', { name: 'Save' })
+    fireEvent.change(own, { target: { value: 'Peter is ready for a bigger route.' } })
+    fireEvent.click(save)
+    await waitFor(() => expect(reviewsApi.words).toHaveBeenCalledWith('r-p', 'Peter is ready for a bigger route.'))
   })
 })

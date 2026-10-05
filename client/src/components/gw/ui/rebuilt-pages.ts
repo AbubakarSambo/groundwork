@@ -235,4 +235,14 @@ export const REBUILT_PAGES: string[] = [
    * none of which the guard bans).
    */
   'components/gw/OutcomeFeedback.tsx',
+  /*
+   * U.20 (F4-small-states): the small states and error pages, rebuilt from `Page narrow`/`Mark`/
+   * `PageTitle`/`Button`/`Empty` in place of each page's own inline `fontSize`/`color`/`margin`/
+   * `padding` pairs - `NotFoundPage.tsx` ("Nothing is at this address"), `PageCrash.tsx`
+   * ("Something broke on this page") and `GroundGone.tsx` ("This check-in isn't available any
+   * more", docs/prototype/screens/F4-small-states/c-gone-board.txt).
+   */
+  'pages/notfound/NotFoundPage.tsx',
+  'components/gw/PageCrash.tsx',
+  'components/gw/GroundGone.tsx',
 ]

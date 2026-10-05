@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { companyApi, type CompanyCard, type CompanyPriority } from '@/api/company'
 import { useAuthStore } from '@/stores/auth'
+import { askNameFor } from '@/lib/ask-name'
 import { Page, PageTitle, Section, Panel, Button, Tag, Note, Empty, RowList, Row } from '@/components/gw/ui'
 
 /**
@@ -70,10 +71,30 @@ export function CompanyContextPage() {
         </Section>
       )}
 
+      {/* KEPT FROM CHECK-INS (company-context.txt, "Picked up from your check-in on 22 Sep"): what a
+          lead said that is true of the whole company, already kept on their yes in the
+          conversation. So there is no Confirm, Edit or Not now here: the yes was said there. Only
+          served to the readers the server allows; absent, not empty, for everyone else. */}
+      {page.data?.whatWeKeep && page.data.whatWeKeep.items.length > 0 && (
+        <Section heading="Kept from check-ins" note={page.data.whatWeKeep.readBy}>
+          <RowList label="Kept from check-ins">
+            {page.data.whatWeKeep.items.map(k => (
+              <Row key={k.id} columns="minmax(0, 1fr) minmax(0, 3fr)">
+                <b>{k.kind ? k.kind.charAt(0).toUpperCase() + k.kind.slice(1) : ''}</b>
+                <div>
+                  <div>{`“${k.says}”`}</div>
+                  <p className="gwui-panel-text-muted">{k.source}</p>
+                </div>
+              </Row>
+            ))}
+          </RowList>
+        </Section>
+      )}
+
       {cards.data && (
         <>
           {handbook.length > 0 && (
-            <Cards title="The staff handbook, short and simple" sub="Ask Groundwork answers from this, and says so" cards={handbook} />
+            <Cards title="The staff handbook, short and simple" sub={`${askNameFor(page.data?.name || user?.organizationName)} answers from this, and says so`} cards={handbook} />
           )}
           {resources.length > 0 && <Cards title="Resources" cards={resources} />}
           {rest.length > 0 && <Cards title={`What ${name} has learned, promised and has to hand`} cards={rest} />}

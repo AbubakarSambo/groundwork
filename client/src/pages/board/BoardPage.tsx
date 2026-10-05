@@ -24,6 +24,7 @@ import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
 import { OutcomeFeedback } from '@/components/gw/OutcomeFeedback'
 import { useAreYouSure, Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
 import { whatWentWrong, whyYouCannotSeeThis } from '@/pages/report/why-you-cannot-see-this'
+import { GroundGone } from '@/components/gw/GroundGone'
 import { TheJudgement } from '@/components/gw/TheJudgement'
 import { WhatTheRecordShows } from '@/components/gw/WhatTheRecordShows'
 import { WhatTheNetworkSaid } from '@/components/gw/WhatTheNetworkSaid'
@@ -1150,8 +1151,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     onError: () => toast.error('Your availability did not change - try again.'),
   })
 
+  /* U.20 (F4-small-states/states.txt, "Loading"/"Getting the board"): the prototype's own word
+     for this wait, in place of the page's earlier, unmatched "Loading the board…". */
   if (isLoading) {
-    return <div role="status" className="gwui-pt-40 gwui-pr-40 gwui-pb-40 gwui-pl-40 gwui-ink-muted" style={{textAlign: 'center'}}>Loading the board…</div>
+    return <div role="status" className="gwui-pt-40 gwui-pr-40 gwui-pb-40 gwui-pl-40 gwui-ink-muted" style={{textAlign: 'center'}}>Getting the board</div>
   }
   /*
    * PRIMARY-BUTTONS-NEVER-TOGETHER: the four `kind="primary"` buttons below ("Try again", "Read
@@ -1168,11 +1171,28 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
      * board. The report page already knows how to say which (why-you-cannot-see-this.ts): the same
      * words here, and Try again where trying again can work.
      */
-    const why = whyYouCannotSeeThis(whatWentWrong(error))
+    const what = whatWentWrong(error)
+    const why = whyYouCannotSeeThis(what)
+    /* A 404 is the prototype's own "a check-in that's gone" (F4-small-states/c-gone-board): the
+       board's address, with the sidebar, and the same words whether the check-in was ended,
+       removed, or was never this reader's (GW-PRI-04: the server answers all of them alike). */
+    if (what.status === 404) return <GroundGone />
+    /* The prototype's connection words only when it was the connection: no answer came back at all.
+       A server error keeps its own true sentence, with Try again still offered (U.20 review). */
+    const theConnection = what.status === undefined
+    /*
+     * U.20 (F4-small-states/states.txt, "It didn't load"/"The board didn't load"): the prototype's
+     * own words, for the one case they are true of - a connection problem, where trying again can
+     * work (`why.canRetry`). For every other failure (403, 404, a signed-out session) `why.say`
+     * already gives a specific, true sentence for THAT failure - a connection sentence would be
+     * wrong for those, so this only replaces the generic heading and body, never `why.say` itself.
+     */
     return (
       <div className="gwui-mt-48 gwui-mr-auto gwui-mb-48 gwui-ml-auto gwui-pt-0 gwui-pr-20 gwui-pb-0 gwui-pl-20" style={{maxWidth: 620, textAlign: 'center'}}>
-        <div className="gwui-fs-15 gwui-mb-6" style={{fontWeight: 700}}>This board could not be loaded.</div>
-        <div className="gwui-fs-15 gwui-ink-sub gwui-mb-16">{why.say}</div>
+        <div className="gwui-fs-15 gwui-mb-6" style={{fontWeight: 700}}>{why.canRetry ? 'The board didn’t load' : 'This board could not be loaded.'}</div>
+        <div className="gwui-fs-15 gwui-ink-sub gwui-mb-16">
+          {theConnection ? 'Nothing is lost; your check-ins are saved. It’s usually the connection.' : why.say}
+        </div>
         <div className="gwui-gap-8" style={{display: 'flex', justifyContent: 'center'}}>
           {why.canRetry && <UIButton kind="primary" onClick={() => refetch()}>Try again</UIButton>}
           <UIButton kind={why.canRetry ? 'secondary' : 'primary'} onClick={() => navigate('/grounds')}>Back to check-ins</UIButton>
@@ -2408,6 +2428,41 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                newest first (session-rows.ts), so the first row carrying a `myCheckInId` is it. */
             myLatestCheckInId={sessionRows.find((r) => r.myCheckInId)?.myCheckInId ?? null}
           />
+        )}
+
+        {/*
+          ANCHOR PIECE 22, A PERSON'S OWN RECOGNITION SENTENCE, "Helping the team move"
+          (docs/anchor-scenario.md section 19; docs/answers-from-engine.md, "Anchor piece 22,
+          hidden contributors, is served"). The lead reads the same sentence about this person on
+          `TheMonthBoard`'s own "People helping things move"; a person reads only their own, said
+          as "you" - never anybody else's, and the server sends nothing for anybody else's share of
+          it. Drawn only for a participant, and only while the engine actually sends a sentence -
+          `null` (closed nothing this month) or absent (any other check-in, or the switch off)
+          draws nothing, never an empty heading.
+        */}
+        {isParticipantView && b.yourPartInMovingThings && (
+          <Section heading="Helping the team move">
+            <Note>{b.yourPartInMovingThings}</Note>
+          </Section>
+        )}
+
+        {/*
+          ANCHOR PIECE 30, THE NUDGE (section 26; docs/anchor-scenario.md;
+          docs/answers-from-engine.md, "Anchor piece 30, the nudge, is built"). Groundwork speaking
+          to this person directly: the served sentence, then the same button and destination the
+          header already offers a participant ("Start my check-in", `/grounds/${id}` - this is
+          `isParticipantView`, so the header's own condition for that label is already true here).
+          Served only to a person in an anchor check-in who has not yet checked in for the open
+          round; `null` once they have, and absent for anybody else or any other check-in - the
+          screen draws nothing then either way.
+        */}
+        {isParticipantView && b.aNudgeForYou && (
+          <Panel>
+            <Stack gap={12}>
+              <Callout tone="info">{b.aNudgeForYou}</Callout>
+              <UIButton kind="primary" onClick={() => navigate(`/grounds/${id}`)}>Start my check-in</UIButton>
+            </Stack>
+          </Panel>
         )}
 
         {/*

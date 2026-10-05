@@ -96,7 +96,7 @@ describe('what the shell must not have taken over', () => {
   it('and all three still say the same thing when the link is dead', () => {
     // W8-62. Verified rendered: "This invite link did not work", "This join link did not work",
     // "This sign-in link did not work", each with a way out.
-    /* U.2 review: /verify-email says it on the account card, "This link did not work", with a box to
+    /* U.2 review: /verify-email says it on the account card, "That link didn’t work", with a box to
        ask for a new link; /invite and /join keep LinkProblem, whose way on is the person who invited them. */
     for (const file of Object.values(ARRIVALS)) expect(strip(P(file))).toMatch(/<LinkProblem|<LinkDidNotWork/)
   })

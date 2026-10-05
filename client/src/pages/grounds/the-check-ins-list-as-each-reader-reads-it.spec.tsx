@@ -151,8 +151,32 @@ describe('the check-ins list, as an admin reads it', () => {
 
   it('an empty organisation says how to start, and a failed load says it failed', async () => {
     open(ADMIN, [])
-    expect(await screen.findByText('Your first check-in is one tap away.')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Or try it on your own first' })).toBeTruthy()
+    expect(await screen.findByText('No check-ins yet')).toBeTruthy()
+    expect(screen.getByText('Describe what you want your team to check in about, and it’s set up as you talk.')).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Set up a check-in' })).toHaveAttribute('href', '/start?new=1')
+    expect(screen.getByRole('button', { name: 'Try one on your own' })).toBeTruthy()
+  })
+})
+
+/*
+ * THE TWO EMPTY STATES (F4-small-states/states.txt): "No check-ins yet", for a reader who may
+ * open one, and "Nothing here yet" for one who may not - keyed on `mayOpenCheckIns`, not on
+ * role, since who may open a check-in is a setting an admin can give to anyone (U.20).
+ */
+describe('the check-ins list, with none yet', () => {
+  it('a lead who may open check-ins reads "No check-ins yet", with a way to start one', async () => {
+    open({ ...HAFSAH, role: 'LEAD', mayOpenCheckIns: true }, [])
+    expect(await screen.findByText('No check-ins yet')).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Set up a check-in' })).toBeTruthy()
+  })
+
+  it('somebody who may not open check-ins reads "Nothing here yet", with no promise of a button that would refuse them', async () => {
+    open({ ...HAFSAH, mayOpenCheckIns: false }, [])
+    expect(await screen.findByText('Nothing here yet')).toBeTruthy()
+    expect(screen.getByText('Check-ins appear here when someone adds you to one. You’ll also get an email.')).toBeTruthy()
+    expect(screen.queryByText('No check-ins yet')).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Set up a check-in' })).toBeNull()
+    expect(screen.queryByRole('link', { name: /Set up one of your own/ })).toBeNull()
   })
 })
 

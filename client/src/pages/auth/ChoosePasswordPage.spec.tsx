@@ -135,7 +135,7 @@ describe('resetting a password', () => {
      */
     /* U.2: an EXPIRED link now becomes the "That link has expired" page (see
        a-link-that-has-expired.spec.tsx), so this uses the other failure a reset link can meet. */
-    /* U.2 review: a used link now opens "This link did not work" too, so this uses a password the
+    /* U.2 review: a used link now opens "That link didn’t work" too, so this uses a password the
        server refuses, which is the failure left for this screen to show where it is. */
     const refused = 'Password must contain at least 1 uppercase and 1 lowercase letter'
     ;(authApi.resetPassword as any).mockRejectedValue({ response: { data: { message: [refused] } } })
@@ -150,8 +150,8 @@ describe('resetting a password', () => {
   it('with no token it says so instead of offering a form that cannot work', async () => {
     // BUG 3. `/set-password` had already learned this; the reset copy had not.
     await renderReset('')
-    /* U.2 review: the account card's "This link did not work", with a way to ask for a new link. */
-    expect(screen.getByText('This link did not work')).toBeTruthy()
+    /* U.2 review: the account card's "That link didn’t work", with a way to ask for a new link. */
+    expect(screen.getByText('That link didn’t work')).toBeTruthy()
     expect(screen.queryByLabelText(/New password/i)).toBeNull()
   })
 })

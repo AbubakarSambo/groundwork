@@ -83,6 +83,14 @@ export function GroundParticipantPage() {
   /* Only a 404 means gone. Everything else is a failure to reach it - see the guard below. */
   const definitelyGone = isError && (error as any)?.response?.status === 404
 
+  /*
+   * "ASK TO JOIN" IS NOT DRAWN YET (U.20 review). The prototype offers it under "You’re not in this
+   * check-in", but the server's participant-request route lets only somebody already in the
+   * check-in ask, so the button could only ever answer "You are not a participant in this
+   * check-in". The prototype's sentence, that the lead can add you, is true and stays; the button
+   * comes back when the server lets a reader of the check-in ask (request 159).
+   */
+
   const { data: report } = useQuery({
     queryKey: ['report', id],
     queryFn: () => reportsApi.get(id!),
@@ -313,19 +321,33 @@ export function GroundParticipantPage() {
   const canPayHere = isInitiator && user?.role === 'ADMIN'
 
   if (!myParticipant) {
+    if (user?.role === 'ADMIN') {
+      return (
+        <Page narrow>
+          <Empty
+            title="You’re not in this check-in"
+            action={(
+              <Button kind="secondary" onClick={() => navigate(`/grounds/${id}`)}>Open the whole check-in</Button>
+            )}
+          >
+            {(ground as any)?.initiatorId === user?.id
+              ? 'You run it as an admin without giving a check-in yourself. Everything about it is on the whole check-in.'
+              : `${whoRunsThis(ground as any) ?? 'Someone else'} runs it. You can read all of it as an admin, on the whole check-in.`}
+          </Empty>
+        </Page>
+      )
+    }
+    /*
+     * ONLY THE LEAD'S FIRST NAME IS SENT HERE (`ground.leadFirstName`, `whoRunsThis`), not the
+     * full name the prototype's own sentence uses ("Wairimu Kamau runs it and can add you.") - the
+     * closest true sentence is drawn with what the server actually sends, and the gap (a last
+     * name too) is one the API could close.
+     */
+    const lead = whoRunsThis(ground)
     return (
       <Page narrow>
-        <Empty
-          title="You are not in this check-in"
-          action={(
-            <Button kind="secondary" onClick={() => navigate(user?.role === 'ADMIN' ? `/grounds/${id}` : '/grounds')}>
-              {user?.role === 'ADMIN' ? 'Open the whole check-in' : 'Back to check-ins'}
-            </Button>
-          )}
-        >
-          {user?.role === 'ADMIN'
-            ? 'You run it as an admin without giving a check-in yourself. Everything about it is on the whole check-in.'
-            : 'Whoever runs it can add you.'}
+        <Empty title="You’re not in this check-in">
+          {lead ? `${lead} runs it and can add you.` : 'Whoever runs it can add you.'}
         </Empty>
       </Page>
     )

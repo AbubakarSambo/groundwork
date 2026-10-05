@@ -24,7 +24,8 @@ import { Tag } from '@/components/gw/ui/Tag'
 import { Button } from '@/components/gw/ui/Button'
 import { SuggestedAnswers } from '@/components/gw/checkin/SuggestedAnswers'
 import { IdeaOffer } from '@/components/gw/checkin/IdeaOffer'
-import type { TheIdeaOfferInTheCheckIn } from '@/api/anchorShapes'
+import { RequestOffer, OpenTheRequest } from '@/components/gw/checkin/RequestOffer'
+import type { TheIdeaOfferInTheCheckIn, TheRequestOfferInTheCheckIn, TheRequestToOpen } from '@/api/anchorShapes'
 import { TheEndCard } from '@/components/gw/checkin/TheEndCard'
 import { TheDonePage, type WhatChanged } from '@/components/gw/checkin/TheDonePage'
 import { whenTheNextOneOpens, whoElseAnswers } from '@/lib/what-the-end-of-a-check-in-can-say'
@@ -45,6 +46,10 @@ interface Msg {
   suggestedAnswers?: string[]
   /** Piece 21: the yes to capture a concrete idea, attached to the reply that offers it. See IdeaOffer. */
   ideaOffer?: TheIdeaOfferInTheCheckIn | null
+  /** Anchor pieces 26/27: a leave or spending request read in the person's own words. See RequestOffer. */
+  requestOffer?: TheRequestOfferInTheCheckIn | null
+  /** Anchor pieces 26/27: what their yes opens, on the reply that follows. See OpenTheRequest. */
+  openTheRequest?: TheRequestToOpen | null
 }
 
 /** Shows a document's "what this suggests / what will be done with it" bullets,
@@ -333,7 +338,7 @@ export function ChatPage() {
   const openSession = useMutation({
     mutationFn: () => conversationApi.open(checkInId!),
     onSuccess: res => {
-      setMsgs([{ id: 'ai-open', role: 'AI', content: res.reply, suggestedAnswers: res.suggestedAnswers, ideaOffer: res.ideaOffer }])
+      setMsgs([{ id: 'ai-open', role: 'AI', content: res.reply, suggestedAnswers: res.suggestedAnswers, ideaOffer: res.ideaOffer, requestOffer: res.requestOffer, openTheRequest: res.openTheRequest }])
       if (res.groundId && !groundId) setGroundId(res.groundId)
       if (res.brief) setBrief(res.brief)
       if (res.mayCompleteAfter) setMayCompleteAfter(res.mayCompleteAfter)
@@ -594,7 +599,7 @@ export function ChatPage() {
           if (typeof t.checkIn?.sessionNumber === 'number') setSessionNumber(t.checkIn.sessionNumber)
           if (t.checkIn?.groundId && !groundId) setGroundId(t.checkIn.groundId)
           if (t.turns && t.turns.length > 0) {
-            setMsgs(t.turns.map(turn => ({ id: turn.id, role: turn.role, content: turn.content, suggestedAnswers: turn.suggestedAnswers, ideaOffer: turn.ideaOffer })))
+            setMsgs(t.turns.map(turn => ({ id: turn.id, role: turn.role, content: turn.content, suggestedAnswers: turn.suggestedAnswers, ideaOffer: turn.ideaOffer, requestOffer: turn.requestOffer, openTheRequest: turn.openTheRequest })))
             /**
               * ROUND 6, ITEM 4: A SESSION THAT WAS ALREADY FINISHED GETS THE SAME DONE PAGE AS
               * ONE JUST FINISHED NOW.
@@ -703,8 +708,8 @@ export function ChatPage() {
         },
         onDone: (r) => {
           acknowledge()
-          setMsgs(v => v.map(m => m.id === aiId ? { ...m, content: r.reply, suggestedAnswers: r.suggestedAnswers, ideaOffer: r.ideaOffer } : m))
-          setDisplayedMsgs(v => v.map(m => m.id === aiId ? { ...m, content: r.reply, suggestedAnswers: r.suggestedAnswers, ideaOffer: r.ideaOffer } : m))
+          setMsgs(v => v.map(m => m.id === aiId ? { ...m, content: r.reply, suggestedAnswers: r.suggestedAnswers, ideaOffer: r.ideaOffer, requestOffer: r.requestOffer, openTheRequest: r.openTheRequest } : m))
+          setDisplayedMsgs(v => v.map(m => m.id === aiId ? { ...m, content: r.reply, suggestedAnswers: r.suggestedAnswers, ideaOffer: r.ideaOffer, requestOffer: r.requestOffer, openTheRequest: r.openTheRequest } : m))
           if (r.sessionComplete) setDone(true)
           if (r.endCard) setEndCard(r.endCard)
         },
@@ -720,7 +725,7 @@ export function ChatPage() {
         try {
           const res = await conversationApi.send(checkInId, message)
           acknowledge()
-          setMsgs(v => v.concat({ id: `ai-${Date.now()}`, role: 'AI', content: res.reply, suggestedAnswers: res.suggestedAnswers, ideaOffer: res.ideaOffer }))
+          setMsgs(v => v.concat({ id: `ai-${Date.now()}`, role: 'AI', content: res.reply, suggestedAnswers: res.suggestedAnswers, ideaOffer: res.ideaOffer, requestOffer: res.requestOffer, openTheRequest: res.openTheRequest }))
           if (res.sessionComplete) setDone(true)
           if (res.endCard) setEndCard(res.endCard)
         } catch {
@@ -1358,6 +1363,30 @@ export function ChatPage() {
             if (!last || last.role !== 'AI' || isWaiting(last) || streamingId !== null) return null
             if (loading || done || completed || declined || !opened) return null
             return <IdeaOffer offer={last.ideaOffer} onPick={pickSuggestion} />
+          })()}
+          {/*
+            ANCHOR PIECES 26/27: A LEAVE OR SPENDING REQUEST OFFERED IN THE CHECK-IN (section 22;
+            docs/answers-from-engine.md, "Anchor pieces 26 and 27"). Same gate as the idea offer
+            above. Only one of `ideaOffer` and `requestOffer` ever rides on the same reply, so at
+            most one of the two blocks here ever draws anything.
+          */}
+          {(() => {
+            const last = displayedMsgs[displayedMsgs.length - 1]
+            if (!last || last.role !== 'AI' || isWaiting(last) || streamingId !== null) return null
+            if (loading || done || completed || declined || !opened) return null
+            return <RequestOffer offer={last.requestOffer} onPick={pickSuggestion} />
+          })()}
+          {/*
+            ANCHOR PIECES 26/27: WHAT THEIR YES OPENS. Served on the reply that follows their yes -
+            the spec's sentence, and, while the suite is on, a button to the suite's own request
+            form (Leave or Payment Requests), filled in from what was read in their own words.
+            Nothing is sent for them; the button only opens the form.
+          */}
+          {(() => {
+            const last = displayedMsgs[displayedMsgs.length - 1]
+            if (!last || last.role !== 'AI' || isWaiting(last) || streamingId !== null) return null
+            if (loading || done || completed || declined || !opened) return null
+            return <OpenTheRequest open={last.openTheRequest} />
           })()}
           {/*
             THE END CARD (check-in-end-card.txt). Finishing never happens on its own: the engine

@@ -92,8 +92,9 @@ export interface LeaveBoard { reader?: 'admin' | 'lead' | 'approver' | 'hr'; wai
 
 export const leaveBoardApi = {
   get: async (): Promise<LeaveBoard> => (await apiClient.get('/suites/leave/board')).data,
-  decide: async (id: string, outcome: 'approve' | 'decline'): Promise<LeaveBoard> =>
-    (await apiClient.post(`/suites/leave/requests/${id}/${outcome}`)).data,
+  /** `reason` is only ever sent with a decline (the controller's `DeclineDto`); the person is told it. */
+  decide: async (id: string, outcome: 'approve' | 'decline', reason?: string): Promise<LeaveBoard> =>
+    (await apiClient.post(`/suites/leave/requests/${id}/${outcome}`, outcome === 'decline' ? { reason } : undefined)).data,
   ask: async (id: string, question: string): Promise<LeaveBoard> =>
     (await apiClient.post(`/suites/leave/requests/${id}/question`, { question })).data,
 }
@@ -187,6 +188,12 @@ export interface ReviewForThePerson {
   dueOn: string
   noticed: Noticed[]
   theirView: string | null
+  /** What the person who writes the review has written, word for word, once they have written it. Null until then. */
+  managersWords: string | null
+  /** The prototype's "What Wairimu writes". Null until `managersWords` exists. */
+  managersWordsHeading: string | null
+  /** Both views, side by side, once the writer and the person have each written theirs. Null until both exist. */
+  whereYouDiffer: { says: string; managersWords: string; yourView: string } | null
   decision: { says: string; reasons: string } | null
   record?: TheRecord | null
   recognise?: RecogniseForThePerson
@@ -277,8 +284,9 @@ export interface SpendBoard {
 
 export const spendApi = {
   get: async (): Promise<SpendBoard> => (await apiClient.get('/suites/spend/board')).data,
-  decide: async (id: string, outcome: 'approve' | 'decline'): Promise<SpendBoard> =>
-    (await apiClient.post(`/suites/spend/requests/${id}/${outcome}`)).data,
+  /** `reason` is only ever sent with a decline (the controller's `DeclineDto`); the person is told it, word for word. */
+  decide: async (id: string, outcome: 'approve' | 'decline', reason?: string): Promise<SpendBoard> =>
+    (await apiClient.post(`/suites/spend/requests/${id}/${outcome}`, outcome === 'decline' ? { reason } : undefined)).data,
   ask: async (id: string, question: string): Promise<SpendBoard> =>
     (await apiClient.post(`/suites/spend/requests/${id}/question`, { question })).data,
   setBudget: async (team: string, amount: number): Promise<SpendBoard> =>
@@ -382,4 +390,39 @@ export const yourRequestsApi = {
     (await apiClient.post(`/suites/leave/requests/${id}/answer`, { answer })).data,
   answerSpending: async (id: string, answer: string): Promise<YourSpending> =>
     (await apiClient.post(`/suites/spend/requests/${id}/answer`, { answer })).data,
+}
+
+/**
+ * FILING A REQUEST FROM ITS OWN FORM (request 165, Hafsah 6 October; docs/requests-to-engine.md).
+ * The button on `openTheRequest` (anchor pieces 26/27) opens `/suite/leave/new` or
+ * `/suite/spend/new` rather than Ask, so the person files the request themselves, from the same
+ * form anybody else reaches these pages from. The routes do not exist on the server yet - until
+ * they do, sending either form gets a 404, which the form reads and says in a full sentence (see
+ * `whatFilingARequestSays` in `@/lib/file-a-request-error`).
+ */
+export interface NewLeaveRequest { startsOn: string; endsOn: string; kind?: string }
+export interface NewSpendingRequest { amount: number; what: string }
+/** The server's own confirmation sentence, when it sends one. */
+export interface RequestFiled { message?: string }
+/** `GET /suites/leave/rules` is for an admin or whoever holds the HR duty only - a plain member is
+    refused, and the form then simply has no kind field (`kindsForFiling` reads that refusal and
+    returns `null` rather than throwing, so the caller never needs its own try/catch). */
+export interface ALeaveKindForFiling { key: string; name: string }
+
+export const fileARequestApi = {
+  leave: async (input: NewLeaveRequest): Promise<RequestFiled> =>
+    (await apiClient.post('/suites/leave/requests', input, { skipNotFoundToast: true } as any)).data,
+  spending: async (input: NewSpendingRequest): Promise<RequestFiled> =>
+    (await apiClient.post('/suites/spend/requests', input, { skipNotFoundToast: true } as any)).data,
+  /** `null` when this reader may not read the rules (not an admin or the HR duty holder) - the form
+      asks for a kind of leave only when it can read what the kinds are. */
+  kindsForFiling: async (): Promise<ALeaveKindForFiling[] | null> => {
+    try {
+      const res = await apiClient.get('/suites/leave/rules', { skipForbiddenToast: true } as any)
+      const kinds = (res.data?.rules?.kinds ?? []) as { key: string; name: string }[]
+      return kinds.map(k => ({ key: k.key, name: k.name }))
+    } catch {
+      return null
+    }
+  },
 }

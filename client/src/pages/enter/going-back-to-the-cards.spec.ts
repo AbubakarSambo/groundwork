@@ -36,8 +36,16 @@ describe('going back to the cards', () => {
   })
 
   it('and the opening question is the same string the chat opens with', () => {
-    /* Lifted out of the effect that owned it, so going back cannot produce a second wording. */
-    expect(SRC).toContain('const INTRO = THE_OPENING_QUESTION')
+    /*
+     * Lifted out of the effect that owned it, so going back cannot produce a second wording.
+     *
+     * Updated for fault 1 (the anchor scenario's own first question, no door): `INTRO` is now
+     * conditional on `anchorConversationOpensDirectly()` - true only for an anchor arrival with the
+     * switch confirmed on - so the ordinary picker still opens on exactly `THE_OPENING_QUESTION`,
+     * the one this test is really guarding, and an anchor arrival opens on the engine's served
+     * question or the plan's own fallback instead. Still one definition, not two independent ones.
+     */
+    expect(SRC).toContain('const INTRO = anchorConversationOpensDirectly() ? (takeTheServedFirstQuestion() ?? THE_ANCHOR_FIRST_QUESTION) : THE_OPENING_QUESTION')
   })
 
   it('clears what is about the situation', () => {

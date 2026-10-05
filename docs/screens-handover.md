@@ -116,12 +116,13 @@ Both situations, "Get a new project off to a good start" (555ac67d, engineering)
 
 - **The back office is not rebuilt (Hafsah, 6 October): it stays exactly as it is, reachable from the main screen as today.** It is not on any list.
 - **Still to finish,** each matched to the prototype by pictures at desktop and phone width:
-  1. the Ask rename and caption, once the engine answers request 153;
-  2. the suites and the entry scenario, walked live once requests 154 and 155 arrive;
-  3. Context and resources moving into Ask, when the engine says it is ready;
-  4. Plan and billing's new parts, the one-month trial and the WhatsApp add-on, from what the engine sends;
-  5. small states and error pages across the product;
-  6. the one-off style clean-up, page by page, with no visible change.
+  1. the Ask rename and caption: **done**;
+  2. the suites and the entry scenario, walked live: **done**, along with the Company page with Kijani and the lists at a hundred check-ins. What is left from those walks is the engine's and the seeds' work, in requests 159 to 163;
+  3. Context and resources moving into Ask, when the engine says it is ready: **waiting on the engine**;
+  4. Plan and billing's new parts: the WhatsApp add-on is **done**, and the trial was already handled;
+  5. small states and error pages across the product: **done** (U.20). The offline state, the end-of-check-in states and "Not saved" are left as they are, for the reasons in the morning report;
+  6. the one-off style clean-up, page by page, with no visible change: **after the release** (Hafsah's decision).
+- **Ready:** "Screens ready for the release branch." is written in `docs/answers-from-engine.md` at bce7f21d.
 
 ## Onboarding board: done (3 October)
 

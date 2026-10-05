@@ -57,7 +57,10 @@ describe('each count says what it counts', () => {
 
 describe('a report nobody has read can raise its hand', () => {
   it('reads the live signal', () => {
-    expect(ROW).toMatch(/g\.reportWaitingForMe \|\| g\.status === 'REPORT_READY'\) needs = \{ text: 'Your report is ready'/)
+    /* Live walk, 6 October: the legacy status now reads "Your" only to somebody in the check-in, so
+       the two signals are separate lines; both still raise the row. */
+    expect(ROW).toMatch(/if \(g\.reportWaitingForMe\) needs = \{ text: 'Your report is ready'/)
+    expect(ROW).toMatch(/else if \(g\.status === 'REPORT_READY'\) needs = /)
   })
 
   it('and so does the ordering, so it sorts to the top', () => {

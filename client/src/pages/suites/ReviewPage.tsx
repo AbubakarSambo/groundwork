@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { reviewsApi, type AReview, type TheRecord, type ABriefing, type RecogniseForTheWriter, type RecogniseForThePerson } from '@/api/suites'
+import { reviewsApi, type AReview, type ReviewForThePerson, type TheRecord, type ABriefing, type RecogniseForTheWriter, type RecogniseForThePerson } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { Page, PageTitle, Section, Panel, Button, Note, ProofMark, FieldLabel, TextArea, TextField, RowList, Row } from '@/components/gw/ui'
@@ -14,9 +14,23 @@ import { Page, PageTitle, Section, Panel, Button, Note, ProofMark, FieldLabel, T
  * suggestions part (U.13): "Your decision", "Your reasons, in a sentence or two", "Save my decision".
  *
  * WHAT EACH READER IS GIVEN IS THE SERVER'S (GET /suites/reviews/:id). The person it is about reads
- * the facts, their own view and the decision with its reasons, never the manager's words (item 28),
- * and writes their own view. The person who writes it with them writes their own words and decides.
- * An admin or a lead of the team reads it. Everybody else is refused by the server.
+ * the facts, their own view, the decision with its reasons and, since decision 93 row 15, the writer's
+ * words once written ("What Wairimu writes") with both views side by side once both exist ("Where you
+ * differ"); they write their own view, never the writer's words. The person who writes it with them
+ * writes their own words and decides. An admin or a lead of the team reads it. Everybody else is
+ * refused by the server. A breadcrumb and title sit above every review, the person's own included.
+ *
+ * ONCE A REVIEW IS DECIDED, nothing on it is still editable: the person's own view and the writer's
+ * words both become read-only quotes, and the decision itself is shown with no form (`Decision`
+ * already did this; `ManagersWords` and the person's own view now check `r.decision` too).
+ *
+ * THE WRITER'S WORDS (`managersWords`) are shown read-only, attributed to whoever wrote them
+ * (`writtenWithFirstName`), unless this reader is that very writer (their own first name matches),
+ * when it reads "What you write" and is editable, pre-filled with their own words as before. Where the
+ * API says this reader may still write (`mayWrite`) but the words on record are someone else's - the
+ * review was reassigned after its first writer wrote something - the existing words stay read-only
+ * under that name, and this reader is offered their own box instead, which never starts pre-filled
+ * with somebody else's words.
  *
  * REBUILT FROM THE SHARED PARTS: `Page`/`PageTitle` (its own `crumbs`), `Section` (`.gwui-cards-3`,
  * the review's own three-column row, the prototype's own shape) for "What Groundwork noticed",
@@ -31,10 +45,10 @@ import { Page, PageTitle, Section, Panel, Button, Note, ProofMark, FieldLabel, T
  * with the prototype's "Agree" (which fills in "Recognise Aisha’s work." for the writer to give reasons
  * for) and "Choose something else". The person reads their own count and who decides.
  *
- * WORDING NO SCREEN SHOWS (item 28): "Your review, March"; "What you write"; "Your own view";
- * "Groundwork has not written this part yet."; "... has not written anything yet."; "... has not
- * written their view yet."; "The decision"; "The reasons"; "... sees your decision and your reasons.";
- * "Save"; "The review did not load."
+ * WORDING NO SCREEN SHOWS: "Groundwork has not written this part yet."; "... has not written anything
+ * yet."; "... has not written their view yet." (a person's gender is never known, so it is "<name>’s
+ * own view is not in yet." instead); "The reasons"; "... sees your decision and your reasons.";
+ * "The review did not load."
  */
 const DID_NOT_GO = 'That did not go through, and nothing has changed. Try again.'
 const monthOf = (day: string) => whenItWas(new Date(`${day}T00:00:00.000Z`), 'month', 'UTC')
@@ -52,10 +66,10 @@ export function ReviewPage() {
 
   return (
     <Page>
-      {data && data.reader !== 'person' && (
+      {data && (
         <PageTitle
-          crumbs={[{ label: 'Suites', to: '/settings/suites' }, { label: 'Performance reviews', to: '/suite/reviews' }, { label: data.name }]}
-          title={`${data.firstName}’s review, ${monthOf(data.dueOn)}`}
+          crumbs={[{ label: 'Suites', to: '/settings/suites' }, { label: 'Performance reviews', to: '/suite/reviews' }, { label: data.reader === 'person' ? 'Your review' : data.name }]}
+          title={data.reader === 'person' ? `Your review, ${monthOf(data.dueOn)}` : `${data.firstName}’s review, ${monthOf(data.dueOn)}`}
         />
       )}
       {isLoading && <Note>Loading…</Note>}
@@ -69,16 +83,15 @@ export function ReviewPage() {
           </div>
         )
       )}
-      {data && <TheReview r={data} />}
+      {data && <TheReview r={data} myFirstName={user?.firstName ?? null} />}
     </Page>
   )
 }
 
-function TheReview({ r }: { r: AReview }) {
+function TheReview({ r, myFirstName }: { r: AReview; myFirstName: string | null }) {
   const person = r.reader === 'person'
   const writer = r.reader === 'writer'
   const manager = r.writtenWithFirstName
-  const title = person ? `Your review, ${monthOf(r.dueOn)}` : `${r.firstName}’s review, ${monthOf(r.dueOn)}`
   const footer = !manager
     ? 'No scores.'
     : person ? `No scores. You and ${manager} talk it through, and ${manager} decides.`
@@ -87,8 +100,6 @@ function TheReview({ r }: { r: AReview }) {
 
   return (
     <>
-      {person && <PageTitle title={title} />}
-
       <div className="gwui-cards-3">
         <Section heading="What Groundwork noticed" note="Proof first. Anything only said is marked.">
           {r.noticed.length === 0
@@ -105,26 +116,19 @@ function TheReview({ r }: { r: AReview }) {
             )}
         </Section>
 
-        {!person && (
-          <Words
-            heading={writer ? 'What you write' : `What ${manager ?? 'the manager'} writes`}
-            text={r.managersWords}
-            empty={`${writer ? 'You have' : `${manager ?? 'The manager'} has`} not written anything yet.`}
-            editable={writer}
-            save={(text) => reviewsApi.words(r.id, text)}
-            reviewId={r.id}
-          />
-        )}
+        <ManagersWords r={r} myFirstName={myFirstName} />
 
         <Words
           heading={person ? 'Your own view' : `${r.firstName}’s own view`}
           text={r.theirView}
-          empty={person ? 'You have not written your view yet.' : `${r.firstName} has not written their view yet.`}
-          editable={person}
+          empty={person ? 'You have not written your view yet.' : `${r.firstName}’s own view is not in yet.`}
+          editable={person && !r.decision}
           save={(text) => reviewsApi.view(r.id, text)}
           reviewId={r.id}
         />
       </div>
+
+      {person && r.whereYouDiffer && <WhereYouDiffer d={r.whereYouDiffer} />}
 
       {r.record && <TheRecordSection r={r} record={r.record} />}
       {!person && r.briefing && <TheBriefing b={r.briefing} />}
@@ -137,8 +141,87 @@ function TheReview({ r }: { r: AReview }) {
   )
 }
 
+/**
+ * THE WRITER'S WORDS (item 1, item 3). For the person it is about: read-only, under the server's own
+ * `managersWordsHeading` ("What Wairimu writes"), since the person never writes it (decision 93, row 15).
+ *
+ * For whoever writes it, a lead or an admin: always shown read-only, attributed by name
+ * (`writtenWithFirstName`), UNLESS this reader is that very writer (their own first name matches), in
+ * which case it reads "What you write" and stays editable, pre-filled with their own words, exactly as
+ * before. Where the API says this reader may write (`mayWrite`) but the words on record were somebody
+ * else's - the writer was reassigned after they wrote something - the existing words stay read-only
+ * under their name, and this reader is offered their own box instead, starting empty, never pre-filled
+ * with somebody else's words (item 3).
+ */
+function ManagersWords({ r, myFirstName }: { r: AReview; myFirstName: string | null }) {
+  if (r.reader === 'person') {
+    const heading = r.managersWordsHeading ?? (r.writtenWithFirstName ? `What ${r.writtenWithFirstName} writes` : null)
+    if (!heading) return null
+    return (
+      <Section heading={heading}>
+        {r.managersWords ? <p className="gwui-quoted-text">“{r.managersWords}”</p> : null}
+      </Section>
+    )
+  }
+
+  const manager = r.writtenWithFirstName
+  const theWriterIsMe = !manager || (!!myFirstName && manager === myFirstName)
+  const mayEdit = r.mayWrite && !r.decision
+
+  if (theWriterIsMe) {
+    return (
+      <Words
+        heading="What you write"
+        text={r.managersWords}
+        empty="You have not written anything yet."
+        editable={mayEdit}
+        save={(text) => reviewsApi.words(r.id, text)}
+        reviewId={r.id}
+      />
+    )
+  }
+
+  const heading = manager ? `What ${manager} writes` : 'What the manager writes'
+  return (
+    <Section heading={heading}>
+      {r.managersWords
+        ? <p className="gwui-quoted-text">“{r.managersWords}”</p>
+        : !mayEdit && <p className="gwui-panel-text-muted">{manager ? `${manager} has not written anything yet.` : 'Nobody has written this yet.'}</p>}
+      {mayEdit && <WriteWordsForm label="What you write" text={null} save={(text) => reviewsApi.words(r.id, text)} reviewId={r.id} />}
+    </Section>
+  )
+}
+
+/** Both views, side by side, once the writer and the person have each written theirs (item 1). */
+function WhereYouDiffer({ d }: { d: NonNullable<ReviewForThePerson['whereYouDiffer']> }) {
+  return (
+    <Section heading="Where you differ">
+      <p className="gwui-panel-text">{d.says}</p>
+      <p className="gwui-quoted-text">“{d.managersWords}”</p>
+      <p className="gwui-quoted-text">“{d.yourView}”</p>
+    </Section>
+  )
+}
+
 function Words({ heading, text, empty, editable, save, reviewId }: {
   heading: string; text: string | null; empty: string; editable: boolean; save: (t: string) => Promise<AReview>; reviewId: string
+}) {
+  return (
+    <Section heading={heading}>
+      {editable
+        ? <WriteWordsForm label={heading} text={text} save={save} reviewId={reviewId} />
+        : text ? <p className="gwui-quoted-text">“{text}”</p> : <p className="gwui-panel-text-muted">{empty}</p>}
+    </Section>
+  )
+}
+
+/**
+ * The plain form, with no `Section` of its own, so it can sit inside a heading another part of the
+ * page already drew (item 3: a reader offered their own box beside the writer's already-written
+ * words, inside the one "What <name> writes" section).
+ */
+function WriteWordsForm({ label, text, save, reviewId }: {
+  label: string; text: string | null; save: (t: string) => Promise<AReview>; reviewId: string
 }) {
   const qc = useQueryClient()
   const [draft, setDraft] = useState(text ?? '')
@@ -148,18 +231,14 @@ function Words({ heading, text, empty, editable, save, reviewId }: {
     onSuccess: (r) => { setProblem(null); qc.setQueryData(['suite-review', reviewId], r) },
     onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
   })
-  const fieldId = `review-words-${heading.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`
+  const fieldId = `review-words-${label.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`
   return (
-    <Section heading={heading}>
-      {editable ? (
-        <form className="gwui-suite-q" onSubmit={e => { e.preventDefault(); if (draft.trim()) saving.mutate() }}>
-          <FieldLabel htmlFor={fieldId}>{heading}</FieldLabel>
-          <TextArea id={fieldId} rows={5} value={draft} onChange={e => setDraft(e.target.value)} maxLength={4000} />
-          <div><Button kind="secondary" size="small" type="submit" disabled={!draft.trim() || saving.isPending}>Save</Button></div>
-          {problem && <Note tone="error">{problem}</Note>}
-        </form>
-      ) : text ? <p className="gwui-quoted-text">“{text}”</p> : <p className="gwui-panel-text-muted">{empty}</p>}
-    </Section>
+    <form className="gwui-suite-q" onSubmit={e => { e.preventDefault(); if (draft.trim()) saving.mutate() }}>
+      <FieldLabel htmlFor={fieldId}>{label}</FieldLabel>
+      <TextArea id={fieldId} rows={5} value={draft} onChange={e => setDraft(e.target.value)} maxLength={4000} />
+      <div><Button kind="secondary" size="small" type="submit" disabled={!draft.trim() || saving.isPending}>Save</Button></div>
+      {problem && <Note tone="error">{problem}</Note>}
+    </form>
   )
 }
 

@@ -6042,3 +6042,56 @@ No other read carries it, and nobody else's read ever does.
 Once they write, for example by tapping it and sending "Hi", it is null on both reads.
 
 **The invitation email** carries the same link, labelled "Connect WhatsApp", after the sentence "You can also answer on WhatsApp: send Hi to +44 7700 900123." It appears only when WhatsApp is on for that organisation, the check-in is not kept in the app, and a display number is saved. Otherwise there is no line.
+
+# From the screens workspace, 6 October: Screens ready for the release branch.
+
+Screens ready for the release branch.
+
+At bce7f21d on `wip/prototype-ui`, these pass:
+- the client tests, 4,283 of 4,283;
+- the type check;
+- the browser tests, 57 of 57.
+
+Everything in the screens' list is built and has been walked live: every board, the anchor screens, the suites, the Company page, the lists at a hundred check-ins, the small states and the in-between widths. What remains is yours or Hafsah's:
+- requests 159 to 163, which come from the live walks with your four seeds;
+- context and resources moving into Ask, when you say it is ready;
+- the one-off style clean-up, which waits until after the release.
+
+The screens' own sentences no longer say "participant", except the prototype's own "You see these boards as a participant".
+
+# From the screens workspace, 6 October: Screens ready for release.
+
+Screens ready for release.
+
+At the commit carrying this note on `wip/prototype-ui`, the client tests pass, 4,342 of 4,342, and the type check is clean.
+
+Since the last note, the screens draw:
+- the request offered in the check-in and its form pages;
+- a person's own recognition sentence;
+- the nudge;
+- the Admin switches for both trials;
+- "1 month" everywhere.
+
+The last live walk of the whole anchor scenario found faults that were not fixed before the pull request (Hafsah asked to stop there):
+
+**The screens' own**
+- The entry chat's background classifier overwrites the anchor key, and the save puts `mode` ahead of it (`EntryChatPage.tsx`, `classifyIntent` about line 2113, and `buildCommitPayload` about line 2336). So a lead coming through /start/team gets an ordinary check-in, not an anchor one.
+- "Fills in as you talk" shows the ordinary four items, not section 7's seven.
+- The people step comes after the confirmation email, and has no name field.
+- A member's "Ideas from your team" sits in a closed fold.
+- The signed-out header at 375 has no side gutter.
+
+**Yours**
+- The invitation email still says "Nobody on your team sees what you write … it never quotes you". This is a privacy wording fault.
+- A member's first turn quotes the lead's setup and asks "are you the person this check-in is about".
+- After an idea's yes, the reply asks "Capture what, specifically?", and the idea's title is served raw.
+- `looksLikeARequest` misses "Can I take Thursday and Friday off next week?" and "I need $4,000 approved". The model also argues with the offer around it, and the suite-off offer is shown to a member.
+- Month-board counts and "you" (request 163).
+- The billing page names the Starter plan for an organisation on the free plan.
+- Request 165, the routes and the fill-in values.
+
+**The seed's**
+- Recommendation kinds, commitments as PASTE, and no turns or brief, so there is no end-of-month read and no open session for members.
+
+**Build**
+- `npm run build` in `api/` now writes `dist/src/main.js` and no `dist/main.js`. That is because `src/modules/board/the-anchor-as-each-of-its-readers.spec.ts` imports from `journey/anchor/`. The production start command, `node dist/main`, therefore fails. Please keep `src/` imports inside `src/`.

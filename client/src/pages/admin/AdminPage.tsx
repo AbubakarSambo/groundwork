@@ -601,16 +601,122 @@ function PricingPanel() {
       {[...data].sort((a, b) => rankOf(a.plan) - rankOf(b.plan)).map(row => <PricingRow key={row.plan} row={row} />)}
       <FreeGroundLimitRow />
       <FreeMemberLimitRow />
+      <FreeTrialRow />
+      <AnchorTrialRow />
     </div>
   )
 }
 
 /**
- * THREE MONTHS ON THE HOUSE.
+ * THE REGULAR FREE TRIAL'S OWN SWITCH (`GET`/`PATCH /admin/pricing/free-trial`). Only `on` is
+ * changed from here - every free run is one month now (decision 78), so the screen does not offer
+ * to change the months, and the team size stays the server's own setting. The sentence is built
+ * from the served numbers, never hardcoded, so it never promises what the switch does not do.
+ */
+export function FreeTrialRow() {
+  const qc = useQueryClient()
+  const { data, isLoading, error, refetch } = useQuery({ queryKey: ['admin-free-trial'], queryFn: adminApi.getFreeTrial })
+  const [err, setErr] = useState<string | null>(null)
+  const toggle = useMutation({
+    mutationFn: (on: boolean) => adminApi.setFreeTrial(on),
+    onSuccess: (res) => {
+      qc.setQueryData(['admin-free-trial'], res)
+      qc.invalidateQueries({ queryKey: ['public-pricing'] })
+      setErr(null)
+    },
+    onError: (e: any) => setErr(e?.response?.data?.message ?? e?.message ?? 'That did not save.'),
+  })
+  if (isLoading) return null
+  if (error || !data) return <SectionFailed what="The free trial" error={error} retry={() => refetch()} />
+  const length = data.months === 1 ? '1 month' : `${data.months} months`
+  return (
+    <div style={{ ...C, padding: '14px 16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700 }}>The free trial</div>
+          <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2, lineHeight: 1.5 }}>
+            Teams of fewer than {data.teamsUnder} people get {length} free.
+          </div>
+          {err && <div role="alert" style={{ fontSize: 12, color: 'var(--gw-red-t)', marginTop: 4 }}>{err}</div>}
+        </div>
+        <button
+          type="button"
+          onClick={() => toggle.mutate(!data.on)}
+          disabled={toggle.isPending}
+          style={{
+            width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
+            background: data.on ? 'var(--gw-navy)' : 'var(--gw-border)',
+            position: 'relative', flexShrink: 0, marginLeft: 16,
+          }}
+          aria-label={data.on ? 'Turn off the free trial' : 'Turn on the free trial'}
+        >
+          <span style={{ position: 'absolute', top: 3, left: data.on ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+        </button>
+      </div>
+      <div style={{ fontSize: 11, marginTop: 8, fontWeight: 700, color: data.on ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
+        {data.on ? 'On' : 'Off'}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * THE ANCHOR'S OWN TRIAL (anchor piece 34; `GET`/`PATCH /admin/pricing/anchor-trial`). Its own
+ * setting, separate from the regular free trial above - only on or off, its one month for up to 20
+ * people (the lead included) is fixed and never offered as a field here.
+ */
+export function AnchorTrialRow() {
+  const qc = useQueryClient()
+  const { data, isLoading, error, refetch } = useQuery({ queryKey: ['admin-anchor-trial'], queryFn: adminApi.getAnchorTrial })
+  const [err, setErr] = useState<string | null>(null)
+  const toggle = useMutation({
+    mutationFn: (on: boolean) => adminApi.setAnchorTrial(on),
+    onSuccess: (res) => {
+      qc.setQueryData(['admin-anchor-trial'], res)
+      qc.invalidateQueries({ queryKey: ['public-pricing'] })
+      setErr(null)
+    },
+    onError: (e: any) => setErr(e?.response?.data?.message ?? e?.message ?? 'That did not save.'),
+  })
+  if (isLoading) return null
+  if (error || !data) return <SectionFailed what="The anchor trial" error={error} retry={() => refetch()} />
+  return (
+    <div style={{ ...C, padding: '14px 16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700 }}>The anchor trial</div>
+          <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2, lineHeight: 1.5 }}>
+            A check-in started from the anchor link gives the organisation 1 month on the plan for up to 20 people, the lead included.
+          </div>
+          {err && <div role="alert" style={{ fontSize: 12, color: 'var(--gw-red-t)', marginTop: 4 }}>{err}</div>}
+        </div>
+        <button
+          type="button"
+          onClick={() => toggle.mutate(!data.on)}
+          disabled={toggle.isPending}
+          style={{
+            width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
+            background: data.on ? 'var(--gw-navy)' : 'var(--gw-border)',
+            position: 'relative', flexShrink: 0, marginLeft: 16,
+          }}
+          aria-label={data.on ? 'Turn off the anchor trial' : 'Turn on the anchor trial'}
+        >
+          <span style={{ position: 'absolute', top: 3, left: data.on ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+        </button>
+      </div>
+      <div style={{ fontSize: 11, marginTop: 8, fontWeight: 700, color: data.on ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
+        {data.on ? 'On' : 'Off'}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * ONE MONTH ON THE HOUSE.
  *
  * Her words, 19 September 2026: "us to give free 3 month usage for orgs tied to some accounts. So we
  * put in someone's email and their org gets free use for three months, when they sign-up, they see
- * it."
+ * it." She later decided one month (decision 78), so the form now defaults to one.
  *
  * One field does the work, because one field is the whole idea: an address. Months and plan are
  * here because somebody will want four months or a bigger plan one day, and both default to what
@@ -621,7 +727,7 @@ function FreeRunsPanel() {
   const qc = useQueryClient()
   const { data, isLoading, error, refetch } = useQuery({ queryKey: ['admin-free-runs'], queryFn: adminApi.listFreeRuns })
   const [email, setEmail] = useState('')
-  const [months, setMonths] = useState(3)
+  const [months, setMonths] = useState(1)
   const [plan, setPlan] = useState('GROWTH')
   const [note, setNote] = useState('')
   const [said, setSaid] = useState('')
@@ -629,7 +735,9 @@ function FreeRunsPanel() {
   const grant = useMutation({
     mutationFn: () => adminApi.grantFreeRun({ email: email.trim(), months, plan, note: note.trim() || undefined }),
     onSuccess: (row) => {
-      setSaid(`${row.email} has ${row.months} months waiting. It starts the day they sign up.`)
+      /* Every free run defaults to one month now (decision 78), so this reads "1 month", never
+         "1 months" - the same singular/plural check the list below already makes. */
+      setSaid(`${row.email} has ${row.months} ${row.months === 1 ? 'month' : 'months'} waiting. It starts the day they sign up.`)
       setEmail(''); setNote('')
       qc.invalidateQueries({ queryKey: ['admin-free-runs'] })
     },

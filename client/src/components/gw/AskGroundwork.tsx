@@ -8,7 +8,7 @@ import { UPLOAD_ACCEPT_ATTR } from '@/lib/what-you-can-upload'
 import { whatTellsItApart } from '@/lib/tell-apart-the-same-name'
 import { Mark } from './kit'
 import { Composer } from './ui/Composer'
-import { PRIVATE_LINE, openingLine, SUGGESTED_QUESTIONS } from './what-ask-groundwork-says'
+import { PRIVATE_LINE } from './what-ask-groundwork-says'
 
 /** What the Context page already says while a document's read has not landed yet (AddADocument.tsx). */
 const STILL_READING = 'Reading it now.'
@@ -16,19 +16,32 @@ const STILL_READING = 'Reading it now.'
     30 September, "a document's numbers, said back through Ask Groundwork"). */
 const SAID_AFTER_UPLOAD = "I've uploaded it."
 
+/*
+ * WIDTH CHECK, ITEM 8: THE COMPOSER'S OWN RESTING HEIGHT CUT OFF ITS OWN HINT. The placeholder -
+ * "Ask about the company, your work or your check-ins" - wraps to two lines at the panel's own
+ * 400px width, but the box this empty composer rests at (38px: a 24px line at this field's 16px/1.5
+ * plus its 11px top-and-bottom padding, the Composer's own values) only ever had room to show the
+ * first of them; the second sat cut off against the box's own bottom edge rather than genuinely
+ * absent. 70px is two such lines (24px * 2) plus the same padding - the box still grows further as
+ * somebody types (see the `onChange` below), this only fixes where it RESTS, empty.
+ */
+const COMPOSER_RESTING_HEIGHT = '70px'
+
 /**
- * ASK GROUNDWORK (D1, U.14): the panel beside every page on a computer, and #/chat on a phone.
+ * ASK (D1, U.14): the panel beside every page on a computer, and #/chat on a phone. Named for the
+ * organisation on every screen (decision 100, docs/ask-definition.md) - "Ask Baridi", "Ask
+ * Groundwork" only where there is no organisation yet.
  *
- * The words are the prototype's (docs/prototype/screens/D1-ask-groundwork/*.txt). What Ask Groundwork
- * answers is the assistant's own, drawn as it comes; this adds nothing to what it says. Your
- * questions are served to you alone, and a request is done only after you say yes to it: both are
- * the server's rules (api/src/modules/ask), not this screen's.
+ * WHAT IS SERVED, EXACTLY AS IT ARRIVES (`GET /ask`, docs/answers-from-engine.md, "Request 153"):
+ * `askName`, the caption and the one line under it (`caption`, `addLine`), the greeting
+ * (`welcome`, once, then `null`), and the starter questions (`starters`). What Ask answers is the
+ * assistant's own, drawn as it comes; this adds nothing to what it says. Your questions are served
+ * to you alone, and a request is done only after you say yes to it: both are the server's rules
+ * (api/src/modules/ask), not this screen's.
  *
- * THE THREE SUGGESTED QUESTIONS under the opening line (ask-on-a-phone.txt) are drawn while nothing has
- * been asked yet, and press as the person's own question. The prototype's own three name one example
- * deal and one example target ("Why is Green Mart next quarter?", "Will we reach 25?"), which would be
- * made-up for any real check-in, so the screen's three are questions that make sense in any check-in
- * (what-ask-groundwork-says.ts). The engine is asked, in docs/answers-from-engine.md, to serve real ones.
+ * ASK COVERS THE WHOLE ORGANISATION AND YOUR OWN WORK BY DEFAULT (decision 100, request 153 part
+ * two). A check-in is an optional focus you may pick from "About"; it is never what Ask is about -
+ * see the default-focus logic a little further down (`aboutId`).
  *
  * ADDING A DOCUMENT THROUGH THIS PANEL (decision 50, docs/answers-from-engine.md, 30 September). The
  * assistant's `next_step` block with `kind: 'upload_a_document'` opens the same file picker and the
@@ -195,9 +208,23 @@ export function AskGroundwork({
      read when the file picker returns. */
   const uploadTarget = useRef<string | null>(null)
 
-  /* What the person chose; otherwise the check-in the page is about, when they are in it; otherwise the first. */
+  /*
+   * REQUEST 153, PART TWO: ASK COVERS THE WHOLE ORGANISATION AND YOUR OWN WORK BY DEFAULT. A
+   * check-in is an optional focus you may pick; it is never what Ask is about. So the default is
+   * no check-in at all (`''`, sent as no `groundId`) - never the first one on the list, which is
+   * what the Company page's two buttons used to open onto before this (docs/answers-from-engine.md,
+   * "There is nothing new to call. It already works this way").
+   *
+   * THE ONE EXCEPTION: a page that is itself about a check-in (`here`) opens the panel already
+   * focused on it, so asking about "this check-in" on its own board needs no extra step. Picking
+   * a check-in, or picking "The whole organisation and your work" (`''`) from "About", overrides
+   * that and is remembered for the rest of the time the panel stays open (`chosen`, `null` until
+   * the person has chosen anything).
+   */
   const isMine = (id: string | null): id is string => !!id && about.some((g) => g.id === id)
-  const aboutId = isMine(chosen) ? chosen : isMine(here) ? here : (about[0]?.id ?? '')
+  const aboutId = chosen !== null
+    ? (isMine(chosen) ? chosen : '')
+    : (isMine(here) ? here : '')
 
   useEffect(() => { end.current?.scrollIntoView?.({ block: 'end' }) }, [said.length, reading, sending])
 
@@ -211,10 +238,8 @@ export function AskGroundwork({
      once what was in it is sent - `send` clears `draft` only after a reply comes back, so this
      watches for that rather than doing it optimistically. */
   useEffect(() => {
-    if (draft === '' && composerRef.current) composerRef.current.style.height = '38px'
+    if (draft === '' && composerRef.current) composerRef.current.style.height = COMPOSER_RESTING_HEIGHT
   }, [draft])
-
-  const label = about.find((g) => g.id === aboutId)?.label ?? null
 
   /*
    * ONLY THE NEWEST WAITING PROPOSAL CAN BE ANSWERED (decision 50). Once a newer one arrives, an
@@ -368,12 +393,20 @@ export function AskGroundwork({
     }}>
       <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid var(--gw-line)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <h2 id="gw-ask-title" style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>Ask Groundwork</h2>
+          <h2 id="gw-ask-title" style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>{page.data?.askName ?? 'Ask Groundwork'}</h2>
           {onClose && (
             <button type="button" className="gw-tap44" onClick={onClose} aria-label="Close"
               style={{ border: 0, background: 'transparent', fontSize: 20, cursor: 'pointer', color: 'var(--gw-sub)' }}>×</button>
           )}
         </div>
+        {/*
+         * THE CAPTION, AND THE ONE LINE UNDER IT (decision 100; docs/ask-definition.md, "Its
+         * name"). Both served, both fixed - "Ask about the company, your work or your
+         * check-ins." and "You can also add context or documents to your check-ins here." -
+         * printed under the name exactly as they arrive.
+         */}
+        {page.data?.caption && <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--gw-text)', lineHeight: 1.4 }}>{page.data.caption}</p>}
+        {page.data?.addLine && <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{page.data.addLine}</p>}
         {about.length > 0 && (
           /*
            * ITEM 6: THE PICKER RAN PAST THE PANEL'S RIGHT EDGE. A flex item's default minimum width
@@ -381,11 +414,17 @@ export function AskGroundwork({
            * could make the `<select>` wider than the 400px drawer, pushing it (and this row) past
            * the edge instead of wrapping or shrinking. `minWidth: 0` on both the row and the select,
            * with the select set to `flex: 1`, lets it shrink to the space actually available.
+           *
+           * REQUEST 153, PART TWO: THE FIRST OPTION IS THE ORGANISATION, NOT A CHECK-IN. One
+           * check-in is an optional focus a person may pick; it is never what Ask is about, so the
+           * list always offers "The whole organisation and your work" first, and picking it sends
+           * no `groundId` at all (the ordinary case, not a special one - docs/ask-definition.md).
            */
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 14, color: 'var(--gw-sub)', minWidth: 0 }}>
             About
             <select value={aboutId} onChange={(e) => setChosen(e.target.value)}
               style={{ flex: 1, minWidth: 0, font: 'inherit', fontSize: 15, padding: '6px 8px', borderRadius: 8, border: '1px solid var(--gw-line)', background: 'var(--gw-card)', color: 'var(--gw-text)', maxWidth: '100%' }}>
+              <option value="">The whole organisation and your work</option>
               {aboutWithDates.map((g) => {
                 const apart = whatTellsItApart(aboutWithDates, g)
                 return <option key={g.id} value={g.id}>{apart ? `${g.label}, ${apart}` : g.label}</option>
@@ -398,10 +437,16 @@ export function AskGroundwork({
 
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--gw-page)' }}>
         {page.data && !page.data.canAsk && page.data.why && <p style={bubble(false)}>{page.data.why}</p>}
-        {page.data?.canAsk && label && <p style={bubble(false)}>{openingLine(label)}</p>}
-        {page.data?.canAsk && label && (page.data?.turns ?? []).length === 0 && said.length === 0 && (
+        {/*
+         * THE GREETING (`welcome`): served once, the first time somebody opens Ask, then `null`
+         * (docs/answers-from-engine.md, "Request 153, part two"). `said.length === 0` keeps it from
+         * sitting on screen once this same visit has already asked something, ahead of the next
+         * fetch of `/ask` that would clear it server-side too.
+         */}
+        {page.data?.canAsk && page.data.welcome && said.length === 0 && <p style={bubble(false)}>{page.data.welcome}</p>}
+        {page.data?.canAsk && (page.data?.starters ?? []).length > 0 && (page.data?.turns ?? []).length === 0 && said.length === 0 && (
           <div role="group" aria-label="Questions you could ask" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {SUGGESTED_QUESTIONS.map((q) => (
+            {(page.data?.starters ?? []).map((q) => (
               <button key={q} type="button" style={chip} disabled={sending || reading} onClick={() => ask(q)}>{q}</button>
             ))}
           </div>
@@ -461,14 +506,14 @@ export function AskGroundwork({
             onChange={(v) => {
               setDraft(v)
               const el = composerRef.current
-              if (el) { el.style.height = '38px'; el.style.height = Math.min(el.scrollHeight, 120) + 'px' }
+              if (el) { el.style.height = COMPOSER_RESTING_HEIGHT; el.style.height = Math.min(el.scrollHeight, 120) + 'px' }
             }}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(draft, true) } }}
             onSend={() => ask(draft, true)}
             disabled={sending}
             sendDisabled={!draft.trim()}
-            placeholder={label ? 'Ask about this check-in' : 'Ask a question'}
-            ariaLabel={label ? 'Ask about this check-in' : 'Ask a question'}
+            placeholder={page.data?.caption ?? 'Ask a question'}
+            ariaLabel={page.data?.caption ?? 'Ask a question'}
             maxLength={8000}
           />
         </div>

@@ -6,7 +6,7 @@ import { groundsApi } from '@/api/grounds'
 import { useAuthStore } from '@/stores/auth'
 import { useHelpStore } from '@/stores/help'
 import {
-  Page, PageTitle, Section, Panel, Button, Tag, Note, Empty, TextArea, CheckInsTable, CheckInRow,
+  Page, PageTitle, Section, Panel, Button, Tag, Note, Empty, TextArea, TextField, CheckInsTable, CheckInRow,
 } from '@/components/gw/ui'
 import { cadenceLabel } from '@/lib/cadence'
 import { howARowReads, isFinished, type ListRow } from './how-a-row-reads'
@@ -119,9 +119,17 @@ export function GroundsListPage() {
   const [declining, setDeclining] = useState<string | null>(null)
   const [declineReason, setDeclineReason] = useState('')
 
+  /* HAFSAH'S FAULT 4: a way to find one among a hundred (check-ins.txt draws no search box of its
+     own - there was no hundred-check-in organisation when it was written - so this is plain and
+     in keeping with the page's own voice, the same as the People page's "Find somebody"). Filters
+     by what this reader already sees: the row's own name, never anything the server did not send. */
+  const [find, setFind] = useState('')
+  const q = find.trim().toLowerCase()
+
   const now = new Date()
   const me = user?.id
-  const rows = (grounds as unknown as ListRow[]).map(g => ({ g, reads: howARowReads(g, me, now, { isAdmin }) }))
+  const allRows = (grounds as unknown as ListRow[]).map(g => ({ g, reads: howARowReads(g, me, now, { isAdmin }) }))
+  const rows = q ? allRows.filter(r => r.g.label.toLowerCase().includes(q)) : allRows
   const open = rows.filter(r => !isFinished(r.g))
   const youRun = byWhatNeedsYou(open.filter(r => !!me && r.g.initiatorId === me))
   const youreIn = byWhatNeedsYou(open.filter(r => r.g.initiatorId !== me && (r.g.participants ?? []).some(p => !!me && p.userId === me)))
@@ -201,19 +209,54 @@ export function GroundsListPage() {
 
       {!isLoading && !isError && grounds.length === 0 && (
         <>
-          {isAdmin ? (
+          {/*
+           * TWO EMPTY STATES, FROM THE PROTOTYPE (F4-small-states/states.txt, "No check-ins yet,
+           * a lead" / "No check-ins yet, anyone else") - keyed on whether this reader may open a
+           * check-in at all (`mayOpenCheckIns`), not on `isAdmin`: the setting that decides who
+           * may start one is independent of role (docs/backend-map.md, "who may open check-ins").
+           * The prototype's "anyone else" state still offers "Set up one of your own"; that is
+           * only true here when the reader actually can, so it is left off when they cannot - the
+           * same door every other "Start a check-in" control already checks (`App.tsx`,
+           * `AppShell.tsx`).
+           */}
+          {user?.mayOpenCheckIns !== false ? (
             <Empty
-              title="Your first check-in is one tap away."
-              action={<button type="button" className="gwui-plain-link" onClick={() => useHelpStore.getState().show(4)}>Or try it on your own first</button>}
+              title="No check-ins yet"
+              action={
+                <div className="gwui-button-row">
+                  {/* Not this screen's primary (navy) button: "Start a check-in", above in
+                      PageTitle's own action, already is (U.5 review, "one primary action per
+                      screen"), so this stays secondary even with nothing else to press here. */}
+                  <Button kind="secondary" to="/start?new=1">Set up a check-in</Button>
+                  <button type="button" className="gwui-plain-link" onClick={() => useHelpStore.getState().show(4)}>Try one on your own</button>
+                </div>
+              }
             >
-              Open a check-in for a new hire, a cofounder conversation, or a team that needs alignment.
+              Describe what you want your team to check in about, and it’s set up as you talk.
             </Empty>
           ) : (
-            <Empty title="Nothing here yet.">
-              You will see check-ins here when someone invites you, or when you open one yourself.
+            <Empty title="Nothing here yet">
+              Check-ins appear here when someone adds you to one. You’ll also get an email.
             </Empty>
           )}
         </>
+      )}
+
+      {/* A way to find one among many (HAFSAH'S FAULT 4). Only once there is more than a
+          glance's worth to look through - with a handful, scanning the sections below is faster
+          than typing. */}
+      {!isLoading && !isError && allRows.length > 8 && (
+        <TextField
+          value={find}
+          onChange={(e) => setFind(e.target.value)}
+          placeholder="Find a check-in"
+          aria-label="Find a check-in"
+          style={{ maxWidth: 320 }}
+        />
+      )}
+
+      {!isLoading && !isError && allRows.length > 0 && rows.length === 0 && (
+        <Empty>{`Nothing here matches "${find.trim()}".`}</Empty>
       )}
 
       {youRun.length > 0 && (

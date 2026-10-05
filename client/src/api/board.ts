@@ -447,6 +447,29 @@ export type BoardPresent = {
    */
   theMonthBoard?: TheMonthBoard
   /**
+   * ANCHOR PIECE 22, A PERSON'S OWN RECOGNITION SENTENCE, "Helping the team move"
+   * (docs/anchor-scenario.md section 19; docs/answers-from-engine.md, "Anchor piece 22, hidden
+   * contributors, is served"). Hafsah's decision: a person reads the same sentence the lead reads
+   * about them on `theMonthBoard.peopleHelpingThingsMove`, said as "you" - "You committed to send
+   * your manager the deck, and you say it is done." Served only for a check-in started from the
+   * anchor link, only while the anchor switch is on, and only to that person - never to anybody
+   * else, and the server sends nothing for anybody else's. `null` when they have closed nothing
+   * this month; absent on any other check-in or with the switch off, and the screen draws nothing
+   * then either way.
+   */
+  yourPartInMovingThings?: string | null
+  /**
+   * ANCHOR PIECE 30, THE NUDGE (section 26; docs/anchor-scenario.md;
+   * docs/answers-from-engine.md, "Anchor piece 30, the nudge, is built"). Served to a person in an
+   * anchor check-in who has not yet checked in for the open round - built from their own last open
+   * promise, said back to them: "You mentioned you would send your manager the deck. I'd love to
+   * hear how it went." With no open promise: "It's been a few days since we spoke. What's changed
+   * since then?" `null` once they have checked in. Never served to anybody else - not the lead, not
+   * an admin with access, and not an admin who only reads - and absent on any other check-in or
+   * with the switch off; the screen draws nothing then either way.
+   */
+  aNudgeForYou?: string | null
+  /**
    * ANCHOR PIECE 32/33, THE END-OF-MONTH READ (sections 28 and 29; docs/answers-from-engine.md,
    * "Request 149 (6 of 6)", `TheEndOfMonthRead`). Built once from the record; opening the page
    * never rebuilds it. Lead only, drawn on EndingPage.tsx; absent until the month has run.

@@ -394,6 +394,10 @@ describe('a rebuilt page never falls back to the old parts', () => {
       'components/gw/ui/PatternPanel.tsx',
       'components/gw/WhatTheRecordShows.tsx',
       'components/gw/OutcomeFeedback.tsx',
+      /* U.20 (F4-small-states). See the comment on REBUILT_PAGES in rebuilt-pages.ts. */
+      'pages/notfound/NotFoundPage.tsx',
+      'components/gw/PageCrash.tsx',
+      'components/gw/GroundGone.tsx',
     ])
   })
 

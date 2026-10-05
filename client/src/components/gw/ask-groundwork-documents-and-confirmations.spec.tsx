@@ -24,6 +24,11 @@ const ABOUT: AskPageData = {
   canAsk: true,
   about: [{ id: 'g-sales', label: 'Sales team, Q3' }],
   turns: [],
+  askName: 'Ask Groundwork',
+  caption: 'Ask about the company, your work or your check-ins.',
+  addLine: 'You can also add context or documents to your check-ins here.',
+  welcome: null,
+  starters: [],
 }
 
 function panel(extraProps: Partial<Parameters<typeof AskGroundwork>[0]> = {}) {
@@ -49,8 +54,8 @@ describe('a text block', () => {
       blocks: [{ type: 'text', body: 'Nothing is recorded as waiting on you.' }],
     })
     panel()
-    await screen.findByText(/Ask me about/)
-    fireEvent.change(screen.getByPlaceholderText('Ask about this check-in'), { target: { value: 'what is stuck' } })
+    await screen.findByText(ABOUT.caption)
+    fireEvent.change(screen.getByPlaceholderText(ABOUT.caption), { target: { value: 'what is stuck' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     expect(await screen.findByText('Nothing is recorded as waiting on you.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Yes' })).toBeNull()
@@ -71,8 +76,8 @@ describe('a proposal', () => {
       blocks: [{ type: 'text', body: 'Added.' }],
     })
     panel()
-    await screen.findByText(/Ask me about/)
-    fireEvent.change(screen.getByPlaceholderText('Ask about this check-in'), { target: { value: 'decision: we will drop the pilot' } })
+    await screen.findByText(ABOUT.caption)
+    fireEvent.change(screen.getByPlaceholderText(ABOUT.caption), { target: { value: 'decision: we will drop the pilot' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     expect(await screen.findByText(OFFER)).toBeInTheDocument()
 
@@ -94,8 +99,8 @@ describe('a proposal', () => {
         blocks: [{ type: 'proposal', proposalId: 'pr-new', summary: 'Shall I add the second line?' }],
       })
     panel()
-    await screen.findByText(/Ask me about/)
-    const input = screen.getByPlaceholderText('Ask about this check-in')
+    await screen.findByText(ABOUT.caption)
+    const input = screen.getByPlaceholderText(ABOUT.caption)
 
     fireEvent.change(input, { target: { value: 'note about the first line' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
@@ -121,8 +126,8 @@ describe('a proposal', () => {
       response: { status: 409, data: { message: 'Something newer is waiting on you now, so this one is closed.' } },
     })
     panel()
-    await screen.findByText(/Ask me about/)
-    fireEvent.change(screen.getByPlaceholderText('Ask about this check-in'), { target: { value: 'add a line' } })
+    await screen.findByText(ABOUT.caption)
+    fireEvent.change(screen.getByPlaceholderText(ABOUT.caption), { target: { value: 'add a line' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     await screen.findByText('Shall I add this line?')
     fireEvent.click(screen.getByRole('button', { name: 'Yes' }))
@@ -137,8 +142,8 @@ describe('a refusal', () => {
       blocks: [{ type: 'text', body: 'Only the lead who runs this check-in can confirm a question for someone on it.' }],
     })
     panel()
-    await screen.findByText(/Ask me about/)
-    fireEvent.change(screen.getByPlaceholderText('Ask about this check-in'), { target: { value: 'confirm the question for Ben' } })
+    await screen.findByText(ABOUT.caption)
+    fireEvent.change(screen.getByPlaceholderText(ABOUT.caption), { target: { value: 'confirm the question for Ben' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     expect(await screen.findByText('Only the lead who runs this check-in can confirm a question for someone on it.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Yes' })).toBeNull()
@@ -152,15 +157,15 @@ describe('a question that is not yes or no', () => {
       blocks: [{ type: 'text', body: 'How long should it run?' }],
     })
     panel()
-    await screen.findByText(/Ask me about/)
-    fireEvent.change(screen.getByPlaceholderText('Ask about this check-in'), { target: { value: 'setting up context for the sales check-in' } })
+    await screen.findByText(ABOUT.caption)
+    fireEvent.change(screen.getByPlaceholderText(ABOUT.caption), { target: { value: 'setting up context for the sales check-in' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     expect(await screen.findByText('How long should it run?')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Yes' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'No' })).toBeNull()
 
     // Answered by typing, in the same box - not a picker, not a proposal.
-    fireEvent.change(screen.getByPlaceholderText('Ask about this check-in'), { target: { value: '12 weeks' } })
+    fireEvent.change(screen.getByPlaceholderText(ABOUT.caption), { target: { value: '12 weeks' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     expect(askApi.ask).toHaveBeenLastCalledWith('12 weeks', 'g-sales')
   })
@@ -195,8 +200,8 @@ describe('the upload next step', () => {
     ])
 
     const { container } = panel()
-    await screen.findByText(/Ask me about/)
-    fireEvent.change(screen.getByPlaceholderText('Ask about this check-in'), { target: { value: 'I want to add the Q4 targets sheet' } })
+    await screen.findByText(ABOUT.caption)
+    fireEvent.change(screen.getByPlaceholderText(ABOUT.caption), { target: { value: 'I want to add the Q4 targets sheet' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
 
     const button = await screen.findByRole('button', { name: 'Choose a file' })
@@ -224,8 +229,8 @@ describe('the upload next step', () => {
     ])
 
     const { container } = panel({ pollIntervalMs: 1, pollTimeoutMs: 5 })
-    await screen.findByText(/Ask me about/)
-    fireEvent.change(screen.getByPlaceholderText('Ask about this check-in'), { target: { value: 'add a document' } })
+    await screen.findByText(ABOUT.caption)
+    fireEvent.change(screen.getByPlaceholderText(ABOUT.caption), { target: { value: 'add a document' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Choose a file' }))
     const file = new File(['x'], 'notes.pdf', { type: 'application/pdf' })

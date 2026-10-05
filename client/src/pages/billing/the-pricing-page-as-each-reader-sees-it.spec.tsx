@@ -49,7 +49,7 @@ const FREE = { subscription: { plan: null, status: null }, people: { count: 3, c
 beforeEach(() => {
   m.user = null
   m.status = {}
-  m.pricing = { plans: PLANS, free: { groundLimit: 10, memberLimit: 5 }, trial: { on: false, teamsUnder: 20, months: 3 } }
+  m.pricing = { plans: PLANS, free: { groundLimit: 10, memberLimit: 5 }, trial: { on: false, teamsUnder: 20, months: 1 } }
 })
 
 describe('a visitor who is not signed in', () => {
@@ -77,19 +77,19 @@ describe('a visitor who is not signed in', () => {
   })
 
   it('once the switch is on, the free plan is not offered at all (Hafsah, 27 September)', async () => {
-    m.pricing = { ...m.pricing, trial: { on: true, teamsUnder: 20, months: 3 } }
+    m.pricing = { ...m.pricing, trial: { on: true, teamsUnder: 20, months: 1 } }
     renderIt()
-    await waitFor(() => expect(text()).toContain('3 months free'))
+    await waitFor(() => expect(text()).toContain('1 month free'))
     expect(text()).not.toMatch(/forever|Start free with|Your current plan|Included with every plan/)
   })
 
   it('reads the one shared sentence and the trial’s card once it is switched on', async () => {
-    m.pricing = { ...m.pricing, trial: { on: true, teamsUnder: 20, months: 3 } }
+    m.pricing = { ...m.pricing, trial: { on: true, teamsUnder: 20, months: 1 } }
     renderIt()
-    await waitFor(() => expect(text()).toContain('Teams of fewer than 20 people get 3 months free. No card needed. Subscribe as your team grows.'))
-    expect(text()).toContain('3 months free')
-    expect(text()).toContain('$0 for 3 months')
-    expect(text()).toContain('Start your free 3 months')
+    await waitFor(() => expect(text()).toContain('Teams of fewer than 20 people get 1 month free. No card needed. Subscribe as your team grows.'))
+    expect(text()).toContain('1 month free')
+    expect(text()).toContain('$0 for 1 month')
+    expect(text()).toContain('Start your free 1 month')
   })
 })
 

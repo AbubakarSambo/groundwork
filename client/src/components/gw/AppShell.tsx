@@ -1,3 +1,4 @@
+import { useNoRailStore } from '@/stores/no-rail'
 import { toast } from 'sonner'
 import { mayRenameACheckIn } from '@/lib/who-may-rename-a-check-in'
 import { MARKETING_URL } from '@/lib/marketing'
@@ -16,10 +17,12 @@ import { useHelpStore } from '@/stores/help'
 import { useAskStore } from '@/stores/ask'
 import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
 import { AskGroundwork } from './AskGroundwork'
+import { askNameFor } from '@/lib/ask-name'
 import { hasEnded } from '@/lib/a-ground-that-has-ended'
 import { Button } from './kit'
 import { sidebarWasFolded, rememberSidebarFolded } from './where-the-sidebar-was-left'
 import { pinnedFor, togglePin } from './pinned-check-ins'
+import { recentlyOpenedFor } from './recently-opened-check-ins'
 import { whatTheRowSays } from './what-a-sidebar-row-says'
 import { OrganisationChoices } from './OrganisationChoices'
 import { initialsOf, roleWord } from './your-organisations'
@@ -675,6 +678,42 @@ export function AppSidebar() {
   const pinned = pins.map(id => running.find(g => g.id === id)).filter((g): g is Ground => !!g)
   const unpinned = running.filter(g => !pins.includes(g.id))
 
+  /*
+   * HAFSAH'S FAULT 4: THE SIDEBAR LISTED EVERY CHECK-IN, UNUSABLE AT A HUNDRED.
+   *
+   * Below the pins, as long as there are few enough unpinned check-ins to read at a glance, the
+   * sidebar still shows all of them, in the rail's own order - nothing changes for the common case.
+   * Past `SIDEBAR_CAP`, it shows only: the ones that need this person now (the same `railAttention`
+   * signal as the folded rail's own needsYou, so the two cannot disagree), then whichever of the
+   * rest were opened most recently on this device (recently-opened-check-ins), capped at
+   * `SIDEBAR_CAP` rows in all. "All check-ins" is always the way to the whole list; it carries a
+   * count only when the sidebar is hiding some.
+   */
+  const SIDEBAR_CAP = 8
+  const SIDEBAR_CLOSED_CAP = 8
+  const needsYouUnpinned = unpinned.filter(g => {
+    const a = railAttention(g as any, user?.id)
+    return a.kind === 'overdue' || a.kind === 'yours'
+  })
+  const needsYouUnpinnedIds = new Set(needsYouUnpinned.map(g => g.id))
+  /* Most-recent-first ids kept on this device. A blocked or empty store just returns [], and the
+     sidebar falls back to showing only what needs this person now. */
+  const recentUnpinned = recentlyOpenedFor(user?.id)
+    .map(id => unpinned.find(g => g.id === id))
+    .filter((g): g is Ground => !!g && !needsYouUnpinnedIds.has(g.id))
+  /* The ones that need this person are capped too: a lead with twenty waiting on them would
+     otherwise get twenty rows, which is the list Hafsah found unusable. The rest are one click
+     away under "All check-ins (n)". */
+  const needsYouShown = needsYouUnpinned.slice(0, SIDEBAR_CAP)
+  const roomForRecent = Math.max(0, SIDEBAR_CAP - needsYouShown.length)
+  const shownUnpinned = unpinned.length <= SIDEBAR_CAP
+    ? unpinned
+    : [...needsYouShown, ...recentUnpinned.slice(0, roomForRecent)]
+  const shownClosed = closed.slice(0, SIDEBAR_CLOSED_CAP)
+  /* How many more exist than the sidebar is showing, for "All check-ins (n)" - never shown when
+     everything the reader can see already has a row on screen. */
+  const hiddenCount = Math.max(0, grounds.length - (pinned.length + shownUnpinned.length + shownClosed.length))
+
   /* ONE GATE. Every door below comes out of `navItemsFor`, and is only sorted into its part here. */
   const items = navItemsFor(user)
   const pages = items.filter(i => !(i as any).adminOnly && !(i as any).platformAdminOnly && i.to !== '/grounds' && i.to !== '/settings')
@@ -796,14 +835,20 @@ export function AppSidebar() {
               <GroundworkBars />
             </a>
           )}
-          {/* Ask Groundwork (D1): the speech bubble beside the mark opens the panel beside the page. */}
+          {/*
+            * ASK, NAMED FOR THE ORGANISATION (decision 100): the speech bubble beside the mark
+            * opens the panel beside the page. `askNameFor` is the same small rule `GET /ask`
+            * itself runs (api/src/modules/assistant/ask-name.ts) - reading it from the signed-in
+            * person's own organisation name, already in hand here, means this button never shows
+            * "Ask Groundwork" for a moment before the panel's own fetch lands with the real name.
+            */}
           {isAuthenticated && (
             <button
               type="button"
               className="gw-rl-ic gw-ask-open"
               onClick={toggleAsk}
-              title="Ask Groundwork"
-              aria-label="Ask Groundwork"
+              title={askNameFor(orgName)}
+              aria-label={askNameFor(orgName)}
               aria-expanded={askOpen}
               style={collapsed ? undefined : { marginLeft: 'auto' }}
             >
@@ -934,7 +979,14 @@ export function AppSidebar() {
                 {unpinned.length === 0 && pinned.length > 0 && (
                   <p className="gw-rl-empty">{running.length === 1 ? 'Your only check-in is pinned above.' : 'All your check-ins are pinned above.'}</p>
                 )}
-                <ul className="gw-rl-list">{unpinned.map(rowFor)}</ul>
+                <ul className="gw-rl-list">{shownUnpinned.map(rowFor)}</ul>
+                {/* HAFSAH'S FAULT 4: the way to the whole list, whether or not the rows above left
+                    anything out - with how many there are only when they did. ALWAYS shown (Hafsah,
+                    6 October): an admin with nothing waiting and nothing opened has no rows, and
+                    this is then her way to every check-in. */}
+                <NavLink to="/grounds" className="gw-rl-nav">
+                  {hiddenCount > 0 ? `All check-ins (${grounds.length})` : 'All check-ins'}
+                </NavLink>
                 {closed.length > 0 && (
                   <>
                     <button
@@ -945,7 +997,10 @@ export function AppSidebar() {
                     >
                       <span aria-hidden>{closedOpen ? '▾' : '▸'}</span> Closed ({closed.length})
                     </button>
-                    {closedOpen && <ul className="gw-rl-list">{closed.map(rowFor)}</ul>}
+                    {closedOpen && <ul className="gw-rl-list">{shownClosed.map(rowFor)}</ul>}
+                    {closedOpen && closed.length > shownClosed.length && (
+                      <p className="gw-rl-empty">{`And ${closed.length - shownClosed.length} more. See all of them on the check-ins list.`}</p>
+                    )}
                   </>
                 )}
 
@@ -1224,6 +1279,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       if (location.pathname !== '/chat') navigate('/chat')
     }
   }, [isAPhone, askOpen, hideAsk, navigate, location.pathname])
+  /*
+   * WIDTH CHECK, ITEM 8: THE 400px ASK PANEL CUT THE PAGE'S OWN TEXT, RATHER THAN COVERING IT.
+   * The drawer below is `position: fixed`, so it draws on top of whatever is already there - at
+   * 1024px wide (768px of content once the 256px rail is out) that left only 368px for the page,
+   * but the page itself never learned the drawer was open, so its own buttons and headings still
+   * laid out for the FULL width and then sat half hidden behind the drawer's own edge (measured
+   * live: "Ask about the strategy" read as "Ask about the st"). The same technique `OutOfTime.tsx`
+   * already uses for its own full-page cover: `<body>` carries a class for exactly as long as the
+   * panel is open, and `gw-ui.css`'s own rule (scoped to the same 641px floor the drawer itself
+   * only renders above) reserves its 400px as padding on the content side instead, so the page
+   * reflows into the room it actually has rather than being drawn underneath the drawer.
+   */
+  useEffect(() => {
+    const open = isAuthenticated && askOpen
+    document.body.classList.toggle('gwui-ask-open', open)
+    return () => { document.body.classList.remove('gwui-ask-open') }
+  }, [isAuthenticated, askOpen])
   /* REVIEW ROUND 3, ITEM 7: SEE AppSidebar's OWN COPY OF THIS - the app's bottom bar does not
      render at all on the conversation, and the room it used to reserve (`--gw-bottom-nav`) is
      given back to the card so nothing leaves a blank strip where the bar used to sit. */
@@ -1312,8 +1384,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   /* The pages a link in an email opens, with a token in the address (U.3). They are a card of their
      own, as the prototype draws them, whoever happens to be signed in on this browser. */
   const fromAnEmail = ['/stop-reminders/', '/unsubscribe/', '/j/'].some(p => location.pathname.startsWith(p))
+  /* A page with no address of its own that the prototype draws with no sidebar: the not-found page. */
+  const aPageAskedForNoRail = useNoRailStore(s => s.asked)
   const showSidebar =
-    isAuthenticated && !CHROMELESS.includes(location.pathname) && !isBackOffice && !bare && !fromAnEmail
+    isAuthenticated && !CHROMELESS.includes(location.pathname) && !isBackOffice && !bare && !fromAnEmail && !aPageAskedForNoRail
 
   if (!showSidebar) return <main id="main">{children}</main>
 

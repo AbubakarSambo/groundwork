@@ -38,8 +38,27 @@ same file.
 - Request 155: a local anchor seed, to use the anchor screens live.
 - Requests 150 to 152: served wording and counts found in the walkthrough.
 
-**Needs Hafsah**
-- Nothing new is decided for you to confirm tonight. Your answers on the anchor plan, the four board decisions and "Ask <organisation name>" are recorded under "Hafsah's decisions".
+**Since then (6 October, later)**
+- **Done.** The small states and error pages (U.20) match F4-small-states, after one review and its fixes. The lists were walked live with the hundred-check-in organisation as Zuri, Kofi and Imani at 1440, 1280, 1024 and 375. The sidebar, list, search and privacy pass, and the two People layout faults found are fixed. The client tests pass, 4,262 of 4,262, at 23407ca1.
+- **Asked of the engine.** 158 was fixed: the seeds now make people members. 159 asks that someone who may read a check-in can ask to join it. 160 covers the seed's old "report ready" rows and Imani's role.
+- **Also walked live and fixed (later still).**
+  - **The Company page with Kijani.** The screen draws all it is served, and the seed links nothing (request 161). What a lead kept for the company is now drawn on company context.
+  - **The suites.** Eight screen faults are fixed, including the review page's manager words, a reason before declining, and the 375 layouts. The engine's and seed's faults are in request 162.
+  - **The anchor screens.** The landing now opens straight into the anchor's first question, the landing has its mark and edges, and a closed check-in is never offered "end it". The engine's and seed's faults are in request 163.
+- **Ready.** "Screens ready for the release branch." is written in `docs/answers-from-engine.md` at bce7f21d. The client tests pass, 4,283 of 4,283, and the browser tests pass, 57 of 57.
+
+**Stopped for the pull request (Hafsah, 6 October)**
+- "Screens ready for release." is written in `docs/answers-from-engine.md`. The client tests pass, 4,342 of 4,342.
+- The last live walk's faults were not fixed, and are listed in that note. The biggest is that a lead coming through /start/team gets an ordinary check-in, because the entry chat overwrites the anchor key. There is also a build fault: the API now builds to `dist/src/main.js`, so its production start command fails until the engine moves one import.
+- **WhatsApp correction.** No screen asks a person to connect WhatsApp or to write first, so nothing changed.
+- **Two choices for Hafsah to confirm.** The leave and payment forms are new pages with no prototype picture. The plan-and-billing switch is on in the local database only.
+
+**Decided for Hafsah to confirm**: *all four confirmed by Hafsah, 6 October. For the admin's sidebar she added that "All check-ins" is always shown, even with no rows; that is done.*
+- **The crash page** says "Everything you had already sent is saved.", not the prototype's "Nothing you wrote is lost; it was saved before this happened.", because an answer typed but not sent is not saved. "We’ve been told." is left out, because no crash reaches us.
+- **The gone check-in page** uses the prototype's two sentences, then keeps one more: "If you have just switched organisation, it may belong to the one you switched away from." That is how most people get there.
+- **"Ask to join" is not shown** under "You’re not in this check-in" until the server allows it (request 159). Only "<name> runs it and can add you." shows.
+- **An admin's sidebar** shows no check-in rows when nothing waits on her and she has opened none. It shows only "All check-ins (n)". The prototype's admin is in check-ins of her own, so it shows rows.
+- **Left as they are:** the offline state (there is no offline queue), the end-of-check-in states (each is its own reviewed flow) and "Not saved" (it works as a message).
 
 ## Morning, 5 October: in short
 
