@@ -110,7 +110,11 @@ there are worries and none is named, the Blockers tile now says the true reason:
 - To somebody walled from other people's words, such as the person an evaluation is about, or a person who does not see the others: "13 worries are on record. They are other people's words, so they are not shown to you." With one: "1 worry is on record. It is another person's words, so it is not shown to you."
 - To any reader, the lead included, where none was kept in the words it was said: "13 worries are on record. None was kept in the words it was said, so none is quoted here." With one: "1 worry is on record. It was not kept in the words it was said, so it is not quoted here."
 
-The sentence about waits follows, unchanged. The reason is worked out in `whatThisSessionHolds`
+- Where some are other people's words and the rest were not kept word for word (changed after a second review, because Kwame was told his own "I am tired." was other people's words): "3 worries are on record. Some are other people's words, which are not shown to you. The rest were not kept in the words they were said." A reader's own worries are never walled from them, so this never calls their own words other people's.
+- Where this reader may read worries that were kept word for word, but none can be quoted whole (its own quotation marks, or the quote rule would cut it): "13 worries are on record. None can be quoted here whole, so none is shown." With one: "1 worry is on record. It cannot be quoted here whole, so it is not shown." The lead reads this one where before she was told, falsely, that it was not kept.
+
+The "other people's words" sentence is now said only where every worry was kept word for word and
+none may be read by this reader. The sentence about waits follows, unchanged. The reason is worked out in `whatThisSessionHolds`
 (`whyNoWorryIsShown`) and carried to the tile on the board and in the session report. I did not add
 a sentence pointing elsewhere, because I found no other place that shows these worries to the same
 reader.

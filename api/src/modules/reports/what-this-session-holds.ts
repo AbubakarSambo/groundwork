@@ -339,16 +339,27 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
    * EVERY TARGET THIS READER IS LISTED, and how many of them have a number (request 109 c). The tile read "1
    * target is set" above a list of three, because it counted only the ones with a number. Both are said.
    */
-  /* The true reason where worries exist and none is named. Kept word for word but walled from this reader is
-     "other people's words"; anything else - never kept, or kept in a shape the quote rule cannot stand - is
-     "not kept in the words it was said". */
+  /*
+   * THE TRUE REASON WHERE WORRIES EXIST AND NONE IS NAMED (request 127 item 7, second review). Four cases:
+   *  - some this reader may read were kept word for word, and none of them can be quoted whole (its own quotation
+   *    marks, or the quote rule at the read would cut it): 'not whole';
+   *  - every worry was kept word for word and every one is somebody else's this reader may not read: 'walled';
+   *  - some are walled and the rest were never kept word for word: 'some walled, the rest not kept'. The reader's
+   *    own worries are never walled from them, so their own words are never called other people's;
+   *  - otherwise none was kept word for word: 'not kept', which is as true for the lead as for anybody.
+   */
+  const notKept = worried.length - keptWordForWord.length;
+  const walledKept = keptWordForWord.length - mayBeRead.length;
   const whyNoWorryIsShown: WhyNoWorryIsShown = worries > 0 && !theFirstWorry
-    ? (keptWordForWord.length > 0 && mayBeRead.length === 0 ? 'walled' : 'not kept')
+    ? mayBeRead.length > 0 ? 'not whole'
+      : walledKept > 0 && notKept === 0 ? 'walled'
+        : walledKept > 0 ? 'some walled, the rest not kept'
+          : 'not kept'
     : null;
   return { movedOnTargets, blocked, waiting, theFirstBlocker, worries, theFirstWorry, whyNoWorryIsShown, waitsFromEarlier, targetsSet: objectives.length, targetsWithANumber: objectives.filter((o) => o.target != null).length, targetsMoved };
 }
 
-export type WhyNoWorryIsShown = 'walled' | 'not kept' | null;
+export type WhyNoWorryIsShown = 'walled' | 'not kept' | 'some walled, the rest not kept' | 'not whole' | null;
 
 /** The four tiles, from the counts. The one builder both the report and the board call. */
 export function atAGlanceTiles(a: {
@@ -502,7 +513,11 @@ export function atAGlanceTiles(a: {
                */
               : `${a.whyNoWorry === 'walled'
                 ? (worries === 1 ? '1 worry is on record. It is another person\'s words, so it is not shown to you.' : `${worries} worries are on record. They are other people's words, so they are not shown to you.`)
-                : (worries === 1 ? '1 worry is on record. It was not kept in the words it was said, so it is not quoted here.' : `${worries} worries are on record. None was kept in the words it was said, so none is quoted here.`)} ${earlier > 0
+                : a.whyNoWorry === 'some walled, the rest not kept' && worries > 1
+                  ? `${worries} worries are on record. Some are other people's words, which are not shown to you. The rest were not kept in the words they were said.`
+                  : a.whyNoWorry === 'not whole'
+                    ? (worries === 1 ? '1 worry is on record. It cannot be quoted here whole, so it is not shown.' : `${worries} worries are on record. None can be quoted here whole, so none is shown.`)
+                    : (worries === 1 ? '1 worry is on record. It was not kept in the words it was said, so it is not quoted here.' : `${worries} worries are on record. None was kept in the words it was said, so none is quoted here.`)} ${earlier > 0
                 ? `Nobody named a new wait this session, and ${earlier === 1 ? '1 wait from an earlier session is' : `${earlier} waits from earlier sessions are`} still open.`
                 : 'Nobody is waiting on anybody.'}`)
             : earlier > 0
