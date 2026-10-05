@@ -265,6 +265,24 @@ again: "Amina Yusuf said, about Tobi Adewale, that Amina would send the sheets."
 the sheets." The reader as "you" does not count as a second person ("Dr Amina Bello says they told you
 this").
 
+**Anchor piece 35, the anchor journey and its four readers.** The rules for who may read which anchor
+part are written once, in `api/journey/anchor/what-each-reader-may-be-served.ts`:
+
+- The lead reads the active line, the month board and, once the month is over, the end-of-month read.
+- A person in the check-in reads only their own recognition sentence, said as "you".
+- An admin with access reads the active line only.
+- An admin who only reads gets none of the lead's parts and no person's sentence.
+- Nobody reads a score, a rating or a label.
+
+Two things use these rules:
+
+- `api/journey/anchor/walk-the-anchor-as-each-reader.ts` signs in as each reader against an API on this computer with the anchor seed loaded, reads both anchor check-ins' boards, and reports any problem in a sentence. It writes nothing, and it refuses anything that is not localhost.
+- A spec, `the-anchor-as-each-of-its-readers.spec.ts`, holds the same rules against the board read in a test.
+
+The anchor seed now also loads `grace@anchor.test`, an admin of the organisation who is in neither
+check-in, as the fourth reader. I have not run the journey against the live API. The tester is
+rebuilding it, and the journey needs the seed loaded on that database.
+
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
 ```

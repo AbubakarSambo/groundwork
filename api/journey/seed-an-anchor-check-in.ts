@@ -47,6 +47,9 @@ const PEOPLE = [
   { key: 'juma', first: 'Juma', last: 'Kariuki', role: 'MEMBER' as const, title: 'Warehouse' },
 ];
 
+/** An admin of the organisation who is in neither check-in, for the journey's fourth reader (anchor piece 35). */
+export const THE_ADMIN_WHO_ONLY_READS = { key: 'grace', first: 'Grace', last: 'Njoroge' };
+
 /** What the lead said at the front door. The end-of-month read needs her own first words. */
 const HER_WORDS = 'I want everyone to understand that we win or lose on whether a shop can reorder the same week, and right now nobody owns that end to end.';
 
@@ -101,6 +104,15 @@ export async function loadTheAnchor(url: string) {
       });
       await theyAreInThisOrganisation(db, org.id, users[p.key].id, p.role);
     }
+    /* AN ADMIN WHO ONLY READS (anchor piece 35): in the organisation, not in either check-in, so the journey can read
+       the anchor as the fourth reader. */
+    users[THE_ADMIN_WHO_ONLY_READS.key] = await db.user.upsert({
+      where: { email: email(THE_ADMIN_WHO_ONLY_READS.key) },
+      update: { organizationId: org.id, isEmailVerified: true, passwordHash, role: 'ADMIN' },
+      create: { email: email(THE_ADMIN_WHO_ONLY_READS.key), firstName: THE_ADMIN_WHO_ONLY_READS.first, lastName: THE_ADMIN_WHO_ONLY_READS.last, organizationId: org.id, isEmailVerified: true, passwordHash, role: 'ADMIN' },
+      select: { id: true },
+    });
+    await theyAreInThisOrganisation(db, org.id, users[THE_ADMIN_WHO_ONLY_READS.key].id, 'ADMIN');
 
     const LABELS = ['Everyone pulling the same way', 'Everyone pulling the same way (last month)'];
     /*
@@ -216,6 +228,7 @@ export async function loadTheAnchor(url: string) {
     console.log(`  ended check-in  ${past}  (started five weeks ago, closed, for the end-of-month page)`);
     console.log(`\n  Sign in with the password  ${PASSWORD}  (local only):\n`);
     for (const p of PEOPLE) console.log(`    ${email(p.key).padEnd(22)} ${p.title}${p.lead ? ', runs it' : ''}`);
+    console.log(`    ${email(THE_ADMIN_WHO_ONLY_READS.key).padEnd(22)} An admin who is in neither check-in`);
     console.log('');
   } finally {
     await db.$disconnect();
