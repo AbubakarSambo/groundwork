@@ -573,6 +573,21 @@ interface AsOfARound {
   period: number;
 }
 
+/**
+ * OUR OWN CATCH-ALLS, which name nothing and are no use as a thing to carry forward. Matched on
+ * the words with the punctuation and capitals taken off, so a question mark or a stray "so" does
+ * not slip one past. Anything that names something real is kept, however short.
+ */
+const CATCH_ALL_QUESTIONS = [
+  'what else should i know', 'what else', 'is there anything else', 'anything else',
+  'is there more', 'anything you want to add', 'anything to add', 'what have i missed',
+  'is there anything i have missed', 'anything i should know',
+];
+export function aCatchAllQuestion(q: string): boolean {
+  const bare = (q ?? '').toLowerCase().replace(/[^a-z\s]/g, '').replace(/\s+/g, ' ').trim();
+  return CATCH_ALL_QUESTIONS.some((c) => bare === c || bare === `so ${c}` || bare === `and ${c}`);
+}
+
 @Injectable()
 export class ReportsService {
   private readonly logger = new Logger(ReportsService.name);
@@ -2208,7 +2223,17 @@ Close the report by framing - neutrally, without recommending one - the choice n
         const content = turns[i]?.content ?? '';
         const questions = content.match(/([A-Z][^.!?]*\?)/g);
         if (questions?.length) {
-          openQuestions.push(questions[questions.length - 1].trim());
+          const last = questions[questions.length - 1].trim();
+          /*
+           * A HOUSEKEEPING QUESTION IS NOT SOMETHING TO CARRY INTO THE NEXT SESSION (run 32,
+           * discovery): the lead's report served `session2Focus: "What else should I know?"`.
+           *
+           * This takes the last question Groundwork asked before somebody closed without
+           * answering, which is right when the question was about the work and useless when it
+           * was our own catch-all. A focus item is a thing to cover; "what else should I know"
+           * names nothing, so carrying it tells session two to ask the same empty question again.
+           */
+          if (!aCatchAllQuestion(last)) openQuestions.push(last);
           break;
         }
       }

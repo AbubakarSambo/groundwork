@@ -114,3 +114,40 @@ describe('the judgement does not invent a reason or a move', () => {
     expect(it_).toContain('NEVER DECIDE ABOUT A PERSON');
   });
 });
+
+/**
+ * TWO FACTS SIDE BY SIDE, JOINED INTO A CAUSE NOBODY NAMED (run 32, finding 6, the shock report).
+ *
+ * Hana Suzuki said support tickets went from 9 to 31 about one broken export, and separately the
+ * client gave notice. The judgement wrote "Hana Suzuki says Meridian left because of a broken
+ * export", and then told the lead "you are looking in the wrong place for the reason the client
+ * left" - a correction built on a cause she never named.
+ *
+ * That scenario's right answer is a timeline of three signals nobody held together, which is the
+ * opposite of picking one cause.
+ */
+describe('the judgement does not turn two facts into a cause', () => {
+  const it_ = theJudgementOverARoom('whoever called this check-in', 'what to do next', 'Dayo Ogunleye');
+
+  it('says it plainly, and says what to do instead', () => {
+    expect(it_).toContain('TWO FACTS SIDE BY SIDE ARE NOT A CAUSE');
+    expect(it_).toContain('leave them unjoined and put them in order');
+  });
+
+  it('names what the invention costs: everything said on top of it', () => {
+    expect(it_).toContain("puts a claim in somebody's mouth that they did not make");
+    expect(it_).toContain('built on your own invention');
+  });
+
+  /*
+   * AND IT SAYS NONE OF THIS IN THE SCENARIO'S OWN WORDS. My first version used the shock run's
+   * vocabulary - quarterly reviews, a champion, tickets - and `a-room-is-not-a-population` went
+   * red: the rules are about any room, so the runs they came from must not leak into the words,
+   * or the instruction primes the model towards one kind of work. It also duplicated the rule on
+   * pieces of one story, which was already there; it points at it now instead.
+   */
+  it('says it without a word from the run it came from, and defers to the rule already there', () => {
+    expect(it_).not.toMatch(/quarterly review|champion|ticket/i);
+    expect(it_).toContain('as the rule on pieces of one story says');
+  });
+});

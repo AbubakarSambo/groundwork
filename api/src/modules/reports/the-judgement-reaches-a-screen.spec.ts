@@ -104,8 +104,13 @@ describe('and it reaches the board', () => {
    * opposite, and the old assertion is kept here in words so nobody restores it by accident
    * thinking they are fixing a regression.
    */
+  /* The call may carry more than `isLead` (a check-in of one, request 136 item 7), so this pins what matters — the
+     judgement goes through the wrapper, and `isLead` is `isInitiator` — not the line's formatting. The same change the
+     screens workspace asked for in request 138, for the same reason: a test on exact source text fails on a line break. */
   it('to whoever runs the check-in, and to nobody else, released or not', () => {
-    expect(BOARD).toMatch(/theBoardsJudgementFor\(\(ground as any\)\.report, \{ isLead: isInitiator \}\)/);
+    const call = /theBoardsJudgementFor\(\(ground as any\)\.report, \{[\s\S]{0,400}?\}\)/.exec(BOARD)?.[0] ?? '';
+    expect(call).not.toBe('');
+    expect(call).toMatch(/isLead: isInitiator\b/);
     expect(BOARD).not.toMatch(/theJudgement: \(isInitiator \|\| \(ground as any\)\.report\?\.releasedAt\)/);
   });
 

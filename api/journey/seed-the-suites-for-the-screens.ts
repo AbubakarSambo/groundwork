@@ -29,7 +29,7 @@
  */
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import { itIsADatabaseOnThisComputer, NOT_A_DATABASE_ON_THIS_COMPUTER } from './a-database-on-this-computer';
+import { itIsADatabaseOnThisComputer, NOT_A_DATABASE_ON_THIS_COMPUTER, theyAreInThisOrganisation } from './a-database-on-this-computer';
 
 /** Local only, and said in the output rather than hidden, because it exists to be typed in. */
 const PASSWORD = 'suites-local-only';
@@ -78,6 +78,7 @@ export async function loadTheSuites(url: string) {
         },
         select: { id: true },
       });
+      await theyAreInThisOrganisation(db, org.id, users[p.key].id, p.role);
     }
 
     /*

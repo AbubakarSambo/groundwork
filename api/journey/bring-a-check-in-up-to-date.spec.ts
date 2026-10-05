@@ -170,3 +170,91 @@ describe('the lead\'s own aim, said again with no number (request 121, part 2)',
     expect(db.rows.groundObjective.map((o) => o.id)).toContain('o-amani-onboarded');
   });
 });
+
+/**
+ * A STORED REPORT THAT SPEAKS OF MEETINGS NOBODY MENTIONED (screens requests 127, 129, 130, 131, 132, 134, 135
+ * and 136; Hafsah's ask in 140, item 1).
+ *
+ * The line is left out when a board is served, so the screens stopped seeing it on the newest code. The row still
+ * held it, which is what the screens asked to have put right: anything else that reads the row still reads the line.
+ * The decision is the engine's own reading of the record, aMeetingIsOnRecord, so a check-in where somebody did
+ * mention meeting someone keeps its line.
+ */
+function aStoredReportSaying(lines: { text: string }[], overTime: Record<string, unknown>) {
+  const db = theStoredCheckIn();
+  db.rows.recordEntry.length = 0;
+  lines.forEach((l, i) => db.rows.recordEntry.push({ id: `r${i}`, participantId: 'p-amani', checkInId: 'c1', type: 'PROGRESS', text: l.text, saidWordForWord: true, createdAt: new Date('2026-09-01') }));
+  db.rows.groundObjective.length = 0;
+  db.rows.groundDependency.length = 0;
+  db.rows.workItem.length = 0;
+  db.rows.report = [{ id: 'rep-1', groundId: 'g-1', overTime }];
+  db.prisma.report = {
+    findUnique: jest.fn(async ({ where }: any) => db.rows.report.find((r: any) => r.groundId === where.groundId) ?? null),
+    update: jest.fn(async ({ where, data }: any) => { db.writes.push(`report.update ${where.id}`); Object.assign(db.rows.report.find((r: any) => r.id === where.id), data); return {}; }),
+  };
+  return db;
+}
+
+const THE_MEETINGS = [
+  'Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.',
+  'Nobody on record has said who arranged the meetings that happened. Ask who secured each one before crediting anybody with them.',
+];
+
+describe('a stored report that speaks of meetings nobody mentioned', () => {
+  const overTime = () => ({
+    sessions: 2,
+    cannotTellYou: ['Nobody has put a number on the backlog.', THE_MEETINGS[0]],
+    toSettleFirst: [THE_MEETINGS[1], 'Who closes a refund, and when?'],
+    stillOpen: [], commitments: [], dependencies: [], gaps: [], patterns: [],
+  });
+
+  it('says what it would take out, and takes out only those two lines', async () => {
+    const db = aStoredReportSaying([{ text: 'I closed 40 tickets this week and reopened none.' }], overTime());
+    const said: string[] = [];
+    await run({ url: LOCAL, args: ['--dry-run'], prismaFor: () => db.prisma, ask: async () => null, say: (l) => said.push(l) });
+    expect(said.join('\n')).toContain('though nobody in this check-in spoke of a meeting');
+    expect(db.rows.report[0].overTime.cannotTellYou).toEqual(overTime().cannotTellYou);
+
+    await writeTheChanges(db.prisma, await whatWouldChange(db.prisma));
+    expect(db.rows.report[0].overTime.cannotTellYou).toEqual(['Nobody has put a number on the backlog.']);
+    expect(db.rows.report[0].overTime.toSettleFirst).toEqual(['Who closes a refund, and when?']);
+    expect(db.rows.report[0].overTime.sessions).toBe(2);
+    expect(whatWouldChangeSays(await whatWouldChange(db.prisma))).toEqual(['1 check-in was read. Nothing would change.']);
+  });
+
+  it('leaves the line where somebody did speak of a meeting', async () => {
+    const db = aStoredReportSaying([{ text: 'I met with Aisha on Tuesday and we agreed the new rule.' }], overTime());
+    expect(whatWouldChangeSays(await whatWouldChange(db.prisma))).toEqual(['1 check-in was read. Nothing would change.']);
+    expect(db.rows.report[0].overTime.cannotTellYou).toEqual(overTime().cannotTellYou);
+  });
+
+  it('a check-in with no stored report at all is left alone', async () => {
+    const db = aStoredReportSaying([{ text: 'I closed 40 tickets this week.' }], overTime());
+    db.rows.report.length = 0;
+    expect(whatWouldChangeSays(await whatWouldChange(db.prisma))).toEqual(['1 check-in was read. Nothing would change.']);
+  });
+});
+
+/**
+ * THE FOUNDER'S AIM, STORED WITH NO NUMBER (screens request 136, item 1). "Get to 20 paying customers by December."
+ * held target null, so her board had no answer and no bar. Rule 3 keeps the figure that is in the aim's own name, and
+ * now reads this shape of sentence too.
+ */
+describe('an aim that goes "to" a number keeps it', () => {
+  it('the dry run says so, and the write sets it', async () => {
+    const db = theStoredCheckIn();
+    db.rows.groundObjective.length = 0;
+    db.rows.groundObjective.push({
+      id: 'o-founder', groundId: 'g-1', name: 'Get to 20 paying customers by December.', target: null, count: 0, prevCount: 0,
+      ownerParticipantId: null, setByParticipantId: 'p-rukia', dueOn: null, suggestedCount: null, suggestedSaid: null,
+      suggestedAtSession: null, createdAt: new Date('2026-09-01'), sortOrder: 0,
+    });
+    const said: string[] = [];
+    await run({ url: LOCAL, args: ['--dry-run'], prismaFor: () => db.prisma, ask: async () => null, say: (l) => said.push(l) });
+    expect(said.join('\n')).toContain('has no number, though its own name holds 20');
+    expect(db.rows.groundObjective[0].target).toBeNull();
+
+    await writeTheChanges(db.prisma, await whatWouldChange(db.prisma));
+    expect(db.rows.groundObjective[0].target).toBe(20);
+  });
+});

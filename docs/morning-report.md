@@ -1,5 +1,60 @@
 # Morning report
 
+## 5 October, 15:30: where I am, for your fresh session
+
+Everything is committed and pushed to `mine wip/release`. The working tree is clean. One process
+is running on this computer: the local API on 127.0.0.1:3000, built from this head. No scenario
+run, no watcher, no test runner, no client.
+
+### Done since you asked me to quieten the computer
+
+| | |
+| --- | --- |
+| **Eight of the screens' open requests were already fixed** | 119, 120, 126, 137, 138, 141, 146, 156. Checked one at a time at this head rather than assumed: the API typechecks, builds, starts and answers; the seeds are tracked; their own wording guard passes — at exactly 60 of 60, which I told them. |
+| **The meetings line is out of the stored row** | `bring-a-check-in-up-to-date.ts` rule 7. They asked twice and my earlier answer pointed at a script with no such rule. Proved on a local database: two lines before, none after, nothing else touched. |
+| **Your three asks in request 140** | (1) the meetings lines, done. (2) the local MarketView Q4 check-in: `6e84ca43-31d4-4e33-bf38-91defee0543a`, led by wairimu, otieno and naliaka check in. (3) the full API suite on this computer: **1,707 suites, 16,609 tests, all passing, 427 seconds, no memory trouble** — so their out-of-memory is their machine. |
+| **Four more fixed** | the founder's aim "Get to 20 paying customers" now holds its number (136 1); the missing "that" in "…who can provide the fuel allowance for October **that** Aisha is waiting for" (132 f); the only person in a check-in is no longer told her own account is missing (136 7); and the up-to-date script's rule 3 reads the new shape of aim. |
+
+### In progress, and the thing to read first
+
+**Requests 121 to 140, item by item**, in `docs/answers-from-engine.md`. Most of those twenty
+reviews were already fixed before today — **eleven items are genuinely open**, and seven of those
+eleven are the judgement, which is the model's own writing.
+
+I got this wrong twice before getting it right, and it is worth knowing how: I first read "open"
+off whether a test file was named after the request. That is not the same thing, and it was wrong
+nine times in total. The list now goes the other way round — what the code cites, then each
+remainder read in the file that would hold it — and it says in those words that it means "I did not
+find a fix", not "there is none".
+
+### Tonight's plan, in order
+
+1. **The judgement family: 123 (7), 134 (4), 135 (3).** Seven of the eleven open items are the
+   judgement miscounting, contradicting itself, or mixing "you", "they" and "she" for one person.
+   The repairs at the read can fix shapes, not a miscount, so this wants the prompt and its tests
+   together. This is the real engine work left and I have not started it.
+2. **The four that are not the judgement:** 127 (5) "their" for the reader outside the shapes the
+   rule covers; 127 (6) and (7), a kind of work and a count of worries with nothing behind them;
+   130 (b) and (d) and 131 (6), sections a board family does not send; 139, a goal drawn as a bare
+   line.
+3. **The 24-scenario run and the scorer.** Ready to start, not started — see below.
+
+### Two decisions I did not make on my own
+
+- **The 24-scenario run is still stopped.** It is next in the queue and the machine is quiet, but
+  you stopped that exact run an hour ago because the computer was slow, and restarting it unasked
+  is the one thing that plainly contradicts what you said. It runs for hours and blocks everything
+  else. One word and it starts.
+- **Two of the eleven open items are decisions, not defects.** The words a reader sees when
+  somebody leaves a role (the screens want his name; the prototype says "Part ways"), and who gets
+  asked to find an owner when nobody is named. Both are in `docs/answers-from-engine.md` with the
+  argument on each side. Neither is mine to pick.
+
+### Housekeeping
+
+Two scratch databases are left on this computer, `gw_seed_check_158` and `gw_mv_q4_140`, because
+`dropdb` is blocked by the kit's rules. Neither is used by anything.
+
 ## 5 October, afternoon: the three screens requests, the migrations, and what I got wrong
 
 Running unattended. Progress as it happens is in `docs/run-log.md`; this is the short version.

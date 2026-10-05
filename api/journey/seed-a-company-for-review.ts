@@ -23,7 +23,7 @@
  */
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import { itIsADatabaseOnThisComputer, NOT_A_DATABASE_ON_THIS_COMPUTER } from './a-database-on-this-computer';
+import { itIsADatabaseOnThisComputer, NOT_A_DATABASE_ON_THIS_COMPUTER, theyAreInThisOrganisation } from './a-database-on-this-computer';
 
 const PASSWORD = 'review-local-only';
 const SLUG = 'kijani-foods';
@@ -224,11 +224,7 @@ export async function loadTheCompany(url: string) {
           managerExternalId: p.key === 'naomi' ? null : p.role === 'LEAD' ? 'naomi' : 'bilal',
         },
       }).catch(() => undefined);
-      await db.organizationMembership.upsert({
-        where: { organizationId_userId: { organizationId: org.id, userId: users[p.key].id } },
-        update: {},
-        create: { organizationId: org.id, userId: users[p.key].id },
-      }).catch(() => undefined);
+      await theyAreInThisOrganisation(db, org.id, users[p.key].id, p.role);
     }
 
     /* THE COMPANY'S PLAN. Subjects of type OBJECTIVE are what the Company page reads. */
@@ -240,8 +236,24 @@ export async function loadTheCompany(url: string) {
       }).catch(() => undefined);
     }
 
-    /* The check-ins. Cleared by label first, so a second run replaces rather than doubles. */
+    /*
+     * The check-ins. Cleared by label first, so a second run replaces rather than doubles.
+     * A record entry hangs off a participant and that key does not cascade, so the children go
+     * first; deleting the grounds on their own fails on the second run with a foreign key error.
+     */
     const labels = CHECK_INS.map((c) => c.label);
+    const oldParties = await db.groundParticipant.findMany({
+      where: { ground: { organizationId: org.id, label: { in: labels } } },
+      select: { id: true },
+    });
+    if (oldParties.length) {
+      const ids = oldParties.map((p) => p.id);
+      await db.recordEntry.deleteMany({ where: { participantId: { in: ids } } });
+      await db.checkIn.deleteMany({ where: { participantId: { in: ids } } });
+      await db.groundCommitment.deleteMany({ where: { participantId: { in: ids } } });
+      await db.groundParticipant.deleteMany({ where: { id: { in: ids } } });
+    }
+    await db.report.deleteMany({ where: { ground: { organizationId: org.id, label: { in: labels } } } });
     await db.ground.deleteMany({ where: { organizationId: org.id, label: { in: labels } } });
 
     let made = 0;

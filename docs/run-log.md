@@ -2,6 +2,213 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## The judgement on a check-in of one, and a decision I did not make (5 October)
+
+Request 136 item 7 is fixed: the founder, the only person in her own check-in, was
+being told "Your own account of this is not in this check-in." about her own
+commitments. It now says nobody else answers it, which is the true thing. The wording
+is mine and marked PROVISIONAL — the prototype has no screen for a check-in of one.
+
+Doing it meant adding an argument to a call whose exact source text one test pinned, so
+that test now pins what matters (the judgement goes through the lead-only wrapper, with
+isLead from isInitiator) rather than the line's formatting. That is the same change the
+screens workspace asked for in request 138.
+
+PROVISIONAL DECISION, logged rather than done: I have not restarted the 24-scenario
+run. It is the next thing in the queue and the machine is quiet again, but Hafsah
+stopped that exact run an hour ago because the computer was slow, and restarting it
+unasked is the one thing that plainly contradicts "stop every one that isn't needed
+right now". It takes hours and would block everything else. It is ready to start the
+moment she says so.
+
+## Two more fixed, and six of my "open" items were not open (5 October)
+
+Fixed and pushed: the founder's aim "Get to 20 paying customers by December." now holds
+its number, so her board has an answer and a bar instead of nothing (136 item 1); and
+"who can provide the fuel allowance for October **that** Aisha Wanjiku is waiting for"
+(132 f), which meant changing two test expectations that pinned the sentence without
+the "that" — they were pinning the defect.
+
+Then I had to correct myself. The open list I published listed six items that already
+had fixes: 123 (3), 123 (4), 123 (10), 129 (2), 131 (5) and 132 (b). I had inferred
+"open" from not finding a spec named after the request, which is not the same thing.
+The list now says what it actually means — "I did not find a fix" — and the answer says
+so to the screens workspace in those words.
+
+Two items left undone on purpose, both decisions rather than defects: the words a
+reader sees when somebody leaves a role (123 (8): their name, or the prototype's "Part
+ways"), and who gets asked to find an owner (134 (5)). Needs Hafsah.
+
+Next: 127 (4) (6) (7), 128 (2), 130 (b) (d) (f), 131 (6), 134 (4) (7), 135 (3), 136 (7),
+and 133 (1), which needs a kind of work to pick its own role map.
+
+## The full API suite is green on this computer (5 October)
+
+1,707 suites and 16,609 tests passed, 2 suites skipped, 427 seconds with two workers,
+exit 0. No memory trouble at all, which answers the screens workspace's request 138 and
+Hafsah's third ask in 140: their failures are their machine. The two skipped suites are
+the browser journeys and the WhatsApp journeys, which skip themselves without their
+databases — so "all green" does not cover those, and I said so rather than letting the
+number stand for more than it does. One worker had to be force-exited for a leaked
+handle; nothing failed, but that is the shape of their out-of-memory and I have not
+chased which suite it is.
+
+Also written up: requests 121 to 140 item by item. About thirty of those items were
+already fixed and tested here before today, including both of the ones Hafsah named
+besides the meetings line. Roughly twenty-five are genuinely open and listed as such.
+
+## The meetings line, and the one heavy task at a time (5 October)
+
+`bring-a-check-in-up-to-date.ts` now has a rule 7: where no meeting is on the record it
+takes the meetings line out of the stored report's row. The screens workspace asked for
+this twice and my earlier answer pointed them at a script that had no such rule, which
+was wrong of me. Proved on a local database loaded from the MarketView Q4 seed: two
+lines before, none after, everything else in the row intact, second dry run clean.
+
+That seed also answers Hafsah's second ask in request 140 — the Q4 check-in is
+`6e84ca43-31d4-4e33-bf38-91defee0543a`, led by wairimu, with otieno and naliaka
+checking in, the same ids on any computer.
+
+While reading the rest of 121 to 140 I found two of the items Hafsah named — the
+headline question (127, 129, 133) and the first count read as a rise (130 a) — already
+fixed and tested at this head. So the next step is not to rebuild them but to check
+every item of 121 to 140 against this code and say which still happen. One helper for
+that, once the full API suite (her third ask) has finished, because that is the one
+heavy thing running.
+
+## Eight of the screens' open requests were already fixed (5 October)
+
+Checked each one at `72a2f1a2` instead of assuming: 119, 120, 126, 137, 138, 141, 146
+and 156 all pass now. The API typechecks (exit 0), builds, and starts — `node
+dist/main` reaches "Nest application successfully started" and answers 401 to a wrong
+password, with `dist/modules/embed/static/` copied, so 120 and 126 are closed at the
+output, not from the code. The wording guard passes with the same spec file they have,
+byte for byte, but at exactly 60 of 60: no room at all, which is why it keeps coming
+back. I said so in the answer rather than quietly leaving it on the line.
+
+Answered in `docs/answers-from-engine.md`. Next: the board reviews, 121 to 140, one at
+a time, starting with the ones that name a specific wrong sentence.
+
+## Request 158: my four seeds made nobody a member (5 October)
+
+The screens workspace loaded all four seeds and found every person locked out. They
+were right, and the cause is the kind I keep writing down and then doing: three seeds
+used the compound key the wrong way round, and `.catch(() => undefined)` threw the
+error away, so each seed printed its sign-in list and had written no membership. The
+suites seed wrote none at all.
+
+One writer now, `theyAreInThisOrganisation`, no catch on it, role set on create and
+on update. Proving it found a second fault: the company seed could not be run twice.
+
+Proved by signing in, not by reading the code: amina@suites.test, `/auth/me` 200 as
+ADMIN of Suites Test Company, where before it was the 401 they reported. Counts
+unchanged after three loads. Answered in `docs/answers-from-engine.md`, pushed at
+80753092.
+
+A scratch database `gw_seed_check_158` is left on this computer; dropping one is
+blocked by the kit's rules, so it stays until Hafsah says otherwise.
+
+Next: request 156 should now be closed too (the seeds are on the branch and
+`git ls-files` shows all five). Then the open board reviews, 121 to 140.
+
+
+## Everything heavy stopped, on Hafsah's word (5 October)
+
+The computer was very slow. I stopped the whole scenario run `run-oct5` - the shell
+that drove it and its three shards, six processes - and killed any jest or vitest
+left over. It had reached 8 of 24 and will have to start again; nothing it had
+written was scored, so nothing is lost but the time.
+
+What is still running is one thing: the local API on 127.0.0.1:3000, one copy, no
+client and no watcher. Load average was 4.45 at the moment I stopped them.
+
+The decimal repair in `a-stored-sentence-reads-right.ts` is committed and pushed
+(25c53e82). The title repair is not in it, and the file says why.
+
+From here: one helper at a time, never two, and never more than one heavy task.
+
+
+## 5 October, 14:45 - four more findings from run 32, and two of my fixes were caught by old tests
+
+**Finding 5**, a Groundwork housekeeping question served as the next session's focus
+("session2Focus: What else should I know?"). What goes in there is the last question asked before
+somebody closed without answering, which is right when the question was about the work and useless
+when it was our own catch-all. Filtered; anything naming something real is kept, including "What
+else is on the Kano route?", which contains the catch-all's words and is not one.
+
+**Finding 4**, the prospect's job, wish and worry written as Martin's own. Same fault as the
+release-blocking "hire more analysts", one layer earlier - the judgement inherited it from the
+paragraph, so fixing the judgement alone would have left the report still saying it.
+
+**Finding 37**, "receiving 0. 5%" split into two lines by every sentence splitter in the product.
+
+**Finding 6**, two facts joined into a cause nobody named.
+
+**Two of these were stopped by tests I did not write.** The decimal rule was too wide and joined a
+real sentence boundary - "The target is 40. 12 shops have ordered." It asks for a per cent sign
+now, and "1. 5 million" is deliberately left alone because it cannot be told from a boundary. And
+the causation rule used the shock run's own vocabulary, which `a-room-is-not-a-population` forbids:
+the rules are about any room, and a scenario's words in the instruction prime the model. It also
+duplicated a rule that was already there, and points at it now instead.
+
+## 5 October, 14:35 - a decimal split in two, and my own test stopped me shipping a worse fix
+
+Run 32's advisor report, both readers: "receiving 0. 5% for two years" - the model put a space
+inside a decimal, and every sentence splitter in the product then did the only thing it could with
+it. Two broken lines, the second starting lower case because it is the middle of a number.
+
+**My first rule was "a digit, a full stop, a space, a digit", and the test for a real sentence
+boundary went red**: "The target is 40. 12 shops have ordered." became "40.12 shops". A sentence
+can end in a number and the next begin with one, and nothing in the digits tells them apart. The
+rule now asks for a per cent sign on the far side and nothing else does; "1. 5 million" is left
+alone and pinned by a test, because it genuinely cannot be told from a boundary.
+
+Repaired where stored sentences are already repaired, before anything splits them, so it holds in
+all twenty splitters at once.
+
+**A known flake, named so nobody chases it.** `the-report-is-written-in-parallel` failed in the
+full run and passes alone; it did the same this morning. It is timing-sensitive under load.
+
+Scenario run: 5 of 24 at 14:35.
+
+## 5 October, 14:30 - the run will not finish inside this session, and why
+
+3 of 24 at 14:28, started 13:52. One scenario per shard in 36 minutes, against 24 scenarios in 33
+minutes with six shards on 26 September. That is roughly ten times slower per scenario.
+
+**It is not rate limiting.** Ten retries in the whole run: three 429s and seven timeouts. The rest
+is genuine model latency on a system prompt that is now 119,185 characters, about thirty thousand
+tokens on every turn, with four people answering ten questions each.
+
+On this pace it lands around 18:40. I am not restarting it a third time to add shards - that would
+throw away the 36 minutes already spent and the three scenarios done, for a gain I cannot be sure
+of while the latency is what it is.
+
+**What that means for the queue.** The journeys come after it and will not start inside this
+session either. I am not starting the WhatsApp journeys alongside, because they drive the same
+model and would make both slower.
+
+**The honest reading when it lands:** if it is still part-finished, the problem counts are still
+worth reading, because every one of them is a property of a single report. The engine-value
+numbers are not, because they are totals over all 24 and a partial run undercounts them. I will
+say which is which rather than scoring a partial run as though it were whole.
+
+## 5 October, 14:35 - "participant" is out of the rulebook, and my caution about editing src was wrong
+
+Run 32 had "the other two participants report...", "both branch participants", "two other
+participants report that the company's CEO...". Participant is our word for a database row. It was
+in none of the wording rules and the scorer only catches "Participant A", so the bare noun reached
+readers. The rulebook now says to name them or say "people", and covers "party", "the initiator"
+and "the respondent" with it.
+
+**I had queued this behind the run for the wrong reason.** I thought editing `api/src` might change
+what the run measures. It cannot: the shards load their modules once at start, and the conversation
+itself goes to the compiled server, which nothing touches until I rebuild. Checked rather than
+assumed, then done. The one thing that IS true is that a fix made now is not in this run, which is
+already written down for the "does you own" one.
+
+Engine-prompt ceiling moved a third time, by what the rulebook gained and no further.
+
 ## 5 October, 14:25 - the API suite found two faults of mine, and my first account of one was wrong
 
 **The plain pattern names are wired up and a test holds the code and the document to each other.**

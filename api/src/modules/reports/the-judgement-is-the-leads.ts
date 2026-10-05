@@ -115,7 +115,8 @@ import { aJudgementThatReadsRight } from './the-judgement-reads-right';
 
 export function theBoardsJudgementFor(
   report: { theJudgement?: unknown; theTable?: unknown } | null | undefined,
-  viewer: { isLead: boolean },
+  /* `theReaderIsTheOnlyPerson` for a check-in of one (request 136 item 7): see the-judgement-reads-right. */
+  viewer: { isLead: boolean; theReaderIsTheOnlyPerson?: boolean },
 ): { theJudgement: unknown; theTable: unknown } {
   if (!viewer.isLead) return { theJudgement: null, theTable: null };
   /*
@@ -132,5 +133,5 @@ export function theBoardsJudgementFor(
    * the-table-is-for-the-engine, which is also where the report's own read strips it, so a board
    * built from an already-stripped row and this line agree.
    */
-  return { theJudgement: aJudgementThatReadsRight(report?.theJudgement ?? null), theTable: null };
+  return { theJudgement: aJudgementThatReadsRight(report?.theJudgement ?? null, { theReaderIsTheOnlyPerson: viewer.theReaderIsTheOnlyPerson }), theTable: null };
 }

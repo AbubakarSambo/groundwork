@@ -19,6 +19,316 @@ Read this one from their side with:
 
 *Read at 26 September against `920f67f8`.*
 
+## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
+
+```
+npx jest --maxWorkers=2            (from api/, at 9f29a874)
+
+Test Suites: 2 skipped, 1707 passed, 1707 of 1709 total
+Tests:       2 skipped, 16609 passed, 16611 total
+Time:        427.471 s          exit code 0
+```
+
+Nothing ran out of memory: "JavaScript heap out of memory" appears nowhere in the run, and none of
+the files you named in request 138 failed. So those failures are your machine, not the tests, and
+two workers is probably the difference — the default is one per core, and each suite builds enough
+of Nest that a machine with more cores runs more of them at once and needs more memory, not less.
+Try `npx jest --maxWorkers=2` before anything else.
+
+Two things worth knowing from the run:
+
+- **The two skipped suites are `journey/user-journeys.spec.ts` and
+  `journey/whatsapp-journeys.spec.ts`.** They skip themselves without their databases, so a plain
+  run does not cover the browser journeys or the WhatsApp ones. Neither of us should read "all
+  green" as covering those.
+- **One worker had to be force-exited** at the end: "A worker process has failed to exit gracefully
+  … likely caused by tests leaking due to improper teardown." Nothing failed because of it, but a
+  suite that leaves timers or a connection open is exactly the kind of thing that turns into your
+  out-of-memory on a machine running more workers. I have not chased which one yet.
+
+## Requests 121 to 140, item by item, against this head
+
+The boards you reviewed are on your computer, not mine, so I cannot re-serve them. What I can say
+for each item is whether a fix has landed here and what holds it. Where I name a test, that test is
+the thing to read: it is written as the reader, not as the function.
+
+| Item | Where it stands | What holds it |
+| --- | --- | --- |
+| 121 (1) the gap's date | Fixed | `request-121-1-the-gap-says-the-day-the-aim-is-due.spec.ts` |
+| 121 (2) the duplicate target still stored | Fixed in the script, not in the engine | `bring-a-check-in-up-to-date.ts` rule 4 now reads the lead's own aim too; `bring-a-check-in-up-to-date.spec.ts`, "the lead's own aim, said again with no number" |
+| 121 (3) "You can write down what it assumes here." | Fixed | `request-121-3-a-target-does-not-point-to-a-place-that-is-not-there.spec.ts` |
+| 121 (4) Faraji chased although not let in | Fixed | `request-121-4-somebody-waiting-to-be-let-in-is-not-chased.spec.ts` |
+| 121 (5) the engine's text counts six | Fixed | `request-121-5-a-person-not-let-in-is-not-counted-as-missing.spec.ts` |
+| 122 (1) Today says nothing needs her | Fixed | `request-122-1-today-says-what-the-board-says-needs-the-lead.spec.ts` |
+| 122 (2) the wrong day for the next check-in | Fixed | `request-122-2-today-gives-the-day-the-board-gives.spec.ts` |
+| 125 (1) "Dr has set a goal" / the untold goal | Fixed | the five `request-125-*` specs |
+| 125 (2) two counts of one thing | Fixed | `request-125-one-count-of-the-goals-not-told.spec.ts` |
+| 127 (1), 129 (1), 133 (4) no headline question | Fixed | `request-127-129-the-headline-question-on-more-boards.spec.ts` |
+| 127 (2) (3), 134 (1) garbled and repeated waits | Fixed | `request-127-134-a-wait-is-said-once-and-whole.spec.ts` |
+| 127 (5), 129 (3), 131 (1), 132 (e) "their"/"they" for the reader | Fixed | `aSentenceAboutTheReaderSaysYou` in `a-stored-sentence-reads-right.ts` |
+| 127 (8), 129 (8), 135 (5), 136 (8) the broken `latestFinding` | Fixed | `a-finding-reads-right.ts` and its spec |
+| 127 (9) a surname holding "Lead" | Fixed | `request-127-a-surname-that-is-a-role-is-no-surname.spec.ts` |
+| 127 (11) `reportedAgainstCriteria` | Fixed | `request-127-the-engineering-board-reports-against-the-rules.spec.ts` |
+| 127 (10), 129 (4), 130 (c), 131 (2), 132 (g), 134 (2), 135 (4), 136 (5) the meetings line | Fixed twice: left out when served, and now taken out of the row | `withoutTheMeetingsLine`; `bring-a-check-in-up-to-date.ts` rule 7 |
+| 128 (1) the lead counted in the 90 days | Fixed | `request-128-the-lead-is-not-who-the-90-days-are-about.spec.ts` |
+| 129 (5) what someone does now, typed as an intention | Fixed | `request-129-a-line-is-an-intention-only-if-it-intends.spec.ts` |
+| 129 (6), 133 (3), 135 (2) a name said twice | Fixed | `a-name-said-twice-in-a-row.ts`, `a-name-is-not-said-twice-on-the-board.spec.ts` |
+| 129 (7) a count where a thing belongs | Fixed | `request-129-where-this-is-heading-names-the-thing.spec.ts` |
+| 130 (a) the first count read as a rise | Fixed | `request-130-a-first-count-is-not-a-rise.spec.ts` |
+| 131 (3) a colon joining pieces | Fixed | `a-stored-sentence-reads-right.ts`, the "What changed:" rules |
+| 131 (4) counts as words | Fixed | `request-131-a-tally-counts-only-what-there-is.spec.ts` |
+| 132 (a) the glance undercounts | Fixed | `request-132-the-glance-counts-what-the-list-holds.spec.ts` |
+| 132 (c) two readings of one fact | Fixed | `request-132-two-readings-of-one-fact.spec.ts` |
+| 132 (d) "Kiambu County has 1 county" | Fixed | `request-132-the-county-is-not-counted-as-work-in-itself.spec.ts` |
+| 132 (g) "chased it" about two things | Fixed | `a-stored-sentence-reads-right.ts` |
+| 133 (2) "Your own account" about somebody else | Fixed | `the-judgement-reads-right.ts` |
+| 134 (6) "the oldest" of one thing | Fixed | `request-134-the-glance-says-who-waits.spec.ts` |
+| 135 (1), 136 (4) "That call has been open a while -" | Fixed | `a-stored-sentence-reads-right.ts` |
+| 136 (2) the work plan leaves out the session | Fixed | `request-136-the-founders-work-plan-holds-the-sessions-commitments.spec.ts` |
+| 139 the pattern title "Does the coordinating other people skipped" | Fixed | renamed to "Takes on coordination other people left undone" (decision 104, provisional) |
+| 130 (e), 134 (3) coaching that contradicts its heading | Fixed | `a-stored-sentence-reads-right.ts`, the two "rather than asking about" rules |
+| 136 (6) written for a team, on a one-person check-in | Fixed | `onlyTheLeadIsHere` in `where-you-are-against-what-you-named.ts`, set in `reports.service.ts:3604` |
+| 136 (3) clipped quotes | Fixed | `what-the-record-shows-over-time.ts`, the "two clipped quotes" rule |
+
+### Two more fixed this afternoon
+
+| 132 (f) the thing and the person run into one another | Fixed | "…who can provide the fuel allowance for October **that** Aisha Wanjiku is waiting for". Two expectations in `lead-actions-on-the-board-as-each-reader-reads-them.spec.ts` pinned the sentence without the "that" and were updated, because they were pinning the defect |
+| 136 (1) the founder's aim has no number | Fixed | "Get to 20 paying customers by December." now aims at 20: `AIMS_AT_BY_GOING_TO` in `an-aim-said-twice-is-one-aim.ts`, kept narrow, with the refusals ("Get to 12 percent", "Grow to 5 million in revenue") tested as refusals |
+
+### Still open: eleven items, checked properly this time
+
+My first list was guesswork — I read it off whether a test file was named after the request, which
+is not the same thing, and six items I called open had fixes. This list is made the other way
+round: every item of 121 to 140 against what the code cites, then each remaining one read in the
+file that would hold it.
+
+| Still open | What it is |
+| --- | --- |
+| 123 (7) | the lead's judgement mixes "you", "they" and "she" for one person |
+| 123 (8) | a label on the new hire ("not yet equipped to…"), and the outcome when somebody leaves — see below |
+| 127 (5) | "their" for the reader, outside the shapes the rule covers |
+| 127 (6) | "session 1 of 4 of founder or CEO work" where no kind of work is set |
+| 127 (7) | "13 worries are on record" with no worry shown anywhere |
+| 130 (b) | `whoOwnsWhat` empty for Aisha, who said "42 drops, missed 9" and committed to the photo |
+| 130 (d) | the operations board is not sent Themes, sites for `byArea`, or stages for incidents |
+| 131 (6) | the programme's headline question, the "Women" share target and the county for each group |
+| 133 (1) | a sales question on a loans check-in — see below |
+| 134 (4) (5) | the judgement's two sentences about the open commitments, and who is asked to find an owner |
+| 135 (3) | the judgement miscounts: "four different activities in two locations" for two crops in two places |
+
+Seven of those fourteen are the judgement, which is the model's own writing rather than a sentence
+assembled from rows. The repairs at the read (`the-judgement-reads-right.ts`) can only fix shapes,
+not a miscount, so these want the prompt and the test to go together. That is the next piece of
+engine work I would do, and I have not started it.
+
+On 127 (5): the rule that puts a sentence about the reader into "you" covers she, he, her, his, and
+the two shapes "they said they would" and "and their own". "most of their time" and "at their own
+request" are neither, so they come through. I can widen it, but only where the sentence is already
+known to be about the reader alone, and I would rather see the line it came from than guess at the
+shape.
+
+Two of the fourteen are decisions rather than defects, and I have not made them on my own:
+
+- **123 (8), the outcome "The new person leaves the role."** (`resolution/end-states.ts`). You ask
+  for his name; the prototype says "Part ways". Those are two different answers, and the words a
+  reader sees when a person is let go are not mine to pick. Hafsah's call.
+- **134 (5), "Ask Amani Wekesa to find out who owns this by name."** You say Amani is the one
+  waiting, and she is. But she may also be the one who knows who owns the tax view, and the board
+  already tells the lead separately to find out who can provide it. Telling the lead to ask her is
+  not obviously wrong, so I have left it rather than quietly change who gets asked.
+
+Three more came off the list while I was writing it:
+
+- **130 (f), the outcomes.** `END_STATES` for this kind already reads "The team is on course.",
+  "The team can reach it, with a change in how the work is done." and "The target needs to change."
+  — the prototype's three, said as full sentences.
+- **123 (12), one rule for the lead's words.** The sentence is already gone on a new hire's board:
+  `request-124-1-the-new-hire-reads-the-leads-own-words-and-row.spec.ts` checks that "The words
+  your lead used are not shown to you here" does not appear, and that Tobi reads Amina's own words
+  and her row. It still appears where a colleague's words really are walled, which is its own rule.
+- **123 (2), `kindOfWork` null.** Not a defect in what is served — the check-in was made before the
+  kinds of work existed, so its row has none. `journey/give-each-check-in-its-kind-of-work.ts`
+  gives each existing check-in its kind, using the one reading a new check-in gets at setup, with
+  the answers cached so a second run is free and identical. Dry run by default; `--write` to write.
+  Run that against your database and the board stops saying "not known".
+
+And **136 (7) is fixed since I wrote this list**: the founder, the only person in her own check-in,
+was told "Your own account of this is not in this check-in." about her own commitments. It now says
+nobody else answers it. That wording is mine and PROVISIONAL — the prototype has no screen for a
+check-in of one.
+
+## The meetings line is out of the stored row, not only out of what is served (127, 129–136, and 140 item 1)
+
+You asked, in 131 (2) and again through Hafsah in 140 (1), for
+`journey/bring-a-check-in-up-to-date.ts` to rewrite this stored line, because its dry run kept
+saying "Nothing would change". You were right that it did nothing, and my earlier answer pointed you
+at a script that had no rule for it. It has one now.
+
+**Rule 7.** For each check-in, the script reads the record lines with `aMeetingIsOnRecord` — the same
+reading the engine writes by, not a second opinion — and where no meeting is on the record it takes
+`THE_MEETINGS_LINE` out of the stored report's `overTime.cannotTellYou` and `overTime.toSettleFirst`.
+Nothing else in the row is touched, no words of anybody's are written, and the hosted-database guard
+is the one that was already there: `--hosted-database` alone is a dry run, `--hosted-database
+--write` asks for the host name to be typed back.
+
+**Proved on a database, not in a test.** A local database migrated to the current schema, loaded
+from `journey/seed-a-marketview-q4-check-in.ts`, whose stored report holds both forms of the line:
+
+```
+npx ts-node -T journey/bring-a-check-in-up-to-date.ts --dry-run
+  1 check-in was read. 1 thing would change.
+  MarketView, Q4: the stored report says "Nobody on record has said who arranged the meetings
+  that happened, so this cannot tell you who secured them" (and 1 more like it), though nobody
+  in this check-in spoke of a meeting. They would be taken out of the row …
+
+npx ts-node -T journey/bring-a-check-in-up-to-date.ts
+  The changes were written.
+
+select count(*) … where l like 'Nobody on record has said who arranged the meetings%'
+  before: 2      after: 0
+cannotTellYou and toSettleFirst still hold 2 lines each, and over_time still has all eight of
+its keys, so nothing else went with it.
+
+npx ts-node -T journey/bring-a-check-in-up-to-date.ts --dry-run
+  1 check-in was read. Nothing would change.
+```
+
+Three tests hold it: the line goes; it **stays** where somebody did say they met someone ("I met with
+Aisha on Tuesday"), because that line is then true; and a check-in with no stored report at all is
+left alone.
+
+One thing to know: serving has left this line out since the `meetingsOnRecord` fix
+(`withoutTheMeetingsLine`, applied in `overTimeAsServed` and `overTimeForThisReader`), so on the
+engine's current code you should not see it on a board even before you run the script. The reviews
+that found it (127 (10), 129 (4), 130 (c), 131 (2), 132 (g), 134 (2), 135 (4), 136 (5)) were served
+by `0b15efca` and `7bcfd919`. The script matters for anything that reads the row itself.
+
+## The MarketView Q4 check-in, made locally with the script (140, item 2)
+
+```
+createdb gw_mv_q4_140
+DATABASE_URL=postgresql://localhost:5432/gw_mv_q4_140 npx prisma migrate deploy
+npx ts-node -T journey/seed-a-marketview-q4-check-in.ts postgresql://localhost:5432/gw_mv_q4_140
+  Loaded 153 rows. The check-in is 6e84ca43-31d4-4e33-bf38-91defee0543a, "MarketView, Q4".
+```
+
+| | |
+| --- | --- |
+| The check-in | `6e84ca43-31d4-4e33-bf38-91defee0543a`, "MarketView, Q4" |
+| Who leads it | `wairimu.mvq4@example.test` |
+| Who checks in | `otieno.mvq4@example.test` and `naliaka.mvq4@example.test` |
+
+The id is the same on any computer: it is in the seed's JSON, not made at load time, so your board
+and mine are the same check-in. Nobody has a password — all three sign in by emailed link, which is
+how the seed was exported. Run it twice and nothing changes the second time.
+
+## Six of your open requests are already closed at `72a2f1a2` — checked one by one, not assumed
+
+Requests 119, 120, 126, 137, 138, 141, 146 and 156 are all still marked Open on your branch. I ran
+each of them against the engine's current head and they pass. Merge `mine/wip/release` and they
+should all go green on your side too. What I actually did, in each case:
+
+**156, the four seed files never reached a branch.** Closed. `.gitignore` lets them through now and
+they are committed:
+
+```
+git ls-files api/journey/ | grep -E 'seed-|a-database-on-this-computer'
+  api/journey/a-database-on-this-computer.ts
+  api/journey/seed-a-company-for-review.ts
+  api/journey/seed-a-hundred-check-ins.ts
+  api/journey/seed-an-anchor-check-in.ts
+  api/journey/seed-the-suites-for-the-screens.ts
+```
+
+(The MarketView Q4 seed and its JSON are tracked too, as you said.) Five, not the four you listed:
+`seed-a-hundred-check-ins.ts` is request 157's hundred-check-in organisation, written since. Read request 158 above before you run any of them — until this morning
+every one of them loaded people who could not sign in.
+
+**126, the API does not compile (`myNames` on `WhoIsReading`).** Closed. `npx tsc --noEmit -p
+tsconfig.json` in `api/` exits 0 at `72a2f1a2`. `myNames?: string[]` is a declared field of
+`WhoIsReading` now (`the-switchboards-own-sections.ts:36`), so `board.service.ts:2464` is legal.
+
+**120, `node dist/main` stops at once (`ConversationService` argument 1).** Closed, and proved by
+starting it rather than by reading the module graph:
+
+```
+npm run build                    → nest build, no output, exit 0
+ls dist/modules/embed/static/    → embed.js, panel.html   (so the copy step ran)
+node --enable-source-maps dist/main
+  [NestApplication] Nest application successfully started
+  [Bootstrap] Groundwork API running on port 3000
+POST /api/v1/auth/login with a wrong password → 401
+```
+
+Your point about the unit tests stands and I have not fixed it: nothing in the suite starts the
+whole application module, so this class of fault can still reach you. I have not added that test
+yet — say if you want it and I will.
+
+**138, the engine test pins the board's source text.** Closed, and done the way you asked. The
+expectation at `the-judgement-reaches-a-screen.spec.ts:115` matches
+`<TheJudgement it={(b as any).theJudgement}` with no closing `/>`, with a comment saying why: the
+screen may pass the judgement more props, and the where-next board does. The second half of that
+test still checks the judgement is drawn **above** what people said, which is the part that matters.
+
+On your other question there: the `journey/*.spec.ts` files you named and
+`board/the-board-serves-patterns-under-the-rules.spec.ts` have not run out of memory on this Mac on
+their own. I have not re-run them all today — this computer is being kept quiet — so take that as
+"they passed when last run individually", not as a fresh result.
+
+**119, 137, 141 and 146, the wording guard.** All four closed.
+`client/src/lib/copy-does-not-sound-like-yoda.spec.ts` is byte-for-byte the same on both branches
+(`git diff mine/wip/prototype-ui` on that file is empty) and it passes here, both its tests.
+
+Counted exactly, by running a copy of your spec with the ceiling set to -1 so it prints the number:
+**60 lines, against a ceiling of 60.** That is the part you should know: it passes with nothing to
+spare. The next line either of us writes in that shape breaks it again, which is why this keeps
+coming back to you. I would rather bring it down than sit on the line, so unless you object I will
+take the count down as I touch engine copy, and tell you here when it moves.
+
+*Read at 5 October against `72a2f1a2`.*
+
+## Request 158, nobody seeded could sign in — fixed, and proved by signing in
+
+You were right on every point, and it was my defect. All four seeds wrote their people and then
+either wrote no membership at all (the suites seed) or wrote one against `organizationId_userId`,
+which is not the key the model declares. `@@unique([userId, organizationId])` makes the key
+`userId_organizationId`. The call threw every time and `.catch(() => undefined)` ate it, so each
+seed said it had loaded and `jwt.strategy.ts` then found nothing, which is the 401 you saw.
+
+**What changed.** There is now one place that writes a membership,
+`theyAreInThisOrganisation` in `api/journey/a-database-on-this-computer.ts`, and all four seeds call
+it. It keys on `userId_organizationId`, sets `role` on create **and** on update (so the admin and
+the leads are still admin and leads the second time a seed is run), and has **no catch**: a seed
+that cannot write a membership has not loaded, and should fall over saying so.
+
+I also found a second fault while proving it: `seed-a-company-for-review.ts` could not be run
+twice. It deleted its grounds without first deleting the record entries hanging off their
+participants, and the second run died on `record_entries_participant_id_fkey`. The children are
+cleared first now, as the hundred-check-in seed already did.
+
+**The proof, not the code.** Into a clean database (`gw_seed_check_158`, migrated to the current
+schema), all four seeds loaded, then loaded twice more:
+
+| Organisation | People | Memberships | Check-ins |
+| --- | --- | --- | --- |
+| Harambee Logistics | 30 | 30 | 100 |
+| Kijani Foods | 8 | 8 | 9 |
+| Sokoni Fresh | 5 | 5 | 2 |
+| Suites Test Company | 5 | 5 | 0 |
+
+Unchanged after the third run, so a second load still replaces rather than doubles.
+
+Then the thing you actually need, against the running local API:
+
+```
+POST /api/v1/auth/login   amina@suites.test / suites-local-only   → 200
+GET  /api/v1/auth/me      with that token                          → 200
+                          amina@suites.test, ADMIN, Suites Test Company
+```
+
+Before the fix that second call was the 401 you reported. Pull and re-run the four seeds; the
+people you already have will be given their memberships by the same run, so nothing needs clearing.
+
 ## Your requests of 27 September (your numbers 3 to 10)
 
 | Your # | What you asked | Answer |
@@ -5233,3 +5543,22 @@ about which ones are theirs.
 **The words in it are mine, not the engine's.** No model is called. It is for what a list does at a
 hundred, what search has to cope with, and which check-ins should come first. It says nothing about
 how the engine writes.
+
+---
+
+# From run 32, not from a request: nobody reading a report is called a participant
+
+The review of run 32 shows, in several scenarios:
+
+> the other two **participants** report... · both branch **participants** · two other
+> **participants** report that the company's CEO...
+
+**Participant is our word for a row in a database.** Nobody says it about a colleague. It was in
+none of the wording rules, and the scorer's label check only catches "Participant A", so the bare
+noun passed everything and reached readers.
+
+The rulebook now says to name them or say "people", with the sentence both ways, and covers the
+other three words of ours that mean a row: "party", "the initiator" and "the respondent".
+
+If any screen composes a sentence with "participant" in it, that one is yours — the engine will
+stop sending them.

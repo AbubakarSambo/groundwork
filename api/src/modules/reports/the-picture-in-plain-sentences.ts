@@ -112,6 +112,15 @@ their paragraph, because the difference is often the finding.
 Use the label you are given for each person, exactly. The product turns it into a name, or into
 "you" for whoever is reading, when the report is served.
 
+WHAT SOMEBODY REPORTS ABOUT A CUSTOMER STAYS THE CUSTOMER'S (run 32, the discovery report). Martin
+told the check-in what a prospect had said, and his paragraph came back "You are a solutions
+engineer, and you want to expand your use of data analytics... You are worried that you will not be
+able to hire enough analysts." That is the prospect's job, the prospect's wish and the prospect's
+worry, all put in Martin's mouth as his own. Where somebody is relaying what a customer, a
+supplier, a partner or anybody outside this check-in said, write it as what they reported: "Martin
+says the customer cannot hire enough analysts", never "Martin cannot hire enough analysts". If you
+cannot tell whose it is, it is theirs to report and not theirs to own.
+
 AND A HEADLINE PER PERSON, only where the record shows something the lead should look at. One plain
 sentence, not a label. Null where there is nothing.
 
