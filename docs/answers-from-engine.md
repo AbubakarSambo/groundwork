@@ -94,6 +94,15 @@ the engine's reading of what she said, not a setting. The coaching now reads "Th
 person it is written for reads it. Where somebody gave their own role, it still reads "This is
 session 1 of 4 of your work as poultry farmer." The engine still coaches from the same role map.
 
+**127 (7), a count of worries with nothing behind it.** A worry is only shown in the words it was
+said, and only to somebody who may read those words. Where no worry can be shown, the Blockers tile
+used to give the number alone: "13 worries are on record, and nobody is waiting on anybody." It now
+says why the reader cannot find one: "13 worries are on record. None of them can be shown to you
+word for word. Nobody is waiting on anybody." With one worry it reads "1 worry is on record. It
+cannot be shown to you word for word." Where an earlier wait is open, the last sentence says that
+instead. Every reader of the tile reads the same sentence. Showing a worry that was not kept word
+for word, in other words, would be a new rule, and that is Hafsah's to decide, so I did not.
+
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
 ```

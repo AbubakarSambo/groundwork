@@ -476,7 +476,15 @@ export function atAGlanceTiles(a: {
           : worries
             ? (theWorry
               ? `${theWorry} ${theRestOfTheWorries(worries - 1)}`
-              : `${worries} ${worries === 1 ? 'worry is' : 'worries are'} on record${andTheWaits}`)
+              /*
+               * A COUNT IS NEVER LEFT WITH NOTHING BEHIND IT (request 127 item 7). "13 worries are on record,
+               * and nobody is waiting on anybody." was read where no worry is shown anywhere. A worry is only
+               * shown in the words it was said, and only to somebody who may read them, so where none can
+               * be, the tile says that, instead of a number the reader can find nowhere.
+               */
+              : `${worries === 1 ? '1 worry is on record. It cannot be shown to you word for word.' : `${worries} worries are on record. None of them can be shown to you word for word.`} ${earlier > 0
+                ? `Nobody named a new wait this session, and ${earlier === 1 ? '1 wait from an earlier session is' : `${earlier} waits from earlier sessions are`} still open.`
+                : 'Nobody is waiting on anybody.'}`)
             : earlier > 0
               ? `Nobody named anything new holding work up this session, and ${earlier === 1 ? '1 wait from an earlier session is' : `${earlier} waits from earlier sessions are`} still open.`
               : 'Nobody named anything holding work up.',

@@ -106,7 +106,7 @@ describe('the Blockers tile says whose worry it is', () => {
 describe('a line the record did not keep word for word is never put in quotation marks', () => {
   it('the tile passes over it and gives the count', async () => {
     const paraphrased: World = { ...w, worries: [{ text: 'I still set up the meetings.', participantId: 'p-kwame', saidWordForWord: false }] };
-    expect((await readAs(paraphrased, 'u-bisi')).blockers).toEqual({ value: '1 worry', sub: '1 worry is on record, and nobody is waiting on anybody.' });
+    expect((await readAs(paraphrased, 'u-bisi')).blockers).toEqual({ value: '1 worry', sub: '1 worry is on record. It cannot be shown to you word for word. Nobody is waiting on anybody.' }); /* Changed 5 Oct 2026, request 127 item 7. */
   });
 });
 

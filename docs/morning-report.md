@@ -7,6 +7,7 @@
 - When a person waits on something nobody owns, the lead is now asked to find the owner, "so that Neema Achieng is not left waiting", instead of being told to ask Neema to find out (134 item 5).
 - A person's own coaching no longer says "session 1 of 4 of founder or CEO work" as if somebody had set it; it reads "This is session 1 of 4. What you have said so far reads as founder or CEO work." (127 item 6).
 - I stopped on 127 item 5, "at their own request": the board says the request was Nadia Haddad's, so changing it to "your own request" could be false. It belongs with the judgement work.
+- Where no worry can be shown, the Blockers tile now says so: "13 worries are on record. None of them can be shown to you word for word." (127 item 7). Whether a worry not kept word for word should ever be shown is yours to decide.
 
 ## 5 October, 15:30: where I am, for your fresh session
 

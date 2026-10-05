@@ -72,8 +72,9 @@ describe('the worry line is whole sentences, never a piece joined to a count', (
   it('one worry, and no worry that fits', () => {
     expect(blockers({ worries: 1, theWorry: 'Diesel is N90,000 a month more.' }).sub)
       .toBe('Diesel is N90,000 a month more. It is the only worry on record, and nobody is waiting on anybody.');
-    expect(blockers({ worries: 4, theWorry: null }).sub).toBe('4 worries are on record, and nobody is waiting on anybody.');
-    expect(blockers({ worries: 1, theWorry: null }).sub).toBe('1 worry is on record, and nobody is waiting on anybody.');
+    /* Changed 5 Oct 2026 (request 127 item 7): a count with no worry shown says why none is shown. */
+    expect(blockers({ worries: 4, theWorry: null }).sub).toBe('4 worries are on record. None of them can be shown to you word for word. Nobody is waiting on anybody.');
+    expect(blockers({ worries: 1, theWorry: null }).sub).toBe('1 worry is on record. It cannot be shown to you word for word. Nobody is waiting on anybody.');
   });
 });
 
