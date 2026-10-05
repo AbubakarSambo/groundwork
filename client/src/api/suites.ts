@@ -187,6 +187,12 @@ export interface ReviewForThePerson {
   dueOn: string
   noticed: Noticed[]
   theirView: string | null
+  /** What the person who writes the review has written, word for word, once they have written it. Null until then. */
+  managersWords: string | null
+  /** The prototype's "What Wairimu writes". Null until `managersWords` exists. */
+  managersWordsHeading: string | null
+  /** Both views, side by side, once the writer and the person have each written theirs. Null until both exist. */
+  whereYouDiffer: { says: string; managersWords: string; yourView: string } | null
   decision: { says: string; reasons: string } | null
   record?: TheRecord | null
   recognise?: RecogniseForThePerson

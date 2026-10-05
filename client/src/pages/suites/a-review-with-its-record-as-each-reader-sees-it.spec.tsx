@@ -33,6 +33,7 @@ const RECORD_FOR_AISHA: TheRecord = {
 }
 const FOR_AISHA: ReviewForThePerson = {
   reader: 'person', id: 'r-a', firstName: 'Aisha', writtenWithFirstName: 'Wairimu', dueOn: '2026-10-20', noticed: NOTICED, theirView: null, decision: null,
+  managersWords: null, managersWordsHeading: null, whereYouDiffer: null,
   record: RECORD_FOR_AISHA,
   recognise: {
     facts: 'In the four weeks before your review started, you kept nine of your ten commitments in your check-ins with Wairimu. When at least nine in ten are kept, Groundwork suggests to Wairimu that your work is recognised.',
