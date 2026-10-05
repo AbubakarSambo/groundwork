@@ -64,7 +64,8 @@ The engine workspace keeps this file current. The screens workspace reads it aft
 - [x] The back office rebuild. Checked: none of it was built, so nothing to hide. The existing back office stays for Groundwork's staff.
 - [x] The Context tab's move to Ask Groundwork. Hidden by `release.contextInAskGroundwork` (off). The old context chat stays.
 - [x] The anchor scenario. Hidden by `release.anchorScenario` (off). Nothing is built behind it yet.
-- [x] Plan and billing's new parts. Hidden by `release.planAndBillingNewParts` (off); the trial switch stays off.
+- [x] Plan and billing's new parts. Hidden by `release.planAndBillingNewParts` (off) when the migrations run; switched on with the free trial by the release step below.
+- [ ] **Switch billing on: the one-month free trial and the WhatsApp add-on.** A release step, not a migration (`docs/deploy.md`, step 13a and "Switching billing on at release"): first the read-only check of every organisation that pays or has turned WhatsApp on, then both switches on in one transaction with the moment written. Switching on gives the trial to nobody already here and sends no email; an organisation on the free plan is unchanged; an organisation that pays without the add-on would have its WhatsApp held, and one that pays with it would be charged from the next night, so any such organisation is Hafsah's decision first. Proved in `api/src/modules/billing/switching-billing-on-at-release.spec.ts`. Run on the local test database; Stripe test mode not driven, because the local key is a placeholder. *Not done on the hosted database.*
 
 ## Release
 - [ ] Join with the live main line. *Not done: needs Hafsah. The safety guard allows merging only `mine/wip/<branch>`, so the engine workspace cannot merge the live main line, even into a scratch branch.*

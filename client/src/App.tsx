@@ -90,6 +90,7 @@ import { OpsEverybodyPage } from '@/pages/ops/OpsEverybodyPage'
 import { OpsResourcesPage } from '@/pages/ops/OpsResourcesPage'
 import { OpsWorkplanPage } from '@/pages/ops/OpsWorkplanPage'
 import { ApiAccessPage } from '@/pages/admin/ApiAccessPage'
+import { WhatsAppSettingsPage } from '@/pages/admin/WhatsAppSettingsPage'
 import { OpsDeploymentPage, OpsMarketingPage } from '@/pages/ops/OpsSellingPages'
 import { OpsRoadmapPage, OpsReadinessPage, OpsTechPage, OpsUXPage } from '@/pages/ops/OpsBuildingPages'
 import {
@@ -690,6 +691,8 @@ export default function App() {
             <Route path="/org/integrations" element={<Navigate to="/settings/tools" replace />} />
             <Route path="/admin" element={<RequirePlatformAdmin><AdminPage /></RequirePlatformAdmin>} />
             <Route path="/admin/api-access" element={<RequirePlatformAdmin><ApiAccessPage /></RequirePlatformAdmin>} />
+            {/* Groundwork's own WhatsApp number and its keys, set by staff (5 Oct 2026). Staff only, on the API too. */}
+            <Route path="/admin/whatsapp" element={<RequirePlatformAdmin><WhatsAppSettingsPage /></RequirePlatformAdmin>} />
             <Route path="/admin/dashboard" element={<RequirePlatformAdmin><AdminDashboardPage /></RequirePlatformAdmin>} />
 
             {/* Any unmatched path renders a real not-found page rather than

@@ -1,5 +1,6 @@
-import { Controller, Get, Patch, Post, Param, Body, Headers, UseGuards, Logger, ForbiddenException, BadRequestException, HttpCode } from '@nestjs/common';
+import { Controller, Get, Patch, Post, Put, Param, Body, Headers, UseGuards, Logger, ForbiddenException, BadRequestException, HttpCode } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { IsEmail, IsInt, IsOptional, IsString, MaxLength, Max, Min } from 'class-validator';
 import { AdminService } from './admin.service';
 import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
@@ -270,6 +271,43 @@ export class AdminController {
   async setWhatsAppEnabled(@Body() body: { enabled: boolean }, @CurrentUser('id') userId: string) {
     await this.whatsapp.setEnabled(!!body.enabled, userId);
     return this.whatsapp.getToggleState();
+  }
+
+  // ── Groundwork's own WhatsApp number and its keys (5 Oct 2026) ─────────────
+  // Set here by Groundwork staff instead of only in the server's settings. The
+  // secrets go in and never come back out: every answer below says "set" or
+  // "not set". See whatsapp/groundworks-own-number.ts.
+
+  @Get('whatsapp/settings')
+  @ApiOperation({ summary: "Groundwork's own WhatsApp number, its IDs, whether each secret is set, and the webhook address. Never a secret." })
+  getOurWhatsAppSettings() {
+    return this.whatsapp.ourNumberAsStaffReadIt();
+  }
+
+  @Put('whatsapp/settings')
+  @ApiOperation({ summary: "Save Groundwork's own WhatsApp number, its IDs and its secrets. Secrets are stored encrypted and never returned." })
+  async saveOurWhatsAppSettings(
+    @Body() body: { displayNumber?: string | null; phoneNumberId?: string | null; businessAccountId?: string | null; accessToken?: string; appSecret?: string; verifyToken?: string; remove?: string[] },
+    @CurrentUser('id') userId: string,
+  ) {
+    const changed = await this.whatsapp.ownNumber.save(body ?? {}, userId);
+    const page = await this.whatsapp.ourNumberAsStaffReadIt();
+    return { ...page, saved: changed.length ? 'Your changes are saved.' : 'Nothing was changed.' };
+  }
+
+  @Get('whatsapp/settings/connection')
+  @ApiOperation({ summary: "Whether Meta accepts the access token and phone number ID in use. One read of the number; never the token." })
+  ourWhatsAppConnection() {
+    return this.whatsapp.isOurNumberConnected();
+  }
+
+  @Post('whatsapp/settings/test')
+  @HttpCode(200)
+  /* Five a minute: a test is one message to one phone, not a way to message many. */
+  @Throttle({ global: { limit: 5, ttl: 60_000 } })
+  @ApiOperation({ summary: "Send one test message from Groundwork's number to the number typed, and to nobody else." })
+  sendOurWhatsAppTest(@Body() body: { to?: string }, @CurrentUser('id') userId: string) {
+    return this.whatsapp.sendOurTest(body?.to ?? '', userId);
   }
 
   // ── Read-only ─────────────────────────────────────────────────────────────

@@ -34,6 +34,7 @@ import { WhatsAppAddOnService } from '../billing/whatsapp-add-on.service';
 import { aLocalForm, callingCodeOf, formsOfTheSameNumber, tidyANumber } from './a-number-whatsapp-can-reach';
 import { theCountryCodeOf, tidyANumberFor } from './the-organisations-country';
 import { WhichNumber, inboundKeysFrom, whichNumberOf } from './one-number-per-conversation';
+import { GroundworksOwnNumber, OurNumber } from './groundworks-own-number';
 import { ATemplate, insideTheServiceWindow, isBusinessInitiated, WENT_BEFORE_THIS_RELEASE, NOT_TURNED_ON_QUIETLY, templateFor, OUTSIDE_THE_WINDOW, THEY_SAID_STOP, FIRST_MESSAGES, APPROVALS, OPENING_OR_CLOSING, NOT_TODAY, THEY_SAID_NOT_NOW } from './a-message-outside-the-window';
 
 /**
@@ -60,7 +61,42 @@ export class WhatsAppService {
      * builds this by hand without it still runs; Nest always provides it.
      */
     @Optional() private addOn?: WhatsAppAddOnService,
-  ) {}
+  ) {
+    this.ownNumber = new GroundworksOwnNumber(config, prisma);
+  }
+
+  /**
+   * GROUNDWORK'S OWN NUMBER AND ITS KEYS: saved in the back office first (/admin/whatsapp), the
+   * WHATSAPP_* server settings when nothing is saved there. Every send on our number, the signature
+   * check and the verify-token check read it here. See groundworks-own-number.ts.
+   */
+  readonly ownNumber: GroundworksOwnNumber;
+
+  /** The back office's page for our number: the IDs, "set" or "not set" for each secret, the webhook address and the switch. */
+  async ourNumberAsStaffReadIt() {
+    const [page, toggle] = await Promise.all([
+      this.ownNumber.asStaffReadIt(this.config.get<string>('app.publicApiUrl')),
+      this.getToggleState(),
+    ]);
+    return {
+      ...page,
+      switch: {
+        ...toggle,
+        saying: toggle.live
+          ? 'WhatsApp is on for everyone. Messages go from this number.'
+          : toggle.adminEnabled
+            ? 'WhatsApp is switched on, but nothing can go until the phone number ID and the access token are both set.'
+            : toggle.credentialsConfigured
+              ? 'WhatsApp is switched off. Nothing goes from this number until you switch it on in the System tab.'
+              : 'WhatsApp is switched off, and the phone number ID and the access token are not both set yet.',
+      },
+    };
+  }
+
+  /** The number, its keys and whether both the token and the number ID are there. */
+  async ours(): Promise<OurNumber> {
+    return this.ownNumber.inUse();
+  }
 
   /**
    * WHOSE MESSAGE THIS IS, for the add-on and the limit. A send on our own number carries no
@@ -123,7 +159,7 @@ export class WhatsAppService {
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
     let result: SendResult;
     if (own?.enabled) result = await this.deliver(own.phoneNumberId, own.accessToken, to, text);
-    else if (await this.isEnabled()) result = await this.post(this.config.get<string>('whatsapp.phoneNumberId') ?? '', this.config.get<string>('whatsapp.accessToken') ?? '', to, text);
+    else if (await this.isEnabled()) { const ours = await this.ours(); result = await this.post(ours.phoneNumberId ?? '', ours.accessToken ?? '', to, text); }
     else result = { sent: false, error: 'WhatsApp is not configured on this deployment' };
     /* Written down, never counted: this one is free. */
     this.writeItDown(organizationId, to, result, { checkInId: context.checkInId ?? null, kind: 'held-told' });
@@ -163,8 +199,8 @@ export class WhatsAppService {
    * Compared with `timingSafeEqual` on equal-length buffers, so the comparison cannot leak the
    * expected digest a byte at a time.
    */
-  verifySignature(headers: Record<string, string | string[] | undefined>, raw: Buffer): void {
-    const secret = this.config.get<string>('whatsapp.appSecret');
+  async verifySignature(headers: Record<string, string | string[] | undefined>, raw: Buffer): Promise<void> {
+    const secret = (await this.ours()).appSecret;
     if (!secret) throw new UnauthorizedException('WhatsApp webhook signature cannot be verified');
 
     const header = headers['x-hub-signature-256'];
@@ -183,16 +219,18 @@ export class WhatsAppService {
   }
 
   async isEnabled(): Promise<boolean> {
-    if (!this.config.get<boolean>('whatsapp.enabled')) return false;
+    if (!(await this.ours()).enabled) return false;
     const setting = await this.prisma.platformSetting.findUnique({ where: { key: WhatsAppService.TOGGLE_KEY } });
     return setting?.value === true;
   }
 
-  async getToggleState(): Promise<{ credentialsConfigured: boolean; adminEnabled: boolean; live: boolean }> {
-    const credentialsConfigured = !!this.config.get<boolean>('whatsapp.enabled');
+  async getToggleState(): Promise<{ credentialsConfigured: boolean; adminEnabled: boolean; live: boolean; displayNumber?: string | null }> {
+    const ours = await this.ours();
+    const credentialsConfigured = ours.enabled;
     const setting = await this.prisma.platformSetting.findUnique({ where: { key: WhatsAppService.TOGGLE_KEY } });
     const adminEnabled = setting?.value === true;
-    return { credentialsConfigured, adminEnabled, live: credentialsConfigured && adminEnabled };
+    /* The number people read is not a secret; it rides with the switch so every reader of the switch has it. */
+    return { credentialsConfigured, adminEnabled, live: credentialsConfigured && adminEnabled, displayNumber: ours.displayNumber ?? null };
   }
 
   async setEnabled(enabled: boolean, adminUserId: string): Promise<void> {
@@ -265,7 +303,7 @@ export class WhatsAppService {
     const gate = await this.mayInitiate(org, to, context, 'ours');
     if (!gate.free) {
       if (gate.quiet) return { sent: false, error: gate.because };
-      if (gate.template) return this.sendTemplate(this.config.get<string>('whatsapp.phoneNumberId') ?? '', this.config.get<string>('whatsapp.accessToken') ?? '', org, to, text, gate.template, context);
+      if (gate.template) { const ours = await this.ours(); return this.sendTemplate(ours.phoneNumberId ?? '', ours.accessToken ?? '', org, to, text, gate.template, context); }
       const result: SendResult = { sent: false, error: gate.because };
       this.writeItDown(org, to, result, context);
       return result;
@@ -292,9 +330,8 @@ export class WhatsAppService {
       return result;
     }
 
-    const accessToken = this.config.get<string>('whatsapp.accessToken') ?? '';
-    const phoneNumberId = this.config.get<string>('whatsapp.phoneNumberId') ?? '';
-    const result = await this.post(phoneNumberId, accessToken, to, text);
+    const ours = await this.ours();
+    const result = await this.post(ours.phoneNumberId ?? '', ours.accessToken ?? '', to, text);
     if (result.sent) this.logger.log(`WhatsApp message sent to ${to}`);
     this.writeItDown(org, to, result, context);
     return this.counted(org, result);
@@ -306,6 +343,68 @@ export class WhatsAppService {
    */
   private graphBase(): string {
     return (this.config.get<string>('whatsapp.graphBaseUrl') || 'https://graph.facebook.com/v20.0').replace(/\/+$/, '');
+  }
+
+  /**
+   * IS GROUNDWORK'S NUMBER CONNECTED? One cheap read of the phone number ID with the token in use,
+   * for the back office. The token goes in the header and nowhere else: not in the answer, not in a
+   * log line. Says what Meta answered in a sentence.
+   */
+  async isOurNumberConnected(): Promise<{ connected: boolean; saying: string }> {
+    const ours = await this.ours();
+    if (!ours.accessToken || !ours.phoneNumberId) {
+      return { connected: false, saying: 'Not connected. Groundwork needs both the phone number ID and the access token before it can reach Meta.' };
+    }
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 8000);
+    try {
+      const res = await fetch(`${this.graphBase()}/${encodeURIComponent(ours.phoneNumberId)}?fields=display_phone_number,verified_name`, {
+        headers: { Authorization: `Bearer ${ours.accessToken}` },
+        signal: ac.signal,
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        this.logger.warn(`Checking Groundwork's WhatsApp number: Meta answered ${res.status} ${metaErrorCode(body)}.`);
+        return { connected: false, saying: `Not connected. Meta did not accept the saved access token and phone number ID together. Meta answered with error ${res.status}.` };
+      }
+      const info = (await res.json().catch(() => ({}))) as { display_phone_number?: string; verified_name?: string };
+      const number = info.display_phone_number ? ` Meta has this number as ${info.display_phone_number}` : '';
+      const name = info.verified_name ? `${number ? ',' : ' Meta has this number'} under the name ${info.verified_name}` : '';
+      return { connected: true, saying: `Connected.${number}${name}${number || name ? '.' : ''}` };
+    } catch {
+      this.logger.warn("Checking Groundwork's WhatsApp number: Meta could not be reached.");
+      return { connected: false, saying: 'Not connected. Groundwork could not reach Meta just now. Try again in a minute.' };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  static readonly OUR_TEST_MESSAGE = "This is a test message from Groundwork. If you can read it, Groundwork's WhatsApp number is working.";
+
+  /**
+   * A TEST MESSAGE FROM GROUNDWORK'S NUMBER, to the one number a member of staff typed and to nobody
+   * else. Goes whether or not the platform switch is on, because it is how staff check the keys before
+   * switching it on. Written down like every send (kind `admin-test:<staff user id>`), and logged with the
+   * same id. Never carries a secret back.
+   */
+  async sendOurTest(rawNumber: string, byUserId: string): Promise<{ sent: boolean; to: string; saying: string }> {
+    const typed = (rawNumber ?? '').trim();
+    if (!typed) throw new BadRequestException('Type the number to send the test message to.');
+    if (aLocalForm(typed) || !/^\+?[\d\s()-]{7,}$/.test(typed)) {
+      throw new BadRequestException('Type the whole number with its country code, for example +44 7700 900123.');
+    }
+    const to = WhatsAppService.normalize(typed);
+    const ours = await this.ours();
+    if (!ours.accessToken || !ours.phoneNumberId) {
+      return { sent: false, to, saying: `Nothing was sent to ${to}. Save the phone number ID and the access token first.` };
+    }
+    const result = await this.post(ours.phoneNumberId, ours.accessToken, to, WhatsAppService.OUR_TEST_MESSAGE);
+    /* Who sent it, on the row and in the log: the staff member's id, never a secret. */
+    this.writeItDown(null, to, result, { kind: `admin-test:${byUserId}` });
+    this.logger.log(`A WhatsApp test message to ${to} was ${result.sent ? 'sent' : 'not sent'} by staff member ${byUserId}.`);
+    return result.sent
+      ? { sent: true, to, saying: `The test message went to ${to}. Check that phone to see that it arrived.` }
+      : { sent: false, to, saying: `The test message did not go to ${to}. ${result.status ? `Meta answered with error ${result.status}.` : 'Meta could not be reached.'} If the number has not written to Groundwork's number in the last 24 hours, Meta may refuse a message that is not a template.` };
   }
 
   /** The one HTTP call both numbers make. Never throws: the answer is in the result. */
@@ -466,7 +565,7 @@ export class WhatsAppService {
    */
   async fetchMediaFor(organizationId: string | null, mediaId: string): Promise<{ buffer: Buffer; mimeType: string } | null> {
     const own = organizationId ? await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null) : null;
-    const token = own?.accessToken ?? this.config.get<string>('whatsapp.accessToken');
+    const token = own?.accessToken ?? (await this.ours()).accessToken;
     if (!token) return null;
     try {
       const meta = await fetch(`${this.graphBase()}/${mediaId}`, { headers: { Authorization: `Bearer ${token}` } });

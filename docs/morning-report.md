@@ -1,5 +1,23 @@
 # Morning report
 
+**5 October, late.** In `docs/whatsapp-settings.md`, the opening now says the secrets are typed only into the server's settings or the staff-only back-office page, which stores them encrypted. It also has a step for removing a saved secret, and says how long the key must be and how to make one.
+
+**5 October, late.** Each WhatsApp secret saved in the back office now has a button to remove it. The page then says what the server will use instead, for example "The saved access token is removed. The access token is set in the server's settings. Anything you save here replaces it."
+
+**5 October, late.** The back office's WhatsApp test message is now limited to five a minute. The send record and the log line say which staff member sent each one, by their user id.
+
+**5 October, late.** When Meta first connects the webhook, it sends Groundwork's verify token back. That token is now compared in constant time, after a check that the lengths match.
+
+**5 October, late.** The free trial and the WhatsApp add-on are switched on at release by a release step after a check, not by a migration (`docs/deploy.md`, step 13a). Switching on gives the trial to nobody already here, sends no email and leaves an organisation on the free plan unchanged. But an organisation that already pays would have its WhatsApp held if its add-on is off, or be charged from the next night if it is on, so the check lists any such organisation for you to decide first. On the local test database a new small team got one month on Small Team, and its admin turned WhatsApp on and read that nothing is charged until the trial ends. Stripe test mode could not be tried: the local Stripe key is only a placeholder. A real Stripe test key in the local `api/.env` would let it be tried.
+
+**5 October, late.** The review asked for a stricter seal on the back office's WhatsApp secrets, and it is done. The tag must be exactly 16 bytes and the IV exactly 12. A key must be 32 bytes in base64 or hex, or at least 32 characters, and the page says so in a sentence when it is too short. Each secret is now bound to its own field. Nothing had been saved anywhere yet, so no old seal needs moving.
+
+**5 October, late.** `docs/whatsapp-settings.md` now has "How to set up WhatsApp in the back office", in nine plain steps. `SETTINGS_ENCRYPTION_KEY` is listed there and in section 4 of `docs/staging-compatibility.md`. No `.env` file was changed.
+
+**5 October, late.** The back office has a new staff-only page, `/admin/whatsapp`, reached from the WhatsApp switch on the System tab. On it, staff set Groundwork's WhatsApp number and its keys, copy the webhook address for Meta, see whether the number is connected, and send a test message to one number. The client files are listed for the screens workspace in `docs/answers-from-engine.md`.
+
+**5 October, late.** Groundwork staff can now set Groundwork's own WhatsApp number, its two IDs and its three secrets in the back office, through new staff-only routes under `/admin/whatsapp/settings`. The secrets are stored encrypted with the new server setting `SETTINGS_ENCRYPTION_KEY` and are never shown again. The sender, the signature check and the verify-token check now read what is saved there first, and fall back to the `WHATSAPP_*` server settings. With nothing saved, everything works as before. The signature test now awaits the check, because the check is async now.
+
 **5 October, 21:20.** I ran crisis, snapshot and project again on the judgement's new stored prompt (ae0c6fa4), and it is the one that ran. "7 AM alerts" and "they" for the lead are gone, but "Your own account of this is not in this check-in." still reaches the lead, in project and now in crisis. Details are in the run log.
 
 At `9f4dd902`, the new free-run migration applies on a fresh local database, so 360 of 360 migrations now apply, with nothing more to apply on a second run and no new drift. The two API tests that failed earlier now pass, and so does the whole billing folder: 264 of 264 tests in 28 files.
