@@ -16,6 +16,15 @@ describe('the project board: a question only the lead can answer', () => {
     const asAdmin = { ...LINE, about: "This check-in cannot tell you whether Amina Wanjiru ever saw or responded to Rita Adeleke's requirements from July." };
     expect((aJudgementThatReadsRight({ whatThisCannotTellYou: [asAdmin] }) as any).whatThisCannotTellYou[0].toKnow).toBe('Your own account of this is not in this check-in.');
   });
+  it.each([
+    'This check-in cannot tell you whether you will get the budget from finance.',
+    'This check-in cannot tell you when you will be given the new rota.',
+    'This check-in cannot tell you whether you will be told before Friday.',
+    'This check-in cannot tell you whether you will receive the stock.',
+    'This check-in cannot tell you why you are given the late shift.',
+  ])('something done to the lead is not the lead\'s to answer: "%s"', (about) => {
+    expect((aJudgementThatReadsRight({ whatThisCannotTellYou: [{ ...LINE, about }] }) as any).whatThisCannotTellYou[0].toKnow).toBe('Your own account of this is not in this check-in.');
+  });
   it('a heading that only opens "This check-in cannot tell you" is not taken for a question about the reader', () => {
     const plain = { ...LINE, about: 'This check-in cannot tell you why the sandbox credentials have not arrived.' };
     expect((aJudgementThatReadsRight({ whatThisCannotTellYou: [plain] }) as any).whatThisCannotTellYou[0].toKnow).toBe('Your own account of this is not in this check-in.');

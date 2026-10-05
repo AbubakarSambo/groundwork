@@ -55,7 +55,8 @@ const ONLY_YOU_CAN_ANSWER = 'Only you can answer this.';
  * you"), and only "whether you", "why you", "how you", "when you", "if you" or "what you": the reader as the subject. An
  * admin reads the lead's name there, so this never fires for them.
  */
-const A_QUESTION_ABOUT_THE_READER = /\b(?:whether|why|how|when|if|what) you\b/i;
+/* Not where something is done TO the reader ("whether you will get the budget from finance"): somebody else answers that. */
+const A_QUESTION_ABOUT_THE_READER = /\b(?:whether|why|how|when|if|what) you\b(?!\s+(?:will\s+(?:get|be\s+given|be\s+told|receive)|are\s+given)\b)/i;
 const withoutTheHeadingsOpening = (about: string) => about.replace(/^\s*This check-in cannot tell you (?:about )?/i, '');
 /*
  * AND WHERE THE LINE ABOVE SAYS SOMEBODY IS NOT IN THE CHECK-IN (run oct5c, the crisis board): "Sarah is not in this check-in,
