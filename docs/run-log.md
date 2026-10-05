@@ -6,7 +6,7 @@ Newest first. One short entry per item. Written as the work happens, unattended.
 
 **How it was run.** A new worktree of the branch in the scratchpad, `nest build`, a new local database `gw_anchor_walk` copied from `gw_pw9_1786222102` and migrated (the new migration, `HELP_TEAM_UNDERSTAND`, applied), the API on port 3031 with the settings key only in the start command, `EMAIL_SENDS_FOR_REAL=false` and nothing leaving the computer. Every conversation below ran on the real model. The leads and the people on their teams were typed by hand, answering what was asked, so the second question is a real second question. The lead's conversation and the baseline were driven through the same routes the screens call (`/entry/anchor-start`, `/entry/onboard`, `/entry/report`, `/auth/entry-save`, `/entry/commit`, `/participants/accept`, `/check-ins/:id/open`, `/check-ins/:id/messages`, `/suites/...`). The browser was not used, so the screens' own fork after the lead's conversation was not walked.
 
-**Versions that ran** (the id comes back on the reply): lead conversation `8ffe807e-3c55-41f7-a920-073224e83f70`, team baseline `b6d21df6-081f-4369-9bc7-e0f5fe99c4cc`, idea reading `5d100cc3-e6e3-48f8-ad44-2af6d8769263`. All three are also stored, active, in `gw_pw9_1786222102`.
+**Versions that ran** (the id comes back on the reply): lead conversation `a37f70ae-175e-4d3b-a078-4eedfc1a68d6`, team baseline `b6d21df6-081f-4369-9bc7-e0f5fe99c4cc`, idea reading `5d100cc3-e6e3-48f8-ad44-2af6d8769263`. All three are also stored, active, in `gw_pw9_1786222102`.
 
 | Step | Reader | What they read (quoted) | Result |
 | --- | --- | --- | --- |
