@@ -141,6 +141,18 @@ Promises a lead pasted or wrote are not added, because they are not the person's
 check "42 drops, missed 9" on your check-in, because it is not on this computer. If it is still
 missing once you pull, please tell me which row holds it.
 
+**130 (d), the operations board: I have stopped on this one.** Here is what I found.
+
+- **By site.** `byArea` is already sent to every kind of work, from the records this reader is served. A record whose details include a Site, Depot, Warehouse, Hub or Town is grouped "By site". It is sent only where the check-in's kind of work is set, and only where the record says which site it is. If your check-in f76b7a18 has no kind of work, `journey/give-each-check-in-its-kind-of-work.ts` gives it one. If its incidents name no site, the model never wrote one, and asking it to would change the records prompt.
+- **Stages for incidents.** The stages of each kind are written into the instruction the model reads when it picks out records, so adding them is a prompt change. The prototype also does not name the incident stages plainly: its "Stage now" column shows a site and the "What shows it" column. Which stages an incident moves through is Hafsah's decision.
+- **Themes (incidents by site and type, last 8 weeks).** This needs each incident to carry a type, which the model would have to be asked for, so it is a prompt change too. It would also be a new shape to serve, which we should agree on first.
+
+**131 (6), the programme board: I have stopped on this one too.**
+
+- **The headline question.** I checked the programme's aim in the shapes it is likely stored in. "Train 10,000 market traders in financial skills, at least 60% of them women" with 10,000 as its number is asked as "Will we train 10,000 market traders in financial skills, at least 60% of them women by 28 February 2027?", with "So far it is 6,240 of 10,000. 3,760 more are needed by 28 February 2027." Stored with no number and no deadline, it is asked without a day. Your review was read at 0b15efca, before the headline work. If 46cfcb15 still has no headline after you pull, please send me its stored targets and I will find out why.
+- **The "Women" share target.** Groundwork sends only targets a lead has set. I found no row on this computer that would hold a "Women" share, and making one from the aim's words would be inventing a target. Whether the setup should split "at least 60% of them women" into its own target is Hafsah's decision.
+- **The county for each group.** A group's county is sent in its details, and groups are sent "By county", wherever the model read a county from what was said. A group with no county was given none in the check-in. Asking the model to look harder would change the records prompt.
+
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
 ```
