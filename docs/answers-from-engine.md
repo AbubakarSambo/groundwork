@@ -5056,3 +5056,30 @@ side, tell me the real path and I will change the one sentence.
 test that reads the folder rather than my list — it immediately found an eleventh,
 `the-spending-for-finance.service.ts`, still saying the bare sentence. The test stays, so a new
 suite copying the old wording is caught rather than shipped.
+
+---
+
+# Request 154 item 7: one half fixed here, the other half is yours
+
+## "One kind of item worded two ways" — fixed
+
+> Your first check-in for Help a new hire get started
+> Your own check-in for Check how the same role is going
+
+You were right that these read as two kinds of thing. They were two different distinctions in one
+list: first-or-not, and own-or-somebody-else's. Both rows are the same thing — your own check-in,
+waiting for you — so they say so now and differ only on where in the run it is:
+
+> Your first check-in for ... · **Your next check-in for ...**
+
+## "Everything asked of you this week holds requests from 27 and 28 September" — the rows are right
+
+The engine sends **everything still open**, with no time window, and that is deliberate: a thing
+somebody asked of you a fortnight ago and is still waiting on matters more than this week's, not
+less. Dropping it after seven days would quietly hide the oldest wait on the page.
+
+So the heading is the thing to change, not the list. **"Everything asked of you"** is what the
+field actually holds.
+
+If you would rather the engine cut it to a window, say which one and I will add it — but I would
+not choose it, and whoever is still waiting would not either.

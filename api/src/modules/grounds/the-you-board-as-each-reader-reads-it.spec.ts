@@ -125,7 +125,7 @@ describe('Miriam reads her own You board', () => {
       { id: 'g-sales', label: 'Sales team, Q3', youRunIt: false, line: 'You have finished two check-ins.', to: '/grounds/g-sales' },
     ]);
     expect(b.turns.map((t) => [t.title, t.action.label, t.action.to])).toEqual([
-      ['Your own check-in for Sales team, Q3', 'Start it', '/checkin/c-m3'],
+      ['Your next check-in for Sales team, Q3', 'Start it', '/checkin/c-m3'],
     ]);
     expect(b.goals.map((g) => g.says)).toEqual([
       'Close Westgate Deli and Lakeside Supermarket this quarter.',
