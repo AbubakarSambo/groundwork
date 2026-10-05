@@ -33,3 +33,21 @@ describe('an aim put as a question is the question (request 133, asset loans)', 
     expect(b.headline.question).toBe("Is the cohort repaying, and why not where it isn't?");
   });
 });
+
+/**
+ * THE FOUNDER'S OWN CHECK-IN (request 136, item 1). One person, one aim: "Get to 20 paying customers by December."
+ * It was stored with no number, so Wanjiru's board had no answer and no bar at all — the one number she is running
+ * her company by was the one thing her board could not show her. The number is in the aim's own name.
+ */
+describe('the founder reads her own number', () => {
+  /* What this shows is the board once the aim holds its number. That the number is read out of the name at all is
+     theCountTheNameAimsAt's own test, and the stored row on her board is put right by rule 3 of
+     journey/bring-a-check-in-up-to-date.ts, which has its own. */
+  it('asks the question with its figure, and draws the bar', async () => {
+    const s: Setup = { ...SALES_RUN, scenario: GroundScenario.NEW_PROJECT, clock, objectives: [aim('Get to 20 paying customers by December.', 20, 11)] as any };
+    const b: any = await boardAs(s, ...BISI);
+    expect(b.headline.question).toContain('20 paying customers');
+    expect(b.headline.answer).not.toBeNull();
+    expect(b.headline.bars).toHaveLength(1);
+  });
+});

@@ -179,8 +179,16 @@ export function theNumberInTheNameIsKept<T extends { name: string; target: numbe
  * comes straight after the doing word that starts the name, and is not a share or a sum of money.
  */
 const AIMS_AT = /^(?:sign|reach|hit|close|sell|win|onboard|recruit|hire|train|deliver|open|visit|enrol|register|collect|approve|disburse|install|serve|get|bring|complete|finish|launch|publish|submit)\s+(\d{1,3}(?:,\d{3})+|\d+)\s+(?!%|percent\b|per cent\b|naira\b|dollars?\b|shillings?\b|kes\b|ngn\b|usd\b|million\b|thousand\b|billion\b|k\b|m\b)[a-z]/i;
+/*
+ * AND "GET TO 20 PAYING CUSTOMERS", which is the same sentence with "to" in it (screens request 136, item 1). The
+ * founder's own check-in read "Get to 20 paying customers by December." with no number, so her board had no answer and
+ * no bar. Only the three doing words that take "to" and still aim at a count, and the same guard after the figure, so
+ * "Get to 12 percent" and "Grow to 5 million in revenue" are still not aims at 12 or 5.
+ */
+const AIMS_AT_BY_GOING_TO = /^(?:get|grow|go)\s+(?:up\s+)?to\s+(\d{1,3}(?:,\d{3})+|\d+)\s+(?!%|percent\b|per cent\b|naira\b|dollars?\b|shillings?\b|kes\b|ngn\b|usd\b|million\b|thousand\b|billion\b|k\b|m\b)[a-z]/i;
 export function theCountTheNameAimsAt(name: string | null | undefined): number | null {
-  const m = AIMS_AT.exec((name ?? '').trim());
+  const said = (name ?? '').trim();
+  const m = AIMS_AT.exec(said) ?? AIMS_AT_BY_GOING_TO.exec(said);
   if (!m) return null;
   const n = Number(m[1].replace(/,/g, ''));
   return Number.isFinite(n) && n > 0 ? n : null;

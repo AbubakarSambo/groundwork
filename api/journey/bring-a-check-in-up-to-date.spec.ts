@@ -234,3 +234,27 @@ describe('a stored report that speaks of meetings nobody mentioned', () => {
     expect(whatWouldChangeSays(await whatWouldChange(db.prisma))).toEqual(['1 check-in was read. Nothing would change.']);
   });
 });
+
+/**
+ * THE FOUNDER'S AIM, STORED WITH NO NUMBER (screens request 136, item 1). "Get to 20 paying customers by December."
+ * held target null, so her board had no answer and no bar. Rule 3 keeps the figure that is in the aim's own name, and
+ * now reads this shape of sentence too.
+ */
+describe('an aim that goes "to" a number keeps it', () => {
+  it('the dry run says so, and the write sets it', async () => {
+    const db = theStoredCheckIn();
+    db.rows.groundObjective.length = 0;
+    db.rows.groundObjective.push({
+      id: 'o-founder', groundId: 'g-1', name: 'Get to 20 paying customers by December.', target: null, count: 0, prevCount: 0,
+      ownerParticipantId: null, setByParticipantId: 'p-rukia', dueOn: null, suggestedCount: null, suggestedSaid: null,
+      suggestedAtSession: null, createdAt: new Date('2026-09-01'), sortOrder: 0,
+    });
+    const said: string[] = [];
+    await run({ url: LOCAL, args: ['--dry-run'], prismaFor: () => db.prisma, ask: async () => null, say: (l) => said.push(l) });
+    expect(said.join('\n')).toContain('has no number, though its own name holds 20');
+    expect(db.rows.groundObjective[0].target).toBeNull();
+
+    await writeTheChanges(db.prisma, await whatWouldChange(db.prisma));
+    expect(db.rows.groundObjective[0].target).toBe(20);
+  });
+});
