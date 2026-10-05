@@ -678,3 +678,56 @@ the same place `SuggestedAnswers.tsx` draws its pills, and built from the very s
 and "Not now" are sent through the existing `pickSuggestion`, the same mechanism a suggested answer
 already uses - no new send path. Draws nothing while `ideaOffer` (`TheIdeaOfferInTheCheckIn`, shape
 only, not served yet) is absent from the reply.
+
+## The width check: in-between widths (1024-1280), Hafsah's find, 5 October 2026
+
+One genuinely new class, `.gwui-ask-open` (gw-ui.css): set on `<body>` by `AppShell.tsx`'s own
+`useEffect`, the same technique `.gwui-cover-open` (just above it in the file) already uses, for
+exactly as long as Ask Groundwork's 400px side panel is open. The drawer is `position: fixed` and
+draws OVER the page rather than beside it; without this the page never learned the drawer was open
+and its own text ("Ask about the whole organisation") sat cut off behind the drawer's edge at
+1024px. Everything else below is an existing class's own rule, widened or given a narrower
+breakpoint - no other new class.
+
+Fixed, all in `gw-ui.css` unless said otherwise:
+
+1. `.gwui-cards-3` (the You board, Company, Company context, the review page, Suites): kept three
+   columns right down to 900px, where it gave up all at once; two columns now, between 900 and
+   ~1180px. `.gwui-suite-head` (Suites' own card): the switch squeezed beside a long name once
+   three cards sat side by side - `.gwui-panel:has(> .gwui-suite-head)` becomes a size container
+   (scoped to a panel that actually holds a suite head), and below ~420px of the CARD's own width
+   (not the viewport's) the switch drops under the text.
+2. `.gwui-field-row` (every Settings row with a tag and a button, Connections at 900px): the
+   action now drops onto its own line under the value below 1100px, instead of squeezing the value
+   column that holds a row's own explanation.
+3. `.gwui-person-row` (`PeopleTable`/`PersonRow`, every caller: the board's "The team today",
+   Connections, People): the phone-only stack breakpoint (640px) moved to ~1180px - an inline
+   `grid-template-columns` cannot wrap on its own, so below that width columns were overlapping,
+   not failing to fit.
+4. `.gwui-two-up` ("Connect your own tools"): 280px columns widened to 460px, so two examples
+   stack before the embed widget's own host/widget split runs out of room. `.gwui-embed-row`: now
+   wraps (it never did), so a cell too narrow for its own text wraps onto a line of its own instead
+   of overlapping the cell beside it. `.gwui-panel:has(.gwui-embed-split)` becomes a size
+   container too, so host and widget stack below ~520px of the EXAMPLE's own width, not only below
+   640px of the viewport (a two-up grid can make the example much narrower than the viewport).
+5. `.gwui-page-main`: bottom padding raised (72px to 110px; 100px to 140px on a narrow screen) so
+   the last control on a page scrolls clear of the floating Feedback button before the page ends.
+6. `.gwui-ci-table` (the check-ins list): below 1180px, "Where it stands" (the last column) widens
+   and the "Needs you" tag wraps, rather than a long tag ("Your report is ready") overflowing onto
+   the date beside it.
+7. `.gwui-cih-tabs-row`/`.gwui-cih-trailing` (a check-in page's own tab bar): a second, wider
+   breakpoint (641-1100px, the phone one at 640px untouched) puts the board's own check-in switcher
+   on its own line ABOVE the tabs (`order: -1`, not below, as the existing phone rule still does),
+   so the tab strip keeps its full row rather than scrolling "People and setup" out of sight.
+8. `AskGroundwork.tsx`'s composer: its resting height (38px) only showed the first line of its own
+   two-line placeholder; 70px, two lines' worth, as that field's own size has always set. See also
+   `.gwui-ask-open`, above.
+9. `WhoIsInThis.tsx`'s roster chip: stopped truncating a full sentence with an ellipsis (cut off
+   mid-word); it wraps onto a second line instead.
+10. `.gwui-tag-control` (the Context tab's visibility `<select>`): capped at the card's own width
+    with an ellipsis, rather than overflowing "Whoever runs this check-in" into the next document
+    card.
+11. `YouPage.tsx`'s "What you said you'd do": the due-date column given a 150px floor, so a plain
+    date ("Tuesday 29 September") no longer wraps at 1024px.
+
+Proven live at 1024x768 and 1280x800 by `e2e/nothing-overlaps-at-in-between-widths.spec.ts`.
