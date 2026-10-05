@@ -2,6 +2,26 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## 5 October, 14:05 - three of the seven release items answered, two of them with measurements
+
+**Item 1, the migrations on the live line's schema: done and passing** (359 applied, 0 failed, with
+existing-client rows already in the database). She should still run it once on real data after the
+backup, because real data has shapes a seed does not, and the document says so.
+
+**Item 5, the two judgements that go against the right answer: addressed in the instruction**, and
+explicitly not claimed as closed - whether the model obeys the two new rules is for the run.
+
+**Item 6, "proof asked for" is 36 against 42: the counter is measuring the wrong thing.** The
+scorer treats "picture" as asking for proof, and picture is this product's own word for shared
+understanding. Run-1: 31 of 54 hits matched on it, 20 of those are "a clear picture of...".
+Run-29: 22 of 37, and 18. Not one I read asks for a photograph. Both sides of the comparison are
+inflated by different amounts; the real movement is roughly 34 against 19, a **bigger** fall than
+the row shows. `tools/score_run.py` is on the never-edit list, so this is hers to decide.
+
+**Item 7, the pattern name that reads as a broken sentence: reworded** as PROVISIONAL decision 104.
+The other forty-eight were checked for the same fault; A1 was the only one with a clause hanging
+off its object.
+
 ## 5 October, 13:58 - one small fix landed after the build, and is NOT in the run
 
 The "does you own" fix was committed at about 13:57, after the 13:51 build the current run is
