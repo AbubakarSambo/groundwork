@@ -4879,3 +4879,59 @@ writes — the twenty-four scenario run is what judges that.
 Three of the check-ins deliberately carry a disagreement worth drawing: the two account managers
 count a signed shop differently, two plans both include the same 300,000 agency, and two people are
 waiting on the same approver who is on leave.
+
+---
+
+# Request 155, done: an anchor check-in with the switch on
+
+```
+npx ts-node -T journey/seed-an-anchor-check-in.ts postgresql://localhost:5432/<your database>
+```
+
+Localhost or 127.0.0.1 only, refused before anything is read or written. Running it twice leaves
+two check-ins, not four — the counts below are after two runs.
+
+**It turns `release.anchorScenario` on for the database you point it at.** That is the one thing it
+changes beyond its own rows, and it is why the local-only rule matters more here than in the other
+seeds.
+
+## What it loads
+
+Organisation **Sokoni Fresh**, slug `anchor-for-the-screens`, and **two** anchor check-ins, because
+the month board and the end-of-month page need different ones:
+
+| | |
+| --- | --- |
+| **Live** | "Everyone pulling the same way", started nine days ago, in its second week. A lead and four people, all four answered, 20 things said, 3 commitments (one done), a dependency, and `started_from = anchor`. |
+| **Ended** | The same shape, started five weeks ago and closed, so the end-of-month read has a month that is actually over. |
+
+Both carry the lead's own first words, which the end-of-month read begins from:
+
+> I want everyone to understand that we win or lose on whether a shop can reorder the same week,
+> and right now nobody owns that end to end.
+
+**"Groundwork recommends" and an idea:** two recommendations — one still offered, and one accepted,
+which is the idea captured after its yes.
+
+## Who signs in
+
+Password **`anchor-local-only`**, local only.
+
+| Email | Who |
+| --- | --- |
+| `rukia@anchor.test` | Founder — runs it, and the only reader of the month board and the end-of-month read |
+| `amani@anchor.test` · `baraka@anchor.test` · `neema@anchor.test` · `juma@anchor.test` | The four who answered |
+
+The month board and the end-of-month read are served to the lead alone, so sign in as Rukia for
+those; the others are for the participant side and the invitation.
+
+## Two things that caught me, in case they catch you
+
+**`started_from` is the only thing that makes a check-in an anchor one**, and the first run wrote it
+as null on both — the constant was imported from a module that imports it without re-exporting it,
+so it arrived `undefined` and Prisma wrote null without complaint. The seed looked like it had
+worked. If an anchor screen ever shows nothing, check that column first.
+
+**Not every row cascades.** The lead's first words are a record entry hanging off a participant with
+no check-in, and that key has no cascade, so a second run could not clear the old rows. The seed
+clears children before parents now.
