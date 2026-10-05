@@ -3525,8 +3525,26 @@ export class AssistantService {
     let first: Awaited<ReturnType<SpendingService['checkForChat']>>;
     try { first = await this.spending.checkForChat(organizationId, me.linkedUserId, 1, new Date()); } catch { await drop('DROPPED'); return rules('ask_to_spend', text(SPEND_SUITE_OFF)); }
     await drop('ACCEPTED');
-    const what = aReasonInASentence(typed.replace(/^\s*(?:it(?:'s| is)\s+|that(?:'s| is)\s+|for\s+|on\s+)/i, '').replace(/[.!]+$/, '').replace(/\s+/g, ' ').trim().slice(0, 300));
+    const names = await this.theNamesTheOrganisationKnows(organizationId, me.linkedUserId);
+    const what = aReasonInASentence(typed.replace(/^\s*(?:it(?:'s| is)\s+|that(?:'s| is)\s+|for\s+|on\s+)/i, '').replace(/[.!]+$/, '').replace(/\s+/g, ' ').trim().slice(0, 300), names);
     return this.carryOnWithSpending(organizationId, who, me.linkedUserId, typed, { amount: kept.amount!, what, currency: kept.currency ?? first.currency }, first);
+  }
+
+  /**
+   * THE NAMES THE ORGANISATION KNOWS, so a person's own capital letter is kept: people (first, last and display names), customers and
+   * other counterparties, departments (the teams), and the clients on the time sheet. Read-only, best effort, and only ever used to
+   * decide whether a word keeps its capital.
+   */
+  private async theNamesTheOrganisationKnows(organizationId: string, userId: string): Promise<string[]> {
+    const p: any = this.prisma;
+    const names: string[] = [];
+    const take = async (f: () => Promise<any[] | undefined>, pick: (r: any) => any[]) => {
+      try { for (const r of (await f()) ?? []) for (const v of pick(r)) if (typeof v === 'string' && v.trim()) names.push(v.trim()); } catch { /* a name we cannot read is one we do not keep */ }
+    };
+    await take(() => p.person?.findMany?.({ where: { organizationId }, select: { givenName: true, familyName: true, displayName: true, department: true }, take: 2000 }), (r) => [r.givenName, r.familyName, r.displayName, r.department]);
+    await take(() => p.subject?.findMany?.({ where: { organizationId, type: 'COUNTERPARTY' }, select: { title: true }, take: 2000 }), (r) => [r.title]);
+    try { names.push(...(((await this.timeSheets?.forChat(organizationId, userId)) as any)?.clients ?? [])); } catch { /* as above */ }
+    return names;
   }
 
   /** A request to spend that is read in full goes on to the rules, and then to the say-back. */

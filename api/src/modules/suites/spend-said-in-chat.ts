@@ -202,9 +202,16 @@ export function spendingSent(said: SpendSaid, currency: string | null, approverF
   return `I have sent your request to spend ${money(currency ?? said.currency, said.amount)} on ${said.what} to ${approverFirstName ?? 'an admin'}. It is not approved until they decide, and nothing is spent until then.`;
 }
 
-/** The reason as it joins "on ...": the first letter is lower-case unless the first word is a name or an acronym. */
-export function aReasonInASentence(what: string): string {
+/**
+ * The reason as it joins "on ...": the first letter is lower-case, so it reads as one sentence, unless it is somebody's own
+ * word to keep. That is an "I", an acronym, a word with a capital inside it, a name the organisation knows (a person, a
+ * customer, a site, a team), or a word the person wrote with a capital again later in the same message.
+ */
+export function aReasonInASentence(what: string, knownNames: string[] = []): string {
   const first = what.split(/\s+/)[0] ?? '';
-  const aName = first === 'I' || /^[A-Z]{2,}\b/.test(first) || /^.[A-Z]/.test(first);
+  const word = first.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, '');
+  const aKnownName = !!word && word.length >= 2 && knownNames.some((n) => n.split(/[\s,.\-]+/).some((w) => w.toLowerCase() === word.toLowerCase()));
+  const again = !!word && new RegExp(`\\s${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(what.slice(first.length));
+  const aName = first === 'I' || /^[A-Z]{2,}\b/.test(first) || /^.[A-Z]/.test(first) || aKnownName || again;
   return !what || aName ? what : what[0].toLowerCase() + what.slice(1);
 }

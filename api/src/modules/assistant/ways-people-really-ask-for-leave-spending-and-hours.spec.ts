@@ -135,6 +135,21 @@ describe('an amount written with its currency as a word (clean-install run, 6 Oc
     expect(aReasonInASentence('Fuel for the van')).toBe('fuel for the van');
     expect(aReasonInASentence('KRA fees')).toBe('KRA fees');
     expect(aReasonInASentence('iPhone cases')).toBe('iPhone cases');
+    /* A name the organisation knows, or a word the person capitalised again later, keeps its capital. */
+    expect(aReasonInASentence('Naivas delivery', ['Naivas Supermarkets'])).toBe('Naivas delivery');
+    expect(aReasonInASentence('Fuel for the van', ['Naivas Supermarkets'])).toBe('fuel for the van');
+    expect(aReasonInASentence('Kisumu trip, the Kisumu depot')).toBe('Kisumu trip, the Kisumu depot');
+  });
+
+  it('Amani says the reason is a delivery to a customer the organisation knows, and its capital is kept', async () => {
+    const s = svc();
+    const prisma: any = (s as any).prisma;
+    prisma.subject.findMany.mockImplementation(async (q: any) => (q?.where?.type === 'COUNTERPARTY' ? [{ title: 'Naivas' }] : []));
+    await s.respond('org-a', 'p1', 'Can I spend 15,000 shillings this week?');
+    const parked = prisma.assistantProposal.create.mock.calls.map((c: any) => c[0].data).find((d: any) => d.kind === 'spend_purpose');
+    prisma.assistantProposal.findFirst.mockImplementationOnce(async () => ({ id: 'pp1', state: 'PENDING', createdAt: new Date(), ...parked }));
+    const r: any = await s.respond('org-a', 'p1', 'Naivas delivery');
+    expect(r.blocks[0].body).toMatch(/^You asked to spend KES 15,000 on Naivas delivery\./);
   });
 
   describe('what is parked as "what is it for?" is not taken for a reason that was not one', () => {
