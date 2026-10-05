@@ -2,6 +2,19 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## Eight of the screens' open requests were already fixed (5 October)
+
+Checked each one at `72a2f1a2` instead of assuming: 119, 120, 126, 137, 138, 141, 146
+and 156 all pass now. The API typechecks (exit 0), builds, and starts — `node
+dist/main` reaches "Nest application successfully started" and answers 401 to a wrong
+password, with `dist/modules/embed/static/` copied, so 120 and 126 are closed at the
+output, not from the code. The wording guard passes with the same spec file they have,
+byte for byte, but at exactly 60 of 60: no room at all, which is why it keeps coming
+back. I said so in the answer rather than quietly leaving it on the line.
+
+Answered in `docs/answers-from-engine.md`. Next: the board reviews, 121 to 140, one at
+a time, starting with the ones that name a specific wrong sentence.
+
 ## Request 158: my four seeds made nobody a member (5 October)
 
 The screens workspace loaded all four seeds and found every person locked out. They

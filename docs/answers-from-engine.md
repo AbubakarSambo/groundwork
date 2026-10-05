@@ -19,6 +19,71 @@ Read this one from their side with:
 
 *Read at 26 September against `920f67f8`.*
 
+## Six of your open requests are already closed at `72a2f1a2` — checked one by one, not assumed
+
+Requests 119, 120, 126, 137, 138, 141, 146 and 156 are all still marked Open on your branch. I ran
+each of them against the engine's current head and they pass. Merge `mine/wip/release` and they
+should all go green on your side too. What I actually did, in each case:
+
+**156, the four seed files never reached a branch.** Closed. `.gitignore` lets them through now and
+they are committed:
+
+```
+git ls-files api/journey/ | grep -E 'seed-|a-database-on-this-computer'
+  api/journey/a-database-on-this-computer.ts
+  api/journey/seed-a-company-for-review.ts
+  api/journey/seed-a-hundred-check-ins.ts
+  api/journey/seed-an-anchor-check-in.ts
+  api/journey/seed-the-suites-for-the-screens.ts
+```
+
+(The MarketView Q4 seed and its JSON are tracked too, as you said.) Five, not the four you listed:
+`seed-a-hundred-check-ins.ts` is request 157's hundred-check-in organisation, written since. Read request 158 above before you run any of them — until this morning
+every one of them loaded people who could not sign in.
+
+**126, the API does not compile (`myNames` on `WhoIsReading`).** Closed. `npx tsc --noEmit -p
+tsconfig.json` in `api/` exits 0 at `72a2f1a2`. `myNames?: string[]` is a declared field of
+`WhoIsReading` now (`the-switchboards-own-sections.ts:36`), so `board.service.ts:2464` is legal.
+
+**120, `node dist/main` stops at once (`ConversationService` argument 1).** Closed, and proved by
+starting it rather than by reading the module graph:
+
+```
+npm run build                    → nest build, no output, exit 0
+ls dist/modules/embed/static/    → embed.js, panel.html   (so the copy step ran)
+node --enable-source-maps dist/main
+  [NestApplication] Nest application successfully started
+  [Bootstrap] Groundwork API running on port 3000
+POST /api/v1/auth/login with a wrong password → 401
+```
+
+Your point about the unit tests stands and I have not fixed it: nothing in the suite starts the
+whole application module, so this class of fault can still reach you. I have not added that test
+yet — say if you want it and I will.
+
+**138, the engine test pins the board's source text.** Closed, and done the way you asked. The
+expectation at `the-judgement-reaches-a-screen.spec.ts:115` matches
+`<TheJudgement it={(b as any).theJudgement}` with no closing `/>`, with a comment saying why: the
+screen may pass the judgement more props, and the where-next board does. The second half of that
+test still checks the judgement is drawn **above** what people said, which is the part that matters.
+
+On your other question there: the `journey/*.spec.ts` files you named and
+`board/the-board-serves-patterns-under-the-rules.spec.ts` have not run out of memory on this Mac on
+their own. I have not re-run them all today — this computer is being kept quiet — so take that as
+"they passed when last run individually", not as a fresh result.
+
+**119, 137, 141 and 146, the wording guard.** All four closed.
+`client/src/lib/copy-does-not-sound-like-yoda.spec.ts` is byte-for-byte the same on both branches
+(`git diff mine/wip/prototype-ui` on that file is empty) and it passes here, both its tests.
+
+Counted exactly, by running a copy of your spec with the ceiling set to -1 so it prints the number:
+**60 lines, against a ceiling of 60.** That is the part you should know: it passes with nothing to
+spare. The next line either of us writes in that shape breaks it again, which is why this keeps
+coming back to you. I would rather bring it down than sit on the line, so unless you object I will
+take the count down as I touch engine copy, and tell you here when it moves.
+
+*Read at 5 October against `72a2f1a2`.*
+
 ## Request 158, nobody seeded could sign in — fixed, and proved by signing in
 
 You were right on every point, and it was my defect. All four seeds wrote their people and then
