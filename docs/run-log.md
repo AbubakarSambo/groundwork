@@ -2,6 +2,29 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## 5 October, 14:10 - queued, not done: "participants" is leaking into what people read
+
+Run 32 shows "the other two participants report...", "both branch participants", "two other
+participants report that the company's CEO...". **"Participant" is our word for a database row, not
+a word anybody uses about a colleague.** It is in none of the wording rules and the scorer's label
+check only catches "Participant A", so the bare noun passes everything.
+
+Not done now, on purpose: I promised not to touch `api/src` again until the run lands, so the run
+stays a true measurement of one build. It is a one-line addition to the rulebook - never call a
+person a participant; name them, or say "people" - and it goes in as soon as the run is scored.
+
+## 5 October, 14:08 - the release items that are genuinely blocked, and the one I will not touch
+
+**Item 2, a build on Node 20: blocked.** Only Node 26 is on this computer, there is no nvm or n,
+and installing a runtime unattended is not a change I should make. Still Hafsah's.
+
+**Item 3, the two existing-client checks: blocked.** Needs a copy of the live data.
+
+**Item 4, the privacy question on evaluation check-ins: deliberately untouched.** Decision 86 and
+decision 99 item 3 both say a privacy restriction is not mine to add, and that is exactly what
+this would be. The fallback rule says make a provisional call, but her standing decisions say this
+particular kind of call is hers. It stays a question.
+
 ## 5 October, 14:05 - three of the seven release items answered, two of them with measurements
 
 **Item 1, the migrations on the live line's schema: done and passing** (359 applied, 0 failed, with
