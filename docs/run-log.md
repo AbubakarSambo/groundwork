@@ -2,6 +2,27 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## 5 October, 14:25 - the API suite found two faults of mine, and my first account of one was wrong
+
+**The plain pattern names are wired up and a test holds the code and the document to each other.**
+I changed A1 in `docs/pattern-names.md` for decision 104 and did not change
+`plain-pattern-names.ts`, so the test went red. Fixed: the code carries her wording too.
+
+**And my commit message for that overstated it.** It said I had told Hafsah the names were not
+switched on. I said that on 26 September; the document was corrected on 29 September, by somebody
+else, and has said since that the names live in the code and a spec checks the two match. So the
+fault today was only that I changed one side of a pair - which the test caught - not that I had
+misinformed her. Writing it down because a commit message that makes a mistake sound worse than it
+was is still a wrong record.
+
+**Two of my own specs were weak guards.** The meta-test "a source-assertion spec strips comments
+before it matches" named two I wrote today: the kept history and the suite refusals. Both read a
+source file and asserted on it without stripping comments first, so a comment could have satisfied
+either. Both strip now. I have spent the day finding places where a claim was not re-earned, and
+wrote two more.
+
+API: 1,704 suites, 16,589 tests, all passing.
+
 ## 5 October, 14:13 - the client suite on the fully merged branch: 630 files, 4,223 tests, green
 
 The second merge from the screens workspace brought the billing changes and the WhatsApp add-on
