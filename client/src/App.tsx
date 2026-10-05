@@ -402,9 +402,10 @@ export default function App() {
           <a href="#main" className="gw-skip">Skip to content</a>
           <Toaster position="top-right" richColors />
           <HelpModal />
-          <AppShell>
-          {/* A render error in one page used to blank the entire app. W8-63. */}
+          {/* A render error in one page used to blank the entire app. W8-63. Outside the shell, so
+              the crash card takes the whole window (crash.jpg) and a broken sidebar is caught too. */}
           <PageCrash>
+          <AppShell>
           <Routes>
             {/* Public */}
             <Route path="/" element={<RootRoute />} />
@@ -700,8 +701,8 @@ export default function App() {
             <Route path="/stop-reminders/:token" element={<StopRemindersPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
-          </PageCrash>
           </AppShell>
+          </PageCrash>
         </SessionGuard>
       </BrowserRouter>
     </QueryClientProvider>

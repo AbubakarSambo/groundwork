@@ -56,7 +56,10 @@ describe('when a page throws while rendering', () => {
 
   it('it says the record is safe, because that is the first thing anybody wonders', () => {
     render(<PageCrash><Boom /></PageCrash>)
-    expect(screen.getByText(/Nothing you wrote is lost; it was saved before this happened\./)).toBeTruthy()
+    /* U.20 review: "Nothing you wrote is lost" is not always true (an answer typed but not sent is
+       not saved), so it says what is true: what was sent is saved. */
+    expect(screen.getByText('Everything you had already sent is saved.')).toBeTruthy()
+    expect(screen.queryByText(/Nothing you wrote is lost/)).toBeNull()
   })
 
   /*

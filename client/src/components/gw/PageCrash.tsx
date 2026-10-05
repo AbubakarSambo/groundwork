@@ -23,8 +23,11 @@ import { Page, Mark, PageTitle, Button, Note } from '@/components/gw/ui'
  * for help, and hiding it behind "an unexpected error occurred" helps nobody.
  *
  * WORDING, FROM THE PROTOTYPE (F4-small-states/crash.txt): the mark, "Something broke on
- * this page", "Nothing you wrote is lost; it was saved before this happened.", "Reload the
- * page" and "Go to Today". Full-page navigation, not a router `Link` - an error boundary at
+ * this page", "Reload the page" and "Go to Today". The prototype's "Nothing you wrote is lost;
+ * it was saved before this happened." is not drawn as written (U.20 review): an answer typed but
+ * not yet sent is not saved, so it would not always be true. "Everything you had already sent is
+ * saved." is. It sits outside the shell in App.tsx, so it takes the whole window as crash.jpg
+ * shows, and a crash in the sidebar itself no longer leaves a white page. Full-page navigation, not a router `Link` - an error boundary at
  * the very top of the app is exactly the place a possibly-broken router state should not be
  * relied on.
  *
@@ -55,7 +58,7 @@ export class PageCrash extends Component<{ children: ReactNode }, { message: str
         <Mark />
         <PageTitle
           title="Something broke on this page"
-          subtitle="Nothing you wrote is lost; it was saved before this happened."
+          subtitle="Everything you had already sent is saved."
         />
         <div className="gwui-button-row">
           <Button onClick={() => window.location.reload()}>Reload the page</Button>

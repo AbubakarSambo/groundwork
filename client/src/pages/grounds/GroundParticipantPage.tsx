@@ -4,10 +4,9 @@ import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useEffect, useRef, useState } from 'react'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { whichSessionIsThisCheckInOn, hasDoneThisSession } from '@/lib/which-session-are-we-on'
 import { groundsApi } from '@/api/grounds'
-import { participantRequestsApi } from '@/api/participantRequests'
 import { useAuthStore } from '@/stores/auth'
 import { reportsApi } from '@/api/reports'
 import { CheckInHeader } from '@/components/gw/ui/CheckInHeader'
@@ -25,7 +24,6 @@ import { MyParticipation } from '@/components/gw/MyParticipation'
 import { SharedReportForAParty } from '@/components/gw/SharedReportForAParty'
 import { ContextPage } from '@/components/gw/ContextPage'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
-import { toast } from 'sonner'
 
 
 
@@ -86,22 +84,12 @@ export function GroundParticipantPage() {
   const definitelyGone = isError && (error as any)?.response?.status === 404
 
   /*
-   * "ASK TO JOIN" (F4-small-states/states.txt, "Not in this check-in"): a real request, through
-   * the same participant-request flow the board's own "hidden contributor" row already sends
-   * (BoardPage.tsx's `requestAddition`, approved from GroundAdminPage.tsx's "have asked to join
-   * this check-in"). Not a button that does nothing - the prototype's wording promises a request
-   * reaches whoever runs it, and this is the product's real way to send one. Declared here, above
-   * every early `return` below, because a hook declared after one would be skipped on the render
-   * that takes it and break the rules of hooks the moment a later render does not.
+   * "ASK TO JOIN" IS NOT DRAWN YET (U.20 review). The prototype offers it under "You’re not in this
+   * check-in", but the server's participant-request route lets only somebody already in the
+   * check-in ask, so the button could only ever answer "You are not a participant in this
+   * check-in". The prototype's sentence, that the lead can add you, is true and stays; the button
+   * comes back when the server lets a reader of the check-in ask (request 159).
    */
-  const askToJoin = useMutation({
-    mutationFn: () => participantRequestsApi.create(id!, {
-      requestedEmail: user?.email ?? '',
-      requestedName: [user?.firstName, (user as any)?.lastName].filter(Boolean).join(' ') || undefined,
-      reason: 'Asked to join from the check-in page.',
-    }),
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not send. Try again.'),
-  })
 
   const { data: report } = useQuery({
     queryKey: ['report', id],
@@ -337,12 +325,14 @@ export function GroundParticipantPage() {
       return (
         <Page narrow>
           <Empty
-            title="You are not in this check-in"
+            title="You’re not in this check-in"
             action={(
               <Button kind="secondary" onClick={() => navigate(`/grounds/${id}`)}>Open the whole check-in</Button>
             )}
           >
-            You run it as an admin without giving a check-in yourself. Everything about it is on the whole check-in.
+            {(ground as any)?.initiatorId === user?.id
+              ? 'You run it as an admin without giving a check-in yourself. Everything about it is on the whole check-in.'
+              : `${whoRunsThis(ground as any) ?? 'Someone else'} runs it. You can read all of it as an admin, on the whole check-in.`}
           </Empty>
         </Page>
       )
@@ -356,16 +346,7 @@ export function GroundParticipantPage() {
     const lead = whoRunsThis(ground)
     return (
       <Page narrow>
-        <Empty
-          title="You’re not in this check-in"
-          action={askToJoin.isSuccess ? (
-            <Note tone="muted">You asked to join. {lead ?? 'Whoever runs it'} has your request.</Note>
-          ) : (
-            <Button kind="secondary" onClick={() => askToJoin.mutate()} disabled={askToJoin.isPending}>
-              {askToJoin.isPending ? 'Asking…' : 'Ask to join'}
-            </Button>
-          )}
-        >
+        <Empty title="You’re not in this check-in">
           {lead ? `${lead} runs it and can add you.` : 'Whoever runs it can add you.'}
         </Empty>
       </Page>

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { GroundParticipantPage } from './GroundParticipantPage'
@@ -11,9 +11,9 @@ import { participantRequestsApi } from '@/api/participantRequests'
  * "NOT IN THIS CHECK-IN" (F4-small-states/states.txt): "You're not in this check-in" /
  * "<lead> runs it and can add you." / "Ask to join" (U.20).
  *
- * "Ask to join" is wired to the product's real participant-request flow
- * (`participantRequestsApi.create`, the same one the board's "hidden contributor" row and the
- * admin's "have asked to join this check-in" approval use) - not a button that does nothing.
+ * "Ask to join" is not drawn yet: the server lets only somebody already in a check-in ask to add
+ * someone, so the button could only fail (U.20 review; request 159). These tests used to mock that
+ * request as a success, which tested nothing real.
  */
 vi.mock('@/stores/auth', () => ({
   useAuthStore: (sel: any) => sel({ user: { id: 'u-outside', role: 'MEMBER', firstName: 'Jordan', lastName: 'Reyes', email: 'jordan@x.test' } }),
@@ -52,18 +52,12 @@ describe('somebody who is not a party to this check-in', () => {
     renderPage()
     expect(await screen.findByRole('heading', { name: 'You’re not in this check-in' })).toBeTruthy()
     expect(screen.getByText('Wairimu runs it and can add you.')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Ask to join' })).toBeTruthy()
   })
 
-  it('"Ask to join" sends a real request, and says so once it has', async () => {
-    ;(participantRequestsApi.create as any).mockResolvedValue({ id: 'r1', status: 'PENDING' })
+  it('offers no "Ask to join" while the server would refuse it, and sends nothing', async () => {
     renderPage()
-    fireEvent.click(await screen.findByRole('button', { name: 'Ask to join' }))
-    await waitFor(() => expect(participantRequestsApi.create).toHaveBeenCalledWith('g1', expect.objectContaining({
-      requestedEmail: 'jordan@x.test',
-      requestedName: 'Jordan Reyes',
-    })))
-    expect(await screen.findByText(/Wairimu has your request/)).toBeTruthy()
+    await screen.findByRole('heading', { name: 'You’re not in this check-in' })
     expect(screen.queryByRole('button', { name: 'Ask to join' })).toBeNull()
+    expect(participantRequestsApi.create).not.toHaveBeenCalled()
   })
 })

@@ -1177,6 +1177,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
        board's address, with the sidebar, and the same words whether the check-in was ended,
        removed, or was never this reader's (GW-PRI-04: the server answers all of them alike). */
     if (what.status === 404) return <GroundGone />
+    /* The prototype's connection words only when it was the connection: no answer came back at all.
+       A server error keeps its own true sentence, with Try again still offered (U.20 review). */
+    const theConnection = what.status === undefined
     /*
      * U.20 (F4-small-states/states.txt, "It didn't load"/"The board didn't load"): the prototype's
      * own words, for the one case they are true of - a connection problem, where trying again can
@@ -1188,7 +1191,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
       <div className="gwui-mt-48 gwui-mr-auto gwui-mb-48 gwui-ml-auto gwui-pt-0 gwui-pr-20 gwui-pb-0 gwui-pl-20" style={{maxWidth: 620, textAlign: 'center'}}>
         <div className="gwui-fs-15 gwui-mb-6" style={{fontWeight: 700}}>{why.canRetry ? 'The board didn’t load' : 'This board could not be loaded.'}</div>
         <div className="gwui-fs-15 gwui-ink-sub gwui-mb-16">
-          {why.canRetry ? 'Nothing is lost; your check-ins are saved. It’s usually the connection.' : why.say}
+          {theConnection ? 'Nothing is lost; your check-ins are saved. It’s usually the connection.' : why.say}
         </div>
         <div className="gwui-gap-8" style={{display: 'flex', justifyContent: 'center'}}>
           {why.canRetry && <UIButton kind="primary" onClick={() => refetch()}>Try again</UIButton>}
