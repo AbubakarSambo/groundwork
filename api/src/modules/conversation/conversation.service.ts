@@ -1795,6 +1795,8 @@ export class ConversationService {
 
     const composedBefore = await this.composeSystemPrompt(checkIn, message);
     const anchored = this.theAnchorWeekWords(checkIn.id);
+    /* The team baseline learns how their work looks; it does not turn a period into a date or hold what they said against a number. */
+    const inTheBaseline = !!this.anchorWeekForThisTurn.get(checkIn.id)?.isTheBaseline;
     const offerAnswered = await this.theirYesBecomesACommitment(checkIn);
     const whatTheyAgreedTo = offerAnswered.forTheModel;
     const composed = [composedBefore, ...anchored.before].filter(Boolean).join('\n\n');
@@ -1839,11 +1841,11 @@ export class ConversationService {
      * time, until the question limit ended her check-in. Only this check-in's own replies are read.
      */
     const repliesInThisCheckIn = herEarlierAiTurns.filter((r) => r.checkInId === checkIn.id).map((r) => r.content ?? '');
-    const aboutTheirDeadline = whatToDoAboutTheirDeadline(message, new Date(), repliesInThisCheckIn);
+    const aboutTheirDeadline = inTheBaseline ? null : whatToDoAboutTheirDeadline(message, new Date(), repliesInThisCheckIn);
     if (aboutTheirDeadline) {
       this.logger.log(`Check-in ${checkIn.id}: they gave a time with no day; asking which.`);
     }
-    const numbersGap = theNumbersDoNotMeet(theirNumbers, message, alreadyTheirs, earlierAiTurnsForTheGap);
+    const numbersGap = inTheBaseline ? null : theNumbersDoNotMeet(theirNumbers, message, alreadyTheirs, earlierAiTurnsForTheGap);
     if (numbersGap) {
       this.logger.log(`Check-in ${checkIn.id}: what they said does not meet the objective; asking which it is.`);
     }
@@ -2384,7 +2386,7 @@ export class ConversationService {
        * The same shape as every other rule that lost today, and there is already a note here saying
        * the prompt-wording route is exhausted for dates. So it is checked. See a-period-is-not-a-day.
        */
-      const dateItHadToSay = theDateItHadToSay(message, new Date(), repliesInThisCheckIn);
+      const dateItHadToSay = inTheBaseline ? null : theDateItHadToSay(message, new Date(), repliesInThisCheckIn);
       if (dateItHadToSay && didNotSayTheDate(screened.text, dateItHadToSay)) {
         const period = thePeriodTheyNamed(message)!;
         this.logger.warn(`Check-in ${checkIn.id}: the reply left the date out; asking again.`);

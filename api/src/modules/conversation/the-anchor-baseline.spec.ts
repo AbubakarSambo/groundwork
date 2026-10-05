@@ -3,6 +3,7 @@ import { ConversationService } from './conversation.service';
 import { ConversationContextService } from './context.service';
 import { ANCHOR_BASELINE_PROMPT, ANCHOR_BASELINE_PROMPT_KEY, THE_BASELINE_GUIDANCE, THE_BASELINE_REMINDER, theAnchorBaselineGuidance } from './the-anchor-baseline';
 import { READ_THIS_LAST } from './the-anchor-lead-conversation';
+import { whatToDoAboutTheirDeadline } from './a-period-is-not-a-day';
 import { THE_NINE, withoutAnExampleAnswer, THE_BASELINE_CLOSING_REMINDER, everythingIsLearned, whatIsLearnedFrom } from './the-baseline-so-far';
 
 /**
@@ -307,5 +308,21 @@ describe('a sentence that offers an example answer comes off a baseline reply (6
     expect(withoutAnExampleAnswer('What matters most right now from where you sit?')).toEqual({ text: 'What matters most right now from where you sit?', cut: [] });
     const only = 'For instance, something like paid invoices?';
     expect(withoutAnExampleAnswer(only)).toEqual({ text: only, cut: [] });
+  });
+});
+
+describe('the team baseline does not turn what they said into a date or a number to confirm (6 October)', () => {
+  const SAID = 'Twelve signed contracts by the end of December.';
+  const theInstruction = whatToDoAboutTheirDeadline(SAID, new Date(), []);
+
+  it('is told nothing about the period they named', async () => {
+    expect(theInstruction).toBeTruthy();
+    const baseline = await aWorld({ startedFrom: 'anchor', switchOn: true, answer: SAID }).compose();
+    expect(baseline).not.toContain(theInstruction as string);
+  });
+
+  it('is still told it in every other session, as before', async () => {
+    const weekly = await aWorld({ startedFrom: 'anchor', switchOn: true, sessionNumber: 2, answer: SAID }).compose();
+    expect(weekly).toContain(theInstruction as string);
   });
 });
