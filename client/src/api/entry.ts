@@ -256,8 +256,19 @@ export const entryApi = {
    * listed her team in setup got a report saying "team members not named here", and a whole
    * "what's still open" item telling her to go and name them.
    */
-  report: (messages: ChatTurn[], scenario?: string, groundLabel?: string, peopleNamed?: string[]) =>
-    apiClient.post<{ report: EntryReport | null }>('/entry/report', { messages, scenario, groundLabel, peopleNamed }).then(r => r.data),
+  report: (
+    messages: ChatTurn[],
+    scenario?: string,
+    groundLabel?: string,
+    peopleNamed?: string[],
+    /*
+     * THE ANCHOR'S SEVEN ITEMS, SO THE LEAD'S REVEAL SAYS WHAT SHE SAID (request 166). Sent only for
+     * an anchor draft's own report - every other situation's report has nothing to send here, and the
+     * server reads nothing from an absent field.
+     */
+    anchorItems?: Record<string, unknown>,
+  ) =>
+    apiClient.post<{ report: EntryReport | null }>('/entry/report', { messages, scenario, groundLabel, peopleNamed, anchorItems }).then(r => r.data),
 
   commit: (payload: {
     groundLabel: string
@@ -273,7 +284,15 @@ export const entryApi = {
     history: ChatTurn[]
     report?: EntryReport | null
     /** A colleague picked from the list is sent by `colleagueId`, never by address (U.4). */
-    contributors: { email?: string; colleagueId?: string; context?: string; inviteToken?: string; note?: string }[]
+    contributors: {
+      email?: string
+      colleagueId?: string
+      context?: string
+      inviteToken?: string
+      note?: string
+      /** "Name + email" (anchor section 13): what the lead calls this person, asked beside their email. Anchor draft only. */
+      displayName?: string
+    }[]
     // Coordinator/lead path: the committer sets the ground up for someone else
     // to run. The lead is invited to confirm and becomes the initiator; the
     // onboarding context travels as `brief` (the coordinator has no transcript).
