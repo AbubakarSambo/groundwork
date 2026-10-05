@@ -275,6 +275,14 @@ export function BillingPage() {
             value={`${thePlanLine(billingStatus, livePricing, freeGrounds)}${peopleOverCap ? ' More people have accounts here than this plan covers.' : ''}`}
             action={<Button kind="quiet" size="small" onClick={scrollToPlans}>Change</Button>}
           />
+          {/*
+           * "WHEN BARIDI APPLIANCES WAS SET UP, IT HAD 20 OR MORE PEOPLE, SO IT BEGAN ON A PLAN."
+           * `startedWith` is served to an admin only (5 October, evening) - one plain sentence, read
+           * exactly as it comes, never a number this page works out for itself.
+           */}
+          {billingStatus?.startedWith && (
+            <FieldRow label="How it began" value={billingStatus.startedWith.says} />
+          )}
           <FieldRow
             label="Next payment"
             value={theNextPaymentLine(billingStatus, livePricing)}

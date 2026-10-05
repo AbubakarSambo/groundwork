@@ -33,7 +33,7 @@ vi.mock('@/api/billing', async () => {
       getContributorCodes: vi.fn().mockResolvedValue([]),
       /* WhatsApp billing (decision 78) is covered on its own, in the-whatsapp-add-on-as-each-reader-sees-it.spec.tsx;
          the minimal shape here just keeps this page's own query from erroring in every test above. */
-      getWhatsApp: vi.fn().mockResolvedValue({ sending: true, says: null }),
+      getWhatsApp: vi.fn().mockResolvedValue({ on: false, sending: true, says: null }),
       setWhatsApp: vi.fn(),
       createSubscription: vi.fn(), changeSubscriptionPlan: vi.fn(), portal: vi.fn(),
       cancelSubscription: vi.fn(), keepSubscription: vi.fn(), pauseSubscription: vi.fn(), resumeSubscription: vi.fn(),
@@ -116,6 +116,26 @@ describe('Grace, an admin, on Growth', () => {
     renderIt()
     await waitFor(() => expect(text()).toContain('Growth, $400 a month.'))
     expect(text()).not.toMatch(/free trial|months free/i)
+  })
+
+  /**
+   * "STARTED WITH" (5 October, evening): `GET /billing/status` serves an admin `startedWith`, one
+   * plain sentence about how the organisation began - never shown when the server has not served
+   * it, and drawn exactly as it comes.
+   */
+  it('reads how it began, when the server serves it', async () => {
+    m.status = {
+      ...m.status,
+      startedWith: { said: 'more', line: 20, says: 'When Baridi Appliances was set up, it had 20 or more people, so it began on a plan.' },
+    }
+    renderIt()
+    await waitFor(() => expect(text()).toContain('When Baridi Appliances was set up, it had 20 or more people, so it began on a plan.'))
+  })
+
+  it('says nothing about how it began when the server has not served it', async () => {
+    renderIt()
+    await waitFor(() => expect(text()).toContain('Growth, $400 a month.'))
+    expect(text()).not.toMatch(/began on a plan/)
   })
 })
 

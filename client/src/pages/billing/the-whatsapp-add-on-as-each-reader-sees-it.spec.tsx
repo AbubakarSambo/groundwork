@@ -92,7 +92,7 @@ const WHATSAPP_AT_LIMIT = {
   },
 }
 
-const WHATSAPP_MINIMAL = { sending: true, says: null }
+const WHATSAPP_MINIMAL = { on: false, sending: true, says: null }
 
 function renderIt() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
