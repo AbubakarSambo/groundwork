@@ -50,7 +50,12 @@ export const IT_IS_CAPTURED = 'I have captured it for the team. Everyone in this
 export const NO_IDEA_CAPTURED_YET = 'No idea from your team has been captured yet.';
 
 const squash = (t: string) => t.replace(/\s+/g, ' ').trim().toLowerCase();
-const isTheYes = (m: string) => /^\s*(yes|yeah|yep|sure|ok|okay)\b/i.test(m) || squash(m) === squash(YES_CAPTURE_IT);
+/*
+ * ONLY THE BUTTON'S OWN ANSWER CAPTURES (review of piece 19). A free-text yes is about something else as often as not:
+ * "Yes, I sent the deck to Naivas" answers the check-in's question, not the offer. So only the exact answer the screen
+ * sends for the offer, "Yes, capture it", captures; anything else leaves nothing behind.
+ */
+const isTheYes = (m: string) => squash(m).replace(/[.!]+$/, '') === squash(YES_CAPTURE_IT);
 const isTheNo = (m: string) => /^\s*(not now|no\b|nope)/i.test(m);
 
 /** The idea, only if it is the person's own words, found in what they wrote. */

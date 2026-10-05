@@ -49,6 +49,13 @@ describe('the offer, in the person\'s own check-in', () => {
     expect(got.sayFirst).toBe(IT_IS_CAPTURED);
     expect(items.map((i) => i.kind)).toEqual(['idea']);
   });
+  it('a free-text yes about something else keeps nothing: only the button\'s own answer captures', async () => {
+    const { turn: t3, items: i3, anthropic } = world();
+    await t3(MESSAGE);
+    anthropic.extract.mockResolvedValueOnce({ isAConcreteIdea: false });
+    expect((await t3('Yes, I sent the deck to Naivas')).sayFirst).toBeUndefined();
+    expect(i3).toEqual([]);
+  });
   it('"Not now", or carrying on, leaves nothing behind', async () => {
     const a = world(); await a.turn(MESSAGE); await a.turn('Not now');
     expect(a.items).toEqual([]);
