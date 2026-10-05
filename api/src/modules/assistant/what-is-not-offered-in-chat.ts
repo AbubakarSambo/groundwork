@@ -56,7 +56,7 @@ export const NOT_OFFERED_IN_CHAT: NotOffered[] = [
   {
     area: 'billing',
     why: 'not a person’s question',
-    because: 'Money. Nobody should be able to change what an organisation pays by typing a sentence, and a mistake here is not recoverable by saying so.',
+    because: 'Money is not changed in a chat. Nobody should change what an organisation pays by typing a sentence. A mistake here cannot be undone by saying so.',
   },
   {
     area: 'webhooks',
@@ -170,7 +170,7 @@ export const NOT_OFFERED_IN_CHAT: NotOffered[] = [
   {
     area: 'suggestions',
     why: 'the chat is the wrong shape',
-    because: 'A suggestion about a person, their side and an appeal are private to the people involved, and are read and decided on their own pages. Whether Ask Groundwork should ever offer them is Hafsah\'s decision (U.14).',
+    because: 'Suggestions about a person, their side and appeals are private to the people involved. Each one is read and decided on its own page. Hafsah decides whether Ask Groundwork should ever offer them (U.14).',
   },
   {
     area: 'ask',

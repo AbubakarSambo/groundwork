@@ -60,8 +60,9 @@ describe('a ground that is held', () => {
     expect(whyItRefuses(GroundStatus.CLOSED, 'The new person stays in the role.')).toBe('This check-in has ended. The new person stays in the role.');
     /* What every door passes is the stored value with the check-in's kind. A person used to read
        "This check-in ended: keep." Now they read the ending's own sentence, and never the raw value. */
-    expect(whyItRefuses(GroundStatus.CLOSED, 'KEEP', 'anybody else', 'NEW_HIRE')).toBe('This check-in has ended. The new person stays in the role.');
-    expect(whyItRefuses(GroundStatus.CLOSED, 'KEEP', 'the lead', 'NEW_HIRE')).toBe('This check-in has ended. The new person stays in the role.');
+    /* Changed 5 Oct 2026: the KEEP ending names the person where the reader is known, and a door names nobody. */
+    expect(whyItRefuses(GroundStatus.CLOSED, 'KEEP', 'anybody else', 'NEW_HIRE')).toBe('This check-in has ended. The person stays in the role.');
+    expect(whyItRefuses(GroundStatus.CLOSED, 'KEEP', 'the lead', 'NEW_HIRE')).toBe('This check-in has ended. The person stays in the role.');
     expect(whyItRefuses(GroundStatus.CLOSED, 'ALIGNED', 'anybody else', 'OKR_ALIGNMENT')).toBe('This check-in has ended. The team is on course.');
     expect(whyItRefuses(GroundStatus.CLOSED, 'NOT_A_REAL_ENDING', 'anybody else', 'NEW_HIRE')).toBe('This check-in has ended.');
     expect(whyItRefuses(GroundStatus.ACTIVE)).toBeNull();

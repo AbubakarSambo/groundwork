@@ -1,5 +1,5 @@
 import { GroundScenario } from '@prisma/client';
-import { endStatesForGround, theEndingSaid, theOutcomeIsThat } from '../resolution/end-states';
+import { endStatesForGround, theEndingSaid, theOutcomeIsThat, TheEndingIsAbout } from '../resolution/end-states';
 import { THE_SCENARIO_TABLE } from '../conversation/the-scenario-table';
 import { theDayInWords } from './the-headline-and-where-each-target-stands';
 
@@ -77,8 +77,10 @@ export function whereThisIsHeading(a: {
   board: Record<string, any>;
   decided: { endState: string | null; on: Date | string | null } | null;
   now?: Date;
+  /** Who an ending about one person leaving is about, as this reader may name them (request 123 item 8). */
+  who?: TheEndingIsAbout | null;
 }): WhereThisIsHeading {
-  const endings = endStatesForGround(a.scenario, { hadAnObjective: a.hadAnObjective });
+  const endings = endStatesForGround(a.scenario, { hadAnObjective: a.hadAnObjective, who: a.who });
   const outcomes = endings.map((e) => ({ value: e.value, says: inPlainWords(e.label), more: e.description?.trim() || null }));
 
   const b = a.board;
@@ -127,7 +129,7 @@ export function whereThisIsHeading(a: {
     .map((d: any) => d.question.trim());
 
   const lead = a.readerIsTheLead ? 'You' : a.leadName || 'The person running this check-in';
-  const ending = theEndingSaid(a.scenario, a.decided?.endState);
+  const ending = theEndingSaid(a.scenario, a.decided?.endState, a.who);
   const decided = a.decided
     ? `${lead === 'You' ? 'You' : lead} recorded the decision${a.decided.on ? ` on ${theDayInWords(new Date(a.decided.on), a.now)}` : ''}.${ending ? ` ${theOutcomeIsThat(ending)}` : ''}`
     : null;

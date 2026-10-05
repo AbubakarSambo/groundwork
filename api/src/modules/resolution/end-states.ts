@@ -39,9 +39,9 @@ export const END_STATES: Record<GroundScenario, { value: string; label: string; 
     { value: 'ENDED', label: 'The arrangement has ended.' },
   ],
   NEW_HIRE: [
-    { value: 'KEEP', label: 'The new person stays in the role.' },
+    { value: 'KEEP', label: 'The person stays in the role.' },
     { value: 'RESTRUCTURE', label: 'The role is set up differently.' },
-    { value: 'EXIT', label: 'The new person leaves the role.' },
+    { value: 'EXIT', label: 'The role does not continue. The person\'s history stays as it is.' },
     { value: 'EXTEND', label: 'The time to decide is made longer.', description: 'Both agree the evaluation period should continue, with a defined extension timeline.' },
     { value: 'NOT_YET', label: 'It is not decided yet, and what is missing is named so it can be looked at again.' },
   ],
@@ -85,7 +85,7 @@ export const END_STATES: Record<GroundScenario, { value: string; label: string; 
     { value: 'RESTRUCTURE', label: 'The work is set up differently.' },
     { value: 'DESCOPE', label: 'The work carries on with less in it.' },
     { value: 'SEPARATE', label: 'The people involved go their separate ways.' },
-    { value: 'EXIT', label: 'The person leaves the role.' },
+    { value: 'EXIT', label: 'The role does not continue. The person\'s history stays as it is.' },
     { value: 'STOP', label: 'The work stops.' },
     { value: 'NOT_YET', label: 'It is not decided yet, and what is missing is named so it can be looked at again.' },
   ],
@@ -217,23 +217,78 @@ export const END_STATES: Record<GroundScenario, { value: string; label: string; 
  * are written here once, each as one sentence that says what happened, and every one of those places
  * reads them from here. One sentence each, so "The outcome is that ..." can carry any of them.
  */
+/**
+ * WHEN SOMEBODY LEAVES A ROLE, THE ENDING NAMES THEM (request 123 item 8; Hafsah, 5 October 2026).
+ *
+ * "The new person leaves the role." said who left as a category. The prototype's ending says
+ * "The role doesn't continue. His history stays as it is." (B6-ending-a-check-in), and Hafsah chose
+ * that sentence with the person's name in it. Two sentences, because the second one is the point:
+ * nothing the person did or said is taken away.
+ *
+ * No pronoun is guessed from a name, and the record holds none, so the name is said twice rather
+ * than "his" or "her". The person reading about themselves reads "Your". With no name this reader
+ * may see, it stays neutral: "The role does not continue. The person's history stays as it is."
+ * The name comes only through `whoTheEndingIsAbout` (who-the-ending-is-about.ts), which reads the
+ * same `namesVisibleTo` every other surface of the check-in reads.
+ */
+export interface TheEndingIsAbout {
+  /** The first name this reader may see, or null where they may not see one. */
+  name?: string | null;
+  /** True where the reader is the person the ending is about. */
+  isTheReader?: boolean;
+}
+
+/*
+ * AND WHEN THEY STAY, THE SAME (reviewer, 5 October 2026): "Kwame stays in the role." to the lead, "You stay
+ * in the role." to Kwame, "The person stays in the role." where no name may be read. The other new-hire
+ * endings ("The role is set up differently.", "The time to decide is made longer.") name nobody and are true
+ * as they are, so they are left alone.
+ */
+export function theyStayInTheRole(who?: TheEndingIsAbout | null): string {
+  if (who?.isTheReader) return 'You stay in the role.';
+  const name = who?.name?.trim();
+  return name ? `${name} stays in the role.` : 'The person stays in the role.';
+}
+
+const ABOUT_ONE_PERSON: Record<string, (who?: TheEndingIsAbout | null) => string> = {
+  'NEW_HIRE:EXIT': (who) => theRoleDoesNotContinue(who),
+  'DRIFT:EXIT': (who) => theRoleDoesNotContinue(who),
+  'NEW_HIRE:KEEP': (who) => theyStayInTheRole(who),
+};
+
+export function theRoleDoesNotContinue(who?: TheEndingIsAbout | null): string {
+  if (who?.isTheReader) return 'Your role does not continue. Your history stays as it is.';
+  const name = who?.name?.trim();
+  if (name) return `${name}'s role does not continue. ${name}'s history stays as it is.`;
+  return "The role does not continue. The person's history stays as it is.";
+}
+
+function asReadBy(scenario: GroundScenario | string | null | undefined, o: { value: string; label: string; description?: string }, who?: TheEndingIsAbout | null) {
+  const said = ABOUT_ONE_PERSON[`${scenario}:${o.value}`];
+  return said ? { ...o, label: said(who) } : o;
+}
+
 /** The ending's own sentence on a check-in of this kind, or null where it is not one of its endings. */
-export function theEndingSaid(scenario: GroundScenario | string | null | undefined, value: string | null | undefined): string | null {
+export function theEndingSaid(scenario: GroundScenario | string | null | undefined, value: string | null | undefined, who?: TheEndingIsAbout | null): string | null {
   if (!value) return null;
   const mine = scenario ? END_STATES[scenario as GroundScenario] : undefined;
-  return (mine ?? []).find((o) => o.value === value)?.label ?? null;
+  const found = (mine ?? []).find((o) => o.value === value);
+  return found ? asReadBy(scenario, found, who).label : null;
 }
 
 /** "The outcome is that the project carries on." from "The project carries on." */
 export function theOutcomeIsThat(label: string): string {
   const t = label.trim().replace(/[.\s]+$/, '');
-  /* Every ending starts with an ordinary word, never a name, so its first letter can be lowered. */
-  const lowered = /^\p{Lu}(?:\p{Ll}|\s)/u.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t;
+  /* Every ending starts with an ordinary word, so its first letter can be lowered, except the one that
+     starts with the name of the person leaving ("Kwame's role does not continue."). A name keeps its capital. */
+  const startsWithAName = /^\S+['\u2019]s\s/u.test(t) || /^\S+ stays in the role$/u.test(t);
+  const lowered = !startsWithAName && /^\p{Lu}(?:\p{Ll}|\s)/u.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t;
   return `The outcome is that ${lowered}.`;
 }
 
-export function endStatesFor(scenario: GroundScenario) {
-  return END_STATES[scenario] ?? [];
+/** The endings of this kind of check-in, as this reader reads them. Without `who`, the neutral wording. */
+export function endStatesFor(scenario: GroundScenario, who?: TheEndingIsAbout | null) {
+  return (END_STATES[scenario] ?? []).map((o) => asReadBy(scenario, o, who));
 }
 
 export function isValidEndState(scenario: GroundScenario, value: string): boolean {
@@ -269,9 +324,9 @@ const NEEDS_AN_OBJECTIVE = new Set([
  */
 export function endStatesForGround(
   scenario: GroundScenario,
-  opts: { hadAnObjective: boolean },
+  opts: { hadAnObjective: boolean; who?: TheEndingIsAbout | null },
 ): { value: string; label: string; description?: string }[] {
-  const all = endStatesFor(scenario);
+  const all = endStatesFor(scenario, opts.who);
   if (opts.hadAnObjective) return all;
   const kept = all.filter((o) => !NEEDS_AN_OBJECTIVE.has(o.value));
   /**

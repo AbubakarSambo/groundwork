@@ -1222,8 +1222,9 @@ const aWordThatIsAVerbAfterYou = (word: string): boolean => {
   return /s$/.test(w);
 };
 const A_CLAUSE_OPENS = '(?:and|but|while|until|unless|because|so|if|when|whereas|since|though|although|once)';
+const SHARED_VERBS = 'is|has|was|does|reviews|stays|shares|confirms|sends|expects|wants|needs|believes|says|thinks|feels|plans|knows|works|leads|waits|asks|agrees|keeps|takes|makes|owns|holds|sees|remains|continues|hopes|intends|accepts|tracks|manages|uses|gets|shows|follows|attends|handles|decides|chooses|answers|aims|relies|depends|builds';
 const SHARES_ITS_YOU = new RegExp(
-  `(,\\s+(?:and\\s+|but\\s+)?|\\s+(?:and|but)\\s+)${ADVERBS}(is|has|was|does|reviews|stays|shares|confirms|sends|expects|wants|needs|believes|says|thinks|feels|plans|knows|works|leads|waits|asks|agrees|keeps|takes|makes|owns|holds|sees|remains|continues|hopes|intends|accepts|tracks|manages|uses|gets|shows|follows|attends|handles|decides|chooses|answers|aims|relies|depends|builds)\\b`,
+  `(,\\s+(?:and\\s+|but\\s+)?|\\s+(?:and|but)\\s+)${ADVERBS}(${SHARED_VERBS})\\b`,
   'g',
 );
 /* "You have no visibility of these facts, and so has understood..." - but never "and so is the
@@ -1234,6 +1235,18 @@ function everyVerbThatFollowsYouAgrees(input: string): string {
     new RegExp(`(^|[.!?]["”’)]?\\s+|\\n\\s*|\\b${A_CLAUSE_OPENS}\\s+)(you\\s+)${ADVERBS}([A-Za-z]+)\\b`, 'gi'),
     (m: string, lead: string, you: string, adv: string | undefined, word: string) =>
       aWordThatIsAVerbAfterYou(word) && word === word.toLowerCase() ? `${lead}${you}${adv ?? ''}${theVerbForYou(word)}` : m,
+  );
+  /*
+   * AND IN A CLAUSE THAT OPENS ON "YOU" (request 123 item 7): "until you clarify the role and provides the necessary
+   * authority". Where a clause opens with one of the clause words and then "you", a verb from the list straight after
+   * the next "and", with no comma, full stop or other "you" between, is still the reader's. Only verbs from the list, so
+   * "until you clarify the role and logistics" keeps its noun.
+   */
+  text = text.replace(
+    new RegExp(`(\\b${A_CLAUSE_OPENS}\\s+you\\s+[a-z]+\\b[^,.;!?]*?\\s+and\\s+)${ADVERBS}(provides|gives|clarifies|sets|${SHARED_VERBS})\\b`, 'g'),
+    /* Not where another person could own the verb: a second "you", or "who", "that", "which" or "whose" between
+       ("until you hire someone who knows the market and provides training"). */
+    (m: string, head: string, adv: string | undefined, verb: string) => (/\b(?:you|who|that|which|whose)\b/i.test(head.replace(/^\S+\s+you\s/i, '')) ? m : `${head}${adv ?? ''}${({ is: 'are', was: 'were', has: 'have', does: 'do' } as Record<string, string>)[verb.toLowerCase()] ?? theVerbForYou(verb)}`),
   );
   /* The verbs that share it, sentence by sentence. */
   const pieces = text.split(/(?<=[.!?])(\s+)/);

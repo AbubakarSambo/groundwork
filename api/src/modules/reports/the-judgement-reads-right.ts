@@ -1,3 +1,4 @@
+import { inOurVoice } from './what-the-record-shows-over-time';
 /**
  * THE JUDGEMENT READS RIGHT WHEN THE LEAD IS SERVED IT (requests 133 item 2, 134, 135, 136).
  *
@@ -39,9 +40,59 @@ export function aHeadingThatIsASentence(about: string): string {
  */
 const NOBODY_ELSE_ANSWERS = 'Nobody else answers this check-in, so there is no other account to set this against.';
 
-export function aJudgementThatReadsRight<T>(judgement: T, opts: { theReaderIsTheOnlyPerson?: boolean } = {}): T {
+/**
+ * A STEP IS SOMETHING TO DO, AND A PROMISE IS SAID AS WHAT WAS PROMISED (request 134 item 4, narrowed after review).
+ *
+ *  - "The status of the open commitments to 'call the client' and 'file the bundle'." stood under "What to do": a piece,
+ *    not a step. Only that shape is touched - a step opening "The status of", "The state of" or "The progress of" with
+ *    no verb of its own - and it is made a step: "Check the status of ...". No step is ever dropped: "A short call with
+ *    Ngozi this week settles who owns the lease." and "A written answer to Amani on the discount, before Friday." stay.
+ *  - "Ask Amani Wekesa about the open commitment to 'I will file the bundle'." quoted a promise as a fragment in the
+ *    first person. Only a quote that opens "I will", "I'll", "I am going to", "we will" or a lower-case verb is said as
+ *    what was promised ("the open commitment to file the bundle"). "the commitment to 'Amina will send the sheets'" is
+ *    somebody's words about somebody else, and stays in its marks.
+ */
+const A_STATUS_PIECE = /^the (status|state|progress) of\b/i;
+export function aStepThatIsAStep(move: unknown): unknown {
+  if (typeof move !== 'string') return move;
+  const t = move.trim();
+  if (!A_STATUS_PIECE.test(t)) return move;
+  if (HAS_A_VERB_OF_ITS_OWN.test(t.replace(/(['"\u2018\u201c])[^'"\u2019\u201d]*(['"\u2019\u201d])/g, ''))) return move;
+  return `Check ${t.charAt(0).toLowerCase()}${t.slice(1)}`;
+}
+const A_QUOTED_PROMISE = /(['\u2018"\u201c])([^'"\u2018\u2019\u201c\u201d]{2,140})(['\u2019"\u201d])/g;
+const AFTER_A_COMMITMENT = /\bcommitments? to\s+((?:['\u2018"\u201c][^'"\u2018\u2019\u201c\u201d]{2,140}['\u2019"\u201d](?:,\s*|\s+and\s+|,\s+and\s+)?)+)/gi;
+const SAID_AS_A_PROMISE = /^(?:I will|I['\u2019]ll|I am going to|I['\u2019]m going to|we will)\b|^[a-z]/;
+export function aPromiseSaidAsWhatWasPromised(text: string): string {
+  if (typeof text !== 'string') return text;
+  return text.replace(AFTER_A_COMMITMENT, (whole: string, list: string) => {
+    let ok = true;
+    const said = list.replace(A_QUOTED_PROMISE, (_m: string, _o: string, words: string) => {
+      const clause = SAID_AS_A_PROMISE.test(words.trim()) ? inOurVoice(words, 'them') : null;
+      if (!clause) ok = false;
+      return clause ?? words;
+    });
+    return ok ? whole.replace(list, said) : whole;
+  });
+}
+
+/** Both, over the judgement as it is served. Nothing is ever left out. */
+export function aJudgementWithNoPieces<T>(judgement: T): T {
   const j: any = judgement;
-  if (!j || typeof j !== 'object' || !Array.isArray(j.whatThisCannotTellYou)) return judgement;
+  if (!j || typeof j !== 'object') return judgement;
+  const fix = (v: any): any => (typeof v === 'string' ? aPromiseSaidAsWhatWasPromised(v)
+    : Array.isArray(v) ? v.map(fix)
+      : v && typeof v === 'object' && Object.prototype.toString.call(v) === '[object Object]' && (!v.constructor || v.constructor.name === 'Object')
+        ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, fix(x)])) : v);
+  const out = fix(j);
+  if (Array.isArray(out.whatToDo)) out.whatToDo = out.whatToDo.map((m: any) => (m && typeof m === 'object' && typeof m.move === 'string' ? { ...m, move: aStepThatIsAStep(m.move) } : m));
+  /* Nothing to put right: the same object, so a caller that passes it through is not handed a copy. */
+  return (JSON.stringify(out) === JSON.stringify(j) ? judgement : out) as T;
+}
+
+export function aJudgementThatReadsRight<T>(judgement: T, opts: { theReaderIsTheOnlyPerson?: boolean } = {}): T {
+  const j: any = aJudgementWithNoPieces(judgement);
+  if (!j || typeof j !== 'object' || !Array.isArray(j.whatThisCannotTellYou)) return j as T;
   return {
     ...j,
     whatThisCannotTellYou: j.whatThisCannotTellYou.map((x: any) => {

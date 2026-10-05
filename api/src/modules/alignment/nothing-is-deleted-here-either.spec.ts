@@ -45,6 +45,7 @@ describe('nothing is deleted here either', () => {
   it('tells them it is kept, not erased', () => {
     expect(sayItIsTakenBack('term')).toContain('stays on the record');
     expect(sayItIsTakenBack('reading')).toContain('Nobody else');
-    expect(sayItIsTakenBack('term')).toContain('counts toward nothing');
+    /* Reworded on 5 October (request 141): "counts toward nothing" is now said with the point first. */
+    expect(sayItIsTakenBack('term')).toContain('no longer counts toward anything');
   });
 });

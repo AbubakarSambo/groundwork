@@ -106,7 +106,7 @@ describe('the Blockers tile says whose worry it is', () => {
 describe('a line the record did not keep word for word is never put in quotation marks', () => {
   it('the tile passes over it and gives the count', async () => {
     const paraphrased: World = { ...w, worries: [{ text: 'I still set up the meetings.', participantId: 'p-kwame', saidWordForWord: false }] };
-    expect((await readAs(paraphrased, 'u-bisi')).blockers).toEqual({ value: '1 worry', sub: '1 worry is on record, and nobody is waiting on anybody.' });
+    expect((await readAs(paraphrased, 'u-bisi')).blockers).toEqual({ value: '1 worry', sub: '1 worry is on record. It was not kept in the words it was said, so it is not quoted here. Nobody is waiting on anybody.' }); /* Changed 5 Oct 2026, request 127 item 7: the true reason, which is the lead's as well. */
   });
 });
 
@@ -128,5 +128,105 @@ describe('where a colleague\'s words are walled from the reader (the person an e
     const held = await whatThisSessionHolds(prisma(w.worries!.slice(0, 1)), 'g-sales', 1, { participantId: 'p-ngozi', isLead: false, colleaguesWordsWalled: true });
     expect(held.theFirstWorry).toBeNull();
     expect(held.worries).toBe(1);
+    /* Request 127 item 7: the count says the true reason, which here is the wall. */
+    expect(held.whyNoWorryIsShown).toBe('walled');
+  });
+});
+
+/*
+ * REQUEST 127 ITEM 7, AFTER REVIEW: A COUNT WITH NO WORRY SHOWN SAYS THE TRUE REASON.
+ * "cannot be shown to you" was false for a lead, whose worries were simply never kept word for word.
+ */
+describe('request 127 (7): the Blockers tile says why no worry is named', () => {
+  const notKept: World = { ...w, worries: [
+    { text: 'I still set up the meetings.', participantId: 'p-kwame', saidWordForWord: false },
+    { text: 'The committee is slow.', participantId: 'p-ngozi', saidWordForWord: false },
+  ] };
+  it.each([['Bisi, who runs it', 'u-bisi', 'MEMBER'], ['Grace, an admin', 'u-grace', 'ADMIN']])('%s reads that none was kept word for word', async (_who, u, role) => {
+    expect((await readAs(notKept, u, role)).blockers).toEqual({
+      value: '2 worries',
+      sub: '2 worries are on record. None was kept in the words it was said, so none is quoted here. Nobody is waiting on anybody.',
+    });
+  });
+  it('Kwame and Ngozi, who check in, are served no tile before the team picture is shared', async () => {
+    for (const u of ['u-kwame', 'u-ngozi']) expect((await readAs(notKept, u)).blockers).toEqual({ value: undefined, sub: undefined });
+  });
+
+  const { whatThisSessionHolds, atAGlanceTiles } = require('../reports/what-this-session-holds');
+  const prisma = (rows: any[]) => ({
+    checkIn: { findMany: async () => [{ id: 'c1' }] },
+    groundDependency: { findMany: async () => [] },
+    groundObjective: { findMany: async () => [] },
+    groundObjectiveSnapshot: { findMany: async () => [] },
+    ground: { findUnique: async () => ({ participants: PEOPLE, peersVisibleToEachOther: true }) },
+    recordEntry: { findMany: async (args: any) => (args?.where?.type ? rows : []) },
+  });
+  const tileFor = async (rows: any[]) => {
+    const held = await whatThisSessionHolds(prisma(rows), 'g-sales', 1, { participantId: 'p-ngozi', isLead: false, colleaguesWordsWalled: true });
+    return atAGlanceTiles({ agreed: 0, stillOpen: 0, movedOnTargets: null, blocked: held.blocked, waiting: held.waiting, worries: held.worries, theWorry: held.theFirstWorry, whyNoWorry: held.whyNoWorryIsShown, waitsFromEarlier: held.waitsFromEarlier }).find((t: any) => t.label === 'Blockers');
+  };
+  it('Ngozi, walled from Kwame\'s words, reads that one is another person\'s words', async () => {
+    expect((await tileFor(w.worries!.slice(0, 1))).sub).toBe('1 worry is on record. It is another person\'s words, so it is not shown to you. Nobody is waiting on anybody.');
+  });
+  it('and with two of them, the plural', async () => {
+    const two = [w.worries![0], { text: 'The van broke down again.', participantId: 'p-kwame', saidWordForWord: true }];
+    expect((await tileFor(two)).sub).toBe('2 worries are on record. They are other people\'s words, so they are not shown to you. Nobody is waiting on anybody.');
+  });
+  it('and where none was kept word for word, she reads that reason instead, not the wall', async () => {
+    expect((await tileFor([{ ...w.worries![0], saidWordForWord: false }])).sub).toBe('1 worry is on record. It was not kept in the words it was said, so it is not quoted here. Nobody is waiting on anybody.');
+  });
+});
+
+/*
+ * REQUEST 127 ITEM 7, SECOND REVIEW: TWO MORE TRUE REASONS.
+ * Kwame, whose own "I am tired." was not kept word for word, read "They are other people's words" when some of
+ * the worries were Ngozi's (walled from him) and the rest were not kept. And the lead read "It was not kept in
+ * the words it was said" about a worry that was kept, but cannot be quoted whole.
+ */
+describe('request 127 (7), second review: a mixed reason, and a worry that cannot be quoted whole', () => {
+  const { whatThisSessionHolds, atAGlanceTiles } = require('../reports/what-this-session-holds');
+  const prisma = (rows: any[]) => ({
+    checkIn: { findMany: async () => [{ id: 'c1' }] },
+    groundDependency: { findMany: async () => [] },
+    groundObjective: { findMany: async () => [] },
+    groundObjectiveSnapshot: { findMany: async () => [] },
+    ground: { findUnique: async () => ({ participants: PEOPLE, peersVisibleToEachOther: true }) },
+    recordEntry: { findMany: async (args: any) => (args?.where?.type ? rows : []) },
+  });
+  const tileFor = async (rows: any[], reader: any) => {
+    const held = await whatThisSessionHolds(prisma(rows), 'g-sales', 1, reader);
+    return atAGlanceTiles({ agreed: 0, stillOpen: 0, movedOnTargets: null, blocked: held.blocked, waiting: held.waiting, worries: held.worries, theWorry: held.theFirstWorry, whyNoWorry: held.whyNoWorryIsShown, waitsFromEarlier: held.waitsFromEarlier }).find((t: any) => t.label === 'Blockers').sub;
+  };
+  const MIXED = [
+    { text: 'The committee is slow.', participantId: 'p-ngozi', saidWordForWord: true },
+    { text: 'I am tired.', participantId: 'p-kwame', saidWordForWord: false },
+    { text: 'The van broke down.', participantId: 'p-ngozi', saidWordForWord: false },
+  ];
+  const THE_MIX = '3 worries are on record. Some are other people\'s words, which are not shown to you. The rest were not kept in the words they were said. Nobody is waiting on anybody.';
+  it('Kwame, walled from Ngozi\'s words, is not told his own words are other people\'s', async () => {
+    const sub = await tileFor(MIXED, { participantId: 'p-kwame', isLead: false, colleaguesWordsWalled: true });
+    expect(sub).toBe(THE_MIX);
+  });
+  it('an admin who does not run it, and sees only their own, reads the same mix', async () => {
+    expect(await tileFor(MIXED, { participantId: null, isLead: false, ownWaitsOnly: true })).toBe(THE_MIX);
+  });
+  it('where every worry was kept and all are walled, it is other people\'s words, as before', async () => {
+    expect(await tileFor([MIXED[0]], { participantId: 'p-kwame', isLead: false, colleaguesWordsWalled: true }))
+      .toBe('1 worry is on record. It is another person\'s words, so it is not shown to you. Nobody is waiting on anybody.');
+  });
+
+  const QUOTED = { text: 'He said "next week" and nothing came.', participantId: 'p-kwame', saidWordForWord: true };
+  it('Bisi, who runs it, is told a kept worry cannot be quoted whole, on the served board', async () => {
+    expect((await readAs({ ...w, worries: [QUOTED] }, 'u-bisi')).blockers)
+      .toEqual({ value: '1 worry', sub: '1 worry is on record. It cannot be quoted here whole, so it is not shown. Nobody is waiting on anybody.' });
+  });
+  it('and with more than one, the plural', async () => {
+    const two = [QUOTED, { ...QUOTED, text: 'She said "maybe" again.', participantId: 'p-ngozi' }];
+    expect((await readAs({ ...w, worries: two }, 'u-bisi')).blockers.sub)
+      .toBe('2 worries are on record. None can be quoted here whole, so none is shown. Nobody is waiting on anybody.');
+  });
+  it('Kwame, walled from others, reads his own unquotable worry the same way', async () => {
+    expect(await tileFor([QUOTED], { participantId: 'p-kwame', isLead: false, colleaguesWordsWalled: true }))
+      .toBe('1 worry is on record. It cannot be quoted here whole, so it is not shown. Nobody is waiting on anybody.');
   });
 });

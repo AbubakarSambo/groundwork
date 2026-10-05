@@ -73,6 +73,6 @@ export function theStateAfterwards(standing: Reading[], checkedBy: string[]): st
 /** What the person is told, in the same voice as the record's own press. */
 export function sayItIsTakenBack(what: 'term' | 'reading'): string {
   return what === 'term'
-    ? 'Taken off. It stays on the record as something that was read out of the document and marked wrong, and from here it counts toward nothing.'
+    ? 'This is taken off, and it no longer counts toward anything. It stays on the record, marked wrong.'
     : 'Taken back. Nobody else\'s reading changed, and this one stays on the record as given and withdrawn.';
 }

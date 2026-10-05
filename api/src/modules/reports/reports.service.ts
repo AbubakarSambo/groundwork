@@ -175,6 +175,7 @@ import { plainNameOf as plainPatternNameOf } from '../patterns/plain-pattern-nam
 import { whatMoreThanOnePersonNamed, namedByMoreThanOne } from './what-more-than-one-person-named';
 import { decide, RoundPicture } from './what-the-report-said-at-the-time';
 import { aStoredSentenceReadsRight } from './a-stored-sentence-reads-right';
+import { aJudgementWithNoPieces } from './the-judgement-reads-right';
 import { whyNot } from './why-it-is-not-happening';
 import { howThisHasMoved } from './how-this-has-moved';
 import { doesThisReportMarkItsInferences } from './a-report-that-marks-nothing';
@@ -3404,6 +3405,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       theFirstBlocker: held.theFirstBlocker,
       worries: held.worries,
       theFirstWorry: held.theFirstWorry,
+      whyNoWorryIsShown: held.whyNoWorryIsShown,
       waitsFromEarlier: held.waitsFromEarlier,
       saidInAll,
       documentedInAll,
@@ -5448,6 +5450,8 @@ happened, and what is in the way.`;
         whatToDo: named.theJudgement.whatToDo.filter((m: any) => !(m && typeof m.move === 'string' && YOUR_OWN_ACCOUNT_IS_NOT_HERE.test(m.move))),
       };
     }
+    /* And no step that is only a piece, and no promise quoted as a fragment (request 134 item 4), as the board serves it. */
+    if (named?.theJudgement) named.theJudgement = aJudgementWithNoPieces(named.theJudgement);
     return {
       ...named,
       sharedPicture: t(report.sharedPicture),

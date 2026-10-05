@@ -19,6 +19,170 @@ Read this one from their side with:
 
 *Read at 26 September against `920f67f8`.*
 
+## 5 October, afternoon: Hafsah's two wording decisions, and what came after
+
+**123 (8), the outcome when somebody leaves a role.** Hafsah chose the prototype's sentence with the
+person's name in it. Nothing on the record says anybody's pronoun, so the name is said twice rather
+than guessed. Each reader now reads it like this:
+
+| Who reads it | Where | What they read |
+| --- | --- | --- |
+| Wairimu, the lead | the resolution panel, and the closing email | "Kwame's role does not continue. Kwame's history stays as it is." The email says "The outcome is that Kwame's role does not continue. Kwame's history stays as it is." |
+| Kwame, the person it is about | the resolution panel, and the closing email | "Your role does not continue. Your history stays as it is." The email says "The outcome is that your role does not continue. Your history stays as it is." |
+| Grace, an admin who is not in the check-in | the resolution panel | "The role does not continue. The person's history stays as it is." The panel already shows her Kwame's role rather than his name, so the ending does the same. |
+| The lead of a drift check-in with one other person | the board's "Where this is heading" | "Kwame's role does not continue. Kwame's history stays as it is." |
+| Anybody at a door that refuses them after the end | the refusal | "This check-in has ended. The role does not continue. The person's history stays as it is." The door does not know who is at it, so it names nobody. |
+
+The name comes through the same `namesVisibleTo` every other part of the check-in reads, in
+`resolution/who-the-ending-is-about.ts`. With more than one other person in the check-in, nothing on
+record says which of them it is about, so the ending stays neutral.
+
+**And when the person stays (after review).** The new-hire ending "The new person stays in the role."
+now names the person the same way: Wairimu reads "Kwame stays in the role.", Kwame reads "You stay in
+the role.", and Grace, or a door that refuses somebody, reads "The person stays in the role." The
+closing email says "The outcome is that Kwame stays in the role." to Wairimu and "The outcome is
+that you stay in the role." to Kwame. "The role is set up differently." and "The time to decide is
+made longer." name nobody and are true as they are, so I left them.
+
+**One thing for you to do.** Your mirror, `client/src/lib/end-states.ts`, still holds the two old
+labels, so `end-state-mirror.spec.ts` fails until you change them. I was not allowed to edit your
+files. Both `EXIT` labels, on `NEW_HIRE` and on `DRIFT`, should now read
+`'The role does not continue. The person\'s history stays as it is.'`, and the `NEW_HIRE` `KEEP`
+label should read `'The person stays in the role.'` Your screens read the
+labels the API serves, not the mirror, so nothing a person sees waits on it.
+
+**141, the wording guard, fixed for good from the engine side.** Your guard counts lines in
+`client/src` and `api/src` together against 60, and the engine never ran it, so every new engine
+line broke it after a merge. Two changes:
+
+1. I rewrote nine lines people read in `api/src` so the point comes first. The guard now counts
+   **51 in total: 35 in `api/src` and 16 in `client/src`**. I checked that with your own guard,
+   which passes. You may lower your ceiling to 51 if you want to.
+2. `api/src/the-engines-copy-does-not-sound-like-yoda.spec.ts` runs the same scoring over `api/src`
+   alone, in the engine's own test run, and fails above 35. It prints every line that scores, so a
+   new one is caught here before I push.
+
+The nine lines, as a person now reads them:
+
+- A link nobody recognises: "We do not recognise that link. Have you already joined? Then sign in as you usually do. Have you not joined yet? Ask the person who added you to send you a new invite." (Changed after review: "the password you set" was false for people who sign in by email link.)
+- A refused sign-in: "We have emailed you a sign-in link, if we know that address. Check your inbox. Did you use a password? Check it and try again." It still does not say whether the address is known, and it no longer says "account". (Your sign-in screen test mocks the old sentence, so it still passes, but it no longer matches what the server sends.)
+- The other "account" lines in `auth.service.ts` are changed too (second review). Signing up now reads "Check your email. We sent a link to amina@example.com to confirm it is yours. Open it on any device." The address is the person's own, typed a moment before. Asking for a sign-in link reads "We have sent a sign-in link to that address, if we know it. Check your email." Asking to reset a password reads "We have sent a link to choose a new password to that address, if we know it. Check your email." Someone switched off who signs in with Google reads "You can no longer sign in here. Ask the person who added you if you need to get back in." Nothing in `client/src` matches the old sentences exactly, so you have nothing to change. Two API descriptions in `auth.controller.ts` still say "account", and only developers read those.
+- Taking back a term read from a document: "This is taken off, and it no longer counts toward anything. It stays on the record, marked wrong."
+- A full session: "This session is full. It holds twenty answers, and everything you have said is on the record. Finish the check-in, and it will be written up. You can open another session afterwards to add more. Nothing you have written is lost."
+- Work outside its phase: "This does not count as a contribution on its own, because no phase running today allows it. Work that makes the company operable counts during the phase the company agreed for it. Outside that phase, say what it unblocks, what it adds to the moat, or what it keeps running."
+- Two reasons Ask Groundwork gives for what it does not do (billing and suggestions), the foundations item in the ops roadmap seed, and one API description.
+
+I left the line in `context.service.ts` alone, because it is inside a model instruction.
+
+**156, the four seeds.** Nothing is blocked. They were committed and allow-listed in `abfac55c`, and
+that commit is already in `mine/wip/prototype-ui` (`git merge-base` confirms it), so you only need
+to pull.
+
+**134 (5), who is asked to find an owner.** Hafsah decided the lead finds the owner, and the person
+waiting is the reason. Where the thing a person waits on names nobody, the lead's row of "The team
+today" now reads, for Rukia, for Grace who set it up, and for Juma who only reads:
+"Find out who owns this, so that Neema Achieng is not left waiting." Where the name may not be
+shown, it reads "so that this colleague is not left waiting." Nobody who checks in is sent these
+rows, so no person reads it about themselves. Every other way through, such as speaking to somebody
+rather than writing, is still asked of the person waiting. The sentence is assembled by the engine
+in `whatToAskFor` (`board/where-each-person-is-against-their-number.ts`), not written by the model.
+The person's own coaching still tells them "Find out who owns this by name", because there they
+are the reader and it is advice to them.
+
+**127 (5), "their" for the reader, is not changed, and here is why.** The line left is "…while you
+have been working on a different task at their own request." "Their own" would normally point back to
+"you", which would make it "at your own request". But the same board says the change was "as
+requested by Nadia Haddad". So "your own request" could well be false, and I cannot tell from the
+sentence whose request it was. That sentence is the model's, so the fix belongs with the judgement
+and prompt work, not in a rule that guesses. I have stopped on it.
+
+**127 (6), a kind of work nobody set.** The person's own coaching said "This is session 1 of 4 of
+founder or CEO work." while the board says the kind of work is not set. Both were true: the label is
+the engine's reading of what she said, not a setting. The coaching now reads "This is session 1 of
+4. What you have said so far reads as founder or CEO work." The coaching is private, so only the
+person it is written for reads it. Where somebody gave their own role, it still reads "This is
+session 1 of 4 of your work as poultry farmer." The engine still coaches from the same role map.
+
+**127 (7), a count of worries with nothing behind it.** Changed again after review, because "cannot
+be shown to you" was false for a lead whose worries were simply never kept word for word. Where
+there are worries and none is named, the Blockers tile now says the true reason:
+
+- To somebody walled from other people's words, such as the person an evaluation is about, or a person who does not see the others: "13 worries are on record. They are other people's words, so they are not shown to you." With one: "1 worry is on record. It is another person's words, so it is not shown to you."
+- To any reader, the lead included, where none was kept in the words it was said: "13 worries are on record. None was kept in the words it was said, so none is quoted here." With one: "1 worry is on record. It was not kept in the words it was said, so it is not quoted here."
+
+- Where some are other people's words and the rest were not kept word for word (changed after a second review, because Kwame was told his own "I am tired." was other people's words): "3 worries are on record. Some are other people's words, which are not shown to you. The rest were not kept in the words they were said." A reader's own worries are never walled from them, so this never calls their own words other people's.
+- Where this reader may read worries that were kept word for word, but none can be quoted whole (its own quotation marks, or the quote rule would cut it): "13 worries are on record. None can be quoted here whole, so none is shown." With one: "1 worry is on record. It cannot be quoted here whole, so it is not shown." The lead reads this one where before she was told, falsely, that it was not kept.
+
+The "other people's words" sentence is now said only where every worry was kept word for word and
+none may be read by this reader. The sentence about waits follows, unchanged. The reason is worked out in `whatThisSessionHolds`
+(`whyNoWorryIsShown`) and carried to the tile on the board and in the session report. I did not add
+a sentence pointing elsewhere, because I found no other place that shows these worries to the same
+reader.
+
+**139, "Point to successfully renewed contracts" drawn as a goal.** I have stopped on this one for
+now, because I cannot find where the line comes from. No code writes it, and it is not in the local
+database on this computer, so it was written by the model or typed by somebody on your onboarding
+check-in (e2cfd3d8). Please tell me which field of the board carries it (for example `aims`,
+`startingState`, or a target's `name`), and I will fix it at the place that writes it. I have not
+started 130 (b), 130 (d) or 131 (6) either, because none of them is small.
+
+**130 (b), "Who owns what" was empty for Aisha.** A promise said in a check-in is stored as its own
+row, and this panel read only the record's lines. Aisha's promise of a photo of the delivery sheets
+was stored as a promise and nowhere else, so her list was empty. On this computer's database, 59
+people had promises like this and an empty list. The panel now also sends each person's own promises
+from their check-ins:
+
+- Rukia (the lead), Grace and Juma (admins) read "Neema Achieng said, "I will send a photo of the delivery sheets on Friday.""
+- Neema reads "You said, "I will send a photo of the delivery sheets on Friday.""
+- A promise not kept word for word is said in our voice, never as an empty line (changed after review). The lead and the admins read "Neema Achieng committed to send a photo of the delivery sheets on Friday.", and Neema reads "You committed to send a photo of the delivery sheets on Friday." Only where that cannot be said does it fall back to "Neema Achieng has made a commitment here."
+- Where people do not see each other, nobody else is sent it. A dropped promise is not sent, and neither is one the person did not make in their own name. A promise already on the list, even in other words, is not sent twice. This uses the same sameness rule the writer uses, so Amani reads one Tuskys line, not two. Promises and record lines are listed in the order they were said.
+
+Promises a lead pasted or wrote are not added, because they are not the person's own. I could not
+check "42 drops, missed 9" on your check-in, because it is not on this computer. If it is still
+missing once you pull, please tell me which row holds it.
+
+**130 (d), the operations board: I have stopped on this one.** Here is what I found.
+
+- **By site.** `byArea` is already sent to every kind of work, from the records this reader is served. A record whose details include a Site, Depot, Warehouse, Hub or Town is grouped "By site". It is sent only where the check-in's kind of work is set, and only where the record says which site it is. If your check-in f76b7a18 has no kind of work, `journey/give-each-check-in-its-kind-of-work.ts` gives it one. If its incidents name no site, the model never wrote one, and asking it to would change the records prompt.
+- **Stages for incidents.** The stages of each kind are written into the instruction the model reads when it picks out records, so adding them is a prompt change. The prototype also does not name the incident stages plainly: its "Stage now" column shows a site and the "What shows it" column. Which stages an incident moves through is Hafsah's decision.
+- **Themes (incidents by site and type, last 8 weeks).** This needs each incident to carry a type, which the model would have to be asked for, so it is a prompt change too. It would also be a new shape to serve, which we should agree on first.
+
+**131 (6), the programme board: I have stopped on this one too.**
+
+- **The headline question.** I checked the programme's aim in the shapes it is likely stored in. "Train 10,000 market traders in financial skills, at least 60% of them women" with 10,000 as its number is asked as "Will we train 10,000 market traders in financial skills, at least 60% of them women, by 28 February 2027?" (after review, an aim with a clause of its own takes a comma before its day; a comma inside a number such as 10,000 does not count), with "So far it is 6,240 of 10,000. 3,760 more are needed by 28 February 2027." Stored with no number and no deadline, it is asked without a day. Your review was read at 0b15efca, before the headline work. If 46cfcb15 still has no headline after you pull, please send me its stored targets and I will find out why.
+- **The "Women" share target.** Groundwork sends only targets a lead has set. I found no row on this computer that would hold a "Women" share, and making one from the aim's words would be inventing a target. Whether the setup should split "at least 60% of them women" into its own target is Hafsah's decision.
+- **The county for each group.** A group's county is sent in its details, and groups are sent "By county", wherever the model read a county from what was said. A group with no county was given none in the check-in. Asking the model to look harder would change the records prompt.
+
+**123 (7), the lead's judgement mixed "you", "they" and "she" for one person.** One repair is left at
+the read: the verb after "until you … and". "…until you clarify the role and provides the necessary
+authority." now reads "…until you clarify the role and provide the necessary authority." It does not
+change where "who", "that", "which" or "whose" comes between.
+
+Three other rules were tried, and I took each one out after review, because each could put a false
+sentence about the lead on the page:
+
+- "she" and "he": "Your own answers show she was late" became "you were late".
+- "they" after the reader's own record: "…says they were late on three deliveries" would have become "you were late".
+- A reflexive: "You saw the drivers load the vans themselves." became "yourself".
+
+Who a pronoun means is the writer's to say, so the pronouns and reflexives go to the judgement's prompt
+work after the run. Every sentence the reviews sent back is pinned in the spec as left exactly as it
+is. An admin reads names and no "you". The participant reads no judgement.
+
+**134 (4), the judgement's two sentences about the open commitments.** This is repaired where the
+judgement is served, on the report and on the board, and narrowed after review. No step is ever
+dropped now.
+
+- "The status of the open commitments to 'call the client' and 'file the bundle'." now reads "Check the status of the open commitments to call the client and file the bundle." Only a step opening "The status of", "The state of" or "The progress of", with no verb of its own, is changed.
+- "Ask Amani Wekesa about the open commitment to 'I will file the bundle'." now reads "Ask Amani Wekesa about the open commitment to file the bundle." A quote is said as what was promised only when it opens "I will", "I'll", "I am going to", "we will" or a lower-case verb.
+
+Left exactly as they are, and pinned in the spec: "A short call with Ngozi this week settles who owns
+the lease.", "The lead confirms the price list with Amani by Friday.", "The warehouse question goes to
+Juma first.", "A written answer to Amani on the discount, before Friday.", and "Ask Amani about the
+commitment to 'Amina will send the sheets'." The lead and an admin with access read the same steps.
+The participant reads no judgement. The day a promise was due comes with the prompt work after the
+run.
+
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
 ```

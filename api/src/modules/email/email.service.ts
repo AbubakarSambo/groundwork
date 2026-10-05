@@ -1,4 +1,4 @@
-import { theEndingSaid, theOutcomeIsThat } from '../resolution/end-states';
+import { theEndingSaid, theOutcomeIsThat, TheEndingIsAbout } from '../resolution/end-states';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
@@ -1267,8 +1267,8 @@ export class EmailService implements OnModuleInit {
   }
 
   /** Someone proposed an end state and the recipient has not yet confirmed. (GW-22) */
-  async sendResolutionProposal(email: string, proposerLabel: string, endState: string, groundUrl: string, scenario?: string | null): Promise<void> {
-    const endStateLabel = this.endStateLabel(endState, scenario);
+  async sendResolutionProposal(email: string, proposerLabel: string, endState: string, groundUrl: string, scenario?: string | null, who?: TheEndingIsAbout | null): Promise<void> {
+    const endStateLabel = this.endStateLabel(endState, scenario, who);
     await this.sendEmail({
       to: email,
       subject: `${proposerLabel} suggested how to wrap this up`,
@@ -1281,8 +1281,8 @@ export class EmailService implements OnModuleInit {
   }
 
   /** Ground closed. All parties confirmed the same end state. (GW-50) */
-  async sendGroundClosed(email: string, groundLabel: string, endState: string, groundUrl: string, scenario?: string | null): Promise<void> {
-    const endStateLabel = this.endStateLabel(endState, scenario);
+  async sendGroundClosed(email: string, groundLabel: string, endState: string, groundUrl: string, scenario?: string | null, who?: TheEndingIsAbout | null): Promise<void> {
+    const endStateLabel = this.endStateLabel(endState, scenario, who);
     await this.sendEmail({
       to: email,
       subject: `"${groundLabel}" is now closed`,
@@ -1528,8 +1528,8 @@ export class EmailService implements OnModuleInit {
    * 75 item 48). This file used to keep its own copy of the labels by value alone, which had drifted
    * ("Part ways" where the panel said "Let them go"). Null where the value is not one of this kind's.
    */
-  private endStateLabel(value: string, scenario?: string | null): string | null {
-    return theEndingSaid(scenario ?? null, value);
+  private endStateLabel(value: string, scenario?: string | null, who?: TheEndingIsAbout | null): string | null {
+    return theEndingSaid(scenario ?? null, value, who);
   }
 
   async sendCodeExpiryReminder(

@@ -4,7 +4,7 @@ import { WHERE_IT_WAS_READ_FROM } from '../conversation/how-checkable-a-session-
 import { COUNTS_AS_A_SOURCE } from '../documents/what-kind-of-thing-a-document-is';
 import { RecordEntryType } from '@prisma/client';
 import { howMuchThereIsToGoOn, type Confidence } from './how-much-there-is-to-go-on';
-import { atAGlanceTiles, type AGlanceRead } from './what-this-session-holds';
+import { atAGlanceTiles, type AGlanceRead, type WhyNoWorryIsShown } from './what-this-session-holds';
 import { howSolid, MARK } from './a-figure-nobody-can-check-says-so';
 
 /**
@@ -228,6 +228,7 @@ export interface SessionReportInputs {
   theFirstBlocker?: string | null;
   worries?: number;
   theFirstWorry?: string | null;
+  whyNoWorryIsShown?: WhyNoWorryIsShown;
   /** Waits raised before this session and still open (see whatThisSessionHolds). */
   waitsFromEarlier?: number;
   /** Everybody this session counts, so a person who answered nothing specific still gets a line. */
@@ -532,6 +533,7 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     theBlocker: input.theFirstBlocker ?? null,
     worries: input.worries ?? 0,
     theWorry: input.theFirstWorry ?? null,
+    whyNoWorry: input.whyNoWorryIsShown ?? null,
     waitsFromEarlier: input.waitsFromEarlier ?? 0,
   });
 

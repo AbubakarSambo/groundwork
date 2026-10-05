@@ -23,7 +23,8 @@ describe('where each person is against their number', () => {
        same channel. Ask them to ...". It is now full sentences with his name.
        Changed again 27 Sep 2026: the blocker is no longer in quotation marks, because it is the
        dependency reader's phrase and not Musa's words. See whatToAskFor. */
-    expect(whatToAskFor(r)).toBe('Musa has been waiting 21 days on the Sokoto lease, and so far they have asked about it more than once, the same way each time. Ask Musa to find out who owns this by name. Everything else needs that first.');
+    /* Changed 5 Oct 2026 (request 134 item 5): Hafsah decided the lead finds the owner, with the person waiting as the reason. */
+    expect(whatToAskFor(r)).toBe('Musa has been waiting 21 days on the Sokoto lease, and so far they have asked about it more than once, the same way each time. Find out who owns this, so that Musa is not left waiting.');
   });
 
   it('and on the board row, the ask does not repeat what the sentence above it already says', () => {
@@ -177,7 +178,9 @@ describe('the ask reads as something a lead can do', () => {
   it('never asks anyone to speak to a thing', () => {
     const ask = whatToAskFor(row({ inTheWay: [{ what: 'a shared calendar for year-end', owner: 'the handover from the current finance manager', days: 0, tried: 'nothing' }] }));
     expect(ask).not.toMatch(/speak to the handover/);
-    expect(ask).toContain('Ask Jide Sanusi to find out who owns this by name.');
+    /* Changed 5 Oct 2026 (request 134 item 5): the lead is asked to find the owner, not Jide. */
+    expect(ask).toContain('Find out who owns this, so that Jide Sanusi is not left waiting.');
+    expect(ask).not.toMatch(/Ask Jide Sanusi to find out/);
   });
 
   it('still asks them to speak to a person, by name or by role', () => {

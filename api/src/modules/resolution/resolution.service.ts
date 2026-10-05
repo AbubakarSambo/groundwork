@@ -10,6 +10,7 @@ import { GroundStatus, PartyType } from '@prisma/client';
 import { SuggestionsService } from '../suggestions/suggestions.service';
 import { ReviewsProposedService } from '../suites/the-reviews-proposed.service';
 import { theEndingPageFor } from './what-the-ending-page-reads';
+import { whoTheEndingIsAbout } from './who-the-ending-is-about';
 import { labelsForParties, namesVisibleTo, displayName, plainWordsByPerson, atTheStart } from '../reports/party-labels';
 
 /**
@@ -255,7 +256,8 @@ export class ResolutionService {
     // Notify the other active parties.
     const active = await this.prisma.groundParticipant.findMany({
       where: { groundId, userId: { not: null } },
-      select: { id: true, email: true },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, email: true, partyType: true, createdAt: true, nameGiven: true, user: { select: { firstName: true, lastName: true, email: true } } },
     });
     /**
      * The eighth hand-written name chain. Same shape as the others: the role, else a raw address,
@@ -278,7 +280,8 @@ export class ResolutionService {
     const others = active.filter((p) => p.id !== participant.id);
     for (const p of others) {
       await this.email
-        .sendResolutionProposal(p.email, proposerLabel, proposedEndState, groundUrl, ground.scenario)
+        .sendResolutionProposal(p.email, proposerLabel, proposedEndState, groundUrl, ground.scenario,
+          whoTheEndingIsAbout(active as any, namesVisibleTo(p.id, active as any), p.id))
         .catch((err: any) =>
           this.logger.error(`Counter-proposal email failed for participant ${p.id}: ${err.message}`),
         );
@@ -322,7 +325,10 @@ export class ResolutionService {
     // GW-50: close-confirmation email to all parties simultaneously.
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { label: true, scenario: true, participants: { select: { email: true } } },
+      select: {
+        label: true, scenario: true,
+        participants: { orderBy: { createdAt: 'asc' }, select: { id: true, email: true, partyType: true, createdAt: true, nameGiven: true, user: { select: { firstName: true, lastName: true, email: true } } } },
+      },
     });
     if (ground) {
       const frontend = this.config.get<string>('resend.frontendUrl') || '';
@@ -330,7 +336,10 @@ export class ResolutionService {
       await Promise.all(
         ground.participants.map((p) =>
           this.email
-            .sendGroundClosed(p.email, ground.label, endState, groundUrl, ground.scenario)
+            /* Each person reads the ending as it is said to them: the person leaving reads "Your role", the
+               lead reads their name, and nobody reads a name the check-in does not show them (request 123 item 8). */
+            .sendGroundClosed(p.email, ground.label, endState, groundUrl, ground.scenario,
+              whoTheEndingIsAbout(ground.participants as any, namesVisibleTo(p.id, ground.participants as any), p.id))
             .catch((err: any) => this.logger.error(`Close email failed for ground ${groundId}: ${err.message}`)),
         ),
       );
@@ -430,7 +439,8 @@ export class ResolutionService {
       confirmations,
       confirmedCount: confirmations.filter((c) => c.confirmed).length,
       totalActive: active.length,
-      options: endStatesFor(ground.scenario),
+      /* The ending about a person leaving names them, through the same names this panel reads (request 123 item 8). */
+      options: endStatesFor(ground.scenario, whoTheEndingIsAbout(active as any, names, viewer?.id ?? null)),
       groundStatus: ground.status,
       /**
        * Who closes this ground, so the screen can stop asking the wrong person.

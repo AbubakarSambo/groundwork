@@ -86,6 +86,16 @@ function aSentenceAboutTheReaderSaysYou(text: string): string {
   }).join('');
 }
 
+/*
+ * NO PRONOUN OR REFLEXIVE IN THE LEAD'S JUDGEMENT IS REWRITTEN HERE (request 123 item 7, after three reviews).
+ *
+ * Three rules were tried and each was taken out, because each could put a false sentence about the lead on the page:
+ * "she" and "he" ("Your own answers show she was late" became "you were late"), "they" after the reader's own record
+ * ("... says they were late on three deliveries"), and a reflexive ("You saw the drivers load the vans themselves"
+ * became "yourself"). Who a pronoun means is the writer's to say, so it goes to the judgement's prompt. What stays at
+ * the read is the verb after "until you ... and" (party-labels.ts), which names nobody.
+ */
+
 export function oldWordingPutPlain(text: string): string {
   let out = text;
   for (const [pattern, to] of OLD_WORDING) out = out.replace(pattern, to as any);

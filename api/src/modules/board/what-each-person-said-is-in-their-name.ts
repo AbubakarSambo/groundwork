@@ -56,7 +56,7 @@ export function oneLineInTheirName(words: string, who: string, type?: string | n
 }
 
 /** How a line may be said: its own words quoted, the sentences it came from quoted, or none of its words. */
-export type SaidAs = 'their-words' | 'their-sentences' | 'not-their-words';
+export type SaidAs = 'their-words' | 'their-sentences' | 'not-their-words' | 'what-they-committed-to';
 
 /**
  * The line's text and how it may be said, from what the person typed in the check-in it came from. The
@@ -127,6 +127,9 @@ export function eachLineInTheirName<T extends AWhoOwnsWhatRow>(
         /* The text already says what kind of line it is ("You have reported progress."), so the screen need not
            say it again under it (request 117, part 8): `itsKindIsSaid`. */
         if (saidAs === 'not-their-words') return { ...rest, text: saidWithoutTheirWords(who, rest.type), itsKindIsSaid: true };
+        /* A promise not kept word for word, said in our voice (request 130 b): "Neema Achieng committed to send a photo
+           of the delivery sheets on Friday." The text is the end of that sentence, so every wall ran over it already. */
+        if (saidAs === 'what-they-committed-to') return { ...rest, text: `${who} committed to ${text.replace(/[.!?]+$/, '')}.`, itsKindIsSaid: true };
         /* Their own marks inside a quote become single ones, so one quote is never closed by another. */
         const words = text.replace(/["“”]/g, "'");
         if (saidAs === 'their-sentences') return { ...rest, text: `${who} said, "${/[.!?]$/.test(words) ? words : `${words}.`}"` };

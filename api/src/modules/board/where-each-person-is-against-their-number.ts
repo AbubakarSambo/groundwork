@@ -360,7 +360,17 @@ export function whatToAskFor(row: PersonRow, alreadySaid: boolean | 'the wait' =
      speak to, so the ask is to find out who owns it. */
   const owner = aPersonCalled(worst.owner) ? worst.owner : null;
   const first = waysThrough({ what: worst.what, owner, days: worst.days, tried: worst.tried, chaseBy: null })[0];
-  const theAsk = `Ask ${them} to ${first.charAt(0).toLowerCase()}${first.slice(1)}`;
+  /*
+   * FINDING THE OWNER IS THE LEAD'S TO DO (request 134 item 5; Hafsah, 5 October 2026). The row read
+   * "Ask Amani Wekesa to find out who owns this by name." Amani is the one waiting, and the lead is
+   * the one who can find out. So the lead is asked, and the person waiting is the reason: "Find out
+   * who owns this, so that Amani Wekesa is not left waiting." Every other way through is still the
+   * person's to take, so it is still asked of them.
+   */
+  const theLeadFindsTheOwner = /^Find out who owns\b/.test(first);
+  const theAsk = theLeadFindsTheOwner
+    ? `${first.split(/(?<=\.)\s/)[0].replace(/\.$/, '').replace(/\s+by name$/, '')}, so that ${them} is not left waiting.`
+    : `Ask ${them} to ${first.charAt(0).toLowerCase()}${first.slice(1)}`;
   if (alreadySaid === 'the wait') {
     /* The row's own sentence already says the wait and since when; the ask adds only what was tried, and the ask (request 117, part 7). */
     const tried = WHAT_THEY_TRIED_SAID_IN_FULL[worst.tried];

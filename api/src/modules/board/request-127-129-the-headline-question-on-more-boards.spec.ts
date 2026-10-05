@@ -1,5 +1,5 @@
 import { GroundScenario } from '@prisma/client';
-import { boardAs, SALES_RUN, BISI, type Setup } from './the-switchboards-sections-harness';
+import { boardAs, SALES_RUN, BISI, JUMA, type Setup } from './the-switchboards-sections-harness';
 
 /**
  * Requests 127 and 129: "Engineering release, test" and the support desk had no headline question. The release's aim is
@@ -49,5 +49,18 @@ describe('the founder reads her own number', () => {
     expect(b.headline.question).toContain('20 paying customers');
     expect(b.headline.answer).not.toBeNull();
     expect(b.headline.bars).toHaveLength(1);
+  });
+});
+
+/* The programme's aim carries a trailing clause, so its day follows a comma (reviewer, 5 October 2026). */
+describe('an aim with a trailing clause takes a comma before its day (request 131 item 6, review)', () => {
+  const s: Setup = { ...SALES_RUN, scenario: GroundScenario.COHORT_CHECK, clock, objectives: [aim('Train 10,000 market traders in financial skills, at least 60% of them women', 10000, 6240)] as any };
+  it.each([['Bisi, who runs it', BISI], ['Juma, an admin', JUMA]])('%s reads the question with the comma', async (_who, reader) => {
+    const b: any = await boardAs(s, reader[0], reader[1]);
+    expect(b.headline.question).toBe('Will we train 10,000 market traders in financial skills, at least 60% of them women, by 30 September?');
+  });
+  it('an aim with no clause has no comma before its day', async () => {
+    const b: any = await boardAs({ ...s, objectives: [aim('Train 10,000 market traders in financial skills', 10000, 6240)] as any }, ...BISI);
+    expect(b.headline.question).toBe('Will we train 10,000 market traders in financial skills by 30 September?');
   });
 });

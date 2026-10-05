@@ -1,5 +1,26 @@
 # Morning report
 
+## 5 October, after 16:00: your two wording decisions, and the work after them
+
+- When somebody leaves a role, the lead now reads "Kwame's role does not continue. Kwame's history stays as it is.", Kwame reads "Your role does not continue. Your history stays as it is.", and anybody who may not see his name reads "The role does not continue. The person's history stays as it is." (123 item 8). The screens workspace needs to copy the new label into its mirror file, which I was not allowed to edit.
+- When the new person stays, the lead now reads "Kwame stays in the role.", Kwame reads "You stay in the role.", and anybody who may not see his name reads "The person stays in the role."
+- The wording guard the screens kept tripping over now counts 51 lines, down from 60, because I rewrote nine engine sentences so the point comes first, and a new engine test fails if `api/src` goes above 35 (request 141).
+- After review, the sign-in, sign-up, password reset, invite-link and switched-off answers no longer say "account" or "the password you set".
+- When a person waits on something nobody owns, the lead is now asked to find the owner, "so that Neema Achieng is not left waiting", instead of being told to ask Neema to find out (134 item 5).
+- A person's own coaching no longer says "session 1 of 4 of founder or CEO work" as if somebody had set it; it reads "This is session 1 of 4. What you have said so far reads as founder or CEO work." (127 item 6).
+- I stopped on 127 item 5, "at their own request": the board says the request was Nadia Haddad's, so changing it to "your own request" could be false. It belongs with the judgement work.
+- Where no worry is named, the Blockers tile now says the true reason: other people's words this reader may not read, or none kept in the words it was said, which is true for the lead too (127 item 7, changed after review). After a second review it also says when some are other people's words and the rest were not kept, and when a kept worry cannot be quoted whole.
+- "Who owns what" now includes the promises people made in their check-ins. Before, 59 people on this computer's database had an empty list because their promise was stored only as a promise (130 b). After review, a promise not kept word for word reads "Neema Achieng committed to send a photo of the delivery sheets on Friday.", and the same promise in other words is listed once.
+- I stopped on 130 (d) and 131 (6). Incident stages, incident themes and a group's county all need the records prompt changed, and the stage names and a "Women" share target are your decisions. "By site" and the programme's headline are already sent where the data is there. The answers file says what I checked.
+- The headline question puts a comma before its day when the aim has a clause of its own: "…, at least 60% of them women, by 28 February 2027?"
+- At the read, the lead's judgement now fixes only the verb after "until you … and" (123 item 7). I took out the rules for "she", "he", "they" and for reflexives after three reviews, because each could put a false sentence about the lead on the page. The pronouns go to the prompt work after the run.
+- The lead's judgement turns "The status of the open commitments to…" into "Check the status of…", and says a promise like 'I will file the bundle' as "file the bundle". After review it no longer drops any step, and leaves quotes that are not promises alone (134 item 4).
+- I stopped on 139, the goal drawn as "Point to successfully renewed contracts", because no code writes that line and it is not in this computer's database. I asked the screens workspace which field carries it. I did not start 130 (b), 130 (d) or 131 (6), because none of them is small.
+
+### Needs Hafsah
+
+**An organisation's admin who is not in a check-in reads people's exact words on its board.** Juma, an admin of the organisation who is not in the sales check-in and did not set it up, is sent everybody's own words in "Who owns what" and other sections, in quotation marks with their names. That was already so before today's work, and nothing I changed widened it. CLAUDE.md says what people say in check-ins can be shown word for word to the people in that check-in. The wall for an admin without access to a check-in (decision 60, point 4) covers only evaluation check-ins. Whether an admin who is not in a check-in should read people's exact words on every other kind is your call. I have changed nothing.
+
 ## 5 October, 15:30: where I am, for your fresh session
 
 Everything is committed and pushed to `mine wip/release`. The working tree is clean. One process
@@ -1155,6 +1176,7 @@ My recommendations, for Hafsah to decide:
 **Patterns are not steady from run to run.** Across all 24 scenarios, only 15% of the person-and-pattern findings in run-19 appeared again in run-20. The lead's marks and self-learning are built to work on this, but the detector itself, and what the test personas say, should be looked at before patterns reach anyone live.
 
 ### Needs Hafsah
+
 
 1. **Switching off the old context chat.** Everything the doors decide matches in the live proof. Two differences remain, both the model reading a success statement differently. On your word it is switched off.
 2. **The six disagreements between decisions**, listed under Hafsah's second set of answers, each with how it is being handled.

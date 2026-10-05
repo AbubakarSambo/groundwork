@@ -97,7 +97,7 @@ describe('the Blockers tile, with three waits from an earlier session still open
   });
   it('no reader is told that nobody is waiting on anybody', async () => {
     for (const [u, r] of [['u-ada', 'MEMBER'], ['u-tunde', 'MEMBER'], ['u-grace', 'ADMIN']] as const) {
-      expect(String((await theTileAs(u, r)).sub)).not.toMatch(/nobody is waiting on anybody/);
+      expect(String((await theTileAs(u, r)).sub)).not.toMatch(/nobody is waiting on anybody/i);
     }
   });
 });
@@ -106,7 +106,8 @@ describe('the tile itself', () => {
   const base = { agreed: 0, stillOpen: 0, movedOnTargets: null, blocked: 0, waiting: 0, backedPct: null, numberWasSaid: false } as const;
   it('with nothing waiting anywhere, nobody waits, as before', () => {
     expect(atAGlanceTiles({ ...base, worries: 1, theWorry: null }).find((t) => t.label === 'Blockers')!.sub)
-      .toBe('1 worry is on record, and nobody is waiting on anybody.');
+      /* Changed 5 Oct 2026 (request 127 item 7): the count says why no worry is shown. */
+      .toBe('1 worry is on record. It was not kept in the words it was said, so it is not quoted here. Nobody is waiting on anybody.');
   });
   it('with one earlier wait and no worry, it says so', () => {
     expect(atAGlanceTiles({ ...base, waitsFromEarlier: 1 }).find((t) => t.label === 'Blockers')!.sub)

@@ -335,6 +335,17 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
   const about = map
     ? `${midSentence(map.label)} work`
     : roleHandle ? `your work as ${roleHandle.replace(/^(a|an|the)\s+/, '')}` : 'this work';
+  /*
+   * A KIND OF WORK NOBODY SET IS SAID AS WHAT IT IS: A READING (request 127 item 6).
+   *
+   * "This is session 1 of 4 of founder or CEO work." was read on a board whose kind of work says it
+   * is not set. Both are true: the kind of work on the check-in was never set, and this label is the
+   * engine's reading of what the person said. So the sentence says where the label comes from, and
+   * the session count stands on its own. A role the person gave, or none, is said as before.
+   */
+  const whereYouAre = map
+    ? `This is ${where}. What you have said so far reads as ${about}.`
+    : `This is ${where} of ${about}.`;
 
   const early = i.sessionNumber <= 2;
   const last = i.isFinalSession === true || (i.totalSessions != null && i.sessionNumber >= i.totalSessions);
@@ -418,7 +429,7 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
       showingUp: `${plain.name}. This came up in ${recurring.periodsObserved} of your check-ins, not just once.`,
       /* The map is CONTEXT for how this is said, not a sentence in it. See the service, which hands
          the map to the wording pass as context; the engine's claim is the stage and the recurrence. */
-      whyItMatters: `This is ${where} of ${about}. Something read once is an incident. Read across sessions it becomes what people expect of you, and it is far easier to change now than to argue with later.`,
+      whyItMatters: `${whereYouAre} Something read once is an incident. Read across sessions it becomes what people expect of you, and it is far easier to change now than to argue with later.`,
       /* All of them. The list can hold six and the pattern probe is pushed last, so a cap at three
          made the probe the first thing cut - the one line that was about the recurrence itself. The
          page shows the first three and the rest under "also"; nothing is dropped here. */
@@ -445,8 +456,8 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
     aboutYou,
     showingUp: null,
     whyItMatters: early
-      ? `This is ${where} of ${about}. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.`
-      : `This is ${where} of ${about}. Nothing has come up often enough yet to be called a pattern.`,
+      ? `${whereYouAre} Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.`
+      : `${whereYouAre} Nothing has come up often enough yet to be called a pattern.`,
     beforeNextTime: actions,
     general: true,
     role: roleOf(map, pair),
