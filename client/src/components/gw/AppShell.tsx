@@ -21,6 +21,7 @@ import { hasEnded } from '@/lib/a-ground-that-has-ended'
 import { Button } from './kit'
 import { sidebarWasFolded, rememberSidebarFolded } from './where-the-sidebar-was-left'
 import { pinnedFor, togglePin } from './pinned-check-ins'
+import { recentlyOpenedFor } from './recently-opened-check-ins'
 import { whatTheRowSays } from './what-a-sidebar-row-says'
 import { OrganisationChoices } from './OrganisationChoices'
 import { initialsOf, roleWord } from './your-organisations'
@@ -676,6 +677,38 @@ export function AppSidebar() {
   const pinned = pins.map(id => running.find(g => g.id === id)).filter((g): g is Ground => !!g)
   const unpinned = running.filter(g => !pins.includes(g.id))
 
+  /*
+   * HAFSAH'S FAULT 4: THE SIDEBAR LISTED EVERY CHECK-IN, UNUSABLE AT A HUNDRED.
+   *
+   * Below the pins, as long as there are few enough unpinned check-ins to read at a glance, the
+   * sidebar still shows all of them, in the rail's own order - nothing changes for the common case.
+   * Past `SIDEBAR_CAP`, it shows only: the ones that need this person now (the same `railAttention`
+   * signal as the folded rail's own needsYou, so the two cannot disagree), then whichever of the
+   * rest were opened most recently on this device (recently-opened-check-ins), capped at
+   * `SIDEBAR_CAP` rows in all. "All check-ins" is always the way to the whole list; it carries a
+   * count only when the sidebar is hiding some.
+   */
+  const SIDEBAR_CAP = 8
+  const SIDEBAR_CLOSED_CAP = 8
+  const needsYouUnpinned = unpinned.filter(g => {
+    const a = railAttention(g as any, user?.id)
+    return a.kind === 'overdue' || a.kind === 'yours'
+  })
+  const needsYouUnpinnedIds = new Set(needsYouUnpinned.map(g => g.id))
+  /* Most-recent-first ids kept on this device. A blocked or empty store just returns [], and the
+     sidebar falls back to showing only what needs this person now. */
+  const recentUnpinned = recentlyOpenedFor(user?.id)
+    .map(id => unpinned.find(g => g.id === id))
+    .filter((g): g is Ground => !!g && !needsYouUnpinnedIds.has(g.id))
+  const roomForRecent = Math.max(0, SIDEBAR_CAP - needsYouUnpinned.length)
+  const shownUnpinned = unpinned.length <= SIDEBAR_CAP
+    ? unpinned
+    : [...needsYouUnpinned, ...recentUnpinned.slice(0, roomForRecent)]
+  const shownClosed = closed.slice(0, SIDEBAR_CLOSED_CAP)
+  /* How many more exist than the sidebar is showing, for "All check-ins (n)" - never shown when
+     everything the reader can see already has a row on screen. */
+  const hiddenCount = Math.max(0, grounds.length - (pinned.length + shownUnpinned.length + closed.length))
+
   /* ONE GATE. Every door below comes out of `navItemsFor`, and is only sorted into its part here. */
   const items = navItemsFor(user)
   const pages = items.filter(i => !(i as any).adminOnly && !(i as any).platformAdminOnly && i.to !== '/grounds' && i.to !== '/settings')
@@ -941,7 +974,14 @@ export function AppSidebar() {
                 {unpinned.length === 0 && pinned.length > 0 && (
                   <p className="gw-rl-empty">{running.length === 1 ? 'Your only check-in is pinned above.' : 'All your check-ins are pinned above.'}</p>
                 )}
-                <ul className="gw-rl-list">{unpinned.map(rowFor)}</ul>
+                <ul className="gw-rl-list">{shownUnpinned.map(rowFor)}</ul>
+                {/* HAFSAH'S FAULT 4: the way to the whole list, whether or not the rows above left
+                    anything out - with how many there are only when they did. */}
+                {unpinned.length > 0 && (
+                  <NavLink to="/grounds" className="gw-rl-nav">
+                    {hiddenCount > 0 ? `All check-ins (${grounds.length})` : 'All check-ins'}
+                  </NavLink>
+                )}
                 {closed.length > 0 && (
                   <>
                     <button
@@ -952,7 +992,10 @@ export function AppSidebar() {
                     >
                       <span aria-hidden>{closedOpen ? '▾' : '▸'}</span> Closed ({closed.length})
                     </button>
-                    {closedOpen && <ul className="gw-rl-list">{closed.map(rowFor)}</ul>}
+                    {closedOpen && <ul className="gw-rl-list">{shownClosed.map(rowFor)}</ul>}
+                    {closedOpen && closed.length > shownClosed.length && (
+                      <p className="gw-rl-empty">{`And ${closed.length - shownClosed.length} more. See all of them on the check-ins list.`}</p>
+                    )}
                   </>
                 )}
 
