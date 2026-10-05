@@ -6,7 +6,7 @@ import { groundsApi } from '@/api/grounds'
 import { useAuthStore } from '@/stores/auth'
 import { useHelpStore } from '@/stores/help'
 import {
-  Page, PageTitle, Section, Panel, Button, Tag, Note, Empty, TextArea, CheckInsTable, CheckInRow,
+  Page, PageTitle, Section, Panel, Button, Tag, Note, Empty, TextArea, TextField, CheckInsTable, CheckInRow,
 } from '@/components/gw/ui'
 import { cadenceLabel } from '@/lib/cadence'
 import { howARowReads, isFinished, type ListRow } from './how-a-row-reads'
@@ -119,9 +119,17 @@ export function GroundsListPage() {
   const [declining, setDeclining] = useState<string | null>(null)
   const [declineReason, setDeclineReason] = useState('')
 
+  /* HAFSAH'S FAULT 4: a way to find one among a hundred (check-ins.txt draws no search box of its
+     own - there was no hundred-check-in organisation when it was written - so this is plain and
+     in keeping with the page's own voice, the same as the People page's "Find somebody"). Filters
+     by what this reader already sees: the row's own name, never anything the server did not send. */
+  const [find, setFind] = useState('')
+  const q = find.trim().toLowerCase()
+
   const now = new Date()
   const me = user?.id
-  const rows = (grounds as unknown as ListRow[]).map(g => ({ g, reads: howARowReads(g, me, now, { isAdmin }) }))
+  const allRows = (grounds as unknown as ListRow[]).map(g => ({ g, reads: howARowReads(g, me, now, { isAdmin }) }))
+  const rows = q ? allRows.filter(r => r.g.label.toLowerCase().includes(q)) : allRows
   const open = rows.filter(r => !isFinished(r.g))
   const youRun = byWhatNeedsYou(open.filter(r => !!me && r.g.initiatorId === me))
   const youreIn = byWhatNeedsYou(open.filter(r => r.g.initiatorId !== me && (r.g.participants ?? []).some(p => !!me && p.userId === me)))
@@ -214,6 +222,23 @@ export function GroundsListPage() {
             </Empty>
           )}
         </>
+      )}
+
+      {/* A way to find one among many (HAFSAH'S FAULT 4). Only once there is more than a
+          glance's worth to look through - with a handful, scanning the sections below is faster
+          than typing. */}
+      {!isLoading && !isError && allRows.length > 8 && (
+        <TextField
+          value={find}
+          onChange={(e) => setFind(e.target.value)}
+          placeholder="Find a check-in"
+          aria-label="Find a check-in"
+          style={{ maxWidth: 320 }}
+        />
+      )}
+
+      {!isLoading && !isError && allRows.length > 0 && rows.length === 0 && (
+        <Empty>{`Nothing here matches "${find.trim()}".`}</Empty>
       )}
 
       {youRun.length > 0 && (
