@@ -175,6 +175,7 @@ import { plainNameOf as plainPatternNameOf } from '../patterns/plain-pattern-nam
 import { whatMoreThanOnePersonNamed, namedByMoreThanOne } from './what-more-than-one-person-named';
 import { decide, RoundPicture } from './what-the-report-said-at-the-time';
 import { aStoredSentenceReadsRight, theReaderAloneSaysYou } from './a-stored-sentence-reads-right';
+import { aJudgementWithNoPieces } from './the-judgement-reads-right';
 /** The same repair over every string in a served object, leaving everything else as it is. */
 const everyStringIn = (v: any, fix: (s: string) => string): any => (typeof v === 'string' ? fix(v)
   : Array.isArray(v) ? v.map((x) => everyStringIn(x, fix))
@@ -5456,6 +5457,8 @@ happened, and what is in the way.`;
     }
     /* And a pronoun that is certainly the reader says "you", as the board does (request 123 item 7). After the names are in. */
     if (named?.theJudgement) named.theJudgement = everyStringIn(named.theJudgement, theReaderAloneSaysYou);
+    /* And no step that is only a piece, and no promise quoted as a fragment (request 134 item 4), as the board serves it. */
+    if (named?.theJudgement) named.theJudgement = aJudgementWithNoPieces(named.theJudgement);
     return {
       ...named,
       sharedPicture: t(report.sharedPicture),

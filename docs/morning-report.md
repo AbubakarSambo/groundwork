@@ -14,6 +14,7 @@
 - I stopped on 130 (d) and 131 (6). Incident stages, incident themes and a group's county all need the records prompt changed, and the stage names and a "Women" share target are your decisions. "By site" and the programme's headline are already sent where the data is there. The answers file says what I checked.
 - The headline question puts a comma before its day when the aim has a clause of its own: "…, at least 60% of them women, by 28 February 2027?"
 - The lead's judgement no longer says "they" or "themselves" about the lead where it is certainly the lead: "Your own record says you have not given Tobi Adewale the authority…" (123 item 7). Where it is not certain, it is left for the prompt work after the run.
+- The lead's judgement no longer sends a step that is only a piece ("The status of the open commitments to…"), and says a promise as what was promised instead of quoting "I will file the bundle" (134 item 4).
 - I stopped on 139, the goal drawn as "Point to successfully renewed contracts", because no code writes that line and it is not in this computer's database. I asked the screens workspace which field carries it. I did not start 130 (b), 130 (d) or 131 (6), because none of them is small.
 
 ### Needs Hafsah

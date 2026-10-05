@@ -1,3 +1,4 @@
+import { inOurVoice } from './what-the-record-shows-over-time';
 /**
  * THE JUDGEMENT READS RIGHT WHEN THE LEAD IS SERVED IT (requests 133 item 2, 134, 135, 136).
  *
@@ -39,9 +40,54 @@ export function aHeadingThatIsASentence(about: string): string {
  */
 const NOBODY_ELSE_ANSWERS = 'Nobody else answers this check-in, so there is no other account to set this against.';
 
-export function aJudgementThatReadsRight<T>(judgement: T, opts: { theReaderIsTheOnlyPerson?: boolean } = {}): T {
+/**
+ * A STEP IS SOMETHING TO DO, AND A PROMISE IS SAID AS WHAT WAS PROMISED (request 134 item 4).
+ *
+ *  - "The status of the open commitments to 'call the client' and 'file the bundle'." stood under "What to do". It is a
+ *    piece, not a step: it opens on "the" or "a" and has no verb of its own. Such a step is left out; what it was about
+ *    is still in the record and in the rest of the judgement.
+ *  - "Ask Amani Wekesa about the open commitment to 'I will file the bundle'." quoted a promise as a fragment in the
+ *    first person. The promise is said as what was promised, in our voice, the same way the work plan says it
+ *    ("the open commitment to file the bundle"). A promise that cannot be said that way is left in its marks.
+ */
+const A_PIECE_NOT_A_STEP = /^(?:the|a|an|this|these|those)\s/i;
+export function aStepThatIsAStep(move: unknown): boolean {
+  if (typeof move !== 'string' || !move.trim()) return false;
+  const t = move.trim();
+  return !(A_PIECE_NOT_A_STEP.test(t) && !HAS_A_VERB_OF_ITS_OWN.test(t.replace(/(['"\u2018\u201c])[^'"\u2019\u201d]*(['"\u2019\u201d])/g, '')));
+}
+const A_QUOTED_PROMISE = /(['\u2018"\u201c])([^'"\u2018\u2019\u201c\u201d]{2,140})(['\u2019"\u201d])/g;
+const AFTER_A_COMMITMENT = /\bcommitments? to\s+((?:['\u2018"\u201c][^'"\u2018\u2019\u201c\u201d]{2,140}['\u2019"\u201d](?:,\s*|\s+and\s+|,\s+and\s+)?)+)/gi;
+export function aPromiseSaidAsWhatWasPromised(text: string): string {
+  if (typeof text !== 'string') return text;
+  return text.replace(AFTER_A_COMMITMENT, (whole: string, list: string) => {
+    let ok = true;
+    const said = list.replace(A_QUOTED_PROMISE, (_m: string, _o: string, words: string) => {
+      const clause = inOurVoice(words, 'them');
+      if (!clause) ok = false;
+      return clause ?? words;
+    });
+    return ok ? whole.replace(list, said) : whole;
+  });
+}
+
+/** Both, over the judgement as it is served. */
+export function aJudgementWithNoPieces<T>(judgement: T): T {
   const j: any = judgement;
-  if (!j || typeof j !== 'object' || !Array.isArray(j.whatThisCannotTellYou)) return judgement;
+  if (!j || typeof j !== 'object') return judgement;
+  const fix = (v: any): any => (typeof v === 'string' ? aPromiseSaidAsWhatWasPromised(v)
+    : Array.isArray(v) ? v.map(fix)
+      : v && typeof v === 'object' && (Object.getPrototypeOf(v) === Object.prototype || Object.getPrototypeOf(v) === null)
+        ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, fix(x)])) : v);
+  const out = fix(j);
+  if (Array.isArray(out.whatToDo)) out.whatToDo = out.whatToDo.filter((m: any) => !m || typeof m !== 'object' || aStepThatIsAStep(m.move));
+  /* Nothing to put right: the same object, so a caller that passes it through is not handed a copy. */
+  return (JSON.stringify(out) === JSON.stringify(j) ? judgement : out) as T;
+}
+
+export function aJudgementThatReadsRight<T>(judgement: T, opts: { theReaderIsTheOnlyPerson?: boolean } = {}): T {
+  const j: any = aJudgementWithNoPieces(judgement);
+  if (!j || typeof j !== 'object' || !Array.isArray(j.whatThisCannotTellYou)) return j as T;
   return {
     ...j,
     whatThisCannotTellYou: j.whatThisCannotTellYou.map((x: any) => {

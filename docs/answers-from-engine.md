@@ -167,6 +167,16 @@ nothing in the sentence makes it certain that "she" is the reader. The fix for t
 change I have planned for after the run. An admin reads the names and no "you". The participant
 reads no judgement at all, as before.
 
+**134 (4), the judgement's two sentences about the open commitments.** This is repaired where the
+judgement is served, on the report and on the board. The prompt is untouched.
+
+- "Ask Amani Wekesa about the open commitment to 'I will file the bundle'." now reads "Ask Amani Wekesa about the open commitment to file the bundle." The promise is said as what was promised, the same way the work plan says it.
+- "The status of the open commitments to 'call the client' and 'file the bundle'." stood under "What to do" as a piece, not a step. It is no longer sent: a step that opens on "the" or "a" and has no verb of its own is left out.
+
+The lead and an admin with access read the same steps. The participant reads no judgement at all. The
+day the promise was due ("Thursday 1 October") is not in the judgement, so it cannot be added at the
+read. It comes with the prompt change I have planned for after the run.
+
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
 ```
