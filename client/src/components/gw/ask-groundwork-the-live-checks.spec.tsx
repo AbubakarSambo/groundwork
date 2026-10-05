@@ -29,7 +29,19 @@ import { askApi } from '@/api/ask'
 import { documentsApi } from '@/api/documents'
 import { groundsApi } from '@/api/grounds'
 
-const SALES: AskPageData = { canAsk: true, about: [{ id: 'g-sales', label: 'Sales team, Q3' }], turns: [] }
+const CAPTION = 'Ask about the company, your work or your check-ins.'
+const ADD_LINE = 'You can also add context or documents to your check-ins here.'
+
+const SALES: AskPageData = {
+  canAsk: true,
+  about: [{ id: 'g-sales', label: 'Sales team, Q3' }],
+  turns: [],
+  askName: 'Ask Groundwork',
+  caption: CAPTION,
+  addLine: ADD_LINE,
+  welcome: null,
+  starters: [],
+}
 
 function panel(data: AskPageData, at = '/grounds/g-sales/board', extraProps: Partial<Parameters<typeof AskGroundwork>[0]> = {}) {
   vi.mocked(askApi.mine).mockResolvedValue(data)
@@ -73,8 +85,8 @@ describe('item 1: the upload goes to the check-in, not the assistant’s session
     ])
 
     const { container } = panel(SALES)
-    await screen.findByText(/Ask me about/)
-    fireEvent.change(screen.getByPlaceholderText('Ask about this check-in'), { target: { value: 'add the targets sheet' } })
+    await screen.findByText(CAPTION)
+    fireEvent.change(screen.getByPlaceholderText(CAPTION), { target: { value: 'add the targets sheet' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Choose a file' }))
 
@@ -94,8 +106,8 @@ describe('item 2: a multi-line message box', () => {
   it('keeps the line breaks in what is sent, Enter sends and Shift+Enter starts a new line', async () => {
     vi.mocked(askApi.ask).mockResolvedValue({ lane: 'x', composedBy: 'rules', blocks: [{ type: 'text', body: 'Got it.' }] })
     panel(SALES)
-    await screen.findByText(/Ask me about/)
-    const box = screen.getByPlaceholderText('Ask about this check-in') as HTMLTextAreaElement
+    await screen.findByText(CAPTION)
+    const box = screen.getByPlaceholderText(CAPTION) as HTMLTextAreaElement
     expect(box.tagName).toBe('TEXTAREA')
 
     fireEvent.change(box, { target: { value: 'Line one\nLine two' } })
@@ -122,8 +134,8 @@ describe('item 3: a sign of work while a reply is on its way', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     try {
       panel(SALES)
-      await vi.waitFor(() => screen.getByText(/Ask me about/))
-      const box = screen.getByPlaceholderText('Ask about this check-in') as HTMLTextAreaElement
+      await vi.waitFor(() => screen.getByText(CAPTION))
+      const box = screen.getByPlaceholderText(CAPTION) as HTMLTextAreaElement
       fireEvent.change(box, { target: { value: 'what is stuck?' } })
       fireEvent.click(screen.getByRole('button', { name: 'Send' }))
 
@@ -145,7 +157,9 @@ describe('item 3: a sign of work while a reply is on its way', () => {
 })
 
 describe('item 4: the floating Feedback button never covers the Ask panel', () => {
-  const USER = { id: 'u-m', email: 'm@baridi.test', firstName: 'Miriam', lastName: 'Wanjiku', role: 'MEMBER', organizationId: 'o1', organizationName: 'Baridi Appliances' }
+  /* No organisation name here, to match SALES's own `askName` ('Ask Groundwork') - the sidebar's
+     button names Ask from this same organisation name (AppShell.tsx, `askNameFor`). */
+  const USER = { id: 'u-m', email: 'm@baridi.test', firstName: 'Miriam', lastName: 'Wanjiku', role: 'MEMBER', organizationId: 'o1', organizationName: '' }
 
   it('is not on screen while the panel is open, and comes back once it closes', async () => {
     vi.mocked(askApi.mine).mockResolvedValue(SALES)
@@ -182,6 +196,11 @@ describe('item 5: "About" includes a check-in an admin may read, even when it is
       { id: 'g-three', label: 'Supplier review' },
     ],
     turns: [],
+    askName: 'Ask Groundwork',
+    caption: CAPTION,
+    addLine: ADD_LINE,
+    welcome: null,
+    starters: [],
   }
 
   it('opens on "Sales team, Q3" when that is the page he is reading, and names it in the panel', async () => {
@@ -190,7 +209,7 @@ describe('item 5: "About" includes a check-in an admin may read, even when it is
       { id: 'g-one', label: 'Faith, first 90 days' } as Ground,
     ])
     panel(JUMAS, '/grounds/g-sales/board')
-    expect(await screen.findByText('Ask me about Sales team, Q3: a deal, a target, or what to do next.')).toBeInTheDocument()
+    await screen.findByText(CAPTION)
     const about = screen.getByRole('combobox', { name: 'About' }) as HTMLSelectElement
     expect(about.value).toBe('g-sales')
     expect([...about.options].map((o) => o.textContent)).toContain('Sales team, Q3')
@@ -199,7 +218,7 @@ describe('item 5: "About" includes a check-in an admin may read, even when it is
   it('does not add a check-in he may not read', async () => {
     vi.mocked(groundsApi.list).mockResolvedValue([{ id: 'g-one', label: 'Faith, first 90 days' } as Ground])
     panel(JUMAS, '/grounds/g-not-his/board')
-    await screen.findByText(/Ask me about/)
+    await screen.findByText(CAPTION)
     const about = screen.getByRole('combobox', { name: 'About' }) as HTMLSelectElement
     expect([...about.options].map((o) => o.value)).not.toContain('g-not-his')
   })
@@ -214,9 +233,14 @@ describe('item 6: the "About" picker stays inside the panel', () => {
         { id: 'g-sales', label: 'Sales team, Q3' },
       ],
       turns: [],
+      askName: 'Ask Groundwork',
+      caption: CAPTION,
+      addLine: ADD_LINE,
+      welcome: null,
+      starters: [],
     }
     panel(WAIRIMUS, '/grounds/g-sales/board')
-    await screen.findByText(/Ask me about/)
+    await screen.findByText(CAPTION)
     const about = screen.getByRole('combobox', { name: 'About' }) as HTMLSelectElement
     expect(about.style.minWidth).toBe('0px')
     // jsdom normalises the `flex: 1` shorthand into its three longhands.
@@ -231,8 +255,8 @@ describe('item 7: only the newest reply’s option buttons can be pressed', () =
       .mockResolvedValueOnce({ lane: 'x', composedBy: 'rules', blocks: [{ type: 'picker', options: [{ key: 'a', label: 'Option A' }] }] })
       .mockResolvedValueOnce({ lane: 'x', composedBy: 'rules', blocks: [{ type: 'text', body: 'Second reply.' }] })
     panel(SALES)
-    await screen.findByText(/Ask me about/)
-    const box = screen.getByPlaceholderText('Ask about this check-in')
+    await screen.findByText(CAPTION)
+    const box = screen.getByPlaceholderText(CAPTION)
 
     fireEvent.change(box, { target: { value: 'first question' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
