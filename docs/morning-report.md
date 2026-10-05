@@ -1,5 +1,7 @@
 # Morning report
 
+**5 October, night.** WhatsApp works end to end through the local webhook, from the details saved on `/admin/whatsapp`: 165 of 165 checks pass. In the last run the server had different dummy WhatsApp settings, and the saved details won everywhere. Each saved secret, once removed, fell back to its server setting. Two bugs were found and fixed: a report sent in the wrong language, and an Ask question about leave that went unanswered. One thing needs your view: the first "START" took 42 to 108 seconds to answer. The full table is in `docs/run-log.md`.
+
 **5 October, night.** Another bug from the WhatsApp journeys: in Ask, "What leave have I asked for, and what was decided?" was answered "I cannot answer that one yet", while "Where is my leave request?" was answered properly. It is now answered from her own leave, and there is a new test for it. The journey now checks the answer itself, not only that it was not taken for a request.
 
 **5 October, night.** I found a bug in the WhatsApp journeys: Kesi wrote in plain English, but her report came to her phone in Swahili. The one-word language read had taken Kenyan shop names for Swahili. A message that is plainly English is now read as English without asking the model (`plainly-english.ts`, with a test).
