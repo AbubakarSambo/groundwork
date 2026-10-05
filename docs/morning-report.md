@@ -1,5 +1,7 @@
 # Morning report
 
+**5 October, late.** The review asked for a stricter seal on the back office's WhatsApp secrets, and it is done. The tag must be exactly 16 bytes and the IV exactly 12. A key must be 32 bytes in base64 or hex, or at least 32 characters, and the page says so in a sentence when it is too short. Each secret is now bound to its own field. Nothing had been saved anywhere yet, so no old seal needs moving.
+
 **5 October, late.** `docs/whatsapp-settings.md` now has "How to set up WhatsApp in the back office", in nine plain steps. `SETTINGS_ENCRYPTION_KEY` is listed there and in section 4 of `docs/staging-compatibility.md`. No `.env` file was changed.
 
 **5 October, late.** The back office has a new staff-only page, `/admin/whatsapp`, reached from the WhatsApp switch on the System tab. On it, staff set Groundwork's WhatsApp number and its keys, copy the webhook address for Meta, see whether the number is connected, and send a test message to one number. The client files are listed for the screens workspace in `docs/answers-from-engine.md`.

@@ -1,6 +1,6 @@
 import { BadRequestException, Logger } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
-import { canSeal, open, seal, THE_KEY_SETTING } from '../../common/a-secret-kept-sealed';
+import { canSeal, open, seal, whyNoKey, MIN_KEY_CHARACTERS, THE_KEY_SETTING } from '../../common/a-secret-kept-sealed';
 
 /**
  * GROUNDWORK'S OWN WHATSAPP NUMBER, SET IN THE BACK OFFICE (5 Oct 2026, Hafsah: "check whether the
@@ -58,6 +58,9 @@ const SECRET_NAMES: Record<SecretField, string> = {
   appSecret: 'app secret',
   verifyToken: 'verify token',
 };
+/** Each secret is sealed bound to its own place, so a sealed token cannot be moved into another field. */
+export const placeOf = (field: SecretField) => `${OUR_NUMBER_KEY}:${field}`;
+
 const PLAIN_NAMES: Record<PlainField, string> = {
   displayNumber: 'WhatsApp number',
   phoneNumberId: 'phone number ID',
@@ -126,7 +129,7 @@ export class GroundworksOwnNumber {
   private opened(stored: Stored | null, field: SecretField): string | undefined {
     const sealed = stored?.[field];
     if (!sealed) return undefined;
-    const plain = open(sealed, this.keySetting());
+    const plain = open(sealed, placeOf(field), this.keySetting());
     if (plain === null) {
       /* The field's name only. Never the sealed text, never the key. */
       if (toldCannotOpen.has(sealed)) return undefined;
@@ -198,7 +201,9 @@ export class GroundworksOwnNumber {
       canSaveSecrets,
       canSaveSecretsSaying: canSaveSecrets
         ? 'Secrets you type here are kept encrypted. Once saved, they are never shown again.'
-        : `This server has no ${THE_KEY_SETTING}, so secrets cannot be saved here yet. Ask whoever runs the hosting to add it, then come back.`,
+        : whyNoKey(this.keySetting()) === 'too short'
+          ? `This server's ${THE_KEY_SETTING} is too short, so secrets cannot be saved here yet. It must be at least ${MIN_KEY_CHARACTERS} characters, or 32 bytes written in base64 or hex. Ask whoever runs the hosting to change it, then come back.`
+          : `This server has no ${THE_KEY_SETTING}, so secrets cannot be saved here yet. Ask whoever runs the hosting to add it, then come back.`,
       webhook: {
         address,
         path: OUR_CALLBACK_PATH,
@@ -244,9 +249,11 @@ export class GroundworksOwnNumber {
       if (/\s/.test(v)) throw new BadRequestException(`The ${SECRET_NAMES[f]} has a space in it. Copy it again from Meta, all in one piece.`);
       if (v.length > 2048) throw new BadRequestException(`The ${SECRET_NAMES[f]} is too long. Copy it again from Meta, and only it.`);
       if (!canSeal(this.keySetting())) {
-        throw new BadRequestException(`This server has no ${THE_KEY_SETTING}, so the ${SECRET_NAMES[f]} cannot be saved. Ask whoever runs the hosting to add it, then try again.`);
+        throw new BadRequestException(whyNoKey(this.keySetting()) === 'too short'
+          ? `This server's ${THE_KEY_SETTING} is too short, so the ${SECRET_NAMES[f]} cannot be saved. It must be at least ${MIN_KEY_CHARACTERS} characters, or 32 bytes written in base64 or hex. Ask whoever runs the hosting to change it, then try again.`
+          : `This server has no ${THE_KEY_SETTING}, so the ${SECRET_NAMES[f]} cannot be saved. Ask whoever runs the hosting to add it, then try again.`);
       }
-      next[f] = seal(v, this.keySetting());
+      next[f] = seal(v, placeOf(f), this.keySetting());
       changed.push(f);
     }
 

@@ -147,6 +147,27 @@ describe('what a member of staff reads on the page', () => {
     expect(rows.has(OUR_NUMBER_KEY)).toBe(false);
   });
 
+  it('a key that is too short is refused, and the page says how long it must be', async () => {
+    process.env.SETTINGS_ENCRYPTION_KEY = 'short-key';
+    const { whatsapp, rows } = aService({});
+    const page = await whatsapp.ourNumberAsStaffReadIt();
+    expect(page.canSaveSecrets).toBe(false);
+    expect(page.canSaveSecretsSaying).toBe("This server's SETTINGS_ENCRYPTION_KEY is too short, so secrets cannot be saved here yet. It must be at least 32 characters, or 32 bytes written in base64 or hex. Ask whoever runs the hosting to change it, then come back.");
+    const err: any = await whatsapp.ownNumber.save({ accessToken: SAVED.accessToken }, 'staff-1').catch((e) => e);
+    expect(err.message).toBe("This server's SETTINGS_ENCRYPTION_KEY is too short, so the access token cannot be saved. It must be at least 32 characters, or 32 bytes written in base64 or hex. Ask whoever runs the hosting to change it, then try again.");
+    expect(rows.has(OUR_NUMBER_KEY)).toBe(false);
+  });
+
+  it('a sealed access token moved into the app secret\'s place does not open', async () => {
+    const { whatsapp, rows } = aService({});
+    await whatsapp.ownNumber.save({ phoneNumberId: '222222222', accessToken: SAVED.accessToken }, 'staff-1');
+    const row = rows.get(OUR_NUMBER_KEY);
+    rows.set(OUR_NUMBER_KEY, { ...row, appSecret: row.accessToken });
+    whatsapp.ownNumber.forget();
+    expect((await whatsapp.ours()).appSecret).toBeUndefined();
+    expect((await whatsapp.ours()).accessToken).toBe(SAVED.accessToken);
+  });
+
   it('a secret pasted with a space is refused, and the refusal does not repeat it', async () => {
     const { whatsapp } = aService({});
     const err: any = await whatsapp.ownNumber.save({ appSecret: `${SAVED.appSecret} extra` }, 'staff-1').catch((e) => e);
@@ -156,7 +177,7 @@ describe('what a member of staff reads on the page', () => {
   it('when the encryption key changes, the page says so and asks for the secret again', async () => {
     const { whatsapp } = aService({});
     await whatsapp.ownNumber.save({ phoneNumberId: '222222222', accessToken: SAVED.accessToken }, 'staff-1');
-    process.env.SETTINGS_ENCRYPTION_KEY = 'a-different-key';
+    process.env.SETTINGS_ENCRYPTION_KEY = 'a-different-test-key-also-not-real-at-all';
     whatsapp.ownNumber.forget();
     const page = await whatsapp.ourNumberAsStaffReadIt();
     expect(page.secrets.accessToken).toEqual({ state: 'not set', saying: 'The access token was saved here, but this server cannot read it, because its encryption key has changed. Type the access token in again.' });
