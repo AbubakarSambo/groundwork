@@ -174,12 +174,13 @@ import { periodOf, periodsTheRecordHolds, aTruePeriodCount } from '../patterns/p
 import { plainNameOf as plainPatternNameOf } from '../patterns/plain-pattern-names';
 import { whatMoreThanOnePersonNamed, namedByMoreThanOne } from './what-more-than-one-person-named';
 import { decide, RoundPicture } from './what-the-report-said-at-the-time';
-import { aStoredSentenceReadsRight, theReaderAloneSaysYou } from './a-stored-sentence-reads-right';
+import { aStoredSentenceReadsRight, theReadersOwnRecordSaysThey, aReflexiveThatIsTheReaders } from './a-stored-sentence-reads-right';
 import { aJudgementWithNoPieces } from './the-judgement-reads-right';
 /** The same repair over every string in a served object, leaving everything else as it is. */
 const everyStringIn = (v: any, fix: (s: string) => string): any => (typeof v === 'string' ? fix(v)
   : Array.isArray(v) ? v.map((x) => everyStringIn(x, fix))
-    : v && typeof v === 'object' && (Object.getPrototypeOf(v) === Object.prototype || Object.getPrototypeOf(v) === null)
+    /* A plain object from any realm (a structured clone's prototype is not this one's), never a Date or an instance. */
+    : v && typeof v === 'object' && Object.prototype.toString.call(v) === '[object Object]' && (!v.constructor || v.constructor.name === 'Object')
       ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, everyStringIn(x, fix)])) : v);
 import { whyNot } from './why-it-is-not-happening';
 import { howThisHasMoved } from './how-this-has-moved';
@@ -5443,7 +5444,11 @@ happened, and what is in the way.`;
      * a side assigned to each position before names go in, and `engagement` gets a name carried
      * beside the label rather than into it.
      */
-    const named = walkTextOnly(report);
+    /* "The initiator's own record says they ..." is the reader's own label, said again before the names go in, so it reads
+       "Your own record says you ..." to them (request 123 item 7). Only "they", only the reader's own label. */
+    const named = walkTextOnly(report?.theJudgement && readerLabel
+      ? { ...report, theJudgement: everyStringIn(report.theJudgement, (x: string) => theReadersOwnRecordSaysThey(x, readerLabel)) }
+      : report);
     /*
      * A STEP THAT ONLY ASKED THE READER TO ASK THEMSELVES IS NOT A STEP (the 1 October review). Once
      * their own name is "you", withNames writes it as what is missing ("Your own account of ... is
@@ -5455,8 +5460,8 @@ happened, and what is in the way.`;
         whatToDo: named.theJudgement.whatToDo.filter((m: any) => !(m && typeof m.move === 'string' && YOUR_OWN_ACCOUNT_IS_NOT_HERE.test(m.move))),
       };
     }
-    /* And a pronoun that is certainly the reader says "you", as the board does (request 123 item 7). After the names are in. */
-    if (named?.theJudgement) named.theJudgement = everyStringIn(named.theJudgement, theReaderAloneSaysYou);
+    /* And a reflexive whose only possible person is the reader says "yourself" (request 123 item 7). After the names are in. */
+    if (named?.theJudgement) named.theJudgement = everyStringIn(named.theJudgement, aReflexiveThatIsTheReaders);
     /* And no step that is only a piece, and no promise quoted as a fragment (request 134 item 4), as the board serves it. */
     if (named?.theJudgement) named.theJudgement = aJudgementWithNoPieces(named.theJudgement);
     return {

@@ -1,14 +1,16 @@
 import { GroundScenario } from '@prisma/client';
 import { ReportsService } from './reports.service';
 import { boardAs, AMINA, BARAKA, JUMA } from '../board/the-switchboards-sections-harness';
-import { theReaderAloneSaysYou } from './a-stored-sentence-reads-right';
+import { theReadersOwnRecordSaysThey, aReflexiveThatIsTheReaders, oldWordingPutPlain } from './a-stored-sentence-reads-right';
+import { theVerbAgreesWithYou } from './party-labels';
 
 /**
  * REQUEST 123 ITEM 7: THE LEAD'S JUDGEMENT MIXED "YOU", "THEY" AND "SHE" FOR ONE PERSON.
  *
  * The model wrote about the lead's label, and serving turned the label into "you" and left the pronoun and
- * the verb behind. Three shapes, where the pronoun is certainly the reader, now say "you" through. A sentence
- * where it is not certain ("ask you if she has received ...") is left as it is. Read through the real report
+ * the verb behind. Three narrow shapes, where the pronoun is certainly the reader, now say "you" through.
+ * Narrowed after review: a first version also rewrote "she" after "Your own answers show", which on a
+ * performance plan turned "she was late" into "you were late". Every such sentence is now pinned as left alone. Read through the real report
  * read and the real board read, as the lead, an admin, and the participant (who never reads the judgement).
  */
 const THE_JUDGEMENT_123_7 = {
@@ -123,12 +125,16 @@ describe('request 123 (7): Amina reads her own judgement as "you" throughout, wh
 describe('request 123 (7), on the board', () => {
   const report = { releasedAt: new Date('2026-09-23T17:00:00Z'), theJudgement: {
     ...THE_JUDGEMENT_123_7,
-    theGap: "The initiator's own record says she has not given participant A the authority to renew contracts.",
   } };
   it('Amina, who runs it, reads "you" with its verb', async () => {
     const b: any = await boardAs({ scenario: GroundScenario.OKR_ALIGNMENT, report } as any, ...AMINA);
     expect(b.theJudgement.theGap).toBe('Your own record says you have not given Baraka Otieno the authority to renew contracts.');
     expect(b.theJudgement.whatToDo[0].because).toBe('You set the targets and are still handling key client meetings yourself.');
+  });
+  it('with "she" in place of "they", the lead\'s board leaves it, because "she" is never rewritten', async () => {
+    const withShe = { ...report, theJudgement: { ...report.theJudgement, theGap: "The initiator's own record says she has not given participant A the authority to renew contracts." } };
+    const b: any = await boardAs({ scenario: GroundScenario.OKR_ALIGNMENT, report: withShe } as any, ...AMINA);
+    expect(b.theJudgement.theGap).toBe('Your own record says she has not given Baraka Otieno the authority to renew contracts.');
   });
   it('an admin reads Amina by name, and the pronoun is left', async () => {
     const b: any = await boardAs({ scenario: GroundScenario.OKR_ALIGNMENT, report } as any, ...JUMA);
@@ -140,13 +146,44 @@ describe('request 123 (7), on the board', () => {
   });
 });
 
-describe('the rule leaves alone what it cannot be sure of', () => {
+describe('the rules leave alone what they cannot be sure of (every example the review sent back)', () => {
   it.each([
-    'Your manager says she has not decided.',
+    'Your own answers show she was late on three deliveries.',
+    'Your own check-ins show he has missed the last two reviews.',
+    'Your own record says she is ready to lead the Mombasa accounts.',
+    'Your own record says they have not been told.',
+  ])('after the names, the stored-sentence repair leaves "%s" as it is', (line) => {
+    expect(oldWordingPutPlain(line)).toBe(line);
+    expect(aReflexiveThatIsTheReaders(line)).toBe(line);
+  });
+
+  it.each([
+    "The initiator's own answers show she was late on three deliveries.",
+    "Participant A's own record says they have not given the initiator the figures.",
+  ])('before the names, only "they" after the reader\'s own label is said again: "%s" is left', (line) => {
+    expect(theReadersOwnRecordSaysThey(line, 'the initiator')).toBe(line);
+  });
+
+  it.each([
+    'You asked her to handle the client calls herself.',
+    'You told him to fix the report himself.',
+    'You have left the team to sort it out themselves.',
     'You asked the supplier whether they could deliver it themselves.',
     'You and Tobi Adewale handle the meetings themselves.',
-    'Someone would need to ask you if she has received the request.',
-  ])('%s', (line) => {
-    expect(theReaderAloneSaysYou(line)).toBe(line);
+    'You said you would do it yourself and that they would do it themselves.',
+  ])('a reflexive somebody else could own is left: "%s"', (line) => {
+    expect(aReflexiveThatIsTheReaders(line)).toBe(line);
+  });
+
+  it.each([
+    'Nothing will move until you hire someone who knows the market and provides training.',
+    'Nothing will move until you meet the team that runs logistics and sets the routes.',
+  ])('a verb another person could own is left: "%s"', (line) => {
+    expect(theVerbAgreesWithYou(line)).toBe(line);
+  });
+
+  it('Someone would need to ask you if she has received the request.', () => {
+    const line = 'Someone would need to ask you if she has received the request.';
+    expect(oldWordingPutPlain(aReflexiveThatIsTheReaders(line))).toBe(line);
   });
 });

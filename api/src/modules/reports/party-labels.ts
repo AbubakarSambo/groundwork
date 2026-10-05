@@ -1244,7 +1244,9 @@ function everyVerbThatFollowsYouAgrees(input: string): string {
    */
   text = text.replace(
     new RegExp(`(\\b${A_CLAUSE_OPENS}\\s+you\\s+[a-z]+\\b[^,.;!?]*?\\s+and\\s+)${ADVERBS}(provides|gives|clarifies|sets|${SHARED_VERBS})\\b`, 'g'),
-    (m: string, head: string, adv: string | undefined, verb: string) => (/\byou\b/i.test(head.replace(/^\S+\s+you\s/i, '')) ? m : `${head}${adv ?? ''}${({ is: 'are', was: 'were', has: 'have', does: 'do' } as Record<string, string>)[verb.toLowerCase()] ?? theVerbForYou(verb)}`),
+    /* Not where another person could own the verb: a second "you", or "who", "that", "which" or "whose" between
+       ("until you hire someone who knows the market and provides training"). */
+    (m: string, head: string, adv: string | undefined, verb: string) => (/\b(?:you|who|that|which|whose)\b/i.test(head.replace(/^\S+\s+you\s/i, '')) ? m : `${head}${adv ?? ''}${({ is: 'are', was: 'were', has: 'have', does: 'do' } as Record<string, string>)[verb.toLowerCase()] ?? theVerbForYou(verb)}`),
   );
   /* The verbs that share it, sentence by sentence. */
   const pieces = text.split(/(?<=[.!?])(\s+)/);
