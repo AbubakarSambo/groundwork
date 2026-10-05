@@ -77,12 +77,21 @@ export function WhoIsInThis({ parties, peersHidden, notOpenYet, viewerIsParty, l
               <span
                 key={i}
                 title={sentence}
+                /*
+                  WIDTH CHECK, ITEM 9: A SENTENCE, CUT OFF MID-WORD. A full sentence ("Faraji
+                  Odhiambo is waiting to be let in.") capped at 240px and truncated with an ellipsis
+                  reads as a sentence with its own ending torn off - right for a short label, wrong
+                  for a reader's whole answer about somebody. The chip still keeps a sensible width
+                  so it never spans the whole row, but now wraps onto a second line rather than
+                  hiding the end of what it says; `title` (above) still offers the same sentence on
+                  hover, which was never the problem here.
+                */
                 style={{
                   fontSize: 12, padding: '3px 9px', borderRadius: 20,
                   background: p.done ? 'var(--gw-green-bg)' : 'var(--gw-bg)',
                   border: `1px solid ${p.done ? 'var(--gw-green-b)' : 'var(--gw-border)'}`,
                   color: 'var(--gw-text)',
-                  maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  maxWidth: 240, whiteSpace: 'normal',
                 }}
               >
                 {sentence}
