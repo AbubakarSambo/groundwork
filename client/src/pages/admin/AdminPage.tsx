@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { promptsApi, UsageFunnelData, PlatformDashboardData, OrgListItem, UsageStatsData, FeedbackSummaryData, PANEL_RANGES, type PanelRange, type Rate } from '@/api/prompts'
 import { adminApi, type PricingPlanRow, type InboundMessage, type CallRequestRow, type CoachingBatch } from '@/api/admin'
@@ -97,6 +97,9 @@ function WhatsAppToggle() {
       <div style={{ fontSize: 11, marginTop: 8, fontWeight: 700, color: data.live ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
         {data.live ? 'Live' : data.adminEnabled ? 'On, but not live (credentials missing)' : 'Off'}
       </div>
+      <Link to="/admin/whatsapp" style={{ display: 'inline-block', fontSize: 12.5, marginTop: 8, color: 'var(--gw-navy)' }}>
+        Set Groundwork's WhatsApp number, its keys and the webhook
+      </Link>
     </div>
   )
 }

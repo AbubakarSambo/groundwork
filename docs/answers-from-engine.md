@@ -5948,3 +5948,17 @@ other three words of ours that mean a row: "party", "the initiator" and "the res
 
 If any screen composes a sentence with "participant" in it, that one is yours — the engine will
 stop sending them.
+
+## A new staff page in `client/`: Groundwork's WhatsApp number (5 October, late)
+
+Hafsah asked for this page herself, so the engine workspace added it, as new files wherever it could. Please keep it when you merge, and restyle it freely.
+
+What was added in `client/`:
+
+- **New page:** `client/src/pages/admin/WhatsAppSettingsPage.tsx`. It is staff only. Staff type in Groundwork's own WhatsApp number, its phone number ID and its business account ID. They type in the three secrets (access token, app secret, verify token), which never come back; each one reads "Set" or "Not set". The page also shows whether WhatsApp is switched on, whether Meta accepts the keys ("Connected" or "Not connected", with a "Check again" button), the webhook address to give Meta with a copy button, and a "Send a test message" box for one typed number.
+- **New API file:** `client/src/api/whatsapp-settings.ts` (`whatsAppSettingsApi.get`, `.save`, `.connection`, `.sendTest`).
+- **New test:** `client/src/pages/admin/groundworks-whatsapp-number-as-staff-read-it.spec.tsx`.
+- **One route in `client/src/App.tsx`:** `/admin/whatsapp`, inside `RequirePlatformAdmin`, next to `/admin/api-access`.
+- **One link in `client/src/pages/admin/AdminPage.tsx`:** under the WhatsApp switch on the System tab, "Set Groundwork's WhatsApp number, its keys and the webhook". It also adds `Link` to that file's `react-router-dom` import.
+
+The API behind it is `GET` and `PUT /admin/whatsapp/settings`, `GET /admin/whatsapp/settings/connection` and `POST /admin/whatsapp/settings/test`. All four are behind `PlatformAdminGuard`. `GET /admin/whatsapp` now also returns `displayNumber`, which is the number people read, not a secret.

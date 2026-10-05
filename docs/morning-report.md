@@ -1,5 +1,7 @@
 # Morning report
 
+**5 October, late.** The back office has a new staff-only page, `/admin/whatsapp`, reached from the WhatsApp switch on the System tab. On it, staff set Groundwork's WhatsApp number and its keys, copy the webhook address for Meta, see whether the number is connected, and send a test message to one number. The client files are listed for the screens workspace in `docs/answers-from-engine.md`.
+
 **5 October, late.** Groundwork staff can now set Groundwork's own WhatsApp number, its two IDs and its three secrets in the back office, through new staff-only routes under `/admin/whatsapp/settings`. The secrets are stored encrypted with the new server setting `SETTINGS_ENCRYPTION_KEY` and are never shown again. The sender, the signature check and the verify-token check now read what is saved there first, and fall back to the `WHATSAPP_*` server settings. With nothing saved, everything works as before. The signature test now awaits the check, because the check is async now.
 
 **5 October, 21:20.** I ran crisis, snapshot and project again on the judgement's new stored prompt (ae0c6fa4), and it is the one that ran. "7 AM alerts" and "they" for the lead are gone, but "Your own account of this is not in this check-in." still reaches the lead, in project and now in crisis. Details are in the run log.
