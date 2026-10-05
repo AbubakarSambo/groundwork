@@ -35,13 +35,14 @@ export class WhatsAppController {
 
   /* Bare text, not the { success, data } envelope: Meta compares the body to the challenge byte for byte. Found 10 Sep 2026. */
   @Get()
-  verify(
+  async verify(
     @Query('hub.mode') mode: string,
     @Query('hub.verify_token') token: string,
     @Query('hub.challenge') challenge: string,
     @Res() res: Response,
-  ): void {
-    const expected = this.config.get<string>('whatsapp.verifyToken');
+  ): Promise<void> {
+    /* Saved in the back office first, then the server setting (groundworks-own-number.ts). */
+    const expected = (await this.whatsapp.ours()).verifyToken;
     if (mode === 'subscribe' && expected && token === expected) {
       res.status(200).type('text/plain').send(challenge);
       return;
@@ -61,7 +62,7 @@ export class WhatsAppController {
      * is the right default here.
      */
     const raw = req.rawBody ?? Buffer.from(JSON.stringify(req.body ?? {}));
-    this.whatsapp.verifySignature(req.headers as Record<string, string | string[] | undefined>, raw);
+    await this.whatsapp.verifySignature(req.headers as Record<string, string | string[] | undefined>, raw);
 
     /**
      * AND NOT AT ALL WHEN THE CHANNEL IS OFF. The toggle and the credentials govern SENDING; this

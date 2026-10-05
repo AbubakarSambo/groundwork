@@ -25,44 +25,44 @@ const sign = (raw: Buffer, secret = SECRET) =>
   'sha256=' + crypto.createHmac('sha256', secret).update(raw).digest('hex');
 
 describe('a genuine Meta signature is accepted', () => {
-  it('passes when the digest matches the raw body', () => {
+  it('passes when the digest matches the raw body', async () => {
     const raw = Buffer.from(JSON.stringify({ entry: [{ changes: [] }] }));
-    expect(() => svc(SECRET).verifySignature({ 'x-hub-signature-256': sign(raw) }, raw)).not.toThrow();
+    await expect(svc(SECRET).verifySignature({ 'x-hub-signature-256': sign(raw) }, raw)).resolves.toBeUndefined();
   });
 });
 
 describe('everything else is refused, and the refusal is the point', () => {
   const raw = Buffer.from('{"entry":[]}');
 
-  it('no app secret configured - fails closed rather than open', () => {
+  it('no app secret configured - fails closed rather than open', async () => {
     /** The state every unconfigured deployment is in. It must have no live inbound path at all. */
-    expect(() => svc(undefined).verifySignature({ 'x-hub-signature-256': sign(raw) }, raw))
-      .toThrow(UnauthorizedException);
+    await expect(svc(undefined).verifySignature({ 'x-hub-signature-256': sign(raw) }, raw))
+      .rejects.toThrow(UnauthorizedException);
   });
 
-  it('no signature header at all', () => {
-    expect(() => svc(SECRET).verifySignature({}, raw)).toThrow(UnauthorizedException);
+  it('no signature header at all', async () => {
+    await expect(svc(SECRET).verifySignature({}, raw)).rejects.toThrow(UnauthorizedException);
   });
 
-  it('a header that is not the sha256 scheme', () => {
-    expect(() => svc(SECRET).verifySignature({ 'x-hub-signature-256': 'md5=abc' }, raw)).toThrow(UnauthorizedException);
+  it('a header that is not the sha256 scheme', async () => {
+    await expect(svc(SECRET).verifySignature({ 'x-hub-signature-256': 'md5=abc' }, raw)).rejects.toThrow(UnauthorizedException);
   });
 
-  it('a signature computed with the wrong secret', () => {
-    expect(() => svc(SECRET).verifySignature({ 'x-hub-signature-256': sign(raw, 'attacker') }, raw))
-      .toThrow(UnauthorizedException);
+  it('a signature computed with the wrong secret', async () => {
+    await expect(svc(SECRET).verifySignature({ 'x-hub-signature-256': sign(raw, 'attacker') }, raw))
+      .rejects.toThrow(UnauthorizedException);
   });
 
-  it('a valid signature over DIFFERENT bytes than were sent', () => {
+  it('a valid signature over DIFFERENT bytes than were sent', async () => {
     /** The replay-with-edits case: sign one payload, deliver another. */
     const other = Buffer.from('{"entry":[{"tampered":true}]}');
-    expect(() => svc(SECRET).verifySignature({ 'x-hub-signature-256': sign(other) }, raw))
-      .toThrow(UnauthorizedException);
+    await expect(svc(SECRET).verifySignature({ 'x-hub-signature-256': sign(other) }, raw))
+      .rejects.toThrow(UnauthorizedException);
   });
 
-  it('a truncated digest, which a naive prefix comparison would accept', () => {
+  it('a truncated digest, which a naive prefix comparison would accept', async () => {
     const good = sign(raw).slice(0, 20);
-    expect(() => svc(SECRET).verifySignature({ 'x-hub-signature-256': good }, raw)).toThrow(UnauthorizedException);
+    await expect(svc(SECRET).verifySignature({ 'x-hub-signature-256': good }, raw)).rejects.toThrow(UnauthorizedException);
   });
 });
 
@@ -80,6 +80,8 @@ describe('the controller verifies before it reads anything', () => {
      */
     const recv = SRC.slice(SRC.indexOf('async receive('));
     expect(recv).toContain('this.whatsapp.verifySignature(');
+    /* The check reads the saved secret, so it is async: unawaited, a refusal would be a rejected promise nobody reads. */
+    expect(recv).toContain('await this.whatsapp.verifySignature(');
     expect(recv).toContain('req.body as any');
     expect(recv.indexOf('verifySignature')).toBeGreaterThan(-1);
     expect(recv.indexOf('verifySignature')).toBeLessThan(recv.indexOf('req.body as any'));

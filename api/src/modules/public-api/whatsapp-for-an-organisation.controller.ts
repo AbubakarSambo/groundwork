@@ -150,7 +150,8 @@ export class WhatsAppForAnOrganisationController {
         groundwork: {
           credentialsConfigured: toggle.credentialsConfigured,
           switchedOn: toggle.adminEnabled,
-          displayNumber: this.config.get<string>('whatsapp.displayNumber') ?? null,
+          /* Saved in the back office first, then WHATSAPP_DISPLAY_NUMBER (groundworks-own-number.ts). */
+          displayNumber: toggle.displayNumber ?? this.config.get<string>('whatsapp.displayNumber') ?? null,
         },
         publicApiUrl: this.config.get<string>('app.publicApiUrl') ?? null,
         peopleOnWhatsApp,
