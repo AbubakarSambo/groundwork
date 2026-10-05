@@ -2,6 +2,36 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## 5 October, 13:45 - the scenario run was my own fault, restarted; four more items answered
+
+**The run was on course to take hours and the cause was my change this morning.** It waited up to
+five minutes for one finding per person who checked in, and some scenarios genuinely produce fewer
+because somebody said nothing the report could use. So it spent the full five minutes, session
+after session, waiting for a finding that was never coming. The log said "3 finding(s) for 4
+person/people after 300s" over and over, which was true and not a fault.
+
+It stops on either now: one finding per person, or a minute with the count unmoved. Run stopped and
+restarted at 13:40 on the fixed rule.
+
+**Four request items answered without code**, because the right answer in each case was that the
+engine already does it or that the string is the screens':
+
+- **151 E1** (whole sentences used as nouns): already fixed.
+- **151 E5**, the shared-picture half ("everyone reads the same report" on an unshared session):
+  already fixed in the client, with the per-session read.
+- **151 E10** (session counts disagree): two different true things. Recorded as PROVISIONAL
+  decision 103 - word them apart rather than agree one clock, because one clock throws away one of
+  two true facts.
+- **151 E11** (one person, three names): all three strings are composed in the client. Sent them
+  what the engine serves - `who` is already "A colleague", `nameIsTheirRole` flags the bare
+  identifier, and `subjectFor` already has the sentence for it.
+
+**151 E8 is still unlocated** - I cannot find a sentence in the engine that builds "has none of
+their 4 shops", and have asked which field it arrives in.
+
+Next while the run works: nothing heavy. The browser journeys (`e2e`, `npm run journeys`) and the
+WhatsApp journeys (own API on port 3006, own database) both wait for it.
+
 ## 5 October, 14:05 - request 154 item 2 closed in full, and items 5, 6, 7, 8
 
 All four parts of item 2:
