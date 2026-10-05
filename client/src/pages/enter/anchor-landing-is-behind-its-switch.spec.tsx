@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/stores/auth'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
@@ -94,6 +95,19 @@ describe('the anchor landing page', () => {
     // `Page narrow`, the same shared frame InvitePage.tsx and the join pages use for their gutter.
     expect(container.querySelector('.gwui-page-main')).toBeTruthy()
     expect(container.querySelector('.gwui-page-narrow')).toBeTruthy()
+  })
+
+  it('offers no "Sign in" to somebody already signed in (picture check, 6 October)', async () => {
+    useAuthStore.setState({ user: { id: 'u1' }, token: 't', isAuthenticated: true } as any)
+    mockAvailable.mockResolvedValue({ available: true })
+    mockStart.mockResolvedValue({
+      available: true, scenario: 'HELP_TEAM_UNDERSTAND', startedFrom: 'anchor',
+      groundLabel: 'Help my team understand', source: null,
+    })
+    renderAt('/start/team')
+    await waitFor(() => expect(screen.getByText(THE_ANCHOR_HOOK.heading)).toBeTruthy())
+    expect(screen.queryByRole('link', { name: 'Sign in' })).toBeNull()
+    useAuthStore.setState({ user: null, token: null, isAuthenticated: false } as any)
   })
 
   /**

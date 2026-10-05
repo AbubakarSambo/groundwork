@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/stores/auth'
 import { useEffect } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -43,6 +44,8 @@ const THE_WAY_IN_IS_NOT_OPEN_YET = 'This way in is not open yet.'
  * work, not sent on as though nothing happened.
  */
 export function AnchorLandingPage() {
+  /* Somebody already signed in is not offered "Sign in" (picture check, 6 October). */
+  const signedIn = useAuthStore(st => st.isAuthenticated)
   const [params] = useSearchParams()
   const source = params.get('source')
   const on = useAnchorScenarioIsOnForAStranger()
@@ -93,7 +96,7 @@ export function AnchorLandingPage() {
       <Page narrow>
         <div className="gwui-mark-row">
           <Mark />
-          <Link to="/auth" className="gwui-plain-link">Sign in</Link>
+          {!signedIn && <Link to="/auth" className="gwui-plain-link">Sign in</Link>}
         </div>
         <Panel>
           <Stack gap={10}>
@@ -113,7 +116,7 @@ export function AnchorLandingPage() {
     <Page narrow>
       <div className="gwui-mark-row">
         <Mark />
-        <Link to="/auth" className="gwui-plain-link">Sign in</Link>
+        {!signedIn && <Link to="/auth" className="gwui-plain-link">Sign in</Link>}
       </div>
       <PageTitle title={THE_ANCHOR_HOOK.heading} />
       <Panel>
