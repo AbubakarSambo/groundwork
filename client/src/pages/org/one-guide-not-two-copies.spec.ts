@@ -43,8 +43,11 @@ describe('what only this page can answer', () => {
     /* The first question anybody asks their manager after being invited. It is about the admin's
        position rather than the product's, so it lives here and nowhere else. */
     const own = strip(GUIDE)
+    /* The wording changed on 5 October (walkthrough pass 2, item 1): "Never anybody's check-in
+       itself" was a clipped fragment with no subject, against the plain-full-sentences rule. It
+       now reads as a full sentence, saying the same thing. */
     expect(own).toContain('What an admin can see')
-    expect(own).toContain('Never anybody\'s check-in itself')
-    expect(own).toContain('approving that it happens, not reading it')
+    expect(own).toContain('An admin never sees anybody\'s check-in')
+    expect(own).toContain('approving that it happens, not reading what is said in it')
   })
 })
