@@ -27,11 +27,21 @@ import { join } from 'path'
  */
 const SRC = readFileSync(join(__dirname, 'EntryChatPage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
-/** The "Done" button that closes the save panel, from its onClick to its label. */
+/**
+ * THE "DONE" BUTTON THAT CLOSES THE SAVE PANEL, FROM ITS ONCLICK TO ITS LABEL.
+ *
+ * Anchored on the nearest preceding `<Button` (the shared, capitalised component the Done button
+ * itself is), not `<button`. Fault 3 pulled the people step's own markup (several lowercase
+ * `<button>` tags: "Paste multiple emails" and the rest) out of this file's body and into
+ * `renderPeopleStep()`, a function defined far above - so the nearest preceding lowercase
+ * `<button>` before "Done" is no longer anything to do with it (it is "Not now", on the email
+ * form), and slicing from there pulled in an unrelated `setShowSave(false)` ahead of the real one.
+ * `<Button` is unique to the Done control in this neighbourhood and was always the better anchor.
+ */
 const DONE = (() => {
   const at = SRC.indexOf('>\n                  Done\n')
   if (at === -1) throw new Error('The save panel\'s "Done" button is gone from EntryChatPage.tsx.')
-  return SRC.slice(SRC.lastIndexOf('<button', at), at)
+  return SRC.slice(SRC.lastIndexOf('<Button', at), at)
 })()
 
 describe('closing the save panel', () => {

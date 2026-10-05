@@ -63,14 +63,21 @@ describe('going back to the cards', () => {
 })
 
 describe('and it is offered whenever the conversation has begun', () => {
+  /*
+   * UPDATED FOR FAULT 1 (6 October 2026): an anchor draft's situation is not a guess to confirm or
+   * reclassify - it is how the person arrived (`HELP_TEAM_UNDERSTAND`) - so "This sounds like ..."
+   * and "It's something else" no longer render for one. The condition below gained
+   * `&& !isAnchorDraft()`; every other situation still reaches the same banner the same way, which
+   * is what these two assertions actually guard.
+   */
   it('asks about the transcript, not about a flag that a reload loses', () => {
-    expect(SRC).toContain("{phase === 'onboarding' && onboardingHistory.length > 1 && (")
+    expect(SRC).toContain("{phase === 'onboarding' && onboardingHistory.length > 1 && !isAnchorDraft() && (")
     /* The version that asked `pickedSituation` left a reloaded session with no route back at all. */
     expect(SRC).not.toContain("{phase === 'onboarding' && pickedSituation && (")
   })
 
   it('and not once a check-in is running, where the situation is what it is about', () => {
-    const at = SRC.indexOf("onboardingHistory.length > 1 && (")
+    const at = SRC.indexOf("onboardingHistory.length > 1 && !isAnchorDraft() && (")
     const condition = SRC.slice(at - 40, at)
     expect(condition).toContain("phase === 'onboarding'")
   })
