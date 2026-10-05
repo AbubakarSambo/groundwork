@@ -38,8 +38,32 @@
    `.gwui-cover-open` is set on <body> for exactly as long as a full-page cover is mounted. */
 body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 
+/* ── ASK DRAWER'S OWN ROOM (WIDTH CHECK, ITEM 8): `.gwui-ask-open` is set on <body>, the same
+   technique as `.gwui-cover-open` just above, for exactly as long as Ask Groundwork's 400px side
+   panel (AppShell.tsx's `.gw-ask-drawer`, position: fixed) is open. The drawer draws OVER the page
+   rather than beside it, so without this the page never learned to make room and its own text sat
+   cut off behind the drawer's edge. Scoped to the same 641px floor the drawer itself only renders
+   above (AppShell's own `<style>` hides `.gw-ask-drawer` below that). */
+@media (min-width: 641px) {
+  body.gwui-ask-open .gw-main-content { padding-right: 400px; }
+}
+
 /* ── PAGE (prototype: .main, .wrap) ──────────────────────────────────────── */
-.gwui-page-main { padding: 32px 48px 72px; min-width: 0; }
+/*
+ * WIDTH CHECK, ITEM 5: THE FLOATING FEEDBACK BUTTON SAT OVER THE LAST REAL CONTROL. It is
+ * `position: fixed`, 20px off the bottom-right corner of the viewport (AppShell.tsx's
+ * `FeedbackWidget`) at every width this page does not explicitly hide it on - so on a page just
+ * long enough to need a scrollbar, but not much longer, its last control could still be sitting
+ * at the very bottom of the content, in the same corner the button rests in. The page's own bottom
+ * padding is the one thing every page already has that can reserve the button's own room, so the
+ * last thing on the page scrolls clear of it before the page runs out - the same technique the
+ * narrower breakpoint just below already uses for the bottom nav bar and the phone-width trigger.
+ * Left as a generic bump (not a fixed clearance tied to the button's own current size and offset,
+ * which have both already moved more than once) because reserving MORE room than the button
+ * strictly needs costs nothing - a little extra white space at the foot of a page - while reserving
+ * too little is the bug this fixes.
+ */
+.gwui-page-main { padding: 32px 48px 110px; min-width: 0; }
 .gwui-page-wrap { max-width: 1150px; }
 /* THE PAGE'S OWN FULL-HEIGHT BACKGROUND (group 3, piece 5): no prototype class (the prototype's
    `body` itself is the cream colour); for the rare page that renders outside `Page` altogether -
@@ -61,7 +85,7 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
    direct children the same 30px rhythm the rule above gives a bare `Page narrow`. */
 .gwui-auth-card.gwui-auth-card > * + * { margin-top: 30px; }
 @media (max-width: 860px) {
-  .gwui-page-main { padding: 20px 18px 100px; }
+  .gwui-page-main { padding: 20px 18px 140px; }
 }
 
 /* ── STACK (the invitation and its hand-off screens: tighter groups inside Page's 30px stack) ── */
@@ -181,6 +205,20 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
   .gwui-cih-tabs-row { flex-direction: column; align-items: stretch; gap: 8px; }
   .gwui-cih-trailing { padding-bottom: 0; align-self: flex-start; }
 }
+/*
+ * WIDTH CHECK, ITEM 7: "PEOPLE AND SETUP" CUT TO "PEOPLE". Below ~1100px the board's own check-in
+ * switcher (the trailing slot) shared the row with the five tabs and left them too little room -
+ * `overflow-x: auto` on `.gwui-tabs` then scrolled the row rather than visibly cutting anything,
+ * but the LAST tab, "People and setup", is exactly the one a reader is least likely to think to
+ * scroll to and find. The switcher now sits on its OWN line above the tabs (not below, as the
+ * phone breakpoint above still does - that shape was already checked against board-phone.jpg, and
+ * is left alone here), so the tab strip keeps its full row and only scrolls on a genuinely narrow
+ * phone, exactly as it already does today.
+ */
+@media (min-width: 641px) and (max-width: 1100px) {
+  .gwui-cih-tabs-row { flex-direction: column; align-items: stretch; gap: 8px; }
+  .gwui-cih-trailing { padding-bottom: 0; align-self: flex-start; order: -1; }
+}
 
 /* ── TABS (prototype: .tabs, .tab, .tab.on) ──────────────────────────────
    BUG FIX (design-audit.md section 2, "Lines"): only the ACTIVE tab gets the 3px underline. The
@@ -297,7 +335,18 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 @media (max-width: 900px) {
   .gwui-people-head { display: none; }
 }
-@media (max-width: 640px) {
+/*
+ * WIDTH CHECK, ITEM 3: THE TEAM TODAY AT 1024, CONNECTIONS' PEOPLE-AND-SETUP ROW AT 900, PEOPLE
+ * ITSELF AT 900-1280 (`where-each-person-is.tsx`'s "1fr auto 170px", `WhosInItRoster.tsx`'s "1fr
+ * 150px", `EveryoneHere.tsx`'s five extra columns). Each caller passes its own fixed-pixel or `fr`
+ * track list as an inline style, built for the row's full width - below ~1180px that stopped
+ * fitting, and a column started overlapping the one beside it rather than ever actually wrapping
+ * (an inline `grid-template-columns` cannot wrap on its own). Moved up from a phone-only 640px: a
+ * row becomes the same small stack - PersonCell first, then whatever else the row carries, each on
+ * its own line - at every width narrow enough that the original columns no longer fit, not only on
+ * a phone.
+ */
+@media (max-width: 1180px) {
   /* Each row becomes a small stack: PersonCell (its own 34px avatar and text) first, then
      whatever else the row carries, each on its own line. */
   .gwui-person-row { grid-template-columns: 1fr !important; align-items: start; gap: 6px; }
@@ -444,7 +493,16 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 .gwui-invite-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--gw-border); }
 .gwui-invite-link-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
 .gwui-invite-link-address { font-size: 14.5px; color: var(--gw-text); overflow-wrap: anywhere; }
-.gwui-two-up { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+/*
+ * WIDTH CHECK, ITEM 4: "CONNECT YOUR OWN TOOLS" AT 960-1280. Two examples side by side at 280px
+ * each left plenty of room on a phone, but on a genuinely two-column layout - a `Panel` holding the
+ * embed example's own host-and-widget split (`.gwui-embed-split`, below) - 280px was nowhere near
+ * enough: the deals table's four cells had no room to even wrap, so their text overlapped rather
+ * than stacking, and "GROUNDWORK" sat in a widget column too narrow to hold it. ~460px is roughly
+ * what that split actually needs before its own narrower rules (below) take over; two of those no
+ * longer fit side by side until the page is wide enough to give each one real room.
+ */
+.gwui-two-up { display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 20px; }
 /*
  * GROUP 1'S THIRD REVIEW: pinning each caption to the bottom of a card stretched to match its
  * taller neighbour (the previous fix, for the gap that used to sit AFTER the shorter caption)
@@ -503,6 +561,20 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 }
 .gwui-field-row-label { font-size: 16px; font-weight: 700; color: var(--gw-text); }
 .gwui-field-row-value { font-size: 16px; color: var(--gw-text); min-width: 0; }
+/*
+ * WIDTH CHECK, ITEM 2: THE EXPLANATION SQUEEZED TO ONE WORD PER LINE. A row's three columns -
+ * label, value (with its own `gwui-field-help` sentence underneath), and a trailing action - are
+ * fine at the row's full 220px/1fr/auto widths, but every Settings row with a tag and a button
+ * (Connections at 900px, every row on People and setup) only had that `auto` action column to give
+ * up, so the VALUE column was what actually got squeezed once the label and action both held their
+ * ground. The action now drops onto its own line under the value instead, the same shape the
+ * phone breakpoint below already uses, just a row earlier - label and value still sit side by
+ * side, which still reads fine at this width.
+ */
+@media (max-width: 1100px) {
+  .gwui-field-row { grid-template-columns: var(--gwui-field-label-w, 220px) minmax(0, 1fr); row-gap: 6px; }
+  .gwui-field-row > :last-child:not(.gwui-field-row-value) { grid-column: 1 / -1; justify-self: start; }
+}
 @media (max-width: 640px) {
   .gwui-field-row { grid-template-columns: 1fr; gap: 4px; }
 }
@@ -1115,7 +1187,15 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-embed-host { flex: 1.4; min-width: 0; padding: 16px 18px; border-right: 1px solid var(--gw-border); background: var(--gw-bg); }
 .gwui-embed-host-title { font-size: 14.5px; font-weight: 700; color: var(--gw-text); margin: 0 0 10px; }
 .gwui-embed-table { display: flex; flex-direction: column; }
-.gwui-embed-row { display: flex; gap: 10px; padding: 7px 0; border-top: 1px solid var(--gw-border); }
+/*
+ * WIDTH CHECK, ITEM 4: FOUR CELLS WITH NOWHERE TO GO READ AS ONE GARBLED WORD ("Qualified$4,200"),
+ * NOT AS A NARROW TABLE. `min-width: 0` on each cell (below) already let them shrink past their own
+ * text's width, which is right for a cell that can wrap - but this row never wrapped at all, so a
+ * cell narrower than its own text just let that text run on past its edge, over the next cell,
+ * rather than breaking onto a line of its own. Wrapping is the fix at any width this host column is
+ * too narrow for four cells on one line, not only below a breakpoint.
+ */
+.gwui-embed-row { display: flex; flex-wrap: wrap; row-gap: 2px; gap: 10px; padding: 7px 0; border-top: 1px solid var(--gw-border); }
 .gwui-embed-row:first-child { border-top: none; }
 .gwui-embed-cell { font-size: 13px; color: var(--gw-sub); flex: 1; min-width: 0; }
 .gwui-embed-cell-name { color: var(--gw-text); font-weight: 700; flex: 1.4; }
@@ -1128,6 +1208,20 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-embed-widget-replies { display: flex; gap: 8px; flex-wrap: wrap; }
 .gwui-embed-widget-reply { font-size: 13px; font-weight: 700; color: var(--gw-navy); border: 1px solid var(--gw-border); border-radius: 20px; padding: 6px 12px; }
 @media (max-width: 640px) {
+  .gwui-embed-split { flex-direction: column; }
+  .gwui-embed-host { border-right: none; border-bottom: 1px solid var(--gw-border); }
+}
+/*
+ * WIDTH CHECK, ITEM 4, CONTINUED: THE SAME STACK, BUT GOING BY THE EXAMPLE'S OWN WIDTH, NOT THE
+ * VIEWPORT'S. A plain `@media` query above only sees the viewport - at 960-1280px wide the viewport
+ * is nowhere near 640px, but `.gwui-two-up` (above) can still be sitting this example at ~565px or
+ * less once there are two of them side by side, which is exactly the width this split needs to
+ * stack. `.gwui-panel` becomes this query's own container (scoped to a panel that actually holds
+ * this split, so no other panel is affected), and the rules are the same ones the viewport query
+ * already uses.
+ */
+.gwui-panel:has(.gwui-embed-split) { container-type: inline-size; }
+@container (max-width: 520px) {
   .gwui-embed-split { flex-direction: column; }
   .gwui-embed-host { border-right: none; border-bottom: 1px solid var(--gw-border); }
 }
@@ -1217,6 +1311,22 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ci-table-about { margin-top: 2px; font-size: 14.5px; color: var(--gw-sub); }
 .gwui-ci-table-also { margin-top: 2px; font-size: 13px; color: var(--gw-sub); }
 .gwui-ci-table td a { color: var(--gw-text); }
+/*
+ * WIDTH CHECK, ITEM 6: "YOUR REPORT IS READY" RAN ON INTO "NEXT: 12 OCTOBER". The "Needs you"
+ * column's own `Tag` is `white-space: nowrap` (Tag's own rule, gwui-tag above) - right at the
+ * table's full width, but below ~1180px that column is narrower than some tags' own text, which
+ * then overflowed past the column's edge onto "Where it stands" beside it, rather than wrapping
+ * onto a second line the way `overflow-wrap: anywhere` already lets every other cell's text do.
+ * Widening "Where it stands" itself (the last column, with no explicit width of its own above -
+ * whatever "Needs you" gives up) gives the one column that actually needs it - a date, "N of N
+ * answered", a short sentence - the room "Needs you" no longer has to spare at this width.
+ */
+@media (max-width: 1180px) {
+  .gwui-ci-table th:nth-child(1) { width: 30%; }
+  .gwui-ci-table th:nth-child(2) { width: 22%; }
+  .gwui-ci-table th:nth-child(3) { width: 15%; }
+  .gwui-ci-table td:nth-child(3) .gwui-tag { white-space: normal; }
+}
 @media (max-width: 860px) {
   .gwui-ci-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   .gwui-ci-table, .gwui-ci-table tbody, .gwui-ci-table tr, .gwui-ci-table td { display: block; width: auto; }
@@ -1244,6 +1354,17 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    third of the width with two empty columns beside it. Where the row holds exactly one card, it
    takes the full width instead, as the prototype never leaves a card half (or two-thirds) empty. */
 .gwui-cards-3:has(> :only-child), .gwui-cards-2:has(> :only-child) { grid-template-columns: minmax(0, 1fr); }
+/*
+ * WIDTH CHECK, ITEM 1: THREE COLUMNS SQUEEZED TO NOTHING BETWEEN 900 AND 1180px. The suites page
+ * (and You, Company, Company context and the review page, all `.gwui-cards-3`) kept three columns
+ * right down to the 900px floor below, so each card's own text - "Attach it", a suite's own line -
+ * had nowhere near enough room before the row finally gave up and stacked. Two columns first, in
+ * the gap this opens between 900 and ~1180px, is the same fix the shared `PeopleTable` already
+ * uses for the same squeeze.
+ */
+@media (max-width: 1180px) {
+  .gwui-cards-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @media (max-width: 900px) {
   .gwui-cards-3, .gwui-cards-2 { grid-template-columns: minmax(0, 1fr); }
 }
@@ -1309,6 +1430,22 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    prototype's own sizes; only the names moved into the shared kit. ─────────────────────────────── */
 .gwui-suite-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; align-items: center; }
 .gwui-suite-switch { display: flex; gap: 10px; align-items: center; }
+/*
+ * WIDTH CHECK, ITEM 1: THE SWITCH UNDER THE TEXT ON A NARROW CARD. A suite's own name and
+ * sentence sit in a grid's one column, the "On"/"Off" tag and its switch in the other - fine in a
+ * single-column suite, but once two or three sit side by side (`.gwui-cards-3`, just above) each
+ * card is only a fraction of the page, and a long name ("Performance reviews") or sentence can
+ * leave the switch with nowhere to go. A viewport breakpoint cannot see a CARD's own width here -
+ * the same viewport holds one card full-width or three squeezed ones - so this queries the card
+ * itself: `.gwui-panel` becomes this one query's own container (scoped to a panel that actually
+ * holds a suite head, so no other panel anywhere is affected), and below ~420px of ITS width the
+ * switch drops under the text instead of squeezing beside it.
+ */
+.gwui-panel:has(> .gwui-suite-head) { container-type: inline-size; }
+@container (max-width: 420px) {
+  .gwui-suite-head { grid-template-columns: minmax(0, 1fr); row-gap: 10px; }
+  .gwui-suite-switch { justify-self: start; }
+}
 .gwui-suite-ask { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--gw-border); display: flex; flex-direction: column; gap: 12px; }
 .gwui-suite-q { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 /* A record table (time sheets, equipment, spending, customers, the role map): the product's own
@@ -1896,7 +2033,15 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 /* A PILL THAT IS ALSO A CONTROL: `.gwui-tag`'s own shape (26px, round, 13.5px bold) on a `<select>`
    or `<button>` instead of a `<span>` - who can read a document, toggled or chosen on the row
    itself. Resets the native element's own border, font and pointer so only the tag's look shows. */
-.gwui-tag-control { border: 0; font: inherit; cursor: pointer; }
+/*
+ * WIDTH CHECK, ITEM 10: THE VISIBILITY SELECT OVERFLOWING INTO THE NEXT CARD. `.gwui-tag`'s own
+ * `white-space: nowrap` is right for a short fixed word ("Everyone", "Only you"), but this is also
+ * the lead's `<select>`, whose longest option reads "Whoever runs this check-in" - inside
+ * `.gwui-doc-grid`'s own narrow `minmax(200px, 1fr)` card, nowrap let that text run past the
+ * select's own rounded pill and over the document card beside it rather than ever being capped at
+ * the card's own edge.
+ */
+.gwui-tag-control { border: 0; font: inherit; cursor: pointer; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 /* A CONTROL WHILE IT IS WORKING: the upload dropzone while a file is on its way in - the prototype
    never shows this state (nothing in it takes long enough to need one), so this is the product's
    own addition, not a value carried over from an old page. */
