@@ -1,7 +1,7 @@
 import { theAnchorScenarioIsOn, theRequestOfferIsShown } from '../admin/what-is-hidden-at-release';
 import { STARTED_FROM_THE_ANCHOR } from './the-anchor-weekly-check-in';
 import { looksLikeARequest, shallITreatThisAs } from '../public-api/a-whatsapp-message-is-routed';
-import { readLeaveDates } from '../suites/leave-said-in-chat';
+import { readLeaveDates, soundsLikeLeave } from '../suites/leave-said-in-chat';
 import { readSpending } from '../suites/spend-said-in-chat';
 
 /**
@@ -60,6 +60,19 @@ export function whatTheYesOpens(kind: 'leave' | 'spending', suiteIsOn: boolean):
     : { kind, suiteIsOn, says: 'Your organisation also has the option to manage spending requests through Groundwork.', button: null };
 }
 
+/**
+ * WHAT KIND OF REQUEST THEIR WORDS ARE, IF ANY. The reading WhatsApp uses first; and for leave, also somebody asking for a day off the way people say it
+ * ("Can I take Friday off next week?", "I need Monday off"), which that reading misses because it wants the word "leave" or "day off". Asking is
+ * still required ("can I", "I need", "please"), so "I was on leave on Monday" is a thing they tell their check-in, never an offer.
+ */
+const AN_ASK = /\b(?:(?:can|could|may)\s+i|i\s+(?:want|need|would\s+like|wish)|i'd\s+like|please|request|apply\s+for)\b/i;
+export function theKindOfRequest(message: string): 'leave' | 'spending' | null {
+  const read = looksLikeARequest(message);
+  if (read === 'leave' || read === 'spending') return read;
+  if (read === 'hours') return null;
+  return AN_ASK.test(message) && soundsLikeLeave(message) ? 'leave' : null;
+}
+
 const isYes = (m: string) => /^\s*(yes|yeah|yep|sure|ok|okay|please)\b/i.test(m);
 
 /**
@@ -89,8 +102,8 @@ export async function aRequestAfterTheirTurn(
       return { openTheRequest: filled, sayFirst: open.says };
     }
     if (a.sessionComplete) return {};
-    const kind = looksLikeARequest(a.message);
-    if (kind !== 'leave' && kind !== 'spending') return {};
+    const kind = theKindOfRequest(a.message);
+    if (!kind) return {};
     const prefill = thePrefillFromTheirWords(kind, a.message);
     await prisma.workItem.create({ data: { groundId: a.groundId, kind: 'request-offered', name: kind, ownerParticipantId: a.participantId, ...(Object.keys(prefill).length ? { fields: { prefill } } : {}) } });
     return { requestOffer: { kind, question: shallITreatThisAs(kind), yes: YES, no: NO } };

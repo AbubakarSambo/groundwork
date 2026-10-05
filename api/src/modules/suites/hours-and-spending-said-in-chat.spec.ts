@@ -135,3 +135,18 @@ describe('the budget left, with what is already asked for and waiting (found liv
     expect(spendingSaidBack(said, { ...base, left: 38000, waiting: 0 }, 'October')).toContain('Sales has KES 38,000 left for October, so that fits.');
   });
 });
+
+describe('a weekday with "next week" after it is next week\'s day (6 October)', () => {
+  /* Tuesday 6 October 2026. */
+  const TODAY = new Date('2026-10-06T09:00:00Z');
+  it.each([
+    ['Can I take Friday off next week?', '2026-10-16', '2026-10-16'],
+    ['I need Monday off next week.', '2026-10-12', '2026-10-12'],
+    ['Can I take Thursday and Friday off next week?', '2026-10-15', '2026-10-16'],
+    ['I need Friday off.', '2026-10-09', '2026-10-09'],
+    ['I need next Friday off.', '2026-10-16', '2026-10-16'],
+  ])('%s is read as %s to %s', async (said, startsOn, endsOn) => {
+    const { readLeaveDates } = await import('./leave-said-in-chat');
+    expect(readLeaveDates(said, TODAY)).toEqual({ startsOn, endsOn });
+  });
+});

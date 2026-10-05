@@ -120,3 +120,25 @@ describe('what the form is filled in with: only what the person said, never a gu
     expect((await w.turn('Yes')).openTheRequest?.prefill).toBeUndefined();
   });
 });
+
+describe('a day off said the way people say it is offered, and a day nobody asked for is never read (6 October)', () => {
+  it.each([
+    'Can I take Friday off next week? My daughter has a school event.',
+    'Can I take Thursday and Friday off next week?',
+    'I need Monday off.',
+    'Please can I have next Monday off',
+  ])('offers leave for %s', async (said) => {
+    const w = world({ leaveOn: true });
+    expect((await w.turn(said)).requestOffer).toEqual({ kind: 'leave', question: 'Shall I treat this as a leave request?', yes: 'Yes', no: 'No' });
+  });
+
+  it('does not offer leave for what somebody tells their check-in, or asks about without asking for it', async () => {
+    for (const said of ['I was on leave on Monday.', 'Marketing is off to a good start this week.', 'What leave have I asked for, and what was decided?']) {
+      expect((await world({ leaveOn: true }).turn(said)).requestOffer).toBeUndefined();
+    }
+  });
+
+  it('offers spending for a sum asked for without the word spend', async () => {
+    expect((await world({ spendOn: true }).turn('I need $4,000 approved for the workshop.')).requestOffer?.kind).toBe('spending');
+  });
+});

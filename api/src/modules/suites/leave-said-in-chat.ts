@@ -179,7 +179,8 @@ export function readLeaveDates(message: string, today: Date = new Date()): Leave
   /* Next Thursday and Friday, this Monday to Wednesday, Thursday. */
   const wd = new RegExp(`\\b(?:(next|this)\\s+)?${WEEKDAY_RE}(?:\\s*(and|to|until|till|through|-)\\s*(?:(?:next|this)\\s+)?${WEEKDAY_RE})?`).exec(t);
   if (wd) {
-    const how = wd[1] === 'next' ? 'next' : 'this';
+    /* "Friday off next week" is next week's Friday: "next" after the day counts as much as before it. A day nobody asked for is the worst way to be wrong here. */
+    const how = wd[1] === 'next' || /\bnext week\b/.test(t) ? 'next' : 'this';
     const first = weekdayFrom(wd[2], how, today);
     if (!wd[4]) return out(first, endOf(first, weeksSaid(t)));
     const want = WEEKDAYS.indexOf(wd[4]);
