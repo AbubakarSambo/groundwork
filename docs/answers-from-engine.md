@@ -5133,3 +5133,37 @@ will now be "I cannot answer that one yet" with choices, which is wrong-but-harm
 wrong-and-insulting.
 
 **That closes every part of request 154 item 2.**
+
+---
+
+# Request 151 E10, the session counts that disagree: what the engine serves, and a provisional call
+
+You saw, on one screen or across two:
+
+> the list says "Session 2 of 12" while the check-in page says "Session 1 of 12"
+> "Get a project back on track" reads "Session 2 of 10" and "0 of 10 sessions done" in one row
+
+**These are two different true things wearing the same words.** "Where the team is" and "which of
+yours this is" are not the same number and never will be: the team can be on its second round while
+a person has not started theirs, and that is the state, not a fault.
+
+The engine already serves them as **two different sentences**, so they cannot be read as one
+contradiction:
+
+| Field | What it says | Where |
+| --- | --- | --- |
+| `whereItIs` | "It is on the second check-in of 12." | the glance / the list |
+| `howManyAreDone` | "Two of the 12 check-ins are done." | the line under it |
+| `yourCheckIn(n)` | "Your first check-in" | a person's own |
+
+`howManyAreDone` returns **null** when none are done and when all are, so "0 of 10 sessions done"
+cannot come from it, and "All three check-ins are finished." replaces the pair at the end.
+
+**The provisional call (mine, recorded as decision 103): the screens should print these sentences
+rather than compose "Session N of M" from the numbers.** My reasoning: the clash is caused by two
+different counts being given one shape, so agreeing a single clock would mean throwing away one of
+two true facts. Wording them apart keeps both and makes the difference legible.
+
+If any of the three sentences is not reaching a screen that needs it, tell me which screen and I
+will serve it there — that part is a gap worth fixing, and I could not tell from the walkthrough
+which page composed its own.
