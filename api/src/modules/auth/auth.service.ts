@@ -121,6 +121,15 @@ function goOnTo<T extends object>(res: T, kept: string | null | undefined): T & 
   return next ? { ...res, next } : res;
 }
 
+/*
+ * NEVER "ACCOUNT" IN WHAT A PERSON READS (Hafsah's standing rule; request 141, review of 5 October 2026).
+ * The sign-up answer names the address only because it is the person's own: they typed it a moment ago.
+ */
+export const theConfirmationLinkWasSent = (email: string): string =>
+  `Check your email. We sent a link to ${email} to confirm it is yours. Open it on any device.`;
+export const YOU_CAN_NO_LONGER_SIGN_IN_HERE =
+  'You can no longer sign in here. Ask the person who added you if you need to get back in.';
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -172,7 +181,7 @@ export class AuthService {
      * detected teaches it to try again without the trap.
      */
     if ((dto as any)._hp) {
-      return { message: 'Registration successful. Please check your email to verify your account.', email: dto.email.toLowerCase() };
+      return { message: theConfirmationLinkWasSent(dto.email.toLowerCase()), email: dto.email.toLowerCase() };
     }
 
     const existingUser = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
@@ -227,12 +236,12 @@ export class AuthService {
     });
 
     await this.emailService.sendVerificationEmail(dto.email.toLowerCase(), dto.firstName, token);
-    return { message: 'Registration successful. Please check your email to verify your account.', email: dto.email.toLowerCase(), passwordKey };
+    return { message: theConfirmationLinkWasSent(dto.email.toLowerCase()), email: dto.email.toLowerCase(), passwordKey };
   }
 
   async registerMagicLink(dto: MagicLinkRegisterDto): Promise<{ message: string; email: string }> {
     if ((dto as any)._hp) {
-      return { message: 'Account created. Please check your email to activate your account.', email: dto.email.toLowerCase() };
+      return { message: theConfirmationLinkWasSent(dto.email.toLowerCase()), email: dto.email.toLowerCase() };
     }
 
     const existingUser = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
@@ -265,7 +274,7 @@ export class AuthService {
     });
 
     await this.emailService.sendMagicLinkEmail(dto.email.toLowerCase(), firstName, token);
-    return { message: 'Account created. Please check your email to activate your account.', email: dto.email.toLowerCase() };
+    return { message: theConfirmationLinkWasSent(dto.email.toLowerCase()), email: dto.email.toLowerCase() };
   }
 
   async login(dto: LoginDto): Promise<AuthResponseDto> {
@@ -948,7 +957,7 @@ export class AuthService {
   }
 
   async memberSignin(dto: MemberSigninDto): Promise<{ message: string; email: string }> {
-    const message = 'If an account with that email exists, a sign-in link has been sent.';
+    const message = 'We have sent a sign-in link to that address, if we know it. Check your email.';
     const email = dto.email.toLowerCase();
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user || user.deletedAt || !user.isActive) return { message, email };
@@ -989,7 +998,7 @@ export class AuthService {
   }
 
   async forgotPassword(dto: ForgotPasswordDto): Promise<{ message: string }> {
-    const message = 'If an account with that email exists, a password reset link has been sent.';
+    const message = 'We have sent a link to choose a new password to that address, if we know it. Check your email.';
     const user = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
     if (!user) return { message };
 
@@ -1102,7 +1111,7 @@ export class AuthService {
             },
             include: { organization: true },
           });
-          if (!user.isActive) throw new UnauthorizedException('Account is deactivated');
+          if (!user.isActive) throw new UnauthorizedException(YOU_CAN_NO_LONGER_SIGN_IN_HERE);
           return { token: this.generateToken(user, 'google'), isNewUser, needsOrgName: false };
         }
 
@@ -1167,7 +1176,7 @@ export class AuthService {
       }
     }
 
-    if (!user.isActive) throw new UnauthorizedException('Account is deactivated');
+    if (!user.isActive) throw new UnauthorizedException(YOU_CAN_NO_LONGER_SIGN_IN_HERE);
     return { token: this.generateToken(user, 'google'), isNewUser, needsOrgName };
   }
 
