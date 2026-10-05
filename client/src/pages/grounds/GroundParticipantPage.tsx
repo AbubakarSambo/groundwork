@@ -25,6 +25,7 @@ import { MyParticipation } from '@/components/gw/MyParticipation'
 import { SharedReportForAParty } from '@/components/gw/SharedReportForAParty'
 import { ContextPage } from '@/components/gw/ContextPage'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import { toast } from 'sonner'
 
 
 
@@ -99,6 +100,7 @@ export function GroundParticipantPage() {
       requestedName: [user?.firstName, (user as any)?.lastName].filter(Boolean).join(' ') || undefined,
       reason: 'Asked to join from the check-in page.',
     }),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not send. Try again.'),
   })
 
   const { data: report } = useQuery({
