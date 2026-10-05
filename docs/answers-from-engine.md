@@ -4973,3 +4973,23 @@ the type and absent only where an item is not about one check-in, so draw it whe
 
 Both went in with the work that closed requests 151 and 152 on the engine side. I am noting them
 here because they were still marked Open on your list and you may have been waiting.
+
+---
+
+# Request 154 item 2, first part: the history reads in order now
+
+**"Each answer comes before its question, because both share one timestamp."** You were right about
+the cause. A question and its answer are written in the same moment, so `created_at` is equal on
+both rows, and the read was newest-first then reversed — within one timestamp the database is free
+to hand them back either way, so the pair came out backwards about half the time.
+
+There is no sequence column to fall back on; the id is a uuid and sorts randomly. The tie is broken
+on what the rows mean instead: **inside one instant, the person asked and Groundwork answered.**
+Real time still comes first, so an older answer still precedes a newer question.
+
+Nothing changes in the shape you receive — `turns` is still oldest first.
+
+**The other two parts of item 2 are not done yet** and are next: replies saved without their
+options (the "Here is what I can do with ..." turns that end with nothing after them), and the two
+wrong answers Juma and Rukia read. Those are about what is written at the time, not about reading
+it back, so they need the scenario run to finish before I touch that path.

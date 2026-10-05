@@ -270,7 +270,19 @@ export class AskService {
     return { canAsk: true as const, about, turns: await this.turnsKeptUnder(asker.organizationId, me.externalId) };
   }
 
-  /** The questions and answers kept under one key, oldest first. The caller decides whose key it is. */
+  /**
+   * The questions and answers kept under one key, oldest first. The caller decides whose key it is.
+   *
+   * A QUESTION AND ITS ANSWER OFTEN SHARE A TIMESTAMP, AND THEN THE ORDER WAS LUCK (request 154,
+   * item 2: "each answer comes before its question"). Both rows are written in the same moment, so
+   * `createdAt` is equal and the database may return them either way round; reversing a descending
+   * read then puts the answer first as often as not, and the history reads backwards.
+   *
+   * There is no sequence column to fall back on - the id is a uuid, which sorts randomly - so the
+   * tie is broken on what the rows mean: inside one instant a person's question comes before
+   * Groundwork's answer. Sorted in code rather than in SQL, because the rule is about role and not
+   * about any column the database can order by.
+   */
   private async turnsKeptUnder(organizationId: string, key: string): Promise<AskTurn[]> {
     const rows = await this.prisma.assistantTurn.findMany({
       where: { organizationId, personExternalId: key },
@@ -278,9 +290,10 @@ export class AskService {
       orderBy: { createdAt: 'desc' },
       take: TURNS_SHOWN,
     });
+    const askedFirst = (r: { role: string }) => (r.role === 'person' ? 0 : 1);
     return rows
-      .reverse()
       .filter((r) => (r.content ?? '').trim())
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || askedFirst(a) - askedFirst(b))
       .map((r) => ({ from: r.role === 'person' ? 'you' : 'groundwork', says: r.content, at: r.createdAt }));
   }
 
