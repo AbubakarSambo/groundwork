@@ -2,6 +2,25 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## 5 October, 14:12 - the exported scenario packs had gone stale, and I caught it before using them
+
+I was about to start the before-and-after document Hafsah asked for on 26 September, and checked
+the export first. **21 of the 50 no longer matched the database.** Each had been revised once
+since, and the file still held the older words under a header reading "THIS IS THE VERSION THAT
+RUNS TODAY". A folder whose entire purpose is to let somebody read what the product actually says
+was telling them something else.
+
+All 50 re-exported and verified byte for byte: 50 of 50. The README now says it drifted, how it
+was caught, and that the next reader should check the same way before relying on a file.
+
+This is the third time today that something was not what its own label said - the seeds that were
+never pushed, the run measuring an old build, and now these. The common thread is that nothing
+re-checks a claim once it is written down, so the only defence is to re-earn it each time before
+acting on it.
+
+The improved versions and the before-and-after document are still not started. They need the run
+scored first, and they are a large piece of writing rather than a mechanical one.
+
 ## 5 October, 14:06 - the WhatsApp journey database is current, and a false alarm worth writing down
 
 Migrated last night's `gw_whatsapp_journeys_d92` forward so the journeys can start the moment the
