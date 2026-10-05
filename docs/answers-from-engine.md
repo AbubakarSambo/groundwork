@@ -56,8 +56,9 @@ line broke it after a merge. Two changes:
 
 The nine lines, as a person now reads them:
 
-- A link nobody recognises: "We do not recognise that link. Sign in with the password you set, if you have already joined. Your setup link is in your email. Ask the person who added you for a new invite, if you have not joined yet."
-- A refused sign-in: "We have emailed you a way in, if that address has an account here. Check your inbox. Did you use a password? Check it and try again." (Your sign-in screen test mocks the old sentence, so it still passes, but it no longer matches what the server sends.)
+- A link nobody recognises: "We do not recognise that link. Have you already joined? Then sign in as you usually do. Have you not joined yet? Ask the person who added you to send you a new invite." (Changed after review: "the password you set" was false for people who sign in by email link.)
+- A refused sign-in: "We have emailed you a sign-in link, if we know that address. Check your inbox. Did you use a password? Check it and try again." It still does not say whether the address is known, and it no longer says "account". (Your sign-in screen test mocks the old sentence, so it still passes, but it no longer matches what the server sends.)
+- Still saying "account" elsewhere, not changed here: `auth.service.ts` ("Please check your email to verify your account.", "Account created. Please check your email to activate your account.", "If an account with that email exists, a sign-in link has been sent.", and the same for a password reset), and two API descriptions in `auth.controller.ts`.
 - Taking back a term read from a document: "This is taken off, and it no longer counts toward anything. It stays on the record, marked wrong."
 - A full session: "This session is full. It holds twenty answers, and everything you have said is on the record. Finish the check-in, and it will be written up. You can open another session afterwards to add more. Nothing you have written is lost."
 - Work outside its phase: "This does not count as a contribution on its own, because no phase running today allows it. Work that makes the company operable counts during the phase the company agreed for it. Outside that phase, say what it unblocks, what it adds to the moat, or what it keeps running."

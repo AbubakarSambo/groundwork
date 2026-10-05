@@ -4,6 +4,7 @@
 
 - When somebody leaves a role, the lead now reads "Kwame's role does not continue. Kwame's history stays as it is.", Kwame reads "Your role does not continue. Your history stays as it is.", and anybody who may not see his name reads "The role does not continue. The person's history stays as it is." (123 item 8). The screens workspace needs to copy the new label into its mirror file, which I was not allowed to edit.
 - The wording guard the screens kept tripping over now counts 51 lines, down from 60, because I rewrote nine engine sentences so the point comes first, and a new engine test fails if `api/src` goes above 35 (request 141).
+- After review, the refused sign-in and the unknown invite link no longer say "account" or "the password you set". Five more "account" lines in `auth.service.ts` are listed in the answers file and not yet changed.
 - When a person waits on something nobody owns, the lead is now asked to find the owner, "so that Neema Achieng is not left waiting", instead of being told to ask Neema to find out (134 item 5).
 - A person's own coaching no longer says "session 1 of 4 of founder or CEO work" as if somebody had set it; it reads "This is session 1 of 4. What you have said so far reads as founder or CEO work." (127 item 6).
 - I stopped on 127 item 5, "at their own request": the board says the request was Nadia Haddad's, so changing it to "your own request" could be false. It belongs with the judgement work.

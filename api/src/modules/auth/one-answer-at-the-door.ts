@@ -27,7 +27,7 @@
  * password reads "check it"; somebody without reads "we have emailed you a way in".
  */
 export const THE_SAME_ANSWER_EITHER_WAY =
-  'We have emailed you a way in, if that address has an account here. Check your inbox. ' +
+  'We have emailed you a sign-in link, if we know that address. Check your inbox. ' +
   'Did you use a password? Check it and try again.';
 
 /** Recorded for us, so a support question is still answerable. Never sent to the caller. */
