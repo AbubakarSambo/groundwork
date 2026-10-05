@@ -263,7 +263,11 @@ export function InvitePage() {
     )
   }
 
-  if (!token) return <Page narrow><Mark /><LinkProblem kind="invite" detail="This invite link is missing its token." /></Page>
+  {/* WALKTHROUGH PASS 2, ITEM 4: "TOKEN" IS NOT A WORD A PERSON READS. "This invite link is missing
+      its token." described the bug in the engineer's own terms; the plain fact is that the link is
+      not complete, and the way through it is the same as any other broken link: open it again from
+      the email, or sign in. */}
+  if (!token) return <Page narrow><Mark /><LinkProblem kind="invite" detail="This invitation link is not complete. Open the link from your email again." /></Page>
   if (isLoading) return <Page narrow><Mark /><p role="status" className="gwui-pt-sub">Loading your invitation…</p></Page>
   if (expired) return <InvitationExpired token={token} leadFirstName={expired.leadFirstName} />
   if (held) { const card = heldForASeatCard(held.saying); return <Page narrow><Mark /><PageTitle title={card.heading} subtitle={card.sub} /></Page> }

@@ -58,6 +58,27 @@ describe('an expired invitation', () => {
   })
 })
 
+/*
+ * WALKTHROUGH PASS 2, ITEM 4: "This invite link is missing its token." described the bug in the
+ * engineer's own terms, not plain words a person reads. Plain facts and a way through, same as
+ * every other broken link in this family.
+ */
+describe('a link with nothing after /invite', () => {
+  it('says plainly that the link is not complete, and offers a way through', async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={['/invite']}>
+          <Routes><Route path="/invite" element={<InvitePage />} /></Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    expect(await screen.findByText('This invitation link is not complete. Open the link from your email again.')).toBeTruthy()
+    expect(screen.queryByText(/token/i)).toBeNull()
+    expect(screen.getByRole('button', { name: 'Sign in instead' })).toBeTruthy()
+  })
+})
+
 describe('a link we do not recognise', () => {
   it('says what to do once, not twice', async () => {
     ;(participantsApi.preview as any).mockRejectedValue({ response: { status: 404 } })
