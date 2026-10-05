@@ -180,6 +180,20 @@ const CHECKED_AND_FINE = new Set([
    * purely on the field name. A name collision, not a check that can never be true.
    */
   'modules/assistant/assistant.service.ts:roleName',
+  /*
+   * A NAME COLLISION. `theSignInOf` takes a roster entry (`Person`), not a sign-in, and
+   * `if (!person.email)` is the check that a roster entry with no address cannot be matched to a
+   * sign-in by address. `Person.email` is `String?`; the audit matched `User.email`, which this file
+   * also reads, purely on the field name.
+   */
+  'modules/whatsapp/one-number-for-a-person.ts:email',
+  /*
+   * A NAME COLLISION. `if (!ours.accessToken || !ours.phoneNumberId)` checks the platform's own
+   * number, `OurNumber`, whose fields are optional because staff may not have saved them yet; that
+   * is the check that says "not connected" instead of sending with an empty token. The audit matched
+   * `WhatsAppConnection.accessToken`, a different, organisation-owned row that is always set.
+   */
+  'modules/whatsapp/whatsapp.service.ts:accessToken',
 ]);
 
 function findHits() {

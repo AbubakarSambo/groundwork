@@ -33,7 +33,7 @@ export class ARequestToldOnWhatsApp {
     private readonly prisma: PrismaService,
     @Optional() private readonly whatsapp?: WhatsAppService,
     /* Decision 106 item 7: a decision that cannot go by WhatsApp goes by email. */
-    @Optional() private readonly email?: EmailService,
+    @Optional() private readonly mailer?: EmailService,
   ) {}
 
   /** The approver, or every admin when an admin approves. Never the person who asked. */
@@ -82,16 +82,16 @@ export class ARequestToldOnWhatsApp {
   }
 
   private async decidedByEmail(organizationId: string, request: AWaitingRequest, outcome: 'approved' | 'declined', deciderUserId: string, reason?: string | null): Promise<void> {
-    if (!this.email || !request.personUserId) return;
+    if (!this.mailer || !request.personUserId) return;
     try {
       const person = await this.prisma.user.findUnique({ where: { id: request.personUserId }, select: { email: true, firstName: true, deletedAt: true } });
-      if (!person?.email || person.deletedAt) return;
+      if (!person || person.deletedAt) return;
       const decider = await this.prisma.user.findUnique({ where: { id: deciderUserId }, select: { firstName: true } }).catch(() => null);
       const said = aRequestWasDecided(person.firstName?.trim() || request.firstName, request.what, outcome, decider?.firstName);
       const sentence = outcome === 'declined' && reason?.trim()
         ? said.text.replace(/ Open Groundwork to read it\.$/, ` ${aReasonSaid(decider?.firstName?.trim() || 'They', reason)} Open Groundwork to read it.`)
         : said.text;
-      await this.email.sendRequestDecided(person.email, sentence, request.what, outcome);
+      await this.mailer.sendRequestDecided(person.email, sentence, request.what, outcome);
       await recordIt(this.prisma, { organizationId, suite: SUITE_OF_A_REQUEST[request.kind], ref: request.ref, kind: 'told', toUserId: request.personUserId, basis: { message: `${said.kind}:email` } });
     } catch (err: any) {
       this.logger.warn(`Could not email somebody that their ${request.kind} request was decided: ${err?.message}`);
