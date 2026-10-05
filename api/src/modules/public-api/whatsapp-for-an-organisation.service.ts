@@ -168,26 +168,32 @@ export class WhatsAppForAnOrganisationService {
       return;
     }
     /* The 24-hour window is measured from this, per person; and STOP means stop. */
-    if (who.personId) {
-      await this.prisma.person.update({ where: { id: who.personId }, data: { whatsappLastInboundAt: new Date() } }).catch(() => undefined);
-      if (arrived.kind === 'text' && A_STOP_WORD.test(arrived.text)) {
-        await this.prisma.person.update({ where: { id: who.personId }, data: { whatsappStoppedAt: new Date() } }).catch(() => undefined);
-        await say(STOPPED_SAYING);
+    if (who.personId) await this.prisma.person.update({ where: { id: who.personId }, data: { whatsappLastInboundAt: new Date() } }).catch(() => undefined);
+    /*
+     * STOP STOPS EVERYTHING TO THIS NUMBER (decision 106 item 2), whether the number is on the roster or
+     * only on a sign-in: the roster entry is stamped where there is one, and the word itself is kept in the
+     * send record for every number, which is what the sender reads.
+     */
+    if (arrived.kind === 'text' && A_STOP_WORD.test(arrived.text)) {
+      if (who.personId) await this.prisma.person.update({ where: { id: who.personId }, data: { whatsappStoppedAt: new Date() } }).catch(() => undefined);
+      await this.whatsapp.stopOrResume?.(organizationId, from, 'stopped');
+      await say(STOPPED_SAYING);
+      return;
+    }
+    /*
+     * START: after STOP it resumes; otherwise it is the "Reply START to begin" of checkin_open
+     * (decision 83), and begins the check-in like a greeting rather than becoming an answer.
+     */
+    if (arrived.kind === 'text' && A_START_WORD.test(arrived.text)) {
+      const me = who.personId ? await this.prisma.person.findUnique({ where: { id: who.personId }, select: { whatsappStoppedAt: true } }).catch(() => null) : null;
+      const stoppedHere = (await this.whatsapp.hasSaidStop?.(from).catch?.(() => false)) ?? false;
+      if (me?.whatsappStoppedAt || stoppedHere) {
+        if (who.personId) await this.prisma.person.update({ where: { id: who.personId }, data: { whatsappStoppedAt: null, whatsappConsentAt: new Date() } }).catch(() => undefined);
+        await this.whatsapp.stopOrResume?.(organizationId, from, 'resumed');
+        await say(RESUMED_SAYING);
         return;
       }
-      /*
-       * START: after STOP it resumes; otherwise it is the "Reply START to begin" of checkin_open
-       * (decision 83), and begins the check-in like a greeting rather than becoming an answer.
-       */
-      if (arrived.kind === 'text' && A_START_WORD.test(arrived.text)) {
-        const me = await this.prisma.person.findUnique({ where: { id: who.personId }, select: { whatsappStoppedAt: true } }).catch(() => null);
-        if (me?.whatsappStoppedAt) {
-          await this.prisma.person.update({ where: { id: who.personId }, data: { whatsappStoppedAt: null, whatsappConsentAt: new Date() } }).catch(() => undefined);
-          await say(RESUMED_SAYING);
-          return;
-        }
-        beginning = true;
-      }
+      beginning = !!who.personId || !!who.userId;
     }
     /* "Not now" always works (decision 83): nothing more is written first to this person today. */
     if (arrived.kind === 'text' && A_NOT_NOW.test(arrived.text)) {

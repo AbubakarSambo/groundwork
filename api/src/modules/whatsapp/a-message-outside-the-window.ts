@@ -164,6 +164,12 @@ export const TEMPLATES: Record<string, ATemplate> = {
   'review-decided': aTemplate('groundwork_review_decided', 'Hi {{1}}, {{2}} has decided your review. Open Groundwork to read the decision and the reasons.'),
 };
 TEMPLATES['report-retry'] = TEMPLATES.report;
+/*
+ * THE FIRST MESSAGE TO A NUMBER (decision 106 item 2). Ours, for Hafsah: whatever the first message is, it goes
+ * in this one template, naming the organisation, with the message's own words, and how to end it. Hafsah's
+ * eight are unchanged. See the-first-message-to-a-number.ts and docs/whatsapp-templates.md.
+ */
+TEMPLATES['first-contact'] = aTemplate('groundwork_first_contact', 'This is Groundwork, writing for {{1}}. {{2}} Not you? Reply STOP.');
 
 /** The names an organisation submits to Meta, once each: every template the product starts. */
 export const THE_NAMES_TO_SUBMIT: string[] = [...new Set(Object.values(TEMPLATES).map((t) => t.name))];
