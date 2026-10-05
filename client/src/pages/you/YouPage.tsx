@@ -149,7 +149,7 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
                   {b.goals.map(g => (
                     <li key={g.id}>
                       {g.says}
-                      {g.checkIn && <div className="gwui-ink-sub">{g.checkIn}</div>}
+                      {g.checkIn && <p className="gwui-panel-text-muted">{g.checkIn}</p>}
                     </li>
                   ))}
                 </ul>
