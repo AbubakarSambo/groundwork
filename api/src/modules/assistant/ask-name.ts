@@ -87,6 +87,7 @@ const STARTERS = [
   { line: 'Ask for leave, or to spend money.', needsACheckIn: false },
 ] as const;
 
-export function askStarters(hasACheckIn: boolean): string[] {
-  return STARTERS.filter((s) => hasACheckIn || !s.needsACheckIn).map((s) => s.line);
+export function askStarters(hasACheckIn: boolean, contextIsHere = true): string[] {
+  /* While adding context is hidden at release, the starter that offers it is left out too. */
+  return STARTERS.filter((s) => (hasACheckIn || !s.needsACheckIn) && (contextIsHere || !/context/i.test(s.line))).map((s) => s.line);
 }

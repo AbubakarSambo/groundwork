@@ -1,3 +1,4 @@
+import { askStarters } from '../assistant/ask-name';
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { readFileSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
@@ -268,7 +269,8 @@ const BARIDI_ASK = {
   starters: ["What are the company's priorities right now?", 'Ask for leave, or to spend money.'],
 };
 /* And the five, in Hafsah's order, for somebody who has a check-in. */
-const STARTERS_WITH_A_CHECK_IN = [
+/* As shipped, with the switch for context in Ask off, the starter about adding context is left out. */
+const STARTERS_WITH_A_CHECK_IN_AND_CONTEXT = [
   'What did I say I would do?',
   'What is my check-in for, and who reads it?',
   'When is my next check-in?',
@@ -276,6 +278,7 @@ const STARTERS_WITH_A_CHECK_IN = [
   'Add a document or some context to my check-in.',
   'Ask for leave, or to spend money.',
 ];
+const STARTERS_WITH_A_CHECK_IN = STARTERS_WITH_A_CHECK_IN_AND_CONTEXT.filter((l) => !/context/.test(l));
 /* As shipped, with adding context hidden (`release.contextInAskGroundwork` off): nothing is offered that cannot be done. */
 const BARIDI_WELCOME = 'This is Ask Baridi. I answer about the whole organisation and about your own work, and you can point me at one of your check-ins whenever you want to. Ask me about the company, about your work, or about your check-ins. You can also ask me for leave or to spend money. What you ask me stays private.';
 const BARIDI_WELCOME_WITH_CONTEXT = 'This is Ask Baridi. I answer about the whole organisation and about your own work, and you can point me at one of your check-ins whenever you want to. Ask me about the company, about your work, or about your check-ins. You can add context or a document to one of your check-ins here, and ask for leave or to spend money. What you ask me stays private. Anything you choose to add to a check-in works differently. I say it back to you first, it goes in only once you say yes, and from then on it is part of that check-in.';
@@ -993,6 +996,13 @@ describe('Ask is named for the organisation, and tells a person what it can do t
     expect(JSON.stringify(tom)).not.toContain('add context or documents');
     expect(tom.welcome).not.toContain('add context');
     expect(tom.welcome).toBe(BARIDI_WELCOME);
+  });
+
+  it('the starter about adding a document or context is offered only while that part is on', () => {
+    const line = 'Add a document or some context to my check-in.';
+    expect(askStarters(true, false)).not.toContain(line);
+    expect(askStarters(true, true)).toContain(line);
+    expect(askStarters(true, false)).toHaveLength(askStarters(true, true).length - 1);
   });
 
   it('a member who has already asked is not welcomed again, and still reads the name', async () => {

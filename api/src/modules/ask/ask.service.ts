@@ -253,7 +253,7 @@ export class AskService {
     const name = askName(organisationName);
     const contextIsHere = await contextIsInAskGroundwork(this.prisma);
     const welcome = shown.canAsk && shown.turns.length === 0 ? askFirstWelcome(organisationName, contextIsHere) : null;
-    return { ...shown, askName: name, caption: ASK_CAPTION, addLine: contextIsHere ? ASK_ADD_LINE : null, welcome, starters: askStarters((shown.about ?? []).length > 0) };
+    return { ...shown, askName: name, caption: ASK_CAPTION, addLine: contextIsHere ? ASK_ADD_LINE : null, welcome, starters: askStarters((shown.about ?? []).length > 0, contextIsHere) };
   }
 
   private async forReaderBare(asker: Asker, askedFor: string | null) {
