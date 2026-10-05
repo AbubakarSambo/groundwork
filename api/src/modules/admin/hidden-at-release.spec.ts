@@ -160,7 +160,8 @@ describe('plan and billing\'s new parts', () => {
   }
   it('shows an admin the price, the use and the limit only when turned on', async () => {
     const hidden = await read(false, true);
-    expect(hidden).toEqual({ sending: true, says: null });
+    /* Whether WhatsApp is on, and why no reminder comes while it is off, is everybody's to read (screens gap, 5 October). */
+    expect(hidden).toEqual({ on: false, sending: true, says: 'Your organisation has not turned on WhatsApp, so Groundwork does not send you reminders or summaries on WhatsApp.' });
     expect(JSON.stringify(hidden)).not.toContain('costs');
     const shown = await read(true, true);
     expect((shown as any).says?.price).toContain('WhatsApp costs');

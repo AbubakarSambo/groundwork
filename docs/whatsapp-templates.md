@@ -173,6 +173,20 @@ All three are now on the list the Connections page asks an admin to submit (`the
 - **Checked against WhatsApp's rules:** text before the first blank and after the last, no two blanks side by side, blanks in order, and plain words.
 - **Until Meta approves it:** outside the 24 hours it is recorded as not sent, like every other template.
 
+### `groundwork_first_contact` (decision 106, item 2: the first message to a number). New: it must be submitted to Meta and approved before any first message can go
+
+The first message Groundwork ever sends to a number names the organisation and adds "Not you? Reply STOP", so a number typed wrong reaches a stranger who is told who it is for and how to end it. "First" means nothing has ever been sent to that number and nothing has ever been received from it.
+
+Whatever the first message is (an opening notice, an approval, a review, the daily summary, a report), it goes in this one template, carrying the words it was going to say. This was chosen so that none of Hafsah's eight changes, because changing them would mean resubmitting every one. Only this template is new. The second message to the same number is the ordinary one.
+
+- **Category:** Utility
+- **Language:** English
+- **Body:** `This is Groundwork, writing for {{1}}. {{2}} Not you? Reply STOP.`
+- **Blanks:** {{1}} is the organisation's name, for example "Kito Foods". {{2}} is the message it carries, on one line, for example "Hi Amani, your check-in for Sales team, Q4 is open. It takes about five minutes, and you can answer right here. Reply START to begin."
+- **What Amani reads:** "This is Groundwork, writing for Kito Foods. Hi Amani, your check-in for Sales team, Q4 is open. It takes about five minutes, and you can answer right here. Reply START to begin. Not you? Reply STOP."
+- **Until it is approved:** a first message is recorded as not sent, with the reason, and is never sent without the protection. Add `groundwork_first_contact` to `WHATSAPP_APPROVED_TEMPLATES` only once Meta shows it as Active.
+- **A note for submitting:** the template has two blanks and its fixed words at both ends, which Meta's rules ask for. Meta may still ask for a sample: use the one above.
+
 ## Names no longer used
 
 `groundwork_session_ready`, `groundwork_check_in_opened` and `groundwork_check_in_nudge` were names in the code before decision 83. `checkin_open` replaces the first two. The third was for a check-in started and left, and is not needed: Groundwork already finishes a started check-in after 12 hours of quiet. None of the three needs submitting.

@@ -109,12 +109,12 @@ api/journey/*
 !api/journey/seed-an-anchor-check-in.ts
 !api/journey/seed-a-hundred-check-ins.ts
 
-# THE ANCHOR JOURNEY AND ITS READER RULES (anchor piece 35). A spec in api/src imports the rules, so a computer
-# without them cannot even compile the tests. Read-only, and it refuses anything that is not this computer.
+# THE ANCHOR JOURNEY (anchor piece 35). Its reader rules live in api/src/modules/board/the-anchor-readers.ts, because
+# nothing in api/src may import from outside api/src. Read-only, and it refuses anything that is not this computer.
 !api/journey/anchor/
 api/journey/anchor/*
-!api/journey/anchor/what-each-reader-may-be-served.ts
 !api/journey/anchor/walk-the-anchor-as-each-reader.ts
+!api/journey/anchor/walk-the-anchor-as-each-reader.spec.ts
 
 # AND THE 24-SCENARIO RUNNER, for the same reason, asked for by the screens workspace on
 # 26 September 2026: `api/journey/all-24/` only existed on one computer, so the other workspace

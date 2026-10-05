@@ -1,5 +1,5 @@
 import { Throttle } from '@nestjs/throttler';
-import { Controller, Delete, Get, Patch, Post, Req, Param, Headers, HttpCode, HttpStatus, Logger, Body, Query, ForbiddenException, GoneException, UseGuards } from '@nestjs/common';
+import { Controller, Delete, Get, Patch, Post, Req, Param, Headers, HttpCode, HttpStatus, Logger, Body, Query, ForbiddenException, GoneException, UseGuards, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ThreeMonthsOnTheHouseService } from './three-months-on-the-house.service';
 import { BillingService } from './billing.service';
@@ -105,6 +105,24 @@ export class BillingController {
     @CurrentUser('role') role: string,
   ) {
     return this.whatsappAddOn.whatTheyRead(organizationId, role === 'ADMIN');
+  }
+
+  /**
+   * "REMIND THEM" (upgrade.txt, "Anyone else, once it has paused"). Anybody in the organisation whose check-in is
+   * paused until the team subscribes; at most once a day for each person. A guest is from outside and is refused.
+   */
+  @Post('remind-the-admins')
+  @ApiBearerAuth()
+  @Roles(Role.ADMIN, Role.LEAD, Role.MEMBER)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Remind the organisation\'s admins that a check-in is paused until the team subscribes (once a day)' })
+  async remindTheAdmins(
+    @CurrentUser('organizationId') organizationId: string,
+    @CurrentUser('id') userId: string,
+    @Body() body: { groundId?: string },
+  ) {
+    if (!body?.groundId) throw new BadRequestException('Say which check-in is paused.');
+    return this.billing.remindTheAdmins(organizationId, userId, body.groundId);
   }
 
   @Patch('whatsapp')

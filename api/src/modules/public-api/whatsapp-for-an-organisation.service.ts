@@ -20,11 +20,15 @@ import { asATextMessage } from './a-reply-reads-as-a-text-message';
 import { aDecisionIn } from '../suites/a-request-in-words';
 import { aQuestionAskedAboutARequest } from '../suites/an-approver-asks-by-saying-so';
 import { BACK_TO_THE_CHECK_IN, YES_OR_NO_TO_AN_ANSWER, isThisYourAnswer, type AQuestionWaiting } from '../suites/a-question-about-a-request';
+import { plainlyEnglish } from './plainly-english';
+import { closingSoonestFirst, oneAtATime, theNextOne } from './several-check-ins-open';
+import { whenItIsDue } from '../whatsapp/what-goes-to-a-phone';
+import { formsOfTheSameNumber } from '../whatsapp/a-number-whatsapp-can-reach';
 import { AnOpenCheckIn, whatTheFileIsCalled, sessionHeader, whichOneRows, whichOneAsText, pickedOne, pickedFromText, whatArrived, reportAsText, reportAsTemplateBlanks, LANGUAGES_WE_CONVERSE_IN, A_FINISH_WORD, A_GREETING_ALONE, A_NOT_NOW, NOT_NOW_SAYING,
   NOT_ENOUGH_YET_TO_FINISH, isAnAskWord, A_BACK_WORD, A_SWITCH_WORD, A_YES, A_NO, THE_WORDS, NOW_ASKING, ASKING_NEEDS_A_ROSTER_ENTRY, ASK_READS_WORDS,
   ONLY_ONE_OPEN, NONE_OPEN, BACK_IN, BACK_TO_NOTHING, ASKING, isAsking, wasIn, namedCheckIn, looksLikeARequest, shallITreatThisAs, YES_OR_NO, HELD_WORDS_PUT_IN, heldWordsNotPut, type ARequest,
 } from './a-whatsapp-message-is-routed';
-import { A_STOP_WORD, A_START_WORD, STOPPED_SAYING, RESUMED_SAYING } from '../whatsapp/a-message-outside-the-window';
+import { A_STOP_WORD, A_START_WORD, STOPPED_SAYING, RESUMED_SAYING, UNKNOWN_NUMBER_SAYING } from '../whatsapp/a-message-outside-the-window';
 import { keptOffThePhone, answerItInTheApp } from '../whatsapp/a-check-in-kept-off-the-phone';
 import { WhichNumber, anInboundKey } from '../whatsapp/one-number-per-conversation';
 import {
@@ -71,6 +75,8 @@ export class WhatsAppForAnOrganisationService {
     if (message.id && !(await this.firstTimeWeSeeThis(organizationId, anInboundKey(via, WhatsAppService.normalize(from), String(message.id))))) return;
     if (via === 'theirs') await this.prisma.whatsAppConnection.update({ where: { organizationId }, data: { lastInboundAt: new Date() } }).catch(() => undefined);
     await this.route(organizationId, from, whatArrived(message), {
+      /* A reply quoting one of our messages, or a template's button, carries that message's id (decision 106 item 1). */
+      repliesTo: typeof message.context?.id === 'string' ? message.context.id : null,
       who: 'we do',
       say: (text) => this.whatsapp.sendOn(via, organizationId, from, text),
       list: (prompt, rows, asText) => this.whatsapp.sendListOn(via, organizationId, from, prompt, rows, asText),
@@ -126,6 +132,7 @@ export class WhatsAppForAnOrganisationService {
     from: string,
     arrived: ReturnType<typeof whatArrived>,
     out: {
+      repliesTo?: string | null;
       who: WhoHoldsTheNumber;
       say: (text: string) => Promise<unknown>;
       list: (prompt: string, rows: any[], asText: string) => Promise<unknown>;
@@ -134,9 +141,13 @@ export class WhatsAppForAnOrganisationService {
   ): Promise<void> {
     /* Everything below is the same routing whoever holds the number - the only difference is where
        the words go, and the one sentence a stranger must never be sent from their business. */
+    /* Said once, before the next thing said: "You have two check-ins open: ... Let's start with ..." (decision 106 item 1). */
+    let intro = '';
     const say = async (text: string) => {
       if (aStrangerHearsNothing(text, out.who)) return;
-      await out.say(text);
+      const t = intro ? `${intro}\n\n${text}` : text;
+      intro = '';
+      await out.say(t);
     };
 
     if (arrived.kind === 'other') { await say('I can read text, photos and documents here. Say it in words, or send the file.'); return; }
@@ -153,30 +164,36 @@ export class WhatsAppForAnOrganisationService {
     /* START said to begin the check-in, not to resume after STOP. */
     let beginning = false;
     if (!who.personId && !who.userId) {
-      await say("This number is not on your organisation's roster yet. Ask your admin to add it, or add it yourself under Settings in Groundwork, then message again.");
+      await say(UNKNOWN_NUMBER_SAYING);
       return;
     }
     /* The 24-hour window is measured from this, per person; and STOP means stop. */
-    if (who.personId) {
-      await this.prisma.person.update({ where: { id: who.personId }, data: { whatsappLastInboundAt: new Date() } }).catch(() => undefined);
-      if (arrived.kind === 'text' && A_STOP_WORD.test(arrived.text)) {
-        await this.prisma.person.update({ where: { id: who.personId }, data: { whatsappStoppedAt: new Date() } }).catch(() => undefined);
-        await say(STOPPED_SAYING);
+    if (who.personId) await this.prisma.person.update({ where: { id: who.personId }, data: { whatsappLastInboundAt: new Date() } }).catch(() => undefined);
+    /*
+     * STOP STOPS EVERYTHING TO THIS NUMBER (decision 106 item 2), whether the number is on the roster or
+     * only on a sign-in: the roster entry is stamped where there is one, and the word itself is kept in the
+     * send record for every number, which is what the sender reads.
+     */
+    if (arrived.kind === 'text' && A_STOP_WORD.test(arrived.text)) {
+      if (who.personId) await this.prisma.person.update({ where: { id: who.personId }, data: { whatsappStoppedAt: new Date() } }).catch(() => undefined);
+      await this.whatsapp.stopOrResume?.(organizationId, from, 'stopped');
+      await say(STOPPED_SAYING);
+      return;
+    }
+    /*
+     * START: after STOP it resumes; otherwise it is the "Reply START to begin" of checkin_open
+     * (decision 83), and begins the check-in like a greeting rather than becoming an answer.
+     */
+    if (arrived.kind === 'text' && A_START_WORD.test(arrived.text)) {
+      const me = who.personId ? await this.prisma.person.findUnique({ where: { id: who.personId }, select: { whatsappStoppedAt: true } }).catch(() => null) : null;
+      const stoppedHere = (await this.whatsapp.hasSaidStop?.(from).catch?.(() => false)) ?? false;
+      if (me?.whatsappStoppedAt || stoppedHere) {
+        if (who.personId) await this.prisma.person.update({ where: { id: who.personId }, data: { whatsappStoppedAt: null, whatsappConsentAt: new Date() } }).catch(() => undefined);
+        await this.whatsapp.stopOrResume?.(organizationId, from, 'resumed');
+        await say(RESUMED_SAYING);
         return;
       }
-      /*
-       * START: after STOP it resumes; otherwise it is the "Reply START to begin" of checkin_open
-       * (decision 83), and begins the check-in like a greeting rather than becoming an answer.
-       */
-      if (arrived.kind === 'text' && A_START_WORD.test(arrived.text)) {
-        const me = await this.prisma.person.findUnique({ where: { id: who.personId }, select: { whatsappStoppedAt: true } }).catch(() => null);
-        if (me?.whatsappStoppedAt) {
-          await this.prisma.person.update({ where: { id: who.personId }, data: { whatsappStoppedAt: null, whatsappConsentAt: new Date() } }).catch(() => undefined);
-          await say(RESUMED_SAYING);
-          return;
-        }
-        beginning = true;
-      }
+      beginning = !!who.personId || !!who.userId;
     }
     /* "Not now" always works (decision 83): nothing more is written first to this person today. */
     if (arrived.kind === 'text' && A_NOT_NOW.test(arrived.text)) {
@@ -290,11 +307,24 @@ export class WhatsAppForAnOrganisationService {
       return;
     }
 
-    /* Which one. A pick (tapped or typed) settles it; a remembered pick holds; two or more with neither asks. */
+    /*
+     * WHICH ONE (decision 106 item 1). A pick (tapped, or a number typed while the list is fresh) settles it.
+     * Then a reply to one of our messages about a check-in, or its Start button: that check-in. Then START
+     * after an opening notice newer than where they were: the check-in that notice was about. Then where
+     * they were: they stay in it until they finish or write "switch". Then the only one. With several and
+     * none of these, one at a time, the one closing soonest first, said in a sentence. The numbered list
+     * is only for "switch", when Groundwork genuinely cannot tell.
+     */
     let current: AnOpenCheckIn | null = null;
     /* A typed number is a pick only while the question is fresh (a-whatsapp-message-is-routed.ts). */
     const picked = arrived.kind === 'pick' ? pickedOne(arrived.id, open) : arrived.kind === 'text' && open.length > 1 ? pickedFromText(arrived.text, open, thread?.pickPendingAt) : null;
-    if (picked) {
+    const repliedTo = !picked && open.length > 1 ? await this.theCheckInARepliedMessageWasAbout(out.repliesTo, open) : null;
+    const remembered = thread && open.some((c) => c.id === thread.checkInId) ? open.find((c) => c.id === thread.checkInId)! : null;
+    const announced = !picked && !repliedTo && beginning && open.length > 1 ? await this.theLastOpeningNoticeTo(from, open, remembered ? thread!.updatedAt : null) : null;
+    if (repliedTo || announced) {
+      current = (repliedTo ?? announced)!;
+      await this.remember(organizationId, from, current.id);
+    } else if (picked) {
       current = picked;
       await this.remember(organizationId, from, picked.id);
       if (arrived.kind === 'pick' || /^\s*\d{1,2}\s*$/.test(arrived.kind === 'text' ? arrived.text : '')) {
@@ -303,15 +333,16 @@ export class WhatsAppForAnOrganisationService {
         await say(`${sessionHeader(current)}${opened ? ` ${THE_WORDS(ask)}\n\n${opened}` : ' Carry on where you left off.'}`);
         return;
       }
-    } else if (thread && open.some((c) => c.id === thread.checkInId)) {
-      current = open.find((c) => c.id === thread.checkInId)!;
+    } else if (remembered) {
+      current = remembered;
     } else if (open.length === 1) {
       current = open[0];
       await this.remember(organizationId, from, current.id);
     } else {
-      await this.askWhichOne(organizationId, from);
-      await out.list('You have more than one check-in open. Which is this for?', whichOneRows(open), whichOneAsText(open));
-      return;
+      const ordered = closingSoonestFirst(open);
+      current = ordered[0];
+      await this.remember(organizationId, from, current.id);
+      intro = oneAtATime(ordered);
     }
 
     /* Their language, read once from the first thing they wrote. */
@@ -423,10 +454,13 @@ export class WhatsAppForAnOrganisationService {
         /* Not waiting for the end card: Meta's webhook will not hold a reply for fifty seconds. */
         await this.conversation.complete(current.id, userId!, { waitForTheCard: false });
         await this.prisma.whatsAppThread.deleteMany({ where: { organizationId, checkInId: current.id } }).catch(() => undefined);
+        /* When it finishes, the next one is offered, and remembered, so START or an answer goes to it (decision 106 item 1). */
+        const next = closingSoonestFirst(open.filter((c) => c.id !== current!.id))[0] ?? null;
+        if (next) await this.remember(organizationId, from, next.id);
         /* The report comes from the completion listener below, off this request: four polls at four
            seconds each and a translation held Meta's webhook past its patience, and the redelivery
            was another answer. Acknowledge, and let the listener send. */
-        await say('Your check-in is complete and on record. Your report follows in a moment.');
+        await say(`Your check-in is complete and on record. Your report follows in a moment.${next ? `\n\n${theNextOne(next)}` : ''}`);
       } catch (e: any) {
         /* "Not enough yet" asks for something the person can give, so it is said in the words of this door ("finish"), not the app's ("complete", "the record is still thin"). */
         await say(e?.response?.canContinue ? NOT_ENOUGH_YET_TO_FINISH : (e?.response?.message ?? e?.message ?? 'That could not be completed yet.'));
@@ -552,7 +586,8 @@ export class WhatsAppForAnOrganisationService {
   private async readLanguageOnce(checkInId: string, text: string) {
     const row = await this.prisma.checkIn.findUnique({ where: { id: checkInId }, select: { participantId: true, participant: { select: { language: true } } } });
     if (!row || row.participant.language || text.length < 8) return;
-    const read = await this.anthropic.extract<{ language?: string }>(
+    /* Plainly English is English: the one-word read once took Kenyan shop names for Swahili (plainly-english.ts). */
+    const read = plainlyEnglish(text) ? { language: 'en' } : await this.anthropic.extract<{ language?: string }>(
       'Say which language this message is written in. Answer with the ISO 639-1 code only (en, ha, sw, yo, ig, fr, pt, ar, am, es). Mixed or unsure: the language most of the words are in.',
       [{ role: 'user', content: text }],
       { name: 'language_of', description: 'The language of the message', input_schema: { type: 'object', properties: { language: { type: 'string' } }, required: ['language'] } },
@@ -585,9 +620,13 @@ export class WhatsAppForAnOrganisationService {
         OR: [{ availableFrom: null }, { availableFrom: { lte: new Date() } }],
       },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, status: true, sessionNumber: true, ground: { select: { label: true, overWhatsApp: true } } },
+      select: { id: true, status: true, sessionNumber: true, availableFrom: true, createdAt: true, ground: { select: { label: true, overWhatsApp: true, cadence: true } } },
     });
-    return rows.map((r) => ({ id: r.id, status: r.status, sessionNumber: r.sessionNumber, label: r.ground.label, keptOffThePhone: keptOffThePhone(r.ground) }));
+    /* The one closing soonest first (decision 106 item 1), by the same due date the reminders use. */
+    return closingSoonestFirst(rows.map((r) => ({
+      id: r.id, status: r.status, sessionNumber: r.sessionNumber, label: r.ground.label, keptOffThePhone: keptOffThePhone(r.ground),
+      dueAt: whenItIsDue(r.availableFrom ?? r.createdAt, r.ground.cadence),
+    })));
   }
 
   private async invitationWaitingFor(organizationId: string, personId: string | null): Promise<string | null> {
@@ -600,6 +639,23 @@ export class WhatsAppForAnOrganisationService {
       orderBy: { createdAt: 'desc' },
     }).catch(() => null);
     return waiting?.ground.label ?? null;
+  }
+
+  /** The open check-in a message we sent was about, when the person replied to it (its id is the reply's context). */
+  private async theCheckInARepliedMessageWasAbout(messageId: string | null | undefined, open: AnOpenCheckIn[]): Promise<AnOpenCheckIn | null> {
+    if (!messageId) return null;
+    const sent = await (this.prisma.whatsAppSend as any).findFirst?.({ where: { providerMessageId: messageId }, select: { checkInId: true } })?.catch?.(() => null);
+    return sent?.checkInId ? open.find((c) => c.id === sent.checkInId) ?? null : null;
+  }
+
+  /** The open check-in the last opening notice to this number was about, when it came after where the person was. */
+  private async theLastOpeningNoticeTo(from: string, open: AnOpenCheckIn[], sinceTheyWereIn: Date | null): Promise<AnOpenCheckIn | null> {
+    const last = await (this.prisma.whatsAppSend as any).findFirst?.({
+      where: { phone: { in: formsOfTheSameNumber(from) }, kind: { startsWith: 'checkin-open' }, sentAt: { not: null }, checkInId: { in: open.map((c) => c.id) }, ...(sinceTheyWereIn ? { createdAt: { gt: sinceTheyWereIn } } : {}) },
+      orderBy: { createdAt: 'desc' },
+      select: { checkInId: true },
+    })?.catch?.(() => null);
+    return last?.checkInId ? open.find((c) => c.id === last.checkInId) ?? null : null;
   }
 
   private async remember(organizationId: string, from: string, checkInId: string) {

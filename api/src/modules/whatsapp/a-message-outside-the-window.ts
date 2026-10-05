@@ -27,6 +27,8 @@ export const BUSINESS_INITIATED: ReadonlySet<string> = new Set([
   'checkin-open', 'due-tomorrow', 'opens-soon', 'closes-soon', 'overdue', 'team-almost-in', 'your-view-matters', 'lead-summary',
   'anchor-weekly-insight', 'anchor-follow-up',
   'report', 'report-retry', 'request-waiting', 'request-decided', 'review-started', 'review-decided',
+  /* A check-in left halfway (a-check-in-left-halfway.ts): the reminder to carry on, the half-hour warning, and the clock closing it. */
+  'carry-on', 'closes-in-half-an-hour', 'closed-by-the-clock',
 ]);
 
 /**
@@ -56,6 +58,8 @@ export const FIRST_MESSAGES: ReadonlySet<string> = new Set([
   'anchor-weekly-insight',
   /* The anchor's nudge (piece 30; decision 105 item 3): one of the morning's chases, so it counts the same way. */
   'anchor-follow-up',
+  /* A check-in left halfway: the one reminder to carry on is the day's first message; the half-hour warning is a closing. */
+  'carry-on', 'closes-in-half-an-hour',
 ]);
 /**
  * APPROVALS GO STRAIGHT AWAY (decision 92, item 3). Telling an approver that a request waits for them
@@ -65,7 +69,7 @@ export const FIRST_MESSAGES: ReadonlySet<string> = new Set([
  */
 export const APPROVALS: ReadonlySet<string> = new Set(['request-waiting']);
 /** The messages that mark a day a check-in opens or closes, when two may go. */
-export const OPENING_OR_CLOSING: ReadonlySet<string> = new Set(['checkin-open', 'opens-soon', 'closes-soon']);
+export const OPENING_OR_CLOSING: ReadonlySet<string> = new Set(['checkin-open', 'opens-soon', 'closes-soon', 'closes-in-half-an-hour']);
 /**
  * THE MESSAGES THAT WENT BEFORE THIS RELEASE: the report after a session closes. Every other message
  * Groundwork starts is new, and goes to an organisation only once it has turned WhatsApp on (decisions
@@ -164,6 +168,12 @@ export const TEMPLATES: Record<string, ATemplate> = {
   'review-decided': aTemplate('groundwork_review_decided', 'Hi {{1}}, {{2}} has decided your review. Open Groundwork to read the decision and the reasons.'),
 };
 TEMPLATES['report-retry'] = TEMPLATES.report;
+/*
+ * THE FIRST MESSAGE TO A NUMBER (decision 106 item 2). Ours, for Hafsah: whatever the first message is, it goes
+ * in this one template, naming the organisation, with the message's own words, and how to end it. Hafsah's
+ * eight are unchanged. See the-first-message-to-a-number.ts and docs/whatsapp-templates.md.
+ */
+TEMPLATES['first-contact'] = aTemplate('groundwork_first_contact', 'This is Groundwork, writing for {{1}}. {{2}} Not you? Reply STOP.');
 
 /** The names an organisation submits to Meta, once each: every template the product starts. */
 export const THE_NAMES_TO_SUBMIT: string[] = [...new Set(Object.values(TEMPLATES).map((t) => t.name))];
@@ -180,5 +190,8 @@ export const THEY_SAID_STOP = 'This person said STOP on WhatsApp; not sent';
 export const A_STOP_WORD = /^\s*(stop|unsubscribe|opt\s*out)\s*[.!]?\s*$/i;
 export const A_START_WORD = /^\s*(start|unstop|resume|opt\s*in)\s*[.!]?\s*$/i;
 
-export const STOPPED_SAYING = 'Stopped. Nothing more comes to this number from Groundwork unless you reply START. Your check-ins are still in Groundwork.';
+/** A number Groundwork does not know (decision 106, item 5). */
+export const UNKNOWN_NUMBER_SAYING = 'Groundwork does not know this number yet. If you use Groundwork, add this number under Settings, or ask your admin to add it, then write again.';
+/* Decision 106 item 7: the last sentence is true because a decision that cannot go by WhatsApp goes by email (a-request-told-on-whatsapp.service.ts). */
+export const STOPPED_SAYING = 'Stopped. Nothing more comes to this number from Groundwork unless you reply START. Your check-ins are still in Groundwork. Leave and spending decisions still reach you by email.';
 export const RESUMED_SAYING = 'Resumed. Your check-in notices come here again.';

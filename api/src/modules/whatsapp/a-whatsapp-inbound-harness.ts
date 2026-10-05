@@ -11,6 +11,9 @@ export interface AnOpenRow {
   label: string;
   scenario?: string;
   overWhatsApp?: boolean | null;
+  /** For "the one closing soonest first" (decision 106 item 1). */
+  createdAt?: Date;
+  cadence?: string;
 }
 
 export function anInboundHarness(opts: {
@@ -25,6 +28,8 @@ export function anInboundHarness(opts: {
   decisionWaiting?: boolean;
   /** A question about this person's own request waits for their answer (decision 85, build step 7). */
   questionWaiting?: { id: string; suite: 'leave' | 'spend'; ref: string; askedBy: string; about: string } | null;
+  /** Messages Groundwork sent this number, for a reply's context and the last opening notice (decision 106 item 1). */
+  sends?: { providerMessageId?: string; checkInId: string; kind: string; createdAt: Date }[];
 } = {}) {
   const said: string[] = [];
   const sent: { org: string | null; via?: string; to: string; text: string; context?: any }[] = [];
@@ -38,7 +43,8 @@ export function anInboundHarness(opts: {
     checkIn: {
       findMany: jest.fn(async () => (opts.open ?? []).map((r) => ({
         id: r.id, status: r.status ?? 'IN_PROGRESS', sessionNumber: r.sessionNumber ?? 1,
-        ground: { label: r.label, scenario: r.scenario ?? 'PULSE_CHECK', overWhatsApp: r.overWhatsApp ?? null },
+        availableFrom: null, createdAt: r.createdAt ?? new Date(), 
+        ground: { label: r.label, scenario: r.scenario ?? 'PULSE_CHECK', overWhatsApp: r.overWhatsApp ?? null, cadence: r.cadence ?? 'WEEKLY' },
       }))),
       findUnique: jest.fn(async (q: any) => (opts.completed
         ? { id: q.where.id, sessionNumber: 2, status: 'COMPLETED', groundId: 'g-1', ground: { id: 'g-1', organizationId: 'org-1', label: opts.completed.label ?? 'Performance plan for Amina', scenario: opts.completed.scenario ?? 'PIP', overWhatsApp: opts.completed.overWhatsApp ?? null }, participant: { userId: 'u-1', email: 'amina@example.com', language: 'en' } }
@@ -57,7 +63,17 @@ export function anInboundHarness(opts: {
       }),
       deleteMany: jest.fn(async () => ({})),
     },
-    whatsAppSend: { findFirst: jest.fn(async () => null) },
+    whatsAppSend: {
+      findFirst: jest.fn(async (q: any) => {
+        const w = q?.where ?? {};
+        const rows = (opts.sends ?? []).filter((x) => (!w.providerMessageId || x.providerMessageId === w.providerMessageId)
+          && (!w.kind?.startsWith || x.kind.startsWith(w.kind.startsWith))
+          && (!w.checkInId?.in || w.checkInId.in.includes(x.checkInId))
+          && (!w.createdAt?.gt || x.createdAt > w.createdAt.gt));
+        if (!w.providerMessageId && !w.kind) return null;
+        return rows.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0] ?? null;
+      }),
+    },
   };
   const record = (org: string | null, to: string, text: string, context?: any, via?: string) => { said.push(text); sent.push({ org, via, to, text, context }); return { sent: true }; };
   const whatsapp: any = {
@@ -93,7 +109,7 @@ export function anInboundHarness(opts: {
     return copy;
   };
   const service = aCopy();
-  const message = (text: string, from = '2348012345678', id?: string) => ({ entry: [{ changes: [{ value: { messages: [{ id: id ?? `wamid.${Math.random()}`, from, type: 'text', text: { body: text } }] } }] }] });
+  const message = (text: string, from = '2348012345678', id?: string, repliesTo?: string) => ({ entry: [{ changes: [{ value: { messages: [{ id: id ?? `wamid.${Math.random()}`, from, type: 'text', text: { body: text }, ...(repliesTo ? { context: { id: repliesTo } } : {}) }] } }] }] });
   /* Another copy of the API on the same database, or this one after a restart: nothing in memory carries over. */
   return { service, aFreshCopy: aCopy, prisma, whatsapp, conversation, assistant, reports, said, sent, message, thread: () => thread };
 }

@@ -72,6 +72,8 @@ type UserWithOrg = {
 };
 
 import { whereTheyBelong, ROLE_FOR_SOMEBODY_EXPECTED } from './they-are-already-on-somebodys-roster';
+import { connectWhatsAppFor } from '../whatsapp/connect-whatsapp';
+import { aSignInsNumberChanged, aRosterNumberChanged, refuseANumberOnSomebodyElse, aSignInWithNoNumberTakesTheRosters, theSignInOf } from '../whatsapp/one-number-for-a-person';
 
 /**
  * For an address that already has an account: the draft token a new address would have been given
@@ -434,7 +436,9 @@ export class AuthService {
           /* The roster row and the account meet, so the panel and every check-in
              read as this person from the first minute rather than the second
              time they sign in. */
-          await tx.person.update({ where: { id: belongs.personId }, data: { linkedUserId: u.id } });
+          const listed = await tx.person.update({ where: { id: belongs.personId }, data: { linkedUserId: u.id }, select: { phone: true } });
+          /* A sign-in made with no number takes the roster's (decision 106 item 3). */
+          await aSignInWithNoNumberTakesTheRosters(tx, u.id, listed?.phone);
           await tx.groundParticipant.updateMany({
             where: { email: pending.email, userId: null, awaitingSeat: false },
             data: { userId: u.id },
@@ -1231,7 +1235,11 @@ export class AuthService {
     if (!user) throw new BadRequestException('User not found');
     /* One builder. A field added to it cannot fail to reach this route now. */
     const belongsElsewhere = await this.belongsElsewhere(user.id, user.organizationId);
-    return { ...this.theUserShape(user as unknown as UserWithOrg, belongsElsewhere), orgCode: user.organization.slug, emailNotifications: user.emailNotifications };
+    return {
+      ...this.theUserShape(user as unknown as UserWithOrg, belongsElsewhere), orgCode: user.organization.slug, emailNotifications: user.emailNotifications,
+      /* "Connect WhatsApp" for the person's own Settings, or null (decision 106 item 4). Only on their own read. */
+      connectWhatsApp: await connectWhatsAppFor(this.prisma, this.configService, { organizationId: user.organizationId, userId: user.id, email: user.email }),
+    };
   }
 
   /**
@@ -1490,11 +1498,15 @@ export class AuthService {
     /* One stored form for every number, the way WhatsApp sends it; a local number takes the
        organisation's country, or is refused with a sentence asking for the whole number (survey item 6). */
     if (dto.phoneNumber !== undefined) userUpdate.phoneNumber = dto.phoneNumber?.trim() ? await tidyANumberFor(this.prisma as any, me.organizationId, dto.phoneNumber) : null;
+    /* A number on somebody else's sign-in is refused with a sentence, before anything is written (decision 106 item 3). */
+    if (dto.phoneNumber !== undefined) await refuseANumberOnSomebodyElse(this.prisma, userUpdate.phoneNumber as string | null, userId);
 
     /* Only the person's own row. The organisation is changed through PATCH /users/organization, by an admin. */
     if (Object.keys(userUpdate).length) {
       await this.prisma.user.update({ where: { id: userId }, data: userUpdate });
     }
+    /* And their roster entry follows, so the number they typed is the one they are written to and recognised by. */
+    if (dto.phoneNumber !== undefined) await aSignInsNumberChanged(this.prisma, userId, (userUpdate.phoneNumber as string | null) ?? null);
 
     return this.getProfile(userId);
   }

@@ -3,7 +3,17 @@ import { Injectable, Logger, UnauthorizedException, BadRequestException, Optiona
 import { ConfigService } from '@nestjs/config';
 
 /** Did it go. One shape from both numbers; see sendMessage. */
-export type SendResult = { sent: boolean; status?: number; error?: string };
+export type SendResult = { sent: boolean; status?: number; error?: string; /** Meta's id for the message, so a reply to it can be traced back (decision 106 item 1). */ messageId?: string };
+
+/** The body Meta answered with, or nothing when it cannot be read. Never throws. */
+async function readTheBody(res: any): Promise<string> {
+  try { return typeof res?.text === 'function' ? String((await res.text()) ?? '') : ''; } catch { return ''; }
+}
+
+/** Meta's id for a message it accepted, from the body it answered with. Undefined when there is none. */
+export function theMessageIdIn(body: string): string | undefined {
+  try { const id = JSON.parse(body)?.messages?.[0]?.id; return typeof id === 'string' && id ? id : undefined; } catch { return undefined; }
+}
 /** What a send was for, so the row can be found later. Both optional: a notice has no check-in. */
 export type SendContext = {
   checkInId?: string | null;
@@ -35,6 +45,8 @@ import { aLocalForm, callingCodeOf, formsOfTheSameNumber, tidyANumber } from './
 import { theCountryCodeOf, tidyANumberFor } from './the-organisations-country';
 import { WhichNumber, inboundKeysFrom, whichNumberOf } from './one-number-per-conversation';
 import { GroundworksOwnNumber, OurNumber } from './groundworks-own-number';
+import { aSignInsNumberChanged, refuseANumberOnSomebodyElse } from './one-number-for-a-person';
+import { FIRST_CONTACT, FIRST_CONTACT_NOT_APPROVED, theFirstContactLine } from './the-first-message-to-a-number';
 import { ATemplate, insideTheServiceWindow, isBusinessInitiated, WENT_BEFORE_THIS_RELEASE, NOT_TURNED_ON_QUIETLY, templateFor, OUTSIDE_THE_WINDOW, THEY_SAID_STOP, FIRST_MESSAGES, APPROVALS, OPENING_OR_CLOSING, NOT_TODAY, THEY_SAID_NOT_NOW } from './a-message-outside-the-window';
 
 /**
@@ -300,10 +312,10 @@ export class WhatsAppService {
 
   /** Our own number, once the add-on and the limit have said it may go. */
   private async sendOnOurNumber(org: string | null, to: string, text: string, context: SendContext): Promise<SendResult> {
-    const gate = await this.mayInitiate(org, to, context, 'ours');
+    const gate = await this.mayInitiate(org, to, context, 'ours', text);
     if (!gate.free) {
       if (gate.quiet) return { sent: false, error: gate.because };
-      if (gate.template) { const ours = await this.ours(); return this.sendTemplate(ours.phoneNumberId ?? '', ours.accessToken ?? '', org, to, text, gate.template, context); }
+      if (gate.template) { const ours = await this.ours(); return this.sendTemplate(ours.phoneNumberId ?? '', ours.accessToken ?? '', org, to, text, gate.template, gate.params ? { ...context, params: gate.params } : context); }
       const result: SendResult = { sent: false, error: gate.because };
       this.writeItDown(org, to, result, context);
       return result;
@@ -422,7 +434,8 @@ export class WhatsAppService {
         this.logger.error(`WhatsApp send failed for ${to}: ${res.status} ${metaErrorCode(body)}`);
         return { sent: false, status: res.status, error: body.slice(0, 500) || `HTTP ${res.status}` };
       }
-      return { sent: true, status: res.status };
+      const accepted = await readTheBody(res);
+      return { sent: true, status: res.status, messageId: theMessageIdIn(accepted) };
     } catch (err: any) {
       this.logger.error(`WhatsApp send failed for ${to}: ${err?.message}`);
       return { sent: false, error: String(err?.message ?? err).slice(0, 500) };
@@ -442,6 +455,7 @@ export class WhatsAppService {
           failedAt: result.sent ? null : new Date(),
           status: result.status ?? null,
           error: result.error ?? null,
+          ...(result.messageId ? { providerMessageId: result.messageId } : {}),
         },
       })
       .catch((err: any) => this.logger.warn(`Could not record a WhatsApp send to ${phone}: ${err?.message}`));
@@ -466,10 +480,10 @@ export class WhatsAppService {
     if (held) return held;
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
     if (!own || !own.enabled) return this.sendOnOurNumber(organizationId, to, text, context);
-    const gate = await this.mayInitiate(organizationId, to, context, 'theirs');
+    const gate = await this.mayInitiate(organizationId, to, context, 'theirs', text);
     if (!gate.free) {
       if (gate.quiet) return { sent: false, error: gate.because };
-      if (gate.template) return this.sendTemplate(own.phoneNumberId, own.accessToken, organizationId, to, text, gate.template, context);
+      if (gate.template) return this.sendTemplate(own.phoneNumberId, own.accessToken, organizationId, to, text, gate.template, gate.params ? { ...context, params: gate.params } : context);
       const result: SendResult = { sent: false, error: gate.because };
       this.writeItDown(organizationId, to, result, context);
       return result;
@@ -593,7 +607,7 @@ export class WhatsAppService {
    * approved template or is recorded as not sent, with the reason - checked before anything is
    * composed or paid for. See a-message-outside-the-window.ts.
    */
-  private async mayInitiate(organizationId: string | null, to: string, context: SendContext, via: WhichNumber): Promise<{ free: true } | { free: false; template: ATemplate | null; because: string; quiet?: boolean }> {
+  private async mayInitiate(organizationId: string | null, to: string, context: SendContext, via: WhichNumber, text = ''): Promise<{ free: true } | { free: false; template: ATemplate | null; because: string; quiet?: boolean; params?: string[] }> {
     if (!isBusinessInitiated(context.kind)) return { free: true };
     /*
      * NOTHING NEW GOES TO AN ORGANISATION THAT NEVER TURNED WHATSAPP ON (decisions 78 and 88). The
@@ -612,7 +626,7 @@ export class WhatsAppService {
         select: { whatsappStoppedAt: true, whatsappLastInboundAt: true },
       })
       .catch(() => null);
-    if (person?.whatsappStoppedAt) return { free: false, template: null, because: THEY_SAID_STOP };
+    if (person?.whatsappStoppedAt || (await this.saidStopFrom(to))) return { free: false, template: null, because: THEY_SAID_STOP };
     const often = await this.howOftenToday(to, context.kind);
     if (often) return { free: false, template: null, because: often, quiet: true };
     /*
@@ -627,7 +641,73 @@ export class WhatsAppService {
     const onThisNumber = await this.lastWroteOn(via, organizationId, to);
     const lastWrote = ownNumber?.enabled ? onThisNumber : (onThisNumber ?? person?.whatsappLastInboundAt);
     if (insideTheServiceWindow(lastWrote)) return { free: true };
-    return { free: false, template: templateFor(context.kind, await this.approvedFor(organizationId)), because: OUTSIDE_THE_WINDOW };
+    const approved = await this.approvedFor(organizationId);
+    /*
+     * THE FIRST MESSAGE TO A NUMBER NAMES THE ORGANISATION AND SAYS "NOT YOU? REPLY STOP" (decision 106
+     * item 2). A number typed wrong reaches a stranger; the first thing they read says who it is for and how
+     * to end it. "First" is: nothing ever sent to this number and nothing ever received from it. It goes as
+     * groundwork_first_contact, carrying the message's own words; until Meta approves that template, a first
+     * message is recorded as not sent, rather than sent without the protection.
+     */
+    if (!lastWrote && (await this.neverInTouchWith(to))) {
+      const first = templateFor(FIRST_CONTACT, approved);
+      if (!first) return { free: false, template: null, because: FIRST_CONTACT_NOT_APPROVED };
+      return { free: false, template: first, because: OUTSIDE_THE_WINDOW, params: [await this.nameOfTheOrganisation(organizationId), theFirstContactLine(context.kind, context.params, text)] };
+    }
+    return { free: false, template: templateFor(context.kind, approved), because: OUTSIDE_THE_WINDOW };
+  }
+
+  /**
+   * NEVER IN TOUCH: nothing has gone to this number and nothing has come from it, on either number. A staff
+   * test from the back office does not count. When the record cannot be read, it is treated as in touch.
+   */
+  private async neverInTouchWith(to: string): Promise<boolean> {
+    const sends = (this.prisma.whatsAppSend as any)?.findFirst;
+    const inbound = (this.prisma.whatsAppInboundMessage as any)?.findFirst;
+    if (typeof sends !== 'function' || typeof inbound !== 'function') return false;
+    const forms = formsOfTheSameNumber(to);
+    const phone = WhatsAppService.normalize(to);
+    try {
+      const went = await (this.prisma.whatsAppSend as any).findFirst({ where: { phone: { in: forms }, sentAt: { not: null }, NOT: { kind: { startsWith: 'admin-test' } } }, select: { id: true } });
+      if (went) return false;
+      const came = await (this.prisma.whatsAppInboundMessage as any).findFirst({ where: { OR: [{ messageId: { startsWith: inboundKeysFrom('ours', phone) } }, { messageId: { startsWith: inboundKeysFrom('theirs', phone) } }] }, select: { messageId: true } });
+      return !came;
+    } catch {
+      return false;
+    }
+  }
+
+  /** The organisation's name, for "This is Groundwork, writing for ...". */
+  private async nameOfTheOrganisation(organizationId: string | null): Promise<string> {
+    if (!organizationId) return 'your organisation';
+    const org = await (this.prisma as any).organization?.findUnique?.({ where: { id: organizationId }, select: { name: true } })?.catch?.(() => null);
+    return org?.name?.trim() || 'your organisation';
+  }
+
+  /**
+   * STOP FROM A NUMBER WITH NO ROSTER ENTRY (decision 106 item 2: STOP stops everything to that number).
+   * A roster entry carries its own stamp; a number that is only on a sign-in is stopped by the record of
+   * the word itself, and resumed by START the same way. The latest of the two decides.
+   */
+  private async saidStopFrom(to: string): Promise<boolean> {
+    const latest = await (this.prisma.whatsAppSend as any)?.findFirst?.({
+      where: { phone: { in: formsOfTheSameNumber(to) }, kind: { in: ['stopped', 'resumed'] } },
+      orderBy: { createdAt: 'desc' },
+      select: { kind: true },
+    })?.catch?.(() => null);
+    return latest?.kind === 'stopped';
+  }
+
+  /** Whether the last word from this number was STOP, by the send record. */
+  async hasSaidStop(to: string): Promise<boolean> {
+    return this.saidStopFrom(to);
+  }
+
+  /** "stop" or "start" from a number, kept in the send record so the sender can read it whoever the number belongs to. */
+  async stopOrResume(organizationId: string | null, phoneNumber: string, word: 'stopped' | 'resumed'): Promise<void> {
+    await this.prisma.whatsAppSend
+      .create({ data: { organizationId, phone: WhatsAppService.normalize(phoneNumber), kind: word, checkInId: null, sentAt: null, failedAt: null, status: null, error: null } })
+      .catch((err: any) => this.logger.warn(`Could not record "${word}" from ${phoneNumber}: ${err?.message}`));
   }
 
   /** Whether the organisation turned WhatsApp on (the add-on), or already had a number of its own. True when that cannot be read. */
@@ -712,7 +792,7 @@ export class WhatsAppService {
           template: { name: template.name, language: { code: template.language }, components: template.components(text, context.params) },
         }),
       });
-      result = res.ok ? { sent: true, status: res.status } : { sent: false, status: res.status, error: (await res.text().catch(() => '')).slice(0, 500) };
+      result = res.ok ? { sent: true, status: res.status, messageId: theMessageIdIn(await readTheBody(res)) } : { sent: false, status: res.status, error: (await res.text().catch(() => '')).slice(0, 500) };
     } catch (err: any) {
       result = { sent: false, error: err?.message ?? 'template send failed' };
     }
@@ -846,9 +926,9 @@ export class WhatsAppService {
   /** Set (or clear) a user's WhatsApp number. Called from Settings (self) or org roster (admin/HR on someone's behalf). */
   async setPhoneNumber(userId: string, rawNumber: string | null): Promise<void> {
     const user = rawNumber?.trim() ? await this.prisma.user.findUnique({ where: { id: userId }, select: { organizationId: true } }) : null;
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { phoneNumber: rawNumber?.trim() ? await this.tidyFor(user?.organizationId ?? null, rawNumber) : null },
-    });
+    const number = rawNumber?.trim() ? await this.tidyFor(user?.organizationId ?? null, rawNumber) : null;
+    await refuseANumberOnSomebodyElse(this.prisma, number, userId);
+    await this.prisma.user.update({ where: { id: userId }, data: { phoneNumber: number } });
+    await aSignInsNumberChanged(this.prisma, userId, number);
   }
 }

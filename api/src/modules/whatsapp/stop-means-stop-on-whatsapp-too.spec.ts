@@ -31,7 +31,7 @@ describe('the handler', () => {
 
 describe('the sender', () => {
   it('refuses a business-initiated message to somebody who said stop, and says why in the record', () => {
-    expect(service).toContain("if (person?.whatsappStoppedAt) return { free: false, template: null, because: THEY_SAID_STOP };");
+    expect(service).toContain("if (person?.whatsappStoppedAt || (await this.saidStopFrom(to))) return { free: false, template: null, because: THEY_SAID_STOP };");
     expect(THEY_SAID_STOP).toMatch(/STOP/);
   });
 });

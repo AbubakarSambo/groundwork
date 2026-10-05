@@ -198,6 +198,14 @@ Two things about existing variables did change and matter at release:
 | `NODE_ENV` | The API now listens only on 127.0.0.1 when `NODE_ENV` is exactly `development`. With any other value, or none, it listens on every address, as before. | Yes, unless a hosted environment sets it to `development`, in which case the hosted API would stop answering. See the release questions. |
 | `GEMINI_LOCATION` | Unchanged in the code (default `us-central1`). Every local run this week set it to `global`, only on the commands started here, because the regional address timed out from this Mac. | The product needs the model. Which address the hosted API uses is a release question. |
 
+**One new secret that Abubakar must add before release: `SETTINGS_ENCRYPTION_KEY`.** It is the key the API uses to encrypt the WhatsApp access token, app secret and verify token that Groundwork staff save on the back-office page `/admin/whatsapp`. It is a secret: it goes only into the host's settings for the API, never into the code, a document or a chat.
+
+| Name | What it is | Is it a secret? | Without it |
+| --- | --- | --- | --- |
+| `SETTINGS_ENCRYPTION_KEY` | 32 bytes written in base64 or hex, or any string of at least 32 characters. Make one on any computer with `openssl rand -base64 32` and paste the result into the API's settings on the host. Use a different key on each hosted environment, and never change it once secrets are saved: a changed key means every saved secret has to be typed in again. | Yes. | The API starts and works. The back-office WhatsApp page cannot save any secret and says so in a sentence, and WhatsApp uses the server's own `WHATSAPP_*` settings, as before. A key shorter than 32 characters is refused in the same way. |
+
+Once it is set, and once Hafsah has saved the WhatsApp details on `/admin/whatsapp` and switched WhatsApp on, WhatsApp uses the saved details first, field by field, and the server's `WHATSAPP_*` settings only for a field nothing was saved for.
+
 For reference, the production start-up check (unchanged since the remote `main`) refuses to start with `NODE_ENV=production` unless these are set: `JWT_SECRET`, `CORS_ORIGINS`, `DATABASE_URL`, `BILLING_ENABLED=true`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `GOOGLE_SERVICE_ACCOUNT_JSON`, `EMAIL_SENDS_FOR_REAL=true` and a real `RESEND_API_KEY`.
 
 **New settings rows in `platform_settings`:**

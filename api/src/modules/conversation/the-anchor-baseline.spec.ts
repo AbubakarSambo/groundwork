@@ -78,6 +78,15 @@ describe('anchor piece 14: the baseline, as the model reads it in the first sess
     expect(prompt).toContain('Ask exactly one question in this turn');
     expect(prompt.indexOf(THE_BASELINE_REMINDER)).toBeGreaterThan(prompt.indexOf('Never list them'));
   });
+  it('learns all nine before it closes, names the four that were missed, and asks for no proof (review of piece 14)', async () => {
+    const prompt = await aWorld({ startedFrom: 'anchor', switchOn: true }).compose();
+    expect(prompt).toContain('Learn all nine before you close. Do not sum up, thank them for their time, or end the conversation while any of the nine is still unasked, unless they say they want to stop.');
+    expect(prompt).toContain('who they depend on to get their work done, who depends on them, what they are responsible for, and what they think their lead is most concerned about.');
+    expect(prompt).toContain('Do not ask for proof, numbers, dates, documents or examples to back up what they said, and do not ask how they know something.');
+    /* And the line read last says it again, after everything else. */
+    const last = prompt.slice(prompt.indexOf('# For this person, in this first conversation'));
+    expect(last).toContain('Do not ask for proof, numbers or examples. Do not close while one of the nine is still unasked.');
+  });
   it('gives only what this person has been told the check-in is for, never the lead\'s own brief', async () => {
     const prompt = await aWorld({ startedFrom: 'anchor', switchOn: true }).compose();
     const block = prompt.slice(prompt.indexOf('# What this person has been told this check-in is for'));

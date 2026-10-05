@@ -1,9 +1,9 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { PartyType } from '@prisma/client';
-import { afterTheirTurn, theirOwnIdea, THE_IDEA_QUESTION, IT_IS_CAPTURED, IDEA_SPOTTING_KEY, THE_IDEA_SPOTTING_PROMPT } from './ideas-from-the-team';
+import { anIdeaReadBackAsAPromise, afterTheirTurn, theirOwnIdea, THE_IDEA_QUESTION, IT_IS_CAPTURED, IDEA_SPOTTING_KEY, THE_IDEA_SPOTTING_PROMPT } from './ideas-from-the-team';
 import { person, answered, boardAs, AMINA, RUKIA, BARAKA, JUMA, type Setup } from '../board/the-switchboards-sections-harness';
-import { whatIsWrongForThisReader } from '../../../journey/anchor/what-each-reader-may-be-served';
+import { whatIsWrongForThisReader } from '../board/the-anchor-readers';
 
 /**
  * ANCHOR PIECE 19: AN IDEA IS SAID BACK IN THE SPEC'S WORDS, AND ONLY THE PERSON'S YES CAPTURES IT
@@ -122,5 +122,26 @@ describe('"Ideas from your team" on the board, as each reader reads it', () => {
   });
   it('with the switch off, nobody is served them', async () => {
     expect('ideasFromYourTeam' in (await boardAs(anchor(false), ...RUKIA))).toBe(false);
+  });
+});
+
+describe('an idea is never read back as a promise (review of piece 19)', () => {
+  const IDEA = 'we could send the updated price list to every shop on Monday morning';
+  const SAID = 'I think we could send the updated price list to every shop on Monday morning, so they stop ordering at the old prices.';
+
+  it('cuts "You said you will send the updated price list to every shop on Monday morning." after "Yes, capture it"', () => {
+    const reply = 'You said you will send the updated price list to every shop on Monday morning. What else got in your way this week?';
+    expect(anIdeaReadBackAsAPromise(reply, [IDEA], [SAID, 'Yes, capture it'])).toEqual(['You said you will send the updated price list to every shop on Monday morning.']);
+  });
+
+  it('keeps it where she also said, apart from the idea, that she will do it', () => {
+    const reply = 'You said you will send the updated price list to every shop on Monday morning.';
+    expect(anIdeaReadBackAsAPromise(reply, [IDEA], [SAID, 'I will send the price list myself on Monday.'])).toEqual([]);
+  });
+
+  it('leaves alone a read-back of something else, and a reply with no read-back', () => {
+    expect(anIdeaReadBackAsAPromise('You said you will call Naivas on Friday about the late payment.', [IDEA], [SAID, 'I will call Naivas on Friday.'])).toEqual([]);
+    expect(anIdeaReadBackAsAPromise('I have captured it for the team. What else got in your way this week?', [IDEA], [SAID])).toEqual([]);
+    expect(anIdeaReadBackAsAPromise('You said you will send the updated price list to every shop on Monday morning.', [], [SAID])).toEqual([]);
   });
 });

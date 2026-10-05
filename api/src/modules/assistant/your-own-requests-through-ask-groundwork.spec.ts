@@ -151,6 +151,13 @@ describe('the questions that used to get "I cannot answer that one yet", as each
     ].join('\n'));
   });
 
+  it('"what leave have I asked for, and what was decided?" is answered from her own leave, not "I cannot answer that one yet"', async () => {
+    expect(await said(svc(WORLD), 'What leave have I asked for, and what was decided?')).toEqual({ lane: 'your_requests', text: [
+      'Your leave from Thursday 8 October to Friday 9 October is waiting for Wairimu.',
+      'Your leave from Monday 12 October to Tuesday 13 October is approved by Wairimu.',
+    ].join('\n') });
+  });
+
   it('when nothing was ever asked, says so, and a switched-off suite is said to be off', async () => {
     expect((await said(svc({}), 'Where is my request to spend?')).text).toBe('You have not asked for any leave or to spend anything, so there is no request of yours to look at. Tell me what you need and I will ask the person who decides.');
     expect((await said(svc({ spendOff: true }), 'Where is my request to spend?')).text).toBe('Spending requests are not switched on in your organisation, so there are none to look at. An admin can switch them on under Suites.');

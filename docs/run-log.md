@@ -2,6 +2,91 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## The anchor pieces, proved with real conversations (5 October, night)
+
+I built 9b4b54e8 in a separate worktree and ran it on port 3000, with a test settings key held only in the start
+command and the local database only. Two things are wrong at this head before any conversation starts.
+
+**The build no longer starts as it is meant to.** Three spec files under `src` now import from `journey/anchor`
+(added in 27c0e105, 38afffc0 and 1d9ef0a5). That pulls `journey` into the compile, so the server lands at
+`dist/src/main.js` instead of `dist/main.js`, and `start:prod` (`node dist/main`) will not find it. Started from
+`dist/src/main`, it then stopped at boot because `embed.js` was not where it looked. I copied the static files into
+the build output so the test could go on, and changed no source. This needs fixing before anything is deployed.
+
+**The baseline (piece 14).** I added a new person, Wanjiru, to the live anchor check-in and let the model answer as
+her. Every turn ran on `ad402fbe-9dcf-4eb6-a6f2-e34ac6a706e6`, and every turn asked one question, never a list.
+But the questions were not the baseline's. After a first question about what the team is trying to achieve, she was
+asked "What did you do, or not do, that helped get the team to this point?" and "What specifically exists now that
+shows that adjustment? For instance, a document, a system, or something else that reflects these changes." Who she
+depends on, who depends on her and what she is responsible for were never asked. Then the session closed after six
+questions.
+
+**Ideas (piece 19).** This works as written. Her idea was offered with "That sounds like a concrete idea. Want me
+to capture it for the team?". "Yes, I sent the deck to Naivas last week." captured nothing. "Yes, capture it" captured
+it, and the idea row carries `fields.promptVersionId` `3294fbe3-d3ef-4911-8737-89090d1ffe64`. Rukia and Amani both
+see it under "Ideas from your team", with "Raised by Wanjiru.". Grace, an admin who is not in the check-in, does not
+see it, and Wanjiru's own board is withheld until she finishes her check-in. One fault: straight after the capture,
+the summary told her "You said you will send the updated price list to every shop on Monday morning." She never
+said that. It was her idea for the team, not her promise.
+
+**Leave and spending (pieces 26 and 27).** "Can I take a day off on Friday?" was offered as "Shall I treat this as
+a leave request?". Her yes was answered "Your organisation also has the option to manage leave through Groundwork.",
+with no button, because Sokoni Fresh has no suites on. So the sentence and button for when a suite is on are not
+proved here. Two faults. In the same reply as the offer, the model said "I can't directly approve time off. That's
+a conversation you'd need to have with Rukia." And "I need 15,000 shillings approved for fuel for the van this week."
+was not read as spending at all, because the reader only knows the word "spend". "Can I spend 15,000 shillings on
+fuel for the van this week?" was offered, and its yes gave the spending sentence.
+
+**The walker.** `walk-the-anchor-as-each-reader.ts` reads the sign-in token from the top of the reply, but the API
+wraps it in `data`, so every board came back 401 and it tested nothing. A scratch copy that unwraps the reply found
+seven of eight reads right. The eighth is that Rukia is not served the end-of-month read on the ended check-in. The
+seed stores her first words as a record entry, but `herOwnWords` reads only her conversation or the check-in's
+brief, so the read never begins.
+
+**The shared conversation did not move.** No anchor prompt was used outside Wanjiru's check-in. On sales, pip and
+project (run-oct5d against the same three in run-oct5b) every problem is still 0, and the engine numbers moved both
+ways, as fresh conversations do. Specific detail went from 20 to 33, blocker checks from 11 to 18 and past words
+from 12 to 17. Agreements went from 14 to 12, patterns from 42 to 38, commitments from 22 to 19 and proof from 4 to 3.
+Three scenarios are too few to call any of these a change.
+
+## WhatsApp end to end, from the settings saved in the back office (5 October, night)
+
+Hafsah's item 3. I built `394e9ea8` and then `82f5a7ae` in a separate worktree, and started the API on port 3014 against fresh copies of `gw_pw9_1786222102` (`gw_wa_oct5b` to `gw_wa_oct5e`). Port 3000 and the tester's database were not touched. `WHATSAPP_GRAPH_BASE_URL` pointed at a recorder on 127.0.0.1:3996, so nothing left the computer, and the model was the real one.
+
+A platform admin typed test values into `/admin/whatsapp/settings`, checked the connection, sent a test message and switched WhatsApp on. Every inbound message was signed with the app secret saved there. In the last run, the API and the script were also started with different dummy `WHATSAPP_*` server settings (`WHATSAPP_ENV_DIFFERS=1`), to prove that the saved details win. The script is `api/journey/whatsapp-journeys.ts`, with `whatsapp-journeys-steps.ts` and the new `whatsapp-journeys-more.ts` (onboarding, project and the anchor).
+
+**Result: 165 of 165 checks passed (run 5, `gw_wa_oct5e`).** The first run had 154 of 158. Two of its failures were old expected sentences: Ask is now named after the organisation. Two were real bugs, and both are fixed:
+
+- **Kesi's report reached her in Swahili** although she wrote only English. The language read had taken "Naivas" and "shillings" for Swahili. It is fixed in `8d4955fa` (`plainly-english.ts`).
+- **"What leave have I asked for, and what was decided?" read "I cannot answer that one yet."** The check passed anyway, because it only checked that the question was not taken for a request. It is fixed in `394e9ea8`, and the journey now checks the answer itself.
+
+| Journey | What the person received (quoted) | Result |
+| --- | --- | --- |
+| Staff save the number | "The access token is set. It was saved here and is kept encrypted." Then "Connected. Meta has this number as +44 7700 900123, under the name Groundwork." Then "WhatsApp is on for everyone. Messages go from this number." | Pass |
+| The test message, to the typed number only | "This is a test message from Groundwork. If you can read it, Groundwork's WhatsApp number is working." | Pass |
+| The saved details win over different server settings | Handshake with the saved verify token: 200. With the server's: 403. A post signed with the server's app secret: 401. With the saved one: accepted. All 134 sends carried the saved phone number ID and token, and none carried the server's. | Pass |
+| A saved secret is removed | "The app secret is set in the server's settings. Anything you save here replaces it." After that, the server's secret is accepted and the removed one refused, and the same holds for the verify token. The test message then went with the server's token and the saved phone number ID. | Pass |
+| The verify handshake and a bad signature | The challenge comes back bare. A wrong token gets 403. A wrong or missing signature gets 401, and nobody is written to. | Pass |
+| The first session is announced | "Hi Amani, your check-in for Sales team, Q4 is open. It takes about five minutes, and you can answer right here. Reply START to begin." | Pass |
+| Sales, in full | "Your check-in is complete and on record. Your report follows in a moment." Then "Your report for Sales team, Q4 is ready. ..." | Pass |
+| Onboarding, in full (Zawadi) | "Your report for Zawadi joins Sales is ready. ... You said, "I still do not know who approves a discount above ten percent."" | Pass |
+| Project, in full (Juma) | "Your report for Cold room project is ready. ... You said, "The electrician has not confirmed a date yet."" | Pass |
+| A photo and a document | "Your photo is on your check-in with your note: The signed order from Green Mart. Only you can see this, and nobody else can open it." and ""renewals-notes.txt" is on your check-in." | Pass |
+| Leave, with the approver on WhatsApp | "You are approving Amani's leave from Tuesday 20 October to Thursday 22 October. Is that right?" Then "Hi Amani, your request for leave from Tuesday 20 October to Thursday 22 October was approved by Wairimu. Open Groundwork to read it." | Pass |
+| Spending, with the approver on WhatsApp | "You are approving Baraka's request to spend KES 12,000 for fuel for the delivery van. Is that right?" Then "Baraka's request to spend KES 12,000 for fuel for the delivery van is approved now. I have let Baraka know." | Pass |
+| Reminders | "Hi Amani, your check-in for Renewals is overdue. It's still open, so you can answer here now." | Pass |
+| The anchor's nudge | "Hi Kesi, last time you said you would send the corrected price list to Quickmart. I'd love to hear how it went. Your check-in for Sales team weekly is open, and you can answer here." | Pass |
+| The lead's daily summary | "Good morning Wairimu. Here's today's summary of your check-ins: In "Sales team, Q4", 1 of 4 people have checked in, and you, Amani and Baraka have not yet. ..." | Pass |
+| The anchor's weekly insight | "Hi Wairimu. Your team is starting to move. This week, one of two people checked in, and one has said what they will do themselves. This week's picture is on the board at ..." | Pass |
+| Ask Groundwork | "Your leave from Tuesday 3 November to Wednesday 4 November is waiting for Wairimu. ..." (to both questions, after the fix) | Pass |
+| "not now" and "stop" | "All right. I will not write to you first again today. ..." and "Stopped. Nothing more comes to this number from Groundwork unless you reply START. Your check-ins are still in Groundwork." | Pass |
+| No add-on, the monthly limit, the switch off | "Your organisation has not turned on WhatsApp, so this check-in stays in the app. You can carry on in the Groundwork app." | Pass |
+
+**Not fixed, for Hafsah or the engine:**
+
+1. **The slowest webhook call took 42 to 108 seconds, and it was "START" every time.** Meta sends a message again when it does not get a quick answer. A repeated message is answered only once, so nothing is doubled, but the person waits. Answering Meta first and then doing the work would fix it, and that is a change to how the webhook works.
+2. **Two kinds of check-in open with a question that does not suit them.** Zawadi's onboarding, Juma's project and Kesi's anchor check-in all open with "Before anything else, so this asks you the right things: are you the person this check-in is about, or somebody working alongside them?" For a check-in with one person in it, this is an odd first question.
+
 ## Crisis, snapshot and project again, with the judgement's stored prompt (5 October, evening)
 
 I ran the three scenarios again on a build of 0e9157bd, made in a separate worktree so the builder's

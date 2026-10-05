@@ -52,7 +52,7 @@ describe('the platform handler', () => {
     await c.receive(inbound('hello') as any);
     expect(inboundHandler.handle).not.toHaveBeenCalled();
     expect(sent).toHaveLength(1);
-    expect(sent[0]).toMatch(/recognize this number/);
+    expect(sent[0]).toBe('Groundwork does not know this number yet. If you use Groundwork, add this number under Settings, or ask your admin to add it, then write again.');
   });
 
   it('a number on two rosters is asked which, as a numbered list, and nothing is guessed', async () => {

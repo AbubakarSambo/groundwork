@@ -36,6 +36,7 @@ import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
  */
 
 export const WHATSAPP_NOT_TURNED_ON = 'Your organisation has not turned on WhatsApp, so this check-in stays in the app.';
+export const WHATSAPP_REMINDERS_ARE_OFF = 'Your organisation has not turned on WhatsApp, so Groundwork does not send you reminders or summaries on WhatsApp.';
 export const WHATSAPP_NOT_ON_A_PAID_PLAN = 'Your organisation is not on a paid plan at the moment, so this check-in stays in the app.';
 
 export type WhyHeld = 'not turned on' | 'not on a paid plan' | 'at the limit';
@@ -325,7 +326,14 @@ export class WhatsAppAddOnService {
     const s = await this.standing(organizationId, now);
     const personSays = s.heldBecause ? whatThePersonReads(s.heldBecause, now) : null;
     /* The price, the trial, the use and the limit are hidden at release (docs/deploy.md): an admin reads what everybody reads. */
-    if (!isAdmin || !(await theNewBillingPartsAreShown(this.prisma))) return { sending: s.sending, says: personSays };
+    /*
+     * A LEAD OR A PERSON IN A CHECK-IN READS WHY NOT, ON THEIR OWN READ (screens gap, 5 October). With the add-on off and
+     * nothing held, they were served `sending: true` and nothing to say, while the three new WhatsApp messages (the
+     * morning reminder, the reminder before a session and the lead's daily summary) go only where WhatsApp is turned on.
+     * So they read that, plainly, and whether it is on.
+     */
+    const offSays = !s.addOnOn ? WHATSAPP_REMINDERS_ARE_OFF : null;
+    if (!isAdmin || !(await theNewBillingPartsAreShown(this.prisma))) return { on: s.addOnOn, sending: s.sending, says: personSays ?? offSays };
 
     const label = s.plan ? PLAN_LABELS[s.plan] : null;
     const says: Record<string, string | null> = {

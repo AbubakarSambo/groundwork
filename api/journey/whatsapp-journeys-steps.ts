@@ -44,7 +44,7 @@ export async function journeys(c: any): Promise<void> {
   // ==============================================================================================
   heading('1. THE INVITATION, THE FIRST SESSION ANNOUNCED, AND START');
   /* The handshake and the signature first: nothing unsigned or wrongly signed is ever read. */
-  const handshake = await fetch(`${process.env.API ?? 'http://localhost:3006/api/v1'}/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=${process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN}&hub.challenge=1158201444`);
+  const handshake = await fetch(`${process.env.API ?? 'http://localhost:3006/api/v1'}/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=${encodeURIComponent(c.verifyToken ?? process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN ?? '')}&hub.challenge=1158201444`);
   check('Meta\'s handshake with the test verify token is answered with the challenge, bare', handshake.status === 200 && (await handshake.text()) === '1158201444');
   const wrong = await fetch(`${process.env.API ?? 'http://localhost:3006/api/v1'}/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=wrong&hub.challenge=1`);
   check('A handshake with the wrong verify token is refused', wrong.status === 403);
@@ -62,7 +62,8 @@ export async function journeys(c: any): Promise<void> {
   await cron.sendSessionReadyNotificationsInner();
   await waitQuiet(1000);
   const toAmani = received(amani, before);
-  check('The first session is announced to Amani, once, in Hafsah\'s words for checkin_open', toAmani.length === 1 && toAmani[0].template === 'checkin_open' && bodyOf(toAmani[0]) === 'Hi Amani, your check-in for Sales team, Q4 is open. It takes about five minutes, and you can answer right here. Reply START to begin.', JSON.stringify(toAmani.map(bodyOf)));
+  /* Decision 106 item 2: the first message ever sent to Amani's number names the organisation and says "Not you? Reply STOP.", around Hafsah's words for checkin_open. */
+  check('The first session is announced to Amani, once, in Hafsah\'s words for checkin_open, and as the first message to her number it names the organisation and says "Not you? Reply STOP."', toAmani.length === 1 && toAmani[0].template === 'groundwork_first_contact' && bodyOf(toAmani[0]) === `This is Groundwork, writing for ${orgs.on.name}. Hi Amani, your check-in for Sales team, Q4 is open. It takes about five minutes, and you can answer right here. Reply START to begin. Not you? Reply STOP.`, JSON.stringify(toAmani.map(bodyOf)));
   /* The same job again must not announce twice. */
   const again = outbox.length;
   await cron.sendSessionReadyNotificationsInner();
@@ -72,7 +73,7 @@ export async function journeys(c: any): Promise<void> {
   check('The announcement is written down as a send of the kind checkin-open, as the template (Amani has not written yet, so it is outside the 24 hours)', announced.length >= 1 && announced.some((a: any) => a.kind === 'checkin-open:template' || a.kind === 'checkin-open'), JSON.stringify(announced.map((a: any) => a.kind)));
 
   const started = await says(amani, 'START');
-  check('START begins the check-in: the session is named, the words that switch are said, and the first question follows', /Sales team, Q4/.test(started.text) && started.text.includes('You can write "ask" at any time to ask Groundwork something, "back" to come back to your check-in, and "switch" to choose another check-in.') && started.got.length === 1);
+  check('START begins the check-in: the session is named, the words that switch are said, and the first question follows', /Sales team, Q4/.test(started.text) && started.text.includes(`You can write "ask" at any time to talk to Ask ${orgs.on.name}, "back" to come back to your check-in, and "switch" to choose another check-in.`) && started.got.length === 1);
   const afterStart = await prisma.checkIn.findUnique({ where: { id: amaniCheckIn.id }, select: { status: true } });
   check('Amani\'s session is now in progress, and START was not stored as her answer', afterStart?.status === 'IN_PROGRESS' && !(await prisma.conversationTurn.findFirst({ where: { checkInId: amaniCheckIn.id, role: 'PERSON', content: 'START' } })));
 
@@ -180,7 +181,8 @@ export async function journeys(c: any): Promise<void> {
   const spendRow = await prisma.spendRequest.findFirst({ where: { organizationId: orgs.on.id, userId: baraka.userId } });
   check('The spending request is saved, waiting, for the right sum', !!spendRow && spendRow.status === 'waiting' && Number(spendRow.amount) === 12000, JSON.stringify(spendRow));
   const graceTold = since(spFrom - 1).filter((s: any) => s.to === grace.phone);
-  check('Grace, who decides for Baraka, is told it is waiting, in the words of groundwork_request_waiting', graceTold.length === 1 && graceTold[0].template === 'groundwork_request_waiting' && graceTold[0].text === 'Hi Grace, Baraka has asked for KES 12,000 for fuel for the delivery van, and it is waiting for you. Reply here to approve or decline it, or open Groundwork to read it first.', JSON.stringify(graceTold.map(bodyOf)));
+  /* Grace has never been written to before, so this is her number's first message (decision 106 item 2). */
+  check('Grace, who decides for Baraka, is told it is waiting, in the words of groundwork_request_waiting, as the first message to her number', graceTold.length === 1 && graceTold[0].template === 'groundwork_first_contact' && graceTold[0].text === `This is Groundwork, writing for ${orgs.on.name}. Hi Grace, Baraka has asked for KES 12,000 for fuel for the delivery van, and it is waiting for you. Reply here to approve or decline it, or open Groundwork to read it first. Not you? Reply STOP.`, JSON.stringify(graceTold.map(bodyOf)));
   await says(baraka, 'back');
   const gApprove = await says(grace, 'approve');
   check('Grace\'s "approve" is said back with the sum before anything happens', /You are approving Baraka's request to spend KES 12,000 for fuel for the delivery van\. Is that right\?/.test(gApprove.text) && (await prisma.spendRequest.findFirst({ where: { id: spendRow!.id } }))?.status === 'waiting', gApprove.text);
@@ -332,7 +334,7 @@ export async function journeys(c: any): Promise<void> {
   const bn = await says(baraka, 'not now');
   check('"Not now" is answered in Hafsah\'s words', bn.text === 'All right. I will not write to you first again today. Your check-in is still open, and you can answer here whenever you are ready.', bn.text);
   const st = await says(chidi, 'stop');
-  check('"Stop" is answered, and says how to start again', st.text === 'Stopped. Nothing more comes to this number from Groundwork unless you reply START. Your check-ins are still in Groundwork.', st.text);
+  check('"Stop" is answered, and says how to start again', st.text === 'Stopped. Nothing more comes to this number from Groundwork unless you reply START. Your check-ins are still in Groundwork. Leave and spending decisions still reach you by email.', st.text);
   const chidiRow = await prisma.person.findUnique({ where: { id: chidi.personId }, select: { whatsappStoppedAt: true } });
   check('Chidi is recorded as stopped', !!chidiRow?.whatsappStoppedAt);
   await prisma.checkIn.updateMany({ where: { groundId: renewalsId, participant: { email: baraka.email } }, data: { createdAt: new Date(Date.now() - 6 * DAY) } });
@@ -363,11 +365,13 @@ export async function journeys(c: any): Promise<void> {
   heading('7. ASK GROUNDWORK ON WHATSAPP: "ask", A QUESTION, "back"');
   const turnsBefore = await prisma.conversationTurn.count({ where: { checkIn: { participant: { email: amani.email }, groundId: salesId }, role: 'PERSON' } });
   const askSw = await says(amani, 'ask');
-  check('"ask" moves Amani to Ask Groundwork and says how to return', askSw.text === 'You are now talking to Ask Groundwork. Ask me anything about your work. Write "back" to return to your check-in.', askSw.text);
+  check('"ask" moves Amani to Ask Groundwork and says how to return', askSw.text === `You are now talking to Ask ${orgs.on.name}. Ask me anything about the company, your work or your check-ins. Write "back" to return to your check-in.`, askSw.text);
   const question = await says(amani, 'Where is my leave request?');
   check('Her question is answered by Ask Groundwork from her own record: where each leave request stands', question.got.length >= 1 && !/I cannot answer that one yet/.test(question.text) && /20 October/.test(question.text) && /3 November/.test(question.text), question.text);
   const notAsRequest = await says(amani, 'What leave have I asked for, and what was decided?');
   check('A question about leave is never read as a request for leave', !/I could not tell exactly which days you mean/.test(notAsRequest.text) && notAsRequest.got.length >= 1, notAsRequest.text);
+  /* Run oct5c: this read "I cannot answer that one yet" and the check above still passed. */
+  check('...and it is answered from her own leave', !/I cannot answer that one yet/.test(notAsRequest.text) && /20 October/.test(notAsRequest.text), notAsRequest.text);
   check('The question was not stored as an answer in her check-in', (await prisma.conversationTurn.count({ where: { checkIn: { participant: { email: amani.email }, groundId: salesId }, role: 'PERSON' } })) === turnsBefore);
   const backAgain = await says(amani, 'back');
   check('"back" returns her to the check-in she was in', /^You are back in your check-in\. .*Carry on where you left off\.$/s.test(backAgain.text) || /back in your check-in/i.test(backAgain.text), backAgain.text);
@@ -471,7 +475,7 @@ export async function journeys(c: any): Promise<void> {
   /* (e) Somebody whose number is nobody's. */
   const stranger = { first: 'A stranger', phone: '+254799999999' };
   const strangerReads = await says(stranger, 'Hello, can I join?');
-  check('A number that is on no roster is told how to be added, not left in silence', strangerReads.text === "We don't recognize this number yet. Add it in your Groundwork Settings, then message us again.", strangerReads.text);
+  check('A number that is on no roster is told how to be added, not left in silence', strangerReads.text === 'Groundwork does not know this number yet. If you use Groundwork, add this number under Settings, or ask your admin to add it, then write again.', strangerReads.text);
 }
 
 /** The sender, from the same application the API runs. */

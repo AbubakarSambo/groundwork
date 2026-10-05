@@ -1,6 +1,7 @@
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { STARTED_FROM_THE_ANCHOR } from './the-anchor-weekly-check-in';
 import type { TheIdeaOfferInTheCheckIn, TheIdeasFromYourTeam } from '../entry/the-anchor-served-shapes';
+import { whatItSaysTheySaid } from './a-promise-they-never-made';
 
 /**
  * IDEAS FROM THE TEAM (anchor piece 19; section 18; decisions 96 item 10 and 105 item 5).
@@ -132,4 +133,46 @@ export function theIdeasFromYourTeam(
     }),
     whenThereAreNone: NO_IDEA_CAPTURED_YET,
   };
+}
+
+/*
+ * AN IDEA IS NEVER READ BACK AS A PROMISE (review of piece 19). Sunday offered "we could send the updated price list to
+ * every shop on Monday morning", said yes to "Yes, capture it", and the reply went on "You said you will send the updated
+ * price list to every shop on Monday morning." The net for commitments let it stand, because "we could" reads as
+ * somebody committing. An idea is something the team might do, owned by nobody, so a sentence that reads it back as
+ * theirs to do is cut. It stands only where they also said, in their own words and apart from the idea, that they
+ * will do it ("I will send it", "I'll do it on Monday").
+ */
+const A_READ_BACK = /\b(?:you(?:'ll| will| would| are going to|'re going to| shall| plan to| intend to)|(?:committed|promised|agreed|planned|intended)\s+to|that you (?:will|would|are going to))\s+(?:also\s+|then\s+|definitely\s+|still\s+)?(?:be\s+)?([a-z][a-z'-]+)/i;
+const I_WILL = /\b(?:I(?:'ll| will| shall| am going to|'m going to)|I(?:'m| am) (?:sending|doing|taking|going))\b/i;
+const NOTHING_WORDS = new Set(['the', 'and', 'for', 'with', 'that', 'this', 'from', 'your', 'you', 'they', 'their', 'them', 'have', 'been', 'will', 'would', 'could', 'should', 'about', 'said', 'also', 'into', 'then', 'what', 'when', 'some', 'more', 'every', 'each']);
+const stem = (w: string) => w.toLowerCase().replace(/(?:ing|ed|es|s|e)$/, '').replace(/(.)\1$/, '$1');
+const carriersOf = (t: string) => (t.toLowerCase().match(/[a-z][a-z'-]{2,}/g) ?? []).filter((w) => !NOTHING_WORDS.has(w)).map(stem);
+
+function itRestatesTheIdea(sentence: string, idea: string, verb: string): boolean {
+  const ideaWords = new Set(carriersOf(idea));
+  if (!ideaWords.has(verb)) return false;
+  const shared = new Set(carriersOf(sentence).filter((w) => ideaWords.has(w)));
+  return shared.size >= 3;
+}
+
+/** The sentences of a reply that read one of this person's ideas back to them as a promise of theirs. */
+export function anIdeaReadBackAsAPromise(reply: string, theirIdeas: string[], theirWords: string[]): string[] {
+  const ideas = theirIdeas.map((i) => String(i ?? '').trim()).filter(Boolean);
+  if (!ideas.length || !reply) return [];
+  /* Their own "I will", with the idea taken out of what they wrote, so the idea itself never counts as their promise. */
+  const theirOwnPromises = theirWords
+    .map((w) => ideas.reduce((t, i) => t.split(new RegExp(i.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig')).join(' '), String(w ?? '')))
+    .flatMap((w) => w.split(/(?<=[.!?])\s+|\n+/))
+    .filter((c) => I_WILL.test(c));
+  const out: string[] = [];
+  for (const sentence of whatItSaysTheySaid(reply)) {
+    const m = A_READ_BACK.exec(sentence) ?? /^(?:so |and )?you(?:'ll)?\s+(?:will\s+)?([a-z][a-z'-]+)/i.exec(sentence);
+    if (!m) continue;
+    const verb = stem(m[1]);
+    if (!ideas.some((i) => itRestatesTheIdea(sentence, i, verb))) continue;
+    if (theirOwnPromises.some((c) => carriersOf(c).includes(verb))) continue;
+    out.push(sentence);
+  }
+  return out;
 }
