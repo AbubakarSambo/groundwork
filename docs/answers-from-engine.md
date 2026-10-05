@@ -233,6 +233,18 @@ its content matches the code text byte for byte. The room version is `the_judgem
 id `53aad9c9-077e-4d14-9082-5d8f83e0cab9`. It reaches a judgement once the API is rebuilt and the three
 scenarios are run again, and each new judgement's `promptVersionId` will show the room id.
 
+**Anchor piece 22, hidden contributors, is served.** It is behind the anchor switch and only for a
+check-in started from the anchor link. Each person who closed something they promised in their own
+check-in gets one sentence, for the latest thing they closed. It never comes from what a colleague said
+about them, and it is never counted or ordered by how much each person did.
+
+- The lead, on `theMonthBoard.peopleHelpingThingsMove`, reads `{ name: "Rukia", sentence: "Rukia committed to send the deck to the client, and it is done." }`, one entry per person, in the order people are in the check-in.
+- The person, on the board read as the new field `yourPartInMovingThings`, reads the same sentence about themselves: "You committed to send the deck to the client, and it is done." This follows decision 96 (9). It is null where they have closed nothing, and they never read anybody else's.
+- An admin who only reads, and an admin who set the check-in up, read no list and no sentence. With the switch off, or on any other check-in, the field is not sent at all.
+
+A promise a lead wrote or pasted is not counted, and neither is one the person did not make in their
+own name. The end-of-month `peopleWhoHelpedMoveTheThinking` is not filled yet.
+
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
 ```

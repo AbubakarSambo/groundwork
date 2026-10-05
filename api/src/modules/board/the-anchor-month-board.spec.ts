@@ -1,5 +1,5 @@
 import { PartyType } from '@prisma/client';
-import { person, answered, commitment, handoff, boardAs, AMINA, RUKIA, JUMA, type Setup } from './the-switchboards-sections-harness';
+import { person, answered, commitment, handoff, boardAs, AMINA, RUKIA, BARAKA, JUMA, SETUP_ADMIN, type Setup } from './the-switchboards-sections-harness';
 import { theMonthBoard, aDifferenceInAWords, theWeekOfTheMonth } from './the-anchor-month-board';
 import type { TheMonthRecord } from './the-anchor-month-record';
 import { THE_SHAPES_KEYS } from '../entry/the-anchor-served-shapes';
@@ -73,7 +73,8 @@ describe('the month board, as the lead reads it', () => {
       'Two people have said what they will do themselves.',
     ]);
     expect(b.whatTheTeamIsContributing).toEqual(['No idea from your team has been captured yet.']);
-    expect(b.peopleHelpingThingsMove).toEqual([]);
+    /* Changed with piece 22 (hidden contributors): Rukia's own promise, closed, is her line here. */
+    expect(b.peopleHelpingThingsMove).toEqual([{ name: 'Rukia', sentence: 'Rukia committed to send the deck to the client, and it is done.' }]);
     expect(b.wherePerspectivesDiffer).toEqual(['No two people have described the same thing differently so far.']);
     expect(b.whatIsStillGettingInTheWay).toEqual(['Baraka is waiting on Rukia for the sales deck.']);
     expect(b.whatGroundworkIsWorkingOnNext).toEqual([
@@ -130,5 +131,47 @@ describe('the weeks and the patterns', () => {
   });
   it('says a difference with its topic in quotation marks, never joined by a colon', () => {
     expect(aDifferenceInAWords({ topic: 'The renewals target.', whoSeesIt: 'You and Rukia Mwangi see this differently.' })).toBe('You and Rukia Mwangi see "The renewals target" differently.');
+  });
+});
+
+/*
+ * PIECE 22, HIDDEN CONTRIBUTORS (section 19; decision 96 item 9). One specific thing each person did, from their own
+ * promise, said as a fact. The lead reads everyone's; a person reads the same sentence about themselves and nobody
+ * else's; an admin who only reads reads none. Never a colleague's mention, never a count or an order per person.
+ */
+describe('piece 22: people helping the team move, as each reader reads it', () => {
+  it('Amina, the lead, reads Rukia\'s line', async () => {
+    const b = (await boardAs(anchor(true, 'anchor'), ...AMINA)).theMonthBoard;
+    expect(b.peopleHelpingThingsMove).toEqual([{ name: 'Rukia', sentence: 'Rukia committed to send the deck to the client, and it is done.' }]);
+  });
+  it('Rukia reads the same sentence about herself, as "you", and no month board', async () => {
+    const b = await boardAs(anchor(true, 'anchor'), ...RUKIA);
+    expect(b.yourPartInMovingThings).toBe('You committed to send the deck to the client, and it is done.');
+    expect('theMonthBoard' in b).toBe(false);
+  });
+  it('Baraka, whose promise is still open, reads nothing, and never Rukia\'s', async () => {
+    const b = await boardAs(anchor(true, 'anchor'), ...BARAKA);
+    expect(b.yourPartInMovingThings).toBeNull();
+    expect(JSON.stringify(b)).not.toContain('send the deck to the client, and it is done');
+  });
+  it('an admin who only reads reads no one\'s line', async () => {
+    const b = await boardAs(anchor(true, 'anchor'), ...JUMA);
+    expect('theMonthBoard' in b).toBe(false);
+    expect(b.yourPartInMovingThings).toBeUndefined();
+    expect(JSON.stringify(b)).not.toContain('and it is done');
+  });
+  it('an admin who set it up is not the lead, and reads no list either', async () => {
+    const b = await boardAs({ ...anchor(true, 'anchor'), createdByUserId: 'u-setup' } as any, ...SETUP_ADMIN);
+    expect('theMonthBoard' in b).toBe(false);
+  });
+  it('with the switch off, or not an anchor check-in, nobody reads it', async () => {
+    expect('yourPartInMovingThings' in (await boardAs(anchor(false, 'anchor'), ...RUKIA))).toBe(false);
+    expect('yourPartInMovingThings' in (await boardAs(anchor(true, null), ...RUKIA))).toBe(false);
+  });
+  it('a promise a lead wrote, or one not in the person\'s own name, is not a contribution', async () => {
+    const s = anchor(true, 'anchor');
+    const commitments = (s.commitments as any[]).map((c) => ({ ...c, source: 'LEAD' }));
+    const b = (await boardAs({ ...s, commitments } as any, ...AMINA)).theMonthBoard;
+    expect(b.peopleHelpingThingsMove).toEqual([]);
   });
 });

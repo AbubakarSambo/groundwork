@@ -86,6 +86,15 @@ export function whatGroundworkIsWorkingOn(r: TheMonthRecord): string[] {
   return out.length ? out : ['Groundwork is waiting for the first check-ins to come in.'];
 }
 
+/**
+ * THE RECOGNITION SENTENCE (piece 22; decision 96 item 9: a person sees the same sentence the lead sees about their
+ * contribution). What they did, from what they said they would do, in a sentence. No grade, no count, no label.
+ */
+export function aContributionSaid(name: string | null, clause: string): string {
+  const what = clause.trim().replace(/[.!?]+$/, '');
+  return name ? `${name} committed to ${what}, and it is done.` : `You committed to ${what}, and it is done.`;
+}
+
 export function theMonthBoard(input: {
   record: TheMonthRecord;
   /** The record's own clock: when the board last changed. */
@@ -98,7 +107,8 @@ export function theMonthBoard(input: {
   const { record: r } = input;
   const week = theWeekOfTheMonth(r.startedOn, input.clock);
   const inTheWay = [...r.waiting.map(aWaitInAWords), ...(week >= 3 ? input.patterns : [])];
-  const people: APersonHelpingThingsMove[] = [];
+  /* Hidden contributors (piece 22): one specific thing each person did, from their own promise, said as a fact. */
+  const people: APersonHelpingThingsMove[] = (r.doneByPerson ?? []).map((d) => ({ name: d.name, sentence: aContributionSaid(d.name, d.clause) }));
   return {
     question: 'Are we moving together?',
     weekOfTheMonth: week,
