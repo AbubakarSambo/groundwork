@@ -1,4 +1,4 @@
-import { askName, askNameOf, askFirstWelcome, ASK_CAPTION, ASK_ADD_LINE } from '../assistant/ask-name';
+import { askName, askNameOf, askFirstWelcome, ASK_CAPTION, ASK_ADD_LINE, askStarters } from '../assistant/ask-name';
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AssistantService } from '../assistant/assistant.service';
@@ -250,7 +250,7 @@ export class AskService {
     try { organisationName = (await this.prisma.organization.findUnique({ where: { id: asker.organizationId }, select: { name: true } }))?.name ?? null; } catch { organisationName = null; }
     const name = askName(organisationName);
     const welcome = shown.canAsk && shown.turns.length === 0 ? askFirstWelcome(organisationName) : null;
-    return { ...shown, askName: name, caption: ASK_CAPTION, addLine: ASK_ADD_LINE, welcome };
+    return { ...shown, askName: name, caption: ASK_CAPTION, addLine: ASK_ADD_LINE, welcome, starters: askStarters((shown.about ?? []).length > 0) };
   }
 
   private async forReaderBare(asker: Asker, askedFor: string | null) {

@@ -260,7 +260,11 @@ const BARIDI_ASK = {
   askName: 'Ask Baridi',
   caption: 'Ask about the company, your work or your check-ins.',
   addLine: 'You can also add context or documents to your check-ins here.',
+  /* Three questions to start on, for somebody with no check-in to ask about (request 153). */
+  starters: ['What is this organisation working on?', 'Who can start a check-in here?', 'What can I ask you?'],
 };
+/* And for somebody who has one: the same three questions a check-in can always answer. */
+const STARTERS_WITH_A_CHECK_IN = ['What did I say I would do?', 'What is my check-in for, and who reads what I say?', 'When is my next check-in?'];
 const BARIDI_WELCOME = 'This is Ask Baridi. You can ask me about the company, your work or your check-ins, at any time. You can also add context or a document to one of your check-ins, and ask for leave or to spend money. What you ask here stays private. If you add something to a check-in, I will say it back to you first, and it only goes in once you say yes.';
 
 const everything = (x: unknown) => JSON.stringify(x);
@@ -533,7 +537,7 @@ describe('a guest from another organisation', () => {
     /* A guest reads the host organisation's name too: he is a guest in Baridi's Groundwork, and
        the sentence he is already given says "so Ask Baridi can only answer...". (Decision 100.) */
     expect(await controller.mine(asUser(readers.kofi))).toEqual({
-      canAsk: true, about: [{ id: 'g-sales', label: 'Sales team, Q3' }], turns: [], ...BARIDI_ASK, welcome: BARIDI_WELCOME,
+      canAsk: true, about: [{ id: 'g-sales', label: 'Sales team, Q3' }], turns: [], ...BARIDI_ASK, starters: STARTERS_WITH_A_CHECK_IN, welcome: BARIDI_WELCOME,
     });
   });
 

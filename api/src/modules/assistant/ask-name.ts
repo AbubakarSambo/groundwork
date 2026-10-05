@@ -36,3 +36,31 @@ export async function askNameOf(
     return askName(null);
   }
 }
+
+/**
+ * WHAT SOMEBODY CAN ASK, OFFERED AS THREE QUESTIONS (request 153 / 154 item 3).
+ *
+ * The screens were wording these themselves and every kind of check-in got the sales words:
+ * "Ask me about Get a project back on track: a deal, a target, or what to do next." A law firm
+ * matter and a government programme were offered a deal.
+ *
+ * These are deliberately NOT one set per situation. A set of starters per situation is wording
+ * nobody has decided, and inventing twenty-two of them would be writing product copy on a guess.
+ * These three are true in every check-in because they are about the reader's own record rather
+ * than about the kind of work: what they said they would do, what the check-in is for, and when
+ * they are next asked. Hafsah can replace them with per-situation wording whenever she wants to.
+ */
+export function askStarters(hasACheckIn: boolean): string[] {
+  if (!hasACheckIn) {
+    return [
+      'What is this organisation working on?',
+      'Who can start a check-in here?',
+      'What can I ask you?',
+    ];
+  }
+  return [
+    'What did I say I would do?',
+    'What is my check-in for, and who reads what I say?',
+    'When is my next check-in?',
+  ];
+}

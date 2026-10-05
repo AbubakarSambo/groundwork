@@ -4602,3 +4602,111 @@ Someone waiting for an admin to let them into the organisation (`awaitingOrgAppr
 **What the person reads.** On You, in a new field `waitingToBeLetIn`: "Your sign-in is ready, and one thing has to happen before you can start: an admin at the organisation that invited you has to approve you joining it. They have been asked. Nothing you do here is lost in the meantime, and you will be able to check in as soon as they answer." The screens can show it where the empty list would be. Ask Groundwork's "what is due" says the same sentence.
 
 **Tests.** `grounds/nobody-held-for-a-seat-reads-the-check-in-on-today-or-you.spec.ts`, through the real `GroundsService.list` and `YourBoardService`: the list is empty for the waiting person, You carries no name, title or summary, and the person who is in still reads everything.
+
+## Requests 151 and 152 (5 October)
+
+**152 (1), an action with an empty label: done.** I could not make the engine's own builders return an empty label (every branch of `whatToDoAboutALeadAction` and `whatToDoAboutADecision` sets one), so the fix is at the last step of the board: `everyActionHasALabel` (`board/what-needs-you-and-what-to-do.ts`) runs after every other pass on the served board, and any `leadActions[].action` or `decisions[].action` whose `label` is empty or only spaces now reads "Open your check-in" (goesTo `check-in`), "Open the Context page" (goesTo `context`) or "Decide it" (when it carries choices). If you still see an empty label after this, send me the raw payload.
+
+**152 (2), the check-in's label on each row: done.** Each Today row (`needs[]`) now carries `checkInLabel`, for example "Sales team, Q3", on your turn, the ready report, your own report, the decision to end, the approval waiting for an admin, and the lead's items taken from the board (the "Baraka Mwangi is waiting on the discount decision" rows). It is absent on rows that are not about one check-in (leave, spend, finance, hours).
+
+**151 S1, "Read it" for a participant: done.** For someone who does not run the check-in, the ready-report row's `action.to` is `/checkin/<their latest finished check-in>/report`. Whoever runs it, and an admin, keep `/grounds/<id>/report`. Where a participant has finished none, it stays `/grounds/<id>/report`.
+
+**151 S2, a view that starts with the name: done.** On the board's `divergence.items[].positions[]` and `perspectives[]`, a `view` that starts with the speaker's own name (full or first name), and the verb of speaking after it (said, stated, and the like), is served without them. "amani Wekesa stated an aim of 12 shops onboarded." is served as "an aim of 12 shops onboarded.", so the screen reads "Amani Wekesa said an aim of 12 shops onboarded." The stored text is unchanged. A view where taking the name off would leave almost nothing is left as it is.
+
+**151 E1, the team report's "what changed": done.** Each topic is now a whole sentence on its own, followed by one sentence about what became of it. For example: "This is what changed since the last round. The main obstacle to signing new shops is seen differently. This is still open from last time. People disagree about the deadline. That was a difference last time, and it is no longer showing as one. There are different descriptions of the allocation. This is new this round. 3 people answered this round, against 2 last time." Several topics read "These are still open from last time", "Those were a difference last time, and they are no longer showing as one", and "These are new this round". A topic with no full stop gets one, and starts with a capital. The existing test only checked the old pieces joined together, so I updated it (`reports/what-changed-since-last-time.spec.ts`).
+
+**151 E6, a thing listed twice: done for the engine's lists.** The lead's board (`leadActions` then `decisions`) and Today's rows from the board list each thing once, compared by text with case and punctuation ignored; a decision that a lead action already says is left to the action. Not done: "them" with no referent, the lower-case "I will chase the warehouse…" under other people's names, and "who can provide who signs off…". Those are written by the model from what people said, so they need a wording change and a scenario run.
+
+**151 E8, "has none of their 4 shops": not done.** I could not find a sentence in the engine's code that builds it; it is not in `board/`, `reports/` or `grounds/`, so it is most likely written by the model, or built where the screens work. Please send me where it appears (which field) if it is in the payload.
+
+**151 E12, `/entry/commit` with no draft: noted only.** `EntryCommitDto` requires `groundLabel` (a string) and `history`, so a body with no setup in it is refused with 400 before the service runs. Stopping the call from the screen is right.
+
+**Not done, and why.** E2 (who waits on whom, in the model's wording), E3 (target wording and duplicates, from the model), E4 (the model's wording of the numbers), E5 (own report wording and the shared-picture line: model wording and a report change that need a scenario run), E7 (the model's wording of the admin's and Amani's Today lines), E9 (model wording on the team report), E10 (session counts across pages: these come from different counters in the list, the check-in page and the report, and need one clock agreed first), E11 (the seatless person's names: that is in `assistant/`, `entry/` and `conversation/`, which another builder is working in).
+
+---
+
+# Request 153, done: everything the screens need for "Ask <organisation name>"
+
+Decision 100, 5 October. Everything below is served on **`GET /ask`** (and `GET /ask/:userId`,
+which is the same shape). Nothing here needs the screens to word anything.
+
+## The name
+
+**The field is `askName`,** and it is the whole string, not a fragment: `"Ask Baridi"`,
+`"Ask Coamana"`. Print it as it arrives. Where the organisation has no name yet, or the reader has
+no organisation, it arrives as `"Ask Groundwork"` — so there is no case where the screen has to
+choose, and no case where it has to concatenate.
+
+It comes from the organisation's **display name** (`Organization.name`). There is no short name, so
+there is nothing to choose between.
+
+Every sentence the engine writes that names Ask uses the same string, so the name a person reads in
+the panel is the name they read on WhatsApp, in an email, and inside a refusal:
+
+> "You are a guest here from another organisation, so **Ask Baridi** can only answer questions
+> about your own check-in..."
+>
+> "Your own report and your questions to **Ask Baridi** stay private."
+
+A guest from another organisation reads the **host** organisation's name, because they are a guest
+in that organisation's Groundwork.
+
+## The caption and the line under it
+
+Both served, both fixed:
+
+| Field | Words |
+| --- | --- |
+| `caption` | Ask about the company, your work or your check-ins. |
+| `addLine` | You can also add context or documents to your check-ins here. |
+
+`addLine` is the one line request 153 asks for, word for word.
+
+## The greeting
+
+**`welcome` is served, and it is served once.** It carries the full sentence the first time
+somebody opens Ask — that is, when they can ask and have no kept questions yet. After their first
+question it arrives as `null`, so the screen does not need to remember anything or decide when to
+stop showing it.
+
+> This is Ask Baridi. You can ask me about the company, your work or your check-ins, at any time.
+> You can also add context or a document to one of your check-ins, and ask for leave or to spend
+> money. What you ask here stays private. If you add something to a check-in, I will say it back to
+> you first, and it only goes in once you say yes.
+
+## The starter questions
+
+**Now served, as `starters`: an array of three strings.** This also answers request 154 item 3,
+where you reported that every kind of check-in was offered the sales words — "Ask me about Get a
+project back on track: a deal, a target, or what to do next." A law firm matter and a government
+programme were being offered a deal.
+
+| When | What arrives |
+| --- | --- |
+| The reader has a check-in to ask about (`about` is not empty) | What did I say I would do? · What is my check-in for, and who reads what I say? · When is my next check-in? |
+| The reader has none | What is this organisation working on? · Who can start a check-in here? · What can I ask you? |
+
+**They are deliberately not one set per situation, and that is a question for Hafsah, not a gap in
+this answer.** Wording twenty-two sets of starters is product copy nobody has decided, and guessing
+it is how the sales words got into a law firm in the first place. The three above are true in every
+check-in because they are about the reader's own record rather than about the kind of work. If
+Hafsah wants per-situation starters, they slot into the same field and the screens need not change.
+
+## The empty states
+
+There is no separate empty-state field, and you should not need one:
+
+- **Nothing to ask about:** `about` is `[]` and `starters` carries the organisation set above.
+- **Not allowed to ask:** `canAsk` is `false` and **`why`** carries one plain sentence already
+  naming Ask correctly — for example "Ask Baridi is switched off for your organisation" or the
+  confirm-your-email sentence. Print `why`.
+- **No history:** `turns` is `[]`, and `welcome` is the thing to show in its place.
+
+## What has not changed
+
+`canAsk`, `about`, `turns`, `why` are all as they were. The four new fields are `askName`,
+`caption`, `addLine`, `welcome`, and now `starters`.
+
+**Still open on Ask, from request 154 and not part of 153:** the ordering of `GET /ask` turns
+(answer before question on a shared timestamp), replies saved without their options, and the
+Company page needing an organisation-wide choice to open. Those are next after 154 and 155.
