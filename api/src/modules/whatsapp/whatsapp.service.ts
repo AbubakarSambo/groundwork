@@ -384,9 +384,10 @@ export class WhatsAppService {
   /**
    * A TEST MESSAGE FROM GROUNDWORK'S NUMBER, to the one number a member of staff typed and to nobody
    * else. Goes whether or not the platform switch is on, because it is how staff check the keys before
-   * switching it on. Written down like every send (kind `admin-test`). Never carries a secret back.
+   * switching it on. Written down like every send (kind `admin-test:<staff user id>`), and logged with the
+   * same id. Never carries a secret back.
    */
-  async sendOurTest(rawNumber: string): Promise<{ sent: boolean; to: string; saying: string }> {
+  async sendOurTest(rawNumber: string, byUserId: string): Promise<{ sent: boolean; to: string; saying: string }> {
     const typed = (rawNumber ?? '').trim();
     if (!typed) throw new BadRequestException('Type the number to send the test message to.');
     if (aLocalForm(typed) || !/^\+?[\d\s()-]{7,}$/.test(typed)) {
@@ -398,7 +399,9 @@ export class WhatsAppService {
       return { sent: false, to, saying: `Nothing was sent to ${to}. Save the phone number ID and the access token first.` };
     }
     const result = await this.post(ours.phoneNumberId, ours.accessToken, to, WhatsAppService.OUR_TEST_MESSAGE);
-    this.writeItDown(null, to, result, { kind: 'admin-test' });
+    /* Who sent it, on the row and in the log: the staff member's id, never a secret. */
+    this.writeItDown(null, to, result, { kind: `admin-test:${byUserId}` });
+    this.logger.log(`A WhatsApp test message to ${to} was ${result.sent ? 'sent' : 'not sent'} by staff member ${byUserId}.`);
     return result.sent
       ? { sent: true, to, saying: `The test message went to ${to}. Check that phone to see that it arrived.` }
       : { sent: false, to, saying: `The test message did not go to ${to}. ${result.status ? `Meta answered with error ${result.status}.` : 'Meta could not be reached.'} If the number has not written to Groundwork's number in the last 24 hours, Meta may refuse a message that is not a template.` };

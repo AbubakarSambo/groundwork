@@ -1,5 +1,7 @@
 # Morning report
 
+**5 October, late.** The back office's WhatsApp test message is now limited to five a minute. The send record and the log line say which staff member sent each one, by their user id.
+
 **5 October, late.** When Meta first connects the webhook, it sends Groundwork's verify token back. That token is now compared in constant time, after a check that the lengths match.
 
 **5 October, late.** The free trial and the WhatsApp add-on are switched on at release by a release step after a check, not by a migration (`docs/deploy.md`, step 13a). Switching on gives the trial to nobody already here, sends no email and leaves an organisation on the free plan unchanged. But an organisation that already pays would have its WhatsApp held if its add-on is off, or be charged from the next night if it is on, so the check lists any such organisation for you to decide first. On the local test database a new small team got one month on Small Team, and its admin turned WhatsApp on and read that nothing is charged until the trial ends. Stripe test mode could not be tried: the local Stripe key is only a placeholder. A real Stripe test key in the local `api/.env` would let it be tried.

@@ -260,7 +260,7 @@ describe('nothing saved means today\'s behaviour', () => {
 describe('the test message and the connection check', () => {
   it('the test message goes to the typed number and nobody else', async () => {
     const { whatsapp, sends } = aService();
-    const r = await whatsapp.sendOurTest('+44 7700 900123');
+    const r = await whatsapp.sendOurTest('+44 7700 900123', 'staff-1');
     expect(r).toEqual({ sent: true, to: '+447700900123', saying: 'The test message went to +447700900123. Check that phone to see that it arrived.' });
     const posts = fetched.filter((f) => f.url.endsWith('/messages'));
     expect(posts).toHaveLength(1);
@@ -268,19 +268,26 @@ describe('the test message and the connection check', () => {
       messaging_product: 'whatsapp', to: '447700900123', type: 'text',
       text: { body: "This is a test message from Groundwork. If you can read it, Groundwork's WhatsApp number is working." },
     });
-    expect(sends.map((s) => [s.phone, s.kind])).toEqual([['+447700900123', 'admin-test']]);
+    expect(sends.map((s) => [s.phone, s.kind])).toEqual([['+447700900123', 'admin-test:staff-1']]);
+    expect(said).toContain('A WhatsApp test message to +447700900123 was sent by staff member staff-1.');
+  });
+
+  it('the test route allows five a minute', () => {
+    const route = (AdminController.prototype as any).sendOurWhatsAppTest;
+    expect(Reflect.getMetadata('THROTTLER:LIMITglobal', route)).toBe(5);
+    expect(Reflect.getMetadata('THROTTLER:TTLglobal', route)).toBe(60_000);
   });
 
   it('a number without its country code is refused before anything goes', async () => {
     const { whatsapp } = aService();
-    const err: any = await whatsapp.sendOurTest('0801 234 5678').catch((e) => e);
+    const err: any = await whatsapp.sendOurTest('0801 234 5678', 'staff-1').catch((e) => e);
     expect(err.message).toBe('Type the whole number with its country code, for example +44 7700 900123.');
     expect(fetched).toEqual([]);
   });
 
   it('with no token and no number ID, nothing is sent and the page says what is missing', async () => {
     const { whatsapp } = aService({});
-    expect(await whatsapp.sendOurTest('+447700900123')).toEqual({ sent: false, to: '+447700900123', saying: 'Nothing was sent to +447700900123. Save the phone number ID and the access token first.' });
+    expect(await whatsapp.sendOurTest('+447700900123', 'staff-1')).toEqual({ sent: false, to: '+447700900123', saying: 'Nothing was sent to +447700900123. Save the phone number ID and the access token first.' });
     expect(await whatsapp.isOurNumberConnected()).toEqual({ connected: false, saying: 'Not connected. Groundwork needs both the phone number ID and the access token before it can reach Meta.' });
     expect(fetched).toEqual([]);
   });

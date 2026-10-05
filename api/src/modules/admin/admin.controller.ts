@@ -1,5 +1,6 @@
 import { Controller, Get, Patch, Post, Put, Param, Body, Headers, UseGuards, Logger, ForbiddenException, BadRequestException, HttpCode } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { IsEmail, IsInt, IsOptional, IsString, MaxLength, Max, Min } from 'class-validator';
 import { AdminService } from './admin.service';
 import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
@@ -302,9 +303,11 @@ export class AdminController {
 
   @Post('whatsapp/settings/test')
   @HttpCode(200)
+  /* Five a minute: a test is one message to one phone, not a way to message many. */
+  @Throttle({ global: { limit: 5, ttl: 60_000 } })
   @ApiOperation({ summary: "Send one test message from Groundwork's number to the number typed, and to nobody else." })
-  sendOurWhatsAppTest(@Body() body: { to?: string }) {
-    return this.whatsapp.sendOurTest(body?.to ?? '');
+  sendOurWhatsAppTest(@Body() body: { to?: string }, @CurrentUser('id') userId: string) {
+    return this.whatsapp.sendOurTest(body?.to ?? '', userId);
   }
 
   // ── Read-only ─────────────────────────────────────────────────────────────
