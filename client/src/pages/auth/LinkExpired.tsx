@@ -36,7 +36,8 @@ export function LinkExpired({ kind }: { kind: 'sign-in' | 'reset' }) {
 }
 
 /**
- * "THIS LINK DID NOT WORK", for a link already used or one we do not know. U.2 review.
+ * "THAT LINK DIDN'T WORK", for a link already used or one we do not know. U.2 review; wording
+ * updated to the prototype's own (F4-small-states/badlink.txt) at U.20.
  *
  * These used to get the old page: a "GROUNDWORK" header, a ✕, and whatever the server or this page
  * had written ("This link is not valid. It may have been replaced by a newer one - use the most
@@ -48,8 +49,8 @@ export function LinkDidNotWork({ kind }: { kind: 'sign-in' | 'reset' }) {
   return (
     <AskForAFreshLink
       kind={kind}
-      title="This link did not work"
-      sub="Each link works only once, and only for a short while. Open the newest one in your inbox, or ask for a new one below."
+      title="That link didn’t work"
+      sub="It may have been cut short when it was copied, or it has already been used. Open it again from the email, or ask for a new one."
       button="Send me a new link"
     />
   )

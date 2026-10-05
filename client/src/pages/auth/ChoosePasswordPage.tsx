@@ -87,7 +87,7 @@ export function ChoosePasswordPage() {
      has been typed twice. The server says `expired` only for a real, unused link of this kind. */
   const expiredOnOpen = linkCheck?.expired === true
   /* And one the server does not hold as working (used, replaced by a newer one, unknown) opens on
-     "This link did not work", rather than after a password has been typed (U.2 re-review). */
+     "That link didn’t work", rather than after a password has been typed (U.2 re-review). */
   const didNotWorkOnOpen = linkCheck?.valid === false && linkCheck?.expired !== true
   const forAddress = typeof linkCheck?.email === 'string' && looksLikeAnAddress(linkCheck.email) ? linkCheck.email : null
 

@@ -11,7 +11,7 @@
  *    reset ("This reset link has expired"), set-up ("This invitation link has expired"), or the
  *    general "This link has expired". The person can ask for a fresh one on the spot.
  *  - 'did-not-work': a link already used, one we do not know, or one of the wrong kind. The page shows
- *    "This link did not work", with one plain message and a way to ask for a new one (U.2 review).
+ *    "That link didn’t work", with one plain message and a way to ask for a new one (U.2 review).
  *  - null: anything else, such as a password the server refused. The page shows the server's own
  *    sentence where it is.
  *

@@ -45,8 +45,13 @@ describe('every page says what it is', () => {
      */
     const billing = strip(readFileSync(join(PAGES, 'billing/BillingPage.tsx'), 'utf8'))
     expect(billing).toMatch(/<PageTitle[\s\S]{0,80}title="Plan and billing"/)
+    /*
+     * U.20: NotFoundPage is rebuilt from the shared parts too, so its heading is now `PageTitle`'s
+     * own `<h1>` rather than one the page wrote itself - checked the same way billing's is, just
+     * above, instead of a bare `<h1[\s>]` the page no longer writes directly.
+     */
     const notFound = strip(readFileSync(join(PAGES, 'notfound/NotFoundPage.tsx'), 'utf8'))
-    expect(notFound).toMatch(/<h1[\s>]/)
+    expect(notFound).toMatch(/<PageTitle[\s\S]{0,80}title="Nothing is at this address"/)
   })
 
   it('the check-in list names its section with a heading, not a div that looks like one', () => {

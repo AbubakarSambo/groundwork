@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { Page, Mark, PageTitle, Button, Note } from '@/components/gw/ui'
 
 /**
  * NOTHING CAUGHT A RENDER ERROR, ANYWHERE. W8-63.
@@ -20,6 +21,18 @@ import { Component, type ErrorInfo, type ReactNode } from 'react'
  * The error text is shown. This is a product people use at work to sort out disagreements
  * with colleagues; if it breaks, the person needs something to paste to whoever they ask
  * for help, and hiding it behind "an unexpected error occurred" helps nobody.
+ *
+ * WORDING, FROM THE PROTOTYPE (F4-small-states/crash.txt): the mark, "Something broke on
+ * this page", "Nothing you wrote is lost; it was saved before this happened.", "Reload the
+ * page" and "Go to Today". Full-page navigation, not a router `Link` - an error boundary at
+ * the very top of the app is exactly the place a possibly-broken router state should not be
+ * relied on.
+ *
+ * THE PROTOTYPE'S SECOND SENTENCE, "We've been told.", IS NOT DRAWN. It would not be true:
+ * there is no client error reporting wired up (see `componentDidCatch` below) - the error
+ * reaches the browser console and nowhere else. Saying "we've been told" would promise
+ * somebody is already looking into it when nobody is. The API would need to receive these
+ * errors (a report-a-crash endpoint) before that sentence could be shown truthfully.
  */
 export class PageCrash extends Component<{ children: ReactNode }, { message: string | null }> {
   state: { message: string | null } = { message: null }
@@ -38,37 +51,20 @@ export class PageCrash extends Component<{ children: ReactNode }, { message: str
     if (this.state.message === null) return this.props.children
 
     return (
-      <div style={{ maxWidth: 420, margin: '0 auto', padding: '48px 20px', textAlign: 'center' }}>
-        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>This page could not load</div>
-        <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.7, marginBottom: 18 }}>
-          Something went wrong drawing this screen. Nothing you have written is affected - check-ins
-          and records are saved on our side, not in the page.
+      <Page narrow>
+        <Mark />
+        <PageTitle
+          title="Something broke on this page"
+          subtitle="Nothing you wrote is lost; it was saved before this happened."
+        />
+        <div className="gwui-button-row">
+          <Button onClick={() => window.location.reload()}>Reload the page</Button>
+          <Button kind="quiet" onClick={() => { window.location.href = '/today' }}>Go to Today</Button>
         </div>
-
-        <button className="gw-btn" onClick={() => { window.location.href = '/' }}>
-          Go to my check-ins
-        </button>
-
-        <div style={{ marginTop: 14 }}>
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            style={{ fontSize: 12.5, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', font: 'inherit' }}
-          >
-            Or reload this page
-          </button>
+        <div style={{ fontFamily: 'ui-monospace, monospace', wordBreak: 'break-word' }}>
+          <Note tone="muted">{this.state.message}</Note>
         </div>
-
-        <div
-          style={{
-            marginTop: 22, paddingTop: 14, borderTop: '1px solid var(--gw-border)',
-            fontSize: 11, color: 'var(--gw-muted)', fontFamily: 'ui-monospace, monospace',
-            wordBreak: 'break-word', textAlign: 'left',
-          }}
-        >
-          {this.state.message}
-        </div>
-      </div>
+      </Page>
     )
   }
 }

@@ -28,15 +28,21 @@ describe('when a page throws while rendering', () => {
   })
   afterEach(() => vi.restoreAllMocks())
 
+  /*
+   * U.20: THE PROTOTYPE'S OWN WORDS (F4-small-states/crash.txt) REPLACE THE PAGE'S EARLIER,
+   * UNMATCHED ONES - "This page could not load" / "Go to my check-ins" were never checked
+   * against docs/prototype, and did not say what the prototype says. Updated here, not deleted:
+   * the thing being checked (a page, a way out that survives the crash) is unchanged.
+   */
   it('the person gets a page, not nothing', () => {
     render(<PageCrash><Boom /></PageCrash>)
-    expect(screen.getByText('This page could not load')).toBeTruthy()
+    expect(screen.getByText('Something broke on this page')).toBeTruthy()
   })
 
   it('with a way out that does not depend on the broken page working', () => {
     render(<PageCrash><Boom /></PageCrash>)
-    expect(screen.getByRole('button', { name: /Go to my check-ins/ })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /reload this page/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Go to Today' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Reload the page' })).toBeTruthy()
   })
 
   it('and no "try again", because the state that crashed it is still there', () => {
@@ -50,7 +56,17 @@ describe('when a page throws while rendering', () => {
 
   it('it says the record is safe, because that is the first thing anybody wonders', () => {
     render(<PageCrash><Boom /></PageCrash>)
-    expect(screen.getByText(/Nothing you have written is affected/)).toBeTruthy()
+    expect(screen.getByText(/Nothing you wrote is lost; it was saved before this happened\./)).toBeTruthy()
+  })
+
+  /*
+   * U.20: the prototype also says "We've been told." - not drawn, because it is not true: there
+   * is no client error reporting wired up (see PageCrash's own comment on componentDidCatch).
+   * A sentence promising somebody is already looking into it would be a lie.
+   */
+  it('does not say "We’ve been told", because nobody has been', () => {
+    render(<PageCrash><Boom /></PageCrash>)
+    expect(screen.queryByText(/We.?ve been told/)).toBeNull()
   })
 
   it('and it shows the error, so there is something to paste to whoever they ask', () => {
