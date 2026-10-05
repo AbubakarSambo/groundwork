@@ -2,6 +2,53 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## The anchor pieces, proved with real conversations (5 October, night)
+
+I built 9b4b54e8 in a separate worktree and ran it on port 3000, with a test settings key held only in the start
+command and the local database only. Two things are wrong at this head before any conversation starts.
+
+**The build no longer starts as it is meant to.** Three spec files under `src` now import from `journey/anchor`
+(added in 27c0e105, 38afffc0 and 1d9ef0a5). That pulls `journey` into the compile, so the server lands at
+`dist/src/main.js` instead of `dist/main.js`, and `start:prod` (`node dist/main`) will not find it. Started from
+`dist/src/main`, it then stopped at boot because `embed.js` was not where it looked. I copied the static files into
+the build output so the test could go on, and changed no source. This needs fixing before anything is deployed.
+
+**The baseline (piece 14).** I added a new person, Wanjiru, to the live anchor check-in and let the model answer as
+her. Every turn ran on `ad402fbe-9dcf-4eb6-a6f2-e34ac6a706e6`, and every turn asked one question, never a list.
+But the questions were not the baseline's. After a first question about what the team is trying to achieve, she was
+asked "What did you do, or not do, that helped get the team to this point?" and "What specifically exists now that
+shows that adjustment? For instance, a document, a system, or something else that reflects these changes." Who she
+depends on, who depends on her and what she is responsible for were never asked. Then the session closed after six
+questions.
+
+**Ideas (piece 19).** This works as written. Her idea was offered with "That sounds like a concrete idea. Want me
+to capture it for the team?". "Yes, I sent the deck to Naivas last week." captured nothing. "Yes, capture it" captured
+it, and the idea row carries `fields.promptVersionId` `3294fbe3-d3ef-4911-8737-89090d1ffe64`. Rukia and Amani both
+see it under "Ideas from your team", with "Raised by Wanjiru.". Grace, an admin who is not in the check-in, does not
+see it, and Wanjiru's own board is withheld until she finishes her check-in. One fault: straight after the capture,
+the summary told her "You said you will send the updated price list to every shop on Monday morning." She never
+said that. It was her idea for the team, not her promise.
+
+**Leave and spending (pieces 26 and 27).** "Can I take a day off on Friday?" was offered as "Shall I treat this as
+a leave request?". Her yes was answered "Your organisation also has the option to manage leave through Groundwork.",
+with no button, because Sokoni Fresh has no suites on. So the sentence and button for when a suite is on are not
+proved here. Two faults. In the same reply as the offer, the model said "I can't directly approve time off. That's
+a conversation you'd need to have with Rukia." And "I need 15,000 shillings approved for fuel for the van this week."
+was not read as spending at all, because the reader only knows the word "spend". "Can I spend 15,000 shillings on
+fuel for the van this week?" was offered, and its yes gave the spending sentence.
+
+**The walker.** `walk-the-anchor-as-each-reader.ts` reads the sign-in token from the top of the reply, but the API
+wraps it in `data`, so every board came back 401 and it tested nothing. A scratch copy that unwraps the reply found
+seven of eight reads right. The eighth is that Rukia is not served the end-of-month read on the ended check-in. The
+seed stores her first words as a record entry, but `herOwnWords` reads only her conversation or the check-in's
+brief, so the read never begins.
+
+**The shared conversation did not move.** No anchor prompt was used outside Wanjiru's check-in. On sales, pip and
+project (run-oct5d against the same three in run-oct5b) every problem is still 0, and the engine numbers moved both
+ways, as fresh conversations do. Specific detail went from 20 to 33, blocker checks from 11 to 18 and past words
+from 12 to 17. Agreements went from 14 to 12, patterns from 42 to 38, commitments from 22 to 19 and proof from 4 to 3.
+Three scenarios are too few to call any of these a change.
+
 ## WhatsApp end to end, from the settings saved in the back office (5 October, night)
 
 Hafsah's item 3. I built `394e9ea8` and then `82f5a7ae` in a separate worktree, and started the API on port 3014 against fresh copies of `gw_pw9_1786222102` (`gw_wa_oct5b` to `gw_wa_oct5e`). Port 3000 and the tester's database were not touched. `WHATSAPP_GRAPH_BASE_URL` pointed at a recorder on 127.0.0.1:3996, so nothing left the computer, and the model was the real one.
