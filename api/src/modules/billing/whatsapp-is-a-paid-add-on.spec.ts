@@ -364,6 +364,11 @@ describe('an organisation still on the free plan, made before the switch', () =>
     const read: any = await addOn.whatTheyRead('org-baridi', true, NOW);
     expect(read.says.charge).toBe('Nothing is charged for WhatsApp while you are on the free plan.');
     expect(read.use).toMatchObject({ sent: 3, limit: 500 });
+    /* No plan is named to an organisation on the free plan (release blocker, 5 October). */
+    expect(read.plan).toBeNull();
+    expect(read.price).toBeNull();
+    expect(read.says.price).toBeNull();
+    expect(JSON.stringify(read)).not.toMatch(/Starter|STARTER|\$20/);
   });
 });
 

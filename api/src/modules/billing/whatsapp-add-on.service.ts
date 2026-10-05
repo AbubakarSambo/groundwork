@@ -338,9 +338,13 @@ export class WhatsAppAddOnService {
     const label = s.plan ? PLAN_LABELS[s.plan] : null;
     const says: Record<string, string | null> = {
       onOrOff: s.addOnOn ? 'WhatsApp is on for your organisation.' : 'WhatsApp is off for your organisation, so check-ins stay in the app.',
-      price: s.plan && s.addOnCents !== null
-        ? `WhatsApp costs ${dollars(s.addOnCents)} a month on your ${label} plan.`
-        : s.plan ? `WhatsApp is not sold by itself on your ${label} plan. Contact us to arrange it.` : null,
+      /* An organisation on the free plan has no plan to name: the plan its size fits only sets its monthly limit
+         (release blocker, 5 October: the page read "on your Starter plan" to a free organisation). */
+      price: s.onTheFreePlan
+        ? null
+        : s.plan && s.addOnCents !== null
+          ? `WhatsApp costs ${dollars(s.addOnCents)} a month on your ${label} plan.`
+          : s.plan ? `WhatsApp is not sold by itself on your ${label} plan. Contact us to arrange it.` : null,
       charge: !s.switchOn
         ? 'Nothing is charged for WhatsApp at the moment.'
         : s.onTheFreePlan
@@ -365,8 +369,9 @@ export class WhatsAppAddOnService {
     };
     return {
       on: s.addOnOn,
-      plan: s.plan,
-      price: s.addOnCents === null ? null : { amountCents: s.addOnCents, currency: 'USD' },
+      /* Never a plan's name or price for an organisation on the free plan; its limit is in `use`. */
+      plan: s.onTheFreePlan ? null : s.plan,
+      price: s.onTheFreePlan || s.addOnCents === null ? null : { amountCents: s.addOnCents, currency: 'USD' },
       charged: s.charged,
       freeTrial: s.freeTrial,
       onTheFreePlan: s.onTheFreePlan,
