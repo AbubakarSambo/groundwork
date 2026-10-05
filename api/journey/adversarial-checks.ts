@@ -10,7 +10,7 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import { ADVERSARIAL_RULES, AdversarialRule } from './all-24/adversarial-scenarios';
+import { ADVERSARIAL_RULES, AdversarialRule, THE_ADVERSARIAL } from './all-24/adversarial-scenarios';
 
 export interface CheckResult { check: string; ok: boolean; sentence: string; problems: string[] }
 
@@ -167,6 +167,10 @@ function main() {
   const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => /^adversarial-.*\.json$/.test(f)) : [];
   if (!files.length) { console.log(`No adversarial-*.json in ${dir}. Run the set first (see docs/scenario-tests.md).`); process.exit(2); }
   let failed = 0;
+  /* A scenario that never ran is a failure, not a pass: on 5 October six of eight were refused at setup and the check still said all passed. */
+  for (const s of THE_ADVERSARIAL) {
+    if (!files.includes(`${s.key}.json`)) { console.log(`\n${s.key}\n  FAIL  This scenario did not run, so nothing about it was checked. Its reason is in ${dir}/run.log.`); failed++; }
+  }
   for (const f of files) {
     const record = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
     console.log(`\n${record.scenario?.key}`);
