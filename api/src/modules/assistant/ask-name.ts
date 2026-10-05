@@ -44,23 +44,24 @@ export async function askNameOf(
  * "Ask me about Get a project back on track: a deal, a target, or what to do next." A law firm
  * matter and a government programme were offered a deal.
  *
- * These are deliberately NOT one set per situation. A set of starters per situation is wording
- * nobody has decided, and inventing twenty-two of them would be writing product copy on a guess.
- * These three are true in every check-in because they are about the reader's own record rather
- * than about the kind of work: what they said they would do, what the check-in is for, and when
- * they are next asked. Hafsah can replace them with per-situation wording whenever she wants to.
+ * THEY ARE GENERAL, NEVER ONE SET PER SITUATION (decision 101, 5 October). These five words are
+ * Hafsah's, in her order, and they go to every kind of check-in - a law firm matter and a
+ * government programme included. Four of them are about the reader's own record rather than the
+ * kind of work, which is what lets one set serve every situation.
+ *
+ * SOMEBODY WITH NO CHECK-IN YET IS LEFT WITH ONE. Four of the five need a check-in to be about -
+ * what they said they would do, what it is for, when the next one is, and adding something to it -
+ * so for a reader with none the list is the company question on its own. That is the decision as
+ * taken: one true starter rather than four invented ones.
  */
+const STARTERS = [
+  { line: 'What did I say I would do?', needsACheckIn: true },
+  { line: 'What is my check-in for, and who reads it?', needsACheckIn: true },
+  { line: 'When is my next check-in?', needsACheckIn: true },
+  { line: "What are the company's priorities right now?", needsACheckIn: false },
+  { line: 'Add a document or some context to my check-in.', needsACheckIn: true },
+] as const;
+
 export function askStarters(hasACheckIn: boolean): string[] {
-  if (!hasACheckIn) {
-    return [
-      'What is this organisation working on?',
-      'Who can start a check-in here?',
-      'What can I ask you?',
-    ];
-  }
-  return [
-    'What did I say I would do?',
-    'What is my check-in for, and who reads what I say?',
-    'When is my next check-in?',
-  ];
+  return STARTERS.filter((s) => hasACheckIn || !s.needsACheckIn).map((s) => s.line);
 }

@@ -4681,16 +4681,22 @@ where you reported that every kind of check-in was offered the sales words — "
 project back on track: a deal, a target, or what to do next." A law firm matter and a government
 programme were being offered a deal.
 
-| When | What arrives |
-| --- | --- |
-| The reader has a check-in to ask about (`about` is not empty) | What did I say I would do? · What is my check-in for, and who reads what I say? · When is my next check-in? |
-| The reader has none | What is this organisation working on? · Who can start a check-in here? · What can I ask you? |
+**Hafsah decided these on 5 October (decision 101): general, never one set per situation.** Five,
+in this order, in her words:
 
-**They are deliberately not one set per situation, and that is a question for Hafsah, not a gap in
-this answer.** Wording twenty-two sets of starters is product copy nobody has decided, and guessing
-it is how the sales words got into a law firm in the first place. The three above are true in every
-check-in because they are about the reader's own record rather than about the kind of work. If
-Hafsah wants per-situation starters, they slot into the same field and the screens need not change.
+1. What did I say I would do?
+2. What is my check-in for, and who reads it?
+3. When is my next check-in?
+4. What are the company's priorities right now?
+5. Add a document or some context to my check-in.
+
+**A reader with no check-in gets the fourth on its own.** The other four need a check-in to be
+about, and her decision was to leave those out rather than invent replacements. So `starters` is a
+one-item array for that reader, not an empty one and not a different set — please draw one.
+
+Per-situation starters are not being written. One set goes to every kind of check-in, a law firm
+matter and a government programme included; four of the five are about the reader's own record
+rather than the kind of work, which is what lets one set serve every situation.
 
 ## The empty states
 

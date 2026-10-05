@@ -260,11 +260,18 @@ const BARIDI_ASK = {
   askName: 'Ask Baridi',
   caption: 'Ask about the company, your work or your check-ins.',
   addLine: 'You can also add context or documents to your check-ins here.',
-  /* Three questions to start on, for somebody with no check-in to ask about (request 153). */
-  starters: ['What is this organisation working on?', 'Who can start a check-in here?', 'What can I ask you?'],
+  /* Decision 101: four of the five need a check-in, so a reader with none is left with the one
+     that does not. One true starter rather than four invented ones. */
+  starters: ["What are the company's priorities right now?"],
 };
-/* And for somebody who has one: the same three questions a check-in can always answer. */
-const STARTERS_WITH_A_CHECK_IN = ['What did I say I would do?', 'What is my check-in for, and who reads what I say?', 'When is my next check-in?'];
+/* And the five, in Hafsah's order, for somebody who has a check-in. */
+const STARTERS_WITH_A_CHECK_IN = [
+  'What did I say I would do?',
+  'What is my check-in for, and who reads it?',
+  'When is my next check-in?',
+  "What are the company's priorities right now?",
+  'Add a document or some context to my check-in.',
+];
 const BARIDI_WELCOME = 'This is Ask Baridi. You can ask me about the company, your work or your check-ins, at any time. You can also add context or a document to one of your check-ins, and ask for leave or to spend money. What you ask here stays private. If you add something to a check-in, I will say it back to you first, and it only goes in once you say yes.';
 
 const everything = (x: unknown) => JSON.stringify(x);
