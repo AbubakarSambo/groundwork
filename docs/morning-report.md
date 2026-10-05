@@ -12,6 +12,7 @@
 - Where no worry is named, the Blockers tile now says the true reason: other people's words this reader may not read, or none kept in the words it was said, which is true for the lead too (127 item 7, changed after review). After a second review it also says when some are other people's words and the rest were not kept, and when a kept worry cannot be quoted whole.
 - "Who owns what" now includes the promises people made in their check-ins. Before, 59 people on this computer's database had an empty list because their promise was stored only as a promise (130 b). After review, a promise not kept word for word reads "Neema Achieng committed to send a photo of the delivery sheets on Friday.", and the same promise in other words is listed once.
 - I stopped on 130 (d) and 131 (6). Incident stages, incident themes and a group's county all need the records prompt changed, and the stage names and a "Women" share target are your decisions. "By site" and the programme's headline are already sent where the data is there. The answers file says what I checked.
+- The headline question puts a comma before its day when the aim has a clause of its own: "…, at least 60% of them women, by 28 February 2027?"
 - I stopped on 139, the goal drawn as "Point to successfully renewed contracts", because no code writes that line and it is not in this computer's database. I asked the screens workspace which field carries it. I did not start 130 (b), 130 (d) or 131 (6), because none of them is small.
 
 ### Needs Hafsah

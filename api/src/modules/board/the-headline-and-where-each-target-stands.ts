@@ -308,6 +308,13 @@ function anAnswerFor(p: APhrase, when: string | null): string {
  * ("this quarter") is kept; otherwise the check-in's deadline is added ("by 30 November"). An aim with no
  * number is asked only where there is a deadline and no aim with a number.
  */
+/*
+ * AN AIM WITH A TRAILING CLAUSE TAKES A COMMA BEFORE ITS DAY (reviewer, 5 October 2026). "Will we train
+ * 10,000 market traders in financial skills, at least 60% of them women by 28 February 2027?" read as if
+ * the women were due by that day. Where the aim already has a comma between words in it (not one inside a number such as 10,000), the day follows a comma.
+ */
+const beforeTheDay = (phrase: string): string => (/,\s/.test(phrase) ? ', ' : ' ');
+
 export function theHeadlineQuestion(aims: ATeamAim[], deadline: Date | null, now: Date = new Date()): AHeadline | null {
   /* An aim the lead already put as a question ("Is the cohort repaying, and why not where it isn't?") is the question (request 133). */
   const alreadyAsked = aims.find((a) => a.target == null && /\?\s*$/.test(a.name ?? '') && (a.name ?? '').trim().split(/\s+/).length <= 20);
@@ -324,8 +331,8 @@ export function theHeadlineQuestion(aims: ATeamAim[], deadline: Date | null, now
       : parts.join(' and ');
     const when = oneTail ?? (counted.some((p) => p.tail) ? null : byDate);
     const question = counted.length === 1 && counted[0].subject
-      ? `Will ${counted[0].subject} ${counted[0].verbPhrase}${when ? ` ${when}` : ''}?`
-      : `Will we ${joined}${when ? ` ${when}` : ''}?`;
+      ? `Will ${counted[0].subject} ${counted[0].verbPhrase}${when ? `${beforeTheDay(counted[0].verbPhrase)}${when}` : ''}?`
+      : `Will we ${joined}${when ? `${beforeTheDay(joined)}${when}` : ''}?`;
     const answer = counted.map((p) => anAnswerFor(p, counted.length === 1 ? (p.tail ?? byDate) : null)).join(' ');
     return { question, answer, bars: counted.map((p) => aBar(p.aim)).filter((b): b is AHeadlineBar => !!b) };
   }
@@ -335,5 +342,5 @@ export function theHeadlineQuestion(aims: ATeamAim[], deadline: Date | null, now
      ("Resolve customer issues within a day, without reopening them?"). */
   const day = words.tail ?? byDate;
   const asked = words.subject ? `Will ${words.subject} ${words.verbPhrase}` : `Will we ${words.verbPhrase}`;
-  return { question: `${asked}${day ? ` ${day}` : ''}?`, answer: null, bars: [] };
+  return { question: `${asked}${day ? `${beforeTheDay(asked)}${day}` : ''}?`, answer: null, bars: [] };
 }
