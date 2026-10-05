@@ -123,7 +123,7 @@ import { familyFor, BoardFamily } from '../board/board-families';
 import { theOneWorthAsking, askAboutItBlockFor } from './what-keeps-happening-becomes-a-question';
 import { mayCoach } from './participation-timeline';
 import { theirApprovedLeave } from '../suites/who-is-away';
-import { afterTheirTurn, anIdeaReadBackAsAPromise } from './ideas-from-the-team';
+import { afterTheirTurn, anIdeaReadBackAsAPromise, withoutAskingWhatToCapture } from './ideas-from-the-team';
 import { aRequestAfterTheirTurn, withoutACannotApprove } from './a-request-offered-in-the-check-in';
 import { stillAsking } from './one-question-per-turn';
 import { oneThingAsked, wouldLeaveAQuestionOut, asksMoreThanOneThing, withTheOneMoreLine, ASK_ONE_THING } from './a-turn-asks-one-thing';
@@ -2977,7 +2977,12 @@ export class ConversationService {
     }
     if (request.sayFirst) answer.reply = [request.sayFirst, answer.reply].filter(Boolean).join('\n\n');
     /* "I have captured it for the team." is said first, before anything else in the reply (anchor piece 19). */
-    if (idea.sayFirst) answer.reply = [idea.sayFirst, answer.reply].filter(Boolean).join('\n\n');
+    if (idea.sayFirst) {
+      /* Captured already: the model's own "Capture what, specifically?" is taken off first. */
+      const notAsked = withoutAskingWhatToCapture(answer.reply);
+      if (notAsked.cut.length) this.logger?.warn?.(`Check-in ${checkIn.id}: took off asking what to capture, after it was captured: ${JSON.stringify(notAsked.cut)}`);
+      answer.reply = [idea.sayFirst, notAsked.text].filter(Boolean).join('\n\n');
+    }
     return answer;
   }
 
