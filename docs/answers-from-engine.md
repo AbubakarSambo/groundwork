@@ -4993,3 +4993,43 @@ Nothing changes in the shape you receive — `turns` is still oldest first.
 options (the "Here is what I can do with ..." turns that end with nothing after them), and the two
 wrong answers Juma and Rukia read. Those are about what is written at the time, not about reading
 it back, so they need the scenario run to finish before I touch that path.
+
+---
+
+# Request 154 items 5 and 6: what is fixed, and one thing left on purpose
+
+## Item 5, goals not written to the reader — half fixed, half a decision for Hafsah
+
+**Fixed:** a goal written *about* somebody — by their lead, or by Groundwork — is now written to
+the reader, as the goals beside it already were. That is the defect.
+
+**Left exactly as written:** a goal the person wrote themselves. Hafsah's standing decision of 26
+September is that people's own words stay exactly as they said them and only what Groundwork writes
+is fixed, and a test has pinned "I want it at 162,000 by December." unchanged since before your
+request. When I first applied the rewrite to everything, that test went red, which is it doing its
+job.
+
+So **the page can still read "I ..." beside "You ..."**, and that is now a wording decision rather
+than a defect — recorded as PROVISIONAL decision 102 for Hafsah to confirm or overrule. If she
+wants one voice throughout, one line in `your-board.ts` changes it and the pinned test goes with it.
+
+## Item 6, the same promise twice — fixed
+
+You saw:
+
+> Ask the warehouse to load my van by 7am
+> Ask the warehouse on Tuesday 29 September to load my van by 7am.
+
+Request 96's rule folds a short promise into a fuller one when the short one's words sit **whole**
+inside it. A date pushed into the middle breaks that, however alike the two are. The containment is
+now tested with dates taken out of both, and only the containment: two promises naming two
+different dates are still two promises, and the merged row still keeps whichever date was given.
+
+**"Plan shorter routes" twice is probably not the same bug.** Two identical promises are already
+folded together within one check-in; across two check-ins they are two promises, and now that every
+row carries `checkInLabel` you should be able to see which is which. If you still see it twice
+inside one check-in, send me the check-in and I will look again.
+
+**Item 6's other half, when-words that are not dates** ("if it happens again", "the same day"), is
+not done. Those are what the person said, so the fix is not to rewrite them but to stop showing
+them where a date belongs, and that needs to know what the screen does with the field.
