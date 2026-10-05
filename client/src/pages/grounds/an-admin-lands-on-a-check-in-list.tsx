@@ -4,6 +4,7 @@ import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { Link } from 'react-router-dom'
 import { Button, Tag } from '@/components/gw/ui'
+import { askNameFor } from '@/lib/ask-name'
 
 /**
  * WHAT A NEW ORGANISATION'S ADMIN SEES FIRST (A3 and C1, U.3): the welcome card and the prototype's
@@ -100,7 +101,8 @@ export function AdminFirstRun() {
   })
   if (!isAdmin || !data) return null
 
-  const orgName = user.organization?.name?.trim() || user.organizationName || 'your organisation'
+  const realOrgName = user.organization?.name?.trim() || user.organizationName
+  const orgName = realOrgName || 'your organisation'
   const steps = getItGoing(data)
   const done = steps.filter(s => s.done).length
   const finished = done === steps.length
@@ -118,7 +120,7 @@ export function AdminFirstRun() {
           </div>
           <p className="gwui-welcome-card-line">
             You can see every board and report, including what people said in them. You never see anyone’s
-            questions to Ask Groundwork, anyone’s own report, or a lead’s private notes, and never a
+            questions to {askNameFor(realOrgName)}, anyone’s own report, or a lead’s private notes, and never a
             performance plan, promotion or renewal unless given access to that check-in.
           </p>
           <ul className="gwui-welcome-doors">

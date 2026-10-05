@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { companyApi, type CompanyCard, type CompanyPriority } from '@/api/company'
 import { useAuthStore } from '@/stores/auth'
+import { askNameFor } from '@/lib/ask-name'
 import { Page, PageTitle, Section, Panel, Button, Tag, Note, Empty, RowList, Row } from '@/components/gw/ui'
 
 /**
@@ -73,7 +74,7 @@ export function CompanyContextPage() {
       {cards.data && (
         <>
           {handbook.length > 0 && (
-            <Cards title="The staff handbook, short and simple" sub="Ask Groundwork answers from this, and says so" cards={handbook} />
+            <Cards title="The staff handbook, short and simple" sub={`${askNameFor(page.data?.name || user?.organizationName)} answers from this, and says so`} cards={handbook} />
           )}
           {resources.length > 0 && <Cards title="Resources" cards={resources} />}
           {rest.length > 0 && <Cards title={`What ${name} has learned, promised and has to hand`} cards={rest} />}

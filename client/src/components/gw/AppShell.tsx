@@ -16,6 +16,7 @@ import { useHelpStore } from '@/stores/help'
 import { useAskStore } from '@/stores/ask'
 import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
 import { AskGroundwork } from './AskGroundwork'
+import { askNameFor } from '@/lib/ask-name'
 import { hasEnded } from '@/lib/a-ground-that-has-ended'
 import { Button } from './kit'
 import { sidebarWasFolded, rememberSidebarFolded } from './where-the-sidebar-was-left'
@@ -796,14 +797,20 @@ export function AppSidebar() {
               <GroundworkBars />
             </a>
           )}
-          {/* Ask Groundwork (D1): the speech bubble beside the mark opens the panel beside the page. */}
+          {/*
+            * ASK, NAMED FOR THE ORGANISATION (decision 100): the speech bubble beside the mark
+            * opens the panel beside the page. `askNameFor` is the same small rule `GET /ask`
+            * itself runs (api/src/modules/assistant/ask-name.ts) - reading it from the signed-in
+            * person's own organisation name, already in hand here, means this button never shows
+            * "Ask Groundwork" for a moment before the panel's own fetch lands with the real name.
+            */}
           {isAuthenticated && (
             <button
               type="button"
               className="gw-rl-ic gw-ask-open"
               onClick={toggleAsk}
-              title="Ask Groundwork"
-              aria-label="Ask Groundwork"
+              title={askNameFor(orgName)}
+              aria-label={askNameFor(orgName)}
               aria-expanded={askOpen}
               style={collapsed ? undefined : { marginLeft: 'auto' }}
             >
