@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { financeApi, type FinanceRequest, type FinanceView } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row, FieldLabel, TextField } from '@/components/gw/ui'
+import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
 
 /**
  * THE REQUESTS FOR FINANCE (#/suite/spend/finance). Decision 85, item 2: "Finance verifies, codes,
@@ -57,7 +58,7 @@ export function FinancePage() {
   return (
     <Page>
       <PageTitle
-        crumbs={[{ label: 'Suites', to: '/settings/suites' }, { label: 'Spending and budgets', to: '/suite/spend' }, { label: 'Requests for finance' }]}
+        crumbs={[{ label: 'Suites', to: maySeeSuites(user?.role) ? '/settings/suites' : undefined }, { label: 'Spending and budgets', to: '/suite/spend' }, { label: 'Requests for finance' }]}
         title="Requests for finance"
         subtitle="These requests to spend have been approved. Check each one, write the budget line it is paid from, note the receipt or quote, and mark it paid."
       />
@@ -65,7 +66,7 @@ export function FinancePage() {
       {isLoading && <Note>Loading…</Note>}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
-          <Note tone="error">{refused.data?.message ?? 'Only whoever looks after finance, or an admin, can open this.'}</Note>
+          <Note tone="error"><SuiteOffMessage message={refused.data?.message ?? 'Only whoever looks after finance, or an admin, can open this.'} role={user?.role} /></Note>
         ) : (
           <div>
             <Note tone="error">The requests did not load.</Note>

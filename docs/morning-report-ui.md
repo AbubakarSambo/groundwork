@@ -4,6 +4,43 @@ This is the report from the screens workspace, on the branch `wip/prototype-ui`.
 workspace writes its own report in `docs/morning-report.md`, so the two computers never edit the
 same file.
 
+## Morning, 6 October: the screens for the release, in short
+
+**What is done**
+- **Staging.** Hafsah's copy of Abubakar's staging (`mine/wip/live-base`, his pull request #320) is fully in this branch; the merge said "Already up to date".
+  - His last three client fixes are kept: "Who is still out" counts the round everyone is counted against; a file added with no check-in open says so; the "Ends on" date counts from the start date, never today. The last one moved into `CheckInPeopleAndSetup.tsx` in the rebuild.
+  - The engine's `docs/staging-compatibility.md` checks all 20 of staging's commits, and none is lost. No rebuilt screen drops anything he added.
+- **The release build.** The client failed to build from a clean, client-only install with staging's own `npm run build`, because a test file imported engine code. That is fixed (ca0139dc). It now builds clean.
+- **Every board** is matched to its prototype as the lead and a participant, and checked at phone width. That is the client's sales, onboarding and project boards, and the other eight kinds. MarketView Q4 is now matched too, on the engine's seed; its table columns wait for the engine (request 150).
+- **The anchor scenario's screens** are built, behind the switch, to the engine's served shapes: the front door, "Fills in as you talk", the lead's reveal, the people step (the lead plus 19), the invitation ("one to one"), the month board "Are we moving together?", the active line, "Groundwork recommends" (with a prefilled new check-in), ideas with the yes in the check-in, and the end-of-month page with its four options. They draw only what the engine sends, and the engine serves most of it now. They have not been used live yet, because the switch is off locally (request 155 asks for a local seed).
+- **The release walkthrough.** Every screen was used like a real user, as the lead, a participant and an admin, at desktop and phone width, in two parts: sign-in to reports, then suites, Ask, Company, You and settings. About 40 screen faults were found and fixed. Among them:
+  - a participant's "Read your own report" that opened an empty page;
+  - a sentence that named a person twice;
+  - tabs that differed between pages;
+  - "Record the decision" doing nothing;
+  - "Start my check-in" when nothing was open;
+  - Help saying something different from your privacy decisions;
+  - sign-up's two navy buttons;
+  - the Feedback pill covering buttons;
+  - tap areas too small on a phone;
+  - dead-end pages for broken links.
+- **The check-in page's button count** is within the prototype's, after the engine's fix.
+
+**Test results** (at 9a8a0d48)
+- Client: 629 test files, 4,217 tests, all pass. The type check is clean.
+- Clean build: `npm ci` and `npm run build` from a fresh, client-only checkout pass.
+- Browser: the button count (with the at-most-one-navy rule) passes, 55 of 55 with the page-colour test. The government, loans, matter, where-next and MarketView Q4 boards still have more buttons than their prototypes, a known gap the test records.
+- API: the full suite runs on the engine's computer (it runs out of memory here).
+
+**What still waits on the engine**
+- Request 153: the details for "Ask <organisation name>" (your decision), then every label changes.
+- Request 154: a local seed with the suites switched on. Every suite is off in every local organisation, so leave, finance requests and reviews could only be checked in their "off" state.
+- Request 155: a local anchor seed, to use the anchor screens live.
+- Requests 150 to 152: served wording and counts found in the walkthrough.
+
+**Needs Hafsah**
+- Nothing new is decided for you to confirm tonight. Your answers on the anchor plan, the four board decisions and "Ask <organisation name>" are recorded under "Hafsah's decisions".
+
 ## Morning, 5 October: in short
 
 **What I finished.** Every board the client needs is matched to its prototype and checked live, as the lead and as a participant, at both widths:
@@ -625,6 +662,14 @@ nothing about today's billing has changed. Nobody already on the free plan is cu
 U.20 (small states and errors) starts only when all have passed, as you asked.
 
 ## Hafsah's decisions, recorded here because `docs/decisions.md` is protected
+
+**6 October: the back office is not rebuilt at all.** It stays exactly as it is, reachable from the main screen as today. It is taken off the task list and the handover.
+
+**6 October: "one to one" in Help.** Each person answers Groundwork one to one, and their words may be quoted word for word to others in the check-in's report, as on the front door.
+
+**5 October: "Ask <organisation name>".** Ask Groundwork becomes "Ask <organisation name>", for example "Ask Coamana". "Ask Groundwork" is used only where there is no organisation yet. Its caption is "Ask about the company, your work or your check-ins", with one line saying people can add context or documents to their check-ins here. The screens change every label, caption, placeholder and empty state once the engine writes the details (request 153). Each change is checked as the lead, a participant and an admin.
+
+**5 October: the staging copy.** Hafsah's copy of Abubakar's staging, `mine/wip/live-base`, is commit 5197f22d, pull request #320. It is the same commit as `mine/wip/live-staging`, and already in this branch, so nothing he changed since #320 can be lost. The merge said "Already up to date".
 
 **5 October: the anchor scenario, Needs Hafsah 9, 10 and 11.**
 - **9:** a person sees the same recognition sentence the lead sees about their contribution ("Show that I matter").

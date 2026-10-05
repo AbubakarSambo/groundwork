@@ -63,4 +63,24 @@ describe('the feedback pill clears the ask box and the chat', () => {
     expect(btn!.style.bottom).toBe('20px')
     expect(btn!.style.top).toBe('')
   })
+
+  /*
+   * WALKTHROUGH PASS 2, ITEM 2: THREE MORE PLACES THE PILL SAT ON A CONTROL.
+   *
+   * "/chat" (Ask Groundwork's own page) sat on the composer's Send arrow, the same problem
+   * "/checkin/" already had. "/settings/suites" sat on the Equipment card's own switch, and
+   * "/org/members" sat on a row's "Open" link - both controls that can be anywhere down a long
+   * page, so hidden outright rather than chasing a moving target, same as "/more".
+   */
+  it('is hidden on /chat, same as /checkin/', () => {
+    expect(trigger(mount('/chat').container)).toBeNull()
+  })
+
+  it('is hidden on Suites, clear of the Equipment switch', () => {
+    expect(trigger(mount('/settings/suites').container)).toBeNull()
+  })
+
+  it('is hidden on People, clear of the "Open" links', () => {
+    expect(trigger(mount('/org/members').container)).toBeNull()
+  })
 })

@@ -23,6 +23,8 @@ import { Section } from '@/components/gw/ui/Section'
 import { Tag } from '@/components/gw/ui/Tag'
 import { Button } from '@/components/gw/ui/Button'
 import { SuggestedAnswers } from '@/components/gw/checkin/SuggestedAnswers'
+import { IdeaOffer } from '@/components/gw/checkin/IdeaOffer'
+import type { TheIdeaOfferInTheCheckIn } from '@/api/anchorShapes'
 import { TheEndCard } from '@/components/gw/checkin/TheEndCard'
 import { TheDonePage, type WhatChanged } from '@/components/gw/checkin/TheDonePage'
 import { whenTheNextOneOpens, whoElseAnswers } from '@/lib/what-the-end-of-a-check-in-can-say'
@@ -41,6 +43,8 @@ interface Msg {
   docAssessment?: { docId: string; docName: string; assessment: DocumentAssessment }
   /** The engine's suggested answers for this question, when it sends them. See SuggestedAnswers. */
   suggestedAnswers?: string[]
+  /** Piece 21: the yes to capture a concrete idea, attached to the reply that offers it. See IdeaOffer. */
+  ideaOffer?: TheIdeaOfferInTheCheckIn | null
 }
 
 /** Shows a document's "what this suggests / what will be done with it" bullets,
@@ -329,7 +333,7 @@ export function ChatPage() {
   const openSession = useMutation({
     mutationFn: () => conversationApi.open(checkInId!),
     onSuccess: res => {
-      setMsgs([{ id: 'ai-open', role: 'AI', content: res.reply, suggestedAnswers: res.suggestedAnswers }])
+      setMsgs([{ id: 'ai-open', role: 'AI', content: res.reply, suggestedAnswers: res.suggestedAnswers, ideaOffer: res.ideaOffer }])
       if (res.groundId && !groundId) setGroundId(res.groundId)
       if (res.brief) setBrief(res.brief)
       if (res.mayCompleteAfter) setMayCompleteAfter(res.mayCompleteAfter)
@@ -590,7 +594,7 @@ export function ChatPage() {
           if (typeof t.checkIn?.sessionNumber === 'number') setSessionNumber(t.checkIn.sessionNumber)
           if (t.checkIn?.groundId && !groundId) setGroundId(t.checkIn.groundId)
           if (t.turns && t.turns.length > 0) {
-            setMsgs(t.turns.map(turn => ({ id: turn.id, role: turn.role, content: turn.content, suggestedAnswers: turn.suggestedAnswers })))
+            setMsgs(t.turns.map(turn => ({ id: turn.id, role: turn.role, content: turn.content, suggestedAnswers: turn.suggestedAnswers, ideaOffer: turn.ideaOffer })))
             /**
               * ROUND 6, ITEM 4: A SESSION THAT WAS ALREADY FINISHED GETS THE SAME DONE PAGE AS
               * ONE JUST FINISHED NOW.
@@ -699,8 +703,8 @@ export function ChatPage() {
         },
         onDone: (r) => {
           acknowledge()
-          setMsgs(v => v.map(m => m.id === aiId ? { ...m, content: r.reply, suggestedAnswers: r.suggestedAnswers } : m))
-          setDisplayedMsgs(v => v.map(m => m.id === aiId ? { ...m, content: r.reply, suggestedAnswers: r.suggestedAnswers } : m))
+          setMsgs(v => v.map(m => m.id === aiId ? { ...m, content: r.reply, suggestedAnswers: r.suggestedAnswers, ideaOffer: r.ideaOffer } : m))
+          setDisplayedMsgs(v => v.map(m => m.id === aiId ? { ...m, content: r.reply, suggestedAnswers: r.suggestedAnswers, ideaOffer: r.ideaOffer } : m))
           if (r.sessionComplete) setDone(true)
           if (r.endCard) setEndCard(r.endCard)
         },
@@ -716,7 +720,7 @@ export function ChatPage() {
         try {
           const res = await conversationApi.send(checkInId, message)
           acknowledge()
-          setMsgs(v => v.concat({ id: `ai-${Date.now()}`, role: 'AI', content: res.reply, suggestedAnswers: res.suggestedAnswers }))
+          setMsgs(v => v.concat({ id: `ai-${Date.now()}`, role: 'AI', content: res.reply, suggestedAnswers: res.suggestedAnswers, ideaOffer: res.ideaOffer }))
           if (res.sessionComplete) setDone(true)
           if (res.endCard) setEndCard(res.endCard)
         } catch {
@@ -1342,6 +1346,18 @@ export function ChatPage() {
             if (!last || last.role !== 'AI' || isWaiting(last) || streamingId !== null) return null
             if (loading || done || completed || declined || !opened) return null
             return <SuggestedAnswers answers={last.suggestedAnswers} onPick={pickSuggestion} />
+          })()}
+          {/*
+            PIECE 21: THE YES TO CAPTURE AN IDEA FOR THE TEAM (plan section 5 row 21; decision 96,
+            item 10). The same gate as the suggested answers above: not while its words are still
+            arriving, and not once the conversation has closed. "Yes, capture it" and "Not now" are
+            sent the same way a suggested answer is - typed and sent, in the person's own words.
+          */}
+          {(() => {
+            const last = displayedMsgs[displayedMsgs.length - 1]
+            if (!last || last.role !== 'AI' || isWaiting(last) || streamingId !== null) return null
+            if (loading || done || completed || declined || !opened) return null
+            return <IdeaOffer offer={last.ideaOffer} onPick={pickSuggestion} />
           })()}
           {/*
             THE END CARD (check-in-end-card.txt). Finishing never happens on its own: the engine

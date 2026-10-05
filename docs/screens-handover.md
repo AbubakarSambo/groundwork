@@ -112,6 +112,17 @@ Keep it behind its switch. The plan was not yet on the engine's branch at 0b62fb
 
 Both situations, "Get a new project off to a good start" (555ac67d, engineering) and "Get a project back on track" (dac969d3), as lead and participant. The first review's eleven screen faults are fixed (06c9a1ac..6a207536) and checked live, with captures in the scratchpad's `pictures/project-check-eng/` and `project-check-drift/`. The engine's part is request 127. The local API runs the engine's 0b15efca, because its newest code does not compile (request 126). Next: Phase B, the other eight kinds of work, one at a time.
 
+## What is left (Hafsah, 6 October)
+
+- **The back office is not rebuilt (Hafsah, 6 October): it stays exactly as it is, reachable from the main screen as today.** It is not on any list.
+- **Still to finish,** each matched to the prototype by pictures at desktop and phone width:
+  1. the Ask rename and caption, once the engine answers request 153;
+  2. the suites and the entry scenario, walked live once requests 154 and 155 arrive;
+  3. Context and resources moving into Ask, when the engine says it is ready;
+  4. Plan and billing's new parts, the one-month trial and the WhatsApp add-on, from what the engine sends;
+  5. small states and error pages across the product;
+  6. the one-off style clean-up, page by page, with no visible change.
+
 ## Onboarding board: done (3 October)
 
 The fourth review, on the engine's 0b15efca, says both Amina (the lead) and Tobi (the new hire) match what the prototype shows for a new hire, apart from the engine's faults (requests 123 and 125). Captures are in the scratchpad's `pictures/review-onboard-4/`. Next is the project board.
@@ -154,7 +165,6 @@ The fourth review, on the engine's 0b15efca, says both Amina (the lead) and Tobi
 - **Plan and billing, with Hafsah's new decisions** (below).
 - **The rest of batch C:** the clean-up of the conversation, the entry chat, and the My work tab (`YourWork.tsx`).
 - **The Context and resources tab's last step:** it waits until the engine says Ask Groundwork's context work is ready (request 92 and its five live checks).
-- **Group 4, the back office:** AdminPage, AdminDashboardPage, the ops pages, the prompt pages. Hafsah says this comes last of everything.
 - **U.20 and U.21:** small states and errors, and Groundwork staff.
 
 ## What is in progress, and where it stopped
@@ -177,7 +187,6 @@ Hafsah's client needs these first:
 3. **The Company page,** with the company-wide picture.
 4. **The Ask Groundwork chat.**
 5. **The other eight boards.**
-6. **The back office.** It stays as it is for Groundwork's staff; its rebuild comes last.
 
 Plan and billing keeps Hafsah's decisions of 2 October (a one-month free trial for teams under 20; WhatsApp as a paid add-on at about 80% of the plan price, with a monthly limit; no prices or limits written into the screens). It has no place in the client's list, so it comes after item 5.
 
@@ -200,7 +209,6 @@ Plan and billing keeps Hafsah's decisions of 2 October (a one-month free trial f
 
    **Never write a price or a limit into the screens; the engine sends them.** Stripe stays exactly as it is.
 5. **Then:** the rest of batch C, the one-off clean-up on the earlier groups, and the Context tab when the engine is ready.
-6. **Group 4, the back office, last of everything.**
 
 Once a check-in's tests are done, also:
 - give the borrowed check-in `d1880c07-eb5d-4e1d-9007-977e1b53788c` back "no kind of work", through its own control, now that request 106 allows it;

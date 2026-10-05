@@ -253,6 +253,17 @@ describe('group 1 review fixes', () => {
     expect(screen.queryByText('Free check-in')).toBeNull()
     expect(screen.queryByText('Free extension available')).toBeNull()
   })
+
+  /* WALKTHROUGH PASS 2, ITEM 6: EACH NAME IN "IN PROGRESS" LINKS TO ITS OWN CHECK-IN. */
+  it('links each check-in\'s own name to its check-in', async () => {
+    const { groundsApi } = await import('@/api/grounds')
+    ;(groundsApi.list as any).mockResolvedValueOnce([
+      { id: 'g1', label: 'Faith, first 90 days', isFreeGround: true, org: { freeExtensionUsed: false } },
+    ])
+    renderIt()
+    const link = await screen.findByRole('link', { name: 'Faith, first 90 days' })
+    expect(link).toHaveAttribute('href', '/grounds/g1')
+  })
 })
 
 describe('everybody but an admin', () => {

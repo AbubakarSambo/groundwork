@@ -40,6 +40,7 @@ import { WhatToWorkOnNext } from '@/components/gw/WhatToWorkOnNext'
 import { WhatToProbeThemOn } from '@/components/gw/WhatToProbeThemOn'
 import { recommendedCheckInsApi, type AnOfferTheLeadReads } from '@/api/recommendedCheckIns'
 import { TheMonthBoard } from '@/components/gw/TheMonthBoard'
+import { TheIdeasFromYourTeam } from '@/components/gw/TheIdeasFromYourTeam'
 
 /**
  * WHO A ROW ON THE BOARD IS, WHERE THE SERVER HAS NO NAME TO GIVE. Request 36.
@@ -1023,15 +1024,24 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
   /**
    * PIECES 12, 13 AND 20: THE MONTH BOARD, "Are we moving together?" (section 24;
-   * docs/answers-from-engine.md, "Request 147", `TheMonthBoard`). Lead only, and only while the
-   * anchor switch is on - the same two gates `anchorRecommendationsOn` already uses, read off the
-   * raw board answer rather than `b` for the same reason (these hooks must sit above every early
-   * return below). Shape only on the engine side today, so `theMonthBoardForTheLead` is undefined
-   * on every board until it is served, and the component below draws nothing then.
+   * docs/answers-from-engine.md, "Request 149 (5 of 6)", `TheMonthBoard`). Lead only, and only
+   * while the anchor switch is on - the same two gates `anchorRecommendationsOn` already uses, read
+   * off the raw board answer rather than `b` for the same reason (these hooks must sit above every
+   * early return below). `theMonthBoardForTheLead` is `undefined` for anybody else, or for a board
+   * the engine does not serve it on, and the component below draws nothing then.
    */
   const theMonthBoardForTheLead = viewerRunsThisCheckIn && !!(data as any)?.anchorScenarioOn
     ? (data as any)?.theMonthBoard
     : undefined
+
+  /**
+   * PIECE 19/20, "IDEAS FROM YOUR TEAM" (plan section 5, row 7; docs/answers-from-engine.md,
+   * "Request 149, missing (1)"). To everyone in the check-in, not the lead alone - no
+   * `viewerRunsThisCheckIn` gate, unlike the month board above. The engine is itself the one that
+   * decides who this is served to (shape only today, so `ideasFromYourTeam` is undefined on every
+   * board), so this reads the raw answer directly rather than adding a reader check here.
+   */
+  const ideasFromYourTeam = (data as any)?.ideasFromYourTeam
   const { data: recommended } = useQuery({
     queryKey: ['recommended-check-ins', id],
     queryFn: () => recommendedCheckInsApi.list(id!),
@@ -1729,9 +1739,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const targetNameByParticipant = new Map((b.objectives ?? []).filter((o) => o.ownerParticipantId).map((o) => [o.ownerParticipantId as string, o.name]))
   /**
    * ANCHOR PIECE 31, THE "ACTIVE" LINE (section 26; plan section 5 row 12; docs/answers-from-engine
-   * .md, "Request 147", `TheActiveLine`). Drawn in "The team today", for the lead alone, exactly as
-   * the engine sends `line` - never rebuilt from the counts on this side. Nothing when the board
-   * does not serve it (today: always, since it is shape only and not served yet).
+   * .md, "Request 149 (4 of 6)", `TheActiveLine`). Served now, to whoever runs the check-in only,
+   * for an anchor Ground. Drawn in "The team today", exactly as the engine sends `line` - never
+   * rebuilt from the counts on this side. Nothing when the board does not serve it.
    */
   const activeLineForTheLead = viewerRunsThisCheckIn ? (b as any).activeLine?.line as string | undefined : undefined
   const eachPersonRows = (b.eachPerson ?? []).map((r) => ({
@@ -2423,6 +2433,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           section 5, row 6). Lead only; draws nothing while `theMonthBoardForTheLead` is undefined.
         */}
         {theMonthBoardForTheLead && <TheMonthBoard monthBoard={theMonthBoardForTheLead} />}
+
+        {/*
+          PIECE 19/20, "IDEAS FROM YOUR TEAM" (plan section 5, row 7). To everyone in the check-in;
+          draws nothing while `ideasFromYourTeam` is undefined.
+        */}
+        <TheIdeasFromYourTeam ideasFromYourTeam={ideasFromYourTeam} />
 
         {/*
           THE HEADLINE QUESTION, WITH ITS ANSWER AND ITS BAR (request 108 a; board-as-lead.txt:

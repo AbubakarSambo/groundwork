@@ -66,6 +66,21 @@ describe('the bottom bar', () => {
     mount(ADMIN)
     expect(within(main()).queryByRole('link', { name: 'Today' })).toBeNull()
   })
+
+  /*
+   * WALKTHROUGH PASS 2, ITEM 8: NOR DOES IT OFFER COMPANY A SECOND TIME, FOR SOMEBODY WHOSE BAR
+   * HAS IT IN PLACE OF START. Reusing the exact condition the bar itself uses, so the two can never
+   * drift apart.
+   */
+  it('and "More" does not offer Company a second time, for somebody whose bar has it instead of Start', () => {
+    mount(LEAD)
+    expect(within(main()).queryByRole('link', { name: 'Company' })).toBeNull()
+  })
+
+  it('but still offers Company, once, to somebody whose bar has Start', () => {
+    mount(PARTICIPANT)
+    expect(hrefOf(main(), 'Company')).toEqual(['/company'])
+  })
 })
 
 describe('"More", as an admin reads it', () => {

@@ -240,7 +240,7 @@ export default function AskYourTeamOneThing({ onBack }: { onBack?: () => void })
         </div>
 
         <p style={{ ...hint, marginTop: 2 }}>
-          They each get their own link and answer privately. You get one email the moment everybody
+          They each get their own link and answer Groundwork one to one. You get one email the moment everybody
           has answered, with one report: what each person said, where they line up, where they do
           not, and what nobody is holding.
         </p>

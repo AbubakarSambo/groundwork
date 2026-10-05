@@ -3,11 +3,13 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { youApi, type YourBoard, type YourCheckIn } from '@/api/you'
 import { myDataApi } from '@/api/my-data'
+import { groundsApi } from '@/api/grounds'
 import { useAuthStore } from '@/stores/auth'
 import {
   Page, PageTitle, Section, Panel, Button, Tag, Note, Empty, RowList, Row,
 } from '@/components/gw/ui'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import { whatTellsItApart } from '@/lib/tell-apart-the-same-name'
 import { WhereYouStandFromSuggestions } from '@/components/gw/Suggestions'
 import { PatternPanel } from '@/components/gw/ui'
 
@@ -74,6 +76,10 @@ export function YouPage() {
     enabled: !!user,
     staleTime: 30_000,
   })
+  /* Same query the sidebar already makes (AppShell.tsx), read here for the one thing it carries
+     that /you does not: when each check-in started, so two that share a label can be told apart
+     (walkthrough pass 2, item 4), the same way the sidebar already does. */
+  const grounds = useQuery({ queryKey: ['grounds'], queryFn: groundsApi.list, enabled: !!user })
 
   return (
     <Page>
@@ -86,12 +92,17 @@ export function YouPage() {
           <Button kind="secondary" size="small" onClick={() => refetch()} disabled={isFetching}>Try again</Button>
         </div>
       )}
-      {data && <TheBoard b={data} />}
+      {data && <TheBoard b={data} grounds={grounds.data} />}
     </Page>
   )
 }
 
-function TheBoard({ b }: { b: YourBoard }) {
+function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; startsAt?: string | null; createdAt?: string | null }[] }) {
+  const startOf = new Map((grounds ?? []).map(g => [g.id, { startsAt: g.startsAt, createdAt: g.createdAt }]))
+  /* "Your work in each" (below) is the one list here that carries each check-in's own id, so it is
+     the one list that can reliably be told apart when two share a label - the same check this
+     page's sidebar already makes for its own list (tell-apart-the-same-name.ts). */
+  const checkInsWithDates = b.checkIns.map(c => ({ id: c.id, label: c.label, ...startOf.get(c.id) }))
   const nothingYet = b.checkIns.length === 0 && b.todos.length === 0
   const myPatterns = (b.patterns ?? []).filter((p) => p.yours !== false)
   return (
@@ -134,7 +145,14 @@ function TheBoard({ b }: { b: YourBoard }) {
           <div className="gwui-cards-3">
             {b.goals.length > 0 && (
               <Panel as="section" heading="Your goals">
-                <ul className="gwui-panel-list">{b.goals.map(g => <li key={g.id}>{g.says}</li>)}</ul>
+                <ul className="gwui-panel-list">
+                  {b.goals.map(g => (
+                    <li key={g.id}>
+                      {g.says}
+                      {g.checkIn && <p className="gwui-panel-text-muted">{g.checkIn}</p>}
+                    </li>
+                  ))}
+                </ul>
               </Panel>
             )}
             {b.todos.length > 0 && (
@@ -199,7 +217,7 @@ function TheBoard({ b }: { b: YourBoard }) {
                   {a.who ? <><b>{a.who}</b><div className="gwui-ink-sub">{a.checkIn}</div></> : <b>{a.checkIn}</b>}
                 </div>
                 <span>{a.what}</span>
-                <span>{`Asked ${whenItWas(a.asked, 'dayAndMonth')}.`}</span>
+                <span>{a.standing}</span>
               </Row>
             ))}
           </RowList>
@@ -235,7 +253,7 @@ function TheBoard({ b }: { b: YourBoard }) {
                 {b.ownReports.map(r => (
                   <Row key={r.to} columns="minmax(0, 1fr) auto auto">
                     <b>{r.checkIn}</b>
-                    <span>{whenItWas(r.at, 'dayAndMonth')}</span>
+                    <span>{whenItWas(r.at, 'dayAndMonthLong')}</span>
                     <Link to={r.to}>Read</Link>
                   </Row>
                 ))}
@@ -245,12 +263,15 @@ function TheBoard({ b }: { b: YourBoard }) {
           {b.checkIns.length > 0 && (
             <Section heading="Your work in each">
               <RowList label="Your work in each">
-                {b.checkIns.map(c => (
-                  <Row key={c.id} columns="minmax(0, 1fr) auto">
-                    <div><b>{c.label}</b>{c.line && <div className="gwui-ink-sub">{c.line}</div>}</div>
-                    <Link to={c.to}>Open</Link>
-                  </Row>
-                ))}
+                {b.checkIns.map(c => {
+                  const apart = whatTellsItApart(checkInsWithDates, checkInsWithDates.find(x => x.id === c.id)!)
+                  return (
+                    <Row key={c.id} columns="minmax(0, 1fr) auto">
+                      <div><b>{apart ? `${c.label}, ${apart}` : c.label}</b>{c.line && <div className="gwui-ink-sub">{c.line}</div>}</div>
+                      <Link to={c.to}>Open</Link>
+                    </Row>
+                  )
+                })}
               </RowList>
             </Section>
           )}

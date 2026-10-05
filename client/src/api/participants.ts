@@ -1,5 +1,6 @@
 import { apiClient } from './client'
 import type { User, GroundScenario } from '@/types'
+import type { TheAnchorInvitation } from './anchorShapes'
 
 export interface InvitePreview {
   groundLabel: string
@@ -28,18 +29,13 @@ export interface InvitePreview {
   expired?: false
   /**
    * ANCHOR PIECE 11, THE INVITATION (plan section 5 row 5; docs/answers-from-engine.md, "Request
-   * 147", `TheAnchorInvitation` - shape only, not served yet). Present only for an invitation to an
-   * anchor Ground. The copy of the engine's shape the screens workspace keeps for itself - never
-   * imported from `api/`, since the client builds alone on staging.
+   * 149 (3 of 6)", `TheAnchorInvitation`). Served now, on `GET /participants/preview`, only for a
+   * check-in with `started_from` "anchor" and only while `release.anchorScenario` is on - absent
+   * otherwise. `TheAnchorInvitation` is the copy of the engine's shape the screens workspace keeps
+   * for itself (`anchorShapes.ts`) - never imported from `api/`, since the client builds alone on
+   * staging.
    */
-  anchorInvitation?: {
-    subject: string
-    heading: string
-    /** Plain sentences, in order. The fourth is one of two, by `leadHasSharedWhatTheyAreSeeing`. */
-    lines: string[]
-    leadHasSharedWhatTheyAreSeeing: boolean
-    button: string
-  }
+  anchorInvitation?: TheAnchorInvitation
 }
 
 /** What an expired invitation's preview is: nothing but the lead's first name. */

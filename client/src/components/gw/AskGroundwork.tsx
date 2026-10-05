@@ -5,6 +5,7 @@ import { askApi, type AskBlock, type AskReply, type TextBlock, type ClaimBlock, 
 import { documentsApi } from '@/api/documents'
 import { groundsApi } from '@/api/grounds'
 import { UPLOAD_ACCEPT_ATTR } from '@/lib/what-you-can-upload'
+import { whatTellsItApart } from '@/lib/tell-apart-the-same-name'
 import { Mark } from './kit'
 import { Composer } from './ui/Composer'
 import { PRIVATE_LINE, openingLine, SUGGESTED_QUESTIONS } from './what-ask-groundwork-says'
@@ -162,6 +163,17 @@ export function AskGroundwork({
     const found = (grounds.data ?? []).find((g) => g.id === here)
     return found ? [...base, { id: found.id, label: found.label }] : base
   }, [page.data, here, grounds.data])
+  /*
+   * WALKTHROUGH PASS 2, ITEM 7: TWO CHECK-INS ON "ABOUT" CAN SHARE A LABEL. The engine's own
+   * `/ask` serves only `id`/`label` for this list, so this reads when each one started from the
+   * grounds list (same query the sidebar and YouPage already make), the same way those tell two
+   * same-labelled check-ins apart.
+   */
+  const allGrounds = useQuery({ queryKey: ['grounds'], queryFn: groundsApi.list })
+  const aboutWithDates = useMemo(() => {
+    const startOf = new Map((allGrounds.data ?? []).map((g) => [g.id, { startsAt: g.startsAt, createdAt: g.createdAt }]))
+    return about.map((g) => ({ id: g.id, label: g.label, ...startOf.get(g.id) }))
+  }, [about, allGrounds.data])
   const [chosen, setChosen] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [said, setSaid] = useState<Said[]>([])
@@ -374,7 +386,10 @@ export function AskGroundwork({
             About
             <select value={aboutId} onChange={(e) => setChosen(e.target.value)}
               style={{ flex: 1, minWidth: 0, font: 'inherit', fontSize: 15, padding: '6px 8px', borderRadius: 8, border: '1px solid var(--gw-line)', background: 'var(--gw-card)', color: 'var(--gw-text)', maxWidth: '100%' }}>
-              {about.map((g) => <option key={g.id} value={g.id}>{g.label}</option>)}
+              {aboutWithDates.map((g) => {
+                const apart = whatTellsItApart(aboutWithDates, g)
+                return <option key={g.id} value={g.id}>{apart ? `${g.label}, ${apart}` : g.label}</option>
+              })}
             </select>
           </label>
         )}

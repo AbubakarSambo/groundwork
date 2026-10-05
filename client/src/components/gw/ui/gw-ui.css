@@ -1274,9 +1274,11 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 
 /* ── COMPANY PAGE (D2, group 2 piece 3: docs/prototype/screens/D2-company). New parts this piece
    added - see docs/the-parts-against-the-prototype.md for the full note. ────────────────────── */
-/* The head row (company.jpg): "Ask about the whole organisation" on the left, "Company context"
-   and "Ask about the strategy" on the right, on one row that wraps on a narrow screen - the same
-   shape as `.gwui-sentence-row` (You board, "Your data"), reused rather than duplicated. */
+/* The head row (company.jpg): "Ask about a check-in" on the left, "Company context" and "Ask
+   Groundwork" on the right (walkthrough pass 2, item 7: labelled for what they actually open,
+   not "the whole organisation" or "the strategy", until the engine gives Ask that wider choice -
+   request 154, item 4), on one row that wraps on a narrow screen - the same shape as
+   `.gwui-sentence-row` (You board, "Your data"), reused rather than duplicated. */
 /* A priority card's top row: "Priority N" beside its tag, before the title - no dedicated
    prototype class (the prototype draws this by hand per screen); built at the sizes already used
    by the rest of a Panel card. */

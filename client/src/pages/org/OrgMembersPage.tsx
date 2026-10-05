@@ -41,7 +41,19 @@ import { Page, PageTitle, EdgeList, EdgeRow, Button, Section, Panel, Note, Stack
  * WHO ADDED THE PEOPLE WITH NO SEAT, SAID TRULY (U.4 re-review). It said "A lead added them" even when
  * an admin had. One name when one person added them all; otherwise "Someone on your team".
  */
-export function whoAddedThem(rows: { addedBy?: string | null }[], seatsFree: number | null = 0): string {
+/**
+ * WHO "THEM" IS, FROM WHAT IS SERVED (walkthrough pass 2, item 5): one email on its own, or a list
+ * joined with "and", never a bare pronoun with nothing before it to name.
+ */
+function namesFor(rows: { email?: string | null }[]): string {
+  const names = rows.map((r) => r.email).filter((e): e is string => !!e)
+  if (names.length === 0) return 'them'
+  if (names.length === 1) return names[0]
+  if (names.length === 2) return `${names[0]} and ${names[1]}`
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+}
+
+export function whoAddedThem(rows: { addedBy?: string | null; email?: string | null }[], seatsFree: number | null = 0): string {
   /*
    * AND WHETHER THERE IS ROOM NOW (U.4 fourth review). After a seat was freed the card still said the
    * plan was full. With room for all of them, or some, it says so; null is a plan with no cap.
@@ -58,7 +70,7 @@ export function whoAddedThem(rows: { addedBy?: string | null }[], seatsFree: num
   }
   const names = [...new Set(rows.map((r) => r.addedBy).filter((n): n is string => !!n))]
   const who = names.length === 1 && rows.every((r) => r.addedBy === names[0]) ? names[0] : 'Someone on your team'
-  return `${who} added them and your plan is full, so nothing has been sent to them. `
+  return `${who} added ${namesFor(rows)} and your plan is full, so nothing has been sent to them. `
     + 'Free a seat or move to a larger plan, then send the invitations. They have not been told any of this.'
 }
 

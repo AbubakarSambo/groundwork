@@ -20,7 +20,15 @@ export interface SomethingYouSaid {
 }
 export interface YourReport { checkIn: string; at: string | null; to: string }
 /** One open request on you, from a check-in you are in. `who` is null where the check-in does not let you see who. */
-export interface SomethingAskedOfYou { id: string; who: string | null; checkIn: string; what: string; asked: string }
+export interface SomethingAskedOfYou {
+  id: string
+  who: string | null
+  checkIn: string
+  what: string
+  asked: string
+  /** One plain sentence of where it stands, written from the record (api/src/modules/grounds/asked-of-you.ts). */
+  standing: string
+}
 
 export interface YourBoard {
   checkIns: YourCheckIn[]

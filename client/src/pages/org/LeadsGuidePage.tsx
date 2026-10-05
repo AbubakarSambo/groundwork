@@ -86,9 +86,9 @@ export function LeadsGuidePage() {
       <div style={{ background: 'var(--gw-card)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '15px 17px', marginBottom: 34 }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>What an admin can see</div>
         <p style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>
-          Whether a check-in was opened, who is in it, whether people have finished, and the report
-          once it is released. Never anybody's check-in itself. An admin approving a check-in is
-          approving that it happens, not reading it.
+          An admin can see whether a check-in has been opened, who is in it, whether everyone has
+          finished, and the report once it is released. An admin never sees anybody's check-in
+          itself. Approving a check-in means approving that it happens, not reading what is said in it.
         </p>
       </div>
 

@@ -31,7 +31,14 @@ export function MorePage() {
   const openJump = useJumpStore(s => s.show)
 
   const items = navItemsFor(user)
-  const pages = items.filter(i => !(i as { adminOnly?: boolean }).adminOnly && !(i as { platformAdminOnly?: boolean }).platformAdminOnly && i.to !== '/grounds' && i.to !== '/settings' && i.to !== '/today')  /* Today is in the phone's bar */
+  /*
+   * WALKTHROUGH PASS 2, ITEM 8: "COMPANY" IS NOT LISTED AGAIN WHEN IT IS ALREADY IN THE BOTTOM BAR.
+   * AppShell.tsx's bottom bar puts Company where Start would be, for somebody who may not open a
+   * check-in (and is not a guest) - the exact same condition as there, so "More" never repeats the
+   * one door she already has below.
+   */
+  const companyInBar = user?.mayOpenCheckIns === false && user?.role !== 'GUEST'
+  const pages = items.filter(i => !(i as { adminOnly?: boolean }).adminOnly && !(i as { platformAdminOnly?: boolean }).platformAdminOnly && i.to !== '/grounds' && i.to !== '/settings' && i.to !== '/today' && !(companyInBar && i.to === '/company'))  /* Today is in the phone's bar */
   const adminItems = items.filter(i => (i as { adminOnly?: boolean }).adminOnly)
   const staffItems = items.filter(i => (i as { platformAdminOnly?: boolean }).platformAdminOnly)
   const orgName = user?.organizationName ?? ''

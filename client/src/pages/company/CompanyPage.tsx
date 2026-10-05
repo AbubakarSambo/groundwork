@@ -70,11 +70,19 @@ export function CompanyPage() {
 
       {data && (
         <>
+          {/*
+            * WALKTHROUGH PASS 2, ITEM 7 (request 154, item 4): THESE BOTH OPEN A CHAT ABOUT ONE
+            * CHECK-IN, NOT THE WHOLE ORGANISATION OR THE STRATEGY. `showAsk` opens the same Ask
+            * Groundwork panel the rest of the product does, scoped to whichever check-in it last
+            * had or the reader then chooses from "About" - there is no organisation-wide or
+            * strategy-wide question yet. Labelled for what actually opens until the engine gives
+            * Ask that wider choice.
+            */}
           <div className="gwui-sentence-row">
-            <Button kind="secondary" onClick={showAsk}>Ask about the whole organisation</Button>
+            <Button kind="secondary" onClick={showAsk}>Ask about a check-in</Button>
             <div className="gwui-edge-acts">
               <Button kind="secondary" to="/company/context">Company context</Button>
-              <Button kind="secondary" onClick={showAsk}>Ask about the strategy</Button>
+              <Button kind="secondary" onClick={showAsk}>Ask Groundwork</Button>
             </div>
           </div>
           {data.line && <Note>{data.line}</Note>}

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { whenTheCheckInsLand, type Cadence } from '@/components/gw/when-the-check-ins-land'
 import { cadenceLabel } from '@/lib/cadence'
+import type { ThePeopleStepRules } from '@/api/anchorShapes'
 
 /*
  * THE SCHEDULE, BEFORE IT IS SAVED (U.6, B1): #/new/setup.
@@ -15,29 +16,17 @@ import { cadenceLabel } from '@/lib/cadence'
 
 /**
  * THE PEOPLE STEP'S OWN RULES, FOR AN ANCHOR DRAFT ONLY (plan piece 11; docs/anchor-scenario-plan.md
- * section 5 row 4; docs/answers-from-engine.md, "Request 147", `ThePeopleStepRules`).
+ * section 5 row 4; docs/answers-from-engine.md, "Request 149 (2 of 6)", `ThePeopleStepRules`).
  *
- * Shape only - not served yet ("Shape only, ThePeopleStepRules"). These are the exact values the
- * engine's own answer gives, copied verbatim, used until the engine actually serves this shape on
- * the draft or the board. THE ONLY CHANGE NEEDED ONCE IT DOES: read a `ThePeopleStepRules` from
- * there instead of this constant - `EntryChatPage.tsx`'s invite block already takes the shape, not
- * this specific object.
+ * Served now, as `thePeopleStep` on `GET /entry/anchor-start` (api/src/modules/entry/the-anchor-door
+ * .ts). This constant is the FALLBACK ONLY, carrying the engine's own words verbatim, used when
+ * nothing was served for this draft (an older link, or the call failed) - `EntryChatPage.tsx`'s
+ * invite block draws the served `ThePeopleStepRules` carried through the draft's session state when
+ * there is one, and falls back to this constant otherwise.
  *
  * `mayAdd` is 19, not 20: the limit is 20 people including the lead (decision 96, item 3), so the
  * lead can add 19 others.
  */
-export type ThePeopleStepRules = {
-  limit: 20
-  theLeadCounts: true
-  mayAdd: 19
-  heading: string
-  intro: string
-  contextLabel: string
-  button: string
-  /** Said when the lead tries to add a twentieth other person. */
-  limitSentence: string
-}
-
 export const ANCHOR_PEOPLE_STEP_RULES: ThePeopleStepRules = {
   limit: 20,
   theLeadCounts: true,
@@ -47,6 +36,35 @@ export const ANCHOR_PEOPLE_STEP_RULES: ThePeopleStepRules = {
   contextLabel: 'What do they do / why are they part of this?',
   button: 'Start my Groundwork.',
   limitSentence: 'This one-month Groundwork holds 20 people, and you are one of them, so you can add 19 more.',
+}
+
+/**
+ * HOW THE SERVED PEOPLE STEP TRAVELS FROM THE LANDING PAGE TO THE ENTRY CHAT.
+ *
+ * `AnchorLandingPage.tsx` is the one caller of `GET /entry/anchor-start`; its button then opens the
+ * ordinary entry chat at `/start?scenario=...`, a fresh page load. `sessionStorage` (not the saved
+ * draft itself, which does not exist until the chat has started) is the plain way to carry the
+ * served `ThePeopleStepRules` across that one navigation - written here, read once by
+ * `EntryChatPage.tsx` on a fresh mount, and folded into the draft's own session state from then on
+ * so a reload keeps it.
+ */
+export const ANCHOR_PEOPLE_STEP_SESSION_KEY = 'gw-anchor-people-step'
+
+export function rememberTheServedPeopleStep(rules: ThePeopleStepRules | undefined) {
+  if (!rules) return
+  try { sessionStorage.setItem(ANCHOR_PEOPLE_STEP_SESSION_KEY, JSON.stringify(rules)) } catch { /* best effort */ }
+}
+
+/** Read once, then forget - the draft's own session state carries it from here on. */
+export function takeTheServedPeopleStep(): ThePeopleStepRules | undefined {
+  try {
+    const raw = sessionStorage.getItem(ANCHOR_PEOPLE_STEP_SESSION_KEY)
+    if (!raw) return undefined
+    sessionStorage.removeItem(ANCHOR_PEOPLE_STEP_SESSION_KEY)
+    return JSON.parse(raw) as ThePeopleStepRules
+  } catch {
+    return undefined
+  }
 }
 
 export const THE_SETUP = {

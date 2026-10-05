@@ -38,6 +38,7 @@ describe('the anchor landing page', () => {
   beforeEach(() => {
     mockAvailable.mockReset()
     mockStart.mockReset()
+    sessionStorage.clear()
   })
 
   it('redirects to /start while the switch is off', async () => {
@@ -70,6 +71,38 @@ describe('the anchor landing page', () => {
     expect(mockStart).toHaveBeenCalledWith('founders-whatsapp')
     const button = await screen.findByRole('link', { name: THE_ANCHOR_HOOK.button })
     expect(button.getAttribute('href')).toBe('/start?scenario=HELP_TEAM_UNDERSTAND')
+  })
+
+  /**
+   * ITEM 2: `thePeopleStep` IS KEPT FOR THE ENTRY CHAT'S PEOPLE STEP (docs/answers-from-engine.md,
+   * "Request 149 (2 of 6)"). The button is a fresh page load into `EntryChatPage.tsx`, so this is
+   * handed off through `sessionStorage` - the one thing `EntryChatPage.tsx` reads on a fresh mount.
+   */
+  it('keeps the served thePeopleStep for the entry chat to pick up', async () => {
+    mockAvailable.mockResolvedValue({ available: true })
+    const served = {
+      limit: 20, theLeadCounts: true, mayAdd: 19,
+      heading: 'Served heading', intro: 'Served intro', contextLabel: 'Served label',
+      button: 'Served button', limitSentence: 'Served limit sentence',
+    }
+    mockStart.mockResolvedValue({
+      available: true, scenario: 'HELP_TEAM_UNDERSTAND', startedFrom: 'anchor',
+      groundLabel: 'Help my team understand', source: null, thePeopleStep: served,
+    })
+    renderAt('/start/team')
+    await waitFor(() => expect(screen.getByText(THE_ANCHOR_HOOK.heading)).toBeTruthy())
+    await waitFor(() => expect(sessionStorage.getItem('gw-anchor-people-step')).toBe(JSON.stringify(served)))
+  })
+
+  it('leaves nothing behind when anchor-start does not serve thePeopleStep', async () => {
+    mockAvailable.mockResolvedValue({ available: true })
+    mockStart.mockResolvedValue({
+      available: true, scenario: 'HELP_TEAM_UNDERSTAND', startedFrom: 'anchor',
+      groundLabel: 'Help my team understand', source: null,
+    })
+    renderAt('/start/team')
+    await waitFor(() => expect(screen.getByText(THE_ANCHOR_HOOK.heading)).toBeTruthy())
+    expect(sessionStorage.getItem('gw-anchor-people-step')).toBeNull()
   })
 
   it('shows the engine’s sentence and a link to /start when anchor-start answers 404', async () => {

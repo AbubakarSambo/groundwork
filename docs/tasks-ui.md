@@ -67,7 +67,8 @@ Rebuilt from the shared parts in four groups, each with a picture check per scre
 - [x] **Group 1, settings and account:** Settings (SettingsPage), Plan and billing (BillingPage and settings/billing), Connections (ConnectionsPage, WhatsAppSetupPage), the developer page (IntegrationsPage), More (MorePage).
 - [x] **Group 2, your own pages:** Today, You, Company and company context, Suites and each suite's board (review, leaving, spending, equipment, time sheets, leave, reviews, onboarding), the check-ins list (GroundsListPage).
 - [ ] **Group 3, check-ins and signing in:** the rest of GroundAdminPage, ChatPage, CreateGroundPage, EntryChatPage and SaveCard, ReportPage and SessionReportPage, the sign-in pages (AuthPage, auth-kit, MagicVerifyPage), JoinPage.
-- [ ] **Group 4, the back office:** AdminPage, AdminDashboardPage, the ops pages, the prompt pages.
+
+**The back office is not rebuilt (Hafsah, 6 October): it stays exactly as it is, reachable from the main screen as today.** Every back office item is taken off this list.
 
 ## The order from here (Hafsah, 2 October, late evening; this replaces every order below)
 
@@ -77,7 +78,6 @@ Hafsah's client needs these first:
 3. **The Company page,** with the company-wide picture.
 4. **The Ask Groundwork chat.**
 5. **The other eight boards.**
-6. **The back office.** It stays as it is for Groundwork's staff; its rebuild comes last.
 
 **From the engine's item 21 notes (3 October), to do on the screen for the project boards and the other eight:**
 - `eachPerson[].reason`, `whereThisIsHeading.outcomes[].value`, `managerAlignment[].pattern` and `.pole` are codes ("nothing to do", "ALIGNED", "SETUP_NEVER_SAID"). Never print them; print the sentence beside each (`says`, `label`, `gap`).
@@ -98,7 +98,6 @@ Plan and billing keeps Hafsah's decisions of 2 October (a one-month free trial f
 2. The Company page, once the engine sends the company-wide picture.
 3. Plan and billing: a one-month free trial for teams under 20, and WhatsApp as a paid add-on charged monthly after the trial at about 80% of the plan price, with a monthly limit. Never write a price or a limit into the screens; the engine sends them.
 4. The rest of batch C, the one-off clean-up, and the Context tab when the engine is ready.
-5. Group 4, the back office, last of everything.
 
 Where things stand now: `docs/screens-handover.md`.
 
@@ -123,7 +122,6 @@ Each is in `docs/answers-from-engine.md`. They come after group 1, in this order
 - [ ] **Request 87:** the heading uses `overTime.inSessions` ("What people said they would do, in 1 session").
 - [ ] **Request 89:** "In {saidBy}'s words" from `saidBy`, beside whose the record is.
 - [ ] **Decision 65:** open Ask Groundwork from a check-in's own Context and resources page with `groundId` and `openedFrom: "check_in_setup"`, only from the lead's page.
-- [ ] **The suggestion thresholds admin page:** show `labels.keptBelow` and `labels.overPeriods`, not the field names (group 4).
 
 ## The engine's answers of 1 October, to draw on the screens
 

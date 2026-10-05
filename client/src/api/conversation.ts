@@ -1,4 +1,5 @@
 import { apiClient } from './client'
+import type { TheIdeaOfferInTheCheckIn } from './anchorShapes'
 
 /**
  * What this check-in is about, so the person answering is not guessing.
@@ -25,7 +26,7 @@ export interface CheckInBrief {
  * docs/requests-to-engine.md, request 7; the screen draws nothing until they come.
  */
 /** `mayCompleteAfter`: the turn floor the server holds this check-in to. The screen offers to finish at that count and not before, so the offer is never refused. */
-export interface OpenCheckInResponse { reply: string; groundId?: string; brief?: CheckInBrief | null; mayCompleteAfter?: number; suggestedAnswers?: string[] }
+export interface OpenCheckInResponse { reply: string; groundId?: string; brief?: CheckInBrief | null; mayCompleteAfter?: number; suggestedAnswers?: string[]; ideaOffer?: TheIdeaOfferInTheCheckIn | null }
 /*
  * THE END CARD'S PARTS THAT ONLY THE ENGINE CAN WRITE (B3, check-in-end-card.txt), sent with the reply
  * that closes the conversation. Asked of the engine workspace in docs/requests-to-engine.md,
@@ -38,8 +39,14 @@ export interface TheEndCard {
   inYourRecord?: { says: string; how?: string | null; mark?: string | null }[]
   next?: string[]
 }
-export interface SendMessageResponse { reply: string; sessionComplete?: boolean; suggestedAnswers?: string[]; endCard?: TheEndCard | null }
-export interface TranscriptTurn { id: string; role: 'AI' | 'PERSON'; content: string; suggestedAnswers?: string[] }
+/*
+ * PIECE 21: THE YES IN THE PERSON'S CHECK-IN (plan section 5 row 21; decision 96, item 10;
+ * docs/answers-from-engine.md, "Request 149, missing (1)", `TheIdeaOfferInTheCheckIn`). Attached to
+ * the reply that offers it, to the person alone, in their own check-in. Shape only - not served
+ * yet, so this is `undefined` on every reply until the engine's own idea record (piece 19) exists.
+ */
+export interface SendMessageResponse { reply: string; sessionComplete?: boolean; suggestedAnswers?: string[]; endCard?: TheEndCard | null; ideaOffer?: TheIdeaOfferInTheCheckIn | null }
+export interface TranscriptTurn { id: string; role: 'AI' | 'PERSON'; content: string; suggestedAnswers?: string[]; ideaOffer?: TheIdeaOfferInTheCheckIn | null }
 export interface PriorRecordEntrySession { sessionNumber: number; entries: { type: string; text: string }[] }
 export interface TranscriptResponse { checkIn: { status: string; sessionNumber: number; groundId?: string }; turns: TranscriptTurn[]; priorTurns?: TranscriptTurn[]; priorSessionNumber?: number | null; priorRecordEntries?: PriorRecordEntrySession[]; /** What the check-in is about. On every load, not only the one that opens it. */ brief?: CheckInBrief | null; mayCompleteAfter?: number; /** The end card's parts, once the conversation has closed. See TheEndCard. */ endCard?: TheEndCard | null }
 

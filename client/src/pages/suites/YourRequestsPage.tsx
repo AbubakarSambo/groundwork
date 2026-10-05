@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { yourRequestsApi, type YourRequest } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row, Tag, FieldLabel, TextArea } from '@/components/gw/ui'
+import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
 
 /**
  * YOUR OWN REQUESTS (#/suite/mine). The person's own leave and requests to spend, where each one
@@ -30,13 +31,13 @@ export function YourRequestsPage() {
   return (
     <Page>
       <PageTitle
-        crumbs={[{ label: 'Suites', to: '/settings/suites' }, { label: 'Your requests' }]}
+        crumbs={[{ label: 'Suites', to: maySeeSuites(user?.role) ? '/settings/suites' : undefined }, { label: 'Your requests' }]}
         title="Your requests"
         subtitle="Your leave and your requests to spend, and where each one stands."
       />
 
       <Section heading="Your leave">
-        <Loaded q={leave} off="Leave is not switched on in your organisation.">
+        <Loaded q={leave} off="Leave is not switched on in your organisation." role={user?.role}>
           {data => (
             <>
               <p className="gwui-panel-text">{data.daysLeftSaid}</p>
@@ -47,7 +48,7 @@ export function YourRequestsPage() {
       </Section>
 
       <Section heading="Your requests to spend">
-        <Loaded q={spending} off="Spending requests are not switched on in your organisation.">
+        <Loaded q={spending} off="Spending requests are not switched on in your organisation." role={user?.role}>
           {data => <Requests rows={data.requests} none="You have not asked to spend anything." answer={yourRequestsApi.answerSpending} queryKey={['your-spending']} />}
         </Loaded>
       </Section>
@@ -55,11 +56,11 @@ export function YourRequestsPage() {
   )
 }
 
-function Loaded<T>({ q, off, children }: { q: { data?: T; isLoading: boolean; isError: boolean; error: unknown; refetch: () => unknown; isFetching: boolean }; off: string; children: (data: T) => React.ReactNode }) {
+function Loaded<T>({ q, off, role, children }: { q: { data?: T; isLoading: boolean; isError: boolean; error: unknown; refetch: () => unknown; isFetching: boolean }; off: string; role?: string; children: (data: T) => React.ReactNode }) {
   if (q.isLoading) return <Note>Loading…</Note>
   if (q.isError) {
     const refused = refusalOf(q.error)
-    if (refused?.status === 403 || refused?.status === 404) return <Empty>{refused.message ?? off}</Empty>
+    if (refused?.status === 403 || refused?.status === 404) return <Empty><SuiteOffMessage message={refused.message ?? off} role={role} /></Empty>
     return (
       <div>
         <Note tone="error">Your requests did not load.</Note>

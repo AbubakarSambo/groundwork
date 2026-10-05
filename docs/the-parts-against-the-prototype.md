@@ -658,3 +658,23 @@ from `action.goesTo` when the engine's own label is empty, the same way it alrea
 `FeedbackWidget`) no longer covers the board's own "Ask about this board" bar at 1440 (a raised
 resting `bottom`, board page only) or the ground page's own check-in tab's suggestion chips at 375
 (folded into the same top-of-page rest position `/chat/:id` and `/start` already use).
+
+## Anchor task, item 4: "Ideas from your team" and the yes in the check-in (plan section 5, row 7:
+flagged "new part")
+
+Two new components, both built entirely from shared parts already in `components/gw/ui` - no new
+class and no `<style>` tag, so despite the plan flagging row 7 as "none; reuse a board section's
+row... new part", nothing new actually went into the shared stylesheet:
+
+**`TheIdeasFromYourTeam.tsx`** (`components/gw/`), drawn on the board (`BoardPage.tsx`, right after
+the month board) for everyone in the check-in - not lead-only, unlike the month board above it.
+Built from `Section`, `Stack`, `SubHeading` and `Note` (`tone="muted"`), the same parts
+`TheMonthBoard.tsx` already uses for its own list sections. Draws nothing while
+`ideasFromYourTeam` (`BoardPresent.ideasFromYourTeam`, shape only, not served yet) is undefined.
+
+**`IdeaOffer.tsx`** (`components/gw/checkin/`), drawn in `ChatPage.tsx` under the latest question,
+the same place `SuggestedAnswers.tsx` draws its pills, and built from the very same parts:
+`Panel` and the prototype's own `QuickReplies` pill, reused rather than copied. "Yes, capture it"
+and "Not now" are sent through the existing `pickSuggestion`, the same mechanism a suggested answer
+already uses - no new send path. Draws nothing while `ideaOffer` (`TheIdeaOfferInTheCheckIn`, shape
+only, not served yet) is absent from the reply.

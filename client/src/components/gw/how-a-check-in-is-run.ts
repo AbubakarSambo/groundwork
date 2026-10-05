@@ -13,7 +13,7 @@
 export const HOW_TO_STEPS = [
   {
     title: 'Open a check-in before the situation becomes urgent',
-    body: 'The product is most powerful when used early. A new hire starting, a project beginning, a cofounder agreement forming. The record built before the conversation is the one you can stand on.',
+    body: 'It works best when you open it early, for example when someone new is starting, a project is beginning, or two founders are agreeing how they will work together. The record you build before the conversation is the one you can stand on.',
   },
   {
     /*
@@ -40,8 +40,8 @@ export const HOW_TO_STEPS = [
     body: 'The brief asks what this is about, and what has to be true when it is finished. Each person then gives their own version of what good looks like. Most of what the report is for is where those answers differ, so be plain about yours.',
   },
   {
-    title: 'Check in independently. Be specific.',
-    body: 'The product probes for specificity. Vague answers produce vague records. The more specific your check-in, the stronger your record, the higher the alignment status, the more defensible the outcome.',
+    title: 'Check in on your own, and be specific',
+    body: 'Each person checks in separately, and Groundwork asks follow-up questions to get a specific answer. A vague answer makes a weak record, so the more specific you are, the more useful the report will be.',
   },
   {
     title: 'Use the report as the basis for the conversation, not the conversation itself',

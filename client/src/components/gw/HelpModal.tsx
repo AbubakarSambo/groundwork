@@ -1,5 +1,7 @@
+import { useAuthStore } from '@/stores/auth'
 import { useHelpStore } from '@/stores/help'
 import { HOW_TO_STEPS } from './how-a-check-in-is-run'
+import { Button } from './ui/Button'
 
 /**
  * FIVE, AND THE FIFTH IS THE ONLY ONE THAT SAYS WHAT TO DO NEXT.
@@ -10,8 +12,12 @@ import { HOW_TO_STEPS } from './how-a-check-in-is-run'
  * "Try it" rather than "Try it yourself": five labels share one row, and the row is the thing that
  * gets bulky. At 12px the five come to roughly 340px of a 560px modal, so nothing is squeezed and
  * none of the existing labels had to be shortened to make room.
+ *
+ * "WHEN TO USE IT", NOT "USE CASES" (walkthrough pass 2, item 1). "Use cases" is the kind of word
+ * nobody says out loud about their own work; the question somebody actually has is when they'd
+ * reach for this.
  */
-const TABS = ['What it is', 'How to use it', 'Use cases', 'Reports', 'Try it'] as const
+const TABS = ['What it is', 'How to use it', 'When to use it', 'Reports', 'Try it'] as const
 
 const RES_PILLS: { label: string; bg: string; color: string }[] = [
   { label: 'Alignment confirmed',            bg: 'var(--gw-green-bg)', color: 'var(--gw-green-t)' },
@@ -28,25 +34,37 @@ const RES_PILLS: { label: string; bg: string; color: string }[] = [
   { label: 'Mutual exit agreed',             bg: 'var(--gw-red-bg)', color: 'var(--gw-red-t)' },
 ]
 
-function Tab0({ onNext }: { onNext: () => void }) {
+function Tab0({ onNext, mayStart }: { onNext: () => void; mayStart: boolean }) {
   return (
     <div style={{ padding: 24 }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: 16, borderLeft: '3px solid var(--gw-navy)' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>1. Start a check-in</div>
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>Pick the situation, set how long it runs and how often people check in, then add the people. Takes about two minutes.</div>
-        </div>
+        {/*
+          * "START A CHECK-IN" ONLY FOR SOMEBODY WHO MAY (walkthrough pass 2, item 1). Telling
+          * somebody who cannot open a check-in to go and start one points them at a page the server
+          * will refuse them on.
+          */}
+        {mayStart && (
+          <div style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: 16, borderLeft: '3px solid var(--gw-navy)' }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>1. Start a check-in</div>
+            <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>Pick the situation, set how long it runs and how often people check in, then add the people. Takes about two minutes.</div>
+          </div>
+        )}
         <div style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: 16, borderLeft: '3px solid var(--gw-green-b)' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>2. Everyone answers on their own</div>
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>Each person gets a link and a conversation of their own. Nobody sees anybody else's answers, including you.</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>{mayStart ? '2. ' : ''}Everyone answers on their own</div>
+          {/*
+            * WHAT PEOPLE SAY CAN BE SHOWN TO THE OTHERS IN THE CHECK-IN (Hafsah's privacy decision).
+            * "Nobody sees anybody else's answers, including you" was not true: the report shows
+            * everybody's answers, word for word, to everybody in that check-in once it is ready.
+            */}
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>Each person gets a link and answers Groundwork one to one. What you say may be quoted word for word to the other people in your check-in, in its report.</div>
         </div>
         <div style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: 16, borderLeft: '3px solid var(--gw-amber-b)' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>3. Read the report together</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>{mayStart ? '3. ' : ''}Read the report together</div>
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>It releases to everyone at once and shows where people agree and where they do not. The gaps are the conversation.</div>
         </div>
       </div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
-        <button onClick={onNext} style={{ padding: '10px 20px', background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', borderRadius: 7, cursor: 'pointer' }}>How to use it</button>
+        <Button onClick={onNext}>How to use it</Button>
       </div>
     </div>
   )
@@ -68,8 +86,8 @@ function Tab1({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
         ))}
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 20 }}>
-        <button onClick={onBack} style={{ padding: '10px 16px', background: 'none', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-border)', borderRadius: 7, cursor: 'pointer' }}>Back</button>
-        <button onClick={onNext} style={{ padding: '10px 20px', background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', borderRadius: 7, cursor: 'pointer' }}>Use cases</button>
+        <Button kind="secondary" onClick={onBack}>Back</Button>
+        <Button onClick={onNext}>When to use it</Button>
       </div>
     </div>
   )
@@ -97,8 +115,8 @@ function Tab2({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
         ))}
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 20 }}>
-        <button onClick={onBack} style={{ padding: '10px 16px', background: 'none', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-border)', borderRadius: 7, cursor: 'pointer' }}>Back</button>
-        <button onClick={onNext} style={{ padding: '10px 20px', background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', borderRadius: 7, cursor: 'pointer' }}>Reports</button>
+        <Button kind="secondary" onClick={onBack}>Back</Button>
+        <Button onClick={onNext}>Reports</Button>
       </div>
     </div>
   )
@@ -136,8 +154,8 @@ function Tab3({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
         </div>
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <button onClick={onBack} style={{ padding: '10px 16px', background: 'none', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-border)', borderRadius: 7, cursor: 'pointer' }}>Back</button>
-        <button onClick={onNext} style={{ padding: '10px 24px', background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', borderRadius: 7, cursor: 'pointer' }}>Try it</button>
+        <Button kind="secondary" onClick={onBack}>Back</Button>
+        <Button onClick={onNext}>Try it</Button>
       </div>
     </div>
   )
@@ -202,8 +220,8 @@ function Tab4({ onBack, onClose }: { onBack: () => void; onClose: () => void }) 
         nothing for the report to find.
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 20 }}>
-        <button onClick={onBack} style={{ padding: '10px 16px', background: 'none', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-border)', borderRadius: 7, cursor: 'pointer' }}>Back</button>
-        <button onClick={onClose} style={{ padding: '10px 24px', background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', borderRadius: 7, cursor: 'pointer' }}>Got it</button>
+        <Button kind="secondary" onClick={onBack}>Back</Button>
+        <Button onClick={onClose}>Got it</Button>
       </div>
     </div>
   )
@@ -211,6 +229,8 @@ function Tab4({ onBack, onClose }: { onBack: () => void; onClose: () => void }) 
 
 export function HelpModal() {
   const { open, tab, hide, setTab } = useHelpStore()
+  const user = useAuthStore(s => s.user)
+  const mayStart = user?.mayOpenCheckIns !== false
 
   if (!open) return null
 
@@ -267,7 +287,7 @@ export function HelpModal() {
         </div>
 
         {/* Panels */}
-        {tab === 0 && <Tab0 onNext={() => go(1)} />}
+        {tab === 0 && <Tab0 onNext={() => go(1)} mayStart={mayStart} />}
         {tab === 1 && <Tab1 onBack={() => go(0)} onNext={() => go(2)} />}
         {tab === 2 && <Tab2 onBack={() => go(1)} onNext={() => go(3)} />}
         {tab === 3 && <Tab3 onBack={() => go(2)} onNext={() => go(4)} />}

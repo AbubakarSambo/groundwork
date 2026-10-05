@@ -65,9 +65,14 @@ export function WhoCanOpenACheckIn({ orgName }: { orgName: string }) {
           options={OPTIONS.map(([key, label, description]) => ({ key, label, description }))}
         />
 
+        {/*
+          * WALKTHROUGH PASS 2, ITEM 5: SAID ONCE, NOT TWICE. The "New check-ins" row above already
+          * says this, correctly, for whichever state the switch is actually in; a fixed caption
+          * here repeated the "on" sentence even while the switch read "off". No `detail`: the title
+          * and the row above it are enough.
+          */}
         <SwitchRow
           title="Check-ins wait for an admin"
-          detail="Each new check-in waits for an admin before invitations go out."
           on={how.needsApproval}
           onChange={() => set.mutate({ needsApproval: !how.needsApproval })}
           disabled={set.isPending}

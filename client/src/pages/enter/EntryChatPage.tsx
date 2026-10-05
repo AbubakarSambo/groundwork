@@ -24,7 +24,8 @@ import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { toast } from 'sonner'
 import AskYourTeamOneThing from './AskYourTeamOneThing'
 import { TheDoor } from './TheDoor'
-import { TheSetup, theDay, ANCHOR_PEOPLE_STEP_RULES } from './TheSetup'
+import { TheSetup, theDay, ANCHOR_PEOPLE_STEP_RULES, takeTheServedPeopleStep } from './TheSetup'
+import type { ThePeopleStepRules } from '@/api/anchorShapes'
 import { TheLeadsReveal } from '@/components/gw/TheLeadsReveal'
 import { FillsInAsYouTalk } from './FillsInAsYouTalk'
 import { sentenceCase } from '@/pages/grounds/how-a-row-reads'
@@ -78,6 +79,8 @@ interface EntrySession {
   cadenceChosen?: boolean
   groundName?: string
   plannedFrom?: { timelineDays: number; cadence: string } | null
+  /** The people step's own served rules (item 2), carried across a reload. */
+  thePeopleStep?: ThePeopleStepRules
 }
 
 interface OnboardingSelections {
@@ -1261,6 +1264,13 @@ export function EntryChatPage() {
   const defaultSels: OnboardingSelections = { mode: urlMode || 'new', initial: urlInitial || '' }
   const [onboardingStep, setOnboardingStep] = useState(1)
   const [onboardingSelections, setOnboardingSelections] = useState<OnboardingSelections>(defaultSels)
+  /**
+   * THE PEOPLE STEP'S OWN RULES, DRAWN FROM WHAT THE LANDING PAGE WAS SERVED (item 2;
+   * docs/answers-from-engine.md, "Request 149 (2 of 6)"). `ANCHOR_PEOPLE_STEP_RULES` is the fallback
+   * only, used until a served `ThePeopleStepRules` is picked up below - from `sessionStorage` on a
+   * fresh arrival from the anchor landing page, or from the saved draft on a reload.
+   */
+  const [thePeopleStepRules, setThePeopleStepRules] = useState<ThePeopleStepRules>(ANCHOR_PEOPLE_STEP_RULES)
   const [onboardingHistory, setOnboardingHistory] = useState<Turn[]>([])
   const [onboardingReady, setOnboardingReady] = useState(false)
   const [onboardingLoading, setOnboardingLoading] = useState(false)
@@ -1380,15 +1390,15 @@ export function EntryChatPage() {
   }
 
   /**
-   * THE 19-PERSON LIMIT (the lead plus 19 is 20, decision 96 item 3; `ANCHOR_PEOPLE_STEP_RULES
-   * .mayAdd`), for an anchor draft only. `true` means the add actually happened; every place that
-   * adds a contributor checks this first and shows the engine's own limit sentence instead when it
-   * does not.
+   * THE 19-PERSON LIMIT (the lead plus 19 is 20, decision 96 item 3; `thePeopleStepRules.mayAdd`,
+   * served or else `ANCHOR_PEOPLE_STEP_RULES`), for an anchor draft only. `true` means the add
+   * actually happened; every place that adds a contributor checks this first and shows the engine's
+   * own limit sentence instead when it does not.
    */
   function mayAddOneMorePerson(): boolean {
     if (!isAnchorDraft()) return true
-    if (inviteAdded.length >= ANCHOR_PEOPLE_STEP_RULES.mayAdd) {
-      toast.error(ANCHOR_PEOPLE_STEP_RULES.limitSentence)
+    if (inviteAdded.length >= thePeopleStepRules.mayAdd) {
+      toast.error(thePeopleStepRules.limitSentence)
       return false
     }
     return true
@@ -1591,6 +1601,9 @@ export function EntryChatPage() {
       if (saved.onboardingSelections) {
         setOnboardingSelections(saved.onboardingSelections)
       }
+      if (saved.thePeopleStep) {
+        setThePeopleStepRules(saved.thePeopleStep)
+      }
       // A closed session stays closed across reloads - "this session's answers
       // then lock" must survive a refresh. (closed was saved but never restored,
       // so ended sessions reopened editable.)
@@ -1639,6 +1652,12 @@ export function EntryChatPage() {
       setShowNewScenarioConflict(true)
     } else {
       clearEntrySession()
+      /*
+       * THE SERVED PEOPLE STEP, PICKED UP ONCE (item 2). Only the anchor landing page's button
+       * leaves anything here, so this is a no-op for every other way of arriving at this page.
+       */
+      const servedPeopleStep = takeTheServedPeopleStep()
+      if (servedPeopleStep) setThePeopleStepRules(servedPeopleStep)
       /*
        * THE SCENARIO KEY IS NOT A DESCRIPTION OF ANYTHING.
        *
@@ -1695,7 +1714,7 @@ export function EntryChatPage() {
      the cadence and the name lived in a plain zustand store and did not, so "12 sessions planned" came back
      as "1 session planned" - the number the person agreed to, replaced. */
   function persistOnboarding(h: Turn[], sels: OnboardingSelections, step: number, obHistory?: Turn[], obReady?: boolean) {
-    saveSession({ scenario, history: h, closed: false, onboardingStep: step, onboardingSelections: sels, sessions, cadence, cadenceChosen, groundName, plannedFrom, ...(obHistory !== undefined ? { onboardingHistory: obHistory, onboardingReady: obReady ?? false } : {}) } as any)
+    saveSession({ scenario, history: h, closed: false, onboardingStep: step, onboardingSelections: sels, sessions, cadence, cadenceChosen, groundName, plannedFrom, thePeopleStep: thePeopleStepRules, ...(obHistory !== undefined ? { onboardingHistory: obHistory, onboardingReady: obReady ?? false } : {}) } as any)
   }
 
   /*
@@ -1707,7 +1726,7 @@ export function EntryChatPage() {
    * came back as "1 session planned" after a reload, with the conversation intact above it.
    */
   function persistCheckin(h: Turn[], cl = false, rep = '') {
-    saveSession({ scenario, history: h, closed: cl, report: rep, onboardingStep: ONBOARDING_STEPS, onboardingSelections, sessions, cadence, cadenceChosen, groundName, plannedFrom } as any)
+    saveSession({ scenario, history: h, closed: cl, report: rep, onboardingStep: ONBOARDING_STEPS, onboardingSelections, sessions, cadence, cadenceChosen, groundName, plannedFrom, thePeopleStep: thePeopleStepRules } as any)
   }
 
   /*
@@ -3818,12 +3837,13 @@ export function EntryChatPage() {
                 field it opens is the answer to the question the button asks.
               */}
               {/*
-                PIECE 9: THE LEAD'S REVEAL, "Help my team understand" (plan section 5, row 3).
-                Drawn only for an anchor draft, and only once the engine has actually sent one -
-                `sessionReport?.leadsReveal` is not served yet, so this draws nothing today, the
-                same as before this existed. Placed as the set-up screen's own last step, right
-                before the schedule and the people step, following the plan's "if unclear, show it
-                on the set-up screen's last step for an anchor draft".
+                PIECE 9: THE LEAD'S REVEAL, "Help my team understand" (plan section 5, row 3;
+                docs/answers-from-engine.md, "Request 149 (1 of 6)"). Served now, on `/entry/report`,
+                for an anchor draft's own report. Drawn only for an anchor draft, and only once the
+                engine has actually sent one - `sessionReport?.leadsReveal` is still `undefined` for
+                every other situation. Placed as the set-up screen's own last step, right before the
+                schedule and the people step, following the plan's "if unclear, show it on the
+                set-up screen's last step for an anchor draft".
               */}
               {isAnchorDraft() && <TheLeadsReveal reveal={sessionReport?.leadsReveal} />}
 
@@ -3928,7 +3948,7 @@ export function EntryChatPage() {
                 {emailError && <div className="gwui-ec-savecard-error">{emailError}</div>}
                 <Button kind="primary" wide type="submit" disabled={saving || (generatingReport && !sessionReport)}>
                   {/* The anchor label replaces the ordinary one; "Saving…" is shared either way. */}
-                  {isAnchorDraft() ? <>{saving ? 'Saving…' : ANCHOR_PEOPLE_STEP_RULES.button}</> : null}
+                  {isAnchorDraft() ? <>{saving ? 'Saving…' : thePeopleStepRules.button}</> : null}
                   {!isAnchorDraft() && <>{saving ? 'Saving…' : 'Save my check-in'}</>}
                 </Button>
                 </form>
@@ -4064,15 +4084,16 @@ export function EntryChatPage() {
               ].some(k => s.includes(k))
               /*
                * THE PEOPLE STEP, FOR AN ANCHOR DRAFT (plan piece 11; `HELP_TEAM_UNDERSTAND`, request
-               * 144 (2) and (3)): the engine's own heading and intro (`ANCHOR_PEOPLE_STEP_RULES`,
-               * `./TheSetup.tsx`) replace the ordinary ones, with the 19-person limit enforced
-               * wherever a contributor is actually added (`mayAddOneMorePerson`). Every other
-               * situation's wording here is unchanged.
+               * 149 (2 of 6)): the engine's own served heading and intro (`thePeopleStepRules`,
+               * carried from `GET /entry/anchor-start`, or `ANCHOR_PEOPLE_STEP_RULES` if nothing was
+               * served) replace the ordinary ones, with the 19-person limit enforced wherever a
+               * contributor is actually added (`mayAddOneMorePerson`). Every other situation's
+               * wording here is unchanged.
                */
               const isAnchor = isAnchorDraft()
-              const inviteHeading = isAnchor ? ANCHOR_PEOPLE_STEP_RULES.heading : isSensitive ? 'Let them share their side' : 'Invite people'
+              const inviteHeading = isAnchor ? thePeopleStepRules.heading : isSensitive ? 'Let them share their side' : 'Invite people'
               const inviteSubtext = isAnchor
-                ? ANCHOR_PEOPLE_STEP_RULES.intro
+                ? thePeopleStepRules.intro
                 : isSensitive
                 ? 'Send them a link so they can give their own version of the same work. When both sides are in, the report shows where you agree and where the conversation still needs to happen. It does not score anyone.'
                 : 'Each person gives their own version of the shared work, including their own part in it. When everyone has answered, the report shows where people agree, where they differ, and what the gap means for the work.'
@@ -4142,10 +4163,10 @@ export function EntryChatPage() {
                        how many are really left, not once per item against a count that has not
                        yet updated (queueColleague's own check is still right for every other
                        path, which adds one at a time). */
-                    const room = isAnchorDraft() ? Math.max(0, ANCHOR_PEOPLE_STEP_RULES.mayAdd - inviteAdded.length) : picked.length
+                    const room = isAnchorDraft() ? Math.max(0, thePeopleStepRules.mayAdd - inviteAdded.length) : picked.length
                     const fit = picked.slice(0, room)
                     for (const c of fit) queueColleague(c)
-                    if (fit.length < picked.length) toast.error(ANCHOR_PEOPLE_STEP_RULES.limitSentence)
+                    if (fit.length < picked.length) toast.error(thePeopleStepRules.limitSentence)
                     if (fit.length) toast.success(fit.length === 1 ? `${fit[0].name} is on the list.` : `${fit.length} people are on the list. Invites go out when you save.`)
                   }}
                 />
@@ -4159,7 +4180,7 @@ export function EntryChatPage() {
                       <div className="gwui-ec-savecard-invite-context-more">{bulkQueue.length} more after this</div>
                     )}
                   </div>
-                  <div className="gwui-ec-savecard-invite-context-ask">{isAnchorDraft() ? ANCHOR_PEOPLE_STEP_RULES.contextLabel : 'What do you want them to focus on or cover?'}</div>
+                  <div className="gwui-ec-savecard-invite-context-ask">{isAnchorDraft() ? thePeopleStepRules.contextLabel : 'What do you want them to focus on or cover?'}</div>
                   <TextArea autoFocus placeholder="e.g. They are the other side of this. They own the delivery timeline."
                     value={inviteContext} onChange={e => setInviteContext(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitInviteContext() } }}
@@ -4198,9 +4219,9 @@ export function EntryChatPage() {
                           .map(e => e.trim().toLowerCase())
                           /* Not validation: this filters model-extracted mentions down to the ones that are addresses at all. Kept as is. */
                           .filter(e => e.includes('@') && !inviteAdded.some(a => a.startsWith(e)))
-                        const room = isAnchorDraft() ? Math.max(0, ANCHOR_PEOPLE_STEP_RULES.mayAdd - inviteAdded.length) : allEmails.length
+                        const room = isAnchorDraft() ? Math.max(0, thePeopleStepRules.mayAdd - inviteAdded.length) : allEmails.length
                         const emails = allEmails.slice(0, room)
-                        if (allEmails.length > emails.length) toast.error(ANCHOR_PEOPLE_STEP_RULES.limitSentence)
+                        if (allEmails.length > emails.length) toast.error(thePeopleStepRules.limitSentence)
                         if (emails.length === 0) return
                         setBulkInviteText('')
                         setBulkInviteMode(false)

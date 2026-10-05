@@ -107,7 +107,23 @@ function FeedbackWidget() {
    * worth defending a moving 400px-wide target for.
    */
   const askOpen = useAskStore((s) => s.open)
-  const hideTrigger = location.pathname === '/more' || location.pathname.startsWith('/checkin/') || askOpen
+  /*
+   * WALKTHROUGH PASS 2, ITEM 2: "/chat" IS THE SAME COMPOSER AS "/chat/:id", AND THE SAME TWO
+   * CONTROL-COVERING PROBLEMS ELSEWHERE.
+   *
+   * "/chat" (Ask Groundwork's own page, AskPage.tsx) sat on top of the composer's own Send arrow,
+   * the same overlap already fixed for "/checkin/" by hiding the trigger outright rather than
+   * chasing a moving target.
+   *
+   * "/settings/suites" and "/org/members" sit the trigger's default bottom-right corner on top of
+   * a real control: the Equipment card's own switch on Suites, and a row's "Open" link on People -
+   * both of which can be anywhere down a long page, so no single reposition clears every row.
+   * Hidden here for the same reason as the two above: "Send feedback" on the person's own menu (and
+   * on "More" on a phone) still opens the same panel.
+   */
+  const hideTrigger = location.pathname === '/more' || location.pathname.startsWith('/checkin/')
+    || location.pathname === '/chat' || location.pathname === '/settings/suites' || location.pathname === '/org/members'
+    || askOpen
   const open = useFeedbackStore(s => s.open)
   const showPanel = useFeedbackStore(s => s.show)
   const hidePanel = useFeedbackStore(s => s.hide)

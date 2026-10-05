@@ -8,14 +8,15 @@ import { Button } from './ui/Button'
 
 /**
  * PIECE 33: THE END-OF-MONTH PAGE (plan section 5, row 13; docs/anchor-scenario.md sections 28
- * and 29; docs/answers-from-engine.md, "Request 147", `TheEndOfMonthRead`).
+ * and 29; docs/answers-from-engine.md, "Request 149 (6 of 6)", `TheEndOfMonthRead`).
  *
  * Built once from the record on the engine side; opening this page never rebuilds it (CLAUDE.md:
  * "Reports and boards update only when something new comes in"). Draws nothing when `read` is
- * undefined - the field is not served yet. The reveal counts are always said as plain sentences,
- * never a bare number (`revealLine`). The four continue options go to the existing plan choice,
- * Stripe test mode only (decision 96, item 4) - `onContinue` is given the key so the caller
- * decides exactly where that leads, rather than this component hard-coding a route.
+ * undefined - served only once the month has run and the lead has her own first words to begin
+ * with. The reveal counts are always said as plain sentences, never a bare number (`revealLine`).
+ * The four continue options go to the existing plan choice, Stripe test mode only (decision 96,
+ * item 4) - `onContinue` is given the key so the caller decides exactly where that leads, rather
+ * than this component hard-coding a route.
  *
  * At most one navy button per page: only the first continue option
  * (`keepThisGroundRunning`) is drawn `kind="primary"`; the rest are quiet text links.

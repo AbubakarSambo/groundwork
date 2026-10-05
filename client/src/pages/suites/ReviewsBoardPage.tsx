@@ -5,6 +5,7 @@ import { reviewsApi, type NextReview, type YourReview } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { Page, PageTitle, Section, Panel, Button, Note, Empty, Tag, RowList, Row } from '@/components/gw/ui'
+import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
 
 /**
  * PERFORMANCE REVIEWS (E4, #/suite/reviews, group 2 piece 4). The wording is copied from
@@ -62,7 +63,7 @@ export function ReviewsBoardPage() {
   return (
     <Page>
       <PageTitle
-        crumbs={[{ label: 'Suites', to: '/settings/suites' }, { label: 'Performance reviews' }]}
+        crumbs={[{ label: 'Suites', to: maySeeSuites(user?.role) ? '/settings/suites' : undefined }, { label: 'Performance reviews' }]}
         title="Performance reviews"
         subtitle={`A review happens ${everySays(data?.every)}. It is built from what each person did and proved in their check-ins, with their own view beside it. There are no scores.`}
       />
@@ -82,7 +83,7 @@ export function ReviewsBoardPage() {
       )}
       {isError && !(yours.length > 0 && (refused?.status === 403 || refused?.status === 404)) && (
         refused?.status === 403 || refused?.status === 404 ? (
-          <Note tone="error">{refused.data?.message ?? 'Only an admin or a lead can open this board.'}</Note>
+          <Note tone="error"><SuiteOffMessage message={refused.data?.message ?? 'Only an admin or a lead can open this board.'} role={user?.role} /></Note>
         ) : (
           <div>
             <Note tone="error">The board did not load.</Note>

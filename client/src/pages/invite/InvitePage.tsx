@@ -332,8 +332,9 @@ export function InvitePage() {
           <Callout>{whoCanReadThis(preview.scenario)}</Callout>
 
           {/*
-            ANCHOR PIECE 11, THE INVITATION (docs/anchor-scenario-plan.md section 5 row 5). Drawn
-            only when the engine serves `anchorInvitation` (shape only, not served yet) - every
+            ANCHOR PIECE 11, THE INVITATION (docs/anchor-scenario-plan.md section 5 row 5;
+            docs/answers-from-engine.md, "Request 149 (3 of 6)"). Served now, only for an
+            invitation to an anchor Ground - drawn only when `anchorInvitation` is present; every
             other invitation is exactly as it reads today. The callout above (what the prototype
             always says about who can read this) is kept, unchanged, ahead of these lines.
           */}

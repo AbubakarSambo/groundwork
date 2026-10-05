@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { billingApi, PLAN_LABELS, PLAN_PRICES, formatMemberCap, formatMonthlyPrice, formatDollars, type SubscriptionPlan, FALLBACK_FREE_LIMITS } from '@/api/billing'
 import { theFreeTrialSentence } from '@/lib/the-free-trial'
@@ -443,7 +443,8 @@ export function BillingPage() {
                 return (
                   <FieldRow
                     key={g.id}
-                    label={g.label}
+                    /* WALKTHROUGH PASS 2, ITEM 6: EACH NAME HERE LINKS TO ITS OWN CHECK-IN. */
+                    label={<Link to={`/grounds/${g.id}`}>{g.label}</Link>}
                     value={(
                       <span className="gwui-invite-actions">
                         {isSubscribed ? (

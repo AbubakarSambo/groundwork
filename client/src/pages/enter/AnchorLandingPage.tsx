@@ -1,9 +1,11 @@
+import { useEffect } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Panel, PageTitle, Button, Stack, Note } from '@/components/gw/ui'
 import { THE_ANCHOR_HOOK } from './the-anchor-hook'
 import { useAnchorScenarioIsOnForAStranger } from './anchor-scenario-is-on'
 import { entryAnchorApi } from '@/api/entry'
+import { rememberTheServedPeopleStep } from './TheSetup'
 
 /** The engine's own sentence for a visitor who reaches this page while the way in is closed (request 144 (2) and (3)). */
 const THE_WAY_IN_IS_NOT_OPEN_YET = 'This way in is not open yet.'
@@ -51,6 +53,15 @@ export function AnchorLandingPage() {
     enabled: on === true,
     retry: false,
   })
+
+  /**
+   * CARRYING `thePeopleStep` ON TO THE ENTRY CHAT (item 2; docs/answers-from-engine.md, "Request
+   * 149 (2 of 6)"). This is the one call that gets it, and the button below is a fresh page load
+   * into `EntryChatPage.tsx`, so it is handed off through `sessionStorage` rather than kept here.
+   */
+  useEffect(() => {
+    rememberTheServedPeopleStep(started?.thePeopleStep)
+  }, [started])
 
   // While the public switch is still loading, nothing is drawn - never a half-answered page, and
   // never a redirect that would have to be undone the moment the real answer turns out to be "on".
