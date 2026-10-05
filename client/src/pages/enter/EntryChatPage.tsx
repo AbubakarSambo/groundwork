@@ -1374,10 +1374,22 @@ export function EntryChatPage() {
     authApi.colleagues().then(setColleagues).catch(() => setColleagues([]))
   }, [user])
   /** A colleague whose name is the one mentioned, when exactly one matches. Never a guess between two. */
-  /** A queued entry as a person reads it: a colleague by name, anybody else by the address typed. */
+  /**
+   * A queued entry as a person reads it: a colleague by name, anybody else by the address typed -
+   * and, when the people step's own Name field (section 13, "Name + email") was used, "Name
+   * (address)" rather than the address alone.
+   *
+   * FAULT 3: NAMES ARE DROPPED AFTER THE PEOPLE STEP. The Name field only ever reached
+   * `displayNames`, read when building the commit payload (`asSomeoneToInvite`) - never here, so
+   * the added list showed "✓ musa@anchor.test" and the confirmation said "...waiting to be
+   * invited" with the address alone, though a name had been typed for them.
+   */
   function shownAs(head: string): string {
-    if (!head.startsWith(A_COLLEAGUE)) return head
-    return colleagues.find((c) => c.id === head.slice(A_COLLEAGUE.length))?.name ?? 'A colleague'
+    if (head.startsWith(A_COLLEAGUE)) {
+      return colleagues.find((c) => c.id === head.slice(A_COLLEAGUE.length))?.name ?? 'A colleague'
+    }
+    const name = displayNames[head.trim().toLowerCase()]
+    return name ? `${name} (${head})` : head
   }
   function shownEntry(entry: string): string { return anEntryAsASentence(entry, shownAs) }
   function whoIsWaiting(): string { return whoIsWaitingSentence(inviteAdded.map((e) => shownAs(e.split(' - ')[0]))) }
