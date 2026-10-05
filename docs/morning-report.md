@@ -1,5 +1,7 @@
 # Morning report
 
+**5 October, night.** Another bug from the WhatsApp journeys: in Ask, "What leave have I asked for, and what was decided?" was answered "I cannot answer that one yet", while "Where is my leave request?" was answered properly. It is now answered from her own leave, and there is a new test for it. The journey now checks the answer itself, not only that it was not taken for a request.
+
 **5 October, night.** I found a bug in the WhatsApp journeys: Kesi wrote in plain English, but her report came to her phone in Swahili. The one-word language read had taken Kenyan shop names for Swahili. A message that is plainly English is now read as English without asking the model (`plainly-english.ts`, with a test).
 
 **5 October, late.** In `docs/whatsapp-settings.md`, the opening now says the secrets are typed only into the server's settings or the staff-only back-office page, which stores them encrypted. It also has a step for removing a saved secret, and says how long the key must be and how to make one.

@@ -27,6 +27,8 @@ export const YOUR_REQUESTS_PATTERNS: RegExp[] = [
   new RegExp(`\\bwhat\\s+happened\\s+(?:to|with)\\s+my\\s+(?:\\w+\\s+)?${MY_REQUEST}\\b`, 'i'),
   new RegExp(`\\b(?:has|have|was|were|is|are)\\s+my\\s+(?:\\w+\\s+)?${MY_REQUEST}\\b[^?]*\\b(?:approved|declined|decided|seen|paid|sent|waiting|answered)\\b`, 'i'),
   new RegExp(`\\b(?:status|state)\\s+of\\s+my\\s+(?:\\w+\\s+)?${MY_REQUEST}\\b`, 'i'),
+  /* "What leave have I asked for, and what was decided?" (WhatsApp journeys, run oct5c: it read "I cannot answer that one yet"). */
+  new RegExp(`\\bwhat\\s+${MY_REQUEST}\\s+(?:have|did)\\s+i\\s+(?:asked\\s+for|ask\\s+for|requested|request|put\\s+in|made|make|sent|send)\\b`, 'i'),
   /\bwhat(?:'s|\s+is|\s+are)\s+(?:waiting|pending|outstanding)\s+(?:for\s+me\s+)?(?:to\s+)?(?:approve|approval|sign\s*off|be\s+approved)\b/i,
   /\bwaiting\s+(?:for\s+me\s+)?to\s+(?:approve|be\s+approved|sign\s*off)\b/i,
   /\bwhat\s+(?:do\s+i|should\s+i|must\s+i|have\s+i\s+got\s+to)\s+(?:need\s+to\s+)?(?:approve|sign\s*off)\b/i,

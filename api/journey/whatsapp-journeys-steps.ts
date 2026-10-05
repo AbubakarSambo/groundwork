@@ -368,6 +368,8 @@ export async function journeys(c: any): Promise<void> {
   check('Her question is answered by Ask Groundwork from her own record: where each leave request stands', question.got.length >= 1 && !/I cannot answer that one yet/.test(question.text) && /20 October/.test(question.text) && /3 November/.test(question.text), question.text);
   const notAsRequest = await says(amani, 'What leave have I asked for, and what was decided?');
   check('A question about leave is never read as a request for leave', !/I could not tell exactly which days you mean/.test(notAsRequest.text) && notAsRequest.got.length >= 1, notAsRequest.text);
+  /* Run oct5c: this read "I cannot answer that one yet" and the check above still passed. */
+  check('...and it is answered from her own leave', !/I cannot answer that one yet/.test(notAsRequest.text) && /20 October/.test(notAsRequest.text), notAsRequest.text);
   check('The question was not stored as an answer in her check-in', (await prisma.conversationTurn.count({ where: { checkIn: { participant: { email: amani.email }, groundId: salesId }, role: 'PERSON' } })) === turnsBefore);
   const backAgain = await says(amani, 'back');
   check('"back" returns her to the check-in she was in', /^You are back in your check-in\. .*Carry on where you left off\.$/s.test(backAgain.text) || /back in your check-in/i.test(backAgain.text), backAgain.text);
