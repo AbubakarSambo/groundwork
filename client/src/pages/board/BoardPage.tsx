@@ -2447,6 +2447,25 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         )}
 
         {/*
+          ANCHOR PIECE 30, THE NUDGE (section 26; docs/anchor-scenario.md;
+          docs/answers-from-engine.md, "Anchor piece 30, the nudge, is built"). Groundwork speaking
+          to this person directly: the served sentence, then the same button and destination the
+          header already offers a participant ("Start my check-in", `/grounds/${id}` - this is
+          `isParticipantView`, so the header's own condition for that label is already true here).
+          Served only to a person in an anchor check-in who has not yet checked in for the open
+          round; `null` once they have, and absent for anybody else or any other check-in - the
+          screen draws nothing then either way.
+        */}
+        {isParticipantView && b.aNudgeForYou && (
+          <Panel>
+            <Stack gap={12}>
+              <Callout tone="info">{b.aNudgeForYou}</Callout>
+              <UIButton kind="primary" onClick={() => navigate(`/grounds/${id}`)}>Start my check-in</UIButton>
+            </Stack>
+          </Panel>
+        )}
+
+        {/*
           BOARD FIX (sales B, item 3d): "EVERY SESSION" SITS OUTSIDE THE FOLD, AFTER "YOUR SHARE"
           (board-as-participant.txt ends on "Every session" then "Ask", neither of them behind
           "The whole check-in"). This used to sit lower on the page, inside `MaybeFolded`, where a

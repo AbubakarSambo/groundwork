@@ -459,6 +459,17 @@ export type BoardPresent = {
    */
   yourPartInMovingThings?: string | null
   /**
+   * ANCHOR PIECE 30, THE NUDGE (section 26; docs/anchor-scenario.md;
+   * docs/answers-from-engine.md, "Anchor piece 30, the nudge, is built"). Served to a person in an
+   * anchor check-in who has not yet checked in for the open round - built from their own last open
+   * promise, said back to them: "You mentioned you would send your manager the deck. I'd love to
+   * hear how it went." With no open promise: "It's been a few days since we spoke. What's changed
+   * since then?" `null` once they have checked in. Never served to anybody else - not the lead, not
+   * an admin with access, and not an admin who only reads - and absent on any other check-in or
+   * with the switch off; the screen draws nothing then either way.
+   */
+  aNudgeForYou?: string | null
+  /**
    * ANCHOR PIECE 32/33, THE END-OF-MONTH READ (sections 28 and 29; docs/answers-from-engine.md,
    * "Request 149 (6 of 6)", `TheEndOfMonthRead`). Built once from the record; opening the page
    * never rebuilds it. Lead only, drawn on EndingPage.tsx; absent until the month has run.
