@@ -9,7 +9,7 @@ import { withoutACannotApprove, aRequestAfterTheirTurn, whatTheYesOpens } from '
 function world(opts: { on?: boolean; offerOn?: boolean; startedFrom?: string | null; leaveOn?: boolean; spendOn?: boolean } = {}) {
   const items: any[] = [];
   const prisma: any = {
-    platformSetting: { findUnique: jest.fn(async ({ where }: any) => (opts.on === false ? null : where?.key === 'release.requestOfferInTheCheckIn' && opts.offerOn === false ? null : { value: { on: true } })) },
+    platformSetting: { findUnique: jest.fn(async ({ where }: any) => (opts.on === false ? null : where?.key === 'release.requestOfferInTheCheckIn' && opts.offerOn === false ? { value: { on: false } } : { value: { on: true } })) },
     organizationSuite: { findUnique: jest.fn(async ({ where }: any) => ({ isOn: where.organizationId_suite.suite === 'leave' ? !!opts.leaveOn : !!opts.spendOn })) },
     workItem: {
       findMany: jest.fn(async (a: any) => items.filter((i) => i.kind === a.where.kind && i.ownerParticipantId === a.where.ownerParticipantId)),
@@ -82,8 +82,14 @@ describe('the reply never contradicts the offer (review of pieces 26 and 27)', (
   });
 });
 
-describe('hidden at release until the form can send (request 165)', () => {
-  it('with release.requestOfferInTheCheckIn off, Rukia is offered nothing and nothing is kept, on an anchor check-in', async () => {
+describe('the offer is on, and can be switched off (request 165)', () => {
+  it('with no row at all, Rukia is offered the request on an anchor check-in', async () => {
+    const prisma: any = { platformSetting: { findUnique: jest.fn(async ({ where }: any) => (where?.key === 'release.anchorScenario' ? { value: { on: true } } : null)) } };
+    const { theRequestOfferIsShown } = await import('../admin/what-is-hidden-at-release');
+    expect(await theRequestOfferIsShown(prisma)).toBe(true);
+    expect(await theRequestOfferIsShown({ platformSetting: { findUnique: async () => { throw new Error('no table'); } } })).toBe(true);
+  });
+  it('with release.requestOfferInTheCheckIn set to off, Rukia is offered nothing and nothing is kept, on an anchor check-in', async () => {
     const w = world({ leaveOn: true, offerOn: false });
     expect(await w.turn('Can I take a day off on Friday?')).toEqual({});
     expect(w.items).toEqual([]);
