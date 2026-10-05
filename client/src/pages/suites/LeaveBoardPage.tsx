@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row, Tag } from '@/components/gw/ui'
 import { theDaysInFull, theDaysShort } from './the-days-someone-is-off'
 import { AskAQuestion } from './AskAQuestion'
+import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
 
 /**
  * THE LEAVE BOARD (E2, #/suite/leave, group 2 piece 4). The wording is copied from
@@ -45,7 +46,7 @@ export function LeaveBoardPage() {
   return (
     <Page>
       <PageTitle
-        crumbs={[{ label: 'Suites', to: '/settings/suites' }, { label: 'Leave requests' }]}
+        crumbs={[{ label: 'Suites', to: maySeeSuites(user?.role) ? '/settings/suites' : undefined }, { label: 'Leave requests' }]}
         title="Leave requests"
         subtitle="People ask for time off in their check-in or chat. Groundwork checks their balance and who else is off, and sends it to the right approver."
       />
@@ -53,7 +54,7 @@ export function LeaveBoardPage() {
       {isLoading && <Note>Loading…</Note>}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
-          <Note tone="error">{refused.data?.message ?? 'Only an admin or a lead can open this board.'}</Note>
+          <Note tone="error"><SuiteOffMessage message={refused.data?.message ?? 'Only an admin or a lead can open this board.'} role={user?.role} /></Note>
         ) : (
           <div>
             <Note tone="error">The board did not load.</Note>

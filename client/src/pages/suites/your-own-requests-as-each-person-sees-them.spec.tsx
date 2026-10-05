@@ -90,6 +90,27 @@ describe('Aisha reads her own requests', () => {
     expect(screen.getByText('Your request to spend KES 12,000 for tyres for the van is approved by Fatuma.')).toBeTruthy()
   })
 
+  /*
+   * WALKTHROUGH PASS 2, ITEM 3: AN ADMIN IS TOLD WHERE TO SWITCH A SUITE ON; A PARTICIPANT ISN'T
+   * POINTED AT A PAGE THAT REFUSES THEM.
+   */
+  it('tells an admin where to switch the suite on', async () => {
+    open(refusal(404, 'The leave suite is not switched on.'), SPENDING)
+    useAuthStore.setState({ user: { ...AISHA, role: 'ADMIN' } } as any)
+    expect(await screen.findByText(/The leave suite is not switched on\./)).toBeTruthy()
+    /* Two links read "Suites" here: the breadcrumb, and the one this message adds - both to the
+       same place, since both are real doors for an admin. */
+    const links = screen.getAllByRole('link', { name: 'Suites' })
+    expect(links.length).toBeGreaterThanOrEqual(2)
+    for (const link of links) expect(link).toHaveAttribute('href', '/settings/suites')
+  })
+
+  it('does not point a participant at Suites, which would refuse them', async () => {
+    open(refusal(404, 'The leave suite is not switched on.'), SPENDING)
+    expect(await screen.findByText(/The leave suite is not switched on\./)).toBeTruthy()
+    expect(screen.queryByRole('link', { name: 'Suites' })).toBeNull()
+  })
+
   it('is told, and can try again, when a list did not load', async () => {
     open(Object.assign(new Error('x'), { response: { status: 500, data: {} } }), SPENDING)
     expect(await screen.findByText('Your requests did not load.')).toBeTruthy()
