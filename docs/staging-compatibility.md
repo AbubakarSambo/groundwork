@@ -126,6 +126,19 @@ I did not need to fix a crash. Note: with `NODE_ENV=production` the API also nee
 
 **The time zone test.** I ran the grounds, common, board, reports and conversation tests (1,003 files, 9,512 tests) with the clock set to UTC, as on the hosted server. Two tests failed in that run, both about timing while the machine was busy with a scenario run (`the-report-is-written-in-parallel` and `the-first-night-warns-only-after-the-release`). Run again on their own, both pass in UTC and in the East Africa time zone. So no test depends on this Mac's time zone.
 
+## 7. Checked again on 5 October, evening, at `ee99f19c`
+
+The checks in sections 3 and 5 were run again on branch `wip/release` at commit `ee99f19c`, which is 208 commits after `01a72bd2`. Everything ran on this computer only. Nothing was deployed or merged, and no hosted database was touched. All of it passes, and nothing differs from 4 to 5 October.
+
+- **Nothing that staging builds from has changed since.** Between `01a72bd2` and `ee99f19c` there is no change to either `package.json`, either lock file, `railway.toml`, `vercel.json` or anything in `api/prisma/`. The 208 commits are code, prompts and tests.
+- **Staging is still inside our branch.** `mine/wip/live-base` is still an ancestor of `ee99f19c`, and `git merge-tree` still gives a merged tree with no conflicts.
+- **Migrations from scratch.** A new database, `gw_compat_oct5b`, on localhost. `npx prisma migrate deploy`, run from a clean checkout of `ee99f19c`, applied all 359 migrations, the last still being `20261004100000_a_check_in_remembers_it_began_at_the_anchor_link`. A second run said there was nothing to apply. The `_prisma_migrations` table holds 359 rows, none failed or rolled back. The comparison with `schema.prisma` found the same one difference as before: the `leaving_checklists` index name shortened to 63 characters. Nothing else.
+- **Clean install and build, as staging builds.** A fresh detached worktree of `ee99f19c`. In `api/`, `npm ci`, then `npm run build && npx prisma generate`, passed; `dist/main.js`, `embed.js` and `panel.html` are there. In `client/`, `npm ci` and `npm run build` passed, with the same warning as before that the main script is 1.9 MB. This was still Node 26 and npm 11, not Node 20.
+- **The built API starts with every new setting missing.** It was started from that worktree on port 3012 against `gw_compat_oct5b`, with only `PORT`, `DATABASE_URL`, a test `JWT_SECRET` and `EMAIL_SENDS_FOR_REAL=false`. It said "Nest application successfully started", and `/health` answered "ok". It seeded 58 prompt versions into the empty database, 293,928 characters in all. The log showed the same "this is off" messages as before: no Stripe key, no Resend key, and the engine probe failing because the model credentials file is not there. An unsigned post to the WhatsApp webhook got 401 and a wrong verify token got 403. It was then stopped, and nothing is left running on port 3012. The API on port 3000 and its database were not touched.
+- **Two lines in the log not written down last time.** Nest warns that the route `api/org/v1/(.*)` uses an old style of path, and Node warns once that more than ten listeners were added to one event. Neither stops anything. Since no package changed after 4 to 5 October, they were most likely there then too and simply not recorded. Neither needs anything from staging.
+- The worktree was removed afterwards.
+- While this ran, two more commits landed on the branch: `e6234eca`, a scenario score, and `d2e3e34b`, the judgement reading a stored prompt version. Neither changes a package, a lock file, the deploy settings or a migration, so the results above should hold for them too, but they were not built here.
+
 ## What I could not do
 
 1. Run our migrations on top of a database built at staging's schema with sample rows. The guard refused the command and I stopped, as told.
@@ -134,3 +147,5 @@ I did not need to fix a crash. Note: with `NODE_ENV=production` the API also nee
 ## Databases left behind
 
 `gw_compat_scratch`, on this Mac only. Nothing else was created.
+
+Also on this Mac only: `gw_compat_from_live_base_1313`, from the check on 5 October with data, and `gw_compat_oct5b`, from the check in section 7. The safety guard does not allow `dropdb`, so they are left for you to remove when you want.
