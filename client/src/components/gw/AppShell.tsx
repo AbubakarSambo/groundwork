@@ -1231,6 +1231,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       if (location.pathname !== '/chat') navigate('/chat')
     }
   }, [isAPhone, askOpen, hideAsk, navigate, location.pathname])
+  /*
+   * WIDTH CHECK, ITEM 8: THE 400px ASK PANEL CUT THE PAGE'S OWN TEXT, RATHER THAN COVERING IT.
+   * The drawer below is `position: fixed`, so it draws on top of whatever is already there - at
+   * 1024px wide (768px of content once the 256px rail is out) that left only 368px for the page,
+   * but the page itself never learned the drawer was open, so its own buttons and headings still
+   * laid out for the FULL width and then sat half hidden behind the drawer's own edge (measured
+   * live: "Ask about the strategy" read as "Ask about the st"). The same technique `OutOfTime.tsx`
+   * already uses for its own full-page cover: `<body>` carries a class for exactly as long as the
+   * panel is open, and `gw-ui.css`'s own rule (scoped to the same 641px floor the drawer itself
+   * only renders above) reserves its 400px as padding on the content side instead, so the page
+   * reflows into the room it actually has rather than being drawn underneath the drawer.
+   */
+  useEffect(() => {
+    const open = isAuthenticated && askOpen
+    document.body.classList.toggle('gwui-ask-open', open)
+    return () => { document.body.classList.remove('gwui-ask-open') }
+  }, [isAuthenticated, askOpen])
   /* REVIEW ROUND 3, ITEM 7: SEE AppSidebar's OWN COPY OF THIS - the app's bottom bar does not
      render at all on the conversation, and the room it used to reserve (`--gw-bottom-nav`) is
      given back to the card so nothing leaves a blank strip where the bar used to sit. */
