@@ -217,6 +217,14 @@ const clauseOf = (c: ACommitment, r?: WhoIsReading): string | null => {
   return clause && r ? theReaderSaidAsYou(clause, r.myNames) : clause;
 };
 
+/**
+ * A promise as the end of "<who> committed to ...", for a reader: "send a photo of the delivery sheets on
+ * Friday". The same rule the work plan says it by (request 123 item 9), for "Who owns what" (request 130 b).
+ */
+export function whatTheyCommittedTo(text: string, participantId: string | null, meId: string | null, myNames?: string[]): string | null {
+  return clauseOf({ text, participantId } as ACommitment, { meId, myNames } as WhoIsReading);
+}
+
 /* ------------------------------------------------------------------------------------------------
  * WORK PLAN: who is doing what, and by when
  * ---------------------------------------------------------------------------------------------- */

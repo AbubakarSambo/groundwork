@@ -134,8 +134,8 @@ from their check-ins:
 
 - Rukia (the lead), Grace and Juma (admins) read "Neema Achieng said, "I will send a photo of the delivery sheets on Friday.""
 - Neema reads "You said, "I will send a photo of the delivery sheets on Friday.""
-- A promise not kept word for word reads "Neema Achieng has made a commitment here.", with none of her words.
-- Where people do not see each other, nobody else is sent it. A dropped promise is not sent, and a promise already on the list in the same words is not sent twice.
+- A promise not kept word for word is said in our voice, never as an empty line (changed after review). The lead and the admins read "Neema Achieng committed to send a photo of the delivery sheets on Friday.", and Neema reads "You committed to send a photo of the delivery sheets on Friday." Only where that cannot be said does it fall back to "Neema Achieng has made a commitment here."
+- Where people do not see each other, nobody else is sent it. A dropped promise is not sent, and neither is one the person did not make in their own name. A promise already on the list, even in other words, is not sent twice. This uses the same sameness rule the writer uses, so Amani reads one Tuskys line, not two. Promises and record lines are listed in the order they were said.
 
 Promises a lead pasted or wrote are not added, because they are not the person's own. I could not
 check "42 drops, missed 9" on your check-in, because it is not on this computer. If it is still

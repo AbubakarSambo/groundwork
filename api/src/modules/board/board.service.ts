@@ -165,6 +165,8 @@ import { isEvaluationCheckIn, theSubjectOfAnEvaluationCheckIn, viewerIsTheSubjec
 import { whatEachHandoffPersonTyped, withTheirWordsChecked } from './the-handoff-words-the-person-typed';
 import { whatWasAgreedAtTheStart, theGoalsSetForAnyone } from './what-was-agreed-at-the-start';
 import { changeSinceTheLastCheckIn } from './change-since-the-last-check-in';
+import { whatTheyCommittedTo } from './the-switchboards-own-sections';
+import { theSameMeasure } from '../grounds/a-dump-is-many-things';
 import { theRisks, theWorkPlan, theTimeline, thePersonHistory, theBlockerCheck, theEvidenceIndex, theBusyOrMoving, theLeadActions, theObligations, theForecast, whoWaitedOnWhom, theContradictions, theQuestionsForTheLead, type WhoIsReading, type ACommitment } from './the-switchboards-own-sections';
 import { whoOwnsWhatForTheSubject, divergenceForTheSubject, theNewHireReadsTheLeadsWords } from '../reports/colleagues-exact-words-stay-with-the-manager';
 import { eachLineInTheirName, eachLineWithTheKindThatFits, inTheirOwnWords } from './what-each-person-said-is-in-their-name';
@@ -1722,19 +1724,29 @@ export class BoardService {
         where: { groundId, source: 'CHECK_IN', participantId: { not: null } },
         orderBy: { createdAt: 'asc' },
       }) ?? Promise.resolve([])).catch(() => [])) ?? []) as any[])
-        .filter((c) => c?.source === 'CHECK_IN' && !!c.participantId && c.status !== 'DROPPED' && typeof c.text === 'string' && c.text.trim());
-      const sameWords = (a: string, b: string) => a.trim().replace(/[.!?]+$/, '').toLowerCase() === b.trim().replace(/[.!?]+$/, '').toLowerCase();
+        .filter((c) => c?.source === 'CHECK_IN' && !!c.participantId && c.status !== 'DROPPED' && c.explicit !== false && typeof c.text === 'string' && c.text.trim());
+      /* The reader's own names, so their name inside a promise is said as "you" (the work plan's rule). */
+      const myNames = me
+        ? [[(me as any).user?.firstName, (me as any).user?.lastName].filter(Boolean).join(' ').trim(), ((me as any).user?.firstName ?? '').trim()].filter((n) => n.length > 1)
+        : [];
+      /* Each line with when it was said, so promises and record lines read in the order they were said. */
       const theirPromises = (pid: string) => promisedInACheckIn
         .filter((c) => c.participantId === pid)
-        .filter((c) => !entries.some((e) => e.participantId === pid && e.type === 'COMMITMENT' && sameWords(cleanText(e.text), cleanText(c.text))))
+        /* The same promise in other words is one promise: the sameness rule the writer uses (request 130 b, review). */
+        .filter((c) => !entries.some((e) => e.participantId === pid && e.type === 'COMMITMENT' && theSameMeasure(cleanText(e.text), cleanText(c.text))))
         .map((c) => {
           const text = cleanText(c.text);
           const mark = theMarkOf({ type: 'COMMITMENT', text, recallBased: false, participantId: pid } as any, whoAdded);
+          /* Not kept word for word: said in our voice from the promise, never an empty "has made a commitment". */
+          const clause = c.saidWordForWord === true ? null : whatTheyCommittedTo(text, pid, me?.id ?? null, myNames);
           return {
-            id: c.id, type: 'COMMITMENT', text,
-            saidAs: (c.saidWordForWord === true ? 'their-words' : 'not-their-words') as 'their-words' | 'not-their-words',
-            mark, markSays: WHAT_EACH_MARK_SAYS[mark],
-            sessionNumber: typeof c.statedInSession === 'number' ? c.statedInSession : null,
+            at: new Date(c.createdAt ?? 0).getTime(),
+            line: {
+              id: c.id, type: 'COMMITMENT', text: clause ?? text,
+              saidAs: (c.saidWordForWord === true ? 'their-words' : clause ? 'what-they-committed-to' : 'not-their-words') as string,
+              mark, markSays: WHAT_EACH_MARK_SAYS[mark],
+              sessionNumber: typeof c.statedInSession === 'number' ? c.statedInSession : null,
+            },
           };
         });
       out.whoOwnsWhat = ground.participants
@@ -1752,13 +1764,15 @@ export class BoardService {
            * not. `loadReadInput` below deliberately keeps the raw text, because the tiering in
            * reads.ts is the thing that READS the marker - that one is not a surface.
            */
-          items: entries.filter((e) => e.participantId === p.id).map((e) => ({
+          items: entries.filter((e) => e.participantId === p.id).map((e) => ({ at: new Date((e as any).createdAt ?? 0).getTime(), line: {
             id: e.id, type: e.type,
             ...inTheirOwnWords(cleanText(e.text), e.checkInId ? typed.get(e.checkInId) : undefined),
             mark: theMarkOf({ ...(e as any), text: cleanText(e.text) }, whoAdded),
             markSays: WHAT_EACH_MARK_SAYS[theMarkOf({ ...(e as any), text: cleanText(e.text) }, whoAdded)],
             sessionNumber: checkIns.find((c) => c.id === e.checkInId)?.sessionNumber ?? null,
-          })).concat(theirPromises(p.id) as any[]),
+          } })).concat(theirPromises(p.id) as any[])
+            .sort((a, b) => a.at - b.at)
+            .map((x) => x.line) as any[],
         }));
     }
 

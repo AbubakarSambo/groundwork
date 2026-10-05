@@ -10,9 +10,13 @@
 - A person's own coaching no longer says "session 1 of 4 of founder or CEO work" as if somebody had set it; it reads "This is session 1 of 4. What you have said so far reads as founder or CEO work." (127 item 6).
 - I stopped on 127 item 5, "at their own request": the board says the request was Nadia Haddad's, so changing it to "your own request" could be false. It belongs with the judgement work.
 - Where no worry is named, the Blockers tile now says the true reason: other people's words this reader may not read, or none kept in the words it was said, which is true for the lead too (127 item 7, changed after review). After a second review it also says when some are other people's words and the rest were not kept, and when a kept worry cannot be quoted whole.
-- "Who owns what" now includes the promises people made in their check-ins. Before, 59 people on this computer's database had an empty list because their promise was stored only as a promise (130 b).
+- "Who owns what" now includes the promises people made in their check-ins. Before, 59 people on this computer's database had an empty list because their promise was stored only as a promise (130 b). After review, a promise not kept word for word reads "Neema Achieng committed to send a photo of the delivery sheets on Friday.", and the same promise in other words is listed once.
 - I stopped on 130 (d) and 131 (6). Incident stages, incident themes and a group's county all need the records prompt changed, and the stage names and a "Women" share target are your decisions. "By site" and the programme's headline are already sent where the data is there. The answers file says what I checked.
 - I stopped on 139, the goal drawn as "Point to successfully renewed contracts", because no code writes that line and it is not in this computer's database. I asked the screens workspace which field carries it. I did not start 130 (b), 130 (d) or 131 (6), because none of them is small.
+
+### Needs Hafsah
+
+**An organisation's admin who is not in a check-in reads people's exact words on its board.** Juma, an admin of the organisation who is not in the sales check-in and did not set it up, is sent everybody's own words in "Who owns what" and other sections, in quotation marks with their names. That was already so before today's work, and nothing I changed widened it. CLAUDE.md says what people say in check-ins can be shown word for word to the people in that check-in. The wall for an admin without access to a check-in (decision 60, point 4) covers only evaluation check-ins. Whether an admin who is not in a check-in should read people's exact words on every other kind is your call. I have changed nothing.
 
 ## 5 October, 15:30: where I am, for your fresh session
 
@@ -1169,6 +1173,7 @@ My recommendations, for Hafsah to decide:
 **Patterns are not steady from run to run.** Across all 24 scenarios, only 15% of the person-and-pattern findings in run-19 appeared again in run-20. The lead's marks and self-learning are built to work on this, but the detector itself, and what the test personas say, should be looked at before patterns reach anyone live.
 
 ### Needs Hafsah
+
 
 1. **Switching off the old context chat.** Everything the doors decide matches in the live proof. Two differences remain, both the model reading a success statement differently. On your word it is switched off.
 2. **The six disagreements between decisions**, listed under Hafsah's second set of answers, each with how it is being handled.
