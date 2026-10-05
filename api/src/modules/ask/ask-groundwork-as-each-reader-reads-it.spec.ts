@@ -276,7 +276,9 @@ const STARTERS_WITH_A_CHECK_IN = [
   'Add a document or some context to my check-in.',
   'Ask for leave, or to spend money.',
 ];
-const BARIDI_WELCOME = 'This is Ask Baridi. I answer about the whole organisation and about your own work, and you can point me at one of your check-ins whenever you want to. Ask me about the company, about your work, or about your check-ins. You can add context or a document to one of your check-ins here, and ask for leave or to spend money. What you ask me stays private. Anything you choose to add to a check-in works differently. I say it back to you first, it goes in only once you say yes, and from then on it is part of that check-in.';
+/* As shipped, with adding context hidden (`release.contextInAskGroundwork` off): nothing is offered that cannot be done. */
+const BARIDI_WELCOME = 'This is Ask Baridi. I answer about the whole organisation and about your own work, and you can point me at one of your check-ins whenever you want to. Ask me about the company, about your work, or about your check-ins. You can also ask me for leave or to spend money. What you ask me stays private.';
+const BARIDI_WELCOME_WITH_CONTEXT = 'This is Ask Baridi. I answer about the whole organisation and about your own work, and you can point me at one of your check-ins whenever you want to. Ask me about the company, about your work, or about your check-ins. You can add context or a document to one of your check-ins here, and ask for leave or to spend money. What you ask me stays private. Anything you choose to add to a check-in works differently. I say it back to you first, it goes in only once you say yes, and from then on it is part of that check-in.';
 
 const everything = (x: unknown) => JSON.stringify(x);
 
@@ -981,7 +983,7 @@ describe('Ask is named for the organisation, and tells a person what it can do t
     expect(tom.askName).toBe('Ask Baridi');
     expect(tom.caption).toBe('Ask about the company, your work or your check-ins.');
     expect(tom.addLine).toBe('You can also add context or documents to your check-ins here.');
-    expect(tom.welcome).toBe(BARIDI_WELCOME);
+    expect(tom.welcome).toBe(BARIDI_WELCOME_WITH_CONTEXT);
   });
 
   it('while the switch for context in Ask is off, nobody is told they can add context or documents here', async () => {
@@ -989,6 +991,8 @@ describe('Ask is named for the organisation, and tells a person what it can do t
     const tom: any = await controller.mine(asUser(readers.tom));
     expect(tom.addLine).toBeNull();
     expect(JSON.stringify(tom)).not.toContain('add context or documents');
+    expect(tom.welcome).not.toContain('add context');
+    expect(tom.welcome).toBe(BARIDI_WELCOME);
   });
 
   it('a member who has already asked is not welcomed again, and still reads the name', async () => {

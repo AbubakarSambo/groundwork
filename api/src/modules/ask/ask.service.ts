@@ -251,8 +251,9 @@ export class AskService {
     let organisationName: string | null = null;
     try { organisationName = (await this.prisma.organization.findUnique({ where: { id: asker.organizationId }, select: { name: true } }))?.name ?? null; } catch { organisationName = null; }
     const name = askName(organisationName);
-    const welcome = shown.canAsk && shown.turns.length === 0 ? askFirstWelcome(organisationName) : null;
-    return { ...shown, askName: name, caption: ASK_CAPTION, addLine: (await contextIsInAskGroundwork(this.prisma)) ? ASK_ADD_LINE : null, welcome, starters: askStarters((shown.about ?? []).length > 0) };
+    const contextIsHere = await contextIsInAskGroundwork(this.prisma);
+    const welcome = shown.canAsk && shown.turns.length === 0 ? askFirstWelcome(organisationName, contextIsHere) : null;
+    return { ...shown, askName: name, caption: ASK_CAPTION, addLine: contextIsHere ? ASK_ADD_LINE : null, welcome, starters: askStarters((shown.about ?? []).length > 0) };
   }
 
   private async forReaderBare(asker: Asker, askedFor: string | null) {
