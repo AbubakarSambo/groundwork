@@ -1,4 +1,6 @@
 import { theEndingSaid, theOutcomeIsThat, TheEndingIsAbout } from '../resolution/end-states';
+import { connectWhatsAppFor, youCanAlsoAnswerOnWhatsApp } from '../whatsapp/connect-whatsapp';
+import { keptOffThePhone } from '../whatsapp/a-check-in-kept-off-the-phone';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
@@ -36,6 +38,25 @@ export class EmailService implements OnModuleInit {
   ) {
     this.fromEmail = this.configService.get<string>('resend.fromEmail') || 'Groundwork <noreply@myground.work>';
     this.frontendUrl = this.configService.get<string>('resend.frontendUrl') || 'http://localhost:5173';
+  }
+
+  /**
+   * "You can also answer on WhatsApp: send Hi to <number>", with a "Connect WhatsApp" link that opens
+   * WhatsApp with Hi typed (decision 106 item 4). Only while WhatsApp is on for this check-in's organisation,
+   * the check-in is not kept in the app, and Groundwork's number has a display number saved. Otherwise nothing.
+   */
+  async theWhatsAppLine(email: string, context?: DeliveryContext): Promise<string> {
+    try {
+      if (!context?.groundId) return '';
+      const ground = await (this.prisma as any).ground?.findUnique?.({ where: { id: context.groundId }, select: { organizationId: true, overWhatsApp: true } });
+      if (!ground) return '';
+      const connect = await connectWhatsAppFor(this.prisma, this.configService, { organizationId: ground.organizationId, email, keptInTheApp: keptOffThePhone(ground), forTheInvitation: true });
+      if (!connect) return '';
+      return `<p>${escapeHtml(youCanAlsoAnswerOnWhatsApp(connect.number))}</p>
+         <p><a href="${connect.link}" style="display:inline-block;background:#25D366;color:#0A1628;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:bold;">${connect.says}</a></p>`;
+    } catch {
+      return '';
+    }
   }
 
   buildInviteUrl(inviteToken: string): string {
@@ -663,6 +684,7 @@ export class EmailService implements OnModuleInit {
            it. The button only has to say what pressing it starts.
          -->
          <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Start my check-in →</a></p>
+         ${await this.theWhatsAppLine(email, context)}
          <p style="font-size:12px;color:#9B9590;">You are never obligated to take part. If you would rather not, you can simply ignore this - declining is never shown as a negative.</p>
          ${stopLine ?? ''}`,
       ),
@@ -960,6 +982,7 @@ export class EmailService implements OnModuleInit {
         `<p style="border-left:3px solid #5DCAA5;padding:10px 16px;margin:20px 0;font-size:17px;">${escapeHtml(question)}</p>` +
         rest.map((l) => `<p>${escapeHtml(l)}</p>`).join('') +
         `<p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">${THE_TEAM_BUTTON} &rarr;</a></p>` +
+        (await this.theWhatsAppLine(email, context)) +
         /*
          * IT DID NOT GO INTO ONE SUMMARY UNREAD.
          *

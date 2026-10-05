@@ -6014,3 +6014,26 @@ What was added in `client/`:
 After review, each secret saved in the back office has a button beside it: "Remove the saved access token", "Remove the saved app secret" or "Remove the saved verify token". It sends `remove: ['accessToken']` (and so on) and then shows "The saved access token is removed.", followed by the API's own sentence about what the server uses instead. The button shows only when the API says the secret's `from` is `'here'`. `from` is a new field on each secret, and it never carries the secret itself.
 
 The API behind it is `GET` and `PUT /admin/whatsapp/settings`, `GET /admin/whatsapp/settings/connection` and `POST /admin/whatsapp/settings/test`. All four are behind `PlatformAdminGuard`. `GET /admin/whatsapp` now also returns `displayNumber`, which is the number people read, not a secret.
+
+## "Connect WhatsApp" for the screens (decision 106, 5 October, night)
+
+The engine now serves a one-tap link that opens WhatsApp with "Hi" already typed to Groundwork's number. Showing it is up to the screens; nothing is drawn yet.
+
+**What the screens receive:** `connectWhatsApp: { link, number, says } | null`, for example `{ "link": "https://wa.me/447700900123?text=Hi", "number": "+44 7700 900123", "says": "Connect WhatsApp" }`. Use `says` as the button label, `link` as its address (it opens WhatsApp), and `number` if you want to show the number.
+
+**On which reads:**
+- `GET /auth/me` (the signed-in person's own profile, for their Settings), as `connectWhatsApp`.
+- `GET /check-ins/:id/transcript` (the person's own check-in; the server refuses this read to anybody else, the lead and admins included), as `connectWhatsApp`.
+
+No other read carries it, and nobody else's read ever does.
+
+**When it is null:** it is null unless all of these hold:
+- WhatsApp is on: the platform switch on `/admin/whatsapp`, and the organisation's add-on.
+- The organisation has no WhatsApp number of its own connected.
+- A display number is saved for Groundwork's number.
+- On the check-in read, the check-in is not kept in the app.
+- The person has never written to Groundwork from their number, or has no number saved.
+
+Once they write, for example by tapping it and sending "Hi", it is null on both reads.
+
+**The invitation email** carries the same link, labelled "Connect WhatsApp", after the sentence "You can also answer on WhatsApp: send Hi to +44 7700 900123." It appears only when WhatsApp is on for that organisation, the check-in is not kept in the app, and a display number is saved. Otherwise there is no line.

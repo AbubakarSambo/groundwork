@@ -124,6 +124,7 @@ import { theOneWorthAsking, askAboutItBlockFor } from './what-keeps-happening-be
 import { mayCoach } from './participation-timeline';
 import { theirApprovedLeave } from '../suites/who-is-away';
 import { afterTheirTurn, anIdeaReadBackAsAPromise } from './ideas-from-the-team';
+import { withoutACannotApprove } from './a-request-offered-in-the-check-in';
 import { aRequestAfterTheirTurn } from './a-request-offered-in-the-check-in';
 import { stillAsking } from './one-question-per-turn';
 import { oneThingAsked, wouldLeaveAQuestionOut, asksMoreThanOneThing, withTheOneMoreLine, ASK_ONE_THING } from './a-turn-asks-one-thing';
@@ -2961,6 +2962,14 @@ export class ConversationService {
       ...(request.openTheRequest ? { openTheRequest: request.openTheRequest } : {}),
       ...(this.anchorVersionForThisTurn.get(checkIn.id) ? { promptVersionId: this.anchorVersionForThisTurn.get(checkIn.id) } : {}),
     };
+    /* With the offer or the request's form attached, the reply never says Groundwork cannot approve it or sends them elsewhere. */
+    if (request.requestOffer || request.openTheRequest) {
+      const taken = withoutACannotApprove(answer.reply);
+      if (taken.cut.length) {
+        this.logger?.warn?.(`Check-in ${checkIn.id}: took off what contradicts the request offer: ${JSON.stringify(taken.cut)}`);
+        answer.reply = taken.text;
+      }
+    }
     if (request.sayFirst) answer.reply = [request.sayFirst, answer.reply].filter(Boolean).join('\n\n');
     /* "I have captured it for the team." is said first, before anything else in the reply (anchor piece 19). */
     if (idea.sayFirst) answer.reply = [idea.sayFirst, answer.reply].filter(Boolean).join('\n\n');

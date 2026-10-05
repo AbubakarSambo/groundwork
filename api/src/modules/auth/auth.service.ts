@@ -72,6 +72,7 @@ type UserWithOrg = {
 };
 
 import { whereTheyBelong, ROLE_FOR_SOMEBODY_EXPECTED } from './they-are-already-on-somebodys-roster';
+import { connectWhatsAppFor } from '../whatsapp/connect-whatsapp';
 import { aSignInsNumberChanged, aRosterNumberChanged, refuseANumberOnSomebodyElse, aSignInWithNoNumberTakesTheRosters, theSignInOf } from '../whatsapp/one-number-for-a-person';
 
 /**
@@ -1234,7 +1235,11 @@ export class AuthService {
     if (!user) throw new BadRequestException('User not found');
     /* One builder. A field added to it cannot fail to reach this route now. */
     const belongsElsewhere = await this.belongsElsewhere(user.id, user.organizationId);
-    return { ...this.theUserShape(user as unknown as UserWithOrg, belongsElsewhere), orgCode: user.organization.slug, emailNotifications: user.emailNotifications };
+    return {
+      ...this.theUserShape(user as unknown as UserWithOrg, belongsElsewhere), orgCode: user.organization.slug, emailNotifications: user.emailNotifications,
+      /* "Connect WhatsApp" for the person's own Settings, or null (decision 106 item 4). Only on their own read. */
+      connectWhatsApp: await connectWhatsAppFor(this.prisma, this.configService, { organizationId: user.organizationId, userId: user.id, email: user.email }),
+    };
   }
 
   /**
