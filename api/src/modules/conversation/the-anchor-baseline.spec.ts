@@ -210,6 +210,14 @@ describe('the team baseline puts no ready-made answer into anybody\'s mouth (6 O
   });
 });
 
+describe('the team baseline never offers an answer and never promises what it is not about (6 October)', () => {
+  it('says so in its words', () => {
+    expect(THE_BASELINE_GUIDANCE).toContain('Never give an example of what they might say, and never use "for instance" or "such as".');
+    expect(THE_BASELINE_GUIDANCE).toContain('never say it is not about their numbers, their performance or any review');
+    expect(THE_BASELINE_GUIDANCE).toContain('it helps the team understand one another and get the work moving, and there are no right answers');
+  });
+});
+
 describe('the team baseline is read on its own words, not under the situation\'s pack (6 October)', () => {
   it('carries no plan written from the lead\'s brief, no project questions, and tells it how to open', async () => {
     const prompt = await aWorld({ startedFrom: 'anchor', switchOn: true, scenario: GroundScenario.HELP_TEAM_UNDERSTAND }).compose();
