@@ -1,5 +1,7 @@
 # Morning report
 
+At `accd1717`, 16,768 of the 16,772 API tests pass, with 2 failed and 2 skipped. Both failures are real and fail again when run alone. First, `pricing.anchorTrial` has no writer in the API (commit `42576e10`). Second, the praise test cannot find the judgement's old return line, because commit `d2e3e34b` changed it. The client has 4,221 of 4,223 passing, and both failures are the expected mirror test, which waits for the screens workspace. Both typechecks pass.
+
 The existing-clients checks were run again on a copy of the test database: scheduled check-ins still carry on unchanged. Two things need you (section 9 of `docs/existing-users.md`). First, 41 people marked as held for a seat who have already answered are now refused every page. Second, leads no longer read the stored pattern lines that today's live line shows them.
 
 The checks for the hosted line were run again at `ee99f19c` on this computer: all 359 migrations apply to a new database, the clean install and build pass for the API and the client, and the built API starts with every new setting missing (see section 7 of `docs/staging-compatibility.md`).
