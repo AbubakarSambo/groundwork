@@ -33,10 +33,11 @@ export default function EndingPage() {
 
   /**
    * PIECE 33: THE END-OF-MONTH READ (plan section 5, row 13; docs/answers-from-engine.md,
-   * "Request 147", `TheEndOfMonthRead`). The same board call the board page itself makes - the
-   * field is not served yet, so `theEndOfMonthRead` is undefined on every board today, and the
-   * component below draws nothing until the engine sends it. Lead only (`canEditFrame`), and only
-   * for an anchor Ground (`anchorScenarioOn`): a board that is neither sends nothing here either.
+   * "Request 149 (6 of 6)", `TheEndOfMonthRead`). The same board call the board page itself makes.
+   * Served only once the month has run and the lead has her own first words to begin with; before
+   * that the key is absent and the component below draws nothing. Lead only (`canEditFrame`), and
+   * only for an anchor Ground (`anchorScenarioOn`): a board that is neither sends nothing here
+   * either.
    */
   const { data: board } = useQuery({
     queryKey: ['board', id],
@@ -49,13 +50,28 @@ export default function EndingPage() {
     : undefined
 
   /**
-   * THE FOUR CONTINUE OPTIONS GO TO THE EXISTING PLAN CHOICE, STRIPE TEST MODE ONLY (decision 96,
-   * item 4: "build the four options to the existing plan choice ... Piece 33 is not blocked from
-   * being built, only from being turned on"). Every option opens the same billing page today -
-   * there is no separate route yet for "Start recommended Grounds" or "Turn on relevant suites".
+   * WHERE THE FOUR CONTINUE OPTIONS GO (docs/answers-from-engine.md, "Request 149 (6 of 6)",
+   * "Answer (3)"), using routes that already exist:
+   *   - "Keep this Ground running" and "Continue Groundwork for the team" both open the plan
+   *     choice, `/settings/billing` (Stripe test mode only, decision 96 item 4) - the same page
+   *     today, honest until Hafsah says what "keep this Ground running" should do differently.
+   *   - "Start recommended Grounds" opens this Ground's own board, where "Groundwork recommends"
+   *     lists the offers.
+   *   - "Turn on relevant suites" opens the Suites page.
    */
-  function onContinue(_option: TheContinueOption) {
-    navigate('/billing')
+  function onContinue(option: TheContinueOption) {
+    switch (option.key) {
+      case 'keepThisGroundRunning':
+      case 'continueGroundworkForTheTeam':
+        navigate('/settings/billing')
+        break
+      case 'startRecommendedGrounds':
+        navigate(`/grounds/${id}/board`)
+        break
+      case 'turnOnRelevantSuites':
+        navigate('/settings/suites')
+        break
+    }
   }
 
   return (
