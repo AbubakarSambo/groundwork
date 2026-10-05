@@ -489,6 +489,10 @@ a.gwui-person-row:hover { background: var(--gw-page); }
   font: inherit; font-family: var(--gw-font-ui); font-size: 15px; color: var(--gw-text); cursor: pointer;
 }
 .gwui-choice-on { background: var(--gw-navy); color: #fff; box-shadow: none; font-weight: 700; }
+/* The chosen option, marked without a second navy button on the page (walkthrough pass 2, item 4:
+   sign-up's own "Create account" is already the one navy button). Same ink-outline mark "Choice
+   cards" already use below for the same purpose. */
+.gwui-choice-on-quiet { background: var(--gw-card); color: var(--gw-text); box-shadow: inset 0 0 0 2px var(--gw-text); font-weight: 700; }
 .gwui-choice-stacked {
   min-height: 0; height: auto; text-align: left; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px;
   width: 100%;

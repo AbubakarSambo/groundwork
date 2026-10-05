@@ -572,10 +572,13 @@ export function AuthPage() {
 
             <div>
               <p className="gwui-field-label">How would you like to sign in?</p>
+              {/* `quiet` (walkthrough pass 2, item 4): "Create account" below is this page's one
+                  navy button - the prototype's own sign-up screen has only the one (signup.txt). */}
               <Choices
                 label="How would you like to sign in?"
                 value={signInBy}
                 onChange={k => { setSignInBy(k as 'link' | 'password'); clearNotices() }}
+                quiet
                 options={[
                   { key: 'link', label: 'With a link we email you' },
                   { key: 'password', label: 'With a password' },
