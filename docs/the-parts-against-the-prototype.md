@@ -731,3 +731,30 @@ Fixed, all in `gw-ui.css` unless said otherwise:
     date ("Tuesday 29 September") no longer wraps at 1024px.
 
 Proven live at 1024x768 and 1280x800 by `e2e/nothing-overlaps-at-in-between-widths.spec.ts`.
+
+## A live walk of the suites (faults 5, 7 and 8): two new classes
+
+**`.gwui-example-chat`** (new part, `ExampleExchange.tsx` in `components/gw/ui`): the prototype's
+own illustrative back-and-forth under "How people ask" (suite-leave.txt) and "How people use it"
+(suite-spend.txt), drawn with the already-shared `Bubble` stacked in a flex column - the same
+shape `.gwui-conv-card`'s own body uses for a real conversation (`gap: 12px`, carried over from
+that existing value, not a new number). Both boards had dropped this illustration entirely;
+`LeaveBoardPage.tsx` and `SpendingPage.tsx` now draw it, with a neutral word ("your manager",
+"your lead") standing in wherever the prototype's own example named one of its sample people, so
+no reader ever sees what looks like a real colleague inside a made-up exchange.
+
+**`.gwui-record-table-label`** (`ReviewsBoardPage.tsx`'s table): at the same <=860px width
+`.gwui-record-table`'s own rule (just above it in the file) already collapses the table to a
+stack and visually hides `<thead>`, a bare value - "Daniel Park" - read with nothing to say
+whether that was the person the review is about or who writes it with them. This small label
+(hidden above 860px, a 13px bold line above the value below it, the same size and colour the
+hidden `<thead>` itself already uses) is shown only on the Person and Written-with cells - the
+two that were actually ambiguous; "Where it stands" is already a full sentence and needs no
+label - and marked `aria-hidden`, since the real column headers are only visually hidden
+(`clip`, not `display: none`) and a screen reader has them at every width regardless.
+
+**No new class, a one-line fix to an existing one:** the same "a bare Tag or Button keeps its own
+width" symptom `.gwui-row > .gwui-btn { justify-self: start; }` already names (Board task, batch
+3, part 7's follow-up, above) also reached a bare `Tag`: on `YourRequestsPage.tsx` at 375 wide,
+"Waiting"/"Approved" stretched edge to edge of the row once its grid collapsed to one column.
+Fixed the same way, scoped to `.gwui-tag` only: `.gwui-row > .gwui-tag { justify-self: start; }`.

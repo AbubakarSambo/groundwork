@@ -1394,6 +1394,11 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    "Change" in the middle of the row, not under the name above it. Scoped to `.gwui-btn` only, so
    every row still stretches its ordinary block content exactly as it did. */
 .gwui-row > .gwui-btn { justify-self: start; }
+/* THE SAME SYMPTOM, FOR A BARE TAG (fault 8 of the live walk of the suites, YourRequestsPage at
+   375): "Waiting"/"Approved" sat as `Row`'s own second column, which stretched it edge to edge the
+   same way a lone Button did above, once the row's grid collapses to its single narrow-width
+   column. Scoped to `.gwui-tag` only, for the same reason the Button rule is scoped. */
+.gwui-row > .gwui-tag { justify-self: start; }
 /* Row's own named side insets (board task, batch 3, part 5) - see the doc comment in Rows.tsx. */
 .gwui-row-inset-panel { padding-left: 22px; padding-right: 22px; }
 .gwui-row-inset-list { padding-left: 15px; padding-right: 15px; }
