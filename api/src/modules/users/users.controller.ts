@@ -153,7 +153,7 @@ export class UsersController {
   /** "Who can join": anyone with this organisation's email domain (U.3). */
   @Get('organization/joining')
   @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Whether anyone with the organisation\'s email domain can join, and which domain' })
+  @ApiOperation({ summary: 'Says whether anyone with the organisation\'s email domain can join, and which domain' })
   async joining(@CurrentUser('organizationId') organizationId: string) {
     return this.usersService.joiningByDomain(organizationId);
   }

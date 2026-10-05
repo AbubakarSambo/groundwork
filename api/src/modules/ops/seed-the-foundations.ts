@@ -112,7 +112,7 @@ const ROADMAP: Array<{
     key: 'solidify-the-core-product',
     title: 'The product works, and works well',
     description:
-      'Every bug fixed, every use case working well, no bottlenecks. Not a proposal: it is the frame the rest of this roadmap sits in, and while the freeze is on it is the only thing being worked on. Usability, security and bugs. Nothing added.',
+      'Every bug is fixed, every use case works well, and nothing holds the work up. This is not a proposal. It is the frame the rest of this roadmap sits in. It is the only thing being worked on while the freeze is on. We work on usability, security and bugs, and add nothing new.',
     itemType: 'stability',
     priority: 1,
     standing: true,

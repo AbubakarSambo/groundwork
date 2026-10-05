@@ -42,7 +42,7 @@ describe('how much room is left', () => {
 describe('the refusal when it comes', () => {
   it('says their record is safe', () => {
     expect(theCeilingIsReached()).toMatch(/on the record/);
-    expect(theCeilingIsReached()).toMatch(/nothing you have written is lost/);
+    expect(theCeilingIsReached()).toMatch(/nothing you have written is lost/i);
   });
 
   it('says what to do', () => {

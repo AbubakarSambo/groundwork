@@ -10,11 +10,11 @@ import { THE_SAME_ANSWER_EITHER_WAY } from './one-answer-at-the-door';
 
 describe('the one answer', () => {
   it('is true whichever branch produced it', () => {
-    expect(THE_SAME_ANSWER_EITHER_WAY).toMatch(/If that address has an account/);
+    expect(THE_SAME_ANSWER_EITHER_WAY).toMatch(/if that address has an account/i);
   });
 
   it('is actionable for somebody who does have a password', () => {
-    expect(THE_SAME_ANSWER_EITHER_WAY).toMatch(/check it and try again/);
+    expect(THE_SAME_ANSWER_EITHER_WAY).toMatch(/check it and try again/i);
   });
 
   it('and for somebody who does not', () => {
@@ -77,8 +77,9 @@ describe('and the sign-in path gives no other answer', () => {
 describe('the one answer is written the way a person reads', () => {
   it('in full sentences, with nothing joined by a dash', () => {
     expect(THE_SAME_ANSWER_EITHER_WAY).toBe(
-      'If that address has an account here, we have emailed you a way in, so check your inbox. ' +
-      'If you have a password and it did not work, check it and try again.',
+      /* Reworded on 5 October (request 141) so the point comes first and the copy guard counts one line fewer. */
+      'We have emailed you a way in, if that address has an account here. Check your inbox. ' +
+      'Did you use a password? Check it and try again.',
     );
     expect(THE_SAME_ANSWER_EITHER_WAY).not.toMatch(/ - /);
   });

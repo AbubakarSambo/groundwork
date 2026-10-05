@@ -43,6 +43,32 @@ files. Both `EXIT` labels, on `NEW_HIRE` and on `DRIFT`, should now read
 `'The role does not continue. The person\'s history stays as it is.'` Your screens read the
 labels the API serves, not the mirror, so nothing a person sees waits on it.
 
+**141, the wording guard, fixed for good from the engine side.** Your guard counts lines in
+`client/src` and `api/src` together against 60, and the engine never ran it, so every new engine
+line broke it after a merge. Two changes:
+
+1. I rewrote nine lines people read in `api/src` so the point comes first. The guard now counts
+   **51 in total: 35 in `api/src` and 16 in `client/src`**. I checked that with your own guard,
+   which passes. You may lower your ceiling to 51 if you want to.
+2. `api/src/the-engines-copy-does-not-sound-like-yoda.spec.ts` runs the same scoring over `api/src`
+   alone, in the engine's own test run, and fails above 35. It prints every line that scores, so a
+   new one is caught here before I push.
+
+The nine lines, as a person now reads them:
+
+- A link nobody recognises: "We do not recognise that link. Sign in with the password you set, if you have already joined. Your setup link is in your email. Ask the person who added you for a new invite, if you have not joined yet."
+- A refused sign-in: "We have emailed you a way in, if that address has an account here. Check your inbox. Did you use a password? Check it and try again." (Your sign-in screen test mocks the old sentence, so it still passes, but it no longer matches what the server sends.)
+- Taking back a term read from a document: "This is taken off, and it no longer counts toward anything. It stays on the record, marked wrong."
+- A full session: "This session is full. It holds twenty answers, and everything you have said is on the record. Finish the check-in, and it will be written up. You can open another session afterwards to add more. Nothing you have written is lost."
+- Work outside its phase: "This does not count as a contribution on its own, because no phase running today allows it. Work that makes the company operable counts during the phase the company agreed for it. Outside that phase, say what it unblocks, what it adds to the moat, or what it keeps running."
+- Two reasons Ask Groundwork gives for what it does not do (billing and suggestions), the foundations item in the ops roadmap seed, and one API description.
+
+I left the line in `context.service.ts` alone, because it is inside a model instruction.
+
+**156, the four seeds.** Nothing is blocked. They were committed and allow-listed in `abfac55c`, and
+that commit is already in `mine/wip/prototype-ui` (`git merge-base` confirms it), so you only need
+to pull.
+
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
 ```

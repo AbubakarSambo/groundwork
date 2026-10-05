@@ -3,6 +3,7 @@
 ## 5 October, after 16:00: your two wording decisions, and the work after them
 
 - When somebody leaves a role, the lead now reads "Kwame's role does not continue. Kwame's history stays as it is.", Kwame reads "Your role does not continue. Your history stays as it is.", and anybody who may not see his name reads "The role does not continue. The person's history stays as it is." (123 item 8). The screens workspace needs to copy the new label into its mirror file, which I was not allowed to edit.
+- The wording guard the screens kept tripping over now counts 51 lines, down from 60, because I rewrote nine engine sentences so the point comes first, and a new engine test fails if `api/src` goes above 35 (request 141).
 
 ## 5 October, 15:30: where I am, for your fresh session
 
