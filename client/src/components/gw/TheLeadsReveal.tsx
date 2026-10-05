@@ -6,12 +6,12 @@ import { SubHeading } from './ui/SubHeading'
 
 /**
  * PIECE 9: THE LEAD'S REVEAL, "Help my team understand" (plan section 5, row 3;
- * docs/anchor-scenario.md sections 11 and 12; docs/answers-from-engine.md, "Request 147").
+ * docs/anchor-scenario.md sections 11 and 12; docs/answers-from-engine.md, "Request 149 (1 of 6)").
  *
  * Shown after the anchor conversation, before people are added - the last step of the set-up
- * screen for an anchor draft (EntryChatPage.tsx, the savecard). Draws nothing at all when
- * `reveal` is undefined: the field is not served yet, so today every caller passes nothing and
- * this component is simply absent, the same as before it existed.
+ * screen for an anchor draft (EntryChatPage.tsx, the savecard). Served now, on `/entry/report`,
+ * only for an anchor draft's own report. Draws nothing at all when `reveal` is undefined: every
+ * other situation's report carries no `leadsReveal` key at all, so this component is simply absent.
  *
  * `carrying` and `seeingToday` are the lead's alone and are never drawn for anybody but the lead
  * who is reading their own set-up screen - there is no other reader here, since nobody else has
