@@ -78,6 +78,7 @@ export const DECLINED_TO_TAKE_PART = 'declined';
 import { mirrorCommitment } from '../assistant/a-commitment-carries-past-the-ground';
 import { STARTED_FROM_THE_ANCHOR, aCheckInStartedFromTheAnchor, theAnchorParticipantGuidance, whatTheyToldYouBefore, withoutAnAnnouncedAngle } from './the-anchor-weekly-check-in';
 import { theAnchorBaselineGuidance } from './the-anchor-baseline';
+import { THE_BASELINE_CLOSING_REMINDER, THE_BASELINE_READ_SYSTEM, THE_BASELINE_READ_TOOL, everythingIsLearned, whatIsLearnedFrom, whatTheBaselineHasLearned, type WhatIsLearned } from './the-baseline-so-far';
 import { whatTheAnswerAgreedTo, hasAlreadyOffered, whatHappenedToTheOffer, weSayAboutTheOffer, whatIsStillOwedToThem, withoutTheSecondTellingOfIt, isAnOfferToWriteItDown, whatTheyJustSaidMayBeTheirOwnStep, YOU_HAVE_ALREADY_OFFERED } from './giving-the-person-agency';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { DocumentsService } from '../documents/documents.service';
@@ -5424,7 +5425,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * Kept beside the prompt, not in it: the caller puts these words after everything else, so they are read last. Otherwise nothing
      * is kept, and the prompt is byte for byte what it was.
      */
-    const anchorWeek = await this.theAnchorWeek(checkIn, ground, untoldHere, latestMessage ?? '').catch((err: any) => {
+    const anchorWeek = await this.theAnchorWeek(checkIn, ground, untoldHere, latestMessage ?? '', turnsThisSession).catch((err: any) => {
       this.logger.warn(`The anchor's weekly guidance for ${checkIn.id} could not be read: ${err?.message}`);
       return null;
     });
@@ -5432,12 +5433,35 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     this.anchorVersionForThisTurn.set(checkIn.id, anchorWeek?.promptVersionId ?? null);
     this.anchorWeekForThisTurn.set(checkIn.id, anchorWeek);
 
-    if (theBaselineRuns) {
+    const theBaselinePrompt = !theBaselineRuns ? '' : await (async () => {
       /* The engine's own rules, the person's language, and the few things every turn needs; the baseline's words follow, and its reminder is read last. */
       const theirFirstName = theFirstNameFrom((checkIn.participant as any)?.user?.firstName, (checkIn.participant as any)?.user?.lastName);
-      return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, theirFirstName ? `The person you are talking with is ${theirFirstName}.` : '', docContext, docPromptHint, cannotBeMissed, askedLastTurn].filter(Boolean).join('\n\n');
-    }
+      /* Their lead, by first name, so the question about what the lead is most concerned about uses a name and not "your lead". */
+      const leadsFirstName = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { initiator: { select: { firstName: true, lastName: true } } } } as any)
+        .then((g: any) => theFirstNameFrom(g?.initiator?.firstName, g?.initiator?.lastName)).catch(() => null);
+      const theBaselineParts = [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, [theirFirstName ? `The person you are talking with is ${theirFirstName}.` : '', leadsFirstName ? `Their lead is ${leadsFirstName}, and the person you are talking with knows that.` : ''].filter(Boolean).join(' '), docContext, docPromptHint, cannotBeMissed, askedLastTurn];
+      return theBaselineParts.filter(Boolean).join('\n\n');
+    })();
+    if (theBaselinePrompt) return theBaselinePrompt;
     return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, burden, putThisToThem, askedWhenThisEnds, theirHedge, theHole, heldBack, proofKindly, whereItIs, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
+  }
+
+  /**
+   * WHICH OF THE NINE THE PERSON HAS TOLD US, from their own words, by one fast read. Nothing when there is nothing to read yet or the read fails:
+   * the baseline then runs on its own words, as before.
+   */
+  private async whatTheBaselineHasLearnedSoFar(turns: { role: 'AI' | 'PERSON'; content: string }[]): Promise<WhatIsLearned | null> {
+    if (!turns.some((t) => t.role === 'PERSON' && t.content.trim())) return null;
+    const history = turns.map((t) => ({ role: t.role === 'AI' ? 'assistant' as const : 'user' as const, content: t.content }));
+    while (history.length && history[history.length - 1].role === 'assistant') history.pop();
+    if (!history.length) return null;
+    try {
+      const read = await this.anthropic.extract<Record<string, boolean>>(THE_BASELINE_READ_SYSTEM, history, THE_BASELINE_READ_TOOL, { fast: true });
+      return whatIsLearnedFrom(read);
+    } catch (err: any) {
+      this.logger.warn(`The baseline could not count what it has learned: ${err?.message}`);
+      return null;
+    }
   }
 
   /** Whether this is the first session of somebody on the anchor lead's team, with the anchor on: the one gate the baseline's own words use too. */
@@ -5475,6 +5499,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     ground: any,
     untoldHere: AnUntoldGoalRow[],
     latestMessage: string,
+    turnsThisSession: { role: 'AI' | 'PERSON'; content: string }[] = [],
   ): Promise<{ text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo>; isTheBaseline?: boolean } | null> {
     const guidance = await theAnchorParticipantGuidance(() => theAnchorScenarioIsOn(this.prisma), this.prompts, {
       ground,
@@ -5496,7 +5521,15 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       const aboutIt = told ? `# What this person has been told this check-in is for
 
 ${told}` : '';
-      return { text: baseline.text, block: aboutIt, last: baseline.last, promptVersionId: baseline.promptVersionId, agreed: null as any, isTheBaseline: true };
+      /* What has been learned so far, counted from the person's own words, and the closing once all nine are. */
+      const learned = await this.whatTheBaselineHasLearnedSoFar(turnsThisSession);
+      const closes = !!learned && everythingIsLearned(learned);
+      return {
+        text: baseline.text,
+        block: [aboutIt, learned ? whatTheBaselineHasLearned(learned) : ''].filter(Boolean).join('\n\n'),
+        last: closes ? THE_BASELINE_CLOSING_REMINDER : baseline.last,
+        promptVersionId: baseline.promptVersionId, agreed: null as any, isTheBaseline: true,
+      };
     }
     const lastCheckIn = await this.prisma.checkIn.findFirst({
       where: { participantId: checkIn.participantId, sessionNumber: { lt: checkIn.sessionNumber }, status: CheckInStatus.COMPLETED },

@@ -3,6 +3,7 @@ import { ConversationService } from './conversation.service';
 import { ConversationContextService } from './context.service';
 import { ANCHOR_BASELINE_PROMPT, ANCHOR_BASELINE_PROMPT_KEY, THE_BASELINE_GUIDANCE, THE_BASELINE_REMINDER, theAnchorBaselineGuidance } from './the-anchor-baseline';
 import { READ_THIS_LAST } from './the-anchor-lead-conversation';
+import { THE_NINE, THE_BASELINE_CLOSING_REMINDER, everythingIsLearned, whatIsLearnedFrom } from './the-baseline-so-far';
 
 /**
  * ANCHOR PIECE 14: THE TEAM BASELINE IS THE FIRST SESSION FOR SOMEBODY ON THE LEAD'S TEAM (section 15; decision 105
@@ -225,5 +226,46 @@ describe('the team baseline is read on its own words, not under the situation\'s
   it('leaves the weekly check-in (the second session) under the situation\'s pack, as it was', async () => {
     const prompt = await aWorld({ startedFrom: 'anchor', switchOn: true, sessionNumber: 2, scenario: GroundScenario.HELP_TEAM_UNDERSTAND }).compose();
     expect(prompt).not.toContain('How to open: greet them by their first name');
+  });
+});
+
+describe('the team baseline counts what it has learned from the person\'s own words, and closes only when all nine are learned (6 October)', () => {
+  const ALL = Object.fromEntries(THE_NINE.map((n) => [n.key, true]));
+  async function promptWhenLearned(learned: Record<string, boolean> | null) {
+    const world = aWorld({ startedFrom: 'anchor', switchOn: true, turns: [{ role: 'AI', content: 'What are you working on right now?' }], answer: 'Getting the trucks out on time.' });
+    const seen: string[] = [];
+    const extract = jest.fn(async (_s: string, _h: any, tool: any) => { if (tool?.name === 'what_the_person_has_told_us') return learned; throw new Error('not this one'); });
+    (world.service as any).anthropic = { respond: jest.fn(async (system: string) => { seen.push(system); return 'Thank you.'; }), extract };
+    await world.service.sendMessage('ci2', 'user-1', 'Getting the trucks out on time.');
+    return { prompt: seen[0] ?? '', extract };
+  }
+
+  it('hands the model what is learned and what is not, as labels only, and tells it not to close', async () => {
+    const { prompt } = await promptWhenLearned({ ...Object.fromEntries(THE_NINE.map((n) => [n.key, false])), workingOn: true, responsibleFor: true });
+    expect(prompt).toContain('Learned already. Do not ask about these again:\n- what they are working on\n- what they are responsible for');
+    expect(prompt).toContain('Not learned yet. Ask about only these, one at a time');
+    expect(prompt).toContain('- who they depend on\n- who depends on them');
+    expect(prompt).toContain('You must not close yet.');
+    expect(prompt).not.toContain('all nine things are learned');
+    expect(prompt).not.toContain('Getting the trucks out on time.');
+  });
+
+  it('tells it to close, in two sentences with no question, once all nine are learned, and says so last', async () => {
+    const { prompt } = await promptWhenLearned(ALL);
+    expect(prompt).toContain(THE_BASELINE_CLOSING_REMINDER);
+    expect(prompt.endsWith(THE_BASELINE_CLOSING_REMINDER)).toBe(true);
+    expect(prompt).not.toContain('Not learned yet.');
+  });
+
+  it('runs on its own words when the count fails, as it did before', async () => {
+    const { prompt } = await promptWhenLearned(null);
+    expect(prompt).toContain('Ask exactly one question in this turn');
+    expect(prompt).not.toContain('Learned already.');
+  });
+
+  it('keeps what was learned: a thing learned once stays learned', () => {
+    expect(whatIsLearnedFrom({ workingOn: false }, { workingOn: true }).workingOn).toBe(true);
+    expect(everythingIsLearned(whatIsLearnedFrom(ALL))).toBe(true);
+    expect(everythingIsLearned(whatIsLearnedFrom({ ...ALL, dependOn: false }))).toBe(false);
   });
 });
