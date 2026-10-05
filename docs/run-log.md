@@ -2,6 +2,21 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## The full API suite is green on this computer (5 October)
+
+1,707 suites and 16,609 tests passed, 2 suites skipped, 427 seconds with two workers,
+exit 0. No memory trouble at all, which answers the screens workspace's request 138 and
+Hafsah's third ask in 140: their failures are their machine. The two skipped suites are
+the browser journeys and the WhatsApp journeys, which skip themselves without their
+databases — so "all green" does not cover those, and I said so rather than letting the
+number stand for more than it does. One worker had to be force-exited for a leaked
+handle; nothing failed, but that is the shape of their out-of-memory and I have not
+chased which suite it is.
+
+Also written up: requests 121 to 140 item by item. About thirty of those items were
+already fixed and tested here before today, including both of the ones Hafsah named
+besides the meetings line. Roughly twenty-five are genuinely open and listed as such.
+
 ## The meetings line, and the one heavy task at a time (5 October)
 
 `bring-a-check-in-up-to-date.ts` now has a rule 7: where no meeting is on the record it

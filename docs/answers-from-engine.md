@@ -19,6 +19,88 @@ Read this one from their side with:
 
 *Read at 26 September against `920f67f8`.*
 
+## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
+
+```
+npx jest --maxWorkers=2            (from api/, at 9f29a874)
+
+Test Suites: 2 skipped, 1707 passed, 1707 of 1709 total
+Tests:       2 skipped, 16609 passed, 16611 total
+Time:        427.471 s          exit code 0
+```
+
+Nothing ran out of memory: "JavaScript heap out of memory" appears nowhere in the run, and none of
+the files you named in request 138 failed. So those failures are your machine, not the tests, and
+two workers is probably the difference — the default is one per core, and each suite builds enough
+of Nest that a machine with more cores runs more of them at once and needs more memory, not less.
+Try `npx jest --maxWorkers=2` before anything else.
+
+Two things worth knowing from the run:
+
+- **The two skipped suites are `journey/user-journeys.spec.ts` and
+  `journey/whatsapp-journeys.spec.ts`.** They skip themselves without their databases, so a plain
+  run does not cover the browser journeys or the WhatsApp ones. Neither of us should read "all
+  green" as covering those.
+- **One worker had to be force-exited** at the end: "A worker process has failed to exit gracefully
+  … likely caused by tests leaking due to improper teardown." Nothing failed because of it, but a
+  suite that leaves timers or a connection open is exactly the kind of thing that turns into your
+  out-of-memory on a machine running more workers. I have not chased which one yet.
+
+## Requests 121 to 140, item by item, against this head
+
+The boards you reviewed are on your computer, not mine, so I cannot re-serve them. What I can say
+for each item is whether a fix has landed here and what holds it. Where I name a test, that test is
+the thing to read: it is written as the reader, not as the function.
+
+| Item | Where it stands | What holds it |
+| --- | --- | --- |
+| 121 (1) the gap's date | Fixed | `request-121-1-the-gap-says-the-day-the-aim-is-due.spec.ts` |
+| 121 (2) the duplicate target still stored | Fixed in the script, not in the engine | `bring-a-check-in-up-to-date.ts` rule 4 now reads the lead's own aim too; `bring-a-check-in-up-to-date.spec.ts`, "the lead's own aim, said again with no number" |
+| 121 (3) "You can write down what it assumes here." | Fixed | `request-121-3-a-target-does-not-point-to-a-place-that-is-not-there.spec.ts` |
+| 121 (4) Faraji chased although not let in | Fixed | `request-121-4-somebody-waiting-to-be-let-in-is-not-chased.spec.ts` |
+| 121 (5) the engine's text counts six | Fixed | `request-121-5-a-person-not-let-in-is-not-counted-as-missing.spec.ts` |
+| 122 (1) Today says nothing needs her | Fixed | `request-122-1-today-says-what-the-board-says-needs-the-lead.spec.ts` |
+| 122 (2) the wrong day for the next check-in | Fixed | `request-122-2-today-gives-the-day-the-board-gives.spec.ts` |
+| 125 (1) "Dr has set a goal" / the untold goal | Fixed | the five `request-125-*` specs |
+| 125 (2) two counts of one thing | Fixed | `request-125-one-count-of-the-goals-not-told.spec.ts` |
+| 127 (1), 129 (1), 133 (4) no headline question | Fixed | `request-127-129-the-headline-question-on-more-boards.spec.ts` |
+| 127 (2) (3), 134 (1) garbled and repeated waits | Fixed | `request-127-134-a-wait-is-said-once-and-whole.spec.ts` |
+| 127 (5), 129 (3), 131 (1), 132 (e) "their"/"they" for the reader | Fixed | `aSentenceAboutTheReaderSaysYou` in `a-stored-sentence-reads-right.ts` |
+| 127 (8), 129 (8), 135 (5), 136 (8) the broken `latestFinding` | Fixed | `a-finding-reads-right.ts` and its spec |
+| 127 (9) a surname holding "Lead" | Fixed | `request-127-a-surname-that-is-a-role-is-no-surname.spec.ts` |
+| 127 (11) `reportedAgainstCriteria` | Fixed | `request-127-the-engineering-board-reports-against-the-rules.spec.ts` |
+| 127 (10), 129 (4), 130 (c), 131 (2), 132 (g), 134 (2), 135 (4), 136 (5) the meetings line | Fixed twice: left out when served, and now taken out of the row | `withoutTheMeetingsLine`; `bring-a-check-in-up-to-date.ts` rule 7 |
+| 128 (1) the lead counted in the 90 days | Fixed | `request-128-the-lead-is-not-who-the-90-days-are-about.spec.ts` |
+| 129 (5) what someone does now, typed as an intention | Fixed | `request-129-a-line-is-an-intention-only-if-it-intends.spec.ts` |
+| 129 (6), 133 (3), 135 (2) a name said twice | Fixed | `a-name-said-twice-in-a-row.ts`, `a-name-is-not-said-twice-on-the-board.spec.ts` |
+| 129 (7) a count where a thing belongs | Fixed | `request-129-where-this-is-heading-names-the-thing.spec.ts` |
+| 130 (a) the first count read as a rise | Fixed | `request-130-a-first-count-is-not-a-rise.spec.ts` |
+| 131 (3) a colon joining pieces | Fixed | `a-stored-sentence-reads-right.ts`, the "What changed:" rules |
+| 131 (4) counts as words | Fixed | `request-131-a-tally-counts-only-what-there-is.spec.ts` |
+| 132 (a) the glance undercounts | Fixed | `request-132-the-glance-counts-what-the-list-holds.spec.ts` |
+| 132 (c) two readings of one fact | Fixed | `request-132-two-readings-of-one-fact.spec.ts` |
+| 132 (d) "Kiambu County has 1 county" | Fixed | `request-132-the-county-is-not-counted-as-work-in-itself.spec.ts` |
+| 132 (g) "chased it" about two things | Fixed | `a-stored-sentence-reads-right.ts` |
+| 133 (2) "Your own account" about somebody else | Fixed | `the-judgement-reads-right.ts` |
+| 134 (6) "the oldest" of one thing | Fixed | `request-134-the-glance-says-who-waits.spec.ts` |
+| 135 (1), 136 (4) "That call has been open a while -" | Fixed | `a-stored-sentence-reads-right.ts` |
+| 136 (2) the work plan leaves out the session | Fixed | `request-136-the-founders-work-plan-holds-the-sessions-commitments.spec.ts` |
+| 139 the pattern title "Does the coordinating other people skipped" | Fixed | renamed to "Takes on coordination other people left undone" (decision 104, provisional) |
+| 130 (e), 134 (3) coaching that contradicts its heading | Fixed | `a-stored-sentence-reads-right.ts`, the two "rather than asking about" rules |
+| 136 (6) written for a team, on a one-person check-in | Fixed | `onlyTheLeadIsHere` in `where-you-are-against-what-you-named.ts`, set in `reports.service.ts:3604` |
+| 136 (3) clipped quotes | Fixed | `what-the-record-shows-over-time.ts`, the "two clipped quotes" rule |
+
+### Still open, and honestly so
+
+123 (3) (4) (5) (8) (9) (10) (11) · 127 (4) (6) (7) · 128 (2) · 129 (2) · 130 (b) (d) (f) ·
+131 (5) (6) · 132 (b) (f) · 133 (1) · 134 (4) (5) (7) · 135 (3) · 136 (1) (7) · 139 (the goal drawn
+as a bare line) · 140 (1) in part.
+
+133 (1) is the one I want to flag rather than fix quietly: the sales probe reaches a loans check-in
+because the person was mapped to the sales role, so the question is the role map's, not the loans
+board's. That is the model's own reading of a role, not a sentence I can rewrite, and the fix
+belongs in how a kind of work picks its role map. I have not started it.
+
 ## The meetings line is out of the stored row, not only out of what is served (127, 129–136, and 140 item 1)
 
 You asked, in 131 (2) and again through Hafsah in 140 (1), for
