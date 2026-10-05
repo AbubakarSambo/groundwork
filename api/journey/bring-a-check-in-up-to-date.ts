@@ -16,6 +16,9 @@
  *   5. A person's own aim keeps the thing counted as its name and the day as its date (request 117, part 11).
  *   6. A deal added on the board with nobody's name on it, which somebody then said in their own words was theirs,
  *      gets that claim put to the lead, who answers it on her board (decision 76, item 3). Nobody's name is set.
+ *   7. A stored report that speaks of meetings where nobody mentioned one has that line taken out (screens requests
+ *      127, 129, 130, 131, 132, 134, 135, 136, and Hafsah's ask in 140). The line is already left out when a board
+ *      is served, but the row still holds it, so anything else that reads the row still reads the line.
  *
  * What it cannot do, because only the model reads it: a number somebody reported (Neema's "I signed Karen Hardware
  * on 22 September" is not counted against her 4 shops in Karen), which wait a person meant (Neema's "waiting on the
@@ -49,6 +52,7 @@ import { theDayKeptApart } from '../src/modules/board/an-aim-is-a-sentence-about
 import { theDayTheyMeant } from '../src/modules/grounds/when-a-handoff-is-due';
 import { theClaimOn, withAClaim } from '../src/modules/board/a-claim-on-a-record-is-checked-first';
 import { theDayInWords } from '../src/modules/board/the-day-in-words';
+import { aMeetingIsOnRecord, THE_MEETINGS_LINE } from '../src/modules/reports/what-the-record-shows-over-time';
 
 export type AChangeKind =
   | 'a wait on oneself'
@@ -56,7 +60,8 @@ export type AChangeKind =
   | 'the number in the aim\'s name'
   | 'the aim said again'
   | 'the day kept apart'
-  | 'a claim for the lead';
+  | 'a claim for the lead'
+  | 'a meeting nobody mentioned';
 
 export interface AChange {
   groundId: string;
@@ -68,7 +73,8 @@ export interface AChange {
     | { table: 'groundDependency'; delete: true }
     | { table: 'groundObjective'; delete: true }
     | { table: 'groundObjective'; data: Record<string, unknown>; snapshotsBackTo?: number; atSession?: number | null }
-    | { table: 'workItem'; data: Record<string, unknown> };
+    | { table: 'workItem'; data: Record<string, unknown> }
+    | { table: 'report'; data: Record<string, unknown> };
 }
 
 export interface WhatWouldChange {
@@ -214,6 +220,31 @@ export async function whatWouldChange(prisma: any, onlyCheckIn: string | null = 
       push({ kind: 'a claim for the lead', id: i.id, write: { table: 'workItem', data: { fields: withAClaim(i.fields, line.participantId, line.id, new Date(line.createdAt)) } },
         says: `${label}: ${who} said, ${inMarks(line.text)}. The ${i.name} ${i.kind} has nobody's name on it, so ${isLead ? who : (lead ? nameOf(lead) : 'whoever runs it')}, who runs it, would be asked on the board whether it is ${who}'s ${i.kind}. Nobody's name is set until then.` });
     }
+    /*
+     * 7: A STORED REPORT THAT SPEAKS OF MEETINGS NOBODY MENTIONED.
+     *
+     * The line is only written where a meeting is on the record, and it is already left out when a board is served
+     * (withoutTheMeetingsLine). The stored row still holds it, though, so the screens read it back out of the row and
+     * Hafsah asked for the row itself to be put right (request 140, item 1). The same reading decides it as the one the
+     * engine writes by: aMeetingIsOnRecord over this check-in's record lines, nothing else.
+     */
+    /* Optional all the way down: a test double, or an older database, may hold no report at all. */
+    const report = await Promise.resolve(prisma?.report?.findUnique?.({ where: { groundId: g.id }, select: { id: true, overTime: true } })).catch(() => null);
+    const stored: any = report?.overTime ?? null;
+    if (report && stored && typeof stored === 'object' && !aMeetingIsOnRecord(lines as any[])) {
+      const held = (key: 'cannotTellYou' | 'toSettleFirst') => (Array.isArray(stored[key]) ? stored[key] : []).filter((l: unknown) => THE_MEETINGS_LINE.test(String(l)));
+      const lost = [...held('cannotTellYou'), ...held('toSettleFirst')];
+      if (lost.length) {
+        const kept = {
+          ...stored,
+          cannotTellYou: (Array.isArray(stored.cannotTellYou) ? stored.cannotTellYou : []).filter((l: unknown) => !THE_MEETINGS_LINE.test(String(l))),
+          toSettleFirst: (Array.isArray(stored.toSettleFirst) ? stored.toSettleFirst : []).filter((l: unknown) => !THE_MEETINGS_LINE.test(String(l))),
+        };
+        push({ kind: 'a meeting nobody mentioned', id: report.id, write: { table: 'report', data: { overTime: kept } },
+          says: `${label}: the stored report says ${inMarks(String(lost[0]))}${lost.length > 1 ? ` (and ${lost.length - 1} more like it)` : ''}, though nobody in this check-in spoke of a meeting. ${lost.length === 1 ? 'It' : 'They'} would be taken out of the row, as ${lost.length === 1 ? 'it is' : 'they are'} already left out when a board is served.` });
+      }
+    }
+
     void checkIns;
   }
   return out;
