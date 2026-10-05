@@ -149,7 +149,6 @@ import { Page, CheckInHeader, Section, Panel, RowList, Row, Tag, type TagTone, B
 import { initialsOf } from '@/pages/org/people-here'
 import { cadenceLabel } from '@/lib/cadence'
 import { phaseSpineSentence } from '@/lib/phase-spine-sentence'
-import { scrollTo } from '@/lib/scroll-to'
 import { KindOfWorkBanner, WorkRecordsSections, YourOwnRecordsSections, TheShapeOfTheWorkStrip, sectionHeading } from './WorkRecords'
 import {
   RisksSection, WorkPlanSection, TimelineSection, PersonHistorySection, BlockersSection,
@@ -2993,13 +2992,22 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {/*
           "WHERE THIS IS HEADING" (request 108 d; board-as-lead.txt). Sent to whoever runs the
-          check-in only. "Record the decision" opens the existing ResolutionPanel above - the one
-          place that already lets the lead record an outcome - rather than building a second one.
+          check-in only.
+
+          RELEASE WALKTHROUGH A, FIX 5: "RECORD THE DECISION" USED TO SCROLL TO AN EMPTY DIV.
+          `#record-the-decision` holds `ResolutionPanel` at `place="board-top"`, which renders
+          nothing at all once the check-in is not near its end (`nearTheEnd === false`) - a real
+          gap, since the server sends this whole section, button included, on its own schedule,
+          which can disagree with the client's. And even in the one case that panel DOES render,
+          it is only a card with its own "Decide how it ends" button to the ending page - never the
+          actual form, which only ever lives there. So this goes straight to the ending page now:
+          the one place `ResolutionPanel` renders unconditionally for the lead, never empty, and one
+          click closer than the card it used to open onto.
         */}
         {(b as any).whereThisIsHeading && (
           <WhereThisIsHeadingSection
             data={(b as any).whereThisIsHeading}
-            onRecordTheDecision={() => scrollTo(document.getElementById('record-the-decision'), { block: 'start' })}
+            onRecordTheDecision={() => navigate(`/grounds/${id}/end`)}
           />
         )}
 
