@@ -117,7 +117,19 @@ describe('Wairimu, the lead who approves, reads the leave board', () => {
     open(WAIRIMU, WAIRIMUS)
     ;(leaveBoardApi.decide as any).mockRejectedValue(refusal(400, 'This request has already been decided.'))
     fireEvent.click(await screen.findByRole('button', { name: 'Decline Aisha Otieno’s request' }))
+    /* Decline now asks "Say why" first, as spending does (live walk); the decline is sent from there. */
+    fireEvent.click(within(rows()[0]).getByRole('button', { name: 'Decline' }))
     expect(await within(rows()[0]).findByRole('alert')).toHaveTextContent('This request has already been decided.')
+  })
+
+  it('asks why before declining, and sends what was said as the reason the person is told', async () => {
+    open(WAIRIMU, WAIRIMUS)
+    ;(leaveBoardApi.decide as any).mockResolvedValue({ ...WAIRIMUS, waiting: [SAMUEL] })
+    fireEvent.click(await screen.findByRole('button', { name: 'Decline Aisha Otieno’s request' }))
+    expect(leaveBoardApi.decide).not.toHaveBeenCalled()
+    fireEvent.change(screen.getByLabelText('Say why (optional)'), { target: { value: 'Two of the team are already off that week.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Decline' }))
+    await waitFor(() => expect(leaveBoardApi.decide).toHaveBeenCalledWith('r-aisha', 'decline', 'Two of the team are already off that week.'))
   })
 
   /*

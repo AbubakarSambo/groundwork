@@ -92,8 +92,9 @@ export interface LeaveBoard { reader?: 'admin' | 'lead' | 'approver' | 'hr'; wai
 
 export const leaveBoardApi = {
   get: async (): Promise<LeaveBoard> => (await apiClient.get('/suites/leave/board')).data,
-  decide: async (id: string, outcome: 'approve' | 'decline'): Promise<LeaveBoard> =>
-    (await apiClient.post(`/suites/leave/requests/${id}/${outcome}`)).data,
+  /** `reason` is only ever sent with a decline (the controller's `DeclineDto`); the person is told it. */
+  decide: async (id: string, outcome: 'approve' | 'decline', reason?: string): Promise<LeaveBoard> =>
+    (await apiClient.post(`/suites/leave/requests/${id}/${outcome}`, outcome === 'decline' ? { reason } : undefined)).data,
   ask: async (id: string, question: string): Promise<LeaveBoard> =>
     (await apiClient.post(`/suites/leave/requests/${id}/question`, { question })).data,
 }

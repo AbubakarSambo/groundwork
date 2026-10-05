@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { leaveBoardApi, type LeaveWaiting } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
-import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row, Tag, ExampleExchange } from '@/components/gw/ui'
+import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row, Tag, ExampleExchange, FieldLabel, TextArea } from '@/components/gw/ui'
 import { theDaysInFull, theDaysShort } from './the-days-someone-is-off'
 import { AskAQuestion } from './AskAQuestion'
 import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
@@ -128,8 +128,11 @@ export function LeaveBoardPage() {
 function ARequest({ w }: { w: LeaveWaiting }) {
   const qc = useQueryClient()
   const [problem, setProblem] = useState<string | null>(null)
+  const [declining, setDeclining] = useState(false)
+  const [reason, setReason] = useState('')
   const decide = useMutation({
-    mutationFn: (outcome: 'approve' | 'decline') => leaveBoardApi.decide(w.id, outcome),
+    mutationFn: (outcome: 'approve' | 'decline') =>
+      outcome === 'decline' ? leaveBoardApi.decide(w.id, outcome, reason.trim() || undefined) : leaveBoardApi.decide(w.id, outcome),
     onSuccess: (board) => { setProblem(null); qc.setQueryData(['suite-leave'], board) },
     onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
   })
@@ -147,13 +150,26 @@ function ARequest({ w }: { w: LeaveWaiting }) {
         {w.mayDecide && (
           <AskAQuestion id={w.id} who={w.name} send={async q => qc.setQueryData(['suite-leave'], await leaveBoardApi.ask(w.id, q))} />
         )}
+        {/* As spending's Decline (live walk, fault 6): an optional reason first, which the person is told. */}
+        {declining && (
+          <form className="gwui-suite-ask" onSubmit={e => { e.preventDefault(); decide.mutate('decline') }}>
+            <div className="gwui-suite-q">
+              <FieldLabel htmlFor={`leave-decline-${w.id}`}>Say why (optional)</FieldLabel>
+              <TextArea id={`leave-decline-${w.id}`} rows={2} value={reason} onChange={e => setReason(e.target.value)} maxLength={1000} />
+            </div>
+            <div className="gwui-edge-acts">
+              <Button kind="secondary" size="small" type="submit" disabled={decide.isPending}>Decline</Button>
+              <Button kind="quiet" size="small" onClick={() => { setDeclining(false); setReason(''); setProblem(null) }}>Cancel</Button>
+            </div>
+          </form>
+        )}
         {problem && <Note tone="error">{problem}</Note>}
       </div>
-      {w.mayDecide && (
+      {w.mayDecide && !declining && (
         <div className="gwui-edge-acts">
           <Button kind="secondary" size="small" onClick={() => decide.mutate('approve')} disabled={decide.isPending}
             aria-label={`Approve ${w.name}’s request`}>Approve</Button>
-          <Button kind="quiet" size="small" onClick={() => decide.mutate('decline')} disabled={decide.isPending}
+          <Button kind="quiet" size="small" onClick={() => setDeclining(true)} disabled={decide.isPending}
             aria-label={`Decline ${w.name}’s request`}>Decline</Button>
         </div>
       )}
