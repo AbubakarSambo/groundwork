@@ -700,14 +700,18 @@ export function AppSidebar() {
   const recentUnpinned = recentlyOpenedFor(user?.id)
     .map(id => unpinned.find(g => g.id === id))
     .filter((g): g is Ground => !!g && !needsYouUnpinnedIds.has(g.id))
-  const roomForRecent = Math.max(0, SIDEBAR_CAP - needsYouUnpinned.length)
+  /* The ones that need this person are capped too: a lead with twenty waiting on them would
+     otherwise get twenty rows, which is the list Hafsah found unusable. The rest are one click
+     away under "All check-ins (n)". */
+  const needsYouShown = needsYouUnpinned.slice(0, SIDEBAR_CAP)
+  const roomForRecent = Math.max(0, SIDEBAR_CAP - needsYouShown.length)
   const shownUnpinned = unpinned.length <= SIDEBAR_CAP
     ? unpinned
-    : [...needsYouUnpinned, ...recentUnpinned.slice(0, roomForRecent)]
+    : [...needsYouShown, ...recentUnpinned.slice(0, roomForRecent)]
   const shownClosed = closed.slice(0, SIDEBAR_CLOSED_CAP)
   /* How many more exist than the sidebar is showing, for "All check-ins (n)" - never shown when
      everything the reader can see already has a row on screen. */
-  const hiddenCount = Math.max(0, grounds.length - (pinned.length + shownUnpinned.length + closed.length))
+  const hiddenCount = Math.max(0, grounds.length - (pinned.length + shownUnpinned.length + shownClosed.length))
 
   /* ONE GATE. Every door below comes out of `navItemsFor`, and is only sorted into its part here. */
   const items = navItemsFor(user)

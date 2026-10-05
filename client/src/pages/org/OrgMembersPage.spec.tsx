@@ -150,7 +150,7 @@ describe('everyone at Baridi', () => {
   it('the search box finds somebody by name, by email, or by a check-in they are in', async () => {
     open()
     await screen.findByText('Miriam Wanjiku', { selector: '.gwui-person-name' })
-    const find = screen.getByPlaceholderText('Find somebody by name, email or a check-in they are in')
+    const find = screen.getByPlaceholderText('Find a person or a check-in')
     fireEvent.change(find, { target: { value: 'wairimu kamau' } })
     expect(screen.getByText('1 person shown.')).toBeTruthy()
     expect(screen.getByText('Wairimu Kamau', { selector: '.gwui-person-name' })).toBeTruthy()
@@ -230,9 +230,17 @@ describe('everyone at Baridi', () => {
      * check-ins is still reachable from this same cell.
      */
     const lenaRow = within(screen.getByText('Lena Lead', { selector: '.gwui-person-name' }).closest('[role="row"]') as HTMLElement)
-    expect(lenaRow.getByText(/Sales team, Q3, MarketView, where next, test, Kasarani Foods v Pwani Mills, test/)).toBeTruthy()
+    /* Live walk at a hundred check-ins: these names carry commas of their own ("Sales team, Q3"),
+       so a comma between them could not tell one from the next. Each now sits on its own line. */
+    expect(lenaRow.getByText('Sales team, Q3')).toBeTruthy()
+    expect(lenaRow.getByText('MarketView, where next, test')).toBeTruthy()
+    expect(lenaRow.getByText('Kasarani Foods v Pwani Mills, test')).toBeTruthy()
     fireEvent.click(lenaRow.getByRole('button', { name: 'and 3 more' }))
-    expect(lenaRow.getByText(/Help a new hire get started, Check how the same role is going/)).toBeTruthy()
+    expect(lenaRow.getByText(/Help a new hire get started/)).toBeTruthy()
+    expect(lenaRow.getByText(/Check how the same role is going/)).toBeTruthy()
+    /* And the list folds back. */
+    fireEvent.click(lenaRow.getByRole('button', { name: 'Show fewer' }))
+    expect(lenaRow.getByRole('button', { name: 'and 3 more' })).toBeTruthy()
   })
 
   it('someone declined at the door reads "Not let in", not "Waiting to be let in" (Hafsah, 29 September)', async () => {

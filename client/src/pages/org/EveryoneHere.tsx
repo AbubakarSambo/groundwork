@@ -123,10 +123,27 @@ function CheckInsCell({ m, startOf }: { m: OrgMember; startOf: Map<string, { sta
   const [expanded, setExpanded] = useState(false)
   const parts = checkInsPartsApart(m, startOf)
   if (parts.length === 0) return <span>None</span>
-  if (expanded || parts.length <= CAP) return <span>{parts.join(', ')}</span>
+  /* Commas between the names, as the prototype writes them, unless a name has a comma of its own
+     ("the Nairobi route, round 1"): then a comma cannot tell one check-in from the next, so each
+     goes on its own line. */
+  const oneALine = parts.some(p => p.includes(','))
+  const list = (some: string[]) => oneALine
+    ? <>{some.map((p, i) => <div key={i}>{p}</div>)}</>
+    : <>{some.join(', ')}</>
+  if (parts.length <= CAP) return <span>{list(parts)}</span>
+  if (expanded) {
+    return (
+      <span>
+        {list(parts)}{' '}
+        <button type="button" className="gwui-plain-link" onClick={() => setExpanded(false)}>
+          Show fewer
+        </button>
+      </span>
+    )
+  }
   return (
     <span>
-      {parts.slice(0, CAP).join(', ')}{' '}
+      {list(parts.slice(0, CAP))}{' '}
       <button type="button" className="gwui-plain-link" onClick={() => setExpanded(true)}>
         {`and ${parts.length - CAP} more`}
       </button>
@@ -234,7 +251,7 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
             <TextField
               value={find}
               onChange={(e) => setFind(e.target.value)}
-              placeholder="Find somebody by name, email or a check-in they are in"
+              placeholder="Find a person or a check-in"
               aria-label="Find somebody by name, email or a check-in they are in"
               style={{ maxWidth: 240 }}
             />

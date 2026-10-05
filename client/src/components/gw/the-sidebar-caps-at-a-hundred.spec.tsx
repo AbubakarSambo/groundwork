@@ -21,10 +21,10 @@ import { rememberOpened } from './recently-opened-check-ins'
 const LEAD = { id: 'u-lead', email: 'lead@coamana.test', firstName: 'Rukia', lastName: 'Otieno', role: 'MEMBER', organizationName: 'Coamana' } as any
 
 /** A hundred check-ins: two that need the lead now, the rest quiet - a large organisation's rail. */
-function aHundredGrounds() {
+function aHundredGrounds(waiting: number[] = [2, 5]) {
   const grounds: any[] = []
   for (let i = 0; i < 100; i++) {
-    const needsYou = i === 2 || i === 5
+    const needsYou = waiting.includes(i)
     grounds.push({
       id: `g${i}`,
       label: `Check-in ${i}`,
@@ -82,6 +82,15 @@ describe('the sidebar at a hundred check-ins', () => {
     // The one opened most recently (g41) sits ahead of the one opened before it (g40), once the
     // two "needs you" rows are accounted for.
     expect(names.indexOf('Check-in 41')).toBeLessThan(names.indexOf('Check-in 40'))
+  })
+
+  it('caps the ones that need the lead too: twenty waiting on a busy lead is still eight rows', () => {
+    /* The live walk with the hundred-check-in organisation: Kofi has twenty waiting on him, and the
+       "needs you" rows were not capped, so he got twenty rows. */
+    const twenty = Array.from({ length: 20 }, (_, i) => i * 3)
+    const { rail } = mount(aHundredGrounds(twenty))
+    expect(rowNames(rail).length).toBe(8)
+    expect(within(rail).getByRole('link', { name: /All check-ins \(100\)/ })).toBeInTheDocument()
   })
 
   it('offers "All check-ins" with the full count, as the way to the rest', () => {
