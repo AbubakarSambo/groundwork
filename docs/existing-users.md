@@ -359,6 +359,43 @@ So nothing got worse since 20:00. Two things were already open and still are: Fi
 
 **Left behind on this computer:** the database `gw_final_existing`. `dropdb` is not allowed. The temporary spec copy was deleted, and the old-code worktrees were removed.
 
+## 11. Checked again on 6 October, early morning, at `6fdf245a`
+
+Sections 4, 5 and 7 were run again by a tester on commit `6fdf245a` (40 commits after `2bd25a9e`), in a detached worktree, so another builder's uncommitted work did not count. Everything ran on this computer only. The scripts' read-only guards were on, and the model, mailer and WhatsApp were stand-ins. The old code is `origin/main`, still `824b7e3b`.
+
+**The database.** `gw_pw9_1786222102` was only read, by `pg_dump`, into a new local database, `gw_existing_6oct_a`. The copy holds 1,846 check-ins, 10,996 sessions and 1,606 reports, the same as the copy in section 10. It was missing the two newest migrations (`20261005230000_a_whatsapp_send_keeps_its_message_id` and `20261006030000_a_check_in_keeps_the_anchor_situation`, both of which only add empty columns or indexes), so they were applied to the copy, as release night would.
+
+**Section 4, scheduled check-ins carry on. All 10 tests pass (9 of 10 in section 10).** A temporary copy of `existing-clients-carry-on.spec.ts` pointed at the copy was run, then deleted. The test that failed in section 10 (it expected 83 migrations) now expects 85 and passes. Every column of every check-in is the same before and after, no email, no announcement, no stall, and the stalled check-in stays stalled.
+
+**Section 5, the check script, oldest 150 check-ins.** Same as section 10, line for line: 861 reads, 808 served, 53 refused on purpose (every one is "There is no report yet", the report is not finished, or the one empty check-in), 0 failed, 0 tried to write. Leads 423 of 450, participants 358 of 372, admins 27 of 39. Nothing private was served. The same 12 next sessions left behind by journey runs. 253 people have a session open, 0 would be reminded on the next morning run, 0 leads would be told who has not started. No stalled check-in is picked up by the nightly jobs.
+
+**Other specs, run in order in the worktree.** The billing, assistant, ask, suites and admin spec folders: 154 suites, 2,233 tests, all pass.
+
+**Section 7, the old code against the new.**
+
+| | 2bd25a9e (section 10) | Now, 6fdf245a |
+| --- | --- | --- |
+| Reads served, old then new | 1,482 / 1,464 | 1,482 / 1,464 |
+| Sentences the old code showed | 54,489 | 54,489 |
+| Still readable | 50,001 | 50,001 |
+| Not found: stock | 2,402 | 2,403 |
+| Not found: the lead's judgement, which a participant no longer reads | 2,150 | 2,150 |
+| Not found: later sessions waiting for the lead | 404 | 404 |
+| Not explained (leads, participants, admins) | 924 (345, 552, 27) | 923 (344, 552, 27) |
+| Named people no longer named | 224 | 224 |
+| Private material newly served | none | none |
+| Ask Groundwork answered, old then new | 210 / 105 | 210 / 105 |
+| Company page, suites page served (none failed) | 4,812 / 3,218 | 4,812 / 3,218 |
+| FAULT lines | 18 | 18, the same three check-ins |
+| Wording on the new side: labels, jargon, lower case, cut mid-word, "1 people" | 1,058, 1,490, 19, 84, 2 | 1,058, 1,490, 19, 84, 2 |
+| Wording worse in | nothing | nothing |
+
+**What moved, and why.** One sentence for a lead moved back from "not explained" to "stock" (345 to 344, 2,402 to 2,403). It is one of the lead's probes whose day count ("Waiting for 23 days...") sits near the matching line, as explained in section 10. No page, no wording and no use case changed. The 40 commits in between (the anchor lead's conversation, the sign-up trial, the spending reason, the Stripe key check) do not touch what an existing check-in is served.
+
+**Still open, unchanged, for Hafsah:** Finding 7 (41 people on 20 check-ins who answered and are held for a seat, so they lose every page; the three check-ins in the sample are the 18 FAULT lines), and the stored pattern lines a lead no longer reads (item 4 of section 9: 144 on the board and 144 in the report, in the WHERE list).
+
+**Left behind on this computer:** the database `gw_existing_6oct_a`. `dropdb` is not allowed. The temporary spec copy was deleted and the worktrees were removed.
+
 ## Hafsah's decision 90 (4 October)
 
 - Existing clients get the whole new build on the same terms as the paid client. It must work at least as well as today on their existing data (check-ins, boards, reports, Company page, suites, Ask Groundwork); the check below proves it on existing local check-ins. Nothing gets worse, no use case is lost, running check-ins carry on as scheduled, and stalled check-ins stay as the live main line leaves them, with no messages.
