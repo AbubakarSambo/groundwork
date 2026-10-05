@@ -6,6 +6,7 @@ import { whenTheBoardLastChanged } from '../board/when-the-board-last-changed';
 import { END_STATES } from './end-states';
 import { whereThisIsHeading } from '../board/where-this-is-heading';
 import { whyItRefuses } from '../grounds/a-ground-that-has-ended';
+import { EmailService } from '../email/email.service';
 
 /**
  * HOW A CHECK-IN ENDS, AND WHY, AS EACH READER READS IT (U.11, B6 ending-and-probation-review.txt).
@@ -25,7 +26,7 @@ const HANA = 'u-hana';
 const REASON =
   'He brought in 5 new accounts against a goal of 4, and he has raised problems the same day since week 8.';
 
-function world(opts: { closed: boolean; storedReason?: string | null; scenario?: GroundScenario }) {
+function world(opts: { closed: boolean; storedReason?: string | null; scenario?: GroundScenario; email?: any }) {
   const participants = [
     {
       id: 'p-wairimu', userId: WAIRIMU, email: 'wairimu@baridi.test', partyType: PartyType.INITIATOR,
@@ -80,7 +81,7 @@ function world(opts: { closed: boolean; storedReason?: string | null; scenario?:
   };
   const intelligence: any = { recordOutcome: jest.fn(async () => {}) };
   const reports: any = { recordOutcomeLearning: jest.fn(async () => {}) };
-  const email: any = { sendGroundClosed: jest.fn(async () => {}), sendResolutionProposal: jest.fn(async () => {}) };
+  const email: any = opts.email ?? { sendGroundClosed: jest.fn(async () => {}), sendResolutionProposal: jest.fn(async () => {}) };
   const config: any = { get: jest.fn(() => 'http://localhost:5173') };
   return { svc: new ResolutionService(prisma, intelligence, reports, email, config), prisma };
 }
@@ -190,23 +191,32 @@ describe('decision 75, item 48: every ending is one plain sentence, read the sam
     for (const e of endings) {
       expect(e.label).toMatch(PLAIN);
       expect(e.label).not.toMatch(/ - /);
-      /* One sentence, so "The outcome is that ..." can carry it. */
-      expect(e.label.replace(/\.$/, '')).not.toMatch(/[.!?]/);
+      /* One sentence, so "The outcome is that ..." can carry it. The one exception is the prototype's ending
+         when somebody leaves a role, which Hafsah chose on 5 October (request 123 item 8): its second
+         sentence, "The person's history stays as it is.", is the point, and it still reads after "The outcome is that". */
+      const oneOrThePrototypesTwo = e.value === 'EXIT' && e.label.startsWith('The role does not continue.')
+        ? e.label.replace(/^The role does not continue\. /, '')
+        : e.label;
+      expect(oneOrThePrototypesTwo.replace(/\.$/, '')).not.toMatch(/[.!?]/);
       expect(e.description ?? '').not.toMatch(/ - /);
     }
   });
 
+  /* Changed on 5 October (request 123 item 8): "The new person leaves the role." is now the prototype's
+     "The role doesn't continue. His history stays as it is.", which Hafsah chose, with the person's
+     name, said as each reader may read it. */
   it.each([
-    ['Wairimu, who runs it', WAIRIMU],
-    ['Kwame, the person it is about', KWAME],
-    ['Grace, the admin who set it up', GRACE],
-  ])('%s reads the same sentences on the resolution panel of a first 90 days', async (_who, userId) => {
+    ['Wairimu, who runs it', WAIRIMU, "Kwame's role does not continue. Kwame's history stays as it is."],
+    ['Kwame, the person it is about', KWAME, 'Your role does not continue. Your history stays as it is.'],
+    /* Grace is not in the check-in, and this panel shows her Kwame's role rather than his name, so the ending does too. */
+    ['Grace, the admin who set it up', GRACE, "The role does not continue. The person's history stays as it is."],
+  ])('%s reads the same sentences on the resolution panel of a first 90 days', async (_who, userId, theRoleEnds) => {
     const { svc } = world({ closed: false });
     const state: any = await svc.get('g1', userId);
     expect(state.options.map((o: any) => o.label)).toEqual([
       'The new person stays in the role.',
       'The role is set up differently.',
-      'The new person leaves the role.',
+      theRoleEnds,
       'The time to decide is made longer.',
       'It is not decided yet, and what is missing is named so it can be looked at again.',
     ]);
@@ -235,7 +245,43 @@ describe('decision 75, item 48: every ending is one plain sentence, read the sam
   });
 
   it('the person a first 90 days is about reads how it ended as a sentence, never the stored word', () => {
-    expect(whyItRefuses(GroundStatus.CLOSED, 'EXIT', 'anybody else', GroundScenario.NEW_HIRE)).toBe('This check-in has ended. The new person leaves the role.');
+    /* Changed on 5 October (request 123 item 8). A door that refuses somebody does not know who is at it, so it names nobody. */
+    expect(whyItRefuses(GroundStatus.CLOSED, 'EXIT', 'anybody else', GroundScenario.NEW_HIRE)).toBe("This check-in has ended. The role does not continue. The person's history stays as it is.");
     expect(whyItRefuses(GroundStatus.CLOSED, 'EXIT', 'anybody else', GroundScenario.NEW_HIRE)).not.toMatch(/exit|:/i);
+  });
+});
+
+/*
+ * WHEN SOMEBODY LEAVES A ROLE, EACH READER READS IT WITH THE PERSON'S NAME (request 123 item 8;
+ * Hafsah, 5 October 2026). The prototype, B6 ending-and-probation-review: "Part ways. The role
+ * doesn't continue. His history stays as it is." No pronoun is guessed, so the name is said twice.
+ */
+describe('request 123 item 8: the ending when Kwame leaves the role, as each person reads it', () => {
+  function withRealEmail() {
+    const out: { to: string; subject: string; html: string }[] = [];
+    const email = new EmailService({ get: () => undefined } as any, {} as any, { groundParticipant: { findUnique: jest.fn(async () => null) } } as any);
+    jest.spyOn(email as any, 'sendEmail').mockImplementation(async (m: any) => { out.push({ to: m.to, subject: m.subject, html: m.html }); return undefined; });
+    return { email, out };
+  }
+
+  it('the closing email says it to Wairimu with his name, and to Kwame as "your"', async () => {
+    const { email, out } = withRealEmail();
+    const { svc } = world({ closed: false, email });
+    await svc.propose('g1', WAIRIMU, 'EXIT', 'The accounts did not come, and the stock problem was raised too late to fix.');
+    const toWairimu = out.find((m) => m.to === 'wairimu@baridi.test')!;
+    const toKwame = out.find((m) => m.to === 'kwame@baridi.test')!;
+    expect(toWairimu.html).toContain('The outcome is that Kwame\'s role does not continue. Kwame\'s history stays as it is.');
+    expect(toKwame.html).toContain('The outcome is that your role does not continue. Your history stays as it is.');
+    for (const m of [toWairimu, toKwame]) expect(m.html).not.toMatch(/leaves the role|\b(?:his|her)\b history/i);
+  });
+
+  it('on a drift check-in with one other person, the board names them to the lead once it is decided', () => {
+    const board = whereThisIsHeading({
+      scenario: GroundScenario.DRIFT, hadAnObjective: true, readerIsTheLead: true, leadName: 'Wairimu Kamau', board: {},
+      decided: { endState: 'EXIT', on: new Date('2026-09-30T10:00:00Z') }, now: new Date('2026-10-02T12:00:00Z'),
+      who: { name: 'Kwame' },
+    });
+    expect(board.decided).toBe("You recorded the decision on 30 September. The outcome is that Kwame's role does not continue. Kwame's history stays as it is.");
+    expect(board.outcomes.find((o) => o.value === 'EXIT')!.says).toBe("Kwame's role does not continue. Kwame's history stays as it is.");
   });
 });

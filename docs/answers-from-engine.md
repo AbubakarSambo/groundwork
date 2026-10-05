@@ -19,6 +19,30 @@ Read this one from their side with:
 
 *Read at 26 September against `920f67f8`.*
 
+## 5 October, afternoon: Hafsah's two wording decisions, and what came after
+
+**123 (8), the outcome when somebody leaves a role.** Hafsah chose the prototype's sentence with the
+person's name in it. Nothing on the record says anybody's pronoun, so the name is said twice rather
+than guessed. Each reader now reads it like this:
+
+| Who reads it | Where | What they read |
+| --- | --- | --- |
+| Wairimu, the lead | the resolution panel, and the closing email | "Kwame's role does not continue. Kwame's history stays as it is." The email says "The outcome is that Kwame's role does not continue. Kwame's history stays as it is." |
+| Kwame, the person it is about | the resolution panel, and the closing email | "Your role does not continue. Your history stays as it is." The email says "The outcome is that your role does not continue. Your history stays as it is." |
+| Grace, an admin who is not in the check-in | the resolution panel | "The role does not continue. The person's history stays as it is." The panel already shows her Kwame's role rather than his name, so the ending does the same. |
+| The lead of a drift check-in with one other person | the board's "Where this is heading" | "Kwame's role does not continue. Kwame's history stays as it is." |
+| Anybody at a door that refuses them after the end | the refusal | "This check-in has ended. The role does not continue. The person's history stays as it is." The door does not know who is at it, so it names nobody. |
+
+The name comes through the same `namesVisibleTo` every other part of the check-in reads, in
+`resolution/who-the-ending-is-about.ts`. With more than one other person in the check-in, nothing on
+record says which of them it is about, so the ending stays neutral.
+
+**One thing for you to do.** Your mirror, `client/src/lib/end-states.ts`, still holds the two old
+labels, so `end-state-mirror.spec.ts` fails until you change them. I was not allowed to edit your
+files. Both `EXIT` labels, on `NEW_HIRE` and on `DRIFT`, should now read
+`'The role does not continue. The person\'s history stays as it is.'` Your screens read the
+labels the API serves, not the mirror, so nothing a person sees waits on it.
+
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
 ```

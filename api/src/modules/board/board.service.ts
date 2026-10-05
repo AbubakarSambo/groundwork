@@ -16,6 +16,7 @@ import { theGlanceAsThisReaderMayReadIt } from '../grounds/what-a-manager-needs-
 import { howARecordIsKnown, theRecordsMark, whatHappensNext } from './what-happens-next-to-a-record';
 import { whereThisTargetStands, theHeadlineQuestion, theDirectionToReadIn, type ATeamAim } from './the-headline-and-where-each-target-stands';
 import { whereThisIsHeading } from './where-this-is-heading';
+import { whoTheEndingIsAbout } from '../resolution/who-the-ending-is-about';
 import { deadlineOf } from '../grounds/when-the-clock-starts';
 import { theWorkByArea, reportedAgainstTheRules } from './the-work-by-area-and-by-stage';
 import { toCloseTheGap } from './to-close-the-gap';
@@ -2667,6 +2668,7 @@ export class BoardService {
             ? { endState: (ground as any).endState ?? null, on: (ground as any).resolvedAt ?? null }
             : null,
           now,
+          who: whoTheEndingIsAbout(ground.participants as any[], visibleNames, me?.id ?? null),
         });
       }
     }
