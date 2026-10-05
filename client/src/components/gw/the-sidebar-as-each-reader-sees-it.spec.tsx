@@ -165,6 +165,41 @@ describe('the sidebar, as a lead reads it', () => {
   })
 })
 
+/*
+ * WALKTHROUGH PASS 2, ITEM 1: TWO CHECK-INS, ONE NAME. The rail found "Help a new hire get
+ * started, from 27 September" listed three times with nothing to say which row was which. When
+ * the list carries more than one check-in under the same label, the row now says what tells it
+ * apart - when it started - and leaves a label that is already unique alone.
+ */
+describe('two check-ins that share one label', () => {
+  const DUPES = [
+    { ...GROUNDS[3], id: 'g-dup-1', label: 'Help a new hire get started', startsAt: '2026-09-27T00:00:00.000Z' },
+    { ...GROUNDS[3], id: 'g-dup-2', label: 'Help a new hire get started', startsAt: '2026-10-01T00:00:00.000Z' },
+    { ...GROUNDS[0], id: 'g-unique', label: 'Coamana growth, Q3' },
+  ]
+
+  it('says when each one started, so the rail does not read the same name twice with nothing to tell them apart', () => {
+    useAuthStore.setState({ user: LEAD, token: 't', isAuthenticated: true } as any)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } })
+    qc.setQueryData(['grounds'], DUPES)
+    qc.setQueryData(['today'], { count: 0, needs: [], line: null, comingUp: [] })
+    qc.setQueryData(['my-organizations'], [{ id: 'o1', name: 'Coamana', role: 'MEMBER', active: true }])
+    const out = render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={['/grounds']}>
+          <AppShell><div>page body</div></AppShell>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    const rail = out.container.querySelector('.gw-sidebar-desktop') as HTMLElement
+    const names = [...rail.querySelectorAll('.gw-ci-nm')].map(n => n.textContent)
+    expect(names).toContain('Help a new hire get started, started 27 September')
+    expect(names).toContain('Help a new hire get started, started 1 October')
+    /* The one label that is already unique on this rail is left exactly as it reads elsewhere. */
+    expect(names).toContain('Coamana growth, Q3')
+  })
+})
+
 describe('Start a check-in', () => {
   it('is offered to somebody who may start one', () => {
     const { rail } = shell({ ...LEAD, mayOpenCheckIns: true })

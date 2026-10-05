@@ -25,6 +25,7 @@ import { OrganisationChoices } from './OrganisationChoices'
 import { initialsOf, roleWord } from './your-organisations'
 import { JumpTo } from './JumpTo'
 import { whatYouCanJumpTo } from './what-you-can-jump-to'
+import { whatTellsItApart } from '@/lib/tell-apart-the-same-name'
 import { useJumpStore } from '@/stores/jump'
 import { feedbackApi } from '@/api/feedback'
 import type { Ground } from '@/types'
@@ -642,6 +643,12 @@ export function AppSidebar() {
 
   function rowFor(g: Ground) {
     const attention = railAttention(g as any, user?.id)
+    /* Walkthrough pass 2, item 1: more than one check-in on this rail can share a label ("Help a
+       new hire get started, from 27 September" listed three times), with nothing to tell a reader
+       which row is which. When that happens, the one thing the list already carries for each one -
+       when it started - is said after the name; a label that is already unique is left alone. */
+    const apart = whatTellsItApart(inRail, g)
+    const nameRead = apart ? `${g.label}, ${apart}` : g.label
     const planned = plannedSessionsFor(g.timelineDays, (g as any).cadence, (g as any).maxSessions ?? (g as any).totalSessions)
     const mine = attention.kind === 'yours' || attention.kind === 'overdue'
     /* The room the row's buttons need when they show over its right, and whether the row must keep it
@@ -657,7 +664,7 @@ export function AppSidebar() {
         : null
     /* The whole row in sentences, for the pointer and for a screen reader. See what-a-sidebar-row-says. */
     const says = whatTheRowSays({
-      label: g.label,
+      label: nameRead,
       attention,
       round: openRound((g as any).checkIns),
       planned,
@@ -687,7 +694,7 @@ export function AppSidebar() {
               aria-label={says}
             >
               <span className={`gw-ci-dot gw-ci-dot-${dot}`} aria-hidden />
-              <span className="gw-ci-nm">{g.label}</span>
+              <span className="gw-ci-nm">{nameRead}</span>
               {mine && <span className={`gw-rail-bdg gw-rail-bdg-${attention.kind === 'overdue' ? 'late' : 'turn'}`} title={why ?? undefined}>Your turn</span>}
               {/* One badge a row: your turn comes first, and the check-in's own state only otherwise. */}
               {!SILENT_STATUSES.includes(g.status) && !mine && <GroundStatusBadge status={g.status} />}

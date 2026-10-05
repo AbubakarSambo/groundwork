@@ -166,6 +166,14 @@ export interface Ground {
   viewerIsInitiator?: boolean
   viewerRunsThisGround?: boolean
   label: string
+  /**
+   * WHEN THIS ONE STARTED, so two check-ins that share one label can be told apart (walkthrough
+   * pass 2, item 1: "Help a new hire get started, from 27 September" listed three times in the
+   * sidebar with nothing to tell them apart). The server has always sent both on every list row
+   * (Prisma's default scalar selection); only the client's own type left them out.
+   */
+  startsAt?: string | null
+  createdAt?: string
   scenario: GroundScenario
   moment: GroundMoment
   status: GroundStatus
