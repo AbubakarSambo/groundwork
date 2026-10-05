@@ -5562,3 +5562,19 @@ other three words of ours that mean a row: "party", "the initiator" and "the res
 
 If any screen composes a sentence with "participant" in it, that one is yours — the engine will
 stop sending them.
+
+# From the screens workspace, 6 October: Screens ready for the release branch.
+
+Screens ready for the release branch.
+
+At bce7f21d on `wip/prototype-ui`, these pass:
+- the client tests, 4,283 of 4,283;
+- the type check;
+- the browser tests, 57 of 57.
+
+Everything in the screens' list is built and has been walked live: every board, the anchor screens, the suites, the Company page, the lists at a hundred check-ins, the small states and the in-between widths. What remains is yours or Hafsah's:
+- requests 159 to 163, which come from the live walks with your four seeds;
+- context and resources moving into Ask, when you say it is ready;
+- the one-off style clean-up, which waits until after the release.
+
+The screens' own sentences no longer say "participant", except the prototype's own "You see these boards as a participant".

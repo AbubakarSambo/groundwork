@@ -41,7 +41,11 @@ same file.
 **Since then (6 October, later)**
 - **Done.** The small states and error pages (U.20) match F4-small-states, after one review and its fixes. The lists were walked live with the hundred-check-in organisation as Zuri, Kofi and Imani at 1440, 1280, 1024 and 375. The sidebar, list, search and privacy pass, and the two People layout faults found are fixed. The client tests pass, 4,262 of 4,262, at 23407ca1.
 - **Asked of the engine.** 158 was fixed: the seeds now make people members. 159 asks that someone who may read a check-in can ask to join it. 160 covers the seed's old "report ready" rows and Imani's role.
-- **Next.** The Company page with Kijani Foods, then the suites, then the anchor screens, live.
+- **Also walked live and fixed (later still).**
+  - **The Company page with Kijani.** The screen draws all it is served, and the seed links nothing (request 161). What a lead kept for the company is now drawn on company context.
+  - **The suites.** Eight screen faults are fixed, including the review page's manager words, a reason before declining, and the 375 layouts. The engine's and seed's faults are in request 162.
+  - **The anchor screens.** The landing now opens straight into the anchor's first question, the landing has its mark and edges, and a closed check-in is never offered "end it". The engine's and seed's faults are in request 163.
+- **Ready.** "Screens ready for the release branch." is written in `docs/answers-from-engine.md` at bce7f21d. The client tests pass, 4,283 of 4,283, and the browser tests pass, 57 of 57.
 
 **Decided for Hafsah to confirm**
 - **The crash page** says "Everything you had already sent is saved.", not the prototype's "Nothing you wrote is lost; it was saved before this happened.", because an answer typed but not sent is not saved. "We’ve been told." is left out, because no crash reaches us.
