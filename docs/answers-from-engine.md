@@ -6109,3 +6109,21 @@ At e027d021 on `wip/prototype-ui`, the client tests pass, 4,345 of 4,345, and th
 - **The phone header** has its side gutter.
 
 What the walk found on your side is request 166.
+
+# From the engine workspace, 6 October: request 166, the anchor lead's conversation, the reveal and the invitation
+
+Everything below is behind `release.anchorScenario`. With it off, nothing here changes for anybody.
+
+**1. The saved check-in keeps its situation.** `HELP_TEAM_UNDERSTAND` is now a situation of its own (a migration that only adds the value, row 85 in `docs/deploy.md`). A check-in saved from the anchor link has `scenario = HELP_TEAM_UNDERSTAND` and `started_from = anchor`. With the switch off, the key is read as a project exactly as before.
+
+**2. The lead's conversation is the onboard conversation, and `ready` now means it is complete.** `POST /entry/onboard` and `/entry/onboard/stream`, sent `scenario: "HELP_TEAM_UNDERSTAND"`, run the anchor's own conversation, not the ordinary setup. Every reply carries, flat under `extracted`, whichever of the seven the lead has said, in her own words and in the second person: `responsibleFor`, `tryingToMove`, `howItContributes`, `seeingToday`, `whyItBothersYou`, `whatTheyDontUnderstand`, `whatTheyWouldDoDifferently`. Once an item is heard it is served on every later reply, so your merge never loses one. `extracted` also holds what the summary card and `composeLeadBrief` already read (`initial`, `whoInvolved`, `decision`, `goals`, `brief`, `peopleNamed`), filled from the seven. `ready` is true only when all seven are heard, she has answered what better would look like, and the reply has stopped asking: that reply is a two-sentence close. The reply also carries `promptVersionId`.
+
+**What this means for the screens (please decide).** Because the anchor conversation now ends at `ready`, the ordinary fork that follows it ("I set this up and check in myself" / "I check in once to set the context, then only they check in") and the second conversation (`startCheckin`, which asks a generic first check-in question) are not part of the anchor in the spec: section 11 goes from the conversation straight to the reveal, and section 13 to the people step. What the engine can serve for that: after `ready`, call `POST /entry/report` with the onboarding turns, `scenario: "HELP_TEAM_UNDERSTAND"` and, new, `anchorItems` (the seven, as you hold them). `leadsReveal` comes back. If you keep the second conversation, the reveal still reads what she said, because the check-in's first message carries her words.
+
+**3. The reveal says what she said.** `leadsReveal` is now built from the seven, so "What you're carrying" is what she is responsible for and why it bothers her, "What you need the team to understand" is what she said the group does not understand, "What you're seeing today" is what she is seeing, "Who you're trying to move" is who she said, and "What meaningful change would look like" is her answer about what better looks like, one sentence for each thing. Where she has not said something, it keeps its plain sentence ("Groundwork has not yet written down what you are carrying."). The route takes the new optional `anchorItems`, and falls back to reading her words in the turns.
+
+**4. The second question no longer repeats the first.** Every turn, the model is told what it has already heard (in her words), that the opening question has been asked and answered, and what it has not yet heard.
+
+**5. The invitation email is the anchor's own.** For a check-in started from the anchor link, with the switch on, the email is `TheAnchorInvitation`'s words ("Rukia is trying a different way to help the team get on the same page.", the three lines, "Start your first check-in →"), plus the one true sentence every invitation carries about who can read what is said in a check-in. No email, anchor or not, carries an HTML comment any more.
+
+**6. The people step accepts a name.** Each entry in `contributors` takes `displayName` (up to 120 characters) beside `email`, and it is kept as the name the lead gave that person.
