@@ -75,7 +75,8 @@ describe('an anchor arrival, with the switch confirmed on', () => {
   it('sends only what the lead typed, carrying HELP_TEAM_UNDERSTAND as the request’s own scenario field', async () => {
     openAnchorArrival()
     await screen.findByText(THE_ANCHOR_FIRST_QUESTION)
-    const box = screen.getByPlaceholderText('Type your response, or add a document with + Doc')
+    /* Fault 7 (live walk, 6 October 2026): placeholder shortened, so it is never clipped at 375px. */
+    const box = screen.getByPlaceholderText('Type your response, or add a document.')
     fireEvent.change(box, { target: { value: 'Nobody on my team sees how the renewals land.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send message' }))
     await waitFor(() => expect(onboardStream).toHaveBeenCalled())

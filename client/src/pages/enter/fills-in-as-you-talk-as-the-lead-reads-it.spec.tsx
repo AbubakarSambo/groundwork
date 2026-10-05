@@ -59,6 +59,20 @@ describe('the panel, as the lead reads it', () => {
     render(<FillsInAsYouTalk {...nothingYet} mentioned={['Aisha', 'Brian']} />)
     expect(screen.getByText('You mentioned Aisha and Brian.')).toBeTruthy()
   })
+
+  /**
+   * FAULT 7 (live walk, 6 October 2026): THE NAME ALWAYS COMES BEFORE THE "N OF 4 SET" CHIP, AT
+   * EVERY WIDTH - the panel's own fixed-width column could wrap a longer name onto two lines,
+   * which the old side-by-side row let read as though the chip sat above the name. The name and
+   * the chip are now a plain vertical `Stack`, so the name is unambiguously first in the document
+   * regardless of how either one wraps.
+   */
+  it('reads the name before the chip, in document order', () => {
+    render(<FillsInAsYouTalk {...nothingYet} name="Sales team, Q3" />)
+    const name = screen.getAllByText('Sales team, Q3')[0]
+    const chip = screen.getByText('1 of 4 set')
+    expect(name.compareDocumentPosition(chip) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
 })
 
 describe('on the setup conversation itself', () => {

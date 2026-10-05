@@ -3782,7 +3782,15 @@ export function EntryChatPage() {
                       sendDisabled={!input.trim()}
                       sendText="Send"
                       sendLabel="Send message"
-                      placeholder="Type your response, or add a document with + Doc"
+                      /*
+                       * FAULT 7 (live walk, 6 October 2026): SHORTENED, AND TWO ROWS TALL, SO IT IS
+                       * NEVER CLIPPED AT 375px. The "+ Doc" button beside this already says how to
+                       * add a document, so repeating "with + Doc" in the placeholder was redundant
+                       * as well as too long to fit one line next to it and "Send" at a phone width -
+                       * `rows={2}` gives the wrapped text somewhere to go instead of being cut off.
+                       */
+                      placeholder="Type your response, or add a document."
+                      rows={2}
                       autoFocus
                     />
                   </div>

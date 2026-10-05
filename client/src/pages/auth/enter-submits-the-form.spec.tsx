@@ -49,7 +49,9 @@ describe('forms behave like forms', () => {
     const e = read('../enter/EntryChatPage.tsx')
     expect(e).not.toMatch(/onKeyDown=\{e => \{ if \(e\.key === 'Enter' && input\.trim\(\)\)/)
     expect(e).toMatch(/onKeyDown=\{e => \{ if \(e\.key === 'Enter' && !e\.shiftKey\) \{ e\.preventDefault\(\); if \(input\.trim\(\)\) sendOnboarding\(input\) \} \}\}/)
-    expect(e).toContain('placeholder="Type your response, or add a document with + Doc"')
+    /* Fault 7 (live walk, 6 October 2026): shortened so it is never clipped at 375px - the "+ Doc"
+       button beside it already says how to add a document, so "with + Doc" was redundant too. */
+    expect(e).toContain('placeholder="Type your response, or add a document."')
     const composer = read('../../components/gw/ui/Composer.tsx')
     expect(composer).toMatch(/<textarea\s/)
     expect(composer).toContain('placeholder={placeholder}')

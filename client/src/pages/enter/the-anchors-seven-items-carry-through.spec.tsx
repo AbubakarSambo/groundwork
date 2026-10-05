@@ -54,7 +54,8 @@ function openAnchorArrival() {
 }
 
 async function sendOnboardingMessage(text: string) {
-  const box = await screen.findByPlaceholderText('Type your response, or add a document with + Doc')
+  /* Fault 7 (live walk, 6 October 2026): placeholder shortened, so it is never clipped at 375px. */
+  const box = await screen.findByPlaceholderText('Type your response, or add a document.')
   fireEvent.change(box, { target: { value: text } })
   fireEvent.click(screen.getByRole('button', { name: 'Send message' }))
 }

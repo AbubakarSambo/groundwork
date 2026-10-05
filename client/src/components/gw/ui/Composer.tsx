@@ -21,6 +21,7 @@ export function Composer({
   sendLabel = 'Send',
   sendText, plusGlyph = '+',
   inputRef, placeholder = 'Type, or hold to speak', ariaLabel = 'Your answer', maxLength, autoFocus,
+  rows = 1,
 }: {
   value: string
   onChange: (value: string) => void
@@ -54,6 +55,17 @@ export function Composer({
   ariaLabel?: string
   maxLength?: number
   autoFocus?: boolean
+  /**
+   * FAULT 7 (live walk, 6 October 2026): A LONGER PLACEHOLDER WAS CLIPPED AT 375px.
+   *
+   * The setup composer's own placeholder ("Type your response, or add a document.") is longer
+   * than the check-in composer's ("Type, or hold to speak") and shares the same single-row box,
+   * which only ever shows one line - at a narrow width, with the wide "+ Doc" and "Send" buttons
+   * beside it, the placeholder wrapped onto a second line nobody could see. Given only by the
+   * caller with the longer placeholder; every other `Composer` keeps the default `rows={1}` it
+   * already had.
+   */
+  rows?: number
 }) {
   const plusWide = plusGlyph.length > 1
   return (
@@ -104,7 +116,7 @@ export function Composer({
         aria-label={ariaLabel}
         maxLength={maxLength}
         autoFocus={autoFocus}
-        rows={1}
+        rows={rows}
         style={{
           flex: 1, minWidth: 0, resize: 'none', outline: 'none',
           border: '1.5px solid var(--gw-rule-2)', borderRadius: 10, background: 'white',
