@@ -1278,6 +1278,32 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     && !phaseSpineSessions.some((s) => s.state === 'current')
   const whenTheNextSessionOpens = phaseSpineSessions.find((s) => s.state === 'upcoming')?.says ?? null
   /*
+   * RELEASE WALKTHROUGH A, FIX 6: "START MY CHECK-IN" WHILE NOTHING IS OPEN, ON A BOARD WITH NO
+   * PHASE SPINE. The fix above only hides the button once `b.phaseSpine` exists - an "older or
+   * absent spine never hides the button", which was meant for a spine that has not caught up yet,
+   * not for a kind of work (the sales board) that never sends one at all. So a sales participant
+   * between rounds still read "Start my check-in" with nothing open.
+   *
+   * The same fact still exists, the same place the check-in page reads it for this very button
+   * (`myOpenCheckInId`/`myNextOpensAt`, GroundAdminPage.tsx and GroundParticipantPage.tsx): the
+   * reader's own open-or-next check-in row, off `GET /grounds/:id` (`groundForSignals`, already
+   * fetched above). Used only as a fallback, when no phase spine was sent - the spine's own read
+   * stays the one truth wherever it exists.
+   */
+  const myParticipantIdForOpenCheck = ((groundForSignals as any)?.participants ?? []).find((p: any) => p.userId === user?.id)?.id ?? null
+  const myOpenOrNextCheckIn = myParticipantIdForOpenCheck
+    ? (((groundForSignals as any)?.checkIns ?? []) as any[])
+        .filter((c) => c.participantId === myParticipantIdForOpenCheck && c.status !== 'COMPLETED')
+        .sort((a, b2) => (a.sessionNumber ?? 0) - (b2.sessionNumber ?? 0))[0] ?? null
+    : null
+  const myOpenOrNextOpensLater = !!myOpenOrNextCheckIn?.availableFrom
+    && new Date(myOpenOrNextCheckIn.availableFrom).getTime() > Date.now()
+    && myOpenOrNextCheckIn?.status !== 'IN_PROGRESS'
+  const noSessionOpenForReaderFallback = !b.phaseSpine && myOpenOrNextOpensLater
+  const whenTheNextSessionOpensFallback = myOpenOrNextOpensLater
+    ? `Session ${myOpenOrNextCheckIn.sessionNumber} opens on ${whenItWas(myOpenOrNextCheckIn.availableFrom, 'dayAndMonthLong')}.`
+    : null
+  /*
    * U.10 (a): THE SAME FIVE TABS, READ-ONLY FILTERED THE SAME WAY (an-admin-who-only-reads-has-no-
    * check-in-tab.spec.tsx pinned this against the old TheCheckInHeader; the-board-as-each-reader-
    * reads-it.spec.tsx now pins the same rule here). An admin who neither runs this check-in nor
@@ -2288,8 +2314,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 in the engine's own words.
               */}
               {(viewerRunsThisCheckIn || isAParty) && (
-                !viewerRunsThisCheckIn && noSessionOpenForReader ? (
-                  whenTheNextSessionOpens && <Note tone="muted">{whenTheNextSessionOpens}</Note>
+                !viewerRunsThisCheckIn && (noSessionOpenForReader || noSessionOpenForReaderFallback) ? (
+                  (whenTheNextSessionOpens ?? whenTheNextSessionOpensFallback) && <Note tone="muted">{whenTheNextSessionOpens ?? whenTheNextSessionOpensFallback}</Note>
                 ) : (
                   <Link
                     to={`/grounds/${id}`}
