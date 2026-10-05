@@ -437,6 +437,13 @@ const KNOWN_GAP: Record<string, string> = {
    * 2 October: the eng and programme participants' boards came within their prototype examples'
    * counts once the sales pass (2304d06b) folded the participant's board, so both gaps are closed
    * and their entries removed; the test now holds them to the count.
+   *
+   * RELEASE WALKTHROUGH A, FIX 6, 5 OCTOBER: checked, and this one is NOT closed. A single
+   * "mvnext: as a participant" run outside the full-suite pass shows the gap is still real - "Read
+   * your own report", "Every session" and "Ask" are still extra against the prototype's own count,
+   * unrelated to the "Start my check-in" fallback this fix adds. The single unexpected pass seen in
+   * a full-suite run is left unexplained (most likely a timing flake in a serial, stateful run
+   * against the real dev servers) rather than taken as the gap closing. Entry kept.
    */
 }
 const BOARD_KINDS: { kind: string; groundId: string; lead: string; participant: string | null }[] = [
