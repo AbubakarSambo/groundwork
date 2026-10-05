@@ -582,7 +582,7 @@ export function MagicVerifyPage() {
           <Panel heading="What happens next">
             <div className="gwui-subheading-list">
               <div>
-                <SubHeading>Participants get their invite</SubHeading>
+                <SubHeading>The people you added get their invitation</SubHeading>
                 <p className="gwui-panel-text">Anyone you added will receive an email with a private link. They check in independently.</p>
               </div>
               <div>

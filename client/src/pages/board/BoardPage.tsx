@@ -2492,7 +2492,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           same bug, same fix: draw it here, before the fold, for an anchor check-in only. Every other
           check-in keeps drawing it exactly where it always has, inside `MaybeFolded`, below.
         */}
-        {anchorScenarioOn && <TheIdeasFromYourTeam ideasFromYourTeam={ideasFromYourTeam} />}
+        {/* Open, never folded, for every reader it is served to: `anchorScenarioOn` reaches the lead
+            only, so a member's ideas stayed in the fold (anchor walk, 6 October). The ideas
+            themselves are served only on an anchor check-in, so their presence is the signal. */}
+        {(anchorScenarioOn || !!ideasFromYourTeam) && <TheIdeasFromYourTeam ideasFromYourTeam={ideasFromYourTeam} />}
 
         <MaybeFolded fold={participantFoldsWhole}>
 
@@ -2507,7 +2510,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           draws nothing while `ideasFromYourTeam` is undefined. Not drawn here for an anchor
           check-in (fault 4) - it already drew above, before the fold.
         */}
-        {!anchorScenarioOn && <TheIdeasFromYourTeam ideasFromYourTeam={ideasFromYourTeam} />}
+        {!anchorScenarioOn && !ideasFromYourTeam && <TheIdeasFromYourTeam ideasFromYourTeam={ideasFromYourTeam} />}
 
         {/*
           THE HEADLINE QUESTION, WITH ITS ANSWER AND ITS BAR (request 108 a; board-as-lead.txt:

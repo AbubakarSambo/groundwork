@@ -112,14 +112,19 @@ describe('"Ideas from your team", for a participant, not the lead', () => {
    * children in the DOM, just visually hidden, so finding the text proves nothing about which side
    * of the fold it is on. These two walk all the way to the actual `<details>` element.
    */
-  it('for a sales-org participant WITHOUT the anchor scenario, still sits inside the closed "whole check-in" fold, as today', async () => {
-    ;(boardApi.get as any).mockResolvedValue(board({ ideasFromYourTeam: ideasFixture, kindOfWork: 'sales org', anchorScenarioOn: false }))
+  it('for a member, who is served the ideas but not `anchorScenarioOn` (the lead alone gets that), sits outside the fold, open (anchor walk, 6 October)', async () => {
+    /* This test used to say the opposite: that without the flag the ideas stay folded. The live
+       walk showed that is exactly what every member saw, because the flag reaches the lead only.
+       The ideas are served only on an anchor check-in, so their presence opens them. */
+    const served = board({ ideasFromYourTeam: ideasFixture, kindOfWork: 'sales org', anchorScenarioOn: false })
+    delete (served as any).anchorScenarioOn
+    ;(boardApi.get as any).mockResolvedValue(served)
     ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u1', participants: [] })
     renderBoard()
-    const fold = (await screen.findByText('The whole check-in')).closest('details') as HTMLDetailsElement
+    expect(await screen.findByText('Ideas from your team')).toBeTruthy()
+    const fold = screen.getByText('The whole check-in').closest('details') as HTMLDetailsElement
     expect(fold).toBeTruthy()
-    expect(fold.open).toBe(false)
-    expect(within(fold).getByText('Ideas from your team')).toBeTruthy()
+    expect(within(fold).queryByText('Ideas from your team')).toBeNull()
   })
 
   it('for a sales-org participant WITH the anchor scenario, sits outside the fold entirely - open, with no fold to find it in', async () => {
