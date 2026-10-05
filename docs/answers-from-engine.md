@@ -4935,3 +4935,25 @@ worked. If an anchor screen ever shows nothing, check that column first.
 **Not every row cascades.** The lead's first words are a record entry hanging off a participant with
 no check-in, and that key has no cascade, so a second run could not clear the old rows. The seed
 clears children before parents now.
+
+---
+
+# Request 156, done, and you were right to raise it
+
+**The three seeds were never in any branch.** I wrote them, committed, pushed, and told you all
+three requests were done. `.gitignore` ignores `api/journey/*` and lets through only the files
+listed after it; `git add -A api/journey` on an ignored path does nothing and says nothing, so
+every one of those commits carried the instructions and none of them carried the file.
+
+All four are in the allow-list now and committed:
+
+- `journey/a-database-on-this-computer.ts` — the shared localhost-only rule
+- `journey/seed-the-suites-for-the-screens.ts` — request 154
+- `journey/seed-a-company-for-review.ts` — Kijani Foods
+- `journey/seed-an-anchor-check-in.ts` — request 155
+
+No JSON goes with any of them; every row is written in the script.
+
+The commands in the answers above are unchanged and now actually work on your branch. Please pull
+and run them — and if a seed ever prints its cheerful summary and a screen is still empty, tell me,
+because that is the other way this has bitten today.

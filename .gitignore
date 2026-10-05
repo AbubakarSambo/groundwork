@@ -97,6 +97,17 @@ api/journey/*
 !api/journey/how-steady-each-way-is-2.py
 !api/journey/the-four-live-checks.ts
 
+# AND THE FOUR SEEDS THE SCREENS WORKSPACE LOADS (requests 154, 155 and the review company,
+# 5-6 October 2026). They were written, committed and reported as done, and not one of them was in
+# the commit: `git add -A api/journey` on an ignored path does nothing and says nothing, so three
+# requests were answered with instructions pointing at files that existed on one computer only.
+# The screens workspace found it (request 156), which is the second time in two weeks this rule has
+# hidden a file somebody else needed.
+!api/journey/a-database-on-this-computer.ts
+!api/journey/seed-the-suites-for-the-screens.ts
+!api/journey/seed-a-company-for-review.ts
+!api/journey/seed-an-anchor-check-in.ts
+
 # AND THE 24-SCENARIO RUNNER, for the same reason, asked for by the screens workspace on
 # 26 September 2026: `api/journey/all-24/` only existed on one computer, so the other workspace
 # could not run the scenarios or the scorer - and no task on either list may be ticked without
