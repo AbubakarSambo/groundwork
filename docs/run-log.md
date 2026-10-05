@@ -2,6 +2,29 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## Request 158: my four seeds made nobody a member (5 October)
+
+The screens workspace loaded all four seeds and found every person locked out. They
+were right, and the cause is the kind I keep writing down and then doing: three seeds
+used the compound key the wrong way round, and `.catch(() => undefined)` threw the
+error away, so each seed printed its sign-in list and had written no membership. The
+suites seed wrote none at all.
+
+One writer now, `theyAreInThisOrganisation`, no catch on it, role set on create and
+on update. Proving it found a second fault: the company seed could not be run twice.
+
+Proved by signing in, not by reading the code: amina@suites.test, `/auth/me` 200 as
+ADMIN of Suites Test Company, where before it was the 401 they reported. Counts
+unchanged after three loads. Answered in `docs/answers-from-engine.md`, pushed at
+80753092.
+
+A scratch database `gw_seed_check_158` is left on this computer; dropping one is
+blocked by the kit's rules, so it stays until Hafsah says otherwise.
+
+Next: request 156 should now be closed too (the seeds are on the branch and
+`git ls-files` shows all five). Then the open board reviews, 121 to 140.
+
+
 ## Everything heavy stopped, on Hafsah's word (5 October)
 
 The computer was very slow. I stopped the whole scenario run `run-oct5` - the shell
