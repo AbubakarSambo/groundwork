@@ -114,3 +114,32 @@ describe('the judgement does not invent a reason or a move', () => {
     expect(it_).toContain('NEVER DECIDE ABOUT A PERSON');
   });
 });
+
+/**
+ * TWO FACTS SIDE BY SIDE, JOINED INTO A CAUSE NOBODY NAMED (run 32, finding 6, the shock report).
+ *
+ * Hana Suzuki said support tickets went from 9 to 31 about one broken export, and separately the
+ * client gave notice. The judgement wrote "Hana Suzuki says Meridian left because of a broken
+ * export", and then told the lead "you are looking in the wrong place for the reason the client
+ * left" - a correction built on a cause she never named.
+ *
+ * That scenario's right answer is a timeline of three signals nobody held together, which is the
+ * opposite of picking one cause.
+ */
+describe('the judgement does not turn two facts into a cause', () => {
+  const it_ = theJudgementOverARoom('whoever called this check-in', 'what to do next', 'Dayo Ogunleye');
+
+  it('says it plainly, and says what to do instead', () => {
+    expect(it_).toContain('TWO FACTS SIDE BY SIDE ARE NOT A CAUSE');
+    expect(it_).toContain('put them in order and say what order they happened in');
+  });
+
+  it('carries the sentence it wrote and what Hana actually said', () => {
+    expect(it_).toContain('support tickets went from 9 to 31 about one broken export');
+    expect(it_).toContain('a cause she never named');
+  });
+
+  it('shows the timeline that was the right answer', () => {
+    expect(it_).toContain('Two quarterly reviews were missed, the champion left in July, and tickets tripled in August');
+  });
+});
