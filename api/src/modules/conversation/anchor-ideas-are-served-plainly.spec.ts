@@ -58,3 +58,10 @@ describe('which version of the idea reading ran', () => {
     expect(SEED_PROMPTS.find((p) => p.key === ANCHOR_BASELINE_PROMPT_KEY)?.content).toBe(ANCHOR_BASELINE_PROMPT);
   });
 });
+
+describe('what the idea reading is told counts as an idea (6 October)', () => {
+  it('says that success, goals, responsibilities and descriptions of how things are are not ideas', () => {
+    expect(THE_IDEA_SPOTTING_PROMPT).toContain('These are not ideas: what the person works on, what they are responsible for, what success looks like to them, a goal or a target');
+    expect(THE_IDEA_SPOTTING_PROMPT).toContain('An idea is something new that the person proposes');
+  });
+});

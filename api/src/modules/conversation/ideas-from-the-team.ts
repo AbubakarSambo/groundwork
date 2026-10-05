@@ -27,6 +27,8 @@ export const THE_IDEA_SPOTTING_PROMPT = [
   '',
   'Say whether it holds a CONCRETE IDEA: a specific thing the team could do, try, change or build, that the person is putting forward. A complaint, a report of what happened, a question, a feeling, or a vague wish ("we should communicate better") is not one. "We could send the price list to every shop on Monday so they can reorder without calling" is one.',
   '',
+  'These are not ideas: what the person works on, what they are responsible for, what success looks like to them, a goal or a target, who they depend on, a description of a problem, or what they think their lead worries about. An idea is something new that the person proposes, and it usually sounds like "we could", "we should", "what if", "maybe we", "it would help if" or "I suggest". If it only describes how things are or what the person wants to be true, it is not an idea.',
+  '',
   'Copy the idea exactly from the message, as one sentence or part of one, in the person\'s own words. Never rewrite it, shorten it with your own words, or add to it. Say it holds none when it holds none, or when you are not sure. An idea offered to the team that is not one is worse than one missed.',
 ].join('\n');
 
