@@ -10,7 +10,7 @@ import {
   type TagTone,
 } from '@/components/gw/ui'
 import {
-  type OrgMember, fetchMembers, nameOf, firstNameOf, initialsOf, roleWord, statusWord, needsSomething, whereTheySitLine, checkInsWordApart,
+  type OrgMember, fetchMembers, nameOf, firstNameOf, initialsOf, roleWord, statusWord, needsSomething, whereTheySitLine, checkInsPartsApart,
 } from './people-here'
 
 /**
@@ -111,6 +111,29 @@ export function statusTagTone(status: string): TagTone {
   return 'plain'
 }
 
+/**
+ * A PERSON'S CHECK-INS CELL, CAPPED (HAFSAH'S FAULT 4). With thirty people each on several
+ * check-ins, writing every one of them out in the cell made the table unreadable. The first few
+ * (`CAP`) show, in the same words `checkInsWordApart` always used; the rest sit behind "and N
+ * more", which shows the rest in place - never a check-in the reader could not already see, since
+ * `m.checkIns` is only ever what the server already sent this admin.
+ */
+const CAP = 3
+function CheckInsCell({ m, startOf }: { m: OrgMember; startOf: Map<string, { startsAt?: string | null; createdAt?: string | null }> }) {
+  const [expanded, setExpanded] = useState(false)
+  const parts = checkInsPartsApart(m, startOf)
+  if (parts.length === 0) return <span>None</span>
+  if (expanded || parts.length <= CAP) return <span>{parts.join(', ')}</span>
+  return (
+    <span>
+      {parts.slice(0, CAP).join(', ')}{' '}
+      <button type="button" className="gwui-plain-link" onClick={() => setExpanded(true)}>
+        {`and ${parts.length - CAP} more`}
+      </button>
+    </span>
+  )
+}
+
 function TheTree({ people }: { people: OrgMember[] }) {
   const here = new Set(people.map((p) => p.id))
   const under = new Map<string, OrgMember[]>()
@@ -153,7 +176,11 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
   const teams = useMemo(() => [...new Set(everybody.map((m) => (m.team ?? '').trim()).filter(Boolean))].sort(), [everybody])
   const shown = everybody.filter((m) => {
     const q = find.trim().toLowerCase()
-    if (q && !`${nameOf(m)} ${m.email} ${m.level ?? ''}`.toLowerCase().includes(q)) return false
+    /* "by name, email or a check-in they are in" (HAFSAH'S FAULT 4): `m.checkIns` is only ever what
+       the server already sent this admin, so matching against it here never surfaces a check-in
+       the reader could not already see in the cell below. */
+    const checkInLabels = (m.checkIns ?? []).map((c) => c.label ?? '').join(' ')
+    if (q && !`${nameOf(m)} ${m.email} ${m.level ?? ''} ${checkInLabels}`.toLowerCase().includes(q)) return false
     if (team && (m.team ?? '') !== team) return false
     return matches(filter, m, ownerId)
   })
@@ -207,8 +234,8 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
             <TextField
               value={find}
               onChange={(e) => setFind(e.target.value)}
-              placeholder="Find somebody"
-              aria-label="Find somebody"
+              placeholder="Find somebody by name, email or a check-in they are in"
+              aria-label="Find somebody by name, email or a check-in they are in"
               style={{ maxWidth: 240 }}
             />
             <label className="gwui-inline-label">
@@ -251,7 +278,7 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
                       <span>{m.team?.trim() || 'No team'}</span>
                       <Tag tone={roleTagTone(role)}>{role}</Tag>
                       <Tag tone={statusTagTone(st)}>{st}</Tag>
-                      <span>{checkInsWordApart(m, startOf)}</span>
+                      <CheckInsCell m={m} startOf={startOf} />
                       {/* Nothing has been written for them yet, so there is no page to open (U.4
                           people-group review, item 2: Zawadi's row, held for a seat). */}
                       {/* HAFSAH, 30 SEPTEMBER, ITEM 2: A PLAIN LINK, NOT A BUTTON. The prototype

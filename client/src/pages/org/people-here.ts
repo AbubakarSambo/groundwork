@@ -139,14 +139,23 @@ export function checkInsWord(m: Pick<OrgMember, 'checkIns'>): string {
  * this reads it from the grounds this reader already has, by id - the same join YouPage.tsx makes
  * for its own "Your work in each" list.
  */
-export function checkInsWordApart(m: Pick<OrgMember, 'checkIns'>, startOf: Map<string, { startsAt?: string | null; createdAt?: string | null }>): string {
+/** The same read as `checkInsWordApart`, as the list of pieces it joins - one per check-in, each
+ * already told apart from a same-named one in the same cell when it needs to be. Used where the
+ * cell is capped to the first few rather than written out in full (HAFSAH'S FAULT 4, the People
+ * page). */
+export function checkInsPartsApart(m: Pick<OrgMember, 'checkIns'>, startOf: Map<string, { startsAt?: string | null; createdAt?: string | null }>): string[] {
   const checkIns = m.checkIns ?? []
-  if (checkIns.length === 0) return 'None'
+  if (checkIns.length === 0) return []
   const withDates: HasLabelAndStart[] = checkIns.map((c) => ({ id: c.id, label: c.label ?? 'A check-in with no name yet', ...startOf.get(c.id) }))
   return withDates.map((c) => {
     const apart = whatTellsItApart(withDates, c)
     return apart ? `${c.label}, ${apart}` : c.label
-  }).join(', ')
+  })
+}
+
+export function checkInsWordApart(m: Pick<OrgMember, 'checkIns'>, startOf: Map<string, { startsAt?: string | null; createdAt?: string | null }>): string {
+  const parts = checkInsPartsApart(m, startOf)
+  return parts.length ? parts.join(', ') : 'None'
 }
 
 export const A_FAILURE = 'That did not go through, and nothing has changed. Try again.'

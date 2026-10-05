@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { firstNameOf, checkInsWordApart } from './people-here'
+import { firstNameOf, checkInsWordApart, checkInsPartsApart } from './people-here'
 
 /**
  * U.4 RE-REVIEW, ITEM 7: THE ONE-PERSON PAGE USES THE FIRST NAME, EVERY TIME.
@@ -49,5 +49,22 @@ describe('checkInsWordApart', () => {
 
   it('says "None" with no check-ins, same as checkInsWord', () => {
     expect(checkInsWordApart({ checkIns: [] }, new Map())).toBe('None')
+  })
+})
+
+/**
+ * HAFSAH'S FAULT 4: THE SAME READ, AS PIECES, FOR THE PEOPLE PAGE'S CAPPED CELL.
+ * `checkInsWordApart` is `checkInsPartsApart(...).join(', ')` (or 'None'); the cell caps at the
+ * first few of these pieces and offers "and N more" for the rest.
+ */
+describe('checkInsPartsApart', () => {
+  it('is empty with no check-ins', () => {
+    expect(checkInsPartsApart({ checkIns: [] }, new Map())).toEqual([])
+  })
+
+  it('is one piece per check-in, same words as checkInsWordApart', () => {
+    const startOf = new Map([['g1', { startsAt: '2026-09-01' }], ['g2', { startsAt: '2026-09-10' }]])
+    expect(checkInsPartsApart({ checkIns: [{ id: 'g1', label: 'Sales team, Q3', runsIt: false }, { id: 'g2', label: 'Leadership, Q3', runsIt: false }] }, startOf))
+      .toEqual(['Sales team, Q3', 'Leadership, Q3'])
   })
 })

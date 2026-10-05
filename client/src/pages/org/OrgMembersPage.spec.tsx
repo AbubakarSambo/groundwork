@@ -142,6 +142,29 @@ describe('everyone at Baridi', () => {
     expect(screen.getByText('2 people shown.')).toBeTruthy()
   })
 
+  /*
+   * HAFSAH'S FAULT 4: A SEARCH BOX ABOVE THE TABLE THAT ALSO FINDS A CHECK-IN SOMEBODY IS IN, so an
+   * admin can find the two or three people on a check-in among thirty without scrolling the whole
+   * table by eye.
+   */
+  it('the search box finds somebody by name, by email, or by a check-in they are in', async () => {
+    open()
+    await screen.findByText('Miriam Wanjiku', { selector: '.gwui-person-name' })
+    const find = screen.getByPlaceholderText('Find somebody by name, email or a check-in they are in')
+    fireEvent.change(find, { target: { value: 'wairimu kamau' } })
+    expect(screen.getByText('1 person shown.')).toBeTruthy()
+    expect(screen.getByText('Wairimu Kamau', { selector: '.gwui-person-name' })).toBeTruthy()
+    fireEvent.change(find, { target: { value: 'miriam@baridi.co.ke' } })
+    expect(screen.getByText('Miriam Wanjiku', { selector: '.gwui-person-name' })).toBeTruthy()
+    /* "Leadership, Q3" is Amani's and Grace's check-in: searching its name finds the two of them,
+       and nobody who is not on it. */
+    fireEvent.change(find, { target: { value: 'Leadership, Q3' } })
+    expect(screen.getByText('2 people shown.')).toBeTruthy()
+    expect(screen.getByText('Amani Njoroge', { selector: '.gwui-person-name' })).toBeTruthy()
+    expect(screen.getByText('Grace Achieng', { selector: '.gwui-person-name' })).toBeTruthy()
+    expect(screen.queryByText('Miriam Wanjiku', { selector: '.gwui-person-name' })).toBeNull()
+  })
+
   it('every row keeps all six cells - a team, a role, a status, its check-ins and Open - whatever the role or how many check-ins (regression: min-width: max-content)', async () => {
     /*
      * THE BUG (a picture check against the running product, U.4/People re-review): the shared
@@ -197,9 +220,19 @@ describe('everyone at Baridi', () => {
     const wandaRow = within(screen.getByText('Wanda Waiting', { selector: '.gwui-person-name' }).closest('[role="row"]') as HTMLElement)
     expect(wandaRow.getByText('No team')).toBeTruthy()
     expect(wandaRow.getByText('None')).toBeTruthy()
-    /* Lena's six check-ins are all still there, not truncated or dropped because the list is long. */
+    /*
+     * LENA'S SIX CHECK-INS ARE ALL STILL THERE - UPDATED FOR HAFSAH'S FAULT 4 (the sidebar and the
+     * People page list every check-in, unusable at a hundred). The cell this regression test guards
+     * no longer writes every check-in out in one long sentence: it caps at the first three and
+     * offers "and 3 more", which is exactly the nothing-dropped behaviour this test was written to
+     * protect, just reached behind a click instead of always rendered in full. Reworded, not
+     * weakened: the row still keeps all six cells at any width, and every one of Lena's six
+     * check-ins is still reachable from this same cell.
+     */
     const lenaRow = within(screen.getByText('Lena Lead', { selector: '.gwui-person-name' }).closest('[role="row"]') as HTMLElement)
     expect(lenaRow.getByText(/Sales team, Q3, MarketView, where next, test, Kasarani Foods v Pwani Mills, test/)).toBeTruthy()
+    fireEvent.click(lenaRow.getByRole('button', { name: 'and 3 more' }))
+    expect(lenaRow.getByText(/Help a new hire get started, Check how the same role is going/)).toBeTruthy()
   })
 
   it('someone declined at the door reads "Not let in", not "Waiting to be let in" (Hafsah, 29 September)', async () => {
