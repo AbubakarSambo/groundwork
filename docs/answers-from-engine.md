@@ -191,6 +191,19 @@ version that ran inside the stored judgement, as `theJudgement.promptVersionId`,
 code text ran. The code text is unchanged, word for word, and a test proves it. Nothing a person reads
 changed with this step.
 
+**The lead is no longer told "Your own account of this is not in this check-in." about their own
+item.** Found on the run of 5 October, on the snapshot and the project boards. Under "What this cannot
+tell you" the snapshot's lead read "You have said that hiring is hard, but not what the difficulties
+are." and then "Your own account of this is not in this check-in." Their account is partly there.
+The fix in 048cea38 covered only a check-in of one person.
+
+Now, where the line above is about the lead, the lead reads "Only you can answer this." A line that is
+not about the lead keeps its sentence, and so does the case where the missing account is somebody
+else's. The lead's report now makes the same repairs as the board. Before, only the board did, so a
+heading that is only a piece becomes a sentence on the report too: "This check-in cannot tell you
+about your role in the client meetings." An admin and the participant are unaffected. The wording
+"Only you can answer this." is mine; there is no prototype screen for it.
+
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
 ```

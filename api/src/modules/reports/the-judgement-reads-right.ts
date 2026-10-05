@@ -41,6 +41,16 @@ export function aHeadingThatIsASentence(about: string): string {
 const NOBODY_ELSE_ANSWERS = 'Nobody else answers this check-in, so there is no other account to set this against.';
 
 /**
+ *  - "Your own account of this is not in this check-in." told to the lead about their OWN item, where the line above it
+ *    is about them ("You have said that hiring is hard, but not what the difficulties are.", "The record does not say
+ *    why your definition of the project does not include the automation"). Their account is partly there, so "is not in
+ *    this check-in" is not true; what is true is that nobody else can give it. Run of 5 October, the snapshot and the
+ *    project. Only where the line above says "you" or "your", and never where the thing is who somebody else is.
+ */
+const ONLY_YOU_CAN_ANSWER = 'Only you can answer this.';
+const THE_LINE_IS_ABOUT_THE_READER = /\b(?:you|your|yours|yourself)\b/i;
+
+/**
  * A STEP IS SOMETHING TO DO, AND A PROMISE IS SAID AS WHAT WAS PROMISED (request 134 item 4, narrowed after review).
  *
  *  - "The status of the open commitments to 'call the client' and 'file the bundle'." stood under "What to do": a piece,
@@ -101,7 +111,9 @@ export function aJudgementThatReadsRight<T>(judgement: T, opts: { theReaderIsThe
       const m = theLeadsOwn ? String(x.about ?? '').trim().match(WHO_SOMEBODY_ELSE_IS) : null;
       const toKnow = m
         ? `That ${m[1].toLowerCase().split(' ')[0]}'s own account is not in this check-in.`
-        : theLeadsOwn && opts.theReaderIsTheOnlyPerson ? NOBODY_ELSE_ANSWERS : x.toKnow;
+        : theLeadsOwn && opts.theReaderIsTheOnlyPerson ? NOBODY_ELSE_ANSWERS
+          : theLeadsOwn && THE_LINE_IS_ABOUT_THE_READER.test(String(x.why ?? '')) ? ONLY_YOU_CAN_ANSWER
+            : x.toKnow;
       const about = typeof x.about === 'string' ? aHeadingThatIsASentence(x.about) : x.about;
       return { ...x, about, toKnow };
     }),

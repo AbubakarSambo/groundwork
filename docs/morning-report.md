@@ -35,6 +35,7 @@ database, and every one is complete, so the warning came too early and the numbe
 - At the read, the lead's judgement now fixes only the verb after "until you … and" (123 item 7). I took out the rules for "she", "he", "they" and for reflexives after three reviews, because each could put a false sentence about the lead on the page. The pronouns go to the prompt work after the run.
 - The lead's judgement turns "The status of the open commitments to…" into "Check the status of…", and says a promise like 'I will file the bundle' as "file the bundle". After review it no longer drops any step, and leaves quotes that are not promises alone (134 item 4).
 - The judgement now has its own stored prompt versions, and each judgement records which version wrote it, so a prompt change can be proved. The code text is unchanged.
+- The lead is no longer told "Your own account of this is not in this check-in." about their own item. It reads "Only you can answer this.", on the report and the board. Found on the 5 October run's snapshot and project.
 - I stopped on 139, the goal drawn as "Point to successfully renewed contracts", because no code writes that line and it is not in this computer's database. I asked the screens workspace which field carries it. I did not start 130 (b), 130 (d) or 131 (6), because none of them is small.
 
 ### Needs Hafsah

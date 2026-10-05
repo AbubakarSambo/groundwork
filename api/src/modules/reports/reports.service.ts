@@ -176,7 +176,7 @@ import { plainNameOf as plainPatternNameOf } from '../patterns/plain-pattern-nam
 import { whatMoreThanOnePersonNamed, namedByMoreThanOne } from './what-more-than-one-person-named';
 import { decide, RoundPicture } from './what-the-report-said-at-the-time';
 import { aStoredSentenceReadsRight } from './a-stored-sentence-reads-right';
-import { aJudgementWithNoPieces } from './the-judgement-reads-right';
+import { aJudgementThatReadsRight } from './the-judgement-reads-right';
 import { whyNot } from './why-it-is-not-happening';
 import { howThisHasMoved } from './how-this-has-moved';
 import { doesThisReportMarkItsInferences } from './a-report-that-marks-nothing';
@@ -5468,7 +5468,14 @@ happened, and what is in the way.`;
       };
     }
     /* And no step that is only a piece, and no promise quoted as a fragment (request 134 item 4), as the board serves it. */
-    if (named?.theJudgement) named.theJudgement = aJudgementWithNoPieces(named.theJudgement);
+    /* The same repairs the board makes, so the lead's report and board read alike: no piece for a step, a promise as
+       what was promised, whose account is missing, and a check-in of one (requests 134, 136 and the 5 October run). */
+    if (named?.theJudgement) {
+      const answering = (parties as any[]).filter((p) => !p?.managingOnly);
+      named.theJudgement = aJudgementThatReadsRight(named.theJudgement, {
+        theReaderIsTheOnlyPerson: viewerIsLead && answering.length === 1 && answering[0]?.id === viewerParticipantId,
+      });
+    }
     return {
       ...named,
       sharedPicture: t(report.sharedPicture),
