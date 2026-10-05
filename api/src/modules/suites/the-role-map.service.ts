@@ -1,11 +1,12 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { thisSuiteIsOff } from './a-suite-that-is-off-says-what-to-do';
 import { PrismaService } from '../prisma/prisma.service';
 import { labelsForParties, namesVisibleTo, viewerLabelOf, withNames } from '../reports/party-labels';
 import { whatTheyMayRead } from '../grounds/who-may-read-this-check-in';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const ROLES_REFUSED = {
-  notOn: 'The role map suite is not switched on.',
+  notOn: thisSuiteIsOff('The role map suite'),
   onlyAnAdmin: 'Only an admin can open this board.',
 };
 

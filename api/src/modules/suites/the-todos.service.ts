@@ -1,4 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { thisSuiteIsOff } from './a-suite-that-is-off-says-what-to-do';
 import { PrismaService } from '../prisma/prisma.service';
 import { groundsAViewerMayList } from '../grounds/who-may-read-this-check-in';
 import { peersAreNamedOn, theReaderBySignIn } from '../reports/peers-are-named';
@@ -8,7 +9,7 @@ import { sameRequest } from '../grounds/a-fuller-promise-wins';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const TODOS_REFUSED = {
-  notOn: 'The to-dos suite is not switched on.',
+  notOn: thisSuiteIsOff('The to-dos suite'),
   onlyAdminsAndLeads: 'Only an admin or a lead can open this board.',
 };
 

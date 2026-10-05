@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { thisSuiteIsOff } from './a-suite-that-is-off-says-what-to-do';
 import { PrismaService } from '../prisma/prisma.service';
 import { askNameOf } from '../assistant/ask-name';
 import { theirRosterEntries, theirRosterEntry } from './a-roster-entry-and-its-sign-in';
@@ -18,7 +19,7 @@ import { daysOfLeaveLeftSaid } from '../assistant/your-own-requests-asked-about'
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const LEAVE_REFUSED = {
-  notOn: 'The leave suite is not switched on.',
+  notOn: thisSuiteIsOff('The leave suite'),
   onlyAdminsAndLeads: 'Only an admin or a lead can open this board.',
   notInIt: 'Only people in this organisation can ask for leave here.',
   notFound: 'That request was not found.',

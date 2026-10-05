@@ -5033,3 +5033,26 @@ inside one check-in, send me the check-in and I will look again.
 **Item 6's other half, when-words that are not dates** ("if it happens again", "the same day"), is
 not done. Those are what the person said, so the fix is not to rewrite them but to stop showing
 them where a date belongs, and that needs to know what the screen does with the field.
+
+---
+
+# Request 154 item 8, done: a suite that is off says what to do about it
+
+Eleven suites refused with a bare statement and nothing a reader could act on — "The spending
+suite is not switched on." — which is why you were adding a next step yourselves. Two of them
+already said one in chat. They all say the same thing now:
+
+> The spending suite is not switched on. An admin switches it on under Suites.
+
+**One sentence for both readers.** An admin and somebody who is not an admin get the same words,
+because they are true for both: it tells an admin exactly where to go and tells everybody else who
+to ask. Making it reader-aware would mean threading who is reading through eleven services that do
+not know, for a sentence that would say nearly the same thing either way.
+
+You can drop the next step the screens add. If "under Suites" is not where it actually sits on your
+side, tell me the real path and I will change the one sentence.
+
+**A note on how the last one was found.** I listed the services by hand, changed ten, and wrote a
+test that reads the folder rather than my list — it immediately found an eleventh,
+`the-spending-for-finance.service.ts`, still saying the bare sentence. The test stays, so a new
+suite copying the old wording is caught rather than shipped.
