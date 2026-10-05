@@ -663,6 +663,10 @@ U.20 (small states and errors) starts only when all have passed, as you asked.
 
 ## Hafsah's decisions, recorded here because `docs/decisions.md` is protected
 
+**6 October: the back office is not rebuilt at all.** It stays exactly as it is, reachable from the main screen as today. It is taken off the task list and the handover.
+
+**6 October: "one to one" in Help.** Each person answers Groundwork one to one, and their words may be quoted word for word to others in the check-in's report, as on the front door.
+
 **5 October: "Ask <organisation name>".** Ask Groundwork becomes "Ask <organisation name>", for example "Ask Coamana". "Ask Groundwork" is used only where there is no organisation yet. Its caption is "Ask about the company, your work or your check-ins", with one line saying people can add context or documents to their check-ins here. The screens change every label, caption, placeholder and empty state once the engine writes the details (request 153). Each change is checked as the lead, a participant and an admin.
 
 **5 October: the staging copy.** Hafsah's copy of Abubakar's staging, `mine/wip/live-base`, is commit 5197f22d, pull request #320. It is the same commit as `mine/wip/live-staging`, and already in this branch, so nothing he changed since #320 can be lost. The merge said "Already up to date".
