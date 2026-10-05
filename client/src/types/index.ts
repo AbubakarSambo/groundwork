@@ -31,6 +31,24 @@ export interface User {
   mayOpenCheckIns?: boolean
   emailNotifications?: boolean
   phoneNumber?: string | null
+  /**
+   * "Connect WhatsApp" (decision 106, 5 October, night): a one-tap link that opens WhatsApp with
+   * "Hi" already typed to Groundwork's number. An optional convenience, never something a person
+   * must do to get their check-ins - the engine serves it only while it would actually work, and
+   * null once there is nothing to offer. See `ConnectWhatsApp`.
+   */
+  connectWhatsApp?: ConnectWhatsApp | null
+}
+
+/**
+ * "Connect WhatsApp" (decision 106): `says` is the button's own label, `link` opens WhatsApp with
+ * "Hi" already typed to Groundwork's number, and `number` is there to show if wanted. Served on
+ * `GET /auth/me` and on the person's own `GET /check-ins/:id/transcript`, nowhere else.
+ */
+export interface ConnectWhatsApp {
+  link: string
+  number: string
+  says: string
 }
 
 export type GroundScenario =
