@@ -15,6 +15,7 @@ import type { YourBoard } from '@/api/you'
 vi.mock('@/api/you', () => ({ youApi: { get: vi.fn() } }))
 vi.mock('@/api/my-data', () => ({ myDataApi: { get: vi.fn(), erase: vi.fn() } }))
 vi.mock('@/api/patterns', () => ({ patternsApi: { answer: vi.fn() } }))
+vi.mock('@/api/grounds', () => ({ groundsApi: { list: vi.fn().mockResolvedValue([]) } }))
 import { youApi } from '@/api/you'
 import { myDataApi } from '@/api/my-data'
 import { patternsApi } from '@/api/patterns'
@@ -73,9 +74,10 @@ describe('Miriam reads her own You board', () => {
   it('shows her goals, her to-dos, her coaching step and her turn, in full sentences', async () => {
     open(MIRIAM, MIRIAMS)
     await screen.findByRole('heading', { name: 'Your goals' })
+    /* Walkthrough pass 2, item 4: each goal now also says which check-in it belongs to. */
     expect(within(section('Your goals')).getAllByRole('listitem').map(li => li.textContent)).toEqual([
-      'Close Westgate Deli and Lakeside Supermarket this quarter.',
-      'Sales closed. You have 3 of 4.',
+      'Close Westgate Deli and Lakeside Supermarket this quarter.Sales team, Q3',
+      'Sales closed. You have 3 of 4.Sales team, Q3',
     ])
     expect(within(section('Your to-dos')).getByText('Send a photo of Green Mart’s written order.')).toBeInTheDocument()
     expect(within(section('Coaching')).getByText('One thing for this week: Ask Westgate what would get the deposit paid this week.')).toBeInTheDocument()
@@ -100,6 +102,8 @@ describe('Miriam reads her own You board', () => {
     open(MIRIAM, MIRIAMS)
     await screen.findByRole('heading', { name: 'Your own reports' })
     expect(hrefOf(section('Your own reports'), 'Read')).toBe('/checkin/c38/report')
+    /* Walkthrough pass 2, item 4: dates read in full ("23 September", not "23 Sept"). */
+    expect(within(section('Your own reports')).getByText('23 September')).toBeInTheDocument()
     const each = section('Your work in each')
     expect(within(each).getByText('Sales team, Q3')).toBeInTheDocument()
     expect(within(each).getByText('You have finished 38 sessions.')).toBeInTheDocument()
@@ -143,6 +147,28 @@ describe('Wairimu reads her own, as someone who runs a check-in and takes part i
     expect(within(section('What you said you’d do')).getByText('Bring the enterprise pipeline numbers')).toBeInTheDocument()
     expect(container.textContent).not.toContain('Westgate')
     expect(screen.queryByRole('heading', { name: 'Your goals' })).toBeNull()
+  })
+})
+
+describe('two check-ins on "Your work in each" share one label (walkthrough pass 2, item 4)', () => {
+  it('tells them apart by when each one started, the same way the sidebar already does', async () => {
+    const groundsApi = (await import('@/api/grounds')).groundsApi as any
+    groundsApi.list.mockResolvedValue([
+      { id: 'c1', startsAt: new Date(2026, 8, 20).toISOString() },
+      { id: 'c2', startsAt: new Date(2026, 8, 27).toISOString() },
+    ])
+    const board: YourBoard = {
+      ...EMPTY,
+      checkIns: [
+        { id: 'c1', label: 'Help a new hire get started', youRunIt: false, line: 'You have finished 1 session.', to: '/grounds/c1' },
+        { id: 'c2', label: 'Help a new hire get started', youRunIt: false, line: 'You have finished 2 sessions.', to: '/grounds/c2' },
+      ],
+    }
+    open(MIRIAM, board)
+    await screen.findByRole('heading', { name: 'Your work in each' })
+    const each = section('Your work in each')
+    expect(within(each).getByText('Help a new hire get started, started 20 September')).toBeInTheDocument()
+    expect(within(each).getByText('Help a new hire get started, started 27 September')).toBeInTheDocument()
   })
 })
 
@@ -273,24 +299,27 @@ describe('Everything asked of you this week (D3, U.16), on your own board only',
     ...MIRIAMS,
     askedOfYou: {
       items: [
-        { id: 'a1', who: null, checkIn: 'Kwame, first 90 days', what: 'The demo freezer booking for Thursday', asked: new Date(2026, 8, 14, 10).toISOString() },
-        { id: 'a2', who: 'Wairimu Kamau', checkIn: 'Sales team, Q3', what: 'What would get Westgate’s deposit', asked: new Date(2026, 8, 16, 10).toISOString() },
-        { id: 'a3', who: 'Grace Achieng', checkIn: 'Supplier review', what: 'Delivery times you’ve seen from each supplier', asked: new Date(2026, 8, 17, 10).toISOString() },
+        { id: 'a1', who: null, checkIn: 'Kwame, first 90 days', what: 'The demo freezer booking for Thursday', asked: new Date(2026, 8, 14, 10).toISOString(), standing: 'The demo freezer booking is due Thursday.' },
+        { id: 'a2', who: 'Wairimu Kamau', checkIn: 'Sales team, Q3', what: 'What would get Westgate’s deposit', asked: new Date(2026, 8, 16, 10).toISOString(), standing: 'Overdue.' },
+        { id: 'a3', who: 'Grace Achieng', checkIn: 'Supplier review', what: 'Delivery times you’ve seen from each supplier', asked: new Date(2026, 8, 17, 10).toISOString(), standing: 'No date has been given yet.' },
       ],
       says: '3 requests from 3 people across 3 check-ins.',
     },
   }
 
-  it('Miriam reads each request with who asked, where, what and when, and the sentence under them', async () => {
+  it('Miriam reads each request with who asked, where, what and where it stands, in the engine\'s own words', async () => {
+    /* Walkthrough pass 2, item 4: "Asked 14 Sept." was the screen's own guess at what mattered.
+       The engine already writes one plain sentence of where each request stands (`standing`,
+       api/src/modules/grounds/asked-of-you.ts) - that is what is drawn now, not a bare date. */
     open(MIRIAM, ASKED)
     await screen.findByRole('heading', { name: 'Everything asked of you this week' })
     const s = section('Everything asked of you this week')
     expect(within(s).getByText('From every check-in you’re in. Only you see this.')).toBeInTheDocument()
     const rows = within(s).getAllByRole('listitem').map((li) => li.textContent)
     expect(rows).toEqual([
-      'Kwame, first 90 daysThe demo freezer booking for ThursdayAsked 14 Sept.',
-      'Wairimu KamauSales team, Q3What would get Westgate’s depositAsked 16 Sept.',
-      'Grace AchiengSupplier reviewDelivery times you’ve seen from each supplierAsked 17 Sept.',
+      'Kwame, first 90 daysThe demo freezer booking for ThursdayThe demo freezer booking is due Thursday.',
+      'Wairimu KamauSales team, Q3What would get Westgate’s depositOverdue.',
+      'Grace AchiengSupplier reviewDelivery times you’ve seen from each supplierNo date has been given yet.',
     ])
     expect(within(s).getByText('3 requests from 3 people across 3 check-ins.')).toBeInTheDocument()
   })
