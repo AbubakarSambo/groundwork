@@ -77,3 +77,28 @@ describe('the room judgement is held to it when it is written', () => {
     expect(out.judgement.theGap).toBe('Participant A has named four different activities in two locations.');
   });
 });
+
+/* Review of 8b02c307: the same number written two ways is one number, on both sides. */
+describe('a number written another way is the same number', () => {
+  it.each([
+    ['Twenty-five shops signed.', 'Tobi said 25 shops have signed.'],
+    ['Twenty five shops signed.', 'Tobi said 25 shops have signed.'],
+    ['The budget is KES 1.2m.', 'The budget is KES 1,200,000.'],
+    ['The budget is 1.2 million shillings.', 'The budget is KES 1,200,000.'],
+    ['Sales reached 450k this month.', 'Sales reached 450,000 this month.'],
+    ['The fund holds 2 billion.', 'The fund holds 2,000,000,000.'],
+    ['The first alert came at 7 AM.', 'The first alert came at 07:00.'],
+    ['The first alert came at 07:00.', 'The first alert came at 7am.'],
+    ['The van left at 7 pm.', 'The van left at 19:00.'],
+  ])('keeps "%s" where the material says "%s"', (line, material) => {
+    expect(numbersNotHeld(line, theNumbersTheMaterialHolds(material))).toEqual([]);
+  });
+
+  it.each([
+    ['Sales came to 1,700 across both shops.', 'Shop one sold 1,200 and shop two sold 500.'],
+    ['Shop one sold 700 more than shop two.', 'Shop one sold 1,200 and shop two sold 500.'],
+    ['That is 70 percent of the target.', 'Shop one sold 1,200 against a target of 2,000.'],
+  ])('still leaves out a total, a difference or a percentage the model made: "%s"', (line, material) => {
+    expect(numbersNotHeld(line, theNumbersTheMaterialHolds(material)).length).toBeGreaterThan(0);
+  });
+});
