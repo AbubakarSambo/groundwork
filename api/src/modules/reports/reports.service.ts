@@ -134,6 +134,7 @@ import type { AFittedAnswer } from './fitting-an-answer-into-the-frame';
 import {
   whatTheNumbersSay, howGoodIsThis, theTable, theJudgementInstruction, THE_JUDGEMENT_SCHEMA,
   thisIsARoom, theRoom, theJudgementOverARoom, THE_ROOM_JUDGEMENT_SCHEMA,
+  THE_JUDGEMENT_ROOM_KEY, THE_JUDGEMENT_POPULATION_KEY, fillTheJudgement,
   everySentenceCarriesANumber, talksLikeAPerson,
 } from './the-judgement-over-the-answers';
 import { onePerPerson, howManyPeople, AnAnswerInItsSession } from './one-person-is-one-answer';
@@ -4805,6 +4806,21 @@ happened, and what is in the way.`;
       this.logger.log(`The judgement on ${groundId} is a room read: ${room!.people.length} people, ${sessions} session(s).`);
     }
 
+    /*
+     * THE STORED VERSION WINS WHERE ONE IS ACTIVE, AND ITS ID IS KEPT WITH THE JUDGEMENT. The code text above is the
+     * fallback; a version stored under the judgement's own key replaces it, filled the same way. See the keys in
+     * the-judgement-over-the-answers.ts.
+     */
+    const theKey = asARoom ? THE_JUDGEMENT_ROOM_KEY : THE_JUDGEMENT_POPULATION_KEY;
+    const stored = await (this.prompts?.getActive?.(theKey) ?? Promise.resolve(null)).catch(() => null);
+    if (stored?.content) {
+      instruction = fillTheJudgement(stored.content, {
+        whoIsReading: 'whoever called this check-in',
+        whatTheyAreDeciding: 'what to do next about the people and the work it covers',
+        leadName: asARoom ? room!.leadName : null,
+      });
+    }
+
     const judgement = await this.anthropic.extract<any>(
       instruction,
       [{ role: 'user', content: material }],
@@ -4895,7 +4911,8 @@ happened, and what is in the way.`;
     }
     if (parables.length) this.logger.warn(`The judgement on ${groundId} used ${parables.length} phrase(s) a person would not: ${parables.join(', ')}`);
     this.logger.log(`Judged ${answers.length} answer(s) on ${groundId} over ${frame.length} fields.`);
-    return { judgement: kept, table };
+    /* Which instruction wrote it: the stored version's id, or null where the code text ran. */
+    return { judgement: { ...kept, promptVersionId: stored?.id ?? null }, table };
   }
 
   private async extractAndStoreLeadSignals(groundId: string, initiatorUserId: string): Promise<void> {

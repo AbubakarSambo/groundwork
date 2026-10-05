@@ -349,8 +349,37 @@ export function theTable(reads: AFieldRead[], assessments: AnAssessment[], howMa
  * the text afterwards; the instruction is where it is fixed.
  */
 export function theJudgementInstruction(whoIsReading: string, whatTheyAreDeciding: string): string {
+  return fillTheJudgement(theJudgementTemplate(), { whoIsReading, whatTheyAreDeciding, leadName: null });
+}
+
+/*
+ * THE JUDGEMENT'S INSTRUCTIONS ARE STORED VERSIONS TOO (plan for requests 123 item 7, 134 item 4, 135 item 3).
+ *
+ * The judgement was the one prompt with no `PromptVersion` key, so a report's `promptVersionId` said which synthesis
+ * prompt ran and nothing said which judgement prompt did. Each instruction is now a template with three places to
+ * fill: who is reading, what they are deciding, and the line about the person running it. The code text below is the
+ * fallback, and the stored version under these keys wins where one is active. The id of the one that ran is kept
+ * inside the stored judgement as `promptVersionId`.
+ */
+export const THE_JUDGEMENT_POPULATION_KEY = 'the_judgement_population';
+export const THE_JUDGEMENT_ROOM_KEY = 'the_judgement_room';
+
+export function theLeadLine(leadName: string | null): string {
+  return leadName
+    ? `THE PERSON RUNNING THIS IS ${leadName}. They are not one of the people being checked in on and must never be counted as one. Where the record shows something about how they are running it, say that - it is often the most useful thing here - but say it as their own finding.`
+    : 'One of these people runs the check-in and is not one of the people being checked in on. Never count them as one.';
+}
+
+export function fillTheJudgement(template: string, a: { whoIsReading: string; whatTheyAreDeciding: string; leadName: string | null }): string {
+  return template
+    .split('{{whoIsReading}}').join(a.whoIsReading)
+    .split('{{whatTheyAreDeciding}}').join(a.whatTheyAreDeciding)
+    .split('{{theLeadLine}}').join(theLeadLine(a.leadName));
+}
+
+export function theJudgementTemplate(): string {
   return [
-    `You are writing the judgement over a check-in that ${whoIsReading} ran. They are deciding: ${whatTheyAreDeciding}`,
+    'You are writing the judgement over a check-in that {{whoIsReading}} ran. They are deciding: {{whatTheyAreDeciding}}',
     '',
     'You are given a TABLE of counts computed from the answers. It is everything you have and everything you may use.',
     '',
@@ -495,17 +524,19 @@ export function theRoom(
  * people in three different situations.
  */
 export function theJudgementOverARoom(whoIsReading: string, whatTheyAreDeciding: string, leadName: string | null): string {
+  return fillTheJudgement(theRoomJudgementTemplate(), { whoIsReading, whatTheyAreDeciding, leadName });
+}
+
+export function theRoomJudgementTemplate(): string {
   return [
-    `You are writing the judgement over a check-in that ${whoIsReading} ran. They are deciding: ${whatTheyAreDeciding}`,
+    'You are writing the judgement over a check-in that {{whoIsReading}} ran. They are deciding: {{whatTheyAreDeciding}}',
     '',
     'You are given a BLOCK PER PERSON: what they were taken on for, what the record holds about them, behaviours seen often enough to be a pattern, and what they said they would do that nobody has closed. Then the places the accounts differ. That is everything you have and everything you may use.',
     '',
     'THE ONE RULE: every sentence names a PERSON. Not "3 of 4", not "most of the team", not "several people". This is a room, not a survey - there are few enough people here to say which one you mean, and a proportion of four hides the only thing that matters, which is that they are in different situations.',
     '',
     'NEVER MERGE TWO PEOPLE WHOSE REASONS DIFFER. Somebody who has submitted nothing, somebody whose work is genuinely stuck with a third party, and somebody who has misunderstood what is being counted can all look like "behind" from a distance. They need three different conversations. If two blocks say different things, they are two findings.',
-    leadName
-      ? `THE PERSON RUNNING THIS IS ${leadName}. They are not one of the people being checked in on and must never be counted as one. Where the record shows something about how they are running it, say that - it is often the most useful thing here - but say it as their own finding.`
-      : 'One of these people runs the check-in and is not one of the people being checked in on. Never count them as one.',
+    '{{theLeadLine}}',
     '',
     'AND NOTHING IS ANYBODY\'S FAULT UNLESS AN ACCOUNT SAYS SO. This is the limit on the line above, and it was written because the line above was taken too far. State what the record holds. Never write that somebody caused a problem, failed to do something, or made the situation happen, unless one of the blocks actually says it. "Nobody wrote the target down" is what the record holds. "You created this problem" is a charge, and a charge nobody made is an invention, however reasonable it looks from the blocks. If you find yourself explaining why things are as they are, stop and write what is on the record instead.',
     '',
