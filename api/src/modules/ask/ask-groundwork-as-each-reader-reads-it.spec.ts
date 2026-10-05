@@ -90,7 +90,7 @@ const STORED_REPORTS: Record<string, any> = {
 /* Kofi's next check-in opens in three days. */
 const KOFI_NEXT = new Date(Date.now() + 3 * 24 * 3600 * 1000);
 
-function fixture(opts: { leakyReport?: boolean } = {}) {
+function fixture(opts: { leakyReport?: boolean; contextInAsk?: boolean } = {}) {
   const db: Record<string, any[]> = {
     organization: [{ id: ORG, name: 'Baridi' }],
     person: [
@@ -199,6 +199,8 @@ function fixture(opts: { leakyReport?: boolean } = {}) {
       : r.id === where.id)) ?? null, select)),
   });
   const prisma: any = Object.fromEntries(Object.keys(db).map((k) => [k, table(k)]));
+  /* `release.contextInAskGroundwork` is off as shipped: the line about adding context is read only when it is on. */
+  prisma.platformSetting = { findUnique: jest.fn(async ({ where }: any) => (opts.contextInAsk && where.key === 'release.contextInAskGroundwork' ? { value: { on: true } } : null)) };
   prisma.subject = { findMany: jest.fn(async () => []), count: jest.fn(async () => 0) };
   prisma.detectionQuietPeriod = { findMany: jest.fn(async () => []) };
 
@@ -259,7 +261,8 @@ function fixture(opts: { leakyReport?: boolean } = {}) {
 const BARIDI_ASK = {
   askName: 'Ask Baridi',
   caption: 'Ask about the company, your work or your check-ins.',
-  addLine: 'You can also add context or documents to your check-ins here.',
+  /* Left out while `release.contextInAskGroundwork` is off, which is how it ships. */
+  addLine: null,
   /* Decision 101: four of the five need a check-in, so a reader with none is left with the one
      that does not. One true starter rather than four invented ones. */
   starters: ["What are the company's priorities right now?", 'Ask for leave, or to spend money.'],
@@ -973,12 +976,19 @@ describe('the detectors', () => {
 
 describe('Ask is named for the organisation, and tells a person what it can do the first time (decision 100)', () => {
   it('a member with no questions yet reads the name, the caption, the one line and the welcome', async () => {
-    const { controller, asUser } = fixture();
+    const { controller, asUser } = fixture({ contextInAsk: true });
     const tom: any = await controller.mine(asUser(readers.tom));
     expect(tom.askName).toBe('Ask Baridi');
     expect(tom.caption).toBe('Ask about the company, your work or your check-ins.');
     expect(tom.addLine).toBe('You can also add context or documents to your check-ins here.');
     expect(tom.welcome).toBe(BARIDI_WELCOME);
+  });
+
+  it('while the switch for context in Ask is off, nobody is told they can add context or documents here', async () => {
+    const { controller, asUser } = fixture();
+    const tom: any = await controller.mine(asUser(readers.tom));
+    expect(tom.addLine).toBeNull();
+    expect(JSON.stringify(tom)).not.toContain('add context or documents');
   });
 
   it('a member who has already asked is not welcomed again, and still reads the name', async () => {
