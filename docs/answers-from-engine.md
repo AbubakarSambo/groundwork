@@ -19,6 +19,56 @@ Read this one from their side with:
 
 *Read at 26 September against `920f67f8`.*
 
+## 5 October, evening: Plan and billing at release (the free trial and the WhatsApp add-on switched on)
+
+Both are switched on in this release by a release step, not a migration (`docs/deploy.md`, step 13a and
+"Switching billing on at release"). Your billing requests: only request 30 is about billing. Its (a) and (b) are
+done or agreed; (c) is still open and shows nobody a seat count. Note (b) again: while the trial's switch is on,
+a scenario run that makes new organisations without `COVER_THE_ORG=1` is refused at its first check-in. So the
+local test database has the trial switched off again after the run below. `release.planAndBillingNewParts` is left on.
+
+**What the API serves, read on the local test database as each reader** (a new team, Kijani Repairs, made after
+the switch, whose founder said it has fewer than 20 people; three people):
+
+| Who reads it | `GET /billing/status` | `GET /billing/whatsapp` |
+| --- | --- | --- |
+| Wanjiru, the admin | plan none; `people` 3 of 20; `onTheFreePlan` false; `onTheHouse` Small Team until 5 November 2026, `freeTrial` true; usage; card none; invoices none | everything: on or off, Small Team, $72, `charged` false, the trial's end, 0 of 2,000 this month, and the sentences below |
+| Otieno, a lead | plan none; `people` 3 of 20; `onTheHouse` Small Team until 5 November 2026, without `freeTrial` | `{ "sending": true, "says": null }` |
+| Achieng, who takes part | the same as Otieno | the same as Otieno |
+
+Turning WhatsApp on: Otieno is refused ("This action requires one of the following roles: ADMIN"). Wanjiru turns it
+on, nothing reaches Stripe, and she reads:
+
+> WhatsApp is on for your organisation.
+> WhatsApp costs $72 a month on your Small Team plan.
+> Your free trial lasts 1 month and ends on 5 November 2026. Nothing is charged for WhatsApp until then.
+> Your organisation has sent 0 of its 2,000 WhatsApp messages this month.
+> If your organisation sends all 2,000 messages in a month, nothing more is sent by WhatsApp until the next month begins. Check-ins carry on in the app, and you are told once.
+
+Before she turned it on, the first line read "WhatsApp is off for your organisation, so check-ins stay in the app."
+
+Stripe test mode could not be driven: the local key is the placeholder `sk_test_...`, so starting a checkout
+answered "Invalid API Key provided". A real Stripe test key in the local `api/.env` is needed.
+
+**The prototype's F2-billing screens against what the API serves, field by field:**
+
+| Screen and field | Served? | The gap, if any |
+| --- | --- | --- |
+| pricing: "3 months free", "$0 for 3 months" | `GET /billing/pricing` `trial.months` is 1 | None in the API: every free run is one month (decision 78, and 5 October). The page must read `trial.months`, never "3". Your `theFreeTrialSentence` and `theTrialNotices` already do. |
+| pricing and settings-billing: the six plans, prices and people | `plans[]` with `label`, `amountCents`, `memberCap` | None. |
+| settings-billing, Plan: "Growth, $400 a month. 27 of 100 people." | `subscription.plan`, the plan's price, `people.count` and `cap` | None. |
+| settings-billing, Next payment: "1 October, $400, by card ending 4417." | `subscription.periodEnd`, the price, `card.last4` (read from Stripe) | None, once a real key is set. |
+| settings-billing, Free trial: "Baridi started with 27, so it began on a plan." | No | What the organisation said about its size when it was made (`teamSizeSaid`, `teamSizeLine`) is stored but not served. Ask if you want it, admin only, on `/billing/status`. |
+| settings-billing, Invoices: "1 September, $400, paid by card ending 4417. Download" | `invoices[]` with `paidOn`, `amountCents`, `currency` | No card per invoice and no download link. The Customer Portal (`POST /billing/portal`) has both. Ask if the page needs them itself. |
+| settings-checkout: the card form | No, by design | Payment is Stripe's own Checkout page (`POST /billing/subscription` answers a `checkoutUrl`). "$400 a month, from today" holds: a team that subscribes during its trial pays from that day, and the rest of its free month is not carried over. Whether it should be is a question for Hafsah. |
+| settings-paid: "All 27 people can check in. A receipt is on its way to grace@baridi.co.ke." | `people.count`, and the billing email on `/auth/me` (`organization.email`) | None. |
+| settings-payfailed: "Your bank declined it. You haven't been charged, and your plan hasn't changed." | No | A declined card is shown on Stripe's page; the product only learns "cancelled" from the return address. A failed renewal is served as `subscription.status` "past_due". |
+| upgrade, an admin 7 days before: the end date, the team's size, the plan that holds it | `onTheHouse.until`, `onTheHouse.freeTrial`, `people.count`, `plans[]` | None. |
+| upgrade, past the trial size: "You now have 20 people" | `people.count`, `trial.teamsUnder` | None. |
+| upgrade, anyone else once it has paused: "We've told them you're waiting." and "Remind them" | The pause sentence only ("This check-in is paused until your team subscribes. Only an admin can do that, and your answers so far are kept.") | Nothing tells the admins that somebody is waiting, and there is no route behind "Remind them". The API's sentence does not say they were told, so the screen must not say it either. |
+| upgrade, an access code | `POST /billing/contributor-codes/redeem` | None. |
+| The WhatsApp add-on | `GET` and `PATCH /billing/whatsapp` | Not on any F2 screen; the sentences above are the API's own. A lead or a person who takes part is served only `sending` and `says`, and the page only asks for it as an admin, so they never read why their check-ins stay in the app. In a trial with WhatsApp off they are served `sending: true` with nothing to say, because the old WhatsApp messages still go and only the three new ones wait for the add-on. |
+
 ## 5 October, afternoon: Hafsah's two wording decisions, and what came after
 
 **123 (8), the outcome when somebody leaves a role.** Hafsah chose the prototype's sentence with the

@@ -35,7 +35,8 @@ This is the one list to follow. Each step that needs whoever runs the release to
 10. **Run `give-each-check-in-its-kind-of-work.ts`**: dry run first, then `--hosted-database --write` (section 5). It calls the model. Needs explicit confirmation. It must run before step 11.
 11. **Run `bring-a-check-in-up-to-date.ts`**: dry run first, read each sentence it prints, then `--hosted-database --write` (section 5). Needs explicit confirmation.
 12. **Read what each person reads** on a test organisation, and run the other checks (section 7).
-13. **Switch things on one at a time, never on the day of the migrations** (section 4): WhatsApp only after Meta has approved the templates, the free trial only after Stripe is tested, and the other hidden-at-release switches only when Hafsah says.
+13. **Switch things on one at a time, never on the day of the migrations** (section 4): WhatsApp only after Meta has approved the templates, and the other hidden-at-release switches only when Hafsah says.
+13a. **Switch billing on: the one-month free trial and the WhatsApp add-on** ("Switching billing on at release", below). First run the read-only check there. Switch on only if it returns no organisation, or Hafsah has decided what happens to each one it returns. Never by a migration, because a migration cannot look first. Needs the explicit confirmation of whoever runs the release.
 14. **Read the logs the next morning** (section 7, "Watch for the first night").
 
 ---
@@ -230,8 +231,8 @@ For reference, the production start-up check (unchanged since the remote `main`)
 | The old context chat | No separate switch; it is part of the check-in page. | **On**, and must stay on. Hafsah decided it stays until the screens workspace confirms Ask Groundwork's screens do everything live. | Do nothing. Do not set `CONTEXT_ENABLED=false`, which would switch off the whole context feature, not only the old chat. |
 | Coaching in live check-ins | Settings row `coaching_live` | **On** if the row is missing (see section 3). | Decide before release whether production has the row, and what it says. |
 | Suggestions about a person | Settings row `suggestions.thresholds` | **On**, on performance plans, promotions and renewals only, from migration 59. | Nothing, unless Hafsah wants them held back at release. |
-| Free trial | Settings row `pricing.freeTrial` | **Off**, one month long. | Stays off until Stripe billing is wired and tested, and Hafsah switches it on. |
-| WhatsApp as a paid add-on (decision 78) | The same `pricing.freeTrial` switch; prices and limits in `pricing_plans`; each organisation's choice in `organizations.whatsapp_add_on_on` | **Not charging and not holding anything** while the trial is off. The monthly WhatsApp limit for each plan applies from release. | Nothing at release. The add-on's Stripe prices are created in test mode only until Hafsah says otherwise. |
+| Free trial | Settings row `pricing.freeTrial` | **Off** when the migrations run, one month long. | Switched on in this release by step 13a, after its check ("Switching billing on at release"). |
+| WhatsApp as a paid add-on (decision 78) | The same `pricing.freeTrial` switch; prices and limits in `pricing_plans`; each organisation's choice in `organizations.whatsapp_add_on_on` | **Not charging and not holding anything** while the trial is off. The monthly WhatsApp limit for each plan applies from release. | Starts with the free trial's switch, in step 13a. Its Stripe prices are created in test mode only until Hafsah says otherwise. |
 | WhatsApp, the platform's switch and the credentials | Settings row `whatsapp_enabled`; `WHATSAPP_ACCESS_TOKEN` and `WHATSAPP_PHONE_NUMBER_ID`; `WHATSAPP_APPROVED_TEMPLATES` (the full guide is `docs/whatsapp-settings.md`) | Off unless somebody switched it on. | Stays off until Meta approves the templates. Groundwork cannot write first on WhatsApp until then. |
 | WhatsApp, each organisation's add-on | `organizations.whatsapp_add_on_on`, read by `api/src/modules/whatsapp/only-where-whatsapp-is-turned-on.ts` | Off for every organisation. | The morning reminder, the reminder before a session and the lead's daily summary go only to an organisation whose add-on is on, and only while the platform's switch is on. Existing clients get WhatsApp on the same terms as the paid client (decision 90), so each turns it on in the same way. |
 | Suites (leave, hours, spending, reviews, leaving, role map, customers, equipment) | Table `organization_suites`, one row per organisation and suite | **Off** for every organisation until an admin switches a suite on. | Nothing. Each organisation chooses. |
@@ -336,7 +337,7 @@ Every report updated after the release should name the newest `report_synthesis`
 2. The API answers `/health`.
 3. The active prompt versions match section 6.
 4. The scripts in section 5 have run, and a report built after them shows quotation marks around people's words again, and an existing check-in has its kind of work.
-5. `SELECT key, value FROM platform_settings WHERE key IN ('coaching_live', 'suggestions.thresholds', 'pricing.freeTrial', 'whatsapp_enabled', 'release.boardKindsOffered', 'release.contextInAskGroundwork', 'release.planAndBillingNewParts');` shows what was agreed in section 4, and `pricing.freeTrial` says `"months": 1` and `"on": false`.
+5. `SELECT key, value FROM platform_settings WHERE key IN ('coaching_live', 'suggestions.thresholds', 'pricing.freeTrial', 'whatsapp_enabled', 'release.boardKindsOffered', 'release.contextInAskGroundwork', 'release.planAndBillingNewParts');` shows what was agreed in section 4, and `pricing.freeTrial` says `"months": 1` and `"on": false` until step 13a switches it on.
 6. `SELECT plan, whatsapp_add_on_cents, whatsapp_monthly_limit, whatsapp_add_on_stripe_price_id FROM pricing_plans ORDER BY plan;` shows the prices and limits in section 2, and no Stripe price id yet.
 
 **Then read what each person reads, on one test organisation made for the purpose** (never a customer's). Use a team check-in with at least three people, and one performance plan.
@@ -382,7 +383,7 @@ The release hides five things from anything new. It hides nothing an existing cl
 | Boards for kinds of work nobody uses yet | `release.boardKindsOffered`, value `{"kinds": ["sales org", ...]}` | Sales, onboarding (a new hire, a new manager, a new advisor) and project. Of the eleven kinds a board can keep records for, two are offered: "sales org" and "engineering release" (the project board's tasks and releases). The other nine are hidden until the screens workspace marks their board done. | Write the row with more of the eleven names, exactly as they are spelled in `api/src/modules/board/the-kind-of-work.ts`. |
 | The back office rebuild | None. | Nothing to hide. | Nothing to do. |
 | The Context tab's move to Ask Groundwork | `release.contextInAskGroundwork`, value `{"on": false}` | Off. | Write `{"on": true}`. |
-| Plan and billing's new parts | `release.planAndBillingNewParts`, value `{"on": false}`; and `pricing.freeTrial`, value `{"on": false, ...}` | Both off. | Write `{"on": true}` in the first. The trial is switched on separately, in `pricing.freeTrial`, only after Stripe is wired and tested. |
+| Plan and billing's new parts | `release.planAndBillingNewParts`, value `{"on": false}`; and `pricing.freeTrial`, value `{"on": false, ...}` | Both off when the migrations run. | Both are switched on together in this release, by step 13a ("Switching billing on at release"), after its check. |
 | The anchor scenario (a new check-in started from the anchor link) | `release.anchorScenario`, value `{"on": false}` | Off. A missing or broken row reads as off. | Write `{"on": true}`. |
 
 **1. Boards for kinds of work nobody uses yet.** The eleven kinds of work (sales org, engineering release, support desk, and so on) are new in this release. No existing check-in has one until that script runs, because the column did not exist. A new check-in can be given only an offered kind: the lead choosing one (`PATCH /grounds/:id/kind-of-work`) is refused with "Groundwork does not offer that kind of work yet. Choose one of these: sales org, engineering release.", and the read at setup never picks one that is not offered. The one exception is the script that gives existing check-ins their kind of work (`api/journey/give-each-check-in-its-kind-of-work.ts`, decision 91, item 1): decision 91 says existing check-ins move to the new boards, so it may give an existing check-in any of the eleven kinds, offered or not. It is a release step run once by whoever runs the release, never by the read at setup or by a lead. A check-in that already holds a kind that is not offered keeps it: the read at setup leaves it alone, the lead can save it again, its board and records are served exactly as before. The board now also carries `kindsOffered` so the dialog can list only those (a request to the screens workspace is in `docs/answers-from-engine.md`, because the dialog is in `pages/board/`, which the engine workspace does not edit). The onboarding and project boards are chosen by the situation (a new hire, a new manager, a new advisor, a new project), not by a kind, so a new check-in of those situations gets its board with or without a kind, and they are not hidden. The project board's task and release grid is the engineering kind's records, which is why that kind is offered (decision 91, item 3). Tests: `api/src/modules/admin/hidden-at-release.spec.ts`.
@@ -391,6 +392,59 @@ The release hides five things from anything new. It hides nothing an existing cl
 
 **3. The Context tab's move to Ask Groundwork.** The old context chat on the check-in page is untouched and works as on the live main line. What is hidden is the new path into the same conversation through Ask Groundwork: the four lanes that add context, a context line, a lead's note and questions for people, and the "opened from check-in setup" door. While the setting is off, those messages are answered as any other message Ask Groundwork cannot place, and the old chat is not called. Ask Groundwork's other lanes (to-dos, documents, objectives, leave and the rest) are unchanged. Tests: the same spec, plus the three specs that prove the lanes themselves (`items-8-9-17-through-ask-groundwork.spec.ts`, `add-context-is-the-context-chat.spec.ts`, `decision-50-task-b-through-ask-groundwork.spec.ts`), which now turn the setting on in their stand-in database, because they test the new path. They were changed for that reason only.
 
-**4. Plan and billing's new parts.** The free trial stays off (`pricing.freeTrial` has `"on": false`; nothing here changes it). The WhatsApp add-on's price, trial wording, monthly use and limit (`GET /billing/whatsapp`) are served to an admin only while `release.planAndBillingNewParts` is on; while it is off, an admin reads what every other member reads, whether check-ins go by WhatsApp and why not. The seat count, the plans and prices, Stripe, invoices and activation codes are not touched, because existing clients use them. One thing to know: turning the add-on on for an organisation (`PATCH /billing/whatsapp`) still works, because it charges nothing while the trial is off and the three new WhatsApp jobs (the morning reminder, the reminder before a session, the lead's daily summary) go only to organisations that have turned it on. The Plan and billing page in the client does not call `GET /billing/whatsapp` at release.
+**4. Plan and billing's new parts.** Both switches are off when the migrations run, and step 13a switches them on together after its check ("Switching billing on at release", below). Until then, the free trial stays off (`pricing.freeTrial` has `"on": false`). The WhatsApp add-on's price, trial wording, monthly use and limit (`GET /billing/whatsapp`) are served to an admin only while `release.planAndBillingNewParts` is on; while it is off, an admin reads what every other member reads, whether check-ins go by WhatsApp and why not. The seat count, the plans and prices, Stripe, invoices and activation codes are not touched, because existing clients use them. One thing to know: turning the add-on on for an organisation (`PATCH /billing/whatsapp`) still works, because it charges nothing while the trial is off and the three new WhatsApp jobs (the morning reminder, the reminder before a session, the lead's daily summary) go only to organisations that have turned it on. The Plan and billing page in the client does not call `GET /billing/whatsapp` at release.
 
 **5. The anchor scenario.** Piece 0 of `docs/anchor-scenario-plan.md`. The switch is read in one place, `theAnchorScenarioIsOn` in `api/src/modules/admin/what-is-hidden-at-release.ts`, and every later anchor piece calls that one function. Nothing is built behind it yet, so turning it on changes nothing for any check-in, existing or new. The one thing it changes today is a field: the board sends `anchorScenarioOn` (false at release) to whoever runs the check-in, so the screens know without guessing. A person in the check-in is not sent it. Tests: `api/src/modules/admin/hidden-at-release.spec.ts` and `api/src/modules/board/the-anchor-switch-changes-nothing-yet.spec.ts`.
+
+## Switching billing on at release
+
+In this release the one-month free trial (`pricing.freeTrial`) and Plan and billing's new parts (`release.planAndBillingNewParts`) are switched on. The trial's switch is also the WhatsApp add-on's: from the moment it is on, decision 78's WhatsApp rules apply. Stripe stays in test mode until Hafsah says otherwise.
+
+**Why this is a release step and not a migration.** What the switch does to an organisation that is already here depends on how that organisation stands, and a migration cannot look first. Decision 88 says the two existing clients are not charged, emailed, restarted or changed by surprise. Proved in `api/src/modules/billing/switching-billing-on-at-release.spec.ts`:
+
+| How an existing organisation stands | What switching on does to it |
+| --- | --- |
+| On the free plan (it pays for nothing and has no free run) | Nothing. It keeps the free plan, because it was made before the switch went on. WhatsApp goes as today, nothing is charged, nothing is emailed, and the nightly WhatsApp sweep never reaches Stripe for it. |
+| In a free run Groundwork gave it | Nothing while the run lasts. When it ends, the organisation is back on the free plan, as today. |
+| It pays for a plan, and its WhatsApp add-on is off (every organisation's add-on is off after migration 71) | **A change by surprise.** From the next message, its WhatsApp messages are held and its people read "Your organisation has not turned on WhatsApp, so this check-in stays in the app." |
+| It pays for a plan through Stripe, and its WhatsApp add-on is on | **A charge.** At 1am UTC the next night, the add-on is added to its Stripe subscription as a second monthly line, prorated. |
+| Its admin later answers the team-size question with "fewer than 20" | It is given the one-month trial on the plan for 20 people, as a new team is. When the month ends it is back on the free plan. Nothing is charged. |
+
+Switching on gives the trial to nobody already here: the trial is given only when somebody answers the team-size question (`the-free-trial.service.ts`, on `org.sizeSaid`), never by the switch, a nightly job or a migration. Switching on sends no email. The only billing email in decision 78 is the one to an organisation's admins when it reaches its monthly WhatsApp limit, which applies with or without the switch.
+
+**1. The check (read only).** On the hosted database, after the migrations:
+
+```sql
+SELECT id, name, created_at, subscription_plan, subscription_status, subscription_stripe_id,
+       free_until, free_plan, whatsapp_add_on_on, whatsapp_add_on_item_id
+FROM organizations
+WHERE (subscription_status = 'active' AND subscription_plan IS NOT NULL)
+   OR whatsapp_add_on_on
+   OR whatsapp_add_on_item_id IS NOT NULL
+ORDER BY created_at;
+```
+
+Each row is an organisation that switching on would change: its WhatsApp held (add-on off) or a charge added (add-on on, with a Stripe subscription). If no row comes back, go on. If a row comes back, stop and ask Hafsah what happens to that organisation. The first paid client may be one of them: if it already pays and should keep WhatsApp, its admin turns the add-on on at Plan and billing, which adds $72 a month on Small Team (the price in `pricing_plans`), and that is Hafsah's decision, not the release's. On the local test database (5 October) the check returns 30 organisations, all with a plan written by hand and no Stripe subscription, so there it would hold WhatsApp for those 30 and charge nobody.
+
+**2. Switch on.** Either as a platform admin, `PATCH /api/v1/admin/pricing/free-trial` with `{"on": true}` (it writes the moment it went on), and then the second statement below; or both statements in the database console:
+
+```sql
+BEGIN;
+UPDATE platform_settings
+   SET value = (value || '{"on": true}'::jsonb)
+               || jsonb_build_object('onSince', to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')),
+       updated_at = now(), updated_by = 'release step'
+ WHERE key = 'pricing.freeTrial' AND COALESCE((value->>'on')::boolean, false) = false;
+INSERT INTO platform_settings (key, value, updated_at, updated_by)
+VALUES ('release.planAndBillingNewParts', '{"on": true}'::jsonb, now(), 'release step')
+ON CONFLICT (key) DO UPDATE SET value = '{"on": true}'::jsonb, updated_at = now(), updated_by = 'release step';
+COMMIT;
+```
+
+Never write `pricing.freeTrial` as a bare `{"on": true}`. Without `onSince`, every organisation keeps the free plan, including a team made tomorrow, so the trial would end the free plan for nobody (proved in the same spec).
+
+**3. The check after.** `SELECT key, value FROM platform_settings WHERE key IN ('pricing.freeTrial', 'release.planAndBillingNewParts');` shows `"on": true`, `"months": 1`, `"teamsUnder": 20` and an `onSince`, and `{"on": true}`. Run the check in step 1 again: it returns the same rows as before, and no more.
+
+**To switch off again.** Write `"on": false` in both rows. Nothing granted is taken back: a team in its trial keeps it until it ends. A Stripe line already added for the add-on is taken off at 1am UTC the next night.
+
+**Run on the local test database, 5 October.** Both statements ran on `gw_pw9_1786222102`. A new team, Kijani Repairs, was made by its founder, Wanjiru, who said it had fewer than 20 people. It was given one month on the Small Team plan, ending on 5 November 2026. Wanjiru, its admin, turned WhatsApp on and read that nothing is charged for WhatsApp until the trial ends. Stripe test mode could not be driven: the local environment holds only the placeholder `sk_test_...`, so creating a checkout failed with "Invalid API Key provided". A real Stripe test key in the local `api/.env` is needed for that part.
