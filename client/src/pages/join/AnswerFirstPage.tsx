@@ -3,6 +3,8 @@ import { useSearchParams } from 'react-router-dom'
 import { openLinkApi } from '@/api/entry'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 import { WhatYouGaveUs, type WhatYouGave } from '@/components/gw/WhatYouGaveUs'
+import { Mark } from '@/components/gw/ui'
+import { MARKETING_URL } from '@/lib/marketing'
 
 /**
  * ANSWER FIRST, SAY WHO YOU ARE AT THE END.
@@ -191,7 +193,25 @@ export function AnswerFirstPage() {
     border: '1px solid var(--gw-border)', fontFamily: 'inherit', outline: 'none', background: 'white',
   }
 
-  if (problem && !what) return <div style={{ ...card, justifyContent: 'center', textAlign: 'center' }}><p style={{ color: 'var(--gw-sub)' }}>{problem}</p></div>
+  /*
+   * WALKTHROUGH PASS 2, ITEM 4: A DEAD END WITH NO MARK AND NO WAY ON. A link that does not open
+   * (no code at all, or the server refuses it) left a bare sentence on a blank page - nowhere to
+   * go and nothing to say where this even was, unlike every other small-state screen in the
+   * product (docs/prototype/screens/F4-small-states/). Same shape here: the mark, the sentence,
+   * and a way through - sign in, for somebody who already has an account, or the Groundwork home
+   * page for anybody else.
+   */
+  if (problem && !what) return (
+    <div style={{ ...card, justifyContent: 'center', textAlign: 'center' }}>
+      <Mark />
+      <p style={{ color: 'var(--gw-sub)', marginTop: 18, lineHeight: 1.5 }}>{problem}</p>
+      <p style={{ marginTop: 18, fontSize: 14.5 }}>
+        <a href="/auth" style={{ color: 'var(--gw-navy)', fontWeight: 600 }}>Sign in</a>
+        {', or '}
+        <a href={MARKETING_URL} style={{ color: 'var(--gw-navy)', fontWeight: 600 }}>go to the Groundwork home page</a>.
+      </p>
+    </div>
+  )
   if (!what) return <div style={{ ...card, justifyContent: 'center', textAlign: 'center' }}><p style={{ color: 'var(--gw-muted)' }}>One moment.</p></div>
 
   return (

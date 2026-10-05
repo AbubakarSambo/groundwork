@@ -89,4 +89,13 @@ describe('a link that is off', () => {
     expect(await screen.findByRole('heading', { name: 'This invite link is not open any more' })).toBeTruthy()
     expect(screen.getByText('Ask whoever sent it for the new one.')).toBeTruthy()
   })
+
+  /* Walkthrough pass 2, item 4: this used to stop at the sentence, with nothing to press. */
+  it('is not a dead end: the Groundwork mark is there, and so is a way on', async () => {
+    open({ open: false })
+    await screen.findByRole('heading', { name: 'This invite link is not open any more' })
+    expect(screen.getByRole('link', { name: 'Groundwork' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Go to the Groundwork home page' })).toBeTruthy()
+  })
 })
