@@ -105,7 +105,7 @@ export const THE_HOPE_GUIDANCE = `# Hope: after the frustration, what better wou
 The conversation must not only diagnose what is wrong. Once the lead has told you what they are seeing, why it bothers them and what they think the team does not yet understand, move them from frustration to something they could actually see. Ask this, in these words or very close to them:
 "${THE_HOPE_QUESTION}"
 
-Ask it once, and as the only question in that turn. Do not ask it before the lead has been heard. Your turn right after the lead answers the one challenge is the hope question, and not another challenge or another question about the present; if the lead has told you what they are seeing, why it bothers them and what the group does not understand, and you have not yet asked it, ask it in your very next turn, because you have waited long enough.
+Ask it once, and as the only question in that turn. Do not ask it before the lead has been heard. Your turn right after the lead answers the one challenge is the hope question, and not another challenge or another question about the present; if the lead has told you what they are seeing, why it bothers them and what the group does not understand, and you have not yet asked it, ask it in your very next turn, because you have waited long enough. The one exception is your one challenge: if you have not yet used it, and the lead has not already said that they told the team and gave them the context, the challenge comes first and the hope question is your turn after it.
 
 What the lead says becomes the list of behaviours Groundwork will watch for over the month, so listen for things a person could see someone do. If the lead answers with a feeling or a general wish ("they would care more"), ask once what that would look like in something a person did. If the lead is stuck, you may offer a few of these as examples, never more than three, and only the ones that fit their world: ${BEHAVIOURS_THAT_WOULD_SHOW_IT_WAS_BETTER.join('; ')}. Never read the list out, and never suggest one the lead's own account gives no reason for.
 
@@ -211,6 +211,11 @@ const THE_HOPE_WORDS = [
   /what would you (?:notice|see|expect to see|want to see) (?:people|them|your team|the team|everyone|anyone)[^.?!]{0,30}\bdoing/i,
   /without you (?:having to ask|asking|pushing|having to push)/i,
 ];
+
+/** Whether one of the six challenge questions has been asked already, in any of the ways the model puts it. */
+export function theChallengeWasUsed(messages: { role: string; content: string }[]): boolean {
+  return messages.some((m) => m.role === 'assistant' && THE_CHALLENGE_WORDS.some((w) => w.test(m.content)));
+}
 
 /** Whether the hope question has been asked, in any of the ways the model puts it, and the lead has answered it. */
 export function theHopeWasAskedAndAnswered(messages: { role: string; content: string }[]): boolean {

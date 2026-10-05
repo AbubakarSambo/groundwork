@@ -90,6 +90,18 @@ export function whatTheConversationHasHeard(heard: TheSevenItems, openingQuestio
   return lines.join('\n\n');
 }
 
+/**
+ * WHAT COMES NEXT, WHEN THE RECORD SAYS THE LEAD HAS NOW SAID WHAT THE GROUP DOES NOT UNDERSTAND. Counting is not judgement, so it is
+ * read here and handed to the model as context: a lead who has been heard on the present is asked, once, one kind question that
+ * tests the complaint (section 9), and only then the hope question (section 10). It does not write the question.
+ */
+export function theChallengeIsDue(heard: TheSevenItems, challengeUsed: boolean, hopeAsked: boolean): string {
+  if (challengeUsed || hopeAsked || !heard.whatTheyDontUnderstand) return '';
+  return `# Your one challenge comes now
+
+The lead has said what they think the group does not understand. You have not yet used your one challenge, so use it in this turn, before the hope question: pick the one of the six questions that fits what the lead has just said, and ask only that. The only reason to leave it out is that the lead has already told you they told the team and gave them the context. The hope question is your turn after it.`;
+}
+
 /** The turn on which everything has been heard: close the conversation instead of asking. */
 export const THE_CLOSING_REMINDER = `# Everything is heard, so this turn closes the conversation
 

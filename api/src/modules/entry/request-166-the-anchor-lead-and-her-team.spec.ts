@@ -1,7 +1,7 @@
 import { EntryService } from './entry.service';
 import { EmailService } from '../email/email.service';
 import { theLeadsReveal } from './the-anchor-reveal';
-import { THE_SEVEN, whatHasBeenHeard, whatTheConversationHasHeard, THE_CLOSING_REMINDER } from './the-anchor-setup';
+import { theChallengeIsDue, THE_SEVEN, whatHasBeenHeard, whatTheConversationHasHeard, THE_CLOSING_REMINDER } from './the-anchor-setup';
 
 /**
  * REQUEST 166, READ AS EACH PERSON READS IT.
@@ -264,5 +264,26 @@ describe('what the reveal says about who she is moving, and what better would lo
     });
     expect(r.whoYouAreTryingToMove).toBe('You are trying to move the operations team, fifteen people in warehouse and dispatch.');
     expect(r.whatMeaningfulChangeWouldLookLike).toEqual(['You would notice people telling you before a truck is late.', 'You would notice dispatch phoning the shop themselves.']);
+  });
+});
+
+describe('the challenge comes before the hope question, once', () => {
+  it('is due once the lead has said what the group does not understand, and not before', () => {
+    expect(theChallengeIsDue({ seeingToday: 'a' }, false, false)).toBe('');
+    expect(theChallengeIsDue({ whatTheyDontUnderstand: 'b' }, false, false)).toContain('Your one challenge comes now');
+  });
+  it('is not due again once it has been used, or once the hope question has been asked', () => {
+    expect(theChallengeIsDue({ whatTheyDontUnderstand: 'b' }, true, false)).toBe('');
+    expect(theChallengeIsDue({ whatTheyDontUnderstand: 'b' }, false, true)).toBe('');
+  });
+  it('reaches the model for a lead who has just said what her group does not understand, and not after a challenge was asked', async () => {
+    const said = turns(2);
+    const due = world(true, { whatTheyDontUnderstand: HERS.whatTheyDontUnderstand }, 'Have you told them this?');
+    await due.service.onboard(said as any, 'HELP_TEAM_UNDERSTAND');
+    expect(due.seen[0]).toContain('Your one challenge comes now');
+    const asked = [...said.slice(0, -1), { role: 'assistant' as const, content: 'Have you actually told them this?' }, { role: 'user' as const, content: 'Not really.' }];
+    const after = world(true, { whatTheyDontUnderstand: HERS.whatTheyDontUnderstand }, 'Imagine a month from now.');
+    await after.service.onboard(asked as any, 'HELP_TEAM_UNDERSTAND');
+    expect(after.seen[0]).not.toContain('Your one challenge comes now');
   });
 });
