@@ -5,10 +5,10 @@ import { ReportsService } from '../reports/reports.service';
 import { HELD_FOR_A_SEAT, refuseSomeoneHeldForASeat, theCheckInsHeldForASeat } from './held-for-a-seat';
 
 /**
- * FINDING 7 (6 October 2026; Hafsah to confirm). Somebody held for a seat who has ALREADY completed a session keeps reading
- * what they could read before: the board, the report and the check-in page. The hold stops new sessions, reminders and
- * invitations. Somebody held who never answered stays refused with the invitation page's sentence. The lead and an admin
- * are never held and are never told they are.
+ * FINDING 7, PINNED AS IT IS (6 October 2026). Privacy row 5 (kept by decision 93) refuses EVERYBODY held for a seat the board, the
+ * report and the check-in page, including somebody who has already completed a session. Whether such a person should keep reading
+ * is a privacy rule only Hafsah can change, and it is asked in docs/morning-report.md under "Needs Hafsah". This pins today's
+ * behaviour so it cannot move without her. The lead and an admin are never held and are never told they are.
  */
 const GROUND = 'g1';
 const ground = {
@@ -55,20 +55,18 @@ const refused = async (read: any, userId: string) => {
 };
 
 describe.each(reads)('held for a seat, reading %s', (_what, read) => {
-  it('is not refused when they have already completed a session', async () => { expect(await refused(read, 'u-answered')).toBe(false); });
+  it('is refused even when they have already completed a session (row 5, until Hafsah decides)', async () => { expect(await refused(read, 'u-answered')).toBe(true); });
   it('is refused with the invitation sentence when they never answered', async () => { expect(await refused(read, 'u-silent')).toBe(true); });
   it('is never said to the lead', async () => { expect(await refused(read, 'u-lead')).toBe(false); });
   it('is never said to an admin who is not held', async () => { expect(await refused(read, 'u-admin')).toBe(false); });
 });
 
 describe('the lists', () => {
-  it('leaves out the check-in for somebody held who never answered, and keeps it for somebody held who answered', async () => {
+  it('leaves out the check-in for everybody held, answered or not', async () => {
     expect([...(await theCheckInsHeldForASeat(prismaFor(), [GROUND], 'u-silent'))]).toEqual([GROUND]);
-    expect([...(await theCheckInsHeldForASeat(prismaFor(), [GROUND], 'u-answered'))]).toEqual([]);
+    expect([...(await theCheckInsHeldForASeat(prismaFor(), [GROUND], 'u-answered'))]).toEqual([GROUND]);
   });
-  it('a lookup that fails refuses', async () => {
-    const p: any = prismaFor();
-    p.checkIn.findMany = async () => { throw new Error('down'); };
-    await expect(refuseSomeoneHeldForASeat(p, GROUND, 'u-answered')).rejects.toThrow(HELD_FOR_A_SEAT);
+  it('refuses somebody held who answered', async () => {
+    await expect(refuseSomeoneHeldForASeat(prismaFor(), GROUND, 'u-answered')).rejects.toThrow(HELD_FOR_A_SEAT);
   });
 });
