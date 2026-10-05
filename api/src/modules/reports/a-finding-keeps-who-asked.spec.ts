@@ -51,3 +51,31 @@ describe('a person’s paragraph keeps who asked them for the work', () => {
     expect(who).toBeLessThan(headline);
   });
 });
+
+/**
+ * THE PROSPECT'S NEED, PUT IN MARTIN'S MOUTH (run 32, the discovery participant's report).
+ *
+ * Martin told the check-in what a prospect had said. His own paragraph came back: "You are a
+ * solutions engineer, and you want to expand your use of data analytics... You are worried that
+ * you will not be able to hire enough analysts to do the work." The prospect's job, wish and worry,
+ * all written as Martin's.
+ *
+ * Same fault as the judgement's "Make the decision about hiring more analysts", one layer earlier.
+ */
+describe('what somebody reports about a customer stays the customer’s', () => {
+  const it_ = thePictureInstruction({ peopleAnswered: 2, peopleExpected: 2, differenceTopics: [], aboutOnePerson: false });
+  const flat2 = it_.replace(/\s+/g, ' ');
+
+  it('says it, and names the people outside a check-in it covers', () => {
+    expect(flat2).toContain("WHAT SOMEBODY REPORTS ABOUT A CUSTOMER STAYS THE CUSTOMER'S");
+    expect(flat2).toContain('a customer, a supplier, a partner or anybody outside this check-in');
+  });
+
+  it('shows the sentence both ways, which is the only way the rule is usable', () => {
+    expect(flat2).toContain('"Martin says the customer cannot hire enough analysts", never "Martin cannot hire enough analysts"');
+  });
+
+  it('says what to do when it cannot be told apart', () => {
+    expect(flat2).toContain('it is theirs to report and not theirs to own');
+  });
+});
