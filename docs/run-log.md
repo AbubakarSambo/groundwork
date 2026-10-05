@@ -2,6 +2,27 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## Two more fixed, and six of my "open" items were not open (5 October)
+
+Fixed and pushed: the founder's aim "Get to 20 paying customers by December." now holds
+its number, so her board has an answer and a bar instead of nothing (136 item 1); and
+"who can provide the fuel allowance for October **that** Aisha Wanjiku is waiting for"
+(132 f), which meant changing two test expectations that pinned the sentence without
+the "that" — they were pinning the defect.
+
+Then I had to correct myself. The open list I published listed six items that already
+had fixes: 123 (3), 123 (4), 123 (10), 129 (2), 131 (5) and 132 (b). I had inferred
+"open" from not finding a spec named after the request, which is not the same thing.
+The list now says what it actually means — "I did not find a fix" — and the answer says
+so to the screens workspace in those words.
+
+Two items left undone on purpose, both decisions rather than defects: the words a
+reader sees when somebody leaves a role (123 (8): their name, or the prototype's "Part
+ways"), and who gets asked to find an owner (134 (5)). Needs Hafsah.
+
+Next: 127 (4) (6) (7), 128 (2), 130 (b) (d) (f), 131 (6), 134 (4) (7), 135 (3), 136 (7),
+and 133 (1), which needs a kind of work to pick its own role map.
+
 ## The full API suite is green on this computer (5 October)
 
 1,707 suites and 16,609 tests passed, 2 suites skipped, 427 seconds with two workers,
