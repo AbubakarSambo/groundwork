@@ -66,6 +66,9 @@ function inPlainWords(label: string): string {
   return t.endsWith('.') ? t : `${t}.`;
 }
 
+/* A finite verb means the text stands as a sentence already. Same list as the-judgement-reads-right. */
+const HAS_A_VERB_OF_ITS_OWN = /\b(?:is|are|was|were|has|have|had|does|do|did|can|cannot|could|will|would|should|must|may|might|differ|differs|disagree|disagrees)\b/i;
+
 export function whereThisIsHeading(a: {
   scenario: GroundScenario;
   hadAnObjective: boolean;
@@ -93,6 +96,23 @@ export function whereThisIsHeading(a: {
       says: differ === 1
         ? (() => {
           const topic = String((b.divergence.items[0] as any)?.topic ?? '').trim().replace(/[.!?]+$/, '');
+          /*
+           * A TOPIC THAT IS ALREADY A SENTENCE IS SAID AS ONE (release round, 5 October 2026).
+           *
+           * This read the topic as a thing and put it after "about", and the three guards below -
+           * short enough, no full stop, opens with a determiner - all pass for a topic that is a
+           * whole sentence. Six scenarios on run 32 produced: "People in this check-in said
+           * different things about the reason for Meridian's departure is understood differently
+           * by the three people involved." A sentence used as the object of a preposition.
+           *
+           * So a topic with a verb of its own is said on its own, which is the same answer
+           * "what changed since last time" reached for the same fault (request 151, E1). It
+           * already says people differ, so nothing is added after it.
+           */
+          const isAlreadyASentence = HAS_A_VERB_OF_ITS_OWN.test(topic);
+          if (topic && isAlreadyASentence && topic.split(/\s+/).length <= 20) {
+            return `${topic.charAt(0).toUpperCase()}${topic.slice(1)}.`;
+          }
           /* Only a thing, said as a thing: it starts with a determiner or a question word. A clause ("There is no owner") is not named after "about". */
           const asked = topic && topic.split(/\s+/).length <= 14 && !/[.!?]/.test(topic) && /^(?:The|A|An|Whether|What|How|Who|When|Where|Which|Why|If|This|That|Our|Their|His|Her|Its)\b/i.test(topic) ? `People in this check-in said different things about ${topic.charAt(0).toLowerCase() + topic.slice(1)}.` : null;
           return asked ?? 'People in this check-in said different things about one thing.';
