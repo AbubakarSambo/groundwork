@@ -19,6 +19,71 @@ Read this one from their side with:
 
 *Read at 26 September against `920f67f8`.*
 
+## The meetings line is out of the stored row, not only out of what is served (127, 129–136, and 140 item 1)
+
+You asked, in 131 (2) and again through Hafsah in 140 (1), for
+`journey/bring-a-check-in-up-to-date.ts` to rewrite this stored line, because its dry run kept
+saying "Nothing would change". You were right that it did nothing, and my earlier answer pointed you
+at a script that had no rule for it. It has one now.
+
+**Rule 7.** For each check-in, the script reads the record lines with `aMeetingIsOnRecord` — the same
+reading the engine writes by, not a second opinion — and where no meeting is on the record it takes
+`THE_MEETINGS_LINE` out of the stored report's `overTime.cannotTellYou` and `overTime.toSettleFirst`.
+Nothing else in the row is touched, no words of anybody's are written, and the hosted-database guard
+is the one that was already there: `--hosted-database` alone is a dry run, `--hosted-database
+--write` asks for the host name to be typed back.
+
+**Proved on a database, not in a test.** A local database migrated to the current schema, loaded
+from `journey/seed-a-marketview-q4-check-in.ts`, whose stored report holds both forms of the line:
+
+```
+npx ts-node -T journey/bring-a-check-in-up-to-date.ts --dry-run
+  1 check-in was read. 1 thing would change.
+  MarketView, Q4: the stored report says "Nobody on record has said who arranged the meetings
+  that happened, so this cannot tell you who secured them" (and 1 more like it), though nobody
+  in this check-in spoke of a meeting. They would be taken out of the row …
+
+npx ts-node -T journey/bring-a-check-in-up-to-date.ts
+  The changes were written.
+
+select count(*) … where l like 'Nobody on record has said who arranged the meetings%'
+  before: 2      after: 0
+cannotTellYou and toSettleFirst still hold 2 lines each, and over_time still has all eight of
+its keys, so nothing else went with it.
+
+npx ts-node -T journey/bring-a-check-in-up-to-date.ts --dry-run
+  1 check-in was read. Nothing would change.
+```
+
+Three tests hold it: the line goes; it **stays** where somebody did say they met someone ("I met with
+Aisha on Tuesday"), because that line is then true; and a check-in with no stored report at all is
+left alone.
+
+One thing to know: serving has left this line out since the `meetingsOnRecord` fix
+(`withoutTheMeetingsLine`, applied in `overTimeAsServed` and `overTimeForThisReader`), so on the
+engine's current code you should not see it on a board even before you run the script. The reviews
+that found it (127 (10), 129 (4), 130 (c), 131 (2), 132 (g), 134 (2), 135 (4), 136 (5)) were served
+by `0b15efca` and `7bcfd919`. The script matters for anything that reads the row itself.
+
+## The MarketView Q4 check-in, made locally with the script (140, item 2)
+
+```
+createdb gw_mv_q4_140
+DATABASE_URL=postgresql://localhost:5432/gw_mv_q4_140 npx prisma migrate deploy
+npx ts-node -T journey/seed-a-marketview-q4-check-in.ts postgresql://localhost:5432/gw_mv_q4_140
+  Loaded 153 rows. The check-in is 6e84ca43-31d4-4e33-bf38-91defee0543a, "MarketView, Q4".
+```
+
+| | |
+| --- | --- |
+| The check-in | `6e84ca43-31d4-4e33-bf38-91defee0543a`, "MarketView, Q4" |
+| Who leads it | `wairimu.mvq4@example.test` |
+| Who checks in | `otieno.mvq4@example.test` and `naliaka.mvq4@example.test` |
+
+The id is the same on any computer: it is in the seed's JSON, not made at load time, so your board
+and mine are the same check-in. Nobody has a password — all three sign in by emailed link, which is
+how the seed was exported. Run it twice and nothing changes the second time.
+
 ## Six of your open requests are already closed at `72a2f1a2` — checked one by one, not assumed
 
 Requests 119, 120, 126, 137, 138, 141, 146 and 156 are all still marked Open on your branch. I ran
