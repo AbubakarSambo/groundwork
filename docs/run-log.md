@@ -2,6 +2,32 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## 5 October, 13:52 - the run restarted again, because it was measuring yesterday's engine
+
+Caught before it finished rather than after. The API server was built at 13:14 and I had made nine
+engine changes since - the Ask history order, the You board goals, the suite refusals, the promise
+dedup, the document path, the name guard, the kept history, the board's sentence topics and the two
+judgement rules. None of them were in the running build, so the run would have measured a release
+that no longer exists and I would have reported it as the release's run.
+
+Rebuilt, restarted, relaunched at 13:52. Prompt versions active for this run: `system` v45,
+`report_synthesis` v7.
+
+**The two release-blocking findings of run 32 are now addressed in the instruction**, which is the
+main reason the run had to be redone. Both were the same fault and both passed every rule the
+judgement had, because every rule asked for a PERSON to be named and both of them named one:
+
+- "Kwame Mensah is also blocked by the credit committee", when Kwame had said he had not checked
+  with Credit at all. He is not blocked; he has not understood what is counted.
+- "Make the decision about hiring more analysts", put to a lead whose check-in is about what a
+  customer said. The customer's problem became an instruction to the reader.
+
+A reason is only a reason if somebody said it, and a move has to come from a line in a block.
+Whether that actually changes the two judgements is for this run to say, not for me.
+
+Also fixed from the same review: a topic that is already a sentence is said as one rather than
+pushed after "about", which was six scenarios.
+
 ## 5 October, 13:45 - the scenario run was my own fault, restarted; four more items answered
 
 **The run was on course to take hours and the cause was my change this morning.** It waited up to
