@@ -26,7 +26,6 @@ import { SuggestedAnswers } from '@/components/gw/checkin/SuggestedAnswers'
 import { IdeaOffer } from '@/components/gw/checkin/IdeaOffer'
 import { RequestOffer, OpenTheRequest } from '@/components/gw/checkin/RequestOffer'
 import type { TheIdeaOfferInTheCheckIn, TheRequestOfferInTheCheckIn, TheRequestToOpen } from '@/api/anchorShapes'
-import { useAskStore } from '@/stores/ask'
 import { TheEndCard } from '@/components/gw/checkin/TheEndCard'
 import { TheDonePage, type WhatChanged } from '@/components/gw/checkin/TheDonePage'
 import { whenTheNextOneOpens, whoElseAnswers } from '@/lib/what-the-end-of-a-check-in-can-say'
@@ -137,9 +136,6 @@ export function ChatPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const user = useAuthStore(s => s.user)
-  /* Anchor pieces 26/27: the button on `openTheRequest` opens Ask, where leave and spending are
-     already filed - it never prefills or sends anything, since a date or a sum is never guessed. */
-  const showAsk = useAskStore(s => s.show)
 
   const [searchParams] = useSearchParams()
   /* Opened from a team update's link: one card, no band, nothing but the question. */
@@ -1382,14 +1378,15 @@ export function ChatPage() {
           })()}
           {/*
             ANCHOR PIECES 26/27: WHAT THEIR YES OPENS. Served on the reply that follows their yes -
-            the spec's sentence, and, while the suite is on, a button to Ask, where the request is
-            actually filed. Nothing is prefilled or sent for them.
+            the spec's sentence, and, while the suite is on, a button to the suite's own request
+            form (Leave or Payment Requests), filled in from what was read in their own words.
+            Nothing is sent for them; the button only opens the form.
           */}
           {(() => {
             const last = displayedMsgs[displayedMsgs.length - 1]
             if (!last || last.role !== 'AI' || isWaiting(last) || streamingId !== null) return null
             if (loading || done || completed || declined || !opened) return null
-            return <OpenTheRequest open={last.openTheRequest} onOpenAsk={showAsk} />
+            return <OpenTheRequest open={last.openTheRequest} />
           })()}
           {/*
             THE END CARD (check-in-end-card.txt). Finishing never happens on its own: the engine

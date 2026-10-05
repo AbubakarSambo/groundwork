@@ -1,11 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, act } from '@testing-library/react'
-import { MemoryRouter, Routes, Route } from 'react-router-dom'
+import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ChatPage } from './ChatPage'
 import { conversationApi } from '@/api/conversation'
 import { groundsApi } from '@/api/grounds'
-import { useAskStore } from '@/stores/ask'
 
 /**
  * ANCHOR PIECES 26 AND 27: A LEAVE OR SPENDING REQUEST OFFERED IN THE CHECK-IN (section 22;
@@ -72,6 +71,13 @@ const openWithoutButton = {
   button: null,
 }
 
+/** Stands in for the suite's own request form, so a test can read what the button actually
+    navigated to and with what prefill, without rendering the real form pages. */
+function DestinationStub() {
+  const location = useLocation()
+  return <div>Arrived at {location.pathname}, prefill {JSON.stringify((location.state as any)?.prefill ?? null)}</div>
+}
+
 function renderChat() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   return render(
@@ -81,6 +87,8 @@ function renderChat() {
           <Route path="/checkin/:checkInId" element={<ChatPage />} />
           <Route path="/grounds/:id/p" element={<div>The check-in’s own page</div>} />
           <Route path="/grounds/:id" element={<div>The check-in’s own page</div>} />
+          <Route path="/suite/leave/new" element={<DestinationStub />} />
+          <Route path="/suite/spend/new" element={<DestinationStub />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -90,7 +98,6 @@ function renderChat() {
 beforeEach(() => {
   vi.useFakeTimers()
   vi.clearAllMocks()
-  useAskStore.setState({ open: false, pendingMessage: null })
   ;(groundsApi.get as any).mockResolvedValue(GROUND)
   ;(groundsApi.getMyCheckinStatus as any).mockResolvedValue({ participantId: 'p-r', partyType: 'PARTICIPANT', checkIns: [], latestStatus: null, latestSessionNumber: null })
 })
@@ -134,8 +141,13 @@ describe('a request offered in the check-in', () => {
   })
 })
 
+/*
+ * CHANGED (Hafsah, 6 October, request 165): the button no longer opens Ask. "Request leave" and
+ * "Create request" open the suite's own request form, filled in with what the person said. This
+ * used to assert `useAskStore` flipped open; it now asserts the real navigation and the prefill.
+ */
 describe('what their yes opens', () => {
-  it('with the suite on, shows the sentence and a button that opens Ask - never prefilled or sent', async () => {
+  it('with the suite on, shows the sentence and a button that opens the leave form, not Ask', async () => {
     ;(conversationApi.transcript as any).mockResolvedValue({
       checkIn: { status: 'IN_PROGRESS', sessionNumber: 1, groundId: 'g1' },
       turns: [{ id: 't1', role: 'AI', content: OPENING, openTheRequest: openWithButton }],
@@ -144,8 +156,18 @@ describe('what their yes opens', () => {
     await findByText(openWithButton.says, {}, { timeout: 6000 })
     const button = screen.getByRole('button', { name: 'Request leave' })
     fireEvent.click(button)
-    expect(useAskStore.getState().open).toBe(true)
-    expect(useAskStore.getState().pendingMessage).toBeNull()
+    await waitFor(() => expect(screen.getByText(/Arrived at \/suite\/leave\/new/)).toBeTruthy())
+  })
+
+  it("carries what was read from the person's own words as the form's prefill", async () => {
+    ;(conversationApi.transcript as any).mockResolvedValue({
+      checkIn: { status: 'IN_PROGRESS', sessionNumber: 1, groundId: 'g1' },
+      turns: [{ id: 't1', role: 'AI', content: OPENING, openTheRequest: { ...openWithButton, prefill: { startsOn: '2026-10-10', endsOn: '2026-10-12' } } }],
+    })
+    renderChat()
+    await findByText(openWithButton.says, {}, { timeout: 6000 })
+    fireEvent.click(screen.getByRole('button', { name: 'Request leave' }))
+    await waitFor(() => expect(screen.getByText(/prefill \{"startsOn":"2026-10-10","endsOn":"2026-10-12"\}/)).toBeTruthy())
   })
 
   it('with the suite off, shows only the sentence, no button', async () => {

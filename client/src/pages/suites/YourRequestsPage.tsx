@@ -1,8 +1,9 @@
 import { useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { yourRequestsApi, type YourRequest } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
-import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row, Tag, FieldLabel, TextArea } from '@/components/gw/ui'
+import { Page, PageTitle, Section, Button, Note, Callout, Empty, RowList, Row, Tag, FieldLabel, TextArea } from '@/components/gw/ui'
 import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
 
 /**
@@ -25,6 +26,12 @@ const refusalOf = (error: unknown): { status?: number; message?: string } | unde
 
 export function YourRequestsPage() {
   const user = useAuthStore(s => s.user)
+  const location = useLocation()
+  /* REQUEST 165 (Hafsah, 6 October): a request just filed from its own form (LeaveRequestNewPage
+     or SpendRequestNewPage) lands here and says so, in the server's own sentence where it sends
+     one. Read once from router state, not kept on a reload - the confirmation belongs to the
+     moment of arriving here, not to the page itself. */
+  const sentMessage = (location.state as { sentMessage?: string } | null)?.sentMessage
   const leave = useQuery({ queryKey: ['your-leave'], queryFn: yourRequestsApi.leave, enabled: !!user, retry: false })
   const spending = useQuery({ queryKey: ['your-spending'], queryFn: yourRequestsApi.spending, enabled: !!user, retry: false })
 
@@ -35,6 +42,8 @@ export function YourRequestsPage() {
         title="Your requests"
         subtitle="Your leave and your requests to spend, and where each one stands."
       />
+
+      {sentMessage && <Callout tone="success" role="status">{sentMessage}</Callout>}
 
       <Section heading="Your leave">
         <Loaded q={leave} off="Leave is not switched on in your organisation." role={user?.role}>

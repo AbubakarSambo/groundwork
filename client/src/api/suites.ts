@@ -391,3 +391,38 @@ export const yourRequestsApi = {
   answerSpending: async (id: string, answer: string): Promise<YourSpending> =>
     (await apiClient.post(`/suites/spend/requests/${id}/answer`, { answer })).data,
 }
+
+/**
+ * FILING A REQUEST FROM ITS OWN FORM (request 165, Hafsah 6 October; docs/requests-to-engine.md).
+ * The button on `openTheRequest` (anchor pieces 26/27) opens `/suite/leave/new` or
+ * `/suite/spend/new` rather than Ask, so the person files the request themselves, from the same
+ * form anybody else reaches these pages from. The routes do not exist on the server yet - until
+ * they do, sending either form gets a 404, which the form reads and says in a full sentence (see
+ * `whatFilingARequestSays` in `@/lib/file-a-request-error`).
+ */
+export interface NewLeaveRequest { startsOn: string; endsOn: string; kind?: string }
+export interface NewSpendingRequest { amount: number; what: string }
+/** The server's own confirmation sentence, when it sends one. */
+export interface RequestFiled { message?: string }
+/** `GET /suites/leave/rules` is for an admin or whoever holds the HR duty only - a plain member is
+    refused, and the form then simply has no kind field (`kindsForFiling` reads that refusal and
+    returns `null` rather than throwing, so the caller never needs its own try/catch). */
+export interface ALeaveKindForFiling { key: string; name: string }
+
+export const fileARequestApi = {
+  leave: async (input: NewLeaveRequest): Promise<RequestFiled> =>
+    (await apiClient.post('/suites/leave/requests', input, { skipNotFoundToast: true } as any)).data,
+  spending: async (input: NewSpendingRequest): Promise<RequestFiled> =>
+    (await apiClient.post('/suites/spend/requests', input, { skipNotFoundToast: true } as any)).data,
+  /** `null` when this reader may not read the rules (not an admin or the HR duty holder) - the form
+      asks for a kind of leave only when it can read what the kinds are. */
+  kindsForFiling: async (): Promise<ALeaveKindForFiling[] | null> => {
+    try {
+      const res = await apiClient.get('/suites/leave/rules', { skipForbiddenToast: true } as any)
+      const kinds = (res.data?.rules?.kinds ?? []) as { key: string; name: string }[]
+      return kinds.map(k => ({ key: k.key, name: k.name }))
+    } catch {
+      return null
+    }
+  },
+}

@@ -1,7 +1,28 @@
+import type { ReactElement } from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { RequestOffer, OpenTheRequest } from './RequestOffer'
 import type { TheRequestOfferInTheCheckIn, TheRequestToOpen } from '@/api/anchorShapes'
+
+/** Stands in for the suite's own request form, so a test can read what `OpenTheRequest`'s button
+    actually navigated to and with what prefill, without rendering the real form pages. */
+function DestinationStub() {
+  const location = useLocation()
+  return <div>Arrived at {location.pathname}, prefill {JSON.stringify((location.state as any)?.prefill ?? null)}</div>
+}
+
+function renderWithRouter(ui: ReactElement) {
+  return render(
+    <MemoryRouter initialEntries={['/checkin/ci1']}>
+      <Routes>
+        <Route path="/checkin/ci1" element={ui} />
+        <Route path="/suite/leave/new" element={<DestinationStub />} />
+        <Route path="/suite/spend/new" element={<DestinationStub />} />
+      </Routes>
+    </MemoryRouter>,
+  )
+}
 
 /**
  * ANCHOR PIECES 26 AND 27 (docs/answers-from-engine.md, "Anchor pieces 26 and 27, a request
@@ -54,27 +75,50 @@ describe('RequestOffer, anchor pieces 26 and 27', () => {
   })
 })
 
+/*
+ * CHANGED (Hafsah, 6 October, request 165): the button no longer opens Ask. "Request leave" and
+ * "Create request" open the suite's own request form - Leave or Payment Requests - filled in with
+ * what the person said, never Ask. These tests used to assert an `onOpenAsk` callback; they now
+ * render through a router and assert the real destination and the prefill carried to it.
+ */
 describe('OpenTheRequest, anchor pieces 26 and 27', () => {
   it('draws nothing when there is nothing to open', () => {
-    const { container } = render(<OpenTheRequest open={undefined} onOpenAsk={() => {}} />)
+    const { container } = renderWithRouter(<OpenTheRequest open={undefined} />)
     expect(container).toBeEmptyDOMElement()
   })
 
   it('draws nothing when it is explicitly null', () => {
-    const { container } = render(<OpenTheRequest open={null} onOpenAsk={() => {}} />)
+    const { container } = renderWithRouter(<OpenTheRequest open={null} />)
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('with the suite on, shows the sentence and a button that opens Ask', () => {
-    const onOpenAsk = vi.fn()
-    render(<OpenTheRequest open={leaveOpenOn} onOpenAsk={onOpenAsk} />)
+  it('with the suite on, shows the sentence and a button that opens the leave form, not Ask', () => {
+    renderWithRouter(<OpenTheRequest open={leaveOpenOn} />)
     expect(screen.getByText(leaveOpenOn.says)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Request leave' }))
-    expect(onOpenAsk).toHaveBeenCalledTimes(1)
+    expect(screen.getByText(/Arrived at \/suite\/leave\/new/)).toBeTruthy()
+  })
+
+  it('carries the prefill to the form, exactly as served', () => {
+    const withPrefill: TheRequestToOpen = { ...leaveOpenOn, prefill: { startsOn: '2026-10-10', endsOn: '2026-10-12' } }
+    renderWithRouter(<OpenTheRequest open={withPrefill} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Request leave' }))
+    expect(screen.getByText(/prefill \{"startsOn":"2026-10-10","endsOn":"2026-10-12"\}/)).toBeTruthy()
+  })
+
+  it('a spending request opens the spend form', () => {
+    const spendingOpenOn: TheRequestToOpen = {
+      kind: 'spending', suiteIsOn: true,
+      says: 'I can turn that into a payment request so it appears on the appropriate board.',
+      button: 'Create request',
+    }
+    renderWithRouter(<OpenTheRequest open={spendingOpenOn} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Create request' }))
+    expect(screen.getByText(/Arrived at \/suite\/spend\/new/)).toBeTruthy()
   })
 
   it('with the suite off, shows only the sentence, no button', () => {
-    render(<OpenTheRequest open={spendingOpenOff} onOpenAsk={() => {}} />)
+    renderWithRouter(<OpenTheRequest open={spendingOpenOff} />)
     expect(screen.getByText(spendingOpenOff.says)).toBeTruthy()
     expect(screen.queryByRole('button')).toBeNull()
   })

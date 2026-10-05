@@ -212,4 +212,12 @@ export type TheRequestToOpen = {
   says: string
   /** Null when the suite is off: there is nowhere for the button to open. */
   button: string | null
+  /**
+   * REQUEST 165 (Hafsah, 6 October): what was read from the person's own words, only where it was
+   * read and never guessed - `{ startsOn?, endsOn? }` for leave, `{ amount?, what?, currency? }`
+   * for spending. The button opens the suite's own request form (`/suite/leave/new` or
+   * `/suite/spend/new`), carried in router state, and the form starts from it; with nothing here,
+   * or the field absent, the form starts empty.
+   */
+  prefill?: { startsOn?: string; endsOn?: string; amount?: number; what?: string; currency?: string } | null
 }

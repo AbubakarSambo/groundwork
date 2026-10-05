@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { Panel } from '../ui/Panel'
 import { QuickReplies } from '../ui/QuickReplies'
 import { Button } from '../ui/Button'
@@ -29,22 +30,25 @@ export function RequestOffer({ offer, onPick, disabled }: {
 /**
  * ANCHOR PIECES 26 AND 27: WHAT THEIR YES OPENS. Served on the reply that follows the person's
  * yes - the spec's sentence (`open.says`), and, only while the suite is on, a button with the
- * served label. The button opens Ask Groundwork, where leave and spending are already filed (it
- * never prefills or sends anything for the person, so a date or a sum is never guessed). With the
- * suite off, `open.button` is null and only the sentence shows.
+ * served label. The button opens the suite's own request form, Leave or Payment Requests
+ * (`/suite/leave/new` or `/suite/spend/new`), never Ask (Hafsah, 6 October, request 165) - carrying
+ * `open.prefill` in router state, so the form starts from what was read in the person's own words,
+ * and empty when nothing was. Nothing is sent here; pressing the button only opens the form. With
+ * the suite off, `open.button` is null and only the sentence shows.
  */
-export function OpenTheRequest({ open, onOpenAsk }: {
+export function OpenTheRequest({ open }: {
   open: TheRequestToOpen | null | undefined
-  onOpenAsk: () => void
 }) {
+  const navigate = useNavigate()
   if (!open) return null
+  const to = open.kind === 'leave' ? '/suite/leave/new' : '/suite/spend/new'
 
   return (
     <Panel>
       <p className="gwui-panel-text">{open.says}</p>
       {open.button && (
         <div style={{ marginTop: 10 }}>
-          <Button kind="secondary" onClick={onOpenAsk}>{open.button}</Button>
+          <Button kind="secondary" onClick={() => navigate(to, { state: { prefill: open.prefill ?? null } })}>{open.button}</Button>
         </div>
       )}
     </Panel>
