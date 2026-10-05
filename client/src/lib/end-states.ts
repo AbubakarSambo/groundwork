@@ -52,6 +52,13 @@ export const END_STATES: Record<string, EndStateOption[]> = {
     { value: 'END', label: 'The work with the adviser ends.' },
     { value: 'NOT_YET', label: 'It is not decided yet, and what is missing is named so it can be looked at again.' },
   ],
+  /* The anchor (HELP_TEAM_UNDERSTAND) ends as a project does, word for word as the engine's end-states.ts. */
+  HELP_TEAM_UNDERSTAND: [
+    { value: 'COMPLETE', label: 'The project is complete.' },
+    { value: 'CONTINUE', label: 'The project carries on.' },
+    { value: 'DESCOPE', label: 'The project carries on with less in it.' },
+    { value: 'STOP', label: 'The project stops.' },
+  ],
   NEW_PROJECT: [
     { value: 'COMPLETE', label: 'The project is complete.' },
     { value: 'CONTINUE', label: 'The project carries on.' },
