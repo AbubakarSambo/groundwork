@@ -16,8 +16,8 @@ import { PricingService, freePlanApplies, FREE_TRIAL_KEY } from './pricing.servi
 const SWITCHED_ON = '2026-10-01T00:00:00.000Z';
 const BARIDI_CREATED = new Date('2026-08-01T00:00:00.000Z');
 const PWANI_CREATED = new Date('2026-10-05T00:00:00.000Z');
-const OFF = { on: false, teamsUnder: 20, months: 3 };
-const ON = { on: true, teamsUnder: 20, months: 3, onSince: SWITCHED_ON };
+const OFF = { on: false, teamsUnder: 20, months: 1 }; /* One month since decision 78 (5 October 2026: every free run is one month). */
+const ON = { on: true, teamsUnder: 20, months: 1, onSince: SWITCHED_ON };
 
 function billing(opts: { trial: any; createdAt: Date; seats?: number; freeGrounds?: number; org?: any; ground?: any }) {
   const writes: any[] = [];
@@ -87,7 +87,7 @@ describe('the switch remembers when it was turned on, and keeps that to itself',
   });
   it('the public pricing read never says when', async () => {
     const res = await pricing({ value: ON }).svc.publicPricing();
-    expect(res.trial).toEqual({ on: true, teamsUnder: 20, months: 3 });
+    expect(res.trial).toEqual({ on: true, teamsUnder: 20, months: 1 });
   });
 });
 

@@ -40,7 +40,7 @@ describe('the free trial', () => {
   });
 
   it('an admin change keeps what it does not mention, and refuses numbers that make no sense', async () => {
-    const { svc, upserts } = service({ value: { on: false, teamsUnder: 20, months: 3 } });
+    const { svc, upserts } = service({ value: { on: false, teamsUnder: 20, months: 1 } });
     expect(await svc.setFreeTrial({ months: 6 }, 'admin-1')).toEqual({ on: false, teamsUnder: 20, months: 6 });
     expect(upserts[0].where).toEqual({ key: FREE_TRIAL_KEY });
     await expect(svc.setFreeTrial({ teamsUnder: 1 }, 'admin-1')).rejects.toThrow(BadRequestException);

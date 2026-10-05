@@ -304,6 +304,20 @@ says, which the scorer measures. Spotting a "recurring people issue" for the Per
 needs the conversation or the patterns, and patterns appear only from week three. I have stopped on
 both pieces. They belong with the conversation work, after the run.
 
+**Every free run is one month (Hafsah, 5 October; decision 78).** On the engine side:
+
+- The staff gift on the house now defaults to one month, where it was three (`billing/three-months-on-the-house.service.ts`, the `free_runs.months` column default, by migration `20261005200000_a_free_run_is_one_month`). The file, class and admin route keep their names, so nothing that calls them breaks. Staff can still type another length.
+- The regular trial's setting and default were already one month. The local database's `pricing.freeTrial` row reads `{"on": false, "months": 1, "teamsUnder": 20}`. The pricing read serves whatever the setting holds, so the screens say "1 month" today.
+
+**For you, in `client/`, which I may not edit:**
+
+- `pages/admin/AdminPage.tsx` line 621 starts the free-run form at `useState(3)`. It should start at 1. Its comment at lines 606 to 613 also says "three months".
+- `lib/the-free-trial.ts` line 3 comment says "3 months".
+- `pages/billing/what-plan-and-billing-says.ts` line 113 comment has the example "Your free 3 months end on 14 October".
+- `pages/auth/AuthPage.tsx` line 537, `pages/auth/what-is-waiting-for-this-address.ts` line 4 and `api/admin.ts` line 133 have comments saying three months.
+- Specs that mock `months: 3` in the served trial: `lib/the-free-trial.spec.ts` (it pins "Teams of fewer than 20 people get 3 months free."), `pages/auth/the-free-trial-on-sign-up.spec.tsx`, `pages/org/OrgNewPage.spec.tsx` and `pages/billing/the-pricing-page-as-each-reader-sees-it.spec.tsx`.
+- The prototype's pricing page (`docs/prototype/screens/F2-billing/pricing.txt`) still says 3 months. The decision overrides it.
+
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
 ```

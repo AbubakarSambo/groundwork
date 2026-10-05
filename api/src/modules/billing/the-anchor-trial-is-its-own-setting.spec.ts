@@ -72,17 +72,18 @@ describe('the setting', () => {
 
 /* Review of piece 34: the anchor month never shortens a free run, and never uses up the regular trial. */
 describe('the anchor month and the regular trial', () => {
+  /* Changed 5 October 2026: every free run is one month (Hafsah), so the regular trial here is one month, not three. */
   it('where the regular trial would also be given, the longer of the two is given, and it counts as the regular trial', async () => {
-    const { svc, org } = baridi({ anchorOn: true, trialOn: true, regular: { on: true, teamsUnder: 20, months: 3 }, seats: 4 });
+    const { svc, org } = baridi({ anchorOn: true, trialOn: true, regular: { on: true, teamsUnder: 20, months: 1 }, seats: 4 });
     const got: any = await svc.grantTheAnchorTrial('org-baridi', NOW);
     expect(got.granted).toBe(true);
-    expect(org.freeUntil.toISOString().slice(0, 10)).toBe('2027-01-05');
+    expect(org.freeUntil.toISOString().slice(0, 10)).toBe('2026-11-05');
     expect(org.freeTrialStartedAt).toEqual(NOW);
   });
-  /* A later answer, with the regular trial switched on at three months, against Baridi's free run as it stands. */
+  /* A later answer, with the regular trial switched on at one month, against Baridi's free run as it stands. */
   const later = async (org: any, at: Date, anchorStartedOn: Date | null = NOW) => {
     const pricing: any = {
-      getFreeTrial: jest.fn(async () => ({ on: true, teamsUnder: 20, months: 3 })),
+      getFreeTrial: jest.fn(async () => ({ on: true, teamsUnder: 20, months: 1 })),
       getAnchorTrial: jest.fn(async () => ({ on: true, months: 1, people: 20 })),
       listPlans: jest.fn(async () => PLANS),
     };
@@ -96,7 +97,7 @@ describe('the anchor month and the regular trial', () => {
   const anAnchorMonth = () => ({ subscriptionPlan: null, subscriptionStatus: null, freeUntil: new Date('2026-11-05T10:00:00Z'), freePlan: 'SMALL_TEAM', freeTrialStartedAt: null });
 
   it('where it would not, the anchor month leaves the regular trial to be given later', async () => {
-    const { svc, org } = baridi({ anchorOn: true, trialOn: true, regular: { on: false, teamsUnder: 20, months: 3 } });
+    const { svc, org } = baridi({ anchorOn: true, trialOn: true, regular: { on: false, teamsUnder: 20, months: 1 } });
     await svc.grantTheAnchorTrial('org-baridi', NOW);
     expect(org.freeTrialStartedAt).toBeNull();
     expect(org.freeUntil.toISOString().slice(0, 10)).toBe('2026-11-05');
@@ -106,8 +107,9 @@ describe('the anchor month and the regular trial', () => {
     const org = anAnchorMonth();
     const got: any = await later(org, new Date('2026-10-20T10:00:00Z'));
     expect(got.granted).toBe(true);
-    /* Three months from 5 October, when the anchor month began, not from 20 October. */
-    expect(org.freeUntil.toISOString().slice(0, 10)).toBe('2027-01-05');
+    /* One month from 5 October, when the anchor month began, not from 20 October: the run ends where it already did. */
+    expect(org.freeUntil.toISOString().slice(0, 10)).toBe('2026-11-05');
+    expect(org.freeTrialStartedAt).toEqual(new Date('2026-10-20T10:00:00Z'));
   });
 
   it('fault 1: once the anchor month has ended, a later answer gives no second free run', async () => {
@@ -131,7 +133,7 @@ describe('the anchor month and the regular trial', () => {
       user: { count: jest.fn(async () => 4) },
       ground: { findMany: jest.fn(async () => []) },
     };
-    const pricing: any = { getFreeTrial: jest.fn(async () => ({ on: true, teamsUnder: 20, months: 3 })), listPlans: jest.fn(async () => PLANS) };
+    const pricing: any = { getFreeTrial: jest.fn(async () => ({ on: true, teamsUnder: 20, months: 1 })), listPlans: jest.fn(async () => PLANS) };
     expect(await new TheFreeTrialService(prisma, pricing).grantIfItApplies('o', 'fewer', NOW)).toEqual({ granted: false, why: 'it has a free run of its own' });
   });
 });

@@ -434,9 +434,10 @@ export class AdminController {
 
 
   /**
-   * THREE MONTHS ON THE HOUSE, GIVEN TO AN ADDRESS BEFORE THERE IS AN ORGANISATION.
+   * A FREE RUN ON THE HOUSE, GIVEN TO AN ADDRESS BEFORE THERE IS AN ORGANISATION. One month unless staff
+   * type another length: every free run is one month (Hafsah, 5 October 2026), where it used to be three.
    *
-   * Her words: "we put in someone's email and their org gets free use for three months, when they
+   * Her earlier words: "we put in someone's email and their org gets free use for three months, when they
    * sign-up, they see it." The promise waits on the address; the clock starts when they take it up.
    */
   @Get('free-runs')
