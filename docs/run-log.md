@@ -2,6 +2,28 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## 5 October, 14:30 - the run will not finish inside this session, and why
+
+3 of 24 at 14:28, started 13:52. One scenario per shard in 36 minutes, against 24 scenarios in 33
+minutes with six shards on 26 September. That is roughly ten times slower per scenario.
+
+**It is not rate limiting.** Ten retries in the whole run: three 429s and seven timeouts. The rest
+is genuine model latency on a system prompt that is now 119,185 characters, about thirty thousand
+tokens on every turn, with four people answering ten questions each.
+
+On this pace it lands around 18:40. I am not restarting it a third time to add shards - that would
+throw away the 36 minutes already spent and the three scenarios done, for a gain I cannot be sure
+of while the latency is what it is.
+
+**What that means for the queue.** The journeys come after it and will not start inside this
+session either. I am not starting the WhatsApp journeys alongside, because they drive the same
+model and would make both slower.
+
+**The honest reading when it lands:** if it is still part-finished, the problem counts are still
+worth reading, because every one of them is a property of a single report. The engine-value
+numbers are not, because they are totals over all 24 and a partial run undercounts them. I will
+say which is which rather than scoring a partial run as though it were whole.
+
 ## 5 October, 14:35 - "participant" is out of the rulebook, and my caution about editing src was wrong
 
 Run 32 had "the other two participants report...", "both branch participants", "two other
