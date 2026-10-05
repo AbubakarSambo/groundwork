@@ -140,3 +140,22 @@ describe('the invoices on Plan and billing', () => {
     expect(asked).toEqual([]);
   });
 });
+
+describe('the size the team started with (settings-billing.txt, "Free trial")', () => {
+  const { theSizeItStartedWith } = require('./billing.service');
+
+  it('says what was answered when the organisation was made, in a full sentence', () => {
+    expect(theSizeItStartedWith({ name: 'Baridi Appliances', teamSizeSaid: 'more', teamSizeLine: 20 })).toEqual({
+      said: 'more', line: 20, says: 'When Baridi Appliances was set up, it had 20 or more people, so it began on a plan.',
+    });
+    expect(theSizeItStartedWith({ name: 'Kijani Repairs', teamSizeSaid: 'fewer', teamSizeLine: 20 })!.says).toBe('When Kijani Repairs was set up, it had fewer than 20 people.');
+    expect(theSizeItStartedWith({ name: 'Baridi Appliances', teamSizeSaid: null, teamSizeLine: null })).toBeNull();
+  });
+
+  it('Grace, an admin, is served it; Wairimu, a lead, and Miriam, who takes part, are not', () => {
+    const startedWith = { said: 'more', line: 20, says: 'When Baridi Appliances was set up, it had 20 or more people, so it began on a plan.' };
+    const full: any = { subscription: { plan: 'GROWTH', status: 'active' }, people: { count: 27, cap: 100 }, onTheHouse: null, startedWith };
+    expect((theStatusAsTheyMayReadIt(full, 'ADMIN') as any).startedWith).toEqual(startedWith);
+    for (const role of ['LEAD', 'MEMBER', 'GUEST']) expect(JSON.stringify(theStatusAsTheyMayReadIt(full, role))).not.toContain('set up');
+  });
+});

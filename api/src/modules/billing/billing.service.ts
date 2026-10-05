@@ -28,6 +28,18 @@ export function freeSeatLimitMessage(limit: number): string {
 export const NO_PLAN_TO_OPEN = 'Your organisation has no plan yet. Choose one on Plan and billing to open a check-in.';
 export const NO_PLAN_TO_ADD = 'Your organisation has no plan yet. Choose one on Plan and billing to add people.';
 /* The prototype's words (upgrade.txt), for anybody in a check-in whose organisation has no plan. */
+/** "When Baridi Appliances was set up, it had 20 or more people, so it began on a plan." Null when nobody was asked. */
+export function theSizeItStartedWith(org: { name?: string | null; teamSizeSaid?: string | null; teamSizeLine?: number | null }): { said: 'fewer' | 'more'; line: number; says: string } | null {
+  const said = org.teamSizeSaid === 'fewer' || org.teamSizeSaid === 'more' ? org.teamSizeSaid : null;
+  const line = Number(org.teamSizeLine);
+  if (!said || !Number.isInteger(line) || line < 2) return null;
+  const who = (org.name ?? '').trim() || 'your organisation';
+  const says = said === 'more'
+    ? `When ${who} was set up, it had ${line} or more people, so it began on a plan.`
+    : `When ${who} was set up, it had fewer than ${line} people.`;
+  return { said, line, says };
+}
+
 export const PAUSED_UNTIL_THEY_SUBSCRIBE = 'This check-in is paused until your team subscribes. Only an admin can do that, and your answers so far are kept.';
 
 export function paidSeatLimitMessage(planLabel: string, cap: number): string {
@@ -910,6 +922,12 @@ export class BillingService {
     card?: { brand: string; last4: string } | null;
     /** Admin only: the subscription payments recorded from Stripe, newest first, for "Invoices". */
     invoices?: Array<{ paidOn: Date; amountCents: number; currency: string }>;
+    /**
+     * Admin only: what was said about the team's size when the organisation was made (settings-billing.txt, "Baridi
+     * started with 27, so it began on a plan"). Only the answer is kept, never a count, so the sentence says the answer.
+     * Null when nobody was asked.
+     */
+    startedWith?: { said: 'fewer' | 'more'; line: number; says: string } | null;
   }> {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
@@ -925,6 +943,9 @@ export class BillingService {
         freePlan: true,
         freeTrialStartedAt: true,
         createdAt: true,
+        name: true,
+        teamSizeSaid: true,
+        teamSizeLine: true,
       },
     });
     if (!org) throw new NotFoundException('Organization not found');
@@ -1038,6 +1059,7 @@ export class BillingService {
       invoices: includeUsage
         ? (invoices ?? []).map((i: any) => ({ paidOn: i.periodStart, amountCents: i.amountCents, currency: i.currency }))
         : undefined,
+      startedWith: includeUsage ? theSizeItStartedWith(org as any) : undefined,
     };
   }
 
