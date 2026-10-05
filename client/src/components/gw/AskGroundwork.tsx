@@ -16,6 +16,17 @@ const STILL_READING = 'Reading it now.'
     30 September, "a document's numbers, said back through Ask Groundwork"). */
 const SAID_AFTER_UPLOAD = "I've uploaded it."
 
+/*
+ * WIDTH CHECK, ITEM 8: THE COMPOSER'S OWN RESTING HEIGHT CUT OFF ITS OWN HINT. The placeholder -
+ * "Ask about the company, your work or your check-ins" - wraps to two lines at the panel's own
+ * 400px width, but the box this empty composer rests at (38px: a 24px line at this field's 16px/1.5
+ * plus its 11px top-and-bottom padding, the Composer's own values) only ever had room to show the
+ * first of them; the second sat cut off against the box's own bottom edge rather than genuinely
+ * absent. 70px is two such lines (24px * 2) plus the same padding - the box still grows further as
+ * somebody types (see the `onChange` below), this only fixes where it RESTS, empty.
+ */
+const COMPOSER_RESTING_HEIGHT = '70px'
+
 /**
  * ASK (D1, U.14): the panel beside every page on a computer, and #/chat on a phone. Named for the
  * organisation on every screen (decision 100, docs/ask-definition.md) - "Ask Baridi", "Ask
@@ -227,7 +238,7 @@ export function AskGroundwork({
      once what was in it is sent - `send` clears `draft` only after a reply comes back, so this
      watches for that rather than doing it optimistically. */
   useEffect(() => {
-    if (draft === '' && composerRef.current) composerRef.current.style.height = '38px'
+    if (draft === '' && composerRef.current) composerRef.current.style.height = COMPOSER_RESTING_HEIGHT
   }, [draft])
 
   /*
@@ -495,7 +506,7 @@ export function AskGroundwork({
             onChange={(v) => {
               setDraft(v)
               const el = composerRef.current
-              if (el) { el.style.height = '38px'; el.style.height = Math.min(el.scrollHeight, 120) + 'px' }
+              if (el) { el.style.height = COMPOSER_RESTING_HEIGHT; el.style.height = Math.min(el.scrollHeight, 120) + 'px' }
             }}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(draft, true) } }}
             onSend={() => ask(draft, true)}
