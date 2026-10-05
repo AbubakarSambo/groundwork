@@ -659,7 +659,9 @@ export function theLeadActions(
       id: `nobody-named-${d.id}`,
       says: d.fromParticipantId === r.theLeadsId
         ? `${needs} to find out who can provide ${what}, because nobody has been named yet.${thatWaitsOn(d)}`
-        : `${needs} to find out who can provide ${what} ${midSentence(who)} ${isAre(who)} waiting for, because nobody has been named yet.${thatWaitsOn(d)}`,
+        /* "that" is not optional here (request 132 f): without it the lead read "…who can provide the fuel allowance
+           for October Aisha Wanjiku is waiting for", where the thing and the person run into one another. */
+        : `${needs} to find out who can provide ${what} that ${midSentence(who)} ${isAre(who)} waiting for, because nobody has been named yet.${thatWaitsOn(d)}`,
       because: theFactsOfAWait(d, who),
     });
   }

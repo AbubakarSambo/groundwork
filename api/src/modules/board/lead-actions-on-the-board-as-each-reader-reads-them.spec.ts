@@ -18,7 +18,7 @@ describe('Lead actions, as each person reads them', () => {
     const b = await boardAs(WITH_AN_UNTOLD_GOAL, ...BISI);
     expect(says(b)).toEqual([
       'You need to get back to Kwame Mensah, who is waiting on you for the approval of five applications.',
-      'You need to find out who can provide the bank statements Femi Okonkwo is waiting for, because nobody has been named yet.',
+      'You need to find out who can provide the bank statements that Femi Okonkwo is waiting for, because nobody has been named yet.',
       'You need to talk Kwame Mensah through a goal you set for this work, because Kwame Mensah has not been told about it yet.',
       'In session 2, you said, "I\'ll follow up directly with the committee members." Nobody has said yet whether it happened.',
     ]);
@@ -36,7 +36,7 @@ describe('Lead actions, as each person reads them', () => {
   it('an admin who only reads an ordinary check-in reads it with Bisi named, without the untold goal', async () => {
     const b = await boardAs(WITH_AN_UNTOLD_GOAL, ...JUMA);
     expect(says(b)).toHaveLength(3);
-    expect(says(b)[1]).toBe('Bisi Adeyemi needs to find out who can provide the bank statements Femi Okonkwo is waiting for, because nobody has been named yet.');
+    expect(says(b)[1]).toBe('Bisi Adeyemi needs to find out who can provide the bank statements that Femi Okonkwo is waiting for, because nobody has been named yet.');
   });
 
   it('a participant reads no lead actions at all, not even the one about them', async () => {
