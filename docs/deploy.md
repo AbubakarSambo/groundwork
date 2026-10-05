@@ -340,6 +340,12 @@ Every report updated after the release should name the newest `report_synthesis`
 
 ## 7. The checks to run after deploy
 
+**Before the release, on this computer: does the production start command work?** Run, from `api/`:
+
+    npm run check:production-start -- --database postgresql://you@localhost:5432/your_local_db --env .env
+
+It builds the API exactly as production does (`nest build`) in a temporary folder, never in `api/dist`. It checks that `dist/main.js` and the embed's `embed.js` and `panel.html` are there and that there is no `dist/src`. Then it starts `node dist/main` on a spare port against the local database you give it (it refuses any other), waits for `/health` to answer "ok", reads `/embed.js`, and stops the server. It writes nothing. On 5 October every test passed while `node dist/main` could not start, because three specs imported from `journey/` and the server was built to `dist/src/main.js`. `api/src/nothing-in-src-imports-from-outside-src.spec.ts` stops that cause, and this check proves the result. On `wip/release` at 5 October it printed: "node dist/main started on port 52689, /health answered "ok", /embed.js answered 200, and the server was stopped."
+
 **Before any person reads anything:**
 1. `SELECT migration_name, finished_at FROM _prisma_migrations ORDER BY started_at DESC LIMIT 90;` shows all 82 new migrations finished, and none failed.
 2. The API answers `/health`.
