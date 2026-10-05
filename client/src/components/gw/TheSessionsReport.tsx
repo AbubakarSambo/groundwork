@@ -313,6 +313,22 @@ function lowerFirst(s: string): string {
   const t = s.trim()
   return t ? t.charAt(0).toLowerCase() + t.slice(1) : t
 }
+
+/**
+ * RELEASE WALKTHROUGH A, FIX 2: THE SAME PERSON, NAMED TWICE.
+ *
+ * `{who} said {lowerFirst(view)}` assumed `view` never itself opened with the person's name - but
+ * the served view already does: "Amani Wekesa said amani Wekesa stated an aim..." and "You said you
+ * stated...". When the view already begins with this reader's displayed name (or "You"), the name
+ * is said once, as a plain sentence; otherwise the "{who} said ..." frame stays, unchanged.
+ */
+function startsWithPerson(view: string, displayWho: string): boolean {
+  return view.trim().toLowerCase().startsWith(displayWho.trim().toLowerCase())
+}
+export function sayWhatTheySaid(who: string, view: string, yourName?: string | null): string {
+  const displayWho = (who === yourName || who === 'You') ? 'You' : who
+  return startsWithPerson(view, displayWho) ? capitalize(view.trim()) : `${displayWho} said ${lowerFirst(view)}`
+}
 function withPeriod(s: string): string {
   const t = s.trim()
   if (!t) return t
@@ -728,7 +744,7 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
                                 sentence, "X said ...", with the reader's own line read as "You said
                                 ..." - the same rule `Cite`/`Quotes` already use just above.
                               */}
-                              {(p.who === yourName ? 'You' : p.who)} said {lowerFirst(p.view)}
+                              {sayWhatTheySaid(p.who, p.view, yourName)}
                             </p>
                           ))}
                         </div>
