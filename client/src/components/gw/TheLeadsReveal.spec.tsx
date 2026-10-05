@@ -41,15 +41,20 @@ describe('TheLeadsReveal, piece 9', () => {
     expect(screen.getByText(fixture.carrying!)).toBeTruthy()
     expect(screen.getByText(fixture.seeingToday!)).toBeTruthy()
     expect(screen.getByText(fixture.whatTheTeamNeedsToUnderstand!)).toBeTruthy()
+    expect(screen.queryByText('Only you can see this for now.')).toBeNull()
     expect(screen.getByText("How I'll work with your team")).toBeTruthy()
     expect(screen.getByText('Follow through')).toBeTruthy()
     expect(screen.getByText('Remember commitments and return to them.')).toBeTruthy()
   })
 
-  it("holds back What you need the team to understand until the lead has shared it", () => {
+  it("always shows the lead their own What you need the team to understand, with a note when it isn't shared yet", () => {
+    // Updated: this is the lead's own reveal, read on the lead's own set-up screen. Decision 96
+    // item 8's sharedWithTeam gate limits what the TEAM is shown elsewhere; it never hid the
+    // lead's own words from the lead. The old test pinned that wrong gate.
     render(<TheLeadsReveal reveal={{ ...fixture, sharedWithTheTeam: false, whatTheTeamNeedsToUnderstand: 'Something not yet shared.' }} />)
-    expect(screen.queryByText('Something not yet shared.')).toBeNull()
-    expect(screen.queryByText('What you need the team to understand')).toBeNull()
+    expect(screen.getByText('Something not yet shared.')).toBeTruthy()
+    expect(screen.getByText('What you need the team to understand')).toBeTruthy()
+    expect(screen.getByText('Only you can see this for now.')).toBeTruthy()
   })
 
   it("draws nothing for carrying and seeing today when the engine withholds them (not the lead reading)", () => {

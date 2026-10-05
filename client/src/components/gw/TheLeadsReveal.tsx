@@ -15,9 +15,10 @@ import { SubHeading } from './ui/SubHeading'
  *
  * `carrying` and `seeingToday` are the lead's alone and are never drawn for anybody but the lead
  * who is reading their own set-up screen - there is no other reader here, since nobody else has
- * joined yet at this point in the flow. `whatTheTeamNeedsToUnderstand` draws only once the engine
- * has marked it `sharedWithTheTeam`; otherwise this component says nothing about it rather than
- * drawing an empty heading (CLAUDE.md: no heading without content).
+ * joined yet at this point in the flow. `whatTheTeamNeedsToUnderstand` is the lead's own reveal
+ * too: `sharedWithTheTeam` limits what the TEAM is shown elsewhere, not what the lead reads here,
+ * so it is always drawn for the lead when the engine serves it. When it has not yet been shared,
+ * a plain note says so, rather than withholding the content from the one person it belongs to.
  */
 export function TheLeadsReveal({ reveal }: { reveal: TheLeadsRevealShape | null | undefined }) {
   if (!reveal) return null
@@ -36,9 +37,12 @@ export function TheLeadsReveal({ reveal }: { reveal: TheLeadsRevealShape | null 
           </Panel>
         )}
 
-        {reveal.sharedWithTheTeam && reveal.whatTheTeamNeedsToUnderstand && (
+        {reveal.whatTheTeamNeedsToUnderstand && (
           <Panel heading="What you need the team to understand">
             <p className="gwui-panel-text">{reveal.whatTheTeamNeedsToUnderstand}</p>
+            {!reveal.sharedWithTheTeam && (
+              <p className="gwui-panel-text" style={{ marginTop: 6, color: 'var(--gw-sub)' }}>Only you can see this for now.</p>
+            )}
           </Panel>
         )}
 
