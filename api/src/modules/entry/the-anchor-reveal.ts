@@ -58,6 +58,13 @@ export function whoSheIsTryingToMove(names: string[]): string {
   return `You are trying to move ${listed(more > 0 ? [...shown, more === 1 ? 'one other person' : `${more} other people`] : shown)} with you.`;
 }
 
+/** Who she is trying to move, as a sentence: as the read wrote it when it is one ("You are trying to move..."), else the group she named, put into one. */
+export function whoYouAreMovingSaid(text: string): string {
+  const t = text.trim().replace(/[.!?]+$/, '');
+  if (/^you\b/i.test(t)) return asASentence(t);
+  return `You are trying to move ${t.charAt(0).toLowerCase()}${t.slice(1)} with you.`;
+}
+
 export const NOT_WRITTEN_DOWN = {
   carrying: 'Groundwork has not yet written down what you are carrying.',
   whatTheTeamNeedsToUnderstand: 'Groundwork has not yet written down what you need the team to understand.',
@@ -100,7 +107,7 @@ export function theLeadsReveal(input: { messages: Turn[]; peopleNamed?: string[]
     carrying: forTheLead ? whatSheIsCarrying(heard) ?? NOT_WRITTEN_DOWN.carrying : null,
     whatTheTeamNeedsToUnderstand: forTheLead ? (heard.whatTheyDontUnderstand ? asASentence(heard.whatTheyDontUnderstand) : NOT_WRITTEN_DOWN.whatTheTeamNeedsToUnderstand) : null,
     sharedWithTheTeam: shared,
-    whoYouAreTryingToMove: heard.tryingToMove ? asASentence(heard.tryingToMove) : whoSheIsTryingToMove(input.peopleNamed ?? []),
+    whoYouAreTryingToMove: heard.tryingToMove ? whoYouAreMovingSaid(heard.tryingToMove) : whoSheIsTryingToMove(input.peopleNamed ?? []),
     seeingToday: forTheLead ? (heard.seeingToday ? asASentence(heard.seeingToday) : NOT_WRITTEN_DOWN.seeingToday) : null,
     whatMeaningfulChangeWouldLookLike: change.length ? change : [NOT_WRITTEN_DOWN.change],
     whatGroundworkWillExplore: [...WHAT_GROUNDWORK_WILL_EXPLORE],

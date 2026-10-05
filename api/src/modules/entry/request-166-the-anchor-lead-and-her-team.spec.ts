@@ -287,3 +287,10 @@ describe('the challenge comes before the hope question, once', () => {
     expect(after.seen[0]).not.toContain('Your one challenge comes now');
   });
 });
+
+describe('who she is trying to move reads as a sentence whichever way the read wrote it', () => {
+  it('puts a group she named into one, and leaves a sentence alone', () => {
+    expect(theLeadsReveal({ messages: [], heard: { tryingToMove: 'The sales team and the account managers' } }).whoYouAreTryingToMove).toBe('You are trying to move the sales team and the account managers with you.');
+    expect(theLeadsReveal({ messages: [], heard: { tryingToMove: 'you are trying to move the clinic managers.' } }).whoYouAreTryingToMove).toBe('You are trying to move the clinic managers.');
+  });
+});
