@@ -62,7 +62,8 @@ export async function journeys(c: any): Promise<void> {
   await cron.sendSessionReadyNotificationsInner();
   await waitQuiet(1000);
   const toAmani = received(amani, before);
-  check('The first session is announced to Amani, once, in Hafsah\'s words for checkin_open', toAmani.length === 1 && toAmani[0].template === 'checkin_open' && bodyOf(toAmani[0]) === 'Hi Amani, your check-in for Sales team, Q4 is open. It takes about five minutes, and you can answer right here. Reply START to begin.', JSON.stringify(toAmani.map(bodyOf)));
+  /* Decision 106 item 2: the first message ever sent to Amani's number names the organisation and says "Not you? Reply STOP.", around Hafsah's words for checkin_open. */
+  check('The first session is announced to Amani, once, in Hafsah\'s words for checkin_open, and as the first message to her number it names the organisation and says "Not you? Reply STOP."', toAmani.length === 1 && toAmani[0].template === 'groundwork_first_contact' && bodyOf(toAmani[0]) === `This is Groundwork, writing for ${orgs.on.name}. Hi Amani, your check-in for Sales team, Q4 is open. It takes about five minutes, and you can answer right here. Reply START to begin. Not you? Reply STOP.`, JSON.stringify(toAmani.map(bodyOf)));
   /* The same job again must not announce twice. */
   const again = outbox.length;
   await cron.sendSessionReadyNotificationsInner();
@@ -180,7 +181,8 @@ export async function journeys(c: any): Promise<void> {
   const spendRow = await prisma.spendRequest.findFirst({ where: { organizationId: orgs.on.id, userId: baraka.userId } });
   check('The spending request is saved, waiting, for the right sum', !!spendRow && spendRow.status === 'waiting' && Number(spendRow.amount) === 12000, JSON.stringify(spendRow));
   const graceTold = since(spFrom - 1).filter((s: any) => s.to === grace.phone);
-  check('Grace, who decides for Baraka, is told it is waiting, in the words of groundwork_request_waiting', graceTold.length === 1 && graceTold[0].template === 'groundwork_request_waiting' && graceTold[0].text === 'Hi Grace, Baraka has asked for KES 12,000 for fuel for the delivery van, and it is waiting for you. Reply here to approve or decline it, or open Groundwork to read it first.', JSON.stringify(graceTold.map(bodyOf)));
+  /* Grace has never been written to before, so this is her number's first message (decision 106 item 2). */
+  check('Grace, who decides for Baraka, is told it is waiting, in the words of groundwork_request_waiting, as the first message to her number', graceTold.length === 1 && graceTold[0].template === 'groundwork_first_contact' && graceTold[0].text === `This is Groundwork, writing for ${orgs.on.name}. Hi Grace, Baraka has asked for KES 12,000 for fuel for the delivery van, and it is waiting for you. Reply here to approve or decline it, or open Groundwork to read it first. Not you? Reply STOP.`, JSON.stringify(graceTold.map(bodyOf)));
   await says(baraka, 'back');
   const gApprove = await says(grace, 'approve');
   check('Grace\'s "approve" is said back with the sum before anything happens', /You are approving Baraka's request to spend KES 12,000 for fuel for the delivery van\. Is that right\?/.test(gApprove.text) && (await prisma.spendRequest.findFirst({ where: { id: spendRow!.id } }))?.status === 'waiting', gApprove.text);

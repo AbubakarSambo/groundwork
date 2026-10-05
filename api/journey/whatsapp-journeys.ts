@@ -347,6 +347,12 @@ export async function runWhatsAppJourneys(opts: { quiet?: boolean } = {}): Promi
     await journeys(ctx as any);
     const { moreJourneys } = await import('./whatsapp-journeys-more');
     await moreJourneys(ctx as any);
+    if (process.env.WHATSAPP_JOURNEYS_106 !== '0') {
+      const { decision106, howItEnds } = await import('./whatsapp-journeys-106');
+      await decision106(ctx as any);
+      const endings = await howItEnds(ctx as any);
+      require('fs').writeFileSync(process.env.WHATSAPP_ENDINGS_OUT ?? '/dev/null', endings.join('\n'));
+    }
     if (FROM_THE_BACK_OFFICE) {
       heading('EVERY SEND USED THE SAVED NUMBER AND TOKEN');
       const other = sentWith.filter((w) => w.phoneNumberId !== TEST.phoneNumberId || w.authorization !== `Bearer ${TEST.accessToken}`);
