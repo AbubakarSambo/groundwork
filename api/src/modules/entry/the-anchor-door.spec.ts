@@ -33,7 +33,7 @@ describe('the anchor scenario front door', () => {
 
   it('starts an anchor draft with its marks when the switch is on', async () => {
     const out = await new TheAnchorDoor(prismaWith(true).prisma).start('Founders-WhatsApp');
-    expect(out).toEqual({ available: true, scenario: 'HELP_TEAM_UNDERSTAND', startedFrom: 'anchor', groundLabel: 'Help my team understand', source: 'founders-whatsapp', thePeopleStep: THE_PEOPLE_STEP_RULES });
+    expect(out).toEqual({ available: true, scenario: 'HELP_TEAM_UNDERSTAND', startedFrom: 'anchor', groundLabel: 'Help my team understand', firstQuestion: "What's happening right now that makes you wish your team saw more of what you see?", source: 'founders-whatsapp', thePeopleStep: THE_PEOPLE_STEP_RULES });
   });
 
   it('answers as unavailable and starts nothing when the switch is off', async () => {

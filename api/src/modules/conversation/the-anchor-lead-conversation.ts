@@ -20,6 +20,9 @@ import type { PromptsService } from '../prompts';
 
 export const ANCHOR_LEAD_PROMPT_KEY = 'anchor_lead_conversation';
 
+/** The first thing the lead is asked (section 6). Served by the entry route, and asked once, so no later turn asks it again. */
+export const THE_ANCHOR_FIRST_QUESTION = "What's happening right now that makes you wish your team saw more of what you see?";
+
 /** The situation the lead's entry conversation is started with, for the anchor link only. */
 export const ANCHOR_ENTRY_SCENARIO = 'HELP_TEAM_UNDERSTAND';
 

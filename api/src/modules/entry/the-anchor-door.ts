@@ -1,6 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
-import { ANCHOR_ENTRY_SCENARIO } from '../conversation/the-anchor-lead-conversation';
+import { ANCHOR_ENTRY_SCENARIO, THE_ANCHOR_FIRST_QUESTION } from '../conversation/the-anchor-lead-conversation';
 import { THE_PEOPLE_STEP_RULES } from './the-anchor-people-step';
 import type { ThePeopleStepRules } from './the-anchor-served-shapes';
 import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
@@ -29,6 +29,8 @@ export type TheAnchorDraftToStart = {
   startedFrom: typeof STARTED_FROM_THE_ANCHOR;
   /** What the check-in is called until the lead changes it. */
   groundLabel: string;
+  /** The first thing the lead is asked, in the spec's words (section 6). The opening line of the conversation is this, so the screen never has to write it. */
+  firstQuestion: string;
   /** Where the link came from (the group or post it was shared in), or null. Kept in the draft's payload as `anchorSource`. */
   source: string | null;
   /** The people step's own rules and words: up to 20 people, the lead included (decision 96, item 3). */
@@ -58,6 +60,6 @@ export class TheAnchorDoor {
   /** With the switch off, nothing is returned and nothing is created. This reads the switch fresh: it is the gate, not a hint. */
   async start(source: unknown): Promise<TheAnchorDraftToStart> {
     if (!(await theAnchorScenarioIsOn(this.prisma))) throw new NotFoundException('This way in is not open yet.');
-    return { available: true, scenario: ANCHOR_ENTRY_SCENARIO, startedFrom: STARTED_FROM_THE_ANCHOR, groundLabel: THE_ANCHOR_GROUND_LABEL, source: aSourceMark(source), thePeopleStep: { ...THE_PEOPLE_STEP_RULES } };
+    return { available: true, scenario: ANCHOR_ENTRY_SCENARIO, startedFrom: STARTED_FROM_THE_ANCHOR, groundLabel: THE_ANCHOR_GROUND_LABEL, firstQuestion: THE_ANCHOR_FIRST_QUESTION, source: aSourceMark(source), thePeopleStep: { ...THE_PEOPLE_STEP_RULES } };
   }
 }
