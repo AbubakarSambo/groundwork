@@ -153,6 +153,8 @@ export interface AServedPattern {
   heading: string;
   /** The engine's own sentence about the work, when it holds no internal name or code. */
   whatHappened: string | null;
+  /** What the report kept about this pattern from earlier, as a plain sentence of what happened, for whoever runs the check-in only. See stored-pattern-lines-through-the-wall. */
+  earlierRead?: string | null;
   /** The sessions it came up in, in order. */
   sessions: number[];
   /** How often, as a sentence. */

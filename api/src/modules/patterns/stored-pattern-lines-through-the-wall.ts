@@ -1,50 +1,38 @@
-import { PATTERN_ROW_SELECT, patternRowsThisReaderMayRead, type APatternRow } from './who-reads-a-pattern';
+import { whatHappenedIn, type AServedPattern, type APatternRow } from './who-reads-a-pattern';
 import { oldWordingPutPlain } from '../reports/a-stored-sentence-reads-right';
 
 /**
- * THE PATTERN LINES KEPT IN THE RECORD OVER TIME, SERVED THROUGH DECISION 86'S WALL (6 October 2026; Hafsah to confirm).
+ * WHAT THE REPORT KEPT ABOUT A PATTERN, READ BESIDE THAT PATTERN (6 October 2026; Hafsah to confirm).
  *
  * The live line shows the lead the pattern lines stored in the record over time ("Upward reporting was optimistic while a major
- * account was being lost."). This release stopped serving them on 27 September, because the stored text was written at synthesis,
- * before the person it is about had read anything. Leads of existing check-ins lost 288 lines on 81 check-ins.
+ * account was being lost."). This release stopped serving them on 27 September, because the stored object is written at synthesis
+ * with the engine's own code and name ("B1", "CEO-Pleasing"), a label on the person ("Participant A") and a count out of the
+ * sessions then. None of that is served here. Only the stored sentence of what happened is, and only as one more line on the
+ * pattern the lead is ALREADY served from the live row: its plain heading, its own count, and the person's own words. So the lead
+ * reads each pattern once.
  *
- * A stored line is served again only when the live pattern it was written for may be read by this reader right now: the same row,
- * the same three periods, and decision 86's turn for the person (they answered, or three days after they were shown it, or seven
- * days after it was ready). A stored line with no live row behind it is not served, because nothing says the person has had their
- * turn. Only whoever runs the check-in reads any of it; a participant never reads a line about a colleague, and an admin who only
- * reads gets none. A pattern about the reader is not in the lead's list: it is theirs, on their own page.
+ * It rides on `servedPatterns`, so decision 86's wall is that function's: three periods, and the person it is about has had their
+ * turn. A stored line with no served pattern beside it is not served. A participant is never given one (they read only their own,
+ * and a pattern about the reader is not given a stored line), and an admin who only reads is served no pattern at all.
  */
-export function withTheStoredPatternLinesThroughTheWall<T extends { patterns?: any[] } | null | undefined>(
-  overTime: T,
-  rows: readonly APatternRow[] | null | undefined,
-  reader: { participantId: string | null; runsIt: boolean },
-  opts: { now?: Date; storedPatterns?: any[] | null } = {},
-): T {
-  if (!overTime) return overTime;
-  if (!reader.runsIt) return { ...(overTime as any), patterns: [] };
-  const stored: any[] = Array.isArray(opts.storedPatterns) ? opts.storedPatterns : Array.isArray((overTime as any).patterns) ? (overTime as any).patterns : [];
-  if (!stored.length) return overTime;
-  const mayRead = patternRowsThisReaderMayRead(rows, { participantId: reader.participantId, runsIt: true }, { now: opts.now });
-  const ok = new Set(mayRead.filter((r) => !reader.participantId || r.participantId !== reader.participantId).map((r) => `${r.participantId}|${r.code}`));
-  const kept = stored
-    .filter((p) => p && typeof p.observation === 'string' && p.observation.trim() && ok.has(`${p.participantId}|${p.code}`))
-    .map((p) => ({ ...p, observation: oldWordingPutPlain(p.observation), say: typeof p.say === 'string' ? oldWordingPutPlain(p.say) : p.say }));
-  return { ...(overTime as any), patterns: kept };
-}
+const A_LABEL_ON_A_PERSON = /\b(?:participant\s+[a-z]\b|the initiator|the lead\b)/i;
 
-/** Reads the live rows for this check-in and applies the wall. A lookup that fails serves none of them. */
-export async function theStoredPatternLinesFor<T extends { patterns?: any[] } | null | undefined>(
-  prisma: any,
-  groundId: string,
-  overTime: T,
-  reader: { participantId: string | null; runsIt: boolean },
-  /* The report's row as stored: what is served has had its patterns taken out already (overTimeAsServed), so they come from here. */
-  storedOverTime?: { patterns?: any[] } | null,
-): Promise<T> {
-  const storedPatterns = Array.isArray(storedOverTime?.patterns) ? storedOverTime!.patterns! : Array.isArray((overTime as any)?.patterns) ? (overTime as any).patterns : [];
-  if (!overTime) return overTime;
-  if (!reader.runsIt) return { ...(overTime as any), patterns: [] };
-  if (!storedPatterns.length) return overTime;
-  const rows: any[] = await Promise.resolve(prisma?.patternDetection?.findMany?.({ where: { groundId }, select: PATTERN_ROW_SELECT, take: 200 })).then((r) => (Array.isArray(r) ? r : [])).catch(() => []);
-  return withTheStoredPatternLinesThroughTheWall(overTime, rows as any, reader, { storedPatterns });
+export function withTheEarlierRead(
+  served: readonly AServedPattern[] | null | undefined,
+  rows: readonly APatternRow[] | null | undefined,
+  storedPatterns: readonly any[] | null | undefined,
+  reader: { runsIt: boolean },
+): AServedPattern[] {
+  const list = [...(served ?? [])];
+  if (!reader.runsIt || !storedPatterns?.length) return list;
+  const rowOf = new Map((rows ?? []).map((r) => [r.id, r]));
+  return list.map((p) => {
+    if (p.yours) return p;
+    const row = rowOf.get(p.id);
+    const stored = row ? storedPatterns.find((x) => x && x.participantId === row.participantId && x.code === row.code && typeof x.observation === 'string') : null;
+    if (!stored) return p;
+    const plain = whatHappenedIn(oldWordingPutPlain(stored.observation));
+    if (!plain || A_LABEL_ON_A_PERSON.test(plain) || plain === p.whatHappened) return p;
+    return { ...p, earlierRead: plain };
+  });
 }
