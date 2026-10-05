@@ -177,13 +177,42 @@ describe('what the server says about each request is drawn, not the screen’s o
     expect(await screen.findByText('You asked Kamau on 4 October, “Is this for the Kisumu van?”')).toBeInTheDocument()
   })
 
-  /* Changed: this used to say "How people use it" was never drawn, because asking in chat did not work
-     yet (request 26). It is done, so the page now says where people ask, without the example chat. */
-  it('says where people ask, without the prototype’s example chat', async () => {
+  /*
+   * Fault 5 of the live walk: "How people use it" dropped the prototype's own example chat. It is
+   * back now, drawn with the shared Bubble: the prototype's own example names nobody from this
+   * organisation, so it is copied as it stands.
+   */
+  it('says where people use it, with the prototype’s example chat', async () => {
     open(GRACE, GRACES)
     const how = await screen.findByRole('region', { name: 'How people use it' })
-    expect(how.textContent).toBe('How people use itIn their check-in, in chat, or on WhatsApp. Nobody fills in a form.')
-    expect(document.body.textContent).not.toMatch(/Can I spend KES 18,000|I have sent it to your lead/)
+    expect(within(how).getByText('Can I spend KES 18,000 on fuel for the Kisumu deliveries?')).toBeInTheDocument()
+    expect(within(how).getByText('Operations has KES 38,000 left this month, so yes, that fits. I have sent it to your lead to approve.')).toBeInTheDocument()
+    expect(within(how).getByText('In their check-in, in chat, or on WhatsApp. Nobody fills in a form.')).toBeInTheDocument()
+  })
+
+  /*
+   * Fault 6 of the live walk: Decline went through with no reason asked, so the person reads a
+   * decline with no "why" (the server already carries one, told to them word for word, through
+   * `declineReason` on the decline endpoint). "Say why" is optional - Decline still works with it
+   * left blank.
+   */
+  it('asks why before declining, and sends what was said in the reason the server’s decline endpoint takes', async () => {
+    (spendApi.decide as any).mockResolvedValue({ ...GRACES, waiting: [KAMAU] })
+    open(GRACE, GRACES)
+    fireEvent.click(await screen.findByRole('button', { name: 'Decline Lina’s request' }))
+    expect(spendApi.decide).not.toHaveBeenCalled()
+    const say = screen.getByLabelText('Say why (optional)')
+    fireEvent.change(say, { target: { value: 'The budget is needed for the Kisumu deliveries.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Decline' }))
+    await waitFor(() => expect(spendApi.decide).toHaveBeenCalledWith('s-2', 'decline', 'The budget is needed for the Kisumu deliveries.'))
+  })
+
+  it('declines with no reason when none is said', async () => {
+    (spendApi.decide as any).mockResolvedValue({ ...GRACES, waiting: [KAMAU] })
+    open(GRACE, GRACES)
+    fireEvent.click(await screen.findByRole('button', { name: 'Decline Lina’s request' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Decline' }))
+    await waitFor(() => expect(spendApi.decide).toHaveBeenCalledWith('s-2', 'decline', undefined))
   })
 })
 

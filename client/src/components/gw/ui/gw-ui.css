@@ -785,6 +785,12 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   .gwui-conv-card { border-radius: 0; border-left: none; border-right: none; }
 }
 
+/* ── EXAMPLE EXCHANGE (fault 5 of the live walk of the suites: "How people ask"/"How people use
+   it" on the leave and spending boards) - the shared Bubble stacked in a flex column, the same
+   shape a real conversation's own body uses (`.gwui-conv-card`'s children), so an illustration of
+   the feature reads like the product rather than a flat paragraph. ── */
+.gwui-example-chat { display: flex; flex-direction: column; gap: 12px; }
+
 /* ── STAGE TRACK (request 76: a work record's stages, one row, in order) ───
    Board review, 30 September, second pass: the stage's name and its count were joined with a
    colon on one line ("Quoted: 1 deal") - still a label-and-value pair glued together, not a

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { spendApi, type SpendBoard, type SpendWaiting } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
-import { Page, PageTitle, Section, Panel, Button, Note, Empty, RowList, Row, FieldLabel, Select, TextField, Tag } from '@/components/gw/ui'
+import { Page, PageTitle, Section, Panel, Button, Note, Empty, RowList, Row, FieldLabel, Select, TextField, TextArea, Tag, ExampleExchange } from '@/components/gw/ui'
 import { AskAQuestion } from './AskAQuestion'
 import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
 
@@ -128,6 +128,13 @@ export function SpendingPage() {
           </Section>
 
           <Section heading="How people use it">
+            <ExampleExchange
+              label="An example: someone asks Groundwork if they can spend, and is told whether it fits the budget, before it is sent to the right person to approve."
+              lines={[
+                { mine: true, text: 'Can I spend KES 18,000 on fuel for the Kisumu deliveries?' },
+                { mine: false, text: 'Operations has KES 38,000 left this month, so yes, that fits. I have sent it to your lead to approve.' },
+              ]}
+            />
             <p className="gwui-panel-text">In their check-in, in chat, or on WhatsApp. Nobody fills in a form.</p>
           </Section>
 
@@ -141,8 +148,11 @@ export function SpendingPage() {
 function ARequest({ w, board }: { w: SpendWaiting; board: SpendBoard }) {
   const qc = useQueryClient()
   const [problem, setProblem] = useState<string | null>(null)
+  const [declining, setDeclining] = useState(false)
+  const [reason, setReason] = useState('')
   const decide = useMutation({
-    mutationFn: (outcome: 'approve' | 'decline') => spendApi.decide(w.id, outcome),
+    mutationFn: (outcome: 'approve' | 'decline') =>
+      outcome === 'decline' ? spendApi.decide(w.id, outcome, reason.trim() || undefined) : spendApi.decide(w.id, outcome),
     onSuccess: (b) => { setProblem(null); qc.setQueryData(['suite-spend'], b) },
     onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
   })
@@ -160,13 +170,32 @@ function ARequest({ w, board }: { w: SpendWaiting; board: SpendBoard }) {
         {w.mayDecide && (
           <AskAQuestion id={w.id} who={w.firstName} send={async q => qc.setQueryData(['suite-spend'], await spendApi.ask(w.id, q))} />
         )}
+        {/*
+         * FAULT 6 OF THE LIVE WALK: Decline used to go straight through with no reason asked, so the
+         * person who asked would read a decline with no "why" (the server already carries one,
+         * `declineReason`, told to the person word for word - `the-spending.service.ts`'s
+         * `declinedBecause`). "Say why" is optional, same as the leave rules' own reason text, and
+         * is sent in the decline endpoint's own `reason` field.
+         */}
+        {declining && (
+          <form className="gwui-suite-ask" onSubmit={e => { e.preventDefault(); decide.mutate('decline') }}>
+            <div className="gwui-suite-q">
+              <FieldLabel htmlFor={`spend-decline-${w.id}`}>Say why (optional)</FieldLabel>
+              <TextArea id={`spend-decline-${w.id}`} rows={2} value={reason} onChange={e => setReason(e.target.value)} maxLength={1000} />
+            </div>
+            <div className="gwui-edge-acts">
+              <Button kind="secondary" size="small" type="submit" disabled={decide.isPending}>Decline</Button>
+              <Button kind="quiet" size="small" onClick={() => { setDeclining(false); setReason(''); setProblem(null) }}>Cancel</Button>
+            </div>
+          </form>
+        )}
         {problem && <Note tone="error">{problem}</Note>}
       </div>
-      {w.mayDecide && (
+      {w.mayDecide && !declining && (
         <div className="gwui-edge-acts">
           <Button kind="secondary" size="small" onClick={() => decide.mutate('approve')} disabled={decide.isPending}
             aria-label={`Approve ${w.firstName}’s request`}>Approve</Button>
-          <Button kind="quiet" size="small" onClick={() => decide.mutate('decline')} disabled={decide.isPending}
+          <Button kind="quiet" size="small" onClick={() => setDeclining(true)} disabled={decide.isPending}
             aria-label={`Decline ${w.firstName}’s request`}>Decline</Button>
         </div>
       )}

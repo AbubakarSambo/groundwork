@@ -283,8 +283,9 @@ export interface SpendBoard {
 
 export const spendApi = {
   get: async (): Promise<SpendBoard> => (await apiClient.get('/suites/spend/board')).data,
-  decide: async (id: string, outcome: 'approve' | 'decline'): Promise<SpendBoard> =>
-    (await apiClient.post(`/suites/spend/requests/${id}/${outcome}`)).data,
+  /** `reason` is only ever sent with a decline (the controller's `DeclineDto`); the person is told it, word for word. */
+  decide: async (id: string, outcome: 'approve' | 'decline', reason?: string): Promise<SpendBoard> =>
+    (await apiClient.post(`/suites/spend/requests/${id}/${outcome}`, outcome === 'decline' ? { reason } : undefined)).data,
   ask: async (id: string, question: string): Promise<SpendBoard> =>
     (await apiClient.post(`/suites/spend/requests/${id}/question`, { question })).data,
   setBudget: async (team: string, amount: number): Promise<SpendBoard> =>

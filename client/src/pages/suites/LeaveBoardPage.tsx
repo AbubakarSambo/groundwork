@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { leaveBoardApi, type LeaveWaiting } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
-import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row, Tag } from '@/components/gw/ui'
+import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row, Tag, ExampleExchange } from '@/components/gw/ui'
 import { theDaysInFull, theDaysShort } from './the-days-someone-is-off'
 import { AskAQuestion } from './AskAQuestion'
 import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
@@ -92,6 +92,13 @@ export function LeaveBoardPage() {
           </Section>
 
           <Section heading="How people ask">
+            <ExampleExchange
+              label="An example: someone asks Groundwork for leave in chat, and is told how many days they have left and who else is off, before it is sent to the right approver."
+              lines={[
+                { mine: true, text: 'I need next Thursday and Friday off.' },
+                { mine: false, text: 'You have 16 days left and nobody else in your team is off then. Shall I send it to your manager?' },
+              ]}
+            />
             <p className="gwui-panel-text">In their check-in, in chat, or on WhatsApp. Nobody fills in a form.</p>
           </Section>
 
@@ -102,7 +109,10 @@ export function LeaveBoardPage() {
                   <Row key={t.id} columns="minmax(0, 1fr)">
                     <div>
                       <b>{`${t.name}: ${theDaysInFull(t.startsOn, t.endsOn)}`}</b>
-                      {t.said.map((line, i) => <p key={i} className="gwui-panel-text">{line}</p>)}
+                      {/* said[0] is the "<name> asked for leave from ... which is N working days."
+                          sentence - the same dates the title above already gives, in another shape
+                          (fault 5 of the live walk: shown once, not twice). */}
+                      {t.said.slice(1).map((line, i) => <p key={i} className="gwui-panel-text">{line}</p>)}
                     </div>
                   </Row>
                 ))}
@@ -124,14 +134,16 @@ function ARequest({ w }: { w: LeaveWaiting }) {
     onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
   })
   /* Everything under the title is the server's own sentences: where the request stands, then the request as this
-     reader reads it (the days left, who else is off, the stand-in, what the person owns, the rules, the questions). */
+     reader reads it (the days left, who else is off, the stand-in, what the person owns, the rules, the questions).
+     said[0] is dropped: it is the "<name> asked for leave from ... which is N working days." sentence, the same
+     dates the title above already gives, in another shape (fault 5 of the live walk: shown once, not twice). */
   return (
     <Row columns="minmax(0, 1fr) auto">
       <div>
         <b>{`${w.name}: ${theDaysInFull(w.startsOn, w.endsOn)}`}</b>
         {w.leaveKind && <Tag>{w.leaveKind}</Tag>}
         <p className="gwui-panel-text">{w.where}</p>
-        {w.said.map((line, i) => <p key={i} className="gwui-panel-text">{line}</p>)}
+        {w.said.slice(1).map((line, i) => <p key={i} className="gwui-panel-text">{line}</p>)}
         {w.mayDecide && (
           <AskAQuestion id={w.id} who={w.name} send={async q => qc.setQueryData(['suite-leave'], await leaveBoardApi.ask(w.id, q))} />
         )}
