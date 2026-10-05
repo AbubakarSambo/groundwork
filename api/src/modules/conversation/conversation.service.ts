@@ -124,8 +124,7 @@ import { theOneWorthAsking, askAboutItBlockFor } from './what-keeps-happening-be
 import { mayCoach } from './participation-timeline';
 import { theirApprovedLeave } from '../suites/who-is-away';
 import { afterTheirTurn, anIdeaReadBackAsAPromise } from './ideas-from-the-team';
-import { withoutACannotApprove } from './a-request-offered-in-the-check-in';
-import { aRequestAfterTheirTurn } from './a-request-offered-in-the-check-in';
+import { aRequestAfterTheirTurn, withoutACannotApprove } from './a-request-offered-in-the-check-in';
 import { stillAsking } from './one-question-per-turn';
 import { oneThingAsked, wouldLeaveAQuestionOut, asksMoreThanOneThing, withTheOneMoreLine, ASK_ONE_THING } from './a-turn-asks-one-thing';
 import { A_CHECK_IN_TAKES_ANSWERS, theCeilingIsReached, howMuchRoomIsLeft } from './there-is-a-ceiling-and-it-is-not-a-surprise';

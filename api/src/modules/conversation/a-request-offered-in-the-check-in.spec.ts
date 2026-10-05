@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { aRequestAfterTheirTurn, whatTheYesOpens } from './a-request-offered-in-the-check-in';
+import { withoutACannotApprove, aRequestAfterTheirTurn, whatTheYesOpens } from './a-request-offered-in-the-check-in';
 
 /**
  * ANCHOR PIECES 26 AND 27: A REQUEST SAID IN THE CHECK-IN IS OFFERED THERE, AS WHATSAPP DOES (section 22; decision 105
@@ -55,5 +55,23 @@ describe('a request said in the check-in, as the person reads it', () => {
     expect(src).toContain('...(request.requestOffer ? { requestOffer: request.requestOffer } : {}),');
     expect(src).toContain('if (request.sayFirst) answer.reply = [request.sayFirst, answer.reply]');
     expect(src).toContain('const idea = startedFrom && !request.requestOffer && !request.openTheRequest ? await afterTheirTurn(');
+  });
+});
+
+describe('the reply never contradicts the offer (review of pieces 26 and 27)', () => {
+  it('takes off "I can\'t directly approve time off. That\'s a conversation you\'d need to have with Rukia."', () => {
+    const r = withoutACannotApprove("Thanks for telling me about the funeral. I can't directly approve time off. That's a conversation you'd need to have with Rukia.\n\nHow is the Naivas order going?");
+    expect(r.text).toBe('Thanks for telling me about the funeral.\n\nHow is the Naivas order going?');
+    expect(r.cut).toEqual(["I can't directly approve time off.", "That's a conversation you'd need to have with Rukia."]);
+  });
+
+  it('takes off "I can\'t approve that request directly."', () => {
+    const r = withoutACannotApprove("I can't approve that request directly. What else is on your list this week?");
+    expect(r.text).toBe('What else is on your list this week?');
+  });
+
+  it('leaves every other sentence alone, word for word', () => {
+    const reply = 'Rukia approved the deck on Friday, so you can send it. What is still in your way?';
+    expect(withoutACannotApprove(reply)).toEqual({ text: reply, cut: [] });
   });
 });

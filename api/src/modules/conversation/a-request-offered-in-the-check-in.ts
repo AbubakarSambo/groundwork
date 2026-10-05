@@ -72,3 +72,27 @@ export async function aRequestAfterTheirTurn(
     return {};
   }
 }
+
+/*
+ * THE REPLY NEVER CONTRADICTS THE OFFER (review of pieces 26 and 27). With the offer to ask for the leave attached, the
+ * model's own reply said "I can't directly approve time off. That's a conversation you'd need to have with Rukia." and
+ * "I can't approve that request directly." The offer under it is how they ask, so a sentence that says Groundwork
+ * cannot approve it, or that sends them to somebody else for it, is taken off the reply. Read-side and narrow: only
+ * while an offer or the request's own form is attached, and only those sentences.
+ */
+const CANNOT_APPROVE = /\b(?:I|we|Groundwork)\s+(?:can(?:'|’)?t|cannot|can not|am not able to|are not able to|is not able to|am unable to|are unable to|don(?:'|’)t have the (?:power|authority) to)\s+(?:\w+\s+){0,2}?(?:approve|grant|authori[sz]e|sign off|okay|ok)\b/i;
+const SENT_ELSEWHERE = /\b(?:that(?:'|’)s|that is|this is|it(?:'|’)s|it is)\s+(?:a conversation|something|a question|a decision|one)\s+(?:you(?:'|’)d|you would|you(?:'|’)ll|you will)\s+(?:need|have)\s+to\s+(?:have|take up|raise|ask)\b|\byou(?:'|’)d (?:need|have) to (?:ask|speak (?:to|with)|talk (?:to|with)|check with|raise (?:it|this|that) with|take (?:it|this|that) up with)\b|\byou would (?:need|have) to (?:ask|speak (?:to|with)|talk (?:to|with)|check with|raise (?:it|this|that) with|take (?:it|this|that) up with)\b/i;
+
+export function withoutACannotApprove(reply: string): { text: string; cut: string[] } {
+  const cut: string[] = [];
+  const paragraphs = String(reply ?? '').split(/\n{2,}/).map((p) => {
+    const sentences = p.match(/[^.!?]+(?:[.!?]+["'”’)]*|$)/g) ?? [p];
+    const kept = sentences.filter((s) => {
+      const hit = CANNOT_APPROVE.test(s) || SENT_ELSEWHERE.test(s);
+      if (hit) cut.push(s.trim());
+      return !hit;
+    });
+    return kept.join('').trim();
+  });
+  return { text: paragraphs.filter(Boolean).join('\n\n'), cut };
+}
