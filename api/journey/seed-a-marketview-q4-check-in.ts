@@ -17,23 +17,17 @@
 import { PrismaClient } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
+import { itIsADatabaseOnThisComputer as theRule, NOT_A_DATABASE_ON_THIS_COMPUTER } from './a-database-on-this-computer';
 
-/** Whether this connection string names a Postgres database on this computer, and nothing else. */
-export function itIsADatabaseOnThisComputer(url: string | undefined): boolean {
-  if (!url || !/^postgres(ql)?:\/\//i.test(url)) return false;
-  try {
-    const host = new URL(url).hostname.toLowerCase();
-    return host === 'localhost' || host === '127.0.0.1';
-  } catch {
-    return false;
-  }
-}
+/* The rule lives in a-database-on-this-computer.ts so both seeds share one. Re-exported here
+   because this file's own name is what the decision and the instructions point at. */
+export { itIsADatabaseOnThisComputer } from './a-database-on-this-computer';
 
 const q = (s: string) => '"' + s.replace(/"/g, '""') + '"';
 
 export async function loadTheSeed(url: string, file = path.join(__dirname, 'seed-a-marketview-q4-check-in.json')) {
-  if (!itIsADatabaseOnThisComputer(url)) {
-    throw new Error('This only loads into a database on this computer (host localhost or 127.0.0.1). Nothing was read or written.');
+  if (!theRule(url)) {
+    throw new Error(NOT_A_DATABASE_ON_THIS_COMPUTER);
   }
   const seed = JSON.parse(fs.readFileSync(file, 'utf8')) as { checkIn: string; tables: Record<string, any[]> };
   const db = new PrismaClient({ datasourceUrl: url });

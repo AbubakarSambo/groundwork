@@ -246,6 +246,7 @@ import { aRoleInTheirOwnWords } from '../grounds/the-leads-words-about-someone';
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
 import { writeADocumentsNumbers } from '../documents/write-a-documents-numbers';
 import { contextIsInAskGroundwork } from '../admin/what-is-hidden-at-release';
+import { askNameOf } from '../assistant/ask-name';
 import { whereToTakeALongPaste } from './a-long-paste-from-the-lead-has-a-better-door';
 import { notToldYet } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { wordTheAreaOfAGoal, areaOfGoalOrFallback } from '../grounds/the-area-of-a-goal-is-worded-once';
@@ -2876,6 +2877,7 @@ export class ConversationService {
       isTheLead: checkIn.participant?.partyType === PartyType.INITIATOR,
       message,
       askGroundworkTakesContext: await contextIsInAskGroundwork(this.prisma).catch(() => false),
+      ask: await askNameOf(this.prisma, (await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { organizationId: true } }).catch(() => null))?.organizationId),
     });
     /*
      * AND WHAT WE SAID BEFORE THE MODEL SPOKE IS KEPT IN THE TURN, so the transcript holds it too. The

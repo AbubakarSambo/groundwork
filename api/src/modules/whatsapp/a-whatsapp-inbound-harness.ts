@@ -17,6 +17,8 @@ export function anInboundHarness(opts: {
   open?: AnOpenRow[];
   thread?: { checkInId: string | null; pickPendingAt?: Date | null; requestKind?: string | null; requestWords?: string | null; requestAskedAt?: Date | null; questionAskedAbout?: string | null } | null;
   who?: { personId: string | null; userId: string | null; externalId?: string | null };
+  /** The organisation's name, which Ask is named for (decision 100). Left out, there is no organisation yet. */
+  organisationName?: string | null;
   completed?: { overWhatsApp?: boolean | null; scenario?: string; label?: string };
   personPhone?: string | null;
   /** Something waits for this person to approve or decline (decision 82, item 1). */
@@ -28,6 +30,7 @@ export function anInboundHarness(opts: {
   const sent: { org: string | null; via?: string; to: string; text: string; context?: any }[] = [];
   let thread = opts.thread === undefined ? null : opts.thread ? { organizationId: 'org-1', phone: '+2348012345678', pickPendingAt: null, ...opts.thread } : null;
   const prisma: any = {
+    organization: { findUnique: jest.fn(async () => (opts.organisationName ? { name: opts.organisationName } : null)) },
     whatsAppInboundMessage: { create: jest.fn(async () => ({})), findFirst: jest.fn(async () => null) },
     whatsAppConnection: { update: jest.fn(async () => ({})), findUnique: jest.fn(async () => null) },
     person: { update: jest.fn(async () => ({})), findUnique: jest.fn(async () => ({ whatsappStoppedAt: null })), findFirst: jest.fn(async () => (opts.personPhone === null ? null : { phone: opts.personPhone ?? '+2348012345678', email: 'amina@example.com' })) },

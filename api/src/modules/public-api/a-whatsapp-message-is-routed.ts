@@ -6,6 +6,8 @@
  * called on a phone, and how much of a report fits in a message.
  */
 
+import { askName } from '../assistant/ask-name';
+
 export interface AnOpenCheckIn {
   id: string;
   status: string;
@@ -182,8 +184,11 @@ export function pickedOrganisation(text: string, orgs: { id: string; name: strin
 
 /* ---------------- switching between a check-in and Ask Groundwork (survey items 2 and 12) ---------------- */
 
-/** "ask" or "Ask Groundwork": the next messages go to Ask Groundwork, until "back". */
+/** "ask" or "Ask Groundwork": the next messages go to Ask, until "back". "Ask <the organisation>" is read by `isAnAskWord`. */
 export const AN_ASK_WORD = /^\s*(ask|ask\s+groundwork)\s*[.!]?\s*$/i;
+/** "ask", "Ask Groundwork" or the organisation's own Ask name ("Ask Coamana"). */
+export const isAnAskWord = (text: string, ask: string): boolean =>
+  AN_ASK_WORD.test(text) || text.trim().replace(/[.!]$/, '').replace(/\s+/g, ' ').toLowerCase() === ask.toLowerCase();
 /** "back": from Ask Groundwork to the check-in. */
 export const A_BACK_WORD = /^\s*(back|go\s+back|back\s+to\s+(my\s+)?check-?in)\s*[.!]?\s*$/i;
 /** "switch": the list of check-ins again, or, on Groundwork's number, the list of organisations. */
@@ -192,14 +197,14 @@ export const A_YES = /^\s*(yes|yeah|yep|y|ok|okay|sure|please do)\s*[.!]?\s*$/i;
 export const A_NO = /^\s*(no|nope|n|no thanks|keep it|keep it in the check-?in)\s*[.!]?\s*$/i;
 
 /** The one sentence that says the words, said when a check-in starts on WhatsApp. */
-export const THE_WORDS = 'You can write "ask" at any time to ask Groundwork something, "back" to come back to your check-in, and "switch" to choose another check-in.';
-export const NOW_ASKING = 'You are now talking to Ask Groundwork. Ask me anything about your work. Write "back" to return to your check-in.';
-export const ASKING_NEEDS_A_ROSTER_ENTRY = 'Ask Groundwork needs your number on your organisation\'s roster. Ask your admin to add it, then write "ask" again.';
-export const ASK_READS_WORDS = 'Ask Groundwork reads words here. Write "back" first, and then send the file to put it on your check-in.';
-export const ONLY_ONE_OPEN = (label: string) => `You have one check-in open, "${label}". Carry on here, or write "ask" to ask Groundwork something.`;
-export const NONE_OPEN = 'You have no check-in open right now. Write "ask" to ask Groundwork something.';
+export const THE_WORDS = (ask: string = askName(null)) => `You can write "ask" at any time to talk to ${ask}, "back" to come back to your check-in, and "switch" to choose another check-in.`;
+export const NOW_ASKING = (ask: string = askName(null)) => `You are now talking to ${ask}. Ask me anything about the company, your work or your check-ins. Write "back" to return to your check-in.`;
+export const ASKING_NEEDS_A_ROSTER_ENTRY = (ask: string = askName(null)) => `${ask} needs your number on your organisation's roster. Ask your admin to add it, then write "ask" again.`;
+export const ASK_READS_WORDS = (ask: string = askName(null)) => `${ask} reads words here. Write "back" first, and then send the file to put it on your check-in.`;
+export const ONLY_ONE_OPEN = (label: string, ask: string = askName(null)) => `You have one check-in open, "${label}". Carry on here, or write "ask" to talk to ${ask}.`;
+export const NONE_OPEN = (ask: string = askName(null)) => `You have no check-in open right now. Write "ask" to talk to ${ask}.`;
 export const BACK_IN = (c: { label: string; sessionNumber: number }) => `You are back in your check-in. ${sessionHeader(c)} Carry on where you left off.`;
-export const BACK_TO_NOTHING = 'You have no check-in open right now, so there is nothing to go back to. Ask Groundwork is still here.';
+export const BACK_TO_NOTHING = (ask: string = askName(null)) => `You have no check-in open right now, so there is nothing to go back to. ${ask} is still here.`;
 
 /** The thread remembers Ask Groundwork as "ask:" and the check-in to go back to, when there was one. */
 export const ASKING = 'ask:';
@@ -257,4 +262,4 @@ export const YES_OR_NO = (kind: ARequest) => `Please reply yes or no. ${shallITr
  */
 export const HELD_WORDS_PUT_IN = (words: string) => `You did not answer my question within ten minutes, so I have added what you wrote earlier to your check-in: "${words}"`;
 /** The check-in the words were held from has closed since, so they are given back to the person. */
-export const heldWordsNotPut = (words: string) => `What you wrote earlier was not added to a check-in, because that check-in is no longer open. You wrote: "${words}". You can send it again in your next check-in, or write "ask" to send it to Ask Groundwork.`;
+export const heldWordsNotPut = (words: string, ask: string = askName(null)) => `What you wrote earlier was not added to a check-in, because that check-in is no longer open. You wrote: "${words}". You can send it again in your next check-in, or write "ask" to send it to ${ask}.`;

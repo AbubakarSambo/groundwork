@@ -11,11 +11,24 @@ export const THE_PEOPLE_STEP_RULES: ThePeopleStepRules = {
   theLeadCounts: true,
   mayAdd: 19,
   heading: 'Who needs to be part of this?',
-  intro: 'Add up to 20 people. They don’t need to report directly to you—they simply need to be part of the work you’re trying to move.',
+  intro: 'Add up to 20 people. They don’t need to report directly to you. They simply need to be part of the work you’re trying to move.',
   contextLabel: 'What do they do / why are they part of this?',
   button: 'Start my Groundwork.',
   limitSentence: 'This one-month Groundwork holds 20 people, and you are one of them, so you can add 19 more.',
 };
+
+/**
+ * THE LIMIT, HELD WHEN THE PEOPLE STEP IS COMMITTED (decision 99, item 2). The lead plus 19. The people are counted once
+ * each, by address, and the lead's own address is not counted again. Past the limit the commit is refused with a plain
+ * sentence that says how many to take off.
+ */
+export function tooManyForTheAnchor(emails: string[], leadEmail?: string | null): string | null {
+  const lead = (leadEmail ?? '').trim().toLowerCase();
+  const added = new Set(emails.map((e) => (e ?? '').trim().toLowerCase()).filter((e) => e && e !== lead)).size;
+  if (added <= THE_PEOPLE_STEP_RULES.mayAdd) return null;
+  const over = added - THE_PEOPLE_STEP_RULES.mayAdd;
+  return `${THE_PEOPLE_STEP_RULES.limitSentence} You have added ${added}, so please take ${over === 1 ? 'one person' : `${over} people`} off before you start.`;
+}
 
 /**
  * The invitation. Line one says "one to one", not "privately" (decision 96, item 1). Line two says the lead has

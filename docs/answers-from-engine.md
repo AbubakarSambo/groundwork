@@ -4602,3 +4602,336 @@ Someone waiting for an admin to let them into the organisation (`awaitingOrgAppr
 **What the person reads.** On You, in a new field `waitingToBeLetIn`: "Your sign-in is ready, and one thing has to happen before you can start: an admin at the organisation that invited you has to approve you joining it. They have been asked. Nothing you do here is lost in the meantime, and you will be able to check in as soon as they answer." The screens can show it where the empty list would be. Ask Groundwork's "what is due" says the same sentence.
 
 **Tests.** `grounds/nobody-held-for-a-seat-reads-the-check-in-on-today-or-you.spec.ts`, through the real `GroundsService.list` and `YourBoardService`: the list is empty for the waiting person, You carries no name, title or summary, and the person who is in still reads everything.
+
+## Requests 151 and 152 (5 October)
+
+**152 (1), an action with an empty label: done.** I could not make the engine's own builders return an empty label (every branch of `whatToDoAboutALeadAction` and `whatToDoAboutADecision` sets one), so the fix is at the last step of the board: `everyActionHasALabel` (`board/what-needs-you-and-what-to-do.ts`) runs after every other pass on the served board, and any `leadActions[].action` or `decisions[].action` whose `label` is empty or only spaces now reads "Open your check-in" (goesTo `check-in`), "Open the Context page" (goesTo `context`) or "Decide it" (when it carries choices). If you still see an empty label after this, send me the raw payload.
+
+**152 (2), the check-in's label on each row: done.** Each Today row (`needs[]`) now carries `checkInLabel`, for example "Sales team, Q3", on your turn, the ready report, your own report, the decision to end, the approval waiting for an admin, and the lead's items taken from the board (the "Baraka Mwangi is waiting on the discount decision" rows). It is absent on rows that are not about one check-in (leave, spend, finance, hours).
+
+**151 S1, "Read it" for a participant: done.** For someone who does not run the check-in, the ready-report row's `action.to` is `/checkin/<their latest finished check-in>/report`. Whoever runs it, and an admin, keep `/grounds/<id>/report`. Where a participant has finished none, it stays `/grounds/<id>/report`.
+
+**151 S2, a view that starts with the name: done.** On the board's `divergence.items[].positions[]` and `perspectives[]`, a `view` that starts with the speaker's own name (full or first name), and the verb of speaking after it (said, stated, and the like), is served without them. "amani Wekesa stated an aim of 12 shops onboarded." is served as "an aim of 12 shops onboarded.", so the screen reads "Amani Wekesa said an aim of 12 shops onboarded." The stored text is unchanged. A view where taking the name off would leave almost nothing is left as it is.
+
+**151 E1, the team report's "what changed": done.** Each topic is now a whole sentence on its own, followed by one sentence about what became of it. For example: "This is what changed since the last round. The main obstacle to signing new shops is seen differently. This is still open from last time. People disagree about the deadline. That was a difference last time, and it is no longer showing as one. There are different descriptions of the allocation. This is new this round. 3 people answered this round, against 2 last time." Several topics read "These are still open from last time", "Those were a difference last time, and they are no longer showing as one", and "These are new this round". A topic with no full stop gets one, and starts with a capital. The existing test only checked the old pieces joined together, so I updated it (`reports/what-changed-since-last-time.spec.ts`).
+
+**151 E6, a thing listed twice: done for the engine's lists.** The lead's board (`leadActions` then `decisions`) and Today's rows from the board list each thing once, compared by text with case and punctuation ignored; a decision that a lead action already says is left to the action. Not done: "them" with no referent, the lower-case "I will chase the warehouse…" under other people's names, and "who can provide who signs off…". Those are written by the model from what people said, so they need a wording change and a scenario run.
+
+**151 E8, "has none of their 4 shops": not done.** I could not find a sentence in the engine's code that builds it; it is not in `board/`, `reports/` or `grounds/`, so it is most likely written by the model, or built where the screens work. Please send me where it appears (which field) if it is in the payload.
+
+**151 E12, `/entry/commit` with no draft: noted only.** `EntryCommitDto` requires `groundLabel` (a string) and `history`, so a body with no setup in it is refused with 400 before the service runs. Stopping the call from the screen is right.
+
+**Not done, and why.** E2 (who waits on whom, in the model's wording), E3 (target wording and duplicates, from the model), E4 (the model's wording of the numbers), E5 (own report wording and the shared-picture line: model wording and a report change that need a scenario run), E7 (the model's wording of the admin's and Amani's Today lines), E9 (model wording on the team report), E10 (session counts across pages: these come from different counters in the list, the check-in page and the report, and need one clock agreed first), E11 (the seatless person's names: that is in `assistant/`, `entry/` and `conversation/`, which another builder is working in).
+
+---
+
+# Request 153, done: everything the screens need for "Ask <organisation name>"
+
+Decision 100, 5 October. Everything below is served on **`GET /ask`** (and `GET /ask/:userId`,
+which is the same shape). Nothing here needs the screens to word anything.
+
+## The name
+
+**The field is `askName`,** and it is the whole string, not a fragment: `"Ask Baridi"`,
+`"Ask Coamana"`. Print it as it arrives. Where the organisation has no name yet, or the reader has
+no organisation, it arrives as `"Ask Groundwork"` — so there is no case where the screen has to
+choose, and no case where it has to concatenate.
+
+It comes from the organisation's **display name** (`Organization.name`). There is no short name, so
+there is nothing to choose between.
+
+Every sentence the engine writes that names Ask uses the same string, so the name a person reads in
+the panel is the name they read on WhatsApp, in an email, and inside a refusal:
+
+> "You are a guest here from another organisation, so **Ask Baridi** can only answer questions
+> about your own check-in..."
+>
+> "Your own report and your questions to **Ask Baridi** stay private."
+
+A guest from another organisation reads the **host** organisation's name, because they are a guest
+in that organisation's Groundwork.
+
+## The caption and the line under it
+
+Both served, both fixed:
+
+| Field | Words |
+| --- | --- |
+| `caption` | Ask about the company, your work or your check-ins. |
+| `addLine` | You can also add context or documents to your check-ins here. |
+
+`addLine` is the one line request 153 asks for, word for word.
+
+## The greeting
+
+**`welcome` is served, and it is served once.** It carries the full sentence the first time
+somebody opens Ask — that is, when they can ask and have no kept questions yet. After their first
+question it arrives as `null`, so the screen does not need to remember anything or decide when to
+stop showing it.
+
+> This is Ask Baridi. You can ask me about the company, your work or your check-ins, at any time.
+> You can also add context or a document to one of your check-ins, and ask for leave or to spend
+> money. What you ask here stays private. If you add something to a check-in, I will say it back to
+> you first, and it only goes in once you say yes.
+
+## The starter questions
+
+**Now served, as `starters`: an array of three strings.** This also answers request 154 item 3,
+where you reported that every kind of check-in was offered the sales words — "Ask me about Get a
+project back on track: a deal, a target, or what to do next." A law firm matter and a government
+programme were being offered a deal.
+
+**Hafsah decided these on 5 October (decision 101): general, never one set per situation.** Five,
+in this order, in her words:
+
+1. What did I say I would do?
+2. What is my check-in for, and who reads it?
+3. When is my next check-in?
+4. What are the company's priorities right now?
+5. Add a document or some context to my check-in.
+
+**A reader with no check-in gets the fourth on its own.** The other four need a check-in to be
+about, and her decision was to leave those out rather than invent replacements. So `starters` is a
+one-item array for that reader, not an empty one and not a different set — please draw one.
+
+Per-situation starters are not being written. One set goes to every kind of check-in, a law firm
+matter and a government programme included; four of the five are about the reader's own record
+rather than the kind of work, which is what lets one set serve every situation.
+
+## The empty states
+
+There is no separate empty-state field, and you should not need one:
+
+- **Nothing to ask about:** `about` is `[]` and `starters` carries the organisation set above.
+- **Not allowed to ask:** `canAsk` is `false` and **`why`** carries one plain sentence already
+  naming Ask correctly — for example "Ask Baridi is switched off for your organisation" or the
+  confirm-your-email sentence. Print `why`.
+- **No history:** `turns` is `[]`, and `welcome` is the thing to show in its place.
+
+## What has not changed
+
+`canAsk`, `about`, `turns`, `why` are all as they were. The four new fields are `askName`,
+`caption`, `addLine`, `welcome`, and now `starters`.
+
+**Still open on Ask, from request 154 and not part of 153:** the ordering of `GET /ask` turns
+(answer before question on a shared timestamp), replies saved without their options, and the
+Company page needing an organisation-wide choice to open. Those are next after 154 and 155.
+
+---
+
+# Request 154 item 1, done: a local organisation with every suite switched on
+
+Run this from `api/`, with your own connection string:
+
+```
+npx ts-node -T journey/seed-the-suites-for-the-screens.ts postgresql://localhost:5432/<your database>
+```
+
+It refuses anything that is not on the computer it runs on — the host must be exactly `localhost`
+or `127.0.0.1` — and nothing is read or written before that check. That is the same rule as the
+MarketView Q4 seed (decision 98, item 2), now shared between the two in
+`journey/a-database-on-this-computer.ts` rather than written twice.
+
+**Run it twice and nothing stacks up.** Proved here: four leave requests and four spending requests
+after two runs, in the four states, not eight.
+
+## Who signs in
+
+One password for all five, local only: **`suites-local-only`**
+
+| Email | Role | What they are for |
+| --- | --- | --- |
+| `amina@suites.test` | admin | The approver for leave and for spending |
+| `daniel@suites.test` | lead | Asks for leave and spending, and writes the reviews |
+| `grace@suites.test` | team | Has a request in most states, and a review of her own |
+| `peter@suites.test` | team | The declined ones, both with a reason |
+| `sara@suites.test` | team | **Has asked for nothing** — she is the empty states |
+
+The organisation is "Suites Test Company", slug `suites-for-the-screens`.
+
+## What is there to draw
+
+**Leave, spending and reviews are on** (`organization_suites`, `is_on`), with Amina as the
+approver, a 50,000 limit on spending and three categories.
+
+| Suite | What is waiting for you |
+| --- | --- |
+| Leave | 2 waiting — **one of them nine days old**, for the "waited too long" line — 1 approved, 1 declined with a reason in the decider's words |
+| Spending | 2 waiting — **one over the 50,000 limit**, so it takes the second step, and one eleven days old — 1 approved, 1 declined with a reason |
+| Reviews | 4, one at each stage: just started, the manager's words written, the person's answer given, and decided |
+
+The declined ones carry a real sentence rather than a blank, because a decline with no reason is
+its own screen and this seed is for the ordinary one.
+
+## What it does not do
+
+It does not switch on time sheets, customers or the other suites — request 154 asked for leave,
+finance requests and performance reviews. Say the word and the other suites go in the same way.
+
+**Item 8 of request 154** (the "not switched on" message giving an admin no next step) is not
+covered by a seed: that is wording, and it is still open.
+
+**A local database to drop when you like:** `gw_suites_check_b` on this computer, which is where
+the proof above was run.
+
+---
+
+# Request 153, part two: Ask's scope, and the two things that change on your side
+
+Hafsah, 5 October. **Ask covers the whole organisation and the person's own work by default. One
+check-in is an optional focus they may pick; it is never what Ask is about.** This is the answer to
+request 154 item 4 as well, where the Company page's "Ask about the whole organisation" and "Ask
+about the strategy" were opening a chat about a check-in.
+
+## There is nothing new to call. It already works this way
+
+`POST /ask` takes `groundId` as **optional**, and has throughout: with no `groundId` the question is
+answered across the organisation and the person's own work. The Company page's two buttons should
+simply post **without** `groundId`. Nothing needs adding on our side for that.
+
+So `about` on `GET /ask` is a list of **optional focuses**, not a list of things one must be chosen
+from. Reading it as required is what produced the behaviour in 154 item 4. A reader with `about: []`
+can still ask.
+
+## The opening message has changed, and says the scope first
+
+> This is Ask Baridi. I answer about the whole organisation and about your own work, and you can
+> point me at one of your check-ins whenever you want to. Ask me about the company, about your
+> work, or about your check-ins. You can add context or a document to one of your check-ins here,
+> and ask for leave or to spend money. What you ask me stays private. Anything you choose to add to
+> a check-in is different: I say it back to you first, it goes in only once you say yes, and from
+> then on it is part of that check-in.
+
+Still served as `welcome`, still only the first time, still `null` afterwards.
+
+**The privacy line is deliberately two promises and not one**, because they are different: a
+question is private, full stop; something they choose to add is said back, confirmed, and then is
+part of that check-in and readable by the people in it. Please keep them as two sentences if you
+ever need to shorten this.
+
+## The suggestions are six now, not five
+
+| # | Suggestion | Needs a check-in |
+| --- | --- | --- |
+| 1 | What did I say I would do? | yes |
+| 2 | What is my check-in for, and who reads it? | yes |
+| 3 | When is my next check-in? | yes |
+| 4 | What are the company's priorities right now? | no |
+| 5 | Add a document or some context to my check-in. | yes |
+| 6 | Ask for leave, or to spend money. | no |
+
+**A reader with no check-in now gets two** — 4 and 6 — where the earlier answer said one. That
+replaces what I sent you before.
+
+The sixth is an addition to decision 101 rather than part of it: Hafsah's five were decided before
+she said the suggestions must also cover leave or spending. Her five keep her order and her words,
+and the sixth is mine, so it is the one to overrule if the wording is wrong.
+
+---
+
+# A whole company to review the screens against: Kijani Foods
+
+Hafsah asked for this on 5 October: a proper company, a plan with priorities, at least eight
+check-ins of different kinds with people who have answered, and the suites on, so the Company page,
+the boards, Today and the suites all have something real in them.
+
+```
+npx ts-node -T journey/seed-a-company-for-review.ts postgresql://localhost:5432/<your database>
+```
+
+Same rule as the other seeds: **localhost or 127.0.0.1 only**, refused before anything is read or
+written. Running it twice leaves one company — proved here, the counts below are after two runs.
+
+## What is in it
+
+| | |
+| --- | --- |
+| Company | **Kijani Foods**, slug `kijani-foods` |
+| People | 8, with real titles: a managing director, two heads, two account managers, a depot supervisor, an engineer, a finance officer |
+| The plan | 4 priorities, each with a measure and a number — shops ordering weekly, days to deliver, cost per delivery, depots on the new system |
+| Check-ins | **9, in 9 different situations**: sales alignment, a new hire's first ninety days, a project across four depots, a contract renewal, drift, a workplan and budget, a pulse check, a recognition, a handover |
+| Answered | 13 completed check-ins carrying 29 things people actually said, in their own words |
+| Reports | 9, one per check-in, so the boards and Today are not empty |
+| Suites | leave, spending and reviews on, Naomi Kariuki approving, with requests waiting, approved and declined |
+
+## Who signs in
+
+One password, local only: **`review-local-only`**
+
+| Email | Who |
+| --- | --- |
+| `naomi@kijani.test` | Managing director — admin, and the approver |
+| `tendai@kijani.test` | Head of sales — runs three check-ins |
+| `bilal@kijani.test` | Head of operations — runs four |
+| `esther@kijani.test` · `kwesi@kijani.test` | Account managers |
+| `lindiwe@kijani.test` | Depot supervisor |
+| `arjun@kijani.test` | Engineer — the new hire |
+| `fatou@kijani.test` | Finance officer — the one handing over |
+
+## One thing to know before you judge anything by it
+
+**The sentences in it are mine, not the engine's.** No model is called: every line people "said"
+and every shared picture is written in the seed, so it loads in seconds and reads the same every
+time, which is what walking screens needs. It is good for layout, empty states, counts, long names
+and what a board does with nine different situations. It is **not** evidence about how the engine
+writes — the twenty-four scenario run is what judges that.
+
+Three of the check-ins deliberately carry a disagreement worth drawing: the two account managers
+count a signed shop differently, two plans both include the same 300,000 agency, and two people are
+waiting on the same approver who is on leave.
+
+---
+
+# Request 155, done: an anchor check-in with the switch on
+
+```
+npx ts-node -T journey/seed-an-anchor-check-in.ts postgresql://localhost:5432/<your database>
+```
+
+Localhost or 127.0.0.1 only, refused before anything is read or written. Running it twice leaves
+two check-ins, not four — the counts below are after two runs.
+
+**It turns `release.anchorScenario` on for the database you point it at.** That is the one thing it
+changes beyond its own rows, and it is why the local-only rule matters more here than in the other
+seeds.
+
+## What it loads
+
+Organisation **Sokoni Fresh**, slug `anchor-for-the-screens`, and **two** anchor check-ins, because
+the month board and the end-of-month page need different ones:
+
+| | |
+| --- | --- |
+| **Live** | "Everyone pulling the same way", started nine days ago, in its second week. A lead and four people, all four answered, 20 things said, 3 commitments (one done), a dependency, and `started_from = anchor`. |
+| **Ended** | The same shape, started five weeks ago and closed, so the end-of-month read has a month that is actually over. |
+
+Both carry the lead's own first words, which the end-of-month read begins from:
+
+> I want everyone to understand that we win or lose on whether a shop can reorder the same week,
+> and right now nobody owns that end to end.
+
+**"Groundwork recommends" and an idea:** two recommendations — one still offered, and one accepted,
+which is the idea captured after its yes.
+
+## Who signs in
+
+Password **`anchor-local-only`**, local only.
+
+| Email | Who |
+| --- | --- |
+| `rukia@anchor.test` | Founder — runs it, and the only reader of the month board and the end-of-month read |
+| `amani@anchor.test` · `baraka@anchor.test` · `neema@anchor.test` · `juma@anchor.test` | The four who answered |
+
+The month board and the end-of-month read are served to the lead alone, so sign in as Rukia for
+those; the others are for the participant side and the invitation.
+
+## Two things that caught me, in case they catch you
+
+**`started_from` is the only thing that makes a check-in an anchor one**, and the first run wrote it
+as null on both — the constant was imported from a module that imports it without re-exporting it,
+so it arrived `undefined` and Prisma wrote null without complaint. The seed looked like it had
+worked. If an anchor screen ever shows nothing, check that column first.
+
+**Not every row cascades.** The lead's first words are a record entry hanging off a participant with
+no check-in, and that key has no cascade, so a second run could not clear the old rows. The seed
+clears children before parents now.

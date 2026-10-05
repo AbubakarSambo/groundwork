@@ -32,7 +32,7 @@ export const ANCHOR_PEOPLE_STEP_RULES: ThePeopleStepRules = {
   theLeadCounts: true,
   mayAdd: 19,
   heading: 'Who needs to be part of this?',
-  intro: 'Add up to 20 people. They don’t need to report directly to you—they simply need to be part of the work you’re trying to move.',
+  intro: 'Add up to 20 people. They don’t need to report directly to you. They simply need to be part of the work you’re trying to move.',
   contextLabel: 'What do they do / why are they part of this?',
   button: 'Start my Groundwork.',
   limitSentence: 'This one-month Groundwork holds 20 people, and you are one of them, so you can add 19 more.',

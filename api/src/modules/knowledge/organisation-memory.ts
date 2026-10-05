@@ -1,3 +1,4 @@
+import { askNameOf } from '../assistant/ask-name';
 import type { PrismaService } from '../prisma/prisma.service';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { iHaveKept, shallIKeep, sourceLineOn, NOTHING_WAITING, type Keepable } from './what-the-organisation-keeps';
@@ -40,7 +41,7 @@ export async function offerToKeep(
     },
     select: { id: true },
   });
-  return { offerId: row.id, say: shallIKeep(input.item) };
+  return { offerId: row.id, say: shallIKeep(input.item, await askNameOf(prisma, input.organizationId)) };
 }
 
 /**
@@ -54,7 +55,7 @@ export async function offeredBefore(
   prisma: PrismaService,
   input: { organizationId: string; item: Keepable; history?: { role: string; content: string }[] },
 ): Promise<boolean> {
-  const asked = shallIKeep(input.item);
+  const asked = shallIKeep(input.item, await askNameOf(prisma, input.organizationId));
   if ((input.history ?? []).some((h) => h.role === 'assistant' && (h.content ?? '').includes(asked))) return true;
   const rows = ((await (prisma.organizationMemory.findMany({
     where: { organizationId: input.organizationId, kind: input.item.kind, status: { in: ['OFFERED', 'KEPT'] } } as any,
@@ -84,13 +85,13 @@ export async function keepWhatWasOffered(
   });
   if (already) {
     await prisma.organizationMemory.delete({ where: { id: row.id } });
-    return { kept: true, say: iHaveKept(row) };
+    return { kept: true, say: iHaveKept(row, await askNameOf(prisma, input.organizationId)) };
   }
   await prisma.organizationMemory.update({
     where: { id: row.id },
     data: { status: 'KEPT', keptById: input.userId, keptAt: input.now ?? new Date() },
   });
-  return { kept: true, say: iHaveKept(row) };
+  return { kept: true, say: iHaveKept(row, await askNameOf(prisma, input.organizationId)) };
 }
 
 /** The lead's no. The offer is deleted, so nothing of it is kept anywhere. */

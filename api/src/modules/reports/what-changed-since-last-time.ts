@@ -26,9 +26,6 @@ export interface ARound {
   answered: number;
 }
 
-const andList = (xs: string[]) =>
-  xs.length <= 1 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`;
-
 const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
 export function whatChangedSinceLastTime(now: ARound, before: ARound | null): string | null {
@@ -46,21 +43,31 @@ export function whatChangedSinceLastTime(now: ARound, before: ARound | null): st
   const somethingMoved = fresh.length > 0 || gone.length > 0 || now.answered !== before.answered;
   if (!somethingMoved) return null;
 
+  /*
+   * EACH TOPIC IS A SENTENCE ALREADY, so it is said as one and never made the subject of another (request 151, E1:
+   * "X. is no longer showing as a difference"). The topics come first, each as its own full sentence, and one sentence
+   * after them says what became of them.
+   */
+  const asSentence = (t: string) => {
+    const x = t.trim().replace(/^./u, (c) => c.toUpperCase());
+    return /[.!?]$/.test(x) ? x : `${x}.`;
+  };
+  const sentences = (xs: string[]) => xs.map(asSentence).join(' ');
   const parts: string[] = [];
   if (carried.length) {
-    parts.push(`${andList(carried)} ${carried.length === 1 ? 'is' : 'are'} still open from last time`);
+    parts.push(`${sentences(carried)} ${carried.length === 1 ? 'This is' : 'These are'} still open from last time.`);
   }
   if (gone.length) {
-    parts.push(`${andList(gone)} ${gone.length === 1 ? 'is' : 'are'} no longer showing as a difference`);
+    parts.push(`${sentences(gone)} ${gone.length === 1 ? 'That was' : 'Those were'} a difference last time, and ${gone.length === 1 ? 'it is' : 'they are'} no longer showing as one.`);
   }
   if (fresh.length) {
-    parts.push(`${andList(fresh)} ${fresh.length === 1 ? 'is' : 'are'} new this round`);
+    parts.push(`${sentences(fresh)} ${fresh.length === 1 ? 'This is' : 'These are'} new this round.`);
   }
   if (now.answered !== before.answered) {
-    parts.push(`${now.answered} ${now.answered === 1 ? 'person' : 'people'} answered this round, against ${before.answered} last time`);
+    parts.push(`${now.answered} ${now.answered === 1 ? 'person' : 'people'} answered this round, against ${before.answered} last time.`);
   }
 
   if (!parts.length) return null;
-  /* Full sentences, never a label and a colon (28 Sep 2026). Each topic starts its own sentence, so it keeps its own capital. */
-  return `This is what changed since the last round. ${parts.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join('. ')}.`;
+  /* Full sentences, never a label and a colon (28 Sep 2026). */
+  return `This is what changed since the last round. ${parts.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ')}`;
 }

@@ -1,3 +1,4 @@
+import { askNameOf } from '../assistant/ask-name';
 import { endsOnTheClose } from '../conversation/the-close-says-what-comes-next';
 import { Injectable, Logger } from '@nestjs/common';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
@@ -20,7 +21,7 @@ import { aDecisionIn } from '../suites/a-request-in-words';
 import { aQuestionAskedAboutARequest } from '../suites/an-approver-asks-by-saying-so';
 import { BACK_TO_THE_CHECK_IN, YES_OR_NO_TO_AN_ANSWER, isThisYourAnswer, type AQuestionWaiting } from '../suites/a-question-about-a-request';
 import { AnOpenCheckIn, whatTheFileIsCalled, sessionHeader, whichOneRows, whichOneAsText, pickedOne, pickedFromText, whatArrived, reportAsText, reportAsTemplateBlanks, LANGUAGES_WE_CONVERSE_IN, A_FINISH_WORD, A_GREETING_ALONE, A_NOT_NOW, NOT_NOW_SAYING,
-  NOT_ENOUGH_YET_TO_FINISH, AN_ASK_WORD, A_BACK_WORD, A_SWITCH_WORD, A_YES, A_NO, THE_WORDS, NOW_ASKING, ASKING_NEEDS_A_ROSTER_ENTRY, ASK_READS_WORDS,
+  NOT_ENOUGH_YET_TO_FINISH, isAnAskWord, A_BACK_WORD, A_SWITCH_WORD, A_YES, A_NO, THE_WORDS, NOW_ASKING, ASKING_NEEDS_A_ROSTER_ENTRY, ASK_READS_WORDS,
   ONLY_ONE_OPEN, NONE_OPEN, BACK_IN, BACK_TO_NOTHING, ASKING, isAsking, wasIn, namedCheckIn, looksLikeARequest, shallITreatThisAs, YES_OR_NO, HELD_WORDS_PUT_IN, heldWordsNotPut, type ARequest,
 } from './a-whatsapp-message-is-routed';
 import { A_STOP_WORD, A_START_WORD, STOPPED_SAYING, RESUMED_SAYING } from '../whatsapp/a-message-outside-the-window';
@@ -194,6 +195,7 @@ export class WhatsAppForAnOrganisationService {
       }
     }
 
+    const ask = await askNameOf(this.prisma, organizationId);
     const everyOpen = userId ? await this.openCheckInsFor(organizationId, userId) : [];
     /*
      * A CHECK-IN KEPT IN THE APP TAKES NOTHING FROM THE PHONE (survey item 5). The lead said this one
@@ -217,8 +219,8 @@ export class WhatsAppForAnOrganisationService {
     if (userId && !isAsking(thread?.checkInId) && this.aHoldHasExpired(thread)) {
       await this.forgetTheRequest(organizationId, from);
       const heldFrom = open.find((c) => c.id === thread!.checkInId);
-      if (heldFrom) await say(await this.putInTheCheckIn(heldFrom, userId, thread!.requestWords!));
-      else await say(heldWordsNotPut(thread!.requestWords!));
+      if (heldFrom) await say(await this.putInTheCheckIn(heldFrom, userId, thread!.requestWords!, organizationId));
+      else await say(heldWordsNotPut(thread!.requestWords!, ask));
     }
 
     /*
@@ -227,13 +229,13 @@ export class WhatsAppForAnOrganisationService {
      * Groundwork") moves this conversation to Ask Groundwork and every message after it goes there,
      * until "back", or the check-in's name or number from the list, returns them.
      */
-    if (arrived.kind === 'text' && AN_ASK_WORD.test(said)) {
-      if (!who.personId) { await say(ASKING_NEEDS_A_ROSTER_ENTRY); return; }
+    if (arrived.kind === 'text' && isAnAskWord(said, ask)) {
+      if (!who.personId) { await say(ASKING_NEEDS_A_ROSTER_ENTRY(ask)); return; }
       const goBackTo = isAsking(thread?.checkInId)
         ? wasIn(thread?.checkInId)
         : (open.find((c) => c.id === thread?.checkInId) ?? (open.length === 1 ? open[0] : null))?.id ?? null;
       await this.rememberAsking(organizationId, from, goBackTo);
-      await say(NOW_ASKING);
+      await say(NOW_ASKING(ask));
       return;
     }
     if (isAsking(thread?.checkInId) && who.personId) {
@@ -243,7 +245,7 @@ export class WhatsAppForAnOrganisationService {
         if (target) {
           await this.remember(organizationId, from, target.id);
           const opened = await this.openIfWaiting(target, userId!);
-          await say(opened ? `${sessionHeader(target)} ${THE_WORDS}\n\n${opened}` : BACK_IN(target));
+          await say(opened ? `${sessionHeader(target)} ${THE_WORDS(ask)}\n\n${opened}` : BACK_IN(target));
           return;
         }
         if (open.length > 1) {
@@ -251,10 +253,10 @@ export class WhatsAppForAnOrganisationService {
           await out.list('You have more than one check-in open. Which is this for?', whichOneRows(open), whichOneAsText(open));
           return;
         }
-        await say(inTheApp.length ? answerItInTheApp(inTheApp[0].label) : BACK_TO_NOTHING);
+        await say(inTheApp.length ? answerItInTheApp(inTheApp[0].label) : BACK_TO_NOTHING(ask));
         return;
       }
-      if (arrived.kind !== 'text') { await say(ASK_READS_WORDS); return; }
+      if (arrived.kind !== 'text') { await say(ASK_READS_WORDS(ask)); return; }
       await say(asATextMessage(await this.assistant.respondOnWhatsApp(organizationId, who.personId, said)) || 'Noted.');
       return;
     }
@@ -266,7 +268,7 @@ export class WhatsAppForAnOrganisationService {
         await out.list('You have more than one check-in open. Which is this for?', whichOneRows(open), whichOneAsText(open));
         return;
       }
-      await say(open.length === 1 ? ONLY_ONE_OPEN(open[0].label) : inTheApp.length ? answerItInTheApp(inTheApp[0].label) : NONE_OPEN);
+      await say(open.length === 1 ? ONLY_ONE_OPEN(open[0].label, ask) : inTheApp.length ? answerItInTheApp(inTheApp[0].label) : NONE_OPEN(ask));
       return;
     }
 
@@ -279,7 +281,7 @@ export class WhatsAppForAnOrganisationService {
     /* Nothing open: an invitation waiting, or the assistant. */
     if (!open.length) {
       /* "back" with nothing to go back to is not a question for Ask Groundwork ("I cannot answer that one yet. Here is what I can do with "back"."). */
-      if (arrived.kind === 'text' && A_BACK_WORD.test(said)) { await say(BACK_TO_NOTHING); return; }
+      if (arrived.kind === 'text' && A_BACK_WORD.test(said)) { await say(BACK_TO_NOTHING(ask)); return; }
       const waiting = await this.invitationWaitingFor(organizationId, who.personId);
       if (waiting) { await say(`You are invited to "${waiting}" and the invitation has not been accepted yet. Open the email, accept it, then reply here and your answers go straight in.`); return; }
       if (arrived.kind === 'media') { await say('There is no check-in open to put that on. I will message you here when the next one opens; send it again then.'); return; }
@@ -298,7 +300,7 @@ export class WhatsAppForAnOrganisationService {
       if (arrived.kind === 'pick' || /^\s*\d{1,2}\s*$/.test(arrived.kind === 'text' ? arrived.text : '')) {
         /* The pick itself is not an answer. Open it if it is waiting, and say where they are. */
         const opened = await this.openIfWaiting(current, userId!);
-        await say(`${sessionHeader(current)}${opened ? ` ${THE_WORDS}\n\n${opened}` : ' Carry on where you left off.'}`);
+        await say(`${sessionHeader(current)}${opened ? ` ${THE_WORDS(ask)}\n\n${opened}` : ' Carry on where you left off.'}`);
         return;
       }
     } else if (thread && open.some((c) => c.id === thread.checkInId)) {
@@ -445,7 +447,7 @@ export class WhatsAppForAnOrganisationService {
       if (current.status === 'NOT_STARTED') {
         const first = await this.conversation.open(current.id, userId!);
         /* The words that switch, said once, when the check-in starts on WhatsApp. */
-        reply = `${sessionHeader(current)} ${THE_WORDS}\n\n${first.reply}`;
+        reply = `${sessionHeader(current)} ${THE_WORDS(ask)}\n\n${first.reply}`;
         /* A short first answer is still an answer. "Not much yet", "It's blocked", "Behind again" are
            twelve characters or fewer and were thrown away. Only a greeting and nothing else is not
            handed in - matched by a list, not by a length. */
@@ -663,15 +665,16 @@ export class WhatsAppForAnOrganisationService {
    * The words go into the check-in as an answer, as the "no" puts them, and the check-in's reply is
    * what the person reads. A check-in not yet started is opened first. A refusal is said, never lost.
    */
-  private async putInTheCheckIn(c: AnOpenCheckIn, userId: string, words: string): Promise<string> {
+  private async putInTheCheckIn(c: AnOpenCheckIn, userId: string, words: string, organizationId?: string): Promise<string> {
+    const ask = await askNameOf(this.prisma, organizationId ?? (c as any).organizationId);
     try {
       const opened = await this.openIfWaiting(c, userId);
       const r = await this.conversation.sendMessage(c.id, userId, words, { door: 'whatsapp' });
       const reply = `${HELD_WORDS_PUT_IN(words)}\n\n${r.reply}`;
-      return opened ? `${sessionHeader(c)} ${THE_WORDS}\n\n${opened}\n\n${reply}` : reply;
+      return opened ? `${sessionHeader(c)} ${THE_WORDS(ask)}\n\n${opened}\n\n${reply}` : reply;
     } catch (e: any) {
       const refused = e?.response?.message ?? e?.message;
-      return `${heldWordsNotPut(words)}${refused ? ` ${Array.isArray(refused) ? refused.join(' ') : refused}` : ''}`;
+      return `${heldWordsNotPut(words, ask)}${refused ? ` ${Array.isArray(refused) ? refused.join(' ') : refused}` : ''}`;
     }
   }
   /**

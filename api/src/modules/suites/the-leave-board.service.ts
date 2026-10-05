@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { askNameOf } from '../assistant/ask-name';
 import { theirRosterEntries, theirRosterEntry } from './a-roster-entry-and-its-sign-in';
 import { inTheLeadsTeam } from './a-leads-team';
 import { couldBeNamed, decidesIt, everyRuleIn, passWhatTheyAlreadyApproved, theStepsFor, whoComesNext, whoDecidesNow, type APassedStep, type DecidesNow, type WhoDecides } from './who-may-decide';
@@ -195,6 +196,7 @@ export class LeaveBoardService {
   ) {}
 
   async board(reader: Reader, today = new Date()): Promise<{ reader: BoardReader; waiting: Waiting[]; off: Off[]; toldToHr: ToldToHr[] }> {
+    const ask = await askNameOf(this.prisma, reader.organizationId);
     const answers = await this.suiteAnswers(reader.organizationId);
     const role = await this.roleOf(reader);
     /* Whoever holds the HR duty, when the admin chose to tell HR (build step 8). */
@@ -244,7 +246,7 @@ export class LeaveBoardService {
       const standIn = r.standInUserId ? names.get(r.standInUserId)?.full ?? null : null;
       /* What the person owns in those days, read for this reader (decision 85, build step 7). */
       const owns = ownedInWords(first, await whatTheyOwnWhileAway(this.prisma, { ...reader, role }, r.userId, r.startsOn, r.endsOn).catch(() => ({ owned: [], hidden: 1 })));
-      const asked = questions.filter((q) => q.ref === r.id).flatMap((q) => aQuestionSaid(q, askers, reader.userId));
+      const asked = questions.filter((q) => q.ref === r.id).flatMap((q) => aQuestionSaid(q, askers, reader.userId, ask));
       waiting.push({
         id: r.id,
         name: names.get(r.userId)?.full ?? '',
@@ -340,6 +342,7 @@ export class LeaveBoardService {
 
   /** Each person's own requests and days left. Nobody else's. */
   async mine(reader: Reader, today = new Date()): Promise<MyLeave> {
+    const ask = await askNameOf(this.prisma, reader.organizationId);
     const answers = await this.suiteAnswers(reader.organizationId);
     const role = await this.roleOf(reader);
     if (!role || role === 'GUEST') throw new ForbiddenException(LEAVE_REFUSED.notInIt);
@@ -377,7 +380,7 @@ export class LeaveBoardService {
         standIn: r.standInUserId ? names.get(r.standInUserId)?.full ?? null : null,
         leaveKind: theKindOf(r.kind, answers.rules)?.name ?? null,
         where: where.get(r.id) ?? '',
-        questions: questions.filter((q) => q.ref === r.id).flatMap((q) => aQuestionSaid(q, firsts, reader.userId)),
+        questions: questions.filter((q) => q.ref === r.id).flatMap((q) => aQuestionSaid(q, firsts, reader.userId, ask)),
         questionWaiting: (() => {
           const q = r.status === 'waiting' ? questions.filter((x) => x.ref === r.id && x.answer == null && x.toUserId === reader.userId).pop() : undefined;
           return q ? { id: q.id, question: q.question, askedBy: firsts.get(q.askedById) || 'The person who decides it' } : null;

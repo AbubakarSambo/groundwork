@@ -20,7 +20,7 @@ describe('"ask" and "back"', () => {
   it('"ask" moves the conversation to Ask Groundwork, and the person is told how to come back', async () => {
     const h = anInboundHarness({ open: [SALES], thread: { checkInId: 'ci-1' } });
     await h.service.handle('org-1', h.message('ask'), 'ours');
-    expect(h.said).toEqual(['You are now talking to Ask Groundwork. Ask me anything about your work. Write "back" to return to your check-in.']);
+    expect(h.said).toEqual(['You are now talking to Ask Groundwork. Ask me anything about the company, your work or your check-ins. Write "back" to return to your check-in.']);
     expect(h.thread()?.checkInId).toBe('ask:ci-1');
     expect(h.conversation.sendMessage).not.toHaveBeenCalled();
   });
@@ -64,7 +64,7 @@ describe('"switch"', () => {
   it('with one open, says so plainly', async () => {
     const h = anInboundHarness({ open: [SALES], thread: { checkInId: 'ci-1' } });
     await h.service.handle('org-1', h.message('switch'), 'ours');
-    expect(h.said).toEqual(['You have one check-in open, "Sales team". Carry on here, or write "ask" to ask Groundwork something.']);
+    expect(h.said).toEqual(['You have one check-in open, "Sales team". Carry on here, or write "ask" to talk to Ask Groundwork.']);
   });
 
   it("on Groundwork's number, a number in two organisations chooses again, then sees that organisation's check-ins", async () => {
@@ -97,8 +97,8 @@ describe('the words are said when a check-in starts on WhatsApp', () => {
   it('in one plain sentence, before the first question', async () => {
     const h = anInboundHarness({ open: [{ ...SALES, status: 'NOT_STARTED' }] });
     await h.service.handle('org-1', h.message('hello'), 'ours');
-    expect(h.said[0]).toBe(`Sales team, session 1. ${THE_WORDS}\n\nWhat moved since last time?`);
-    expect(THE_WORDS).toBe('You can write "ask" at any time to ask Groundwork something, "back" to come back to your check-in, and "switch" to choose another check-in.');
+    expect(h.said[0]).toBe(`Sales team, session 1. ${THE_WORDS()}\n\nWhat moved since last time?`);
+    expect(THE_WORDS()).toBe('You can write "ask" at any time to talk to Ask Groundwork, "back" to come back to your check-in, and "switch" to choose another check-in.');
   });
 });
 

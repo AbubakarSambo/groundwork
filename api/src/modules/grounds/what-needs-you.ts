@@ -41,6 +41,8 @@ export interface Need {
    * The board page draws Today's items for its check-in, so it leaves these out rather than say each one twice.
    */
   onTheBoardToo?: true;
+  /** The check-in this item belongs to, in its own words (request 152, 2), so a reader in several can see which one. Empty where the item is not about one check-in. */
+  checkInLabel?: string;
 }
 
 export interface ComingUp {
@@ -195,7 +197,7 @@ export function whatNeedsYou(
     const iRunIt = !!g.initiatorId && g.initiatorId === reader.userId;
     const mayName = iRunIt || (isAdmin && g.organizationId === reader.organizationId);
     const sessions = sessionsOf(g);
-    const base = { groundId: g.id, organizationId: g.organizationId };
+    const base = { groundId: g.id, organizationId: g.organizationId, ...(g.label?.trim() ? { checkInLabel: g.label.trim() } : {}) };
     /* THE TEAM'S ROUND, from the one clock the board and the list read (request 97a). Only where the row
        carries none is the latest session whose date has come used. */
     const teamRound = g.glance?.progress?.openRound ?? openSession(g, at);
@@ -253,12 +255,22 @@ export function whatNeedsYou(
 
     /* A released report you have not opened. */
     if (g.reportWaitingForMe && !heldFromMyOwn) {
+      /*
+       * A PARTICIPANT'S REPORT IS THEIR OWN (request 151, S1). Somebody who does not run the check-in reads their own
+       * report, which lives at their own check-in's page; `/grounds/<id>/report` was an empty page for them. Their
+       * latest finished check-in is the one linked. Whoever runs it, or an admin, keeps the check-in's report.
+       */
+      const myLatest = me && !mayName
+        ? sessions
+          .filter((c) => c.participantId === me.id && c.status === 'COMPLETED')
+          .sort((a, b) => (time(b.completedAt) ?? 0) - (time(a.completedAt) ?? 0) || b.sessionNumber - a.sessionNumber)[0]
+        : null;
       reports.push({
         key: `report-${g.id}`,
         kind: 'ready',
         title: `The report for ${g.label} is ready`,
         detail: firstSentence(g.latestSummary),
-        action: { label: 'Read it', to: `/grounds/${g.id}/report` },
+        action: { label: 'Read it', to: myLatest ? `/checkin/${myLatest.id}/report` : `/grounds/${g.id}/report` },
         ...base,
       });
     }
@@ -395,6 +407,7 @@ export function whatNeedsYou(
         action: { label: 'Look at it', to: `/grounds/${w.id}` },
         groundId: w.id,
         organizationId: w.organizationId ?? reader.organizationId,
+        ...(w.label?.trim() ? { checkInLabel: w.label.trim() } : {}),
       });
     }
   }

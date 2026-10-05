@@ -28,7 +28,8 @@ import { theShareSays, YOU_HAVE_NO_SHARE_YET } from './your-share';
 import { theirOwnAimsKeptOnlyAsPromises, AN_AIM_FROM_THEIR_PROMISE } from './an-aim-kept-only-as-their-promise';
 import { eachDealInItsGroup } from './each-deal-in-its-group';
 import { isTheTeamPictureNowShared } from '../reports/each-sessions-picture-is-released-on-its-own';
-import { whatToDoAboutALeadAction, whatToDoAboutADecision, isAYesOrNoQuestion, theAnswerAsALine } from './what-needs-you-and-what-to-do';
+import { withoutItsOwnSpeaker } from './a-view-does-not-start-with-its-speaker';
+import { everyActionHasALabel, whatToDoAboutALeadAction, whatToDoAboutADecision, isAYesOrNoQuestion, theAnswerAsALine } from './what-needs-you-and-what-to-do';
 import { theOwedThingAskedPlainly } from '../conversation/each-owed-thing-asked-plainly';
 import { howManyGoalsAreNotTold, notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { whoAnAdminDidNotLetIn, isNotLetInYet, whoIsNotLetInYet, theWaitingToBeLetInLine } from '../grounds/who-an-admin-did-not-let-in';
@@ -1337,8 +1338,11 @@ export class BoardService {
           ? (everyDivergenceReadable(reportSafe.divergences as any[]) as any[]).map((d) => {
               const named = (side: any) => {
                 const resolved = visibleNames.get(String(side?.participantLabel ?? '')) ?? side?.participantLabel;
+                const whoPrinted = /^(participant\s+[a-z0-9]+|the initiator|initiator)$/i.test(String(resolved ?? '').trim()) ? 'A colleague' : (String(resolved ?? '').trim() || 'A colleague');
                 return {
                   ...side,
+                  /* The screen prints "{who} said {view}", so a view never starts with its own speaker (request 151, S2). Served only; the stored text is unchanged. */
+                  ...(typeof side?.view === 'string' ? { view: withoutItsOwnSpeaker(side.view, whoPrinted) } : {}),
                   participantLabel: resolved,
                   /*
                    * WHAT THE SCREEN PRINTS (U.10). `.participantLabel` must never be printed: a label
@@ -2905,7 +2909,7 @@ export class BoardService {
       /* And a sentence stored before the wording rules reads right as it is served (decision 91). */
       /* A line typed as an intention that intends nothing is sent with no kind (requests 127 item 4, 129 item 5), after every board that reads the kind. */
       if (Array.isArray((walled as any).whoOwnsWhat)) (walled as any).whoOwnsWhat = eachLineWithTheKindThatFits((walled as any).whoOwnsWhat);
-      const asServed = aBoardWithNoEmptyLine(everyStoredSentenceReadsRight(withNoRatingNumber(yourOwnRowsSayYou(eachRepeatedSentenceSaidOnce(walled), me?.id ?? null)), (ground.participants ?? []).map((p: any) => nameOf(p.id)).filter((n: any): n is string => typeof n === 'string' && n.length > 1)));
+      const asServed = everyActionHasALabel(aBoardWithNoEmptyLine(everyStoredSentenceReadsRight(withNoRatingNumber(yourOwnRowsSayYou(eachRepeatedSentenceSaidOnce(walled), me?.id ?? null)), (ground.participants ?? []).map((p: any) => nameOf(p.id)).filter((n: any): n is string => typeof n === 'string' && n.length > 1))));
       /* The anchor scenario's own parts (request 149), added after every wall above: only whoever runs an anchor check-in, only with the switch on. */
       const roundOpensAt = (checkIns as any[]).filter((c) => c.sessionNumber === openRound).map((c) => c.availableFrom ?? c.startedAt).filter(Boolean).sort((a: Date, b: Date) => a.getTime() - b.getTime())[0] ?? null;
       return { ...asServed, ...(await theAnchorBoardParts({ prisma: this.prisma, ground: ground as any, readerRunsIt: runsThisGround, openRound, roundOpenedAt: roundOpensAt, readerIsTheLead: isInitiator, clock: recordsClock, served: asServed as any, patterns: patternQuestions })) };

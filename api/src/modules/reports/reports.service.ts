@@ -2081,7 +2081,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
             currentBestReading: CURRENT_BEST_READING,
           }
         : {}),
-      note: `This report is built from what each person said themselves - it is not independently verified.${absent.length ? ` ${absent.length} invited part${absent.length === 1 ? 'y has' : 'ies have'} not yet contributed a record - the picture below reflects only the accounts that are present. Do not read any shared positions or agreements as bilateral until all parties have checked in.` : ''}`,
+      /* Said in full sentences, without dashes (release round, 5 October 2026: the dash showed in all 24 scenarios). */
+      note: `This report is built from what each person said themselves. Nobody has checked it against anything else.${absent.length ? ` ${absent.length === 1 ? 'One person who was invited has' : `${absent.length} people who were invited have`} not checked in yet, so this is built only from the people who have. Do not take anything here as agreed by everybody until they have all checked in.` : ''}`,
       parties: engagementParties,
     };
 

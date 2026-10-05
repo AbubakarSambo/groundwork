@@ -125,3 +125,41 @@ export function whatToDoAboutADecision(
   }
   return { label: 'Open your check-in', says: 'People said different things about this. Talk it through with them, and say in your check-in what you settled.', goesTo: 'check-in' };
 }
+
+/**
+ * AN ACTION ALWAYS SAYS WHAT ITS BUTTON IS (request 152, 1). Two items on a real board arrived with an empty
+ * `label` and a `goesTo`, so the button held no words. Whatever a later pass does to the sentences of a board,
+ * this runs last: an action whose label is empty or only spaces is given the plain one for where it goes.
+ */
+export function anActionWithItsLabel<A extends { label?: string; goesTo?: APlace | null; choices?: AChoice[] } | null | undefined>(action: A): A {
+  if (!action || typeof action !== 'object') return action;
+  if (typeof action.label === 'string' && action.label.trim()) return action;
+  const label = action.choices?.length ? 'Decide it' : action.goesTo === 'context' ? 'Open the Context page' : 'Open your check-in';
+  return { ...action, label };
+}
+
+/** A sentence for comparing: no case, no punctuation, one space between words. */
+export const sameSentenceKey = (t: unknown): string => String(t ?? '').toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+
+/**
+ * THE BOARD'S TWO LISTS OF WHAT NEEDS THE LEAD, EACH THING ONCE, EACH WITH ITS LABEL (requests 151 E6, 152 1).
+ * Two lines that say the same thing (the discount decision, the tax view) were listed twice. A line is kept once,
+ * by its text with case and punctuation ignored, and a decision that a lead action already says is left to the action.
+ */
+export function everyActionHasALabel<B extends { leadActions?: any; decisions?: any }>(board: B): B {
+  const fix = (rows: any) => (Array.isArray(rows) ? rows.map((r) => (r && r.action ? { ...r, action: anActionWithItsLabel(r.action) } : r)) : rows);
+  const once = (rows: any, textOf: (r: any) => unknown, seen: Set<string>) => (Array.isArray(rows)
+    ? rows.filter((r) => {
+      const k = sameSentenceKey(textOf(r));
+      if (!k) return true;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    })
+    : rows);
+  const out: any = { ...board };
+  const seen = new Set<string>();
+  if (board.leadActions !== undefined) out.leadActions = fix(once(board.leadActions, (r) => r?.says, seen));
+  if (board.decisions !== undefined) out.decisions = fix(once(board.decisions, (r) => r?.question, seen));
+  return out;
+}

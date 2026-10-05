@@ -19,12 +19,16 @@ const THE_LEADS_OWN = 'Your own account of this is not in this check-in.';
  */
 const HAS_A_VERB_OF_ITS_OWN = /\b(?:is|are|was|were|has|have|had|does|do|did|can|cannot|could|will|would|should|must|may|might|nobody|no one|nothing|not)\b/i;
 const A_QUESTION_WORD = /^(?:what|who|whether|how|when|where|why|which)\b/i;
+/* Only an ordinary opening word is lowercased; a name keeps its capital (release round, 5 October 2026: "about tobi Adewale's
+   ability", "about marcus."). */
+const AN_ORDINARY_OPENING = /^(?:the|a|an|this|that|these|those|his|her|their|our|your|its|my|what|who|whether|how|when|where|why|which|any|each|every|some|no|one|two|three|how)\b/i;
+const inASentence = (t: string): string => (AN_ORDINARY_OPENING.test(t) ? `${t.charAt(0).toLowerCase()}${t.slice(1)}` : t);
 export function aHeadingThatIsASentence(about: string): string {
   const t = about.trim().replace(/[.!?]+$/, '');
   if (!t || /^this check-in\b/i.test(t) || t.split(/\s+/).length > 12) return about;
-  if (A_QUESTION_WORD.test(t)) return `This check-in cannot tell you ${t.charAt(0).toLowerCase()}${t.slice(1)}.`;
+  if (A_QUESTION_WORD.test(t)) return `This check-in cannot tell you ${inASentence(t)}.`;
   if (HAS_A_VERB_OF_ITS_OWN.test(t)) return about;
-  return `This check-in cannot tell you about ${t.charAt(0).toLowerCase()}${t.slice(1)}.`;
+  return `This check-in cannot tell you about ${inASentence(t)}.`;
 }
 
 export function aJudgementThatReadsRight<T>(judgement: T): T {

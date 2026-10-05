@@ -1,3 +1,4 @@
+import { askName } from '../assistant/ask-name';
 import { looksLikeADump } from '../grounds/a-dump-is-many-things';
 
 /**
@@ -13,12 +14,12 @@ import { looksLikeADump } from '../grounds/a-dump-is-many-things';
  * So the session keeps the words and says, once and plainly, where to take them. Nothing here reads
  * the paste, changes the reply the person is given, or writes anything.
  */
-export const WHERE_TO_TAKE_A_LONG_PASTE_IN_ASK_GROUNDWORK =
-  'That is a lot to read. To put the numbers, dates, decisions and questions in it on this check-in, paste it into Ask Groundwork. It will say back what it found, and nothing is saved until you say yes.';
+export const WHERE_TO_TAKE_A_LONG_PASTE_IN_ASK_GROUNDWORK = (ask: string = askName(null)) =>
+  `That is a lot to read. To put the numbers, dates, decisions and questions in it on this check-in, paste it into ${ask}. It will say back what it found, and nothing is saved until you say yes.`;
 export const WHERE_TO_TAKE_A_LONG_PASTE_ON_THE_CONTEXT_PAGE =
   'That is a lot to read. To put the numbers, dates, decisions and questions in it on this check-in, paste it into the chat on this check-in\'s Context and resources page. It will say back what it found, and nothing is saved until you say yes.';
 
-export function whereToTakeALongPaste(opts: { isTheLead: boolean; message: string; askGroundworkTakesContext: boolean }): string | null {
+export function whereToTakeALongPaste(opts: { isTheLead: boolean; message: string; askGroundworkTakesContext: boolean; ask?: string }): string | null {
   if (!opts.isTheLead || !looksLikeADump(opts.message ?? '')) return null;
-  return opts.askGroundworkTakesContext ? WHERE_TO_TAKE_A_LONG_PASTE_IN_ASK_GROUNDWORK : WHERE_TO_TAKE_A_LONG_PASTE_ON_THE_CONTEXT_PAGE;
+  return opts.askGroundworkTakesContext ? WHERE_TO_TAKE_A_LONG_PASTE_IN_ASK_GROUNDWORK(opts.ask) : WHERE_TO_TAKE_A_LONG_PASTE_ON_THE_CONTEXT_PAGE;
 }
