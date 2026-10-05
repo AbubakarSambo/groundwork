@@ -1,3 +1,4 @@
+import { KINDS_THAT_ARE_NOT_WORK } from '../board/the-kind-of-work';
 import type { PrismaService } from '../prisma/prisma.service';
 import { WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS, whatTheyMayRead, type CheckInInView } from '../grounds/who-may-read-this-check-in';
 import { theirRosterEntries, theirRosterEntry } from './a-roster-entry-and-its-sign-in';
@@ -101,7 +102,7 @@ export async function whatTheyOwnWhileAway(
         select: { name: true, dueOn: true, groundId: true },
       }),
       rowsOf<{ name: string; dueAt: Date; groundId: string }>(p.workItem, {
-        where: { ownerParticipantId: { in: participantIds }, dueAt: inside },
+        where: { ownerParticipantId: { in: participantIds }, dueAt: inside, kind: { notIn: KINDS_THAT_ARE_NOT_WORK } },
         select: { name: true, dueAt: true, groundId: true },
       }),
     ])

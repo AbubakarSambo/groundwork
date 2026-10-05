@@ -119,6 +119,13 @@ export const RECORDS_FOR_EACH_KIND: Record<KindOfWork, ARecordSection[]> = {
   ],
 };
 
+/**
+ * WORK ITEMS THAT ARE NOT WORK (anchor pieces 19, 26 and 27; review of 1d9ef0a5). An idea, an idea waiting for its yes,
+ * and a request offered in a check-in are kept as work items, and none of them is a piece of work anybody owns. Every
+ * read of work items that shows them as work leaves these kinds out.
+ */
+export const KINDS_THAT_ARE_NOT_WORK = ['idea', 'idea-offered', 'request-offered'];
+
 /** Every `WorkItem.kind` a kind of work may hold. */
 export function itemKindsFor(kind: KindOfWork): string[] {
   return RECORDS_FOR_EACH_KIND[kind].flatMap((s) => s.itemKinds);
