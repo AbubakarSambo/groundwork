@@ -201,7 +201,7 @@ describe('while the free trial’s switch is off, which is how it ships', () => 
 });
 
 describe('Baridi in its free trial', () => {
-  it('WhatsApp goes, nothing is charged, and Grace reads the month and the day it ends', async () => {
+  it('WhatsApp goes, nothing is charged, and Grace reads the month and the page names the end of the trial only once', async () => {
     const { addOn, stripeCalls } = world({ org: { ...IN_ITS_TRIAL, whatsappAddOnOn: true } });
     expect(await addOn.mayWeSend('org-baridi', NOW)).toEqual({ send: true });
     await addOn.syncTheStripeLine('org-baridi', NOW);
@@ -211,7 +211,8 @@ describe('Baridi in its free trial', () => {
     expect(read.says).toEqual({
       onOrOff: 'WhatsApp is on for your organisation.',
       price: 'WhatsApp costs $72 a month on your Small Team plan.',
-      charge: 'Your free trial lasts 1 month and ends on 1 November 2026. Nothing is charged for WhatsApp until then.',
+      charge: 'Your free trial lasts 1 month. Nothing is charged for WhatsApp until it ends.',
+      /* One date on the page: the sentence names no day, so it cannot disagree with the plan line (clean-install run, 6 October). */
       use: 'Your organisation has sent 0 of its 2,000 WhatsApp messages this month.',
       atTheLimit: 'If your organisation sends all 2,000 messages in a month, nothing more is sent by WhatsApp until the next month begins. Check-ins carry on in the app, and you are told once.',
       reachedTheLimit: null,
