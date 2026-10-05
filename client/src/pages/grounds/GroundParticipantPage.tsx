@@ -4,9 +4,10 @@ import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useEffect, useRef, useState } from 'react'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import { whichSessionIsThisCheckInOn, hasDoneThisSession } from '@/lib/which-session-are-we-on'
 import { groundsApi } from '@/api/grounds'
+import { participantRequestsApi } from '@/api/participantRequests'
 import { useAuthStore } from '@/stores/auth'
 import { reportsApi } from '@/api/reports'
 import { CheckInHeader } from '@/components/gw/ui/CheckInHeader'
@@ -82,6 +83,23 @@ export function GroundParticipantPage() {
 
   /* Only a 404 means gone. Everything else is a failure to reach it - see the guard below. */
   const definitelyGone = isError && (error as any)?.response?.status === 404
+
+  /*
+   * "ASK TO JOIN" (F4-small-states/states.txt, "Not in this check-in"): a real request, through
+   * the same participant-request flow the board's own "hidden contributor" row already sends
+   * (BoardPage.tsx's `requestAddition`, approved from GroundAdminPage.tsx's "have asked to join
+   * this check-in"). Not a button that does nothing - the prototype's wording promises a request
+   * reaches whoever runs it, and this is the product's real way to send one. Declared here, above
+   * every early `return` below, because a hook declared after one would be skipped on the render
+   * that takes it and break the rules of hooks the moment a later render does not.
+   */
+  const askToJoin = useMutation({
+    mutationFn: () => participantRequestsApi.create(id!, {
+      requestedEmail: user?.email ?? '',
+      requestedName: [user?.firstName, (user as any)?.lastName].filter(Boolean).join(' ') || undefined,
+      reason: 'Asked to join from the check-in page.',
+    }),
+  })
 
   const { data: report } = useQuery({
     queryKey: ['report', id],
@@ -313,19 +331,40 @@ export function GroundParticipantPage() {
   const canPayHere = isInitiator && user?.role === 'ADMIN'
 
   if (!myParticipant) {
+    if (user?.role === 'ADMIN') {
+      return (
+        <Page narrow>
+          <Empty
+            title="You are not in this check-in"
+            action={(
+              <Button kind="secondary" onClick={() => navigate(`/grounds/${id}`)}>Open the whole check-in</Button>
+            )}
+          >
+            You run it as an admin without giving a check-in yourself. Everything about it is on the whole check-in.
+          </Empty>
+        </Page>
+      )
+    }
+    /*
+     * ONLY THE LEAD'S FIRST NAME IS SENT HERE (`ground.leadFirstName`, `whoRunsThis`), not the
+     * full name the prototype's own sentence uses ("Wairimu Kamau runs it and can add you.") - the
+     * closest true sentence is drawn with what the server actually sends, and the gap (a last
+     * name too) is one the API could close.
+     */
+    const lead = whoRunsThis(ground)
     return (
       <Page narrow>
         <Empty
-          title="You are not in this check-in"
-          action={(
-            <Button kind="secondary" onClick={() => navigate(user?.role === 'ADMIN' ? `/grounds/${id}` : '/grounds')}>
-              {user?.role === 'ADMIN' ? 'Open the whole check-in' : 'Back to check-ins'}
+          title="You’re not in this check-in"
+          action={askToJoin.isSuccess ? (
+            <Note tone="muted">Asked. {lead ?? 'Whoever runs it'} has your request.</Note>
+          ) : (
+            <Button kind="secondary" onClick={() => askToJoin.mutate()} disabled={askToJoin.isPending}>
+              {askToJoin.isPending ? 'Asking…' : 'Ask to join'}
             </Button>
           )}
         >
-          {user?.role === 'ADMIN'
-            ? 'You run it as an admin without giving a check-in yourself. Everything about it is on the whole check-in.'
-            : 'Whoever runs it can add you.'}
+          {lead ? `${lead} runs it and can add you.` : 'Whoever runs it can add you.'}
         </Empty>
       </Page>
     )
