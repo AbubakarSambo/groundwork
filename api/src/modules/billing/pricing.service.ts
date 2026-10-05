@@ -75,6 +75,15 @@ export interface FreeTrial { on: boolean; teamsUnder: number; months: number; on
 export const DEFAULT_FREE_TRIAL: FreeTrial = { on: false, teamsUnder: 20, months: 1 };
 
 /**
+ * THE ANCHOR'S OWN TRIAL (anchor piece 34; decision 96 item 3). "One-month free trial, up to 20 people", where 20
+ * includes the lead, so the plan that covers it after the month is the one that holds 20 seats (Small Team). Its own
+ * setting, so `pricing.freeTrial` and the paid client are untouched. Off unless the row says `{ "on": true }`.
+ */
+export const ANCHOR_TRIAL_KEY = 'pricing.anchorTrial';
+export interface AnchorTrial { on: boolean; months: number; people: number }
+export const DEFAULT_ANCHOR_TRIAL: AnchorTrial = { on: false, months: 1, people: 20 };
+
+/**
  * ONE SWITCH (Hafsah, 27 September). While the free trial is OFF, which is how it ships, the free plan
  * is exactly as today: the free check-ins, the free people, the free extension and the first session
  * on the house. When it is switched ON, the trial for teams under its size starts, and the free plan
@@ -130,14 +139,27 @@ export class PricingService {
    * that has to make two requests to state one offer will eventually state half of it.
    */
   async publicPricing() {
-    const [plans, groundLimit, memberLimit, trial] = await Promise.all([
+    const [plans, groundLimit, memberLimit, trial, anchorTrial] = await Promise.all([
       this.listPlans(),
       this.getFreeGroundLimit(),
       this.getFreeMemberLimit(),
       this.getFreeTrial(),
+      this.getAnchorTrial(),
     ]);
-    /* The public read says whether the trial is on and its numbers, never when it was switched on. */
-    return { plans, free: { groundLimit, memberLimit }, trial: { on: trial.on, teamsUnder: trial.teamsUnder, months: trial.months } };
+    /* The public read says whether the trial is on and its numbers, never when it was switched on. The anchor's trial
+       is said beside it (anchor piece 34), so the anchor landing says "for a month" only while it is on. */
+    return { plans, free: { groundLimit, memberLimit }, trial: { on: trial.on, teamsUnder: trial.teamsUnder, months: trial.months }, anchorTrial };
+  }
+
+  /** The anchor trial and whether it is on. Never throws: a bad or missing row is the default, which is off. Only `on` is read. */
+  async getAnchorTrial(): Promise<AnchorTrial> {
+    try {
+      const row = await this.prisma.platformSetting.findUnique({ where: { key: ANCHOR_TRIAL_KEY } });
+      const v = row?.value as Partial<AnchorTrial> | undefined;
+      return { ...DEFAULT_ANCHOR_TRIAL, on: v?.on === true };
+    } catch {
+      return DEFAULT_ANCHOR_TRIAL;
+    }
   }
 
   /** The trial's numbers and whether it is on. Never throws: a bad or missing row means the default, which is off. */

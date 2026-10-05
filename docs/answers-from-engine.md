@@ -245,6 +245,15 @@ about them, and it is never counted or ordered by how much each person did.
 A promise a lead wrote or pasted is not counted, and neither is one the person did not make in their
 own name. The end-of-month `peopleWhoHelpedMoveTheThinking` is not filled yet.
 
+**Anchor piece 34, the anchor's one-month trial, is built and off.** It has its own setting,
+`pricing.anchorTrial` (`{ "on": false }`, read as off unless the row says on). When a check-in is
+started from the anchor link with the anchor switch on, and only while that setting is on too, the
+organisation gets one month on the plan that holds 20 people, the lead included (Small Team). It is
+given once, never on top of a free run and never to one that is paying, and nothing touches Stripe.
+`pricing.freeTrial` and the paid client are untouched. The public pricing read (`GET /billing/pricing`)
+now also sends `anchorTrial: { on, months: 1, people: 20 }`, so the anchor landing says "for a month"
+only while it is on.
+
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
 ```
