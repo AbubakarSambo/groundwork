@@ -76,7 +76,7 @@ export { CLOSED_BY_THE_CLOCK };
 /** `CheckIn.closedReason` when the person declined to take part. */
 export const DECLINED_TO_TAKE_PART = 'declined';
 import { mirrorCommitment } from '../assistant/a-commitment-carries-past-the-ground';
-import { STARTED_FROM_THE_ANCHOR, theAnchorParticipantGuidance, whatTheyToldYouBefore, withoutAnAnnouncedAngle } from './the-anchor-weekly-check-in';
+import { STARTED_FROM_THE_ANCHOR, aCheckInStartedFromTheAnchor, theAnchorParticipantGuidance, whatTheyToldYouBefore, withoutAnAnnouncedAngle } from './the-anchor-weekly-check-in';
 import { theAnchorBaselineGuidance } from './the-anchor-baseline';
 import { whatTheAnswerAgreedTo, hasAlreadyOffered, whatHappenedToTheOffer, weSayAboutTheOffer, whatIsStillOwedToThem, withoutTheSecondTellingOfIt, isAnOfferToWriteItDown, whatTheyJustSaidMayBeTheirOwnStep, YOU_HAVE_ALREADY_OFFERED } from './giving-the-person-agency';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
@@ -5252,6 +5252,13 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * Done here rather than at the read, because whether this conversation has a situation prompt
      * is only settled by the time the pathway is built.
      */
+    /*
+     * THE TEAM BASELINE IS THE WHOLE CONVERSATION, NOT ONE VOICE AMONG MANY (anchor piece 14). A first session for somebody on the anchor
+     * lead's team is read on its own words: no plan written from the lead's brief (it said "Must establish: Amina understands that..."), no
+     * situation pack or intake with its "what did you understand your role in this to be", no owed list. Those are for a conversation that is
+     * about somebody's work against a brief, and this one exists to learn how their work looks from where they sit.
+     */
+    const theBaselineRuns = await this.theBaselineApplies(checkIn, ground);
     const packForThisSituation =
       scenarioPackOverride ?? buildScenarioPackForParty(ground.scenario as any, checkIn.participant.partyType as any, undefined, undefined, checkIn.participant.roleAsDescribed ?? null);
     /* And where the pack's own spine is, read the same way. The pack says "skip any they have already
@@ -5262,7 +5269,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * THE PLAN FOR THIS SESSION. Written once, at the opener, from everything above; read at the top of
      * every turn with where the session has got to in it. See the-plan-for-this-session.
      */
-    const planBlock = await this.thePlanForThisSession(checkIn, ground, {
+    const planBlock = theBaselineRuns ? '' : await this.thePlanForThisSession(checkIn, ground, {
       forTheOpener: !!how?.forTheOpener,
       pack: packForThisSituation ?? '',
       recordAlreadyHolds,
@@ -5425,7 +5432,19 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     this.anchorVersionForThisTurn.set(checkIn.id, anchorWeek?.promptVersionId ?? null);
     this.anchorWeekForThisTurn.set(checkIn.id, anchorWeek);
 
+    if (theBaselineRuns) {
+      /* The engine's own rules, the person's language, and the few things every turn needs; the baseline's words follow, and its reminder is read last. */
+      const theirFirstName = theFirstNameFrom((checkIn.participant as any)?.user?.firstName, (checkIn.participant as any)?.user?.lastName);
+      return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, theirFirstName ? `The person you are talking with is ${theirFirstName}.` : '', docContext, docPromptHint, cannotBeMissed, askedLastTurn].filter(Boolean).join('\n\n');
+    }
     return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, burden, putThisToThem, askedWhenThisEnds, theirHedge, theHole, heldBack, proofKindly, whereItIs, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
+  }
+
+  /** Whether this is the first session of somebody on the anchor lead's team, with the anchor on: the one gate the baseline's own words use too. */
+  private async theBaselineApplies(checkIn: { sessionNumber: number; participant: { partyType: any } }, ground: any): Promise<boolean> {
+    if (!aCheckInStartedFromTheAnchor(ground)) return false;
+    if (checkIn.participant.partyType === PartyType.INITIATOR || checkIn.sessionNumber !== 1) return false;
+    return (await theAnchorScenarioIsOn(this.prisma)) === true;
   }
 
   /* Which stored version of the anchor's weekly words this turn ran, per check-in. Same shape and lifetime as the other per-turn maps. */

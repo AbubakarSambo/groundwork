@@ -208,3 +208,22 @@ describe('the team baseline puts no ready-made answer into anybody\'s mouth (6 O
     expect(other.suggestedAnswers?.length).toBeGreaterThan(0);
   });
 });
+
+describe('the team baseline is read on its own words, not under the situation\'s pack (6 October)', () => {
+  it('carries no plan written from the lead\'s brief, no project questions, and tells it how to open', async () => {
+    const prompt = await aWorld({ startedFrom: 'anchor', switchOn: true, scenario: GroundScenario.HELP_TEAM_UNDERSTAND }).compose();
+    expect(prompt).not.toContain('Must establish');
+    expect(prompt).not.toContain('What did you understand the brief to be');
+    expect(prompt).not.toContain('Amina will review everyone in March');
+    expect(prompt).toContain('How to open: greet them by their first name');
+    expect(prompt).toContain('The person you are talking with is Tunde.');
+    /* And the nine are still there, with the reminder read last. */
+    for (const n of NINE) expect(prompt).toContain(n);
+    expect(prompt.endsWith(THE_BASELINE_REMINDER)).toBe(true);
+  });
+
+  it('leaves the weekly check-in (the second session) under the situation\'s pack, as it was', async () => {
+    const prompt = await aWorld({ startedFrom: 'anchor', switchOn: true, sessionNumber: 2, scenario: GroundScenario.HELP_TEAM_UNDERSTAND }).compose();
+    expect(prompt).not.toContain('How to open: greet them by their first name');
+  });
+});
