@@ -2,6 +2,22 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## 5 October, 14:35 - "participant" is out of the rulebook, and my caution about editing src was wrong
+
+Run 32 had "the other two participants report...", "both branch participants", "two other
+participants report that the company's CEO...". Participant is our word for a database row. It was
+in none of the wording rules and the scorer only catches "Participant A", so the bare noun reached
+readers. The rulebook now says to name them or say "people", and covers "party", "the initiator"
+and "the respondent" with it.
+
+**I had queued this behind the run for the wrong reason.** I thought editing `api/src` might change
+what the run measures. It cannot: the shards load their modules once at start, and the conversation
+itself goes to the compiled server, which nothing touches until I rebuild. Checked rather than
+assumed, then done. The one thing that IS true is that a fix made now is not in this run, which is
+already written down for the "does you own" one.
+
+Engine-prompt ceiling moved a third time, by what the rulebook gained and no further.
+
 ## 5 October, 14:25 - the API suite found two faults of mine, and my first account of one was wrong
 
 **The plain pattern names are wired up and a test holds the code and the document to each other.**
