@@ -905,7 +905,7 @@ export class BoardService {
           sessionsSoFar: Math.max(0, ...checkIns.filter((c: any) => !c.isSetup && c.status === CheckInStatus.COMPLETED).map((c: any) => c.sessionNumber ?? 0)),
           meetingsOnRecord: await meetingsOnRecordFor(this.prisma, groundId),
         });
-        const withLines = await theStoredPatternLinesFor(this.prisma, groundId, served, { participantId: me?.id ?? null, runsIt: runsItForAPattern(ground as any, requestingUserId) });
+        const withLines = await theStoredPatternLinesFor(this.prisma, groundId, served, { participantId: me?.id ?? null, runsIt: runsItForAPattern(ground as any, requestingUserId) }, (ground as any).report?.overTime ?? null);
         return withLines && patternQuestions.length ? { ...withLines, toSettleFirst: [...(withLines.toSettleFirst ?? []), ...patternQuestions] } : withLines;
       })() : null,
       myParticipantId: me?.id ?? null,

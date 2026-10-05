@@ -18,11 +18,11 @@ export function withTheStoredPatternLinesThroughTheWall<T extends { patterns?: a
   overTime: T,
   rows: readonly APatternRow[] | null | undefined,
   reader: { participantId: string | null; runsIt: boolean },
-  opts: { now?: Date } = {},
+  opts: { now?: Date; storedPatterns?: any[] | null } = {},
 ): T {
   if (!overTime) return overTime;
   if (!reader.runsIt) return { ...(overTime as any), patterns: [] };
-  const stored: any[] = Array.isArray((overTime as any).patterns) ? (overTime as any).patterns : [];
+  const stored: any[] = Array.isArray(opts.storedPatterns) ? opts.storedPatterns : Array.isArray((overTime as any).patterns) ? (overTime as any).patterns : [];
   if (!stored.length) return overTime;
   const mayRead = patternRowsThisReaderMayRead(rows, { participantId: reader.participantId, runsIt: true }, { now: opts.now });
   const ok = new Set(mayRead.filter((r) => !reader.participantId || r.participantId !== reader.participantId).map((r) => `${r.participantId}|${r.code}`));
@@ -38,8 +38,13 @@ export async function theStoredPatternLinesFor<T extends { patterns?: any[] } | 
   groundId: string,
   overTime: T,
   reader: { participantId: string | null; runsIt: boolean },
+  /* The report's row as stored: what is served has had its patterns taken out already (overTimeAsServed), so they come from here. */
+  storedOverTime?: { patterns?: any[] } | null,
 ): Promise<T> {
-  if (!overTime || !reader.runsIt || !Array.isArray((overTime as any).patterns) || !(overTime as any).patterns.length) return overTime;
+  const storedPatterns = Array.isArray(storedOverTime?.patterns) ? storedOverTime!.patterns! : Array.isArray((overTime as any)?.patterns) ? (overTime as any).patterns : [];
+  if (!overTime) return overTime;
+  if (!reader.runsIt) return { ...(overTime as any), patterns: [] };
+  if (!storedPatterns.length) return overTime;
   const rows: any[] = await Promise.resolve(prisma?.patternDetection?.findMany?.({ where: { groundId }, select: PATTERN_ROW_SELECT, take: 200 })).then((r) => (Array.isArray(r) ? r : [])).catch(() => []);
-  return withTheStoredPatternLinesThroughTheWall(overTime, rows as any, reader);
+  return withTheStoredPatternLinesThroughTheWall(overTime, rows as any, reader, { storedPatterns });
 }

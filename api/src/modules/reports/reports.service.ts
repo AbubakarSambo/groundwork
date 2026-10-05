@@ -7220,7 +7220,7 @@ happened, and what is in the way.`;
            anonymously shared report loses its identifying detail, and a read that skips it would
            name people on a check-in shared without names. */
         overTime: (this.asItWasShared(
-          { ...(ground as any), report: { overTime: await theStoredPatternLinesFor(this.prisma, (ground as any).id, overTimeForThisReader((ground.report as any)?.overTime as any, { isLead: isInitiator || isOrgAdmin, participantId: participant?.id ?? null }, { meetingsOnRecord: await meetingsOnRecordFor(this.prisma, (ground as any).id) }), { participantId: participant?.id ?? null, runsIt: patternRunsIt }) } },
+          { ...(ground as any), report: { overTime: await theStoredPatternLinesFor(this.prisma, (ground as any).id, overTimeForThisReader((ground.report as any)?.overTime as any, { isLead: isInitiator || isOrgAdmin, participantId: participant?.id ?? null }, { meetingsOnRecord: await meetingsOnRecordFor(this.prisma, (ground as any).id) }), { participantId: participant?.id ?? null, runsIt: patternRunsIt }, (ground.report as any)?.overTime) } },
           participant?.id ?? null,
           isInitiator || isOrgAdmin,
         ) as any).overTime,
@@ -7386,7 +7386,7 @@ happened, and what is in the way.`;
        */
       /* And named through the wrapper, for the reason in the forming branch above. */
       overTime: (this.asItWasShared(
-        { ...(ground as any), report: { overTime: await theStoredPatternLinesFor(this.prisma, (ground as any).id, overTimeForThisReader((ground.report as any)?.overTime as any, { isLead: isInitiator || isOrgAdmin, participantId: participant?.id ?? null }, { meetingsOnRecord: await meetingsOnRecordFor(this.prisma, (ground as any).id) }), { participantId: participant?.id ?? null, runsIt: patternRunsIt }) } },
+        { ...(ground as any), report: { overTime: await theStoredPatternLinesFor(this.prisma, (ground as any).id, overTimeForThisReader((ground.report as any)?.overTime as any, { isLead: isInitiator || isOrgAdmin, participantId: participant?.id ?? null }, { meetingsOnRecord: await meetingsOnRecordFor(this.prisma, (ground as any).id) }), { participantId: participant?.id ?? null, runsIt: patternRunsIt }, (ground.report as any)?.overTime) } },
         participant?.id ?? null,
         isInitiator || isOrgAdmin,
       ) as any).overTime,

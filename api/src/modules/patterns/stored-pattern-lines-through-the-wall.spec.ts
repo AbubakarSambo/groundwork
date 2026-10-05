@@ -1,4 +1,5 @@
-import { withTheStoredPatternLinesThroughTheWall } from './stored-pattern-lines-through-the-wall';
+import { withTheStoredPatternLinesThroughTheWall, theStoredPatternLinesFor } from './stored-pattern-lines-through-the-wall';
+import { overTimeAsServed, overTimeForThisReader } from '../reports/what-the-record-shows-over-time';
 
 /**
  * The stored pattern lines come back for whoever runs the check-in, and only through decision 86's wall (6 October 2026).
@@ -40,5 +41,29 @@ describe('the stored pattern lines', () => {
   });
   it('an admin who only reads gets none', () => {
     expect(lines(withTheStoredPatternLinesThroughTheWall(stored, [row('p-ade', { personAnswer: 'ok', personAnsweredAt: day(0) })], { participantId: null, runsIt: false }, { now: NOW }))).toEqual([]);
+  });
+});
+
+describe('as it is really served: what is served has had its patterns taken out, the stored row is where they come from', () => {
+  const full = { sessions: 3, commitments: [], dependencies: [], gaps: [], stillOpen: [], cannotTellYou: [], toSettleFirst: [], ...stored } as any;
+  const prisma = (rows: any[]) => ({ patternDetection: { findMany: async () => rows } });
+  const ready = [row('p-ade', { personAnswer: 'ok', personAnsweredAt: day(0) })];
+  it('the lead reads the line on top of overTimeAsServed', async () => {
+    const served = overTimeAsServed(full)!;
+    expect(served.patterns).toEqual([]);
+    const o = await theStoredPatternLinesFor(prisma(ready), 'g', served, lead, full);
+    expect(lines(o)).toEqual(['Upward reporting was optimistic while a major account was being lost.']);
+  });
+  it('a participant, on top of overTimeForThisReader, reads none about anybody', async () => {
+    const served = overTimeForThisReader(full, { isLead: false, participantId: 'p-bola' })!;
+    expect(lines(await theStoredPatternLinesFor(prisma(ready), 'g', served, { participantId: 'p-bola', runsIt: false }, full))).toEqual([]);
+  });
+  it('an admin who only reads, on top of the lead read, gets none', async () => {
+    const served = overTimeForThisReader(full, { isLead: true, participantId: null })!;
+    expect(lines(await theStoredPatternLinesFor(prisma(ready), 'g', served, { participantId: null, runsIt: false }, full))).toEqual([]);
+  });
+  it('a lookup that fails serves none', async () => {
+    const bad = { patternDetection: { findMany: async () => { throw new Error('down'); } } };
+    expect(lines(await theStoredPatternLinesFor(bad, 'g', overTimeAsServed(full)!, lead, full))).toEqual([]);
   });
 });
