@@ -1,5 +1,6 @@
 import { WhatsAppService } from './whatsapp.service';
-import { theWeeklyInsightParagraph, theWeeklyInsight, sendTheAnchorWeeklyInsights, THE_INSIGHT_KIND } from './the-anchor-weekly-insight';
+import { theWeeklyInsightParagraph, theWeeklyInsight, sendTheAnchorWeeklyInsights, THE_INSIGHT_KIND, theOpenRoundOf } from './the-anchor-weekly-insight';
+import { readTheMonthRecord } from '../board/the-anchor-month-record';
 import { FIRST_MESSAGES, TEMPLATES } from './a-message-outside-the-window';
 import type { TheMonthRecord } from '../board/the-anchor-month-record';
 
@@ -10,6 +11,7 @@ import type { TheMonthRecord } from '../board/the-anchor-month-record';
  */
 const RECORD: TheMonthRecord = {
   ofHowMany: 5, checkedIn: 3, notYetThisRound: 2, saidWhatTheyWillDo: 2, commitmentsDone: 1, commitmentsOpen: 1,
+  checkedInThisRound: 3, saidWhatTheyWillDoThisRound: 2,
   waiting: [{ from: 'Baraka', on: 'Rukia', what: 'the sales deck' }], handoffsCleared: 1, offers: { pair: 0, project: 0, aim: 0 },
   startedOn: new Date('2026-09-08T08:00:00Z'),
   doneByPerson: [{ participantId: 'p-rukia', name: 'Rukia', clause: 'send the deck to the client', clauseToThem: 'send the deck to the client', settledBy: 'SAID', doneAt: null }],
@@ -24,8 +26,13 @@ describe('what the lead reads', () => {
     expect(m.text).toBe(`Hi Amina. ${p} This week's picture is on the board at https://myground.work/grounds/g-1/board, if you want the rest.`);
     expect(m.kind).toBe(THE_INSIGHT_KIND);
   });
-  it('nothing is sent where nobody has checked in', () => {
-    expect(theWeeklyInsightParagraph({ ...RECORD, checkedIn: 0 })).toBeNull();
+  it('nothing is sent where nobody has checked in this week, whatever earlier weeks held', () => {
+    expect(theWeeklyInsightParagraph({ ...RECORD, checkedInThisRound: 0 })).toBeNull();
+  });
+  /* Review of piece 28: "This week" counts only the round that is open. */
+  it('"This week" is this round, where the month holds more', () => {
+    const p = theWeeklyInsightParagraph({ ...RECORD, checkedIn: 5, saidWhatTheyWillDo: 4, checkedInThisRound: 2, saidWhatTheyWillDoThisRound: 1 })!;
+    expect(p).toContain('This week, two of five people checked in, and one has said what they will do themselves.');
   });
   it('the template ends with words, not a blank, and counts as Groundwork writing first', () => {
     expect(TEMPLATES[THE_INSIGHT_KIND].body.trim().endsWith('rest.')).toBe(true);
@@ -70,5 +77,39 @@ describe('who it goes to', () => {
     const { d, sent } = deps(true);
     await sendTheAnchorWeeklyInsights(d as any);
     expect(sent.every((s) => !String(s[2]).startsWith('Hi Omar'))).toBe(true);
+  });
+});
+
+describe('the round is the open one, and the counts are its own', () => {
+  const people = ['p-amina', 'p-rukia', 'p-baraka'].map((id) => ({ id, managingOnly: false, userId: `u-${id}`, user: { firstName: id.slice(2), lastName: null, awaitingOrgApproval: false }, nameGiven: null, createdAt: new Date('2026-09-01') }));
+  const rows = [
+    { participantId: 'p-amina', sessionNumber: 1, status: 'COMPLETED', isSetup: false },
+    { participantId: 'p-rukia', sessionNumber: 1, status: 'COMPLETED', isSetup: false },
+    { participantId: 'p-baraka', sessionNumber: 1, status: 'COMPLETED', isSetup: false },
+    { participantId: 'p-amina', sessionNumber: 2, status: 'COMPLETED', isSetup: false },
+    { participantId: 'p-rukia', sessionNumber: 2, status: 'IN_PROGRESS', isSetup: false },
+    { participantId: 'p-baraka', sessionNumber: 2, status: 'NOT_STARTED', isSetup: false },
+  ];
+  const prisma: any = {
+    groundParticipant: { findMany: jest.fn(async () => people) },
+    checkIn: { findMany: jest.fn(async (a: any) => (a?.where?.status ? rows.filter((r) => r.status === a.where.status) : rows)) },
+    groundCommitment: { findMany: jest.fn(async () => [
+      { participantId: 'p-rukia', status: 'UNKNOWN', text: 'I will send the deck.', source: 'CHECK_IN', explicit: true, statedInSession: 1 },
+      { participantId: 'p-baraka', status: 'UNKNOWN', text: 'I will call the supplier.', source: 'CHECK_IN', explicit: true, statedInSession: 1 },
+      { participantId: 'p-amina', status: 'UNKNOWN', text: 'I will sign the lease.', source: 'CHECK_IN', explicit: true, statedInSession: 2 },
+    ]) },
+    groundDependency: { findMany: jest.fn(async () => []) },
+    recommendation: { findMany: jest.fn(async () => []) },
+    ground: { findUnique: jest.fn(async () => ({ startsAt: new Date('2026-09-01'), createdAt: new Date('2026-09-01') })) },
+  };
+  it('reads the open round as the board does, and counts only it', async () => {
+    const round = await theOpenRoundOf(prisma, 'g-1');
+    expect(round).toBe(2);
+    const r = await readTheMonthRecord(prisma, 'g-1', round);
+    expect(r.checkedIn).toBe(3);
+    expect(r.checkedInThisRound).toBe(1);
+    expect(r.saidWhatTheyWillDo).toBe(3);
+    expect(r.saidWhatTheyWillDoThisRound).toBe(1);
+    expect(theWeeklyInsightParagraph(r)).toContain('This week, one of three people checked in, and one has said what they will do themselves.');
   });
 });

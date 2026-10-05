@@ -11,6 +11,8 @@ import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
 import { readTheMonthRecord, type TheMonthRecord } from '../board/the-anchor-month-record';
 import { aContributionSaid, aWaitInAWords, aNumber, capital } from '../board/the-anchor-month-board';
+import { whichRoundIsOpen } from '../board/which-round-is-open';
+import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 
 /**
  * THE WEEKLY LEAD WHATSAPP INSIGHT (anchor piece 28; section 23; decision 105 item 2).
@@ -29,11 +31,14 @@ export const THE_INSIGHT_KIND = 'anchor-weekly-insight';
 
 /** The paragraph, from the month's record. Null when nobody has checked in, because there is nothing worth a message. */
 export function theWeeklyInsightParagraph(r: TheMonthRecord): string | null {
-  if (r.checkedIn === 0) return null;
+  /* "This week" is the round that is open (review of piece 28): only its check-ins and only the promises said in it. */
+  const inIt = r.checkedInThisRound ?? 0;
+  const said = r.saidWhatTheyWillDoThisRound ?? 0;
+  if (inIt === 0) return null;
   const out: string[] = [];
-  const moved = r.saidWhatTheyWillDo > 0 || r.commitmentsDone > 0;
+  const moved = said > 0 || r.commitmentsDone > 0;
   if (moved) out.push('Your team is starting to move.');
-  out.push(`This week, ${aNumber(r.checkedIn)} of ${aNumber(r.ofHowMany)} ${r.ofHowMany === 1 ? 'person' : 'people'} checked in${r.saidWhatTheyWillDo > 0 ? `, and ${aNumber(r.saidWhatTheyWillDo)} ${r.saidWhatTheyWillDo === 1 ? 'has' : 'have'} said what they will do themselves` : ''}.`);
+  out.push(`This week, ${aNumber(inIt)} of ${aNumber(r.ofHowMany)} ${r.ofHowMany === 1 ? 'person' : 'people'} checked in${said > 0 ? `, and ${aNumber(said)} ${said === 1 ? 'has' : 'have'} said what they will do themselves` : ''}.`);
   const named = (r.doneByPerson ?? [])[0];
   if (named) out.push(aContributionSaid(named.name, named.clause, named.settledBy));
   const stuck = r.waiting[0];
@@ -51,6 +56,20 @@ export function theWeeklyInsight(firstName: string | null | undefined, paragraph
 }
 
 const TERMINAL: GroundStatus[] = [...A_GROUND_THE_JOBS_LEAVE_ALONE, ...A_GROUND_IS_HELD];
+
+/**
+ * The round that is open, by the board's own rule (whichRoundIsOpen), over the people who give a check-in: never
+ * anybody only managing or not yet let in (decision 77). The same clock the board's active line reads.
+ */
+export async function theOpenRoundOf(prisma: any, groundId: string): Promise<number> {
+  const [people, rows] = await Promise.all([
+    prisma.groundParticipant.findMany({ where: { groundId }, select: { id: true, managingOnly: true, userId: true, user: { select: { awaitingOrgApproval: true } } } }),
+    prisma.checkIn.findMany({ where: { groundId, isSetup: false }, select: { participantId: true, sessionNumber: true, status: true } }),
+  ]);
+  const givers = new Set((people as any[]).filter((p) => !p.managingOnly && !isNotLetInYet(p)).map((p) => p.id));
+  const mine = (rows as any[]).filter((c) => givers.has(c.participantId));
+  return mine.length ? whichRoundIsOpen(mine as any) : Math.max(1, ...(rows as any[]).map((c) => c.sessionNumber ?? 1));
+}
 
 /** Friday's sweep: one message per anchor check-in's lead, only while the anchor switch is on. Returns how many were tried. */
 export async function sendTheAnchorWeeklyInsights(
@@ -76,7 +95,7 @@ export async function sendTheAnchorWeeklyInsights(
       const entry = await theirRosterEntry(prisma, g.organizationId, g.initiatorId, { phone: true }).catch(() => null);
       const phone = entry?.phone ?? user.phoneNumber ?? null;
       if (!phone) continue;
-      const paragraph = theWeeklyInsightParagraph(await readTheMonthRecord(prisma, g.id, 1));
+      const paragraph = theWeeklyInsightParagraph(await readTheMonthRecord(prisma, g.id, await theOpenRoundOf(prisma, g.id)));
       if (!paragraph) continue;
       const message = theWeeklyInsight(user.firstName, paragraph, `${base}/grounds/${g.id}/board`);
       await deps.whatsapp.sendFor(g.organizationId, phone, message.text, { kind: message.kind, params: message.params });

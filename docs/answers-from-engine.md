@@ -345,7 +345,9 @@ done. One thing still needs attention. Baraka is waiting on Rukia for the sales 
 working on that with them. This week's picture is on the board at <link>, if you want the rest."
 
 Only what the lead reads on the month board goes into it, nobody's words are quoted, and only people
-in that check-in are named. People in the check-in and admins are never sent it. Nothing has a screen
+in that check-in are named. Changed after review: "This week" now counts only the round that is open,
+by the board's own rule. It counts that round's check-ins and the things people said they would do in
+that round, never the whole month. People in the check-in and admins are never sent it. Nothing has a screen
 to add, because the link opens the board. The template, `anchor_weekly_insight`, is the ninth, proposed
 in `docs/whatsapp-templates.md`. It cannot go outside the 24-hour window until Meta approves it. "Free
 during the trial" depends on the organisation having WhatsApp on: an anchor trial does not switch the

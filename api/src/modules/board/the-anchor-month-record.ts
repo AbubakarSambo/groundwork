@@ -22,6 +22,9 @@ export interface TheMonthRecord {
   notYetThisRound: number;
   /** How many people said at least one thing they will do themselves. */
   saidWhatTheyWillDo: number;
+  /** Of those who can answer, how many finished the round that is open, and how many said a thing they will do in it (the weekly insight's "this week"). */
+  checkedInThisRound?: number;
+  saidWhatTheyWillDoThisRound?: number;
   commitmentsDone: number;
   commitmentsOpen: number;
   /** Open handoffs, said by name. */
@@ -45,7 +48,7 @@ export async function readTheMonthRecord(prisma: any, groundId: string, openRoun
   const [people, finished, commitments, handoffs, offers, ground] = await Promise.all([
     prisma.groundParticipant.findMany({ where: { groundId }, select: { id: true, userId: true, managingOnly: true, nameGiven: true, createdAt: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } }),
     prisma.checkIn.findMany({ where: { groundId, status: CheckInStatus.COMPLETED }, select: { participantId: true, sessionNumber: true, isSetup: true, status: true } }),
-    prisma.groundCommitment.findMany({ where: { groundId }, select: { participantId: true, status: true, text: true, source: true, explicit: true, settledAt: true, settledBy: true, updatedAt: true } }),
+    prisma.groundCommitment.findMany({ where: { groundId }, select: { participantId: true, status: true, text: true, source: true, explicit: true, settledAt: true, settledBy: true, updatedAt: true, statedInSession: true } }),
     prisma.groundDependency.findMany({ where: { groundId }, select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, status: true } }),
     prisma.recommendation.findMany({ where: { subjectExternalId: `check-in:${groundId}`, kind: { in: Object.keys(THE_ANCHOR_OFFERS) }, state: { in: ['PROPOSED', 'ACCEPTED'] } }, select: { kind: true } }),
     prisma.ground.findUnique({ where: { id: groundId }, select: { startsAt: true, createdAt: true } }),
@@ -69,6 +72,8 @@ export async function readTheMonthRecord(prisma: any, groundId: string, openRoun
     checkedIn: checkedInIds.size,
     notYetThisRound: counted.filter((p) => !answeredNow.has(p.id)).length,
     saidWhatTheyWillDo: new Set(mine.map((c) => c.participantId)).size,
+    checkedInThisRound: answeredNow.size,
+    saidWhatTheyWillDoThisRound: new Set(mine.filter((c) => c.statedInSession === openRound).map((c) => c.participantId)).size,
     commitmentsDone: mine.filter((c) => c.status === 'DONE').length,
     commitmentsOpen: mine.filter((c) => c.status === 'UNKNOWN').length,
     waiting: open.map((d) => ({ from: firstName(d.fromParticipantId) ?? 'Someone', on: d.onParticipantId ? firstName(d.onParticipantId) : (d.onLabel ?? null), what: d.what ?? null })),
