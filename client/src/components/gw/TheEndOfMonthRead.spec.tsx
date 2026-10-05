@@ -26,10 +26,23 @@ const fixture: TheEndOfMonthReadShape = {
     teamGeneratedIdeas: 7,
     suitesRelevantToWorkAlreadyBeingDone: 3,
   },
+  revealSaid: {
+    heading: 'This started as one check-in.',
+    intro: 'During the month, Groundwork also found this.',
+    lines: [
+      'Groundwork found three projects that could have a check-in of their own.',
+      'Groundwork found two shared objectives worth tracking.',
+      'Groundwork found four working relationships that need aligning.',
+      '17 things people said they would do are still open.',
+      'Seven ideas from your team were captured.',
+      'Groundwork found three suites that fit work your team is already doing.',
+    ],
+    closing: 'Your team has already started building its Groundwork.',
+  },
   continueOptions: [
-    { key: 'keepThisGroundRunning', label: 'Keep this Ground running' },
-    { key: 'startRecommendedGrounds', label: 'Start recommended Grounds' },
-    { key: 'turnOnRelevantSuites', label: 'Turn on relevant suites' },
+    { key: 'keepThisGroundRunning', label: 'Keep this check-in running' },
+    { key: 'startRecommendedGrounds', label: 'Start the recommended check-ins' },
+    { key: 'turnOnRelevantSuites', label: 'Turn on the suites that fit' },
     { key: 'continueGroundworkForTheTeam', label: 'Continue Groundwork for the team' },
   ],
 }
@@ -60,10 +73,14 @@ describe('TheEndOfMonthRead, piece 33', () => {
     expect(screen.getByText('What should happen next')).toBeTruthy()
   })
 
-  it('never shows a bare reveal number, only a plain sentence', () => {
+  it('draws what the engine serves, in plain sentences', () => {
     render(<TheEndOfMonthRead read={fixture} onContinue={() => {}} />)
-    expect(screen.getByText('3 projects that could have their own Ground.')).toBeTruthy()
-    expect(screen.getByText('17 active commitments.')).toBeTruthy()
+    /* The engine's own sentences, drawn as served: no "Ground", and a count of nothing is a sentence, never "0 projects". */
+    expect(screen.getByText('This started as one check-in.')).toBeTruthy()
+    expect(screen.getByText('Groundwork found three projects that could have a check-in of their own.')).toBeTruthy()
+    expect(screen.getByText('17 things people said they would do are still open.')).toBeTruthy()
+    expect(screen.getByText('Your team has already started building its Groundwork.')).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(/\bGrounds?\b/)
     expect(screen.queryByText(/^3$/)).toBeNull()
     expect(screen.queryByText(/^17$/)).toBeNull()
   })
@@ -73,7 +90,7 @@ describe('TheEndOfMonthRead, piece 33', () => {
     render(<TheEndOfMonthRead read={fixture} onContinue={onContinue} />)
     const navyButtons = document.querySelectorAll('.gwui-btn-primary')
     expect(navyButtons.length).toBe(1)
-    fireEvent.click(screen.getByText('Keep this Ground running'))
+    fireEvent.click(screen.getByText('Keep this check-in running'))
     expect(onContinue).toHaveBeenCalledWith(fixture.continueOptions[0])
     fireEvent.click(screen.getByText('Continue Groundwork for the team'))
     expect(onContinue).toHaveBeenCalledWith(fixture.continueOptions[3])

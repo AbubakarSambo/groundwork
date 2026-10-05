@@ -106,6 +106,8 @@ export type APersonHelpingThingsMove = { name: string; sentence: string };
 export type TheMonthBoard = {
   question: 'Are we moving together?';
   weekOfTheMonth: 1 | 2 | 3 | 4;
+  /** Where the month is, as a sentence for the page. An ended check-in says it has ended, never "Week 4 of the month". */
+  weekSaid: string;
   lenses: TheLens[];
   whatIsMoving: string[];
   whatTheTeamIsContributing: string[];
@@ -141,6 +143,11 @@ export type TheRevealCounts = {
   teamGeneratedIdeas: number;
   suitesRelevantToWorkAlreadyBeingDone: number;
 };
+/**
+ * THE REVEAL AT THE END OF THE MONTH, AS SENTENCES (6 October). The counts above are kept for anybody who counts; what a person reads is
+ * these sentences: no "Ground", and no bare "0 projects". A count of nothing is said as a sentence of nothing.
+ */
+export type TheRevealSaid = { heading: string; intro: string; lines: string[]; closing: string };
 export type TheContinueOption = { key: 'keepThisGroundRunning' | 'startRecommendedGrounds' | 'turnOnRelevantSuites' | 'continueGroundworkForTheTeam'; label: string };
 export type TheEndOfMonthRead = {
   /** "You wanted your team to understand..." followed by the lead's own words, quoted. */
@@ -154,6 +161,7 @@ export type TheEndOfMonthRead = {
   whatIsStillStuck: string[];
   whatShouldHappenNext: string[];
   reveal: TheRevealCounts;
+  revealSaid: TheRevealSaid;
   continueOptions: TheContinueOption[];
 };
 
@@ -200,9 +208,9 @@ export const THE_SHAPES_KEYS = {
   reveal: ['title', 'subtitle', 'carrying', 'whatTheTeamNeedsToUnderstand', 'sharedWithTheTeam', 'whoYouAreTryingToMove', 'seeingToday', 'whatMeaningfulChangeWouldLookLike', 'whatGroundworkWillExplore', 'howIWillWorkWithYourTeam'],
   peopleStepRules: ['limit', 'theLeadCounts', 'mayAdd', 'heading', 'intro', 'contextLabel', 'button', 'limitSentence'],
   invitation: ['subject', 'heading', 'lines', 'leadHasSharedWhatTheyAreSeeing', 'button'],
-  monthBoard: ['question', 'weekOfTheMonth', 'lenses', 'whatIsMoving', 'whatTheTeamIsContributing', 'peopleHelpingThingsMove', 'wherePerspectivesDiffer', 'whatIsStillGettingInTheWay', 'whatGroundworkIsWorkingOnNext'],
+  monthBoard: ['question', 'weekOfTheMonth', 'weekSaid', 'lenses', 'whatIsMoving', 'whatTheTeamIsContributing', 'peopleHelpingThingsMove', 'wherePerspectivesDiffer', 'whatIsStillGettingInTheWay', 'whatGroundworkIsWorkingOnNext'],
   activeLine: ['active', 'total', 'nudged', 'line'],
-  endOfMonth: ['yourOwnWords', 'whatWeFound', 'whatTheyNowUnderstandDifferently', 'whatTheyAreDoingDifferently', 'whatYourTeamContributed', 'peopleWhoHelpedMoveTheThinking', 'whatYouChangedAsALead', 'whatIsStillStuck', 'whatShouldHappenNext', 'reveal', 'continueOptions'],
+  endOfMonth: ['yourOwnWords', 'whatWeFound', 'whatTheyNowUnderstandDifferently', 'whatTheyAreDoingDifferently', 'whatYourTeamContributed', 'peopleWhoHelpedMoveTheThinking', 'whatYouChangedAsALead', 'whatIsStillStuck', 'whatShouldHappenNext', 'reveal', 'revealSaid', 'continueOptions'],
   ideasFromYourTeam: ['heading', 'ideas', 'whenThereAreNone'],
   anIdea: ['id', 'title', 'raisedBy', 'similarNeedsSentence'],
   ideaOffer: ['idea', 'question', 'whoWillSeeIt', 'yes', 'no'],

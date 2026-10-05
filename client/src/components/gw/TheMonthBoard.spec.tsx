@@ -11,6 +11,7 @@ import type { TheMonthBoard as TheMonthBoardShape } from '@/api/anchorShapes'
 const fixture: TheMonthBoardShape = {
   question: 'Are we moving together?',
   weekOfTheMonth: 3,
+  weekSaid: 'Week 3 of the month',
   lenses: [
     { key: 'understanding', heading: 'Understanding', question: 'Do people see the bigger picture?', reading: 'Most of the team now connects their own work to the wider outcome.' },
     { key: 'ownership', heading: 'Ownership', question: 'Are they carrying outcomes rather than only assigned tasks?', reading: 'Three people have taken on something nobody asked them to.' },

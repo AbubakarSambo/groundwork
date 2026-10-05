@@ -93,6 +93,8 @@ export type APersonHelpingThingsMove = { name: string; sentence: string }
 export type TheMonthBoard = {
   question: 'Are we moving together?'
   weekOfTheMonth: 1 | 2 | 3 | 4
+  /** Where the month is, as a sentence. An ended check-in says it has ended, never "Week 4 of the month". */
+  weekSaid: string
   lenses: TheLens[]
   whatIsMoving: string[]
   whatTheTeamIsContributing: string[]
@@ -129,6 +131,8 @@ export type TheRevealCounts = {
   teamGeneratedIdeas: number
   suitesRelevantToWorkAlreadyBeingDone: number
 }
+/** The reveal as sentences the engine serves: no "Ground", no bare "0 projects". */
+export type TheRevealSaid = { heading: string; intro: string; lines: string[]; closing: string }
 export type TheContinueOption = { key: 'keepThisGroundRunning' | 'startRecommendedGrounds' | 'turnOnRelevantSuites' | 'continueGroundworkForTheTeam'; label: string }
 export type TheEndOfMonthRead = {
   /** "You wanted your team to understand..." followed by the lead's own words, quoted. */
@@ -142,6 +146,7 @@ export type TheEndOfMonthRead = {
   whatIsStillStuck: string[]
   whatShouldHappenNext: string[]
   reveal: TheRevealCounts
+  revealSaid: TheRevealSaid
   continueOptions: TheContinueOption[]
 }
 

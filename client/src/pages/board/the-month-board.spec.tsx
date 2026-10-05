@@ -28,6 +28,7 @@ vi.mock('@/stores/auth', () => ({
 const monthBoardFixture: TheMonthBoard = {
   question: 'Are we moving together?',
   weekOfTheMonth: 2,
+  weekSaid: 'Week 2 of the month',
   lenses: [
     { key: 'understanding', heading: 'Understanding', question: 'Do people see the bigger picture?', reading: 'Most of the team now connects their own work to the wider outcome.' },
   ],
