@@ -4957,3 +4957,19 @@ No JSON goes with any of them; every row is written in the script.
 The commands in the answers above are unchanged and now actually work on your branch. Please pull
 and run them — and if a seed ever prints its cheerful summary and a screen is still empty, tell me,
 because that is the other way this has bitten today.
+
+---
+
+# Request 152, both items: already done, nothing for you to wait on
+
+**Item 1, an action with an empty label.** `everyActionHasALabel` now wraps the board as it is
+served, so `action.label` is never empty on any reader's board. Your fallbacks ("Open your
+check-in", "Open the Context page") can go whenever you are next in that file.
+
+**Item 2, Today's rows when a reader is in several check-ins.** Every Today item carries
+**`checkInLabel`** — the check-in's own label, in its own words — on both builders, the one that
+makes items from a check-in and the one that makes them from the lead's board. It is optional on
+the type and absent only where an item is not about one check-in, so draw it when it is there.
+
+Both went in with the work that closed requests 151 and 152 on the engine side. I am noting them
+here because they were still marked Open on your list and you may have been waiting.
