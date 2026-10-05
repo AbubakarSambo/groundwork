@@ -146,6 +146,10 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
    on /start (EntryChatPage.tsx), now that that screen draws no sidebar of its own (start.jpg
    draws none either). A plain flex row; nothing here is specific to /start. */
 .gwui-mark-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 0; }
+/* FAULT 5 (6 October 2026): at the entry chat's signed-out door the row sits straight inside
+   `.gwui-ec-frame`, which has no side padding (unlike `Page`), so it takes the body's own 20px
+   gutter there - the same as `.gwui-ec-messages` beside it. Inside `Page` it is unchanged. */
+.gwui-ec-frame > .gwui-mark-row { padding-left: 20px; padding-right: 20px; }
 
 /* ── CALLOUT (prototype: a tinted line injected above the invitation's H1, s44.js:
    `background:var(--chat);border-radius:10px;padding:10px 14px`, class `t-small`) ─────────── */

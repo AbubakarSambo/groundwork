@@ -25,7 +25,7 @@ const FRONTEND_URL = window.location.origin
 // the success screen. Cache each token's outcome at module scope so remounts
 // replay the outcome instead of re-verifying.
 type VerifyOutcome =
-  | { kind: 'success'; groundId: string; joinUrl: string | null; invited: string[]; waitingInvites?: { email: string; because: string }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[]; passwordSetupToken?: string }
+  | { kind: 'success'; groundId: string; joinUrl: string | null; invited: string[]; waitingInvites?: { email: string; because: string }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[]; passwordSetupToken?: string; wasAnchorDraft: boolean }
   | { kind: 'noSession' }
   /* The save is still running somewhere else (COMMIT_IN_PROGRESS): not lost, not failed. */
   | { kind: 'stillSaving' }
@@ -84,6 +84,13 @@ export function MagicVerifyPage() {
   const [isFirstGround, setIsFirstGround] = useState<boolean | null>(null)
   const [joinUrl, setJoinUrl] = useState<string | null>(null)
   /**
+   * FAULT 3: AN ANCHOR DRAFT'S OWN WORDING ON THIS SCREEN, AND NOWHERE ELSE.
+   *
+   * `payload.scenario` (the same commit DTO field fault 1 reads, `'HELP_TEAM_UNDERSTAND'`) is what
+   * `commitFlow` below reads to set this - never invented, and never applied to any other situation.
+   */
+  const [isAnchorCheckIn, setIsAnchorCheckIn] = useState(false)
+  /**
    * THE PASSWORD STEP, HELD UNTIL AFTER THE CONFIRMATION.
    *
    * Two earlier attempts at this were both wrong in the same way - they treated the password as
@@ -112,6 +119,7 @@ export function MagicVerifyPage() {
       setWaitingInvites(outcome.waitingInvites ?? [])
       setJoinUrl(outcome.joinUrl)
       setNextGroundId(outcome.groundId)
+      setIsAnchorCheckIn(outcome.wasAnchorDraft)
     } else if (outcome.kind === 'noSession') {
       setNoSession(true)
     } else if (outcome.kind === 'commitError') {
@@ -178,6 +186,8 @@ export function MagicVerifyPage() {
         failedInvites: result.failedInvites ?? [],
         /* Why each one did not go, which the server has always sent and this never passed on (U.6 review). */
         whyInvitesFailed: (result as { whyInvitesFailed?: { email: string; because: string }[] }).whyInvitesFailed ?? [],
+        /* FAULT 3: the commit payload's own `scenario` field (fault 1), never a guess. */
+        wasAnchorDraft: payload?.scenario === 'HELP_TEAM_UNDERSTAND',
       }
     } catch (err: any) {
       const msg: string = err?.response?.data?.message ?? ''
@@ -502,7 +512,7 @@ export function MagicVerifyPage() {
           </Callout>
 
           {joinUrl && (
-            <Panel heading="Share this link to invite participants">
+            <Panel heading={isAnchorCheckIn ? 'Share this link to invite people' : 'Share this link to invite participants'}>
               <span className="gwui-invite-link-row">
                 <span className="gwui-invite-link-address">{joinUrl}</span>
                 <Button
@@ -572,7 +582,7 @@ export function MagicVerifyPage() {
           <Panel heading="What happens next">
             <div className="gwui-subheading-list">
               <div>
-                <SubHeading>Participants get their invite</SubHeading>
+                <SubHeading>The people you added get their invitation</SubHeading>
                 <p className="gwui-panel-text">Anyone you added will receive an email with a private link. They check in independently.</p>
               </div>
               <div>

@@ -6,7 +6,7 @@ import { Page, Mark, Panel, PageTitle, Button, Stack, Note } from '@/components/
 import { THE_ANCHOR_HOOK } from './the-anchor-hook'
 import { useAnchorScenarioIsOnForAStranger } from './anchor-scenario-is-on'
 import { entryAnchorApi } from '@/api/entry'
-import { rememberTheServedPeopleStep, rememberTheServedFirstQuestion, rememberTheAnchorStartSucceeded } from './TheSetup'
+import { rememberTheServedPeopleStep, rememberTheServedFirstQuestion, rememberTheAnchorStartSucceeded, rememberTheServedGroundLabel } from './TheSetup'
 
 /** The engine's own sentence for a visitor who reaches this page while the way in is closed (request 144 (2) and (3)). */
 const THE_WAY_IN_IS_NOT_OPEN_YET = 'This way in is not open yet.'
@@ -70,6 +70,7 @@ export function AnchorLandingPage() {
     if (started) rememberTheAnchorStartSucceeded()
     rememberTheServedPeopleStep(started?.thePeopleStep)
     rememberTheServedFirstQuestion(started?.firstQuestion)
+    rememberTheServedGroundLabel(started?.groundLabel)
   }, [started])
 
   // While the public switch is still loading, nothing is drawn - never a half-answered page, and

@@ -158,6 +158,19 @@ export interface OnboardResult {
       // not say - never guessed. GW-017.
       cadence?: 'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ONE_TIME';
       timelineDays?: number;
+      /**
+       * THE ANCHOR'S SEVEN ITEMS (fault 2; docs/answers-from-engine.md, "Request 144 (2) and (3)").
+       * Not served yet - every key is optional and absent today. Mirrors
+       * `FillsInAsYouTalk.tsx`'s `AnchorItemKey`, field for field, so the side panel can draw
+       * whichever of the seven the engine has heard so far, the moment it starts sending them.
+       */
+      responsibleFor?: string;
+      tryingToMove?: string;
+      howItContributes?: string;
+      seeingToday?: string;
+      whyItBothersYou?: string;
+      whatTheyDontUnderstand?: string;
+      whatTheyWouldDoDifferently?: string;
     };
     ready: boolean;
     /**

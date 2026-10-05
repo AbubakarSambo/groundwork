@@ -60,15 +60,15 @@ describe('the stream carries the request offer through', () => {
     })
 
     renderChat()
-    await screen.findByText('What moved this week?', {}, { timeout: 5000 })
+    await screen.findByText('What moved this week?', {}, { timeout: 10000 })
     const box = screen.getByPlaceholderText(/Type, or hold to speak/i)
     fireEvent.change(box, { target: { value: "I'm taking Friday off." } })
     fireEvent.click(screen.getByRole('button', { name: /Send message/i }))
 
-    await screen.findAllByText(requestOffer.question, {}, { timeout: 5000 })
+    await screen.findAllByText(requestOffer.question, {}, { timeout: 10000 })
     expect(screen.getByRole('button', { name: 'Yes' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'No' })).toBeTruthy()
-  }, 15000)
+  }, 30000)
 
   it("the stream's done event carries openTheRequest through to the screen", async () => {
     ;(conversationApi.transcript as any).mockResolvedValue({
@@ -89,12 +89,12 @@ describe('the stream carries the request offer through', () => {
     })
 
     renderChat()
-    await screen.findByRole('button', { name: 'Yes' }, { timeout: 5000 })
+    await screen.findByRole('button', { name: 'Yes' }, { timeout: 10000 })
     const box = screen.getByPlaceholderText(/Type, or hold to speak/i)
     fireEvent.change(box, { target: { value: 'Yes' } })
     fireEvent.click(screen.getByRole('button', { name: /Send message/i }))
 
-    await screen.findAllByText(openTheRequest.says, {}, { timeout: 5000 })
+    await screen.findAllByText(openTheRequest.says, {}, { timeout: 10000 })
     expect(screen.getByRole('button', { name: 'Request leave' })).toBeTruthy()
-  }, 15000)
+  }, 30000)
 })

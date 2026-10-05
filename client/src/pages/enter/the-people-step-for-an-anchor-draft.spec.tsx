@@ -13,11 +13,19 @@ import { toast } from 'sonner'
  * THE PEOPLE STEP, FOR AN ANCHOR DRAFT (plan piece 11; docs/anchor-scenario-plan.md section 5 row 4;
  * docs/answers-from-engine.md, "Request 147", `ThePeopleStepRules`).
  *
- * Only when the draft's scenario is `HELP_TEAM_UNDERSTAND` does the invite block ("Admin setup",
- * shown once the email is sent) draw the engine's own heading, intro and button
- * (`ANCHOR_PEOPLE_STEP_RULES`, `./TheSetup.tsx` - shape only, not served yet, so these are the
- * values from the engine's own answer, used verbatim), and enforce the 19-person limit with the
- * engine's own limit sentence. Every other situation keeps its ordinary wording.
+ * Only when the draft's scenario is `HELP_TEAM_UNDERSTAND` does the invite block draw the engine's
+ * own heading, intro and button (`ANCHOR_PEOPLE_STEP_RULES`, `./TheSetup.tsx` - shape only, not
+ * served yet, so these are the values from the engine's own answer, used verbatim), and enforce the
+ * 19-person limit with the engine's own limit sentence. Every other situation keeps its ordinary
+ * wording.
+ *
+ * UPDATED FOR FAULT 3 (6 October 2026 live walk): the invite block used to draw only once the
+ * email was sent, for every situation alike - so an anchor draft's own "Start my Groundwork." button
+ * (the thing that is supposed to BE the people step's own button) sat on a screen with no people
+ * step yet, and the people step only appeared after that button had already fired the email. The
+ * plan's own order is "people before the email" for an anchor draft - every other situation is
+ * unchanged, and still only shows the invite block once the email is sent. `openInviteBlock` below
+ * no longer submits the email for an anchor draft: the block is already on screen from first paint.
  */
 
 vi.mock('@/api/auth', () => ({ authApi: { entrySave: vi.fn().mockResolvedValue({ draftToken: 'd-token' }) } }))
@@ -74,10 +82,18 @@ const closedSession = (anchor: boolean) => JSON.stringify({
     : { mode: 'new', initial: 'New project' },
 })
 
-/** Renders, then submits the email - the invite block only draws once emailSent is true. */
+/**
+ * Renders, and - for every situation but the anchor one - submits the email, since the invite
+ * block there only draws once emailSent is true. For an anchor draft (fault 3) the block is already
+ * on screen the moment the page renders, so there is nothing to submit first.
+ */
 async function openInviteBlock(anchor: boolean) {
   localStorage.setItem('gw_entry_session', closedSession(anchor))
   renderPage()
+  if (anchor) {
+    await screen.findByText('Who needs to be part of this?')
+    return
+  }
   const emailInput = await screen.findByPlaceholderText('your@email.com')
   fireEvent.change(emailInput, { target: { value: 'lead@example.test' } })
   fireEvent.submit(emailInput.closest('form')!)
@@ -98,9 +114,8 @@ describe('the people step, for an anchor draft', () => {
     expect(screen.queryByText('Save my check-in')).toBeNull()
   })
 
-  it('draws the engine’s own heading and intro, once the email is sent', async () => {
+  it('draws the engine’s own heading and intro, before the email is even sent', async () => {
     await openInviteBlock(true)
-    expect(await screen.findByText('Who needs to be part of this?')).toBeTruthy()
     expect(screen.getByText(/Add up to 20 people\. They don.t need to report directly to you/)).toBeTruthy()
     expect(screen.queryByText('Invite people')).toBeNull()
   })
@@ -130,10 +145,7 @@ describe('the people step, for an anchor draft', () => {
       thePeopleStep: served,
     }))
     renderPage()
-    const emailInput = await screen.findByPlaceholderText('your@email.com')
-    fireEvent.change(emailInput, { target: { value: 'lead@example.test' } })
-    fireEvent.submit(emailInput.closest('form')!)
-    await waitFor(() => expect(authApi.entrySave).toHaveBeenCalled())
+    /* Fault 3: already on screen, no email to send first. */
     expect(await screen.findByText('Served: who needs to be part of this?')).toBeTruthy()
     expect(screen.getByText('Served: add up to 20 people from the engine itself.')).toBeTruthy()
     expect(screen.queryByText('Who needs to be part of this?')).toBeNull()

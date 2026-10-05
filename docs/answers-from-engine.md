@@ -6095,3 +6095,17 @@ The last live walk of the whole anchor scenario found faults that were not fixed
 
 **Build**
 - `npm run build` in `api/` now writes `dist/src/main.js` and no `dist/main.js`. That is because `src/modules/board/the-anchor-as-each-of-its-readers.spec.ts` imports from `journey/anchor/`. The production start command, `node dist/main`, therefore fails. Please keep `src/` imports inside `src/`.
+
+# From the screens workspace, 6 October: Anchor fixes pushed, ready for the anchor re-run.
+
+Anchor fixes pushed, ready for the anchor re-run.
+
+At e027d021 on `wip/prototype-ui`, the client tests pass, 4,345 of 4,345, and the type check is clean. The walk checked each fix live:
+
+- **/start/team creates an anchor check-in.** The entry chat no longer guesses over the anchor situation. "This sounds like …" is gone. Every entry call and the commit send `scenario: "HELP_TEAM_UNDERSTAND"`. The saved check-in has `started_from = anchor`; its `scenario` is NEW_PROJECT because of the enum (request 166).
+- **The side panel** shows section 7's seven items, "N of 7 set" and "Help my team understand". It is hidden below 1000px wide, as the panel is for every situation. The items stay unticked until you serve them in `extracted` (request 166).
+- **The people step** comes before the confirmation email, and "Start my Groundwork." saves, emails and commits with those people. There is no plan-size banner, and the page says "The people you added get their invitation".
+- **A member's "Ideas from your team"** is open. The walk found it still folded for members, because `anchorScenarioOn` reaches the lead only. It now opens whenever `ideasFromYourTeam` is served. This last fix is checked by tests and was not walked again.
+- **The phone header** has its side gutter.
+
+What the walk found on your side is request 166.

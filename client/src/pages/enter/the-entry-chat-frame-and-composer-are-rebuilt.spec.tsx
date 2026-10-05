@@ -106,6 +106,24 @@ describe('the chat as it first opens (signed out, atTheDoor)', () => {
     expect(screen.getByRole('button', { name: 'Continue' })).toBeTruthy()
     expectAtMostOnePrimaryButton(container)
   })
+
+  /**
+   * FAULT 5 (live walk, 6 October 2026): THE SIGNED-OUT HEADER'S OWN SIDE GUTTER, AT 375.
+   *
+   * The mark and "Sign in" sat flush to the screen edges while the body text below (inside
+   * `.gwui-ec-messages`, padded 20px either side) did not. jsdom lays nothing out, so this checks
+   * the two things that produce the gutter: the row is a direct child of `.gwui-ec-frame`, and
+   * gw-ui.css gives exactly that pairing the body's own 20px either side.
+   */
+  it('gives the mark and "Sign in" the same side gutter the body already has', async () => {
+    const { container } = renderPage()
+    await waitFor(() => expect(screen.getByText('Sign in')).toBeTruthy())
+    const markRow = container.querySelector('.gwui-ec-frame > .gwui-mark-row')
+    expect(markRow).toBeTruthy()
+    const css = readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'ui', 'gw-ui.css'), 'utf8')
+    expect(css).toMatch(/\.gwui-ec-frame > \.gwui-mark-row \{ padding-left: 20px; padding-right: 20px; \}/)
+    expect(css).toMatch(/\.gwui-ec-messages \{\s*flex: 1; overflow-y: auto; padding: 18px 20px;/)
+  })
 })
 
 describe('the chat once a conversation exists (the engine has spoken)', () => {
