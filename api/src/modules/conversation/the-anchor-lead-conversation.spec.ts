@@ -278,6 +278,7 @@ describe('anchor piece 8 and the guarded lead: what the model is given', () => {
     expect(ANCHOR_LEAD_PROMPT).toContain('Groundwork will check in with each person you add, one to one, about their work and how it connects to the bigger picture');
     expect(ANCHOR_LEAD_PROMPT).toContain('Never say that it keeps a record of what everyone is doing.');
     expect(ANCHOR_LEAD_PROMPT).toContain('Never tell the lead they are right or wrong about their team');
+    expect(ANCHOR_LEAD_PROMPT).toContain('(never "that second part is its own problem")');
   });
 
   it('asks one thing at a time, and no filler', () => {
