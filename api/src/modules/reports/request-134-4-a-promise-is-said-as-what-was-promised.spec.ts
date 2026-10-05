@@ -8,7 +8,8 @@ import { aPromiseSaidAsWhatWasPromised, aStepThatIsAStep } from './the-judgement
  *
  * "The status of the open commitments to 'call the client' and 'file the bundle'." stood under what to do: a piece,
  * not a step. And "Ask Amani Wekesa about the open commitment to 'I will file the bundle'." quoted the promise as a
- * fragment in the first person. The piece is left out, and the promise is said as what was promised. Read through
+ * fragment in the first person. Narrowed after review: no step is ever dropped; only a status piece is made a step,
+ * and only a quote in the shape of a promise is said as what was promised. Read through
  * the real report read and the real board read, as the lead, an admin, and the participant (who never reads it).
  */
 const THE_JUDGEMENT_134_4 = {
@@ -100,16 +101,19 @@ function makeService(ground: any, userRole: 'ADMIN' | 'MEMBER' = 'MEMBER', untol
 
 
 
-const THE_STEP = 'Ask Tobi Adewale about the open commitment to file the bundle.';
+const THE_STEPS = (who: string) => [
+  `Ask ${who} about the open commitment to file the bundle.`,
+  "Check the status of the open commitments to call the client and file the bundle.",
+];
 
 describe('request 134 (4): on the report', () => {
-  it('the lead reads the promise as what was promised, and no piece under what to do', async () => {
+  it('the lead reads the promise as what was promised, and the status piece as a step', async () => {
     const j: any = (await makeService(makeGround()).get('g1', 'user-1', 'org-1') as any).theJudgement;
-    expect(j.whatToDo.map((m: any) => m.move)).toEqual([THE_STEP]);
+    expect(j.whatToDo.map((m: any) => m.move)).toEqual(THE_STEPS('Tobi Adewale'));
   });
   it('an admin who set it up reads the same steps', async () => {
     const j: any = (await makeService({ ...makeGround(), createdByUserId: 'user-admin' }, 'ADMIN').get('g1', 'user-admin', 'org-1') as any).theJudgement;
-    expect(j.whatToDo.map((m: any) => m.move)).toEqual([THE_STEP]);
+    expect(j.whatToDo.map((m: any) => m.move)).toEqual(THE_STEPS('Tobi Adewale'));
   });
   it('the participant reads no judgement', async () => {
     expect(((await makeService(makeGround()).get('g1', 'user-2', 'org-1')) as any).theJudgement).toBeUndefined();
@@ -118,13 +122,13 @@ describe('request 134 (4): on the report', () => {
 
 describe('request 134 (4): on the board', () => {
   const report = { releasedAt: new Date('2026-09-23T17:00:00Z'), theJudgement: THE_JUDGEMENT_134_4 };
-  it('Amina, who runs it, reads one step, with the promise in our voice', async () => {
+  it('Amina, who runs it, reads both steps, with the promise in our voice', async () => {
     const b: any = await boardAs({ scenario: GroundScenario.OKR_ALIGNMENT, report } as any, ...AMINA);
-    expect(b.theJudgement.whatToDo.map((m: any) => m.move)).toEqual(['Ask Baraka Otieno about the open commitment to file the bundle.']);
+    expect(b.theJudgement.whatToDo.map((m: any) => m.move)).toEqual(THE_STEPS('Baraka Otieno'));
   });
   it('an admin reads no piece and no quoted fragment', async () => {
     const b: any = await boardAs({ scenario: GroundScenario.OKR_ALIGNMENT, report } as any, ...JUMA);
-    expect(JSON.stringify(b.theJudgement ?? {})).not.toMatch(/The status of|'I will file/);
+    expect(JSON.stringify(b.theJudgement ?? {})).not.toMatch(/"The status of|'I will file/);
   });
   it('Baraka, who checks in, is sent no judgement', async () => {
     const b: any = await boardAs({ scenario: GroundScenario.OKR_ALIGNMENT, report } as any, ...BARAKA);
@@ -132,15 +136,26 @@ describe('request 134 (4): on the board', () => {
   });
 });
 
-describe('what the rules leave alone', () => {
-  it('a step with a verb of its own is kept, and so is an ordinary instruction', () => {
-    expect(aStepThatIsAStep('Speak with Ngozi Eze about the 11 applications.')).toBe(true);
-    expect(aStepThatIsAStep('The bundle is due on Thursday, so ask whether it was filed.')).toBe(true);
-    expect(aStepThatIsAStep("The status of the open commitments to 'call the client'.")).toBe(false);
+describe('what the rules leave alone (every example the review sent back)', () => {
+  it.each([
+    'A short call with Ngozi this week settles who owns the lease.',
+    'The lead confirms the price list with Amani by Friday.',
+    'The warehouse question goes to Juma first.',
+    'A written answer to Amani on the discount, before Friday.',
+    'Speak with Ngozi Eze about the 11 applications.',
+    'The status of the order is unclear, so ask Juma.',
+  ])('the step "%s" is kept as it is', (move) => {
+    expect(aStepThatIsAStep(move)).toBe(move);
   });
-  it('a list of promises is said as one, and a quote that is not a promise stays', () => {
+  it('only a status piece is made a step', () => {
+    expect(aStepThatIsAStep("The status of the open commitments to 'call the client'.")).toBe("Check the status of the open commitments to 'call the client'.");
+    expect(aStepThatIsAStep('The progress of the Kisumu groups.')).toBe('Check the progress of the Kisumu groups.');
+  });
+  it('only a quote in the shape of a promise is said as one', () => {
     expect(aPromiseSaidAsWhatWasPromised("the open commitments to 'call the client' and 'file the bundle'"))
       .toBe('the open commitments to call the client and file the bundle');
+    expect(aPromiseSaidAsWhatWasPromised("Ask Amani about the commitment to 'Amina will send the sheets'."))
+      .toBe("Ask Amani about the commitment to 'Amina will send the sheets'.");
     expect(aPromiseSaidAsWhatWasPromised("Amani said 'I will file the bundle' on Monday.")).toBe("Amani said 'I will file the bundle' on Monday.");
   });
 });

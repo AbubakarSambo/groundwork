@@ -41,29 +41,34 @@ export function aHeadingThatIsASentence(about: string): string {
 const NOBODY_ELSE_ANSWERS = 'Nobody else answers this check-in, so there is no other account to set this against.';
 
 /**
- * A STEP IS SOMETHING TO DO, AND A PROMISE IS SAID AS WHAT WAS PROMISED (request 134 item 4).
+ * A STEP IS SOMETHING TO DO, AND A PROMISE IS SAID AS WHAT WAS PROMISED (request 134 item 4, narrowed after review).
  *
- *  - "The status of the open commitments to 'call the client' and 'file the bundle'." stood under "What to do". It is a
- *    piece, not a step: it opens on "the" or "a" and has no verb of its own. Such a step is left out; what it was about
- *    is still in the record and in the rest of the judgement.
+ *  - "The status of the open commitments to 'call the client' and 'file the bundle'." stood under "What to do": a piece,
+ *    not a step. Only that shape is touched - a step opening "The status of", "The state of" or "The progress of" with
+ *    no verb of its own - and it is made a step: "Check the status of ...". No step is ever dropped: "A short call with
+ *    Ngozi this week settles who owns the lease." and "A written answer to Amani on the discount, before Friday." stay.
  *  - "Ask Amani Wekesa about the open commitment to 'I will file the bundle'." quoted a promise as a fragment in the
- *    first person. The promise is said as what was promised, in our voice, the same way the work plan says it
- *    ("the open commitment to file the bundle"). A promise that cannot be said that way is left in its marks.
+ *    first person. Only a quote that opens "I will", "I'll", "I am going to", "we will" or a lower-case verb is said as
+ *    what was promised ("the open commitment to file the bundle"). "the commitment to 'Amina will send the sheets'" is
+ *    somebody's words about somebody else, and stays in its marks.
  */
-const A_PIECE_NOT_A_STEP = /^(?:the|a|an|this|these|those)\s/i;
-export function aStepThatIsAStep(move: unknown): boolean {
-  if (typeof move !== 'string' || !move.trim()) return false;
+const A_STATUS_PIECE = /^the (status|state|progress) of\b/i;
+export function aStepThatIsAStep(move: unknown): unknown {
+  if (typeof move !== 'string') return move;
   const t = move.trim();
-  return !(A_PIECE_NOT_A_STEP.test(t) && !HAS_A_VERB_OF_ITS_OWN.test(t.replace(/(['"\u2018\u201c])[^'"\u2019\u201d]*(['"\u2019\u201d])/g, '')));
+  if (!A_STATUS_PIECE.test(t)) return move;
+  if (HAS_A_VERB_OF_ITS_OWN.test(t.replace(/(['"\u2018\u201c])[^'"\u2019\u201d]*(['"\u2019\u201d])/g, ''))) return move;
+  return `Check ${t.charAt(0).toLowerCase()}${t.slice(1)}`;
 }
 const A_QUOTED_PROMISE = /(['\u2018"\u201c])([^'"\u2018\u2019\u201c\u201d]{2,140})(['\u2019"\u201d])/g;
 const AFTER_A_COMMITMENT = /\bcommitments? to\s+((?:['\u2018"\u201c][^'"\u2018\u2019\u201c\u201d]{2,140}['\u2019"\u201d](?:,\s*|\s+and\s+|,\s+and\s+)?)+)/gi;
+const SAID_AS_A_PROMISE = /^(?:I will|I['\u2019]ll|I am going to|I['\u2019]m going to|we will)\b|^[a-z]/;
 export function aPromiseSaidAsWhatWasPromised(text: string): string {
   if (typeof text !== 'string') return text;
   return text.replace(AFTER_A_COMMITMENT, (whole: string, list: string) => {
     let ok = true;
     const said = list.replace(A_QUOTED_PROMISE, (_m: string, _o: string, words: string) => {
-      const clause = inOurVoice(words, 'them');
+      const clause = SAID_AS_A_PROMISE.test(words.trim()) ? inOurVoice(words, 'them') : null;
       if (!clause) ok = false;
       return clause ?? words;
     });
@@ -71,16 +76,16 @@ export function aPromiseSaidAsWhatWasPromised(text: string): string {
   });
 }
 
-/** Both, over the judgement as it is served. */
+/** Both, over the judgement as it is served. Nothing is ever left out. */
 export function aJudgementWithNoPieces<T>(judgement: T): T {
   const j: any = judgement;
   if (!j || typeof j !== 'object') return judgement;
   const fix = (v: any): any => (typeof v === 'string' ? aPromiseSaidAsWhatWasPromised(v)
     : Array.isArray(v) ? v.map(fix)
-      : v && typeof v === 'object' && (Object.getPrototypeOf(v) === Object.prototype || Object.getPrototypeOf(v) === null)
+      : v && typeof v === 'object' && Object.prototype.toString.call(v) === '[object Object]' && (!v.constructor || v.constructor.name === 'Object')
         ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, fix(x)])) : v);
   const out = fix(j);
-  if (Array.isArray(out.whatToDo)) out.whatToDo = out.whatToDo.filter((m: any) => !m || typeof m !== 'object' || aStepThatIsAStep(m.move));
+  if (Array.isArray(out.whatToDo)) out.whatToDo = out.whatToDo.map((m: any) => (m && typeof m === 'object' && typeof m.move === 'string' ? { ...m, move: aStepThatIsAStep(m.move) } : m));
   /* Nothing to put right: the same object, so a caller that passes it through is not handed a copy. */
   return (JSON.stringify(out) === JSON.stringify(j) ? judgement : out) as T;
 }

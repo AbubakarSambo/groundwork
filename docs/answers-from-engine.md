@@ -171,14 +171,18 @@ that runs logistics and sets the routes", and "Someone would need to ask you if 
 request." An admin reads names and no "you". The participant reads no judgement.
 
 **134 (4), the judgement's two sentences about the open commitments.** This is repaired where the
-judgement is served, on the report and on the board. The prompt is untouched.
+judgement is served, on the report and on the board, and narrowed after review. No step is ever
+dropped now.
 
-- "Ask Amani Wekesa about the open commitment to 'I will file the bundle'." now reads "Ask Amani Wekesa about the open commitment to file the bundle." The promise is said as what was promised, the same way the work plan says it.
-- "The status of the open commitments to 'call the client' and 'file the bundle'." stood under "What to do" as a piece, not a step. It is no longer sent: a step that opens on "the" or "a" and has no verb of its own is left out.
+- "The status of the open commitments to 'call the client' and 'file the bundle'." now reads "Check the status of the open commitments to call the client and file the bundle." Only a step opening "The status of", "The state of" or "The progress of", with no verb of its own, is changed.
+- "Ask Amani Wekesa about the open commitment to 'I will file the bundle'." now reads "Ask Amani Wekesa about the open commitment to file the bundle." A quote is said as what was promised only when it opens "I will", "I'll", "I am going to", "we will" or a lower-case verb.
 
-The lead and an admin with access read the same steps. The participant reads no judgement at all. The
-day the promise was due ("Thursday 1 October") is not in the judgement, so it cannot be added at the
-read. It comes with the prompt change I have planned for after the run.
+Left exactly as they are, and pinned in the spec: "A short call with Ngozi this week settles who owns
+the lease.", "The lead confirms the price list with Amani by Friday.", "The warehouse question goes to
+Juma first.", "A written answer to Amani on the discount, before Friday.", and "Ask Amani about the
+commitment to 'Amina will send the sheets'." The lead and an admin with access read the same steps.
+The participant reads no judgement. The day a promise was due comes with the prompt work after the
+run.
 
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
