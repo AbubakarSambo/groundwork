@@ -80,3 +80,15 @@ export function withoutTheLeadsBrief(
   const text = kept.join('').replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
   return { text: text || (aQuestionNotYetAsked(WHAT_ELSE, alreadyAsked) ?? WHAT_ELSE), cut };
 }
+
+/**
+ * EVERYTHING THE LEAD WROTE AS SETUP THAT A PARTICIPANT'S MODEL IS GIVEN (release, 5 October 2026). The brief, and the
+ * lead's note to everyone in the check-in, which reaches every person's model as the situation (`sharedNote`) and was
+ * held only by an instruction. Both are the lead's words to the product: neither is ever quoted to a person. One text,
+ * a paragraph each, so the same six-word net covers both; what the check-in tells them it is for stays sayable.
+ */
+export function theLeadsSetupWords(ground: { brief?: string | null; leadContextNotes?: { text?: string | null; audience?: string | null; participantId?: string | null }[] | null } | null | undefined): string | null {
+  const note = (ground?.leadContextNotes ?? []).filter((n) => n?.audience === 'EVERYONE' && !n?.participantId).map((n) => (n.text ?? '').trim()).filter(Boolean);
+  const all = [(ground?.brief ?? '').trim(), ...note].filter(Boolean);
+  return all.length ? all.join('\n\n') : null;
+}

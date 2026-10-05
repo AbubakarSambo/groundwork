@@ -238,7 +238,7 @@ import { mayThisGoalBeCopiedToCommitments } from '../grounds/a-commitment-from-a
 import { asADirection } from '../board/an-aim-or-a-limit';
 import { theTargetAsASentence } from './each-target-is-a-sentence-about-whoever-set-it';
 import { withoutOurInstructions } from './our-instructions-never-reach-them';
-import { withoutTheLeadsBrief, aSentenceThatQuotesTheBrief } from './the-leads-brief-is-never-quoted-to-them';
+import { withoutTheLeadsBrief, aSentenceThatQuotesTheBrief, theLeadsSetupWords } from './the-leads-brief-is-never-quoted-to-them';
 import { withoutSentencesAboutOneOfThem } from '../reports/one-persons-circumstances-stay-their-own';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { aQuestionNotYetAsked, WHAT_ELSE } from './nobody-is-left-looking-at-a-paragraph';
@@ -1376,14 +1376,20 @@ export class ConversationService {
      * wrong asset: the brief lists four, and the model took the first. See a-thing-the-lead-listed-is-not-theirs.
      */
     if ((checkIn as any)?.id && (checkIn as any)?.participant?.partyType !== PartyType.INITIATOR && checkIn?.groundId) {
-      const setUp = await (this.prisma.ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { brief: true, toldToParticipants: true, scenario: true, peersVisibleToEachOther: true, initiatorId: true, initiator: { select: { firstName: true } }, participants: { select: { id: true, userId: true, partyType: true, createdAt: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } } } as any }) ?? Promise.resolve(null)).catch(() => null);
+      const setUp = await (this.prisma.ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { brief: true, toldToParticipants: true, scenario: true, peersVisibleToEachOther: true, initiatorId: true, initiator: { select: { firstName: true } }, leadContextNotes: { where: { audience: 'EVERYONE', participantId: null }, select: { text: true, audience: true, participantId: true } }, participants: { select: { id: true, userId: true, partyType: true, createdAt: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } } } as any }) ?? Promise.resolve(null)).catch(() => null);
       const brief: string | null = (setUp as any)?.brief ?? null;
+      /* The brief and the lead's note to everyone: both the lead's setup, never quoted to a person (release, 5 October). */
+      const theLeadsSetup = theLeadsSetupWords(setUp as any);
       if (brief) {
         const theirs = await (this.prisma.conversationTurn?.findMany?.({ where: { role: TurnRole.PERSON, checkIn: { participantId: (checkIn as any).participantId } }, select: { content: true } }) ?? Promise.resolve([]))
           .then((rows: any[]) => rows.map((r) => r.content ?? '')).catch(() => [] as string[]);
         const notTheirs = withoutAThingTheLeadListedAsTheirs(raw, brief, theirs, saidHereBefore);
         if (notTheirs.cut.length) this.logger.warn(`Check-in ${(checkIn as any).id}: cut ${notTheirs.cut.length} sentence(s) naming something from the lead's list as this person's.`);
         raw = notTheirs.text;
+      }
+      if (theLeadsSetup) {
+        const theirs = await (this.prisma.conversationTurn?.findMany?.({ where: { role: TurnRole.PERSON, checkIn: { participantId: (checkIn as any).participantId } }, select: { content: true } }) ?? Promise.resolve([]))
+          .then((rows: any[]) => rows.map((r) => r.content ?? '')).catch(() => [] as string[]);
         /*
          * AND THE LEAD'S BRIEF IS NEVER QUOTED TO THEM (decision 75, item 13). It guides the conversation as
          * context; a sentence that copies six or more words of it in a row is cut. Their own words, and what the
@@ -1393,7 +1399,7 @@ export class ConversationService {
         const theLineIsTheQuestion = (setUp as any)?.scenario === 'TEAM_UPDATES';
         const notTheBrief = theLineIsTheQuestion
           ? { text: raw, cut: [] as string[] }
-          : withoutTheLeadsBrief(raw, brief, [...theirs, (setUp as any)?.toldToParticipants ?? ''], saidHereBefore, (setUp as any)?.initiator?.firstName ?? null);
+          : withoutTheLeadsBrief(raw, theLeadsSetup, [...theirs, (setUp as any)?.toldToParticipants ?? ''], saidHereBefore, (setUp as any)?.initiator?.firstName ?? null);
         for (const c of notTheBrief.cut) this.logger.warn(`Check-in ${(checkIn as any).id}: cut a sentence that quoted the lead's brief: "${c.slice(0, 160)}"`);
         raw = notTheBrief.text;
       }
@@ -3232,9 +3238,10 @@ export class ConversationService {
     theirWords: string[],
   ): Promise<((sentence: string) => boolean) | null> {
     if (!checkIn?.groundId || checkIn.participant?.partyType === PartyType.INITIATOR) return null;
-    const g: any = await (this.prisma.ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { brief: true, toldToParticipants: true, scenario: true, initiator: { select: { firstName: true } } } as any }) ?? Promise.resolve(null)).catch(() => null);
-    if (!g?.brief || g.scenario === 'TEAM_UPDATES') return null;
-    return aSentenceThatQuotesTheBrief(g.brief, [...theirWords, g.toldToParticipants ?? ''], g.initiator?.firstName ?? null);
+    const g: any = await (this.prisma.ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { brief: true, toldToParticipants: true, scenario: true, initiator: { select: { firstName: true } }, leadContextNotes: { where: { audience: 'EVERYONE', participantId: null }, select: { text: true, audience: true, participantId: true } } } as any }) ?? Promise.resolve(null)).catch(() => null);
+    const setup = theLeadsSetupWords(g);
+    if (!setup || g.scenario === 'TEAM_UPDATES') return null;
+    return aSentenceThatQuotesTheBrief(setup, [...theirWords, g.toldToParticipants ?? ''], g.initiator?.firstName ?? null);
   }
 
   /**
