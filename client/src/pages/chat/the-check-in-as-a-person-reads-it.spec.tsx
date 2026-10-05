@@ -239,6 +239,64 @@ describe('suggested answers under the question', () => {
   })
 })
 
+/**
+ * PIECE 21: THE YES IN THE PERSON'S CHECK-IN (plan section 5 row 21; decision 96, item 10;
+ * docs/answers-from-engine.md, "Request 149, missing (1)", `TheIdeaOfferInTheCheckIn`). Attached to
+ * the reply that offers it; the words are Hafsah's own, exactly as the answer gives them.
+ */
+const ideaOffer = {
+  idea: 'We should review client work a month before the project closes.',
+  question: 'That sounds like a concrete idea. Want me to capture it for the team?',
+  whoWillSeeIt: 'Everyone in this check-in will see it, with your name on it.',
+  yes: 'Yes, capture it',
+  no: 'Not now',
+}
+
+describe('the yes to capture an idea for the team', () => {
+  it('shows the idea, the question, who will see it, and the two answers', async () => {
+    ;(conversationApi.transcript as any).mockResolvedValue({
+      checkIn: { status: 'IN_PROGRESS', sessionNumber: 38, groundId: 'g1' },
+      turns: [{ id: 't1', role: 'AI', content: OPENING, ideaOffer }],
+    })
+    renderChat()
+    await findByText(ideaOffer.question, {}, { timeout: 6000 })
+    expect(screen.getByText(`“${ideaOffer.idea}”`)).toBeTruthy()
+    expect(screen.getByText(ideaOffer.whoWillSeeIt)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Yes, capture it' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Not now' })).toBeTruthy()
+  })
+
+  it('"Yes, capture it" sends it as the answer, the same as a suggested answer', async () => {
+    ;(conversationApi.transcript as any).mockResolvedValue({
+      checkIn: { status: 'IN_PROGRESS', sessionNumber: 38, groundId: 'g1' },
+      turns: [{ id: 't1', role: 'AI', content: OPENING, ideaOffer }],
+    })
+    ;(conversationApi.send as any).mockResolvedValue({ reply: 'Noted. Anything else change with your sales today?' })
+    renderChat()
+    fireEvent.click(await findByRole('button', { name: 'Yes, capture it' }, { timeout: 6000 }))
+    await waitFor(() => expect(conversationApi.send).toHaveBeenCalledWith('ci1', 'Yes, capture it'))
+  })
+
+  it('"Not now" sends it too, and leaves nothing behind', async () => {
+    ;(conversationApi.transcript as any).mockResolvedValue({
+      checkIn: { status: 'IN_PROGRESS', sessionNumber: 38, groundId: 'g1' },
+      turns: [{ id: 't1', role: 'AI', content: OPENING, ideaOffer }],
+    })
+    ;(conversationApi.send as any).mockResolvedValue({ reply: 'No problem. Anything else change with your sales today?' })
+    renderChat()
+    fireEvent.click(await findByRole('button', { name: 'Not now' }, { timeout: 6000 }))
+    await waitFor(() => expect(conversationApi.send).toHaveBeenCalledWith('ci1', 'Not now'))
+    expect(screen.queryByText(ideaOffer.question)).toBeNull()
+  })
+
+  it('draws nothing when the engine sends no idea offer', async () => {
+    renderChat()
+    await findByText(OPENING, {}, { timeout: 5000 })
+    expect(screen.queryByRole('button', { name: 'Yes, capture it' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Not now' })).toBeNull()
+  })
+})
+
 describe('the + button', () => {
   it('offers a photo or a document, or text, and says who can read it', async () => {
     renderChat()

@@ -1,6 +1,6 @@
 import { apiClient } from './client'
 import type { ServedPattern } from './patterns'
-import type { TheMonthBoard, TheEndOfMonthRead } from './anchorShapes'
+import type { TheMonthBoard, TheEndOfMonthRead, TheActiveLine, TheIdeasFromYourTeam } from './anchorShapes'
 
 export type BoardSection =
   | 'phaseSpine' | 'quickRead' | 'objectives' | 'startingState' | 'divergence'
@@ -430,28 +430,36 @@ export type BoardPresent = {
    */
   anchorScenarioOn?: boolean
   /**
-   * ANCHOR PIECE 30/31, THE "ACTIVE" LINE (section 26; docs/answers-from-engine.md, "Request 147",
-   * `TheActiveLine`). Groundwork manages engagement itself, and the lead sees a status line of its
-   * own words, for example "18/20 active · Groundwork has nudged the remaining 2." Shape only, not
-   * served yet - absent on a board that does not send it, and the line below draws nothing then.
-   * `line` is Hafsah's own wording and is drawn exactly as sent, never rebuilt from `active`/`total`/
-   * `nudged` on this side.
+   * ANCHOR PIECE 30/31, THE "ACTIVE" LINE (section 26; docs/answers-from-engine.md, "Request 149
+   * (4 of 6)", `TheActiveLine`). Groundwork manages engagement itself, and the lead sees a status
+   * line of its own words, for example "18/20 active · Groundwork has nudged the remaining 2."
+   * Served only to whoever runs the check-in, for an anchor Ground - absent otherwise, and the line
+   * below draws nothing then. `line` is Hafsah's own wording and is drawn exactly as sent, never
+   * rebuilt from `active`/`total`/`nudged` on this side.
    */
-  activeLine?: { active: number; total: number; nudged: number; line: string }
+  activeLine?: TheActiveLine
   /**
    * ANCHOR PIECES 12/13/20, THE MONTH BOARD, "Are we moving together?" (section 24;
-   * docs/answers-from-engine.md, "Request 147", `TheMonthBoard`). Shape only, not served yet -
-   * absent on a board that does not send it, and the section draws nothing then. Lead only: this
-   * is the lead's own board, drawn only for whoever runs this check-in, only while
-   * `anchorScenarioOn` is served true (see BoardPage.tsx, `theMonthBoardForTheLead`).
+   * docs/answers-from-engine.md, "Request 149 (5 of 6)", `TheMonthBoard`). Lead only: this is the
+   * lead's own board, served only to whoever runs this check-in, only while `anchorScenarioOn` is
+   * served true (see BoardPage.tsx, `theMonthBoardForTheLead`) - absent otherwise, and the section
+   * draws nothing then.
    */
   theMonthBoard?: TheMonthBoard
   /**
    * ANCHOR PIECE 32/33, THE END-OF-MONTH READ (sections 28 and 29; docs/answers-from-engine.md,
-   * "Request 147", `TheEndOfMonthRead`). Shape only, not served yet. Built once from the record;
-   * opening the page never rebuilds it. Lead only, drawn on EndingPage.tsx.
+   * "Request 149 (6 of 6)", `TheEndOfMonthRead`). Built once from the record; opening the page
+   * never rebuilds it. Lead only, drawn on EndingPage.tsx; absent until the month has run.
    */
   theEndOfMonthRead?: TheEndOfMonthRead
+  /**
+   * PIECE 19/20, "IDEAS FROM YOUR TEAM" (section 18; plan section 5 row 7; decision 96, item 10;
+   * docs/answers-from-engine.md, "Request 149, missing (1)"). Shape only - not served yet, so this
+   * is absent on every board today, and the section draws nothing until the engine sends it. To
+   * everyone in that check-in (never lead-only): an idea is captured only after the person's own
+   * yes, and from then on everyone in the check-in reads it, "Raised by <name>".
+   */
+  ideasFromYourTeam?: TheIdeasFromYourTeam
   /**
    * THE RECORDS THE KIND OF WORK KEEPS: deals and their stages, releases, tickets, a matter's
    * deadlines and parties, and so on - one section per name in the switchboard (`section`, e.g.
