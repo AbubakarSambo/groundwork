@@ -157,6 +157,17 @@ Two new settings, neither a secret, both optional (see `docs/deploy.md`, section
 | Both known. | Set both on the host. Nothing else changes; neither changes what is sent. |
 | Not yet. | Leave them unset. The page says so in a sentence, and nothing breaks. |
 
+### 10c. `SETTINGS_ENCRYPTION_KEY`: Abubakar must add it before release
+
+Groundwork staff now set Groundwork's own WhatsApp number, its IDs and its three secrets (access token, app secret, verify token) on the back-office page `/admin/whatsapp`. The secrets are stored encrypted, with a key the API reads from the server setting `SETTINGS_ENCRYPTION_KEY`. **Abubakar must add it to the API's settings on each hosted environment before release.**
+
+How to create it: on any computer, run `openssl rand -base64 32` and paste the result into the host's settings for the API. It must be at least 32 characters (or 32 bytes written in base64 or hex). It is a secret, so it never goes in the code, a document or a chat. Use a different key on each environment, and do not change it later, because a changed key means every saved secret has to be typed in again.
+
+| Answer | What we would do |
+| --- | --- |
+| Added before release. | Hafsah saves the WhatsApp details on `/admin/whatsapp` and switches WhatsApp on there. WhatsApp then uses the saved details, with the server's `WHATSAPP_*` settings only as a fallback for a field nothing was saved for. |
+| Not added. | Nothing breaks. The page cannot save secrets and says so, and WhatsApp keeps using the server's `WHATSAPP_*` settings, as before. |
+
 ### 11. Has anybody changed a prompt in production through `/prompts`?
 
 **Why it matters.** Since decision 74, a start never replaces a version somebody activated by hand: it adds the code's new words as an inactive version beside it. It still creates and activates new versions of the changed keys, and the 4 new ones, where the active version is one a start put there. Before this release nothing recorded who activated a version, so a version activated by hand before release, and labelled "Seeded on deploy", cannot be told apart and would be replaced.
