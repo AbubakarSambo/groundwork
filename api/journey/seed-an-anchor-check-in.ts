@@ -29,7 +29,7 @@
  */
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import { itIsADatabaseOnThisComputer, NOT_A_DATABASE_ON_THIS_COMPUTER } from './a-database-on-this-computer';
+import { itIsADatabaseOnThisComputer, NOT_A_DATABASE_ON_THIS_COMPUTER, theyAreInThisOrganisation } from './a-database-on-this-computer';
 import { ANCHOR_SCENARIO_KEY } from '../src/modules/admin/what-is-hidden-at-release';
 /* From the module that DEFINES it. the-anchor-door only imports it, so importing it from there
    came back undefined at runtime and every ground was written with started_from null - which is
@@ -99,11 +99,7 @@ export async function loadTheAnchor(url: string) {
         create: { email: email(p.key), firstName: p.first, lastName: p.last, organizationId: org.id, isEmailVerified: true, passwordHash, role: p.role },
         select: { id: true },
       });
-      await db.organizationMembership.upsert({
-        where: { organizationId_userId: { organizationId: org.id, userId: users[p.key].id } },
-        update: {},
-        create: { organizationId: org.id, userId: users[p.key].id },
-      }).catch(() => undefined);
+      await theyAreInThisOrganisation(db, org.id, users[p.key].id, p.role);
     }
 
     const LABELS = ['Everyone pulling the same way', 'Everyone pulling the same way (last month)'];

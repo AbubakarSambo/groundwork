@@ -26,3 +26,29 @@ export function itIsADatabaseOnThisComputer(url: string | undefined): boolean {
 /** The sentence a refused seed says, so every seed refuses in the same words. */
 export const NOT_A_DATABASE_ON_THIS_COMPUTER =
   'This only loads into a database on this computer (host localhost or 127.0.0.1). Nothing was read or written.';
+
+/**
+ * A PERSON IS ONLY IN AN ORGANISATION IF THERE IS A MEMBERSHIP ROW. Signing in reads one
+ * (`jwt.strategy.ts`); without it the link is accepted and `/auth/me` answers 401, and the person
+ * lands on "session expired". Screens request 158 found exactly that in all four seeds.
+ *
+ * The compound key is `userId_organizationId`, the order the model declares (`@@unique([userId,
+ * organizationId])`), not the other way round. Three of the seeds had it reversed and hid the
+ * failure behind `.catch(() => undefined)`, so each one wrote nothing and said nothing. There is no
+ * catch here on purpose: a seed that cannot write a membership has not loaded, and should say so.
+ *
+ * The role goes on the row, on create AND on update, or the admin and the leads come back as plain
+ * members the second time a seed is run.
+ */
+export async function theyAreInThisOrganisation(
+  db: { organizationMembership: { upsert: (a: any) => Promise<unknown> } },
+  organizationId: string,
+  userId: string,
+  role: 'ADMIN' | 'LEAD' | 'MEMBER',
+) {
+  await db.organizationMembership.upsert({
+    where: { userId_organizationId: { userId, organizationId } },
+    update: { role: role as any },
+    create: { userId, organizationId, role: role as any },
+  });
+}

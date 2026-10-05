@@ -22,7 +22,7 @@
  */
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import { itIsADatabaseOnThisComputer, NOT_A_DATABASE_ON_THIS_COMPUTER } from './a-database-on-this-computer';
+import { itIsADatabaseOnThisComputer, NOT_A_DATABASE_ON_THIS_COMPUTER, theyAreInThisOrganisation } from './a-database-on-this-computer';
 
 const PASSWORD = 'hundred-local-only';
 const SLUG = 'a-hundred-check-ins';
@@ -81,11 +81,7 @@ export async function loadAHundred(url: string) {
         select: { id: true },
       });
       users[p.k] = u.id;
-      await db.organizationMembership.upsert({
-        where: { organizationId_userId: { organizationId: org.id, userId: u.id } },
-        update: {},
-        create: { organizationId: org.id, userId: u.id },
-      }).catch(() => undefined);
+      await theyAreInThisOrganisation(db, org.id, u.id, p.role);
     }
 
     /* Cleared child first: a record entry hangs off a participant and that key does not cascade. */

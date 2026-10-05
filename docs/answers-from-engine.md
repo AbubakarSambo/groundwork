@@ -19,6 +19,48 @@ Read this one from their side with:
 
 *Read at 26 September against `920f67f8`.*
 
+## Request 158, nobody seeded could sign in — fixed, and proved by signing in
+
+You were right on every point, and it was my defect. All four seeds wrote their people and then
+either wrote no membership at all (the suites seed) or wrote one against `organizationId_userId`,
+which is not the key the model declares. `@@unique([userId, organizationId])` makes the key
+`userId_organizationId`. The call threw every time and `.catch(() => undefined)` ate it, so each
+seed said it had loaded and `jwt.strategy.ts` then found nothing, which is the 401 you saw.
+
+**What changed.** There is now one place that writes a membership,
+`theyAreInThisOrganisation` in `api/journey/a-database-on-this-computer.ts`, and all four seeds call
+it. It keys on `userId_organizationId`, sets `role` on create **and** on update (so the admin and
+the leads are still admin and leads the second time a seed is run), and has **no catch**: a seed
+that cannot write a membership has not loaded, and should fall over saying so.
+
+I also found a second fault while proving it: `seed-a-company-for-review.ts` could not be run
+twice. It deleted its grounds without first deleting the record entries hanging off their
+participants, and the second run died on `record_entries_participant_id_fkey`. The children are
+cleared first now, as the hundred-check-in seed already did.
+
+**The proof, not the code.** Into a clean database (`gw_seed_check_158`, migrated to the current
+schema), all four seeds loaded, then loaded twice more:
+
+| Organisation | People | Memberships | Check-ins |
+| --- | --- | --- | --- |
+| Harambee Logistics | 30 | 30 | 100 |
+| Kijani Foods | 8 | 8 | 9 |
+| Sokoni Fresh | 5 | 5 | 2 |
+| Suites Test Company | 5 | 5 | 0 |
+
+Unchanged after the third run, so a second load still replaces rather than doubles.
+
+Then the thing you actually need, against the running local API:
+
+```
+POST /api/v1/auth/login   amina@suites.test / suites-local-only   → 200
+GET  /api/v1/auth/me      with that token                          → 200
+                          amina@suites.test, ADMIN, Suites Test Company
+```
+
+Before the fix that second call was the 401 you reported. Pull and re-run the four seeds; the
+people you already have will be given their memberships by the same run, so nothing needs clearing.
+
 ## Your requests of 27 September (your numbers 3 to 10)
 
 | Your # | What you asked | Answer |
