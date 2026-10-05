@@ -63,7 +63,8 @@ describe('the end of the month, as the lead reads it', () => {
       'One handoff that was waiting on someone was cleared.',
     ]);
     expect(e.whatYourTeamContributed).toEqual(['No idea from your team has been captured yet.']);
-    expect(e.peopleWhoHelpedMoveTheThinking).toEqual([]);
+    /* Changed with piece 32: the same people and sentences as the month board's (piece 22). */
+    expect(e.peopleWhoHelpedMoveTheThinking).toEqual([{ name: 'Rukia', sentence: 'Rukia committed to send the deck to the client, and Rukia says it is done.' }]);
     expect(e.whatYouChangedAsALead).toEqual(['Groundwork does not yet keep what changed in how you lead, so it has nothing to say here.']);
     expect(e.whatIsStillStuck).toEqual(['Baraka is waiting on Rukia for the sales deck.']);
     expect(e.whatShouldHappenNext).toEqual(['One of the things people said they would do is still open.']);

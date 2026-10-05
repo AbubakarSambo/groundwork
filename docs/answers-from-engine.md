@@ -287,6 +287,12 @@ The anchor seed now also loads `grace@anchor.test`, an admin of the organisation
 check-in, as the fourth reader. I have not run the journey against the live API. The tester is
 rebuilding it, and the journey needs the seed loaded on that database.
 
+**Anchor piece 32, the end-of-month read's people, is filled.** `theEndOfMonthRead.peopleWhoHelpedMoveTheThinking`
+is now built from the same record and with the same sentence as the month board's people (piece 22),
+so the two never disagree: `{ name: "Rukia", sentence: "Rukia committed to send the deck to the client,
+and Rukia says it is done." }`. As before, only the lead reads the end-of-month read. A person in it,
+an admin with access and an admin who only reads are never sent it.
+
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
 ```
