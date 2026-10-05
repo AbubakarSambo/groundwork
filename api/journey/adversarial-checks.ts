@@ -96,8 +96,12 @@ export function checkNoLabels(record: any): CheckResult {
   const names = firstNames(record);
   const problems: string[] = [];
   for (const sen of sentences(everythingServed(record))) {
-    const m = sen.match(LABELS);
-    if (m && names.some((n) => lower(sen).includes(n))) problems.push(`A label word "${m[0]}" sits next to a person: "${sen.slice(0, 140)}".`);
+    /* Release round, 5 October 2026: two things that are not a label on a person. The board carries its situation's own key
+       ("scenario":"PIP"), which nobody reads; and "at risk" said of money ("whether the remaining N2.8 million is at risk"). */
+    const read = sen.replace(/"scenario":"[A-Z_]+"/g, '');
+    const m = read.match(LABELS);
+    const aboutMoney = m && /^at[- ]risk$/i.test(m[0]) && /\b(?:revenue|money|million|thousand|budget|cash|payment|deal|N\d|\$\d|KES|USD|NGN)/i.test(read);
+    if (m && !aboutMoney && names.some((n) => lower(read).includes(n))) problems.push(`A label word "${m[0]}" sits next to a person: "${sen.slice(0, 140)}".`);
   }
   return { check: 'no-labels', ok: problems.length === 0, sentence: 'No label word such as "liar", "at risk" or "exit" is put on a person in anything served.', problems };
 }
