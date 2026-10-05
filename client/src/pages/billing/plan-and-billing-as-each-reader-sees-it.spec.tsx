@@ -31,6 +31,10 @@ vi.mock('@/api/billing', async () => {
       status: vi.fn().mockImplementation(async () => m.status),
       getPricing: vi.fn().mockImplementation(async () => m.pricing),
       getContributorCodes: vi.fn().mockResolvedValue([]),
+      /* WhatsApp billing (decision 78) is covered on its own, in the-whatsapp-add-on-as-each-reader-sees-it.spec.tsx;
+         the minimal shape here just keeps this page's own query from erroring in every test above. */
+      getWhatsApp: vi.fn().mockResolvedValue({ sending: true, says: null }),
+      setWhatsApp: vi.fn(),
       createSubscription: vi.fn(), changeSubscriptionPlan: vi.fn(), portal: vi.fn(),
       cancelSubscription: vi.fn(), keepSubscription: vi.fn(), pauseSubscription: vi.fn(), resumeSubscription: vi.fn(),
     },
