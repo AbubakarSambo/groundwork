@@ -17,6 +17,7 @@ import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { DeliveryService, DeliveryContext } from './delivery.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { theCheckInForAnEmail } from './the-check-in-for-an-email';
 import { STOP_LINE } from '../conversation/ignoring-it-should-be-enough';
 import { NOT_SENT_WHILE_AWAY, whatThisMailIs, whetherToSend } from './nothing-goes-out-that-was-turned-off';
 import { whoIsAwayOn } from '../suites/who-is-away';
@@ -59,9 +60,9 @@ export class EmailService implements OnModuleInit {
   async theWhatsAppLine(email: string, context?: DeliveryContext): Promise<string> {
     try {
       if (!context?.groundId) return '';
-      const ground = await (this.prisma as any).ground?.findUnique?.({ where: { id: context.groundId }, select: { organizationId: true, overWhatsApp: true } });
-      if (!ground) return '';
-      const connect = await connectWhatsAppFor(this.prisma, this.configService, { organizationId: ground.organizationId, email, keptInTheApp: keptOffThePhone(ground), forTheInvitation: true });
+      const checkIn = await theCheckInForAnEmail(this.prisma, context.groundId, { organizationId: true, overWhatsApp: true });
+      if (!checkIn) return '';
+      const connect = await connectWhatsAppFor(this.prisma, this.configService, { organizationId: checkIn.organizationId, email, keptInTheApp: keptOffThePhone(checkIn), forTheInvitation: true });
       if (!connect) return '';
       return `<p>${escapeHtml(youCanAlsoAnswerOnWhatsApp(connect.number))}</p>
          <p><a href="${connect.link}" style="display:inline-block;background:#25D366;color:#0A1628;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:bold;">${connect.says}</a></p>`;
@@ -78,7 +79,7 @@ export class EmailService implements OnModuleInit {
    */
   async whoSeesWhatYouSay(context?: DeliveryContext): Promise<string> {
     const g = context?.groundId
-      ? await (this.prisma as any).ground?.findUnique?.({ where: { id: context.groundId }, select: { scenario: true, peersVisibleToEachOther: true, organization: { select: { name: true } } } })?.catch?.(() => null)
+      ? await Promise.resolve(theCheckInForAnEmail(this.prisma, context.groundId, { scenario: true, peersVisibleToEachOther: true, organization: { select: { name: true } } }))?.catch?.(() => null)
       : null;
     return whoSeesWhatYouSayIn(g);
   }
