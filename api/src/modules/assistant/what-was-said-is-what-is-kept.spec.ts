@@ -54,7 +54,7 @@ describe('what is kept is what the person read', () => {
   it('every place a turn is saved keeps what was read', () => {
     const files = ['../ask/ask.service.ts', 'assistant.service.ts'];
     for (const f of files) {
-      const src = readFileSync(join(__dirname, f), 'utf8');
+      const src = readFileSync(join(__dirname, f), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
       for (const m of src.matchAll(/role: 'assistant',\s*content: ([^,]+),/g)) {
         expect(m[1].trim()).toContain('whatWasSaid');
       }

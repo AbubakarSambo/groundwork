@@ -30,7 +30,7 @@ describe('every suite that is off says what to do about it', () => {
     const dir = __dirname;
     const bare: string[] = [];
     for (const f of readdirSync(dir).filter((f) => f.endsWith('.service.ts'))) {
-      const src = readFileSync(join(dir, f), 'utf8');
+      const src = readFileSync(join(dir, f), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
       for (const m of src.matchAll(/notOn:\s*'([^']*is not switched on[^']*)'/g)) {
         if (!m[1].includes('An admin switches it on')) bare.push(`${f}: ${m[1]}`);
       }
