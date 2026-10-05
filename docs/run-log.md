@@ -2,6 +2,19 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## 5 October, 13:58 - one small fix landed after the build, and is NOT in the run
+
+The "does you own" fix was committed at about 13:57, after the 13:51 build the current run is
+using. Everything else from today is in it, including the two judgement rules and the board's
+sentence topics.
+
+I am not restarting the run a third time for one narrow wording rule. **So: if run-oct5 still
+shows "does you own" in the cofounder lead's report, that is expected and already fixed.** Nothing
+else from today is missing from it.
+
+From here until the run lands I am not touching `api/src` at all, so the run stays a true
+measurement of a single build.
+
 ## 5 October, 13:52 - the run restarted again, because it was measuring yesterday's engine
 
 Caught before it finished rather than after. The API server was built at 13:14 and I had made nine
