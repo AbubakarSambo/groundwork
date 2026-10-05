@@ -2,6 +2,29 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## 5 October, 14:45 - four more findings from run 32, and two of my fixes were caught by old tests
+
+**Finding 5**, a Groundwork housekeeping question served as the next session's focus
+("session2Focus: What else should I know?"). What goes in there is the last question asked before
+somebody closed without answering, which is right when the question was about the work and useless
+when it was our own catch-all. Filtered; anything naming something real is kept, including "What
+else is on the Kano route?", which contains the catch-all's words and is not one.
+
+**Finding 4**, the prospect's job, wish and worry written as Martin's own. Same fault as the
+release-blocking "hire more analysts", one layer earlier - the judgement inherited it from the
+paragraph, so fixing the judgement alone would have left the report still saying it.
+
+**Finding 37**, "receiving 0. 5%" split into two lines by every sentence splitter in the product.
+
+**Finding 6**, two facts joined into a cause nobody named.
+
+**Two of these were stopped by tests I did not write.** The decimal rule was too wide and joined a
+real sentence boundary - "The target is 40. 12 shops have ordered." It asks for a per cent sign
+now, and "1. 5 million" is deliberately left alone because it cannot be told from a boundary. And
+the causation rule used the shock run's own vocabulary, which `a-room-is-not-a-population` forbids:
+the rules are about any room, and a scenario's words in the instruction prime the model. It also
+duplicated a rule that was already there, and points at it now instead.
+
 ## 5 October, 14:35 - a decimal split in two, and my own test stopped me shipping a worse fix
 
 Run 32's advisor report, both readers: "receiving 0. 5% for two years" - the model put a space
