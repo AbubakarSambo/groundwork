@@ -27,14 +27,14 @@ export const ASK_ADD_LINE = 'You can also add context or documents to your check
  *
  * Then what it can do, in the five areas she named - the company, their work, their check-ins,
  * adding context or a document, and leave or spending - and then the two halves of the privacy
- * line, which are different promises and must not be run together: a question stays private full
- * stop; something they choose to add is said back, confirmed, and then is part of that check-in.
+ * line, which are different promises and must not be run together. A question stays private, full
+ * stop. Something they choose to add is said back, confirmed, and then is part of that check-in.
  */
 export function askFirstWelcome(organisationName?: string | null): string {
   const name = askName(organisationName).replace(/^Ask /, '');
   return `This is Ask ${name}. I answer about the whole organisation and about your own work, and you can point me at one of your check-ins whenever you want to. `
     + `Ask me about the company, about your work, or about your check-ins. You can add context or a document to one of your check-ins here, and ask for leave or to spend money. `
-    + `What you ask me stays private. Anything you choose to add to a check-in is different: I say it back to you first, it goes in only once you say yes, and from then on it is part of that check-in.`;
+    + `What you ask me stays private. Anything you choose to add to a check-in works differently. I say it back to you first, it goes in only once you say yes, and from then on it is part of that check-in.`;
 }
 
 /** Looks up the name of one organisation. A missing organisation gives "Ask Groundwork". */
