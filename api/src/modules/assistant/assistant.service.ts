@@ -175,6 +175,20 @@ const JUST_ADDED_A_DOCUMENT =
 /** The lanes that move the Context tab into Ask Groundwork. Hidden at release; the old context chat stays. */
 const THE_CONTEXT_LANES = new Set<string>(['add_context', 'context_line', 'lead_note', 'questions_for_people']);
 
+/**
+ * WHETHER A PIECE OF TEXT COULD BE SOMEBODY'S NAME. Four words at most, and no sentence inside it:
+ * a full stop, a comma, a question mark or a semicolon means somebody typed a sentence, not a name.
+ * Deliberately generous at the short end - one word is a first name - and strict about length,
+ * because the cost of guessing wrong is reading a person's question back to them as a colleague.
+ */
+export function looksLikeAName(q: string): boolean {
+  const t = (q ?? '').trim();
+  if (!t || t.length > 60) return false;
+  if (/[.,;:!?]/.test(t)) return false;
+  const words = t.split(/\s+/);
+  return words.length >= 1 && words.length <= 4;
+}
+
 @Injectable()
 export class AssistantService {
   private readonly logger = new Logger(AssistantService.name);
@@ -4934,6 +4948,24 @@ export class AssistantService {
   private async whoIs(organizationId: string, query: string): Promise<Reply> {
     const q = query.replace(/[?.]+$/, '').trim();
     if (!q) return rules('who_is', text('Who did you mean?'));
+
+    /*
+     * AND IT HAS TO LOOK LIKE A NAME BEFORE IT IS CALLED ONE (screens request 154, item 2).
+     *
+     * This echoed whatever it was handed. Juma asked about looking after people while the road was
+     * closed and read back: 'I do not have anybody called "looking after them while the road is
+     * closed. ...". I only know the people your organisation has sent us.' A request to add some
+     * notes, read back to him as a missing colleague.
+     *
+     * The router put him here and that is worth fixing too, but the damage is done at this line,
+     * which is the place to hold it: a name is a few words with no sentence inside it. Anything
+     * else is not somebody we have failed to find, it is something we did not understand, and
+     * saying so with what Ask can do is both true and more use.
+     */
+    if (!looksLikeAName(q)) {
+      const { line, options } = whatICanDoWith(query);
+      return rules('unplaced', text(line), picker(options));
+    }
 
     const people = await this.prisma.person.findMany({
       where: { organizationId, active: true },

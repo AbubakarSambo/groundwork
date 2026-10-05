@@ -5109,3 +5109,27 @@ alone.
 **Item 2 is now fully answered**, except Juma's `'I do not have anybody called "looking after them
 while the road is closed. ..."'` — a request to add notes being read as a name. That one is the
 router mistaking a long sentence for a person, and it is next.
+
+---
+
+# Request 154 item 2, last part: a sentence is no longer read back as a colleague
+
+Juma read:
+
+> I do not have anybody called "looking after them while the road is closed. ...". I only know the
+> people your organisation has sent us.
+
+A request to add some notes, read back to him as a missing colleague. The "who is" answer echoed
+whatever it was handed.
+
+**A name has to look like a name before it is called one**: four words at most, and no sentence
+punctuation inside it. Anything else is not somebody we failed to find, it is something we did not
+understand, so it gets the honest answer and the list of what Ask can do instead.
+
+The router putting a long sentence into "who is" in the first place is worth fixing too, and it is
+not fixed here. **I held it at the echo on purpose**, because that is where the damage is done and
+it holds however the router is changed later. If you still see a sentence routed oddly, the reply
+will now be "I cannot answer that one yet" with choices, which is wrong-but-harmless rather than
+wrong-and-insulting.
+
+**That closes every part of request 154 item 2.**
