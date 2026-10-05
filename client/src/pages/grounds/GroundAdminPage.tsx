@@ -2575,7 +2575,7 @@ export function GroundAdminPage() {
         </Modal>
       )}
       {/* REVIEW ROUND 3, ITEM 2: THE PAYWALL FOR THE LEAD'S OWN SESSION, OPENED FROM THIS PAGE NOW. */}
-      <SessionPaywallModal paywall={paywall} canPayHere={canPayForMySession} />
+      <SessionPaywallModal paywall={paywall} canPayHere={canPayForMySession} groundId={id} />
     </div>
   )
 }

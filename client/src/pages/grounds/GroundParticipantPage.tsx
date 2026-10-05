@@ -854,7 +854,7 @@ export function GroundParticipantPage() {
       </div>
 
       {/* REVIEW ROUND 3, ITEM 2: THE PAYWALL, PULLED OUT INTO A SHARED COMPONENT (see useOpenSession.ts) */}
-      <SessionPaywallModal paywall={paywall} canPayHere={canPayHere} />
+      <SessionPaywallModal paywall={paywall} canPayHere={canPayHere} groundId={id} />
 
 
     </div>
