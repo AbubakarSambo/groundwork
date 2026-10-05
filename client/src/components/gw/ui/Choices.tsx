@@ -5,21 +5,33 @@ import './gw-ui.css'
  * 8px corners, white with a 1.5px inside line; the chosen one navy with white bold text. Used for
  * the People filters and "Who can open a check-in". `stacked` is for a choice with a line of
  * description (12/14px inside, bold title, 14.5px line).
+ *
+ * `quiet`: THE CHOSEN OPTION READS AS CHOSEN WITHOUT BEING A SECOND NAVY BUTTON (walkthrough pass
+ * 2, item 4). Sign-up asks "How would you like to sign in?" above its own submit button, "Create
+ * account" - with the chosen option drawn navy, the page carries two navy buttons at once, which
+ * CLAUDE.md's "at most one navy button per page" rules out, and the prototype's own sign-up screen
+ * has only the one (signup.txt). Nothing here invents a new one-off style: `quiet` is a second,
+ * already-dark-text way of marking the chosen option (an ink outline, the same shape "Choice
+ * cards" already uses below), shared by any caller that needs it, while People's filters and "Who
+ * can open a check-in" - each the one navy thing on their own page - keep the default.
  */
 export type Choice = { key: string; label: string; description?: string }
 
-export function Choices({ options, value, onChange, stacked, label }: {
+export function Choices({ options, value, onChange, stacked, label, quiet }: {
   options: Choice[]
   value: string
   onChange: (key: string) => void
   stacked?: boolean
   label: string
+  /** The chosen option is marked with an ink outline instead of a navy fill - for a page whose own
+      submit button is already the one navy thing on it. */
+  quiet?: boolean
 }) {
   return (
     <div className={`gwui-choices${stacked ? ' gwui-choices-stacked' : ''}`} role="radiogroup" aria-label={label}>
       {options.map(o => {
         const on = o.key === value
-        const className = ['gwui-choice', stacked && 'gwui-choice-stacked', on && 'gwui-choice-on'].filter(Boolean).join(' ')
+        const className = ['gwui-choice', stacked && 'gwui-choice-stacked', on && (quiet ? 'gwui-choice-on-quiet' : 'gwui-choice-on')].filter(Boolean).join(' ')
         return (
           <button
             key={o.key}

@@ -402,6 +402,37 @@ a.gwui-person-row:hover { background: var(--gw-page); }
   padding: 0; cursor: pointer; font-family: inherit; text-decoration: underline;
   min-height: 40px; display: inline-flex; align-items: center;
 }
+/*
+ * RELEASE WALKTHROUGH, 5 OCTOBER: THE SAME 40px FLOOR, FOR A CONTROL THAT CANNOT TAKE
+ * .gwui-plain-link's OWN LOOK. That class fixes a tap target by growing the box around text that
+ * is already navy, bold and underlined - right for "Ask" or "Add a record", wrong for a control
+ * that already carries its own size, weight or colour for a reason (the Context page's quieter
+ * "Change this", a target row's muted one, "Attach it" / "Attach something" at 11.5px). This is
+ * the same `min-height` plus `inline-flex`/`align-items: center` technique under its own name, so
+ * any such control can take the same floor without borrowing a look that was not its own. Scoped
+ * to phone width, same as the board's own small-button fix (`.gwui-btn-small` below) - above
+ * 640px these already clear 40px or sit beside enough else on the row that the extra room is not
+ * needed.
+ */
+@media (max-width: 640px) {
+  .gwui-tap-40 { min-height: 40px; display: inline-flex; align-items: center; }
+}
+/*
+ * THE CONTEXT CHAT'S "ATTACH A DOCUMENT" BUTTON (ContextChat.tsx), 34px SQUARE AT EVERY WIDTH
+ * BEFORE THIS. Needs its own class, not `.gwui-tap-40`, because it grows in both directions, not
+ * just height - a fixed inline `width`/`height` cannot be widened by a later CSS rule, inline
+ * styles always win over a stylesheet's `min-width`/`min-height`. Same 34px icon, same 8px corner,
+ * at every width above 640px; a 40px square floor at phone width, same reasoning as
+ * `.gwui-tap-40` just above.
+ */
+.gwui-icon-btn {
+  width: 34px; height: 34px; border-radius: 8px; background: none; border: none;
+  color: var(--gw-sub); font-size: 16px; cursor: pointer; font-family: inherit; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+@media (max-width: 640px) {
+  .gwui-icon-btn { width: 40px; height: 40px; }
+}
 .gwui-invite-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
 /* A FIELD BESIDE ITS BUTTON, EVEN ON A PHONE (group 1 review, "Add it, switched off"): `.gwui-input`
    is `width: 100%` on its own, which inside a flex row computes a wide flex-basis and pushes the
@@ -489,6 +520,10 @@ a.gwui-person-row:hover { background: var(--gw-page); }
   font: inherit; font-family: var(--gw-font-ui); font-size: 15px; color: var(--gw-text); cursor: pointer;
 }
 .gwui-choice-on { background: var(--gw-navy); color: #fff; box-shadow: none; font-weight: 700; }
+/* The chosen option, marked without a second navy button on the page (walkthrough pass 2, item 4:
+   sign-up's own "Create account" is already the one navy button). Same ink-outline mark "Choice
+   cards" already use below for the same purpose. */
+.gwui-choice-on-quiet { background: var(--gw-card); color: var(--gw-text); box-shadow: inset 0 0 0 2px var(--gw-text); font-weight: 700; }
 .gwui-choice-stacked {
   min-height: 0; height: auto; text-align: left; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px;
   width: 100%;
@@ -512,9 +547,22 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 .gwui-toggle {
   width: 48px; height: 28px; border-radius: 14px; border: 0; padding: 3px;
   background: var(--gw-rule-2); display: inline-flex; align-items: center; cursor: pointer; flex: none;
+  position: relative;
 }
 .gwui-toggle-on { background: var(--gw-green-t); justify-content: flex-end; }
 .gwui-toggle-knob { width: 22px; height: 22px; border-radius: 50%; background: #fff; display: block; }
+/*
+ * PHONE CHECK, RELEASE WALKTHROUGH 5 OCTOBER: A TAP TARGET UNDER 40px. Every switch on People and
+ * setup ("Each other's check-ins", "Hide email addresses...", "Targets", "Who can confirm each
+ * other's work", "What we ask them") is this one 48x28 pill - right for the prototype's own switch,
+ * too small for a finger. `min-height`/`inline-flex` (the technique `.gwui-plain-link` uses above)
+ * would change the pill's own visible size, which is not the bug here; an invisible `::after`
+ * extends the HIT area 6px past the pill on every side, 40px tall, without widening or heightening
+ * what is actually drawn.
+ */
+@media (max-width: 640px) {
+  .gwui-toggle::after { content: ''; position: absolute; inset: -6px; }
+}
 
 /* ── FORM FIELDS (prototype: label.f, .input) ─────────────────────────────── */
 .gwui-field-label { display: flex; flex-direction: column; gap: 6px; font-size: 14.5px; font-weight: 700; color: var(--gw-text); }

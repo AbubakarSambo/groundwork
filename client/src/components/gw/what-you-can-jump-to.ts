@@ -1,3 +1,5 @@
+import { whatTellsItApart } from '@/lib/tell-apart-the-same-name'
+
 /**
  * WHAT "JUMP TO" OFFERS, AND ONLY WHAT THE READER CAN ALREADY SEE (A1).
  *
@@ -25,6 +27,8 @@ export interface JumpItem {
 interface GroundLike {
   id: string
   label: string
+  startsAt?: string | null
+  createdAt?: string | null
   participants?: {
     id: string
     userId?: string | null
@@ -44,7 +48,11 @@ export function whatYouCanJumpTo(
   me: string | null | undefined,
   pages: { label: string; to: string }[],
 ): JumpItem[] {
-  const checkIns: JumpItem[] = list.map(g => ({ kind: 'checkin', id: `c-${g.id}`, label: g.label, to: `/grounds/${g.id}` }))
+  /* Walkthrough pass 2, item 1: two check-ins can share a label, with nothing in the list to tell
+     a reader which is which. When that happens here, the one thing the list itself can say -
+     when each one started - goes in the detail line, the same spot a person's row already uses
+     for "In <check-in>". */
+  const checkIns: JumpItem[] = list.map(g => ({ kind: 'checkin', id: `c-${g.id}`, label: g.label, detail: whatTellsItApart(list, g) ?? undefined, to: `/grounds/${g.id}` }))
   const people: JumpItem[] = []
   for (const g of list) {
     for (const p of g.participants ?? []) {

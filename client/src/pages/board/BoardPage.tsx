@@ -149,7 +149,6 @@ import { Page, CheckInHeader, Section, Panel, RowList, Row, Tag, type TagTone, B
 import { initialsOf } from '@/pages/org/people-here'
 import { cadenceLabel } from '@/lib/cadence'
 import { phaseSpineSentence } from '@/lib/phase-spine-sentence'
-import { scrollTo } from '@/lib/scroll-to'
 import { KindOfWorkBanner, WorkRecordsSections, YourOwnRecordsSections, TheShapeOfTheWorkStrip, sectionHeading } from './WorkRecords'
 import {
   RisksSection, WorkPlanSection, TimelineSection, PersonHistorySection, BlockersSection,
@@ -556,9 +555,18 @@ function ActionButtons({ groundId, action }: { groundId: string; action?: AnActi
       </>
     )
   }
+  /*
+   * RELEASE WALKTHROUGH, 5 OCTOBER: TWO LINKS WITH NO TEXT AND NO ACCESSIBLE NAME. `action.label`
+   * is typed as a required `string` (api/src/modules/board/what-needs-you-and-what-to-do.ts), but
+   * a real board sent it empty for two rows - a `<Link>` with nothing inside reads to nobody using
+   * a screen reader, and shows nothing to point at on screen either. Said plainly from `goesTo`
+   * instead of rendering silence: the same two sentences this fallback already reaches for when
+   * there is no `action` at all, just below, phrased for where this one actually goes.
+   */
+  const label = action.label || (action.goesTo === 'context' ? 'Open the Context page' : 'Open your check-in')
   return (
     <UIButton kind="secondary" size="small" to={`/grounds/${groundId}?tab=${action.goesTo === 'context' ? 'context' : 'chat'}`}>
-      {action.label}
+      {label}
     </UIButton>
   )
 }
@@ -603,7 +611,7 @@ function FoldEverythingElseUnless({ alreadyFolded, children }: { alreadyFolded: 
  * null when this reader has no report of their own yet), and "Read your own report" is drawn only
  * then, as the prototype shows it only once there is one to read.
  */
-function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords, myParticipantId, leadFirstName, yourShare, yourShareSays }: {
+function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords, myParticipantId, leadFirstName, yourShare, yourShareSays, myLatestCheckInId }: {
   groundId: string
   teamPicture: BoardPresent['teamPicture']
   kindOfWork: string | null
@@ -613,6 +621,17 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
   yourShare: BoardPresent['yourShare']
   /** REQUEST 110 (a): "There is no number of yours on this board yet, so there is no share to show." - sent only when `yourShare` is `[]`. */
   yourShareSays?: string | null
+  /**
+   * RELEASE WALKTHROUGH A, FIX 1: "READ YOUR OWN REPORT" OPENED AN EMPTY PAGE.
+   *
+   * This used to send a reader to `/grounds/:id?tab=report` - a fold of the whole check-in with no
+   * report in it for a party (the team report, when there is one, lives at `/grounds/:id/report`;
+   * a party's OWN report lives on its own session's page). The reader's own report is
+   * `/checkin/:id/report`, keyed by their own latest completed session's check-in id - the same id
+   * `sessionRows`/`myCheckInId` already carries for the "Reports" table further down this page.
+   * `null` when no session of theirs has completed yet, and the button is not drawn then.
+   */
+  myLatestCheckInId: string | null
 }) {
   const shared = teamPicture?.shared === true
   /*
@@ -675,7 +694,7 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
               Open today’s team picture.
             </Link>
           )}
-          {(shared || (teamPicture && 'yourOwnReport' in teamPicture && teamPicture.yourOwnReport)) && (
+          {(shared || (teamPicture && 'yourOwnReport' in teamPicture && teamPicture.yourOwnReport)) && !!myLatestCheckInId && (
             <>
               {/* The prototype's own words, directly before the button (board-as-participant.txt:
                   "...Your own report is ready now. / Read your own report"). The non-shared branch
@@ -683,7 +702,7 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
                   branch had none at all. */}
               {shared && <div className="gwui-fs-15 gwui-ink-sub gwui-mt-4" style={{lineHeight: 1.55}}>Your own report is ready now.</div>}
               <div className="gwui-mt-10">
-                <UIButton kind="secondary" to={`/grounds/${groundId}/report`}>Read your own report</UIButton>
+                <UIButton kind="secondary" to={`/checkin/${myLatestCheckInId}/report`}>Read your own report</UIButton>
               </div>
             </>
           )}
@@ -1266,6 +1285,32 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const noSessionOpenForReader = !!b.phaseSpine && phaseSpineSessions.length > 0
     && !phaseSpineSessions.some((s) => s.state === 'current')
   const whenTheNextSessionOpens = phaseSpineSessions.find((s) => s.state === 'upcoming')?.says ?? null
+  /*
+   * RELEASE WALKTHROUGH A, FIX 6: "START MY CHECK-IN" WHILE NOTHING IS OPEN, ON A BOARD WITH NO
+   * PHASE SPINE. The fix above only hides the button once `b.phaseSpine` exists - an "older or
+   * absent spine never hides the button", which was meant for a spine that has not caught up yet,
+   * not for a kind of work (the sales board) that never sends one at all. So a sales participant
+   * between rounds still read "Start my check-in" with nothing open.
+   *
+   * The same fact still exists, the same place the check-in page reads it for this very button
+   * (`myOpenCheckInId`/`myNextOpensAt`, GroundAdminPage.tsx and GroundParticipantPage.tsx): the
+   * reader's own open-or-next check-in row, off `GET /grounds/:id` (`groundForSignals`, already
+   * fetched above). Used only as a fallback, when no phase spine was sent - the spine's own read
+   * stays the one truth wherever it exists.
+   */
+  const myParticipantIdForOpenCheck = ((groundForSignals as any)?.participants ?? []).find((p: any) => p.userId === user?.id)?.id ?? null
+  const myOpenOrNextCheckIn = myParticipantIdForOpenCheck
+    ? (((groundForSignals as any)?.checkIns ?? []) as any[])
+        .filter((c) => c.participantId === myParticipantIdForOpenCheck && c.status !== 'COMPLETED')
+        .sort((a, b2) => (a.sessionNumber ?? 0) - (b2.sessionNumber ?? 0))[0] ?? null
+    : null
+  const myOpenOrNextOpensLater = !!myOpenOrNextCheckIn?.availableFrom
+    && new Date(myOpenOrNextCheckIn.availableFrom).getTime() > Date.now()
+    && myOpenOrNextCheckIn?.status !== 'IN_PROGRESS'
+  const noSessionOpenForReaderFallback = !b.phaseSpine && myOpenOrNextOpensLater
+  const whenTheNextSessionOpensFallback = myOpenOrNextOpensLater
+    ? `Session ${myOpenOrNextCheckIn.sessionNumber} opens on ${whenItWas(myOpenOrNextCheckIn.availableFrom, 'dayAndMonthLong')}.`
+    : null
   /*
    * U.10 (a): THE SAME FIVE TABS, READ-ONLY FILTERED THE SAME WAY (an-admin-who-only-reads-has-no-
    * check-in-tab.spec.tsx pinned this against the old TheCheckInHeader; the-board-as-each-reader-
@@ -2277,8 +2322,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 in the engine's own words.
               */}
               {(viewerRunsThisCheckIn || isAParty) && (
-                !viewerRunsThisCheckIn && noSessionOpenForReader ? (
-                  whenTheNextSessionOpens && <Note tone="muted">{whenTheNextSessionOpens}</Note>
+                !viewerRunsThisCheckIn && (noSessionOpenForReader || noSessionOpenForReaderFallback) ? (
+                  (whenTheNextSessionOpens ?? whenTheNextSessionOpensFallback) && <Note tone="muted">{whenTheNextSessionOpens ?? whenTheNextSessionOpensFallback}</Note>
                 ) : (
                   <Link
                     to={`/grounds/${id}`}
@@ -2349,6 +2394,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
             yourShare={b.yourShare}
             yourShareSays={(b as any).yourShareSays ?? null}
+            /* The reader's own most recently completed session - `sessionRows` is already sorted
+               newest first (session-rows.ts), so the first row carrying a `myCheckInId` is it. */
+            myLatestCheckInId={sessionRows.find((r) => r.myCheckInId)?.myCheckInId ?? null}
           />
         )}
 
@@ -2953,13 +3001,22 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {/*
           "WHERE THIS IS HEADING" (request 108 d; board-as-lead.txt). Sent to whoever runs the
-          check-in only. "Record the decision" opens the existing ResolutionPanel above - the one
-          place that already lets the lead record an outcome - rather than building a second one.
+          check-in only.
+
+          RELEASE WALKTHROUGH A, FIX 5: "RECORD THE DECISION" USED TO SCROLL TO AN EMPTY DIV.
+          `#record-the-decision` holds `ResolutionPanel` at `place="board-top"`, which renders
+          nothing at all once the check-in is not near its end (`nearTheEnd === false`) - a real
+          gap, since the server sends this whole section, button included, on its own schedule,
+          which can disagree with the client's. And even in the one case that panel DOES render,
+          it is only a card with its own "Decide how it ends" button to the ending page - never the
+          actual form, which only ever lives there. So this goes straight to the ending page now:
+          the one place `ResolutionPanel` renders unconditionally for the lead, never empty, and one
+          click closer than the card it used to open onto.
         */}
         {(b as any).whereThisIsHeading && (
           <WhereThisIsHeadingSection
             data={(b as any).whereThisIsHeading}
-            onRecordTheDecision={() => scrollTo(document.getElementById('record-the-decision'), { block: 'start' })}
+            onRecordTheDecision={() => navigate(`/grounds/${id}/end`)}
           />
         )}
 

@@ -115,6 +115,17 @@ describe('Aisha, who takes part', () => {
   })
 })
 
+describe('Brian, reading the lead’s own share', () => {
+  /* Walkthrough pass 2, item 1: "Seen by Rukia and Rukia" - when the owner of a share is the lead
+     herself, the reader is neither, so both names this code reached for were her own. Named once. */
+  const leadsOwnShops: Target = { id: 't5', name: 'Shops', target: 4, ownerParticipantId: 'p-lead', assumes: [] }
+  it('reads "Seen by Wairimu", not "Seen by Wairimu and Wairimu"', () => {
+    draw({ targets: [leadsOwnShops], viewerUserId: 'u-brian' })
+    expect(rowText('t5')).toContain('Seen by Wairimu')
+    expect(rowText('t5')).not.toContain('Seen by Wairimu and Wairimu')
+  })
+})
+
 describe('an admin reading a check-in somebody else leads', () => {
   /* U.7 review: the server now sends an admin who is not the lead only the team's targets (the same
      rule as Context, one-rule-for-whose-share-is-shown.spec.ts), so that is what he is fed here. */

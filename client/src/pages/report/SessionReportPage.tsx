@@ -22,6 +22,7 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { whoIsInRound } from '@/lib/who-is-in-this-round'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { TheCheckInHeader } from '@/components/gw/TheCheckInHeader'
+import { checkInHeaderTabs } from '@/pages/grounds/ground-tabs'
 import { Page, Button, Panel, Callout, Section, SubHeading, Note, Tag, Stack } from '@/components/gw/ui'
 
 /**
@@ -197,6 +198,7 @@ export default function SessionReportPage() {
   })
 
   const plannedSessions = ground ? plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).plannedSessions) : null
+  const contextEnabled = (ground as any)?.contextEnabled === true
 
   /**
    * A PARTICIPANT ID, SAID AS A NAME, THE WAY THIS READER MAY READ IT.
@@ -233,14 +235,7 @@ export default function SessionReportPage() {
           canRunThisCheckIn={amTheInitiator}
           isAParty
           active="report"
-          tabs={[
-            { key: 'board', label: 'Board', to: `/grounds/${data.groundId}/board` },
-            { key: 'chat', label: 'Check-in', to: `/grounds/${data.groundId}` },
-            { key: 'context', label: 'Context and resources', to: `/grounds/${data.groundId}?tab=context` },
-            { key: amTheInitiator ? 'sessions' : 'record', label: 'My work', to: `/grounds/${data.groundId}?tab=${amTheInitiator ? 'sessions' : 'record'}` },
-            { key: 'settings', label: 'People and setup', to: `/grounds/${data.groundId}?tab=settings` },
-            { key: 'report', label: 'Report', to: `/grounds/${data.groundId}?tab=report` },
-          ]}
+          tabs={checkInHeaderTabs({ id: data.groundId as string, contextEnabled, canRunThisCheckIn: amTheInitiator, isAParty: true })}
         />
       ) : (
         <button type="button" onClick={() => navigate(-1)} className="gwui-plain-link">
@@ -676,47 +671,35 @@ export default function SessionReportPage() {
       )}
 
       {/*
-        15. ACTION, AFTER BOTH HALVES.
+        RELEASE WALKTHROUGH A, FIX 4: THE REPORT SCREEN'S OWN "NOW" - THE PROTOTYPE'S, NOT ONE
+        INVENTED FOR IT.
 
-        It led with "Copy the link to this session", which then needed a caveat explaining that the
-        link is not a way to share - a primary control whose own label had to be walked back. And
-        it sat directly under the conversation worth having, offering nothing that served it.
+        "Start a new check-in" opened `/grounds/new` - a brand-new check-in, unrelated to this one -
+        which is not a door this report page owes anybody, least of all a participant who most often
+        has no way to start one at all (`/start` refuses them). The prototype's own report screens
+        (own-report.txt, one-session.txt, B4-reports-and-sharing) have no such button at the foot of
+        a report, for either reader - a check-in is started from the sidebar's own "Start a check-in"
+        link, not repeated here. So the button, and the "What now?" framing built around it, are
+        gone; the one genuinely useful thing this block held - a link to this report, for whoever
+        already reads it - stays, quieter, with no heading claiming it is this page's "now".
 
-        The primary action is the question. Opening a follow-up is how that conversation gets a
-        time and a place in this product, so that is the button. The link stays, quieter.
-      */}
-      {/*
-        U.9 REVIEW: "WHAT NOW?" WAS OFFERED ON THE PAGE THAT SAYS THIS ISN'T YOURS TO OPEN.
-        This whole block sat outside the `!isLoading && !isError` guard the rest of the page uses,
-        so somebody who reached this page for a session that refused them (403, 404, or any other
-        failure) still read "Start a new check-in" and "Copy the link" under the error message.
-        There is nothing here for a page that has nothing to show.
+        U.9 REVIEW: "WHAT NOW?" WAS OFFERED ON THE PAGE THAT SAYS THIS ISN'T YOURS TO OPEN. Kept:
+        nothing here is drawn on a page that has refused the reader.
       */}
       {!isLoading && !isError && (
         <div className="gw-print-none">
-          <Section heading="What now?">
-            <Stack gap={10}>
-              <Note>
-                Pick the open thing that matters most and agree who owns it. Nobody can do that part for
-                you, and a follow-up is where it gets a date.
-              </Note>
-              <div className="gwui-button-row">
-                <Button onClick={() => navigate('/grounds/new')}>Start a new check-in</Button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    /* The .catch below used to be unreachable: `clipboard?.writeText(...)` is undefined where the API is absent, and `.then` on undefined throws. */
-                    if (await copy(`${window.location.origin}/checkin/${checkInId}/report`)) toast.success('Link copied')
-                    else toast.error('Could not copy it. Select the address bar instead.')
-                  }}
-                  className="gwui-plain-link"
-                >
-                  Copy the link
-                </button>
-              </div>
-              <Note>The link opens only for people already entitled to read this.</Note>
-            </Stack>
-          </Section>
+          <button
+            type="button"
+            onClick={async () => {
+              /* The .catch below used to be unreachable: `clipboard?.writeText(...)` is undefined where the API is absent, and `.then` on undefined throws. */
+              if (await copy(`${window.location.origin}/checkin/${checkInId}/report`)) toast.success('Link copied')
+              else toast.error('Could not copy it. Select the address bar instead.')
+            }}
+            className="gwui-plain-link"
+          >
+            Copy the link to this report
+          </button>
+          <Note>The link opens only for people already entitled to read this.</Note>
         </div>
       )}
     </Page>

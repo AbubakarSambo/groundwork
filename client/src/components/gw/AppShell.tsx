@@ -25,6 +25,7 @@ import { OrganisationChoices } from './OrganisationChoices'
 import { initialsOf, roleWord } from './your-organisations'
 import { JumpTo } from './JumpTo'
 import { whatYouCanJumpTo } from './what-you-can-jump-to'
+import { whatTellsItApart } from '@/lib/tell-apart-the-same-name'
 import { useJumpStore } from '@/stores/jump'
 import { feedbackApi } from '@/api/feedback'
 import type { Ground } from '@/types'
@@ -59,7 +60,30 @@ const BUILD_OPTIONS    = ['Reminder / email nudge', 'Mobile app', 'Slack integra
 
 function FeedbackWidget() {
   const location = useLocation()
-  const isChatPage = location.pathname.startsWith('/chat/') || location.pathname.startsWith('/checkin/') || location.pathname === '/start'
+  /**
+   * RELEASE WALKTHROUGH, 5 OCTOBER: THE GROUND PAGE'S OWN CHECK-IN TAB IS THE SAME CONVERSATION,
+   * AT A DIFFERENT ADDRESS. At 375px the trigger's default top-right rest position is already
+   * moved clear of a chat page's own header row and composer (see the mobile-safe classes below) -
+   * but that only applied to `/chat/:id`, `/checkin/:id` and `/start`. `/grounds/<id>` with no
+   * `tab=` (or `tab=chat`, the Check-in tab's own query key - `FROM_TAB_KEY`'s default in both
+   * GroundAdminPage.tsx and GroundParticipantPage.tsx) renders the identical suggestion-chip
+   * conversation, and the trigger still sat at its plain bottom-right rest position there, on top
+   * of the chips and the composer's own send arrow. It is the same chat shell reached through a
+   * different route, so it gets the same treatment, not a fresh rule of its own.
+   */
+  const onGroundCheckInTab = /^\/grounds\/[^/]+$/.test(location.pathname)
+    && (!location.search || new URLSearchParams(location.search).get('tab') === 'chat')
+  const isChatPage = location.pathname.startsWith('/chat/') || location.pathname.startsWith('/checkin/') || location.pathname === '/start' || onGroundCheckInTab
+  /**
+   * RELEASE WALKTHROUGH, 5 OCTOBER: AND THE BOARD'S OWN "ASK ABOUT THIS BOARD" BAR.
+   *
+   * `AskTheBoard` (BoardPage.tsx) sits at the very foot of the board's content, its own "Ask"
+   * button at the same bottom-right corner this trigger rests in by default. On a board short
+   * enough to fit the screen with nothing to scroll, the two sit on top of each other at 1440px.
+   * Raised clear of it here, the same way the mobile classes below raise this trigger clear of the
+   * bottom nav bar and a chat composer - a few more pixels of headroom, not a new position.
+   */
+  const isGroundsBoard = /^\/grounds\/[^/]+\/board$/.test(location.pathname)
   /**
    * HIDDEN ON "MORE" - that page has "Send feedback" in its own list, and on a phone the floating
    * button sat over the ticked organisation row there - AND ON THE CONVERSATION.
@@ -291,7 +315,13 @@ function FeedbackWidget() {
           }
           style={{
             position: 'fixed',
-            ...(moved ? asStyle(resting) : isChatPage ? { top: 12, right: 16 } : { bottom: 20, right: 20 }),
+            ...(moved
+              ? asStyle(resting)
+              : isChatPage
+                ? { top: 12, right: 16 }
+                : isGroundsBoard
+                  ? { bottom: 84, right: 20 }
+                  : { bottom: 20, right: 20 }),
             zIndex: 100,
             touchAction: 'none',
             cursor: dragging ? 'grabbing' : 'grab',
@@ -642,6 +672,12 @@ export function AppSidebar() {
 
   function rowFor(g: Ground) {
     const attention = railAttention(g as any, user?.id)
+    /* Walkthrough pass 2, item 1: more than one check-in on this rail can share a label ("Help a
+       new hire get started, from 27 September" listed three times), with nothing to tell a reader
+       which row is which. When that happens, the one thing the list already carries for each one -
+       when it started - is said after the name; a label that is already unique is left alone. */
+    const apart = whatTellsItApart(inRail, g)
+    const nameRead = apart ? `${g.label}, ${apart}` : g.label
     const planned = plannedSessionsFor(g.timelineDays, (g as any).cadence, (g as any).maxSessions ?? (g as any).totalSessions)
     const mine = attention.kind === 'yours' || attention.kind === 'overdue'
     /* The room the row's buttons need when they show over its right, and whether the row must keep it
@@ -657,7 +693,7 @@ export function AppSidebar() {
         : null
     /* The whole row in sentences, for the pointer and for a screen reader. See what-a-sidebar-row-says. */
     const says = whatTheRowSays({
-      label: g.label,
+      label: nameRead,
       attention,
       round: openRound((g as any).checkIns),
       planned,
@@ -687,7 +723,7 @@ export function AppSidebar() {
               aria-label={says}
             >
               <span className={`gw-ci-dot gw-ci-dot-${dot}`} aria-hidden />
-              <span className="gw-ci-nm">{g.label}</span>
+              <span className="gw-ci-nm">{nameRead}</span>
               {mine && <span className={`gw-rail-bdg gw-rail-bdg-${attention.kind === 'overdue' ? 'late' : 'turn'}`} title={why ?? undefined}>Your turn</span>}
               {/* One badge a row: your turn comes first, and the check-in's own state only otherwise. */}
               {!SILENT_STATUSES.includes(g.status) && !mine && <GroundStatusBadge status={g.status} />}

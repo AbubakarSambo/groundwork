@@ -1,4 +1,4 @@
-import { plainWordsByPerson, oneWithNoName } from './a-colleague'
+import { plainWordsByPerson, oneWithNoName, atTheStart } from './a-colleague'
 export { atTheStart } from './a-colleague'
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
@@ -111,6 +111,21 @@ export function personLabel(p: APerson | null | undefined): string {
   return theNameOrAddress(p) ?? oneWithNoName(p)
 }
 
+/**
+ * NAME, OR THE PLAIN ADDRESS ITSELF - NEVER ONE GUESSED OUT OF IT. Walkthrough pass 2, item 1.
+ *
+ * `theNameOrAddress` above is right for most of the lead's own pages (an invented "Zawadi U8" reads
+ * fine where there is no other name on offer), but it gave the same person a THIRD answer on the
+ * lead's own sessions roster, next to "Somebody invited by email" on People and setup and "A
+ * colleague" on the board - the walkthrough's one complaint, three screens disagreeing about one
+ * person. This is the same lead's-page fallback with the guess removed: their name, else the
+ * address exactly as it was typed, else null (so a caller still falls back to "a colleague" the
+ * usual way).
+ */
+function theNameOrPlainAddress(p: APerson | null | undefined): string | null {
+  return theirName(p) ?? (p?.email?.trim() || null)
+}
+
 /** How a party is shown to ANOTHER party: name, else "a colleague" or "the lead". Never the email. */
 export function participantLabel(p: APerson | null | undefined): string {
   return theirName(p) ?? oneWithNoName(p)
@@ -124,9 +139,9 @@ export function participantLabel(p: APerson | null | undefined): string {
  */
 export function peopleLabels(
   people: (APerson | null | undefined)[],
-  opts: { forTheLead?: boolean; readerId?: string | null; readerIsInIt?: boolean } = {},
+  opts: { forTheLead?: boolean; readerId?: string | null; readerIsInIt?: boolean; neverGuessFromAnAddress?: boolean } = {},
 ): Map<string, string> {
-  const named = opts.forTheLead ? theNameOrAddress : theirName
+  const named = opts.neverGuessFromAnAddress ? theNameOrPlainAddress : opts.forTheLead ? theNameOrAddress : theirName
   const plain = plainWordsByPerson(people as (APerson & { id?: string | null })[], {
     named: (p) => !!named(p), readerId: opts.readerId ?? null, readerIsInIt: opts.readerIsInIt,
   })
@@ -154,4 +169,31 @@ export function firstNameOrLabel(p: APerson | null | undefined, forTheLead = tru
  */
 export function hasARealName(p: APerson | null | undefined): boolean {
   return !!theirName(p)
+}
+
+/**
+ * ONE NAME FOR SOMEBODY WITH NO SEAT, EVERYWHERE THEY ARE SHOWN. Walkthrough pass 2, item 1.
+ *
+ * The same person with no account yet read as three different things on three screens: "A
+ * colleague... Has not given a name" (the board, which says the engine's own words and is not
+ * changed here - request 151 E11), "Zawadi U8" on the lead's Every session roster
+ * (GroundAdminPage.tsx, which used to call `personLabel`, guessing a name out of the email's local
+ * part), and "Somebody invited by email" on People and setup (WhosInItRoster.tsx, which never
+ * guessed). The guess is the odd one out - U.4 re-review already ruled it wrong wherever a screen
+ * would otherwise show the plain address (see `hasARealName` above) - so both callers now share this
+ * one rule: their real name if they have one, else the plain address wherever this reader may see
+ * it, else the plain words for nobody having given one at all.
+ */
+export function nameWithoutGuessing(p: APerson | null | undefined): { name: string; inASentence: string; nameless: boolean } {
+  const noRealName = !hasARealName(p)
+  const email = p?.email?.trim()
+  const nameless = noRealName && !email
+  /* A real name is capitalised for a row heading; the plain address is shown exactly as it is,
+     never re-cased into something that reads like a guess. */
+  const name = noRealName && email
+    ? email
+    : nameless
+      ? 'Somebody invited by email'
+      : atTheStart(theirName(p) ?? oneWithNoName(p))
+  return { name, inASentence: nameless ? 'this person' : name, nameless }
 }

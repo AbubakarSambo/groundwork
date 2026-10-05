@@ -166,10 +166,10 @@ describe('Panel', () => {
 })
 
 describe('EdgeRow', () => {
-  it('the edge colour says why it is here, in words too, for a screen reader', () => {
+  it('the edge colour says why it is here, in words too, for a screen reader, when the title does not already say so', () => {
     render(
       <EdgeList label="What needs you">
-        <EdgeRow kind="ready" title="Today's report is ready" detail="3 deals moved stage." />
+        <EdgeRow kind="ready" title="Deals moved stage this week" detail="3 deals moved stage." />
         <EdgeRow kind="concern" title="The email bounced" />
       </EdgeList>,
     )
@@ -178,6 +178,23 @@ describe('EdgeRow', () => {
     expect(items[0].querySelector('.gwui-edge-sp')).toHaveClass('gwui-edge-sp-ready')
     expect(items[0]).toHaveTextContent('Ready to read.')
     expect(items[1].querySelector('.gwui-edge-sp')).toHaveClass('gwui-edge-sp-concern')
+  })
+
+  /*
+   * WALKTHROUGH PASS 2, ITEM 1: EVERY REPORT ROW ON TODAY READ "READY TO READ." ABOVE A TITLE THAT
+   * ALREADY SAID "...IS READY" - Today's own report titles always do ("The report for Sales team,
+   * Q3 is ready"), so the sr-only prefix said the same thing to a screen reader twice, every time.
+   * It is left out when the title already carries the word.
+   */
+  it('says "Ready to read." once, never twice, when the title already says the report is ready', () => {
+    render(
+      <EdgeList label="What needs you">
+        <EdgeRow kind="ready" title="The report for Sales team, Q3 is ready" detail="3 deals moved stage." />
+      </EdgeList>,
+    )
+    const item = screen.getByRole('listitem')
+    expect(item).toHaveTextContent('The report for Sales team, Q3 is ready')
+    expect(item.textContent?.match(/ready/gi)?.length).toBe(1)
   })
 
   it('title 17px bold, line 15px muted, 16px above and below, 4px edge', () => {

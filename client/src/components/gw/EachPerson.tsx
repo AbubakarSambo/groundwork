@@ -333,6 +333,7 @@ function Small({ onClick, children }: { onClick: () => void; children: React.Rea
   return (
     <button
       onClick={onClick}
+      className="gwui-tap-40"
       style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--gw-navy)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
     >
       {children}

@@ -32,7 +32,9 @@ describe('an invitation waiting for its start day', () => {
     const src = readFileSync(join(__dirname, '..', 'pages', 'grounds', 'GroundAdminPage.tsx'), 'utf8')
     expect(src).toContain('{isInitiator && !p.userId && waitsForItsStart(p as any) && (')
     expect(src).toContain('Their invitation goes out on the morning the check-in starts.')
-    expect(src).toContain('{isInitiator && !p.userId && !waitsForItsStart(p as any) && (')
+    /* Walkthrough pass 2, item 1: "Resend invite" is also withheld from somebody with no seat at
+       all - their invitation has never gone out, so there is nothing to resend. */
+    expect(src).toContain('{isInitiator && !p.userId && !p.awaitingSeat && !waitsForItsStart(p as any) && (')
     expect(src).toContain('{theLeadsNote(p.roleAsDescribed)}')
   })
 })

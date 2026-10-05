@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react'
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { cadenceLabel } from '@/lib/cadence'
 import { phaseSpineSentence } from '@/lib/phase-spine-sentence'
 import { useAskStore } from '@/stores/ask'
+import { scrollTo } from '@/lib/scroll-to'
 import type { GroundCadence } from '@/api/grounds'
 import './ui/gw-ui.css'
 
@@ -80,6 +82,21 @@ export function TheCheckInHeader({
   onSelectTab?: (key: string) => void
 }) {
   const showAsk = useAskStore((s) => s.show)
+
+  /*
+   * RELEASE WALKTHROUGH A, FIX 3: AT 375px THE ACTIVE TAB CAN SIT PAST THE RIGHT EDGE.
+   * The row scrolls sideways (`overflowX: 'auto'` below) and a reader can land on a page with a
+   * later tab already active - "My work", say - while the strip is still scrolled to its own
+   * start, so the one tab saying where they are is off screen on a phone. `Tabs.tsx` (the other
+   * tab strip this product draws) already fixes this with `scrollTo`, which is proven not to be
+   * fatal in an environment with no real scrolling (jsdom's tests included); this draws its own
+   * markup rather than that component (it mixes real links, a callback-driven row and a trailing
+   * slot `Tabs` has no room for), so the same fix is repeated here rather than left out.
+   */
+  const activeTabRef = useRef<HTMLAnchorElement | HTMLButtonElement>(null)
+  useEffect(() => {
+    scrollTo(activeTabRef.current, { block: 'nearest', inline: 'nearest' })
+  }, [active])
 
   /*
    * THE CADENCE LINE, WITH ONLY THE PARTS WE HAVE. The prototype's own line names a time of day
@@ -163,16 +180,24 @@ export function TheCheckInHeader({
       >
         <div style={{ display: 'flex', gap: 20 }}>
           {tabs.map((t) => {
-            const tabClass = `gwui-ci-tab${t.key === active ? ' gwui-ci-tab-on' : ''}`
+            const isOn = t.key === active
+            const tabClass = `gwui-ci-tab${isOn ? ' gwui-ci-tab-on' : ''}`
             return t.to ? (
-              <Link key={t.key} to={t.to} aria-current={t.key === active ? 'page' : undefined} className={tabClass}>
+              <Link
+                key={t.key}
+                ref={isOn ? (activeTabRef as React.Ref<HTMLAnchorElement>) : undefined}
+                to={t.to}
+                aria-current={isOn ? 'page' : undefined}
+                className={tabClass}
+              >
                 {t.label}
               </Link>
             ) : (
               <button
                 key={t.key}
+                ref={isOn ? (activeTabRef as React.Ref<HTMLButtonElement>) : undefined}
                 type="button"
-                aria-current={t.key === active ? 'page' : undefined}
+                aria-current={isOn ? 'page' : undefined}
                 onClick={() => onSelectTab?.(t.key)}
                 className={tabClass}
               >

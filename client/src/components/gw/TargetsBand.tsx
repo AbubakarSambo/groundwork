@@ -90,6 +90,9 @@ export function TargetsBand({
     const readerIsOwner = !!viewerUserId && owner?.userId === viewerUserId
     if (readerIsOwner) return !isTheLead && leadFirst ? `Seen by you and ${leadFirst}` : 'Seen by you'
     if (isTheLead) return ownerFirst ? `Seen by ${ownerFirst} and you` : 'Seen by you'
+    /* When the share's owner is the lead, the two names are the same person: say it once
+       ("Seen by Rukia"), not "Seen by Rukia and Rukia" (walkthrough pass 2, item 1). */
+    if (owner && lead && owner.id === lead.id) return ownerFirst ? `Seen by ${ownerFirst}` : 'Seen by the lead'
     return ownerFirst && leadFirst ? `Seen by ${ownerFirst} and ${leadFirst}` : 'Seen by the lead'
   }
   const whose = (t: Target): string => {
@@ -120,7 +123,7 @@ export function TargetsBand({
             {onChangeTarget && (
               <button
                 onClick={() => onChangeTarget(t)}
-                className="gwui-fs-13 gwui-ink-sub gwui-p-0 gwui-rule-none"
+                className="gwui-fs-13 gwui-ink-sub gwui-p-0 gwui-rule-none gwui-tap-40"
                 style={{ background: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Change this

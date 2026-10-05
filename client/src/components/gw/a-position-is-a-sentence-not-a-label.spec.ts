@@ -20,6 +20,14 @@ describe('a position under "Where things stand" is a sentence', () => {
   })
 
   it('says "X said ...", and "You said ..." on the reader\'s own row', () => {
-    expect(SRC).toMatch(/\{\(p\.who === yourName \? 'You' : p\.who\)\} said \{lowerFirst\(p\.view\)\}/)
+    /*
+     * RELEASE WALKTHROUGH A, FIX 2: THE SAME PERSON, NAMED TWICE.
+     * The literal `{who} said {lowerFirst(view)}` this used to pin always glued the frame on, even
+     * when the served `view` already opened with the person's name or "You" - "Amani Wekesa said
+     * amani Wekesa stated an aim..." `sayWhatTheySaid` (below, in this same file) keeps that exact
+     * frame whenever the view does not already carry the name - see its own spec,
+     * TheSessionsReport.sayWhatTheySaid.spec.ts, for both halves of the rule.
+     */
+    expect(SRC).toMatch(/sayWhatTheySaid\(p\.who, p\.view, yourName\)/)
   })
 })

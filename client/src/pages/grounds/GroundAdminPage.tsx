@@ -306,6 +306,18 @@ export function GroundAdminPage() {
   /** At the start of a line: "Another colleague". */
   const personLabel = (p: any): string => atTheStart(labelInASentence(p))
 
+  /*
+   * ONE NAME EVERYWHERE SOMEBODY WITH NO SEAT IS SHOWN (walkthrough pass 2, item 1). Only for the
+   * sessions roster below, which used `personLabel` above and so could GUESS a name out of the
+   * address the lead typed ("zawadi.u8@example.test" became "Zawadi U8") - a third answer next to
+   * "Somebody invited by email" on People and setup (WhosInItRoster.tsx) and "A colleague" on the
+   * board, for the very same person. This keeps the same "one colleague"/"another colleague"/"a
+   * third colleague" counting `personLabel` already gives when nobody has an address to show either,
+   * and otherwise falls back to the plain address itself - never a name nobody gave.
+   */
+  const rosterLabels = peopleLabels((ground as any)?.participants ?? [], { forTheLead: true, neverGuessFromAnAddress: true })
+  const nameOnTheRoster = (p: any): string => atTheStart(rosterLabels.get(p?.id) ?? onePersonsLabel(p))
+
   /**
    * ONE ROW PER SESSION, AND WHO EACH ROW IS COUNTING.
    *
@@ -1812,12 +1824,10 @@ export function GroundAdminPage() {
                         ? 'Some sessions done, some still open'
                         : 'Not started'
                   const sharedReport = p.sharedSoloReport as Record<string, unknown> | null
-                  /* This is the lead's own roster - they invited these people by typing the
-                     addresses - so `personLabel`, which falls back to the address, is both
-                     truthful and useful here. With no address either, the engine's words: "one
-                     colleague", "another colleague". Never the lead's note, which is shown below
-                     as theirs. */
-                  const name = personLabel(p)
+                  /* See `nameOnTheRoster` above (walkthrough pass 2, item 1): never a name guessed
+                     out of the address, so this agrees with People and setup and the board about
+                     the same person. Never the lead's note, which is shown below as theirs. */
+                  const name = nameOnTheRoster(p)
                   /* GROUP 3'S REVIEW, THE SCREEN'S OWN SENTENCES 10: used below so the reader's own
                      row says "Your expectation", not "They have seen it" about the reader herself. */
                   const isSelfRow = p.userId === user?.id
@@ -1916,8 +1926,11 @@ export function GroundAdminPage() {
                         <div className={`ga-status-dot ${statusDotClass}`} title={statusLabel} />
                         <Avatar initials={initialsOf(name)} />
                         <div className="ga-name-cell">
-                          <div className="gwui-person-name">{personLabel(p)}</div>
-                          {labelInASentence(p) !== p.email && (
+                          <div className="gwui-person-name">{name}</div>
+                          {/* `name` already IS the plain email where there is no real name to show
+                              (`nameOnTheRoster`), so the email line underneath would only repeat
+                              it; shown only when the heading reads something other than the address. */}
+                          {name !== p.email && (
                             <div className="gwui-person-email">{p.email}</div>
                           )}
                           {/*
@@ -1928,7 +1941,7 @@ export function GroundAdminPage() {
                             to somebody mid-session. Same fact, same words, here too.
                           */}
                           {!p.userId && (
-                            <div className="gwui-note">{atTheStart(labelInASentence(p))} has not joined yet.</div>
+                            <div className="gwui-note">{atTheStart(name)} has not joined yet.</div>
                           )}
                           {editingRoleId === p.id ? (
                             <div className="gwui-button-row">
@@ -1978,8 +1991,13 @@ export function GroundAdminPage() {
                         {statusTag}
                         {/* Available for anyone who has not joined yet, whatever
                             the delivery status says - "delivered" only means the
-                            mail server accepted it, not that a person saw it. */}
-                        {isInitiator && !p.userId && (
+                            mail server accepted it, not that a person saw it.
+                            WALKTHROUGH PASS 2, ITEM 1: NOT FOR SOMEBODY WITH NO SEAT. Their
+                            invitation has never gone out (p.awaitingSeat, same rule the "Resend
+                            invite" button below already needs), so there is no invite link to copy
+                            yet - `help` already says what is actually true, that a seat has to be
+                            freed first. */}
+                        {isInitiator && !p.userId && !p.awaitingSeat && (
                           <Button
                             kind="quiet"
                             size="small"
@@ -2012,7 +2030,16 @@ export function GroundAdminPage() {
                         {isInitiator && !p.userId && waitsForItsStart(p as any) && (
                           <span className="gwui-note">Their invitation goes out on the morning the check-in starts.</span>
                         )}
-                        {isInitiator && !p.userId && !waitsForItsStart(p as any) && (
+                        {/*
+                          WALKTHROUGH PASS 2, ITEM 1: NOT "RESEND" FOR SOMETHING NEVER SENT. With no
+                          seat for them, there is no earlier invitation to send again - `help` above
+                          already says the true thing (a seat has to be freed first, with "Go to
+                          People" for an admin). `waitsForItsStart` already returns false for
+                          `p.awaitingSeat` (the-leads-note.ts), which is why this read as "Resend
+                          invite" rather than the held-invitation note just above; excluded here too,
+                          directly, so the two conditions stay a true pair however that helper changes.
+                        */}
+                        {isInitiator && !p.userId && !p.awaitingSeat && !waitsForItsStart(p as any) && (
                           <Button
                             kind="quiet"
                             size="small"

@@ -6,6 +6,7 @@ import { whoIsInRound } from '@/lib/who-is-in-this-round'
 import { useAuthStore } from '@/stores/auth'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { TheCheckInHeader } from '@/components/gw/TheCheckInHeader'
+import { checkInHeaderTabs } from '@/pages/grounds/ground-tabs'
 
 /**
  * ONE ROUND'S REPORT, FOR SOMEBODY WHO HAS NO SESSION OF THEIR OWN ON IT.
@@ -33,6 +34,8 @@ export default function RoundReportPage() {
   })
 
   const canRunThisCheckIn = !!user?.id && (ground as any)?.initiatorId === user.id
+  const isAParty = !!(ground as any)?.viewerIsInitiator || !!(ground as any)?.participants?.some((p: any) => p.userId === user?.id)
+  const contextEnabled = (ground as any)?.contextEnabled === true
   const plannedSessions = ground ? plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).plannedSessions) : null
 
   return (
@@ -52,22 +55,16 @@ export default function RoundReportPage() {
           cadence={(ground as any)?.cadence ?? null}
           plannedSessions={plannedSessions}
           canRunThisCheckIn={canRunThisCheckIn}
-          isAParty={!!(ground as any)?.viewerIsInitiator || (ground as any)?.participants?.some((p: any) => p.userId === user?.id)}
+          isAParty={isAParty}
           active="report"
-          tabs={[
-            { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
-            { key: 'chat', label: 'Check-in', to: `/grounds/${id}` },
-            { key: 'context', label: 'Context and resources', to: `/grounds/${id}?tab=context` },
-            { key: canRunThisCheckIn ? 'sessions' : 'record', label: 'My work', to: `/grounds/${id}?tab=${canRunThisCheckIn ? 'sessions' : 'record'}` },
-            { key: 'settings', label: 'People and setup', to: `/grounds/${id}?tab=settings` },
-            { key: 'report', label: 'Report', to: `/grounds/${id}?tab=report` },
-          ]}
+          tabs={checkInHeaderTabs({ id, contextEnabled, canRunThisCheckIn, isAParty })}
         />
       )}
 
       <div style={{ marginTop: 20 }}>
         <button
           onClick={() => navigate(`/grounds/${id}?tab=report`)}
+          className="gwui-tap-40"
           style={{ background: 'none', border: 'none', padding: 0, fontSize: 12.5, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 14 }}
         >
           &larr; Every session

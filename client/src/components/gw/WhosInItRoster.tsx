@@ -3,7 +3,7 @@ import { PeopleTable, PersonRow, Tag, Button, type TagTone } from '@/components/
 import { PeoplePicker } from '@/components/gw/PeoplePicker'
 import { ShareSection } from '@/pages/grounds/ShareSection'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
-import { personLabel as onePersonsLabel, atTheStart, firstNameOrLabel, hasARealName } from '@/lib/utils'
+import { atTheStart, firstNameOrLabel, nameWithoutGuessing } from '@/lib/utils'
 import { initialsOf } from '@/pages/org/people-here'
 import { waitsForItsStart } from '@/lib/the-leads-note'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
@@ -226,27 +226,18 @@ export function WhosInItRoster({
       <PeopleTable>
         {participants.map((p: any) => {
           /*
-           * A ROW HEADING IS THE START OF A LINE, NOT THE MIDDLE OF A SENTENCE. `personLabel`'s
-           * "a colleague" is written lower case for inside a sentence (a-colleague.ts); read as a
-           * row heading it read as an uncapitalised fragment. `atTheStart` gives it the capital.
-           * Whoever can see this person's email (the server already nulls it for anyone who cannot,
+           * ONE NAME EVERYWHERE SOMEBODY WITH NO SEAT IS SHOWN (walkthrough pass 2, item 1;
+           * `nameWithoutGuessing`, lib/utils.ts). A row heading is the start of a line, not the
+           * middle of a sentence - `nameWithoutGuessing` already capitalises a real name for that;
+           * whoever can see this person's email (the server already nulls it for anyone who cannot,
            * see `email: hideContact && ...` in grounds.service.ts) reads their plain address where
-           * there is no name at all to show, rather than "A colleague" (U.4 review, item 6).
-           *
-           * NEVER A NAME GUESSED OUT OF THE ADDRESS (U.4 re-review, item 4). `onePersonsLabel`
-           * (`personLabel`) reaches for the lead's own typed address and turns it into something
-           * that reads like a name - "zawadi.u8@example.test" becomes "Zawadi U8" - which is right
-           * where the lead is reading their OWN invitation back, but wrong here: it read as a name
-           * nobody gave, to a reader who had no part in typing it. `hasARealName` is checked first,
-           * so with no real name on record this always shows the plain address instead.
+           * there is no name at all to show, rather than "A colleague" (U.4 review, item 6), and
+           * never a name GUESSED out of that address (U.4 re-review, item 4): "zawadi.u8@example.test"
+           * read back as "Zawadi U8" is a name nobody gave, to a reader who had no part in typing it.
+           * With no name and no address this reader may see either, the row reads "Somebody invited
+           * by email", and a sentence reads "this person".
            */
-          const noRealName = !hasARealName(p)
-          /* With no name and no address this reader may see, say so plainly rather than put a
-             made-up "A colleague" in the middle of a sentence: the row reads "Somebody invited by
-             email", and a sentence reads "this person". */
-          const nameless = noRealName && !p.email
-          const name = noRealName && p.email ? p.email : nameless ? 'Somebody invited by email' : atTheStart(onePersonsLabel(p))
-          const inASentence = nameless ? 'this person' : name
+          const { name, inASentence, nameless } = nameWithoutGuessing(p)
           const bounced = !p.userId && p.inviteDeliveryStatus === 'BOUNCED'
           const waitingForSeat = !!p.awaitingSeat
           const notLetIn = !!p.notLetIn

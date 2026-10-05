@@ -113,6 +113,31 @@ export function settingsChangeSentence(c: { changedAt: string; by: 'you' | 'lead
   return `On ${onDate}, ${who} ${action}.`
 }
 
+/**
+ * WALKTHROUGH PASS 2, ITEM 1: "INCLUDING YOUR MANAGER", SAID TO THE LEAD HERSELF.
+ *
+ * Hafsah's settled wording for who can see what you say (Conflict A, 29 September) is "The people
+ * in this check-in, including your manager, can see what you say in it." - true for a participant,
+ * who reads it on a check-in somebody else runs. But the lead reads this same sentence about her
+ * own check-in: she is not being told about a manager of hers here, so the clause is dropped for
+ * her. A participant never reaches this admin page, so their wording is unchanged.
+ */
+export function peersVisibilitySentence(args: {
+  peersVisible: boolean
+  peersVisibleToEachOther: boolean | null
+  peersDefaultHidden: boolean
+  isInitiator: boolean
+}): string {
+  const who = args.isInitiator
+    ? 'The people in this check-in can see what you say in it'
+    : 'The people in this check-in, including your manager, can see what you say in it'
+  if (args.peersVisible) return `${who}, once the team's report is shared. You are named to each other.`
+  if (args.peersVisibleToEachOther == null) {
+    return `Not set, so this check-in uses the default for its kind: ${args.peersDefaultHidden ? 'hidden' : 'shown'}. ${who}, once the team's report is shared. ${args.peersDefaultHidden ? 'You are not named to each other.' : 'You are named to each other.'}`
+  }
+  return `${who}, once the team's report is shared. You are not named to each other.`
+}
+
 export function CheckInPeopleAndSetup(props: {
   ground: any
   user: any
@@ -463,12 +488,19 @@ export function CheckInPeopleAndSetup(props: {
            * 29 September) is "The people in this check-in, including your manager, can see what you
            * say in it." - carried here, with the one thing this switch truly decides (whether that
            * is said with names or without) added after it.
+           *
+           * WALKTHROUGH PASS 2, ITEM 1: SAID TO THE LEAD, "INCLUDING YOUR MANAGER" NAMES HER OWN
+           * MANAGER, NOT HERSELF - but this page is also where the lead reads it, about her own
+           * check-in, and she is not told about a manager of hers here. To the lead, the clause is
+           * dropped; a participant (who does not reach this admin page) keeps the prototype's words
+           * unchanged.
            */
-          detail={props.peersVisible
-            ? "The people in this check-in, including your manager, can see what you say in it, once the team's report is shared. You are named to each other."
-            : (ground as any)?.peersVisibleToEachOther == null
-              ? `Not set, so this check-in uses the default for its kind: ${props.peersDefaultHidden ? 'hidden' : 'shown'}. The people in this check-in, including your manager, can see what you say in it, once the team's report is shared. ${props.peersDefaultHidden ? 'You are not named to each other.' : 'You are named to each other.'}`
-              : "The people in this check-in, including your manager, can see what you say in it, once the team's report is shared. You are not named to each other."}
+          detail={peersVisibilitySentence({
+            peersVisible: props.peersVisible,
+            peersVisibleToEachOther: (ground as any)?.peersVisibleToEachOther ?? null,
+            peersDefaultHidden: props.peersDefaultHidden,
+            isInitiator,
+          })}
           on={props.peersVisible}
           onChange={(on) => props.setPeerVisibility.mutate(on)}
           disabled={!canEditRunOrAdmin || props.setPeerVisibility.isPending}

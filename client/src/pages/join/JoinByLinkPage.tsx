@@ -52,7 +52,23 @@ export function JoinByLinkPage() {
 
   if (isLoading) return <AuthCard title="One moment." />
   if (!data || !data.open) {
-    return <AuthCard title="This invite link is not open any more" sub="Ask whoever sent it for the new one." />
+    /*
+     * WALKTHROUGH PASS 2, ITEM 4: A DEAD END WITH NOTHING TO PRESS. This said why the link does
+     * not work and stopped there - nowhere to go, unlike the prototype's own small-state screens
+     * (docs/prototype/screens/F4-small-states/badlink.txt, nowhere.txt), each of which pairs its
+     * sentence with a way through. `AuthCard` already carries the Groundwork mark; a way on is
+     * added here - sign in, for somebody who already has an account, or the home page.
+     */
+    return (
+      <AuthCard title="This invite link is not open any more" sub="Ask whoever sent it for the new one.">
+        <div className="gw-auth-actions">
+          <Button wide size="big" onClick={() => navigate('/auth')}>Sign in</Button>
+        </div>
+        <p className="gw-auth-small">
+          <Link to="/">Go to the Groundwork home page</Link> instead.
+        </p>
+      </AuthCard>
+    )
   }
 
   const org = data.organisationName

@@ -84,6 +84,23 @@ describe('the create-account door', () => {
     await waitFor(() => expect(screen.getByText('Create your account')).toBeTruthy())
   })
 
+  /*
+   * WALKTHROUGH PASS 2, ITEM 4: TWO NAVY BUTTONS AT ONCE. "How would you like to sign in?" drew its
+   * chosen option ("With a link we email you", the default) navy, the same colour as "Create
+   * account" below it - two navy controls on one page, which CLAUDE.md's "at most one navy button
+   * per page" rules out and which the prototype's own sign-up screen never has (signup.txt has only
+   * "Create account"). `Choices` now takes a `quiet` prop for exactly this case.
+   */
+  it('has exactly one navy control: "Create account", never the chosen sign-in method too', async () => {
+    renderAuth('?mode=signup')
+    await waitFor(() => expect(screen.getByText('Create your account')).toBeTruthy())
+    const chosen = screen.getByRole('radio', { name: 'With a link we email you', checked: true })
+    expect(chosen.className).not.toContain('gwui-choice-on ')
+    expect(chosen.className.trim()).not.toBe('gwui-choice gwui-choice-on')
+    expect(chosen.className).toContain('gwui-choice-on-quiet')
+    expect(screen.getByRole('button', { name: /^Create account$/ }).className).toContain('gwui-btn-primary')
+  })
+
   it('asks for the name and the organisation', async () => {
     /**
      * Both were guessed before, and not harmlessly: `entrySave` derives the first name

@@ -256,6 +256,21 @@ describe('a document card, as each reader sees it', () => {
     expect(document.body.textContent).not.toContain('Only me')
   })
 
+  /*
+   * WALKTHROUGH PASS 2, ITEM 3: A <p> NESTED INSIDE A <p>, found live on a participant's Context
+   * tab (console error, "<p> cannot contain a nested <p>"). "What Groundwork took from it" put a
+   * `Note` (which renders its own <p>) inside this same paragraph when the document held something
+   * owed to one person or to everybody - fixed by drawing the wrapper as a <div>.
+   */
+  it('never nests a <p> inside a <p>, even when the document holds something owed to somebody', async () => {
+    ;(documentsApi.list as any).mockResolvedValue([{ ...leadsDocs[1], ...read }])
+    draw('lead', 'u-lead')
+    await screen.findByText('What Groundwork took from it')
+    const fold = document.querySelector('[data-gw-document-took]') as HTMLElement
+    expect(fold.querySelectorAll('p p').length).toBe(0)
+    expect(fold.textContent).toContain('These are on the board and in the report, against the people who hold them.')
+  })
+
   it('and the note on her first document says each choice in a full sentence', async () => {
     ;(documentsApi.list as any).mockResolvedValue([leadsDocs[1]])
     draw('lead', 'u-lead')
