@@ -5,6 +5,7 @@ import { justTheQuestion } from '@/pages/invite/the-link-opens-on-the-question'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
 import { conversationApi, streamMessage, type CheckInBrief, type TheEndCard as TheEndCardData } from '@/api/conversation'
+import type { ConnectWhatsApp } from '@/types'
 import { documentsApi, type DocumentAssessment } from '@/api/documents'
 import { useAuthStore } from '@/stores/auth'
 import { asTheirWords, isTheEnginesOwnNote } from '@/lib/as-their-words'
@@ -27,6 +28,7 @@ import { IdeaOffer } from '@/components/gw/checkin/IdeaOffer'
 import { RequestOffer, OpenTheRequest } from '@/components/gw/checkin/RequestOffer'
 import type { TheIdeaOfferInTheCheckIn, TheRequestOfferInTheCheckIn, TheRequestToOpen } from '@/api/anchorShapes'
 import { TheEndCard } from '@/components/gw/checkin/TheEndCard'
+import { Note } from '@/components/gw/ui/NoteEmpty'
 import { TheDonePage, type WhatChanged } from '@/components/gw/checkin/TheDonePage'
 import { whenTheNextOneOpens, whoElseAnswers } from '@/lib/what-the-end-of-a-check-in-can-say'
 import { firstWordOfAName } from '@/lib/the-first-word-of-a-name'
@@ -168,6 +170,12 @@ export function ChatPage() {
   })
   const checkInName: string = groundLabel || (ground.data as any)?.label || ''
   const [brief, setBrief] = useState<CheckInBrief | null>(null)
+  /**
+   * "CONNECT WHATSAPP" (decision 106, 5 October, night): served on the person's own transcript
+   * read, or null. An optional convenience - never required to answer - so it is drawn as one
+   * quiet line, nowhere near the composer.
+   */
+  const [connectWhatsApp, setConnectWhatsApp] = useState<ConnectWhatsApp | null>(null)
   /*
    * WHEN THE SCREEN MAY OFFER TO FINISH. The server holds a check-in to a turn floor - five answers
    * for a full check-in, three for a team update, one for a correction - and this page used to keep
@@ -582,6 +590,7 @@ export function ChatPage() {
             session with no turns yet still has a subject, and that is the load where it matters most.
           */
           if (t.brief) setBrief(t.brief)
+          if (t.connectWhatsApp) setConnectWhatsApp(t.connectWhatsApp)
           if (t.endCard) setEndCard(t.endCard)
           if (t.mayCompleteAfter) setMayCompleteAfter(t.mayCompleteAfter)
           /*
@@ -1160,6 +1169,25 @@ export function ChatPage() {
                           sign in with your email
                         </button>.
                       </div>
+                    )}
+                    {/*
+                     * "CONNECT WHATSAPP" (decision 106): an optional convenience, drawn only when
+                     * served - one quiet line near the composer, never in its way. Groundwork
+                     * already writes to the person's saved number; this is only for saying hello
+                     * back, so it never reads as something the person must do to answer.
+                     */}
+                    {connectWhatsApp && (
+                      <Note>
+                        You can also answer this on WhatsApp.{' '}
+                        <a
+                          className="gwui-btn gwui-btn-quiet gwui-btn-small"
+                          href={connectWhatsApp.link}
+                          target="_blank"
+                          rel="noopener"
+                        >
+                          {connectWhatsApp.says}
+                        </a>
+                      </Note>
                     )}
                   </div>
         )}
