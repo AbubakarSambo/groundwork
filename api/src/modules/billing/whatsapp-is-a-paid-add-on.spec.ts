@@ -225,6 +225,7 @@ describe('Baridi after its trial, paying for Small Team, without the add-on', ()
     const { addOn } = world();
     expect(await addOn.mayWeSend('org-baridi', NOW)).toEqual({ send: false, why: 'not turned on', saying: WHATSAPP_NOT_TURNED_ON });
     expect(await addOn.whatTheyRead('org-baridi', false, NOW)).toEqual({
+      on: false,
       sending: false,
       says: 'Your organisation has not turned on WhatsApp, so this check-in stays in the app.',
     });
@@ -342,7 +343,7 @@ describe('Baridi at its monthly limit', () => {
     const grace: any = await addOn.whatTheyRead('org-baridi', true, NOW);
     expect(grace.says.use).toBe('Your organisation has sent 2,000 of its 2,000 WhatsApp messages this month.');
     expect(grace.says.reachedTheLimit).toMatch(/^Your organisation has used all 2,000 of its WhatsApp messages for October\./);
-    expect(await addOn.whatTheyRead('org-baridi', false, NOW)).toEqual({ sending: false, says: may.send ? null : may.saying });
+    expect(await addOn.whatTheyRead('org-baridi', false, NOW)).toEqual({ on: true, sending: false, says: may.send ? null : may.saying });
   });
 
   it('a new month starts again from nothing', async () => {
@@ -363,5 +364,21 @@ describe('an organisation still on the free plan, made before the switch', () =>
     const read: any = await addOn.whatTheyRead('org-baridi', true, NOW);
     expect(read.says.charge).toBe('Nothing is charged for WhatsApp while you are on the free plan.');
     expect(read.use).toMatchObject({ sent: 3, limit: 500 });
+  });
+});
+
+describe('a lead or a person in a check-in, in a free trial with WhatsApp off (screens gap, 5 October)', () => {
+  it('Wairimu and Miriam read that it is off and why no reminder comes, where they were served nothing to say', async () => {
+    const { addOn } = world({ org: IN_ITS_TRIAL });
+    expect(await addOn.whatTheyRead('org-baridi', false, NOW)).toEqual({
+      on: false,
+      sending: true,
+      says: 'Your organisation has not turned on WhatsApp, so Groundwork does not send you reminders or summaries on WhatsApp.',
+    });
+  });
+
+  it('with it turned on they read that it is on and nothing more', async () => {
+    const { addOn } = world({ org: { ...IN_ITS_TRIAL, whatsappAddOnOn: true } });
+    expect(await addOn.whatTheyRead('org-baridi', false, NOW)).toEqual({ on: true, sending: true, says: null });
   });
 });
