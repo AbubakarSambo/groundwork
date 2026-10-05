@@ -20,6 +20,12 @@ export const CONTEXT_IN_ASK_GROUNDWORK_KEY = 'release.contextInAskGroundwork';
 export const PLAN_AND_BILLING_NEW_PARTS_KEY = 'release.planAndBillingNewParts';
 export const ANCHOR_SCENARIO_KEY = 'release.anchorScenario';
 export const REQUEST_OFFER_IN_THE_CHECK_IN_KEY = 'release.requestOfferInTheCheckIn';
+/**
+ * The three WhatsApp messages for somebody who stops a check-in halfway (decision 107): the reminder to
+ * carry on, the half-hour warning on the phone, and the clock's close. Off at release, { "on": false }:
+ * the end-to-end run of 5 October did not prove the reminder and the warning reliable for every kind.
+ */
+export const WHATSAPP_HALFWAY_MESSAGES_KEY = 'release.whatsappHalfwayMessages';
 
 /**
  * The kinds of work a NEW check-in may be given at release (decision 91, item 3). The paid client
@@ -91,3 +97,4 @@ export const theRequestOfferIsShown = (prisma: Reader) => aSwitch(prisma, REQUES
  * one when this is turned off, so the caller asks this only for something new.
  */
 export const theAnchorScenarioIsOn = (prisma: Reader) => aSwitch(prisma, ANCHOR_SCENARIO_KEY);
+export const theHalfwayMessagesAreOn = (prisma: Reader) => aSwitch(prisma, WHATSAPP_HALFWAY_MESSAGES_KEY);

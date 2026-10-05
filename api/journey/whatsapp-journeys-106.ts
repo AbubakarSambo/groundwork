@@ -170,6 +170,8 @@ export async function howItEnds(c: any): Promise<string[]> {
   heading('16. HOW A CHECK-IN ENDS ON WHATSAPP, FOR EVERY KIND');
   await signIn(wairimu); await signIn(grace);
   await prisma.platformSetting.upsert({ where: { key: 'release.anchorScenario' }, create: { key: 'release.anchorScenario', value: { on: true } as any, updatedBy: 'whatsapp-journeys' }, update: { value: { on: true } as any } });
+  /* The halfway messages are off at release; this run switches them on in the copy to read them. */
+  await prisma.platformSetting.upsert({ where: { key: 'release.whatsappHalfwayMessages' }, create: { key: 'release.whatsappHalfwayMessages', value: { on: true } as any, updatedBy: 'whatsapp-journeys' }, update: { value: { on: true } as any } });
   const conversation: any = c.app.get(require('../src/modules/conversation/conversation.service').ConversationService, { strict: false });
   const whatsapp: any = c.app.get(require('../src/modules/whatsapp/whatsapp.service').WhatsAppService, { strict: false });
   const emailsTo = async (address: string, after: Date) => (await prisma.notification.findMany({ where: { channel: 'email', toAddress: address, createdAt: { gt: after } }, orderBy: { createdAt: 'asc' }, select: { subject: true, sender: true } })).map((n: any) => `${n.subject} (${n.sender})`);

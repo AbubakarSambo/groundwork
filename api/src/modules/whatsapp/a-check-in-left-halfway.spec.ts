@@ -65,3 +65,14 @@ describe('Amani, who stopped halfway on WhatsApp', () => {
     expect(['carry-on', 'closes-in-half-an-hour', 'closed-by-the-clock'].every(isBusinessInitiated)).toBe(true);
   });
 });
+
+describe('off at release', () => {
+  it('the switch reads off with no row, and every one of the three asks it first', async () => {
+    const { theHalfwayMessagesAreOn } = require('../admin/what-is-hidden-at-release');
+    expect(await theHalfwayMessagesAreOn({ platformSetting: { findUnique: async () => null } })).toBe(false);
+    const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'grounds', 'grounds.cron.ts'), 'utf8');
+    expect(src).toContain('this.whatsapp && (await theHalfwayMessagesAreOn(this.prisma)) ? tellThemTheClockClosedIt(');
+    expect(src).toContain('if (this.whatsapp && (await theHalfwayMessagesAreOn(this.prisma))) await warnTheirPhone(');
+    expect(src).toContain('if (!this.whatsapp || !(await theHalfwayMessagesAreOn(this.prisma))) return { sent: 0 };');
+  });
+});
