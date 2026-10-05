@@ -46,13 +46,9 @@ export async function theAnchorNudgeFor(prisma: any, ground: { id: string; start
 }
 
 /**
- * THE SAME NUDGE ON WHATSAPP, IN A TEMPLATE'S SHAPE (proposed `anchor_checkin_follow_up`, docs/whatsapp-templates.md).
- * Built, never sent here: no template is approved, and nothing in this file talks to WhatsApp. The person's own
- * promise is the only words of theirs in it, and it goes to them alone.
+ * THE SAME NUDGE ON WHATSAPP. It is sent by the morning WhatsApp job (grounds.cron.ts, sendWhatsAppRemindersInner) in
+ * place of the chase on an anchor check-in, through the sender every other first message goes through, as the
+ * template `anchor_checkin_follow_up` (whatsapp/what-goes-to-a-phone.ts, itFollowsUpTheirPromise). Kept here only as
+ * the name, for the docs and the specs.
  */
 export const ANCHOR_FOLLOW_UP_TEMPLATE = 'anchor_checkin_follow_up';
-export function theAnchorNudgeOnWhatsApp(firstName: string, checkInName: string, theirOwnPromise: string | null): { template: string; params: string[] } | null {
-  const what = String(theirOwnPromise ?? '').trim().replace(/[.!?]+$/, '');
-  if (!what) return null;
-  return { template: ANCHOR_FOLLOW_UP_TEMPLATE, params: [firstName, what, checkInName] };
-}

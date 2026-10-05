@@ -329,7 +329,7 @@ only for a check-in started from the anchor link.
 
 - **In the app:** a person who has not yet checked in for the open round is served `aNudgeForYou` on their own board read. It is built from their own last open promise, said back to them: "You mentioned you would send your manager the deck. I'd love to hear how it went." With no open promise, it reads "It's been a few days since we spoke. What's changed since then?" It is null once they have checked in. Nobody else is ever served it: not the lead, not an admin with access, and not an admin who only reads.
 - **By email:** the reminder carries the same line, to that person only.
-- **On WhatsApp:** a ninth proposed template, `anchor_checkin_follow_up`, is built as a template's shape and not sent (`docs/whatsapp-templates.md`).
+- **On WhatsApp (changed, Hafsah 5 October):** it is now sent. The morning WhatsApp job sends it in place of the chase to a person with an open promise, through the same sender and gates as every morning message: WhatsApp on, not on leave, not kept off WhatsApp, STOP, "Not now", and one first message a day. Rukia reads "Hi Rukia, last time you said you would send your manager the deck. I'd love to hear how it went. Your check-in for Everyone pulling the same way is open, and you can answer here." The template is `anchor_checkin_follow_up`. Locally nothing really goes out, because no template is approved and there are no live keys.
 - Only the person's own promise from their own check-in is ever used. Never a promise a lead wrote, and never anybody else's words.
 
 The existing `activeLine` ("18/20 active · Groundwork has nudged the remaining 2.") is unchanged.
