@@ -23,9 +23,9 @@ const PAGE = {
     businessAccountId: { value: null, from: null, saying: 'The business account ID is not set.' },
   },
   secrets: {
-    accessToken: { state: 'set', saying: 'The access token is set. It was saved here and is kept encrypted.' },
-    appSecret: { state: 'set', saying: "The app secret is set in the server's settings. Anything you save here replaces it." },
-    verifyToken: { state: 'not set', saying: 'The verify token is not set.' },
+    accessToken: { state: 'set', from: 'here', saying: 'The access token is set. It was saved here and is kept encrypted.' },
+    appSecret: { state: 'set', from: 'server', saying: "The app secret is set in the server's settings. Anything you save here replaces it." },
+    verifyToken: { state: 'not set', from: null, saying: 'The verify token is not set.' },
   },
   canSaveSecrets: true,
   canSaveSecretsSaying: 'Secrets you type here are kept encrypted. Once saved, they are never shown again.',
@@ -70,6 +70,19 @@ describe('a member of staff reads', () => {
     await screen.findByText('Your changes are saved.')
     expect(api.save).toHaveBeenCalledWith({ displayNumber: '+44 7700 900123', phoneNumberId: '222222222', businessAccountId: '', verifyToken: 'made-up-verify-word' })
     expect(((await screen.findByLabelText(/^Verify token/)) as HTMLInputElement).value).toBe('')
+  })
+
+  it('a secret saved here can be removed, and the page says what the server uses instead', async () => {
+    api.save.mockResolvedValue({ ...PAGE, secrets: { ...PAGE.secrets, accessToken: { state: 'set', from: 'server', saying: "The access token is set in the server's settings. Anything you save here replaces it." } } })
+    open()
+    /* Only the one saved here has the button; the server's and the unset one do not. */
+    expect(await screen.findByRole('button', { name: 'Remove the saved access token' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Remove the saved app secret' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Remove the saved verify token' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Remove the saved access token' }))
+    expect(await screen.findByText("The saved access token is removed. The access token is set in the server's settings. Anything you save here replaces it.")).toBeTruthy()
+    expect(api.save).toHaveBeenCalledWith({ remove: ['accessToken'] })
+    expect(screen.queryByRole('button', { name: 'Remove the saved access token' })).toBeNull()
   })
 
   it('the test message goes to the number typed, and the page says where it went', async () => {

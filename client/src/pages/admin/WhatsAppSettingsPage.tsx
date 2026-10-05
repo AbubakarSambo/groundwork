@@ -65,6 +65,19 @@ function TheForm({ page }: { page: OurWhatsAppSettings }) {
     onError: (e) => setMessage({ ok: false, text: said(e, 'Your changes could not be saved. Try again.') }),
   })
 
+  /* Forget one saved secret. The API's own sentence then says what the server uses instead. */
+  const remove = useMutation({
+    mutationFn: (key: Secret) => whatsAppSettingsApi.save({ remove: [key] }).then((updated) => ({ key, updated })),
+    onSuccess: ({ key, updated }) => {
+      const name = SECRETS.find((s) => s.key === key)!.name.toLowerCase()
+      setMessage({ ok: true, text: `The saved ${name} is removed. ${updated.secrets[key].saying}` })
+      qc.setQueryData(['admin', 'whatsapp-settings'], updated)
+      qc.invalidateQueries({ queryKey: ['admin', 'whatsapp-settings', 'connection'] })
+      qc.invalidateQueries({ queryKey: ['admin-whatsapp'] })
+    },
+    onError: (e) => setMessage({ ok: false, text: said(e, 'The secret could not be removed. Try again.') }),
+  })
+
   const submit = () => {
     const body: SaveOurWhatsAppSettings = { ...plain }
     for (const s of SECRETS) if (secrets[s.key].trim()) body[s.key] = secrets[s.key].trim()
@@ -114,6 +127,11 @@ function TheForm({ page }: { page: OurWhatsAppSettings }) {
               autoComplete="new-password"
             />
             <div style={{ ...small, marginTop: 4 }}>{hint} {s.saying}</div>
+            {s.from === 'here' && (
+              <button type="button" style={{ ...btn, marginTop: 6 }} onClick={() => remove.mutate(key)} disabled={remove.isPending}>
+                Remove the saved {name.toLowerCase()}
+              </button>
+            )}
           </div>
         )
       })}

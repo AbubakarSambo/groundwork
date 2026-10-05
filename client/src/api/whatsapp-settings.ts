@@ -7,7 +7,8 @@ import { apiClient } from './client'
  */
 
 export type OurField = { value: string | null; from: 'here' | 'server' | null; saying: string }
-export type OurSecret = { state: 'set' | 'not set'; saying: string }
+/** `from: 'here'` means it was saved in the back office, so it can be removed there. Never the secret. */
+export type OurSecret = { state: 'set' | 'not set'; from: 'here' | 'server' | null; saying: string }
 
 export interface OurWhatsAppSettings {
   fields: { displayNumber: OurField; phoneNumberId: OurField; businessAccountId: OurField }

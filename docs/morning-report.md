@@ -1,5 +1,7 @@
 # Morning report
 
+**5 October, late.** Each WhatsApp secret saved in the back office now has a button to remove it. The page then says what the server will use instead, for example "The saved access token is removed. The access token is set in the server's settings. Anything you save here replaces it."
+
 **5 October, late.** The back office's WhatsApp test message is now limited to five a minute. The send record and the log line say which staff member sent each one, by their user id.
 
 **5 October, late.** When Meta first connects the webhook, it sends Groundwork's verify token back. That token is now compared in constant time, after a check that the lengths match.

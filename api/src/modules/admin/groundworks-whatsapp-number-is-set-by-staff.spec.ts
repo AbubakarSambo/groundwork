@@ -112,7 +112,7 @@ describe('what a member of staff reads on the page', () => {
     const page = await whatsapp.ourNumberAsStaffReadIt();
     expect(page.fields.phoneNumberId).toEqual({ value: '111111111', from: 'server', saying: "The phone number ID comes from the server's settings. Anything you save here replaces it." });
     expect(page.fields.businessAccountId.saying).toBe('The business account ID is not set.');
-    expect(page.secrets.accessToken).toEqual({ state: 'set', saying: "The access token is set in the server's settings. Anything you save here replaces it." });
+    expect(page.secrets.accessToken).toEqual({ state: 'set', from: 'server', saying: "The access token is set in the server's settings. Anything you save here replaces it." });
     expect(page.webhook.saying).toBe('The webhook address to give Meta is https://api.groundwork.test/api/v1/webhooks/whatsapp.');
     expect(page.canSaveSecretsSaying).toBe('Secrets you type here are kept encrypted. Once saved, they are never shown again.');
     expect(page.switch.saying).toBe('WhatsApp is switched off. Nothing goes from this number until you switch it on in the System tab.');
@@ -123,7 +123,7 @@ describe('what a member of staff reads on the page', () => {
     const { whatsapp, rows } = aService({});
     await whatsapp.ownNumber.save({ displayNumber: '+44 7700 900123', phoneNumberId: '222222222', businessAccountId: '333333333', ...SAVED }, 'staff-1');
     const page = await whatsapp.ourNumberAsStaffReadIt();
-    expect(page.secrets.accessToken).toEqual({ state: 'set', saying: 'The access token is set. It was saved here and is kept encrypted.' });
+    expect(page.secrets.accessToken).toEqual({ state: 'set', from: 'here', saying: 'The access token is set. It was saved here and is kept encrypted.' });
     expect(page.secrets.appSecret.state).toBe('set');
     expect(page.secrets.verifyToken.state).toBe('set');
     expect(page.fields.displayNumber).toEqual({ value: '+44 7700 900123', from: 'here', saying: 'The WhatsApp number was saved here.' });
@@ -145,6 +145,17 @@ describe('what a member of staff reads on the page', () => {
     const err: any = await whatsapp.ownNumber.save({ accessToken: SAVED.accessToken }, 'staff-1').catch((e) => e);
     expect(err.message).toBe('This server has no SETTINGS_ENCRYPTION_KEY, so the access token cannot be saved. Ask whoever runs the hosting to add it, then try again.');
     expect(rows.has(OUR_NUMBER_KEY)).toBe(false);
+  });
+
+  it('a saved secret can be removed, and the server setting is used again', async () => {
+    const { whatsapp } = aService();
+    await whatsapp.ownNumber.save({ accessToken: SAVED.accessToken, appSecret: SAVED.appSecret }, 'staff-1');
+    expect((await whatsapp.ours()).accessToken).toBe(SAVED.accessToken);
+    expect(await whatsapp.ownNumber.save({ remove: ['accessToken'] }, 'staff-1')).toEqual(['accessToken']);
+    const page = await whatsapp.ourNumberAsStaffReadIt();
+    expect(page.secrets.accessToken).toEqual({ state: 'set', from: 'server', saying: "The access token is set in the server's settings. Anything you save here replaces it." });
+    expect(page.secrets.appSecret.from).toBe('here');
+    expect((await whatsapp.ours()).accessToken).toBe(SERVER['whatsapp.accessToken']);
   });
 
   it('a key that is too short is refused, and the page says how long it must be', async () => {
@@ -180,7 +191,7 @@ describe('what a member of staff reads on the page', () => {
     process.env.SETTINGS_ENCRYPTION_KEY = 'a-different-test-key-also-not-real-at-all';
     whatsapp.ownNumber.forget();
     const page = await whatsapp.ourNumberAsStaffReadIt();
-    expect(page.secrets.accessToken).toEqual({ state: 'not set', saying: 'The access token was saved here, but this server cannot read it, because its encryption key has changed. Type the access token in again.' });
+    expect(page.secrets.accessToken).toEqual({ state: 'not set', from: 'here', saying: 'The access token was saved here, but this server cannot read it, because its encryption key has changed. Type the access token in again.' });
     expect((await whatsapp.ours()).enabled).toBe(false);
   });
 });
@@ -372,9 +383,9 @@ describe('only Groundwork staff can open it, and no secret is ever served or log
     bodies.push(JSON.stringify(page));
     expect(page.saved).toBe('Your changes are saved.');
     expect(page.secrets).toEqual({
-      accessToken: { state: 'set', saying: 'The access token is set. It was saved here and is kept encrypted.' },
-      appSecret: { state: 'set', saying: 'The app secret is set. It was saved here and is kept encrypted.' },
-      verifyToken: { state: 'set', saying: 'The verify token is set. It was saved here and is kept encrypted.' },
+      accessToken: { state: 'set', from: 'here', saying: 'The access token is set. It was saved here and is kept encrypted.' },
+      appSecret: { state: 'set', from: 'here', saying: 'The app secret is set. It was saved here and is kept encrypted.' },
+      verifyToken: { state: 'set', from: 'here', saying: 'The verify token is set. It was saved here and is kept encrypted.' },
     });
     for (const [m, p, b] of [
       ['GET', '/admin/whatsapp/settings'], ['GET', '/admin/whatsapp/settings/connection'],

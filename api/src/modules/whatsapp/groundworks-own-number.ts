@@ -45,7 +45,8 @@ export type SecretState = 'set' | 'not set';
 /** What the back office reads. No secret, ever. */
 export type OurNumberAsStaffReadIt = {
   fields: Record<PlainField, { value: string | null; from: 'here' | 'server' | null; saying: string }>;
-  secrets: Record<SecretField, { state: SecretState; saying: string }>;
+  /** `from` says where it is kept ("here" means saved in the back office and removable there), never what it is. */
+  secrets: Record<SecretField, { state: SecretState; from: 'here' | 'server' | null; saying: string }>;
   canSaveSecrets: boolean;
   canSaveSecretsSaying: string;
   webhook: { address: string | null; path: string; saying: string };
@@ -190,7 +191,7 @@ export class GroundworksOwnNumber {
           : server
             ? `The ${name} is set in the server's settings. Anything you save here replaces it.`
             : `The ${name} is not set.`;
-      secrets[f] = { state, saying };
+      secrets[f] = { state, from: stored?.[f] ? 'here' : server ? 'server' : null, saying };
     }
     const canSaveSecrets = canSeal(this.keySetting());
     const base = publicApiUrl?.trim().replace(/\/+$/, '') || null;

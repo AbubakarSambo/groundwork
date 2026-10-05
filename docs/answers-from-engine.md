@@ -6011,4 +6011,6 @@ What was added in `client/`:
 - **One route in `client/src/App.tsx`:** `/admin/whatsapp`, inside `RequirePlatformAdmin`, next to `/admin/api-access`.
 - **One link in `client/src/pages/admin/AdminPage.tsx`:** under the WhatsApp switch on the System tab, "Set Groundwork's WhatsApp number, its keys and the webhook". It also adds `Link` to that file's `react-router-dom` import.
 
+After review, each secret saved in the back office has a button beside it: "Remove the saved access token", "Remove the saved app secret" or "Remove the saved verify token". It sends `remove: ['accessToken']` (and so on) and then shows "The saved access token is removed.", followed by the API's own sentence about what the server uses instead. The button shows only when the API says the secret's `from` is `'here'`. `from` is a new field on each secret, and it never carries the secret itself.
+
 The API behind it is `GET` and `PUT /admin/whatsapp/settings`, `GET /admin/whatsapp/settings/connection` and `POST /admin/whatsapp/settings/test`. All four are behind `PlatformAdminGuard`. `GET /admin/whatsapp` now also returns `displayNumber`, which is the number people read, not a secret.
