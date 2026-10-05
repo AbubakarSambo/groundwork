@@ -2,20 +2,41 @@
 
 ## The release, 5 October 2026 (written as it goes)
 
-**Release-ready: not yet decided.** The final round is running on `wip/release` (pushed to your copy only).
+**Release-ready on everything this computer can check.** Three things only you can do come first: the migrations on a copy of the live data, a build on Node 20, and the two existing-client checks. There is also one privacy question for you (item 4 below).
 
-- **The branch.** `wip/release` is `wip/plain-reports` joined with `wip/prototype-ui` and `wip/live-base`. Both joins had nothing new to bring in, so there were no conflicts. Your write-up for the pull request is `docs/pull-request.md`.
+- **The branch.** `wip/release` is `wip/plain-reports` joined with `wip/prototype-ui` and `wip/live-base`, pushed to your copy only. Both joins had nothing new to bring in, so there were no conflicts.
 - **Does it merge cleanly into the live line:** yes. `wip/live-base` (`5197f22d`) is already inside it. Details in `docs/staging-compatibility.md`.
-- **Done so far:** clean install and build of the API and the client pass; both typechecks pass; client tests 4,138 of 4,138 pass (one test followed the leak B sentence, "Check-in not found").
-- **Running:** the full 24-scenario run (run-32, on its own), and the API tests.
-- **Still to run:** the adversarial set, the browser journeys, the WhatsApp journeys, the privacy sweep.
-- **Fixed tonight before the round:** reminder sweeps now leave out somebody waiting for the organisation to let them in (row 5); one source check now ignores comments, as the guard test asks.
+- **Every result** is in `docs/pull-request.md`, which is also your write-up for the pull request. In short:
+  - API tests: 16,518 pass, none fail.
+  - Client tests: 4,138 pass.
+  - Typechecks and a clean install and build pass.
+  - The 24-scenario run: every problem count is 0, and every engine number holds or rises except "proof asked for".
+  - The adversarial scenarios: 7 of 8 pass in full.
+  - Browser journeys: 4 of 4 pass.
+  - WhatsApp journeys: 107 of 107 checks pass.
+  - Privacy sweep: passes.
+- **Fixed during the round:**
+  - Reminders leave out somebody waiting for the organisation to let them in.
+  - Six adversarial scenarios had never run, and the checker now fails one that does not run.
+  - The wording guard no longer lets the model put "you say that" in somebody's mouth.
+  - The meetings line appears only where somebody met somebody.
+  - Names keep their capital.
+  - The report's note has no dash.
+  - Asked to build a case against one person, Groundwork now says plainly that it will not. This is stored prompt version 45, proved active.
+  - The anchor's people step has no dash.
+  - Four tests follow sentences that changed.
+- **The sentence-by-sentence reading of run-32** is in `docs/run-32-review.md`: 16 of 24 reach the right answer, 7 partly and 1 not. Its 59 smaller wording faults are for after the release.
 
-**Needs Hafsah (the release):**
-1. Our migrations were never run on a copy of the live data. The safety check refused the command. Run it once on a copy, after the backup.
-2. Nothing was built on Node 20, which the hosting uses. Only Node 26 is on this computer.
-3. The two existing-client checks (`docs/existing-users.md`) need a copy of the live data from you.
-4. The pattern name "Does the coordinating other people skipped" reads as a broken sentence when it is put in a line. You approved it (decision 52), so I left it. A suggestion: "Picks up the coordinating that others left undone."
+**Needs Hafsah (the release):** the seven items at the end of `docs/pull-request.md`:
+1. The migrations on a copy of the live data.
+2. A build on Node 20.
+3. The two existing-client checks.
+4. The privacy question about a job search and a lead's wish to let somebody go, on an evaluation check-in.
+5. The two judgements that go against the right answer.
+6. The "picture" count in "proof asked for".
+7. The pattern name you approved that reads as a broken sentence.
+
+**Local databases to drop when you like:** `gw_wa_release` and `gw_browser_release` (tonight's journeys), along with the ones listed before.
 
 ## Morning, 5 October 2026
 
