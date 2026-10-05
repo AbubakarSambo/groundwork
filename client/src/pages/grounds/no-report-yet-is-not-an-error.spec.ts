@@ -83,8 +83,11 @@ describe('no report yet is not an error', () => {
     const from = service.indexOf('if (!ground.report) {')
     expect(from, 'the missing-report branch has moved or been renamed').toBeGreaterThan(-1)
     const branch = service.slice(from, from + 1800)
-    /* A stranger still gets the bare sentence and nothing about who is on the check-in. */
-    expect(branch).toMatch(/if \(!mine\) throw new NotFoundException\('Report not found'\)/)
+    /* A stranger still gets the bare sentence and nothing about who is on the check-in. The engine's
+       privacy sweep (finding 7, 5 October) made it the same sentence the board gives a stranger,
+       "Check-in not found", so a report and a board answer someone with no access alike. It is
+       still a 404 with no detail, which is what this test guards. */
+    expect(branch).toMatch(/if \(!mine\) throw new NotFoundException\('Check-in not found'\)/)
     /* And the reason a party gets is still a 404, never a 200 with an empty body. */
     expect(branch).toMatch(/throw new NotFoundException\(\s*whyThereIsNoReportYet/)
     expect(branch).not.toMatch(/return \{ report: null/)
