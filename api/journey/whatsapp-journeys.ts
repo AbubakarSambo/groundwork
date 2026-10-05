@@ -39,6 +39,20 @@ const DB_URL = process.env.DATABASE_URL ?? '';
  * signed with the app secret that was saved there. Without it, the old way: the secret from the env.
  */
 const FROM_THE_BACK_OFFICE = process.env.WHATSAPP_FROM_THE_BACK_OFFICE === '1';
+/*
+ * THE SERVER SETTINGS ARE THERE TOO, AND DIFFERENT (Hafsah, 5 Oct 2026: prove the saved details win and the
+ * server settings are only the fallback). With WHATSAPP_ENV_DIFFERS=1 the API and this script are both started
+ * with DUMMY WHATSAPP_* values that differ from the ones saved on the page; the run shows every send, the
+ * signature check and the handshake use the saved ones, then removes saved secrets one at a time and shows
+ * each falls back to its server setting.
+ */
+const ENV_DIFFERS = FROM_THE_BACK_OFFICE && process.env.WHATSAPP_ENV_DIFFERS === '1';
+const ENV = {
+  accessToken: process.env.WHATSAPP_ACCESS_TOKEN ?? '',
+  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID ?? '',
+  appSecret: process.env.WHATSAPP_APP_SECRET ?? '',
+  verifyToken: process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN ?? '',
+};
 const TEST = {
   appSecret: `test-app-secret-${crypto.randomBytes(12).toString('hex')}`,
   verifyToken: `test-verify-${crypto.randomBytes(12).toString('hex')}`,
@@ -61,7 +75,10 @@ const PW = 'WhatsAppJourneys123!';
 const DAY = 86_400_000;
 
 export async function runWhatsAppJourneys(opts: { quiet?: boolean } = {}): Promise<{ checks: Check[]; transcript: string[] }> {
-  if (FROM_THE_BACK_OFFICE && Object.keys(process.env).some((k) => /^WHATSAPP_(ACCESS_TOKEN|PHONE_NUMBER_ID|APP_SECRET|WEBHOOK_VERIFY_TOKEN|DISPLAY_NUMBER)$/.test(k))) {
+  if (ENV_DIFFERS && (!ENV.accessToken || !ENV.phoneNumberId || !ENV.appSecret || !ENV.verifyToken || ENV.phoneNumberId === TEST.phoneNumberId)) {
+    throw new Error('Refusing: with WHATSAPP_ENV_DIFFERS=1, set all four dummy WHATSAPP_ values, different from the saved ones.');
+  }
+  if (FROM_THE_BACK_OFFICE && !ENV_DIFFERS && Object.keys(process.env).some((k) => /^WHATSAPP_(ACCESS_TOKEN|PHONE_NUMBER_ID|APP_SECRET|WEBHOOK_VERIFY_TOKEN|DISPLAY_NUMBER)$/.test(k))) {
     throw new Error('Refusing: from the back office, no WHATSAPP_ key that the page holds may be set, or the run would not prove the saved settings are the ones used.');
   }
   if (!/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(API) || !/@(localhost|127\.0\.0\.1)(:\d+)?\/gw_/.test(DB_URL) || !/^http:\/\/127\.0\.0\.1:\d+\//.test(GRAPH) || !SECRET) {
@@ -69,6 +86,8 @@ export async function runWhatsAppJourneys(opts: { quiet?: boolean } = {}): Promi
   }
   const prisma = new PrismaClient({ datasources: { db: { url: DB_URL } } });
   const checks: Check[] = [];
+  /* The platform admin's session, kept for the end of the run (journey 14). */
+  let staffToken = '';
   const transcript: string[] = [];
   const log = (line: string) => { transcript.push(line); if (!opts.quiet) console.log(line); };
   let journey = '';
@@ -144,16 +163,16 @@ export async function runWhatsAppJourneys(opts: { quiet?: boolean } = {}): Promi
   let counter = 0;
   /* How long Meta would wait for the answer to a webhook call. Meta redelivers a message it did not get a quick 200 for. */
   const slowest = { ms: 0, what: '' };
-  const post = async (value: any, o: { badSignature?: boolean; unsigned?: boolean } = {}) => {
+  const post = async (value: any, o: { badSignature?: boolean; unsigned?: boolean; secret?: string } = {}) => {
     const t0 = Date.now();
     try { return await postOnce(value, o); } finally {
       const ms = Date.now() - t0;
       if (ms > slowest.ms) { slowest.ms = ms; slowest.what = String(value?.messages?.[0]?.text?.body ?? value?.messages?.[0]?.type ?? '').slice(0, 40); }
     }
   };
-  const postOnce = async (value: any, o: { badSignature?: boolean; unsigned?: boolean } = {}) => {
+  const postOnce = async (value: any, o: { badSignature?: boolean; unsigned?: boolean; secret?: string } = {}) => {
     const raw = JSON.stringify({ object: 'whatsapp_business_account', entry: [{ id: 'waba-test', changes: [{ field: 'messages', value: { messaging_product: 'whatsapp', metadata: { display_phone_number: '15550000001', phone_number_id: PHONE_NUMBER_ID }, ...value } }] }] });
-    const sig = crypto.createHmac('sha256', o.badSignature ? 'not-the-secret' : SECRET).update(raw).digest('hex');
+    const sig = crypto.createHmac('sha256', o.badSignature ? 'not-the-secret' : (o.secret ?? SECRET)).update(raw).digest('hex');
     const res = await fetch(`${API}/webhooks/whatsapp`, { method: 'POST', headers: { 'content-type': 'application/json', ...(o.unsigned ? {} : { 'x-hub-signature-256': `sha256=${sig}` }) }, body: raw });
     return res.status;
   };
@@ -227,7 +246,8 @@ export async function runWhatsAppJourneys(opts: { quiet?: boolean } = {}): Promi
 
     const before = await api('/admin/whatsapp/settings', { token });
     log(`  Before anything is saved, the page says: ${before?.secrets?.accessToken?.saying} ${before?.switch?.saying}`);
-    check('Before anything is saved, nothing is set and WhatsApp is not live', before?.secrets?.accessToken?.state === 'not set' && before?.switch?.live === false, JSON.stringify(before).slice(0, 400));
+    if (ENV_DIFFERS) check('Before anything is saved, each secret is the server setting, and the page says so', ['accessToken', 'appSecret', 'verifyToken'].every((k) => before?.secrets?.[k]?.from === 'server') && before?.fields?.phoneNumberId?.value === ENV.phoneNumberId, JSON.stringify(before?.secrets));
+    else check('Before anything is saved, nothing is set and WhatsApp is not live', before?.secrets?.accessToken?.state === 'not set' && before?.switch?.live === false, JSON.stringify(before).slice(0, 400));
     const refused = await api('/admin/whatsapp/settings', { method: 'PUT', token: notStaffToken, body: { accessToken: 'x'.repeat(30) } });
     check('An admin of an organisation who is not Groundwork staff is refused (403) and nothing is saved', refused?.refused === 403, JSON.stringify(refused));
 
@@ -260,6 +280,22 @@ export async function runWhatsAppJourneys(opts: { quiet?: boolean } = {}): Promi
     const after = await api('/admin/whatsapp/settings', { token });
     log(`  The page now says: ${after?.switch?.saying}`);
     check('WhatsApp is live once Ama switches it on', on?.live === true && after?.switch?.saying === 'WhatsApp is on for everyone. Messages go from this number.', JSON.stringify(after?.switch));
+    staffToken = token;
+
+    if (ENV_DIFFERS) {
+      heading('0b. THE SAVED DETAILS WIN OVER THE DIFFERENT SERVER SETTINGS');
+      const base = API;
+      const hs = async (t: string) => { const r = await fetch(`${base}/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=${encodeURIComponent(t)}&hub.challenge=4242`); return { status: r.status, body: await r.text() }; };
+      const savedHs = await hs(TEST.verifyToken);
+      const envHs = await hs(ENV.verifyToken);
+      log(`  Handshake with the saved verify token: ${savedHs.status}; with the server's: ${envHs.status}`);
+      check("Meta's handshake accepts the saved verify token and refuses the server setting's", savedHs.status === 200 && savedHs.body === '4242' && envHs.status === 403, JSON.stringify({ savedHs, envHs }));
+      const ping = { statuses: [{ id: 'wamid.status', status: 'delivered' }] };
+      const withEnv = await post(ping, { secret: ENV.appSecret });
+      const withSaved = await post(ping);
+      log(`  A webhook post signed with the server's app secret: ${withEnv}; with the saved one: ${withSaved}`);
+      check('The webhook refuses a post signed with the server setting\'s app secret and accepts one signed with the saved app secret', withEnv === 401 && withSaved < 300, JSON.stringify({ withEnv, withSaved }));
+    }
   }
 
   const orgs = {
@@ -315,6 +351,32 @@ export async function runWhatsAppJourneys(opts: { quiet?: boolean } = {}): Promi
       heading('EVERY SEND USED THE SAVED NUMBER AND TOKEN');
       const other = sentWith.filter((w) => w.phoneNumberId !== TEST.phoneNumberId || w.authorization !== `Bearer ${TEST.accessToken}`);
       check(`All ${sentWith.length} sends went from the saved phone number ID with the saved access token`, sentWith.length > 0 && other.length === 0, JSON.stringify(other.slice(0, 3)));
+      if (ENV_DIFFERS) check('Not one send went with the server setting\'s phone number ID or token', !sentWith.some((w) => w.phoneNumberId === ENV.phoneNumberId || w.authorization === `Bearer ${ENV.accessToken}`));
+    }
+    if (ENV_DIFFERS) {
+      heading('14. A SAVED SECRET REMOVED ON THE PAGE FALLS BACK TO THE SERVER SETTING');
+      const remove = async (k: string) => {
+        const page = await api('/admin/whatsapp/settings', { method: 'PUT', token: staffToken, body: { remove: [k] } });
+        log(`  Ama removes the saved ${k}. The page says: ${page?.secrets?.[k]?.saying}`);
+        return page;
+      };
+      const ping = { statuses: [{ id: 'wamid.status.2', status: 'read' }] };
+      const p1 = await remove('appSecret');
+      const envNow = await post(ping, { secret: ENV.appSecret });
+      const savedNow = await post(ping, { secret: TEST.appSecret });
+      log(`  Signed with the server's app secret: ${envNow}; with the one that was saved: ${savedNow}`);
+      check('With the saved app secret removed, the page says the server setting is used, and the webhook now takes the server\'s app secret and refuses the removed one', p1?.secrets?.appSecret?.from === 'server' && envNow < 300 && savedNow === 401, JSON.stringify({ from: p1?.secrets?.appSecret, envNow, savedNow }));
+      const p2 = await remove('verifyToken');
+      const envHs = await fetch(`${API}/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=${encodeURIComponent(ENV.verifyToken)}&hub.challenge=77`);
+      const oldHs = await fetch(`${API}/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=${encodeURIComponent(TEST.verifyToken)}&hub.challenge=77`);
+      check('With the saved verify token removed, the handshake takes the server\'s verify token and refuses the removed one', p2?.secrets?.verifyToken?.from === 'server' && envHs.status === 200 && oldHs.status === 403, JSON.stringify({ env: envHs.status, old: oldHs.status }));
+      const p3 = await remove('accessToken');
+      const n = sentWith.length;
+      const t = await api('/admin/whatsapp/settings/test', { token: staffToken, body: { to: '+44 7700 900998' } });
+      await waitQuiet();
+      const last = sentWith.slice(n);
+      log(`  The test message after removing the saved access token: ${t?.saying}`);
+      check('With the saved access token removed, a send carries the server\'s token, and still the saved phone number ID', p3?.secrets?.accessToken?.from === 'server' && last.length === 1 && last[0].authorization === `Bearer ${ENV.accessToken}` && last[0].phoneNumberId === TEST.phoneNumberId, JSON.stringify(last));
     }
   } finally {
     await app.close().catch(() => undefined);
