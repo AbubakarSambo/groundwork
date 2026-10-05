@@ -31,11 +31,21 @@ export function EdgeRow({ kind, title, detail, actions }: {
   /** One or two buttons. The first is the main one. */
   actions?: React.ReactNode
 }) {
+  /*
+   * WALKTHROUGH PASS 2, ITEM 1: "Ready to read." BEFORE EVERY TITLE THAT ALREADY SAYS SO.
+   *
+   * Every report row's title already reads "...is ready" ("The report for Sales team, Q3 is
+   * ready"), so the sr-only "Ready to read." that used to go in front of every one of them repeated
+   * the same word a screen reader had just been given no reason to need twice. Said once would mean
+   * never, here, since the title always carries it; said only when the title does not already say
+   * "ready" leaves the word in exactly where a reader needs it and nowhere it is already said.
+   */
+  const reason = typeof title === 'string' && title.toLowerCase().includes('ready') ? undefined : EDGE_REASON[kind]
   return (
     <li className="gwui-edge-row">
       <span className={`gwui-edge-sp gwui-edge-sp-${kind}`} aria-hidden />
       <div style={{ minWidth: 0 }}>
-        {EDGE_REASON[kind] && <span className="gwui-sr-only">{EDGE_REASON[kind]} </span>}
+        {reason && <span className="gwui-sr-only">{reason} </span>}
         <div className="gwui-edge-h">{title}</div>
         {detail && <div className="gwui-edge-s">{detail}</div>}
       </div>
