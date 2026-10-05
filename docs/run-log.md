@@ -2,6 +2,29 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## 5 October, 14:05 - request 154 item 2 closed in full, and items 5, 6, 7, 8
+
+All four parts of item 2:
+
+- **The history read backwards.** A question and its answer share a timestamp; the tie is broken on
+  meaning now, so the person asked and Groundwork answered.
+- **"You have none open" to somebody running ten.** The sentence was right; what was counted was
+  wrong. "Open" meant sessions open for her to ANSWER, and a lead who runs ten has none of those.
+  The code already knew this and only applied it when the screen sent a check-in - which, now that
+  Ask defaults to no check-in, was the uncommon path.
+- **Replies saved without their options.** Only the first text block was kept, so the record held
+  a sentence that introduces something and then nothing. It keeps every text block and the choices
+  as a sentence now, at all three save sites, with a test that reads all three.
+- **A sentence read back as a colleague.** Held at the echo rather than the router, because that is
+  where the damage is done and it holds however the router changes later.
+
+And items 5 (half, with PROVISIONAL decision 102), 6 (the duplicate promise), 7 (one kind of item
+worded one way) and 8 (eleven suites now say what to do).
+
+Scenario run: 2 of 24 at 13:36, slower than previous runs, no incomplete captures.
+
+Next: the remaining 151 items that need the run, then the journeys.
+
 ## 5 October, 13:50 - three more request items closed while the run works
 
 **154 item 6, the same promise twice: fixed.** "Ask the warehouse to load my van by 7am" sat beside
