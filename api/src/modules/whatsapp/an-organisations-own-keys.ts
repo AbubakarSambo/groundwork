@@ -37,3 +37,8 @@ export function theirKey(row: { organizationId: string; accessToken: string; app
 }
 
 export const THE_SERVER_HAS_NO_KEY = 'This server has no key to keep secrets with, so the number cannot be saved yet. Whoever runs the hosting sets SETTINGS_ENCRYPTION_KEY, and then it can.';
+
+/** What is kept against a send that was not made because the token is sealed and cannot be opened. For the record, not for the admin. */
+export const THEIR_KEYS_CANNOT_BE_OPENED = 'Not sent: the organisation\'s own WhatsApp access token cannot be opened on this server.';
+/** What the organisation's admin reads when its keys cannot be opened. */
+export const KEYS_NEED_TYPING_AGAIN = "Your number's keys need to be typed in again. Nothing is sent from your number until they are.";

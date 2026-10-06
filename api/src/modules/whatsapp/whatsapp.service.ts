@@ -1,5 +1,5 @@
 import * as crypto from 'crypto';
-import { sealTheirKey, theirKey, theServerCanKeepSecrets, THE_SERVER_HAS_NO_KEY, isSealed } from './an-organisations-own-keys';
+import { sealTheirKey, theirKey, theServerCanKeepSecrets, THE_SERVER_HAS_NO_KEY, isSealed, THEIR_KEYS_CANNOT_BE_OPENED, KEYS_NEED_TYPING_AGAIN } from './an-organisations-own-keys';
 import { OnModuleInit, Injectable, Logger, UnauthorizedException, BadRequestException, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
@@ -171,7 +171,7 @@ export class WhatsAppService implements OnModuleInit {
     const text = WhatsAppService.heldSaying(saying);
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
     let result: SendResult;
-    if (own?.enabled) result = await this.deliver(own.phoneNumberId, theirKey(own, 'accessToken'), to, text);
+    if (own?.enabled) result = theirKey(own, 'accessToken') ? await this.deliver(own.phoneNumberId, theirKey(own, 'accessToken'), to, text) : { sent: false, error: THEIR_KEYS_CANNOT_BE_OPENED };
     else if (await this.isEnabled()) { const ours = await this.ours(); result = await this.post(ours.phoneNumberId ?? '', ours.accessToken ?? '', to, text); }
     else result = { sent: false, error: 'WhatsApp is not configured on this deployment' };
     /* Written down, never counted: this one is free. */
@@ -481,6 +481,12 @@ export class WhatsAppService implements OnModuleInit {
     if (held) return held;
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
     if (!own || !own.enabled) return this.sendOnOurNumber(organizationId, to, text, context);
+    if (!theirKey(own, 'accessToken')) {
+      /* The token is sealed and this server cannot open it (the key was changed or removed). Nothing is sent, and the reason is kept. */
+      const result: SendResult = { sent: false, error: THEIR_KEYS_CANNOT_BE_OPENED };
+      await this.writeItDown(organizationId, to, result, context);
+      return result;
+    }
     const gate = await this.mayInitiate(organizationId, to, context, 'theirs', text);
     if (!gate.free) {
       if (gate.quiet) return { sent: false, error: gate.because };
@@ -555,6 +561,7 @@ export class WhatsAppService implements OnModuleInit {
     if (await this.heldFor(organizationId, WhatsAppService.normalize(phoneNumber), { kind: 'which-one' })) return false;
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
     if (!own || !own.enabled) return (await this.sendOnOurNumber(organizationId, WhatsAppService.normalize(phoneNumber), fallbackText, { kind: 'which-one' })).sent;
+    if (!theirKey(own, 'accessToken')) { this.logger.warn(`WhatsApp list not sent for org ${organizationId}: ${THEIR_KEYS_CANNOT_BE_OPENED}`); return false; }
     const to = WhatsAppService.normalize(phoneNumber).replace('+', '');
     try {
       const res = await fetch(`${this.graphBase()}/${own.phoneNumberId}/messages`, {
@@ -907,6 +914,7 @@ export class WhatsAppService implements OnModuleInit {
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } });
     if (!own) throw new BadRequestException('Connect a number first.');
     if (!toNumber?.trim()) throw new BadRequestException('Say which number to send the test to.');
+    if (!theirKey(own, 'accessToken')) throw new BadRequestException(KEYS_NEED_TYPING_AGAIN);
     const ok = (await this.deliver(own.phoneNumberId, theirKey(own, 'accessToken'), await this.tidyFor(organizationId, toNumber), 'Groundwork is connected to this number. Reply here when a check-in is open and it goes into the record.')).sent;
     if (!ok) throw new BadRequestException('Meta refused the message. Check the token, the number id, and that this number may receive messages from your Meta app.');
     await this.prisma.whatsAppConnection.update({ where: { id: own.id }, data: { lastOutboundAt: new Date() } });
@@ -915,6 +923,9 @@ export class WhatsAppService implements OnModuleInit {
 
   /** Verify an inbound POST against the organisation's own app secret. Same rule as the platform route. */
   verifySignatureWith(appSecret: string, headers: Record<string, string | string[] | undefined>, raw: Buffer): void {
+    /* No secret to check against (a sealed one this server cannot open) is never a reason to accept: an HMAC made with an empty key is
+       something anybody can make. */
+    if (!appSecret) throw new UnauthorizedException('WhatsApp webhook signature cannot be verified');
     const header = headers['x-hub-signature-256'];
     const provided = Array.isArray(header) ? header[0] : header;
     if (!provided || !provided.startsWith('sha256=')) throw new UnauthorizedException('Missing or malformed WhatsApp signature');

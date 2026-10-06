@@ -1,7 +1,7 @@
 import * as crypto from 'crypto';
 import { BadRequestException } from '@nestjs/common';
 import { WhatsAppService } from './whatsapp.service';
-import { isSealed, sealTheirKey, theirKey, THE_SERVER_HAS_NO_KEY } from './an-organisations-own-keys';
+import { isSealed, sealTheirKey, theirKey, THE_SERVER_HAS_NO_KEY, THEIR_KEYS_CANNOT_BE_OPENED, KEYS_NEED_TYPING_AGAIN } from './an-organisations-own-keys';
 
 /**
  * THE KEYS OF AN ORGANISATION'S OWN WHATSAPP NUMBER ARE KEPT SEALED, AS EACH READER MEETS THEM (piece 5, A).
@@ -125,4 +125,57 @@ describe('using the keys', () => {
     expect(await svc.sealWhatWasKeptPlain()).toBe(0);
     expect(sealTheirKey).toBeDefined();
   });
+});
+
+/*
+ * WHEN THE KEYS CANNOT BE OPENED (the key on the server was changed or removed), NOTHING IS TRUSTED AND NOTHING IS SENT.
+ * An HMAC made with an empty key is something anybody can make, so a secret that cannot be opened must never be used to check one.
+ */
+describe('keys that cannot be opened', () => {
+  const was = process.env.SETTINGS_ENCRYPTION_KEY;
+  const realFetch = (global as any).fetch;
+  const OTHER_KEY = crypto.randomBytes(32).toString('base64');
+  afterEach(() => { (global as any).fetch = realFetch; if (was === undefined) delete process.env.SETTINGS_ENCRYPTION_KEY; else process.env.SETTINGS_ENCRYPTION_KEY = was; });
+
+  async function sealedUnderKeyA() {
+    process.env.SETTINGS_ENCRYPTION_KEY = KEY;
+    const made = setup();
+    await made.svc.connect('org-baridi', { phoneNumberId: '109822345561', accessToken: TOKEN, appSecret: SECRET });
+    return made;
+  }
+  const raw = Buffer.from('{"entry":[]}');
+  const forged = { 'x-hub-signature-256': `sha256=${crypto.createHmac('sha256', '').update(raw).digest('hex')}` };
+
+  for (const [name, change] of [
+    ['opened under a different key', () => { process.env.SETTINGS_ENCRYPTION_KEY = OTHER_KEY; }],
+    ['opened with no key at all', () => { delete process.env.SETTINGS_ENCRYPTION_KEY; }],
+  ] as const) {
+    it(`a message signed with an empty key is refused at the organisation's address when its secret was sealed and is ${name}`, async () => {
+      const { svc, rows, prisma } = await sealedUnderKeyA();
+      change();
+      expect(theirKey(rows[0], 'appSecret')).toBe('');
+      const { WhatsAppForAnOrganisationController } = await import('../public-api/whatsapp-for-an-organisation.controller');
+      const c = new (WhatsAppForAnOrganisationController as any)(prisma, svc, { handle: jest.fn() }, { get: () => undefined });
+      await expect(c.receive('org-baridi', { headers: forged, rawBody: raw, body: {} })).rejects.toThrow('WhatsApp webhook signature cannot be verified');
+      expect(() => svc.verifySignatureWith('', forged, raw)).toThrow('WhatsApp webhook signature cannot be verified');
+    });
+
+    it(`nothing is sent with a token that is ${name}, and why is kept`, async () => {
+      const { svc, rows } = await sealedUnderKeyA();
+      change();
+      const fetchSpy = jest.fn(async () => ({ ok: true, status: 200 }));
+      (global as any).fetch = fetchSpy;
+      (svc as any).tidyFor = async (_o: string, n: string) => n;
+      const kept: any[] = [];
+      (svc as any).writeItDown = async (_o: string, _to: string, result: any) => { kept.push(result); };
+      (svc as any).heldFor = async () => null;
+      const result = await svc.sendFor('org-baridi', '+254711000111', 'Hello', { kind: 'reply' } as any);
+      expect(result.sent).toBe(false);
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(kept[0].error).toBe(THEIR_KEYS_CANNOT_BE_OPENED);
+      await expect(svc.sendTest('org-baridi', '+254711000111')).rejects.toThrow(KEYS_NEED_TYPING_AGAIN);
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(rows[0].accessToken).toMatch(/^v1:/);
+    });
+  }
 });
