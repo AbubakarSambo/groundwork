@@ -21,6 +21,7 @@ vi.mock('@/api/suites', () => ({
   yourRequestsApi: {
     leave: vi.fn(() => Promise.reject(Object.assign(new Error('off'), { response: { status: 404 } }))),
     spending: vi.fn(() => Promise.reject(Object.assign(new Error('off'), { response: { status: 404 } }))),
+    hours: vi.fn(() => Promise.reject(Object.assign(new Error('off'), { response: { status: 404 } }))),
   },
 }))
 import { suitesApi, yourRequestsApi } from '@/api/suites'
@@ -270,11 +271,37 @@ describe('Grace, an admin, reads the Suites page', () => {
     expect(suitesApi.switch).not.toHaveBeenCalled()
   })
 
-  it('switching off is one press', async () => {
+  /*
+   * FAULT 7D OF THE LIVE WALK (6 October): switching a suite off used to be one press, with no
+   * warning even while requests or hours waited in it. A press now asks first, in the shared Modal,
+   * with what switching off actually does (switch(), suites.service.ts: the suite's answers and
+   * anything already in it are kept; it is only refused from being added to until it is on again).
+   */
+  it('switching off asks first, and nothing is sent until the press is confirmed', async () => {
+    open(GRACE, withOn('todos'))
+    fireEvent.click(await screen.findByRole('switch', { name: 'To-dos' }))
+    expect(await screen.findByRole('dialog', { name: 'Switch To-dos off?' })).toBeInTheDocument()
+    expect(screen.getByText('Anything waiting in it stays as it is, and nobody can add to it until it is switched on again.')).toBeInTheDocument()
+    expect(suitesApi.switch).not.toHaveBeenCalled()
+  })
+
+  it('confirming switches it off', async () => {
     open(GRACE, withOn('todos'))
     ;(suitesApi.switch as any).mockResolvedValue(GRACES)
     fireEvent.click(await screen.findByRole('switch', { name: 'To-dos' }))
+    await screen.findByRole('dialog', { name: 'Switch To-dos off?' })
+    fireEvent.click(screen.getByRole('button', { name: 'Switch it off' }))
     await waitFor(() => expect(suitesApi.switch).toHaveBeenCalledWith('todos', false, undefined))
+  })
+
+  it('"Cancel" on the confirmation leaves it on, and nothing is sent', async () => {
+    open(GRACE, withOn('todos'))
+    fireEvent.click(await screen.findByRole('switch', { name: 'To-dos' }))
+    await screen.findByRole('dialog', { name: 'Switch To-dos off?' })
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(suitesApi.switch).not.toHaveBeenCalled()
+    expect(within(card('To-dos')).getByRole('switch')).toHaveAttribute('aria-checked', 'true')
   })
 
   it('a switch that does not go through says so, in the server’s words or the product’s own', async () => {
@@ -408,6 +435,20 @@ describe('"Your own leave and spending requests", gated the same way as Today (f
     ;(yourRequestsApi.spending as any).mockResolvedValue({ requests: [] })
     open(MIRIAM, Object.assign(new Error('403'), { response: { status: 403, data: { message: 'Only an admin or a lead can open the suites.' } } }))
     expect(await screen.findByRole('link', { name: 'Your own leave and spending requests' })).toHaveAttribute('href', '/suite/mine')
+  })
+
+  /*
+   * FAULT 1 OF THE LIVE WALK (6 October): hours is gated the same way as leave and spending, and
+   * the link is renamed "Your own requests" once hours answer, so "leave and spending" does not
+   * leave hours unsaid.
+   */
+  it('is offered, and renamed "Your own requests", when only hours answers for a member', async () => {
+    (yourRequestsApi.leave as any).mockImplementation(suiteOff)
+    ;(yourRequestsApi.spending as any).mockImplementation(suiteOff)
+    ;(yourRequestsApi.hours as any).mockResolvedValue({ weeks: [], standing: null })
+    open(MIRIAM, Object.assign(new Error('403'), { response: { status: 403, data: { message: 'Only an admin or a lead can open the suites.' } } }))
+    expect(await screen.findByRole('link', { name: 'Your own requests' })).toHaveAttribute('href', '/suite/mine')
+    expect(screen.queryByRole('link', { name: 'Your own leave and spending requests' })).toBeNull()
   })
 })
 

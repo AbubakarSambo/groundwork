@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { suitesApi, yourRequestsApi, type AdminSuite, type Answers, type Question, type SuitesForAnAdmin, type SuitesForALead, type SuitesForADutyHolder } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
-import { Page, PageTitle, Section, Panel, Button, Tag, Toggle, Note, Empty, RowList, Row, FieldLabel, TextField, TextArea, Select } from '@/components/gw/ui'
+import { Page, PageTitle, Section, Panel, Button, Tag, Toggle, Note, Empty, RowList, Row, FieldLabel, TextField, TextArea, Select, Modal } from '@/components/gw/ui'
 import { QueueLink } from './QueuePage'
 
 /**
@@ -72,10 +72,14 @@ export function SuitesPage() {
   /* "Your own leave and spending requests" only where a suite is on for this person: with both
      off, the link opened a page that only says the suite is off (fault 2, live re-walk). The same
      queries and query keys Today already uses, so this costs nothing more than Today already pays,
-     and the two pages agree on when the link shows. */
+     and the two pages agree on when the link shows.
+     FAULT 1 OF THE LIVE WALK (6 October): hours gates it the same way, and the link's own words
+     change with it - "Your own requests" once hours are part of what it opens. */
   const yourLeave = useQuery({ queryKey: ['your-leave'], queryFn: yourRequestsApi.leave, enabled: !!user, retry: false, staleTime: 60_000 })
   const yourSpending = useQuery({ queryKey: ['your-spending'], queryFn: yourRequestsApi.spending, enabled: !!user, retry: false, staleTime: 60_000 })
-  const aSuiteIsOnForYou = yourLeave.isSuccess || yourSpending.isSuccess
+  const yourHours = useQuery({ queryKey: ['your-hours'], queryFn: yourRequestsApi.hours, enabled: !!user, retry: false, staleTime: 60_000 })
+  const aSuiteIsOnForYou = yourLeave.isSuccess || yourSpending.isSuccess || yourHours.isSuccess
+  const requestsLinkLabel = yourHours.isSuccess ? 'Your own requests' : 'Your own leave and spending requests'
 
   return (
     <Page>
@@ -112,7 +116,7 @@ export function SuitesPage() {
           refuses - but only once a suite is actually on for them (fault 2, live re-walk): with
           both leave and spending off, this opened a page that only says the suite is off. */}
       {aSuiteIsOnForYou && (
-        <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/mine">Your own leave and spending requests</Link></p>
+        <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/mine">{requestsLinkLabel}</Link></p>
       )}
       <QueueLink userId={user?.id} />
     </Page>
@@ -194,9 +198,18 @@ function ASuite({ s, people, forYou }: { s: AdminSuite; people: SuitesForAnAdmin
     onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
   })
 
+  /*
+   * FAULT 7D OF THE LIVE WALK (6 October): switching a suite off was one click, with no warning
+   * even while requests or hours were waiting in it. `switch(reader, key, { on: false })`
+   * (suites.service.ts) only sets `isOn: false` and keeps the suite's stored answers - it deletes
+   * nothing, and a request already filed stays exactly as it is, refused only from being added to
+   * (a-suite-that-is-off-says-what-to-do.ts) until it is switched on again, so what the confirmation
+   * below says is true.
+   */
+  const [confirmingOff, setConfirmingOff] = useState(false)
   function pressed() {
     setProblem(null)
-    if (s.on) return flip.mutate({ on: false })
+    if (s.on) { setConfirmingOff(true); return }
     if (s.questions.length === 0) return flip.mutate({ on: true })
     setAnswers(startFrom(s))
     setAsking(true)
@@ -262,6 +275,20 @@ function ASuite({ s, people, forYou }: { s: AdminSuite; people: SuitesForAnAdmin
         </form>
       )}
       {problem && <Note tone="error">{problem}</Note>}
+
+      {confirmingOff && (
+        <Modal title={`Switch ${s.name} off?`} onClose={() => setConfirmingOff(false)}>
+          <p className="gwui-panel-text">Anything waiting in it stays as it is, and nobody can add to it until it is switched on again.</p>
+          <div className="gwui-edge-acts">
+            {/* ONE NAVY BUTTON PER PAGE: "Switch it on"/"Save" already carries that role on this
+                page (in the form above, when a suite is being switched on or its answers changed),
+                so this confirmation's own button stays secondary, the same way every other
+                row-level action here does (Approve, Mark done, Change). */}
+            <Button kind="secondary" size="small" disabled={flip.isPending} onClick={() => { setConfirmingOff(false); flip.mutate({ on: false }) }}>Switch it off</Button>
+            <Button kind="quiet" size="small" onClick={() => setConfirmingOff(false)}>Cancel</Button>
+          </div>
+        </Modal>
+      )}
     </Panel>
   )
 }
