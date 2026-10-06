@@ -1215,12 +1215,28 @@ export function GroundAdminPage() {
    * check-in - and she read it as a report on its way. A report row exists from setup; a report is
    * written from check-ins. With none in this session, the header says whose turn it is.
    */
+  /**
+   * FAULT 6, 6 Oct 2026: THE HEADER HAS TO READ THE SAME STATE AS PEOPLE AND SETUP AND THE SIDEBAR.
+   *
+   * Both of those read `ground.status` straight (`whatThisStatusMeans` in
+   * what-a-status-means-to-the-person-in-it.ts, and `GroundStatusBadge` in AppShell.tsx), so a
+   * `REPORT_READY` ground says "The report is ready to read." on People and setup and "Report
+   * ready" in the sidebar - while this header worked out its own answer from `ground.report` and
+   * the round, with no branch for that status at all, and said "Report being written." instead.
+   * Same check-in, three surfaces, two different claims about whether the report is ready.
+   *
+   * Checked first, ahead of the round-based guesses below: when the server has actually marked
+   * the ground `REPORT_READY`, the header says so in the same words, rather than re-deriving a
+   * possibly-stale answer from `report`/`everyoneIn`/`roundDone`.
+   */
   const reportState: string =
     (ground as any).report?.releasedAt
       ? 'report sent to everyone'
-      : (ground as any).report
-        ? (everyoneIn ? 'everyone is in, report on its way' : roundDone > 0 ? 'report being written' : 'waiting for the first check-in')
-        : 'no report yet'
+      : (ground as any).status === 'REPORT_READY'
+        ? 'the report is ready to read'
+        : (ground as any).report
+          ? (everyoneIn ? 'everyone is in, report on its way' : roundDone > 0 ? 'report being written' : 'waiting for the first check-in')
+          : 'no report yet'
   // contact-visibility toggle state (default: hidden). true = peers cannot see each other's email.
   /**
    * THE PEER RULE COMES FROM THE SERVER, NOT FROM A COPY OF IT HERE. W14-4.
