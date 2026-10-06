@@ -1309,6 +1309,17 @@ export class EmailService implements OnModuleInit {
     return context.outcome ?? 'sent';
   }
 
+  /** WHO HAS GONE QUIET, as an insight to the lead (decision 109, journeys 7 and 9). Says what became of it. Words: engagement/who-has-gone-quiet.ts. */
+  async sendWhoHasGoneQuiet(email: string, subject: string, lines: string[], linkLabel: string, linkUrl: string): Promise<'sent' | 'held' | 'suppressed'> {
+    const context: DeliveryContext = { kind: 'OTHER' };
+    await this.sendEmail({
+      to: email,
+      subject,
+      html: this.layout(lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('') + `<p><a href="${linkUrl}">${escapeHtml(linkLabel)}</a></p>`),
+    }, context, 'sendWhoHasGoneQuiet');
+    return context.outcome ?? 'sent';
+  }
+
   /**
    * Your next check-in just opened. Distinct from sendNudge (which reminds
    * someone sitting on an ALREADY-open check-in) - this fires once, the

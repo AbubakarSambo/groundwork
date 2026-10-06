@@ -264,6 +264,8 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendLeadFirstCheckIn: 'we decided to send it',
   /* A week after a report, if the lead has not opened a next session. */
   sendTheReportFollowUp: 'we decided to send it',
+  /* People have stopped answering: told to the lead once a week as an insight. */
+  sendWhoHasGoneQuiet: 'we decided to send it',
 };
 
 export function whatThisMailIs(sender: string): WhatKindOfMail {

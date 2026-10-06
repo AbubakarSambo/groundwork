@@ -26,6 +26,7 @@ import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { keptOffThePhone } from '../whatsapp/a-check-in-kept-off-the-phone';
 import { whatToSendThisMorning, whichChase, whenItIsDue, itIsOverdue, itIsDueTomorrow, theTeamIsAlmostIn, yourViewMatters, itOpensSoon, MORNING_ORDER, itFollowsUpTheirPromise } from '../whatsapp/what-goes-to-a-phone';
 import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
+import { sendWhoHasGoneQuiet as sendWhoHasGoneQuietToLeads } from '../engagement/who-has-gone-quiet';
 import { sendTheReportFollowUps } from '../engagement/the-report-follow-up';
 import { sendHeresWhatIsNew as sendHeresWhatIsNewToLeads } from '../engagement/heres-what-is-new';
 import { sendTheParticipantsWeeks } from '../engagement/the-participants-week';
@@ -955,6 +956,24 @@ export class GroundsCron implements OnApplicationBootstrap {
       now,
     ).catch((err: any) => { this.logger.warn(`The report follow-ups could not be sent: ${err?.message}`); return { tried: 0 }; });
     if (result.tried) this.logger.log(`Email: ${result.tried} report follow-up(s) tried.`);
+    return result;
+  }
+
+  /**
+   * WHO HAS GONE QUIET (decision 109; section 36, journeys 7 and 9), Wednesday mid-morning in Lagos: once a week to a lead, as an insight about the
+   * team or across her check-ins. See engagement/who-has-gone-quiet.ts.
+   */
+  @Cron('0 10 * * 3', { timeZone: 'Africa/Lagos' })
+  async sendWhoHasGoneQuiet() {
+    await onceAcrossCopies(this.prisma, 'who-has-gone-quiet', theWeek(), () => this.sendWhoHasGoneQuietInner());
+  }
+
+  async sendWhoHasGoneQuietInner(now: Date = new Date()): Promise<{ tried: number }> {
+    const result = await sendWhoHasGoneQuietToLeads(
+      { prisma: this.prisma, email: this.email, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
+      now,
+    ).catch((err: any) => { this.logger.warn(`The "gone quiet" messages could not be sent: ${err?.message}`); return { tried: 0 }; });
+    if (result.tried) this.logger.log(`Email: ${result.tried} "gone quiet" message(s) tried.`);
     return result;
   }
 
