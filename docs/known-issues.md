@@ -21,12 +21,6 @@ It was drawn from `docs/morning-report.md`, `docs/weekly-plan.md`, `docs/run-log
 - Why it was left: the fix is on this branch (`94d736d6`, `6742915a`, `213b7743`, `76e303ee`). It seals both keys, but it needs the server setting `SETTINGS_ENCRYPTION_KEY` on each hosted environment before it ships. Without that setting, nobody can save a new token or secret, and Groundwork's own WhatsApp secrets cannot be saved on `/admin/whatsapp` either.
 - Recommendation: Abubakar adds `SETTINGS_ENCRYPTION_KEY` (made with `openssl rand -base64 32`, one per environment, never changed later) before the release. The keys already saved are sealed on the next start. Because old backups still hold plain copies, ask each connected organisation to make a new token in Meta once the release is live.
 
-**P3. A total can give a colleague's number away.**
-- Where: the sentence about a person's share of a target on the board and in the check-in, for example "Yours is 21, of 270 across ten people".
-- Who: everyone on a check-in where each person sees only their own target, when only two people have a number (the total minus your own is your colleague's).
-- Why it was left: the fix tightens a privacy rule, so it needs Hafsah's yes (decision 86 says no restriction is added without her).
-- Recommendation: give the total only when three or more people have a number.
-
 **P4. Hidden targets are still given to the model when it writes text that other people read.**
 - Where: the shared team report, the board lines and the session text. A target the lead set for one person is removed after the model writes, by a sentence-by-sentence net (`docs/weekly-plan.md`, week 0).
 - Who: everyone on a check-in with hidden targets.
@@ -45,11 +39,8 @@ It was drawn from `docs/morning-report.md`, `docs/weekly-plan.md`, `docs/run-log
 - Why it was left: it was already so before this work, and the wall for an admin without access (decision 60, point 4) covers only evaluation check-ins. It is Hafsah's call.
 - Recommendation: Hafsah decides whether an admin outside a check-in reads people's exact words on ordinary check-ins.
 
-**P7. Groundwork's staff read people's outcome feedback notes word for word in the back office.**
-- Where: the back office dashboard and its Feedback tab (`/admin`).
-- Who: staff only, but the words are every customer's.
-- Why it was left: the console is meant to show counts, never what people said, and this needs Hafsah's decision.
-- Recommendation: show the count and the score only, and the words only where the person agreed to share them.
+**P7. (Decided, no change.) Groundwork's staff read people's outcome feedback notes word for word in the back office.**
+- Decided 7 October (decision 110): Groundwork staff keep reading customers' feedback notes word for word, because those notes are sent to Groundwork. They are never linked to anybody's check-in content. No change.
 
 **P8. An admin's To-dos board shows every person's to-dos across check-ins (screens workspace).**
 - Where: the To-dos suite's board for an admin, when that suite is on.
@@ -63,11 +54,8 @@ It was drawn from `docs/morning-report.md`, `docs/weekly-plan.md`, `docs/run-log
 - Why it was left: the serving rules hide other people's aims where people do not see each other, but the storage does not follow the "stored without names" rule that reports follow. It needs Hafsah's decision.
 - Recommendation: store it with labels and put names in only when served, like reports.
 
-**P10. On a performance plan, the person reviewed sees a work record the lead added with nobody's name on it.**
-- Where: the board of a performance plan, promotion or renewal, for the person it is about.
-- Who: people on evaluation check-ins.
-- Why it was left: it is a record of work, not the lead's judgement, so it was not walled. Hafsah may want it walled.
-- Recommendation: Hafsah decides.
+**P10. (Decided, no change.) On a performance plan, the person reviewed sees a work record the lead added with nobody's name on it.**
+- Decided 7 October (decision 110): this stays visible, as already decided. No change.
 
 **P11. An admin who will later be added as the person reviewed can read their own plan's setup while it waits for approval.**
 - Where: an evaluation check-in waiting for admin approval, which every admin of the organisation can read (decision 75 item 2).
@@ -81,11 +69,8 @@ It was drawn from `docs/morning-report.md`, `docs/weekly-plan.md`, `docs/run-log
 - Why it was left: the code needs the words to act on the yes. They are cleared on the answer or by the next WhatsApp message anyone sends, not by a clock.
 - Recommendation: add a small nightly clean-up so nothing stays past ten minutes even when nobody writes.
 
-**P14. Screenshots with Hafsah's name, Coamana's CRM and real-looking check-in numbers are still in the git history (screens workspace).**
-- Where: the three images that were in `client/public/connect/`, now deleted from the tree.
-- Who: anyone with access to the repository history.
-- Why it was left: rewriting history is not allowed from either workspace.
-- Recommendation: leave them while the repository stays private. If it is ever made public, rewrite that history first.
+**P14. (Decided, no change.) Screenshots with Hafsah's name, Coamana's CRM and real-looking check-in numbers are still in the git history (screens workspace).**
+- Decided 7 October (decision 110): the screenshots stay in the history while the repository is private. No change.
 
 ---
 
@@ -108,6 +93,14 @@ It was drawn from `docs/morning-report.md`, `docs/weekly-plan.md`, `docs/run-log
 - Who: existing users. On the local copy, 41 people on 20 check-ins. The live count is not known.
 - Why it was left: it is privacy row 5, which Hafsah kept in decision 93, so the question is hers.
 - Recommendation: before release, count them on a copy of the live data with the read-only query in `docs/morning-report.md`. If there are any, either let a person who has already answered keep reading, or clear their hold on release night.
+
+**B6. The seat count: does a guest with an account take a seat? (screens workspace, request 174 item 10) Needs Hafsah.**
+- Where: `api/src/common/seats.ts`, and the sentence "Your plan covers 5 people… all 5 are taken" with one person in the check-in and four guests.
+- Who: existing users and the paid client.
+- Two readings. The prototype (A4 people.txt, "He takes a seat"; F2, "Every person with a Groundwork account… Guests with no account don't") and the 27 September decision (`f7e2bb71`) count a guest with an account as a seat, and the code counts them again (the leave-them-out change, `172aa319`, was reverted in `f1501f86`). `docs/existing-users.md` says the count leaves guests out.
+- What it changes: the seats are what an invitation is checked against and what the billing page prints, and plans are priced by team size ("Up to 20 people"). Counting guests can make a plan read as full when only a few people are staff, so a lead is told there is no room, or an organisation is nudged to the next plan sooner; leaving them out frees room and lowers what is counted.
+- Why it was left: it is a pricing decision. It is in the morning report under Needs Hafsah.
+- Recommendation: Hafsah decides which reading is the rule, and the other document is corrected.
 
 **B7. The release-night steps that only Hafsah or Abubakar can take have not been taken.**
 - Where: `docs/deploy.md`: our migrations on a copy of the real data after the backup; the two existing-client checks on a copy of the live data (`existing-clients-compare.ts` and `existing-clients-check.ts`); the four one-off scripts (`stamp-said-word-for-word.ts`, `bring-the-checkability-read-up-to-date.ts`, `give-each-check-in-its-kind-of-work.ts`, `bring-a-check-in-up-to-date.ts`); and step 13a, switching billing on.
@@ -465,8 +458,8 @@ It was drawn from `docs/morning-report.md`, `docs/weekly-plan.md`, `docs/run-log
 
 | Seriousness | Entries |
 | --- | --- |
-| Privacy | 12 |
-| Broken | 9 |
+| Privacy | 11 |
+| Broken | 10 |
 | Wrong | 39 |
 | Untidy | 12 |
 | **All** | **72** |
@@ -483,9 +476,9 @@ Please add anything on your side that is missing from this file, in the same sha
 
 Moved out of the list above. Each has a spec read as each person who reads it, and where it could be driven, a run on a local API (`docs/run-log.md`).
 
-- **P2.** A person's own transcript no longer carries what the lead typed about them, their invitation token or the lead's expectation of them (`d68ce7dc`). The lead reads her own row whole; a colleague and an admin are refused.
-- **P13.** In an anchor check-in the lead's own set-up (her aim, what it will cover, what a complete answer holds) is not served to a member on the check-in page, whether or not the anchor is on (`db145b50`).
+- **P2.** A person's own transcript carries nothing the lead typed about them or set up: not her description of them, her expectation of them, their invitation token, the session plan, the labels, or how their answers were rated (`d68ce7dc`, `8b03b56e`). The lead reads her own row whole; a colleague and an admin are refused. The lead's private note on whether a goal was told is served only to whoever runs the check-in (`c8d868c7`), and adding somebody already added returns an explicit shape and ignores a token a caller sends (`9e9dde61`). The live line has the same leak: it spreads the whole row.
+- **P13.** In an anchor check-in the lead's own set-up (her aim, what it will cover, what a complete answer holds) is not served to a member, on the check-in page (`db145b50`) or on the board (`d8265840`), whether or not the anchor is on.
+- **P3.** A total is given only when three or more people have a number, in every place one is served (`ef85ec06`, decision 110).
 - **B4.** A slow reading of the lead's set-up no longer holds the save of a check-in: the save waits for it for up to twenty seconds and answers either way (`990a6640`). The screens' own open-on-load is theirs to check.
-- **B5.** People a lead names while her check-in waits for an admin are held, not dropped, and invited once when an admin accepts it (`6c918a75`).
-- **B6.** A guest holds no seat in the organisation that has them as a guest, so a plan no longer reads as full when it is not (`172aa319`). This reverses the 27 September count that took guests in, as `docs/existing-users.md` always said.
+- **B5.** People a lead names while her check-in waits for an admin are held, not dropped, and invited once when an admin accepts it (`6c918a75`); and no other door writes to them first: the seat release, the 6 am sweep and the address heals leave a waiting or declined check-in alone, and the approval invites a colleague who already has an account (`009052b9`).
 - **B12 (part).** A yes to an offered request never closes an anchor check-in, leave and spending are not offered while that suite is off, and no reply promises to pass a request on (`d2ad4ba7`).
