@@ -92,13 +92,31 @@ describe('each person holds everything about them', () => {
   it('with no number of your own, you read it in a sentence about you', () => {
     render(<EachPerson groundId="g1" people={people as any} targets={[]} toDos={[]} files={[]} asks={{}} viewerUserId="u2" isLead={false} leadFirstName="Wanjiru" />)
     expect(screen.getByText('You have no number of your own. Your check-in asks against the team’s.')).toBeTruthy()
-    expect(screen.getByText('Nothing yet. It comes from Wanjiru’s own check-in, or from the conversation on this page.')).toBeTruthy()
+    /*
+     * FAULT 3a (ESTHER, LIVE RE-WALK): A MEMBER HAS NO CONVERSATION ON THIS PAGE. This pinned
+     * "...or from the conversation on this page." for a member too, who has no conversation here
+     * to point at (only the check-in's own lead does, through `onChangeInChat`). Updated to the
+     * shorter sentence a reader who is not the lead actually reads.
+     */
+    expect(screen.getByText('Nothing yet. It comes from Wanjiru’s own check-in.')).toBeTruthy()
   })
 
   it('an admin opening a card reads the lead by name, not "your"', () => {
     render(<EachPerson groundId="g1" people={[people[1]] as any} targets={[]} toDos={[]} files={[]} asks={{}} viewerUserId="u-otieno" isLead leadFirstName="Wanjiru" />)
     fireEvent.click(screen.getByText('Miriam'))
     expect(screen.getByText('Miriam has no number of their own, so their check-in asks against the team’s.')).toBeTruthy()
-    expect(screen.getByText('Nothing yet. It comes from Wanjiru’s own check-in, or from the conversation on this page.')).toBeTruthy()
+    /*
+     * FAULT 3a (ESTHER, LIVE RE-WALK): AN ADMIN HAS NO CONVERSATION ON THIS PAGE EITHER.
+     * `isLead` covers an admin as well as the check-in's own lead, but `onChangeInChat` is only
+     * ever passed for the lead herself (ContextPage.tsx: `isTheLead && contextEnabled`) - an admin
+     * read a sentence naming a conversation she was never given. Updated to the shorter sentence.
+     */
+    expect(screen.getByText('Nothing yet. It comes from Wanjiru’s own check-in.')).toBeTruthy()
+  })
+
+  it('the check-in’s own lead, who does have the conversation, reads the longer sentence', () => {
+    render(<EachPerson groundId="g1" people={[people[1]] as any} targets={[]} toDos={[]} files={[]} asks={{}} viewerUserId="u-wanjiru" isLead isTheLead leadFirstName="Wanjiru" />)
+    fireEvent.click(screen.getByText('Miriam'))
+    expect(screen.getByText('Nothing yet. It comes from your own check-in, or from the conversation on this page.')).toBeTruthy()
   })
 })

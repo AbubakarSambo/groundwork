@@ -206,15 +206,25 @@ export function EachPerson({
                     : (
                       /*
                         "THE LEAD" SAID TO THE LEAD.
-                        
+
                         Hafsah, 23 September 2026, reading her own check-in: "why would you say it
                         comes from the lead's own check-in when I am actually the lead, why can't it
                         say your own check-in." `isLead` was already in scope one line below, used
                         to decide whether to offer the chat link.
+
+                        "A MEMBER HAS NO CONVERSATION ON THIS PAGE" (Esther, live re-walk, fault 3a).
+                        "...or from the conversation on this page." named a half this screen only
+                        ever gives the check-in's own lead - a member reading her own context tab,
+                        or an admin reading someone else's, has no conversation here to point at
+                        (the chat link just below, `onChangeInChat`, is itself only ever passed for
+                        `isTheLead`, never for an admin whom `isLead` alone would also cover), and
+                        read a sentence naming something that was never true for her. Only the
+                        check-in's own lead, who does have it, reads that second half now.
                       */
                       <Empty>
-                        Nothing yet. It comes from {isTheLead ? 'your' : leadsOwn} own check-in,
-                        or from the conversation on this page.
+                        {isTheLead
+                          ? <>Nothing yet. It comes from your own check-in, or from the conversation on this page.</>
+                          : <>Nothing yet. It comes from {leadsOwn} own check-in.</>}
                       </Empty>
                     )}
                   {/* THIS ONLY GOES ELSEWHERE (Hafsah, 30 September, the button rules): it hands the
