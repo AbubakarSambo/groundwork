@@ -633,28 +633,48 @@ export function CheckInPeopleAndSetup(props: {
         />
       </Section>
 
-      {/* "ENDING IT": THE PROTOTYPE'S OWN SENTENCE WOULD BE FALSE. No route ends a check-in - see
-          grounds.controller.ts. The product's true state is kept instead: archiving is done by hand
-          for now, and the real "delete it if it was only a test" control, which is not in the
-          prototype and is not dropped for that reason. */}
+      {/*
+        FAULT 7, 6 Oct 2026: THIS STILL SAID "YOU CANNOT END A CHECK-IN YOURSELF YET" AFTER
+        `/grounds/:id/end` (EndingPage.tsx) STARTED LETTING THE LEAD DO EXACTLY THAT - "Save the
+        outcome and end it". The comment above this section was itself the old, now-stale reason:
+        true when it was written (no route ended a check-in), false since the ending page shipped.
+        `ResolutionPanel.tsx`'s own `canChoose` is the server's answer to who may actually decide
+        there (`viewerIsLead || (!leadDecides && viewerIsParty)`); on this page, reached only by
+        the lead or an admin, that is `isInitiator` alone - an admin reading here still only reads
+        the ending page, same as the rest of this tab's "the lead decides setup" rule. She keeps
+        the old sentence and the mail fallback; the lead is pointed at the page that now exists.
+        A plain `<a href>`, not `Button to`, because `Button`'s `to` always renders a react-router
+        `Link` - this page is also mounted outside a Router in its own tests - and `kind="secondary"`
+        to stay within this page's one-primary-button budget (the-rebuilt-pages-use-only-the-new-
+        parts.spec.ts), matching the "Ask us to end this check-in" button beside it.
+      */}
       <Section heading="Ending it">
         <Callout>
           When it ends, nobody can add to it and everything stays as it is. Each person keeps their
           own history. This can't be undone.
         </Callout>
-        <Note>
-          You cannot end a check-in yourself yet. Ask us and we will end it for you, usually the same
-          day.
-          {isOrgAdmin && !isInitiator && (props.whoIsInThisLeadName
-            ? ` ${props.whoIsInThisLeadName} runs it, so ending it ends something they are running.`
-            : ' Somebody else runs it, so ending it ends something they are running.')}
-        </Note>
-        <a
-          className="gwui-btn gwui-btn-secondary gwui-btn-red-text"
-          href={`mailto:hello@myground.work?subject=Archive check-in: ${encodeURIComponent(ground.label)}`}
-        >
-          Ask us to end this check-in
-        </a>
+        {isInitiator ? (
+          <>
+            <Note>You can end this check-in when it has done its job.</Note>
+            <a className="gwui-btn gwui-btn-secondary" href={`/grounds/${props.id}/end`}>Decide how it ends</a>
+          </>
+        ) : (
+          <>
+            <Note>
+              You cannot end a check-in yourself yet. Ask us and we will end it for you, usually the same
+              day.
+              {isOrgAdmin && (props.whoIsInThisLeadName
+                ? ` ${props.whoIsInThisLeadName} runs it, so ending it ends something they are running.`
+                : ' Somebody else runs it, so ending it ends something they are running.')}
+            </Note>
+            <a
+              className="gwui-btn gwui-btn-secondary gwui-btn-red-text"
+              href={`mailto:hello@myground.work?subject=Archive check-in: ${encodeURIComponent(ground.label)}`}
+            >
+              Ask us to end this check-in
+            </a>
+          </>
+        )}
 
         {isInitiator && (
           <Panel>
