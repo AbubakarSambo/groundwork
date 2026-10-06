@@ -60,7 +60,7 @@ export const documentsApi = {
   /* No "That one is not yours to open" toast: a refused list is said on the page, in the documents
      band, where the reader is looking (U.7 review). */
   list: (groundId: string) =>
-    apiClient.get<GroundDocument[]>(`/grounds/${groundId}/documents`, { skipForbiddenToast: true } as any).then(r => r.data),
+    apiClient.get<GroundDocument[]>(`/grounds/${groundId}/documents`, { skipForbiddenToast: true } as any).then(r => (Array.isArray(r.data) ? r.data : [])),
 
   /**
    * `consentConfirmed` is still sent when the caller has it and is no longer read by the server. A

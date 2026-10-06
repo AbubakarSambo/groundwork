@@ -429,7 +429,7 @@ export const groundsApi = {
   baselineHistory: (groundId: string) =>
     apiClient.get<{ version: number; successLooksLike: string | null; conditions: string[]; changeReason: string | null; effectiveFrom: string }[]>(
       `/grounds/${groundId}/baseline`,
-    ).then(r => r.data),
+    ).then(r => (Array.isArray(r.data) ? r.data : [])),
 
   /**
    * GW-EXP-2. Marks THIS viewer's own expectation as seen, and only their own.
@@ -538,7 +538,7 @@ export const groundsApi = {
   recordBaselineEntries: (groundId: string, texts: string[]) =>
     apiClient.post<{ text: string; capturedAtSession: number; createdAt: string }[]>(
       `/grounds/${groundId}/baseline-entries`, { texts },
-    ).then(r => r.data),
+    ).then(r => (Array.isArray(r.data) ? r.data : [])),
 
   baselineEntries: (groundId: string) =>
     apiClient.get<{
