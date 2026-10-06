@@ -389,6 +389,18 @@ export const A_PROMISE_IS_ASKED_ABOUT_BY_ITS_DAY = 'A PROMISE IS ASKED ABOUT AS 
 
 export const A_NUMBER_IS_ONE_A_BLOCK_HOLDS = 'A NUMBER IS ONE A BLOCK HOLDS, ON THE THING THE BLOCK PUTS IT ON. Write only the numbers, times and counts a block says. Never add, multiply or combine them: two crops in two places is two crops and two places, never "four activities". And a number keeps the thing it belongs to. If one person saw alerts at 7 AM and the alert nobody answered fired at 02:14, the alert nobody answered is the 02:14 one, never "the 7 AM alerts". Where you are not sure which thing a number belongs to, leave the number out.';
 
+/*
+ * FOUR MORE FOR THE ROOM, FROM THE RUNS OF 5 OCTOBER (run-oct5b, run-oct5c). Each was a fault in what the lead read, and each
+ * is the writer's to say, because it is about what the blocks hold and which block holds it.
+ */
+export const EACH_THING_AS_STRONGLY_AS_THE_BLOCK_SAYS_IT = 'SAY EACH THING AS STRONGLY AS THE BLOCK SAYS IT, AND NO STRONGER. "Was not paged" is not "was not on call", and "has not finished" is not "has not started". Find the block\'s own words before you write what a person was or was not. If two lines you write would say different things about the same person, write only the part the blocks agree on, and say that the blocks differ on the rest.';
+
+export const AN_OUT_OF_DATE_THING_IS_THE_FINDING = 'AN OUT-OF-DATE THING IS THE FINDING. When a block says a list, a rota, a contact, a rule or an owner was out of date, or named somebody who had left, put that in the gap as what the record holds, and name the person who held that piece. Several people each assuming something different about it is one finding about that thing, and it matters more than which one of them missed something. Say it only where a block says it.';
+
+export const SOMEBODY_CREDITED_WHO_IS_NOT_IN_THE_ROOM = 'SOMEBODY CREDITED WHO IS NOT IN THE ROOM. When a block names a person who has no block of their own, and says what that person did, name that person in the gap and say who said it. That person cannot speak in this check-in, and somebody one account thanks and no other account names is often the finding. Write what the block says they did, and nothing more.';
+
+export const EVERY_PIECE_NOT_THE_FIRST_ONE = 'EVERY PIECE, NOT THE FIRST ONE. When several people each hold a piece of one story, write every piece the blocks give, one short sentence each, with the person who held it, before you write who did not know. A story told with one piece when the blocks give three has left out the rest of what the reader asked for.';
+
 export function theJudgementTemplate(): string {
   return [
     'You are writing the judgement over a check-in that {{whoIsReading}} ran. They are deciding: {{whatTheyAreDeciding}}',
@@ -594,6 +606,14 @@ export function theRoomJudgementTemplate(): string {
     A_PROMISE_IS_ASKED_ABOUT_BY_ITS_DAY,
     '',
     A_NUMBER_IS_ONE_A_BLOCK_HOLDS,
+    '',
+    EACH_THING_AS_STRONGLY_AS_THE_BLOCK_SAYS_IT,
+    '',
+    AN_OUT_OF_DATE_THING_IS_THE_FINDING,
+    '',
+    SOMEBODY_CREDITED_WHO_IS_NOT_IN_THE_ROOM,
+    '',
+    EVERY_PIECE_NOT_THE_FIRST_ONE,
     '',
     PLAIN_WORDS,
     '',
