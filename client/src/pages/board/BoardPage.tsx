@@ -2625,6 +2625,21 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         )}
 
         {/*
+          THE QUESTION THIS CHECK-IN TURNS ON, UNDER THE HEADLINE AREA, FOR EVERY FAMILY (real-user
+          re-walk, Kijani Foods, fault 1). This used to draw once, but only after "Reports", "Help
+          nobody mentioned", "Open issues", "How it ends" and "Where this is heading" - a dozen
+          sections down the page, which read as the bottom of the board on any screen, not "above
+          the fold" in any sense a person would recognise. It now draws here instead, directly under
+          the headline and the glance line, before any kind-of-work's own sections - the prototype's
+          own place for the one thing a board asks the lead to settle (B5-the-board).
+        */}
+        {b.divergence?.centralQuestion && (
+          <Panel>
+            <WhatToSettleTogether question={b.divergence.centralQuestion} />
+          </Panel>
+        )}
+
+        {/*
           THE LAW FIRM MATTER BOARD'S OWN THREE SECTIONS, STRAIGHT AFTER THE GLANCE, IN MATTER.TXT'S
           OWN ORDER - "Where the matter stands", "What you need to decide", then "What changed this
           week, and what it changed". Only for this kind, and only when the engine actually sends
@@ -3149,17 +3164,6 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             data={(b as any).whereThisIsHeading}
             onRecordTheDecision={() => navigate(`/grounds/${id}/end`)}
           />
-        )}
-
-        {/*
-          THE QUESTION THIS CHECK-IN TURNS ON, ABOVE THE FOLD, FOR EVERY FAMILY (real-user walk,
-          Kijani Foods, fault 4a). See the note on `divergenceBlock`, above, for why this moved out
-          of both the onboarding and the general-case divergence blocks to draw once, here.
-        */}
-        {b.divergence?.centralQuestion && (
-          <Panel>
-            <WhatToSettleTogether question={b.divergence.centralQuestion} />
-          </Panel>
         )}
 
         {/*
