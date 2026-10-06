@@ -260,13 +260,28 @@ export function ChatPage() {
   const [declined, setDeclined]       = useState(false)
   const [confirmingDecline, setConfirmingDecline] = useState(false)
   const [openFailed, setOpenFailed]   = useState(false)
-  const openedRef = useRef(false)
+  /** The served sentence for why opening failed, read once and shown where the person can keep
+      reading it (the banner below), not only in a toast that fades. Falls back to a plain one of
+      ours when the server sent nothing usable. */
+  const [openFailedMessage, setOpenFailedMessage] = useState('Could not open your session. This is usually a temporary issue.')
+  /**
+   * A RE-ENTRY GUARD KEYED BY SESSION ID, NOT A BARE FLAG RESET ON EVERY CLEANUP.
+   *
+   * This held a boolean that the effect's own cleanup reset to false on every run - including
+   * React StrictMode's synchronous mount/cleanup/mount, and any ordinary re-render that happens to
+   * re-run the effect. Resetting it there meant the ONE thing this guard exists to prevent - a
+   * second `open()` for the same session - was only ever accidentally avoided (by the cancelled
+   * timeout racing the reset), not actually guarded against. Storing the checkInId it was last
+   * attempted for, and never clearing it except through the explicit "Try again" retry below,
+   * means a page load opens a given session at most once, however many times its own effect runs.
+   */
+  const openedRef = useRef<string | null>(null)
   /**
    * Mirrors the `opened` STATE for the watchdog below.
    *
    * openedRef is a different thing - a re-entry guard that says "an open attempt
-   * is scheduled", and it is deliberately reset in cleanup. This one answers the
-   * question the watchdog actually needs to ask: did a session ever open?
+   * is scheduled". This one answers the question the watchdog actually needs to ask: did a
+   * session ever open?
    */
   const hasOpenedRef = useRef(false)
 
@@ -353,8 +368,38 @@ export function ChatPage() {
       setOpened(true)
       setOpenFailed(false)
     },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.message ?? 'Could not open session.')
+    /*
+     * A 400 HERE DOES NOT MEAN THERE IS NOTHING TO SHOW.
+     *
+     * `open()` is idempotent server-side once a session has turns - a second caller gets the same
+     * reply back, not a 400 - but the door it stands behind (on hold, closed, already complete, not
+     * yet theirs to open) still answers 400, and so does a genuine race lost to a concurrent open
+     * from another tab or a retried request. Before this read that as "could not open your
+     * session" and left the person looking at a dead banner, it is worth asking once more whether
+     * the session actually did open in the meantime: if the transcript now has turns, show the
+     * conversation instead of a failure that no longer describes what happened. Otherwise, the
+     * server's own sentence is shown - permanently, in the banner below, not a toast that fades -
+     * so "this check-in is on hold" or "not yet theirs" is read, not guessed at.
+     */
+    onError: async (err: any) => {
+      const message: string = err?.response?.data?.message ?? ''
+      if (checkInId) {
+        try {
+          const t = await conversationApi.transcript(checkInId)
+          const turnsSoFar = t.turns ?? []
+          if (turnsSoFar.length > 0) {
+            setMsgs(turnsSoFar.map(turn => ({ id: turn.id, role: turn.role, content: turn.content, suggestedAnswers: turn.suggestedAnswers, ideaOffer: turn.ideaOffer, requestOffer: turn.requestOffer, openTheRequest: turn.openTheRequest })))
+            if (t.brief) setBrief(t.brief)
+            if (t.mayCompleteAfter) setMayCompleteAfter(t.mayCompleteAfter)
+            if (t.checkIn?.groundId && !groundId) setGroundId(t.checkIn.groundId)
+            setOpened(true)
+            setOpenFailed(false)
+            return
+          }
+        } catch { /* no transcript either; fall through to the failure banner below */ }
+      }
+      setOpenFailedMessage(message || 'Could not open your session. This is usually a temporary issue.')
+      toast.error(message || 'Could not open session.')
       setOpenFailed(true)
     },
   })
@@ -540,8 +585,8 @@ export function ChatPage() {
   // there are already turns, render them; only call open() for a fresh session
   // that has none yet.
   useEffect(() => {
-    if (checkInId && !opened && !openedRef.current) {
-      openedRef.current = true
+    if (checkInId && !opened && openedRef.current !== checkInId) {
+      openedRef.current = checkInId
       let cancelled = false
       const jitter = Math.random() * 2000
       const t = setTimeout(async () => {
@@ -674,7 +719,12 @@ export function ChatPage() {
         openSession.reset()
       }, 45_000)
 
-      return () => { cancelled = true; clearTimeout(t); clearTimeout(watchdog); openedRef.current = false }
+      /* The pending timeout and watchdog are always cancelled on cleanup - a genuine unmount must
+         not leave either one running against a component that is gone. `openedRef` itself is not
+         reset here: the guard it keeps is "has this session already been attempted", which stays
+         true until the person presses "Try again" below, whether this cleanup ran because the
+         page really unmounted or because the effect merely re-ran. */
+      return () => { cancelled = true; clearTimeout(t); clearTimeout(watchdog) }
     }
   }, [checkInId, opened])
 
@@ -1032,9 +1082,9 @@ export function ChatPage() {
                 {/* Session open failure - shown at top of chat area so it's always visible */}
                 {openFailed && (
                   <div className="gwui-ci-banner-warn">
-                    <span className="gwui-ci-banner-warn-text">Could not open your session. This is usually a temporary issue.</span>
+                    <span className="gwui-ci-banner-warn-text">{openFailedMessage}</span>
                     <button
-                      onClick={() => { setOpenFailed(false); openedRef.current = false; openSession.mutate() }}
+                      onClick={() => { setOpenFailed(false); openedRef.current = null; openSession.mutate() }}
                       disabled={openSession.isPending}
                       className="gwui-ci-banner-warn-btn"
                     >

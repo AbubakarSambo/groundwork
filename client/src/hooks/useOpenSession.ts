@@ -62,6 +62,22 @@ export function useOpenSession(groundId: string | undefined) {
     onError: (e: any) => toast.error(e?.message ?? 'Could not start session. Try again.'),
   })
 
+  /**
+   * A FAILED OPEN MUST NOT LEAVE "OPENING YOUR CHECK-IN…" ON SCREEN FOR EVER.
+   *
+   * The toast above is the only trace a failed `probeSession` used to leave: the caller's own
+   * "Opening…" note had no way to know the attempt was over, so it stayed up with nothing to do
+   * and nothing to read, the thing request 174, item 2 called a hang. `openFailed`/`openError` let
+   * a caller tell the two states apart and offer a real retry; `retryOpen` clears the mutation back
+   * to idle so `open()` can be called again for the same check-in (the same reset the chat page's
+   * own "Try again" button already does for its own open call).
+   */
+  const openFailed = probeSession.isError
+  const openError = probeSession.isError
+    ? ((probeSession.error as any)?.response?.data?.message ?? (probeSession.error as any)?.message ?? 'Could not start your check-in. Try again.')
+    : null
+  const retryOpen = () => probeSession.reset()
+
   const redeemPaywallCode = useMutation({
     mutationFn: () => billingApi.redeemContributorCode(paywallCode.trim().toUpperCase(), groundId!),
     onSuccess: r => {
@@ -111,6 +127,9 @@ export function useOpenSession(groundId: string | undefined) {
   return {
     open,
     opening: probeSession.isPending,
+    openFailed,
+    openError,
+    retryOpen,
     paywall: {
       show: showPaywall,
       close: () => setShowPaywall(false),

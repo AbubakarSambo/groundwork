@@ -70,7 +70,7 @@ export function GroundParticipantPage() {
   const [seenOutOfTime, setSeenOutOfTime] = useState(false)
   /* REVIEW ROUND 3, ITEM 2: THE OPENING FLOW (probe + paywall) MOVED TO A SHARED HOOK, so
      GroundAdminPage.tsx can open a session the same way without landing on this page. */
-  const { open: openSession, opening: sessionOpening, paywall } = useOpenSession(id)
+  const { open: openSession, opening: sessionOpening, openFailed: sessionOpenFailed, openError: sessionOpenError, retryOpen: retrySessionOpen, paywall } = useOpenSession(id)
 
   const user = useAuthStore(s => s.user)
 
@@ -220,16 +220,40 @@ export function GroundParticipantPage() {
    * lands here with the flag set; opening the tab directly on this page is the same action without
    * a round trip through the address bar.
    */
-  useEffect(() => {
-    if (tab !== 'checkin') return
-    if (!myOpenForAutoOpen) return
-    if (sessionOpening) return
-    openSession(myOpenForAutoOpen, {
+  /**
+   * ONE ATTEMPT PER CHECK-IN, NOT ONE PER RENDER.
+   *
+   * This had no "already tried" guard at all - only `sessionOpening`, which is true for the few
+   * seconds the request is actually in flight and false every other moment, including the instant
+   * after it settles. `myOpenForAutoOpen` is rebuilt fresh on every render (a new object from
+   * `.find()`), so it never equals its previous value by reference either - which means this fired
+   * again on essentially every re-render of the page once the first attempt had settled: a
+   * paywall shown, a toast dismissed, any unrelated state change. Request 174, item 2 is this
+   * effect: a check-in that could not open yet (still waiting on approval) was probed again and
+   * again a few seconds apart, each attempt racing the server's own idempotency check before the
+   * previous one's reply had been written, which is how one session ended up with three different
+   * opening questions and one of the `/open` calls back with a 400.
+   *
+   * Guarded by the check-in's own id, kept in a ref so it survives re-renders and (with no cleanup
+   * to undo it) React StrictMode's double-invoked effects alike: once this check-in has been
+   * probed, it is not probed again until `retryOpen` below explicitly clears it.
+   */
+  const checkinTabOpenAttempted = useRef<string | null>(null)
+  function attemptCheckinTabOpen(checkIn: any) {
+    checkinTabOpenAttempted.current = checkIn.id
+    openSession(checkIn, {
       isFreeGround: ground?.isFreeGround,
       groundLabel: ground?.label,
       isInitiator: ((ground as any)?.participants ?? []).find((p: any) => p.userId === user?.id)?.partyType === 'INITIATOR',
     })
-  }, [tab, myOpenForAutoOpen, sessionOpening, openSession])
+  }
+  useEffect(() => {
+    if (tab !== 'checkin') return
+    if (!myOpenForAutoOpen) return
+    if (sessionOpening) return
+    if (checkinTabOpenAttempted.current === myOpenForAutoOpen.id) return
+    attemptCheckinTabOpen(myOpenForAutoOpen)
+  }, [tab, myOpenForAutoOpen, sessionOpening])
 
   if (isLoading) return <Page narrow><Note>Loading…</Note></Page>
   /*
@@ -659,7 +683,19 @@ export function GroundParticipantPage() {
       {tab === 'checkin' && (
         <>
           {dueNow ? (
-            <Note>Opening your check-in…</Note>
+            /* A FAILED OPEN SAYS SO, WITH A WAY BACK IN - not the same "Opening…" line left
+               standing after the attempt it describes is already over. See
+               attemptCheckinTabOpen above. */
+            sessionOpenFailed ? (
+              <Note>
+                {sessionOpenError}{' '}
+                <Button kind="quiet" size="small" onClick={() => { retrySessionOpen(); attemptCheckinTabOpen(myOpenForAutoOpen!) }}>
+                  Try again
+                </Button>
+              </Note>
+            ) : (
+              <Note>Opening your check-in…</Note>
+            )
           ) : (
             <BetweenCheckIns
               groundLabel={ground.label}
