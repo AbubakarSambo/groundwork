@@ -6104,9 +6104,18 @@ export class GroundsService {
    * anything. Reusing the token means every email ever sent to this address
    * points at the same, still-live link.
    */
-  async resendParticipantInvite(groundId: string, participantId: string, organizationId: string): Promise<{ message: string }> {
+  async resendParticipantInvite(groundId: string, participantId: string, organizationId: string, userId: string, role: string): Promise<{ message: string }> {
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId } });
     if (!ground) throw new NotFoundException('Check-in not found');
+    /*
+     * ONLY WHOEVER RUNS THE CHECK-IN, OR AN ORGANISATION ADMIN (request 178). This checked the organisation and nothing else, so any member of it, a person in
+     * the check-in, or a guest could make Groundwork send an invitation in the lead's name. The same two people may add a participant (the lead, or the
+     * admin who set it up), and an organisation admin may too.
+     */
+    const runsIt = ground.initiatorId === userId || (!!ground.createdByUserId && ground.createdByUserId === userId);
+    if (!runsIt && role !== 'ADMIN') {
+      throw new ForbiddenException('Only the person who runs this check-in, or an administrator of the organisation, can send an invitation again.');
+    }
 
     const participant = await this.prisma.groundParticipant.findFirst({ where: { id: participantId, groundId } });
     if (!participant) throw new NotFoundException('Participant not found');
