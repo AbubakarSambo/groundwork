@@ -11,6 +11,7 @@ import { toast } from 'sonner'
 import { copy } from '@/components/gw/copying-can-fail'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { scrollToId } from '@/lib/scroll-to'
+import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import {
   Page, PageTitle, Section, Panel, Stack, FieldRows, FieldRow, Button, Tag, Note, TextField, FieldLabel, SwitchRow,
 } from '@/components/gw/ui'
@@ -126,7 +127,12 @@ export function BillingPage() {
   const { data: codes = [], isLoading: codesLoading } = useQuery({ queryKey: ['contributor-codes'], queryFn: billingApi.getContributorCodes, enabled: isAdmin })
   const { data: billingStatus } = useQuery({ queryKey: ['billing-status'], queryFn: billingApi.status, enabled: isAdmin })
   const { data: livePricing } = useQuery({ queryKey: ['public-pricing'], queryFn: billingApi.getPricing, enabled: isAdmin, staleTime: 60 * 1000 })
-  const { data: whatsapp } = useQuery({ queryKey: ['billing-whatsapp'], queryFn: billingApi.getWhatsApp, enabled: isAdmin })
+  /* U.6 (Hafsah): WhatsApp is mentioned only while it is switched on, platform-wide - GET
+     /auth/whatsapp, the same check every other screen makes before saying its name. Without it,
+     this page kept the organisation's own add-on (price, switch, usage) on screen even with
+     WhatsApp off across all of Groundwork, which no admin can act on. */
+  const whatsappIsOn = useWhatsAppIsOn()
+  const { data: whatsapp } = useQuery({ queryKey: ['billing-whatsapp'], queryFn: billingApi.getWhatsApp, enabled: isAdmin && whatsappIsOn })
   const setWhatsAppMut = useMutation({
     mutationFn: (on: boolean) => billingApi.setWhatsApp(on),
     onSuccess: (r) => qc.setQueryData(['billing-whatsapp'], r),
@@ -302,9 +308,12 @@ export function BillingPage() {
       </Section>
 
       {/*
-       * WHATSAPP, THE PAID ADD-ON (decision 78, 2 October). Behind `release.planAndBillingNewParts`,
-       * as the server decides: while it is off, `GET /billing/whatsapp` serves only `{ sending,
-       * says }` even to an admin (`isWhatsAppBillingAdmin` reads false), so nothing here shows.
+       * WHATSAPP, THE PAID ADD-ON (decision 78, 2 October; U.6, platform gate added as screen
+       * fault 2). Two switches, read at two levels, both of which must be on before this page says
+       * a word about WhatsApp: the platform switch (`useWhatsAppIsOn`, GET /auth/whatsapp - the
+       * same one every other screen checks before naming it), and `release.planAndBillingNewParts`,
+       * as the server decides: while either is off, the query above is not even asked, `whatsapp`
+       * stays undefined, and `isWhatsAppBillingAdmin` reads false, so nothing here shows.
        * Every price, limit and use figure is the server's own sentence (`whatsapp-add-on.service.ts`,
        * "WHAT PLAN AND BILLING SAYS ABOUT WHATSAPP") - this draws `says` exactly as it comes and
        * holds no number of its own.
