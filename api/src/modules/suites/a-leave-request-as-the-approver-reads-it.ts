@@ -42,6 +42,22 @@ export interface TheApproversView {
   more?: string[];
 }
 
+/** How many names are said before the rest are counted: "Brian, Joy, Neema, Aisha, Kofi and 7 others". */
+export const NAMES_SAID_BEFORE_COUNTING = 5;
+
+/**
+ * WHO ELSE IN THE TEAM IS OFF THOSE DAYS, SAID PLAINLY (the clash). Names the people, up to five, then counts the rest, and says how
+ * short the team would be with this request too. "Nobody else in Sales is off those days." when nobody is.
+ * Only names the board already shows to whoever reads it: this says nothing about who is off to anybody else.
+ */
+export function theClashSaid(team: string, alsoOff: string[], oneDay: boolean): string {
+  if (!alsoOff.length) return `Nobody else in ${team} is off ${oneDay ? 'that day' : 'those days'}.`;
+  const when = oneDay ? 'that day' : 'on some of those days';
+  const rest = alsoOff.length - NAMES_SAID_BEFORE_COUNTING;
+  const who = rest > 1 ? listed([...alsoOff.slice(0, NAMES_SAID_BEFORE_COUNTING), `${rest} others`]) : listed(alsoOff);
+  return `${who} ${alsoOff.length === 1 ? 'is' : 'are'} also off ${when}, so ${team} would be ${inWords(alsoOff.length + 1)} short.`;
+}
+
 export function aLeaveRequestAsTheApproverReadsIt(v: TheApproversView): string[] {
   const name = v.firstName.trim() || 'This person';
   const oneDay = v.startsOn === v.endsOn;
@@ -49,13 +65,7 @@ export function aLeaveRequestAsTheApproverReadsIt(v: TheApproversView): string[]
   const asked = v.kindName ? `${v.kindName}${what.slice('leave'.length)}` : what;
   const out = [`${name} asked for ${asked}, which is ${v.days} working ${v.days === 1 ? 'day' : 'days'}.`];
   if (v.daysLeft != null) out.push(`${name} has ${v.daysLeft} ${v.daysLeft === 1 ? 'day' : 'days'}${v.kindName ? ` of ${v.kindName}` : ''} left.`);
-  if (v.team) {
-    if (!v.alsoOff.length) out.push(`Nobody else in ${v.team} is off ${oneDay ? 'that day' : 'those days'}.`);
-    else {
-      const when = oneDay ? 'that day' : 'on some of those days';
-      out.push(`${listed(v.alsoOff)} ${v.alsoOff.length === 1 ? 'is' : 'are'} also off ${when}, so ${v.team} would be ${inWords(v.alsoOff.length + 1)} short.`);
-    }
-  }
+  if (v.team) out.push(theClashSaid(v.team, v.alsoOff, oneDay));
   if (v.standIn) out.push(`${v.standIn} will stand in for ${name}.`);
   out.push(...v.owns, ...(v.more ?? []));
   return out;

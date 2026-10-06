@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { askNameOf } from '../assistant/ask-name';
 import { theirRosterEntry, withTheirSignIns } from './a-roster-entry-and-its-sign-in';
 import { inTheLeadsTeam } from './a-leads-team';
+import { loadLookups, type Lookups } from './the-lookups';
 import { couldBeNamed, decidesIt, everyStepFor, passWhatTheyAlreadyApproved, theStepsFor, whoComesNext, whoDecidesNow, type DecidesNow } from './who-may-decide';
 import { whyPassOn } from './a-request-waits-too-long';
 import { aRequestsHistory, recordIt, saidAsADate } from './a-request-is-recorded';
@@ -195,12 +196,13 @@ export class SpendingService {
     const budgetOf = new Map(budgets.map((b) => [b.team, n(b.amount)]));
     const leftOf = (team: string | null) => (team && budgetOf.has(team) ? budgetOf.get(team)! - (spent.get(team) ?? 0) : null);
 
+    const shared = { lookups: (await loadLookups(this.prisma, org, today).catch(() => undefined)) as Lookups | undefined, on: today };
     const names = await this.names(rows.map((r) => r.userId));
     const questions = await this.questionsOn(org, rows.filter((r) => r.status === 'waiting').map((r) => r.id));
     const askers = await this.firstNames(questions.flatMap((q) => [q.askedById, q.toUserId]));
     const waiting: Waiting[] = [];
     for (const r of rows.filter((x) => x.status === 'waiting' && x.userId !== reader.userId)) {
-      const now = await this.now(org, r, answers, byUser);
+      const now = await this.now(org, r, answers, byUser, shared);
       const who = now.who.kind === 'admin' ? { kind: 'admin' as const } : { kind: now.who.kind === 'manager' ? 'manager' as const : 'person' as const, userId: now.who.userId };
       const decides = this.mayDecide(reader, role, r, who);
       /* A lead reads their own team's requests, and also any request that waits for them to decide. */
@@ -211,9 +213,9 @@ export class SpendingService {
         id: r.id, name: nm.full, firstName: nm.first, amount: n(r.amount), what: r.what, says: `${nm.first}: ${spendInWords(n(r.amount), answers.currency, r.what)}`, team: r.team,
         left: leftOf(r.team),
         over: answers.limit != null && n(r.amount) > answers.limit,
-        approver: who.kind === 'person' ? { kind: 'person', firstName: (await this.names([who.userId])).get(who.userId)?.first ?? '' } : { kind: who.kind },
+        approver: who.kind === 'person' ? { kind: 'person', firstName: (await firstNamesOf(this.prisma, [who.userId], undefined, shared.lookups?.names))[0] ?? '' } : { kind: who.kind },
         mayDecide: decides,
-        where: whereItIsOnTheBoard(await this.whereItStands(r, now, decides, reader.userId)),
+        where: whereItIsOnTheBoard(await this.whereItStands(r, now, decides, reader.userId, shared.lookups?.names)),
         category: r.category ?? null,
         needs: this.needsSaid(r, answers),
         questions: questions.filter((q) => q.ref === r.id).flatMap((q) => aQuestionSaid(q, askers, reader.userId, ask)),
@@ -635,23 +637,23 @@ export class SpendingService {
   /** Who decides a request now, from the step it is on (a new request is on step one). */
   private now(
     organizationId: string, r: { userId: string; amount: unknown; team?: string | null; step?: number | null; escalatedTo?: number | null },
-    answers: Answers, byUser: Map<string, Dir>,
+    answers: Answers, byUser: Map<string, Dir>, shared: { lookups?: Lookups; on?: Date } = {},
   ): Promise<DecidesNow> {
     return whoDecidesNow(this.prisma, theStepsFor('spend', answers, n(r.amount)), {
       organizationId, requesterUserId: r.userId,
       managerExternalId: byUser.get(r.userId)?.managerExternalId ?? null,
       team: r.team?.trim() || byUser.get(r.userId)?.department?.trim() || null,
-    }, r);
+    }, r, shared);
   }
 
   /** Who approved it so far, who it waits for now and who declined it, as names; "you" for the reader. */
-  private async whereItStands(r: Row, now: DecidesNow | null, readerDecides: boolean, readerUserId: string): Promise<WhereItStands> {
+  private async whereItStands(r: Row, now: DecidesNow | null, readerDecides: boolean, readerUserId: string, cache?: Map<string, string>): Promise<WhereItStands> {
     const status = r.status as WhereItStands['status'];
     return {
       status,
-      approvedBy: await firstNamesOf(this.prisma, approversOf(r), readerUserId),
-      waitingFor: status === 'waiting' && now ? (readerDecides ? 'you' : await whoInWords(this.prisma, now.who, now.team, readerUserId)) : null,
-      declinedBy: status === 'declined' && r.decidedById ? (await firstNamesOf(this.prisma, [r.decidedById], readerUserId))[0] ?? null : null,
+      approvedBy: await firstNamesOf(this.prisma, approversOf(r), readerUserId, cache),
+      waitingFor: status === 'waiting' && now ? (readerDecides ? 'you' : await whoInWords(this.prisma, now.who, now.team, readerUserId, cache)) : null,
+      declinedBy: status === 'declined' && r.decidedById ? (await firstNamesOf(this.prisma, [r.decidedById], readerUserId, cache))[0] ?? null : null,
     };
   }
 

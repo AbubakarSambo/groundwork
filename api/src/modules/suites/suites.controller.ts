@@ -12,6 +12,7 @@ import { LeavingBoardService } from './the-leaving-board.service';
 import { RoleMapService } from './the-role-map.service';
 import { SpendingService } from './the-spending.service';
 import { SpendingForFinanceService } from './the-spending-for-finance.service';
+import { ApprovalsQueueService } from './the-approvals-queue.service';
 import { ARequestFiledFromItsForm } from './a-request-filed-from-its-form';
 import { TodosService } from './the-todos.service';
 import { CustomersService } from './the-customers.service';
@@ -159,6 +160,7 @@ export class SuitesController {
     private readonly equipment: EquipmentService,
     private readonly finance: SpendingForFinanceService,
     private readonly filed: ARequestFiledFromItsForm,
+    private readonly queue: ApprovalsQueueService,
   ) {}
 
   @Get()
@@ -171,6 +173,12 @@ export class SuitesController {
   @ApiOperation({ summary: 'The onboarding board, while the suite is on, for an admin or the lead of the team' })
   onboardingBoard(@CurrentUser() user: CurrentUserData) {
     return this.onboarding.forReader({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Get('queue')
+  @ApiOperation({ summary: 'Everything that waits for you to approve or decline, leave and spending together, oldest first, a page at a time, with the counts of the whole of it. Only what waits for you.' })
+  theQueue(@CurrentUser() user: CurrentUserData, @Query('page') page?: string, @Query('pageSize') pageSize?: string, @Query('suite') suite?: string) {
+    return this.queue.queue({ userId: user.id, organizationId: user.organizationId }, { page, pageSize, suite });
   }
 
   @Get('leave/board')

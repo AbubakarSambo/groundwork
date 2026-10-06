@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { askNameOf } from '../assistant/ask-name';
 import { theirRosterEntries, theirRosterEntry } from './a-roster-entry-and-its-sign-in';
 import { inTheLeadsTeam } from './a-leads-team';
+import { loadLookups, type Lookups } from './the-lookups';
 import { couldBeNamed, decidesIt, everyRuleIn, passWhatTheyAlreadyApproved, theStepsFor, whoComesNext, whoDecidesNow, type APassedStep, type DecidesNow, type WhoDecides } from './who-may-decide';
 import { whyPassOn, type WhyPassedOn } from './a-request-waits-too-long';
 import { aRequestsHistory, recordIt } from './a-request-is-recorded';
@@ -218,6 +219,8 @@ export class LeaveBoardService {
       orderBy: { startsOn: 'asc' },
     })) as Row[];
     const people = await this.directory(reader.organizationId, rows);
+    /* Who decides each request is worked out in memory from what is read once here, not asked of the database for every row. */
+    const shared = { lookups: (await loadLookups(this.prisma, reader.organizationId, today).catch(() => undefined)) as Lookups | undefined, on: today };
     const names = await this.names(rows);
     const questions = await this.questionsOn(reader.organizationId, rows.filter((r) => r.status === 'waiting').map((r) => r.id));
     const askers = await this.firstNames(questions.flatMap((q) => [q.askedById, q.toUserId]));
@@ -230,7 +233,7 @@ export class LeaveBoardService {
     const waiting: Waiting[] = [];
     for (const r of rows.filter((x) => x.status === 'waiting' && x.userId !== reader.userId)) {
       /* A lead reads their own team's requests; anybody also reads each request that waits for them to decide. */
-      const now = await this.now(r, people, answers);
+      const now = await this.now(r, people, answers, shared);
       const decides = decidesIt(now.who, { userId: reader.userId, role }, r.userId);
       if (!inScope(r.userId) && !decides) continue;
       const team = people.get(r.userId)?.department?.trim() || null;
@@ -261,7 +264,7 @@ export class LeaveBoardService {
         alsoOff: [...new Set(alsoOff)],
         standIn,
         mayDecide: decides,
-        where: whereItIsOnTheBoard(await this.whereItStands(r, now, decides ? reader.userId : undefined, reader.userId)),
+        where: whereItIsOnTheBoard(await this.whereItStands(r, now, decides ? reader.userId : undefined, reader.userId, shared.lookups?.names)),
         owns,
         questions: asked,
         said: aLeaveRequestAsTheApproverReadsIt({
@@ -296,12 +299,12 @@ export class LeaveBoardService {
         if (!full) continue;
         const what = leaveInWords(dayOf(r.startsOn), dayOf(r.endsOn));
         const days = workingDays(r.startsOn, r.endsOn);
-        const now = r.status === 'waiting' ? await this.now(r, people, answers) : null;
+        const now = r.status === 'waiting' ? await this.now(r, people, answers, shared) : null;
         toldToHr.push({
           id: r.id, name: full, startsOn: dayOf(r.startsOn), endsOn: dayOf(r.endsOn), status: r.status as 'waiting' | 'approved', kindName: kind?.name ?? null,
           said: [
             `${full} asked for ${kind ? `${inASentence(kind)}${what.slice('leave'.length)}` : what}, which is ${days} working ${days === 1 ? 'day' : 'days'}.`,
-            whereItIsOnTheBoard(await this.whereItStands(r, now, undefined, reader.userId)),
+            whereItIsOnTheBoard(await this.whereItStands(r, now, undefined, reader.userId, shared.lookups?.names)),
             ...(kind?.document ? await this.theRulesFor({ kinds: [kind] }, r, kind, { name: first || 'this person' }, today) : []),
           ],
         });
@@ -727,22 +730,22 @@ export class LeaveBoardService {
   }
 
   /** Who decides this request now, from the step it is on, by the one approval resolver (who-may-decide.ts). */
-  private now(r: Row, people: Map<string, any>, answers: { approver: string | null; workflow?: AWorkflow; rules?: LeaveRules }): Promise<DecidesNow> {
+  private now(r: Row, people: Map<string, any>, answers: { approver: string | null; workflow?: AWorkflow; rules?: LeaveRules }, shared: { lookups?: Lookups; on?: Date } = {}): Promise<DecidesNow> {
     /* Leave by length (the-leave-rules.ts): the request's working days choose the steps. No thresholds: as before. */
     return whoDecidesNow(this.prisma, theStepsFor('leave', answers, workingDays(r.startsOn, r.endsOn)), {
       organizationId: r.organizationId, requesterUserId: r.userId,
       managerExternalId: people.get(r.userId)?.managerExternalId ?? null, team: people.get(r.userId)?.department ?? null,
-    }, r);
+    }, r, shared);
   }
 
   /** Who approved it so far, who it waits for now and who declined it, as names; "you" for the reader. */
-  private async whereItStands(r: Row, now: DecidesNow | null, readerDecides: string | undefined, readerUserId: string): Promise<WhereItStands> {
-    const approvedBy = await firstNamesOf(this.prisma, approversOf(r), readerUserId);
+  private async whereItStands(r: Row, now: DecidesNow | null, readerDecides: string | undefined, readerUserId: string, cache?: Map<string, string>): Promise<WhereItStands> {
+    const approvedBy = await firstNamesOf(this.prisma, approversOf(r), readerUserId, cache);
     const status = r.status as WhereItStands['status'];
     return {
       status, approvedBy,
-      waitingFor: status === 'waiting' && now ? (readerDecides ? 'you' : await whoInWords(this.prisma, now.who, now.team, readerUserId)) : null,
-      declinedBy: status === 'declined' && r.decidedById ? (await firstNamesOf(this.prisma, [r.decidedById], readerUserId))[0] ?? null : null,
+      waitingFor: status === 'waiting' && now ? (readerDecides ? 'you' : await whoInWords(this.prisma, now.who, now.team, readerUserId, cache)) : null,
+      declinedBy: status === 'declined' && r.decidedById ? (await firstNamesOf(this.prisma, [r.decidedById], readerUserId, cache))[0] ?? null : null,
     };
   }
 
