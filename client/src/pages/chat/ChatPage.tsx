@@ -1496,7 +1496,7 @@ export function ChatPage() {
             const last = displayedMsgs[displayedMsgs.length - 1]
             if (!last || last.role !== 'AI' || isWaiting(last) || streamingId !== null) return null
             if (loading || completed || declined || !opened) return null
-            return <OpenTheRequest open={last.openTheRequest} />
+            return <OpenTheRequest open={last.openTheRequest} replyText={last.content} />
           })()}
           {/*
             THE END CARD (check-in-end-card.txt). Finishing never happens on its own: the engine
