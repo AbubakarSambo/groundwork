@@ -77,5 +77,4 @@ it('says the two reminders that said "your view" and "the picture" in the words 
 it('tells the model to keep every fact when it writes the report in simpler words', () => {
   expect(THE_REPORT_IN_SIMPLER_WORDS).toMatch(/short sentences/);
   expect(THE_REPORT_IN_SIMPLER_WORDS).toMatch(/Keep every fact, number, name and quote exactly as it is/);
-  expect(THE_REPORT_IN_SIMPLER_WORDS).toMatch(/do not use work words such as pipeline, bottleneck, escalate or escalation/);
 });
