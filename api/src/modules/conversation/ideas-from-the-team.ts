@@ -27,6 +27,8 @@ export const THE_IDEA_SPOTTING_PROMPT = [
   '',
   'Say whether it holds a CONCRETE IDEA: a specific thing the team could do, try, change or build, that the person is putting forward. A complaint, a report of what happened, a question, a feeling, or a vague wish ("we should communicate better") is not one. "We could send the price list to every shop on Monday so they can reorder without calling" is one.',
   '',
+  'These are not ideas: what the person works on, what they are responsible for, what success looks like to them, a goal or a target, who they depend on, a description of a problem, or what they think their lead worries about. An idea is something new that the person proposes, and it usually sounds like "we could", "we should", "what if", "maybe we", "it would help if" or "I suggest". If it only describes how things are or what the person wants to be true, it is not an idea.',
+  '',
   'Copy the idea exactly from the message, as one sentence or part of one, in the person\'s own words. Never rewrite it, shorten it with your own words, or add to it. Say it holds none when it holds none, or when you are not sure. An idea offered to the team that is not one is worse than one missed.',
 ].join('\n');
 
@@ -77,6 +79,23 @@ export interface IdeaDeps {
 }
 
 /**
+ * THE READING THAT SPOTS AN IDEA, ON ITS OWN: the idea in what the person just wrote, in their own words, with the stored version that read it, or null.
+ * Used after their turn, and by the team baseline's close, which waits for the offer rather than say goodbye over an idea.
+ */
+export async function aNewIdeaIn(deps: IdeaDeps, message: string): Promise<{ idea: string; stored: { id: string; content: string } | null } | null> {
+  const stored = deps.prompts?.getActive ? await deps.prompts.getActive(IDEA_SPOTTING_KEY).catch(() => null) : null;
+  const read = await deps.anthropic.extract<{ isAConcreteIdea?: boolean; idea?: string }>(
+    stored?.content ?? THE_IDEA_SPOTTING_PROMPT,
+    [{ role: 'user', content: message }],
+    THE_IDEA_SCHEMA,
+    { fast: true },
+  ).catch(() => null);
+  if (!read?.isAConcreteIdea) return null;
+  const idea = theirOwnIdea(message, read.idea);
+  return idea ? { idea, stored } : null;
+}
+
+/**
  * After the person's turn: their yes captures the offer that was waiting, their no or anything else leaves nothing
  * behind, and a new message may bring a new offer. Never throws; the check-in never fails over an idea.
  */
@@ -99,22 +118,21 @@ export async function afterTheirTurn(
       if (isTheNo(a.message)) return {};
     }
     if (a.sessionComplete) return {};
-    const stored = deps.prompts?.getActive ? await deps.prompts.getActive(IDEA_SPOTTING_KEY).catch(() => null) : null;
-    const read = await deps.anthropic.extract<{ isAConcreteIdea?: boolean; idea?: string }>(
-      stored?.content ?? THE_IDEA_SPOTTING_PROMPT,
-      [{ role: 'user', content: a.message }],
-      THE_IDEA_SCHEMA,
-      { fast: true },
-    ).catch(() => null);
-    if (!read?.isAConcreteIdea) return {};
-    const idea = theirOwnIdea(a.message, read.idea);
-    if (!idea) return {};
+    const spotted = await aNewIdeaIn(deps, a.message);
+    if (!spotted) return {};
+    const { idea, stored } = spotted;
     await deps.prisma.workItem.create({ data: { groundId: a.groundId, kind: 'idea-offered', name: idea, ownerParticipantId: a.participantId, fields: { promptVersionId: stored?.id ?? null } } });
     return { ideaOffer: theOffer(idea), promptVersionId: stored?.id ?? null };
   } catch {
     return {};
   }
 }
+
+/** The idea as a title: its own words, with a capital letter to start. The stored words are never changed. */
+export const aTitle = (t: string): string => {
+  const x = (t ?? '').trim();
+  return x ? x[0].toUpperCase() + x.slice(1) : x;
+};
 
 /**
  * "Ideas from your team", for a reader in that check-in (decision 96 item 10): every captured idea, "Raised by <name>",
@@ -129,7 +147,7 @@ export function theIdeasFromYourTeam(
     heading: 'Ideas from your team',
     ideas: ideas.map((i) => {
       const who = i.ownerParticipantId && i.ownerParticipantId === readerParticipantId ? 'you' : (i.ownerParticipantId ? nameOf(i.ownerParticipantId) : null) ?? 'a colleague';
-      return { id: i.id, title: i.name, raisedBy: `Raised by ${who}.`, similarNeedsSentence: null };
+      return { id: i.id, title: aTitle(i.name), raisedBy: `Raised by ${who}.`, similarNeedsSentence: null };
     }),
     whenThereAreNone: NO_IDEA_CAPTURED_YET,
   };

@@ -19,7 +19,8 @@ import { Note } from './ui/NoteEmpty'
 export function TheMonthBoard({ monthBoard }: { monthBoard: TheMonthBoardShape | undefined }) {
   if (!monthBoard) return null
 
-  const weekLabel = `Week ${monthBoard.weekOfTheMonth} of the month`
+  /* The engine says where the month is, and says so plainly once the check-in has ended. */
+  const weekLabel = monthBoard.weekSaid
 
   return (
     <div className="gwui-stack-18">

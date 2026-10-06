@@ -26,10 +26,23 @@ const fixture: TheEndOfMonthReadShape = {
     teamGeneratedIdeas: 7,
     suitesRelevantToWorkAlreadyBeingDone: 3,
   },
+  revealSaid: {
+    heading: 'This started as one check-in.',
+    intro: 'During the month, Groundwork also found this.',
+    lines: [
+      'Groundwork found three projects that could have a check-in of their own.',
+      'Groundwork found two shared objectives worth tracking.',
+      'Groundwork found four working relationships that need aligning.',
+      '17 things people said they would do are still open.',
+      'Seven ideas from your team were captured.',
+      'Groundwork found three suites that fit work your team is already doing.',
+    ],
+    closing: 'Your team has already started building its Groundwork.',
+  },
   continueOptions: [
-    { key: 'keepThisGroundRunning', label: 'Keep this Ground running' },
-    { key: 'startRecommendedGrounds', label: 'Start recommended Grounds' },
-    { key: 'turnOnRelevantSuites', label: 'Turn on relevant suites' },
+    { key: 'keepThisGroundRunning', label: 'Keep this check-in running' },
+    { key: 'startRecommendedGrounds', label: 'Start the recommended check-ins' },
+    { key: 'turnOnRelevantSuites', label: 'Turn on the suites that fit' },
     { key: 'continueGroundworkForTheTeam', label: 'Continue Groundwork for the team' },
   ],
 }
@@ -60,34 +73,34 @@ describe('TheEndOfMonthRead, piece 33', () => {
     expect(screen.getByText('What should happen next')).toBeTruthy()
   })
 
-  it('never shows a bare reveal number, only a plain sentence', () => {
+  it('draws what the engine serves, in plain sentences', () => {
     render(<TheEndOfMonthRead read={fixture} onContinue={() => {}} />)
-    expect(screen.getByText('3 projects that could have their own Ground.')).toBeTruthy()
-    expect(screen.getByText('17 active commitments.')).toBeTruthy()
+    /* The engine's own sentences, drawn as served: no "Ground", and a count of nothing is a sentence, never "0 projects". */
+    expect(screen.getByText('This started as one check-in.')).toBeTruthy()
+    expect(screen.getByText('Groundwork found three projects that could have a check-in of their own.')).toBeTruthy()
+    expect(screen.getByText('17 things people said they would do are still open.')).toBeTruthy()
+    expect(screen.getByText('Your team has already started building its Groundwork.')).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(/\bGrounds?\b/)
     expect(screen.queryByText(/^3$/)).toBeNull()
     expect(screen.queryByText(/^17$/)).toBeNull()
   })
 
-  it('fault 5: leaves out any reveal row whose count is 0, rather than drawing it at zero', () => {
-    render(<TheEndOfMonthRead read={{ ...fixture, reveal: { ...fixture.reveal, sharedObjectivesWorthTracking: 0 } }} onContinue={() => {}} />)
-    expect(screen.getByText('This started as one Ground.')).toBeTruthy()
-    expect(screen.queryByText(/shared objectives? worth tracking/)).toBeNull()
-    // The rest still draw, unaffected.
-    expect(screen.getByText('3 projects that could have their own Ground.')).toBeTruthy()
+  /* Fault 5 of the anchor walk was "0 active commitments" beside "Three people said what they would
+     do". The engine now serves the lines as sentences (`revealSaid`), saying what was not found in
+     words, so the screen draws them as served and never a bare count. These two tests used to check
+     the screen's own zero filter, which the engine's sentences replace. */
+  it('fault 5: draws the served lines word for word, including what was not found, and never a bare 0', () => {
+    const lines = ['Groundwork did not find a shared objective worth tracking.', 'Groundwork found three projects that could have a check-in of their own.']
+    render(<TheEndOfMonthRead read={{ ...fixture, revealSaid: { ...fixture.revealSaid, lines } }} onContinue={() => {}} />)
+    expect(screen.getByText('This started as one check-in.')).toBeTruthy()
+    for (const l of lines) expect(screen.getByText(l)).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(/(^|\s)0 /)
   })
 
-  it('fault 5: leaves out the whole panel when every reveal count is 0', () => {
-    const noReveal = {
-      projectsThatCouldHaveTheirOwnGround: 0,
-      sharedObjectivesWorthTracking: 0,
-      workingRelationshipsNeedingAlignment: 0,
-      activeCommitments: 0,
-      teamGeneratedIdeas: 0,
-      suitesRelevantToWorkAlreadyBeingDone: 0,
-    }
-    render(<TheEndOfMonthRead read={{ ...fixture, reveal: noReveal }} onContinue={() => {}} />)
-    expect(screen.queryByText('This started as one Ground.')).toBeNull()
-    expect(screen.queryByText('Your team has already started building its Groundwork.')).toBeNull()
+  it('fault 5: draws the served heading, intro and closing as they are', () => {
+    render(<TheEndOfMonthRead read={fixture} onContinue={() => {}} />)
+    expect(screen.getByText('During the month, Groundwork also found this.')).toBeTruthy()
+    expect(screen.getByText('Your team has already started building its Groundwork.')).toBeTruthy()
   })
 
   it('draws at most one navy button, and calls back with the chosen option', () => {
@@ -95,7 +108,7 @@ describe('TheEndOfMonthRead, piece 33', () => {
     render(<TheEndOfMonthRead read={fixture} onContinue={onContinue} />)
     const navyButtons = document.querySelectorAll('.gwui-btn-primary')
     expect(navyButtons.length).toBe(1)
-    fireEvent.click(screen.getByText('Keep this Ground running'))
+    fireEvent.click(screen.getByText('Keep this check-in running'))
     expect(onContinue).toHaveBeenCalledWith(fixture.continueOptions[0])
     fireEvent.click(screen.getByText('Continue Groundwork for the team'))
     expect(onContinue).toHaveBeenCalledWith(fixture.continueOptions[3])

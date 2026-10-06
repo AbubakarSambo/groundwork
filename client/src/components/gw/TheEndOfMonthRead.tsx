@@ -13,7 +13,7 @@ import { Button } from './ui/Button'
  * Built once from the record on the engine side; opening this page never rebuilds it (CLAUDE.md:
  * "Reports and boards update only when something new comes in"). Draws nothing when `read` is
  * undefined - served only once the month has run and the lead has her own first words to begin
- * with. The reveal counts are always said as plain sentences, never a bare number (`revealLine`).
+ * with. The reveal is drawn from the sentences the engine serves (`revealSaid`), never from a bare number.
  * The four continue options go to the existing plan choice, Stripe test mode only (decision 96,
  * item 4) - `onContinue` is given the key so the caller decides exactly where that leads, rather
  * than this component hard-coding a route.
@@ -21,37 +21,11 @@ import { Button } from './ui/Button'
  * At most one navy button per page: only the first continue option
  * (`keepThisGroundRunning`) is drawn `kind="primary"`; the rest are quiet text links.
  */
-function revealLine(key: keyof TheEndOfMonthReadShape['reveal'], n: number): string {
-  switch (key) {
-    case 'projectsThatCouldHaveTheirOwnGround':
-      return n === 1 ? '1 project that could have its own Ground.' : `${n} projects that could have their own Ground.`
-    case 'sharedObjectivesWorthTracking':
-      return n === 1 ? '1 shared objective worth tracking.' : `${n} shared objectives worth tracking.`
-    case 'workingRelationshipsNeedingAlignment':
-      return n === 1 ? '1 working relationship needing alignment.' : `${n} working relationships needing alignment.`
-    case 'activeCommitments':
-      return n === 1 ? '1 active commitment.' : `${n} active commitments.`
-    case 'teamGeneratedIdeas':
-      return n === 1 ? '1 team-generated idea.' : `${n} team-generated ideas.`
-    case 'suitesRelevantToWorkAlreadyBeingDone':
-      return n === 1 ? '1 Groundwork suite relevant to work your team is already doing.' : `${n} Groundwork suites relevant to work your team is already doing.`
-  }
-}
-
 export function TheEndOfMonthRead({ read, onContinue }: {
   read: TheEndOfMonthReadShape | null | undefined
   onContinue: (option: TheContinueOption) => void
 }) {
   if (!read) return null
-
-  const revealRows: [keyof TheEndOfMonthReadShape['reveal'], number][] = [
-    ['projectsThatCouldHaveTheirOwnGround', read.reveal.projectsThatCouldHaveTheirOwnGround],
-    ['sharedObjectivesWorthTracking', read.reveal.sharedObjectivesWorthTracking],
-    ['workingRelationshipsNeedingAlignment', read.reveal.workingRelationshipsNeedingAlignment],
-    ['activeCommitments', read.reveal.activeCommitments],
-    ['teamGeneratedIdeas', read.reveal.teamGeneratedIdeas],
-    ['suitesRelevantToWorkAlreadyBeingDone', read.reveal.suitesRelevantToWorkAlreadyBeingDone],
-  ]
 
   return (
     <div className="gwui-stack-18">
@@ -110,27 +84,13 @@ export function TheEndOfMonthRead({ read, onContinue }: {
         )}
       </Stack>
 
-      {/*
-       * FAULT 5: NEVER A COUNT LINE WHOSE NUMBER IS 0 (walk item 5).
-       *
-       * "0 shared objectives worth tracking" reads as a count of nothing, which is not a reveal -
-       * it is the absence of one. Rows with nothing to count are left out entirely rather than
-       * drawn at zero. If every row is empty there is nothing this panel can show, so the heading
-       * and "Your team has already started building its Groundwork." - which claims something
-       * already happened - are left out too, rather than drawn over an empty list.
-       */}
-      {(() => {
-        const rowsWithSomething = revealRows.filter(([, n]) => n > 0)
-        if (rowsWithSomething.length === 0) return null
-        return (
-          <Panel heading="This started as one Ground.">
-            <Stack gap={6}>
-              {rowsWithSomething.map(([key, n]) => <Note key={key} tone="muted">{revealLine(key, n)}</Note>)}
-            </Stack>
-            <p className="gwui-panel-text" style={{ marginTop: 12, fontWeight: 700 }}>Your team has already started building its Groundwork.</p>
-          </Panel>
-        )
-      })()}
+      <Panel heading={read.revealSaid.heading}>
+        <Stack gap={6}>
+          <p className="gwui-panel-text">{read.revealSaid.intro}</p>
+          {read.revealSaid.lines.map((line, i) => <Note key={i} tone="muted">{line}</Note>)}
+        </Stack>
+        <p className="gwui-panel-text" style={{ marginTop: 12, fontWeight: 700 }}>{read.revealSaid.closing}</p>
+      </Panel>
 
       {read.continueOptions.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>

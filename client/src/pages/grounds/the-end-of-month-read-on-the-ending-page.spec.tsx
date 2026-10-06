@@ -36,7 +36,8 @@ const read: TheEndOfMonthRead = {
     teamGeneratedIdeas: 7,
     suitesRelevantToWorkAlreadyBeingDone: 3,
   },
-  continueOptions: [{ key: 'keepThisGroundRunning', label: 'Keep this Ground running' }],
+  revealSaid: { heading: 'This started as one check-in.', intro: 'During the month, Groundwork also found this.', lines: ['Groundwork found one project that could have a check-in of its own.'], closing: 'Your team has already started building its Groundwork.' },
+  continueOptions: [{ key: 'keepThisGroundRunning', label: 'Keep this check-in running' }],
 }
 
 function board(opts: { canEditFrame: boolean; anchorScenarioOn: boolean; theEndOfMonthRead?: TheEndOfMonthRead }) {
@@ -93,6 +94,6 @@ describe('the end-of-month read, on the ending page', () => {
     renderPage()
     expect(await screen.findByText('You wanted your team to understand...')).toBeTruthy()
     expect(screen.getByText(`“${read.yourOwnWords}”`)).toBeTruthy()
-    expect(screen.getByText('Keep this Ground running')).toBeTruthy()
+    expect(screen.getByText('Keep this check-in running')).toBeTruthy()
   })
 })

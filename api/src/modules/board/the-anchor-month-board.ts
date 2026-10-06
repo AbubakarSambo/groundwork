@@ -142,6 +142,8 @@ export function theMonthBoard(input: {
   differences: string[];
   /** What keeps coming up, as the board already serves it to the lead. Used from week three only. */
   patterns: string[];
+  /** The check-in has ended: it says so, and nobody is being asked for anything more. */
+  ended?: boolean;
 }): TheMonthBoard {
   const { record: r } = input;
   const week = theWeekOfTheMonth(r.startedOn, input.clock);
@@ -151,6 +153,7 @@ export function theMonthBoard(input: {
   return {
     question: 'Are we moving together?',
     weekOfTheMonth: week,
+    weekSaid: input.ended ? 'This check-in has ended.' : `Week ${week} of the month`,
     lenses: theLenses(r, input.differences),
     whatIsMoving: whatIsMoving(r),
     whatTheTeamIsContributing: [ideasSaid(r)],
@@ -159,6 +162,6 @@ export function theMonthBoard(input: {
       ? input.differences
       : [r.checkedIn < 2 ? 'Groundwork needs at least two accounts before it can show where they differ.' : 'No two people have described the same thing differently so far.'],
     whatIsStillGettingInTheWay: inTheWay.length ? inTheWay : ['Nobody has said that anything is in their way.'],
-    whatGroundworkIsWorkingOnNext: whatGroundworkIsWorkingOn(r),
+    whatGroundworkIsWorkingOnNext: input.ended ? ['This check-in has ended, so Groundwork is not asking anyone for more.'] : whatGroundworkIsWorkingOn(r),
   };
 }

@@ -82,13 +82,18 @@ export const contextIsInAskGroundwork = (prisma: Reader) => aSwitch(prisma, CONT
 export const theNewBillingPartsAreShown = (prisma: Reader) => aSwitch(prisma, PLAN_AND_BILLING_NEW_PARTS_KEY);
 
 /**
- * THE OFFER TO ASK FOR LEAVE OR SPENDING FROM INSIDE A CHECK-IN (anchor pieces 26 and 27), HIDDEN AT RELEASE. Its yes
- * opens the request's form, and the routes that form needs (request 165: `POST /suites/leave/requests` and
- * `POST /suites/spend/requests` for the signed-in person) are not built yet, so the offer would lead to a form that
- * cannot send. Off unless the row says `{ "on": true }`. Leave and spending through Ask Groundwork and WhatsApp are
- * unchanged.
+ * THE OFFER TO ASK FOR LEAVE OR SPENDING FROM INSIDE A CHECK-IN (anchor pieces 26 and 27). It was hidden at release because its yes opens the
+ * request's own form, and the form's routes did not exist. They do now (request 165: `POST /suites/leave/requests` and `POST /suites/spend/requests`
+ * for the signed-in person, and the forms' choices), walked end to end on 6 October with real conversations: the offer, the yes, the form filled in
+ * from what the person said, and the request on its approver's board. So it is ON unless the row says `{ "on": false }`. It is only ever made in a
+ * check-in started from the anchor link, with the anchor switch on, so nothing outside the anchor changes. Leave and spending through Ask Groundwork
+ * and WhatsApp are unchanged either way.
  */
-export const theRequestOfferIsShown = (prisma: Reader) => aSwitch(prisma, REQUEST_OFFER_IN_THE_CHECK_IN_KEY);
+export const theRequestOfferIsShown = async (prisma: Reader) => {
+  const v = (await theRow(prisma, REQUEST_OFFER_IN_THE_CHECK_IN_KEY)) as { on?: unknown } | boolean | null;
+  if (typeof v === 'boolean') return v;
+  return v?.on !== false;
+};
 
 /**
  * Whether a NEW anchor check-in can be started (docs/anchor-scenario-plan.md, section 3). Off unless

@@ -90,15 +90,27 @@ export function whatTheConversationHasHeard(heard: TheSevenItems, openingQuestio
   return lines.join('\n\n');
 }
 
+/**
+ * WHAT COMES NEXT, WHEN THE RECORD SAYS THE LEAD HAS NOW SAID WHAT THE GROUP DOES NOT UNDERSTAND. Counting is not judgement, so it is
+ * read here and handed to the model as context: a lead who has been heard on the present is asked, once, one kind question that
+ * tests the complaint (section 9), and only then the hope question (section 10). It does not write the question.
+ */
+export function theChallengeIsDue(heard: TheSevenItems, challengeUsed: boolean, hopeAsked: boolean): string {
+  if (challengeUsed || hopeAsked || !heard.whatTheyDontUnderstand) return '';
+  return `# Your one challenge comes now
+
+The lead has said what they think the group does not understand. You have not yet used your one challenge, so use it in this turn, before the hope question: pick the one of the six questions that fits what the lead has just said, and ask only that. The only reason to leave it out is that the lead has already told you they told the team and gave them the context. The hope question is your turn after it.`;
+}
+
 /** The turn on which everything has been heard: close the conversation instead of asking. */
 export const THE_CLOSING_REMINDER = `# Everything is heard, so this turn closes the conversation
 
 Do not ask a question in this turn. Do not use a question mark anywhere in it.
-In two or three plain sentences, say back what you heard, using only words the lead used. Then say what happens next: the lead adds the people on the next step, and Groundwork then checks in with each of them one to one.`;
+Write two short sentences and no more. Do not list or repeat what the lead told you: the screen already shows it. In the first sentence, say in your own plain words the one thing that seemed to matter most to the lead. Do not say what the conversation or Groundwork will achieve. In the second, say what happens next: the lead adds the people she wants to move on the next step, and Groundwork then checks in with each of them one to one.`;
 
 export const THE_EXTRACTION_SYSTEM = `You are reading the first conversation between Groundwork and a lead who wants their team to understand more of what they see. Read only what the lead has said. Return only what has been clearly said, and leave out anything not yet said.
 
-Write each item as one or two short, plain sentences in the lead's own words, in the second person addressed to the lead where that reads naturally ("You are responsible for..."). Use the lead's own words for the people who pay and for what they pay for. Never use the words sales, customers, pipeline or revenue unless the lead used them first. Never describe a person, a cause or a number the lead has not given. Do not guess, and do not turn a complaint into something the lead has not said. Each item needs its own words from the lead; one remark may fill one item, and it does not fill the others.
+Write each item as one or two short, plain sentences in the lead's own words, in the second person addressed to the lead ("You are responsible for..."). Where the lead wrote "I", "my" or "our", write "you", "your" and "the" instead, and keep every other word as they wrote it. Use the lead's own words for the people who pay and for what they pay for. Never use the words sales, customers, pipeline or revenue unless the lead used them first. Never describe a person, a cause or a number the lead has not given. Do not guess, and do not turn a complaint into something the lead has not said. Each item needs its own words from the lead; one remark may fill one item, and it does not fill the others.
 
 Fields:
 - responsibleFor: what the lead is responsible for. The outcome that sits with them, not only a job title.
@@ -107,7 +119,7 @@ Fields:
 - seeingToday: what the lead is actually seeing people do or not do today.
 - whyItBothersYou: why that bothers the lead, the consequence they see.
 - whatTheyDontUnderstand: what the lead thinks the group does not yet understand.
-- whatTheyWouldDoDifferently: what the lead would notice people doing differently, without being asked, if the group understood. This is only the lead's own answer to being asked what better would look like, or something the lead says plainly about it. Never work it out from the complaint: a complaint about what people do not do is not an answer about what they would do.
+- whatTheyWouldDoDifferently: what the lead would notice people doing differently, without being asked, if the group understood. This is only the lead's own answer to being asked what better would look like, or something the lead says plainly about it. Write one short sentence for each separate thing the lead named ("You would notice people telling you before a truck is late. You would notice dispatch phoning the shop themselves."). Never work it out from the complaint: a complaint about what people do not do is not an answer about what they would do.
 - peopleNamed: one entry per individual person the lead named. A team, a department or a company is not an entry.
 - initial: one plain sentence, under 25 words, saying what this is about, in the lead's words.`;
 

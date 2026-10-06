@@ -19,14 +19,16 @@ export type AnAnchorReader = 'the lead' | 'a person in it' | 'an admin with acce
 
 const A_LABEL_OR_A_SCORE = /\b(?:score|rating|rated|at risk|underperform\w*|PIP|exit)\b|\/10\b/i;
 
-export function whatIsWrongForThisReader(reader: AnAnchorReader, board: Record<string, any>, opts: { monthIsOver?: boolean; theirOwnName?: string | null; othersNames?: string[] } = {}): string[] {
+export function whatIsWrongForThisReader(reader: AnAnchorReader, board: Record<string, any>, opts: { monthIsOver?: boolean; /** The check-in has ended: nobody is being nudged, so there is no active line. */ ended?: boolean; theirOwnName?: string | null; othersNames?: string[] } = {}): string[] {
   const problems: string[] = [];
   const has = (k: string) => board && Object.prototype.hasOwnProperty.call(board, k) && board[k] != null;
   const text = JSON.stringify({ a: board?.activeLine, m: board?.theMonthBoard, e: board?.theEndOfMonthRead, y: board?.yourPartInMovingThings, n: board?.aNudgeForYou });
   if (A_LABEL_OR_A_SCORE.test(text)) problems.push('An anchor part holds a score, a rating or a label on a person.');
 
   if (reader === 'the lead') {
-    if (!has('activeLine')) problems.push('The lead is not served the active line.');
+    if (!has('activeLine') && !opts.ended) problems.push('The lead is not served the active line.');
+    if (has('activeLine') && opts.ended) problems.push('The lead is served the active line of a check-in that has ended.');
+    if (has('theMonthBoard') && opts.ended && !/ended/i.test(String(board.theMonthBoard?.weekSaid ?? ''))) problems.push('The lead\'s month board does not say the check-in has ended.');
     if (!has('theMonthBoard')) problems.push('The lead is not served the month board.');
     if (opts.monthIsOver && !has('theEndOfMonthRead')) problems.push('The month is over, and the lead is not served the end-of-month read.');
     if (has('yourPartInMovingThings')) problems.push('The lead is served a person\'s own recognition sentence.');

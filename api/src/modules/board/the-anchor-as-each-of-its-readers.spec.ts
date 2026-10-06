@@ -93,3 +93,13 @@ describe('the journey runner only talks to this computer', () => {
   it.each(['http://localhost:3000', 'http://127.0.0.1:3000'])('%s is this computer', (u) => expect(onThisComputer(u)).toBe(true));
   it.each(['https://api.myground.work', 'http://10.0.0.5:3000', 'not a url'])('%s is not', (u) => expect(onThisComputer(u)).toBe(false));
 });
+
+describe('an ended check-in, as the lead reads it (6 October)', () => {
+  it('has no active line and a month board that says it has ended', () => {
+    expect(whatIsWrongForThisReader('the lead', { theMonthBoard: { weekSaid: 'This check-in has ended.' } }, { ended: true })).toEqual([]);
+    expect(whatIsWrongForThisReader('the lead', { activeLine: { line: '4/5 active' }, theMonthBoard: { weekSaid: 'Week 4 of the month' } }, { ended: true })).toEqual([
+      'The lead is served the active line of a check-in that has ended.',
+      'The lead\'s month board does not say the check-in has ended.',
+    ]);
+  });
+});

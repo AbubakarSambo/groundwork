@@ -53,14 +53,16 @@ export async function theAnchorBoardParts(args: {
     return { yourPartInMovingThings: mine ? aContributionSaid(null, mine.clauseToThem ?? mine.clause, mine.settledBy) : null, aNudgeForYou: nudge, ideasFromYourTeam: ideas };
   }
   if (!(await theAnchorScenarioIsOn(prisma))) return {};
-  const parts: TheAnchorParts = { activeLine: await theActiveLineFor(prisma, ground.id, args.openRound, args.roundOpenedAt) };
+  const ended = hasEnded(ground.status ?? null);
+  /* An ended check-in has nobody to nudge, so it carries no line about who is active and who Groundwork has nudged. */
+  const parts: TheAnchorParts = ended ? {} : { activeLine: await theActiveLineFor(prisma, ground.id, args.openRound, args.roundOpenedAt) };
   if (args.readerIsTheLead) {
     const record = await readTheMonthRecord(prisma, ground.id, args.openRound);
     const differences = (args.served.divergence?.items ?? []).map(aDifferenceInAWords).filter((x): x is string => !!x);
-    parts.theMonthBoard = theMonthBoard({ record, clock: args.clock, differences, patterns: args.patterns });
+    parts.theMonthBoard = theMonthBoard({ record, clock: args.clock, differences, patterns: args.patterns, ended });
     parts.ideasFromYourTeam = theIdeasFromYourTeam(record.ideas ?? [], args.readerParticipantId ?? null, (pid) => (record.ideas ?? []).find((i) => i.ownerParticipantId === pid)?.raisedBy ?? null);
     /* The month's end: twenty-eight days of the record's own clock, or the check-in has ended. Needs her own first words to begin with. */
-    if (theMonthIsOver(record.startedOn, args.clock, hasEnded(ground.status ?? null))) {
+    if (theMonthIsOver(record.startedOn, args.clock, ended)) {
       const herWords = await herOwnWords(prisma, ground.id, ground.initiatorId ?? null);
       if (herWords) parts.theEndOfMonthRead = theEndOfMonthRead({ herWords, record, differences, patterns: args.patterns });
     }

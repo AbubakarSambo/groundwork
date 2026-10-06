@@ -131,6 +131,7 @@ import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFir
 import { overTimeAsServed, meetingsOnRecordFor, inOurVoice, looksLikeATimeOrADate } from '../reports/what-the-record-shows-over-time';
 import { everyStoredSentenceReadsRight } from '../reports/a-stored-sentence-reads-right';
 import { aBoardWithNoEmptyLine } from './a-board-has-no-empty-line';
+import { withTheEarlierRead } from '../patterns/stored-pattern-lines-through-the-wall';
 import { patternQuestionsToSettleFirst } from './pattern-questions-to-settle-first';
 import { everyDivergenceReadable } from '../reports/a-field-name-is-not-a-heading';
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
@@ -2126,7 +2127,7 @@ export class BoardService {
          rest of the board. See patterns/who-reads-a-pattern, runsItForAPattern. */
       const patternReader = { participantId: me?.id ?? null, runsIt: runsItForAPattern(ground as any, requestingUserId) };
       const namesForPatterns = whoIsWhoIn(ground.participants as any, ground.initiatorId, (ground as any).cadence);
-      const served = servedPatterns(detections as any, patternReader, namesForPatterns);
+      const served = withTheEarlierRead(servedPatterns(detections as any, patternReader, namesForPatterns), detections as any, (ground as any).report?.overTime?.patterns, patternReader);
       out.patterns = await wordPatternEvidence(
         served,
         namesForPatterns.firstNameOf ?? (() => null),

@@ -257,3 +257,37 @@ describe('with the switch off, nothing changes anywhere', () => {
     expect(out.promptVersionId).toBeUndefined();
   });
 });
+
+describe('anchor piece 8 and the guarded lead: what the model is given', () => {
+  it('lists the six kinds of lead as things to listen for, with what better looks like, and never to be named to the lead', () => {
+    for (const heard of ['A chief executive or founder', 'A sales lead', 'A project lead', 'A delivery lead', 'A product lead', 'A finance lead']) {
+      expect(ANCHOR_LEAD_PROMPT).toContain(heard);
+    }
+    expect(ANCHOR_LEAD_PROMPT).toContain('everyone treats collecting what is owed as finance\'s problem');
+    expect(ANCHOR_LEAD_PROMPT).toContain('You must never name one of them to the lead, never read them out, and never choose one for the lead.');
+  });
+
+  it('tells the model what to do with a guarded lead, including one who says revenue is somebody else\'s job', () => {
+    expect(ANCHOR_LEAD_PROMPT).toContain('Never argue, never defend Groundwork, and never treat the lead as difficult.');
+    expect(ANCHOR_LEAD_PROMPT).toContain('"revenue is sales\' job"');
+    expect(ANCHOR_LEAD_PROMPT).toContain('do not correct them and do not agree');
+    expect(ANCHOR_LEAD_PROMPT).toContain('never remark on how short or long an answer is');
+  });
+
+  it('says what Groundwork does in one honest sentence when asked, and never judges the lead\'s team or agrees with the lead about it', () => {
+    expect(ANCHOR_LEAD_PROMPT).toContain('Groundwork will check in with each person you add, one to one, about their work and how it connects to the bigger picture');
+    expect(ANCHOR_LEAD_PROMPT).toContain('Never say that it keeps a record of what everyone is doing.');
+    expect(ANCHOR_LEAD_PROMPT).toContain('Never tell the lead they are right or wrong about their team');
+    expect(ANCHOR_LEAD_PROMPT).toContain('(never "that second part is its own problem")');
+  });
+
+  it('asks one thing at a time, and no filler', () => {
+    expect(ANCHOR_LEAD_PROMPT).toContain('One question means one thing asked');
+    expect(ANCHOR_LEAD_PROMPT).toContain('do not add filler such as "to be clear"');
+  });
+
+  it('is what is stored when the app starts, so the version that runs is this one', () => {
+    const seeded = SEED_PROMPTS.find((p) => p.key === ANCHOR_LEAD_PROMPT_KEY);
+    expect(seeded?.content).toBe(ANCHOR_LEAD_PROMPT);
+  });
+});

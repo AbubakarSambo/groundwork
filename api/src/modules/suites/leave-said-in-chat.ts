@@ -179,7 +179,8 @@ export function readLeaveDates(message: string, today: Date = new Date()): Leave
   /* Next Thursday and Friday, this Monday to Wednesday, Thursday. */
   const wd = new RegExp(`\\b(?:(next|this)\\s+)?${WEEKDAY_RE}(?:\\s*(and|to|until|till|through|-)\\s*(?:(?:next|this)\\s+)?${WEEKDAY_RE})?`).exec(t);
   if (wd) {
-    const how = wd[1] === 'next' ? 'next' : 'this';
+    /* "Friday off next week" is next week's Friday: "next" after the day counts as much as before it. A day nobody asked for is the worst way to be wrong here. */
+    const how = wd[1] === 'next' || /\bnext week\b/.test(t) ? 'next' : 'this';
     const first = weekdayFrom(wd[2], how, today);
     if (!wd[4]) return out(first, endOf(first, weeksSaid(t)));
     const want = WEEKDAYS.indexOf(wd[4]);
@@ -326,6 +327,14 @@ export async function sendLeave(
   } catch (err: any) {
     return typeof err?.message === 'string' && err.message ? `I could not send it. ${err.message}` : 'I could not send it.';
   }
+  return theLeaveRequestSent(prisma, reader, dates);
+}
+
+/**
+ * THE SENTENCE AFTER A LEAVE REQUEST WAS SENT, whichever way it was asked for: said in a chat, or filed from the form
+ * (request 165). One sentence, so the two can never differ.
+ */
+export async function theLeaveRequestSent(prisma: PrismaService, reader: { userId: string; organizationId: string }, dates: LeaveAsked): Promise<string> {
   const n = workingDays(new Date(`${dates.startsOn}T00:00:00.000Z`), new Date(`${dates.endsOn}T00:00:00.000Z`));
   const { name } = await whoApproves(prisma, reader.organizationId, reader.userId, n);
   const kind = dates.kind ? theKindOf(dates.kind, await readLeaveRules(prisma, reader.organizationId).catch(() => ({}))) : null;

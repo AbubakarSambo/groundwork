@@ -1,6 +1,7 @@
 import { EntryService } from './entry.service';
 import { EmailService } from '../email/email.service';
-import { THE_SEVEN, whatHasBeenHeard, whatTheConversationHasHeard, THE_CLOSING_REMINDER } from './the-anchor-setup';
+import { theLeadsReveal } from './the-anchor-reveal';
+import { theChallengeIsDue, THE_SEVEN, whatHasBeenHeard, whatTheConversationHasHeard, THE_CLOSING_REMINDER } from './the-anchor-setup';
 
 /**
  * REQUEST 166, READ AS EACH PERSON READS IT.
@@ -25,6 +26,13 @@ const turns = (n: number) => [
     { role: 'assistant' as const, content: `Question ${i + 2}` },
   ]).flat(),
   { role: 'user' as const, content: 'My latest answer.' },
+];
+
+/** A whole conversation: the hope question has been asked and she has answered it. */
+const whole = () => [
+  ...turns(5).slice(0, -1),
+  { role: 'assistant' as const, content: 'Imagine a month from now and this is meaningfully better. What would you notice people doing without you having to ask?' },
+  { role: 'user' as const, content: 'They would phone the families who missed a visit.' },
 ];
 
 function world(switchOn: boolean, read: any, reply: string) {
@@ -70,18 +78,25 @@ describe('the lead’s first conversation, with the anchor on', () => {
   it('is ready only when all seven are heard and the reply has stopped asking', async () => {
     const closing = 'You are carrying the clinics and the families. Next you add the people you want to move, and Groundwork checks in with each of them one to one.';
     const done = world(true, HERS, closing);
-    const out: any = await done.service.onboard(turns(6) as any, 'HELP_TEAM_UNDERSTAND');
+    const out: any = await done.service.onboard(whole() as any, 'HELP_TEAM_UNDERSTAND');
     expect(out.ready).toBe(true);
     expect(done.seen[0]).toContain(THE_CLOSING_REMINDER);
     expect(done.seen[0]).toContain('Do not ask a question in this turn.');
     /* Everything heard but the reply still asks something: she must be able to answer it, so it is not ready. */
     const asking = world(true, HERS, 'Is there anything you would add?');
-    expect(((await asking.service.onboard(turns(6) as any, 'HELP_TEAM_UNDERSTAND')) as any).ready).toBe(false);
+    expect(((await asking.service.onboard(whole() as any, 'HELP_TEAM_UNDERSTAND')) as any).ready).toBe(false);
+  });
+
+  it('is not complete while she has not yet answered what better would look like, however much else is heard', async () => {
+    const early = world(true, HERS, 'Anything else?');
+    const out: any = await early.service.onboard(turns(6) as any, 'HELP_TEAM_UNDERSTAND');
+    expect(out.ready).toBe(false);
+    expect(early.seen[0]).not.toContain(THE_CLOSING_REMINDER);
   });
 
   it('gives the screen what its summary card and the next step already read, in the lead’s words', async () => {
     const { service } = world(true, { ...HERS, peopleNamed: ['Wanjiru'] }, 'x');
-    const out: any = await service.onboard(turns(6) as any, 'HELP_TEAM_UNDERSTAND');
+    const out: any = await service.onboard(whole() as any, 'HELP_TEAM_UNDERSTAND');
     expect(out.extracted.whoInvolved).toBe(HERS.tryingToMove);
     expect(out.extracted.decision).toBe(HERS.whyItBothersYou);
     expect(out.extracted.goals).toEqual([HERS.whatTheyWouldDoDifferently]);
@@ -237,5 +252,45 @@ describe('the invitation a person on the team reads', () => {
     const { svc, sent } = anEmail('anchor');
     await svc.sendTheInviteThisGroundSends(theCheckIn, 'amani@sokoni.test', 'Your lead', 'tok', undefined, { kind: 'PARTICIPANT_INVITE', groundId: 'g1' });
     expect(sent[0].subject).toBe('Your lead is trying a different way to help the team get on the same page.');
+  });
+});
+
+describe('what the reveal says about who she is moving, and what better would look like', () => {
+  it('says it in her words even when the read of the turns also listed a group as if it were a person', () => {
+    const r = theLeadsReveal({
+      messages: [],
+      peopleNamed: ['The operations team'],
+      heard: { tryingToMove: 'you are trying to move the operations team, fifteen people in warehouse and dispatch', whatTheyWouldDoDifferently: 'You would notice people telling you before a truck is late. You would notice dispatch phoning the shop themselves.' },
+    });
+    expect(r.whoYouAreTryingToMove).toBe('You are trying to move the operations team, fifteen people in warehouse and dispatch.');
+    expect(r.whatMeaningfulChangeWouldLookLike).toEqual(['You would notice people telling you before a truck is late.', 'You would notice dispatch phoning the shop themselves.']);
+  });
+});
+
+describe('the challenge comes before the hope question, once', () => {
+  it('is due once the lead has said what the group does not understand, and not before', () => {
+    expect(theChallengeIsDue({ seeingToday: 'a' }, false, false)).toBe('');
+    expect(theChallengeIsDue({ whatTheyDontUnderstand: 'b' }, false, false)).toContain('Your one challenge comes now');
+  });
+  it('is not due again once it has been used, or once the hope question has been asked', () => {
+    expect(theChallengeIsDue({ whatTheyDontUnderstand: 'b' }, true, false)).toBe('');
+    expect(theChallengeIsDue({ whatTheyDontUnderstand: 'b' }, false, true)).toBe('');
+  });
+  it('reaches the model for a lead who has just said what her group does not understand, and not after a challenge was asked', async () => {
+    const said = turns(2);
+    const due = world(true, { whatTheyDontUnderstand: HERS.whatTheyDontUnderstand }, 'Have you told them this?');
+    await due.service.onboard(said as any, 'HELP_TEAM_UNDERSTAND');
+    expect(due.seen[0]).toContain('Your one challenge comes now');
+    const asked = [...said.slice(0, -1), { role: 'assistant' as const, content: 'Have you actually told them this?' }, { role: 'user' as const, content: 'Not really.' }];
+    const after = world(true, { whatTheyDontUnderstand: HERS.whatTheyDontUnderstand }, 'Imagine a month from now.');
+    await after.service.onboard(asked as any, 'HELP_TEAM_UNDERSTAND');
+    expect(after.seen[0]).not.toContain('Your one challenge comes now');
+  });
+});
+
+describe('who she is trying to move reads as a sentence whichever way the read wrote it', () => {
+  it('puts a group she named into one, and leaves a sentence alone', () => {
+    expect(theLeadsReveal({ messages: [], heard: { tryingToMove: 'The sales team and the account managers' } }).whoYouAreTryingToMove).toBe('You are trying to move the sales team and the account managers with you.');
+    expect(theLeadsReveal({ messages: [], heard: { tryingToMove: 'you are trying to move the clinic managers.' } }).whoYouAreTryingToMove).toBe('You are trying to move the clinic managers.');
   });
 });

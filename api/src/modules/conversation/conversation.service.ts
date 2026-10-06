@@ -76,8 +76,9 @@ export { CLOSED_BY_THE_CLOCK };
 /** `CheckIn.closedReason` when the person declined to take part. */
 export const DECLINED_TO_TAKE_PART = 'declined';
 import { mirrorCommitment } from '../assistant/a-commitment-carries-past-the-ground';
-import { theAnchorParticipantGuidance, whatTheyToldYouBefore, withoutAnAnnouncedAngle } from './the-anchor-weekly-check-in';
+import { STARTED_FROM_THE_ANCHOR, aCheckInStartedFromTheAnchor, theAnchorParticipantGuidance, whatTheyToldYouBefore, withoutAnAnnouncedAngle } from './the-anchor-weekly-check-in';
 import { theAnchorBaselineGuidance } from './the-anchor-baseline';
+import { withoutAnExampleAnswer, THE_BASELINE_CLOSING_REMINDER, THE_BASELINE_READ_SYSTEM, THE_BASELINE_READ_TOOL, everythingIsLearned, whatIsLearnedFrom, whatTheBaselineHasLearned, type WhatIsLearned } from './the-baseline-so-far';
 import { whatTheAnswerAgreedTo, hasAlreadyOffered, whatHappenedToTheOffer, weSayAboutTheOffer, whatIsStillOwedToThem, withoutTheSecondTellingOfIt, isAnOfferToWriteItDown, whatTheyJustSaidMayBeTheirOwnStep, YOU_HAVE_ALREADY_OFFERED } from './giving-the-person-agency';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { DocumentsService } from '../documents/documents.service';
@@ -123,7 +124,7 @@ import { familyFor, BoardFamily } from '../board/board-families';
 import { theOneWorthAsking, askAboutItBlockFor } from './what-keeps-happening-becomes-a-question';
 import { mayCoach } from './participation-timeline';
 import { theirApprovedLeave } from '../suites/who-is-away';
-import { afterTheirTurn, anIdeaReadBackAsAPromise, withoutAskingWhatToCapture } from './ideas-from-the-team';
+import { aNewIdeaIn, afterTheirTurn, anIdeaReadBackAsAPromise, withoutAskingWhatToCapture } from './ideas-from-the-team';
 import { aRequestAfterTheirTurn, withoutACannotApprove } from './a-request-offered-in-the-check-in';
 import { stillAsking } from './one-question-per-turn';
 import { oneThingAsked, wouldLeaveAQuestionOut, asksMoreThanOneThing, withTheOneMoreLine, ASK_ONE_THING } from './a-turn-asks-one-thing';
@@ -350,6 +351,8 @@ const WHAT_THE_BRIEF_IS_READ_FROM = {
      showed nobody, because this select did not read it. */
   toldToParticipants: true,
   scenario: true,
+  /* So a check-in the anchor link started can be told apart: its lead's words are not served to the team (decision 96, item 8). */
+  startedFrom: true,
   initiatorId: true,
   /* AND WHOEVER THAT IS, BY NAME. The opener says "Bisi says your target is 12", never "the person
      who set this up said". See nothing-said-yet-cannot-be-quoted. */
@@ -540,7 +543,13 @@ export class ConversationService {
    * survive a reload. Empty when it asks nothing, and on any failure: a missing suggestion is never
    * an error the person sees. See suggested-answers.
    */
-  private async suggestedAnswersFor(turnId: string, turnText: string, theirLastAnswer: string | null): Promise<string[]> {
+  private async suggestedAnswersFor(turnId: string, turnText: string, theirLastAnswer: string | null, checkInId?: string): Promise<string[]> {
+    /*
+     * NOTHING IS SUGGESTED IN THE TEAM BASELINE (anchor piece 14). Its questions ask what the person sees from where they sit, what they
+     * think their lead is worried about, and who they depend on. A ready-made answer there ("I believe we are shipping the product.") is an
+     * answer put into their mouth, on the one conversation that exists to learn what is in theirs.
+     */
+    if (checkInId && this.anchorWeekForThisTurn.get(checkInId)?.isTheBaseline) return [];
     const answers = await suggestAnswers(this.anthropic as any, turnText, theirLastAnswer).catch(() => [] as string[]);
     if (answers.length) {
       await this.prisma.conversationTurn.update({ where: { id: turnId }, data: { suggestedAnswers: answers } as any }).catch(() => undefined);
@@ -949,6 +958,21 @@ export class ConversationService {
     untold: AnUntoldGoalRow[] = [],
   ): { subject: string | null; says: string | null; objectives: { name: string; target: number | null; direction: 'AIM' | 'LIMIT' | 'RATE' | 'DEADLINE' | 'ZERO' | null }[]; alsoSay?: string | null } | null {
     if (!ground) return null;
+    /*
+     * A CHECK-IN THE ANCHOR LINK STARTED TELLS THE TEAM NOTHING OF WHAT THE LEAD SAID IN HER OWN CONVERSATION (decision 96, item 8).
+     * What she is carrying and what she is seeing are hers alone, and what she needs the team to understand reaches them only once she
+     * says so, which nothing records yet. So her brief and the aims her words made are not served to anybody who is not the lead: the
+     * invitation has already said that she wants to hear their side. Her own reading of them is unchanged.
+     */
+    if (!reader?.isLead && (ground as any).startedFrom === STARTED_FROM_THE_ANCHOR) {
+      return {
+        subject: ground.label ?? null,
+        /* Only what the product was told to tell them, never the brief and never her aims. */
+        says: whatAParticipantIsToldAboutThis(null, [], { told: (ground as any).toldToParticipants ?? null, readerParticipantId: reader?.participantId ?? null, scenario: (ground as any).scenario ?? null }),
+        objectives: [],
+        alsoSay: null,
+      };
+    }
     const allowed = targetsFor(
       ground.objectives ?? [],
       reader?.participantId ?? null,
@@ -1262,9 +1286,11 @@ export class ConversationService {
        an invited person, so a row that holds only that sentence says nothing the conversation can
        use: they are asked, the same as somebody with no role at all. */
     const theRosterIsSilent = !theRosterAlreadySaysWhoTheyAre(aRoleInTheirOwnWords(checkIn.participant as any));
+    /* The team baseline opens with its own question about their work, never "are you the person this check-in is about": nothing here is about one person. */
+    const theBaselineIsRunning = !!this.anchorWeekForThisTurn.get(checkIn.id)?.isTheBaseline;
     const reply = alreadyWritten
       ? alreadyWritten
-      : startsSomething && notTheLead && firstSession && theRosterIsSilent && correctingSession == null && !(checkIn as any).isFinal
+      : startsSomething && notTheLead && firstSession && theRosterIsSilent && correctingSession == null && !(checkIn as any).isFinal && !theBaselineIsRunning
       ? WHO_ARE_YOU_IN_THIS
       : await this.anthropic.respond(openerSystem, [
           { role: 'user', content: beginMessage },
@@ -1317,7 +1343,7 @@ export class ConversationService {
     /* A session that opens after a document was attached opens with what we have from it. Once. */
     const contextAtTheTop = await this.theContextNotYetSaid(checkIn as any);
     /* Suggested answers under the opening question too. */
-    const suggestedAnswers = await this.suggestedAnswersFor(aiTurn.id, aiTurn.content ?? '', null);
+    const suggestedAnswers = await this.suggestedAnswersFor(aiTurn.id, aiTurn.content ?? '', null, checkIn.id);
     return { reply: contextAtTheTop ? `${contextAtTheTop}\n\n${aiTurn.content}` : aiTurn.content, theOpener: aiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any), await this.untoldGoalsOn(checkIn.groundId)), mayCompleteAfter: theFloorFor(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null), ...(suggestedAnswers.length ? { suggestedAnswers } : {}), ...(this.anchorVersionForThisTurn.get(checkIn.id) ? { promptVersionId: this.anchorVersionForThisTurn.get(checkIn.id) } : {}) };
   }
 
@@ -1769,6 +1795,8 @@ export class ConversationService {
 
     const composedBefore = await this.composeSystemPrompt(checkIn, message);
     const anchored = this.theAnchorWeekWords(checkIn.id);
+    /* The team baseline learns how their work looks; it does not turn a period into a date or hold what they said against a number. */
+    const inTheBaseline = !!this.anchorWeekForThisTurn.get(checkIn.id)?.isTheBaseline;
     const offerAnswered = await this.theirYesBecomesACommitment(checkIn);
     const whatTheyAgreedTo = offerAnswered.forTheModel;
     const composed = [composedBefore, ...anchored.before].filter(Boolean).join('\n\n');
@@ -1814,15 +1842,15 @@ export class ConversationService {
      */
     const repliesInThisCheckIn = herEarlierAiTurns.filter((r) => r.checkInId === checkIn.id).map((r) => r.content ?? '');
     const aboutTheirDeadline = whatToDoAboutTheirDeadline(message, new Date(), repliesInThisCheckIn);
-    if (aboutTheirDeadline) {
+    if (aboutTheirDeadline && !inTheBaseline) {
       this.logger.log(`Check-in ${checkIn.id}: they gave a time with no day; asking which.`);
     }
-    const numbersGap = theNumbersDoNotMeet(theirNumbers, message, alreadyTheirs, earlierAiTurnsForTheGap);
+    const numbersGap = inTheBaseline ? null : theNumbersDoNotMeet(theirNumbers, message, alreadyTheirs, earlierAiTurnsForTheGap);
     if (numbersGap) {
       this.logger.log(`Check-in ${checkIn.id}: what they said does not meet the objective; asking which it is.`);
     }
 
-    const fullSystem = [composed, aboutTheirDeadline, numbersGap ? askWhichItIs(numbersGap) : null]
+    const fullSystem = [composed, inTheBaseline ? null : aboutTheirDeadline, numbersGap ? askWhichItIs(numbersGap) : null]
       .filter(Boolean)
       .join('\n\n')
       /* The anchor's short reminder, when it is in play, is read after everything else. */
@@ -2232,6 +2260,14 @@ export class ConversationService {
        * "repeat and going around in circles": nothing was wrong with any single reply, and half of
        * every one of them was the person's own last message. See asked-twice-and-told-no-twice.
        */
+      /* In the team baseline, a sentence that offers an example answer comes off: nothing is put in their mouth. */
+      if (this.anchorWeekForThisTurn.get(checkIn.id)?.isTheBaseline) {
+        const withoutExamples = withoutAnExampleAnswer(screened.text);
+        if (withoutExamples.cut.length && withoutExamples.text) {
+          this.logger.warn(`Check-in ${checkIn.id}: the baseline's reply offered an example answer; ${withoutExamples.cut.length} sentence(s) came off.`);
+          screened = { ...screened, text: withoutExamples.text };
+        }
+      }
       /* An offer to write their words down quotes those words on purpose: that is the offer, so it is not "saying it back". Only in the anchor's weekly check-in. */
       const anOfferIsBeingMade = !!this.anchorWeekForThisTurn.get(checkIn.id) && isAnOfferToWriteItDown(screened.text);
       if (!anOfferIsBeingMade && opensByRepeatingThem(message, screened.text)) {
@@ -2350,7 +2386,7 @@ export class ConversationService {
        * The same shape as every other rule that lost today, and there is already a note here saying
        * the prompt-wording route is exhausted for dates. So it is checked. See a-period-is-not-a-day.
        */
-      const dateItHadToSay = theDateItHadToSay(message, new Date(), repliesInThisCheckIn);
+      const dateItHadToSay = inTheBaseline ? null : theDateItHadToSay(message, new Date(), repliesInThisCheckIn);
       if (dateItHadToSay && didNotSayTheDate(screened.text, dateItHadToSay)) {
         const period = thePeriodTheyNamed(message)!;
         this.logger.warn(`Check-in ${checkIn.id}: the reply left the date out; asking again.`);
@@ -2932,7 +2968,7 @@ export class ConversationService {
     this.noteWhatTheySaid(checkIn.id, message).catch((err: any) =>
       this.logger?.warn?.(`Notes not updated for ${checkIn.id}: ${err?.message}`));
     /* Suggested answers under the question: task 2.6, screens request 7a. See suggested-answers. */
-    const suggestedAnswers = sessionComplete ? [] : await this.suggestedAnswersFor(aiTurn.id, aiTurn.content ?? '', message);
+    const suggestedAnswers = sessionComplete ? [] : await this.suggestedAnswersFor(aiTurn.id, aiTurn.content ?? '', message, checkIn.id);
     /*
      * WHAT IS NOW IN THEIR RECORD, SHOWN BEFORE THEY FINISH (task 2.7, screens request 7b). Built after
      * the goodbye and never in front of it: the record reader takes ten to forty-seven seconds on the
@@ -3046,7 +3082,7 @@ export class ConversationService {
 
   private async mayClose(checkInId: string, isSelfCorrection = false): Promise<{ ready: boolean; ask?: string; sayFirst?: string; nextStep?: { isLead: boolean; personSaid: string[] } }> {
     const [row, turns] = await Promise.all([
-      this.prisma.checkIn.findUnique({ where: { id: checkInId }, select: { closeHeldAt: true, participantId: true, startedAt: true, isClarification: true, ground: { select: { cadence: true, scenario: true } } } }),
+      this.prisma.checkIn.findUnique({ where: { id: checkInId }, select: { closeHeldAt: true, participantId: true, startedAt: true, isClarification: true, sessionNumber: true, participant: { select: { partyType: true } }, ground: { select: { cadence: true, scenario: true, startedFrom: true } } } }),
       this.prisma.conversationTurn.findMany({
         where: { checkInId },
         orderBy: { createdAt: 'asc' },
@@ -3073,6 +3109,23 @@ export class ConversationService {
     if (personSaid.length < minTurns) {
       this.logger.log(`Holding the close on ${checkInId}: only ${personSaid.length} answer(s) so far.`);
       return { ready: false };
+    }
+    /*
+     * THE TEAM BASELINE IS NEVER HELD AT ITS CLOSE (anchor piece 14). It learns how their work looks from where they sit; it does not ask what they
+     * will do and by when, does not ask for a date or a number, and does not go back for something the situation's list owed. Its own words decide
+     * when it is done (all nine learned), so when it closes, it closes.
+     */
+    if (await this.theBaselineApplies({ sessionNumber: (row as any)?.sessionNumber ?? 1, participant: { partyType: (row as any)?.participant?.partyType } }, (row as any)?.ground)) {
+      /*
+       * AN IDEA IN THEIR LAST ANSWER IS OFFERED BEFORE THE GOODBYE. "What could the team be doing better" is the last of the nine, and it is where
+       * ideas are said; a session that closed on it would end before anybody could say yes to capturing it. So the close waits for the offer.
+       */
+      const idea = await aNewIdeaIn({ prisma: this.prisma, anthropic: this.anthropic as any, prompts: this.prompts as any }, personSaid[personSaid.length - 1] ?? '').catch(() => null);
+      if (idea) {
+        this.logger.log(`The close on ${checkInId} waits: they said a concrete idea, which is offered before the goodbye.`);
+        return { ready: false };
+      }
+      return { ready: true };
     }
     /*
      * THE HOLD BUDGET IS ONE. Run 10 (21 Sep 2026) raised it to two, one per thing never asked, because
@@ -5227,6 +5280,13 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * Done here rather than at the read, because whether this conversation has a situation prompt
      * is only settled by the time the pathway is built.
      */
+    /*
+     * THE TEAM BASELINE IS THE WHOLE CONVERSATION, NOT ONE VOICE AMONG MANY (anchor piece 14). A first session for somebody on the anchor
+     * lead's team is read on its own words: no plan written from the lead's brief (it said "Must establish: Amina understands that..."), no
+     * situation pack or intake with its "what did you understand your role in this to be", no owed list. Those are for a conversation that is
+     * about somebody's work against a brief, and this one exists to learn how their work looks from where they sit.
+     */
+    const theBaselineRuns = await this.theBaselineApplies(checkIn, ground);
     const packForThisSituation =
       scenarioPackOverride ?? buildScenarioPackForParty(ground.scenario as any, checkIn.participant.partyType as any, undefined, undefined, checkIn.participant.roleAsDescribed ?? null);
     /* And where the pack's own spine is, read the same way. The pack says "skip any they have already
@@ -5237,7 +5297,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * THE PLAN FOR THIS SESSION. Written once, at the opener, from everything above; read at the top of
      * every turn with where the session has got to in it. See the-plan-for-this-session.
      */
-    const planBlock = await this.thePlanForThisSession(checkIn, ground, {
+    const planBlock = theBaselineRuns ? '' : await this.thePlanForThisSession(checkIn, ground, {
       forTheOpener: !!how?.forTheOpener,
       pack: packForThisSituation ?? '',
       recordAlreadyHolds,
@@ -5392,7 +5452,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * Kept beside the prompt, not in it: the caller puts these words after everything else, so they are read last. Otherwise nothing
      * is kept, and the prompt is byte for byte what it was.
      */
-    const anchorWeek = await this.theAnchorWeek(checkIn, ground, untoldHere, latestMessage ?? '').catch((err: any) => {
+    const anchorWeek = await this.theAnchorWeek(checkIn, ground, untoldHere, latestMessage ?? '', turnsThisSession).catch((err: any) => {
       this.logger.warn(`The anchor's weekly guidance for ${checkIn.id} could not be read: ${err?.message}`);
       return null;
     });
@@ -5400,7 +5460,42 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     this.anchorVersionForThisTurn.set(checkIn.id, anchorWeek?.promptVersionId ?? null);
     this.anchorWeekForThisTurn.set(checkIn.id, anchorWeek);
 
+    const theBaselinePrompt = !theBaselineRuns ? '' : await (async () => {
+      /* The engine's own rules, the person's language, and the few things every turn needs; the baseline's words follow, and its reminder is read last. */
+      const theirFirstName = theFirstNameFrom((checkIn.participant as any)?.user?.firstName, (checkIn.participant as any)?.user?.lastName);
+      /* Their lead, by first name, so the question about what the lead is most concerned about uses a name and not "your lead". */
+      const leadsFirstName = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { initiator: { select: { firstName: true, lastName: true } } } } as any)
+        .then((g: any) => theFirstNameFrom(g?.initiator?.firstName, g?.initiator?.lastName)).catch(() => null);
+      const theBaselineParts = [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, [theirFirstName ? `The person you are talking with is ${theirFirstName}.` : '', leadsFirstName ? `Their lead is ${leadsFirstName}, and the person you are talking with knows that.` : ''].filter(Boolean).join(' '), docContext, cannotBeMissed, askedLastTurn];
+      return theBaselineParts.filter(Boolean).join('\n\n');
+    })();
+    if (theBaselinePrompt) return theBaselinePrompt;
     return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, burden, putThisToThem, askedWhenThisEnds, theirHedge, theHole, heldBack, proofKindly, whereItIs, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
+  }
+
+  /**
+   * WHICH OF THE NINE THE PERSON HAS TOLD US, from their own words, by one fast read. Nothing when there is nothing to read yet or the read fails:
+   * the baseline then runs on its own words, as before.
+   */
+  private async whatTheBaselineHasLearnedSoFar(turns: { role: 'AI' | 'PERSON'; content: string }[]): Promise<WhatIsLearned | null> {
+    if (!turns.some((t) => t.role === 'PERSON' && t.content.trim())) return null;
+    const history = turns.map((t) => ({ role: t.role === 'AI' ? 'assistant' as const : 'user' as const, content: t.content }));
+    while (history.length && history[history.length - 1].role === 'assistant') history.pop();
+    if (!history.length) return null;
+    try {
+      const read = await this.anthropic.extract<Record<string, boolean>>(THE_BASELINE_READ_SYSTEM, history, THE_BASELINE_READ_TOOL, { fast: true });
+      return whatIsLearnedFrom(read);
+    } catch (err: any) {
+      this.logger.warn(`The baseline could not count what it has learned: ${err?.message}`);
+      return null;
+    }
+  }
+
+  /** Whether this is the first session of somebody on the anchor lead's team, with the anchor on: the one gate the baseline's own words use too. */
+  private async theBaselineApplies(checkIn: { sessionNumber: number; participant: { partyType: any } }, ground: any): Promise<boolean> {
+    if (!aCheckInStartedFromTheAnchor(ground)) return false;
+    if (checkIn.participant.partyType === PartyType.INITIATOR || checkIn.sessionNumber !== 1) return false;
+    return (await theAnchorScenarioIsOn(this.prisma)) === true;
   }
 
   /* Which stored version of the anchor's weekly words this turn ran, per check-in. Same shape and lifetime as the other per-turn maps. */
@@ -5410,9 +5505,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     return this._anchorVersionForThisTurn;
   }
   /* The anchor's weekly words for this turn, written by composeSystemPrompt and read by the reply path that puts them after the rest. */
-  private _anchorWeekForThisTurn?: Map<string, { text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo> } | null>;
+  private _anchorWeekForThisTurn?: Map<string, { text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo>; isTheBaseline?: boolean } | null>;
   private get anchorWeekForThisTurn() {
-    if (!this._anchorWeekForThisTurn) this._anchorWeekForThisTurn = new Map<string, { text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo> } | null>();
+    if (!this._anchorWeekForThisTurn) this._anchorWeekForThisTurn = new Map<string, { text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo>; isTheBaseline?: boolean } | null>();
     return this._anchorWeekForThisTurn;
   }
   /** The anchor's weekly words that go before the turn's own additions, and the ones that go after everything. Both empty unless the anchor is in play. */
@@ -5431,7 +5526,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     ground: any,
     untoldHere: AnUntoldGoalRow[],
     latestMessage: string,
-  ): Promise<{ text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo> } | null> {
+    turnsThisSession: { role: 'AI' | 'PERSON'; content: string }[] = [],
+  ): Promise<{ text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo>; isTheBaseline?: boolean } | null> {
     const guidance = await theAnchorParticipantGuidance(() => theAnchorScenarioIsOn(this.prisma), this.prompts, {
       ground,
       isTheLead: checkIn.participant.partyType === PartyType.INITIATOR,
@@ -5452,7 +5548,15 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       const aboutIt = told ? `# What this person has been told this check-in is for
 
 ${told}` : '';
-      return { text: baseline.text, block: aboutIt, last: baseline.last, promptVersionId: baseline.promptVersionId, agreed: null as any };
+      /* What has been learned so far, counted from the person's own words, and the closing once all nine are. */
+      const learned = await this.whatTheBaselineHasLearnedSoFar(turnsThisSession);
+      const closes = !!learned && everythingIsLearned(learned);
+      return {
+        text: baseline.text,
+        block: [aboutIt, learned ? whatTheBaselineHasLearned(learned) : ''].filter(Boolean).join('\n\n'),
+        last: closes ? THE_BASELINE_CLOSING_REMINDER : baseline.last,
+        promptVersionId: baseline.promptVersionId, agreed: null as any, isTheBaseline: true,
+      };
     }
     const lastCheckIn = await this.prisma.checkIn.findFirst({
       where: { participantId: checkIn.participantId, sessionNumber: { lt: checkIn.sessionNumber }, status: CheckInStatus.COMPLETED },

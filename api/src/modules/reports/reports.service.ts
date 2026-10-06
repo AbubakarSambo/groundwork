@@ -171,6 +171,7 @@ import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType,
 import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCHEMA } from '../conversation/prompt-library';
 import { BAD_FAITH_CODES, POSITIVE_CODES, CARRYING_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode, isCarryingCode, nameOfPattern } from '../patterns/pattern-library';
 import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
+import { withTheEarlierRead } from '../patterns/stored-pattern-lines-through-the-wall';
 import { servedPatterns, patternRowsThisReaderMayRead, periodsSeen, patternRowAsOfSession, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, runsItForAPattern, type APatternRow } from '../patterns/who-reads-a-pattern';
 import { periodOf, periodsTheRecordHolds, aTruePeriodCount } from '../patterns/period-of';
 import { plainNameOf as plainPatternNameOf } from '../patterns/plain-pattern-names';
@@ -3683,6 +3684,15 @@ Close the report by framing - neutrally, without recommending one - the choice n
       namesForPatterns.firstNameOf ?? (() => null),
       this.patternEvidenceCompose(),
     ).catch(() => servedPatterns(patternRowsAsOfThisSession as any, { participantId: me?.id ?? null, runsIt: patternRunsIt }, namesForPatterns));
+    /* What the report kept about each pattern, beside that pattern and for whoever runs the check-in only: see patterns/stored-pattern-lines-through-the-wall. */
+    const patternsWithWhatWasKept = withTheEarlierRead(
+      patternsForPage,
+      patternRowsAsOfThisSession as any,
+      patternRunsIt
+        ? await Promise.resolve((this.prisma as any).report?.findUnique?.({ where: { groundId }, select: { overTime: true } })).then((r: any) => (Array.isArray(r?.overTime?.patterns) ? r.overTime.patterns : [])).catch(() => [])
+        : [],
+      { runsIt: patternRunsIt },
+    );
     /* The person reading their own for the first time starts the clock on when the lead may read it. */
     await markShownToThePerson(this.prisma as any, theOnesTheyAreSeeingFirst(patternRowsForPage as any, patternsForPage));
     /* Rows the picture draft and the question read. Each starts inside a promise: see myOwnSoftSpots. */
@@ -3848,7 +3858,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
        * codes stay out, as they do everywhere a person reads. The wording is the library's own
        * `signal`, and who it is about follows the same naming rule as every other line here.
        */
-      patterns: patternsForPage,
+      patterns: patternsWithWhatWasKept,
       /*
        * THIS SESSION'S OWN COACHING NOTE, PROBE LIST AND INFERENCES (request 102, 2 October 2026).
        *

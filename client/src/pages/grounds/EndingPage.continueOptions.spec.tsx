@@ -42,10 +42,11 @@ const theEndOfMonthRead = {
     teamGeneratedIdeas: 0,
     suitesRelevantToWorkAlreadyBeingDone: 0,
   },
+  revealSaid: { heading: 'This started as one check-in.', intro: 'During the month, Groundwork also found this.', lines: ['Groundwork found one project that could have a check-in of its own.'], closing: 'Your team has already started building its Groundwork.' },
   continueOptions: [
-    { key: 'keepThisGroundRunning', label: 'Keep this Ground running' },
-    { key: 'startRecommendedGrounds', label: 'Start recommended Grounds' },
-    { key: 'turnOnRelevantSuites', label: 'Turn on relevant suites' },
+    { key: 'keepThisGroundRunning', label: 'Keep this check-in running' },
+    { key: 'startRecommendedGrounds', label: 'Start the recommended check-ins' },
+    { key: 'turnOnRelevantSuites', label: 'Turn on the suites that fit' },
     { key: 'continueGroundworkForTheTeam', label: 'Continue Groundwork for the team' },
   ],
 }
@@ -76,23 +77,23 @@ describe('EndingPage, the four continue options', () => {
     })
   })
 
-  it('"Keep this Ground running" and "Continue Groundwork for the team" open the plan choice', async () => {
+  it('"Keep this check-in running" and "Continue Groundwork for the team" open the plan choice', async () => {
     renderPage()
-    fireEvent.click(await screen.findByText('Keep this Ground running'))
+    fireEvent.click(await screen.findByText('Keep this check-in running'))
     expect(mockNavigate).toHaveBeenCalledWith('/settings/billing')
     fireEvent.click(screen.getByText('Continue Groundwork for the team'))
     expect(mockNavigate).toHaveBeenCalledWith('/settings/billing')
   })
 
-  it('"Start recommended Grounds" opens this Ground\'s own board', async () => {
+  it('"Start the recommended check-ins" opens this Ground\'s own board', async () => {
     renderPage()
-    fireEvent.click(await screen.findByText('Start recommended Grounds'))
+    fireEvent.click(await screen.findByText('Start the recommended check-ins'))
     expect(mockNavigate).toHaveBeenCalledWith('/grounds/g1/board')
   })
 
-  it('"Turn on relevant suites" opens the Suites page', async () => {
+  it('"Turn on the suites that fit" opens the Suites page', async () => {
     renderPage()
-    fireEvent.click(await screen.findByText('Turn on relevant suites'))
+    fireEvent.click(await screen.findByText('Turn on the suites that fit'))
     expect(mockNavigate).toHaveBeenCalledWith('/settings/suites')
   })
 
@@ -103,6 +104,6 @@ describe('EndingPage, the four continue options', () => {
     })
     renderPage()
     await waitFor(() => expect(screen.getByText('Help my team understand')).toBeTruthy())
-    expect(screen.queryByText('Keep this Ground running')).toBeNull()
+    expect(screen.queryByText('Keep this check-in running')).toBeNull()
   })
 })

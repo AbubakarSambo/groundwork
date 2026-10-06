@@ -50,7 +50,8 @@ describe('a period is not a day', () => {
     /* The prompt is now assembled from the composed blocks plus whatever this turn owes them - the
        deadline question and, since the same day, the numbers question. Both are about what the
        PERSON said, which is why they are appended here rather than run as retries afterwards. */
-    expect(src).toMatch(/const fullSystem = \[composed, aboutTheirDeadline/);
+    /* The team baseline is the one conversation that leaves it out: it learns how their work looks and does not turn a period they gave into a date to confirm. */
+    expect(src).toMatch(/const fullSystem = \[composed, (?:inTheBaseline \? null : )?aboutTheirDeadline/);
   });
 
   it('and the probe that had two specs and no callers now has one', () => {

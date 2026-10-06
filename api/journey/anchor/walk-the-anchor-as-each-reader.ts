@@ -66,7 +66,7 @@ async function main() {
         console.log(`${r.name}, ${which}: the board answered ${res.status}.`); failed++; continue;
       }
       const board = theBody(await res.json());
-      const problems = whatIsWrongForThisReader(r.reader, board, { monthIsOver, theirOwnName: r.name, othersNames: EVERYONE.filter((n) => n !== r.name) });
+      const problems = whatIsWrongForThisReader(r.reader, board, { monthIsOver, ended: which === 'ended', theirOwnName: r.name, othersNames: EVERYONE.filter((n) => n !== r.name) });
       console.log(`${r.name} (${r.reader}), ${which}: ${problems.length ? problems.join(' ') : 'right for this reader.'}`);
       failed += problems.length;
     }

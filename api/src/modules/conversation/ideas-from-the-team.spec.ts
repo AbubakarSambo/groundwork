@@ -108,7 +108,7 @@ describe('"Ideas from your team" on the board, as each reader reads it', () => {
   });
   it('the lead reads it with who raised it, and the month board counts it', async () => {
     const b = await boardAs(anchor(), ...AMINA);
-    expect(b.ideasFromYourTeam.ideas).toEqual([{ id: 'i1', title: 'send the price list to every shop on Monday', raisedBy: 'Raised by Rukia.', similarNeedsSentence: null }]);
+    expect(b.ideasFromYourTeam.ideas).toEqual([{ id: 'i1', title: 'Send the price list to every shop on Monday', raisedBy: 'Raised by Rukia.', similarNeedsSentence: null }]);
     expect(b.theMonthBoard.whatTheTeamIsContributing).toEqual(['One idea from your team has been captured.']);
   });
   it('Rukia reads her own as "Raised by you.", and Baraka reads it with her name', async () => {

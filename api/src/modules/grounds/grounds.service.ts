@@ -560,7 +560,12 @@ export class GroundsService {
    * Awaited with a ceiling, so a slow model costs a few seconds at setup and never a hang; a failure or
    * an empty rewrite leaves the column null and the read falls back to the filtered brief.
    */
-  async tellParticipantsAboutThis(groundId: string, brief: string | null | undefined): Promise<void> {
+  async tellParticipantsAboutThis(groundId: string, brief: string | null | undefined, scenario?: string | null): Promise<void> {
+    /* The anchor lead's conversation is hers alone, so nothing is written from it for the team to read (decision 96, item 8). */
+    if (scenario === GroundScenario.HELP_TEAM_UNDERSTAND) {
+      this.logger.log(`Ground ${groundId}: the anchor's team is told nothing from the lead's own conversation.`);
+      return;
+    }
     try {
       const told = await this.composeWhatParticipantsAreTold(groundId, brief);
       await this.prisma.ground.update({ where: { id: groundId }, data: { toldToParticipants: told } as any });
@@ -790,7 +795,7 @@ export class GroundsService {
 
       return ground;
     });
-    await this.tellParticipantsAboutThis(ground.id, dto.brief);
+    await this.tellParticipantsAboutThis(ground.id, dto.brief, (dto as { scenario?: string }).scenario);
     /* The kind of work, read from what the lead said at setup (request 76). Not awaited: setup is saved either way. */
     void this.readTheKindOfWork(ground.id);
 
@@ -992,7 +997,7 @@ export class GroundsService {
     );
 
     this.usage.emit(UsageEventType.GROUND_CREATED, { organizationId, groundId: ground.id, userId: leadUser.id }).catch(() => undefined);
-    await this.tellParticipantsAboutThis(ground.id, dto.brief);
+    await this.tellParticipantsAboutThis(ground.id, dto.brief, (dto as { scenario?: string }).scenario);
     /* The kind of work, read from what the lead said at setup (request 76). Not awaited: setup is saved either way. */
     void this.readTheKindOfWork(ground.id);
 
@@ -5808,7 +5813,9 @@ export class GroundsService {
           /* Their real account name, when they were picked from the colleague list rather than
              typed in cold. Every reader already prefers this to a guess from the address the
              moment `user.firstName` itself is not yet available (see theirName, party-labels.ts). */
-          ...(colleagueName ? { nameGiven: colleagueName } : dto.displayName?.trim() ? { nameGiven: dto.displayName.trim().slice(0, 120) } : {}),
+          ...(colleagueName ? { nameGiven: colleagueName } : {}),
+          /* What the lead calls this person, typed beside the address ("Name + email"), when they were not picked from the colleague list. */
+          ...(!colleagueName && dto.displayName?.trim() ? { nameGiven: dto.displayName.trim().slice(0, 120) } : {}),
           /* What they are accountable for, in the lead's words. It used to be emailed and then lost. */
           remitAsGiven: dto.note?.trim() || null,
           department: dto.department?.trim() || null,
