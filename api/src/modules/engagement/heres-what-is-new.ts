@@ -123,19 +123,17 @@ export async function sendHeresWhatIsNew(
       const had = await prisma.notification.findFirst({ where: { channel: 'email', sender: WHATS_NEW_SENDER, toAddress: user.email.trim().toLowerCase(), outcome: 'sent' }, select: { id: true } });
       if (had || await isAlreadyHeld(prisma, WHATS_NEW_SENDER, user.email)) continue;
       const stands: AnExistingCheckIn[] = [];
-      /* Each check-in once, by its own id and by its name (a title is never listed twice), the most recent first, and only the most recent few by name. */
+      /* Each check-in once, by its own id (two check-ins that share a name are two, and both count), the most recent first, and only the most recent few by name. */
       const seenIds = new Set<string>();
-      const seenNames = new Set<string>();
       const newestFirst = [...theirs].sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime());
       let beyond = 0;
       for (const g of newestFirst) {
-        const name = String(g.label ?? '').trim().toLowerCase();
-        if (seenIds.has(g.id) || (name && seenNames.has(name))) continue;
+        if (seenIds.has(g.id)) continue;
         /* A check-in left open with nothing more to come is dead, and is never mentioned (decision 109 item 2). */
         if (!thereIsASessionToCome(g, now)) continue;
         const s = await theOpenSession(prisma, g.id, leadId);
         if (!s) continue;
-        seenIds.add(g.id); if (name) seenNames.add(name);
+        seenIds.add(g.id);
         if (stands.length >= MOST_LISTED) { beyond++; continue; }
         stands.push({ ...s, label: g.label, moreToCome: true });
       }
