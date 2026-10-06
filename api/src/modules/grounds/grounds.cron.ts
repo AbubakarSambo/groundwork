@@ -37,7 +37,7 @@ import { GroundStatus, CheckInStatus, TurnRole, PartyType, ReportActivationStatu
 import { PatternsService } from '../patterns/patterns.service';
 import { ConversationService } from '../conversation/conversation.service';
 import { WARN_BEFORE_IT_LAPSES_DAYS } from '../participants/how-long-an-invite-lasts';
-import { remindThemToCarryOn, warnTheirPhone, tellThemTheClockClosedIt } from '../whatsapp/a-check-in-left-halfway';
+import { remindThemToCarryOn, warnTheirPhone, tellThemTheClockClosedIt, theLastRealTurn, THE_WARNING_TURN } from '../whatsapp/a-check-in-left-halfway';
 
 const INACTIVITY_AUTO_CLOSE_MS = 12 * 60 * 60 * 1000;     // 12 hours
 const MAX_SESSION_AGE_MS = 48 * 60 * 60 * 1000;            // 48 hours
@@ -451,11 +451,8 @@ export class GroundsCron implements OnApplicationBootstrap {
       let closed = 0;
 
       for (const checkIn of inProgress) {
-        const latestTurn = await this.prisma.conversationTurn.findFirst({
-          where: { checkInId: checkIn.id },
-          orderBy: { createdAt: 'desc' },
-          select: { createdAt: true },
-        });
+        /* The 12 hours run from the last real word, never from the warning this job's sibling injects at 11 hours: that turn is the app's own, and counting it moved the close to about 23 hours. */
+        const latestTurn = await theLastRealTurn(this.prisma, checkIn.id);
 
         const sessionStart = checkIn.startedAt ?? checkIn.createdAt;
         const sessionAgeMs = now.getTime() - sessionStart.getTime();
@@ -479,7 +476,7 @@ export class GroundsCron implements OnApplicationBootstrap {
          * this decides only that it is time. See ConversationService.closeByTheClock.
          */
         /* Their phone is told it closed, with what they said kept, before the report follows (a-check-in-left-halfway.ts). */
-        const toldTheirPhone = this.whatsapp && (await theHalfwayMessagesAreOn(this.prisma)) ? tellThemTheClockClosedIt(this.prisma, this.whatsapp, checkIn.id).catch(() => false) : Promise.resolve(false);
+        const toldTheirPhone = this.whatsapp && (await theHalfwayMessagesAreOn(this.prisma)) ? tellThemTheClockClosedIt(this.prisma, this.whatsapp, checkIn.id, absoluteStale ? 'age' : 'quiet').catch(() => false) : Promise.resolve(false);
         await toldTheirPhone;
         await this.conversation.closeByTheClock(checkIn.id);
 
@@ -533,7 +530,8 @@ export class GroundsCron implements OnApplicationBootstrap {
    */
   @Cron('*/30 * * * *', { timeZone: 'UTC' })
   async remindThoseWhoStoppedHalfway() {
-    await this.remindThoseWhoStoppedHalfwayInner(new Date());
+    /* One copy at a time, so two copies of the API never send the same reminder twice. */
+    await this.prisma.withAdvisoryLock(CronLock.HALFWAY_REMINDERS, async () => { await this.remindThoseWhoStoppedHalfwayInner(new Date()); });
   }
 
   async remindThoseWhoStoppedHalfwayInner(now: Date): Promise<{ sent: number }> {
@@ -541,12 +539,14 @@ export class GroundsCron implements OnApplicationBootstrap {
     if (!this.whatsapp || !(await theHalfwayMessagesAreOn(this.prisma))) return { sent: 0 };
     const open = await this.prisma.checkIn.findMany({
       where: { status: CheckInStatus.IN_PROGRESS, ground: { status: { notIn: HELD } } },
-      select: { id: true },
+      select: { id: true, warningFiredAt: true },
     });
     let sent = 0;
     for (const c of open) {
       try {
-        const last = await this.prisma.conversationTurn.findFirst({ where: { checkInId: c.id }, orderBy: { createdAt: 'desc' }, select: { createdAt: true, role: true } });
+        /* After the 11-hour warning nothing is said but the close, and the quiet is counted from the last real turn. */
+        if (c.warningFiredAt) continue;
+        const last = await theLastRealTurn(this.prisma, c.id);
         if (last && now.getTime() - last.createdAt.getTime() >= WARNING_WINDOW_START_MS) continue;
         if (await remindThemToCarryOn(this.prisma, this.whatsapp, c, last as any, now)) sent++;
       } catch (err: any) {
@@ -595,8 +595,7 @@ export class GroundsCron implements OnApplicationBootstrap {
           data: {
             checkInId: checkIn.id,
             role: TurnRole.AI,
-            content:
-              'This session closes in 30 minutes if nothing else is said. Add anything you still want on the record now.',
+            content: THE_WARNING_TURN,
           },
         });
 
@@ -605,7 +604,7 @@ export class GroundsCron implements OnApplicationBootstrap {
           data: { warningFiredAt: now },
         });
         /* And to their phone, when they were doing this session on WhatsApp (a-check-in-left-halfway.ts). */
-        if (this.whatsapp && (await theHalfwayMessagesAreOn(this.prisma))) await warnTheirPhone(this.prisma, this.whatsapp, checkIn.id).catch(() => false);
+        if (this.whatsapp && (await theHalfwayMessagesAreOn(this.prisma))) await warnTheirPhone(this.prisma, this.whatsapp, checkIn.id, now).catch(() => false);
 
         this.logger.log(`Session-closing warning injected for check-in ${checkIn.id} (inactive ~${Math.round(inactiveMs / 3_600_000)}h)`);
         warned++;

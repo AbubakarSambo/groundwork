@@ -137,7 +137,7 @@ export class WhatsAppService {
     const may = await this.addOn.mayWeSend(organizationId);
     if (may.send) return null;
     const result: SendResult = { sent: false, error: may.saying };
-    this.writeItDown(organizationId, to, result, { ...context, kind: context.kind ? `${context.kind}:held` : 'held' });
+    await this.writeItDown(organizationId, to, result, { ...context, kind: context.kind ? `${context.kind}:held` : 'held' });
     await this.addOn.countHeld(organizationId, may.why);
     await this.tellThemItIsHeld(organizationId, to, context, may.saying).catch((err: any) => this.logger.warn(`Could not tell ${to} that WhatsApp is held: ${err?.message}`));
     return result;
@@ -174,7 +174,7 @@ export class WhatsAppService {
     else if (await this.isEnabled()) { const ours = await this.ours(); result = await this.post(ours.phoneNumberId ?? '', ours.accessToken ?? '', to, text); }
     else result = { sent: false, error: 'WhatsApp is not configured on this deployment' };
     /* Written down, never counted: this one is free. */
-    this.writeItDown(organizationId, to, result, { checkInId: context.checkInId ?? null, kind: 'held-told' });
+    await this.writeItDown(organizationId, to, result, { checkInId: context.checkInId ?? null, kind: 'held-told' });
   }
 
   /** A message that went counts towards its organisation's month. */
@@ -317,7 +317,7 @@ export class WhatsAppService {
       if (gate.quiet) return { sent: false, error: gate.because };
       if (gate.template) { const ours = await this.ours(); return this.sendTemplate(ours.phoneNumberId ?? '', ours.accessToken ?? '', org, to, text, gate.template, gate.params ? { ...context, params: gate.params } : context); }
       const result: SendResult = { sent: false, error: gate.because };
-      this.writeItDown(org, to, result, context);
+      await this.writeItDown(org, to, result, context);
       return result;
     }
     if (!(await this.isEnabled())) {
@@ -338,14 +338,14 @@ export class WhatsAppService {
         this.logger.warn(`[DEV WHATSAPP] a message of ${text.length} characters was not sent.`);
       }
       const result: SendResult = { sent: false, error: 'WhatsApp is not configured on this deployment' };
-      this.writeItDown(org, to, result, context);
+      await this.writeItDown(org, to, result, context);
       return result;
     }
 
     const ours = await this.ours();
     const result = await this.post(ours.phoneNumberId ?? '', ours.accessToken ?? '', to, text);
     if (result.sent) this.logger.log(`WhatsApp message sent to ${to}`);
-    this.writeItDown(org, to, result, context);
+    await this.writeItDown(org, to, result, context);
     return this.counted(org, result);
   }
 
@@ -412,7 +412,7 @@ export class WhatsAppService {
     }
     const result = await this.post(ours.phoneNumberId, ours.accessToken, to, WhatsAppService.OUR_TEST_MESSAGE);
     /* Who sent it, on the row and in the log: the staff member's id, never a secret. */
-    this.writeItDown(null, to, result, { kind: `admin-test:${byUserId}` });
+    await this.writeItDown(null, to, result, { kind: `admin-test:${byUserId}` });
     this.logger.log(`A WhatsApp test message to ${to} was ${result.sent ? 'sent' : 'not sent'} by staff member ${byUserId}.`);
     return result.sent
       ? { sent: true, to, saying: `The test message went to ${to}. Check that phone to see that it arrived.` }
@@ -442,9 +442,9 @@ export class WhatsAppService {
     }
   }
 
-  /** The row. Fire-and-forget: a ledger that cannot be written must not stop a reply that can be sent. */
-  private writeItDown(organizationId: string | null, phone: string, result: SendResult, context: SendContext): void {
-    this.prisma.whatsAppSend
+  /** The row, awaited so a caller that asks the record straight afterwards (the halfway sweeps) finds it; a ledger that cannot be written still never stops a reply that can be sent. */
+  private async writeItDown(organizationId: string | null, phone: string, result: SendResult, context: SendContext): Promise<void> {
+    await this.prisma.whatsAppSend
       .create({
         data: {
           organizationId,
@@ -460,7 +460,7 @@ export class WhatsAppService {
       })
       .catch((err: any) => this.logger.warn(`Could not record a WhatsApp send to ${phone}: ${err?.message}`));
     /* And the same fact in the ledger every channel writes to (Notification), so a failed send is findable beside a suppressed mail. */
-    this.prisma.notification
+    await this.prisma.notification
       .create({ data: { channel: 'whatsapp', organizationId, toAddress: phone, sender: context.kind ?? null, outcome: result.sent ? 'sent' : 'failed', because: result.sent ? null : (result.error ?? null) } })
       .catch(() => undefined);
   }
@@ -485,12 +485,12 @@ export class WhatsAppService {
       if (gate.quiet) return { sent: false, error: gate.because };
       if (gate.template) return this.sendTemplate(own.phoneNumberId, own.accessToken, organizationId, to, text, gate.template, gate.params ? { ...context, params: gate.params } : context);
       const result: SendResult = { sent: false, error: gate.because };
-      this.writeItDown(organizationId, to, result, context);
+      await this.writeItDown(organizationId, to, result, context);
       return result;
     }
     const result = await this.deliver(own.phoneNumberId, own.accessToken, to, text);
     if (result.sent) await this.prisma.whatsAppConnection.update({ where: { id: own.id }, data: { lastOutboundAt: new Date() } }).catch(() => undefined);
-    this.writeItDown(organizationId, to, result, context);
+    await this.writeItDown(organizationId, to, result, context);
     return this.counted(organizationId, result);
   }
 
@@ -780,7 +780,7 @@ export class WhatsAppService {
     const blanks = new Set(template.body.match(/\{\{\d+\}\}/g) ?? []).size;
     if (blanks > (context.params?.length ?? 1)) {
       result = { sent: false, error: `No words for every blank of ${template.name}; not sent` };
-      this.writeItDown(organizationId, to, result, { ...context, kind: `${context.kind}:template` });
+      await this.writeItDown(organizationId, to, result, { ...context, kind: `${context.kind}:template` });
       return result;
     }
     try {
@@ -796,7 +796,7 @@ export class WhatsAppService {
     } catch (err: any) {
       result = { sent: false, error: err?.message ?? 'template send failed' };
     }
-    this.writeItDown(organizationId, to, result, { ...context, kind: `${context.kind}:template` });
+    await this.writeItDown(organizationId, to, result, { ...context, kind: `${context.kind}:template` });
     return this.counted(organizationId, result);
   }
 

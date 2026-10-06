@@ -60,7 +60,7 @@ The engine workspace keeps this file current. The screens workspace reads it aft
 - [ ] **Run the WhatsApp journeys once more on the release build**, after the last merge, against a fresh local copy of the test database. *Not done.*
 
 ## Hidden at release (never hide something an existing client uses today)
-- [x] **The three WhatsApp messages for somebody who stops a check-in halfway are ON by default** (6 October). `release.whatsappHalfwayMessages`: a missing row reads as on, `{"on": false}` switches them off. Proved for every kind in `docs/run-log.md`. `docs/deploy.md`, "Hidden at release".
+- [x] **The three WhatsApp messages for somebody who stops a check-in halfway are ON by default** (6 October, after the review's fixes and a run that drives the real sweeps, `docs/run-log.md` run 8). `release.whatsappHalfwayMessages`: a missing row reads as on, `{"on": false}` switches them off, an unreadable row reads as off. `docs/deploy.md`, "Hidden at release".
 - [x] Boards for kinds of work nobody uses yet. Hidden from new check-ins by `release.boardKindsOffered`; existing check-ins keep their kind. `docs/deploy.md`, "Hidden at release".
 - [x] The back office rebuild. Checked: none of it was built, so nothing to hide. The existing back office stays for Groundwork's staff.
 - [x] The Context tab's move to Ask Groundwork. Hidden by `release.contextInAskGroundwork` (off). The old context chat stays.

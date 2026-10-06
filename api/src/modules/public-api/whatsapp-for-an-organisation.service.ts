@@ -476,6 +476,8 @@ export class WhatsAppForAnOrganisationService {
      * them went to the controller's log-only catch. The person got silence, which on a phone reads as
      * the product being dead. One try, and say() the sentence. The highest-harm line in the slice.
      */
+    /* This message went to THIS check-in over WhatsApp. It is what "doing this session on WhatsApp" means for the halfway messages (whatsapp/a-check-in-left-halfway.ts): a note, never a message sent. */
+    await (this.prisma as any).whatsAppSend?.create?.({ data: { organizationId, phone: from, kind: 'answered-here', checkInId: current.id, sentAt: null, failedAt: null, status: null, error: null } })?.catch?.(() => undefined);
     if (beginning && current.status !== 'NOT_STARTED') { await say(`${sessionHeader(current)} Carry on where you left off.`); return; }
     try {
       let reply = '';

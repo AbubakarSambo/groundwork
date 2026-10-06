@@ -65,7 +65,7 @@ describe('an email about a check-in', () => {
   });
   it('says it in plain sentences with the switch on', () => {
     expect(THE_EMAILS.nudge(true).theOtherHasAnswered).toBe('The other person has already answered. Yours is the last answer we need.');
-    expect(THE_EMAILS.nextCheckInOpen(true)).toEqual({ before: 'Your next check-in for', after: 'is open. It takes about five minutes.' });
+    expect(THE_EMAILS.nextCheckInOpen(true)).toEqual({ before: 'Your next check-in for', after: ' is open. It takes about five minutes.' });
   });
 });
 

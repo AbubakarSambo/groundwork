@@ -857,7 +857,9 @@ and for Baraka himself "You are blocked" became "are blocked". The verb is requi
 
 My own Ask welcome broke the no-colons rule and the client's ratchet caught it at 61 against 60.
 
-## The halfway messages, run 7 (6 October)
+## The halfway messages, run 7 (6 October): superseded, see the correction below
+
+**Correction after review.** This run switched them on by default and said "42 of 42". It did not prove what it claimed: the close was called directly, not through the real sweep; turn times were set to one instant each, which hid that the injected warning restarts the 12-hour clock; and the line about leave was not a leave check. They are OFF by default again. Read the rest as what that run did see, not as proof.
 
 Built from `1eb91691` with `release.whatsappHalfwayMessages` absent from the database (`gw_wa_oct6b`, a new copy). The API and the script ran on the local build in a scratch worktree, with the signed local webhook, the local recorder, and the number and secrets saved on /admin/whatsapp by the script. **42 of 42 checks passed** for sales, onboarding, project, a performance plan, a cohort, the anchor, and a check-in kept in the app. For each of the six kinds the person read the reminder, the half-hour warning and the close, and what they said was kept.
 
@@ -883,3 +885,17 @@ Built from `1eb91691` with `release.whatsappHalfwayMessages` absent from the dat
 - Warning: "...closes in 30 minutes if nothing else is said. Add anything you still want on the record now." / "Your check-in for "Ending: sales" will close in 30 minutes if you say nothing more. Add anything you still want saved now."
 - Not yet read end to end with it on: the clock's close (the run lost its database connections to other runs on the same machine; the sentence is checked in a spec: "...has closed, because nothing was said for twelve hours. Everything you said is saved. Your report will come in a moment."), the opening and chasing reminders and the two emails (specs read each with the switch off, byte for byte, and on).
 - Not changed: the sentence a person reads when they write "finish" too early still has one form: "I need a little more from you before this check-in can close. Please answer one or two more questions, then write "finish" again."
+
+## The halfway messages, run 8: the real sweeps (6 October)
+
+Built from `e69cb442` plus the script commit, on a new copy of the database (`gw_wa_oct6d`), the API on the local build in a scratch worktree, the signed local webhook, the local recorder, and the number and secrets saved on /admin/whatsapp by the script. This replaces run 7, which called the close directly and set every turn to one instant. Here the reminder runs through `remindThoseWhoStoppedHalfwayInner` (given a clock inside the Lagos day, because the reminder only speaks between seven and eight there), the warning through the real `fireSessionClosingWarnings`, and the close through the real `autoCloseStaleCheckIns`. The person's real turns are moved back to the quiet being tested; the injected warning turn stays at its own place on the line (about half an hour before the close). **88 of 88 checks passed** (33 for sales and cohort, 55 for onboarding, project, a performance plan and the anchor).
+
+For each of the six kinds, with the person who stops halfway and another who is on approved leave:
+- 3 hours quiet: the one reminder reaches the phone, once; nothing reaches the person on leave. "Hi Nuru, your check-in for "Ending: onboarding" is still open, and everything you have said so far is kept. Reply here to carry on whenever you are ready."
+- 11 hours quiet, the real warning job: the warning reaches the phone, and the app's own warning turn is written once; nothing reaches the person on leave. "Your check-in for "Ending: sales" closes in 30 minutes if nothing else is said. Add anything you still want on the record now."
+- After the warning, at 11.6 hours: nothing is sent, and the session is still open (before the fix it would have closed at about 23 hours, and the reminder could have followed the warning).
+- 12 hours, the real close sweep: the session closes, the phone reads "Your check-in for "Ending: sales" has closed, because nothing was said for twelve hours. Everything you said is kept on the record, and your report follows in a moment." and then the report; the lead receives nothing on WhatsApp and no email.
+- Not run live: the 48-hour close ("because it has been open for two days"). A session that old began before 5 October, the cut-off, so it is correctly sent nothing today. It is proved in `a-check-in-left-halfway.spec.ts`.
+- Kept in the app: nothing reaches the phone (run 7 and the spec).
+
+Also fixed: the script's start-up check ("nothing is set") failed on a reused copy; this run used a fresh one and it passed.

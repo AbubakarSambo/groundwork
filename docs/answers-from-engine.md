@@ -34,7 +34,7 @@ Read this one from their side with:
 
 **What it does when it is on, today.** The conversation is given the plain-words rule for every person in the check-in, whether or not they have used Groundwork before. The closing turn ends on a plainer close (web, WhatsApp, API). The end card says what each line rests on in a plainer sentence. The report is written under the same rule.
 
-**What does not change yet, so do not promise it on the screen.** The WhatsApp reply to "finish", the report sent on the phone, the reminders and the emails still send their usual sentences until the WhatsApp builder passes the switch to them. The report's own fixed sentences (for example "Not everyone has answered yet, so there is nothing to agree or differ with.") have no plain form yet.
+**What does not change yet, so do not promise it on the screen.** The report's own fixed sentences (for example "Not everyone has answered yet, so there is nothing to agree or differ with.") have no plain form yet, so they read the same with the setting on. The WhatsApp reply to "finish", the report on the phone, the reminders, the halfway messages and the emails use the plainer forms when it is on.
 
 
 ## 5 October, evening: Plan and billing at release (the free trial and the WhatsApp add-on switched on)

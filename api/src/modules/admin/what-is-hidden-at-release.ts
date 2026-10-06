@@ -22,11 +22,9 @@ export const ANCHOR_SCENARIO_KEY = 'release.anchorScenario';
 export const REQUEST_OFFER_IN_THE_CHECK_IN_KEY = 'release.requestOfferInTheCheckIn';
 /**
  * The three WhatsApp messages for somebody who stops a check-in halfway (decision 107): the reminder to
- * carry on, the half-hour warning on the phone, and the clock's close. They were off at release because
- * the end-to-end run of 5 October did not prove the reminder and the warning for every kind. The run of
- * 6 October did (docs/run-log.md), so they are ON unless the row says { "on": false }: a missing or broken
- * row reads as on. Only a session the person was doing on WhatsApp ever gets one, and no session started
- * before WHATSAPP_HALFWAY_MESSAGES_FROM can (see a-check-in-left-halfway.ts).
+ * carry on, the half-hour warning on the phone, and the clock's close. ON when the row is missing and
+ * { "on": false } switches them off; a row that cannot be read reads as off (it fails closed). They were
+ * proved on 6 October by a run that drives the real close, reminder and warning sweeps (docs/run-log.md, run 8).
  */
 export const WHATSAPP_HALFWAY_MESSAGES_KEY = 'release.whatsappHalfwayMessages';
 
@@ -105,8 +103,17 @@ export const theRequestOfferIsShown = async (prisma: Reader) => {
  * one when this is turned off, so the caller asks this only for something new.
  */
 export const theAnchorScenarioIsOn = (prisma: Reader) => aSwitch(prisma, ANCHOR_SCENARIO_KEY);
-export const theHalfwayMessagesAreOn = async (prisma: Reader) => {
-  const v = (await theRow(prisma, WHATSAPP_HALFWAY_MESSAGES_KEY)) as { on?: unknown } | boolean | null;
+export const theHalfwayMessagesAreOn = async (prisma: Reader): Promise<boolean> => {
+  /* A row that is missing reads as on; a row that cannot be READ reads as off, so a database fault never sends a message. */
+  let row: { value: unknown } | null;
+  try {
+    const key = WHATSAPP_HALFWAY_MESSAGES_KEY;
+    row = await prisma.platformSetting.findUnique({ where: { key } });
+  } catch {
+    return false;
+  }
+  const v = row?.value as { on?: unknown } | boolean | null | undefined;
+  if (row == null) return true;
   if (typeof v === 'boolean') return v;
   return v?.on !== false;
 };
