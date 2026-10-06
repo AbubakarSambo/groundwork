@@ -40,7 +40,15 @@ export interface SuitesForADutyHolder {
 export type SuitesPage = SuitesForAnAdmin | SuitesForALead | SuitesForADutyHolder
 
 export const suitesApi = {
-  get: async (): Promise<SuitesPage> => (await apiClient.get('/suites')).data,
+  /*
+   * `skipForbiddenToast` (real-user walk, Kijani Foods, fault 7): SuitesPage already renders its
+   * own refusal inline ("Only an admin or a lead can open the suites.", or the server's own
+   * message). Without this, the generic interceptor's toast fired too, and it is written for a
+   * check-in ("whoever runs this check-in can let you in") - wrong for a settings page nobody runs
+   * a check-in to open. Esther, a member, opening /settings/suites read that check-in sentence
+   * instead of a settings-shaped one.
+   */
+  get: async (): Promise<SuitesPage> => (await apiClient.get('/suites', { skipForbiddenToast: true } as any)).data,
   switch: async (key: string, on: boolean, answers?: Answers): Promise<SuitesPage> =>
     (await apiClient.put(`/suites/${key}`, answers ? { on, answers } : { on })).data,
 }
