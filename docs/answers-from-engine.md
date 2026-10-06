@@ -6231,3 +6231,19 @@ The top `says` is "All four answers were kept.", "One of the six answers was kep
 ### For the screens: one sentence left in the preview page (7 October)
 
 The engine's emails no longer say "It does not quote anybody" or "What you write is not shown to anybody", because what people say in a check-in can be read by the people in it (decision 4). One copy is still in `client/src/pages/preview/EveryReportSideBySide.tsx`, line 300: "It shows where what you each said lines up, where it does not, and the one question worth answering together. It does not quote anybody: ...". Please replace the last sentence with the check-in's own: "The people in this check-in, including your manager, can see what you say in it. Your questions to Ask <organisation> stay private." (where people do not see each other: "Whoever runs this check-in can see what you say in it. The other people taking part do not see what you say. Your questions to Ask <organisation> stay private.").
+
+## 6 October: an organisation's own WhatsApp number, when its keys cannot be opened, for the screens to show
+
+An organisation's own access token and app secret are now kept sealed. If the server's key is changed or removed, they cannot be opened.
+
+**What the Connections page reads from `GET /integrations/whatsapp` (the `connection` object).** Two new fields. `keysNeedTypingAgain` is `true` when a sealed key cannot be opened, otherwise `false`. When it is `true`, `keysNeedTypingAgainSays` holds the sentence to show, to copy exactly:
+
+> Your number's keys need to be typed in again. Nothing is sent from your number until they are.
+
+The admin types the token and the app secret again on the same page and saves. Until then nothing is sent from the number, and messages arriving for it are refused.
+
+**What the admin reads when the server has no key and a new token or app secret is typed (the save is refused with 400), to copy exactly:**
+
+> We cannot save your number's keys safely yet. This is on our side, not yours. Contact Groundwork and we will put it right.
+
+Saving anything else (the display number, the business account) still works with no key, when no new token or secret is typed. The setting's name is never shown to the customer.

@@ -1,5 +1,5 @@
 import * as crypto from 'crypto';
-import { sealTheirKey, theirKey, theServerCanKeepSecrets, THE_SERVER_HAS_NO_KEY, isSealed, THEIR_KEYS_CANNOT_BE_OPENED, KEYS_NEED_TYPING_AGAIN, theKeysCannotBeOpened } from './an-organisations-own-keys';
+import { sealTheirKey, theirKey, theServerCanKeepSecrets, THE_SERVER_HAS_NO_KEY, isSealed, THEIR_KEYS_CANNOT_BE_OPENED, KEYS_NEED_TYPING_AGAIN, theKeysCannotBeOpened, whyItCannot } from './an-organisations-own-keys';
 import { OnModuleInit, Injectable, Logger, UnauthorizedException, BadRequestException, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
@@ -888,8 +888,11 @@ export class WhatsAppService implements OnModuleInit {
     const appSecret = dto.appSecret?.trim();
     if (!phoneNumberId) throw new BadRequestException('phoneNumberId is required: the id Meta gives the number, not the number itself.');
     if (!/^\d{6,}$/.test(phoneNumberId)) throw new BadRequestException('phoneNumberId is digits only. It is on the WhatsApp > API Setup page in Meta Business.');
-    /* Secrets are never written in the clear: with no key on the server, the number is not saved, and the admin is told why. */
-    if (!theServerCanKeepSecrets()) throw new BadRequestException(THE_SERVER_HAS_NO_KEY);
+    /* Secrets are never written in the clear: a NEW secret with no key on the server is not saved, and the admin is told, in words that are about us and not about a setting. The setting's name goes to the log only. A save with no new secret (the display number, say) needs no key. */
+    if ((accessToken || appSecret) && !theServerCanKeepSecrets()) {
+      this.logger.error(`An organisation (${organizationId}) tried to save WhatsApp keys, and they were not saved: ${whyItCannot()} (SETTINGS_ENCRYPTION_KEY).`);
+      throw new BadRequestException(THE_SERVER_HAS_NO_KEY);
+    }
     const existing = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } });
     if (!accessToken && !existing) throw new BadRequestException('accessToken is required the first time: the permanent system-user token from Meta.');
     if (!appSecret && !existing) throw new BadRequestException("appSecret is required the first time: the App Secret from your Meta app, used to check that inbound messages are Meta's.");

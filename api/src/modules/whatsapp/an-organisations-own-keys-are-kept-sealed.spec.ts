@@ -89,6 +89,21 @@ describe('saving the keys', () => {
     await expect(svc.connect('org-baridi', { phoneNumberId: '109822345561', accessToken: TOKEN, appSecret: SECRET })).rejects.toThrow(new BadRequestException(THE_SERVER_HAS_NO_KEY));
     expect(rows).toEqual([]);
     expect(prisma.whatsAppConnection.upsert).not.toHaveBeenCalled();
+    /* What the customer's admin reads is about us, and never names a setting. */
+    expect(THE_SERVER_HAS_NO_KEY).toBe("We cannot save your number's keys safely yet. This is on our side, not yours. Contact Groundwork and we will put it right.");
+    expect(THE_SERVER_HAS_NO_KEY).not.toMatch(/SETTINGS|ENCRYPTION/);
+  });
+
+  it('an organisation already connected can still save its display number with no key on the server, and its keys stay as they were; only a NEW secret needs the key', async () => {
+    const { svc, rows } = setup();
+    await svc.connect('org-baridi', { phoneNumberId: '109822345561', accessToken: TOKEN, appSecret: SECRET });
+    const sealedBefore = { a: rows[0].accessToken, b: rows[0].appSecret };
+    delete process.env.SETTINGS_ENCRYPTION_KEY;
+    const read: any = await svc.connect('org-baridi', { phoneNumberId: '109822345561', displayNumber: '+254 709 000 111' });
+    expect(read.displayNumber).toBe('+254 709 000 111');
+    expect({ a: rows[0].accessToken, b: rows[0].appSecret }).toEqual(sealedBefore);
+    await expect(svc.connect('org-baridi', { phoneNumberId: '109822345561', accessToken: 'a-new-token-1234' })).rejects.toThrow(new BadRequestException(THE_SERVER_HAS_NO_KEY));
+    expect(rows[0].accessToken).toBe(sealedBefore.a);
   });
 });
 

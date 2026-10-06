@@ -36,7 +36,7 @@ export function theirKey(row: { organizationId: string; accessToken: string; app
   return open(stored, aad(row.organizationId, field)) ?? '';
 }
 
-export const THE_SERVER_HAS_NO_KEY = 'This server has no key to keep secrets with, so the number cannot be saved yet. Whoever runs the hosting sets SETTINGS_ENCRYPTION_KEY, and then it can.';
+export const THE_SERVER_HAS_NO_KEY = 'We cannot save your number\'s keys safely yet. This is on our side, not yours. Contact Groundwork and we will put it right.';
 
 /** What is kept against a send that was not made because the token is sealed and cannot be opened. For the record, not for the admin. */
 export const THEIR_KEYS_CANNOT_BE_OPENED = 'Not sent: the organisation\'s own WhatsApp access token cannot be opened on this server.';
