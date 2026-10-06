@@ -1,3 +1,4 @@
+import { fullNameToCall } from '../engagement/a-name-to-call-them';
 import { theInvitedRowAsServed } from './the-invited-row-as-served';
 import { withoutTheLeadsSetUpForAMember } from './the-leads-set-up-is-the-leads-in-the-anchor';
 import { aShortQuestionForAPerson, askedBackToTheLead, theQuestionTheyWereShown } from './a-short-question-for-a-person-in-the-old-chat';
@@ -7164,7 +7165,7 @@ export class GroundsService {
       /* Whether a person chose these or the product suggested them, so the card can say which (B13, P6-002). */
       cadenceStated: g.cadenceStated,
       timelineStated: g.timelineStated,
-      createdBy: [g.initiator.firstName, g.initiator.lastName].filter(Boolean).join(' ') || g.initiator.email,
+      createdBy: fullNameToCall({ user: g.initiator }),
     }));
   }
 

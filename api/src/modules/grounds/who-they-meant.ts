@@ -11,6 +11,8 @@
  * the proposal says so, and the lead can say which one they meant.
  */
 
+import { nameToCall, SOMEONE } from '../engagement/a-name-to-call-them';
+
 export interface Party {
   id: string;
   email: string;
@@ -30,8 +32,9 @@ export interface Matched {
   firstName: string;
 }
 
+/* What the lead reads back. Never the address: somebody with no name is "Someone" (Hafsah, 6 October). */
 function labelFor(p: Party): string {
-  return p.name?.trim() || p.email;
+  return nameToCall({ nameGiven: p.name });
 }
 
 /** Their first name, which is what a lead types nine times out of ten. */
@@ -43,9 +46,10 @@ function firstNameOf(p: Party): string {
 
 /** Their first name, capitalised for a sentence a person reads - see `Matched.firstName`. */
 function firstNameLabelFor(p: Party): string {
-  const n = p.name?.trim();
-  const raw = n ? n.split(/\s+/)[0] : p.email.split('@')[0].split(/[._-]/)[0];
-  return raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : labelFor(p);
+  const n = labelFor(p);
+  if (n === SOMEONE) return SOMEONE;
+  const raw = n.split(/\s+/)[0];
+  return raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : n;
 }
 
 export function whoTheyMeant(said: string, parties: Party[]): Matched | null {

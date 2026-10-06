@@ -53,3 +53,9 @@ export function namesWithTheRestCounted(names: string[], inWords: (n: number) =>
   if (!named.length) return [k === 1 ? SOMEONE : `${inWords(k)} people`];
   return [...named, k === 1 ? 'one other person' : `${inWords(k)} others`];
 }
+
+/** Where a person is named in full for somebody who needs to tell people apart (an admin's list, "added by"): first and last name, else the same fallbacks, never an address. */
+export function fullNameToCall(p: SomebodyOnACheckIn | null | undefined): string {
+  const full = [p?.user?.firstName, p?.user?.lastName].map(aName).filter(Boolean).join(' ').trim();
+  return full || nameToCall(p);
+}

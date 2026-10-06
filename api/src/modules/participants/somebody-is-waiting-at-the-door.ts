@@ -1,6 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
+import { fullNameToCall } from '../engagement/a-name-to-call-them';
 
 /**
  * AND TELL THE PEOPLE WHO CAN ANSWER IT.
@@ -32,7 +33,7 @@ export async function tellTheAdminsSomebodyIsWaiting(
   ]);
   const name = person ? [person.firstName, person.lastName].filter(Boolean).join(' ').trim() : '';
   const addedBy = inviter
-    ? [inviter.firstName, inviter.lastName].filter(Boolean).join(' ') || inviter.email
+    ? fullNameToCall({ user: inviter })
     : 'somebody on your team';
   for (const admin of admins) {
     await deps.email

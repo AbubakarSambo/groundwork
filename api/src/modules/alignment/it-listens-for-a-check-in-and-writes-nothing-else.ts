@@ -9,6 +9,7 @@ import { TurnRole } from '@prisma/client';
 import {
   WHAT_THEY_SAY_IT_IS_PROMPT, WHAT_THEY_SAY_IT_IS_SCHEMA, whatTheySaidItIs,
 } from './what-they-say-the-deal-is';
+import { fullNameToCall } from '../engagement/a-name-to-call-them';
 
 /**
  * WHAT SOMEBODY UNDERSTOOD, TAKEN OFF THE CHECK-IN THAT HAS JUST FINISHED.
@@ -84,9 +85,7 @@ export class WhatEachSideUnderstands {
       where: { id: event.participantId },
       select: { email: true, user: { select: { firstName: true, lastName: true } } },
     });
-    const who = [participant?.user?.firstName, participant?.user?.lastName].filter(Boolean).join(' ')
-      || participant?.email
-      || event.participantId;
+    const who = fullNameToCall({ user: participant?.user });
 
     const done = await this.agreements.whatTheyUnderstandItToBe(
       ground.organizationId, event.groundId, version.id, who, out,

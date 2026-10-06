@@ -3,6 +3,7 @@ import { MembershipRequestStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { BillingService } from '../billing/billing.service';
+import { fullNameToCall } from '../engagement/a-name-to-call-them';
 
 /**
  * THE QUEUE AN ADMIN ANSWERS.
@@ -98,7 +99,7 @@ export class WhoIsWaitingAtTheDoorService {
       this.prisma.organization.findUnique({ where: { id: request.organizationId }, select: { name: true } }),
     ]);
     const name = person ? [person.firstName, person.lastName].filter(Boolean).join(' ').trim() : '';
-    const addedBy = inviter ? ([inviter.firstName, inviter.lastName].filter(Boolean).join(' ') || inviter.email) : 'somebody on your team';
+    const addedBy = inviter ? (fullNameToCall({ user: inviter })) : 'somebody on your team';
     await this.email
       .sendSomebodyIsWaiting(admin.email, admin.firstName ?? 'there', request.email, addedBy, ground?.label ?? null, { name, organisationName: org?.name ?? null })
       .catch((err: any) => this.logger.warn(`Reminder to ${admin.email} failed: ${err?.message}`));
@@ -154,7 +155,7 @@ export class WhoIsWaitingAtTheDoorService {
         name: [r.user?.firstName, r.user?.lastName].filter(Boolean).join(' ') || null,
         waitingSince: r.createdAt,
         /* Named, because "somebody added them" is not something an admin can act on. */
-        addedBy: asker ? ([asker.firstName, asker.lastName].filter(Boolean).join(' ') || asker.email) : null,
+        addedBy: asker ? (fullNameToCall({ user: asker })) : null,
         forCheckIn: r.groundId ? (groundById.get(r.groundId)?.label ?? null) : null,
         /* Two things wait at this door now. See `waitingForASeat` below. */
         kind: 'MEMBERSHIP' as const,
@@ -192,7 +193,7 @@ export class WhoIsWaitingAtTheDoorService {
       ? await this.prisma.user.findMany({ where: { id: { in: adderIds } }, select: { id: true, firstName: true, lastName: true, email: true } })
       : [];
     const nameOf = (u: { firstName: string | null; lastName: string | null; email: string } | null | undefined) =>
-      u ? ([u.firstName, u.lastName].filter(Boolean).join(' ') || u.email) : null;
+      u ? fullNameToCall({ user: u }) : null;
     const adderById = new Map(adders.map((a) => [a.id, a]));
     return rows.map((r) => ({
       id: r.id,
@@ -257,7 +258,7 @@ export class WhoIsWaitingAtTheDoorService {
         this.prisma.user.findUnique({ where: { id: request.userId }, select: { firstName: true, lastName: true } }),
         request.groundId ? this.prisma.ground.findUnique({ where: { id: request.groundId }, select: { label: true } }) : null,
       ]);
-      const who = [person?.firstName, person?.lastName].filter(Boolean).join(' ').trim() || request.email;
+      const who = fullNameToCall({ user: person });
       if (asker?.email) {
         this.email
           .sendTheyAreInNow(asker.email, asker.firstName ?? 'there', who, ground?.label ?? null)

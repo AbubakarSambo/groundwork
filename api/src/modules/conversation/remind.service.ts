@@ -443,7 +443,7 @@ export class RemindService {
             checkInUrl,
             participant.id,
             participant.email,
-            participant.user?.firstName ?? participant.email,
+            nameToCall(participant),
             checkIn.ground.label,
           );
         } catch (err: any) {
