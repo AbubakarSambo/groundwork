@@ -1,5 +1,5 @@
 import { CheckInStatus, GroundStatus } from '@prisma/client';
-import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
+import { nameToCall, aNameToList } from '../engagement/a-name-to-call-them';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
@@ -112,9 +112,12 @@ export function theWeekInSentences(w: AWeekInOneCheckIn): string[] {
   const waiting = theWaitingSentence(w);
   if (waiting) out.push(`${waiting}.`);
   if (w.checkedIn > 0 && w.notYet.length) {
-    const named = w.notYet.slice(0, w.notYet.length > 3 ? 2 : 3);
+    /* Somebody with no name is counted with the others, never listed as "Someone". */
+    const named = w.notYet.filter(aNameToList).slice(0, w.notYet.length > 3 ? 2 : 3);
     const others = w.notYet.length - named.length;
-    const who = listed(others > 0 ? [...named, others === 1 ? 'one other person' : `${aNumber(others)} others`] : named);
+    const who = !named.length
+      ? (others === 1 ? 'someone' : `${aNumber(others)} people`)
+      : listed(others > 0 ? [...named, others === 1 ? 'one other person' : `${aNumber(others)} others`] : named);
     out.push(`${capital(who)} did not check in.`);
   }
   return out;
@@ -167,13 +170,13 @@ export async function theWeekOf(prisma: any, g: { id: string; label: string; ini
   const finishedIds = new Set((finished as any[]).map((r) => r.participantId).filter((id: string) => countedIds.has(id)));
   const notYet = counted
     .filter((p) => !finishedIds.has(p.id))
-    .map((p) => (p.userId && p.userId === g.initiatorId ? 'you' : theFirstNameOfAParticipant(p) ?? ''))
+    .map((p) => (p.userId && p.userId === g.initiatorId ? 'you' : nameToCall(p)))
     .filter((n: string) => !!n)
     .sort((a: string, b: string) => (a === 'you' ? -1 : b === 'you' ? 1 : 0));
   const nameOf = (id: string) => {
     const p = counted.find((c) => c.id === id);
     if (!p) return null;
-    return p.userId && p.userId === g.initiatorId ? 'you' : theFirstNameOfAParticipant(p) ?? null;
+    return p.userId && p.userId === g.initiatorId ? 'you' : nameToCall(p);
   };
   const tally = (ids: string[]) => {
     const by = new Map<string, number>();

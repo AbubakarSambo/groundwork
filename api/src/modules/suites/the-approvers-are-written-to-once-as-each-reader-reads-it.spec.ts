@@ -105,7 +105,7 @@ describe('what arrives one at a time is told one at a time, and the morning only
     await cron.tellNow(lagos('07:30'));
     const toFinance = () => x.wentOnWhatsApp().filter((m) => m.to === x.phoneOf(idOf('finance.m1')).replace('+', ''));
     expect(toFinance()).toHaveLength(1);
-    expect(toFinance()[0].text).toBe(`Hi ${x.user('finance.m1').firstName}. 27 requests are waiting for you to approve or decline. The oldest has waited 4 working days. Of them, 18 have waited longer than your organisation allows before a request is passed on. Open Groundwork to read and answer: https://app.groundwork.test/today`);
+    expect(toFinance()[0].text).toBe(`Hi ${x.user('finance.m1').firstName}. 27 requests are waiting for you to approve or decline. The oldest has waited 4 working days. Of them, 18 have waited longer than your organisation allows before a request is passed on. You can read and answer them in Groundwork here https://app.groundwork.test/today and nothing is decided until you do.`);
     expect(x.emails).toEqual([]);
     expect((await cron.tellNow(lagos('07:45'))).whatsapp).toBe(0);
     jest.setSystemTime(new Date(lagos('07:30').getTime() + DAY));
@@ -144,7 +144,7 @@ describe('what the summary says, and where it goes when WhatsApp cannot', () => 
     jest.setSystemTime(lagos('07:30'));
     await cron.tellNow(lagos('07:30'));
     const eng = x.wentOnWhatsApp().find((m) => m.to === x.phoneOf(idOf('eng.manager')).replace('+', ''))!;
-    expect(eng.text).toBe(`Hi ${x.user('eng.manager').firstName}. Six requests are waiting for you to approve or decline. Three are for leave and three are to spend money. The oldest has waited 7 working days. Two of them have waited longer than your organisation allows before a request is passed on. Open Groundwork to read and answer: https://app.groundwork.test/today`);
+    expect(eng.text).toBe(`Hi ${x.user('eng.manager').firstName}. Six requests are waiting for you to approve or decline. Three are for leave and three are to spend money. The oldest has waited 7 working days. Two of them have waited longer than your organisation allows before a request is passed on. You can read and answer them in Groundwork here https://app.groundwork.test/today and nothing is decided until you do.`);
   });
 
   it('somebody who said STOP, or has no number, is emailed the same paragraph once, and gets no WhatsApp', async () => {

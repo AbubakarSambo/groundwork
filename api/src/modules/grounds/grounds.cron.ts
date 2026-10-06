@@ -986,10 +986,11 @@ export class GroundsCron implements OnApplicationBootstrap {
   }
 
   /**
-   * "HERE IS WHAT IS NEW", ONCE, to a lead who was already here (decision 109 item 2), mid-morning in Lagos on weekdays. Once ever per lead,
+   * "HERE IS WHAT IS NEW", ONCE, to a lead who was already here (decision 109 item 2), early on weekdays in Lagos, ahead of the chase. Once ever per lead,
    * and only about check-ins made before the release that are still going. See engagement/heres-what-is-new.ts.
    */
-  @Cron('30 10 * * 1-5', { timeZone: 'Africa/Lagos' })
+  /* At half past six in Lagos: before the morning's reminders and summary, so that it is the lead's one message of the day and the chase is tried the next morning (it is announced once, and was held back for eight mornings by the chase going first). */
+  @Cron('30 6 * * 1-5', { timeZone: 'Africa/Lagos' })
   async sendHeresWhatIsNew() {
     await onceAcrossCopies(this.prisma, 'heres-what-is-new', theDay(), () => this.sendHeresWhatIsNewInner());
   }

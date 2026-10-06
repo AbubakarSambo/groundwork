@@ -1,4 +1,5 @@
-import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
+import { nameToCall, aNameToList } from '../engagement/a-name-to-call-them';
+import { createHash } from 'crypto';
 import { CheckInStatus, GroundStatus } from '@prisma/client';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { WhatsAppService } from './whatsapp.service';
@@ -71,7 +72,7 @@ export function aCheckInInASentence(c: ACheckInToday): string | null {
   const waitingOn = named.length
     ? `, and ${listed(others > 0 ? [...named, others === 1 ? 'one other person' : `${others} others`] : named)} ${missing === 1 && !named.includes('you') ? 'has' : 'have'} not yet`
     : '';
-  return `${where}, ${c.answered} of ${c.ofHowMany} people have checked in${waitingOn}.`;
+  return `${where}, ${c.answered} of ${c.ofHowMany} people ${c.answered === 1 ? 'has' : 'have'} checked in${waitingOn}.`;
 }
 
 /** What waits for the lead to decide, in one sentence. Null when nothing does. */
@@ -96,6 +97,17 @@ export function theSummaryParagraph(checkIns: ACheckInToday[], waiting: AWaiting
 export function theLeadsDailySummary(firstName: string | null | undefined, paragraph: string, link: string) {
   const params = [firstName?.trim() || 'there', paragraph, link];
   return { kind: 'lead-summary', text: fill(TEMPLATES['lead-summary'].body, params), params };
+}
+
+const SAID_KEY = (leadId: string) => `engagement.summary-said.${leadId}`;
+const hashOfTheWords = (t: string) => createHash('sha256').update(t.trim().replace(/\s+/g, ' ')).digest('hex').slice(0, 24);
+async function lastSaid(prisma: any, leadId: string): Promise<string | null> {
+  try { return (await prisma.platformSetting.findUnique({ where: { key: SAID_KEY(leadId) } }))?.value?.hash ?? null; } catch { return null; }
+}
+async function nowSaid(prisma: any, leadId: string, hash: string): Promise<void> {
+  const value = { hash, at: new Date().toISOString() };
+  try { await prisma.platformSetting.create({ data: { key: SAID_KEY(leadId), value, updatedBy: 'engagement' } }); }
+  catch { try { await prisma.platformSetting.update({ where: { key: SAID_KEY(leadId) }, data: { value, updatedBy: 'engagement' } }); } catch { /* not remembered: the next morning may repeat once */ } }
 }
 
 const TERMINAL: GroundStatus[] = [...A_GROUND_THE_JOBS_LEAVE_ALONE, ...A_GROUND_IS_HELD];
@@ -144,11 +156,17 @@ export async function sendTheLeadsDailySummaries(
       const waiting = await whatWaitsForYouToDecide({ userId: lead.leadId, organizationId: lead.organizationId }, deps.boards);
       const paragraph = theSummaryParagraph(lead.checkIns, waiting);
       if (!paragraph) continue;
-      const last = await (async () => prisma.whatsAppSend.findFirst({ where: { phone: { in: formsOfTheSameNumber(phone) }, kind: 'lead-summary', sentAt: { not: null } }, orderBy: { sentAt: 'desc' }, select: { sentAt: true } }))().catch(() => null);
+      const last = await (async () => prisma.whatsAppSend.findFirst({ where: { phone: { in: formsOfTheSameNumber(phone) }, kind: { startsWith: 'lead-summary' }, sentAt: { not: null } }, orderBy: { sentAt: 'desc' }, select: { sentAt: true } }))().catch(() => null);
       if (!somethingUsefulHappened(lead.checkIns, waiting, last?.sentAt ?? null)) continue;
+      /* THE SAME WORDS TWICE IS NOTHING NEW (decision 109 item 7). The last summary that went to this lead is remembered by its words; one that reads the same is not sent again,
+         whatever else is true, so a lead with an approval that has waited a week is not told the same thing every morning (it was, eight mornings running, in a copy of a real database). */
+      const said = hashOfTheWords(paragraph);
+      if ((await lastSaid(prisma, lead.leadId)) === said) continue;
       const link = lead.checkIns.length === 1 ? `${base}/grounds/${lead.checkIns[0].groundId}/board` : `${base}/grounds`;
       const message = theLeadsDailySummary(user.firstName, paragraph, link);
-      await deps.whatsapp.sendFor(lead.organizationId, phone, message.text, { kind: message.kind, params: message.params });
+      const result: any = await deps.whatsapp.sendFor(lead.organizationId, phone, message.text, { kind: message.kind, params: message.params });
+      /* Remembered only when it really went: one the day's limit, a "not now" or an unapproved template refused is tried again, and says the same thing then. */
+      if (result?.sent !== false) await nowSaid(prisma, lead.leadId, said);
       tried++;
     } catch {
       /* One lead's summary that could not be put together never stops the others. */
@@ -166,7 +184,7 @@ async function theOpenSession(prisma: PrismaService, groundId: string, now: Date
     where: { groundId, OR: [{ availableFrom: null }, { availableFrom: { lte: now } }] },
     select: {
       status: true, sessionNumber: true, completedAt: true,
-      participant: { select: { userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, awaitingOrgApproval: true } } } },
+      participant: { select: { userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } },
     },
   });
   if (!rows.length) return null;
@@ -178,8 +196,8 @@ async function theOpenSession(prisma: PrismaService, groundId: string, now: Date
   const notYet = counted
     .filter((r) => r.status !== CheckInStatus.COMPLETED)
     /* The lead is one of the people who can answer, and she is "you" to herself, never her own name in the third person. */
-    .map((r) => (r.participant?.userId && r.participant.userId === leadUserId ? 'you' : theFirstNameOfAParticipant(r.participant as any) ?? ''))
-    .filter((n: string) => !!n)
+    .map((r) => (r.participant?.userId && r.participant.userId === leadUserId ? 'you' : nameToCall(r.participant as any)))
+    .filter(aNameToList)
     .sort((a: string, b: string) => (a === 'you' ? -1 : b === 'you' ? 1 : 0));
   const times = done.map((r) => r.completedAt).filter((t: unknown): t is Date => t instanceof Date);
   /* An answer with no time recorded is not evidence that anything happened since the last summary. */

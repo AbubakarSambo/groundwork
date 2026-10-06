@@ -21,8 +21,18 @@ import { whatThisMailIs } from './nothing-goes-out-that-was-turned-off';
 import { whoSeesWhatYouSayIn } from './who-sees-what-you-say';
 
 /** True where this footer belongs. */
+/**
+ * MAIL THAT IS NOT ABOUT WHAT SOMEBODY SAID IN ONE CHECK-IN (decision 109 review; existing-users check, section 15). The paragraph tells a person who can read what
+ * they write in a check-in, which is untrue to say under the participant's own week ("Only you can read this") and beside the point on a lead's message about how many
+ * have answered, what is new, or what to do next. Those leave it off.
+ */
+export const NOT_ABOUT_ONE_CHECK_INS_ANSWERS: ReadonlySet<string> = new Set([
+  'sendYourWeek', 'sendHeresWhatIsNew', 'sendTestCheckInMovesOn', 'sendLeadFirstCheckIn', 'sendTheReportFollowUp', 'sendWhoHasGoneQuiet', 'sendTheLeadsWeeklyLetter',
+]);
+
 export function shouldSayWhatGroundworkIs(sender: string | undefined): boolean {
   if (!sender) return false;
+  if (NOT_ABOUT_ONE_CHECK_INS_ANSWERS.has(sender)) return false;
   /* A door does not need explaining, and a person opening one is not writing anything down. */
   return whatThisMailIs(sender) !== 'the way back in';
 }

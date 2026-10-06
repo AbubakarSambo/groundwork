@@ -1,3 +1,5 @@
+import { namesWithTheRestCounted } from '../engagement/a-name-to-call-them';
+import { aNumberInWords } from '../engagement/a-number-in-words';
 /**
  * THE CHASING BELONGS TO WHOEVER SET THE WORK UP.
  *
@@ -133,9 +135,10 @@ export function theEmailForTheLead(input: {
 }): TheLeadsEmail | null {
   if (input.whoHasNotStarted.length === 0) return null;
 
-  const names = input.whoHasNotStarted;
+  /* Somebody with no name is counted, never listed as "Someone and Someone", and never shown as their email address. */
+  const names = namesWithTheRestCounted(input.whoHasNotStarted, aNumberInWords);
   const listed = names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
-  const have = names.length === 1 && names[0] !== 'you' ? 'has' : 'have';
+  const have = input.whoHasNotStarted.length === 1 && names[0] !== 'you' ? 'has' : 'have';
   const sentenceStart = (t: string) => `${t.charAt(0).toUpperCase()}${t.slice(1)}`;
   const days = input.chasedOn.length ? `day ${input.chasedOn.join(', day ')}` : null;
 
@@ -144,12 +147,12 @@ export function theEmailForTheLead(input: {
    * system's" told her a job was hers. She is told who has not started, what was sent and when, that it has stopped, and offered words she may send.
    * Only people who were really sent a reminder are said to have been reminded.
    */
-  const reminded = input.remindedNames ?? names;
+  const reminded = namesWithTheRestCounted(input.remindedNames ?? input.whoHasNotStarted, aNumberInWords);
   const remindedList = reminded.length < 2 ? reminded.join('') : `${reminded.slice(0, -1).join(', ')} and ${reminded[reminded.length - 1]}`;
-  const all = reminded.length === names.length;
+  const all = (input.remindedNames ?? input.whoHasNotStarted).length === input.whoHasNotStarted.length;
   const did = reminded.length === 0
     ? 'Groundwork has stopped sending them reminders.'
-    : `Groundwork reminded ${all ? 'them' : remindedList}${input.lastRemindedOn ? `, the last time on ${input.lastRemindedOn}` : days ? `, on ${days}` : ''}, and has now stopped reminding ${all ? 'them' : reminded.length === 1 ? 'that person' : 'those people'}.`;
+    : `Groundwork reminded ${all ? 'them' : remindedList}${input.lastRemindedOn ? `, the last time on ${input.lastRemindedOn}` : days ? `, on ${days}` : ''}, and has now stopped reminding ${all ? 'them' : (input.remindedNames ?? input.whoHasNotStarted).length === 1 ? 'that person' : 'those people'}.`;
 
   const lines = [
     input.leadName ? `${input.leadName},` : 'Hello,',

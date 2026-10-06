@@ -1,3 +1,4 @@
+import { nameToCall } from '../engagement/a-name-to-call-them';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { whoIsLeftToCheckIn } from '../email/who-has-not-checked-in-yet';
 import { Injectable, Logger, Optional } from '@nestjs/common';
@@ -218,7 +219,8 @@ export class ReportsListener {
     const who = ground.participants.find((p) => p.id === event.participantId);
     const participantEmail = who?.user?.email;
     if (!participantEmail || participantEmail === ground.initiator.email) return;
-    const participantName = [who?.user?.firstName, who?.user?.lastName].filter((x) => x?.trim()).join(' ').trim() || participantEmail;
+    /* Never the address in place of a name (Hafsah, 6 October). */
+    const participantName = [who?.user?.firstName, who?.user?.lastName].filter((x) => x?.trim() && !x.includes('@')).join(' ').trim() || nameToCall({ user: who?.user as any });
     /* Counted now, and without the person who just checked in, the lead reading this, and anybody not expected (who-has-not-checked-in-yet.ts). */
     const stillPending = whoIsLeftToCheckIn(ground.participants as any, { justCheckedIn: event.participantId, readerEmail: ground.initiator.email });
 
@@ -227,7 +229,7 @@ export class ReportsListener {
     /* WHO IS IN, for the lead's honest read of a partial picture (decision 109, journey 4): first names of the people who can answer and have, and how many can. */
     const counted = ground.participants.filter((p) => !p.managingOnly && !isNotLetInYet(p as any) && p.user?.isActive !== false && !p.user?.deletedAt);
     /* The lead is "you", first, as she is everywhere she reads herself. */
-    const nameOf = (p: (typeof counted)[number]) => (p.user?.email === ground.initiator.email ? 'you' : (p.user?.firstName ?? '').trim() || p.user?.email || '');
+    const nameOf = (p: (typeof counted)[number]) => (p.user?.email === ground.initiator.email ? 'you' : nameToCall({ user: p.user as any }));
     const answered = counted.filter((p) => p.checkIns.length > 0).map(nameOf).filter((x) => !!x).sort((a, b) => (a === 'you' ? -1 : b === 'you' ? 1 : 0));
     await this.email.sendParticipantCheckedIn(ground.initiator.email, participantName, ground.label, groundUrl, stillPending, { answered, ofHowMany: counted.length });
   }

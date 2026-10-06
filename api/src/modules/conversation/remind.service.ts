@@ -7,6 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CheckInStatus } from '@prisma/client';
 import { worthNudging, whatToSendThem } from './who-is-worth-nudging';
+import { nameToCall } from '../engagement/a-name-to-call-them';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { theEngagementMoment } from '../engagement/the-engagement-release-moment';
 import { hasBeenToldOnce, nowToldOnce, isAlreadyHeld } from '../engagement/a-message-sent-once';
@@ -280,7 +281,8 @@ export class RemindService {
             email: true,
             userId: true,
             lastNudgedAt: true,
-            user: { select: { firstName: true, emailNotifications: true, isActive: true, deletedAt: true } },
+            nameGiven: true,
+            user: { select: { firstName: true, lastName: true, emailNotifications: true, isActive: true, deletedAt: true } },
           },
         },
       },
@@ -349,8 +351,8 @@ export class RemindService {
           if (participant.userId && participant.userId === (checkIn.ground as any).initiatorId) {
             entry.leadIsOpenToo = true;
           } else {
-            const named = participant.user?.firstName ?? participant.email;
-            if (!entry.who.includes(named)) { entry.who.push(named); entry.whoEmails.push(participant.email); entry.whoNudgedAt.push(participant.lastNudgedAt ?? null); }
+            const named = nameToCall({ user: participant.user as any, nameGiven: (participant as any).nameGiven });
+            if (!entry.whoEmails.includes(participant.email)) { entry.who.push(named); entry.whoEmails.push(participant.email); entry.whoNudgedAt.push(participant.lastNudgedAt ?? null); }
           }
           entry.checkInIds.push(checkIn.id);
           forTheLead.set(key, entry);

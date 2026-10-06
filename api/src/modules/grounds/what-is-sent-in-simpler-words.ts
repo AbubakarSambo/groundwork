@@ -50,7 +50,7 @@ export const THE_REMINDERS_IN_SIMPLER_WORDS: Record<string, string> = {
   'opens-soon': 'Hi {{1}}, your check-in for {{2}} opens in one hour, at {{3}}. Write here when it opens, and we will start.',
   'closes-soon': 'Hi {{1}}, your check-in for {{2}} closes in one hour, at {{3}}. Please answer now. It takes five minutes. Then your answers go into the report.',
   overdue: 'Hi {{1}}, your check-in for {{2}} is late. It is still open. You can answer here now.',
-  'team-almost-in': 'Hi {{1}}, {{3}} of {{4}} people have answered the check-in for {{2}}. You have not answered yet. When you answer, your answers go into the report.',
+  'team-almost-in': 'Hi {{1}}, {{2}} of {{3}} people have answered the check-in for {{4}}. You have not answered yet. When you answer, your answers go into the report.',
   'your-view-matters': 'Hi {{1}}, your check-in for {{2}} is still waiting. Your answers help {{3}} see what is in your way and where they can help. It takes about five minutes. You can answer here.',
   'anchor-follow-up': 'Hi {{1}}, last time you said you would {{2}}. How did it go? Your check-in for {{3}} is open. You can answer here.',
 };
