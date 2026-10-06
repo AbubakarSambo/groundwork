@@ -26,14 +26,14 @@ const text = (html: string) => html.replace(/<[^>]+>/g, '\n').replace(/\n+/g, '\
 
 describe('when James finishes and two have not', () => {
   it('Wairimu is told three of five are in, who, that it is not the team\'s view, and who is missing', async () => {
-    const lead = person('p-w', 'Wairimu', true, { user: { email: 'wairimu@x.test', firstName: 'Wairimu', lastName: 'Test', isActive: true, deletedAt: null, awaitingOrgApproval: false } });
-    const w = run([lead, person('p-a', 'Abigail', true), person('p-j', 'James', true), person('p-o', 'Omar', false), person('p-v', 'Vera', false)].map((p, i) => (i === 0 ? { ...p, checkIns: [] } : p)), 'p-j');
+    const lead = person('p-w', 'Wairimu', true);
+    const w = run([lead, person('p-a', 'Abigail', true), person('p-j', 'James', true), person('p-o', 'Omar', false), person('p-v', 'Vera', false)], 'p-j');
     await w.go();
     expect(w.sent).toHaveLength(1);
     expect(w.sent[0].to).toBe('wairimu@x.test');
-    expect(w.sent[0].subject).toBe('Two of five people have checked in on "Kenya launch", and it is not the whole team\'s view yet');
+    expect(w.sent[0].subject).toBe('Three of five people have checked in on "Kenya launch", and it is not the whole team\'s view yet');
     const body = text(w.sent[0].html);
-    expect(body).toContain('Two of five people have checked in so far: Abigail and James.');
+    expect(body).toContain('You, Abigail and James have checked in so far, three of the five people in it.');
     expect(body).toContain("That is not yet the whole team's view, so Groundwork has not drawn any conclusion about the team from it.");
     expect(body).toContain('Omar and Vera have not checked in yet.');
     expect(body).toContain('The shared picture is made once everyone is in.');
@@ -50,10 +50,19 @@ describe('when James finishes and two have not', () => {
 });
 
 describe('the words', () => {
-  it('count in words and name only the people who answered', () => {
-    const p = thePartialPicture('Kenya launch', { answered: ['Abigail', 'James', 'Lucy'], ofHowMany: 5 }, { names: ['Omar', 'Vera'], count: 2 });
-    expect(p.subject).toBe("Three of five people have checked in on \"Kenya launch\", and it is not the whole team's view yet");
-    expect(p.lines[0]).toBe('Three of five people have checked in so far: Abigail, James and Lucy.');
-    expect(p.lines[2]).toBe('Omar and Vera have not checked in yet.');
+  it('count in words, put her first as "you", agree with the number, and count only people who can answer', () => {
+    const p = thePartialPicture('Kenya launch', { answered: ['you', 'Abigail', 'James'], ofHowMany: 8 }, { names: [], count: 5 });
+    expect(p.lines[0]).toBe('You, Abigail and James have checked in so far, three of the eight people in it.');
+    expect(thePartialPicture('Kenya launch', { answered: ['Abigail'], ofHowMany: 3 }).subject).toBe('One of three people has checked in on "Kenya launch", and it is not the whole team\'s view yet');
+    expect(thePartialPicture('Kenya launch', { answered: ['Abigail'], ofHowMany: 3 }).lines[0]).toBe('Abigail has checked in so far, one of the three people in it.');
+    expect(thePartialPicture('Kenya launch', { answered: ['you'], ofHowMany: 3 }).lines[0]).toBe('You have checked in so far, one of the three people in it.');
+    expect([p.subject, ...p.lines].join(' ')).not.toMatch(/:/);
+  });
+  it('a person waiting to be let in is not one of the people in it', async () => {
+    const lead = person('p-w', 'Wairimu', true);
+    const waiting = person('p-x', 'Juma', false, { user: { email: 'juma@x.test', firstName: 'Juma', lastName: 'Test', isActive: true, deletedAt: null, awaitingOrgApproval: true } });
+    const w = run([lead, person('p-a', 'Abigail', true), person('p-o', 'Omar', false), waiting], 'p-a');
+    await w.go();
+    expect(text(w.sent[0].html)).toContain('three people in it');
   });
 });

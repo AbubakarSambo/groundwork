@@ -1,6 +1,6 @@
 import { theNudgeLineFor } from './a-follow-up-from-their-own-record';
 import { RemindService } from '../conversation/remind.service';
-import { RELEASE_MOMENT_KEY } from '../grounds/the-release-moment';
+import { ENGAGEMENT_MOMENT_KEY as RELEASE_MOMENT_KEY } from './the-engagement-release-moment';
 
 /**
  * THE FOLLOW-UP SAYS WHAT THE PERSON SAID, AND ONLY FOR A SESSION THAT BEGAN AFTER THE RELEASE (review of 2e2af68e).
@@ -68,5 +68,33 @@ describe('the lead pressing Remind', () => {
     const r = remind(BEFORE, AFTER);
     await r.run();
     expect(r.lines).toEqual([null]);
+  });
+});
+
+describe('a promise stored in the third person', () => {
+  it.each(['amina will send the contract', 'Amina will send the contract.', 'the finance team will approve it', "James'll call the bank", 'Amina is going to send the contract'])('"%s" is not said back to Vera', async (said) => {
+    expect(await theNudgeLineFor(prismaWith(said), { id: 'g', startedFrom: null }, AFTER, 'p-v')).toBeNull();
+  });
+  it('and her own promises in other shapes still are', async () => {
+    expect(await theNudgeLineFor(prismaWith('send Amina the contract'), { id: 'g', startedFrom: null }, AFTER, 'p-v')).toBe("You mentioned you would send Amina the contract. I'd love to hear how it went.");
+    expect(await theNudgeLineFor(prismaWith('I will ask Amina to send the contract'), { id: 'g', startedFrom: null }, AFTER, 'p-v')).toBe("You mentioned you would ask Amina to send the contract. I'd love to hear how it went.");
+  });
+});
+
+describe('whose promise it is, and what is stripped', () => {
+  it.each(['Amina to send the contract', 'they will approve it', 'She is going to call the bank', 'Someone will send the contract', 'His team to sign off'])('"%s" is not said back to Vera', async (said) => {
+    expect(await theNudgeLineFor(prismaWith(said), { id: 'g', startedFrom: null }, AFTER, 'p-v')).toBeNull();
+  });
+  it.each([
+    ['you will call the bank', 'call the bank'],
+    ["you'll call the bank", 'call the bank'],
+    ['You will call the bank.', 'call the bank'],
+  ])('"%s" is said as "%s", with no "you would you will"', async (said, rest) => {
+    expect(await theNudgeLineFor(prismaWith(said), { id: 'g', startedFrom: null }, AFTER, 'p-v')).toBe(`You mentioned you would ${rest}. I'd love to hear how it went.`);
+  });
+  it('and her own promises that only look like those still are said', async () => {
+    for (const [said, rest] of [['Talk to Amina about the contract', 'talk to Amina about the contract'], ['Go to the bank on Friday', 'go to the bank on Friday'], ['I will talk to Amina', 'talk to Amina']]) {
+      expect(await theNudgeLineFor(prismaWith(said), { id: 'g', startedFrom: null }, AFTER, 'p-v')).toBe(`You mentioned you would ${rest}. I'd love to hear how it went.`);
+    }
   });
 });

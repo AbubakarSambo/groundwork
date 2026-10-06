@@ -1,5 +1,5 @@
 import { sendTheTestCheckInMessages, theTestWords, isATestCheckIn } from './a-test-check-in-moves-on';
-import { RELEASE_MOMENT_KEY } from '../grounds/the-release-moment';
+import { ENGAGEMENT_MOMENT_KEY as RELEASE_MOMENT_KEY } from './the-engagement-release-moment';
 import { whatThisMailIs } from '../email/nothing-goes-out-that-was-turned-off';
 
 /**
@@ -12,12 +12,13 @@ const NOW = new Date('2026-10-20T09:00:00Z');
 const day = (n: number) => new Date(NOW.getTime() - n * 86_400_000);
 const RELEASE = new Date('2026-10-01T00:00:00Z');
 
-function world(grounds: any[], tookPart: Record<string, { userId: string }[]>, alreadySent = false) {
+function world(grounds: any[], tookPart: Record<string, { userId: string }[]>, alreadySent = false, addedOthers = 0) {
   const sent: any[] = [];
   const prisma: any = {
     platformSetting: { findUnique: async () => ({ value: { at: RELEASE.toISOString() } }), create: async () => ({}) },
     ground: { findMany: async () => grounds },
     checkIn: { findMany: async ({ where }: any) => (tookPart[where.groundId] ?? []).map((p, i) => ({ participantId: `p${i}`, participant: { userId: p.userId, managingOnly: false, user: { awaitingOrgApproval: false } } })) },
+    groundParticipant: { count: jest.fn(async () => addedOthers) },
     user: { findUnique: async () => ({ email: 'wairimu@baridi.test', deletedAt: null }) },
     notification: { findFirst: async () => (alreadySent ? { id: 'n1' } : null) },
   };
@@ -57,6 +58,9 @@ describe('what Wairimu reads a week after trying it alone', () => {
 });
 
 describe('who is not written to', () => {
+  it('a check-in somebody was added to, who never answered, is a real one waiting and not a test', async () => {
+    expect(await world([g()], alone, false, 1).run()).toEqual({ tried: 0 });
+  });
   it('a check-in somebody else took part in is real, not a test', async () => {
     expect(await world([g()], { g1: [{ userId: 'u-w' }, { userId: 'u-omar' }] }).run()).toEqual({ tried: 0 });
   });

@@ -1219,7 +1219,7 @@ export class EmailService implements OnModuleInit {
     const whoSees = await this.whoSeesWhatYouSay(groundId ? { groundId } as DeliveryContext : undefined);
     await this.sendEmail({
       to: email,
-      subject: subjectLine ?? `The shared picture for ${groundLabel} is ready`,
+      subject: subjectLine ?? `The shared picture for "${groundLabel}" is ready`,
       /*
        * WHAT GROUNDWORK IS, AND WHO CAN SEE THIS.
        *
@@ -1247,9 +1247,11 @@ export class EmailService implements OnModuleInit {
    * chased depended on which engine chased them; and the stop itself is honoured in sendEmail through
    * the context, so it has to be there.
    */
-  async sendNudge(email: string, groundLabel: string, checkInUrl: string, scenario: string | undefined, otherPartyCompleted: boolean | undefined, theAnchorLine: string | null | undefined, participantId: string, simplerWords?: boolean | null): Promise<void> {
+  async sendNudge(email: string, groundLabel: string, checkInUrl: string, scenario: string | undefined, otherPartyCompleted: boolean | undefined, theAnchorLine: string | null | undefined, participantId: string, simplerWords?: boolean | null): Promise<'sent' | 'held' | 'suppressed'> {
     const mail = await this.theNudge(groundLabel, `<a href="${checkInUrl}">Check in</a>`, scenario, otherPartyCompleted, theAnchorLine, participantId, simplerWords);
-    await this.sendEmail({ to: email, ...mail }, { kind: 'REMINDER', participantId }, 'sendNudge');
+    const context: DeliveryContext = { kind: 'REMINDER', participantId };
+    await this.sendEmail({ to: email, ...mail }, context, 'sendNudge');
+    return context.outcome ?? 'sent';
   }
 
   /**
@@ -1290,12 +1292,14 @@ export class EmailService implements OnModuleInit {
   }
 
   /** THE LEAD WHO ADDED NOBODY (decision 109, journey 1). Words: engagement/the-leads-own-first-check-in.ts. */
-  async sendLeadFirstCheckIn(email: string, subject: string, lines: string[], linkLabel: string, linkUrl: string, participantId: string): Promise<void> {
+  async sendLeadFirstCheckIn(email: string, subject: string, lines: string[], linkLabel: string, linkUrl: string, participantId: string): Promise<'sent' | 'held' | 'suppressed'> {
+    const context: DeliveryContext = { kind: 'REMINDER', participantId };
     await this.sendEmail({
       to: email,
       subject,
       html: this.layout(lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('') + `<p><a href="${linkUrl}">${escapeHtml(linkLabel)}</a></p>`),
-    }, { kind: 'REMINDER', participantId }, 'sendLeadFirstCheckIn');
+    }, context, 'sendLeadFirstCheckIn');
+    return context.outcome ?? 'sent';
   }
 
   /** THE FOLLOW-UP AFTER A REPORT (decision 109, journey 6). Says what became of it, so the sweep stamps only what is on its way. Words: engagement/the-report-follow-up.ts. */

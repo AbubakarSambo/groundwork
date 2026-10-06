@@ -1,11 +1,12 @@
 import { CheckInStatus, GroundStatus } from '@prisma/client';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
-import { theReleaseMoment } from '../grounds/the-release-moment';
+import { theEngagementMoment } from './the-engagement-release-moment';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
+import { whoOnACheckInIsAway } from '../suites/who-is-away';
 import { aNumberInWords } from './a-number-in-words';
-import { hasBeenToldOnce, nowToldOnce } from './a-message-sent-once';
+import { hasBeenToldOnce, nowToldOnce, isAlreadyHeld } from './a-message-sent-once';
 
 /**
  * WHO HAS GONE QUIET, SAID TO THE LEAD AS AN INSIGHT AND NOT AS A REMINDER (decision 109; spec sections 15 to 17 and 36, journeys 7 and 9).
@@ -24,6 +25,8 @@ export const QUIET_AFTER_DAYS = 7;
 
 export interface AQuietCheckIn {
   label: string;
+  /** Set only when ONE person closed ALL of what was closed in the last two weeks here: a plain fact about them, and never a comparison (decision 109 item 3). */
+  closedAllBy?: { name: string; count: number } | null;
   /** People who can answer, besides the lead. */
   ofHowMany: number;
   neverAnswered: number;
@@ -55,38 +58,48 @@ export function theTeamWords(firstName: string | null | undefined, c: AQuietChec
     lines: [
       `Hello ${firstName?.trim() || 'there'}. ${capital(aNumberInWords(n))} of the ${aNumberInWords(c.ofHowMany)} people on "${c.label}" have not answered the latest check-in, which opened more than a week ago.`,
       `${capital(theKinds(c))}.`,
-      'Because it is most of the team, this is one thing about the team and not several people to be reminded one at a time. Groundwork has not changed or shortened the check-in.',
+      'Most of the team has not answered, so this looks like something about the team rather than about each person. Groundwork has not changed or shortened the check-in.',
       'If you want to know what is in the way, asking one of them directly is the quickest way to find out.',
     ],
     linkLabel: 'See who has answered',
   };
 }
 
-/** Journey 7: spread over several check-ins. */
+/** Journey 7: spread over several check-ins, or fewer than most of one. */
 export function theAcrossWords(firstName: string | null | undefined, cs: AQuietCheckIn[]) {
   const quiet = cs.filter((c) => quietIn(c) > 0);
   const total = quiet.reduce((n, c) => n + quietIn(c), 0);
+  const one = quiet.length === 1 ? quiet[0] : null;
+  /* A positive fact is said only for a check-in where one person did all of it, as a plain fact with their name, and on its own line. Otherwise it is left out. */
+  const positives = cs.filter((c) => !!c.closedAllBy && c.closedAllBy.count > 0)
+    .map((c) => `${one ? '' : `In "${c.label}", `}${one ? capital(aNumberInWords(c.closedAllBy!.count)) : aNumberInWords(c.closedAllBy!.count)} ${c.closedAllBy!.count === 1 ? 'thing people said they would do was' : 'things people said they would do were'} done, ${c.closedAllBy!.count === 1 ? 'by' : c.closedAllBy!.count === 2 ? 'both by' : 'all by'} ${c.closedAllBy!.name}.`);
   return {
-    subject: `${capital(aNumberInWords(total))} people have stopped answering across ${aNumberInWords(quiet.length)} of your check-ins`,
+    subject: one
+      ? `${capital(aNumberInWords(total))} ${total === 1 ? 'person has' : 'people have'} not answered the latest check-in in "${one.label}"`
+      : `${capital(aNumberInWords(total))} people have not answered the latest check-in across ${aNumberInWords(quiet.length)} of your check-ins`,
     lines: [
-      `Hello ${firstName?.trim() || 'there'}. ${capital(aNumberInWords(total))} people have not answered the latest check-in, across ${aNumberInWords(quiet.length)} of your check-ins.`,
-      ...quiet.map((c) => `In "${c.label}", ${theKinds(c)}.`),
+      one
+        ? `Hello ${firstName?.trim() || 'there'}. ${capital(aNumberInWords(total))} of the ${aNumberInWords(one.ofHowMany)} people in "${one.label}" ${total === 1 ? 'has' : 'have'} not answered the latest check-in.`
+        : `Hello ${firstName?.trim() || 'there'}. ${capital(aNumberInWords(total))} people have not answered the latest check-in, across ${aNumberInWords(quiet.length)} of your check-ins.`,
+      /* One check-in is named once, in the subject and the first line, not again in every sentence. */
+      ...quiet.map((c) => (one ? `${capital(theKinds(c))}.` : `In "${c.label}", ${theKinds(c)}.`)),
+      ...positives,
       'Groundwork has not changed or shortened any of them. If you want to know what is in the way, asking one of them directly is the quickest way to find out.',
     ],
-    linkLabel: 'See your check-ins',
+    linkLabel: one ? 'See who has answered' : 'See your check-ins',
   };
 }
 
 const TERMINAL: GroundStatus[] = [...A_GROUND_THE_JOBS_LEAVE_ALONE, ...A_GROUND_IS_HELD];
 
 /** One check-in's quiet people, from its rows. Null when it has no latest session old enough, or began before the release. */
-export function theQuietIn(rows: any[], label: string, leadUserId: string, now: Date, release: Date): AQuietCheckIn | null {
+export function theQuietIn(rows: any[], label: string, leadUserId: string, now: Date, release: Date, away: ReadonlySet<string> = new Set()): AQuietCheckIn | null {
   if (!rows.length) return null;
   const latest = Math.max(...rows.map((r) => r.sessionNumber ?? 0));
   const latestRows = rows.filter((r) => (r.sessionNumber ?? 0) === latest);
   const opened = Math.min(...latestRows.map((r) => new Date(r.createdAt).getTime()));
   if (opened < release.getTime() || now.getTime() - opened < QUIET_AFTER_DAYS * DAY) return null;
-  const counted = latestRows.filter((r) => !r.participant?.managingOnly && !isNotLetInYet(r.participant) && r.participant?.userId !== leadUserId);
+  const counted = latestRows.filter((r) => !r.participant?.managingOnly && !isNotLetInYet(r.participant) && r.participant?.userId !== leadUserId && !away.has(r.participantId));
   if (!counted.length) return null;
   let never = 0;
   const stopped: string[] = [];
@@ -105,9 +118,10 @@ export async function sendWhoHasGoneQuiet(
 ): Promise<{ tried: number }> {
   const { prisma } = deps;
   let release: Date;
-  try { release = await theReleaseMoment(prisma, now); } catch { return { tried: 0 }; }
+  try { release = await theEngagementMoment(prisma, now); } catch { return { tried: 0 }; }
   const grounds: any[] = await everyRowAPageAtATime((page: any) => prisma.ground.findMany({
-    where: { status: { notIn: TERMINAL } },
+    /* Gated by the check-in's own date, as this file says: nothing about a check-in made before the engagement messages began. */
+    where: { status: { notIn: TERMINAL }, createdAt: { gte: release } },
     select: { id: true, label: true, initiatorId: true },
     orderBy: { id: 'asc' },
     ...page,
@@ -127,18 +141,30 @@ export async function sendWhoHasGoneQuiet(
           where: { groundId: g.id },
           select: { participantId: true, sessionNumber: true, status: true, createdAt: true, participant: { select: { userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } } },
         });
-        const q = theQuietIn(rows, g.label, leadId, now, release);
-        if (q && quietIn(q) > 0) found.push({ ...q, groundId: g.id });
+        /* Somebody on approved leave is not one who has gone quiet. */
+        const away = await Promise.resolve(whoOnACheckInIsAway(prisma, g.id, now)).catch(() => new Map());
+        const q = theQuietIn(rows, g.label, leadId, now, release, new Set([...(away as Map<string, unknown>).keys()]));
+        if (q && quietIn(q) > 0) {
+          const closed: any[] = await Promise.resolve(prisma.groundCommitment?.findMany?.({ where: { groundId: g.id, status: 'DONE', participantId: { not: null }, settledAt: { gte: new Date(now.getTime() - 14 * DAY) } }, select: { participantId: true } })).catch(() => []) ?? [];
+          const by = new Map<string, number>();
+          for (const c of Array.isArray(closed) ? closed : []) by.set(c.participantId, (by.get(c.participantId) ?? 0) + 1);
+          const onlyOne = by.size === 1 ? [...by][0] : null;
+          const who = onlyOne ? rows.find((r) => r.participantId === onlyOne[0])?.participant : null;
+          const name = who ? (who.userId === leadId ? 'you' : theFirstNameOfAParticipant(who) ?? null) : null;
+          found.push({ ...q, groundId: g.id, closedAllBy: name && onlyOne ? { name, count: onlyOne[1] } : null });
+        }
       }
       const total = found.reduce((n, c) => n + quietIn(c), 0);
       if (total < 3) continue;
       const user = await prisma.user.findUnique({ where: { id: leadId }, select: { email: true, firstName: true, deletedAt: true, isActive: true } });
       if (!user?.email || user.deletedAt || user.isActive === false) continue;
       const mostOf = found.find(mostOfTheTeamIs);
+      if (await isAlreadyHeld(prisma, QUIET_SENDER, user.email)) continue;
       const w = mostOf ? theTeamWords(user.firstName, mostOf) : theAcrossWords(user.firstName, found);
       const link = mostOf ? `${base}/grounds/${mostOf.groundId}/board` : `${base}/grounds`;
       const went = await deps.email.sendWhoHasGoneQuiet(user.email, w.subject, w.lines, w.linkLabel, link);
-      if (went !== 'suppressed') { await nowToldOnce(prisma, once); tried++; }
+      await nowToldOnce(prisma, once, went, { sender: QUIET_SENDER, to: user.email });
+      if (went !== 'suppressed') tried++;
     } catch {
       /* One lead's message that could not be put together never stops the others. */
     }

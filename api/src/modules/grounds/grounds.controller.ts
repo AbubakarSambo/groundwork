@@ -532,9 +532,9 @@ export class GroundsController {
   async resendParticipantInvite(
     @Param('id') id: string,
     @Param('participantId') participantId: string,
-    @CurrentUser('organizationId') organizationId: string,
+    @CurrentUser() user: CurrentUserData,
   ) {
-    return this.grounds.resendParticipantInvite(id, participantId, organizationId);
+    return this.grounds.resendParticipantInvite(id, participantId, user.organizationId, user.id, user.role);
   }
 
   @Get(':id/mediator-brief')

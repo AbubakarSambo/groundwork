@@ -1,7 +1,7 @@
 import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
 import { theAnchorNudgeFor, theAnchorNudgeLine, theirOwnLastOpenPromise } from '../conversation/the-anchor-nudge';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
-import { theReleaseMoment } from '../grounds/the-release-moment';
+import { theEngagementMoment } from './the-engagement-release-moment';
 
 /**
  * THE FOLLOW-UP FOR EVERY CHECK-IN, FROM THE PERSON'S OWN RECORD (decision 109 item 10; decision 105 item 3).
@@ -20,7 +20,7 @@ import { theReleaseMoment } from '../grounds/the-release-moment';
 async function beganAfterTheRelease(prisma: any, began: Date | null | undefined): Promise<boolean> {
   if (!began) return false;
   try {
-    return began.getTime() >= (await theReleaseMoment(prisma)).getTime();
+    return began.getTime() >= (await theEngagementMoment(prisma)).getTime();
   } catch {
     /* The moment could not be read: say nothing rather than guess. */
     return false;

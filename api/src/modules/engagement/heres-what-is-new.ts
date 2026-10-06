@@ -1,8 +1,10 @@
 import { CheckInStatus, GroundStatus } from '@prisma/client';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
-import { theReleaseMoment } from '../grounds/the-release-moment';
+import { isAlreadyHeld } from './a-message-sent-once';
+import { theEngagementMoment } from './the-engagement-release-moment';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
+import { aNumberInWords } from './a-number-in-words';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
 
 /**
@@ -32,17 +34,18 @@ export function thereIsASessionToCome(g: { runsUntilEnded?: boolean | null; ends
   return !!end && end.getTime() > now.getTime();
 }
 
-const people = (n: number) => `${n} ${n === 1 ? 'person' : 'people'}`;
+const people = (n: number) => `${aNumberInWords(n)} ${n === 1 ? 'person' : 'people'}`;
+const cap = (t: string) => `${t.charAt(0).toUpperCase()}${t.slice(1)}`;
 const listed = (names: string[]) => (names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
 
 /** One check-in, in one sentence, from the count alone. */
 export function whereOneStands(c: AnExistingCheckIn): string {
   if (c.answered <= 0) return `In "${c.label}", nobody has checked in yet, out of ${people(c.ofHowMany)}.`;
-  if (c.answered >= c.ofHowMany) return `In "${c.label}", ${c.ofHowMany === 1 ? 'the one person who can answer has' : `all ${c.ofHowMany} people have`} checked in.`;
+  if (c.answered >= c.ofHowMany) return `In "${c.label}", ${c.ofHowMany === 1 ? 'the one person who can answer has' : `all ${aNumberInWords(c.ofHowMany)} people have`} checked in.`;
   const named = c.notYet.slice(0, 3);
   const others = c.ofHowMany - c.answered - named.length;
-  const who = named.length ? `, and ${listed(others > 0 ? [...named, others === 1 ? 'one other person' : `${others} others`] : named)} ${c.ofHowMany - c.answered === 1 ? 'has' : 'have'} not yet` : '';
-  return `In "${c.label}", ${c.answered} of ${c.ofHowMany} people have checked in${who}.`;
+  const who = named.length ? `, and ${listed(others > 0 ? [...named, others === 1 ? 'one other person' : `${aNumberInWords(others)} others`] : named)} ${c.ofHowMany - c.answered === 1 && !named.includes('you') ? 'has' : 'have'} not yet` : '';
+  return `In "${c.label}", ${aNumberInWords(c.answered)} of ${aNumberInWords(c.ofHowMany)} people have checked in${who}.`;
 }
 
 /** True only for the check-ins that have a session to come; said for all, for some by name, or not at all. */
@@ -54,13 +57,18 @@ function theFollowUpSentence(checkIns: AnExistingCheckIn[]): string | null {
 }
 
 export function theWhatIsNewWords(firstName: string | null | undefined, checkIns: AnExistingCheckIn[]) {
+  const follow = theFollowUpSentence(checkIns);
+  /* NOTHING NEW TO SAY, NOTHING SENT (decision 109 review): the one new thing is the follow-up, so a lead with no check-in it applies to is not written to. */
+  if (!follow) return null;
   const subject = checkIns.length === 1
-    ? `${checkIns[0].answered} of ${checkIns[0].ofHowMany} people have checked in on "${checkIns[0].label}", and here is what is new`
-    : `Here is where your ${checkIns.length} check-ins stand, and what is new`;
+    ? (checkIns[0].answered <= 0
+      ? `Nobody has checked in on "${checkIns[0].label}" yet, and here is what is new`
+      : `${cap(aNumberInWords(checkIns[0].answered))} of ${aNumberInWords(checkIns[0].ofHowMany)} people ${checkIns[0].answered === 1 ? 'has' : 'have'} checked in on "${checkIns[0].label}", and here is what is new`)
+    : `Here is where your ${aNumberInWords(checkIns.length)} check-ins stand, and what is new`;
   const lines = [
     `Hello ${firstName?.trim() || 'there'}. Here is where your check-ins stand today.`,
     ...checkIns.map(whereOneStands),
-    ...(theFollowUpSentence(checkIns) ? [theFollowUpSentence(checkIns)!] : []),
+    follow,
     'You can also stop the emails we decide to send from the link at the bottom of any of them, or in Settings, and turn them back on in Settings. Emails you ask for, such as sign-in links and reports, always reach you.',
   ];
   return { subject, lines, linkLabel: 'See your check-ins' };
@@ -75,6 +83,8 @@ export async function theOpenSession(prisma: any, groundId: string, leadUserId: 
   const latest = Math.max(...rows.map((r) => r.sessionNumber ?? 0));
   const counted = rows.filter((r) => (r.sessionNumber ?? 0) === latest && !r.participant?.managingOnly && !isNotLetInYet(r.participant));
   if (!counted.length) return null;
+  /* A check-in where only the lead is in it has nothing to say about anybody else (decision 109 review). */
+  if (!counted.some((r) => r.participant?.userId !== leadUserId)) return null;
   const answered = counted.filter((r) => r.status === CheckInStatus.COMPLETED).length;
   const notYet = counted.filter((r) => r.status !== CheckInStatus.COMPLETED)
     .map((r) => (r.participant?.userId === leadUserId ? 'you' : theFirstNameOfAParticipant(r.participant) ?? ''))
@@ -90,7 +100,7 @@ export async function sendHeresWhatIsNew(
 ): Promise<{ tried: number }> {
   const { prisma } = deps;
   let release: Date;
-  try { release = await theReleaseMoment(prisma, now); } catch { return { tried: 0 }; }
+  try { release = await theEngagementMoment(prisma, now); } catch { return { tried: 0 }; }
   const grounds: any[] = await everyRowAPageAtATime((page: any) => prisma.ground.findMany({
     /* Made before the release, and still going: stalled, ended and held ones are never mentioned. */
     where: { status: { notIn: TERMINAL }, createdAt: { lt: release } },
@@ -105,15 +115,18 @@ export async function sendHeresWhatIsNew(
     try {
       const user = await prisma.user.findUnique({ where: { id: leadId }, select: { email: true, firstName: true, deletedAt: true, isActive: true } });
       if (!user?.email || user.deletedAt || user.isActive === false) continue;
-      const had = await prisma.notification.findFirst({ where: { channel: 'email', sender: WHATS_NEW_SENDER, toAddress: user.email.trim().toLowerCase(), outcome: { in: ['sent', 'held'] } }, select: { id: true } });
-      if (had) continue;
+      const had = await prisma.notification.findFirst({ where: { channel: 'email', sender: WHATS_NEW_SENDER, toAddress: user.email.trim().toLowerCase(), outcome: 'sent' }, select: { id: true } });
+      if (had || await isAlreadyHeld(prisma, WHATS_NEW_SENDER, user.email)) continue;
       const stands: AnExistingCheckIn[] = [];
       for (const g of theirs) {
+        /* A check-in left open with nothing more to come is dead, and is never mentioned (decision 109 item 2). */
+        if (!thereIsASessionToCome(g, now)) continue;
         const s = await theOpenSession(prisma, g.id, leadId);
-        if (s) stands.push({ ...s, label: g.label, moreToCome: thereIsASessionToCome(g, now) });
+        if (s) stands.push({ ...s, label: g.label, moreToCome: true });
       }
       if (!stands.length) continue;
       const w = theWhatIsNewWords(user.firstName, stands);
+      if (!w) continue;
       await deps.email.sendHeresWhatIsNew(user.email, w.subject, w.lines, w.linkLabel, link);
       tried++;
     } catch {

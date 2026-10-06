@@ -128,12 +128,15 @@ export function theEmailForTheLead(input: {
   /** The people Groundwork really did send a reminder to, and the day of the last one, from the record of what was sent. When absent, the schedule is said instead. */
   remindedNames?: string[];
   lastRemindedOn?: string | null;
+  /** The lead's own check-in is still open too: said as her own line, and she is never in the list of others. */
+  leadIsOpenToo?: boolean;
 }): TheLeadsEmail | null {
   if (input.whoHasNotStarted.length === 0) return null;
 
   const names = input.whoHasNotStarted;
   const listed = names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
-  const have = names.length === 1 ? 'has' : 'have';
+  const have = names.length === 1 && names[0] !== 'you' ? 'has' : 'have';
+  const sentenceStart = (t: string) => `${t.charAt(0).toUpperCase()}${t.slice(1)}`;
   const days = input.chasedOn.length ? `day ${input.chasedOn.join(', day ')}` : null;
 
   /*
@@ -143,26 +146,27 @@ export function theEmailForTheLead(input: {
    */
   const reminded = input.remindedNames ?? names;
   const remindedList = reminded.length < 2 ? reminded.join('') : `${reminded.slice(0, -1).join(', ')} and ${reminded[reminded.length - 1]}`;
+  const all = reminded.length === names.length;
   const did = reminded.length === 0
     ? 'Groundwork has stopped sending them reminders.'
-    : `Groundwork reminded ${reminded.length === names.length ? 'them' : remindedList}${input.lastRemindedOn ? `, the last time on ${input.lastRemindedOn}` : days ? `, on ${days}` : ''}, and has now stopped reminding ${reminded.length === names.length ? 'them' : 'those people'}.`;
+    : `Groundwork reminded ${all ? 'them' : remindedList}${input.lastRemindedOn ? `, the last time on ${input.lastRemindedOn}` : days ? `, on ${days}` : ''}, and has now stopped reminding ${all ? 'them' : reminded.length === 1 ? 'that person' : 'those people'}.`;
 
   const lines = [
     input.leadName ? `${input.leadName},` : 'Hello,',
     '',
-    `${listed} ${have} not started their check-in on "${input.groundLabel}".`,
+    `${sentenceStart(listed)} ${have} not started their check-in on "${input.groundLabel}".${input.leadIsOpenToo ? ' Your own check-in is still open too.' : ''}`,
     '',
     did,
     '',
-    'You do not need to do anything. If you would like to write to them yourself, this message is ready for you to send:',
+    'Groundwork will not remind them again. If you still want their view, a short note from you is the next step. You can send a fresh link from the check-in page with Resend invite.',
     '',
-    `"I would value your view on ${input.groundLabel}. It takes about five minutes, and the link in the email Groundwork sent you opens it."`,
+    `You could write, "I would value your view on ${input.groundLabel}. It takes about five minutes, and I will send you a fresh link if you reply."`,
     '',
     input.link,
   ];
 
   return {
-    subject: `${listed} ${have} not started "${input.groundLabel}"${reminded.length ? ', and Groundwork has reminded them' : ''}`,
+    subject: `${sentenceStart(listed)} ${have} not started "${input.groundLabel}"${reminded.length ? ', and Groundwork has reminded them' : ''}`,
     text: lines.join('\n'),
   };
 }

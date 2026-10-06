@@ -1,7 +1,8 @@
 import { CheckInStatus, GroundStatus } from '@prisma/client';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
-import { theReleaseMoment } from '../grounds/the-release-moment';
+import { isAlreadyHeld } from './a-message-sent-once';
+import { theEngagementMoment } from './the-engagement-release-moment';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
 
@@ -9,7 +10,8 @@ import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check
  * A TEST CHECK-IN MOVES TOWARD ONE SMALL REAL ONE (decision 109 item 8; engagement spec sections 8 and 9).
  *
  * WHAT A TEST CHECK-IN IS, in the two ways Hafsah named: a check-in where ONLY THE LEAD has taken part, a week after it was made, and the anchor's
- * trial, which is a test the same way but is not left a week (three days). Anybody else having taken part makes it real, whatever it was called.
+ * trial, which is a test the same way but is not left a week (three days). And NOBODY ELSE WAS EVER ADDED: a person invited, answered or not, makes it a
+ * real check-in that is waiting for them, which is the other journeys' business.
  *
  * WHAT THEY ARE SENT. One email, once, and never a feature list. It starts from what they tried, in their own check-in's name and kind, and asks for
  * the next small thing: one real situation and three to five real people. It does not say "roll it out" and it never mentions the organisation.
@@ -87,7 +89,7 @@ export async function sendTheTestCheckInMessages(
 ): Promise<{ tried: number }> {
   const { prisma } = deps;
   let release: Date;
-  try { release = await theReleaseMoment(prisma, now); } catch { return { tried: 0 }; }
+  try { release = await theEngagementMoment(prisma, now); } catch { return { tried: 0 }; }
   const grounds: any[] = await everyRowAPageAtATime((page: any) => prisma.ground.findMany({
     where: { status: { notIn: TERMINAL }, createdAt: { gte: release, lte: new Date(now.getTime() - THE_TRIAL_DAYS * DAY) } },
     select: { id: true, label: true, scenario: true, startedFrom: true, createdAt: true, initiatorId: true },
@@ -108,12 +110,15 @@ export async function sendTheTestCheckInMessages(
         .filter((r) => !r.participant?.managingOnly && !isNotLetInYet(r.participant))
         .map((r) => ({ participantId: r.participantId as string, userId: (r.participant?.userId ?? null) as string | null }));
       if (!isATestCheckIn(g, tookPart, g.initiatorId, now)) continue;
+      /* NOBODY ELSE WAS EVER ADDED (decision 109 review): a check-in with a person invited, even one who never answered, is a real one that is waiting, not a test. */
+      const others = await prisma.groundParticipant.count({ where: { groundId: g.id, OR: [{ userId: null }, { userId: { not: g.initiatorId } }] } });
+      if (others > 0) continue;
       seen.add(g.initiatorId);
       const user = await prisma.user.findUnique({ where: { id: g.initiatorId }, select: { email: true, deletedAt: true } });
       if (!user?.email || user.deletedAt) continue;
       /* Once, ever: a lead who has had this is not written to again. */
-      const had = await prisma.notification.findFirst({ where: { channel: 'email', sender: TEST_SENDER, toAddress: user.email.trim().toLowerCase(), outcome: { in: ['sent', 'held'] } }, select: { id: true } });
-      if (had) continue;
+      const had = await prisma.notification.findFirst({ where: { channel: 'email', sender: TEST_SENDER, toAddress: user.email.trim().toLowerCase(), outcome: 'sent' }, select: { id: true } });
+      if (had || await isAlreadyHeld(prisma, TEST_SENDER, user.email)) continue;
       const w = theTestWords(g);
       await deps.email.sendTestCheckInMovesOn(user.email, w.subject, w.lines, w.linkLabel, `${base}/start`);
       tried++;

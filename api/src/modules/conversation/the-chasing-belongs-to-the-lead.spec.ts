@@ -131,7 +131,7 @@ describe('what the lead is told', () => {
   /* Changed under decision 109, journey 3: this held that the lead is told "it is theirs now". She is told what Groundwork did and that it has stopped, and that she need do nothing. */
   it('says what Groundwork did and that the reminders have stopped, and never that the chasing is the lead\'s now', () => {
     expect(composed.text).toContain('has now stopped reminding them');
-    expect(composed.text).toContain('You do not need to do anything.');
+    expect(composed.text).toContain('Groundwork will not remind them again. If you still want their view, a short note from you is the next step. You can send a fresh link from the check-in page with Resend invite.');
     expect(composed.text).not.toMatch(/yours now|this is yours/i);
   });
 

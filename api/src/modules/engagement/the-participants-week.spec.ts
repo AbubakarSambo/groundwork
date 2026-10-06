@@ -1,5 +1,6 @@
 import { sendTheParticipantsWeeks, theirWeekInWords } from './the-participants-week';
 import { ROUTINE_EMAILS } from './one-routine-message-a-day';
+import { ENGAGEMENT_MOMENT_KEY } from './the-engagement-release-moment';
 import { whatThisMailIs } from '../email/nothing-goes-out-that-was-turned-off';
 
 /**
@@ -9,61 +10,97 @@ import { whatThisMailIs } from '../email/nothing-goes-out-that-was-turned-off';
  * board holds her own promises, and two requests waiting on her. She reads her own words and counts; the subject carries no name; nothing from
  * Old pilot; and a colleague's own promises are never in it, because the board never holds them.
  */
+const NOW = new Date();
+const recent = new Date(NOW.getTime() - 5 * 86_400_000);
 const board = (over: any = {}) => ({
-  keptLately: { kept: 3, of: 4, says: 'x' },
   saidYoudDo: [
-    { text: 'Send my manager the deck.', checkIn: 'Sales team, Q4', state: 'open' },
-    { text: 'Call the Nairobi client', checkIn: 'Kenya launch', state: 'open' },
+    { text: 'Send the deck to Kofi.', checkIn: 'Sales team, Q4', state: 'open' },
+    { text: 'Call the bank', checkIn: 'Kenya launch', state: 'open' },
     { text: 'Close out the old pilot report', checkIn: 'Old pilot', state: 'open' },
     { text: 'Sent the pricing', checkIn: 'Sales team, Q4', state: 'kept' },
   ],
   askedOfYou: { items: [
-    { who: 'Omar', what: 'The signed order form.', checkIn: 'Sales team, Q4' },
-    { who: null, what: 'The venue contract', checkIn: 'Kenya launch' },
+    { who: 'James', what: 'The pricing sheet.', checkIn: 'Kenya launch' },
+    { who: null, what: 'The venue contract', checkIn: 'Sales team, Q4' },
     { who: 'Bisi', what: 'The old numbers', checkIn: 'Old pilot' },
   ] },
   ...over,
 });
 
-function world(b: any = board(), own: any[] = [{ what: 'The budget from finance', ground: { label: 'Sales team, Q4' } }, { what: 'The retired report', ground: { label: 'Old pilot' } }]) {
+const commitmentsDone = [
+  { status: 'DONE', createdAt: recent, settledAt: recent }, { status: 'DONE', createdAt: recent, settledAt: recent }, { status: 'DONE', createdAt: recent, settledAt: recent },
+  { status: 'NOT_DONE', createdAt: recent, settledAt: recent },
+];
+const ownWaits = [
+  { what: 'the budget to be approved', onLabel: null, ground: { label: 'Sales team, Q4', peersVisibleToEachOther: true }, onParticipant: { nameGiven: null, user: { firstName: 'Lucy' } } },
+  { what: 'the retired report', onLabel: null, ground: { label: 'Old pilot', peersVisibleToEachOther: true }, onParticipant: null },
+];
+
+function world(b: any = board(), own: any[] = ownWaits, commitments: any[] = commitmentsDone) {
   const sent: any[] = [];
   const prisma: any = {
+    platformSetting: { findUnique: async ({ where }: any) => (where.key === ENGAGEMENT_MOMENT_KEY ? { value: { at: '2026-10-01T00:00:00Z' } } : null) },
     groundParticipant: { findMany: async () => [
-      { id: 'p1', userId: 'u-v', ground: { label: 'Sales team, Q4' } },
-      { id: 'p2', userId: 'u-v', ground: { label: 'Kenya launch' } },
+      { id: 'p1', userId: 'u-v', groundId: 'g1', ground: { label: 'Sales team, Q4', runsUntilEnded: true }, checkIns: [] },
+      { id: 'p2', userId: 'u-v', groundId: 'g2', ground: { label: 'Kenya launch', runsUntilEnded: false, endsAt: new Date('2099-01-01'), createdAt: new Date('2026-10-02') }, checkIns: [] },
+      { id: 'p3', userId: 'u-v', groundId: 'g3', ground: { label: 'Dead pilot', runsUntilEnded: false, endsAt: new Date('2026-09-01'), createdAt: new Date('2026-06-01') }, checkIns: [] },
     ] },
     user: { findUnique: async () => ({ email: 'vera@x.test', firstName: 'Vera', role: 'MEMBER', organizationId: 'o1', isActive: true, deletedAt: null, awaitingOrgApproval: false }) },
     groundDependency: { findMany: async () => own },
+    groundCommitment: { findMany: jest.fn(async () => commitments) },
   };
   const board_ = { forReader: jest.fn(async () => b) };
   const email = { sendYourWeek: jest.fn(async (to: string, subject: string, lines: string[], linkLabel: string, linkUrl: string) => { sent.push({ to, subject, lines, linkLabel, linkUrl }); }) };
-  return { run: () => sendTheParticipantsWeeks({ prisma, board: board_, email, frontendUrl: 'https://app.test/' }), sent, board_ };
+  return { run: () => sendTheParticipantsWeeks({ prisma, board: board_, email, frontendUrl: 'https://app.test/' }, NOW), sent, board_, prisma };
 }
 
 describe('what Vera reads', () => {
-  it('her own progress, what is open from her, what she waits on, and what waits on her', async () => {
+  it('her own progress, what is open from her, what she waits on, and what waits on her, in full sentences', async () => {
     const w = world();
     expect(await w.run()).toEqual({ tried: 1 });
     expect(w.sent).toEqual([{
       to: 'vera@x.test',
-      subject: 'You kept 3 of 4 things you said you would do; 2 requests are waiting on you',
+      subject: 'You kept three of the four things you said you would do; two requests are waiting on you',
       lines: [
         'Hello Vera. Here is your week in Groundwork. Only you can read this.',
-        'Your progress: you kept 3 of the 4 things you said you would do in the last four weeks.',
-        'Still open from you: "Send my manager the deck" and "Call the Nairobi client".',
-        'You are waiting on: "The budget from finance".',
-        '2 requests are waiting on you: Omar is waiting for "The signed order form" in "Sales team, Q4" and somebody is waiting for "The venue contract" in "Kenya launch".',
+        'You kept three of the four things you said you would do in the last four weeks.',
+        'Two things you said you would do are still open, "Send the deck to Kofi" and "Call the bank".',
+        'You are waiting for "the budget to be approved" from Lucy.',
+        'James is waiting for "The pricing sheet" from you in "Kenya launch".',
+        'Somebody is waiting for "The venue contract" from you in "Sales team, Q4".',
       ],
       linkLabel: 'Open your page',
       linkUrl: 'https://app.test/you',
     }]);
+    expect(w.sent[0].lines.join(' ')).not.toMatch(/:/);
+    expect(w.sent[0].subject).not.toMatch(/:/);
+  });
+
+  it('the kept count is read only over check-ins still going', async () => {
+    const w = world();
+    await w.run();
+    const where = (w.prisma.groundCommitment.findMany as jest.Mock).mock.calls[0][0].where;
+    expect(where.groundId.in.sort()).toEqual(['g1', 'g2']);
+    expect(where.participantId.in.sort()).toEqual(['p1', 'p2']);
+  });
+
+  it('never a subject like "You kept none of two": a kept count of nothing is left out', async () => {
+    const w = world(board(), ownWaits, [{ status: 'NOT_DONE', createdAt: recent, settledAt: recent }, { status: 'NOT_DONE', createdAt: recent, settledAt: recent }]);
+    await w.run();
+    expect(w.sent[0].subject).toBe('Two requests are waiting on you');
+    expect(w.sent[0].lines.join(' ')).not.toMatch(/You kept/);
+  });
+
+  it('a check-in left open that nobody has answered since and has nothing to come is never written about', async () => {
+    const w = world(board({ saidYoudDo: [{ text: 'Close the dead pilot', checkIn: 'Dead pilot', state: 'open' }], askedOfYou: { items: [{ who: null, what: 'Old thing', checkIn: 'Dead pilot' }] }, keptLately: null }), [], []);
+    expect(await w.run()).toEqual({ tried: 0 });
   });
 
   it('says "somebody" where the check-in does not let her see who, and nothing from the check-in that stalled', async () => {
     const w = world();
     await w.run();
     const text = w.sent[0].lines.join(' ');
-    expect(text).toContain('somebody is waiting for "The venue contract"');
+    expect(text).toContain('Somebody is waiting for "The venue contract" from you in "Sales team, Q4".');
     expect(text).not.toMatch(/Old pilot|old pilot|Bisi|retired report|old numbers/);
   });
 
@@ -76,18 +113,18 @@ describe('what Vera reads', () => {
 
   it('the subject names nobody', () => {
     const m = theirWeekInWords('Vera', { kept: null, open: [], waitingOn: [], waitingOnYou: [{ who: 'Omar', what: 'x', checkIn: 'A' }] })!;
-    expect(m.subject).toBe('1 request is waiting on you');
+    expect(m.subject).toBe('One request is waiting on you');
   });
 
   it('sends nothing when nothing useful is left', async () => {
-    const empty = world(board({ keptLately: null, saidYoudDo: [], askedOfYou: { items: [] } }), []);
+    const empty = world(board({ keptLately: null, saidYoudDo: [], askedOfYou: { items: [] } }), [], []);
     expect(await empty.run()).toEqual({ tried: 0 });
     expect(theirWeekInWords('Vera', { kept: null, open: [], waitingOn: [], waitingOnYou: [] })).toBeNull();
   });
 
   it('falls back to what is open, then what she waits on, in the subject', () => {
-    expect(theirWeekInWords('V', { kept: null, open: ['a', 'b'], waitingOn: [], waitingOnYou: [] })!.subject).toBe('2 things you said you would do are still open');
-    expect(theirWeekInWords('V', { kept: null, open: [], waitingOn: ['a'], waitingOnYou: [] })!.subject).toBe('You are waiting on 1 thing');
+    expect(theirWeekInWords('V', { kept: null, open: ['a', 'b'], waitingOn: [], waitingOnYou: [] })!.subject).toBe('Two things you said you would do are still open');
+    expect(theirWeekInWords('V', { kept: null, open: [], waitingOn: [{ what: 'a', from: null }], waitingOnYou: [] })!.subject).toBe('You are waiting on one thing');
   });
 
   it('is a routine mail we decided to send, so the opt-out and the one a day hold', () => {

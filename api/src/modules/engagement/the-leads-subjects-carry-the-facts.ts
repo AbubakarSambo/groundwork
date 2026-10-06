@@ -38,5 +38,5 @@ export function theRanOutOfTimeSubject(label: string, s: WhereItStood | null, fo
 export function theSharedPictureSubject(label: string, s: WhereItStood | null, facts: string | null): string {
   if (facts) return `${facts}, and the shared picture for "${label}" is ready`;
   if (s && s.ofHowMany > 1 && s.answered >= s.ofHowMany) return `All ${aNumberInWords(s.ofHowMany)} people on "${label}" have checked in, and the shared picture is ready`;
-  return `The shared picture for ${label} is ready`;
+  return `The shared picture for "${label}" is ready`;
 }

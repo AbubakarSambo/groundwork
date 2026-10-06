@@ -1,7 +1,7 @@
 import { sendHeresWhatIsNew, theWhatIsNewWords, whereOneStands, thereIsASessionToCome } from './heres-what-is-new';
 import { ROUTINE_EMAILS } from './one-routine-message-a-day';
 import { whatThisMailIs, whetherToSend } from '../email/nothing-goes-out-that-was-turned-off';
-import { RELEASE_MOMENT_KEY } from '../grounds/the-release-moment';
+import { ENGAGEMENT_MOMENT_KEY as RELEASE_MOMENT_KEY } from './the-engagement-release-moment';
 
 /**
  * "HERE IS WHAT IS NEW", AS AN EXISTING CLIENT READS IT (decision 109 item 2).
@@ -25,7 +25,7 @@ function world(opts: { grounds?: any[]; had?: boolean; inactive?: boolean } = {}
     notification: { findFirst: async () => (opts.had ? { id: 'n' } : null) },
   };
   const email = { sendHeresWhatIsNew: jest.fn(async (to: string, subject: string, lines: string[], linkLabel: string, linkUrl: string) => { sent.push({ to, subject, lines, linkLabel, linkUrl }); }) };
-  return { run: () => sendHeresWhatIsNew({ prisma, email, frontendUrl: 'https://app.test/' }, NOW), sent, asked };
+  return { prisma, run: () => sendHeresWhatIsNew({ prisma, email, frontendUrl: 'https://app.test/' }, NOW), sent, asked };
 }
 
 describe('what Wairimu reads', () => {
@@ -34,10 +34,10 @@ describe('what Wairimu reads', () => {
     expect(await w.run()).toEqual({ tried: 1 });
     expect(w.sent).toEqual([{
       to: 'wairimu@baridi.test',
-      subject: '5 of 6 people have checked in on "Sales team, Q4", and here is what is new',
+      subject: 'Five of six people have checked in on "Sales team, Q4", and here is what is new',
       lines: [
         'Hello Wairimu. Here is where your check-ins stand today.',
-        'In "Sales team, Q4", 5 of 6 people have checked in, and Omar has not yet.',
+        'In "Sales team, Q4", five of six people have checked in, and Omar has not yet.',
         'What is new is that Groundwork now follows up with each person about the thing they said they would do, in their own words and only to them.',
         'You can also stop the emails we decide to send from the link at the bottom of any of them, or in Settings, and turn them back on in Settings. Emails you ask for, such as sign-in links and reports, always reach you.',
       ],
@@ -55,25 +55,25 @@ describe('what Wairimu reads', () => {
 
   it('says several check-ins in one subject, and each in its own sentence', () => {
     const w = theWhatIsNewWords('Wairimu', [{ label: 'A', ofHowMany: 4, answered: 4, notYet: [] }, { label: 'B', ofHowMany: 3, answered: 0, notYet: [] }]);
-    expect(w.subject).toBe('Here is where your 2 check-ins stand, and what is new');
-    expect(w.lines.slice(1, 3)).toEqual(['In "A", all 4 people have checked in.', 'In "B", nobody has checked in yet, out of 3 people.']);
+    expect(w!.subject).toBe('Here is where your two check-ins stand, and what is new');
+    expect(w!.lines.slice(1, 3)).toEqual(['In "A", all four people have checked in.', 'In "B", nobody has checked in yet, out of three people.']);
   });
 
   it('says nothing about anybody beyond first names of those who have not yet checked in', () => {
-    expect(whereOneStands({ label: 'X', ofHowMany: 9, answered: 3, notYet: ['Omar', 'Bisi', 'Femi'] })).toBe('In "X", 3 of 9 people have checked in, and Omar, Bisi, Femi and 3 others have not yet.');
+    expect(whereOneStands({ label: 'X', ofHowMany: 9, answered: 3, notYet: ['Omar', 'Bisi', 'Femi'] })).toBe('In "X", three of nine people have checked in, and Omar, Bisi, Femi and three others have not yet.');
   });
 });
 
 describe('the follow-up line is only said where it is true', () => {
   const a = { label: 'A', ofHowMany: 4, answered: 4, notYet: [] };
   it('said for a check-in with a session still to come', () => {
-    expect(theWhatIsNewWords('W', [{ ...a, moreToCome: true }]).lines).toContain('What is new is that Groundwork now follows up with each person about the thing they said they would do, in their own words and only to them.');
+    expect(theWhatIsNewWords('W', [{ ...a, moreToCome: true }])!.lines).toContain('What is new is that Groundwork now follows up with each person about the thing they said they would do, in their own words and only to them.');
   });
-  it('not said at all where no check-in has one', () => {
-    expect(theWhatIsNewWords('W', [{ ...a, moreToCome: false }]).lines.join(' ')).not.toMatch(/follows up/);
+  it('and where no check-in has one there is nothing new to say, so nothing is sent', () => {
+    expect(theWhatIsNewWords('W', [{ ...a, moreToCome: false }])).toBeNull();
   });
   it('said for the one that has one, by name, when only some do', () => {
-    const l = theWhatIsNewWords('W', [{ ...a, moreToCome: true }, { ...a, label: 'B', moreToCome: false }]).lines.join(' ');
+    const l = theWhatIsNewWords('W', [{ ...a, moreToCome: true }, { ...a, label: 'B', moreToCome: false }])!.lines.join(' ');
     expect(l).toContain('follows up in "A" with each person');
     expect(l).not.toContain('"B" with');
   });
@@ -85,6 +85,13 @@ describe('the follow-up line is only said where it is true', () => {
   });
 });
 
+describe('a check-in left open that has nothing more to come', () => {
+  it('is never mentioned, and a lead with only that gets nothing', async () => {
+    const dead = [{ id: 'g1', label: 'Old pilot', initiatorId: 'u-w', runsUntilEnded: false, endsAt: new Date('2026-09-15T00:00:00Z'), createdAt: new Date('2026-06-01T00:00:00Z'), timelineDays: 30 }];
+    expect(await world({ grounds: dead }).run()).toEqual({ tried: 0 });
+  });
+});
+
 describe('who is not written to', () => {
   it('a lead who has had it', async () => { expect(await world({ had: true }).run()).toEqual({ tried: 0 }); });
   it('a lead with no check-in made before the release and still going', async () => { expect(await world({ grounds: [] }).run()).toEqual({ tried: 0 }); });
@@ -93,5 +100,22 @@ describe('who is not written to', () => {
     expect(whatThisMailIs('sendHeresWhatIsNew')).toBe('we decided to send it');
     expect(ROUTINE_EMAILS.has('sendHeresWhatIsNew')).toBe(true);
     expect(whetherToSend('we decided to send it', { unsubscribedAt: new Date() }, 'sendHeresWhatIsNew')).toMatchObject({ send: false });
+  });
+});
+
+describe('the subject and the lead\'s own line', () => {
+  it('nobody has checked in', () => {
+    expect(theWhatIsNewWords('W', [{ label: 'Sales team, Q4', ofHowMany: 5, answered: 0, notYet: [], moreToCome: true }])!.subject).toBe('Nobody has checked in on "Sales team, Q4" yet, and here is what is new');
+  });
+  it('one of five has', () => {
+    expect(theWhatIsNewWords('W', [{ label: 'Sales team, Q4', ofHowMany: 5, answered: 1, notYet: ['Omar'], moreToCome: true }])!.subject).toBe('One of five people has checked in on "Sales team, Q4", and here is what is new');
+  });
+  it('the lead who has not checked in is "you", with the right verb', () => {
+    expect(whereOneStands({ label: 'X', ofHowMany: 3, answered: 2, notYet: ['you'] })).toBe('In "X", two of three people have checked in, and you have not yet.');
+  });
+  it('a check-in where only the lead is in it is left out, and a lead with only that gets nothing', async () => {
+    const w = world();
+    (w.prisma as any).checkIn.findMany = async () => [row('Wairimu', 'COMPLETED', 'u-w')];
+    expect(await w.run()).toEqual({ tried: 0 });
   });
 });

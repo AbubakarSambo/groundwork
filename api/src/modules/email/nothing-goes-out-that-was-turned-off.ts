@@ -87,7 +87,7 @@ export const NOT_SENT_WHILE_AWAY: ReadonlySet<string> = new Set([
   'sendNudge', 'sendAbsenceReminder', 'sendSessionReady', 'sendInviteAboutToLapse', 'sendFeedbackRequest',
 ]);
 
-export const GOVERNED_BY_THE_NUDGE_SWITCH: ReadonlySet<string> = new Set(['sendNudge', 'sendAbsenceReminder']);
+export const GOVERNED_BY_THE_NUDGE_SWITCH: ReadonlySet<string> = new Set(['sendNudge', 'sendAbsenceReminder', 'sendLeadFirstCheckIn']);
 
 /**
  * Whether this goes out. The whole decision, in one function, called from one place.

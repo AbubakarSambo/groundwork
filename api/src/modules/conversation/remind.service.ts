@@ -8,6 +8,8 @@ import { EmailService } from '../email/email.service';
 import { CheckInStatus } from '@prisma/client';
 import { worthNudging, whatToSendThem } from './who-is-worth-nudging';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
+import { theEngagementMoment } from '../engagement/the-engagement-release-moment';
+import { hasBeenToldOnce, nowToldOnce, isAlreadyHeld } from '../engagement/a-message-sent-once';
 import { nobodyElseIsIn, theLeadsFirstWords } from '../engagement/the-leads-own-first-check-in';
 import { theNudgeLineFor } from '../engagement/a-follow-up-from-their-own-record';
 import { WorkspaceNotifierService } from '../workspace/workspace-notifier.service';
@@ -264,6 +266,7 @@ export class RemindService {
             /* For the channel notice: `tell` is scoped to an organisation. */
             organizationId: true,
             initiatorId: true,
+            createdAt: true,
             brief: true,
             chaseAfterDays: true,
             chasingStopped: true,
@@ -288,7 +291,7 @@ export class RemindService {
        target. */
     const forTheLead = new Map<string, {
       to: string; leadName: string | null; label: string; chasedOn: number[];
-      who: string[]; whoEmails: string[]; checkInIds: string[];
+      who: string[]; whoEmails: string[]; whoNudgedAt: (Date | null)[]; checkInIds: string[]; leadIsOpenToo: boolean;
       /* For the channel notice: `tell` is scoped to an organisation, not to a ground. */
       organizationId: string;
     }>();
@@ -337,14 +340,18 @@ export class RemindService {
             chasedOn: policy.days,
             who: [],
             whoEmails: [],
+            whoNudgedAt: [],
+            leadIsOpenToo: false,
             checkInIds: [],
             organizationId: checkIn.ground.organizationId,
           };
-          /* The name they are known by here, and their address only if that is all
-             there is. A lead reading a list of email addresses cannot tell who is
-             who any faster than they could before the email arrived. */
-          const named = participant.user?.firstName ?? participant.email;
-          if (!entry.who.includes(named)) { entry.who.push(named); entry.whoEmails.push(participant.email); }
+          /* THE LEAD IS NEVER ONE OF THE PEOPLE THE LEAD IS TOLD HAVE NOT STARTED (decision 109 review). Her own open check-in is her own line below. */
+          if (participant.userId && participant.userId === (checkIn.ground as any).initiatorId) {
+            entry.leadIsOpenToo = true;
+          } else {
+            const named = participant.user?.firstName ?? participant.email;
+            if (!entry.who.includes(named)) { entry.who.push(named); entry.whoEmails.push(participant.email); entry.whoNudgedAt.push(participant.lastNudgedAt ?? null); }
+          }
           entry.checkInIds.push(checkIn.id);
           forTheLead.set(key, entry);
         }
@@ -375,11 +382,14 @@ export class RemindService {
 
       /* THE LEAD WHO MADE IT AND ADDED NOBODY is not chased as if somebody had invited her (decision 109, journey 1). */
       const isTheLead = !!participant.userId && participant.userId === (checkIn.ground as any).initiatorId;
-      if (isTheLead && nobodyElseIsIn(theRound as any, participant.userId)) {
+      if (isTheLead && nobodyElseIsIn(theRound as any, participant.userId) && (await this.theLeadsFirstMessageIsFor((checkIn.ground as any).createdAt))) {
+        const once = `lead-first:${checkIn.groundId}`;
+        if (await hasBeenToldOnce(this.prisma, once) || await isAlreadyHeld(this.prisma, 'sendLeadFirstCheckIn', participant.email)) continue;
         try {
           const w = theLeadsFirstWords(participant.user?.firstName, checkIn.ground.label, (checkIn.ground as any).brief);
-          await this.email.sendLeadFirstCheckIn(participant.email, w.subject, w.lines, w.linkLabel, `${frontendUrl}/grounds/${checkIn.groundId}`, participant.id);
-          await this.prisma.groundParticipant.update({ where: { id: participant.id }, data: { lastNudgedAt: now } });
+          const went = await this.email.sendLeadFirstCheckIn(participant.email, w.subject, w.lines, w.linkLabel, `${frontendUrl}/grounds/${checkIn.groundId}`, participant.id);
+          await nowToldOnce(this.prisma, once, went, { sender: 'sendLeadFirstCheckIn', to: participant.email });
+          if (went !== 'suppressed') await this.prisma.groundParticipant.update({ where: { id: participant.id }, data: { lastNudgedAt: now } });
         } catch (err: any) {
           this.logger.error(`The lead's first-check-in message failed for check-in ${checkIn.id}: ${err.message}`);
         }
@@ -387,7 +397,7 @@ export class RemindService {
       }
 
       try {
-        await this.email.sendNudge(
+        const went = await this.email.sendNudge(
           participant.email,
           checkIn.ground.label,
           checkInUrl,
@@ -400,6 +410,9 @@ export class RemindService {
           (checkIn.ground as any).simplerWords,
         );
 
+        /* A reminder the one-a-day rule or the person's own choice refused did not go, so it does not use up their chase: it is tried again, and the
+           lead is never told somebody was "reminded" when they were not (decision 109 review). */
+        if ((went as unknown) === 'suppressed') continue;
         await this.prisma.groundParticipant.update({
           where: { id: participant.id },
           data: { lastNudgedAt: now },
@@ -445,22 +458,22 @@ export class RemindService {
      * nothing would ever say so.
      */
     for (const [, entry] of forTheLead) {
-      /* What was really sent, from the record of it: only people who were sent a reminder are said to have been reminded. */
-      const sentTo: { toAddress: string; createdAt: Date }[] = await Promise.resolve((this.prisma as any).notification?.findMany?.({
-        where: { channel: 'email', sender: { in: ['sendNudge', 'sendNudgeFromAPress'] }, outcome: 'sent', toAddress: { in: entry.whoEmails.map((e) => e.trim().toLowerCase()) } },
-        select: { toAddress: true, createdAt: true },
-        orderBy: { createdAt: 'desc' },
-      })).catch(() => null) ?? [];
-      const knownSends = Array.isArray(sentTo) ? sentTo : [];
-      const remindedNames = entry.who.filter((_, i) => knownSends.some((n) => n.toAddress === entry.whoEmails[i].trim().toLowerCase()));
-      const lastRemindedOn = knownSends[0]?.createdAt ? whenItWas(new Date(knownSends[0].createdAt), 'day') : null;
+      /* WHAT WAS REALLY SENT, ABOUT THIS CHECK-IN TO THIS PERSON. The participant row is one person in one check-in, and its `lastNudgedAt` is set only
+         when a reminder went (decision 109 review): the notification record has an address but no check-in, so it could say "reminded" about another one. */
+      const remindedNames = entry.who.filter((_, i) => !!entry.whoNudgedAt[i]);
+      const stamps = entry.whoNudgedAt.filter((d): d is Date => !!d).map((d) => new Date(d).getTime());
+      const lastRemindedOn = stamps.length ? whenItWas(new Date(Math.max(...stamps)), 'day') : null;
+      /* When she is the only one who has not started there is nothing to tell her about other people (decision 109 review). */
+      if (entry.who.length === 0) continue;
       const composed = theEmailForTheLead({
         leadName: entry.leadName,
         groundLabel: entry.label,
         whoHasNotStarted: entry.who,
         chasedOn: entry.chasedOn,
         link: `${frontendUrl}/grounds`,
-        ...(knownSends.length || (this.prisma as any).notification?.findMany ? { remindedNames, lastRemindedOn } : {}),
+        remindedNames,
+        lastRemindedOn,
+        leadIsOpenToo: entry.leadIsOpenToo,
       });
       if (!composed) continue;
 
@@ -495,6 +508,12 @@ export class RemindService {
         this.logger.error(`Telling the lead about "${entry.label}" failed: ${err.message}`);
       }
     }
+  }
+
+  /** Whether a check-in was made after the engagement messages began: an existing check-in keeps the chase it always had (decision 109 item 2). Unreadable means no. */
+  private async theLeadsFirstMessageIsFor(madeAt: Date | null | undefined): Promise<boolean> {
+    if (!madeAt) return false;
+    try { return new Date(madeAt).getTime() >= (await theEngagementMoment(this.prisma)).getTime(); } catch { return false; }
   }
 
   /**
