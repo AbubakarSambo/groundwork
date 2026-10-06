@@ -24,6 +24,9 @@ describe('the end card', () => {
     expect(card.inYourRecord![1].how).toBe('You said this from memory. You have nothing written for it yet.');
     expect(card.next).toEqual([WHAT_WOULD_MAKE_IT_PROVEN_IN_SIMPLER_WORDS]);
   });
+  it('says a confirmed line was confirmed by the person who received it', () => {
+    expect(HOW_IN_SIMPLER_WORDS.confirmed).toBe('The person who received it said this is true.');
+  });
   it('says how many lines it left out in short sentences', () => {
     const many = Array.from({ length: 8 }, (_, i) => ({ type: 'UPDATE', text: `Thing number ${i}` }));
     expect(theEndCard(many, true)!.next![0]).toBe('2 more lines are in your record. You can read them after you finish.');

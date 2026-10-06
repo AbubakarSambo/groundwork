@@ -73,7 +73,7 @@ export const HOW_IN_SIMPLER_WORDS: typeof HOW = {
   receipt: 'This comes from the receipt you added.',
   invoice: 'This comes from the invoice you added.',
   document: 'This comes from the document you added.',
-  confirmed: 'The person who got it said yes.',
+  confirmed: 'The person who received it said this is true.',
   commitment: 'You said you will do this. I will ask you how it went.',
   memory: 'You said this from memory. You have nothing written for it yet.',
   said: 'You said this.',
