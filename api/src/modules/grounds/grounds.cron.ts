@@ -155,7 +155,8 @@ export class GroundsCron implements OnApplicationBootstrap {
            * stalled ground is worse than never inviting them. A held one waits too: the invite is not
            * lost, it goes the morning after the hold is lifted.
            */
-          ground: { status: { notIn: [...TERMINAL, ...HELD] } },
+          /* Nor one still waiting for an admin to accept it: nobody is written to before the approval, and the approval sends it (known issue B5). */
+          ground: { status: { notIn: [...TERMINAL, ...HELD, GroundStatus.AWAITING_APPROVAL] } },
         },
         select: {
           id: true, email: true, inviteToken: true, groundId: true,

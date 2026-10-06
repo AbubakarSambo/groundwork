@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { withoutACannotApprove, aRequestAfterTheirTurn, whatTheYesOpens } from './a-request-offered-in-the-check-in';
+import { withoutACannotApprove, aRequestAfterTheirTurn, whatTheYesOpens, theyAreAnsweringAnOffer, withoutAPromiseToPassItOn } from './a-request-offered-in-the-check-in';
 
 /**
  * ANCHOR PIECES 26 AND 27: A REQUEST SAID IN THE CHECK-IN IS OFFERED THERE, AS WHATSAPP DOES (section 22; decision 105
@@ -36,11 +36,15 @@ describe('a request said in the check-in, as the person reads it', () => {
     expect(yes.openTheRequest).toEqual({ kind: 'leave', suiteIsOn: true, says: "You can submit that through Leave here and it'll appear on your manager's board.", button: 'Request leave', prefill: { startsOn: day, endsOn: day } });
     expect(w.items).toEqual([]);
   });
-  it('spending, with Spending off, says the organisation has the option, and gives no button', async () => {
-    const w = world({ spendOn: false });
-    expect((await w.turn('I need to spend KES 4,000 on the workshop.')).requestOffer?.question).toBe('Shall I treat this as a spending request?');
-    const yes = await w.turn('yes please');
-    expect(yes.openTheRequest).toEqual({ kind: 'spending', suiteIsOn: false, says: 'Your organisation also has the option to manage spending requests through Groundwork.', button: null });
+  /* CHANGED 6 October 2026 (known issue B12). This case offered spending while Spending was off and read the yes as "Your organisation also has
+     the option...", which promised a form that was not there (screens request 168 item 7). Nothing is offered while the suite is off. */
+  it('with the suite off, nothing is offered: not leave, not spending', async () => {
+    const spend = world({ spendOn: false });
+    expect(await spend.turn('I need to spend KES 4,000 on the workshop.')).toEqual({});
+    expect(spend.items).toEqual([]);
+    const leave = world({ leaveOn: false });
+    expect(await leave.turn('Can I take a day off on Friday?')).toEqual({});
+    expect(leave.items).toEqual([]);
   });
   it('a no, or carrying on, leaves nothing; and something that only happened is not a request', async () => {
     const w = world({ leaveOn: true });
@@ -167,5 +171,53 @@ describe('what the payment form is filled in with when the sum is asked for with
     expect(theSumAskedFor('I need 5,000 or maybe 8,000 approved for fuel.')).toEqual({});
     expect(theSumAskedFor('I need money approved for fuel.')).toEqual({});
     expect(theSumAskedFor('I need 12 chairs for the office.')).toEqual({});
+  });
+});
+
+
+describe('a yes to an offer never closes the check-in (B12)', () => {
+  const offerWaiting = (message: string, opts: { startedFrom?: string | null; offers?: boolean } = {}) => {
+    const prisma: any = {
+      platformSetting: { findUnique: jest.fn(async ({ where }: any) => (where?.key === 'release.requestOfferInTheCheckIn' && opts.offers === false ? { value: { on: false } } : { value: { on: true } })) },
+      workItem: { findMany: jest.fn(async () => [{ id: 'w1', kind: 'request-offered', name: 'spending', ownerParticipantId: 'p1' }]) },
+    };
+    return theyAreAnsweringAnOffer(prisma, { groundId: 'g1', startedFrom: opts.startedFrom === undefined ? 'anchor' : opts.startedFrom, participantId: 'p1', message });
+  };
+
+  it('a Yes, and a No, to the offer waiting are answers to it, which the check-in never reads as "that is all for today"', async () => {
+    expect(await offerWaiting('Yes')).toBe(true);
+    expect(await offerWaiting('yes please')).toBe(true);
+    expect(await offerWaiting('No thanks')).toBe(true);
+  });
+
+  it('anything else, no offer waiting, another kind of check-in, or the offer hidden, is not', async () => {
+    expect(await offerWaiting('The Westgate order is on track.')).toBe(false);
+    expect(await offerWaiting('Yes', { startedFrom: null })).toBe(false);
+    expect(await offerWaiting('Yes', { offers: false })).toBe(false);
+    const none: any = { platformSetting: { findUnique: async () => ({ value: { on: true } }) }, workItem: { findMany: async () => [] } };
+    expect(await theyAreAnsweringAnOffer(none, { groundId: 'g1', startedFrom: 'anchor', participantId: 'p1', message: 'Yes' })).toBe(false);
+  });
+
+  it('is asked before the close is judged, so the reply the model wrote as a goodbye cannot close it', () => {
+    const src = withoutComments(readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8'));
+    expect(src).toContain('const signalled = !answeringAnOffer && (hadCloseMarker || this.closesInOtherWords(reply, message));');
+  });
+});
+
+describe('no promise to pass a request on, where nothing will (B12)', () => {
+  it('takes off "I\'ll pass that leave request to Halima." and keeps the rest', () => {
+    const r = withoutAPromiseToPassItOn("Thanks for telling me. I'll pass that leave request to Halima. How is the Naivas order going?");
+    expect(r.text).toBe('Thanks for telling me. How is the Naivas order going?');
+    expect(r.cut).toEqual(["I'll pass that leave request to Halima."]);
+  });
+
+  it('leaves alone a sentence that is not a promise, and a reply with none', () => {
+    expect(withoutAPromiseToPassItOn('You said you want Friday off. How is the Naivas order going?').cut).toEqual([]);
+    expect(withoutAPromiseToPassItOn('Which shops did you visit?').text).toBe('Which shops did you visit?');
+  });
+
+  it('is applied in an anchor check-in only, and only where no offer or form is on the reply', () => {
+    const src = withoutComments(readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8'));
+    expect(src).toContain('if (startedFrom === STARTED_FROM_THE_ANCHOR && !request.requestOffer && !request.openTheRequest) {');
   });
 });

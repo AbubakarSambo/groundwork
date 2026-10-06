@@ -97,6 +97,28 @@ export function theKindOfRequest(message: string): 'leave' | 'spending' | null {
 }
 
 const isYes = (m: string) => /^\s*(yes|yeah|yep|sure|ok|okay|please)\b/i.test(m);
+const isNo = (m: string) => /^\s*(no|nope|nah|not now|no thanks|no thank you)\b/i.test(m);
+
+/**
+ * WHETHER THEIR WORDS ARE THE YES (OR NO) TO AN OFFER OF A REQUEST THAT IS WAITING FOR ONE (known issue B12; screens request 168 item 6).
+ * Read only, and ahead of the model's reply being judged: "Yes" to "Shall I treat this as a payment request?" is not the person
+ * saying they are done, but the model took it for that and said "Okay. That's all for today.", which closed the check-in. A yes or a
+ * no to an offer waiting never closes it.
+ */
+export async function theyAreAnsweringAnOffer(
+  prisma: any,
+  a: { groundId: string; startedFrom?: string | null; participantId: string | null; message: string },
+): Promise<boolean> {
+  try {
+    if (a.startedFrom !== STARTED_FROM_THE_ANCHOR || !a.participantId) return false;
+    if (!(await theAnchorScenarioIsOn(prisma)) || !(await theRequestOfferIsShown(prisma))) return false;
+    if (!isYes(a.message) && !isNo(a.message)) return false;
+    const waiting = ((await prisma.workItem?.findMany?.({ where: { groundId: a.groundId, kind: 'request-offered', ownerParticipantId: a.participantId } })?.catch?.(() => [])) ?? []) as any[];
+    return waiting.length > 0;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * After the person's turn: a yes to the offer waiting opens the request, anything else leaves nothing, and a request in
@@ -127,6 +149,12 @@ export async function aRequestAfterTheirTurn(
     if (a.sessionComplete) return {};
     const kind = theKindOfRequest(a.message);
     if (!kind) return {};
+    /* NEVER OFFERED WHILE THE SUITE IS OFF (known issue B12; screens request 168 item 7). There is no form to open and nothing to submit it to, so
+       an offer here promised something that was not there, and its yes could only say "Your organisation also has the option...". */
+    const suiteHere = a.organizationId
+      ? await prisma.organizationSuite?.findUnique?.({ where: { organizationId_suite: { organizationId: a.organizationId, suite: SUITE_KEY[kind] } }, select: { isOn: true } })?.catch?.(() => null)
+      : null;
+    if (!suiteHere?.isOn) return {};
     const prefill = thePrefillFromTheirWords(kind, a.message);
     await prisma.workItem.create({ data: { groundId: a.groundId, kind: 'request-offered', name: kind, ownerParticipantId: a.participantId, ...(Object.keys(prefill).length ? { fields: { prefill } } : {}) } });
     return { requestOffer: { kind, question: shallITreatThisAs(kind), yes: YES, no: NO } };
@@ -155,6 +183,24 @@ export function withoutACannotApprove(reply: string): { text: string; cut: strin
       return !hit;
     });
     return kept.join('').trim();
+  });
+  return { text: paragraphs.filter(Boolean).join('\n\n'), cut };
+}
+
+
+/*
+ * NO PROMISE TO PASS A REQUEST ON, WHERE NOTHING WILL (known issue B12; screens request 167 item 4).
+ *
+ * With the request offer hidden at release, an anchor check-in's reply said "I'll pass that leave request to Halima." and nothing was
+ * passed on. Where no offer or form is attached to the reply, a sentence that says Groundwork will pass, send or forward a leave or
+ * spending request on is taken off, because nothing here does. Read-side and narrow: only that promise, only in an anchor check-in.
+ */
+const A_PROMISE_TO_PASS_IT_ON = /\b(?:I(?:'|’)ll|I will|I(?:'|’)m going to|I am going to|let me|I can)\s+(?:pass|send|forward|hand|take|raise|put|log|file|submit)\b[^.!?\n]*\b(?:leave|time off|day off|days off|holiday|vacation|spending|payment|expense|request)\b[^.!?\n]*[.!?]?/i;
+export function withoutAPromiseToPassItOn(reply: string): { text: string; cut: string[] } {
+  const cut: string[] = [];
+  const paragraphs = String(reply ?? '').split(/\n{2,}/).map((p) => {
+    const sentences = p.match(/[^.!?]+(?:[.!?]+["'”’)]*|$)/g) ?? [p];
+    return sentences.filter((s) => { const hit = A_PROMISE_TO_PASS_IT_ON.test(s); if (hit) cut.push(s.trim()); return !hit; }).join('').trim();
   });
   return { text: paragraphs.filter(Boolean).join('\n\n'), cut };
 }

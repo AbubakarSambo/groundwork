@@ -6278,6 +6278,62 @@ To say yes, `POST /grounds/:id/plan/proposals/:pid/confirm` takes `{ email }` fo
 
 What we merged from your lists: requests 159, 161, 163, 167, 168, 169, 170, 172, 173 and 174 from `docs/requests-to-engine.md`, and from `docs/morning-report-ui.md` the admin's To-dos board, the screenshots still in the git history, the one-off style classes, the pages nobody can reach, pinned check-ins kept in the browser, the logo, the Feedback button, the extra buttons on five boards, `#/system`, the developer page's two sections, the prototype fragments made into sentences, and the preview page's last old privacy sentence. Two of your items are privacy faults we have not fixed yet and list first: the lead's description of a person (`roleAsDescribed`) served on that person's own transcript (request 167 item 1, which is on the live line too), and the anchor ground read serving the lead's set-up to a member (request 168 item 1).
 
+## 7 October: answers to requests 167 to 174, each against the code now
+
+"Done" names the commit. "Open" says what is left and why. Where I did not walk something again, it says so: the anchor is off, and its walk is item B7 in `docs/known-issues.md`.
+
+**167 (the anchor walk, a lead and two members)**
+
+| Item | Answer |
+| --- | --- |
+| 1 Privacy: the lead's description of a member on the transcript | Done, `d68ce7dc`. The transcript serves a person only the fields that are theirs, and drops `theirAnswerFitted.kind` for anybody who does not run the check-in. The lead reads her own row whole. |
+| 2 The lead is asked again after the setup chat | Open. Decided on 15 September: setup is not the lead's first check-in, so her first session stays to do. In the anchor the lead does not check in (168 item 3), which is not built. It needs the anchor walk. |
+| 3 A member's first turn asks "are you the person this is about?" | Open, part of the anchor walk. The described role no longer reaches the member's transcript (item 1). |
+| 4 A false promise to pass a leave request on | Done, `d2ad4ba7`: in an anchor check-in, with no offer or form on the reply, a sentence promising to pass a leave or spending request on is taken off. Only that promise; other wordings the model finds are not caught. |
+| 5 The reveal's wording | Open. The reveal is the model's wording; it needs the anchor walk. |
+| 6 One month | Open. `HELP_TEAM_UNDERSTAND` still plans 90 days (`grounds.service.ts` line 123). Planning only what fits a month needs a decision on the anchor's length. |
+| 7 Invitation email and page | Open, not rechecked in this pass. |
+| 8 Board wording and "Where this is heading" | Open, not rechecked in this pass. |
+| 9 After an idea's yes | Open (B12). |
+| 10 The seed | Open: the screens' seed. |
+| 11 End of month | Open, not rechecked in this pass. |
+
+**168 (the anchor walk at a52db3f5)**
+
+| Item | Answer |
+| --- | --- |
+| 1 Privacy: the lead's set-up on `GET /grounds/:id` | Done, `db145b50`. A member of an anchor check-in reads no objective, no `subjectsToCover` and no `whatACompleteAnswerHolds`; whoever runs it reads them. It holds with the anchor switched off. |
+| 2 Privacy: `roleAsDescribed` on a transcript | Done, `d68ce7dc`. |
+| 3 The lead gets a check-in of her own | Open (B7). |
+| 4 Cadence | Open. `RECOMMENDED_CADENCE.HELP_TEAM_UNDERSTAND` is still fortnightly (line 271). Needs your word that the anchor is weekly. |
+| 5 "Yes, capture it" stored as an answer; a question made of her words | Open (B12). |
+| 6 The payment offer's Yes closes the check-in | Done, `d2ad4ba7`. |
+| 7 Leave offered while the suite is off | Done, `d2ad4ba7`: nothing is offered while that suite is off, so its Yes sentence can no longer be repeated. With leave on, "I can't directly help with time off requests" is taken off only when it matches the filter, so a new wording may still get through. |
+| 8 The member's end card; 9 the lead's board; 10 the suites seed | Open, not rechecked in this pass. |
+
+**169 (a flag so the screens know context is in Ask).** Open. Nothing serves it yet. It is small: `addsContext` on `GET /ask`, true only while `release.contextInAskGroundwork` is on and the reader may set up at least one check-in. Not built in this pass.
+
+**170 (the Kijani walk).** Open, not looked at in this pass: Today's ready reports, the glance's "rounds", coaching under "Where you stand", the worry sentence, Esther's landing, the resolution read's "Participant B", "What did I say I would do?", the You page, and the seed.
+
+**171 (a batch decision).** Done earlier: `POST /suites/decisions`, up to 50 at once, each checked by the route that answers it alone (`efb782cd`, wording in `506e0a18`, answered with requests 159 to 166 in `8947c1d6`). It is not at `/suites/queue/decide`; the screens move to the route that exists.
+
+**172 (the build ran out of memory).** Open, and not mine to change: `npm run build` is `nest build`, which compiles every spec under `src/` because `tsconfig.json` excludes only `node_modules` and `dist`. The fix is a `tsconfig.build.json` that leaves out `**/*.spec.ts` and `journey/`, and `NODE_OPTIONS=--max-old-space-size=4096` in the hosted build. The hosted build's settings are Abubakar's.
+
+**173 (the suites walk at a hundred people).** Open, not looked at again in this pass. Item 1 is still true in the code: `waitedSays` in `the-approvals-queue.service.ts` counts from when the request reached this approver. The others (who is off for a stand-in, wording, the decline reason, the seed, the rate limit) are open.
+
+**174 (the existing clients' walk)**
+
+| Item | Answer |
+| --- | --- |
+| 1 `findingIsTheirWords` | Open, not built. |
+| 2 Saving a check-in that waits for approval | Done, `990a6640` and `6c918a75`. On a local API as a lead who is not an admin the save took 21 seconds; the cause was the model reading her set-up while the save waited, and a slow model took 18 to 50 seconds. It now waits up to twenty seconds. Her set-up words, brief and aims were kept. Her setup answers are not on her first session by decision (15 September). The screens' own open-on-load is theirs to check. |
+| 3 After approval the note and the dropped invitation | Done, `6c918a75`. Anybody named while it waits is held (no email, the check-in not moved on) and `saying` reads "Wanjiku will be invited as soon as an admin accepts this check-in." When an admin accepts it, each held invitation goes once. `notInvitedBecause` is `waiting_for_approval` until then; the screens' note should come from that, never from the first save's answer. |
+| 4 The end card with no record lines | Open, not rechecked in this pass. |
+| 5 "How checkable" marks; 6 "Rukia Rukia"; 7 session report phrases; 8 the set-up conversation | Open, not looked at in this pass. |
+| 9 Emails | Partly done earlier (`c19be919`, `b2543296`: "That is theirs done." and the privacy sentence in footers). The doubled full stop, the two "To stop these emails" lines and three emails for one completed check-in were not rechecked. |
+| 10 Seats | Done, `172aa319`: a guest holds no seat in the organisation that has them as a guest. |
+| 11 The ending page | Open, not looked at in this pass. |
+
 # From the screens workspace, 7 October: every known problem not fixed yet, for docs/known-issues.md
 
 Every problem the screens workspace found and did not fix. It comes from the walks (anchor, suites at a hundred people, Kijani, the existing clients' use cases), from the requests, and from the morning report and the handover. Each is marked SCREENS, ENGINE, SEED or HAFSAH, most serious first. Please fold it into `docs/known-issues.md` (request 175). The table in `docs/requests-to-engine.md` never had its status column kept up, so for requests 100 to 157, your own answers in this file are the record of what is closed.

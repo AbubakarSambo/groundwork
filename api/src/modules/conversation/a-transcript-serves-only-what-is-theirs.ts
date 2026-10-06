@@ -27,3 +27,26 @@ export function theFitAsServed<T extends Record<string, any> | null | undefined>
   const { kind: _theLeadsWords, ...rest } = fit as Record<string, any>;
   return rest as T;
 }
+
+/**
+ * THE CHECK-IN ROW TOO (reviewer's audit, 7 October). `getTranscript` spread the whole check-in row, so a person was served `sessionPlan` (its
+ * `watchFor` and `coachingPath.noticed` are built from pattern detections, and it carries the lead's brief and the role the lead described),
+ * `probeSources` (`pattern:B1` and the like), `specificityLevel` and `specificityDimensions` (how their answers were rated) and `whatWeHave`
+ * (the claims and challenges Groundwork holds about what they said). None is theirs to read on this route, and no screen reads it here: the
+ * transcript's screens use the status, the session number and the ground. The person's own rating is served deliberately where it is served
+ * (the report and the You board), not through this route.
+ *
+ * An allowlist, so a column added to the row later is not served until it is added here. The lead, who runs it, reads her own row whole.
+ */
+export const WHAT_A_PERSON_TAKING_PART_MAY_READ_OF_THEIR_CHECK_IN = [
+  'id', 'groundId', 'participantId', 'sessionNumber', 'isSetup', 'status', 'availableFrom', 'startedAt', 'completedAt', 'createdAt',
+  'isSelfCorrection', 'selfCorrectionTargetSession', 'isClarification', 'clarificationTarget', 'isPostSignOff', 'isFinal', 'closedReason',
+  'saidWhy', 'sessionReport', 'participant', 'theirAnswerFitted',
+] as const;
+
+export function theCheckInRowAsServed<T extends Record<string, any>>(checkIn: T, runsIt: boolean): T {
+  if (runsIt) return checkIn;
+  const out: Record<string, any> = {};
+  for (const key of WHAT_A_PERSON_TAKING_PART_MAY_READ_OF_THEIR_CHECK_IN) if (key in checkIn) out[key] = (checkIn as any)[key];
+  return out as T;
+}

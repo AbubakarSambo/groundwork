@@ -1,3 +1,4 @@
+import { theInvitedRowAsServed } from './the-invited-row-as-served';
 import { withoutTheLeadsSetUpForAMember } from './the-leads-set-up-is-the-leads-in-the-anchor';
 import { aShortQuestionForAPerson, askedBackToTheLead, theQuestionTheyWereShown } from './a-short-question-for-a-person-in-the-old-chat';
 import { aFindingThatReadsRight } from './a-finding-reads-right';
@@ -19,13 +20,13 @@ import { askTheReportsDoor } from '../reports/one-persons-circumstances-stay-the
 import { rememberedCompose } from '../reports/a-line-worded-once-is-kept';
 import { wordPatternEvidence } from '../reports/pattern-evidence-in-plain-words';
 import { withoutBankDetails, withoutBankDetailsInEachTurn } from '../documents/bank-details-are-never-kept';
-import { hasEnded, hasStalled, isHeld, isShut, mayChangeOnItsOwn, whyItRefuses, WHILE_IT_IS_HELD, IT_RAN_OUT_OF_TIME } from './a-ground-that-has-ended';
+import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD, hasEnded, hasStalled, isHeld, isShut, mayChangeOnItsOwn, whyItRefuses, WHILE_IT_IS_HELD, IT_RAN_OUT_OF_TIME } from './a-ground-that-has-ended';
 import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT } from './an-answer-includes-a-refusal';
 import { isNotLetInYet, whoIsNotLetInYet, theWaitingToBeLetInLine } from './who-an-admin-did-not-let-in';
 import { waitsOnAManagingOnlyLead } from './the-lead-who-only-asks';
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException, Optional } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
-import { seatsIn, alreadyHere } from '../../common/seats';
+import { seatsIn } from '../../common/seats';
 import { whetherThereIsRoomForOneMore, type SeatAnswer } from './added-but-waiting-for-a-seat';
 import { whatTheDocumentsSay, stillNeedsSomethingInWriting } from './what-the-documents-say';
 import { whatFitsInTheRoom, tellThemWhatIsMissing } from '../conversation/a-prompt-that-ran-out-of-room-says-so';
@@ -1370,7 +1371,8 @@ export class GroundsService {
       if (userEmail) {
         await this.prisma.groundParticipant.updateMany({
           /* Never a row held for a seat: it is not offered until its invitation goes (U.4 re-review). */
-          where: { email: userEmail.toLowerCase(), userId: null, awaitingSeat: false },
+          /* Nor a row on a check-in still waiting for an admin to accept it: that person is invited by the approval, and is not on the check-in before it (known issue B5). */
+          where: { email: userEmail.toLowerCase(), userId: null, awaitingSeat: false, ground: { status: { not: GroundStatus.AWAITING_APPROVAL } } },
           data: { userId },
         });
       }
@@ -2363,7 +2365,8 @@ export class GroundsService {
              * session, and the gap being visible is the point rather than a side effect.
              */
             awareness: (row as any)?.awareness ?? null,
-            awarenessDetail: (row as any)?.awarenessDetail ?? null,
+            /* The lead's own note on whether it was told: hers alone, and so only to whoever runs the check-in (it was served to the person and, on a check-in where everybody reads everybody's goals, to colleagues). */
+            awarenessDetail: viewerRunsIt ? ((row as any)?.awarenessDetail ?? null) : null,
             /**
              * DECISION 56, ITEM 1. The prototype's own flag ("Not told yet", Context page): true only
              * for a goal the lead wrote and has not told this person about. Served here whatever the
@@ -2415,7 +2418,7 @@ export class GroundsService {
               dueSaid: (o as any).dueSaid ?? null,
               owedToParticipantId: (o as any).owedToParticipantId ?? null,
               awareness: (o as any).awareness ?? null,
-              awarenessDetail: (o as any).awarenessDetail ?? null,
+              awarenessDetail: viewerRunsIt ? ((o as any).awarenessDetail ?? null) : null,
               alignment: (o as any).alignment ?? null,
               alignmentNote: (o as any).alignmentNote ?? null,
               objection: (o as any).objection ?? null,
@@ -5626,15 +5629,20 @@ export class GroundsService {
      * already gone out cannot be recalled by declining afterwards - the person has
      * read it.
      */
+    /*
+     * THE PERSON IS NAMED NOW AND INVITED WHEN AN ADMIN ACCEPTS (known issue B5; screens request 174 item 3).
+     *
+     * This used to refuse, and a lead who is not an admin lost everybody she had named when she saved, with a note that stayed after
+     * approval. The point of the gate is that no invitation goes out before the approval, because an email cannot be recalled by
+     * declining afterwards. That still holds: the row is written with `invitedAt` null and no email goes, exactly as for a start date
+     * that is ahead or no seat, and `approve` sends it, once, when an admin accepts. The status is not moved on either, so naming
+     * somebody cannot take the check-in past the approval.
+     */
     const pending = await this.prisma.ground.findFirst({
       where: { id: groundId, organizationId, status: GroundStatus.AWAITING_APPROVAL },
       select: { id: true },
     });
-    if (pending) {
-      throw new BadRequestException(
-        'This check-in is waiting for an admin in your organisation to accept it. Nobody can be invited until then.',
-      );
-    }
+    const heldForApproval = !!pending;
 
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId } });
     if (!ground) throw new NotFoundException('Check-in not found');
@@ -5694,7 +5702,8 @@ export class GroundsService {
     // create/link a user, set userId, and enter their private check-in.
     // If the entry flow pre-generated a token (so the share link could be shown
     // immediately before auth), honour it here - no separate lookup needed.
-    const token = dto.inviteToken ?? crypto.randomBytes(32).toString('hex');
+    /* Tokens are made here and nowhere else: one a caller supplies is ignored (reviewer's audit, 7 October). */
+    const token = crypto.randomBytes(32).toString('hex');
     const inviteTokenExpiresAt = inviteExpiryFrom();
 
     // Prevent duplicate participant - surface a clean 400 instead of a Prisma constraint error.
@@ -5719,6 +5728,15 @@ export class GroundsService {
        */
       const freshToken = existing.inviteToken ?? crypto.randomBytes(32).toString('hex');
       const freshExpiry = inviteExpiryFrom();
+      /* While the check-in waits for an admin, nobody is written to, whether this is the first time or the second (the approval sends it, once). */
+      if (heldForApproval) {
+        return {
+          ...theInvitedRowAsServed(existing),
+          alreadyInvited: false,
+          notInvitedBecause: 'waiting_for_approval' as const,
+          saying: `The invitation to ${dto.email.toLowerCase()} will go as soon as an admin accepts this check-in.`,
+        };
+      }
       await this.prisma.groundParticipant.update({
         where: { id: existing.id },
         data: { inviteToken: freshToken, inviteTokenExpiresAt: freshExpiry, notifiedAt: null },
@@ -5737,10 +5755,12 @@ export class GroundsService {
        * organiser typed an address they had already invited, got a 201 identical to a first
        * invitation, and had no way to tell the two apart — so nothing stopped them doing it a
        * third time, and each one really did send another email.
+       *
+       * AN EXPLICIT SHAPE, NOT THE ROW (reviewer's audit, 7 October): the row carries the stop-reminders token, the invitation's expiry,
+       * how specific their answers were, what function they were detected in, and their private summary, none of which the lead is told.
        */
       return {
-        ...existing,
-        inviteToken: undefined,
+        ...theInvitedRowAsServed(existing),
         devUrl: emailResult?.devUrl,
         alreadyInvited: true,
         saying: `${dto.email.toLowerCase()} was already invited and has not opened it yet. We have sent the invitation again - it uses the same link.`,
@@ -5810,7 +5830,7 @@ export class GroundsService {
      * already holds one, and adding them to a second check-in costs nothing.
      */
     const alreadyHereWithASeat = await this.prisma.user.count({
-      where: { email: dto.email.toLowerCase(), ...alreadyHere(organizationId) },
+      where: { email: dto.email.toLowerCase(), ...seatsIn(organizationId) },
     });
     let waitingForASeat: SeatAnswer = { room: true };
     if (!alreadyHereWithASeat) {
@@ -5890,7 +5910,7 @@ export class GroundsService {
              was sent is the worst of the three outcomes: the lead believes they can still change
              their mind about somebody who has in fact never heard from us - and here, the reverse,
              believes somebody has been written to when they have not. */
-          invitedAt: startsInFuture || !waitingForASeat.room ? null : new Date(),
+          invitedAt: startsInFuture || heldForApproval || !waitingForASeat.room ? null : new Date(),
           startsAt: startsAt ?? null,
           inviteToken: token,
           inviteTokenExpiresAt,
@@ -5925,7 +5945,7 @@ export class GroundsService {
        * A ground still waiting on its lead stays waiting. The participant is
        * added and invited either way.
        */
-      if (ground.status !== GroundStatus.AWAITING_LEAD) {
+      if (ground.status !== GroundStatus.AWAITING_LEAD && !heldForApproval) {
         await tx.ground.update({ where: { id: groundId }, data: { status: GroundStatus.AWAITING_PARTIES } });
         movedTheGroundOn = true; /* Kept for the log line below; nothing is reverted. */
       }
@@ -5948,7 +5968,7 @@ export class GroundsService {
      */
     /* `waitingForASeat` holds the mail for the same reason `startsInFuture` does, and the row says
        so the same way: `invitedAt` stays null, so nothing believes they have been written to. */
-    if (!startsInFuture && waitingForASeat.room) {
+    if (!startsInFuture && !heldForApproval && waitingForASeat.room) {
     try {
       emailResult = await this.email.sendTheInviteThisGroundSends(
         ground,
@@ -6001,7 +6021,7 @@ export class GroundsService {
        * been added - Rule 3, nobody added silently - so stamping it for a deferred invite would claim
        * something that has not happened, and the cron would have nothing to look for.
        */
-      data: { notifiedAt: startsInFuture || !waitingForASeat.room ? null : new Date() },
+      data: { notifiedAt: startsInFuture || heldForApproval || !waitingForASeat.room ? null : new Date() },
     });
 
     this.usage.emit(UsageEventType.PARTICIPANT_INVITED, { organizationId, groundId, participantId: participant.id }).catch(() => undefined);
@@ -6040,13 +6060,15 @@ export class GroundsService {
      * mail did not send - and the screen read them all as one null and told the lead "invited on the
      * start date", false in two of the three. The row carries the facts; this names them.
      */
-    const notInvitedBecause: 'starts_later' | 'no_seat' | 'mail_failed' | null = emailFailed
+    const notInvitedBecause: 'starts_later' | 'no_seat' | 'mail_failed' | 'waiting_for_approval' | null = emailFailed
       ? 'mail_failed'
       : !waitingForASeat.room
         ? 'no_seat'
-        : invitedAt
-          ? null
-          : 'starts_later';
+        : heldForApproval
+          ? 'waiting_for_approval'
+          : invitedAt
+            ? null
+            : 'starts_later';
     return {
       id, email, partyType, userId, roleAsDescribed, invitedAt: emailFailed ? null : invitedAt, notifiedAt, soloArtifactAt, createdAt,
       notInvitedBecause,
@@ -6056,6 +6078,10 @@ export class GroundsService {
          see added-but-waiting-for-a-seat.ts for why this is a sentence and not a refusal. */
       awaitingSeat: !waitingForASeat.room,
       ...(waitingForASeat.room ? {} : { saying: waitingForASeat.saying }),
+      /* Named, and invited the moment an admin accepts this check-in; said as a sentence, never starting with an address. */
+      ...(heldForApproval && waitingForASeat.room
+        ? { saying: dto.displayName?.trim() || colleagueName ? `${(dto.displayName?.trim() || colleagueName)!.split(/\s+/)[0]} will be invited as soon as an admin accepts this check-in.` : `The invitation to ${email} will go as soon as an admin accepts this check-in.` }
+        : {}),
       /* Named, because "somebody from another organisation" is not something a lead can act on and
          a company name is. Never the person's other colleagues, only where they belong. */
       ...(fromAnotherOrg
@@ -6478,7 +6504,9 @@ export class GroundsService {
    */
   async releaseAnyoneWaitingForASeat(organizationId: string): Promise<{ sent: number; stillWaiting: number }> {
     const waiting = await this.prisma.groundParticipant.findMany({
-      where: { awaitingSeat: true, ground: { organizationId } },
+      /* Not into a check-in that is over, stopped or paused, nor one still waiting for an admin to accept it, nor one an admin declined (that is closed):
+         the seat is not the only reason nobody has been written to (known issue B5). */
+      where: { awaitingSeat: true, ground: { organizationId, status: { notIn: [...A_GROUND_THE_JOBS_LEAVE_ALONE, ...A_GROUND_IS_HELD, GroundStatus.AWAITING_APPROVAL] } } },
       orderBy: { createdAt: 'asc' },
       select: {
         id: true, email: true, inviteToken: true, groundId: true,
@@ -6994,6 +7022,8 @@ export class GroundsService {
       data: { status: GroundStatus.OPEN, approvedById: adminUserId, approvedAt: new Date() },
       select: { id: true, status: true },
     });
+    /* The people the lead named while it waited are invited now, once each (known issue B5). */
+    await this.sendTheInvitationsHeldForApproval(groundId, organizationId).catch((err: any) => this.logger.error(`Held invitations for ground ${groundId} failed: ${err?.message}`));
 
     // The person who set it up is waiting on this, and nothing else would tell them.
     const creator = await this.prisma.user.findUnique({
@@ -7007,6 +7037,46 @@ export class GroundsService {
         .catch((err: any) => this.logger.error(`Approval email failed for ground ${ground.id}: ${err.message}`));
     }
     return { ...updated, alreadyDecided: false };
+  }
+
+  /**
+   * THE INVITATIONS THAT WAITED FOR THE APPROVAL, SENT ONCE (known issue B5).
+   *
+   * Everybody the lead named while the check-in waited is on it with `invitedAt` and `notifiedAt` empty. Those two empty fields are the
+   * whole of "held", and writing them is what makes this send each invitation once: a second run, or a second admin's click, finds
+   * nothing to send. Left alone: anybody waiting for a seat (they have none to be invited into), anybody whose start date is ahead
+   * (the cron sends on the day), and anybody who has left. When at least one went, the check-in moves on to waiting for its parties,
+   * as it would have the moment they were added.
+   */
+  private async sendTheInvitationsHeldForApproval(groundId: string, organizationId: string): Promise<number> {
+    const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId } });
+    if (!ground) return 0;
+    const held = await this.prisma.groundParticipant.findMany({
+      /* Not filtered on `userId`: a colleague who already has an account is a person who has opened Groundwork, not one already invited, and is invited like anybody else. */
+      where: { groundId, partyType: PartyType.PARTICIPANT, invitedAt: null, notifiedAt: null, awaitingSeat: false, leftAt: null },
+      select: { id: true, email: true, inviteToken: true, remitAsGiven: true, startsAt: true },
+    });
+    const due = held.filter((p) => !p.startsAt || p.startsAt.getTime() <= Date.now());
+    if (!due.length) return 0;
+    const initiator = await this.prisma.user.findUnique({ where: { id: ground.initiatorId }, select: { firstName: true } });
+    let sent = 0;
+    for (const p of due) {
+      /* Claimed first, so two approvals at once send once. */
+      const claimed = await this.prisma.groundParticipant.updateMany({ where: { id: p.id, invitedAt: null, notifiedAt: null }, data: { invitedAt: new Date(), notifiedAt: new Date() } });
+      if (!claimed?.count) continue;
+      try {
+        await this.email.sendTheInviteThisGroundSends(ground as any, p.email, `${initiator?.firstName ?? 'A founder'}`, p.inviteToken ?? '', p.remitAsGiven ?? undefined, { kind: 'PARTICIPANT_INVITE', participantId: p.id, groundId });
+        sent += 1;
+      } catch (err: any) {
+        /* The row says nothing went, so the lead can resend it from the check-in. */
+        await this.prisma.groundParticipant.update({ where: { id: p.id }, data: { invitedAt: null, notifiedAt: null } }).catch(() => undefined);
+        this.logger.error(`The held invitation to ${p.email} on ground ${groundId} did not send: ${err?.message}`);
+      }
+    }
+    if (sent > 0 && ground.status !== GroundStatus.AWAITING_LEAD) {
+      await this.prisma.ground.update({ where: { id: groundId }, data: { status: GroundStatus.AWAITING_PARTIES } }).catch(() => undefined);
+    }
+    return sent;
   }
 
   /**

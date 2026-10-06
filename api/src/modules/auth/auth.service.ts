@@ -440,7 +440,7 @@ export class AuthService {
           /* A sign-in made with no number takes the roster's (decision 106 item 3). */
           await aSignInWithNoNumberTakesTheRosters(tx, u.id, listed?.phone);
           await tx.groundParticipant.updateMany({
-            where: { email: pending.email, userId: null, awaitingSeat: false },
+            where: { email: pending.email, userId: null, awaitingSeat: false, ground: { status: { not: 'AWAITING_APPROVAL' } } },
             data: { userId: u.id },
           });
           await tx.pendingSignup.delete({ where: { id: pending.id } });
@@ -506,7 +506,7 @@ export class AuthService {
                   data: { userId: u.id, draftToken: pending.draftToken, payload: (pending.payload ?? {}) as any, history: (pending.history ?? []) as any },
                 });
               }
-              await tx.groundParticipant.updateMany({ where: { email: pending.email, userId: null, awaitingSeat: false }, data: { userId: u.id } });
+              await tx.groundParticipant.updateMany({ where: { email: pending.email, userId: null, awaitingSeat: false, ground: { status: { not: 'AWAITING_APPROVAL' } } }, data: { userId: u.id } });
               await tx.pendingSignup.delete({ where: { id: pending.id } });
               return u;
             });
@@ -576,7 +576,7 @@ export class AuthService {
         }
         // Connect any check-ins made under this address before the account existed.
         await tx.groundParticipant.updateMany({
-          where: { email: pending.email, userId: null, awaitingSeat: false },
+          where: { email: pending.email, userId: null, awaitingSeat: false, ground: { status: { not: 'AWAITING_APPROVAL' } } },
           data: { userId: u.id },
         });
         await tx.pendingSignup.delete({ where: { id: pending.id } });
@@ -596,7 +596,7 @@ export class AuthService {
       // Link any groundParticipant records whose email matches but have no userId yet.
       // This connects participants who checked in before creating their account.
       await tx.groundParticipant.updateMany({
-        where: { email: tokenRecord.user.email.toLowerCase(), userId: null, awaitingSeat: false },
+        where: { email: tokenRecord.user.email.toLowerCase(), userId: null, awaitingSeat: false, ground: { status: { not: 'AWAITING_APPROVAL' } } },
         data: { userId: tokenRecord.userId },
       });
       return { user: tokenRecord.user };
@@ -616,7 +616,7 @@ export class AuthService {
       // Link any groundParticipant records whose email matches - same as verifyEmail.
       // Covers participants who were invited before creating their account.
       await tx.groundParticipant.updateMany({
-        where: { email: tokenRecord.user.email.toLowerCase(), userId: null, awaitingSeat: false },
+        where: { email: tokenRecord.user.email.toLowerCase(), userId: null, awaitingSeat: false, ground: { status: { not: 'AWAITING_APPROVAL' } } },
         data: { userId: tokenRecord.userId },
       });
       return tokenRecord.user;

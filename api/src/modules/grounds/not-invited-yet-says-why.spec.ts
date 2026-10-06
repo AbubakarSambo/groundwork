@@ -8,7 +8,7 @@ const page = strip(readFileSync(join(__dirname, '..', '..', '..', '..', 'client'
 
 describe('the server', () => {
   it('names the reason beside invitedAt, and a failed mail is not "invited"', () => {
-    expect(service).toMatch(/const notInvitedBecause: 'starts_later' \| 'no_seat' \| 'mail_failed' \| null = emailFailed\s*\? 'mail_failed'/);
+    expect(service).toMatch(/const notInvitedBecause: 'starts_later' \| 'no_seat' \| 'mail_failed' \| 'waiting_for_approval' \| null = emailFailed\s*\? 'mail_failed'/);
     expect(service).toContain('invitedAt: emailFailed ? null : invitedAt');
   });
 });
