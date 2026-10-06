@@ -1,3 +1,4 @@
+import { aShortQuestionForAPerson, askedBackToTheLead, theQuestionTheyWereShown } from './a-short-question-for-a-person-in-the-old-chat';
 import { aFindingThatReadsRight } from './a-finding-reads-right';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
 import { refuseSomeoneHeldForASeat, refuseSomeoneAwaitingTheOrganisation, theCheckInsHeldForASeat } from '../participants/held-for-a-seat';
@@ -2993,6 +2994,24 @@ export class GroundsService {
     }
 
     /*
+     * A SHORT SENTENCE THAT ASKS A NAMED PERSON SOMETHING is a question for that person, said back as the exact sentence and kept
+     * only on a yes, as Ask Groundwork does it (a-short-question-for-a-person-in-the-old-chat.ts). It was read as a goal.
+     */
+    {
+      const lastLeadTurn = [...history].reverse().find((h) => h.role === 'user')?.content?.trim() ?? '';
+      const asked = aShortQuestionForAPerson(lastLeadTurn);
+      if (asked) {
+        try {
+          const q = await this.theQuestionForAPerson(groundId, requestingUserId, asked);
+          return { reply: '', gaps: [] as string[], openQuestion: null, done: false, proposal: { gap: 'question_for_person', say: askedBackToTheLead(q.who, q.exactQuestion) } };
+        } catch (err: any) {
+          if (err instanceof BadRequestException) return { reply: err.message, gaps: [] as string[], openQuestion: null, done: false, proposal: null };
+          throw err;
+        }
+      }
+    }
+
+    /*
      * THE DOCUMENTS THEMSELVES, NOT A COUNT OF THEM.
      *
      * This read only `count`, so the context chat knew how many files existed and nothing about
@@ -4128,6 +4147,14 @@ export class GroundsService {
     if (dto.offerId) {
       const kept = await keepWhatWasOffered(this.prisma, { organizationId: ground.organizationId, groundId, offerId: dto.offerId, userId: requestingUserId });
       return { changed: kept.kept ? 'organisation memory' : 'nothing new', say: kept.say };
+    }
+    /* And a yes to a short question for a named person keeps that question, in the words the lead was shown. */
+    const askedOfOne = dto.leave ? null : aShortQuestionForAPerson(dto.said);
+    if (askedOfOne) {
+      const q = await this.theQuestionForAPerson(groundId, requestingUserId, askedOfOne);
+      const shown = theQuestionTheyWereShown(dto.history, q.who);
+      const kept = await this.keepAQuestionForAPerson(groundId, requestingUserId, { participantId: q.participantId, leadWords: askedOfOne.leadWords, exactQuestion: shown ?? q.exactQuestion });
+      return { changed: `a question for ${q.who}`, say: (kept as any).say };
     }
     /* And a yes to a leave request is sent through the leave suite, from the days in the lead's own words. */
     if (dto.leave) {
