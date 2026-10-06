@@ -602,7 +602,18 @@ export function ContextPage({
             ) : (
               !theBrief && (
                 <Callout>
-                  Nothing yet. Say what this is counted by in the conversation below and it lands here.
+                  {/*
+                    "IN THE CONVERSATION BELOW" ONLY WHEN THERE IS ONE (real-user walk, Kijani
+                    Foods, fault 5). The chat underneath this page only ever renders for the lead
+                    who may change setup, gated the same way as everywhere else on this page
+                    (`contextEnabled && isTheLead`, line 448) - Esther, a member, and Naomi, an
+                    admin without that right, both read an instruction to use a conversation that
+                    is not on their screen at all. Everybody else reads the same plain fact with
+                    nothing to act on.
+                  */}
+                  {mayRewriteTheBrief && contextEnabled
+                    ? 'Nothing yet. Say what this is counted by in the conversation below and it lands here.'
+                    : 'Nothing yet.'}
                 </Callout>
               )
             )}
