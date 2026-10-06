@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { queueApi, leaveBoardApi, spendApi, decisionsApi, type AQueueItem, type ADecisionResult } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row, Tabs, FieldLabel, TextArea } from '@/components/gw/ui'
 import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
+import { useSuitesKnownOffStore } from '@/stores/suites-known-off'
 
 /**
  * A LINK TO THE QUEUE, FOR TODAY AND THE SUITES PAGE, ONLY FOR SOMEBODY THE QUEUE SERVES ITEMS TO.
@@ -15,13 +16,21 @@ import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
  * the queue).
  */
 export function QueueLink({ userId }: { userId?: string }) {
-  const { data } = useQuery({
+  /* SCREEN FAULT 11: same session-remembered guard as AppShell's sidebar read
+     (stores/suites-known-off.ts) - once this session has already been told both suites are off,
+     Today and Suites stop asking again. */
+  const suitesKnownOff = useSuitesKnownOffStore(s => s.off)
+  const setSuitesKnownOff = useSuitesKnownOffStore(s => s.setOff)
+  const { data, isError, error } = useQuery({
     queryKey: ['suite-queue-count'],
     queryFn: () => queueApi.get({ pageSize: 1 }),
-    enabled: !!userId,
+    enabled: !!userId && !suitesKnownOff,
     retry: false,
     staleTime: 30_000,
   })
+  useEffect(() => {
+    if (isError && (error as any)?.response?.status === 404) setSuitesKnownOff()
+  }, [isError, error, setSuitesKnownOff])
   if (!data?.counts?.all) return null
   return <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/queue">See everything waiting for you to decide</Link></p>
 }

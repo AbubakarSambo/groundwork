@@ -1,5 +1,6 @@
 import { useNoRailStore } from '@/stores/no-rail'
 import { useCheckInFocusStore } from '@/stores/check-in-focus'
+import { useSuitesKnownOffStore } from '@/stores/suites-known-off'
 import { toast } from 'sonner'
 import { mayRenameACheckIn } from '@/lib/who-may-rename-a-check-in'
 import { MARKETING_URL } from '@/lib/marketing'
@@ -623,14 +624,25 @@ export function AppSidebar() {
      member who holds finance or HR, and decides requests in their own queue, had no door to it. The
      same quiet read `QueueLink` uses (one row, just the counts) also opens the door for them, a lead
      or an admin already having it by role. Read only for a member: a lead or an admin already has it,
-     and nobody else is ever served anything by the queue. */
+     and nobody else is ever served anything by the queue.
+
+     SCREEN FAULT 11: AND NOT AT ALL, ONCE THIS SESSION ALREADY KNOWS BOTH SUITES ARE OFF. This read
+     went out again every time its 30-second cache went stale, on whatever page this reader happened
+     to be on - a quiet 404 in Kilima Traders (suites off), but still a request on every page. There
+     is nowhere cheap to ask first (`/suites` itself refuses a member), so the first 404 is
+     remembered for the rest of this session (stores/suites-known-off.ts) instead of asked again. */
+  const suitesKnownOff = useSuitesKnownOffStore(s => s.off)
+  const setSuitesKnownOff = useSuitesKnownOffStore(s => s.setOff)
   const queueServesThem = useQuery({
     queryKey: ['suite-queue-count'],
     queryFn: () => queueApi.get({ pageSize: 1 }),
-    enabled: isAuthenticated && user?.role === 'MEMBER',
+    enabled: isAuthenticated && user?.role === 'MEMBER' && !suitesKnownOff,
     retry: false,
     staleTime: 30_000,
   })
+  useEffect(() => {
+    if (queueServesThem.isError && (queueServesThem.error as any)?.response?.status === 404) setSuitesKnownOff()
+  }, [queueServesThem.isError, queueServesThem.error, setSuitesKnownOff])
   const navOpts = { queueServesThem: user?.role === 'MEMBER' && !!queueServesThem.data?.counts?.all }
 
   const location = useLocation()
