@@ -273,7 +273,7 @@ export async function howItEnds(c: any): Promise<string[]> {
       const statusOf = async (ci: any) => (await prisma.checkIn.findUnique({ where: { id: ci.id }, select: { status: true } }))?.status;
       /* A clock inside the day in Lagos, tomorrow, for the reminder sweep only. */
       const noon = new Date(); noon.setUTCDate(noon.getUTCDate() + 1); noon.setUTCHours(11, 0, 0, 0);
-      const HR = 3600_000;
+      const HR = 3600_000; const DAY = 86_400_000;
 
       /* The person who stops halfway, and (for the leave case) another who is on approved leave. */
       const ci = await startHalfway(halfway);
