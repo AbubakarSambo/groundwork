@@ -2539,21 +2539,24 @@ export function GroundAdminPage() {
               "Not sure what release report is for." Fair - in the normal path nobody presses it.
               It fires by itself the moment the last person finishes: everybody is emailed, the
               report is stamped released, and each person's follow-up guide is written. The button
-              exists only to cut a round short and publish what there is, so it says that, and it
-              only appears while a round is genuinely open.
+              exists only to cut a session short and publish what there is, so it says that, and it
+              only appears while a session is genuinely open.
+
+              "SESSION", NOT "ROUND" (real-user walk, Kijani Foods, fault 2), and two full sentences
+              in place of the one joined with a semicolon.
             */}
             {/* Folded, under the board and the session list: it is the exception, not the page. */}
             {isInitiator && (ground as any).report && !(ground as any).report.releasedAt && (
-              <Folded summary="Closing a round early">
+              <Folded summary="Closing a session early">
                 <Note>
                   When the last person answers, the report goes out to everybody on its own - you do
-                  not have to do anything. If you need to stop waiting, you can close this round now
-                  and publish what there is; it will be missing whoever has not answered.
+                  not have to do anything. If you need to stop waiting, you can close this session
+                  now and publish what there is. It will be missing whoever has not answered.
                 </Note>
                 {!showReleaseConfirm ? (
                   <Stack gap={10}>
                     <Button kind="quiet" size="small" onClick={() => setShowReleaseConfirm(true)}>
-                      Close this round now and publish what there is
+                      Close this session now and publish what there is
                     </Button>
                   </Stack>
                 ) : (
@@ -2564,7 +2567,7 @@ export function GroundAdminPage() {
                           can read it, and the lead does not. A false reassurance in the
                           confirmation for something that cannot be undone. */}
                       Everybody is emailed. This cannot be undone, and
-                      anybody who has not answered loses their turn on this round.
+                      anybody who has not answered loses their turn on this session.
                     </Callout>
                     <div className="gwui-button-row">
                       <Button kind="secondary" redText size="small" disabled={releaseReport.isPending} onClick={() => releaseReport.mutate()}>
