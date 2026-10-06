@@ -6,7 +6,6 @@ import { useAuthStore } from '@/stores/auth'
 import { Page, PageTitle, Section, Panel, Button, Note, Empty, RowList, Row, FieldLabel, Select, TextField, TextArea, Tag, ExampleExchange } from '@/components/gw/ui'
 import { AskAQuestion } from './AskAQuestion'
 import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
-import { midSentence } from '@/lib/a-colleague'
 
 /**
  * SPENDING AND BUDGETS (E7, #/suite/spend, group 2 piece 4). What each reader is given is the server's
@@ -157,14 +156,15 @@ function ARequest({ w, board }: { w: SpendWaiting; board: SpendBoard }) {
     onSuccess: (b) => { setProblem(null); qc.setQueryData(['suite-spend'], b) },
     onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
   })
-  /* `w.what` can open with a capitalised article ("The Mwangi agency") where the same string also
-     stands as a title elsewhere; mid-sentence here, only that leading word is wrong (fault 1). */
-  const title = `${w.firstName}: ${withCurrency(board.currency, w.amount)} for ${midSentence(w.what)}`
+  /* THE LINE IS THE SERVER'S (request 162, item 3): `says` already reads "Kamau: KES 18,000 for fuel
+     for Kisumu deliveries", built once (a-request-in-words.ts) rather than here a second time - this
+     used to build its own title from the raw fields, which is exactly the kind of drift that put the
+     wrong capitalisation on "The Mwangi agency" (fault 1) in the first place. */
   const known = whatToKnow(w, board.currency, board.limit)
   return (
     <Row columns="minmax(0, 1fr) auto">
       <div>
-        <b>{title}</b>
+        <b>{w.says}</b>
         {w.category && <Tag>{w.category}</Tag>}
         {known && <p className="gwui-panel-text">{known}</p>}
         <p className="gwui-panel-text">{w.where}</p>
