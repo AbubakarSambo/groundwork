@@ -18,7 +18,7 @@ Abubakar has pull request #322 going to production. No pull request was opened f
 - **The leave and payment forms work.** They read the engine's form reads: kinds of leave, who covers, currency and categories. Each form is filled in from what the person said, and sends to the new routes.
 - **Newly served parts drawn.** "Connect WhatsApp", shown as an optional convenience in Settings and in a person's own check-in. "Remind them" on a paused check-in. Billing's "How it began" line, and the WhatsApp-off sentence for leads and members.
 
-**Tests:** the client passes, 4,466 of 4,466, and the type check is clean, at 6cf830ed. Three full runs in a row were green after the stream-test change.
+**Tests:** the client passes, 4,488 of 4,488, and the type check is clean, at c8364d98. The browser tests pass, 57 of 57, after the check-in page's open fix (one had caught a page stuck on "Opening your session…", fixed in 79f04511).
 
 **Also finished later in the night**
 - **Suites at scale.**
@@ -38,6 +38,18 @@ Abubakar has pull request #322 going to production. No pull request was opened f
   - an admin offered setup changes she cannot make;
   - the header and setup tab disagreeing about the report.
 - **The one-off style clean-up.** Every exact replacement is done, proven by byte-identical screenshots. The rest has no exact shared equivalent, so it would need new shared parts that only rename the one-offs. That is left, see below.
+
+**Also later**
+- **The existing clients' use cases, walked in Kilima Traders.** Four new faults are fixed:
+  - a red pop-up on every page for organisations with the suites off;
+  - a dead link on Today;
+  - Groundwork's words drawn as a person's quote;
+  - a mislabelled link.
+- **The check-in page.** It opens a session once, never hangs on an error, and opens correctly under React's development double run.
+- **The report tab's send button and counts** are fixed.
+- **The suites queue** uses the engine's batch decision, and shows each result and what failed.
+- **To-dos** are shown inside each check-in, never as one person's list (decision 110, P8; request 176 asks the engine to serve it that way).
+- **The known problems** are folded into the engine's `docs/known-issues.md`, with the screens' own items U13 to U17.
 
 **Needs Hafsah**
 - **"Ask to join"** (request 159). It needs a new route that lets a person who may read a check-in, but is not in it, ask to join. The engine will not open that way in without your yes. The screen shows only "<name> runs it and can add you." until then.
