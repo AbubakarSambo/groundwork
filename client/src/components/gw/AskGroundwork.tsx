@@ -6,6 +6,8 @@ import { documentsApi } from '@/api/documents'
 import { groundsApi } from '@/api/grounds'
 import { UPLOAD_ACCEPT_ATTR } from '@/lib/what-you-can-upload'
 import { whatTellsItApart } from '@/lib/tell-apart-the-same-name'
+import { askNameFor } from '@/lib/ask-name'
+import { useAuthStore } from '@/stores/auth'
 import { Mark } from './kit'
 import { Composer } from './ui/Composer'
 import { PRIVATE_LINE } from './what-ask-groundwork-says'
@@ -15,6 +17,15 @@ const STILL_READING = 'Reading it now.'
 /** Recognised by Ask Groundwork whichever of the two upload routes sent it (docs/answers-from-engine.md,
     30 September, "a document's numbers, said back through Ask Groundwork"). */
 const SAID_AFTER_UPLOAD = "I've uploaded it."
+
+/**
+ * THE NAME AND CAPTION, BEFORE `GET /ask` HAS ANSWERED (screen fault 5d). Loading, or held up by
+ * a 429, used to show the bare "Ask Groundwork" with no caption at all - the organisation's own
+ * name was already in hand (the signed-in person's own profile), and the caption is a fixed
+ * sentence, decision 100, the same one `ASK_CAPTION` on the server always serves
+ * (api/src/modules/assistant/ask-name.ts) - so neither needs to wait for this request to land.
+ */
+const ASK_CAPTION_FALLBACK = 'Ask about the company, your work or your check-ins.'
 
 /*
  * WIDTH CHECK, ITEM 8: THE COMPOSER'S OWN RESTING HEIGHT CUT OFF ITS OWN HINT. The placeholder -
@@ -160,6 +171,8 @@ export function AskGroundwork({
   pollTimeoutMs?: number
 }) {
   const location = useLocation()
+  const user = useAuthStore(s => s.user)
+  const orgName = (user as any)?.organization?.name?.trim() || user?.organizationName || ''
   const page = useQuery({ queryKey: ['ask'], queryFn: askApi.mine })
   /* The check-in the page is about, from its address, so the panel opens on it. */
   const here = checkInOnThisPage(location.pathname)
@@ -423,7 +436,7 @@ export function AskGroundwork({
     }}>
       <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid var(--gw-line)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <h2 id="gw-ask-title" style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>{page.data?.askName ?? 'Ask Groundwork'}</h2>
+          <h2 id="gw-ask-title" style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>{page.data?.askName ?? askNameFor(orgName)}</h2>
           {onClose && (
             <button type="button" className="gw-tap44" onClick={onClose} aria-label="Close"
               style={{ border: 0, background: 'transparent', fontSize: 20, cursor: 'pointer', color: 'var(--gw-sub)' }}>×</button>
@@ -435,7 +448,7 @@ export function AskGroundwork({
          * check-ins." and "You can also add context or documents to your check-ins here." -
          * printed under the name exactly as they arrive.
          */}
-        {page.data?.caption && <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--gw-text)', lineHeight: 1.4 }}>{page.data.caption}</p>}
+        <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--gw-text)', lineHeight: 1.4 }}>{page.data?.caption ?? ASK_CAPTION_FALLBACK}</p>
         {page.data?.addLine && <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{page.data.addLine}</p>}
         {about.length > 0 && (
           /*

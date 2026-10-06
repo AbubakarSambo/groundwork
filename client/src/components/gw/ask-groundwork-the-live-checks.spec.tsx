@@ -29,6 +29,14 @@ import { askApi } from '@/api/ask'
 import { documentsApi } from '@/api/documents'
 import { groundsApi } from '@/api/grounds'
 
+/*
+ * SCREEN FAULT 5d, FIXED: the header's caption used to show only once `GET /ask` had answered, so
+ * `findByText(CAPTION)` doubled as "wait for the page's real data to land" everywhere below. Now
+ * the same fixed caption shows immediately, before the request answers (so loading, and a 429,
+ * never show the bare "Ask Groundwork" with nothing under it) - so these waits moved to the
+ * composer's placeholder, which still only reads this text once the real data is in (its own
+ * fallback, "Ask a question", differs).
+ */
 const CAPTION = 'Ask about the company, your work or your check-ins.'
 const ADD_LINE = 'You can also add context or documents to your check-ins here.'
 
@@ -85,7 +93,7 @@ describe('item 1: the upload goes to the check-in, not the assistant’s session
     ])
 
     const { container } = panel(SALES)
-    await screen.findByText(CAPTION)
+    await screen.findByPlaceholderText(CAPTION)
     fireEvent.change(screen.getByPlaceholderText(CAPTION), { target: { value: 'add the targets sheet' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Choose a file' }))
@@ -106,7 +114,7 @@ describe('item 2: a multi-line message box', () => {
   it('keeps the line breaks in what is sent, Enter sends and Shift+Enter starts a new line', async () => {
     vi.mocked(askApi.ask).mockResolvedValue({ lane: 'x', composedBy: 'rules', blocks: [{ type: 'text', body: 'Got it.' }] })
     panel(SALES)
-    await screen.findByText(CAPTION)
+    await screen.findByPlaceholderText(CAPTION)
     const box = screen.getByPlaceholderText(CAPTION) as HTMLTextAreaElement
     expect(box.tagName).toBe('TEXTAREA')
 
@@ -134,7 +142,7 @@ describe('item 3: a sign of work while a reply is on its way', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     try {
       panel(SALES)
-      await vi.waitFor(() => screen.getByText(CAPTION))
+      await vi.waitFor(() => screen.getByPlaceholderText(CAPTION))
       const box = screen.getByPlaceholderText(CAPTION) as HTMLTextAreaElement
       fireEvent.change(box, { target: { value: 'what is stuck?' } })
       fireEvent.click(screen.getByRole('button', { name: 'Send' }))
@@ -209,7 +217,7 @@ describe('item 5: "About" includes a check-in an admin may read, even when it is
       { id: 'g-one', label: 'Faith, first 90 days' } as Ground,
     ])
     panel(JUMAS, '/grounds/g-sales/board')
-    await screen.findByText(CAPTION)
+    await screen.findByPlaceholderText(CAPTION)
     const about = screen.getByRole('combobox', { name: 'About' }) as HTMLSelectElement
     expect(about.value).toBe('g-sales')
     expect([...about.options].map((o) => o.textContent)).toContain('Sales team, Q3')
@@ -218,7 +226,7 @@ describe('item 5: "About" includes a check-in an admin may read, even when it is
   it('does not add a check-in he may not read', async () => {
     vi.mocked(groundsApi.list).mockResolvedValue([{ id: 'g-one', label: 'Faith, first 90 days' } as Ground])
     panel(JUMAS, '/grounds/g-not-his/board')
-    await screen.findByText(CAPTION)
+    await screen.findByPlaceholderText(CAPTION)
     const about = screen.getByRole('combobox', { name: 'About' }) as HTMLSelectElement
     expect([...about.options].map((o) => o.value)).not.toContain('g-not-his')
   })
@@ -240,7 +248,7 @@ describe('item 6: the "About" picker stays inside the panel', () => {
       starters: [],
     }
     panel(WAIRIMUS, '/grounds/g-sales/board')
-    await screen.findByText(CAPTION)
+    await screen.findByPlaceholderText(CAPTION)
     const about = screen.getByRole('combobox', { name: 'About' }) as HTMLSelectElement
     expect(about.style.minWidth).toBe('0px')
     // jsdom normalises the `flex: 1` shorthand into its three longhands.
@@ -255,7 +263,7 @@ describe('item 7: only the newest reply’s option buttons can be pressed', () =
       .mockResolvedValueOnce({ lane: 'x', composedBy: 'rules', blocks: [{ type: 'picker', options: [{ key: 'a', label: 'Option A' }] }] })
       .mockResolvedValueOnce({ lane: 'x', composedBy: 'rules', blocks: [{ type: 'text', body: 'Second reply.' }] })
     panel(SALES)
-    await screen.findByText(CAPTION)
+    await screen.findByPlaceholderText(CAPTION)
     const box = screen.getByPlaceholderText(CAPTION)
 
     fireEvent.change(box, { target: { value: 'first question' } })

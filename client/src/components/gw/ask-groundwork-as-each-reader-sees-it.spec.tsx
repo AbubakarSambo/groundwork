@@ -89,7 +89,12 @@ beforeEach(() => { vi.clearAllMocks(); useAskStore.setState({ open: false }) })
 describe('Miriam, taking part in the sales team, opens Ask Groundwork on its board', () => {
   it('reads the prototype’s panel, named for her organisation, about her check-in, with the caption, the one line and the privacy line', async () => {
     panel(MIRIAMS)
-    expect(await screen.findByRole('heading', { name: 'Ask Baridi' })).toBeInTheDocument()
+    /* SCREEN FAULT 5d: the heading alone is no longer a safe "the real data has landed" wait -
+       its fallback (askNameFor the signed-in person's own organisation) reads "Ask Baridi" too,
+       before GET /ask has answered. The composer's placeholder still only takes this text from the
+       real response, so that is what the rest of this test waits on. */
+    await screen.findByPlaceholderText(CAPTION)
+    expect(screen.getByRole('heading', { name: 'Ask Baridi' })).toBeInTheDocument()
     expect(screen.getByText(PRIVATE)).toBeInTheDocument()
     expect(screen.getByText(CAPTION)).toBeInTheDocument()
     expect(screen.getByText(ADD_LINE)).toBeInTheDocument()
@@ -110,7 +115,7 @@ describe('Miriam, taking part in the sales team, opens Ask Groundwork on its boa
   it('asks about the check-in chosen, and reads the answer as it comes', async () => {
     ;vi.mocked(askApi.ask).mockResolvedValue({ lane: 'what_is_stuck', composedBy: 'rules', blocks: [{ type: 'text', body: 'Nothing is recorded as waiting on you.' }] })
     panel(MIRIAMS)
-    await screen.findByText(CAPTION)
+    await screen.findByPlaceholderText(CAPTION)
     fireEvent.change(screen.getByPlaceholderText(CAPTION), { target: { value: 'What is waiting on me?' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     expect(await screen.findByText('Nothing is recorded as waiting on you.')).toBeInTheDocument()
@@ -129,7 +134,7 @@ describe('a request is said back, and only a yes to that request sends it', () =
     })
     ;vi.mocked(askApi.answer).mockResolvedValue({ lane: 'add_a_to_do', composedBy: 'rules', blocks: [{ type: 'text', body: 'On your list: call Kariuki about the deposit.' }] })
     panel(MIRIAMS)
-    await screen.findByText(CAPTION)
+    await screen.findByPlaceholderText(CAPTION)
     fireEvent.change(screen.getByPlaceholderText(CAPTION), { target: { value: 'remind me to call Kariuki about the deposit' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     expect(await screen.findAllByText(OFFER)).toHaveLength(1)
@@ -145,7 +150,7 @@ describe('a request is said back, and only a yes to that request sends it', () =
   it('shows the server’s own words when it refuses', async () => {
     ;vi.mocked(askApi.ask).mockRejectedValue({ response: { data: { message: 'You are not part of this check-in.' } } })
     panel(MIRIAMS)
-    await screen.findByText(CAPTION)
+    await screen.findByPlaceholderText(CAPTION)
     fireEvent.change(screen.getByPlaceholderText(CAPTION), { target: { value: 'what is stuck?' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('You are not part of this check-in.')
@@ -253,7 +258,7 @@ describe('somebody Ask Groundwork cannot answer yet', () => {
 describe('what nobody reads here', () => {
   it('no label on a person and nothing about how anybody was rated', async () => {
     const { container } = panel(MIRIAMS)
-    await screen.findByText(CAPTION)
+    await screen.findByPlaceholderText(CAPTION)
     expect(container.textContent).not.toMatch(/\bPIP\b|at risk|low performer|rated|rating|score/i)
   })
 })
@@ -289,5 +294,29 @@ describe('where it opens', () => {
     expect(await screen.findByRole('heading', { name: 'Ask Baridi' })).toBeInTheDocument()
     expect(await screen.findByText('Why is Green Mart next quarter?')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Close' })).toBeNull()
+  })
+
+  /*
+   * SCREEN FAULT 5d: opening Chat while `GET /ask` was still loading, or held up by a 429, used to
+   * show the bare "Ask Groundwork" with no caption under it - the organisation's own name was
+   * already in hand (the signed-in person's own profile), and the caption is a fixed sentence
+   * (decision 100), so neither needs to wait for the request.
+   */
+  it('while GET /ask is still loading, reads her own organisation\'s name and the caption, not the bare default', async () => {
+    useAuthStore.setState({ user: USER, token: 't', isAuthenticated: true } as unknown as Parameters<typeof useAuthStore.setState>[0])
+    ;vi.mocked(askApi.mine).mockImplementation(() => new Promise(() => {})) // never resolves: still loading
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/today']}><AskGroundwork onClose={() => {}} /></MemoryRouter></QueryClientProvider>)
+    expect(await screen.findByRole('heading', { name: 'Ask Baridi' })).toBeInTheDocument()
+    expect(screen.getByText(CAPTION)).toBeInTheDocument()
+  })
+
+  it('held up by a 429, still reads her own organisation\'s name and the caption', async () => {
+    useAuthStore.setState({ user: USER, token: 't', isAuthenticated: true } as unknown as Parameters<typeof useAuthStore.setState>[0])
+    ;vi.mocked(askApi.mine).mockRejectedValue({ response: { status: 429, data: { message: 'Too many requests.' } } })
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/today']}><AskGroundwork onClose={() => {}} /></MemoryRouter></QueryClientProvider>)
+    expect(await screen.findByRole('heading', { name: 'Ask Baridi' })).toBeInTheDocument()
+    expect(screen.getByText(CAPTION)).toBeInTheDocument()
   })
 })

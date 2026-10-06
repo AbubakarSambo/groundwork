@@ -54,7 +54,7 @@ describe('a text block', () => {
       blocks: [{ type: 'text', body: 'Nothing is recorded as waiting on you.' }],
     })
     panel()
-    await screen.findByText(ABOUT.caption)
+    await screen.findByPlaceholderText(ABOUT.caption)
     fireEvent.change(screen.getByPlaceholderText(ABOUT.caption), { target: { value: 'what is stuck' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     expect(await screen.findByText('Nothing is recorded as waiting on you.')).toBeInTheDocument()
@@ -76,7 +76,7 @@ describe('a proposal', () => {
       blocks: [{ type: 'text', body: 'Added.' }],
     })
     panel()
-    await screen.findByText(ABOUT.caption)
+    await screen.findByPlaceholderText(ABOUT.caption)
     fireEvent.change(screen.getByPlaceholderText(ABOUT.caption), { target: { value: 'decision: we will drop the pilot' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     expect(await screen.findByText(OFFER)).toBeInTheDocument()
@@ -99,7 +99,7 @@ describe('a proposal', () => {
         blocks: [{ type: 'proposal', proposalId: 'pr-new', summary: 'Shall I add the second line?' }],
       })
     panel()
-    await screen.findByText(ABOUT.caption)
+    await screen.findByPlaceholderText(ABOUT.caption)
     const input = screen.getByPlaceholderText(ABOUT.caption)
 
     fireEvent.change(input, { target: { value: 'note about the first line' } })
@@ -126,7 +126,7 @@ describe('a proposal', () => {
       response: { status: 409, data: { message: 'Something newer is waiting on you now, so this one is closed.' } },
     })
     panel()
-    await screen.findByText(ABOUT.caption)
+    await screen.findByPlaceholderText(ABOUT.caption)
     fireEvent.change(screen.getByPlaceholderText(ABOUT.caption), { target: { value: 'add a line' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     await screen.findByText('Shall I add this line?')
@@ -142,7 +142,7 @@ describe('a refusal', () => {
       blocks: [{ type: 'text', body: 'Only the lead who runs this check-in can confirm a question for someone on it.' }],
     })
     panel()
-    await screen.findByText(ABOUT.caption)
+    await screen.findByPlaceholderText(ABOUT.caption)
     fireEvent.change(screen.getByPlaceholderText(ABOUT.caption), { target: { value: 'confirm the question for Ben' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     expect(await screen.findByText('Only the lead who runs this check-in can confirm a question for someone on it.')).toBeInTheDocument()
@@ -157,7 +157,7 @@ describe('a question that is not yes or no', () => {
       blocks: [{ type: 'text', body: 'How long should it run?' }],
     })
     panel()
-    await screen.findByText(ABOUT.caption)
+    await screen.findByPlaceholderText(ABOUT.caption)
     fireEvent.change(screen.getByPlaceholderText(ABOUT.caption), { target: { value: 'setting up context for the sales check-in' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     expect(await screen.findByText('How long should it run?')).toBeInTheDocument()
@@ -200,7 +200,7 @@ describe('the upload next step', () => {
     ])
 
     const { container } = panel()
-    await screen.findByText(ABOUT.caption)
+    await screen.findByPlaceholderText(ABOUT.caption)
     fireEvent.change(screen.getByPlaceholderText(ABOUT.caption), { target: { value: 'I want to add the Q4 targets sheet' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
 
@@ -229,7 +229,7 @@ describe('the upload next step', () => {
     ])
 
     const { container } = panel({ pollIntervalMs: 1, pollTimeoutMs: 5 })
-    await screen.findByText(ABOUT.caption)
+    await screen.findByPlaceholderText(ABOUT.caption)
     fireEvent.change(screen.getByPlaceholderText(ABOUT.caption), { target: { value: 'add a document' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Choose a file' }))
