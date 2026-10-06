@@ -488,6 +488,15 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 @media (max-width: 640px) {
   .gwui-icon-btn { width: 40px; height: 40px; }
 }
+/*
+ * SCREEN FAULT 5: THE HELP MODAL'S OWN CLOSE BUTTON WAS A FIXED 28px CIRCLE AT EVERY WIDTH.
+ * Same floor as `.gwui-icon-btn` just above, on its own name because HelpModal.tsx sets this
+ * button's other styles (position, background, colour) inline rather than through that class.
+ */
+.gwui-help-close { width: 28px; height: 28px; }
+@media (max-width: 640px) {
+  .gwui-help-close { width: 40px; height: 40px; }
+}
 .gwui-invite-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
 /* A FIELD BESIDE ITS BUTTON, EVEN ON A PHONE (group 1 review, "Add it, switched off"): `.gwui-input`
    is `width: 100%` on its own, which inside a flex row computes a wide flex-basis and pushes the
