@@ -90,7 +90,7 @@ export function mergeStyle(existing: StyleObservation | null, seen: StyleObserva
 
 /** The plain-words rule. One sentence, used for a person who asked what our terms mean and for a check-in set to use simpler words. */
 export const THE_PLAIN_WORDS_RULE =
-  'They have asked before what our terms mean. Use plain words: "this conversation" rather than "this ground", "what you are answerable for" rather than "your remit". If you must use a product word, define it in the same sentence, once, without making a point of it.';
+  'They have asked before what our terms mean. Use plain words: "this conversation" rather than "this ground", "what you are answerable for" rather than "your remit". Define any product word you must use in the same sentence, once, without making a point of it.';
 
 /**
  * WHAT THE MODEL IS TOLD WHEN THE LEAD HAS SWITCHED ON "USE SIMPLER WORDS", FOR EVERYBODY IN THE CHECK-IN.
