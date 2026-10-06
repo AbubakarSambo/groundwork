@@ -117,7 +117,8 @@ export const THE_PANEL = {
 } as const;
 
 export const VOCABULARY = {
-  scenario: Object.values(GroundScenario),
+  /* The anchor's own situation is not one the developer API offers: it starts from its link, and the API keeps working exactly as it did. */
+  scenario: Object.values(GroundScenario).filter((s) => s !== GroundScenario.HELP_TEAM_UNDERSTAND),
   moment: Object.values(GroundMoment),
   objectiveKind: Object.values(ObjectiveKind),
 } as const;

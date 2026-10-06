@@ -57,7 +57,7 @@ describe('the vocabularies', () => {
    * their trust with it.
    */
   it('are the real scenarios', () => {
-    expect(VOCABULARY.scenario).toEqual(Object.values(GroundScenario));
+    expect(VOCABULARY.scenario).toEqual(Object.values(GroundScenario).filter((s) => s !== 'HELP_TEAM_UNDERSTAND')); /* the anchor's own situation is not offered to developers */
     expect(VOCABULARY.scenario.length).toBeGreaterThan(5);
   });
 
