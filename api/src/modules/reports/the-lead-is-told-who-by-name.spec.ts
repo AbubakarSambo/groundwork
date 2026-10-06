@@ -12,7 +12,8 @@ describe('the lead is told who checked in, by name, with the true count', () => 
   it('fetches the name and counts who has no completed check-in this session', () => {
     expect(src).toMatch(/firstName: true, lastName: true/);
     expect(src).toMatch(/checkIns: \{ where: \{ sessionNumber: event\.sessionNumber, status: CheckInStatus\.COMPLETED \}/);
-    expect(src).toMatch(/const stillPending = ground\.participants\.filter\(\(p\) => !p\.managingOnly && p\.checkIns\.length === 0\)\.length/);
+    /* Changed on 7 October: the count is made by whoIsLeftToCheckIn, which leaves out the person who just checked in, the lead and anybody not expected (who-has-not-checked-in-yet.spec.ts reads what it says). */
+    expect(src).toMatch(/const stillPending = whoIsLeftToCheckIn\(ground\.participants as any, \{ justCheckedIn: event\.participantId, readerEmail: ground\.initiator\.email \}\)/);
     expect(src).toMatch(/sendParticipantCheckedIn\(ground\.initiator\.email, participantName, ground\.label, groundUrl, stillPending\)/);
   });
   it('and the mail takes a name, not an address', () => {

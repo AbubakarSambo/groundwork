@@ -1,3 +1,4 @@
+import { everyoneElseHasAnswered } from './the-last-one-we-are-waiting-for';
 import { Injectable, ForbiddenException, NotFoundException, Logger } from '@nestjs/common';
 import { onceAcrossCopies, theDay } from '../prisma/once-across-copies';
 import { awayUntilOn, fallsInLeave, leaveOfThePeopleOn, theirApprovedLeave, whoOnACheckInIsAway } from '../suites/who-is-away';
@@ -104,7 +105,7 @@ export class RemindService {
         /* For the invitation path: the token is the same one their first mail carried. */
         inviteToken: true,
         invitedAt: true,
-        user: { select: { firstName: true, emailNotifications: true, isActive: true, deletedAt: true } },
+        user: { select: { firstName: true, emailNotifications: true, isActive: true, deletedAt: true, awaitingOrgApproval: true } },
         checkIns: {
           where: { sessionNumber: checkIn.sessionNumber },
           select: { id: true, status: true },
@@ -112,11 +113,16 @@ export class RemindService {
       },
     });
 
-    // #34: Determine whether the other party has already completed their check-in.
-    const otherPartyCompleted = allParticipants.some((p) => {
-      const session = p.checkIns[0];
-      return session && session.status === CheckInStatus.COMPLETED;
+    /*
+     * "Yours is the last one we are waiting for" is said to each person only when it is true of them: somebody else has finished and
+     * nobody else who is still expected is left (the-last-one-we-are-waiting-for.ts). The person who pressed "remind" is one of the
+     * people in the round, so they are read too.
+     */
+    const requesterRow = await this.prisma.groundParticipant.findFirst({
+      where: { groundId: ground.id, userId: requestingUserId },
+      select: { id: true, managingOnly: true, user: { select: { isActive: true, deletedAt: true, awaitingOrgApproval: true } }, checkIns: { where: { sessionNumber: checkIn.sessionNumber }, select: { status: true } } },
     });
+    const theWholeRound = [...allParticipants, ...(requesterRow ? [requesterRow as any] : [])];
 
     /*
      * NOT SIMPLY "NOT COMPLETED". See who-is-worth-nudging.ts — that test also said yes to
@@ -190,7 +196,7 @@ export class RemindService {
       // #34: Pass otherPartyCompleted so the email includes the appropriate note.
       /* Their own last open promise, to them only, on an anchor check-in (piece 30). */
       const theAnchorLine = await theAnchorNudgeFor(this.prisma, ground as any, participant.id);
-      await this.email.sendNudge(participant.email, specificThing, checkInUrl, undefined, otherPartyCompleted, theAnchorLine, participant.id);
+      await this.email.sendNudge(participant.email, specificThing, checkInUrl, undefined, everyoneElseHasAnswered(participant.id, theWholeRound as any), theAnchorLine, participant.id);
 
       await this.prisma.groundParticipant.update({
         where: { id: participant.id },
@@ -352,16 +358,12 @@ export class RemindService {
         continue;
       }
 
-      // #34: Check if the other party on the same ground + session has completed.
-      const otherPartyCompleted = await this.prisma.checkIn.findFirst({
-        where: {
-          groundId: checkIn.groundId,
-          sessionNumber: checkIn.sessionNumber,
-          participantId: { not: checkIn.participantId },
-          status: CheckInStatus.COMPLETED,
-        },
-        select: { id: true },
-      }).then((r) => r !== null);
+      /* "Yours is the last one we are waiting for" only when it is true of this person (the-last-one-we-are-waiting-for.ts). */
+      const theRound = await this.prisma.groundParticipant.findMany({
+        where: { groundId: checkIn.groundId },
+        select: { id: true, managingOnly: true, user: { select: { isActive: true, deletedAt: true, awaitingOrgApproval: true } }, checkIns: { where: { sessionNumber: checkIn.sessionNumber }, select: { status: true } } },
+      });
+      const otherPartyCompleted = everyoneElseHasAnswered(participant.id, theRound as any);
 
       const checkInUrl = this.email.buildCheckInUrl(checkIn.id);
 
