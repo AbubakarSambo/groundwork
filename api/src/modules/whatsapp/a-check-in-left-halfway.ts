@@ -18,6 +18,13 @@ import { keptOffThePhone } from './a-check-in-kept-off-the-phone';
  * organisation's add-on, the 24 hours, and the one first message of the day (the reminder counts as one;
  * the warning is a closing, so it may be the day's second).
  */
+/**
+ * NEVER FOR A SESSION THAT BEGAN BEFORE THIS (decision 88: nothing reaches an existing client by surprise).
+ * Decision 90 says no organisation used WhatsApp before this release, so no earlier session can have been
+ * done on WhatsApp and none could qualify below anyway; this is the second lock on the same door, the date
+ * decision 107 was made. A running check-in that began earlier carries on exactly as it was.
+ */
+export const WHATSAPP_HALFWAY_MESSAGES_FROM = new Date('2026-10-05T00:00:00Z');
 export const CARRY_ON = 'carry-on';
 export const CLOSES_IN_HALF_AN_HOUR = 'closes-in-half-an-hour';
 export const CLOSED_BY_THE_CLOCK = 'closed-by-the-clock';
@@ -66,6 +73,7 @@ export async function theirPhoneForThisSession(prisma: any, checkInId: string): 
   if (!phone) return null;
   /* They were doing this session on WhatsApp: they wrote there after it began. */
   const began = new Date(ci.startedAt ?? ci.createdAt).getTime();
+  if (began < WHATSAPP_HALFWAY_MESSAGES_FROM.getTime()) return null;
   if (!person?.whatsappLastInboundAt || new Date(person.whatsappLastInboundAt).getTime() < began) return null;
   return { organizationId: ci.ground.organizationId, phone, firstName: ci.participant?.user?.firstName ?? null, label: ci.ground.label };
 }
