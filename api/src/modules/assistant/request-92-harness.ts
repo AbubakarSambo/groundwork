@@ -59,7 +59,7 @@ export function askGroundwork(opts: {
     { start: async () => { throw new Error('no drafting in these tests'); } } as any,
     truth,
     { read: async () => ({ read: false, because: 'no reading in these tests' }) } as any,
-    { sendRoundDigest: async () => { throw new Error('no mail in these tests'); } } as any,
+    { sendMeThat: async () => { throw new Error('no mail in these tests'); }, sendRoundDigest: async () => { throw new Error('no mail in these tests'); } } as any,
     (opts.groundsService ?? {}) as any,
   );
   return { service, prisma, created };

@@ -13,12 +13,14 @@ import { formsOfTheSameNumber } from '../whatsapp/a-number-whatsapp-can-reach';
  *   - everything somebody asked for, which is not routine at all (a report they took part in, an invitation, a sign-in link);
  *   - what is about the running of the product for an admin (a dying webhook).
  *
- * The day is the UTC day, as WhatsApp's count always was. What was held back is not written down as sent, so the sweep that wanted it tries again
- * on another day.
+ * The day is the UTC day, as WhatsApp's count always was. What was held back is not written down as sent. Whether it is tried again is the sender's:
+ * the sweeps that stamp nothing until it went (this week's messages, the test and what-is-new emails) try again on another day. The ones that are
+ * events, or that must not be late, are NOT in the list below and so are never held: an invitation about to lapse, a code about to expire, the lead's
+ * weekly letter (on a Friday it outranks the WhatsApp summary of the morning), and a participant being blocked.
  */
 export const ROUTINE_EMAILS: ReadonlySet<string> = new Set([
   'sendNudge', 'sendAbsenceReminder', 'sendActivationReminder', 'sendActivationRevealReminder', 'sendFeedbackRequest',
-  'sendParticipantBlockedNudge', 'sendInviteAboutToLapse', 'sendCodeExpiryReminder', 'sendRoundDigest', 'sendTheLeadsWeeklyLetter', 'sendTestCheckInMovesOn', 'sendHeresWhatIsNew', 'sendYourWeek',
+  'sendRoundDigest', 'sendTestCheckInMovesOn', 'sendHeresWhatIsNew', 'sendYourWeek',
 ]);
 
 /** A WhatsApp message Groundwork writes first that is the day's routine one: every first message except a check-in opening or closing. */
@@ -35,6 +37,20 @@ const startOfTheDay = (now: Date) => new Date(Date.UTC(now.getUTCFullYear(), now
 export async function whoTheyAre(prisma: any, from: { email?: string | null; phone?: string | null }): Promise<{ emails: string[]; phones: string[] }> {
   const emails = new Set<string>(from.email ? [from.email.trim().toLowerCase()] : []);
   const phones = new Set<string>(from.phone ? formsOfTheSameNumber(from.phone) : []);
+  /* A number kept only on the sign-in, with no roster row, is still this person's: the account links the address and the number. */
+  const users = prisma?.user?.findMany;
+  if (users) {
+    const or: any[] = [];
+    if (from.email) or.push({ email: { equals: from.email.trim(), mode: 'insensitive' } });
+    if (from.phone) or.push({ phoneNumber: { in: formsOfTheSameNumber(from.phone) } });
+    if (or.length) {
+      const rows: any[] = await Promise.resolve(users.call(prisma.user, { where: { OR: or }, select: { email: true, phoneNumber: true } })).catch(() => []);
+      for (const r of Array.isArray(rows) ? rows : []) {
+        if (r.email) emails.add(String(r.email).trim().toLowerCase());
+        if (r.phoneNumber) formsOfTheSameNumber(String(r.phoneNumber)).forEach((f) => phones.add(f));
+      }
+    }
+  }
   const find = prisma?.person?.findMany;
   if (find) {
     const or: any[] = [];

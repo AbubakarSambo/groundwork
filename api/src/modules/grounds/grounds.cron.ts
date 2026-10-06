@@ -641,8 +641,9 @@ export class GroundsCron implements OnApplicationBootstrap {
       });
       for (const p of aboutToLapse) {
         try {
-          await this.email.sendInviteAboutToLapse(p.email, p.ground.label, this.email.buildInviteUrl(p.inviteToken!), p.id);
-          await this.prisma.groundParticipant.update({ where: { id: p.id }, data: { inviteExpiryWarnedAt: now } });
+          const went = await this.email.sendInviteAboutToLapse(p.email, p.ground.label, this.email.buildInviteUrl(p.inviteToken!), p.id);
+          /* Stamped only when it is on its way (sent, or held for the morning and sent then). One that was refused is tried again tomorrow, while there is still time to say it. */
+          if (went !== 'suppressed') await this.prisma.groundParticipant.update({ where: { id: p.id }, data: { inviteExpiryWarnedAt: now } });
         } catch (err: any) {
           this.logger.warn(`Could not warn ${p.email} about a lapsing invite: ${err?.message}`);
         }

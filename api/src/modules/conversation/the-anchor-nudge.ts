@@ -25,6 +25,16 @@ export function theAnchorNudgeLine(theirOwnPromise: string | null | undefined): 
 }
 
 /**
+ * "will review the Q4 pipeline with James" is said back as "you would will review". A promise that begins with the word that makes it a promise
+ * ("will", "'ll", "going to", "shall") is said without it; one with nothing left after it is not said at all.
+ */
+export function withoutALeadingWill(said: string | null): string | null {
+  if (!said) return null;
+  const rest = said.replace(/^(?:i\s+)?(?:am\s+|are\s+|'m\s+|'re\s+)?(?:will|'ll|shall|going to)\s+/i, '').trim();
+  return rest ? rest[0].toLowerCase() + rest.slice(1) : null;
+}
+
+/**
  * Their last open promise, from their own check-in only, said back to them: "send your manager the deck". Never a
  * promise a lead wrote or pasted, never one they did not make in their own name, never anybody else's.
  */
@@ -35,7 +45,7 @@ export async function theirOwnLastOpenPromise(prisma: any, groundId: string, par
     select: { text: true, explicit: true, participantId: true, source: true, status: true },
   })?.catch?.(() => [])) ?? []) as any[];
   const theirs = rows.find((c) => c.participantId === participantId && c.source === 'CHECK_IN' && c.status === 'UNKNOWN' && c.explicit !== false);
-  return theirs ? inOurVoice(String(theirs.text ?? ''), 'you') : null;
+  return theirs ? withoutALeadingWill(inOurVoice(String(theirs.text ?? ''), 'you')) : null;
 }
 
 /** The line for this person on this check-in, or null where it is not an anchor check-in or the switch is off. */

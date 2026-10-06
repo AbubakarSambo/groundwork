@@ -28,6 +28,8 @@ function makeService(overrides: any = {}) {
   };
   const email: any = {
     sendNudge: jest.fn(async (to: string) => { sent.push(to); return {}; }),
+    /* The lead's Remind button is its own sender now (decision 109): never counted or held for the day's one routine message. */
+    sendNudgeFromAPress: jest.fn(async (to: string) => { sent.push(to); return {}; }),
     /* The real one. The service reaches for the helper now rather than hand-building a path
        it had been getting wrong — see a-link-in-an-email-has-to-resolve.spec.ts. */
     buildCheckInUrl: (id: string) => `http://localhost:5173/checkin/${id}`,

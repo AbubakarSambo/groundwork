@@ -108,7 +108,7 @@ export class RemindService {
         user: { select: { firstName: true, emailNotifications: true, isActive: true, deletedAt: true, awaitingOrgApproval: true } },
         checkIns: {
           where: { sessionNumber: checkIn.sessionNumber },
-          select: { id: true, status: true },
+          select: { id: true, status: true, createdAt: true },
         },
       },
     });
@@ -120,7 +120,7 @@ export class RemindService {
      */
     const requesterRow = await this.prisma.groundParticipant.findFirst({
       where: { groundId: ground.id, userId: requestingUserId },
-      select: { id: true, managingOnly: true, user: { select: { isActive: true, deletedAt: true, awaitingOrgApproval: true } }, checkIns: { where: { sessionNumber: checkIn.sessionNumber }, select: { status: true } } },
+      select: { id: true, managingOnly: true, user: { select: { isActive: true, deletedAt: true, awaitingOrgApproval: true } }, checkIns: { where: { sessionNumber: checkIn.sessionNumber }, select: { status: true, createdAt: true } } },
     });
     const theWholeRound = [...allParticipants, ...(requesterRow ? [requesterRow as any] : [])];
 
@@ -132,7 +132,7 @@ export class RemindService {
      */
     const considered = allParticipants.map((p) => ({
       ...p,
-      session: p.checkIns[0] ? { id: p.checkIns[0].id, status: p.checkIns[0].status as any } : null,
+      session: p.checkIns[0] ? { id: p.checkIns[0].id, status: p.checkIns[0].status as any, createdAt: (p.checkIns[0] as any).createdAt ?? null } : null,
       managingOnly: p.managingOnly,
       hasAccepted: p.userId !== null,
       /* A leaver's address may now belong to somebody else. Undefined for an invitee with no
@@ -195,8 +195,8 @@ export class RemindService {
 
       // #34: Pass otherPartyCompleted so the email includes the appropriate note.
       /* Their own last open promise, to them only, on an anchor check-in (piece 30). */
-      const theAnchorLine = await theNudgeLineFor(this.prisma, ground as any, (ground as any).createdAt, participant.id);
-      await this.email.sendNudge(participant.email, specificThing, checkInUrl, undefined, everyoneElseHasAnswered(participant.id, theWholeRound as any), theAnchorLine, participant.id);
+      const theAnchorLine = await theNudgeLineFor(this.prisma, ground as any, (participant.session as any)?.createdAt, participant.id);
+      await this.email.sendNudgeFromAPress(participant.email, specificThing, checkInUrl, undefined, everyoneElseHasAnswered(participant.id, theWholeRound as any), theAnchorLine, participant.id);
 
       await this.prisma.groundParticipant.update({
         where: { id: participant.id },
@@ -361,7 +361,7 @@ export class RemindService {
       /* "Yours is the last one we are waiting for" only when it is true of this person (the-last-one-we-are-waiting-for.ts). */
       const theRound = await this.prisma.groundParticipant.findMany({
         where: { groundId: checkIn.groundId },
-        select: { id: true, managingOnly: true, user: { select: { isActive: true, deletedAt: true, awaitingOrgApproval: true } }, checkIns: { where: { sessionNumber: checkIn.sessionNumber }, select: { status: true } } },
+        select: { id: true, managingOnly: true, user: { select: { isActive: true, deletedAt: true, awaitingOrgApproval: true } }, checkIns: { where: { sessionNumber: checkIn.sessionNumber }, select: { status: true, createdAt: true } } },
       });
       const otherPartyCompleted = everyoneElseHasAnswered(participant.id, theRound as any);
 

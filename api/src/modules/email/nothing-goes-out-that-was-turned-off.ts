@@ -224,6 +224,10 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
 
   /* Nobody asked this morning. Every one of these stops when somebody says stop. */
   sendNudge: 'we decided to send it',
+  /* The lead pressed "Remind": still a reminder, so the person's own opt-out stops it, but never counted or held for the day's one. */
+  sendNudgeFromAPress: 'we decided to send it',
+  /* "Send me that" from the assistant: they asked for it. */
+  sendMeThat: 'asked for',
   sendInviteAboutToLapse: 'we decided to send it',
   /* Their integration has stopped receiving and only our logs knew. An admin decision to make,
      so it is ours to send — but it is about their system rather than about their team. */

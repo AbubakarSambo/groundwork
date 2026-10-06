@@ -428,6 +428,7 @@ export class EmailService implements OnModuleInit {
          somebody may be waiting for, and "nothing happened" is the hardest kind of bug to chase. */
       this.logger.log(`Not sending "${options.subject}" to ${options.to}: ${rather}`);
       this.writeItDown(options, sender, 'suppressed', rather);
+      if (context) context.outcome = 'suppressed';
       return undefined;
     }
 
@@ -441,9 +442,11 @@ export class EmailService implements OnModuleInit {
      */
     if (sender && whatThisMailIs(sender) === 'we decided to send it') {
       const held = await this.holdForTheMorning(options, context, sender);
-      if (held) return undefined;
+      if (held) { if (context) context.outcome = 'held'; return undefined; }
     }
-    return this.deliverNow(options, context, sender);
+    const went = await this.deliverNow(options, context, sender);
+    if (context) context.outcome = 'sent';
+    return went;
   }
 
   /** Whether this person has already been sent the day's one routine message, by email or on WhatsApp (decision 109, item 6). Null when they have not. */
@@ -482,6 +485,17 @@ export class EmailService implements OnModuleInit {
 
   /** A held mail, when its moment has come. Skips the hold and the preference gate, both already asked. */
   async deliverHeld(row: { toAddress: string; subject: string; html: string; sender: string | null; context: unknown }): Promise<void> {
+    /* WHILE IT WAS HELD, SOMETHING MAY HAVE CHANGED: they may have stopped these emails, or been sent their one routine message another way. Asked again. */
+    const options = { to: row.toAddress, subject: row.subject, html: row.html };
+    if (row.sender) {
+      const rather = (await this.wouldTheyRatherNot(row.toAddress, row.sender, (row.context ?? undefined) as DeliveryContext | undefined))
+        ?? (ROUTINE_EMAILS.has(row.sender) ? await this.theyHadTheirOneToday(row.toAddress) : null);
+      if (rather) {
+        this.logger.log(`Not sending the held "${row.subject}" to ${row.toAddress}: ${rather}`);
+        await this.writeItDown(options, row.sender, 'suppressed', rather);
+        return;
+      }
+    }
     await this.deliverNow({ to: row.toAddress, subject: row.subject, html: row.html }, (row.context ?? undefined) as DeliveryContext | undefined, row.sender ?? undefined);
   }
 
@@ -872,7 +886,8 @@ export class EmailService implements OnModuleInit {
   }
 
   /** Two days before their invitation lapses, the invitee is told, with the link that still works. */
-  async sendInviteAboutToLapse(email: string, groundLabel: string, inviteUrl: string, participantId: string): Promise<void> {
+  async sendInviteAboutToLapse(email: string, groundLabel: string, inviteUrl: string, participantId: string): Promise<'sent' | 'held' | 'suppressed'> {
+    const context: DeliveryContext = { kind: 'REMINDER', participantId };
     await this.sendEmail({
       to: email,
       subject: `Your invitation to ${groundLabel} lapses in two days`,
@@ -881,7 +896,8 @@ export class EmailService implements OnModuleInit {
         `<p><a href="${inviteUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Add my account →</a></p>` +
         `<p style="font-size:12px;color:#9B9590;">You are never obligated to take part. If you would rather not, ignore this and nothing more comes about it.</p>${(await this.theWayToStopBeingChased(participantId)) ?? ''}`,
       ),
-    }, { kind: 'REMINDER', participantId }, 'sendInviteAboutToLapse');
+    }, context, 'sendInviteAboutToLapse');
+    return context.outcome ?? 'sent';
   }
 
   /** An invitation lapsed unopened; the lead who sent it can resend or take them off. */
@@ -1226,6 +1242,21 @@ export class EmailService implements OnModuleInit {
    * the context, so it has to be there.
    */
   async sendNudge(email: string, groundLabel: string, checkInUrl: string, scenario: string | undefined, otherPartyCompleted: boolean | undefined, theAnchorLine: string | null | undefined, participantId: string, simplerWords?: boolean | null): Promise<void> {
+    const mail = await this.theNudge(groundLabel, `<a href="${checkInUrl}">Check in</a>`, scenario, otherPartyCompleted, theAnchorLine, participantId, simplerWords);
+    await this.sendEmail({ to: email, ...mail }, { kind: 'REMINDER', participantId }, 'sendNudge');
+  }
+
+  /**
+   * THE LEAD PRESSED "REMIND" (decision 109, review of the one-a-day rule). Somebody asked for this one, so it is never counted toward the person's
+   * one routine message of the day and never held back for it. It is still a reminder, so the person's own opt-out still stops it, as it always did.
+   */
+  async sendNudgeFromAPress(email: string, groundLabel: string, checkInUrl: string, scenario: string | undefined, otherPartyCompleted: boolean | undefined, theAnchorLine: string | null | undefined, participantId: string, simplerWords?: boolean | null): Promise<void> {
+    const mail = await this.theNudge(groundLabel, `<a href="${checkInUrl}">Check in</a>`, scenario, otherPartyCompleted, theAnchorLine, participantId, simplerWords);
+    await this.sendEmail({ to: email, ...mail }, { kind: 'REMINDER', participantId }, 'sendNudgeFromAPress');
+  }
+
+  /** The reminder's subject and words, the same whichever way it came. */
+  private async theNudge(groundLabel: string, link: string, scenario: string | undefined, otherPartyCompleted: boolean | undefined, theAnchorLine: string | null | undefined, participantId: string, simplerWords?: boolean | null): Promise<{ subject: string; html: string }> {
     const words = THE_EMAILS.nudge(simplerWords);
     const subjectMap: Record<string, string> = {
       NEW_HIRE: 'Your 90-day check-in is waiting',
@@ -1244,13 +1275,12 @@ export class EmailService implements OnModuleInit {
     const otherPartyNote = otherPartyCompleted
       ? `<p><strong>${words.theOtherHasAnswered}</strong></p>`
       : '';
-    await this.sendEmail({
-      to: email,
+    return {
       subject,
       /* A reminder with no way to stop it is the whole defect. This is the second mail it goes on. */
       /* On an anchor check-in, the anchor's own line (piece 30): their own open promise said back to them, or what has changed. */
-      html: this.layout(`<p>Your check-in for <strong>${escapeHtml(groundLabel)}</strong> ${words.stillOpen}</p>${theAnchorLine ? `<p>${escapeHtml(theAnchorLine)}</p>` : ''}${otherPartyNote}<p><a href="${checkInUrl}">Check in</a></p>${(await this.theWayToStopBeingChased(participantId)) ?? ''}`),
-    }, { kind: 'REMINDER', participantId }, 'sendNudge');
+      html: this.layout(`<p>Your check-in for <strong>${escapeHtml(groundLabel)}</strong> ${words.stillOpen}</p>${theAnchorLine ? `<p>${escapeHtml(theAnchorLine)}</p>` : ''}${otherPartyNote}<p>${link}</p>${(await this.theWayToStopBeingChased(participantId)) ?? ''}`),
+    };
   }
 
   /**
@@ -1768,6 +1798,18 @@ export class EmailService implements OnModuleInit {
    * link, with nowhere to put a quote or a finding. Composing it here would put the shape back in a
    * template, and a template is edited by whoever needs one more field in it.
    */
+  /**
+   * "SEND ME THAT" FROM THE ASSISTANT (decision 109). The person asked for this email, so it is not a routine message: it is never counted toward
+   * the day's one, never held back for it, and never stopped by the opt-out for what we decide to send. Same shape as the digest.
+   */
+  async sendMeThat(email: string, subject: string, text: string): Promise<void> {
+    const html = text
+      .split('\n')
+      .map((line) => (line.trim() ? `<p>${escapeHtml(line)}</p>` : ''))
+      .join('');
+    await this.sendEmail({ to: email, subject, html }, undefined, 'sendMeThat');
+  }
+
   async sendRoundDigest(email: string, subject: string, text: string): Promise<void> {
     const html = text
       .split('\n')
