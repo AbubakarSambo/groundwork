@@ -106,5 +106,23 @@ describe('what counts as being off', () => {
     expect(one.says).toMatch(/^\w+ is also off that day, so Engineering would be two short\.$/);
   });
 
+  it('somebody off only on a weekend inside the request is no clash: nobody is named, and the board says nobody else is off', async () => {
+    const w = aHundredPeople();
+    /* Engineering's m1 asks for Wednesday 21 to Friday 23 October; make it Friday 23 to Monday 26, and a colleague is off only on the Saturday and Sunday. */
+    const r = w.leave.find((x) => x.userId === idOf('eng.m1') && x.status === 'waiting')!;
+    r.startsOn = new Date('2026-10-23T00:00:00Z'); r.endsOn = new Date('2026-10-26T00:00:00Z');
+    w.leave.push({ ...w.leave[0], id: 'weekend', userId: idOf('eng.m2'), startsOn: new Date('2026-10-24T00:00:00Z'), endsOn: new Date('2026-10-25T00:00:00Z'), status: 'approved', standInUserId: null });
+    const q = (await w.queue.queue(w.as('eng.manager'), { suite: 'leave', pageSize: 100 }, TODAY)).items.find((x) => x.id === r.id)!;
+    expect(q.clash).toBeNull();
+    const board = (await w.leaveBoard.board(w.as('eng.manager'), TODAY)).waiting.find((x) => x.id === r.id)!;
+    expect(board.clash).toBeNull();
+    expect(board.alsoOff).toEqual([]);
+    expect(board.said).toContain('Nobody else in Engineering is off those days.');
+    /* The same colleague off on the Friday too is a clash, one short. */
+    w.leave.push({ ...w.leave[0], id: 'friday', userId: idOf('eng.m2'), startsOn: new Date('2026-10-23T00:00:00Z'), endsOn: new Date('2026-10-23T00:00:00Z'), status: 'approved', standInUserId: null });
+    const again = (await w.queue.queue(w.as('eng.manager'), { suite: 'leave', pageSize: 100 }, TODAY)).items.find((x) => x.id === r.id)!;
+    expect(again.clash!.says).toMatch(/^\w+ is also off on some of those days\. On the busiest of them, Engineering would be two short\.$/);
+  });
+
   it('keeps ORG in use', () => { expect(ORG).toBe('org-baobab'); });
 });

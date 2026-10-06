@@ -59,7 +59,9 @@ export function whoIsOffNamed(
   const firsts = new Map<string, number>();
   for (const p of once) firsts.set(p.first, (firsts.get(p.first) ?? 0) + 1);
   const names = once.map((p) => ((firsts.get(p.first) ?? 0) > 1 ? p.full || p.first : p.first));
-  return { count: once.length, names, busiest: request ? busiestDay(people.filter((p) => p.first), request) : once.length };
+  const busiest = request ? busiestDay(people.filter((p) => p.first), request) : once.length;
+  /* Off only on a weekend inside the request is not off on a day the team works: no clash, and nobody named. */
+  return busiest === 0 ? { count: 0, names: [], busiest: 0 } : { count: once.length, names, busiest };
 }
 
 const DAY = 86_400_000;
