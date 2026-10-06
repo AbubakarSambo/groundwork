@@ -237,9 +237,31 @@ What the lead received, "(nothing)", is about WhatsApp only. Emails could not be
 ### kept in the app
 - Not recorded in run 6. The script asked for the check-in with `overWhatsApp` in the request, which the API refuses, so this kind was never made. That is fixed in the script, not yet run. What is proved for a check-in kept in the app is in journey 10: nothing about it reaches the phone, and a message to it is answered "Your check-in "Private notes" is kept in the Groundwork app, so I cannot take your answers to it here. Please open Groundwork and answer it there."
 
-### With the lead's simpler-language setting on
+### With the lead's "Use simpler words" setting on (6 October, commits `4914e1d3` to `28c57edc`)
 
-To be added when that setting is built and this run is repeated with it on.
+**How it was run.** A new worktree of `wip/release` in the scratchpad (the committed branch, with `node_modules` linked, `.env` copied and `credentials` linked), `nest build`, a new local database `gw_simpler_words` copied from `gw_wa_oct5f` and migrated (the new migration only adds `grounds.simpler_words`, false). The API ran on port 3047 with a recorder for Meta on 127.0.0.1:3996 and `EMAIL_SENDS_FOR_REAL=false`, so nothing left the computer. The model was the real one. The script is journey 16 from the committed branch, cut down to the "done, then finish" ending for two kinds, each made twice by the same lead (Wairimu) with the same twelve answers: once with the setting off, and once after she switched it on with `PATCH /grounds/:id/simpler-words`. In the scratch copy only, the three places in `whatsapp-for-an-organisation.service.ts` that say these sentences were made to pass the switch on, because that file belongs to another builder. That change is not committed here; it is written out in the morning report.
+
+Everything is quoted, word for word.
+
+#### sales
+
+| | Setting off | Setting on |
+| --- | --- | --- |
+| Groundwork's closing turn (to the person) | "You said you will call the Quickmart buyer on Monday and ask for a date in writing. / That’s all for today. Reply "finish" to close this check-in, and your report will come here." | "You have said all you have for this week. / That is all for today. Write "finish" to end this check-in. Your report will come to this chat." |
+| After "finish" | "Your check-in is complete and on record. Your report follows in a moment." | "Your check-in is finished, and your answers are saved. Your report will come in a moment." |
+| The report on the phone, first line and the last | "Your report for Ending: sales (switch off) is ready." and "Here is a conversation worth having. Which of those conversations was with someone who can actually decide, with the budget and the authority?" | "Your report for Ending: sales (switch on) is ready." and "Here is one thing worth talking about. Which of those conversations was with someone who can actually decide, with the budget and the authority?" |
+| The lead, Wairimu, on WhatsApp | (nothing) | (nothing) |
+| Emails to the person | (nothing) | (nothing) |
+
+#### onboarding
+
+| | Setting off | Setting on |
+| --- | --- | --- |
+| Groundwork's closing turn | "You will call the Quickmart buyer on Monday to ask for a date in writing, and you want to visit the three stores in Kilimani next week. / That’s all for today. Reply "finish" to close this check-in, and your report will come here." | "You have said you will call the Quickmart buyer on Monday to ask for a date in writing. / That is all for today. Write "finish" to end this check-in. Your report will come to this chat." |
+| After "finish" | "Your check-in is complete and on record. Your report follows in a moment." | "Your check-in is finished, and your answers are saved. Your report will come in a moment." |
+| The report on the phone, last line | "Here is a conversation worth having. Which of those conversations ..." | "Here is one thing worth talking about. Which of those conversations ..." |
+
+**What is plainer, and what is not yet.** The closing turn (the model's own sentence before the close, and the close), the reply to "finish", and the line that introduces the report's one question are plainer with the setting on. The report's own middle sentences are the same with it on and off, because they are fixed sentences in the report builder: "Not everyone has answered yet, so there is nothing to agree or differ with." and "Somebody named a number, and nothing is tracking it." and "There are 2 more worries on record, and nobody is waiting on anybody." They have no plain form yet. The report's model-written parts do get the plain-words rule, but a report was not written afresh in this run, so that is proved only in the prompt (a test), not in a live report. The reminders and the emails have their plain forms and tests, and are not sent from this run: the code that sends them is another builder's, and a reminder outside the 24 hours is sent as a template Meta has approved, so a plainer reminder there needs a plainer template approved first.
 
 ## WhatsApp end to end, from the settings saved in the back office (5 October, night)
 
