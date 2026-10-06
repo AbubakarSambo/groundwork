@@ -346,7 +346,8 @@ export class RemindService {
           /* The name they are known by here, and their address only if that is all
              there is. A lead reading a list of email addresses cannot tell who is
              who any faster than they could before the email arrived. */
-          const named = participant.user?.firstName ?? participant.email;
+          /* The lead is never written about in the third person to herself: she is "you" (decision 109 review). */
+          const named = participant.userId && participant.userId === (checkIn.ground as any).initiatorId ? 'you' : (participant.user?.firstName ?? participant.email);
           if (!entry.who.includes(named)) { entry.who.push(named); entry.whoEmails.push(participant.email); }
           entry.checkInIds.push(checkIn.id);
           forTheLead.set(key, entry);

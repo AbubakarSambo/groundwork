@@ -133,7 +133,8 @@ export function theEmailForTheLead(input: {
 
   const names = input.whoHasNotStarted;
   const listed = names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
-  const have = names.length === 1 ? 'has' : 'have';
+  const have = names.length === 1 && names[0] !== 'you' ? 'has' : 'have';
+  const sentenceStart = (t: string) => `${t.charAt(0).toUpperCase()}${t.slice(1)}`;
   const days = input.chasedOn.length ? `day ${input.chasedOn.join(', day ')}` : null;
 
   /*
@@ -150,7 +151,7 @@ export function theEmailForTheLead(input: {
   const lines = [
     input.leadName ? `${input.leadName},` : 'Hello,',
     '',
-    `${listed} ${have} not started their check-in on "${input.groundLabel}".`,
+    `${sentenceStart(listed)} ${have} not started ${names.length === 1 && names[0] === 'you' ? 'your' : 'their'} check-in on "${input.groundLabel}".`,
     '',
     did,
     '',
@@ -162,7 +163,7 @@ export function theEmailForTheLead(input: {
   ];
 
   return {
-    subject: `${listed} ${have} not started "${input.groundLabel}"${reminded.length ? ', and Groundwork has reminded them' : ''}`,
+    subject: `${sentenceStart(listed)} ${have} not started "${input.groundLabel}"${reminded.length ? ', and Groundwork has reminded them' : ''}`,
     text: lines.join('\n'),
   };
 }

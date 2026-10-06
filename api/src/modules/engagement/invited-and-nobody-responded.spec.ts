@@ -67,3 +67,22 @@ describe('what Wairimu reads when four people have not started', () => {
     expect(w.told[0].subject).toBe('Omar, Vera, Bisi and Femi have not started "Kenya launch"');
   });
 });
+
+describe('the lead is one of the people who has not started', () => {
+  beforeEach(() => jest.useFakeTimers().setSystemTime(NOW));
+  afterEach(() => jest.useRealTimers());
+  it('reads "you", never her own name, and the verb agrees', async () => {
+    const w = sweep([]);
+    /* Omar is the lead of this check-in. */
+    const rows = (w.service as any).prisma.checkIn.findMany;
+    const orig = rows.getMockImplementation();
+    rows.mockImplementation(async (a: any) => {
+      const r: any[] = await orig(a);
+      return r.map((x) => (x.participant.user.firstName === 'Omar' ? { ...x, ground: { ...x.ground, initiatorId: 'u0' } } : x));
+    });
+    await w.service.sendScheduledNudges();
+    expect(w.told[0].subject).toBe('You, Vera, Bisi and Femi have not started "Kenya launch"');
+    expect(w.told[0].text).toContain('You, Vera, Bisi and Femi have not started their check-in on "Kenya launch".');
+    expect(w.told[0].text).not.toMatch(/Omar/);
+  });
+});
