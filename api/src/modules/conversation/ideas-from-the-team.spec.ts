@@ -167,3 +167,13 @@ describe('after a capture Groundwork does not say how it feels (6 October)', () 
     expect(out.text).toContain('What else would you like to say?');
   });
 });
+
+describe('only a sentence that is nothing but the feeling is cut', () => {
+  it('keeps a sentence that asks something, and one that answers what they said', () => {
+    expect(withoutAskingWhatToCapture("I'm glad you raised it, so what would help the team most now?").text).toBe("I'm glad you raised it, so what would help the team most now?");
+    expect(withoutAskingWhatToCapture('I am happy to hear the van came on time.').cut).toEqual([]);
+  });
+  it('cuts the bare feeling', () => {
+    expect(withoutAskingWhatToCapture("I'm glad you found this helpful, Grace.\n\nWhat else?").text).toBe('What else?');
+  });
+});
