@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { suitesApi, type AdminSuite, type Answers, type Question, type SuitesForAnAdmin, type SuitesForALead, type SuitesForADutyHolder } from '@/api/suites'
+import { suitesApi, yourRequestsApi, type AdminSuite, type Answers, type Question, type SuitesForAnAdmin, type SuitesForALead, type SuitesForADutyHolder } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { Page, PageTitle, Section, Panel, Button, Tag, Toggle, Note, Empty, RowList, Row, FieldLabel, TextField, TextArea, Select } from '@/components/gw/ui'
 import { QueueLink } from './QueuePage'
@@ -69,6 +69,13 @@ export function SuitesPage() {
   })
   const refused = (error as { response?: { status?: number; data?: { message?: string } } } | null)?.response
   const orgName = user?.organization?.name?.trim() || user?.organizationName || ''
+  /* "Your own leave and spending requests" only where a suite is on for this person: with both
+     off, the link opened a page that only says the suite is off (fault 2, live re-walk). The same
+     queries and query keys Today already uses, so this costs nothing more than Today already pays,
+     and the two pages agree on when the link shows. */
+  const yourLeave = useQuery({ queryKey: ['your-leave'], queryFn: yourRequestsApi.leave, enabled: !!user, retry: false, staleTime: 60_000 })
+  const yourSpending = useQuery({ queryKey: ['your-spending'], queryFn: yourRequestsApi.spending, enabled: !!user, retry: false, staleTime: 60_000 })
+  const aSuiteIsOnForYou = yourLeave.isSuccess || yourSpending.isSuccess
 
   return (
     <Page>
@@ -101,8 +108,12 @@ export function SuitesPage() {
       {data?.reader === 'lead' && <ForALead page={data} />}
       {data?.reader === 'duty' && <ForADutyHolder page={data} />}
 
-      {/* Every reader has requests of their own, including a member, whom this page otherwise refuses. */}
-      <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/mine">Your own leave and spending requests</Link></p>
+      {/* Every reader has requests of their own, including a member, whom this page otherwise
+          refuses - but only once a suite is actually on for them (fault 2, live re-walk): with
+          both leave and spending off, this opened a page that only says the suite is off. */}
+      {aSuiteIsOnForYou && (
+        <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/mine">Your own leave and spending requests</Link></p>
+      )}
       <QueueLink userId={user?.id} />
     </Page>
   )

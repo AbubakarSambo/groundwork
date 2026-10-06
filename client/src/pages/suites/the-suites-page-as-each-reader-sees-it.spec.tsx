@@ -12,8 +12,20 @@ import type { SuitesForAnAdmin, SuitesForALead, SuitesForADutyHolder, AdminSuite
  * what each person reads, in the prototype's words (suites-admin.txt, suites-lead.txt), and what the
  * page never offers: a door to a board that is not built, or a switch to anybody but an admin.
  */
-vi.mock('@/api/suites', () => ({ suitesApi: { get: vi.fn(), switch: vi.fn() } }))
-import { suitesApi } from '@/api/suites'
+/* `yourRequestsApi` defaults to "off" (a 404-shaped rejection, the same as a suite that is not
+   switched on): the fault 2 tests below set it explicitly, and every other test here never reads
+   "Your own leave and spending requests" at all, so its absence by default changes nothing they
+   check. */
+vi.mock('@/api/suites', () => ({
+  suitesApi: { get: vi.fn(), switch: vi.fn() },
+  yourRequestsApi: {
+    leave: vi.fn(() => Promise.reject(Object.assign(new Error('off'), { response: { status: 404 } }))),
+    spending: vi.fn(() => Promise.reject(Object.assign(new Error('off'), { response: { status: 404 } }))),
+  },
+}))
+import { suitesApi, yourRequestsApi } from '@/api/suites'
+
+const suiteOff = () => Promise.reject(Object.assign(new Error('off'), { response: { status: 404 } }))
 
 const suite = (key: string, name: string, line: string, over: Partial<AdminSuite> = {}): AdminSuite =>
   ({ key, name, line, on: false, questions: [], answers: {}, ...over })
@@ -298,6 +310,39 @@ describe('Omar, a member who looks after finance, reads the Suites page', () => 
     expect(screen.getAllByRole('heading', { level: 3 }).map(h => h.textContent)).toEqual(['Spending and budgets', 'Time sheets'])
     const door = within(card('Spending and budgets')).getByRole('link', { name: 'Open the requests for finance' })
     expect(door).toHaveAttribute('href', '/suite/spend/finance')
+  })
+})
+
+describe('"Your own leave and spending requests", gated the same way as Today (fault 2, live re-walk)', () => {
+  it('is not offered to an admin when both suites are off for them', async () => {
+    (yourRequestsApi.leave as any).mockImplementation(suiteOff)
+    ;(yourRequestsApi.spending as any).mockImplementation(suiteOff)
+    open(GRACE, GRACES)
+    await screen.findByRole('heading', { level: 2, name: 'People' })
+    await new Promise(r => setTimeout(r, 10))
+    expect(screen.queryByRole('link', { name: 'Your own leave and spending requests' })).toBeNull()
+  })
+
+  it('is offered to an admin once a suite answers for them', async () => {
+    (yourRequestsApi.leave as any).mockResolvedValue({ daysLeftSaid: '12 days left', requests: [] })
+    ;(yourRequestsApi.spending as any).mockImplementation(suiteOff)
+    open(GRACE, GRACES)
+    expect(await screen.findByRole('link', { name: 'Your own leave and spending requests' })).toHaveAttribute('href', '/suite/mine')
+  })
+
+  it('is not offered to a member the suites page otherwise refuses, while both are off', async () => {
+    (yourRequestsApi.leave as any).mockImplementation(suiteOff)
+    ;(yourRequestsApi.spending as any).mockImplementation(suiteOff)
+    open(MIRIAM, Object.assign(new Error('403'), { response: { status: 403, data: { message: 'Only an admin or a lead can open the suites.' } } }))
+    await screen.findByRole('alert')
+    expect(screen.queryByRole('link', { name: 'Your own leave and spending requests' })).toBeNull()
+  })
+
+  it('is offered to that same member once a suite is on for them', async () => {
+    (yourRequestsApi.leave as any).mockImplementation(suiteOff)
+    ;(yourRequestsApi.spending as any).mockResolvedValue({ requests: [] })
+    open(MIRIAM, Object.assign(new Error('403'), { response: { status: 403, data: { message: 'Only an admin or a lead can open the suites.' } } }))
+    expect(await screen.findByRole('link', { name: 'Your own leave and spending requests' })).toHaveAttribute('href', '/suite/mine')
   })
 })
 
