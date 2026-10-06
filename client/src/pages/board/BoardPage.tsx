@@ -31,7 +31,7 @@ import { WhatTheNetworkSaid } from '@/components/gw/WhatTheNetworkSaid'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
 import { NineColumnsIsNotAPhoneScreen } from '@/components/gw/nine-columns-is-not-a-phone-screen'
-import { plainWordsByPerson, atTheStart } from '@/lib/a-colleague'
+import { plainWordsByPerson, atTheStart, midSentence } from '@/lib/a-colleague'
 import { theLeadsNote } from '@/lib/the-leads-note'
 import { whatTheSwitchboardAllows } from './what-the-switchboard-allows'
 import { tileSentence } from '@/components/gw/TheSessionsReport'
@@ -1713,10 +1713,16 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * fold. Onboarding's real work plan, shown separately as `WorkPlanSection`, never passes through
    * `b.workRecords` at all, so this collapsing a genuinely all-not-known `workRecords` list cannot
    * reach it either way.
+   *
+   * NOT SCOPED TO `isProjectBoard || isOnboarding` ANY MORE (real-user walk, Kijani Foods, fault 4b).
+   * Tendai's role-handover check-in, a scenario this list never covered, still sent six work-record
+   * sections back not-known with the same `why`, and the fold repeated the same sentence six times -
+   * the exact bug this collapsing exists to fix, just on a board whose scenario was never added to
+   * the list. The `allWorkRecords.every(...)` check below already proves it is safe everywhere: the
+   * moment one real row exists this is false and nothing collapses, whatever the board's family.
    */
   const allWorkRecords = b.workRecords ?? []
   const workRecordsAllNotKnownSameWhy =
-    (isProjectBoard || isOnboarding) &&
     allWorkRecords.length > 1 &&
     allWorkRecords.every((s) => s.state === 'not-known') &&
     new Set(allWorkRecords.map((s) => (s as { why: string }).why)).size === 1
@@ -2297,17 +2303,20 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     )
   }
 
+  /*
+   * THE CENTRAL QUESTION IS DRAWN ONCE, ABOVE THE FOLD, FOR EVERY FAMILY (real-user walk, Kijani
+   * Foods, fault 4a). It used to be part of `divergenceBlock` below, which only an onboarding board
+   * called above its own fold - every other family's board only reached it inside "Everything else
+   * from this check-in", folded shut, while the top of the page read as if nothing needed the lead
+   * ("Does a shop count when it signs, or when it orders again?" sat unseen under a closed fold on
+   * Tendai's sales board). The full divergence detail (`DivergenceSectionBody`) stays exactly where
+   * each family already draws it - a deliberate choice (see "Everything else from this check-in",
+   * further down) - only the one-line question moves, drawn once, see where it is rendered below.
+   */
   const divergenceBlock = (heading: string) => (
-    <>
-      {b.divergence && shown.divergence && (
-        <DivergenceSectionBody heading={heading} divergence={b.divergence} whyNothingYet={b.divergence.whyNothingYet} onlyOnePersonHere={onlyOnePersonHere} myName={myName} />
-      )}
-      {b.divergence?.centralQuestion && (
-        <Panel>
-          <WhatToSettleTogether question={b.divergence.centralQuestion} />
-        </Panel>
-      )}
-    </>
+    b.divergence && shown.divergence
+      ? <DivergenceSectionBody heading={heading} divergence={b.divergence} whyNothingYet={b.divergence.whyNothingYet} onlyOnePersonHere={onlyOnePersonHere} myName={myName} />
+      : null
   )
 
   return (
@@ -3143,6 +3152,17 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         )}
 
         {/*
+          THE QUESTION THIS CHECK-IN TURNS ON, ABOVE THE FOLD, FOR EVERY FAMILY (real-user walk,
+          Kijani Foods, fault 4a). See the note on `divergenceBlock`, above, for why this moved out
+          of both the onboarding and the general-case divergence blocks to draw once, here.
+        */}
+        {b.divergence?.centralQuestion && (
+          <Panel>
+            <WhatToSettleTogether question={b.divergence.centralQuestion} />
+          </Panel>
+        )}
+
+        {/*
           EVERYTHING ELSE FROM THIS CHECK-IN (board review, sales piece A, item 1). Every section
           above this point is the prototype's own, in the prototype's own order
           (board-as-lead.txt). Nothing below is removed - patterns, coaching and every probe stay
@@ -3767,16 +3787,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           so the literal `{shown.divergence && b.divergence && (` the order-pinning spec reads for
           stays exactly where it always was for every other family; the heavy content itself is
           `DivergenceSectionBody`, shared with the onboarding call, so it is never duplicated.
+          The central question itself no longer draws here - see where it is drawn once, above the
+          fold, for fault 4a.
         */}
         {!isOnboarding && (
           <>
             {shown.divergence && b.divergence && (
               <DivergenceSectionBody heading="Where people differ" divergence={b.divergence} onlyOnePersonHere={onlyOnePersonHere} myName={myName} />
-            )}
-            {b.divergence?.centralQuestion && (
-              <Panel>
-                <WhatToSettleTogether question={b.divergence.centralQuestion} />
-              </Panel>
             )}
           </>
         )}
@@ -4181,7 +4198,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                           : <>This is waiting on <span className="gwui-ink-dark" style={{fontWeight: 600}}>{onWhom}</span>.</>}
                       </div>
                       <div className="gwui-fs-15 gwui-ink-dark gwui-mt-4" style={{lineHeight: 1.5}}>
-                        <b>{fromWord}</b> {needsWord} {d.what} from <b>{onWhomInSentence}</b>. {statusSaid}
+                        {/* `d.what` can open with a capitalised article ("The Mwangi agency") where the
+                            same string also stands as a title elsewhere; mid-sentence here, only that
+                            leading word is wrong (real-user walk, Kijani Foods, fault 1). */}
+                        <b>{fromWord}</b> {needsWord} {midSentence(d.what)} from <b>{onWhomInSentence}</b>. {statusSaid}
                       </div>
                       {holdingUp && (
                         <div className="gwui-rule-blue gwui-pt-8 gwui-pr-10 gwui-pb-8 gwui-pl-10 gwui-mt-8 gwui-fs-15 gwui-ink-text" style={{background: 'var(--gw-blue-bg)', borderRadius: 8, lineHeight: 1.5}}>
@@ -4860,10 +4880,14 @@ function AskTheBoard({ firstBlocker, myParticipantId }: {
    * would actually ask ("Why am I still waiting on the price list?").
    */
   const readerIsWaiting = !!myParticipantId && firstBlocker?.fromParticipantId === myParticipantId
+  /* `firstBlocker.what` can open with a capitalised article ("The Mwangi agency") where the same
+     string also stands as a title elsewhere; mid-sentence here, only that leading word is wrong
+     (real-user walk, Kijani Foods, fault 1). */
+  const what = firstBlocker ? midSentence(firstBlocker.what) : ''
   const example = firstBlocker?.from
     ? (readerIsWaiting
-      ? `Why am I still waiting on ${firstBlocker.what}?`
-      : `Why is ${firstBlocker.from} still waiting on ${firstBlocker.what}?`)
+      ? `Why am I still waiting on ${what}?`
+      : `Why is ${firstBlocker.from} still waiting on ${what}?`)
     : 'Who is waiting on whom?'
   /*
    * PHONE CHECK, ITEM 4: THE PLACEHOLDER READ CUT OFF MID-EXAMPLE ("Ask about this board, for
