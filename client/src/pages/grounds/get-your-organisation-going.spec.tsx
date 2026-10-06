@@ -51,6 +51,29 @@ describe('the new admin', () => {
     )).toBeTruthy()
   })
 
+  /*
+   * SCREEN FAULT 7: "GOT IT" SAT BETWEEN THE TITLE AND THE BODY - a new admin's card invited them
+   * to dismiss it before they had read what it said. It now comes after everything the card says
+   * (the body sentence and the doors list), not beside the heading.
+   */
+  it('"Got it" sits after the card\'s body, not between the title and it', async () => {
+    const { container } = open(ADMIN)
+    await screen.findByRole('heading', { name: 'You’re an admin at Nyali Foods' })
+    const card = container.querySelector('.gwui-welcome-card') as HTMLElement
+    const children = [...card.children].map(c => c.className || c.tagName)
+    const gotIt = screen.getByRole('button', { name: 'Got it' })
+    expect(card.contains(gotIt)).toBe(true)
+    /* The button's own ancestor (the flex-end row) comes after the doors list, last among the
+       card's direct children - not inside the head row beside the title. */
+    const headIndex = children.indexOf('gwui-welcome-card-head')
+    const doorsIndex = children.findIndex(c => c === 'gwui-welcome-doors')
+    const gotItRowIndex = [...card.children].findIndex(c => c.contains(gotIt))
+    expect(gotItRowIndex).toBeGreaterThan(doorsIndex)
+    expect(gotItRowIndex).toBeGreaterThan(headIndex)
+    /* And not inside the head row itself. */
+    expect(card.children[headIndex].contains(gotIt)).toBe(false)
+  })
+
   /* U.17: the Suites door came with the Suites page, in the prototype's place and words. */
   it('the welcome card has the prototype\'s doors, Suites included now that its page exists', async () => {
     open(ADMIN)

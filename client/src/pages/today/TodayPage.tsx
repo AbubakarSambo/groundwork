@@ -83,7 +83,6 @@ export function TodayPage() {
           {params.get('welcome') === '1' && (
             <YouAreIn checkIns={grounds.isSuccess ? (grounds.data?.length ?? 0) : null} mayStart={user?.mayOpenCheckIns !== false} />
           )}
-          <AdminFirstRun />
 
           <Greeting
             title={greeting}
@@ -121,6 +120,16 @@ export function TodayPage() {
             {aSuiteIsOnForYou && <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/mine">Your own leave and spending requests</Link></p>}
             <QueueLink userId={user?.id} />
           </Section>
+
+          {/*
+            SCREEN FAULT 7: THE ADMIN CARD CAME FIRST ON A PHONE, NOT THE GREETING. On a single
+            column (a phone, where this `Stack` is the whole page, not a side-by-side layout) the
+            welcome card and "Get <organisation> going" used to sit above the greeting and "What
+            needs you" - a new admin's first full screen was "You're an admin", with what actually
+            needs her today two screens further down. Moved after "What needs you" so the thing
+            that changes every day comes first, and the one-time welcome comes after it.
+          */}
+          <AdminFirstRun />
         </Stack>
 
         {data && data.comingUp.length > 0 && (

@@ -115,9 +115,13 @@ export function AdminFirstRun() {
     <div className="gwui-first-run">
       {showWelcome && (
         <section className="gwui-welcome-card" aria-label="Welcome">
+          {/*
+            SCREEN FAULT 7: "GOT IT" SAT BETWEEN THE TITLE AND THE BODY, so a new admin's card
+            invited them to dismiss it before they had read it. Moved to its own row after the
+            doors, below everything the card actually says.
+          */}
           <div className="gwui-welcome-card-head">
             <h2>You’re an admin at {orgName}</h2>
-            <Button kind="quiet" size="small" onClick={() => gotIt.mutate()} disabled={gotIt.isPending}>Got it</Button>
           </div>
           <p className="gwui-welcome-card-line">
             You can see every board and report, including what people said in them. You never see anyone’s
@@ -134,6 +138,9 @@ export function AdminFirstRun() {
               </li>
             ))}
           </ul>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Button kind="quiet" size="small" onClick={() => gotIt.mutate()} disabled={gotIt.isPending}>Got it</Button>
+          </div>
         </section>
       )}
       {!finished && (
