@@ -30,7 +30,7 @@ export function theAnchorNudgeLine(theirOwnPromise: string | null | undefined): 
  */
 export function withoutALeadingWill(said: string | null): string | null {
   if (!said) return null;
-  const rest = said.replace(/^(?:i\s+)?(?:am\s+|are\s+|'m\s+|'re\s+)?(?:will|'ll|shall|going to)\s+/i, '').trim();
+  const rest = said.replace(/^(?:i\s+)?(?:am\s+|are\s+|'m\s+|'re\s+)?(?:will|'ll|shall|going to)(?:\s+|$)/i, '').trim();
   return rest ? rest[0].toLowerCase() + rest.slice(1) : null;
 }
 
