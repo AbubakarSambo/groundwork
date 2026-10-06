@@ -10,7 +10,8 @@ import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check
  * A TEST CHECK-IN MOVES TOWARD ONE SMALL REAL ONE (decision 109 item 8; engagement spec sections 8 and 9).
  *
  * WHAT A TEST CHECK-IN IS, in the two ways Hafsah named: a check-in where ONLY THE LEAD has taken part, a week after it was made, and the anchor's
- * trial, which is a test the same way but is not left a week (three days). Anybody else having taken part makes it real, whatever it was called.
+ * trial, which is a test the same way but is not left a week (three days). And NOBODY ELSE WAS EVER ADDED: a person invited, answered or not, makes it a
+ * real check-in that is waiting for them, which is the other journeys' business.
  *
  * WHAT THEY ARE SENT. One email, once, and never a feature list. It starts from what they tried, in their own check-in's name and kind, and asks for
  * the next small thing: one real situation and three to five real people. It does not say "roll it out" and it never mentions the organisation.
@@ -109,6 +110,9 @@ export async function sendTheTestCheckInMessages(
         .filter((r) => !r.participant?.managingOnly && !isNotLetInYet(r.participant))
         .map((r) => ({ participantId: r.participantId as string, userId: (r.participant?.userId ?? null) as string | null }));
       if (!isATestCheckIn(g, tookPart, g.initiatorId, now)) continue;
+      /* NOBODY ELSE WAS EVER ADDED (decision 109 review): a check-in with a person invited, even one who never answered, is a real one that is waiting, not a test. */
+      const others = await prisma.groundParticipant.count({ where: { groundId: g.id, OR: [{ userId: null }, { userId: { not: g.initiatorId } }] } });
+      if (others > 0) continue;
       seen.add(g.initiatorId);
       const user = await prisma.user.findUnique({ where: { id: g.initiatorId }, select: { email: true, deletedAt: true } });
       if (!user?.email || user.deletedAt) continue;
