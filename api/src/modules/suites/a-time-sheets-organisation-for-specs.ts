@@ -122,6 +122,18 @@ export function aTimeSheetsOrganisation(opts: { rules?: unknown; on?: boolean; w
         weeks.push(create);
         return create;
       }),
+      /* Strict, like the database: a second week for the same person and Monday is refused (P2002), and a conditional write changes only the rows that still match. */
+      create: jest.fn(async ({ data }: any) => {
+        if (weeks.some((x) => x.userId === data.userId && x.weekOf.getTime() === data.weekOf.getTime())) throw Object.assign(new Error('Unique constraint failed'), { code: 'P2002' });
+        weeks.push({ approvedAt: TODAY, ...data });
+        return data;
+      }),
+      updateMany: jest.fn(async ({ where, data }: any) => {
+        const hit = weeks.filter((x) => x.userId === where.userId && x.weekOf.getTime() === where.weekOf.getTime()
+          && (['step', 'escalatedTo', 'approvedMinutes', 'seenMinutes'] as const).every((k) => (x[k] ?? null) === (where[k] ?? null)));
+        hit.forEach((x) => Object.assign(x, data));
+        return { count: hit.length };
+      }),
     },
     timeAgreement: { findMany: jest.fn(async () => []) },
     checkIn: {
