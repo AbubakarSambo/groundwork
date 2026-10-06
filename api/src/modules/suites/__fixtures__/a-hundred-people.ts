@@ -214,5 +214,5 @@ export function aHundredPeople(opts: Options = {}) {
   const spending = new SpendingService(prisma, whatsapp);
   const as = (key: string) => ({ userId: idOf(key), organizationId: ORG });
   const queryCount = () => calls.length;
-  return { prisma, queue, leaveBoard, spending, as, leave, spend, events, people, calls, queryCount, told, suites, roles, directory, decided };
+  return { prisma, queue, leaveBoard, spending, as, leave, spend, events, people, calls, queryCount, told, suites, roles, directory, decided, memberships, users };
 }

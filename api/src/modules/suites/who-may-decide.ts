@@ -85,6 +85,8 @@ export interface Known {
   on?: Date;
   /** Who is away today and who stands in, read once for this resolution when no lookups were given. */
   cover?: Map<string, string>;
+  /** Never hand a step to a stand-in: for a review, which is written by whoever the rule names and is not a request waiting for an answer. */
+  noCover?: boolean;
 }
 
 const DUTY_OF = {
@@ -152,7 +154,7 @@ export async function whoDecidesFrom(prisma: PrismaService, rules: ARule[], requ
 }
 
 async function withWhoStandsIn(prisma: PrismaService, who: WhoDecides, request: ARequest, known: Known): Promise<WhoDecides> {
-  if (who.kind === 'admin') return who;
+  if (who.kind === 'admin' || known.noCover) return who;
   const cover = known.lookups ? known.lookups.cover : (known.cover ??= await coverToday(prisma, request.organizationId, known.on ?? new Date()));
   const standIn = cover.get(who.userId);
   if (!standIn || standIn === who.userId || !(await aPersonWhoMay(prisma, request, standIn, known))) return who;

@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { theirRosterEntries, theirRosterEntry } from './a-roster-entry-and-its-sign-in';
 import { inTheLeadsTeam } from './a-leads-team';
 import { whoApprovesFor } from './who-approves';
+import { whoTheyStandInFor } from './the-lookups';
 import { couldBeNamed, decidesIt, everyRuleIn, passWhatTheyAlreadyApproved, theStepsFor, whoComesNext, whoDecidesNow, type DecidesNow } from './who-may-decide';
 import { whyPassOn } from './a-request-waits-too-long';
 import { aRequestsHistory, recordIt } from './a-request-is-recorded';
@@ -120,7 +121,8 @@ export class TimeSheetsService {
      * for them; any other member, and a guest, are refused, as before.
      */
     const asApprover = role !== 'ADMIN' && role !== 'LEAD';
-    if (asApprover && !(role === 'MEMBER' && (await couldBeNamed(this.prisma, everyRuleIn(theStepsFor('time', answers)), reader.organizationId, { userId: reader.userId, role })))) {
+    /* A member who stands in today for somebody on leave decides what waits for that person (who-may-decide.ts). */
+    if (asApprover && !(role === 'MEMBER' && ((await couldBeNamed(this.prisma, everyRuleIn(theStepsFor('time', answers)), reader.organizationId, { userId: reader.userId, role })) || (await whoTheyStandInFor(this.prisma, reader.organizationId, reader.userId, today)).length > 0))) {
       throw new ForbiddenException(TIME_REFUSED.onlyAdminsAndLeads);
     }
 

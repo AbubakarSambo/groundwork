@@ -82,6 +82,8 @@ const capital = (x: string) => `${x.charAt(0).toUpperCase()}${x.slice(1)}`;
  */
 export function theRecordInWords(records: ARecord[], names: Map<string, string>, readerUserId: string, suite: SuiteOfARecord): string[] {
   const who = (id: string | null | undefined) => (!id ? 'an admin' : id === readerUserId ? 'you' : names.get(id) || 'somebody');
+  /* "Daniel approved it on 7 October, standing in for Wairimu." The one on leave reads "standing in for you". */
+  const standingIn = (r: ARecord) => ((r.basis as any)?.standingInFor ? `, standing in for ${who((r.basis as any).standingInFor)}` : '');
   const it = suite === 'time' ? 'these hours' : suite === 'reviews' ? 'the review' : 'it';
   const out: string[] = [];
   for (const r of records) {
@@ -102,7 +104,7 @@ export function theRecordInWords(records: ARecord[], names: Map<string, string>,
           : `Groundwork told ${who(r.toUserId)} on WhatsApp on ${on}.`);
         break;
       case 'approved':
-        out.push(`${capital(by)} approved ${it} on ${on}.`);
+        out.push(`${capital(by)} approved ${it} on ${on}${standingIn(r)}.`);
         break;
       case 'passed': {
         const had = who(r.toUserId);
@@ -110,7 +112,7 @@ export function theRecordInWords(records: ARecord[], names: Map<string, string>,
         break;
       }
       case 'declined':
-        out.push(`${capital(by)} declined ${it} on ${on}${(r.basis as any)?.withAReason ? ' and gave a reason' : ''}.`);
+        out.push(`${capital(by)} declined ${it} on ${on}${standingIn(r)}${(r.basis as any)?.withAReason ? `${standingIn(r) ? ', and' : ' and'} gave a reason` : ''}.`);
         break;
       case 'questioned':
         out.push(`${capital(by)} asked ${who(r.toUserId)} a question about ${it} on ${on}.`);
@@ -166,7 +168,7 @@ export function theRecordInWords(records: ARecord[], names: Map<string, string>,
 
 /** First names of every sign-in a record names. Never an address. */
 export async function theNamesIn(prisma: PrismaService, records: ARecord[]): Promise<Map<string, string>> {
-  const ids = [...new Set(records.flatMap((r) => [r.byUserId, r.toUserId, (r.basis as any)?.fromUserId]).filter((x): x is string => typeof x === 'string' && !!x))];
+  const ids = [...new Set(records.flatMap((r) => [r.byUserId, r.toUserId, (r.basis as any)?.fromUserId, (r.basis as any)?.standingInFor]).filter((x): x is string => typeof x === 'string' && !!x))];
   if (!ids.length) return new Map();
   let us: { id: string; firstName: string | null }[] = [];
   try { us = (await (prisma as any).user?.findMany?.({ where: { id: { in: ids } }, select: { id: true, firstName: true } })) ?? []; } catch { us = []; }

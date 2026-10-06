@@ -4,7 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { askNameOf } from '../assistant/ask-name';
 import { theirRosterEntry, withTheirSignIns } from './a-roster-entry-and-its-sign-in';
 import { inTheLeadsTeam } from './a-leads-team';
-import { loadLookups, type Lookups } from './the-lookups';
+import { loadLookups, whoTheyStandInFor, type Lookups } from './the-lookups';
 import { couldBeNamed, decidesIt, everyStepFor, passWhatTheyAlreadyApproved, theStepsFor, whoComesNext, whoDecidesNow, type DecidesNow } from './who-may-decide';
 import { whyPassOn } from './a-request-waits-too-long';
 import { aRequestsHistory, recordIt, saidAsADate } from './a-request-is-recorded';
@@ -170,7 +170,8 @@ export class SpendingService {
      * or a lead is refused, as before.
      */
     const asApprover = role !== 'ADMIN' && role !== 'LEAD';
-    if (asApprover && !(role === 'MEMBER' && (await this.approvesOverTheLimit(reader.organizationId, reader.userId, answers)))) throw new ForbiddenException(SPEND_REFUSED.onlyAdminsAndLeads);
+    /* A member who stands in today for somebody on leave decides what waits for that person, and opens the board as an approver to do it. */
+    if (asApprover && !(role === 'MEMBER' && ((await this.approvesOverTheLimit(reader.organizationId, reader.userId, answers)) || (await whoTheyStandInFor(this.prisma, reader.organizationId, reader.userId, today)).length > 0))) throw new ForbiddenException(SPEND_REFUSED.onlyAdminsAndLeads);
     const org = reader.organizationId;
     const month = monthOf(today);
 
@@ -255,7 +256,7 @@ export class SpendingService {
     const approvedByIds = [...(r.approvedByIds ?? []), ...(outcome === 'approved' ? [reader.userId] : [])];
     /* ONE ANSWER WINS (a-request-is-answered-once.ts): nothing is written or recorded until the write that keeps this answer has found the request still waiting where it was read. */
     const here = whereItIsNow(r);
-    const decided = () => recordIt(this.prisma, { organizationId: r.organizationId, suite: 'spend', ref: id, kind: outcome, byUserId: reader.userId, step: now.step, basis: { row: 'spend_requests', id, ...(reason ? { withAReason: true } : {}) } });
+    const decided = () => recordIt(this.prisma, { organizationId: r.organizationId, suite: 'spend', ref: id, kind: outcome, byUserId: reader.userId, step: now.step, basis: { row: 'spend_requests', id, ...(reason ? { withAReason: true } : {}), ...(now.who.kind === 'person' && now.who.standingInFor ? { standingInFor: now.who.standingInFor } : {}) } });
     let passed: { step: number; userId: string }[] = [];
     if (outcome === 'approved' && !now.last) {
       /* The next step, unless whoever decides it has already approved it: then that step is passed too (who-may-decide.ts). */

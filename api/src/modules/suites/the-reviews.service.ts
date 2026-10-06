@@ -640,9 +640,10 @@ export class ReviewsService {
 
   /** Who writes this person's review, by rule: "Their manager" is their manager, else an admin; "An admin" is an admin. */
   private theWriter(organizationId: string, p: Person, writer: string | null): Promise<WhoDecides> {
+    /* Nobody stands in to write a review: it is not a request that waits for an answer, and who writes it does not change with somebody's leave. */
     return theOneWhoDecides(this.prisma, theStepsFor('reviews', { writer })[0], {
       organizationId, requesterUserId: p.userId ?? `person:${p.externalId}`, managerExternalId: p.managerExternalId, team: p.department,
-    });
+    }, { noCover: true });
   }
 
   /**
