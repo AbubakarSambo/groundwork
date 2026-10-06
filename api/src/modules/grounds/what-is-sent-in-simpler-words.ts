@@ -48,9 +48,9 @@ export const THE_REMINDERS_IN_SIMPLER_WORDS: Record<string, string> = {
   'checkin-open': 'Hi {{1}}, your check-in for {{2}} is open. It takes about five minutes. You can answer here. Write START to begin.',
   'due-tomorrow': 'Hi {{1}}, your check-in for {{2}} is due tomorrow, {{3}}. You can answer here at any time before then.',
   'opens-soon': 'Hi {{1}}, your check-in for {{2}} opens in one hour, at {{3}}. Write here when it opens, and we will start.',
-  'closes-soon': 'Hi {{1}}, your check-in for {{2}} closes in one hour, at {{3}}. Please answer now. It takes five minutes, and then your view is part of this round.',
+  'closes-soon': 'Hi {{1}}, your check-in for {{2}} closes in one hour, at {{3}}. Please answer now. It takes five minutes. Then your answers go into the report.',
   overdue: 'Hi {{1}}, your check-in for {{2}} is late. It is still open. You can answer here now.',
-  'team-almost-in': 'Hi {{1}}, {{3}} of {{4}} people have answered the check-in for {{2}}. Your answers are not there yet. Add them, and they will be part of the picture.',
+  'team-almost-in': 'Hi {{1}}, {{3}} of {{4}} people have answered the check-in for {{2}}. You have not answered yet. When you answer, your answers go into the report.',
   'your-view-matters': 'Hi {{1}}, your check-in for {{2}} is still waiting. Your answers help {{3}} see what is in your way and where they can help. It takes about five minutes. You can answer here.',
   'anchor-follow-up': 'Hi {{1}}, last time you said you would {{2}}. How did it go? Your check-in for {{3}} is open. You can answer here.',
 };
@@ -68,7 +68,7 @@ export const THE_EMAILS = {
   /** "Your check-in for X is still open." and the line when the other person has already answered. */
   nudge: (simplerWords?: boolean | null) =>
     simplerWords
-      ? { stillOpen: 'is still open. It takes about five minutes.', theOtherHasAnswered: 'The other person has already answered. We are waiting for you.' }
+      ? { stillOpen: 'is still open. It takes about five minutes.', theOtherHasAnswered: 'The other person has already answered. Yours is the last answer we need.' }
       : { stillOpen: 'is still open.', theOtherHasAnswered: 'They have already shared their side. Yours is the last one we are waiting for.' },
   /** "A new check-in is ready for X." */
   nextCheckInOpen: (simplerWords?: boolean | null) =>

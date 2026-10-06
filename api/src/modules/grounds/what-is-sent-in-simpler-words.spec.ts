@@ -64,9 +64,14 @@ describe('an email about a check-in', () => {
     expect(THE_EMAILS.nextCheckInOpen().before).toBe('A new check-in is ready for');
   });
   it('says it in plain sentences with the switch on', () => {
-    expect(THE_EMAILS.nudge(true).theOtherHasAnswered).toBe('The other person has already answered. We are waiting for you.');
+    expect(THE_EMAILS.nudge(true).theOtherHasAnswered).toBe('The other person has already answered. Yours is the last answer we need.');
     expect(THE_EMAILS.nextCheckInOpen(true)).toEqual({ before: 'Your next check-in for', after: 'is open. It takes about five minutes.' });
   });
+});
+
+it('says the two reminders that said "your view" and "the picture" in the words the product uses', () => {
+  expect(THE_REMINDERS_IN_SIMPLER_WORDS['team-almost-in']).toContain('You have not answered yet. When you answer, your answers go into the report.');
+  expect(THE_REMINDERS_IN_SIMPLER_WORDS['closes-soon']).toContain('Please answer now. It takes five minutes. Then your answers go into the report.');
 });
 
 it('tells the model to keep every fact when it writes the report in simpler words', () => {
