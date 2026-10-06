@@ -16,14 +16,29 @@ interface AskStore {
   pendingMessage: string | null
   showWith: (message: string) => void
   consumePendingMessage: () => void
+  /**
+   * DECISION 65: ASK OPENED FROM A CHECK-IN'S OWN CONTEXT AND RESOURCES PAGE KNOWS WHICH ONE.
+   *
+   * Set only by that page's own "Add context with Ask ..." button (never by an ordinary question),
+   * so the panel's first message is the empty "start" the setup conversation reads, carrying this
+   * check-in's id and `openedFrom: "check_in_setup"` (docs/answers-from-engine.md, 30 September,
+   * "decision 65"). Cleared when the panel closes, so reopening it later for an ordinary question
+   * never carries it by accident.
+   */
+  openedFromCheckInSetupGroundId: string | null
+  showForCheckInSetup: (groundId: string) => void
+  consumeOpenedFromCheckInSetup: () => void
 }
 
 export const useAskStore = create<AskStore>((set) => ({
   open: false,
-  toggle: () => set((s) => ({ open: !s.open })),
+  toggle: () => set((s) => (s.open ? { open: false, openedFromCheckInSetupGroundId: null } : { open: true })),
   show: () => set({ open: true }),
-  hide: () => set({ open: false }),
+  hide: () => set({ open: false, openedFromCheckInSetupGroundId: null }),
   pendingMessage: null,
   showWith: (message: string) => set({ open: true, pendingMessage: message }),
   consumePendingMessage: () => set({ pendingMessage: null }),
+  openedFromCheckInSetupGroundId: null,
+  showForCheckInSetup: (groundId: string) => set({ open: true, pendingMessage: '', openedFromCheckInSetupGroundId: groundId }),
+  consumeOpenedFromCheckInSetup: () => set({ openedFromCheckInSetupGroundId: null }),
 }))

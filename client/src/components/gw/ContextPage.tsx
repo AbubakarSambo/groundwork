@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
 import { documentsApi } from '@/api/documents'
+import { askApi } from '@/api/ask'
 import { toast } from 'sonner'
 import { personLabel, peopleLabels, firstNameOrLabel, atTheStart } from '@/lib/utils'
 import { Section, Panel, Button, TextArea, Tag, Note, Callout, Choices, SubHeading } from '@/components/gw/ui'
@@ -18,6 +19,9 @@ import { DeliveredPanel } from '@/components/gw/DeliveredPanel'
 import { WHAT_YOU_CAN_UPLOAD, UPLOAD_ACCEPT_ATTR } from '@/lib/what-you-can-upload'
 import { whatIsOutstanding } from './where-a-promise-stands'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import { useAskStore } from '@/stores/ask'
+import { useAuthStore } from '@/stores/auth'
+import { askNameFor } from '@/lib/ask-name'
 
 /**
  * THE CONTEXT PAGE. ONE OF THEM, FOR EVERYBODY.
@@ -103,6 +107,19 @@ export function ContextPage({
    * lead is offered it, the more careful side of the rule.
    */
   const mayRewriteTheBrief = typeof (ground as any)?.mayChangeSetup === 'boolean' ? (ground as any).mayChangeSetup === true : isTheLead
+
+  /**
+   * "ADD CONTEXT WITH ASK <ORGANISATION NAME>" (decision 65, request 169). Opens the Ask
+   * Groundwork panel already on this check-in's setup, instead of needing the lead to type
+   * "context" first. Shown only while the engine serves `addsContext: true` on `GET /ask` - the
+   * switch is off everywhere until then, so this stays hidden rather than promising a conversation
+   * the engine has not turned on - and only to whoever may confirm setup here (the same rule as
+   * rewriting the brief above).
+   */
+  const askPage = useQuery({ queryKey: ['ask'], queryFn: askApi.mine })
+  const orgName = useAuthStore((s) => s.user?.organizationName)
+  const showForCheckInSetup = useAskStore((s) => s.showForCheckInSetup)
+  const canAddContextWithAsk = mayRewriteTheBrief && askPage.data?.addsContext === true
   const contextEnabled = (ground as any)?.contextEnabled === true
   const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === viewerUserId)
 
@@ -421,6 +438,11 @@ export function ContextPage({
 
             {/* The prototype's order: "From a plan", the conversation, then "Waiting for you to confirm". The lead's only. */}
             {isTheLead && <FromAPlan groundId={id!} />}
+            {canAddContextWithAsk && (
+              <Button kind="quiet" size="small" onClick={() => showForCheckInSetup(id!)}>
+                {`Add context with ${askNameFor(orgName)}`}
+              </Button>
+            )}
             <div id="gw-context-chat">
               {/* The lead's own conversation about their own check-in. An admin reads the page. */}
               {contextEnabled && isTheLead && <ContextChat groundId={id!} />}

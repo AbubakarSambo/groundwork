@@ -1301,6 +1301,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
      given back to the card so nothing leaves a blank strip where the bar used to sit. */
   const onConversationPage = /^\/checkin\//.test(location.pathname)
   const consumePendingAskMessage = useAskStore(s => s.consumePendingMessage)
+  /* Decision 65: a check-in's own Context and resources page tells Ask which one it was opened from. */
+  const pendingAskOpenedFromGroundId = useAskStore(s => s.openedFromCheckInSetupGroundId)
+  const consumeOpenedFromCheckInSetup = useAskStore(s => s.consumeOpenedFromCheckInSetup)
   /**
    * Signed-out visitors do not get the signed-in navigation.
    *
@@ -1412,7 +1415,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           position: 'fixed', top: 0, right: 0, bottom: 0, width: 400, maxWidth: '100vw', zIndex: 45,
           boxShadow: '-8px 0 24px rgba(26, 25, 22, 0.08)',
         }}>
-          <AskGroundwork onClose={hideAsk} initialMessage={pendingAskMessage} onSentInitialMessage={consumePendingAskMessage} />
+          <AskGroundwork
+            onClose={hideAsk}
+            initialMessage={pendingAskMessage}
+            onSentInitialMessage={consumePendingAskMessage}
+            initialOpenedFromGroundId={pendingAskOpenedFromGroundId}
+            onSentInitialOpenedFrom={consumeOpenedFromCheckInSetup}
+          />
         </div>
       )}
       <FeedbackWidget />

@@ -142,12 +142,20 @@ export async function pollNumbersWaiting(
  */
 export function AskGroundwork({
   onClose, initialMessage, onSentInitialMessage,
+  initialOpenedFromGroundId, onSentInitialOpenedFrom,
   /* Real values in the product; a test hands in small ones so it does not wait a minute. */
   pollIntervalMs = 2000, pollTimeoutMs = 60_000,
 }: {
   onClose?: () => void
   initialMessage?: string | null
   onSentInitialMessage?: () => void
+  /**
+   * DECISION 65: set only when the panel was opened from a check-in's own Context and resources
+   * page or setup. The panel's first message is sent empty, with this check-in's id and
+   * `openedFrom: "check_in_setup"`; every later message in the same opening carries both too.
+   */
+  initialOpenedFromGroundId?: string | null
+  onSentInitialOpenedFrom?: () => void
   pollIntervalMs?: number
   pollTimeoutMs?: number
 }) {
@@ -188,6 +196,9 @@ export function AskGroundwork({
     return about.map((g) => ({ id: g.id, label: g.label, ...startOf.get(g.id) }))
   }, [about, allGrounds.data])
   const [chosen, setChosen] = useState<string | null>(null)
+  /* Decision 65: set once, from `initialOpenedFromGroundId`, for the life of this opening - every
+     message sent while it is set carries this check-in's id and `openedFrom: "check_in_setup"`. */
+  const [openedFromGroundId, setOpenedFromGroundId] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [said, setSaid] = useState<Said[]>([])
   const [answered, setAnswered] = useState<Set<string>>(new Set())
@@ -273,7 +284,9 @@ export function AskGroundwork({
     setProblem(null)
     try {
       const reply = await how()
-      setSaid((s) => [...s, { from: 'you', says: message }, { from: 'groundwork', reply }])
+      /* The very first message of a check-in-setup opening is sent empty, read as "start" - there
+         is nothing of the asker's own to show as a bubble for that one. */
+      setSaid((s) => [...s, ...(message ? [{ from: 'you' as const, says: message }] : []), { from: 'groundwork' as const, reply }])
       if (clearDraft) setDraft('')
     } catch (e: unknown) {
       const said = (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message
@@ -286,7 +299,10 @@ export function AskGroundwork({
   const ask = (message: string, clearDraft = false, groundIdOverride?: string) => {
     const m = message.trim()
     if (!m || sending) return
-    void send(m, () => askApi.ask(m, groundIdOverride ?? aboutId ?? undefined), clearDraft)
+    const gid = groundIdOverride ?? openedFromGroundId ?? aboutId ?? undefined
+    /* Never sent on an ordinary question - only while this opening is the check-in-setup one. */
+    const openedFrom = openedFromGroundId ? 'check_in_setup' as const : undefined
+    void send(m, () => askApi.ask(m, gid, openedFrom), clearDraft)
   }
 
   /** The "Choose a file" button on a `next_step` block: opens the picker for that check-in. */
@@ -325,12 +341,26 @@ export function AskGroundwork({
   }
 
   useEffect(() => {
-    if (!initialMessage || sentInitial.current || sending || !page.data?.canAsk) return
+    if (sentInitial.current || sending || !page.data?.canAsk) return
+    /*
+     * DECISION 65: OPENED FROM A CHECK-IN'S OWN SETUP. Sent before the ordinary `initialMessage`
+     * check below, and with an empty message - this is the one case an empty message is sent at
+     * all, so Ask Groundwork reads it as "start" rather than nothing being sent.
+     */
+    if (initialOpenedFromGroundId) {
+      sentInitial.current = true
+      setOpenedFromGroundId(initialOpenedFromGroundId)
+      setChosen(initialOpenedFromGroundId)
+      void send('', () => askApi.ask('', initialOpenedFromGroundId, 'check_in_setup'), false)
+      onSentInitialOpenedFrom?.()
+      return
+    }
+    if (!initialMessage) return
     sentInitial.current = true
     ask(initialMessage, false)
     onSentInitialMessage?.()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialMessage, page.data?.canAsk])
+  }, [initialMessage, initialOpenedFromGroundId, page.data?.canAsk])
 
   const answer = (proposalId: string, yes: boolean) => {
     if (sending) return
