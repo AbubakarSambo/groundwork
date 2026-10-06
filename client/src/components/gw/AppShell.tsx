@@ -11,6 +11,7 @@ import { useAuthStore } from '@/stores/auth'
 import { justTheQuestion } from '@/pages/invite/the-link-opens-on-the-question'
 import { groundsApi } from '@/api/grounds'
 import { todayApi } from '@/api/today'
+import { queueApi } from '@/api/suites'
 import { useEntryStore } from '@/stores/entry'
 import { useFeedbackStore } from '@/stores/feedback'
 import { useHelpStore } from '@/stores/help'
@@ -607,6 +608,20 @@ export function AppSidebar() {
   const { data: today } = useQuery({ queryKey: ['today'], queryFn: todayApi.get, staleTime: 30_000, enabled: isAuthenticated, retry: false })
   const todayCount = today?.count ?? 0
 
+  /* Live walk at a hundred people, fault 1: "Suites" in the sidebar was gated on role alone, so a
+     member who holds finance or HR, and decides requests in their own queue, had no door to it. The
+     same quiet read `QueueLink` uses (one row, just the counts) also opens the door for them, a lead
+     or an admin already having it by role. Read only for a member: a lead or an admin already has it,
+     and nobody else is ever served anything by the queue. */
+  const queueServesThem = useQuery({
+    queryKey: ['suite-queue-count'],
+    queryFn: () => queueApi.get({ pageSize: 1 }),
+    enabled: isAuthenticated && user?.role === 'MEMBER',
+    retry: false,
+    staleTime: 30_000,
+  })
+  const navOpts = { queueServesThem: user?.role === 'MEMBER' && !!queueServesThem.data?.counts?.all }
+
   const location = useLocation()
   /*
    * GROUP 3 REVIEW, BATCH B: unreachable again, deliberately this time. `AppShell`'s own
@@ -715,7 +730,7 @@ export function AppSidebar() {
   const hiddenCount = Math.max(0, grounds.length - (pinned.length + shownUnpinned.length + shownClosed.length))
 
   /* ONE GATE. Every door below comes out of `navItemsFor`, and is only sorted into its part here. */
-  const items = navItemsFor(user)
+  const items = navItemsFor(user, navOpts)
   const pages = items.filter(i => !(i as any).adminOnly && !(i as any).platformAdminOnly && i.to !== '/grounds' && i.to !== '/settings')
   const adminItems = items.filter(i => (i as any).adminOnly)
   const staffItems = items.filter(i => (i as any).platformAdminOnly)
@@ -1050,7 +1065,7 @@ export function AppSidebar() {
         {collapsed && (
           <nav className="gw-rl-scroll folded" aria-label="Check-ins and pages">
             {/* Same gate as everywhere else: navItemsFor, never a filter of its own. */}
-            {navItemsFor(user).map(item => {
+            {navItemsFor(user, navOpts).map(item => {
               const active = window.location.pathname.startsWith(item.to)
               return (
                 <NavLink key={item.to} to={item.to} title={item.label} aria-label={item.label}

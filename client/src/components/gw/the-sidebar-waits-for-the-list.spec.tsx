@@ -6,6 +6,7 @@ import { AppShell } from './AppShell'
 import { useAuthStore } from '@/stores/auth'
 import { groundsApi } from '@/api/grounds'
 import { todayApi } from '@/api/today'
+import { queueApi } from '@/api/suites'
 
 /**
  * THE SIDEBAR DOES NOT SAY "NOTHING IN PROGRESS YET" BEFORE IT KNOWS.
@@ -40,8 +41,16 @@ function mount() {
  *
  * Mocked here now, the same way `groundsApi.list` already is, so nothing this file does reaches the
  * real network.
+ *
+ * Live walk at a hundred people, fault 1: `AppShell` now also reads `['suite-queue-count']`
+ * (`queueApi.get`) for a MEMBER, the same quiet count `QueueLink` already uses, to decide whether
+ * "Suites" belongs in their sidebar too. `USER` here is a MEMBER, so the same real-network risk
+ * applies to it as it did to `today` - mocked here for the same reason.
  */
-beforeEach(() => { vi.spyOn(todayApi, 'get').mockResolvedValue({ needs: [], count: 0, line: null, comingUp: [] } as any) })
+beforeEach(() => {
+  vi.spyOn(todayApi, 'get').mockResolvedValue({ needs: [], count: 0, line: null, comingUp: [] } as any)
+  vi.spyOn(queueApi, 'get').mockResolvedValue({ counts: { all: 0, leave: 0, spend: 0, pastTheDeadline: 0 }, page: 1, pageSize: 1, pages: 1, items: [], says: '' } as any)
+})
 afterEach(() => vi.restoreAllMocks())
 
 describe('the sidebar waits for the list', () => {

@@ -70,6 +70,19 @@ describe('who sees what', () => {
     for (const u of [member, { role: 'GUEST' }, null]) expect(labels(u)).not.toContain('Suites')
   })
 
+  /**
+   * LIVE WALK AT A HUNDRED PEOPLE, FAULT 1: `finance.m1` and `procurement.m1` decide requests every
+   * day - the approver's queue serves them something - but were role `MEMBER`, so the gate above left
+   * them with no door to the suites at all. The same quiet queue count `QueueLink` already reads now
+   * also opens the door, only for whoever it is actually serving something to; a member it serves
+   * nothing to, and everybody who already has it by role, is unaffected.
+   */
+  it('a member the queue serves something to also gets the door to Suites', () => {
+    expect(navItemsFor(member, { queueServesThem: true }).filter(i => i.label === 'Suites').map(i => i.to)).toEqual(['/settings/suites'])
+    expect(navItemsFor(member, { queueServesThem: false }).map(i => i.label)).not.toContain('Suites')
+    expect(labels(member)).not.toContain('Suites')
+  })
+
   it('the platform back-office is for Groundwork, not for an org admin', () => {
     /**
      * `/admin/dashboard` is wrapped in `RequirePlatformAdmin`, so showing it to an org admin was a
@@ -89,7 +102,10 @@ describe('one gate, used by all three renderers', () => {
     // The bug was three copies of the rule. This is the check that there is one.
     // The phone's doors moved from the bottom bar to "More" (A1), so the third caller is that page.
     const MORE = readFileSync(join(__dirname, '../../pages/more/MorePage.tsx'), 'utf8')
-    expect((SHELL.match(/navItemsFor\(user\)/g) ?? []).length).toBe(2)
+    /* Both of AppShell's own calls now also pass `navOpts` (fault 1 of the live walk at a hundred
+       people: a member the approver's queue serves something to gets the same door to Suites a lead
+       or an admin already has), so the pattern allows an optional second argument. */
+    expect((SHELL.match(/navItemsFor\(user(?:, navOpts)?\)/g) ?? []).length).toBe(2)
     expect((MORE.match(/navItemsFor\(user\)/g) ?? []).length).toBe(1)
     expect(MORE).not.toMatch(/NAV_ITEMS/)
   })
