@@ -63,7 +63,20 @@ export function SendTheReportToEveryone({ groundId, participants, answered }: {
         setEverybodyAlreadyTold(false)
         toast.success(`Sent to ${r.sent} ${r.sent === 1 ? 'person' : 'people'}${r.alreadyTold ? `; ${r.alreadyTold} already had it` : ''}.`)
       }
+      /*
+       * FAULT 5 (LIVE RE-WALK): THE REPORT ROW SAID "NOT SHARED" UNTIL A RELOAD. A send that
+       * reaches everybody marks the report released server-side, but this only ever invalidated
+       * `['ground', groundId]` - the row that reads "Shared"/"Not shared yet" (YourWork.tsx's
+       * "Your reports", off `ground.report.releasedAt`) refreshed, but the report itself
+       * (`['report', groundId]`, GroundParticipantPage.tsx and TheSessionsReport.tsx) and each
+       * session's own shaped report (`['session-shaped-report', groundId, sessionNumber]`,
+       * TheSessionsReport.tsx) did not, so a reader already on one of those pages kept reading the
+       * stale, unreleased copy. Invalidated here too - a prefix match on `['session-shaped-
+       * report', groundId]` reaches every session number's own query without naming each one.
+       */
       qc.invalidateQueries({ queryKey: ['ground', groundId] })
+      qc.invalidateQueries({ queryKey: ['report', groundId] })
+      qc.invalidateQueries({ queryKey: ['session-shaped-report', groundId] })
     },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not send. Try again.'),
   })
