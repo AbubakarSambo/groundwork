@@ -4273,9 +4273,21 @@ export function EntryChatPage() {
                   <>
                           {/* Anonymous correction: routed through the live engine (/entry/chat),
                               not a one-shot patch. See the comment block above buildCorrectionTurn. */}
+                          {/*
+                            FAULT 6 (LIVE RE-WALK): DARK BLUE ON NAVY. `gwui-plain-link`'s default
+                            ink is `var(--gw-navy)`, right for every other quiet link in this
+                            product - but this one sits inside TheReportYouSawAtTheEnd's own dark
+                            summary card (`background: var(--gw-dark)`), the one place that ink is
+                            unreadable against its own ground. The paragraph just above it, and
+                            "Updated after your correction" beside it, already solve this the same
+                            way: a light ink set inline, not a second link class, since the colour
+                            genuinely depends on the ground this one button sits on and nowhere
+                            else in this component needs it.
+                          */}
                           {!showCorrection ? (
                             <button
                               type="button" className="gwui-plain-link"
+                              style={{ color: 'rgba(255,255,255,.85)' }}
                               onClick={() => setShowCorrection(true)}
                               disabled={generatingReport}
                             >
