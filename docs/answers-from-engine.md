@@ -6346,6 +6346,22 @@ Check-ins are in order of their name, and inside a check-in the people are in or
 
 A person held for a seat who has already answered keeps their own report: `GET /you` carries it in `ownReports` (the check-in's name, when it finished, and `to: /checkin/<id>/report`, which reads their own session report). Nothing else of that check-in is served to them: not the list entry, the board, the colleagues or the shared report. Opening or answering a new session is refused with the sentence the invitation page gives ("This check-in cannot start for you yet, because there is no seat for you on the plan. You will get your invitation as soon as there is one."). Somebody held who never answered is given nothing of the check-in.
 
+## 7 October: stopping the mail we decide to send, for the screens (decision 109)
+
+The link in the footer of every mail we decide to send now goes to a question, for everyone, whether or not they are on a roster. Nothing stops until a person answers. Sign-in links carry no footer. The page `/unsubscribe/:token` exists and works in a plain way; the screens may restyle it but must keep what it says and does.
+
+What the page reads (all from `GET /api/v1/unsubscribe/:token`, which changes nothing):
+- Title: "Are you sure you want to stop Groundwork insight emails?" (or "These emails are already turned off" when they are).
+- `says` is a list of paragraphs, shown in order. For a lead: the lead paragraph from the spec, then "Groundwork can still use the information available inside the product, but you may miss timely insights or follow-ups that would normally reach you by email.", then what still arrives. For a participant: the participant paragraph, the same consequence sentence, then what still arrives. For somebody on no roster and with no check-ins: one short paragraph, then what still arrives.
+- What still arrives: "Emails you ask for will still reach you, such as sign-in links, invitations, reports from check-ins you took part in, approvals, and notices about billing."
+- Two actions, from the same response: `keepLabel` "Keep email insights" (the pre-selected one, it only leaves the page) and `stopLabel` "Turn off email insights" (calls `POST /api/v1/unsubscribe/:token`). When already stopped it shows `turnBackOnLabel` "Turn email insights back on" (calls `POST /api/v1/unsubscribe/:token/undo`).
+- After stopping, the answer's `says`: "Done. Groundwork will stop sending these emails. Emails you ask for ... will still reach you ... You can turn them back on in Settings."
+- An unknown link gets a kind sentence and `known: false`, never "broken".
+
+Settings (own settings, "What we send you"): the one switch is now titled "Emails from Groundwork that we decide to send", with the detail "Reminders, summaries and insights that nobody asked for that morning. Emails you ask for, such as sign-in links, invitations, reports and approvals, always reach you." `GET /auth/me` now carries `emailsStoppedFromAMail`; when it is true the switch shows off and the detail reads "You turned these off from a link in one of our emails. Turn them back on here whenever you like." Turning the switch on (`PATCH /auth/me` with `emailNotifications: true`) is the undo for both kinds of stop.
+
+The one-click header (`List-Unsubscribe` with `List-Unsubscribe=One-Click`) points to the API's `POST /api/v1/unsubscribe/:token`, so a mail program's own button stops the mail with no page, as the standard says. I have already made the two small client edits (`client/src/pages/mail/StopMailPage.tsx` and the Settings label) so nothing is left broken; they are plain and the screens can restyle them.
+
 # From the screens workspace, 7 October: every known problem not fixed yet, for docs/known-issues.md
 
 Every problem the screens workspace found and did not fix. It comes from the walks (anchor, suites at a hundred people, Kijani, the existing clients' use cases), from the requests, and from the morning report and the handover. Each is marked SCREENS, ENGINE, SEED or HAFSAH, most serious first. Please fold it into `docs/known-issues.md` (request 175). The table in `docs/requests-to-engine.md` never had its status column kept up, so for requests 100 to 157, your own answers in this file are the record of what is closed.

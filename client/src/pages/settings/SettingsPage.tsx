@@ -169,7 +169,7 @@ export function SettingsPage() {
     onError: () => toast.error('That did not save. Try again.'),
   })
 
-  const [emailNotif, setEmailNotif] = useState(user?.emailNotifications ?? true)
+  const [emailNotif, setEmailNotif] = useState((user?.emailNotifications ?? true) && !user?.emailsStoppedFromAMail)
   const toggleNotif = useMutation({
     mutationFn: (val: boolean) => authApi.setEmailNotifications(val),
     onSuccess: (updated) => updateUser(updated),
@@ -352,8 +352,10 @@ export function SettingsPage() {
       <Section heading="What we send you">
         <FieldRows>
           <SwitchRow
-            title="Check-in reminders"
-            detail="When a check-in opens and, once, if you haven’t answered."
+            title="Emails from Groundwork that we decide to send"
+            detail={user?.emailsStoppedFromAMail
+              ? 'You turned these off from a link in one of our emails. Turn them back on here whenever you like.'
+              : 'Reminders, summaries and insights that nobody asked for that morning. Emails you ask for, such as sign-in links, invitations, reports and approvals, always reach you.'}
             on={emailNotif}
             onChange={(v) => { setEmailNotif(v); toggleNotif.mutate(v) }}
             disabled={toggleNotif.isPending}

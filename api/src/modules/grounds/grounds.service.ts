@@ -2083,7 +2083,7 @@ export class GroundsService {
      * so the peer rule went without. One read, up here, and both use it.
      */
     const viewer = requestingUserId
-      ? await this.prisma.user.findUnique({ where: { id: requestingUserId }, select: { role: true, organizationId: true } })
+      ? await this.prisma.user.findUnique({ where: { id: requestingUserId }, select: { role: true, organizationId: true, email: true } })
       : null;
     /* An admin of a DIFFERENT organisation is a stranger, and this is not the rule to hand them. */
     const viewerAdminsThisOrg = adminsThisOrg({ ...viewer, userId: requestingUserId }, ground as any);
@@ -6397,11 +6397,11 @@ export class GroundsService {
   private async assertMaySeeGround(groundId: string, userId: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { organizationId: true, initiatorId: true, scenario: true, createdByUserId: true, status: true, approvedById: true, participants: { select: { userId: true } } },
+      select: { organizationId: true, initiatorId: true, scenario: true, createdByUserId: true, status: true, approvedById: true, participants: { select: { userId: true, email: true } } },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
     const user = await this.prisma.user.findUnique({
-      where: { id: userId }, select: { role: true, organizationId: true },
+      where: { id: userId }, select: { role: true, organizationId: true, email: true },
     });
     const viewer = { ...user, department: user?.role === 'LEAD' ? await this.departmentOf(userId, ground.organizationId) : null };
     const leadDepartment = user?.role === 'LEAD' && ground.initiatorId ? await this.departmentOf(ground.initiatorId, ground.organizationId) : null;

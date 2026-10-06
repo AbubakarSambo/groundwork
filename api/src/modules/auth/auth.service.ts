@@ -1,3 +1,4 @@
+import { TheWaysToStopMail } from '../engagement/the-ways-to-stop-mail';
 import { theDomainOf, mayBeJoinedBy } from '../../common/an-email-domain';
 import { aPathInThisApp, theInviteLinkCodeIn } from '../../common/a-path-in-this-app';
 import { whatTheirWorkspaceIsCalled } from './a-roster-row-is-not-a-life-sentence';
@@ -1238,6 +1239,8 @@ export class AuthService {
     const belongsElsewhere = await this.belongsElsewhere(user.id, user.organizationId);
     return {
       ...this.theUserShape(user as unknown as UserWithOrg, belongsElsewhere), orgCode: user.organization.slug, emailNotifications: user.emailNotifications,
+      /* True when they used the link in one of our emails. Settings says so, in the words of THE_SETTINGS_LABEL, and the switch turns it back on (decision 109). */
+      emailsStoppedFromAMail: await new TheWaysToStopMail(this.prisma).stoppedFromAMail(user.email).catch(() => false),
       /* "Connect WhatsApp" for the person's own Settings, or null (decision 106 item 4). Only on their own read. */
       connectWhatsApp: await connectWhatsAppFor(this.prisma, this.configService, { organizationId: user.organizationId, userId: user.id, email: user.email }),
     };
@@ -1496,6 +1499,8 @@ export class AuthService {
     if (dto.emailNotifications !== undefined) userUpdate.emailNotifications = dto.emailNotifications;
 
     const me = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    /* Turning the switch on is the undo for a stop made from a link in a mail: the one choice, in both places (decision 109). */
+    if (dto.emailNotifications === true) await new TheWaysToStopMail(this.prisma).turnBackOnFor(me.email).catch(() => undefined);
     /* One stored form for every number, the way WhatsApp sends it; a local number takes the
        organisation's country, or is refused with a sentence asking for the whole number (survey item 6). */
     if (dto.phoneNumber !== undefined) userUpdate.phoneNumber = dto.phoneNumber?.trim() ? await tidyANumberFor(this.prisma as any, me.organizationId, dto.phoneNumber) : null;

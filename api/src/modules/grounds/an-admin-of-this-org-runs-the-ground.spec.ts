@@ -52,6 +52,7 @@ describe('who runs a ground, for the rule that hides peers', () => {
    */
   it('and the join-token rule reuses it rather than querying the user again', () => {
     expect(SRC).toMatch(/const mayShareJoinLink = isInitiatorViewer \|\| viewerAdminsThisOrg;/);
-    expect((SRC.match(/findUnique\(\{ where: \{ id: requestingUserId \}, select: \{ role: true, organizationId: true \} \}\)/g) ?? []).length).toBe(1);
+    /* Changed 7 October 2026 (decision 110, P11): the one read also selects the address, so the person a plan names at setup is recognised. Still one read. */
+    expect((SRC.match(/findUnique\(\{ where: \{ id: requestingUserId \}, select: \{ role: true, organizationId: true, email: true \} \}\)/g) ?? []).length).toBe(1);
   });
 });

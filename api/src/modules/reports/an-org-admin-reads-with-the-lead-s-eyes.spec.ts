@@ -70,7 +70,8 @@ describe('who reads with the lead\'s eyes', () => {
     const helper = CODE.slice(CODE.indexOf('private async isAnAdminOf('), CODE.indexOf('async whereAgainstSuccess('));
     /* Through the one rule (grounds/who-may-read-this-check-in.ts), which asks the role in THIS organisation. */
     expect(helper).toMatch(/adminsThisOrg\(\{ \.\.\.user, userId: requestingUserId \}, ground\)/);
-    expect(helper).toMatch(/select: \{ role: true, organizationId: true \}/);
+    /* Changed 7 October 2026 (decision 110, P11): the one read also selects the address, so a person the lead named at setup is recognised. */
+    expect(helper).toMatch(/select: \{ role: true, organizationId: true, email: true \}/);
   });
 });
 

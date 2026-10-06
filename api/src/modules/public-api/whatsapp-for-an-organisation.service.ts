@@ -715,6 +715,45 @@ export class WhatsAppForAnOrganisationService {
     if (this.aHoldHasExpired(thread)) return null;
     return { text: thread.requestWords, kind: thread.requestKind as ARequest | 'answer', questionId: thread.questionAskedAbout ?? null };
   }
+  /**
+   * NOTHING STAYS HELD PAST ITS TEN MINUTES, EVEN WHEN NOBODY WRITES (decision 110, P12).
+   *
+   * The words wait for a yes or a no for ten minutes and were cleared by the answer or by the person's next message, never by a clock, so a person
+   * who did not write again left their words in the database. Each hold that has outlived its ten minutes is cleared now, and the words go where
+   * the person's next message would have put them: into the check-in they were held from, as a no does, so they are never lost. Claimed first,
+   * so a person writing at that moment, or a second copy of the API, puts them in once. A person who has since gone to Ask Groundwork has their
+   * words put in the check-in they came from. Where there is no open check-in to put them in, they are cleared and logged without them.
+   */
+  async putAwayWordsHeldTooLong(now: Date = new Date()): Promise<{ putIn: number; cleared: number }> {
+    const cutoff = new Date(now.getTime() - WhatsAppForAnOrganisationService.A_REQUEST_WAITS_MS);
+    const rows = await this.prisma.whatsAppThread.findMany({
+      where: { requestAskedAt: { lt: cutoff }, requestKind: { not: null } },
+      select: { id: true, organizationId: true, phone: true, checkInId: true, requestWords: true, requestAskedAt: true },
+      take: 500,
+    });
+    let putIn = 0; let cleared = 0;
+    for (const r of rows as any[]) {
+      /* Claimed on the very moment it was asked, so only one copy, or the person's own reply, gets it. */
+      const claimed = await this.prisma.whatsAppThread.updateMany({ where: { id: r.id, requestAskedAt: r.requestAskedAt }, data: WhatsAppForAnOrganisationService.NO_REQUEST });
+      if (!claimed?.count) continue;
+      cleared += 1;
+      const words: string | null = r.requestWords ?? null;
+      const heldFrom = isAsking(r.checkInId) ? wasIn(r.checkInId) : r.checkInId;
+      if (!words || !heldFrom) continue;
+      try {
+        const who = await this.whatsapp.whoIsWritingTo(r.organizationId, r.phone);
+        const ci: any = await this.prisma.checkIn.findUnique({ where: { id: heldFrom }, select: { id: true, status: true } });
+        if (!who.userId || !ci || !['NOT_STARTED', 'IN_PROGRESS'].includes(ci.status)) { this.logger.warn(`Held words for ${heldFrom} could not be put in the check-in, and were cleared.`); continue; }
+        if (ci.status === 'NOT_STARTED') await this.conversation.open(ci.id, who.userId);
+        await this.conversation.sendMessage(ci.id, who.userId, words, { door: 'whatsapp' });
+        putIn += 1;
+      } catch (err: any) {
+        this.logger.warn(`Held words for ${heldFrom} could not be put in the check-in, and were cleared: ${err?.message}`);
+      }
+    }
+    return { putIn, cleared };
+  }
+
   /** Words were held for a yes or a no, and the ten minutes passed with no answer. */
   private aHoldHasExpired(thread: { requestKind?: string | null; requestWords?: string | null; requestAskedAt?: Date | string | null } | null): boolean {
     if (!thread?.requestAskedAt || !thread.requestKind || thread.requestWords == null) return false;

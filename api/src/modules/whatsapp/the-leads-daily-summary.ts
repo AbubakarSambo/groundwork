@@ -39,6 +39,19 @@ export interface ACheckInToday {
   answered: number;
   /** First names of those who have not checked in yet. */
   notYet: string[];
+  /** When somebody who can answer last checked in, for this session. Null when nobody has. */
+  lastAnswerAt?: Date | null;
+}
+
+/**
+ * IF NOTHING USEFUL HAPPENED, SEND NOTHING (decision 109, spec 26; audit item 9). A summary that says nobody
+ * has checked in yet, the same as yesterday, is a message the lead learns to ignore. It goes when something
+ * waits for her to decide, or when somebody has checked in since the last one she was sent (or, if she has had
+ * none, when anybody has checked in at all).
+ */
+export function somethingUsefulHappened(checkIns: ACheckInToday[], waiting: AWaitingRequest[], lastSummaryAt: Date | null): boolean {
+  if (waiting.length) return true;
+  return checkIns.some((c) => c.answered > 0 && (!lastSummaryAt || !c.lastAnswerAt || c.lastAnswerAt > lastSummaryAt));
 }
 
 /** One check-in, in one sentence. Null when nobody can answer it yet. */
@@ -130,6 +143,8 @@ export async function sendTheLeadsDailySummaries(
       const waiting = await whatWaitsForYouToDecide({ userId: lead.leadId, organizationId: lead.organizationId }, deps.boards);
       const paragraph = theSummaryParagraph(lead.checkIns, waiting);
       if (!paragraph) continue;
+      const last = await (async () => prisma.whatsAppSend.findFirst({ where: { phone, kind: 'lead-summary', sentAt: { not: null } }, orderBy: { sentAt: 'desc' }, select: { sentAt: true } }))().catch(() => null);
+      if (!somethingUsefulHappened(lead.checkIns, waiting, last?.sentAt ?? null)) continue;
       const link = lead.checkIns.length === 1 ? `${base}/grounds/${lead.checkIns[0].groundId}/board` : `${base}/grounds`;
       const message = theLeadsDailySummary(user.firstName, paragraph, link);
       await deps.whatsapp.sendFor(lead.organizationId, phone, message.text, { kind: message.kind, params: message.params });
@@ -149,7 +164,7 @@ async function theOpenSession(prisma: PrismaService, groundId: string, now: Date
   const rows: any[] = await prisma.checkIn.findMany({
     where: { groundId, OR: [{ availableFrom: null }, { availableFrom: { lte: now } }] },
     select: {
-      status: true, sessionNumber: true,
+      status: true, sessionNumber: true, completedAt: true,
       participant: { select: { userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, awaitingOrgApproval: true } } } },
     },
   });
@@ -165,5 +180,7 @@ async function theOpenSession(prisma: PrismaService, groundId: string, now: Date
     .map((r) => (r.participant?.userId && r.participant.userId === leadUserId ? 'you' : theFirstNameOfAParticipant(r.participant as any) ?? ''))
     .filter((n: string) => !!n)
     .sort((a: string, b: string) => (a === 'you' ? -1 : b === 'you' ? 1 : 0));
-  return { ofHowMany: counted.length, answered: done.length, notYet };
+  const times = done.map((r) => r.completedAt).filter((t: unknown): t is Date => t instanceof Date);
+  const lastAnswerAt = times.length === done.length && times.length ? new Date(Math.max(...times.map((t) => t.getTime()))) : null;
+  return { ofHowMany: counted.length, answered: done.length, notYet, lastAnswerAt };
 }

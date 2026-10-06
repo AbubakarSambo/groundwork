@@ -30,6 +30,8 @@ export interface User {
    */
   mayOpenCheckIns?: boolean
   emailNotifications?: boolean
+  /** True when they stopped these emails from the link in one of our mails. The switch turns it back on. */
+  emailsStoppedFromAMail?: boolean
   phoneNumber?: string | null
   /**
    * "Connect WhatsApp" (decision 106, 5 October, night): a one-tap link that opens WhatsApp with

@@ -21,11 +21,11 @@ It was drawn from `docs/morning-report.md`, `docs/weekly-plan.md`, `docs/run-log
 - Why it was left: the fix is on this branch (`94d736d6`, `6742915a`, `213b7743`, `76e303ee`). It seals both keys, but it needs the server setting `SETTINGS_ENCRYPTION_KEY` on each hosted environment before it ships. Without that setting, nobody can save a new token or secret, and Groundwork's own WhatsApp secrets cannot be saved on `/admin/whatsapp` either.
 - Recommendation: Abubakar adds `SETTINGS_ENCRYPTION_KEY` (made with `openssl rand -base64 32`, one per environment, never changed later) before the release. The keys already saved are sealed on the next start. Because old backups still hold plain copies, ask each connected organisation to make a new token in Meta once the release is live.
 
-**P4. Hidden targets are still given to the model when it writes text that other people read.**
-- Where: the shared team report, the board lines and the session text. A target the lead set for one person is removed after the model writes, by a sentence-by-sentence net (`docs/weekly-plan.md`, week 0).
-- Who: everyone on a check-in with hidden targets.
-- Why it was left: taking the numbers out of the model's input would weaken "notices what does not add up", which is on the must-keep list, so it needs Hafsah to choose.
-- Recommendation: option 2 in the morning report: give the model the gap without the number, keep the read-side net, and check with a scenario run that no engine number drops.
+**P4. Hidden targets are still given to the model when it writes text that other people read. (Decided: yes to the recommendation. Not built yet.)**
+- Where: the shared team report, the board lines and the session text. The model is handed each person's target numbers in `howTheNumbersSit` (`reports/do-the-parts-add-up-to-the-whole.ts`) and `whatDoesNotAddUpPerPerson` (`reports/the-picture-gets-what-the-conversation-gets.ts`), and a sentence that gives a hidden number is taken out after it writes, by the sentence-by-sentence net.
+- Decided 7 October (decision 110): give the model the gap without the number, keep the read-side net, and check with a scenario run that no engine number drops.
+- Why it is not built: the change is in the report's inputs and its prompt, which are the reports files that the piece-4 builder is working in, and it needs a scenario run before and after to show nothing the engine does well has dropped. I did not touch them without your word.
+- Recommendation: build it when the piece-4 builder is back or you say so; it needs the full 24-scenario run as its proof.
 
 **P6. (Decided: it stays.) An admin who is not in a check-in reads everybody's exact words on its board.**
 - Decided 7 October (decision 110): an admin reads a check-in's board, as decision 5 says, except on evaluation check-ins the admin has no access to. That wall exists and is pinned in `an-admin-does-not-read-an-evaluation-check-in-in-grounds-or-on-the-board.spec.ts`, `an-admin-does-not-read-a-check-in-that-decides-about-a-person.spec.ts` and `an-admin-does-not-read-the-leads-description-in-the-judgement.spec.ts`; they pass. No change.
@@ -33,26 +33,8 @@ It was drawn from `docs/morning-report.md`, `docs/weekly-plan.md`, `docs/run-log
 **P7. (Decided, no change.) Groundwork's staff read people's outcome feedback notes word for word in the back office.**
 - Decided 7 October (decision 110): Groundwork staff keep reading customers' feedback notes word for word, because those notes are sent to Groundwork. They are never linked to anybody's check-in content. No change.
 
-**P9. "What the room is about" is stored on the check-in with full names, outside the wrapper that handles names and anonymous sharing.**
-- Where: the check-in's stored room summary, served by the board and the check-in page.
-- Who: everyone, wherever a check-in is shared without names.
-- Why it was left: the serving rules hide other people's aims where people do not see each other, but the storage does not follow the "stored without names" rule that reports follow. It needs Hafsah's decision.
-- Recommendation: store it with labels and put names in only when served, like reports.
-
 **P10. (Decided, no change.) On a performance plan, the person reviewed sees a work record the lead added with nobody's name on it.**
 - Decided 7 October (decision 110): this stays visible, as already decided. No change.
-
-**P11. An admin who will later be added as the person reviewed can read their own plan's setup while it waits for approval.**
-- Where: an evaluation check-in waiting for admin approval, which every admin of the organisation can read (decision 75 item 2).
-- Who: admins who are themselves the subject of a performance plan, promotion or renewal.
-- Why it was left: nothing names the person before they are added, so the wall cannot find them.
-- Recommendation: let the lead name the person at setup, and wall them from the approval read.
-
-**P12. A person's leave or spending words are kept in the database for up to ten minutes while Groundwork waits for their yes.**
-- Where: the WhatsApp pending yes-or-no store (migration 72), for example "Can I take Friday off?".
-- Who: the paid client and anyone on WhatsApp.
-- Why it was left: the code needs the words to act on the yes. They are cleared on the answer or by the next WhatsApp message anyone sends, not by a clock.
-- Recommendation: add a small nightly clean-up so nothing stays past ten minutes even when nobody writes.
 
 **P14. (Decided, no change.) Screenshots with Hafsah's name, Coamana's CRM and real-looking check-in numbers are still in the git history (screens workspace).**
 - Decided 7 October (decision 110): the screenshots stay in the history while the repository is private. No change.
@@ -86,12 +68,6 @@ It was drawn from `docs/morning-report.md`, `docs/weekly-plan.md`, `docs/run-log
 - Who: existing users. Without the word-for-word script, existing reports lose their quotation marks and some quoted sentences are dropped. Without the kind-of-work script, existing check-ins keep their old boards, against decision 91.
 - Why it was left: they need a copy of the live data and hosted access, which the engine workspace must not touch.
 - Recommendation: run them in the order in `docs/deploy.md`, after the backup, each as a dry run first. Read every FAULT, LEAK, ASK and WHERE line before going further.
-
-**B8. The hosted build may run out of memory, and nobody has built on Node 20.**
-- Where: `npm run build` in `api/` stopped with "JavaScript heap out of memory" on the screens computer and only built with an 8 GB heap (request 172). The build also compiles every spec under `src/`. Hosting uses Node 20, and only Node 26 was available here.
-- Who: everyone, on release day.
-- Why it was left: found on 7 October, and Node 20 is not installed on this computer.
-- Recommendation: leave the specs out of the production build (`tsconfig.build.json`), or set the heap in the build script. Build once on Node 20 before release.
 
 **B9. Hosting questions that can stop the API or the model are still unanswered.**
 - Where: `docs/release-questions.md`, questions 1 to 9. In particular, the API listens only on 127.0.0.1 when `NODE_ENV` is exactly `development`; `us-central1` timed out from this Mac all week; adding a person runs in a five-second transaction that once took 6.8 seconds; the report now runs model calls side by side; and the preview environment might send real email.
@@ -469,11 +445,11 @@ It was drawn from `docs/morning-report.md`, `docs/weekly-plan.md`, `docs/run-log
 
 | Seriousness | Entries |
 | --- | --- |
-| Privacy | 9 |
-| Broken | 9 |
+| Privacy | 6 |
+| Broken | 8 |
 | Wrong | 39 |
 | Untidy | 12 |
-| **All** | **69** |
+| **All** | **65** |
 
 ---
 
@@ -493,6 +469,10 @@ Moved out of the list above. Each has a spec read as each person who reads it, a
 - **P5.** On an evaluation check-in the lead's private notes, setup words, brief and description of the person never reach the person (decision 110): every read of them was checked, each serves the person and a colleague nothing, and a spec pins it (`91355814`). What the person says reaching the lead, and what the lead says in her own check-in, are unchanged: that is decision 4.
 - **P8.** The To-dos board is one list for each check-in, never one person's list across check-ins (`2cfe6675`). The reply is now `checkIns`, not `people`, so the screens' board follows.
 - **B3.** A person held for a seat keeps their own answers and their own report and nothing else: their You page names their own report, and opening or answering a new session is refused (the commit below).
+- **P9.** What the room is about is stored with labels (an opaque one made from the person's row id) and names go in only when it is served, before the board's own walls run; rows stored before keep their names and are read as they were (`7c52eb27`).
+- **P11.** An admin the lead named as the person a plan is about cannot read it while it waits for approval: not found for them; another admin is still asked to approve it (`73250ff6`).
+- **P12.** Words held on WhatsApp for a yes or a no are put away every night under the job lock, into the check-in they were held from, never kept past their ten minutes (`7d27c52e`).
+- **B8.** The production build leaves out the specs, harnesses, fixtures and journeys (`tsconfig.build.json`, which `nest build` uses by itself): `npm run build` takes about 14 seconds and 2.2 GB on Node 20.20, where it ran out of memory on the default heap; `npm run check:production-start` passes on Node 20.20.2 (the build, `node dist/main` starting, `/health` answering, `/embed.js` 200). Built once on Node 20 and started, on a throwaway local database.
 - **B4.** A slow reading of the lead's set-up no longer holds the save of a check-in: the save waits for it for up to twenty seconds and answers either way (`990a6640`). The screens' own open-on-load is theirs to check.
 - **B5.** People a lead names while her check-in waits for an admin are held, not dropped, and invited once when an admin accepts it (`6c918a75`); and no other door writes to them first: the seat release, the 6 am sweep and the address heals leave a waiting or declined check-in alone, and the approval invites a colleague who already has an account (`009052b9`).
 - **B12 (part).** A yes to an offered request never closes an anchor check-in, leave and spending are not offered while that suite is off, and no reply promises to pass a request on (`d2ad4ba7`).
