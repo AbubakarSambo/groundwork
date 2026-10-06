@@ -18,7 +18,7 @@ Abubakar has pull request #322 going to production. No pull request was opened f
 - **The leave and payment forms work.** They read the engine's form reads: kinds of leave, who covers, currency and categories. Each form is filled in from what the person said, and sends to the new routes.
 - **Newly served parts drawn.** "Connect WhatsApp", shown as an optional convenience in Settings and in a person's own check-in. "Remind them" on a paused check-in. Billing's "How it began" line, and the WhatsApp-off sentence for leads and members.
 
-**Tests:** the client passes, 4,488 of 4,488, and the type check is clean, at c8364d98. The browser tests pass, 57 of 57, after the check-in page's open fix (one had caught a page stuck on "Opening your session…", fixed in 79f04511).
+**Tests:** the client passes, 4,508 of 4,508, and the type check is clean, at 4fdf6225. The browser tests pass, 57 of 57, after the check-in page's open fix (one had caught a page stuck on "Opening your session…", fixed in 79f04511).
 
 **Also finished later in the night**
 - **Suites at scale.**

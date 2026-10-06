@@ -428,10 +428,10 @@ It was drawn from `docs/morning-report.md`, `docs/weekly-plan.md`, `docs/run-log
 - Recommendation: an offline queue and crash reporting first, then the prototype's words.
 
 **U16. Placement and small things the walks noticed (screens workspace).**
-- Where: the central question now sits above the "Everything else" fold on every kind of board, but at the bottom of a long page; Plan and billing shows a WhatsApp allowance while WhatsApp is off (served wording, harmless).
-- Who: leads (the question) and admins (billing).
-- Why it was left: neither stops anybody; the first needs a decision on where a board's question goes.
-- Recommendation: Hafsah decides the question's place with the board's own prototype.
+- Where: Plan and billing shows a WhatsApp allowance while WhatsApp is off (served wording, harmless). (The board's central question was moved under the headline on 7 October, `3e137f3a`.)
+- Who: admins.
+- Why it was left: it stops nobody.
+- Recommendation: hide the allowance while WhatsApp is off, when the billing page is next touched.
 
 **U17. The one-off style clean-up stopped where no exact shared class exists (screens workspace).**
 - Where: BoardPage.tsx (584 uses) and about a dozen components (15 to 70 uses each), listed in `client/src/components/gw/ui/one-off-uses-per-file.ts`.
