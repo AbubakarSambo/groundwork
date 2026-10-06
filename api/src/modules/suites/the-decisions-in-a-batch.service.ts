@@ -24,7 +24,8 @@ import { saidAsADay } from './who-is-away';
 export const MOST_IN_A_BATCH = 50;
 
 export interface AnAnswerGiven { suite: 'leave' | 'spend' | 'hours'; id: string; answer: 'approve' | 'decline'; reason?: string }
-export interface AResult { id: string; suite: 'leave' | 'spend' | 'hours'; ok: boolean; says: string }
+/** `suite` is null when the suite was not understood. */
+export interface AResult { id: string; suite: 'leave' | 'spend' | 'hours' | null; ok: boolean; says: string }
 export interface TheResults { results: AResult[]; answered: number; says: string }
 
 export const BATCH_REFUSED = {
@@ -34,11 +35,15 @@ export const BATCH_REFUSED = {
   nothingOn: `Neither leave, spending nor hours is switched on. ${AN_ADMIN_SWITCHES_IT_ON}`,
   hoursCannotBeDeclined: 'Hours cannot be declined here, only approved. Say what is wrong with them to the person who sent them.',
   badOne: 'This answer was not understood. Give a suite (leave, spend or hours), an id, and approve or decline.',
+  badSuite: 'The suite was not understood. Give leave, spend or hours.',
+  keptButNotRead: 'Your answer was kept, but the request could not be read back to say more. Check it on the board.',
   twice: 'This request was already answered in this call, so the second answer was left out.',
-  couldNot: 'This one could not be answered, and nothing was changed.',
+  couldNot: 'This one could not be answered. Check it on the board before you try again.',
 };
 
-const NUMBERS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
+const NUMBERS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+const inWords = (n: number) => (n >= 0 && n <= 10 ? NUMBERS[n] : String(n));
+const capital = (x: string) => `${x.charAt(0).toUpperCase()}${x.slice(1)}`;
 
 @Injectable()
 export class DecisionsInABatchService {
@@ -68,8 +73,12 @@ export class DecisionsInABatchService {
     for (const one of given as Partial<AnAnswerGiven>[]) {
       const suite = one?.suite;
       const id = typeof one?.id === 'string' ? one.id.trim() : '';
-      if ((suite !== 'leave' && suite !== 'spend' && suite !== 'hours') || !id || (one?.answer !== 'approve' && one?.answer !== 'decline')) {
-        results.push({ id, suite: (suite as AResult['suite']) ?? ('leave' as const), ok: false, says: BATCH_REFUSED.badOne });
+      if (suite !== 'leave' && suite !== 'spend' && suite !== 'hours') {
+        results.push({ id, suite: null, ok: false, says: BATCH_REFUSED.badSuite });
+        continue;
+      }
+      if (!id || (one?.answer !== 'approve' && one?.answer !== 'decline')) {
+        results.push({ id, suite, ok: false, says: BATCH_REFUSED.badOne });
         continue;
       }
       if (seen.has(`${suite}|${id}`)) { results.push({ id, suite, ok: false, says: BATCH_REFUSED.twice }); continue; }
@@ -89,12 +98,11 @@ export class DecisionsInABatchService {
     }
     const answered = results.filter((r) => r.ok).length;
     const left = results.length - answered;
-    const word = (n: number) => (n >= 0 && n <= 10 ? NUMBERS[n] : String(n));
     const total = results.length;
     let says: string;
-    if (!left) says = total === 1 ? 'The answer was kept.' : `All ${total} answers were kept.`;
-    else if (!answered) says = total === 1 ? 'The answer could not be kept, and it says why.' : `None of the ${total} answers could be kept, and each says why.`;
-    else says = `${word(answered)} of the ${total} answers ${answered === 1 ? 'was' : 'were'} kept. ${word(left)} could not be, and ${left === 1 ? 'it says' : 'each says'} why.`;
+    if (!left) says = total === 1 ? 'The answer was kept.' : `All ${inWords(total)} answers were kept.`;
+    else if (!answered) says = total === 1 ? 'The answer could not be kept, and it says why.' : `None of the ${inWords(total)} answers could be kept, and each says why.`;
+    else says = `${capital(inWords(answered))} of the ${inWords(total)} answers ${answered === 1 ? 'was' : 'were'} kept. ${capital(inWords(left))} could not be kept, and ${left === 1 ? 'it says' : 'each says'} why.`;
     return { results, answered, says };
   }
 
@@ -115,34 +123,41 @@ export class DecisionsInABatchService {
     today: Date, collect: { approverUserIds: string[]; request: AWaitingRequest }[],
   ): Promise<string> {
     const outcome = answer === 'approve' ? 'approved' : 'declined';
-    const word = outcome === 'approved' ? 'Approved' : 'Declined';
+    const word = outcome === 'approved' ? 'You approved' : 'You declined';
     const org = reader.organizationId;
     if (suite === 'leave') {
       await this.leave.decide(reader, id, outcome, reason, { lean: true, collect });
-      const row = await this.prisma.leaveRequest.findUnique({ where: { id }, select: { userId: true, startsOn: true, endsOn: true, status: true } });
-      const first = await this.firstName(row!.userId);
-      const thing = aLeaveRequest(id, row!.userId, first, row!.startsOn.toISOString().slice(0, 10), row!.endsOn.toISOString().slice(0, 10)).thing;
-      const next = row!.status === 'waiting' ? await this.leave.nowWaitingFor(org, id) : null;
-      return `${word} ${thing}.${next ? ` It now waits for ${next}.` : ''}`;
+      /* From here the answer is written. Reading it back to say it can fail on its own, and then it says so. */
+      try {
+        const row = await this.prisma.leaveRequest.findUnique({ where: { id }, select: { userId: true, startsOn: true, endsOn: true, status: true } });
+        const first = await this.firstName(row!.userId);
+        const thing = aLeaveRequest(id, row!.userId, first, row!.startsOn.toISOString().slice(0, 10), row!.endsOn.toISOString().slice(0, 10)).thing;
+        const next = row!.status === 'waiting' ? await this.leave.nowWaitingFor(org, id) : null;
+        return `${word} ${thing}.${next ? ` It now waits for ${next}.` : ''}`;
+      } catch { return BATCH_REFUSED.keptButNotRead; }
     }
     if (suite === 'spend') {
       await this.spending.decide(reader, id, outcome, today, reason, { lean: true, collect });
-      const row = await this.prisma.spendRequest.findUnique({ where: { id }, select: { userId: true, amount: true, what: true, status: true } });
-      const first = await this.firstName(row!.userId);
-      const suiteRow = await this.prisma.organizationSuite.findUnique({ where: { organizationId_suite: { organizationId: org, suite: 'spend' } }, select: { answers: true } });
-      const currency = typeof (suiteRow?.answers as { currency?: unknown } | null)?.currency === 'string' ? ((suiteRow!.answers as { currency: string }).currency) : null;
-      const thing = aSpendRequest(id, row!.userId, first, Number(row!.amount), currency, row!.what).thing;
-      const next = row!.status === 'waiting' ? await this.spending.nowWaitingFor(org, id) : null;
-      return `${word} ${thing}.${next ? ` It now waits for ${next}.` : ''}`;
+      try {
+        const row = await this.prisma.spendRequest.findUnique({ where: { id }, select: { userId: true, amount: true, what: true, status: true } });
+        const first = await this.firstName(row!.userId);
+        const suiteRow = await this.prisma.organizationSuite.findUnique({ where: { organizationId_suite: { organizationId: org, suite: 'spend' } }, select: { answers: true } });
+        const currency = typeof (suiteRow?.answers as { currency?: unknown } | null)?.currency === 'string' ? ((suiteRow!.answers as { currency: string }).currency) : null;
+        const thing = aSpendRequest(id, row!.userId, first, Number(row!.amount), currency, row!.what).thing;
+        const next = row!.status === 'waiting' ? await this.spending.nowWaitingFor(org, id) : null;
+        return `${word} ${thing}.${next ? ` It now waits for ${next}.` : ''}`;
+      } catch { return BATCH_REFUSED.keptButNotRead; }
     }
     /* Hours: the id is the person and the week's Monday, joined by "|", as the record keeps it. They can be approved and never declined. */
     if (outcome === 'declined') throw new BadRequestException(BATCH_REFUSED.hoursCannotBeDeclined);
     const [personId, weekOf] = id.split('|');
     if (!personId || !weekOf) throw new BadRequestException(BATCH_REFUSED.badOne);
     await this.time.approve(reader, personId, weekOf, today, { lean: true });
-    const first = await this.firstName(personId);
-    const next = await this.time.nowWaitingFor(org, personId, weekOf);
-    return `Approved ${whose(first)} hours for the week of ${saidAsADay(weekOf)}.${next ? ` They now wait for ${next}.` : ''}`;
+    try {
+      const first = await this.firstName(personId);
+      const next = await this.time.nowWaitingFor(org, personId, weekOf);
+      return `${word} ${whose(first)} hours for the week of ${saidAsADay(weekOf)}.${next ? ` They now wait for ${next}.` : ''}`;
+    } catch { return BATCH_REFUSED.keptButNotRead; }
   }
 
   private async firstName(userId: string): Promise<string> {

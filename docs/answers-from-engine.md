@@ -6211,18 +6211,19 @@ There is no request 164 in the file on `mine/wip/prototype-ui` (the numbers go 1
 
 Between 1 and 50. `reason` is optional and only for a decline. For hours the `id` is the person's sign-in and the week's Monday joined by `|` (`<personId>|2026-10-05`), and hours can only be approved. Response:
 
-    { "results": [ { "id": "…", "suite": "leave", "ok": true, "says": "Approved Amani's leave from Monday 20 October to Wednesday 22 October." } ],
-      "answered": 1, "says": "All 2 answers were kept." }
+    { "results": [ { "id": "…", "suite": "leave", "ok": true, "says": "You approved Amani's leave from Monday 20 October to Wednesday 22 October." } ],
+      "answered": 1, "says": "All four answers were kept." }
 
 `results` is in the order given. Every request is answered by the route that answers it alone, so the rules are the same: who may decide it now (the manager, a stand-in who is a lead or an admin, finance, an admin), its state, and one answer kept when two approvers answer at once. One that fails never stops the others, and says why in a sentence you can show as it is:
 
-- "Approved Peter's request to spend KES 8,500 for two tablets for the field team. It now waits for Omar in finance."
-- "Declined Sara's leave on Monday 26 October."
-- "Approved Aisha's hours for the week of Monday 5 October."
+- "You approved Peter's request to spend KES 8,500 for two tablets for the field team. It now waits for Omar in finance."
+- "You declined Sara's leave on Monday 26 October."
+- "You approved Aisha's hours for the week of Monday 5 October."
 - "Amina approved this request a moment ago, so your answer was not kept."
 - "Only the person who approves this request can decide it." (for hours: "Only the person who approves these hours can approve them.")
 - "Hours cannot be declined here, only approved. Say what is wrong with them to the person who sent them."
 - "This request was already answered in this call, so the second answer was left out."
-- "That request was not found." and "This answer was not understood. Give a suite (leave, spend or hours), an id, and approve or decline."
+- "That request was not found.", "The suite was not understood. Give leave, spend or hours." (its `suite` is `null`) and "This answer was not understood. Give a suite (leave, spend or hours), an id, and approve or decline."
+- "Your answer was kept, but the request could not be read back to say more. Check it on the board." (`ok` is true) and "This one could not be answered. Check it on the board before you try again."
 
-The top `says` is "All 4 answers were kept.", "Three of the 4 answers were kept. One could not be, and it says why." or "None of the 2 answers could be kept, and each says why." The whole call is refused (400, 403 or 404) for none or more than 50 answers ("Send up to 50 answers at once."), for somebody outside the organisation, and when neither leave, spending nor hours is switched on. Whoever decides the next step of what was approved is told once for all of it; the person who asked is told of each decision, as before.
+The top `says` is "All four answers were kept.", "One of the six answers was kept. Five could not be kept, and each says why." or "None of the two answers could be kept, and each says why." (numbers up to ten in words, digits above) The whole call is refused (400, 403 or 404) for none or more than 50 answers ("Send up to 50 answers at once."), for somebody outside the organisation, and when neither leave, spending nor hours is switched on. Whoever decides the next step of what was approved is told once for all of it; the person who asked is told of each decision, as before.

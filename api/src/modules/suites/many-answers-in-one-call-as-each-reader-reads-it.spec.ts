@@ -33,10 +33,10 @@ describe('the approver, answering what waits for them', () => {
     const leave = x.waitingFor('ops', 'leave')[0];
     const out = await x.batch.decide(x.w.as('ops.manager'), { decisions: [...spends.map((r) => answer('spend', r.id)), answer('leave', leave.id, 'decline', 'Two people are already away.')] }, TODAY);
     expect(out.answered).toBe(4);
-    expect(out.says).toBe('All 4 answers were kept.');
+    expect(out.says).toBe('All four answers were kept.');
     expect(out.results.map((r) => r.ok)).toEqual([true, true, true, true]);
-    expect(out.results[0].says).toMatch(/^Approved \w+'s? request to spend KES [\d,]+ for .+\. It now waits for \w+ in finance\.$/);
-    expect(out.results[3].says).toMatch(/^Declined \w+'s? leave from .+ to .+\.$/);
+    expect(out.results[0].says).toMatch(/^You approved \w+'s? request to spend KES [\d,]+ for .+\. It now waits for \w+ in finance\.$/);
+    expect(out.results[3].says).toMatch(/^You declined \w+'s? leave from .+ to .+\.$/);
     expect(leave).toMatchObject({ status: 'declined', declineReason: 'Two people are already away.' });
     expect(x.told.decided).toHaveBeenCalledTimes(1);
   });
@@ -58,7 +58,7 @@ describe('the approver, answering what waits for them', () => {
     const q = await x.w.queue.queue(x.w.as('finance.m1'), { pageSize: 100 }, TODAY);
     const out = await x.batch.decide(x.w.as('finance.m1'), { decisions: q.items.slice(0, 27).map((i) => answer('spend', i.id)) }, TODAY);
     expect(out.answered).toBe(27);
-    expect(out.results.every((r) => r.ok && /^Approved .+ request to spend KES [\d,]+ for .+\.$/.test(r.says))).toBe(true);
+    expect(out.results.every((r) => r.ok && /^You approved .+ request to spend KES [\d,]+ for .+\.$/.test(r.says))).toBe(true);
     expect((await x.w.queue.queue(x.w.as('finance.m1'), {}, TODAY)).counts.all).toBe(0);
   });
 });
@@ -71,7 +71,7 @@ describe('the stand-in, another member, and somebody refused', () => {
     const manager = await x.batch.decide(x.w.as('sales.manager'), decisions, TODAY);
     expect(manager.results.map((r) => [r.ok, r.says])).toEqual(mine.map(() => [false, 'Only the person who approves this request can decide it.']));
     const head = await x.batch.decide(x.w.as('sales.head'), decisions, TODAY);
-    expect(head.results.every((r) => r.ok && /^Approved .+ leave (from|on) .+\.$/.test(r.says))).toBe(true);
+    expect(head.results.every((r) => r.ok && /^You approved .+ leave (from|on) .+\.$/.test(r.says))).toBe(true);
   });
 
   it('a plain member who stands in, and another member, are refused every one, and nothing is changed', async () => {
@@ -80,7 +80,7 @@ describe('the stand-in, another member, and somebody refused', () => {
     const sales = x.waitingFor('sales', 'spend')[0];
     for (const who of ['procurement.m1', 'sales.m5', 'hr.m1']) {
       const out = await x.batch.decide(x.w.as(who), { decisions: [answer('leave', procurement.id), answer('spend', sales.id, 'decline')] }, TODAY);
-      expect(out).toMatchObject({ answered: 0, says: 'None of the 2 answers could be kept, and each says why.' });
+      expect(out).toMatchObject({ answered: 0, says: 'None of the two answers could be kept, and each says why.' });
       expect(out.results.map((r) => r.says)).toEqual(['Only the person who approves this request can decide it.', 'Only the person who approves this request can decide it.']);
     }
     expect(procurement.status).toBe('waiting');
@@ -111,19 +111,38 @@ describe('a mixed batch: one answer kept, a race, a refusal, a mistake, and the 
       x.batch.decide(w.as('ops.head'), { decisions: [answer('leave', raced.id, 'decline'), answer('spend', fine.id)] }, TODAY),
     ]);
     const says = first.results.map((r) => r.says);
-    expect(says[0]).toMatch(/^Approved .+ leave from .+\.$/);
+    expect(says[0]).toMatch(/^You approved .+ leave (from|on) .+\.$/);
     expect(says[1]).toBe('Only the person who approves this request can decide it.');
     expect(says[2]).toBe('That request was not found.');
-    expect(says[3]).toBe('This answer was not understood. Give a suite (leave, spend or hours), an id, and approve or decline.');
+    expect(says[3]).toBe('The suite was not understood. Give leave, spend or hours.');
+    expect(first.results[3].suite).toBeNull();
     expect(says[4]).toBe('Hours cannot be declined here, only approved. Say what is wrong with them to the person who sent them.');
     expect(says[5]).toBe('This request was already answered in this call, so the second answer was left out.');
-    expect(first.says).toBe('One of the 6 answers was kept. Five could not be, and each says why.');
+    expect(first.says).toBe('One of the six answers was kept. Five could not be kept, and each says why.');
     /* The race: the other call's answer to the same request was not kept, and the sentence says who got there first. */
     expect(second.results[0]).toEqual({ id: raced.id, suite: 'leave', ok: false, says: `${w.people.find((q) => q.key === 'ceo')!.first} approved this request a moment ago, so your answer was not kept.` });
     /* ... and the rest of that call still went. */
     expect(second.results[1].ok).toBe(false);
     expect(raced.status).toBe('approved');
     expect(w.events.filter((e) => e.ref === raced.id && ['approved', 'declined'].includes(e.kind))).toHaveLength(1);
+  });
+});
+
+describe('an answer that is kept but cannot be read back', () => {
+  it('says it was kept and could not be read back, never that nothing was changed', async () => {
+    const x = aBatchWorld();
+    const r = x.waitingFor('ops', 'leave')[0];
+    /* The answer's own reads ask for the whole row; the batch's read-back asks for a few fields, and that one fails. */
+    x.w.prisma.leaveRequest.findUnique = async (a: any) => { if (a.select) throw new Error('gone'); return x.w.leave.find((l) => l.id === a.where.id) ?? null; };
+    const out = await x.batch.decide(x.w.as('ops.manager'), { decisions: [answer('leave', r.id)] }, TODAY);
+    expect(out.results[0]).toEqual({ id: r.id, suite: 'leave', ok: true, says: 'Your answer was kept, but the request could not be read back to say more. Check it on the board.' });
+    expect(r.status).toBe('approved');
+  });
+  it('a mix of words up to ten and digits above', async () => {
+    const x = aBatchWorld();
+    const q = await x.w.queue.queue(x.w.as('finance.m1'), { pageSize: 100 }, TODAY);
+    const out = await x.batch.decide(x.w.as('finance.m1'), { decisions: q.items.slice(0, 12).map((i) => answer('spend', i.id)).concat([answer('leave', 'nope')]) }, TODAY);
+    expect(out.says).toBe('12 of the 13 answers were kept. One could not be kept, and it says why.');
   });
 });
 
@@ -160,7 +179,7 @@ describe('hours, in the same call', () => {
     const leave: any = { decide: async () => { throw new Error('not here'); } };
     const batch = new DecisionsInABatchService(o.prisma, leave, leave, o.svc);
     const out = await batch.decide(o.as('u-wairimu'), { decisions: [{ suite: 'hours', id: 'u-aisha|2026-10-05', answer: 'approve' }] }, TIME_TODAY);
-    expect(out.results).toEqual([{ id: 'u-aisha|2026-10-05', suite: 'hours', ok: true, says: "Approved Aisha's hours for the week of Monday 5 October." }]);
+    expect(out.results).toEqual([{ id: 'u-aisha|2026-10-05', suite: 'hours', ok: true, says: "You approved Aisha's hours for the week of Monday 5 October." }]);
     const other = await batch.decide(o.as('u-omar'), { decisions: [{ suite: 'hours', id: 'u-brian|2026-09-28', answer: 'approve' }] }, TIME_TODAY);
     expect(other.results[0]).toEqual({ id: 'u-brian|2026-09-28', suite: 'hours', ok: false, says: 'Only the person who approves these hours can approve them.' });
   });
