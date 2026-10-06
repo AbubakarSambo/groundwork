@@ -3,7 +3,7 @@ import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD } from '../grounds/a-gr
 import { theEngagementMoment } from './the-engagement-release-moment';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 import { aNumberInWords } from './a-number-in-words';
-import { hasBeenToldOnce, nowToldOnce } from './a-message-sent-once';
+import { hasBeenToldOnce, nowToldOnce, isAlreadyHeld } from './a-message-sent-once';
 import { theNextCheckInFor, theSuggestionSaid } from './the-next-check-in-from-what-happened';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 
@@ -70,7 +70,7 @@ export async function sendTheReportFollowUps(
       const lead = r.ground?.initiator;
       if (!lead?.email || lead.deletedAt || lead.isActive === false) continue;
       const once = `report-follow-up:${r.groundId}`;
-      if (await hasBeenToldOnce(prisma, once)) continue;
+      if (await hasBeenToldOnce(prisma, once) || await isAlreadyHeld(prisma, REPORT_FOLLOW_UP_SENDER, lead.email)) continue;
       /* She has opened a next session: the work went on, so there is nothing to follow up. */
       const next = await prisma.checkIn.findFirst({ where: { groundId: r.groundId, createdAt: { gt: r.releasedAt } }, select: { id: true } });
       if (next) continue;
@@ -83,7 +83,8 @@ export async function sendTheReportFollowUps(
       ]);
       const w = theFollowUpWords(lead.firstName, r.ground.label, r.releasedAt, { done, cleared, waiting, open, scenario: r.ground.scenario });
       const went = await deps.email.sendTheReportFollowUp(lead.email, w.subject, w.lines, w.linkLabel, `${base}/grounds/${r.groundId}/board`);
-      if (went !== 'suppressed') { await nowToldOnce(prisma, once); tried++; }
+      await nowToldOnce(prisma, once, went, { sender: REPORT_FOLLOW_UP_SENDER, to: lead.email });
+      if (went !== 'suppressed') tried++;
     } catch {
       /* One lead's follow-up that could not be put together never stops the others. */
     }

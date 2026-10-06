@@ -1004,10 +1004,10 @@ export class GroundsCron implements OnApplicationBootstrap {
   }
 
   /**
-   * EVERY PERSON'S WEEK BY EMAIL (decision 109; spec 25), Thursday morning in Lagos, from their own You board and nothing else. See
+   * EVERY PERSON'S WEEK BY EMAIL (decision 109; spec 25), Thursday at a quarter past twelve in Lagos (not at the chase's hour), from their own You board and nothing else. See
    * engagement/the-participants-week.ts.
    */
-  @Cron('0 9 * * 4', { timeZone: 'Africa/Lagos' })
+  @Cron('15 12 * * 4', { timeZone: 'Africa/Lagos' })
   async sendTheParticipantsWeeks() {
     await onceAcrossCopies(this.prisma, 'participants-week', theWeek(), () => this.sendTheParticipantsWeeksInner());
   }

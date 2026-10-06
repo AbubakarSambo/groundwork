@@ -1247,9 +1247,11 @@ export class EmailService implements OnModuleInit {
    * chased depended on which engine chased them; and the stop itself is honoured in sendEmail through
    * the context, so it has to be there.
    */
-  async sendNudge(email: string, groundLabel: string, checkInUrl: string, scenario: string | undefined, otherPartyCompleted: boolean | undefined, theAnchorLine: string | null | undefined, participantId: string, simplerWords?: boolean | null): Promise<void> {
+  async sendNudge(email: string, groundLabel: string, checkInUrl: string, scenario: string | undefined, otherPartyCompleted: boolean | undefined, theAnchorLine: string | null | undefined, participantId: string, simplerWords?: boolean | null): Promise<'sent' | 'held' | 'suppressed'> {
     const mail = await this.theNudge(groundLabel, `<a href="${checkInUrl}">Check in</a>`, scenario, otherPartyCompleted, theAnchorLine, participantId, simplerWords);
-    await this.sendEmail({ to: email, ...mail }, { kind: 'REMINDER', participantId }, 'sendNudge');
+    const context: DeliveryContext = { kind: 'REMINDER', participantId };
+    await this.sendEmail({ to: email, ...mail }, context, 'sendNudge');
+    return context.outcome ?? 'sent';
   }
 
   /**

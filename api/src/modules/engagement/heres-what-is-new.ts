@@ -1,6 +1,7 @@
 import { CheckInStatus, GroundStatus } from '@prisma/client';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
+import { isAlreadyHeld } from './a-message-sent-once';
 import { theEngagementMoment } from './the-engagement-release-moment';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 import { aNumberInWords } from './a-number-in-words';
@@ -110,8 +111,8 @@ export async function sendHeresWhatIsNew(
     try {
       const user = await prisma.user.findUnique({ where: { id: leadId }, select: { email: true, firstName: true, deletedAt: true, isActive: true } });
       if (!user?.email || user.deletedAt || user.isActive === false) continue;
-      const had = await prisma.notification.findFirst({ where: { channel: 'email', sender: WHATS_NEW_SENDER, toAddress: user.email.trim().toLowerCase(), outcome: { in: ['sent', 'held'] } }, select: { id: true } });
-      if (had) continue;
+      const had = await prisma.notification.findFirst({ where: { channel: 'email', sender: WHATS_NEW_SENDER, toAddress: user.email.trim().toLowerCase(), outcome: 'sent' }, select: { id: true } });
+      if (had || await isAlreadyHeld(prisma, WHATS_NEW_SENDER, user.email)) continue;
       const stands: AnExistingCheckIn[] = [];
       for (const g of theirs) {
         /* A check-in left open with nothing more to come is dead, and is never mentioned (decision 109 item 2). */

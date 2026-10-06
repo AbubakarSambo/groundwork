@@ -5,7 +5,7 @@ import { theEngagementMoment } from './the-engagement-release-moment';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 import { aNumberInWords } from './a-number-in-words';
-import { hasBeenToldOnce, nowToldOnce } from './a-message-sent-once';
+import { hasBeenToldOnce, nowToldOnce, isAlreadyHeld } from './a-message-sent-once';
 
 /**
  * WHO HAS GONE QUIET, SAID TO THE LEAD AS AN INSIGHT AND NOT AS A REMINDER (decision 109; spec sections 15 to 17 and 36, journeys 7 and 9).
@@ -135,10 +135,12 @@ export async function sendWhoHasGoneQuiet(
       const user = await prisma.user.findUnique({ where: { id: leadId }, select: { email: true, firstName: true, deletedAt: true, isActive: true } });
       if (!user?.email || user.deletedAt || user.isActive === false) continue;
       const mostOf = found.find(mostOfTheTeamIs);
+      if (await isAlreadyHeld(prisma, QUIET_SENDER, user.email)) continue;
       const w = mostOf ? theTeamWords(user.firstName, mostOf) : theAcrossWords(user.firstName, found);
       const link = mostOf ? `${base}/grounds/${mostOf.groundId}/board` : `${base}/grounds`;
       const went = await deps.email.sendWhoHasGoneQuiet(user.email, w.subject, w.lines, w.linkLabel, link);
-      if (went !== 'suppressed') { await nowToldOnce(prisma, once); tried++; }
+      await nowToldOnce(prisma, once, went, { sender: QUIET_SENDER, to: user.email });
+      if (went !== 'suppressed') tried++;
     } catch {
       /* One lead's message that could not be put together never stops the others. */
     }

@@ -386,7 +386,7 @@ export class RemindService {
         try {
           const w = theLeadsFirstWords(participant.user?.firstName, checkIn.ground.label, (checkIn.ground as any).brief);
           const went = await this.email.sendLeadFirstCheckIn(participant.email, w.subject, w.lines, w.linkLabel, `${frontendUrl}/grounds/${checkIn.groundId}`, participant.id);
-          if (went === 'sent') await nowToldOnce(this.prisma, once);
+          await nowToldOnce(this.prisma, once, went, { sender: 'sendLeadFirstCheckIn', to: participant.email });
           if (went !== 'suppressed') await this.prisma.groundParticipant.update({ where: { id: participant.id }, data: { lastNudgedAt: now } });
         } catch (err: any) {
           this.logger.error(`The lead's first-check-in message failed for check-in ${checkIn.id}: ${err.message}`);
@@ -395,7 +395,7 @@ export class RemindService {
       }
 
       try {
-        await this.email.sendNudge(
+        const went = await this.email.sendNudge(
           participant.email,
           checkIn.ground.label,
           checkInUrl,
@@ -408,6 +408,9 @@ export class RemindService {
           (checkIn.ground as any).simplerWords,
         );
 
+        /* A reminder the one-a-day rule or the person's own choice refused did not go, so it does not use up their chase: it is tried again, and the
+           lead is never told somebody was "reminded" when they were not (decision 109 review). */
+        if ((went as unknown) === 'suppressed') continue;
         await this.prisma.groundParticipant.update({
           where: { id: participant.id },
           data: { lastNudgedAt: now },
