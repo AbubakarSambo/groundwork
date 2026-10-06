@@ -263,7 +263,10 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
                   <Row key={r.to} columns="minmax(0, 1fr) auto auto">
                     <b>{r.checkIn}</b>
                     <span>{whenItWas(r.at, 'dayAndMonthLong')}</span>
-                    <Link to={r.to}>Read</Link>
+                    {/* SCREEN FAULT 10: 30px tall on a phone, below the 40px tap floor -
+                        `.gwui-tap-40` (gw-ui.css), the same class YourWork.tsx's own "Read"
+                        links already use. */}
+                    <Link to={r.to} className="gwui-tap-40">Read</Link>
                   </Row>
                 ))}
               </RowList>

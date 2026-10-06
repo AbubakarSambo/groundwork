@@ -102,6 +102,8 @@ describe('Miriam reads her own You board', () => {
     open(MIRIAM, MIRIAMS)
     await screen.findByRole('heading', { name: 'Your own reports' })
     expect(hrefOf(section('Your own reports'), 'Read')).toBe('/checkin/c38/report')
+    /* SCREEN FAULT 10: 30px tall on a phone before the shared 40px tap class was added. */
+    expect(within(section('Your own reports')).getByRole('link', { name: 'Read' }).className).toContain('gwui-tap-40')
     /* Walkthrough pass 2, item 4: dates read in full ("23 September", not "23 Sept"). */
     expect(within(section('Your own reports')).getByText('23 September')).toBeInTheDocument()
     const each = section('Your work in each')

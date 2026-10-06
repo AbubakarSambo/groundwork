@@ -2140,3 +2140,8 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
   border-bottom: 2px solid transparent; cursor: pointer; font-family: inherit;
 }
 .gwui-ci-tab-on { font-weight: 700; color: var(--gw-text); border-bottom-color: var(--gw-navy); }
+/* SCREEN FAULT 10: 32px tall on a phone, below the 40px floor every other tappable row control
+   already has - same technique as `.gwui-plain-link`/`.gwui-open-link`, on this class's own name. */
+@media (max-width: 640px) {
+  .gwui-ci-tab { min-height: 40px; display: inline-flex; align-items: center; }
+}
