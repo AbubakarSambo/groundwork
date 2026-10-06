@@ -1,4 +1,4 @@
-import { sendWhoHasGoneQuiet, theTeamWords, theAcrossWords } from './who-has-gone-quiet';
+import { sendWhoHasGoneQuiet, theTeamWords, theAcrossWords, theQuietIn } from './who-has-gone-quiet';
 import { ENGAGEMENT_MOMENT_KEY as RELEASE_MOMENT_KEY } from './the-engagement-release-moment';
 
 /**
@@ -40,7 +40,7 @@ function world(groundsRows: Record<string, any[]>, opts: { told?: boolean; outco
     user: { findUnique: jest.fn(async () => ({ email: 'wairimu@x.test', firstName: 'Wairimu', deletedAt: null, isActive: true })) },
   };
   const email = { sendWhoHasGoneQuiet: jest.fn(async (to: string, subject: string, lines: string[], linkLabel: string, linkUrl: string) => { sent.push({ to, subject, lines, linkLabel, linkUrl }); return opts.outcome ?? 'sent'; }) };
-  return { run: () => sendWhoHasGoneQuiet({ prisma, email, frontendUrl: 'https://app.test/' }, NOW), sent, told };
+  return { prisma, run: () => sendWhoHasGoneQuiet({ prisma, email, frontendUrl: 'https://app.test/' }, NOW), sent, told };
 }
 
 describe('journey 9: most of one team has stopped', () => {
@@ -53,7 +53,7 @@ describe('journey 9: most of one team has stopped', () => {
       lines: [
         'Hello Wairimu. Four of the six people on "Sales team, Q4" have not answered the latest check-in, which opened more than a week ago.',
         'Two have never answered, and Omar and Vera answered before and have not answered since.',
-        'Because it is most of the team, this is one thing about the team and not several people to be reminded one at a time. Groundwork has not changed or shortened the check-in.',
+        'Most of the team has not answered, so this looks like something about the team rather than about each person. Groundwork has not changed or shortened the check-in.',
         'If you want to know what is in the way, asking one of them directly is the quickest way to find out.',
       ],
       linkLabel: 'See who has answered',
@@ -73,8 +73,9 @@ describe('journey 7: spread over several check-ins', () => {
       ...['p1', 'p2', 'p3', 'p4'].map((p, i) => row(`${label}${p}`, `P${i}`, 2, quiet.includes(p) ? 'NOT_STARTED' : 'COMPLETED')),
     ];
     const w = world({ g1: one('a', ['p1']), g2: one('b', ['p2']), g3: one('c', ['p3']) });
+    /* nobody closed anything, so there is no positive line */
     expect(await w.run()).toEqual({ tried: 1 });
-    expect(w.sent[0].subject).toBe('Three people have stopped answering across three of your check-ins');
+    expect(w.sent[0].subject).toBe('Three people have not answered the latest check-in across three of your check-ins');
     expect(w.sent[0].lines[0]).toBe('Hello Wairimu. Three people have not answered the latest check-in, across three of your check-ins.');
     expect(w.sent[0].lines.slice(1, 4)).toEqual(['In "Sales team, Q4", one has never answered.', 'In "Kenya launch", one has never answered.', 'In "Product", one has never answered.']);
     expect(w.sent[0].linkUrl).toBe('https://app.test/grounds');
@@ -86,7 +87,40 @@ describe('journey 7: spread over several check-ins', () => {
   });
 });
 
+describe('one check-in, fewer than most', () => {
+  it('is said with the check-in\'s name, not as "stopped"', async () => {
+    const rows = [row('lead', 'Wairimu', 2, 'COMPLETED'), ...['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((p, i) => row(p, `P${i}`, 2, i < 3 ? 'NOT_STARTED' : 'COMPLETED'))];
+    const w = world({ g1: rows });
+    await w.run();
+    expect(w.sent[0].subject).toBe('Three people have not answered the latest check-in in "Sales team, Q4"');
+    expect(w.sent[0].lines[0]).toBe('Hello Wairimu. Three of the eight people in "Sales team, Q4" have not answered the latest check-in.');
+    expect(JSON.stringify(w.sent)).not.toMatch(/stopped answering|have stopped/i);
+  });
+  it('says a positive only as a plain fact about the one person who did all of it, and otherwise leaves it out', async () => {
+    const rows = [row('lead', 'Wairimu', 2, 'COMPLETED'), ...['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((p, i) => row(p, `P${i}`, 2, i < 3 ? 'NOT_STARTED' : 'COMPLETED'))];
+    const all = world({ g1: rows });
+    all.prisma.groundCommitment = { findMany: jest.fn(async () => [{ participantId: 'f' }, { participantId: 'f' }, { participantId: 'f' }, { participantId: 'f' }]) };
+    await all.run();
+    expect(all.sent[0].lines).toContain('In "Sales team, Q4", four things people said they would do were done, all by P5.');
+    const shared = world({ g1: rows });
+    shared.prisma.groundCommitment = { findMany: jest.fn(async () => [{ participantId: 'f' }, { participantId: 'g' }]) };
+    await shared.run();
+    expect(shared.sent[0].lines.join(' ')).not.toMatch(/were done|was done/);
+    expect(shared.sent[0].lines.join(' ')).not.toMatch(/ahead|behind|strong|best/i);
+  });
+});
+
 describe('who is not written to', () => {
+  it('somebody on approved leave is not counted as having gone quiet, and is not named', () => {
+    const q = theQuietIn(salesRows, 'Sales team, Q4', 'u-lead', NOW, RELEASE, new Set(['o']));
+    expect(q).toMatchObject({ ofHowMany: 5, neverAnswered: 2, stoppedAfterAnswering: ['Vera'] });
+    expect(JSON.stringify(q)).not.toContain('Omar');
+  });
+  it('only asks for check-ins made at or after the release', async () => {
+    const w = world({ g1: salesRows });
+    await w.run();
+    expect((w.prisma.ground.findMany.mock.calls[0] as any)[0].where.createdAt).toEqual({ gte: RELEASE });
+  });
   it('fewer than three people', async () => {
     const few = [row('lead', 'W', 2, 'COMPLETED'), row('a', 'A', 2, 'NOT_STARTED'), row('b', 'B', 2, 'NOT_STARTED'), row('c', 'C', 2, 'COMPLETED')];
     expect(await world({ g1: few }).run()).toEqual({ tried: 0 });
