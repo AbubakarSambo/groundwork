@@ -79,7 +79,6 @@ import {
 } from './board-families';
 import { totalSessionsFor } from '../grounds/session-count';
 import { labelsForParties, namesVisibleTo, readsWithNamesOf, eachSideGetsSomebody, plainWordsByPerson, atTheStart, withNames } from '../reports/party-labels';
-import { theNameInAnAddress } from '../reports/the-name-in-an-address';
 import { anAimAsASentence, yourOwnWhereYouAreTheSubject, anAimTheHolderSet, aPromiseNotAnAim } from './an-aim-is-a-sentence-about-somebody';
 import {
   CoverageKind,
@@ -687,7 +686,7 @@ export class BoardService {
       const p = ground.participants.find((x) => x.id === pid);
       if (!p) return null;
       if (hiddenFromThisReader(pid)) return aColleague(pid);
-      const n = [p.user?.firstName, aSurnameOrNothing(p.user?.lastName)].filter(Boolean).join(' ').trim() || ((p as any).nameGiven ?? '').trim() || (theNameInAnAddress((p as any).email) ?? '');
+      const n = [p.user?.firstName, aSurnameOrNothing(p.user?.lastName)].filter(Boolean).join(' ').trim() || ((p as any).nameGiven ?? '').trim();
       /*
        * AND WHO THEY ANSWERED FOR, THE SAME WAY THE REPORT DOES IT.
        *
