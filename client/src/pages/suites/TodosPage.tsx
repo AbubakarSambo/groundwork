@@ -36,8 +36,12 @@ import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row } from '@/c
  * check-in and counts in its record, so a board must not change it; and "How people use it", because
  * "Remind me" in chat adds to the person's own list, which nobody else reads (request 27).
  *
- * WORDING NO SCREEN SHOWS (item 28): "Nobody has anything on their list yet." and "The board did not
- * load."
+ * WORDING NO SCREEN SHOWS (item 28): "No check-in has a to-do yet." and "The board did not load."
+ *
+ * FAULT 4 OF THE LIVE WALK (6 October, decision 110, P8): the empty state read "Nobody has anything
+ * on their list yet.", which reads as a list kept for each person - the one thing decision 110
+ * forbids this board from showing. Changed to "No check-in has a to-do yet.", true to how this
+ * board actually groups its rows.
  */
 const onDay = (day: string) => whenItWas(new Date(`${day}T00:00:00.000Z`), 'dayAndMonthLong', 'UTC')
 
@@ -113,7 +117,7 @@ export function TodosPage() {
         )
       )}
 
-      {data && checkIns.length === 0 && <Empty>Nobody has anything on their list yet.</Empty>}
+      {data && checkIns.length === 0 && <Empty>No check-in has a to-do yet.</Empty>}
       {data && checkIns.map(ci => (
         <Section key={ci.id} heading={ci.name}>
           <RowList label={ci.name}>

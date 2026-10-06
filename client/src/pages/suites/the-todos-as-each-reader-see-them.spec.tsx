@@ -137,9 +137,16 @@ describe('Grace, an admin', () => {
     expect(screen.queryByText('How people use it')).toBeNull()
   })
 
-  it('reads a plain sentence when nobody has anything on their list', async () => {
+  /*
+   * FAULT 4 OF THE LIVE WALK (6 October, decision 110, P8): "Nobody has anything on their list yet."
+   * reads as a list kept for each person, which this board must never be (decision 110 keeps a
+   * person's load across check-ins private, even from an admin). Changed to say what is actually
+   * true: no check-in has a to-do in it yet.
+   */
+  it('reads a plain sentence when no check-in has a to-do', async () => {
     open(GRACE, { people: [] })
-    expect(await screen.findByText('Nobody has anything on their list yet.')).toBeInTheDocument()
+    expect(await screen.findByText('No check-in has a to-do yet.')).toBeInTheDocument()
+    expect(screen.queryByText('Nobody has anything on their list yet.')).toBeNull()
   })
 
   it('no label on anybody', async () => {
