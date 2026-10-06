@@ -99,6 +99,13 @@ export function roleWord(m: Pick<OrgMember, 'id' | 'role'>, ownerId: string | nu
  * has not answered one, which the prototype has no word for and an admin rolling out needs. "Not let
  * in" is Hafsah's decision of 29 September: once this organisation's own admin has said no, "waiting"
  * is no longer true.
+ *
+ * "RUNS N CHECK-INS", NOT "NOT ANSWERED YET", FOR SOMEBODY WHO ONLY RUNS THEM (real-user walk,
+ * Kijani Foods, fault 8d). Naomi, who leads check-ins but answers in none of them, read "Not
+ * answered yet" - untrue: nothing is waiting on her to answer, because a lead who is not also a
+ * party to their own check-in never answers one. `checkIns[].runsIt` already says which of
+ * `checkInsOn` she runs rather than takes part in; where every one of them is hers to run, and
+ * none is a seat she is still expected to answer from, the status says what is actually true.
  */
 export function statusWord(m: OrgMember): string {
   if (m.notLetIn) return 'Not let in'
@@ -106,6 +113,11 @@ export function statusWord(m: OrgMember): string {
   if (m.heldForASeat) return 'No seat on your plan'
   if (m.state === 'invited') return 'Invited, not opened'
   if ((m.checkInsOn ?? 0) === 0) return 'Signed in, not on a check-in'
+  const onlyRuns = (m.checkIns ?? []).length > 0 && (m.checkIns ?? []).every((c) => c.runsIt)
+  if (onlyRuns && (m.checkInsAnswered ?? 0) === 0) {
+    const n = m.checkIns!.length
+    return `Runs ${n} check-in${n === 1 ? '' : 's'}`
+  }
   /* Added to a check-in, and has not opened the invitation yet (U.4 review). */
   if ((m.checkInsAnswered ?? 0) === 0 && (m.checkInsNotOpened ?? 0) >= (m.checkInsOn ?? 0)) return 'Invited, not opened'
   if ((m.checkInsAnswered ?? 0) === 0) return 'Not answered yet'
