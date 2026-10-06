@@ -396,6 +396,52 @@ Sections 4, 5 and 7 were run again by a tester on commit `6fdf245a` (40 commits 
 
 **Left behind on this computer:** the database `gw_existing_6oct_a`. `dropdb` is not allowed. The temporary spec copy was deleted and the worktrees were removed.
 
+## 12. Checked again on 6 October, morning, at `eee1e87c`
+
+Sections 4, 5 and 7 were run again by a tester on `eee1e87c` (44 commits after `6fdf245a`: the anchor's baseline conversation, the leave and spending request forms, the stored pattern lines, the anchor's tone and the saved situation), in a detached worktree. Everything ran on this computer only; the scripts' read-only guards were on, the model, mailer and WhatsApp were stand-ins, and no model credentials were present in the worktrees. The old code is `origin/main`, still `824b7e3b`.
+
+**The database.** `gw_pw9_1786222102` was only read, by `pg_dump`, into a new local database, `gw_existing_anchor` (1,846 grounds, 11,000 check-in rows, 1,606 reports). The two newest migrations (`20261005230000_a_whatsapp_send_keeps_its_message_id`, `20261006030000_a_check_in_keeps_the_anchor_situation`) were applied to the copy with `prisma migrate deploy`. Both only add an empty column, an index or an enum value.
+
+**Section 4, scheduled check-ins carry on. 10 of 10 tests pass**, the same as section 11. A temporary copy of `existing-clients-carry-on.spec.ts` pointed at the copy was run and deleted. Every column of every ground, participant and check-in is the same before and after; no email, no announcement, no stall; the stalled check-in stays stalled.
+
+**Section 5, the check script, oldest 150 check-ins. Line for line the same as section 11:** 861 reads, 808 served, 53 refused on purpose (every one is "There is no report yet", the report is not finished, or the one empty check-in), 0 failed, 0 tried to write. Leads 423 of 450, participants 358 of 372, admins 27 of 39. Nothing private served. The same 12 next sessions left behind by journey runs. 253 people have a session open, 0 would be reminded on the next morning run, 0 leads would be told who has not started. No stalled check-in is picked up by the nightly jobs.
+
+**The specs.** In the worktree, with `--runInBand` and the database pointed at the copy: the suites, assistant, public-api and whatsapp folders (which hold the leave, spending and hours chat readers and every developer API spec): 202 suites, 2,590 tests, all pass.
+
+**Section 7, the old code against the new.**
+
+| | 6fdf245a (section 11) | Now, eee1e87c |
+| --- | --- | --- |
+| Reads served, old then new | 1,482 / 1,464 | 1,482 / 1,464 |
+| Sentences the old code showed | 54,489 | 54,489 |
+| Still readable | 50,001 | 50,001 |
+| Not found: stock | 2,403 | 2,403 |
+| Not found: the lead's judgement, which a participant no longer reads | 2,150 | 2,150 |
+| Not found: later sessions waiting for the lead | 404 | 404 |
+| Not explained (leads, participants, admins) | 923 (344, 552, 27) | 923 (344, 552, 27) |
+| Named people no longer named | 224 | 224 |
+| Private material newly served | none | none |
+| Ask Groundwork answered, old then new | 210 / 105 | 210 / 105 |
+| Company page, suites page served (none failed) | 4,812 / 3,218 | 4,812 / 3,218 |
+| FAULT lines | 18, the same three check-ins | 18, the same three check-ins |
+| Wording on the new side: labels, jargon, lower case, cut mid-word, "1 people" | 1,058, 1,490, 19, 84, 2 | 1,058, 1,490, 19, 84, 2 |
+| Wording worse in | nothing | nothing |
+
+Every WHERE, FAULT, LEAK and ASK line is the same as in section 11. The only difference in the list of unexplained sentences is one lead probe's day count going from "14 days" to "15 days" (the old code's count goes up each midnight), as explained in section 10. No page, wording or use case moved.
+
+**By hand, on the copy, against `6fdf245a` (a second detached worktree, same copy, the writes refused).**
+1. **An existing check-in's first-session prompt.** One check-in for each of the 24 situations that has no anchor mark (the two check-ins on the copy that carry one are the journey runs "Everyone pulling the same way", so they were left out), as its lead and as a person in it, the opening and the first reply (92 prompts, 44,000 to 129,000 characters each). The prompts on `eee1e87c` are identical to those on `6fdf245a`, byte for byte, across the whole set. (The same run also showed that building a reply writes one `GroundParticipant` update and orders the other people by arrival, so the comparison refused that write and was run twice on each side to make sure the order was stable.)
+2. **A WhatsApp leave request** ("Can I take this Friday off? I will be back next week."). It is read as a request for leave, and is not "plainly asking" with no dates, exactly as before. The dates are Friday 9 October on both, and the say-back for the 12 oldest organisations is the same sentence ("Leave requests are not switched on in your organisation, so I have not sent or kept these dates. An admin can switch them on under Suites."), because none of them has leave turned on on this copy. The one move is on a different sentence: "Can I take Friday off next week?" read as 9 October on `6fdf245a` and reads as Friday 16 October now, which is what was asked (commit in `leave-said-in-chat.ts`, "next week" after the day). That is a fix, not a loss; "this Friday ... back next week" is unchanged because "this" is said.
+3. **The developer API's vocabulary.** The list of situations a developer may send now has 24 values, which are exactly the 24 the live main line (`824b7e3b`) has. On `6fdf245a` it had a 25th, `HELP_TEAM_UNDERSTAND`, the anchor's own situation, which the developer API no longer offers or accepts (decision: the developer API keeps working exactly as it did). The moments, the kinds of objective and every other part of the contract (steps, panel, differing words, error shape) hash the same as on `6fdf245a`. So the vocabulary differs from `6fdf245a` by exactly that one removed value, and is the same as the live main line.
+
+**What moved, and why.** Nothing worse. The two moves against `6fdf245a` are both on purpose: the day count of one probe, and the developer API no longer listing the anchor's situation (its vocabulary is back to the live main line's). One leave sentence reads the day more correctly. The 44 commits do not touch what an existing check-in is served, the prompt it is interviewed with, or when anything is sent.
+
+**Flags.** Anything private newly served: none. A lost use case: none. A wording that got worse: none. A scheduled check-in changed: none (the carry-on test, the check script's schedule rule and the nightly-job counts are all the same).
+
+**Still open, unchanged, for Hafsah:** Finding 7 (41 people on 20 check-ins who answered and are held for a seat lose every page; the 18 FAULT lines are three check-ins), and the stored pattern lines a lead no longer reads (144 on the board and 144 in the report).
+
+**Left behind on this computer:** the database `gw_existing_anchor`. `dropdb` is not allowed. The temporary spec copies were deleted and the worktrees were removed.
+
 ## Hafsah's decision 90 (4 October)
 
 - Existing clients get the whole new build on the same terms as the paid client. It must work at least as well as today on their existing data (check-ins, boards, reports, Company page, suites, Ask Groundwork); the check below proves it on existing local check-ins. Nothing gets worse, no use case is lost, running check-ins carry on as scheduled, and stalled check-ins stay as the live main line leaves them, with no messages.

@@ -59,10 +59,15 @@ export function whoSheIsTryingToMove(names: string[]): string {
 }
 
 /** Who she is trying to move, as a sentence: as the read wrote it when it is one ("You are trying to move..."), else the group she named, put into one. */
+/** First words that are never a name, so they read in the middle of a sentence in lower case. */
+const GENERAL_FIRST_WORDS = 'everyone|everybody|all|both|those|these|some|most|each|every|people|staff|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty';
+
 export function whoYouAreMovingSaid(text: string): string {
   const t = text.trim().replace(/[.!?]+$/, '');
   if (/^you\b/i.test(t)) return asASentence(t);
-  return `You are trying to move ${t.charAt(0).toLowerCase()}${t.slice(1)} with you.`;
+  /* Only a leading "The", "A" or "An" is lower-cased, and "My" or "Our" becomes "your"; a name or anything else stays as written. */
+  const said = t.replace(new RegExp(`^(?:the|a|an|${GENERAL_FIRST_WORDS})\\b`, 'i'), (m) => m.toLowerCase()).replace(/^(?:my|our)\s/i, 'your ');
+  return `You are trying to move ${said} with you.`;
 }
 
 export const NOT_WRITTEN_DOWN = {

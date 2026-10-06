@@ -160,8 +160,8 @@ export function theMonthBoard(input: {
     peopleHelpingThingsMove: people,
     wherePerspectivesDiffer: input.differences.length
       ? input.differences
-      : [r.checkedIn < 2 ? 'Groundwork needs at least two accounts before it can show where they differ.' : 'No two people have described the same thing differently so far.'],
+      : [r.checkedIn < 2 ? 'Groundwork needs to hear from at least two people before it can show where they differ.' : 'No two people have described the same thing differently so far.'],
     whatIsStillGettingInTheWay: inTheWay.length ? inTheWay : ['Nobody has said that anything is in their way.'],
-    whatGroundworkIsWorkingOnNext: input.ended ? ['This check-in has ended, so Groundwork is not asking anyone for more.'] : whatGroundworkIsWorkingOn(r),
+    whatGroundworkIsWorkingOnNext: input.ended ? ['Groundwork is not asking anyone for more.'] : whatGroundworkIsWorkingOn(r),
   };
 }

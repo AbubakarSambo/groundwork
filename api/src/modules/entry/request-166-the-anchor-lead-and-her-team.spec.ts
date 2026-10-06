@@ -294,3 +294,28 @@ describe('who she is trying to move reads as a sentence whichever way the read w
     expect(theLeadsReveal({ messages: [], heard: { tryingToMove: 'you are trying to move the clinic managers.' } }).whoYouAreTryingToMove).toBe('You are trying to move the clinic managers.');
   });
 });
+
+describe('who she is moving keeps names as written', () => {
+  it.each([
+    ['Linet, Mercy and Salma', 'You are trying to move Linet, Mercy and Salma with you.'],
+    ['My project managers', 'You are trying to move your project managers with you.'],
+    ['Our nurses', 'You are trying to move your nurses with you.'],
+    ['The operations team', 'You are trying to move the operations team with you.'],
+    ['A few nurses', 'You are trying to move a few nurses with you.'],
+    ['Nairobi depot staff', 'You are trying to move Nairobi depot staff with you.'],
+  ])('%s', (said, reads) => {
+    expect(theLeadsReveal({ messages: [], heard: { tryingToMove: said } }).whoYouAreTryingToMove).toBe(reads);
+  });
+});
+
+describe('who she is moving: general first words read in lower case', () => {
+  it.each([
+    ['Everyone in dispatch', 'You are trying to move everyone in dispatch with you.'],
+    ['Both supervisors', 'You are trying to move both supervisors with you.'],
+    ['Twelve nurses', 'You are trying to move twelve nurses with you.'],
+    ['Staff at the depot', 'You are trying to move staff at the depot with you.'],
+    ['Oscar and Wanjiru', 'You are trying to move Oscar and Wanjiru with you.'],
+  ])('%s', (said, reads) => {
+    expect(theLeadsReveal({ messages: [], heard: { tryingToMove: said } }).whoYouAreTryingToMove).toBe(reads);
+  });
+});

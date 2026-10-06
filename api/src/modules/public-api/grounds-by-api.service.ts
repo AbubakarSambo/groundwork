@@ -22,7 +22,8 @@ import { SeedInput, normalise, missingOwedTo, NOT_A_KIND } from './what-was-alre
  * failure it produces is the exact one this validation exists to stop: a valid value refused, with
  * a helpful error naming a set that is missing it.
  */
-const SCENARIOS = Object.values(GroundScenario);
+/* Not the anchor's own situation: it starts from its link, and the developer API keeps working exactly as it did. */
+const SCENARIOS = Object.values(GroundScenario).filter((s) => s !== GroundScenario.HELP_TEAM_UNDERSTAND);
 const MOMENTS = Object.values(GroundMoment);
 
 /**
