@@ -8248,7 +8248,7 @@ ${told}` : '';
         backedByAPhoto: !!(r as any).anchoredDocumentId && draft.photos.has((r as any).anchoredDocumentId),
         ...((r as any).anchoredDocumentId ? { documentIsTheirOwn: draft.theirs.has((r as any).anchoredDocumentId) } : {}),
       }));
-      const card = theEndCard(lines);
+      const card = theEndCard(lines, await this.usesSimplerWords(checkIn.groundId));
       await this.prisma.conversationTurn.update({
         where: { id: closingTurnId },
         data: { recordDraft: draft.rows as any, ...(card ? { endCard: card as any } : {}) },
@@ -8265,7 +8265,7 @@ ${told}` : '';
    * WHAT FINISHING WRITES. The lines the end card showed, when nothing was said after it; otherwise
    * the record is read again, as it always was.
    */
-  private async writeTheRecordAtTheEnd(checkIn: { id: string; participantId: string }): Promise<EndCard | null> {
+  private async writeTheRecordAtTheEnd(checkIn: { id: string; participantId: string; groundId?: string }): Promise<EndCard | null> {
     const closing = await this.prisma.conversationTurn.findFirst({
       where: { checkInId: checkIn.id, role: TurnRole.AI },
       orderBy: { createdAt: 'desc' },
@@ -8296,7 +8296,7 @@ ${told}` : '';
         type: String(r.type), text: String(r.text ?? ''), recallBased: (r as any).recallBased ?? true, anchoredDocumentId: doc, anchoredOrigin: (r as any).anchoredOrigin ?? null,
         ...(doc && whoAdded.has(doc) ? { documentIsTheirOwn: whoAdded.get(doc) === checkIn.participantId } : {}),
       };
-    }));
+    }), checkIn.groundId ? await this.usesSimplerWords(checkIn.groundId) : false);
     if (closing?.id) {
       await this.prisma.conversationTurn.update({ where: { id: closing.id }, data: { endCard: (card ?? Prisma.DbNull) as any, recordDraft: rows as any } })
         .catch((err: any) => this.logger.warn(`Check-in ${checkIn.id}: could not replace the end card with what was written (${err?.message})`));
