@@ -120,6 +120,8 @@ export const CronLock = {
   OAUTH_CODES: 920_012,
   /** The reminder to carry on, for somebody who stopped halfway on WhatsApp. See grounds.cron.ts remindThoseWhoStoppedHalfway. */
   HALFWAY_REMINDERS: 920_013,
+  /** The nightly clean-up of words held on WhatsApp for a yes or no past their ten minutes. See public-api/a-held-request-does-not-outlive-its-ten-minutes.cron.ts. */
+  HELD_REQUESTS: 920_014,
 } as const;
 
 /**
