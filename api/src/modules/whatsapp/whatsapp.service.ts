@@ -1,5 +1,5 @@
 import * as crypto from 'crypto';
-import { sealTheirKey, theirKey, theServerCanKeepSecrets, THE_SERVER_HAS_NO_KEY, isSealed, THEIR_KEYS_CANNOT_BE_OPENED, KEYS_NEED_TYPING_AGAIN } from './an-organisations-own-keys';
+import { sealTheirKey, theirKey, theServerCanKeepSecrets, THE_SERVER_HAS_NO_KEY, isSealed, THEIR_KEYS_CANNOT_BE_OPENED, KEYS_NEED_TYPING_AGAIN, theKeysCannotBeOpened } from './an-organisations-own-keys';
 import { OnModuleInit, Injectable, Logger, UnauthorizedException, BadRequestException, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
@@ -839,14 +839,22 @@ export class WhatsAppService implements OnModuleInit {
 
   /** Seals every organisation's access token and app secret that is still kept as typed. Returns how many rows it sealed. */
   async sealWhatWasKeptPlain(): Promise<number> {
-    if (!theServerCanKeepSecrets()) return 0;
     const rows = await this.prisma.whatsAppConnection.findMany({ select: { id: true, organizationId: true, accessToken: true, appSecret: true } });
+    /* Sealed keys this server cannot open (the key was changed or removed) are counted and named by organisation, never by key, so somebody
+       finds out before a customer does. Their admin is told on the Connections page. */
+    const cannotOpen = (rows ?? []).filter((r) => (['accessToken', 'appSecret'] as const).some((f) => isSealed(r[f]) && !theirKey(r, f))).map((r) => r.organizationId);
+    if (cannotOpen.length) this.logger.error(`${cannotOpen.length} organisation(s) have WhatsApp keys that this server cannot open, so nothing is sent from their numbers and their messages are refused until the keys are typed in again: ${cannotOpen.join(', ')}`);
+    if (!theServerCanKeepSecrets()) return 0;
     let sealed = 0;
     for (const r of rows ?? []) {
-      const data: Record<string, string> = {};
-      if (r.accessToken && !isSealed(r.accessToken)) data.accessToken = sealTheirKey(r.organizationId, 'accessToken', r.accessToken);
-      if (r.appSecret && !isSealed(r.appSecret)) data.appSecret = sealTheirKey(r.organizationId, 'appSecret', r.appSecret);
-      if (Object.keys(data).length) { await this.prisma.whatsAppConnection.update({ where: { id: r.id }, data }); sealed += 1; }
+      let did = false;
+      /* One field at a time, and only where the value is still the one that was read: a key typed in since is left alone. */
+      for (const f of ['accessToken', 'appSecret'] as const) {
+        if (!r[f] || isSealed(r[f])) continue;
+        const done = await this.prisma.whatsAppConnection.updateMany({ where: { id: r.id, [f]: r[f] }, data: { [f]: sealTheirKey(r.organizationId, f, r[f]) } });
+        if (done?.count) did = true;
+      }
+      if (did) sealed += 1;
     }
     return sealed;
   }
@@ -868,6 +876,9 @@ export class WhatsAppService implements OnModuleInit {
       /* U.18: the callback address is proven once Meta's handshake answered, or a message came in through it. */
       webhookProvenAt: c.webhookVerifiedAt ?? c.lastInboundAt ?? null,
       tokenEndsWith: theirKey(c, 'accessToken').slice(-4),
+      /* A sealed key this server cannot open. The admin reads what to do; nothing is sent from the number until then. */
+      keysNeedTypingAgain: theKeysCannotBeOpened(c),
+      ...(theKeysCannotBeOpened(c) ? { keysNeedTypingAgainSays: KEYS_NEED_TYPING_AGAIN } : {}),
     };
   }
 

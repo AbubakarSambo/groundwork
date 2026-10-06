@@ -21,6 +21,13 @@ function setup(rows: any[] = []) {
       findUnique: jest.fn(async ({ where }: any) => rows.find((r) => r.organizationId === where.organizationId) ?? null),
       findMany: jest.fn(async () => rows),
       update: jest.fn(async ({ where, data }: any) => Object.assign(rows.find((r) => r.id === where.id), data)),
+      updateMany: jest.fn(async ({ where, data }: any) => {
+        const { id, ...mustStillBe } = where;
+        const r = rows.find((x) => x.id === id);
+        if (!r || Object.entries(mustStillBe).some(([k, v]) => r[k] !== v)) return { count: 0 };
+        Object.assign(r, data);
+        return { count: 1 };
+      }),
       upsert: jest.fn(async ({ where, create, update }: any) => {
         const r = rows.find((x) => x.organizationId === where.organizationId);
         if (r) return Object.assign(r, update);
@@ -178,4 +185,52 @@ describe('keys that cannot be opened', () => {
       expect(rows[0].accessToken).toMatch(/^v1:/);
     });
   }
+});
+
+describe('telling somebody when keys cannot be opened', () => {
+  const was = process.env.SETTINGS_ENCRYPTION_KEY;
+  afterEach(() => { if (was === undefined) delete process.env.SETTINGS_ENCRYPTION_KEY; else process.env.SETTINGS_ENCRYPTION_KEY = was; });
+
+  it('the start-up count names the organisations, never a key; their admin reads a plain sentence; an organisation whose keys open reads nothing of it', async () => {
+    process.env.SETTINGS_ENCRYPTION_KEY = KEY;
+    const { svc, rows } = setup();
+    await svc.connect('org-baridi', { phoneNumberId: '109822345561', accessToken: TOKEN, appSecret: SECRET });
+    await svc.connect('org-fine', { phoneNumberId: '109822345562', accessToken: TOKEN, appSecret: SECRET });
+    process.env.SETTINGS_ENCRYPTION_KEY = crypto.randomBytes(32).toString('base64');
+    /* Fine's keys were re-typed under the new key. */
+    await svc.connect('org-fine', { phoneNumberId: '109822345562', accessToken: TOKEN, appSecret: SECRET });
+    const logged: string[] = [];
+    (svc as any).logger = { log: () => undefined, warn: () => undefined, error: (m: string) => logged.push(m) };
+    await svc.sealWhatWasKeptPlain();
+    expect(logged).toHaveLength(1);
+    expect(logged[0]).toContain('org-baridi');
+    expect(logged[0]).not.toContain('org-fine');
+    expect(logged[0]).not.toMatch(/v1:|EAAG|baridi-app-secret|SETTINGS_ENCRYPTION_KEY/);
+    const baridi: any = await svc.connectionFor('org-baridi');
+    expect(baridi.keysNeedTypingAgain).toBe(true);
+    expect(baridi.keysNeedTypingAgainSays).toBe("Your number's keys need to be typed in again. Nothing is sent from your number until they are.");
+    const fine: any = await svc.connectionFor('org-fine');
+    expect(fine.keysNeedTypingAgain).toBe(false);
+    expect(fine.keysNeedTypingAgainSays).toBeUndefined();
+    expect(JSON.stringify([baridi, fine])).not.toMatch(/v1:|EAAG|baridi-app-secret/);
+    expect(rows.length).toBe(2);
+  });
+
+  it('sealing what was kept plain leaves alone a key typed in since it was read', async () => {
+    process.env.SETTINGS_ENCRYPTION_KEY = KEY;
+    const rows = [{ id: 'c-1', organizationId: 'org-old', phoneNumberId: '100000000000009', accessToken: 'plain-token-1234', appSecret: 'plain-secret-5678', verifyToken: 'v', approvedTemplates: [], enabled: true }];
+    const { svc, prisma } = setup(rows);
+    /* Between the read and the write, the admin types a new token, sealed. */
+    const read = prisma.whatsAppConnection.findMany;
+    prisma.whatsAppConnection.findMany = jest.fn(async (a: any) => {
+      const copy = rows.map((r) => ({ ...r }));
+      rows[0].accessToken = sealTheirKey('org-old', 'accessToken', 'typed-after-the-read');
+      return copy;
+    });
+    await svc.sealWhatWasKeptPlain();
+    expect(theirKey(rows[0], 'accessToken')).toBe('typed-after-the-read');
+    expect(theirKey(rows[0], 'appSecret')).toBe('plain-secret-5678');
+    expect(isSealed(rows[0].appSecret)).toBe(true);
+    expect(read).toBeDefined();
+  });
 });

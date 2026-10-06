@@ -42,3 +42,7 @@ export const THE_SERVER_HAS_NO_KEY = 'This server has no key to keep secrets wit
 export const THEIR_KEYS_CANNOT_BE_OPENED = 'Not sent: the organisation\'s own WhatsApp access token cannot be opened on this server.';
 /** What the organisation's admin reads when its keys cannot be opened. */
 export const KEYS_NEED_TYPING_AGAIN = "Your number's keys need to be typed in again. Nothing is sent from your number until they are.";
+
+/** Whether either key is sealed and this server cannot open it. */
+export const theKeysCannotBeOpened = (row: { organizationId: string; accessToken: string; appSecret: string }): boolean =>
+  (['accessToken', 'appSecret'] as const).some((f) => isSealed(row[f]) && !theirKey(row, f));
