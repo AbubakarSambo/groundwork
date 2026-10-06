@@ -73,9 +73,34 @@ describe('Grace, an admin, reads time sheets', () => {
     expect(within(region).getByText('Week of 21 September')).toBeInTheDocument()
     const trs = [...region.querySelectorAll('tr')]
     expect(cells(trs[0])).toEqual(['Person', 'Naivas', 'Lakeside', 'Green Mart', 'Total', 'Approval'])
-    expect(cells(trs[1])).toEqual(['Aisha Otieno', '14 h', '6 h', '2 h', '22 h', 'Approve'])
-    expect(cells(trs[2])).toEqual(['Brian Mwangi', '9 h', '12 h', '0 h', '21 h', 'Approve'])
-    expect(cells(trs[3])).toEqual(['Miriam Wanjiku', '18 h', '0 h', '4 h', '22 h', 'Approved'])
+    /*
+     * FAULT 3 OF THE LIVE WALK (6 October): each stacked cell now carries its own visible label
+     * (NaivasLakesideGreen MartTotal prefixed, as ReviewsBoardPage's table already does), so a row
+     * read with no client names beside its hours is fixed the same way. The labels are read here
+     * too, since `cells` reads each cell's whole text content.
+     */
+    expect(cells(trs[1])).toEqual(['Aisha Otieno', 'Naivas14 h', 'Lakeside6 h', 'Green Mart2 h', 'Total22 h', 'Approve'])
+    expect(cells(trs[2])).toEqual(['Brian Mwangi', 'Naivas9 h', 'Lakeside12 h', 'Green Mart0 h', 'Total21 h', 'Approve'])
+    expect(cells(trs[3])).toEqual(['Miriam Wanjiku', 'Naivas18 h', 'Lakeside0 h', 'Green Mart4 h', 'Total22 h', 'Approved'])
+  })
+
+  it('each stacked value carries its own visible label, marked aria-hidden since a screen reader already has the real column headers (fault 3 of the live walk)', async () => {
+    open(GRACE, GRACES)
+    const region = await screen.findByRole('region', { name: 'This week’s hours, waiting for approval' })
+    const labels = [...region.querySelectorAll('.gwui-record-table-label')]
+    expect(labels.map(l => l.textContent)).toEqual(['Naivas', 'Lakeside', 'Green Mart', 'Total', 'Naivas', 'Lakeside', 'Green Mart', 'Total', 'Naivas', 'Lakeside', 'Green Mart', 'Total'])
+    expect(labels.every(l => l.getAttribute('aria-hidden') === 'true')).toBe(true)
+  })
+
+  /*
+   * FAULT 2 OF THE LIVE WALK (6 October): a reader who reads this row but neither approves it
+   * themselves nor already sees it marked Approved used to read a blank last cell - the server's
+   * own sentence for where it stands was served (`where`) but never drawn.
+   */
+  it('reads the server’s own sentence in the last cell when this reader neither approves it nor sees it approved', async () => {
+    open(WAIRIMU, { ...WAIRIMUS, weeks: [{ ...THIS_WEEK, people: [{ ...THIS_WEEK.people[0], mayApprove: false, where: 'They are waiting for Daniel.' }] }] })
+    expect(await screen.findByText('They are waiting for Daniel.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Approve Aisha Otieno’s hours' })).toBeNull()
   })
 
   it('reads the hours against what each client agreed, and what to do about one that is over', async () => {

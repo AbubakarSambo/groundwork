@@ -107,15 +107,23 @@ function AWeek({ heading, week, empty }: { heading: string; week: TimeWeek; empt
               {week.people.map(p => (
                 <tr key={p.personId}>
                   <th scope="row">{p.name}</th>
-                  {week.clients.map(c => <td key={c}>{inHours(p.minutes[c] ?? 0)} h</td>)}
-                  <td><b>{inHours(p.total)} h</b></td>
+                  {week.clients.map(c => (
+                    <td key={c}><span className="gwui-record-table-label" aria-hidden="true">{c}</span>{inHours(p.minutes[c] ?? 0)} h</td>
+                  ))}
+                  <td><span className="gwui-record-table-label" aria-hidden="true">Total</span><b>{inHours(p.total)} h</b></td>
                   <td>
                     {p.approved
                       ? <Tag>Approved</Tag>
-                      : p.mayApprove && (
-                        <Button kind="secondary" size="small" onClick={() => approve.mutate(p.personId)} disabled={approve.isPending}
-                          aria-label={`Approve ${p.name}’s hours`}>Approve</Button>
-                      )}
+                      : p.mayApprove
+                        ? (
+                          <Button kind="secondary" size="small" onClick={() => approve.mutate(p.personId)} disabled={approve.isPending}
+                            aria-label={`Approve ${p.name}’s hours`}>Approve</Button>
+                        )
+                        /* FAULT 2 OF THE LIVE WALK (6 October): neither Approved nor mayApprove left this
+                           cell blank for a reader who reads the row but does not approve it themselves -
+                           the server's own sentence for where it stands ("They are waiting for Daniel.")
+                           was never drawn. */
+                        : (p.where && <p className="gwui-panel-text">{p.where}</p>)}
                   </td>
                 </tr>
               ))}
