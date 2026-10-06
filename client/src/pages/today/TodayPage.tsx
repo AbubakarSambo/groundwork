@@ -59,6 +59,15 @@ export function TodayPage() {
   const name = firstWordOfAName(user?.firstName)
   const greeting = name ? `${partOfTheDay(now)}, ${name}` : partOfTheDay(now)
   const needs = data?.needs ?? []
+  /* A SUITE ITEM GOES TO THE QUEUE, NOT STRAIGHT TO THE BOARD (live walk at a hundred people, fault
+     2): with a hundred people waiting on one approver, the board behind "/suite/leave" or
+     "/suite/spend" is the whole organisation's, not filtered to this one thing. The queue
+     (`/suite/queue`) is filtered to what waits for this reader, so "Look at it"/"Look at them" on an
+     approval item goes there instead, with `?suite=` set so the right tab opens. */
+  const whereItGoes = (n: Need) =>
+    n.action.to === '/suite/leave' ? '/suite/queue?suite=leave'
+      : n.action.to === '/suite/spend' ? '/suite/queue?suite=spend'
+        : n.action.to
 
   return (
     <Page>
@@ -97,7 +106,7 @@ export function TodayPage() {
                     kind={n.kind}
                     title={n.title}
                     detail={n.detail ?? undefined}
-                    actions={<Button kind={n.action.label === 'Start it' && i === needs.findIndex((m: Need) => m.action.label === 'Start it') ? 'primary' : 'secondary'} size="small" to={n.action.to}>{n.action.label}</Button>}
+                    actions={<Button kind={n.action.label === 'Start it' && i === needs.findIndex((m: Need) => m.action.label === 'Start it') ? 'primary' : 'secondary'} size="small" to={whereItGoes(n)}>{n.action.label}</Button>}
                   />
                 ))}
               </EdgeList>
