@@ -41,7 +41,7 @@ describe('what Wairimu reads a week after the report', () => {
       expect.stringMatching(/^Hello Wairimu\. The report for "Sales team, Q4" went out on .*12.*\.$/),
       'Since then, two things people said they would do were done and one handoff was cleared.',
       'Three handoffs are still waiting and four things people said they would do are still open.',
-      'Do you want Groundwork to check whether the team now sees it the same way? Another check-in asks the same people again and shows what has moved.',
+      'I suggest running the same check-in again, because some things have moved and some have not, and asking the same people again shows which. It is worth doing now because it asks the same people the same questions, so what has moved can be seen.',
     ]);
     expect(w.sent[0].linkUrl).toBe('https://app.test/grounds/g1/board');
   });

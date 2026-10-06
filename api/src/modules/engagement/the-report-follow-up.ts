@@ -4,6 +4,7 @@ import { theReleaseMoment } from '../grounds/the-release-moment';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 import { aNumberInWords } from './a-number-in-words';
 import { hasBeenToldOnce, nowToldOnce } from './a-message-sent-once';
+import { theNextCheckInFor, theSuggestionSaid } from './the-next-check-in-from-what-happened';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 
 /**
@@ -12,7 +13,7 @@ import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
  * The email that was meant for a lead sitting on a report asked for a status (REPORT_READY) that has not been written since June, so it never went. This
  * replaces it. A week after a report went out, if the lead has not opened a next session, she is sent ONE message, once, that says what changed since
  * and what has not: things people said they would do that were done, handoffs cleared, handoffs still waiting, things still open. Counts only, from the
- * record. It then asks whether she wants to see if the team now sees it the same way, which is what the next check-in is for.
+ * record. It then suggests one next check-in, from what the record shows (the-next-check-in-from-what-happened.ts).
  *
  * EXISTING CLIENTS ONLY GET BETTER (decision 109 item 2): only a report released at or after the release moment is followed up, and never one on a check-in
  * that has stalled, ended or is held.
@@ -21,7 +22,7 @@ export const REPORT_FOLLOW_UP_SENDER = 'sendTheReportFollowUp';
 export const A_WEEK = 7;
 const DAY = 86_400_000;
 
-export interface WhatChangedSinceTheReport { done: number; cleared: number; waiting: number; open: number }
+export interface WhatChangedSinceTheReport { done: number; cleared: number; waiting: number; open: number; scenario?: string | null }
 
 const things = (n: number, one: string, many: string) => `${aNumberInWords(n)} ${n === 1 ? one : many}`;
 const capital = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
@@ -42,7 +43,7 @@ export function theFollowUpWords(firstName: string | null | undefined, label: st
     `Hello ${firstName?.trim() || 'there'}. The report for "${label}" went out on ${whenItWas(wentOut, 'day')}.`,
     changed.length ? `Since then, ${changed.join(' and ')}.` : 'Since then, nothing has been marked done or cleared.',
     ...(stillThere.length ? [`${capital(stillThere.join(' and '))}.`] : []),
-    'Do you want Groundwork to check whether the team now sees it the same way? Another check-in asks the same people again and shows what has moved.',
+    theSuggestionSaid(theNextCheckInFor(c)),
   ];
   return { subject, lines, linkLabel: 'See where it stands' };
 }
@@ -58,7 +59,7 @@ export async function sendTheReportFollowUps(
   try { release = await theReleaseMoment(prisma, now); } catch { return { tried: 0 }; }
   const reports: any[] = await everyRowAPageAtATime((page: any) => prisma.report.findMany({
     where: { releasedAt: { gte: release, lte: new Date(now.getTime() - A_WEEK * DAY) }, ground: { status: { notIn: TERMINAL } } },
-    select: { groundId: true, releasedAt: true, ground: { select: { label: true, initiatorId: true, initiator: { select: { email: true, firstName: true, deletedAt: true, isActive: true } } } } },
+    select: { groundId: true, releasedAt: true, ground: { select: { label: true, scenario: true, initiatorId: true, initiator: { select: { email: true, firstName: true, deletedAt: true, isActive: true } } } } },
     orderBy: { releasedAt: 'asc' },
     ...page,
   }), 500);
@@ -80,7 +81,7 @@ export async function sendTheReportFollowUps(
         prisma.groundDependency.count({ where: { groundId: r.groundId, status: { not: 'CLEARED' } } }),
         prisma.groundCommitment.count({ where: { groundId: r.groundId, status: 'UNKNOWN' } }),
       ]);
-      const w = theFollowUpWords(lead.firstName, r.ground.label, r.releasedAt, { done, cleared, waiting, open });
+      const w = theFollowUpWords(lead.firstName, r.ground.label, r.releasedAt, { done, cleared, waiting, open, scenario: r.ground.scenario });
       const went = await deps.email.sendTheReportFollowUp(lead.email, w.subject, w.lines, w.linkLabel, `${base}/grounds/${r.groundId}/board`);
       if (went !== 'suppressed') { await nowToldOnce(prisma, once); tried++; }
     } catch {
