@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "exclude": [
+    "node_modules",
+    "dist",
+    "journey",
+    "test",
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "**/__fixtures__/**",
+    "**/*-harness.ts",
+    "**/*-for-specs.ts"
+  ]
+}
