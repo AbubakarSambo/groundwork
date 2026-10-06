@@ -688,11 +688,20 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
               PICTURE IN IT. "Open today's team picture below." used to open and scroll to "The
               whole check-in" fold - which holds everything else this board sends (By area,
               coaching, the switchboard's own sections), never a team picture. The actual team
-              picture is "The team's report" (SessionReportPage.tsx), reached from the report tab
-              this board already links "Read your own report" to. This now sends the reader there
-              instead, and is left out entirely once there is nothing shared to point it at.
+              picture is "The team's report" (SessionReportPage.tsx).
+
+              SCREEN FAULT 4: IT WAS SENT THERE THE LONG WAY ROUND, AND LANDED SOMEWHERE ELSE.
+              `/grounds/${'${groundId}'}/report` is only a redirect (ReportPage.tsx) to
+              `/grounds/${'${groundId}'}?tab=report` - for a participant that is this very page's
+              own "My work" tab, not the session's own report page, and it showed as about 350px of
+              blank gap over two closed rows with no space between them ("Your sessionsYou have one
+              finished session…"), with the tab bar underlining "My work" rather than Report. The
+              session's own report page is exactly where "Read your own report" below already sends
+              this reader (`myLatestCheckInId`) - the same page, since this is the report for the
+              session that just closed and shared. Sent there directly now, with the ground-level
+              redirect kept only for the rare case nothing has completed for this reader yet.
             */
-            <Link to={`/grounds/${groundId}/report`} className="gwui-plain-link gwui-fs-15 gwui-mt-4">
+            <Link to={myLatestCheckInId ? `/checkin/${myLatestCheckInId}/report` : `/grounds/${groundId}/report`} className="gwui-plain-link gwui-fs-15 gwui-mt-4">
               Open today’s team picture.
             </Link>
           )}

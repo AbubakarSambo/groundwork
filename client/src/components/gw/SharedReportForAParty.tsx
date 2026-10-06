@@ -147,7 +147,15 @@ export function SharedReportForAParty({
                 Sept 2026 · specific in places" - a date and a rating of what was said, joined the
                 same way. Each is now its own sentence.
               */}
-              <summary className="gw-fold-summary" style={{ cursor: 'pointer', fontSize: 12.5, color: 'var(--gw-sub)', padding: '6px 2px', display: 'flex', justifyContent: 'space-between' }}>
+              {/*
+                SCREEN FAULT 4: THE TWO HALVES OF THIS ROW READ AS ONE RUN-ON WORD ON A PHONE
+                ("Your sessionsYou have one finished session…"). `justify-content: space-between`
+                alone puts no floor under the gap when both halves together are wider than the
+                row - on a narrow screen they can end up side by side with nothing between them.
+                An explicit `gap`, and letting the row wrap rather than force both halves onto one
+                line, keeps them apart whatever the width.
+              */}
+              <summary className="gw-fold-summary" style={{ cursor: 'pointer', fontSize: 12.5, color: 'var(--gw-sub)', padding: '6px 2px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '4px 12px' }}>
                 <span>Your sessions</span>
                 <span style={{ fontSize: 11.5 }}>
                   {mySessions.length === 1 ? 'You have one finished session, with its own report.' : `You have ${mySessions.length} finished sessions, each with its own report.`}
