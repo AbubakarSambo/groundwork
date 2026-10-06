@@ -101,7 +101,10 @@ describe('one check-in, fewer than most', () => {
     const all = world({ g1: rows });
     all.prisma.groundCommitment = { findMany: jest.fn(async () => [{ participantId: 'f' }, { participantId: 'f' }, { participantId: 'f' }, { participantId: 'f' }]) };
     await all.run();
-    expect(all.sent[0].lines).toContain('In "Sales team, Q4", four things people said they would do were done, all by P5.');
+    expect(all.sent[0].lines).toContain('Four things people said they would do were done, all by P5.');
+    /* one check-in is named once: in the subject and the first line, not again in every sentence */
+    expect(all.sent[0].lines.slice(1).join(' ')).not.toContain('Sales team, Q4');
+    expect(all.sent[0].lines[1]).toBe('Three have never answered.');
     const shared = world({ g1: rows });
     shared.prisma.groundCommitment = { findMany: jest.fn(async () => [{ participantId: 'f' }, { participantId: 'g' }]) };
     await shared.run();

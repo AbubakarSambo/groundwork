@@ -18,8 +18,8 @@ function store() {
       create: jest.fn(async ({ data }: any) => { if (rows.has(data.key)) throw new Error('clash'); rows.set(data.key, data.value); return data; }),
       update: jest.fn(async ({ where, data }: any) => { rows.set(where.key, data.value); return data; }),
     },
-    scheduledEmail: { findFirst: jest.fn(async ({ where }: any) => scheduled.find((s) => s.sender === where.sender && s.toAddress === where.toAddress && s.sentAt === null) ?? null) },
-    notification: { findFirst: jest.fn(async ({ where }: any) => notifications.find((n) => n.sender === where.sender && n.toAddress === where.toAddress && n.outcome === 'sent' && n.createdAt >= where.createdAt.gte) ?? null) },
+    scheduledEmail: { findFirst: jest.fn(async ({ where }: any) => scheduled.find((s) => s.sender === where.sender && s.toAddress.toLowerCase() === where.toAddress.equals.toLowerCase() && s.sentAt === null) ?? null) },
+    notification: { findFirst: jest.fn(async ({ where }: any) => notifications.find((n) => n.sender === where.sender && n.toAddress.toLowerCase() === where.toAddress.equals.toLowerCase() && n.outcome === 'sent' && n.createdAt >= where.createdAt.gte) ?? null) },
   };
   return { prisma, rows, scheduled, notifications };
 }
@@ -40,7 +40,7 @@ describe('a "once" record', () => {
   it('for a held one counts as told while it waits, and once it went', async () => {
     const s = store();
     await nowToldOnce(s.prisma, 'k', 'held', held);
-    s.scheduled.push({ sender: held.sender, toAddress: 'wairimu@x.test', sentAt: null });
+    s.scheduled.push({ sender: held.sender, toAddress: 'WAIRIMU@x.test', sentAt: null });
     expect(await hasBeenToldOnce(s.prisma, 'k')).toBe(true);
     s.scheduled.length = 0;
     s.notifications.push({ sender: held.sender, toAddress: 'wairimu@x.test', outcome: 'sent', createdAt: new Date(Date.now() + 1000) });

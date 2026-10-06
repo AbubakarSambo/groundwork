@@ -14,7 +14,7 @@ export function theLeadsFirstWords(firstName: string | null | undefined, label: 
     subject: `You set up "${label}", and nobody else is in it yet`,
     lines: [
       `Hello ${firstName?.trim() || 'there'}. Nobody else has been added to "${label}" yet.`,
-      ...(first ? [`You set up "${label}" to find out, in your words, "${first}".`] : []),
+      ...(first ? [`When you set up "${label}", you wrote, "${first}".`] : []),
       'You do not need to set anything else up. Add the people involved, starting with three, and Groundwork will take it from there.',
     ],
     linkLabel: 'Add the people involved',

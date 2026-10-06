@@ -24,6 +24,16 @@ const DAY = 86_400_000;
 
 export interface WhatChangedSinceTheReport { done: number; cleared: number; waiting: number; open: number; scenario?: string | null; daysSinceTheReport?: number }
 
+/** A long name cut at a word, never in the middle of one. */
+export function cutAtAWord(label: string, max: number): string {
+  if (label.length <= max) return label;
+  const cut = label.slice(0, max);
+  /* The cut falls exactly at the end of a word: keep it whole. */
+  if (label[max] === ' ') return `${cut.trimEnd()}...`;
+  const at = cut.lastIndexOf(' ');
+  return `${(at > 8 ? cut.slice(0, at) : cut).trimEnd()}...`;
+}
+
 const things = (n: number, one: string, many: string) => `${aNumberInWords(n)} ${n === 1 ? one : many}`;
 const capital = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
 
@@ -35,7 +45,7 @@ export function theFollowUpWords(firstName: string | null | undefined, label: st
   if (c.waiting > 0) stillThere.push(`${things(c.waiting, 'handoff is', 'handoffs are')} still waiting`);
   if (c.open > 0) stillThere.push(`${things(c.open, 'thing people said they would do is', 'things people said they would do are')} still open`);
   /* A subject that carries the finding and stays short (under about a hundred characters): counts in words, the check-in's name cut if it is long. */
-  const name = label.length > 30 ? `${label.slice(0, 27).trimEnd()}...` : label;
+  const name = cutAtAWord(label, 30);
   const moved = c.done + c.cleared;
   const subject = moved > 0 && c.waiting > 0
     ? `${capital(things(moved, 'thing', 'things'))} on "${name}" moved after the report, and ${things(c.waiting, 'handoff still waits', 'handoffs still wait')}`

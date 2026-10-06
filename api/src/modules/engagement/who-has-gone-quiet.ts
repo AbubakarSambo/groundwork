@@ -72,7 +72,7 @@ export function theAcrossWords(firstName: string | null | undefined, cs: AQuietC
   const one = quiet.length === 1 ? quiet[0] : null;
   /* A positive fact is said only for a check-in where one person did all of it, as a plain fact with their name, and on its own line. Otherwise it is left out. */
   const positives = cs.filter((c) => !!c.closedAllBy && c.closedAllBy.count > 0)
-    .map((c) => `In "${c.label}", ${aNumberInWords(c.closedAllBy!.count)} ${c.closedAllBy!.count === 1 ? 'thing people said they would do was' : 'things people said they would do were'} done, ${c.closedAllBy!.count === 1 ? 'by' : c.closedAllBy!.count === 2 ? 'both by' : 'all by'} ${c.closedAllBy!.name}.`);
+    .map((c) => `${one ? '' : `In "${c.label}", `}${one ? capital(aNumberInWords(c.closedAllBy!.count)) : aNumberInWords(c.closedAllBy!.count)} ${c.closedAllBy!.count === 1 ? 'thing people said they would do was' : 'things people said they would do were'} done, ${c.closedAllBy!.count === 1 ? 'by' : c.closedAllBy!.count === 2 ? 'both by' : 'all by'} ${c.closedAllBy!.name}.`);
   return {
     subject: one
       ? `${capital(aNumberInWords(total))} ${total === 1 ? 'person has' : 'people have'} not answered the latest check-in in "${one.label}"`
@@ -81,7 +81,8 @@ export function theAcrossWords(firstName: string | null | undefined, cs: AQuietC
       one
         ? `Hello ${firstName?.trim() || 'there'}. ${capital(aNumberInWords(total))} of the ${aNumberInWords(one.ofHowMany)} people in "${one.label}" ${total === 1 ? 'has' : 'have'} not answered the latest check-in.`
         : `Hello ${firstName?.trim() || 'there'}. ${capital(aNumberInWords(total))} people have not answered the latest check-in, across ${aNumberInWords(quiet.length)} of your check-ins.`,
-      ...quiet.map((c) => `In "${c.label}", ${theKinds(c)}.`),
+      /* One check-in is named once, in the subject and the first line, not again in every sentence. */
+      ...quiet.map((c) => (one ? `${capital(theKinds(c))}.` : `In "${c.label}", ${theKinds(c)}.`)),
       ...positives,
       'Groundwork has not changed or shortened any of them. If you want to know what is in the way, asking one of them directly is the quickest way to find out.',
     ],

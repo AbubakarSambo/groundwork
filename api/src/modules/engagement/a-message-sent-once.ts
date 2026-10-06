@@ -15,9 +15,9 @@ export async function hasBeenToldOnce(prisma: any, what: string): Promise<boolea
     const v: any = row.value;
     if (!v?.held) return true;
     /* Held for the morning: told if it is still waiting, or went. */
-    const pending = await prisma.scheduledEmail?.findFirst?.({ where: { sender: v.sender, toAddress: v.to, sentAt: null }, select: { id: true } });
+    const pending = await prisma.scheduledEmail?.findFirst?.({ where: { sender: v.sender, toAddress: { equals: String(v.to), mode: 'insensitive' }, sentAt: null }, select: { id: true } });
     if (pending) return true;
-    const went = await prisma.notification?.findFirst?.({ where: { channel: 'email', sender: v.sender, toAddress: v.to, outcome: 'sent', createdAt: { gte: new Date(v.at) } }, select: { id: true } });
+    const went = await prisma.notification?.findFirst?.({ where: { channel: 'email', sender: v.sender, toAddress: { equals: String(v.to), mode: 'insensitive' }, outcome: 'sent', createdAt: { gte: new Date(v.at) } }, select: { id: true } });
     return !!went;
   } catch { return true; /* unreadable: say nothing rather than twice */ }
 }
@@ -32,5 +32,5 @@ export async function nowToldOnce(prisma: any, what: string, went: WhatBecameOfI
 
 /** Whether a mail of this kind to this address is already held for the morning and not yet sent, so a sweep does not make a second one. */
 export async function isAlreadyHeld(prisma: any, sender: string, toAddress: string): Promise<boolean> {
-  try { return !!(await prisma.scheduledEmail.findFirst({ where: { sender, toAddress: toAddress.trim().toLowerCase(), sentAt: null }, select: { id: true } })); } catch { return false; }
+  try { return !!(await prisma.scheduledEmail.findFirst({ where: { sender, toAddress: { equals: toAddress.trim(), mode: 'insensitive' }, sentAt: null }, select: { id: true } })); } catch { return false; }
 }

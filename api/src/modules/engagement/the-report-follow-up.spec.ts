@@ -1,4 +1,4 @@
-import { sendTheReportFollowUps, theFollowUpWords } from './the-report-follow-up';
+import { sendTheReportFollowUps, theFollowUpWords, cutAtAWord } from './the-report-follow-up';
 import { ENGAGEMENT_MOMENT_KEY as RELEASE_MOMENT_KEY } from './the-engagement-release-moment';
 
 /**
@@ -80,5 +80,13 @@ describe('who is not followed up', () => {
     const w = world();
     await w.run();
     expect(JSON.stringify(w.sent)).not.toMatch(/ahead|behind|strong|weak|best|worst|failed/i);
+  });
+});
+
+describe('a long check-in name in a subject', () => {
+  it('is cut at a word, never in the middle of one', () => {
+    expect(cutAtAWord('Sales pipeline review for East Africa and the Gulf', 30)).toBe('Sales pipeline review for East...');
+    expect(cutAtAWord('Sales team, Q4', 30)).toBe('Sales team, Q4');
+    expect(cutAtAWord('Supercalifragilisticexpialidocious-pipeline-review', 30)).toMatch(/^Supercalifragilisticexpialid.*\.\.\.$/);
   });
 });

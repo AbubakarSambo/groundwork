@@ -60,7 +60,7 @@ describe('Wairimu, with nobody else in it', () => {
       subject: 'You set up "Sales team, Q4", and nobody else is in it yet',
       lines: [
         'Hello Wairimu. Nobody else has been added to "Sales team, Q4" yet.',
-        'You set up "Sales team, Q4" to find out, in your words, "Why we keep missing the Q4 sales target".',
+        'When you set up "Sales team, Q4", you wrote, "Why we keep missing the Q4 sales target".',
         'You do not need to set anything else up. Add the people involved, starting with three, and Groundwork will take it from there.',
       ],
       linkLabel: 'Add the people involved',
@@ -71,7 +71,7 @@ describe('Wairimu, with nobody else in it', () => {
 
   it('cuts a long brief to its first sentence, and says no colon anywhere', () => {
     const w = theLeadsFirstWords('Wairimu', 'Sales team, Q4', 'Why we keep missing the Q4 target. Last quarter it was worse, and the board is asking. Nobody agrees on the cause.');
-    expect(w.lines[1]).toBe('You set up "Sales team, Q4" to find out, in your words, "Why we keep missing the Q4 target".');
+    expect(w.lines[1]).toBe('When you set up "Sales team, Q4", you wrote, "Why we keep missing the Q4 target".');
     expect([w.subject, ...w.lines, w.linkLabel].join(' ')).not.toMatch(/:/);
   });
 
