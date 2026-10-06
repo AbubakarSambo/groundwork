@@ -1298,6 +1298,17 @@ export class EmailService implements OnModuleInit {
     }, { kind: 'REMINDER', participantId }, 'sendLeadFirstCheckIn');
   }
 
+  /** THE FOLLOW-UP AFTER A REPORT (decision 109, journey 6). Says what became of it, so the sweep stamps only what is on its way. Words: engagement/the-report-follow-up.ts. */
+  async sendTheReportFollowUp(email: string, subject: string, lines: string[], linkLabel: string, linkUrl: string): Promise<'sent' | 'held' | 'suppressed'> {
+    const context: DeliveryContext = { kind: 'OTHER' };
+    await this.sendEmail({
+      to: email,
+      subject,
+      html: this.layout(lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('') + `<p><a href="${linkUrl}">${escapeHtml(linkLabel)}</a></p>`),
+    }, context, 'sendTheReportFollowUp');
+    return context.outcome ?? 'sent';
+  }
+
   /**
    * Your next check-in just opened. Distinct from sendNudge (which reminds
    * someone sitting on an ALREADY-open check-in) - this fires once, the

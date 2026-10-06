@@ -18,14 +18,16 @@ describe('activation', () => {
 });
 
 describe('the nudge', () => {
-  it('has one engine: remind.service keeps the policy that reads the lead\'s chase settings; the 09:00 job keeps only the activation reminders', () => {
+  it('has one engine: remind.service keeps the policy that reads the lead\'s chase settings; the 09:00 job keeps only the reveal reminders (the activation reminder was dead and is gone, decision 109)', () => {
     const grounds = strip(readFileSync(join(__dirname, '..', 'grounds', 'grounds.cron.ts'), 'utf8'));
     const start = grounds.indexOf('private async sendRemindersInner() {');
     const ends = ['\n  @Cron', '\n  private async '].map((m) => grounds.indexOf(m, start + 40)).filter((i) => i > start);
     const job = grounds.slice(start, Math.min(...ends));
     expect(job.length).toBeGreaterThan(200);
     expect(job).not.toContain('sendNudge(');
-    expect(job).toContain('sendActivationReminder(');
+    /* Changed under decision 109: the activation reminder looked for a status nobody writes and never fired; the follow-up after a report is its own sweep. */
+    expect(job).not.toContain('sendActivationReminder(');
+    expect(job).toContain('sendActivationRevealReminder(');
     expect(strip(readFileSync(join(__dirname, '..', 'conversation', 'remind.service.ts'), 'utf8'))).toContain('sendNudge(');
   });
 });
