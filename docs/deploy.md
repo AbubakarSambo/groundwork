@@ -200,6 +200,7 @@ Two things about existing variables did change and matter at release:
 
 | Name | What changed | Works without it? |
 | --- | --- | --- |
+| `TRUST_PROXY_HOPS` | How many proxies stand in front of the API, so each visitor is counted by their own address in the rate limits (known issue B10). Unset, it is 1 in production and 0 anywhere else. Set it to 2 if a second layer (such as a content network) also sits in front, and to 0 if the API is reached directly. Only the last hops of `X-Forwarded-For` are read, so an address a visitor writes into the header is never believed. | No. | Everybody behind the host's proxy may share one allowance, so five sign-ins a minute could be refused for several people at once. **Confirm the number of hops with whoever runs the hosting.** |
 | `NODE_ENV` | The API now listens only on 127.0.0.1 when `NODE_ENV` is exactly `development`. With any other value, or none, it listens on every address, as before. | Yes, unless a hosted environment sets it to `development`, in which case the hosted API would stop answering. See the release questions. |
 | `GEMINI_LOCATION` | Unchanged in the code (default `us-central1`). Every local run this week set it to `global`, only on the commands started here, because the regional address timed out from this Mac. | The product needs the model. Which address the hosted API uses is a release question. |
 
