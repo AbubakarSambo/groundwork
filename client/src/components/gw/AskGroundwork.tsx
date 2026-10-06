@@ -300,9 +300,9 @@ export function AskGroundwork({
     const m = message.trim()
     if (!m || sending) return
     const gid = groundIdOverride ?? openedFromGroundId ?? aboutId ?? undefined
-    /* Never sent on an ordinary question - only while this opening is the check-in-setup one. */
-    const openedFrom = openedFromGroundId ? 'check_in_setup' as const : undefined
-    void send(m, () => askApi.ask(m, gid, openedFrom), clearDraft)
+    /* Never sent on an ordinary question - only while this opening is the check-in-setup one. An
+       ordinary call still passes exactly two arguments, as it always has. */
+    void send(m, () => (openedFromGroundId ? askApi.ask(m, gid, 'check_in_setup') : askApi.ask(m, gid)), clearDraft)
   }
 
   /** The "Choose a file" button on a `next_step` block: opens the picker for that check-in. */
