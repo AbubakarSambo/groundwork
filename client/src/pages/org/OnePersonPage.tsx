@@ -8,6 +8,7 @@ import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { type OrgMember, fetchMembers, nameOf, firstNameOf, initialsOf, statusWord, A_FAILURE } from './people-here'
 import { Page, PageTitle, Section, Panel, Stack, FieldRows, FieldRow, ChoiceCards, Tag, Button, TextField, Select, Note } from '@/components/gw/ui'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import { WHAT_AN_ADMIN_CANNOT_READ_WITHOUT_ACCESS } from '@/lib/what-an-admin-cannot-read-without-access'
 
 /**
  * ONE PERSON, AS AN ADMIN READS THEM (U.4, A4 one-person.txt, #/settings/people/miriam).
@@ -284,7 +285,7 @@ export function OnePersonPage() {
             reach: decision 5 and `who-may-read-this-check-in.ts` close a performance plan, a
             promotion, a renewal or somebody's first 90 days unless the admin is given access.
           */}
-          <p className="gwui-panel-text-muted">{`As an admin you can read every check-in at ${orgName}, and ask us to end it. A performance plan, a promotion, a renewal or somebody's first 90 days stays closed to you unless you are given access to it. You don’t see anyone’s private notes.`}</p>
+          <p className="gwui-panel-text-muted">{`As an admin you can read every check-in at ${orgName}, and ask us to end it. ${WHAT_AN_ADMIN_CANNOT_READ_WITHOUT_ACCESS[0].toUpperCase()}${WHAT_AN_ADMIN_CANNOT_READ_WITHOUT_ACCESS.slice(1)} stays closed to you unless you are given access to it. You don’t see anyone’s private notes.`}</p>
         </Panel>
       </Section>
 

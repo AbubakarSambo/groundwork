@@ -159,7 +159,7 @@ function Tab2({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
 const REPORT_ITEMS = [
   { title: 'Resolution summary',          body: 'One sentence. Auto-generated. The thing neither party named directly but both records implied. This is the most valuable line in the report. It is what the conversation needs to be about.' },
   { title: 'Where you agreed', body: 'What you genuinely agree on. Plain language, and everybody in it sees the same list.' },
-  { title: 'Where you saw it differently', body: 'What each party said. Where the difference lies. Not which party is right. The product never decides. It describes.' },
+  { title: 'Where you saw it differently', body: 'What each party said. Where the difference lies. Not which party is right. Groundwork never decides. It describes.' },
   { title: 'Resolution state',            body: 'What everybody agreed they were aiming at before it started. The report closes on that, and says whether what people described actually gets you there.' },
   { title: 'The credential',              body: 'A shareable verified record. End state. Alignment status. Duration. Confirmed by everybody in it, and everybody keeps it permanently. It belongs to the people who built it.' },
 ]

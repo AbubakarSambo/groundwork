@@ -6,6 +6,7 @@ import { TextAction } from '@/components/gw/kit'
 import { copy } from '@/components/gw/copying-can-fail'
 import { useAuthStore } from '@/stores/auth'
 import { askNameFor } from '@/lib/ask-name'
+import { WHAT_AN_ADMIN_CANNOT_READ_WITHOUT_ACCESS } from '@/lib/what-an-admin-cannot-read-without-access'
 
 /**
  * THE PAGE AN ADMIN SENDS THEIR LEADS BEFORE A ROLLOUT.
@@ -100,7 +101,8 @@ export function LeadsGuidePage() {
         <p style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>
           An admin can see every board and report, including what people said in them. An admin
           never sees anyone's questions to {askNameFor(realOrgName)}, anyone's own report, or a
-          lead's private notes, and never a performance plan unless given access to that check-in.
+          lead's private notes, and never {WHAT_AN_ADMIN_CANNOT_READ_WITHOUT_ACCESS} unless given
+          access to that check-in.
         </p>
       </div>
 

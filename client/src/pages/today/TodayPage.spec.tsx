@@ -154,9 +154,12 @@ describe('Today, for a new organisation’s admin', () => {
     /* Answered 29 September, item 11 conflict B: Hafsah's exact sentence, naming the exceptions
        decision 5 now covers (a performance plan, promotion or renewal alike), replaces the old
        held sentence that pointed "They" at nobody. */
-    /* Ask is named for the organisation (decision 100): "Ask Nyali Foods", not "Ask Groundwork". */
+    /* Ask is named for the organisation (decision 100): "Ask Nyali Foods", not "Ask Groundwork".
+       SCREEN FAULT 8: updated to the one shared sentence (lib/what-an-admin-cannot-read-without-
+       access.ts), which also names somebody's first 90 days - the fourth kind
+       who-may-read-this-check-in.ts closes to an admin, missing here before. */
     expect(screen.getByText(
-      'You can see every board and report, including what people said in them. You never see anyone’s questions to Ask Nyali Foods, anyone’s own report, or a lead’s private notes, and never a performance plan, promotion or renewal unless given access to that check-in.',
+      'You can see every board and report, including what people said in them. You never see anyone’s questions to Ask Nyali Foods, anyone’s own report, or a lead’s private notes, and never a performance plan, a promotion, a renewal or somebody\'s first 90 days unless given access to that check-in.',
     )).toBeTruthy()
   })
 })

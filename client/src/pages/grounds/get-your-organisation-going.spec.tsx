@@ -41,9 +41,13 @@ describe('the new admin', () => {
     expect(screen.getAllByRole('link', { name: 'Do it' }).map(a => a.getAttribute('href'))).toEqual(['/org/members', '/org/members', '/start'])
     const text = document.body.textContent ?? ''
     expect(text).not.toMatch(/WhatsApp/)
-    /* Ask is named for the organisation (decision 100): "Ask Nyali Foods", not "Ask Groundwork". */
+    /* Ask is named for the organisation (decision 100): "Ask Nyali Foods", not "Ask Groundwork".
+       SCREEN FAULT 8: "a performance plan, promotion or renewal" left out the fourth kind
+       who-may-read-this-check-in.ts closes to an admin (somebody's first 90 days). Updated to the
+       one shared sentence (lib/what-an-admin-cannot-read-without-access.ts) Today, the guide and a
+       person's own page all now read, word for word. */
     expect(screen.getByText(
-      'You can see every board and report, including what people said in them. You never see anyone’s questions to Ask Nyali Foods, anyone’s own report, or a lead’s private notes, and never a performance plan, promotion or renewal unless given access to that check-in.',
+      'You can see every board and report, including what people said in them. You never see anyone’s questions to Ask Nyali Foods, anyone’s own report, or a lead’s private notes, and never a performance plan, a promotion, a renewal or somebody\'s first 90 days unless given access to that check-in.',
     )).toBeTruthy()
   })
 

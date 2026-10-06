@@ -35,11 +35,14 @@ describe('the leads guide tells the truth about what an admin can see', () => {
     ).toBeTruthy()
   })
 
+  /* SCREEN FAULT 8: "a performance plan" named only one of the four kinds
+     who-may-read-this-check-in.ts actually closes to an admin. Updated to the one shared sentence
+     (lib/what-an-admin-cannot-read-without-access.ts) Today and a person's own page also read. */
   it('says admins never see questions to the organisation\'s own Ask, anyone\'s own report, or a lead\'s private notes', async () => {
     renderPage()
     expect(
       await screen.findByText(
-        /An admin never sees anyone's questions to Ask Kijani Foods, anyone's own report, or a lead's private notes, and never a performance plan unless given access to that check-in\./,
+        /An admin never sees anyone's questions to Ask Kijani Foods, anyone's own report, or a lead's private notes, and never a performance plan, a promotion, a renewal or somebody's first 90 days unless given access to that check-in\./,
       ),
     ).toBeTruthy()
   })
