@@ -88,8 +88,10 @@ function addedUp(results: ADecisionResult[]): string {
 /** The served `says`, with the request's name beside it only when `says` does not already name them. */
 function lineFor(r: ADecisionRow): string {
   const named = !!r.name && (r.says.includes(r.name) || (!!r.firstName && r.says.includes(r.firstName)))
-  const prefix = r.name && !named ? `${r.name}: ` : ''
-  return r.ok ? `${prefix}${r.says}` : `${prefix}Not done. ${r.says}`
+  /* Full sentences, never a name joined on with a colon (CLAUDE.md's wording rule). */
+  /* A kept answer's served sentence always names the person ("You approved Peter's …"). */
+  if (r.ok) return r.says
+  return r.name && !named ? `${r.name}’s request was not done. ${r.says}` : `This one was not done. ${r.says}`
 }
 
 export function QueuePage() {

@@ -181,7 +181,7 @@ describe('approving several at once', () => {
     /* The summary is the served top `says`, shown exactly as served. */
     expect(await screen.findByText('One of the two answers was kept. One could not be kept, and it says why.')).toBeInTheDocument()
     expect(within(results).getByText('You approved Aisha’s leave from Monday 12 October to Friday 16 October.')).toBeInTheDocument()
-    expect(within(results).getByText('Kamau Njenga: Not done. Only KES 20,000 or less may be approved without a second person.')).toBeInTheDocument()
+    expect(within(results).getByText('Kamau Njenga’s request was not done. Only KES 20,000 or less may be approved without a second person.')).toBeInTheDocument()
   })
 
   it('a whole-call refusal shows its served sentence, and changes nothing', async () => {
