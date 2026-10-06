@@ -18,7 +18,34 @@ Abubakar has pull request #322 going to production. No pull request was opened f
 - **The leave and payment forms work.** They read the engine's form reads: kinds of leave, who covers, currency and categories. Each form is filled in from what the person said, and sends to the new routes.
 - **Newly served parts drawn.** "Connect WhatsApp", shown as an optional convenience in Settings and in a person's own check-in. "Remind them" on a paused check-in. Billing's "How it began" line, and the WhatsApp-off sentence for leads and members.
 
-**Tests:** the client passes, 4,404 of 4,404, and the type check is clean, at 6dfded29.
+**Tests:** the client passes, 4,466 of 4,466, and the type check is clean, at 6cf830ed. Three full runs in a row were green after the stream-test change.
+
+**Also finished later in the night**
+- **Suites at scale.**
+  - The approver's queue at /suite/queue, with filters, paging, the stand-in and the clash.
+  - Approving several at once, now through the engine's batch decision. Each request's result shows, and a plain sentence says if any failed.
+  - Finance totals by team and by category for any month.
+  - The forms work, with a searchable "Who covers for you?".
+  - Today and the sidebar lead approvers to the queue.
+- **"Use simpler words"** is a check-in setting for the lead, next to "Over WhatsApp", in the engine's exact words.
+- **Context in Ask.** The context page can open Ask on that check-in. The button stays hidden until the engine serves its flag (request 169).
+- **The chat page's timing gap** is fixed at the cause, and a test proves it.
+- **Faults that hurt existing users, fixed:**
+  - a false "It went back to session 1" on every running check-in;
+  - "Every session done" in session 1;
+  - "My work" going to two places;
+  - the guide saying admins never see check-ins, which decision 5 contradicts;
+  - an admin offered setup changes she cannot make;
+  - the header and setup tab disagreeing about the report.
+- **The one-off style clean-up.** Every exact replacement is done, proven by byte-identical screenshots. The rest has no exact shared equivalent, so it would need new shared parts that only rename the one-offs. That is left, see below.
+
+**Needs Hafsah**
+- **"Ask to join"** (request 159). It needs a new route that lets a person who may read a check-in, but is not in it, ask to join. The engine will not open that way in without your yes. The screen shows only "<name> runs it and can add you." until then.
+- **The anchor's active line** (request 163, item 2). "18/20 active · Groundwork has nudged the remaining 2." is your own wording. The walks found it counts the lead and uses a dot and figures, so it should perhaps read "Four of your five people have checked in. Groundwork has reminded the other one." The engine will not change your words without your yes.
+
+**Decided for Hafsah to confirm**
+- **The rest of the style clean-up is stopped** where no exact shared class exists. Going further means new shared parts with no visible gain, and a risk to every page.
+- **A decline's reason stays optional,** as the engine allows. The box now says who will read it.
 
 **Waiting on the engine (requests 167 and 168)**
 - Two privacy faults: a member is served the lead's objective and set-up probes on the ground read, and the lead's note about them (`roleAsDescribed`) on the transcript.
