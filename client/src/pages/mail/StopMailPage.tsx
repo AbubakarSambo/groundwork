@@ -33,13 +33,19 @@ export function StopMailPage({ which }: { which: Which }) {
   /* The question for the unsubscribe link, which asks before it stops anything (decision 109). */
   const [question, setQuestion] = useState<{ title: string; says: string[]; keepLabel: string; stopLabel: string; turnBackOnLabel: string; stopped: boolean } | null>(null)
   const [busy, setBusy] = useState(false)
+  /* After a stop: its heading, and whether the page offers the undo (somebody with no account has only this link to come back by). */
+  const [doneTitle, setDoneTitle] = useState('Done.')
+  const [canUndo, setCanUndo] = useState(false)
   async function answer(path: '' | '/undo') {
     setBusy(true)
     try {
       const r = await fetch(`${API_ORIGIN}/api/v1/unsubscribe/${encodeURIComponent(token ?? '')}${path}`, { method: 'POST' })
       const body = await r.json().catch(() => null)
       if (r.status >= 500 || !body) { setState('failed'); return }
-      setSays(body?.data?.says ?? body?.says ?? '')
+      const d = body?.data ?? body
+      setSays(Array.isArray(d?.says) ? d.says.join(' ') : d?.says ?? '')
+      setDoneTitle(d?.title ?? (path === '/undo' ? 'These emails are back on' : 'These emails are turned off'))
+      setCanUndo(path === '' && d?.canUndo === true)
       setState('done')
     } catch { setState('failed') } finally { setBusy(false) }
   }
@@ -50,7 +56,7 @@ export function StopMailPage({ which }: { which: Which }) {
     let alive = true
     void (async () => {
       try {
-        const r = await fetch(`${API_ORIGIN}/api/v1/${which}/${encodeURIComponent(token ?? '')}`)
+        const r = await fetch(`${API_ORIGIN}/api/v1/${which}/${encodeURIComponent(token ?? '')}${which === 'unsubscribe' ? '/question' : ''}`)
         const body = await r.json().catch(() => null)
         if (!alive) return
         /* A 404 here still means the mail stops, because the token is gone. Only a server that
@@ -64,6 +70,7 @@ export function StopMailPage({ which }: { which: Which }) {
           setQuestion(q)
           setState(q?.known === false ? 'done' : 'asking')
           setSays((q?.says ?? []).join(' '))
+          if (q?.known === false) setDoneTitle(q?.title ?? 'That link is not one we recognise')
           return
         }
         /* THE ENVELOPE. Every API response here is wrapped as `{ success, data }`, so reading
@@ -107,8 +114,11 @@ export function StopMailPage({ which }: { which: Which }) {
         )}
         {state === 'done' && (
           <>
-            <h1 style={{ fontSize: 21, fontWeight: 800, color: 'var(--gw-text)', margin: '0 0 10px' }}>Done.</h1>
+            <h1 style={{ fontSize: 21, fontWeight: 800, color: 'var(--gw-text)', margin: '0 0 10px' }}>{which === 'unsubscribe' ? doneTitle : 'Done.'}</h1>
             <p style={{ fontSize: 14.5, color: 'var(--gw-sub)', lineHeight: 1.7, margin: 0 }}>{says}</p>
+            {which === 'unsubscribe' && canUndo && (
+              <p style={{ margin: '12px 0 0' }}><button type="button" disabled={busy} onClick={() => void answer('/undo')}>Turn them back on</button></p>
+            )}
           </>
         )}
         {state === 'failed' && (

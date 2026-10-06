@@ -180,8 +180,8 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendGroundApproved: 'asked for',
   /* The decision on a request the person made themselves (decision 106 item 7). */
   sendRequestDecided: 'asked for',
-  /* What waits for the person to approve, said once. Nobody asked for it, so turning email off stops it (the request itself is still on Today). */
-  sendApprovalsSummary: 'we decided to send it',
+  /* What waits for the person to approve, said once. An approval is never stopped by the opt-out (decision 109 item 5); the request is also on Today. */
+  sendApprovalsSummary: 'asked for',
   sendGroundDeclined: 'asked for',
   /* Both are answers to something the person or their lead set in motion, so neither is a mail we
      decided to send - and the way-back-in class is for account recovery, which this is not. */
@@ -231,7 +231,7 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendInviteAboutToLapse: 'we decided to send it',
   /* Their integration has stopped receiving and only our logs knew. An admin decision to make,
      so it is ours to send — but it is about their system rather than about their team. */
-  sendWebhookEndpointDying: 'we decided to send it',
+  sendWebhookEndpointDying: 'asked for',
   sendAbsenceReminder: 'we decided to send it',
   sendSessionReady: 'we decided to send it',
   sendActivationReminder: 'we decided to send it',
@@ -249,7 +249,8 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendTimeRunningOut: 'we decided to send it',
   sendReopenedNotification: 'we decided to send it',
   sendParticipantBlockedNudge: 'we decided to send it',
-  sendCodeExpiryReminder: 'we decided to send it',
+  /* About a code whose time is running out: billing, so the opt-out never stops it (decision 109 item 5). */
+  sendCodeExpiryReminder: 'asked for',
   sendRoundDigest: 'we decided to send it',
   /* The lead's weekly letter on the anchor check-ins. Nobody asked this morning, so the stop link stops it. */
   sendTheLeadsWeeklyLetter: 'we decided to send it',

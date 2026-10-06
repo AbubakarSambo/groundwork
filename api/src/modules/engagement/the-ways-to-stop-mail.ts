@@ -18,24 +18,26 @@ import { PrismaService } from '../prisma/prisma.service';
  */
 
 export const LEAD_LOSES =
-  "If you turn these emails off, you won't receive Groundwork's email insights about team progress, stalled engagement, emerging differences, people who may need attention, positive contributions or recommendations for what to do next. You can still access Groundwork directly.";
+  "If you turn these emails off, you won't receive Groundwork's email insights about team progress, stalled engagement, emerging differences, people who may need attention, positive contributions or recommendations for what to do next, and reminders that your check-in is open or running out of time. You can still access Groundwork directly.";
 export const PARTICIPANT_LOSES =
-  "If you turn these emails off, you won't receive Groundwork's email summaries about your progress, open commitments, blockers, things you're waiting on, or useful changes between check-ins. You can still use Groundwork directly.";
+  "If you turn these emails off, you won't receive Groundwork's email summaries about your progress, open commitments, blockers, things you're waiting on, or useful changes between check-ins, and reminders that your check-in is open or running out of time. You can still use Groundwork directly.";
 export const OTHER_LOSES =
-  "If you turn these emails off, you won't receive Groundwork's email summaries and reminders. You can still use Groundwork directly.";
+  "If you turn these emails off, you won't receive Groundwork's email summaries, or reminders that a check-in is open or running out of time. You can still use Groundwork directly.";
 export const WHAT_STILL_ARRIVES =
-  'Emails you ask for will still reach you, such as sign-in links, invitations, reports from check-ins you took part in, approvals, and notices about billing.';
+  'Emails you ask for will still reach you, such as sign-in links, invitations, reports from check-ins you took part in, anything you asked the assistant to send you, approvals waiting for you, and notices about billing.';
 export const THE_TEAM_CONSEQUENCE =
   'Groundwork can still use the information available inside the product, but you may miss timely insights or follow-ups that would normally reach you by email.';
 
 export const THE_SETTINGS_LABEL = {
   title: 'Emails from Groundwork that we decide to send',
-  detail:
-    'Reminders, summaries and insights that nobody asked for that morning. Emails you ask for, such as sign-in links, invitations, reports and approvals, always reach you.',
+  detail: 'Reminders, summaries and insights Groundwork sends without being asked.',
   /** Shown instead of the switch being on, when they used the link in a mail. */
   stoppedFromAMail:
     'You turned these off from a link in one of our emails. Turn them back on here whenever you like.',
 };
+
+export const NOT_A_LINK_WE_KNOW_TITLE = 'That link is not one we recognise';
+export const NOT_A_LINK_WE_KNOW_SAYS = 'Nothing has been changed. If emails you do not want are still arriving, reply to one and we will stop them by hand.';
 
 export type TheirRole = 'lead' | 'participant' | 'other';
 
@@ -89,7 +91,7 @@ export class TheWaysToStopMail {
   async describe(token: string) {
     const who = await this.whoseToken(token);
     if (!who) {
-      return { known: false, stopped: true, says: ['That link is not one we recognise, which usually means these emails have already stopped. If any still arrive, reply to one and we will stop them by hand.'] };
+      return { known: false, stopped: false, title: NOT_A_LINK_WE_KNOW_TITLE, says: [NOT_A_LINK_WE_KNOW_SAYS] };
     }
     const role = await this.roleOf(who.email);
     const stopped = await this.stoppedFor(who.email, token);
@@ -98,7 +100,7 @@ export class TheWaysToStopMail {
       known: true,
       stopped,
       role,
-      title: stopped ? 'These emails are already turned off' : 'Are you sure you want to stop Groundwork insight emails?',
+      title: stopped ? 'These emails are already turned off' : 'Do you want to stop the emails from Groundwork that we decide to send?',
       says: stopped ? [WHAT_STILL_ARRIVES] : role === 'other' ? [loses, WHAT_STILL_ARRIVES] : [loses, THE_TEAM_CONSEQUENCE, WHAT_STILL_ARRIVES],
       keepLabel: 'Keep email insights',
       stopLabel: 'Turn off email insights',
@@ -109,10 +111,12 @@ export class TheWaysToStopMail {
   /** The answer. Stops every row for the address, so one choice holds everywhere they are written to. */
   async stop(token: string) {
     const who = await this.whoseToken(token);
-    if (!who) return { ok: true, stopped: true, says: 'Nothing more is going to this address.' };
-    const now = new Date();
-    await this.setStopped(who.email, token, now);
-    return { ok: true, stopped: true, says: 'Done. Groundwork will stop sending these emails. ' + WHAT_STILL_ARRIVES + ' You can turn them back on in Settings.' };
+    if (!who) return { ok: true, known: false, stopped: false, title: NOT_A_LINK_WE_KNOW_TITLE, says: NOT_A_LINK_WE_KNOW_SAYS, canUndo: false };
+    await this.setStopped(who.email, token, new Date());
+    /* Settings is where somebody with an account turns them back on. Somebody without one has only this link, so it is the way back. */
+    const account = who.email ? await this.prisma.user.findUnique({ where: { email: who.email }, select: { id: true } }) : null;
+    const way = account ? 'You can turn them back on in Settings.' : 'Open this link again to turn them back on.';
+    return { ok: true, known: true, stopped: true, title: 'These emails are turned off', says: `Groundwork will stop sending these emails. ${WHAT_STILL_ARRIVES} ${way}`, canUndo: true, hasAnAccount: !!account };
   }
 
   async turnBackOn(token: string) {

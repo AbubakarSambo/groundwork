@@ -9,7 +9,7 @@ import { TheWaysToStopMail, LEAD_LOSES, PARTICIPANT_LOSES, OTHER_LOSES, WHAT_STI
  * Each gets the footer link on a mail we decided to send. The link asks first, in words for their part; only a POST stops anything; the mail we
  * decided to send then stops, the mail they asked for does not; and turning the Settings switch on undoes it.
  */
-function world() {
+function world(apiUrl: string = 'https://api.test') {
   const people = [{ organizationId: 'o1', externalId: 'lena', email: 'lena@x.test' }];
   const prefs: any[] = [];
   const byAddress: any[] = [];
@@ -51,14 +51,14 @@ function world() {
     scheduledEmail: { create: jest.fn(async () => ({})) },
   };
   const sent: any[] = [];
-  const email: any = new EmailService({ get: (k: string) => (k === 'app.publicApiUrl' ? 'https://api.test' : k === 'resend.frontendUrl' ? 'https://app.test' : undefined) } as any, {} as any, prisma);
+  const email: any = new EmailService({ get: (k: string) => (k === 'app.publicApiUrl' ? apiUrl : k === 'resend.frontendUrl' ? 'https://app.test' : undefined) } as any, {} as any, prisma);
   email.isDev = () => false;
   email.theResendClient = () => ({ emails: { send: jest.fn(async (m: any) => { sent.push(m); return { data: { id: 'x' }, error: null }; }) } });
   email.delivery = { recordSend: jest.fn(async () => undefined) };
   email.holdForTheMorning = jest.fn(async () => false);
   email.writeItDown = jest.fn(async () => undefined);
   const stops = new TheWaysToStopMail(prisma);
-  const controller = new UnsubscribeController(stops);
+  const controller = new UnsubscribeController(stops, { get: (k: string) => (k === 'resend.frontendUrl' ? 'https://app.test' : undefined) } as any);
   const mail = async (to: string, sender: string) => { const before = sent.length; await email.sendEmail({ to, subject: sender, html: '<p>Hello.</p>' }, undefined, sender); return sent.slice(before)[0]; };
   const tokenIn = (m: any) => /unsubscribe\/([\w-]+)/.exec(m.html)![1];
   return { mail, tokenIn, controller, stops, prisma, users, sent };
@@ -68,8 +68,8 @@ describe('the footer link, for everyone', () => {
   it.each(['lena@x.test', 'pia@x.test', 'gus@x.test'])('is on a mail we decided to send to %s, and says what it covers', async (to) => {
     const w = world();
     const m = await w.mail(to, 'sendNudge');
-    expect(withoutDeveloperComments(m.html)).toContain('To stop the emails we decide to send: <a href="https://app.test/unsubscribe/');
-    expect(m.html).toContain('Emails you ask for, such as a sign-in link, will still reach you.');
+    expect(withoutDeveloperComments(m.html)).toContain('If you would rather not get the emails we decide to send, you can <a href="https://app.test/unsubscribe/');
+    expect(m.html).toContain('>stop them here</a>.');
     expect(m.headers['List-Unsubscribe']).toMatch(/^<https:\/\/api\.test\/api\/v1\/unsubscribe\/[\w-]+>$/);
     expect(m.headers['List-Unsubscribe-Post']).toBe('List-Unsubscribe=One-Click');
   });
@@ -86,9 +86,9 @@ describe('what the link asks, as each reader reads it', () => {
     const w = world();
     const t = w.tokenIn(await w.mail('lena@x.test', 'sendNudge'));
     const q: any = await w.controller.whatWouldStop(t);
-    expect(q.title).toBe('Are you sure you want to stop Groundwork insight emails?');
+    expect(q.title).toBe('Do you want to stop the emails from Groundwork that we decide to send?');
     expect(q.says).toEqual([LEAD_LOSES, THE_TEAM_CONSEQUENCE, WHAT_STILL_ARRIVES]);
-    expect(LEAD_LOSES).toBe("If you turn these emails off, you won't receive Groundwork's email insights about team progress, stalled engagement, emerging differences, people who may need attention, positive contributions or recommendations for what to do next. You can still access Groundwork directly.");
+    expect(LEAD_LOSES).toBe("If you turn these emails off, you won't receive Groundwork's email insights about team progress, stalled engagement, emerging differences, people who may need attention, positive contributions or recommendations for what to do next, and reminders that your check-in is open or running out of time. You can still access Groundwork directly.");
     expect([q.keepLabel, q.stopLabel]).toEqual(['Keep email insights', 'Turn off email insights']);
     expect(q.stopped).toBe(false);
     expect(await w.stops.stoppedFromAMail('lena@x.test')).toBe(false);
@@ -100,7 +100,7 @@ describe('what the link asks, as each reader reads it', () => {
     const w = world();
     const q: any = await w.controller.whatWouldStop(w.tokenIn(await w.mail('pia@x.test', 'sendNudge')));
     expect(q.says[0]).toBe(PARTICIPANT_LOSES);
-    expect(PARTICIPANT_LOSES).toBe("If you turn these emails off, you won't receive Groundwork's email summaries about your progress, open commitments, blockers, things you're waiting on, or useful changes between check-ins. You can still use Groundwork directly.");
+    expect(PARTICIPANT_LOSES).toBe("If you turn these emails off, you won't receive Groundwork's email summaries about your progress, open commitments, blockers, things you're waiting on, or useful changes between check-ins, and reminders that your check-in is open or running out of time. You can still use Groundwork directly.");
     expect(JSON.stringify(q)).not.toMatch(/team progress|stalled engagement/);
   });
 
@@ -111,9 +111,11 @@ describe('what the link asks, as each reader reads it', () => {
   });
 
   it('says a kind sentence to a link it does not know, never that it is broken', async () => {
-    const q: any = await world().controller.whatWouldStop('nope');
-    expect(q.known).toBe(false);
-    expect(q.says[0]).toMatch(/usually means these emails have already stopped/);
+    const w = world();
+    const q: any = await w.controller.whatWouldStop('nope');
+    expect(q).toMatchObject({ known: false, stopped: false, title: 'That link is not one we recognise' });
+    expect(q.says).toEqual(['Nothing has been changed. If emails you do not want are still arriving, reply to one and we will stop them by hand.']);
+    expect(((await w.controller.stop('nope')) as any).title).toBe('That link is not one we recognise');
   });
 });
 
@@ -122,7 +124,9 @@ describe('after the answer', () => {
     const w = world();
     const t = w.tokenIn(await w.mail(to, 'sendNudge'));
     const done: any = await w.controller.stop(t);
-    expect(done.says).toBe('Done. Groundwork will stop sending these emails. ' + WHAT_STILL_ARRIVES + ' You can turn them back on in Settings.');
+    expect(done.says).toBe(`Groundwork will stop sending these emails. ${WHAT_STILL_ARRIVES} ${to === 'gus@x.test' ? 'Open this link again to turn them back on.' : 'You can turn them back on in Settings.'}`);
+    expect(done.says).not.toMatch(/^Done/);
+    expect(done.canUndo).toBe(true);
     expect(await w.mail(to, 'sendNudge')).toBeUndefined();
     expect(await w.mail(to, 'sendRoundDigest')).toBeUndefined();
     expect(await w.mail(to, 'sendReportReady')).toBeDefined();
@@ -146,5 +150,62 @@ describe('after the answer', () => {
     await w.stops.turnBackOnFor('lena@x.test');
     expect(await w.stops.stoppedFromAMail('lena@x.test')).toBe(false);
     expect(await w.mail('lena@x.test', 'sendNudge')).toBeDefined();
+  });
+});
+
+describe('what the stop covers, said exactly (review of the opt-out)', () => {
+  it('stops the reminders and summaries, including the check-in is open and running out of time ones', async () => {
+    const w = world();
+    const t = w.tokenIn(await w.mail('pia@x.test', 'sendNudge'));
+    await w.controller.stop(t);
+    for (const s of ['sendNudge', 'sendSessionReady', 'sendTimeRunningOut', 'sendStalledNotification', 'sendReopenedNotification', 'sendRoundDigest']) {
+      expect({ s, went: (await w.mail('pia@x.test', s)) !== undefined }).toEqual({ s, went: false });
+    }
+  });
+  it('never stops approvals, what was asked for, billing or a failing webhook', async () => {
+    const w = world();
+    const t = w.tokenIn(await w.mail('lena@x.test', 'sendNudge'));
+    await w.controller.stop(t);
+    for (const s of ['sendApprovalsSummary', 'sendMeThat', 'sendCodeExpiryReminder', 'sendWebhookEndpointDying', 'sendReportReady', 'sendSubscriptionRenewal']) {
+      expect({ s, went: (await w.mail('lena@x.test', s)) !== undefined }).toEqual({ s, went: true });
+    }
+  });
+  it('the page says the reminders stop, in plain words, for a lead and for a participant', async () => {
+    const w = world();
+    for (const to of ['lena@x.test', 'pia@x.test']) {
+      const q: any = await w.controller.whatWouldStop(w.tokenIn(await w.mail(to, 'sendNudge')));
+      expect(q.says[0]).toContain('reminders that your check-in is open or running out of time');
+      expect(q.says[q.says.length - 1]).toContain('approvals waiting for you, and notices about billing');
+    }
+  });
+});
+
+describe('the one-click header, and the address in it', () => {
+  it('is promised only where PUBLIC_API_URL makes it true', async () => {
+    const w = world();
+    const m = await w.mail('gus@x.test', 'sendNudge');
+    expect(m.headers['List-Unsubscribe-Post']).toBe('List-Unsubscribe=One-Click');
+  });
+  it('without PUBLIC_API_URL, only the page link, and no one-click promise', async () => {
+    const w = world('');
+    const m = await w.mail('gus@x.test', 'sendNudge');
+    expect(m.headers['List-Unsubscribe']).toMatch(/^<https:\/\/app\.test\/unsubscribe\/[\w-]+>$/);
+    expect(m.headers['List-Unsubscribe-Post']).toBeUndefined();
+  });
+  it('opening the API address in a browser goes to the page, never raw JSON, and changes nothing', async () => {
+    const w = world();
+    const t = w.tokenIn(await w.mail('gus@x.test', 'sendNudge'));
+    const res: any = { redirect: jest.fn() };
+    await w.controller.toThePage(t, res);
+    expect(res.redirect).toHaveBeenCalledWith(302, `https://app.test/unsubscribe/${t}`);
+    expect(await w.stops.stoppedFromAMail('gus@x.test')).toBe(false);
+  });
+});
+
+describe('the Settings words', () => {
+  it('one name everywhere, and a detail that says what it covers', async () => {
+    const { THE_SETTINGS_LABEL } = await import('./the-ways-to-stop-mail');
+    expect(THE_SETTINGS_LABEL.title).toBe('Emails from Groundwork that we decide to send');
+    expect(THE_SETTINGS_LABEL.detail).toBe('Reminders, summaries and insights Groundwork sends without being asked.');
   });
 });

@@ -525,8 +525,13 @@ export class EmailService implements OnModuleInit {
     const text = plainTextOf(options.html);
     /* The one-click POST goes to the API, not the page: a mail program posts it with no person reading anything. */
     const apiOrigin = (this.configService.get<string>('app.publicApiUrl') || '').replace(/\/$/, '');
-    const oneClick = wayOut && apiOrigin ? `${apiOrigin}/api/v1/unsubscribe/${wayOut.split('/unsubscribe/')[1]}` : wayOut;
-    const headers = wayOut ? { 'List-Unsubscribe': `<${oneClick}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } : undefined;
+    /* RFC 8058: the one-click header is promised only where the address in it really takes a POST and stops the mail with no page. That is the API's
+       route, so it needs PUBLIC_API_URL. Without it the mail carries only the link to the page, and no one-click promise it cannot keep. */
+    const headers: Record<string, string> | undefined = wayOut
+      ? (apiOrigin
+        ? { 'List-Unsubscribe': `<${apiOrigin}/api/v1/unsubscribe/${wayOut.split('/unsubscribe/')[1]}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' }
+        : { 'List-Unsubscribe': `<${wayOut}>` })
+      : undefined;
 
     if (this.isDev()) {
       this.logger.warn(`[DEV EMAIL] To: ${options.to} | Subject: ${options.subject}`);
@@ -1850,7 +1855,7 @@ export function plainTextOf(html: string): string {
 
 /** Appended to every mail we decided to send. The link works with no sign-in (round-digest.service.ts#unsubscribe). */
 export const UNSUBSCRIBE_FOOTER = (url: string) =>
-  `<p style="font-size:12px;color:#9B9590;margin-top:28px;">To stop the emails we decide to send: <a href="${url}" style="color:#9B9590;">unsubscribe</a>. Emails you ask for, such as a sign-in link, will still reach you.</p>`;
+  `<p style="font-size:12px;color:#9B9590;margin-top:28px;">If you would rather not get the emails we decide to send, you can <a href="${url}" style="color:#9B9590;">stop them here</a>.</p>`;
 
 /** Takes out `<!-- ... -->` comments. A conditional comment for a mail client (`<!--[if`) is left alone. */
 export function withoutDeveloperComments(html: string): string {
