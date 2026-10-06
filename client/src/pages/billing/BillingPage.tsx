@@ -346,7 +346,7 @@ export function BillingPage() {
        * is drawing on. These three rows show only once the switch itself reads on.
        */}
       {isWhatsAppBillingAdmin(whatsapp) && (
-        <Section heading="WhatsApp">
+        <Section heading="WhatsApp" id="billing-whatsapp">
           <Panel>
             <Stack gap={12}>
               <SwitchRow
