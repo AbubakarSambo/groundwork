@@ -2,6 +2,20 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## A plan names somebody who is not on the check-in, and the old chat takes a short question for a person (6 October, piece 5, parts F and G follow-ups)
+
+**How it was run.** Build `991e5168`, local database `gw_wa_own`, port 3059, with the model. No email is really sent (`EMAIL_SENDS_FOR_REAL=false`).
+
+| Part | Reader | What they read or what happened | Result |
+| --- | --- | --- | --- |
+| F, the plan is read | Wanjiru, the lead | The plan names Amina Yusuf, who is not on the check-in. Among the cards: "Add Amina Yusuf to this check-in?", from "Amina Yusuf will take over the Kisumu accounts", with "The plan gives no email address for Amina Yusuf, so you will be asked for one. Nobody is invited until you say yes." Reading adds nobody. Her commitment cannot be confirmed yet: "Amina Yusuf is not on this check-in yet. Add them first, then confirm this." | 14 of 14 |
+| F, who may | Miriam (in the check-in); Grace (admin) | Both are refused with 403 and nobody is added. | proved |
+| F, the yes | Wanjiru | With no address: "Type Amina Yusuf's email address, so Groundwork can invite them. Nobody is invited until you say yes." Before anything has been said about the check-in, the ordinary rule holds: "Nobody can be invited yet: nothing has been said about what this check-in is for..." and the card stays waiting. After she writes what the check-in is for, a yes with an address adds Amina as a person to take part (not yet signed in) and invites her through the ordinary way. A second yes does nothing more. The card is gone from the waiting list, and now her commitment can be confirmed. | proved |
+| G follow-up, the old chat | Wanjiru | "Ask Miriam which accounts actually have a buying process" through the old chat is now said back first: "Groundwork will ask Miriam Test, word for word, "Which accounts have a buying process?" in Miriam's next check-in. Shall I send it?" and a yes keeps exactly that, about Miriam, for the lead alone, the same row as through Ask. The old chat used to ask what kind of thing it was, and a blind yes made it an expectation of Miriam. | proved |
+| G follow-up, nothing else moved | Wanjiru | "Miriam should sign 12 shops" is answered as before ("Shall I keep "sign 12 shops" as a private note about Miriam that only you can see? ..."). The paste, the line, the note, the document and who-may parts of the side-by-side run are unchanged. | proved |
+
+See `api/journey/a-plan-names-somebody-who-is-not-on-the-check-in.ts` and the side-by-side journey above.
+
 ## Context and resources through Ask Groundwork, side by side with the old context chat (6 October, piece 5, part G)
 
 **How it was run.** The build at `cd6ddac9`, local database `gw_wa_own`, port 3059, with model access (the local `api/credentials` linked into the worktree). `release.contextInAskGroundwork` was written as `{"on": true}` in this local database only. The old chat was not switched off or changed. In each part the same words were said twice, on two check-ins that start identical, once through the old routes and once through Ask, and the rows each wrote were then read out of the database. The model reads a paste afresh each time, so one paste was also read through the old chat a second time as a control.

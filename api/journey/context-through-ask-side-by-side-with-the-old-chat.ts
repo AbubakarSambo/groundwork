@@ -30,7 +30,7 @@ const stamp = Date.now();
     const text = await res.text(); let j: any = null; try { j = text ? JSON.parse(text) : null; } catch { /* text */ }
     return { status: res.status, data: j && typeof j === 'object' && 'data' in j ? j.data : j, text };
   };
-  const said = (r: { data: any; text: string }) => (r.data?.blocks ? r.data.blocks.map((b: any) => b.body ?? b.summary ?? '').filter(Boolean).join(' / ') : (r.data?.reply ?? r.data?.proposal?.say ?? r.text)).toString();
+  const said = (r: { data: any; text: string }) => (r.data?.blocks ? r.data.blocks.map((b: any) => b.body ?? b.summary ?? '').filter(Boolean).join(' / ') : ((r.data?.reply || r.data?.proposal?.say) ?? r.text)).toString();
   const proposalOf = (r: { data: any }) => (r.data?.blocks ?? []).find((b: any) => b.type === 'proposal');
 
   console.log('\n==================== SETTING UP ====================');
@@ -149,7 +149,18 @@ const stamp = Date.now();
   console.log(`    Ask: ${said(qa.first).slice(0, 300)} ... after yes: ${qa.done ? said(qa.done).slice(0, 300) : '(none)'}`);
   const q1 = await snapshot(qp.old.id); const q2 = await snapshot(qp.ask.id);
   show('Wanjiru', 'the old chat', q1); show('Wanjiru', 'Ask', q2);
-  check('Ask keeps the short sentence as one question for Miriam, word for word, about her; the old chat did not take it as a question: it asked what kind of thing it was, and a blind yes made it an expectation of her (the old chat takes questions only inside a longer paste, compared in part 4)', q2.length === 1 && /QUESTION_FOR_PERSON \| LEAD_ONLY/.test(q2[0]) && /about Miriam/.test(q2[0]) && /Which accounts actually have a buying process\?/.test(q2[0]), `${q1} | ${q2}`);
+  /* The model words the exact question afresh each time ("Which accounts have a buying process?" or "...actually have..."), so what is compared is the row's kind, who it is about, who reads it, that it was said back first, and that what was kept is exactly what the lead was shown. */
+  const shownOld = /"([^"]+)" in Miriam's next check-in\. Shall I send it\?/.exec(said(qo.first))?.[1];
+  const keptOld = /asks "([^"]+)"/.exec(q1[0] ?? '')?.[1];
+  const shownAsk = /"([^"]+)" in Miriam's next check-in\. Shall I send it\?/.exec(said(qa.first))?.[1];
+  const keptAsk = /asks "([^"]+)"/.exec(q2[0] ?? '')?.[1];
+  const shape = (r: string) => r.replace(/asks "[^"]*"/, 'asks "..."');
+  check('Both now keep the short sentence as one question for Miriam, said back first, with exactly the words the lead was shown (the old chat used to ask "is it a goal or a target?" and a blind yes made it an expectation of her)', q1.length === 1 && q2.length === 1 && /QUESTION_FOR_PERSON \| LEAD_ONLY/.test(q1[0]) && /about Miriam/.test(q1[0]) && shape(q1[0]) === shape(q2[0]) && !!shownOld && shownOld === keptOld && !!shownAsk && shownAsk === keptAsk, `${q1} | ${q2} | ${said(qo.first)}`);
+
+  const goalG = await makeGround('Goal sentence', wanjiru);
+  const goalSay = await call(`/grounds/${goalG.id}/context-chat`, T.wanjiru, 'POST', { history: [{ role: 'user', content: 'Miriam should sign 12 shops' }] });
+  console.log(`    The old chat, told "Miriam should sign 12 shops", answers: ${JSON.stringify(goalSay.data?.proposal?.say ?? goalSay.data?.reply).slice(0, 300)} (gap ${goalSay.data?.proposal?.gap ?? 'none'})`);
+  check('A real goal for a person is still read as a goal by the old chat, not as a question', goalSay.status < 300 && goalSay.data?.proposal?.gap !== 'question_for_person' && !/Groundwork will ask/.test(JSON.stringify(goalSay.data)), JSON.stringify(goalSay.data).slice(0, 300));
 
   console.log('\n==================== 6. A DOCUMENT ====================');
   const doc = await pair('Document');

@@ -6263,3 +6263,9 @@ Saving anything else (the display number, the business account) still works with
     }
 
 `whatChanged` reads "This version added “X” and removed “Y”.", or "This version changed the wording of a priority." It holds only priority titles. It never holds a person, a measure, a target or anything anybody said. Not built: "One sales goal still points to last quarter's strategy".
+
+## 6 October: a plan can offer to add the people it names, for the screens to show
+
+A plan's cards (`POST` and `GET /grounds/:id/plan/proposals`) can now include `kind: "person"`. Its `says` reads "Add Amina Yusuf to this check-in?", its `saidAs` and `fromThePlan` hold the plan's own words, and its `note` says either "The plan gives no email address for Amina Yusuf, so you will be asked for one. Nobody is invited until you say yes." or "Amina Yusuf will be added to this check-in and invited at amina@example.com, but only when you say yes." (only when the plan itself wrote that one address). It lands in "People".
+
+To say yes, `POST /grounds/:id/plan/proposals/:pid/confirm` takes `{ email }` for this kind (the plan's own address is used if there is one). With no address the lead reads "Type Amina Yusuf's email address, so Groundwork can invite them. Nobody is invited until you say yes." If the ordinary rules refuse (for example nothing has been said about what the check-in is for, or the plan's limit), the lead reads that sentence and the card stays waiting. Only the lead may confirm. Once the person is on the check-in the card leaves the waiting list, and the cards that named them can be confirmed.
