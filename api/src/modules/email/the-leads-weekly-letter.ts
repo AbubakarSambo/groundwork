@@ -45,57 +45,70 @@ export interface AWeekInOneCheckIn {
   waiting: number;
   /** Who settled things this week, and how many each. The lead herself is 'you'. Names only for people who can answer. */
   closedBy?: { name: string; count: number }[];
+  /** Who can answer, and who checked in, by a stable id for the person (their account, else their place here), so a person in two check-ins is one person. */
+  answerableIds?: string[];
+  checkedInIds?: string[];
   /** Whom open handoffs wait on inside this check-in, and how many each. The lead herself is 'you'. */
   waitingOn?: { name: string; count: number }[];
 }
 
-const things = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
-const aName = (n: string) => (n === 'you' ? 'You' : n);
+const aName = (n: string) => n;
+
+/** "Four things people said they would do were done, all by Abigail." Named only when ONE person closed ALL of them. */
+function theDoneSentence(w: AWeekInOneCheckIn): string | null {
+  if (w.done <= 0) return null;
+  const base = `${capital(aNumber(w.done))} ${w.done === 1 ? 'thing people said they would do was' : 'things people said they would do were'} done`;
+  const one = w.closedBy?.length === 1 && w.closedBy[0].count === w.done ? aName(w.closedBy[0].name) : null;
+  return one ? `${base}, ${w.done === 1 ? 'by' : w.done === 2 ? 'both by' : 'all by'} ${one}` : base;
+}
+
+/** "Two handoffs are still waiting, both on James." Named only when ALL of them wait on one person. */
+function theWaitingSentence(w: AWeekInOneCheckIn): string | null {
+  if (w.waiting <= 0) return null;
+  const base = `${capital(aNumber(w.waiting))} ${w.waiting === 1 ? 'handoff is' : 'handoffs are'} still waiting`;
+  const one = w.waitingOn?.length === 1 && w.waitingOn[0].count === w.waiting ? w.waitingOn[0].name : null;
+  return one ? `${base}, ${w.waiting === 1 ? 'on' : w.waiting === 2 ? 'both on' : 'all on'} ${one}` : base;
+}
+
+const lowerFirst = (s: string) => `${s.charAt(0).toLowerCase()}${s.slice(1)}`;
 
 /**
- * THE SUBJECT SAYS WHAT HAPPENED (decision 109 item 3; spec section 13). Names, to the lead only, as facts and never
- * as comparisons: "Abigail closed 4 commitments; 2 handoffs are waiting on James". A person is named only when they
- * are the only one the fact is about, so that a name never reads as the best or the worst of several. Nobody is called
- * ahead or behind, and nothing is said about how a person is doing, only what happened and what waits.
+ * THE SUBJECT SAYS WHAT HAPPENED (decision 109 item 3; spec section 13). Names, to the lead only, as facts and never as comparisons:
+ * "Four things people said they would do were done, all by Abigail; two handoffs are still waiting, both on James". A person is named only when the
+ * fact is wholly about them (they closed all of them; all of them wait on them), so a name never reads as the best or worst of several. Nobody is
+ * called ahead or behind. The body says the same two facts in the same words.
  */
 export function theSubjectFor(weeks: AWeekInOneCheckIn[]): string {
   const counted = weeks.filter((w) => w.ofHowMany > 0);
   if (counted.length !== 1) {
-    const checkedIn = counted.reduce((n, w) => n + w.checkedIn, 0);
-    const of = counted.reduce((n, w) => n + w.ofHowMany, 0);
-    return checkedIn > 0 ? `This week, ${checkedIn} of ${of} people checked in across your ${counted.length} check-ins` : THE_SUBJECT;
+    /* A person who is in two of her check-ins is one person, counted once. */
+    const answerable = new Set(counted.flatMap((w) => w.answerableIds ?? []));
+    const checkedIn = new Set(counted.flatMap((w) => w.checkedInIds ?? []));
+    const of = answerable.size || counted.reduce((n, w) => n + w.ofHowMany, 0);
+    const done = checkedIn.size || counted.reduce((n, w) => n + w.checkedIn, 0);
+    return done > 0 ? `This week, ${aNumber(done)} of ${aNumber(of)} people checked in across your ${aNumber(counted.length)} check-ins` : THE_SUBJECT;
   }
   const w = counted[0];
-  const facts: string[] = [];
-  if (w.done > 0) {
-    facts.push(w.closedBy?.length === 1
-      ? `${aName(w.closedBy[0].name)} closed ${things(w.closedBy[0].count, 'commitment', 'commitments')}`
-      : `${things(w.done, 'commitment was', 'commitments were')} closed`);
-  }
-  if (w.waiting > 0) {
-    facts.push(w.waitingOn?.length === 1 && w.waitingOn[0].count === w.waiting
-      ? `${things(w.waiting, 'handoff is', 'handoffs are')} waiting on ${w.waitingOn[0].name}`
-      : `${things(w.waiting, 'handoff is', 'handoffs are')} still waiting`);
-  }
-  if (facts.length) return facts.join('; ');
-  return w.checkedIn > 0 ? `This week, ${w.checkedIn} of ${w.ofHowMany} people checked in` : THE_SUBJECT;
+  const facts = [theDoneSentence(w), theWaitingSentence(w)].filter((x): x is string => !!x);
+  if (facts.length) return facts.map((f, i) => (i ? lowerFirst(f) : f)).join('; ');
+  return w.checkedIn > 0 ? `This week, ${aNumber(w.checkedIn)} of ${aNumber(w.ofHowMany)} people checked in` : THE_SUBJECT;
 }
 
 /** The sentences for one check-in, in order. Nothing is said that the count does not hold. */
 export function theWeekInSentences(w: AWeekInOneCheckIn): string[] {
   const out: string[] = [];
   if (w.checkedIn <= 0) out.push('Nobody has checked in this week.');
-  else if (w.checkedIn >= w.ofHowMany) out.push(w.ofHowMany === 1 ? 'This week, the one person who can answer checked in.' : `This week, all ${w.ofHowMany} people checked in.`);
-  else out.push(`This week, ${w.checkedIn} of ${w.ofHowMany} people checked in.`);
+  else if (w.checkedIn >= w.ofHowMany) out.push(w.ofHowMany === 1 ? 'This week, the one person who can answer checked in.' : `This week, all ${aNumber(w.ofHowMany)} people checked in.`);
+  else out.push(`This week, ${aNumber(w.checkedIn)} of ${aNumber(w.ofHowMany)} people checked in.`);
   if (w.saidWhatNext > 0) out.push(`${capital(aNumber(w.saidWhatNext))} ${w.saidWhatNext === 1 ? 'person' : 'people'} said what they will do next.`);
-  if (w.done > 0) out.push(`${capital(aNumber(w.done))} ${w.done === 1 ? 'thing' : 'things'} people said they would do ${w.done === 1 ? 'was' : 'were'} done.`);
-  if (w.waiting > 0) out.push(`${capital(aNumber(w.waiting))} ${w.waiting === 1 ? 'handoff is' : 'handoffs are'} still waiting on someone.`);
-  if (w.closedBy?.length === 1) out.push(`${aName(w.closedBy[0].name)} closed ${things(w.closedBy[0].count, 'commitment', 'commitments')}.`);
-  if (w.waitingOn?.length === 1 && w.waitingOn[0].count === w.waiting) out.push(`${capital(things(w.waiting, 'handoff is', 'handoffs are'))} waiting on ${w.waitingOn[0].name}.`);
+  const done = theDoneSentence(w);
+  if (done) out.push(`${done}.`);
+  const waiting = theWaitingSentence(w);
+  if (waiting) out.push(`${waiting}.`);
   if (w.checkedIn > 0 && w.notYet.length) {
     const named = w.notYet.slice(0, w.notYet.length > 3 ? 2 : 3);
     const others = w.notYet.length - named.length;
-    const who = listed(others > 0 ? [...named, others === 1 ? 'one other person' : `${others} others`] : named);
+    const who = listed(others > 0 ? [...named, others === 1 ? 'one other person' : `${aNumber(others)} others`] : named);
     out.push(`${capital(who)} did not check in.`);
   }
   return out;
@@ -165,7 +178,7 @@ export async function theWeekOf(prisma: any, g: { id: string; label: string; ini
   const closedBy = tally((doneRows as any[]).filter((r) => r.status === 'DONE').map((r) => r.participantId));
   const waitingOn = tally((waitingRows as any[]).filter((r) => r.status !== 'CLEARED').map((r) => r.onParticipantId));
   const saidNextBy = new Set((saidNext as any[]).map((r) => r.participantId).filter((id: string) => countedIds.has(id)));
-  return { groundId: g.id, label: g.label, ofHowMany: counted.length, checkedIn: finishedIds.size, notYet, saidWhatNext: saidNextBy.size, done: done as number, waiting: waiting as number, closedBy, waitingOn };
+  return { groundId: g.id, label: g.label, ofHowMany: counted.length, checkedIn: finishedIds.size, answerableIds: counted.map((p) => p.userId ?? p.id), checkedInIds: counted.filter((p) => finishedIds.has(p.id)).map((p) => p.userId ?? p.id), notYet, saidWhatNext: saidNextBy.size, done: done as number, waiting: waiting as number, closedBy, waitingOn };
 }
 
 /**

@@ -13,27 +13,35 @@ const week = (over: Partial<AWeekInOneCheckIn> = {}): AWeekInOneCheckIn => ({
 const COMPARISON = /ahead|behind|best|worst|strong|weak|carrying|struggl|falling|slow|more than|less than|better|worse|rank/i;
 
 describe('the subject Wairimu reads', () => {
-  it('names each person once, as what happened', () => {
+  it('names a person when one person closed all of them, and when all the handoffs wait on one person, and says the same in the body', () => {
     const l = theLeadsLetter([week()])!;
-    expect(l.subject).toBe('Abigail closed 4 commitments; 2 handoffs are waiting on James');
-    expect(l.lines.join(' ')).toContain('Abigail closed 4 commitments. 2 handoffs are waiting on James.');
+    expect(l.subject).toBe('Four things people said they would do were done, all by Abigail; two handoffs are still waiting, both on James');
+    expect(l.lines.join(' ')).toContain('Four things people said they would do were done, all by Abigail. Two handoffs are still waiting, both on James.');
     expect(l.subject + l.lines.join(' ')).not.toMatch(COMPARISON);
+    expect(l.subject + l.lines.join(' ')).not.toMatch(/commitment/);
   });
 
-  it('says "You" when the lead is the one, and a count when several people did it', () => {
-    expect(theLeadsLetter([week({ closedBy: [{ name: 'you', count: 1 }], done: 1 })])!.subject).toBe('You closed 1 commitment; 2 handoffs are waiting on James');
+  it('says "you" when the lead is the one, and one by one in the singular', () => {
+    expect(theLeadsLetter([week({ closedBy: [{ name: 'you', count: 1 }], done: 1, waiting: 1, waitingOn: [{ name: 'James', count: 1 }] })])!.subject)
+      .toBe('One thing people said they would do was done, by you; one handoff is still waiting, on James');
+  });
+
+  it('names nobody when the facts are about several people, or when one person closed only some of them', () => {
     const l = theLeadsLetter([week({ closedBy: [{ name: 'Abigail', count: 3 }, { name: 'Femi', count: 1 }], waitingOn: [{ name: 'James', count: 1 }, { name: 'Bisi', count: 1 }] })])!;
-    expect(l.subject).toBe('4 commitments were closed; 2 handoffs are still waiting');
+    expect(l.subject).toBe('Four things people said they would do were done; two handoffs are still waiting');
     expect(l.subject).not.toMatch(/Abigail|Femi|James|Bisi/);
+    const some = theLeadsLetter([week({ closedBy: [{ name: 'Abigail', count: 3 }], done: 4, waitingOn: [{ name: 'James', count: 1 }], waiting: 2 })])!;
+    expect(some.subject + some.lines.join(' ')).not.toMatch(/Abigail|James/);
   });
 
-  it('with nothing closed or waiting, says only who checked in, and names nobody', () => {
-    expect(theLeadsLetter([week({ done: 0, waiting: 0, closedBy: [], waitingOn: [] })])!.subject).toBe('This week, 5 of 6 people checked in');
+  it('with nothing closed or waiting, says only who checked in, in words, and names nobody', () => {
+    expect(theLeadsLetter([week({ done: 0, waiting: 0, closedBy: [], waitingOn: [] })])!.subject).toBe('This week, five of six people checked in');
   });
 
-  it('with several check-ins, adds nothing across them and names nobody', () => {
-    const l = theLeadsLetter([week(), week({ groundId: 'g2', label: 'Product', ofHowMany: 4, checkedIn: 2 })])!;
-    expect(l.subject).toBe('This week, 7 of 10 people checked in across your 2 check-ins');
+  it('with several check-ins, counts a person who is in two of them once, and names nobody', () => {
+    const a = week({ answerableIds: ['u1', 'u2', 'u3', 'u4', 'u5', 'u6'], checkedInIds: ['u1', 'u2', 'u3', 'u4', 'u5'] });
+    const b = week({ groundId: 'g2', label: 'Product', ofHowMany: 4, checkedIn: 2, answerableIds: ['u1', 'u2', 'u7', 'u8'], checkedInIds: ['u1', 'u2'] });
+    expect(theLeadsLetter([a, b])!.subject).toBe('This week, five of eight people checked in across your two check-ins');
   });
 });
 
