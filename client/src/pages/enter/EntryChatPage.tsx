@@ -2221,6 +2221,21 @@ export function EntryChatPage() {
       }
       setOnboardingReady(res.ready)
       persistOnboarding([], onboardingSelections, onboardingStep, updatedHistory, res.ready)
+      /*
+       * THE ANCHOR HAS NO FORK AND NO SECOND CONVERSATION (request 165, "the rest of the anchor's
+       * walk"). Every other situation reaches `ready` and then asks who does the check-ins - "I set
+       * this up and check in myself" against "I check in once...", each of which opens an ordinary
+       * first check-in that asks her opening question again. The spec for the anchor has neither: her
+       * set-up conversation IS the one conversation, so once it is ready, this conversation's own
+       * transcript becomes the session's record straight away, and the next thing she sees is the
+       * reveal and the people step.
+       */
+      if (res.ready && isAnchorDraft()) {
+        setHistory(updatedHistory)
+        setClosed(true)
+        setShowSave(true)
+        generateSessionReport(updatedHistory)
+      }
       setTimeout(() => {
         if (msgsRef.current) msgsRef.current.scrollTop = msgsRef.current.scrollHeight
       }, 50)
@@ -3628,8 +3643,11 @@ export function EntryChatPage() {
 
               {/* The fork, shown when the AI signals ready. Replaces the old
                   "are you involved?" question (which drove nothing but
-                  check-in-vs-skip; ownership was never derived from it). */}
-              {onboardingReady && !onboardingLoading && flowPath !== 'lead' && (
+                  check-in-vs-skip; ownership was never derived from it).
+                  NOT FOR THE ANCHOR (request 165): her set-up conversation is the whole
+                  conversation, so by the time this page would draw the fork, `onboardingReady`
+                  handling above has already moved her straight to the reveal. */}
+              {onboardingReady && !onboardingLoading && flowPath !== 'lead' && !isAnchorDraft() && (
                 <div className="gwui-ec-fork">
                   <Bubble mine={false}>
                     {/*
