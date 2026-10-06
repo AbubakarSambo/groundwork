@@ -593,6 +593,12 @@ export class ConversationService {
    * otherwise. Only the wording: who may read which target is decided before this is called.
    */
   /** Who runs the check-in, and a colleague's first name where this reader may be told it, for the goals they are told about. */
+  /** Whether the lead has switched on "Use simpler words" for this check-in. Off when it cannot be read. */
+  private async usesSimplerWords(groundId: string): Promise<boolean> {
+    const g = await (this.prisma as any).ground?.findUnique?.({ where: { id: groundId }, select: { simplerWords: true } })?.catch?.(() => null);
+    return !!g?.simplerWords;
+  }
+
   private whoSetWhatForThisReader(ground: { participants?: any[]; scenario?: any; peersVisibleToEachOther?: boolean | null } | null, readerParticipantId: string | null) {
     const people = (ground?.participants ?? []) as any[];
     const lead = people.find((p) => p.partyType === PartyType.INITIATOR);
@@ -2915,7 +2921,7 @@ export class ConversationService {
     /* AND THE CLOSE ENDS AS THE PROTOTYPE'S DOES, with the card below it. See the-close-says-what-comes-next. */
     if (sessionComplete) {
       /* WhatsApp and the API show no card, so they end on their own next step, never on "Below is". */
-      const closed = endingOnTheClose(aiTurn.content ?? '', how.door ?? 'web');
+      const closed = endingOnTheClose(aiTurn.content ?? '', how.door ?? 'web', await this.usesSimplerWords(checkIn.groundId));
       if (closed !== (aiTurn.content ?? '')) aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: closed } });
     }
     /* The product has already said it was written down; the model's own telling of it is taken out, so it is not said twice. */
