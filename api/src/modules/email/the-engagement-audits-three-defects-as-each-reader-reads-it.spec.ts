@@ -113,7 +113,7 @@ describe('2. who has not checked in yet', () => {
     const { email, sent } = theMails();
     await email.sendParticipantCheckedIn('wairimu@x.test', 'Lucy Test', 'Kenya launch', 'https://app.test/grounds/g1', { names: ['Amina', 'Kwame'], count: 2 });
     const read = text(sent[0].html);
-    expect(read).toContain('Lucy Test has checked in on Kenya launch. That is theirs done. Amina and Kwame have not checked in yet. The report is made once everyone is in.');
+    expect(read).toContain('Lucy Test has checked in on Kenya launch. Amina and Kwame have not checked in yet. The report is made once everyone is in.');
     expect(read).not.toMatch(/part(y|ies)/i);
     await email.sendParticipantCheckedIn('wairimu@x.test', 'Kwame Test', 'Kenya launch', 'https://app.test/grounds/g1', { names: [], count: 0 });
     expect(text(sent[1].html)).toContain('Everyone has now checked in. The shared report is ready to go out.');

@@ -1277,7 +1277,7 @@ export class EmailService implements OnModuleInit {
       to: adminEmail,
       subject: `${participantName} has checked in on ${groundLabel}`,
       html: this.layout(
-        `<p><strong>${escapeHtml(participantName)}</strong> has checked in on <strong>${escapeHtml(groundLabel)}</strong>. That is theirs done.</p>
+        `<p><strong>${escapeHtml(participantName)}</strong> has checked in on <strong>${escapeHtml(groundLabel)}</strong>.</p>
          ${pendingNote}
          <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View check-in →</a></p>
          <p style="font-size:12px;color:#9B9590;">You can see who has checked in and read what they said in the check-in, and the shared picture once it is ready. Everybody in it is told the moment the picture is ready.</p>`,
