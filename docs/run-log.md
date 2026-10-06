@@ -87,6 +87,41 @@ See `api/journey/the-role-interview-and-a-plan-as-each-reader-reads-them.ts`.
 
 34 of 34 checks pass for B and 32 of 32 for A. Nothing leaked, so part B changed no source: the guest scoping built in week 24 (`3fe8d5c0`) holds at every door tried. A guest who writes to WhatsApp is told Ask needs an entry on the list, so a guest cannot ask on WhatsApp at all. That is the safe way round and is left as it is.
 
+## Piece 4: the judgement's last prompt fixes, pattern steadiness, and one cycle of prompt self-learning (6 October)
+
+**How it was run.** A worktree of `wip/release` at `14759274`, `nest build`, a copy of the local database (`gw_oct6_judge`, migrated), the API on port 3071, its own runner processes, the model's global address, the settings key only in the start command. The stored prompt was also written in `gw_pw9_1786222102`.
+
+**1. The judgement.** The room judgement prompt got four rules (`14759274`): say each thing as strongly as the block says it, an out-of-date thing is the finding, somebody credited who is not in the room, every piece and not the first one. The population prompt did not change, so it stays at version 1. Active in both databases: `the_judgement_room` version 2, `1d03ffef-4b94-4755-996c-f126db19a69b` (version 1 was `ae0c6fa4-76e5-4f20-a0cc-fd6fadb78217`). All 24 judgements of the full run carry `1d03ffef` as their `promptVersionId`.
+
+| Scenario | Before (run-oct5b or oct5c) | Now (run-oct6a) | Against theDecision |
+| --- | --- | --- | --- |
+| crisis | "Priya was not on call" beside findings that said she was not paged; the rota never named | The gap says the on-call rota is out of date and nobody responded; "not on call" now agrees with the findings. It does not say the rota named somebody who had left (nobody's block held it) | Right |
+| recognition | The contractor never named | "Victor's backend script", named by two people, in the gap, with a line of his own and what the check-in cannot tell about him | Right |
+| shock | Only the support tickets | No timeline. The lead's own "I knew our champion had left" never reached the judgement, because the lead's finding dropped it: the judgement is written from each person's finding, not from their record | Still partly right; needs a change to what the judgement is given |
+| project | Led with the missing credentials | Leads with the scope gap | Right |
+| snapshot | Lead called "they" | "You" throughout; the lease waiting for the lead is the first move | Right |
+| sales | Averaged | Separates Femi, Ngozi and Kwame | Mostly right |
+| pip | Target never written down | Same, plus "put the expectations in writing" | Right |
+
+A pronoun used for a person, found by the new finder: 21 in the seven scenarios before, 8 after, of which about 4 are real (singular "they" for Nathan in pip, for Priya in crisis); the rest are plural "they". Seven-scenario scorer comparison on the same seven scenarios: nothing worse; patterns found 53 to 38 (project 2 to 0 and snapshot 4 to 0: the detector found none in those fresh conversations, and it runs before the judgement exists).
+
+**The full 24-scenario run (run-oct6f, scored against `docs/baseline.json`): "Nothing got worse than the baseline."** Every problem 0. Proof asked for 38 (42, inside the margin), past words 38 (25), specific detail 99 (88), blocker checked 59 (37), differences 37 (29), agreements 83 (56), findings 87 (81), patterns found 92 (100, inside the margin), commitments 53 (33), central question 29 (29), judgement present 29 (21). Jargon in Groundwork's turns 12 (42).
+
+**2. Pattern steadiness (nothing changed in the product).** Defined plainly: of the patterns found in run A, the share also found for the same person in run B, averaged over every ordered pair (`journey/pattern-steadiness-share.ts`).
+
+| Measure | Result |
+| --- | --- |
+| Three separate runs of sales, seniorhire, realign, drift (different conversations) | 53% weighted (sales 58, seniorhire 40, realign 78, drift 23). Of the patterns a person is actually shown: 58% (sales 62, seniorhire 50) |
+| Before, from the earlier runs of sales and project | 61% sales; project 0% (1 to 2 patterns each) |
+| One check-in read as the product reads it, twice (78 check-ins, four copies of five reads) | 83% of the codes one reading kept were kept by another |
+| What each person is shown, the same conversations read twice | 79% (68 of 86 pairs), 92% of people exactly the same (the earlier measure was 72%) |
+
+What makes it unsteady: separate runs differ mostly because the simulated people say different things. On the same conversations the flips are the codes whose evidence is ambiguous (E2, K5, B5, B11, B2, K4, D4: kept by 20 to 80% of reads). I tested one cause, that a code competes with others for a place in the model's list: a wavering code is kept alongside 2.5 other codes when kept and 2.7 when not, so no. No detector change was kept, because none was proven better; "patterns found" is unchanged. The one lever left is Hafsah's: counting close neighbours as one (decision 55).
+
+**3. Self-learning, switched off.** What already existed: counts of whether each pattern, coaching step and probe worked, with a suggested weight, read by nothing (`a-suggested-weight.ts`). What was missing: learning about the engine's own words. Built (`e9c4ca54`, `c4ebadba`, `d19cf9ae`): `a-prompt-proposal.ts`, switch `PROPOSE_PROMPT_CHANGES = false`, nothing calls it; a person runs `journey/self-learning-one-cycle.ts`. From a run's faults it asks the model for up to three rules to add, stores a DRAFT version with the evidence in its summary, and the numbers keep or discard it. One cycle was run in the copy: 8 faults found in run-oct6a, draft `the_judgement_room` version 3 (`8cc99fda-e5d3-4ebd-83a9-be04e467651c`) made with three rules, switched on in the copy only, the seven scenarios run again (run-oct6b), and it was DISCARDED BY THE NUMBERS: proof asked for fell 12 to 10, differences 14 to 11, and the faults it was for rose from 8 to 10. Its summary says so. A weakness: engine numbers move with fresh conversations, so a draft can be discarded for noise. Version 2 was put back active; the draft was never put in `gw_pw9_1786222102`.
+
+**What Hafsah would switch on, and what it can and cannot change.** Switch: change `PROPOSE_PROMPT_CHANGES` to true in the same commit, and decide who calls it. It can propose rules to ADD to `the_judgement_room`, `the_judgement_population` and `report_synthesis`, as a draft only. It cannot take anything out (the old text is inside the new text, checked in code), cannot reach the conversation's prompt, refuses a rule about privacy, patterns, who may read what or people's own words, and never activates anything: only a person does, through /prompts.
+
 ## The suites at a hundred people, rerun after the review's send-backs (6 October)
 
 Same way as above: a new worktree at `7911334d`, a new database `gw_suites_e2e2`, the API on port 3057, the same seeds. Item 7's order is now tested: the clock passes requests on and tells the people they were passed to at once, then the morning sweep says nothing more of those (specs "clock, then the morning sweep" and "the morning sweep, then the clock", through the real sender). Specs: suites, grounds, WhatsApp, email, assistant, 4,479 passed.
