@@ -8491,6 +8491,26 @@ model CompanyPicture {
   @@map("company_pictures")
 }
 
+/// THE STRATEGY'S VERSIONS (decision 80, item 68): each time the organisation's priorities change, a
+/// new version begins, with the day it began and the priorities it held. Written when a priority is
+/// brought in, agreed or removed, never when the Company page opens. A check-in ran under the
+/// version that was newest on the day it started, which is found from the dates, so no check-in row
+/// carries a version. Holds the priorities' titles (which everybody in the organisation reads) and
+/// the customer's own ids, never a person.
+model StrategyVersion {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  number         Int
+  startedAt      DateTime @map("started_at")
+  /// [{ sourceSystem, externalId, title }], in the order the priorities were set.
+  priorities     Json
+  prioritiesKey  String   @map("priorities_key")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@unique([organizationId, number])
+  @@map("strategy_versions")
+}
+
 // ---------------------------------------------------------------------------
 // Self-learning counts (week 8b, decisions 55 and 57 point 9). COUNTS ONLY.
 // ---------------------------------------------------------------------------

@@ -1,3 +1,4 @@
+import { recordTheStrategy } from '../subjects/the-strategy-over-time';
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { DraftParticipantState } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -352,6 +353,8 @@ export class DraftsService {
       where: { id: draftId },
       data: { state: 'SEEDED', seededSubjectExternalId: subject.externalId },
     });
+    /* An agreed objective may be a new priority: keep a new version of the strategy if so (the-strategy-over-time.ts). */
+    await recordTheStrategy(this.prisma, organizationId);
     return { seeded: true, subjectExternalId: subject.externalId };
   }
 
