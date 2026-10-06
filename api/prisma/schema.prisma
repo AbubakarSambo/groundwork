@@ -972,6 +972,15 @@ model Ground {
   /// which is the case that had no way to be said at all: it was all of them or none of them.
   overWhatsApp Boolean? @map("over_whatsapp")
 
+  /// USE SIMPLER WORDS: THE LEAD (OR AN ADMIN WHO RUNS IT) SWITCHES THIS ON FOR EVERYBODY IN THE CHECK-IN.
+  ///
+  /// False is every check-in that existed before, and it changes nothing: the conversation and
+  /// everything sent afterwards read exactly as they did. True gives the model the same plain-words
+  /// rule a person's own style profile can give it, for every person in the check-in, and sends the
+  /// plainer form of every fixed sentence (the closing, the end card, the report message, reminders).
+  /// A boolean with a default of false is safe here: nobody has been decided for.
+  simplerWords Boolean @default(false) @map("simpler_words")
+
   /// WHAT THE ROOM IS ABOUT: THE AIMS, THE PLACES AND THE THINGS, READ ONCE WHEN A ROUND CLOSES.
   ///
   /// Forty people each said what they were trying to achieve, where, and about what crop. All of it

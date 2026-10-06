@@ -5301,6 +5301,25 @@ export class GroundsService {
   }
 
   /**
+   * USE SIMPLER WORDS. Off for every check-in that existed before. When it is on, everybody in the
+   * check-in is spoken to in short sentences and everyday words, and everything sent afterwards uses
+   * the plainer form of its fixed sentences. Same permission as its neighbours.
+   */
+  async getSimplerWords(groundId: string, requestingUserId: string) {
+    await this.aSettingOnlyTheLeadMayChange(groundId, requestingUserId);
+    return this.prisma.ground.findUnique({ where: { id: groundId }, select: { id: true, simplerWords: true } });
+  }
+
+  async setSimplerWords(groundId: string, requestingUserId: string, on: boolean) {
+    await this.aSettingOnlyTheLeadMayChange(groundId, requestingUserId);
+    return this.prisma.ground.update({
+      where: { id: groundId },
+      data: { simplerWords: on },
+      select: { id: true, simplerWords: true },
+    });
+  }
+
+  /**
    * WHETHER THIS CHECK-IN IS ANSWERED ON WHATSAPP.
    *
    * Only answerable where the organisation has a number of its own, because otherwise there is

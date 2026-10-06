@@ -840,6 +840,22 @@ export class GroundsController {
     return this.grounds.setWhoSeesTargets(id, userId, !!body.everybody);
   }
 
+  @Get(':id/simpler-words')
+  @ApiOperation({ summary: 'Whether this check-in uses simpler words for everybody in it' })
+  async getSimplerWords(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.grounds.getSimplerWords(id, userId);
+  }
+
+  @Patch(':id/simpler-words')
+  @ApiOperation({ summary: 'Switch "Use simpler words" on or off for this check-in' })
+  async setSimplerWords(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() body: { on: boolean },
+  ) {
+    return this.grounds.setSimplerWords(id, userId, body?.on === true);
+  }
+
   @Patch(':id/over-whatsapp')
   @ApiOperation({ summary: 'Whether people answer this check-in on WhatsApp, in the app, or whatever the organisation does' })
   async setOverWhatsApp(
