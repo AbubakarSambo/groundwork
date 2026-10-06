@@ -135,15 +135,18 @@ function AList({ l, owners, onDone, onFailed }: {
                 {owners.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
               </Select>
             </span>
+            {/* FAULT 7C OF THE LIVE WALK (6 October): "Mark done: Hand over Sara's work" and
+                "Undo: Remove Sara's access..." read as two fragments stapled together with a colon,
+                not a sentence. Said as a phrase instead, naming the step in quotes. */}
             {s.done ? (
               <span className="gwui-edge-acts">
                 <Tag>Done</Tag>
                 <Button kind="quiet" size="small" onClick={() => change.mutate({ step: s.step, done: false })} disabled={change.isPending}
-                  aria-label={`Undo: ${stepSays(s.step, l)}`}>Undo</Button>
+                  aria-label={`Undo marking “${stepSays(s.step, l)}” as done`}>Undo</Button>
               </span>
             ) : (
               <Button kind="secondary" size="small" onClick={() => change.mutate({ step: s.step, done: true })} disabled={change.isPending}
-                aria-label={`Mark done: ${stepSays(s.step, l)}`}>Mark done</Button>
+                aria-label={`Mark “${stepSays(s.step, l)}” as done`}>Mark done</Button>
             )}
           </Row>
         ))}
