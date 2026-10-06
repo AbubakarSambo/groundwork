@@ -1,6 +1,6 @@
 const express = require('express');
 import { createServer } from 'http';
-import { howManyProxiesToTrust } from './the-proxies-the-api-trusts';
+import { howManyProxiesToTrust, theWarningWhenTheProxiesAreNotSaid } from './the-proxies-the-api-trusts';
 
 const addressSeenBy = (hops: number, headers: Record<string, string>) =>
   new Promise<string>((resolve, reject) => {
@@ -43,5 +43,22 @@ describe('which address counts as the visitor', () => {
   it('with no proxy trusted, ignores the header altogether', async () => {
     const seen = await addressSeenBy(0, { 'x-forwarded-for': '1.2.3.4' });
     expect(seen).not.toContain('1.2.3.4');
+  });
+});
+
+describe('the warning when nobody has said how many proxies there are', () => {
+  it('is given once in production when TRUST_PROXY_HOPS is unset, says what it is and what to set it to', () => {
+    const said = theWarningWhenTheProxiesAreNotSaid({ NODE_ENV: 'production' });
+    expect(said).toContain('TRUST_PROXY_HOPS is not set');
+    expect(said).toContain('content network');
+    expect(said).toContain('2 if a content network also sits in front');
+    expect(said).toContain('The API is starting anyway.');
+  });
+
+  it('is not given when the number is said, even as 0, or outside production', () => {
+    expect(theWarningWhenTheProxiesAreNotSaid({ NODE_ENV: 'production', TRUST_PROXY_HOPS: '1' })).toBeNull();
+    expect(theWarningWhenTheProxiesAreNotSaid({ NODE_ENV: 'production', TRUST_PROXY_HOPS: '0' })).toBeNull();
+    expect(theWarningWhenTheProxiesAreNotSaid({ NODE_ENV: 'development' })).toBeNull();
+    expect(theWarningWhenTheProxiesAreNotSaid({})).toBeNull();
   });
 });

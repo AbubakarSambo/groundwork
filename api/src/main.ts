@@ -7,7 +7,7 @@ import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import type { Request as ExpressRequest, Response as ExpressResponse } from 'express';
 import { JwtService } from '@nestjs/jwt';
-import { howManyProxiesToTrust } from './the-proxies-the-api-trusts';
+import { howManyProxiesToTrust, theWarningWhenTheProxiesAreNotSaid } from './the-proxies-the-api-trusts';
 import { MAX_BATCH_BYTES } from './modules/subjects/how-heavy-a-batch-may-be';
 
 /**
@@ -45,6 +45,8 @@ async function bootstrap() {
   app.set('case sensitive routing', true);
   /* Each visitor is counted by their own address, not the host's proxy's (B10). See the-proxies-the-api-trusts.ts. */
   app.set('trust proxy', howManyProxiesToTrust(process.env));
+  const proxiesNotSaid = theWarningWhenTheProxiesAreNotSaid(process.env);
+  if (proxiesNotSaid) logger.warn(proxiesNotSaid);
 
   const configService = app.get(ConfigService);
 

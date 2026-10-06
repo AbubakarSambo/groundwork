@@ -14,3 +14,22 @@ export function howManyProxiesToTrust(env: { NODE_ENV?: string; TRUST_PROXY_HOPS
   if (/^[0-5]$/.test(said)) return Number(said);
   return env.NODE_ENV === 'production' ? 1 : 0;
 }
+
+/**
+ * THE ONE WARNING WHEN NOBODY HAS SAID HOW MANY PROXIES THERE ARE.
+ *
+ * In production with `TRUST_PROXY_HOPS` unset, the API assumes one proxy. If a content network also sits in front, that is wrong and visitors share one
+ * allowance, so whoever runs the hosting is told once, at start, what the setting is and what to set it to. It is a warning, never a refusal: the API
+ * always starts. Returns the sentence to log, or nothing when there is nothing to say.
+ */
+export function theWarningWhenTheProxiesAreNotSaid(env: { NODE_ENV?: string; TRUST_PROXY_HOPS?: string }): string | null {
+  if (env.NODE_ENV !== 'production') return null;
+  if ((env.TRUST_PROXY_HOPS ?? '').trim() !== '') return null;
+  return (
+    'TRUST_PROXY_HOPS is not set, so the API assumes exactly one proxy in front of it. ' +
+    'It is the number of proxies between visitors and the API (for example a load balancer, plus a content network like Cloudflare), ' +
+    'and the rate limits use it to count each visitor by their own address. ' +
+    'Set it to that number: 1 for the host\'s proxy alone, 2 if a content network also sits in front, 0 if the API is reached directly. ' +
+    'The API is starting anyway.'
+  );
+}

@@ -1,5 +1,22 @@
 # The release, for Hafsah
 
+## Before you merge
+
+Tick each one before merging. The full steps are in `docs/deploy.md`, "The release night, in order".
+
+- [ ] **Take a backup of the database first**, and write down the time. Nothing else happens before it.
+- [ ] **How many proxies sit in front of the live API** (for example a load balancer, plus a content network like Cloudflare)? If more than one, set `TRUST_PROXY_HOPS` to that number (the default assumes 1).
+- [ ] **`SETTINGS_ENCRYPTION_KEY` is set** on each hosted environment, made with `openssl rand -base64 32`, a different one for each environment, and never changed later.
+- [ ] **`NODE_ENV=production`** is set on production.
+- [ ] **The API runs on Node 20**, as the hosting builds it.
+- [ ] **The migrations apply in order.** The API applies them itself when it starts (`prisma migrate deploy`). If one fails, the API does not start.
+- [ ] **The four one-off scripts run in this order**, each as a dry run first and then with `--hosted-database --write`:
+  1. `stamp-said-word-for-word.ts`
+  2. `bring-the-checkability-read-up-to-date.ts`
+  3. `give-each-check-in-its-kind-of-work.ts` (it calls the model, and must run before the next one)
+  4. `bring-a-check-in-up-to-date.ts`
+- [ ] **The rollback rule is understood:** restore the database backup and the old code together, never the code alone. One migration dropped a column, so the old code cannot read the new database.
+
 Hafsah opens the pull request herself. Nothing here has been pushed anywhere except Hafsah's own `wip/` branches, and nothing has been deployed.
 
 The branch to open it from is `wip/release` on Hafsah's own copy. It is `wip/plain-reports` (the engine work), joined with `wip/prototype-ui` (the screens work) and with `wip/live-base` (Hafsah's exact copy of the live line, at `5197f22d`).
