@@ -94,6 +94,25 @@ const WHATSAPP_AT_LIMIT = {
 
 const WHATSAPP_MINIMAL = { on: false, sending: true, says: null }
 
+/**
+ * THE ADMIN SHAPE, WITH THE ADD-ON ITSELF OFF (known issue U16, fixed in the screens workspace):
+ * the server keeps serving an admin the full shape so they can still read the price and flip the
+ * switch back on, but the usage sentences (`use`, `atTheLimit`) are still in that shape whether or
+ * not `on` is true - it is the screen's job not to read "Your organisation has sent 412 of its
+ * 2,000 WhatsApp messages this month" as an allowance that means anything while the switch is off.
+ */
+const WHATSAPP_OFF_ADMIN = {
+  ...WHATSAPP_ON,
+  on: false,
+  sending: true,
+  heldBecause: 'not turned on' as const,
+  says: {
+    ...WHATSAPP_ON.says,
+    onOrOff: 'WhatsApp is off for your organisation, so check-ins stay in the app.',
+    charge: 'If you turn WhatsApp on, it is added to your monthly bill as a second line.',
+  },
+}
+
 function renderIt() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
@@ -152,6 +171,30 @@ describe('Grace, an admin, once the switch is on', () => {
     const region = section.closest('section') ?? section.parentElement!
     expect(region.textContent).toContain('Your organisation has used all 2,000 of its WhatsApp messages for October. Nothing more is sent by WhatsApp until 1 November 2026. Check-ins carry on in the app, so nobody misses one.')
     expect(region.textContent).not.toContain('If your organisation sends all 2,000 messages in a month')
+  })
+})
+
+describe('the add-on itself is off, though the release switch is on (known issue U16)', () => {
+  beforeEach(() => { m.whatsapp = WHATSAPP_OFF_ADMIN })
+
+  it('shows the price and the switch, but hides the allowance that means nothing while it is off', async () => {
+    renderIt()
+    const section = await screen.findByRole('heading', { name: 'WhatsApp' })
+    const region = section.closest('section') ?? section.parentElement!
+    expect(region.textContent).toContain('WhatsApp is off for your organisation, so check-ins stay in the app.')
+    expect(region.textContent).toContain('WhatsApp costs $720 a month on your Growth plan.')
+    expect(region.textContent).toContain('If you turn WhatsApp on, it is added to your monthly bill as a second line.')
+    expect(region.textContent).not.toMatch(/WhatsApp messages this month/)
+    expect(region.textContent).not.toContain('If your organisation sends all 2,000 messages in a month')
+  })
+
+  it('turning it on shows the allowance again, exactly as served', async () => {
+    m.setWhatsApp.mockResolvedValue(WHATSAPP_ON)
+    renderIt()
+    await screen.findByRole('heading', { name: 'WhatsApp' })
+    fireEvent.click(screen.getByRole('switch', { name: 'WhatsApp is off for your organisation, so check-ins stay in the app.' }))
+    await waitFor(() => expect(m.setWhatsApp).toHaveBeenCalledWith(true))
+    expect(await screen.findByText('Your organisation has sent 412 of its 2,000 WhatsApp messages this month.')).toBeTruthy()
   })
 })
 

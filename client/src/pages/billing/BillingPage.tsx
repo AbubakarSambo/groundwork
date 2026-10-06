@@ -308,6 +308,13 @@ export function BillingPage() {
        * Every price, limit and use figure is the server's own sentence (`whatsapp-add-on.service.ts`,
        * "WHAT PLAN AND BILLING SAYS ABOUT WHATSAPP") - this draws `says` exactly as it comes and
        * holds no number of its own.
+       *
+       * THE ALLOWANCE ONLY MEANS SOMETHING WHILE WHATSAPP IS ON (known issue U16): the server keeps
+       * serving an admin the full shape, `use`/`atTheLimit`/`reachedTheLimit` included, while
+       * `whatsapp.on` is false, because an admin who has just turned it off still needs the price
+       * and the switch itself to turn it back on. But "Your organisation has sent 0 of 500 WhatsApp
+       * messages this month" read next to a switch that is off is a number for an allowance nothing
+       * is drawing on. These three rows show only once the switch itself reads on.
        */}
       {isWhatsAppBillingAdmin(whatsapp) && (
         <Section heading="WhatsApp">
@@ -322,12 +329,12 @@ export function BillingPage() {
               <FieldRows>
                 {whatsapp.says.price && <FieldRow label="Price" value={whatsapp.says.price} />}
                 <FieldRow label="What is charged" value={whatsapp.says.charge} />
-                <FieldRow label="This month" value={whatsapp.says.use} />
-                {whatsapp.says.reachedTheLimit ? (
+                {whatsapp.on && <FieldRow label="This month" value={whatsapp.says.use} />}
+                {whatsapp.on && (whatsapp.says.reachedTheLimit ? (
                   <FieldRow label="Reached" value={whatsapp.says.reachedTheLimit} />
                 ) : whatsapp.says.atTheLimit ? (
                   <FieldRow label="At the limit" value={whatsapp.says.atTheLimit} />
-                ) : null}
+                ) : null)}
               </FieldRows>
             </Stack>
           </Panel>
