@@ -62,10 +62,13 @@ describe('the roster does not offer "Remind" for the lead herself', () => {
   it('offers Remind for the other participant, not for her own row', async () => {
     renderPage()
     await waitFor(() => expect(screen.getByRole('tab', { name: 'My work' })).toBeTruthy())
-    fireEvent.click(screen.getByRole('tab', { name: 'My work' }))
     /* REVIEW ROUND 3, "YOUR WORK" REBUILD: "Sessions" is the "Who has answered" quiet link inside
-       My work now, not a sub-tab. */
-    fireEvent.click(await screen.findByRole('button', { name: 'Who has answered' }))
+       My work now, not a sub-tab.
+       FAULT 3 FIX, 6 Oct 2026: a lead who is also a party (as here) now lands straight on the
+       roster when she clicks "My work" - the same destination the board's own "My work" link
+       already used - so the extra click through "Who has answered" is gone with the bug it
+       worked around. See `myWorkDefault` in GroundAdminPage.tsx. */
+    fireEvent.click(screen.getByRole('tab', { name: 'My work' }))
     const reminds = await screen.findAllByRole('button', { name: 'Remind' })
     expect(reminds).toHaveLength(1)
   })

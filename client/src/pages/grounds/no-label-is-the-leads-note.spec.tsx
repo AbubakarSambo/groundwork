@@ -108,9 +108,12 @@ describe('the check-in’s page never names somebody with the lead’s note', ()
 
     /* REVIEW ROUND 3, "YOUR WORK" REBUILD: Report and Sessions are quiet links inside "My work"
        now ("Every session" / "Who has answered"), not sub-tabs - open "My work" first, then the
-       link. */
+       link.
+       FAULT 3 FIX, 6 Oct 2026: Grace runs this check-in and is also a party to it, so "My work"
+       now lands her straight on the roster (matching the board's own "My work" link - see
+       `myWorkDefault` in GroundAdminPage.tsx), with no second click through "Who has answered"
+       needed. */
     expect(openTab(/^My work$/)).toBe(true)
-    expect(openTab(/^Who has answered$/)).toBe(true)
     await waitFor(() => expect(screen.getAllByText('One colleague').length).toBeGreaterThan(0))
     expect(screen.getAllByText('Another colleague').length).toBeGreaterThan(0)
     expect(screen.getAllByText('A third colleague').length).toBeGreaterThan(0)

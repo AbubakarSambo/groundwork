@@ -65,8 +65,12 @@ describe('BUG7: admin check-ins list labels each row by participant', () => {
     //
     // REVIEW ROUND 3, "YOUR WORK" REBUILD: "Sessions" is a quiet link inside My work now
     // ("Who has answered" - see `onSeeRoster` in YourWork.tsx), not a sub-tab.
+    //
+    // FAULT 3 FIX, 6 Oct 2026: "My work" now lands a lead straight on the roster (the same
+    // destination the board's own "My work" link already used), rather than on her own record
+    // with a second click needed to reach "Who has answered" - see `myWorkDefault` in
+    // GroundAdminPage.tsx. The extra click this test used to need is gone with the bug it pinned.
     fireEvent.click(screen.getByRole('tab', { name: 'My work' }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Who has answered' }))
     await waitFor(() => {
       /**
        * BUG7 IN ITS NEW FORM. The bug was that every row showed the same person, so a lead could not

@@ -1256,7 +1256,28 @@ export function GroundAdminPage() {
    *   Setup              -> People and setup (unchanged content, new label)
    */
   const inMyWork = (['report', 'checkins', 'myrecord'] as Tab[]).includes(tab)
-  const myWorkDefault: Tab = viewerIsAParty ? 'myrecord' : 'report'
+  /**
+   * FAULT 3: "MY WORK" HAS TO LAND IN THE SAME PLACE, HOWEVER IT WAS REACHED.
+   *
+   * This used to default on `viewerIsAParty`, so a lead who is also a party in her own check-in
+   * (the ordinary case) landed on `myrecord` - her own account - when she clicked "My work" from
+   * inside the check-in page. But the board's own tab row, and `ground-tabs.ts`'s
+   * `checkInHeaderTabs` (used by SessionReportPage.tsx and RoundReportPage.tsx), send the same
+   * "My work" label to `?tab=sessions`, which this page reads as `checkins` - the roster the
+   * prototype's own lead view shows (sessions.txt: the lead's "My work" opens "Every session").
+   * Same page, same label, two different destinations depending only on which tab row was clicked.
+   *
+   * The prototype draws the line the same way everywhere: whoever RUNS the check-in sees the
+   * roster; whoever is only a party to it sees their own record. `isInitiator` is that line here,
+   * matching `canRunThisCheckIn`/`viewerRunsThisCheckIn` elsewhere - not `viewerIsAParty`, which a
+   * lead who also takes part in her own check-in satisfies too.
+   *
+   * An admin who runs this check-in but is NOT a party to it still defaults to `report`, unchanged:
+   * `YourWork` never mounts for her, so she has no roster-and-record quick-link row either, and
+   * `report` is where that row's own two links (see `!viewerIsAParty` below) already expect to send
+   * her back from.
+   */
+  const myWorkDefault: Tab = isInitiator ? (viewerIsAParty ? 'checkins' : 'report') : 'myrecord'
   const outerTabOf = (t: Tab): string => {
     if (t === 'chat') return 'checkin'
     if (t === 'docs') return 'context'
@@ -1737,13 +1758,24 @@ export function GroundAdminPage() {
           `YourWork` never mounts for her (it is gated on `viewerIsAParty` below, unchanged from
           before this round), so the two quiet links inside it - "Every session", "Who has
           answered" - never render either. She still runs this check-in (My work's own default
-          for her is already `report`, above), so both stay reachable directly rather than
-          disappearing with the sub-tab row that used to offer them unconditionally.
+          for her is already `report` when she is not a party - see `myWorkDefault` above), so
+          both stay reachable directly rather than disappearing with the sub-tab row that used to
+          offer them unconditionally.
         */}
-        {inMyWork && !viewerIsAParty && (
+        {/*
+          FAULT 3 FOLLOW-ON: A LEAD WHO IS ALSO A PARTY NOW DEFAULTS STRAIGHT TO `checkins`
+          (the roster - see `myWorkDefault` above, which matches the board's own "My work" link).
+          She used to land on `myrecord` instead, where `YourWork` carries its own "Every session"
+          and "Who has answered" links. Landing on the roster first must not leave her without a
+          way back to her own record, so this row now also offers "What I shared" whenever she is
+          a party - hidden only on `myrecord` itself, where `YourWork`'s own links already cover
+          the other two and a second copy would be a duplicate.
+        */}
+        {inMyWork && tab !== 'myrecord' && (
           <div className="gwui-button-row">
-            {tab !== 'report' && <button type="button" className="gwui-plain-link" onClick={() => goTab('report')}>Every session</button>}
-            {tab !== 'checkins' && <button type="button" className="gwui-plain-link" onClick={() => goTab('checkins')}>Who has answered</button>}
+            {isInitiator && tab !== 'report' && <button type="button" className="gwui-plain-link" onClick={() => goTab('report')}>Every session</button>}
+            {isInitiator && tab !== 'checkins' && <button type="button" className="gwui-plain-link" onClick={() => goTab('checkins')}>Who has answered</button>}
+            {viewerIsAParty && <button type="button" className="gwui-plain-link" onClick={() => goTab('myrecord')}>What I shared</button>}
           </div>
         )}
 
