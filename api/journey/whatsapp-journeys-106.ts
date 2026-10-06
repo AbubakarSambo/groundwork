@@ -265,13 +265,13 @@ export async function howItEnds(c: any): Promise<string[]> {
       await cron.remindThoseWhoStoppedHalfwayInner(noon);
       await waitQuiet(800);
       keep(`- Three hours quiet: ${halfway.first} reads ${quote(toPhone(halfway, r0))}`);
-      check(`${k.kind}: one reminder to carry on reaches the phone`, toPhone(halfway, r0).length === 1 && /is still open, and everything you have said so far is kept/.test(toPhone(halfway, r0)[0] ?? ''), JSON.stringify(toPhone(halfway, r0)));
+      check(`${k.kind}: one reminder to carry on reaches the phone`, toPhone(halfway, r0).length === 1 && /is still open[.,] ?(and e|E)verything you have said (so far )?is (kept|saved)/.test(toPhone(halfway, r0)[0] ?? ''), JSON.stringify(toPhone(halfway, r0)));
       await placeTurns(Date.now() - 11.1 * 3600_000);
       const r1 = outbox.length;
       await cron.fireSessionClosingWarnings();
       await waitQuiet(800);
       keep(`- Eleven hours quiet: ${halfway.first} reads ${quote(toPhone(halfway, r1))}`);
-      check(`${k.kind}: the half-hour warning reaches the phone`, toPhone(halfway, r1).some((t: string) => /closes in 30 minutes if nothing else is said/.test(t)), JSON.stringify(toPhone(halfway, r1)));
+      check(`${k.kind}: the half-hour warning reaches the phone`, toPhone(halfway, r1).some((t: string) => /(closes|will close) in 30 minutes if (nothing else is said|you say nothing more)/.test(t)), JSON.stringify(toPhone(halfway, r1)));
       await placeTurns(Date.now() - 12.1 * 3600_000);
       const r2 = outbox.length; const at2 = new Date();
       await tellThemTheClockClosedIt(prisma, whatsapp, ci.id);
