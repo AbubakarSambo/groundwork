@@ -396,33 +396,38 @@ export const yourRequestsApi = {
  * FILING A REQUEST FROM ITS OWN FORM (request 165, Hafsah 6 October; docs/requests-to-engine.md).
  * The button on `openTheRequest` (anchor pieces 26/27) opens `/suite/leave/new` or
  * `/suite/spend/new` rather than Ask, so the person files the request themselves, from the same
- * form anybody else reaches these pages from. The routes do not exist on the server yet - until
- * they do, sending either form gets a 404, which the form reads and says in a full sentence (see
- * `whatFilingARequestSays` in `@/lib/file-a-request-error`).
+ * form anybody else reaches these pages from. On success the server answers `{ id, says }` -
+ * `says` is its own sentence, said on `/suite/mine`. A refusal is said in the server's own words
+ * too (see `whatFilingARequestSays` in `@/lib/file-a-request-error`), which falls back to "This
+ * request could not be sent from here yet..." only for a bare 404 that carries no message of its
+ * own - the route existed and simply refused, every other time.
  */
-export interface NewLeaveRequest { startsOn: string; endsOn: string; kind?: string }
-export interface NewSpendingRequest { amount: number; what: string }
-/** The server's own confirmation sentence, when it sends one. */
-export interface RequestFiled { message?: string }
-/** `GET /suites/leave/rules` is for an admin or whoever holds the HR duty only - a plain member is
-    refused, and the form then simply has no kind field (`kindsForFiling` reads that refusal and
-    returns `null` rather than throwing, so the caller never needs its own try/catch). */
-export interface ALeaveKindForFiling { key: string; name: string }
+export interface NewLeaveRequest { startsOn: string; endsOn: string; kind?: string; standInUserId?: string }
+export interface NewSpendingRequest { amount: number; what: string; category?: string }
+/** The server's own confirmation: an id, and its own sentence for what just happened. */
+export interface RequestFiled { id?: string; says?: string }
+/**
+ * WHAT THE LEAVE FORM MAY OFFER (`GET /suites/leave/form`), open to any member of the organisation
+ * who is not a guest - never the rules themselves, which stay admin/HR-only on `/suites/leave/rules`.
+ * `standIns` are the colleagues who could cover, by name and id, never an address.
+ */
+export interface LeaveFormInfo { kinds: { key: string; name: string }[]; standIns: { userId: string; name: string }[] }
+/**
+ * WHAT THE SPENDING FORM MAY OFFER (`GET /suites/spend/form`): the currency, what the organisation
+ * calls a category ("project", "category"), and the categories themselves. Never a limit, a
+ * threshold or who approves.
+ */
+export interface SpendFormInfo { currency: string | null; categoryCalled: string; categories: string[] }
 
 export const fileARequestApi = {
   leave: async (input: NewLeaveRequest): Promise<RequestFiled> =>
     (await apiClient.post('/suites/leave/requests', input, { skipNotFoundToast: true } as any)).data,
   spending: async (input: NewSpendingRequest): Promise<RequestFiled> =>
     (await apiClient.post('/suites/spend/requests', input, { skipNotFoundToast: true } as any)).data,
-  /** `null` when this reader may not read the rules (not an admin or the HR duty holder) - the form
-      asks for a kind of leave only when it can read what the kinds are. */
-  kindsForFiling: async (): Promise<ALeaveKindForFiling[] | null> => {
-    try {
-      const res = await apiClient.get('/suites/leave/rules', { skipForbiddenToast: true } as any)
-      const kinds = (res.data?.rules?.kinds ?? []) as { key: string; name: string }[]
-      return kinds.map(k => ({ key: k.key, name: k.name }))
-    } catch {
-      return null
-    }
-  },
+  /** With the suite off this throws a 404 carrying the board's own off sentence; the form reads
+      that straight from the error rather than treating it as a generic failure. */
+  leaveForm: async (): Promise<LeaveFormInfo> =>
+    (await apiClient.get('/suites/leave/form', { skipNotFoundToast: true, skipForbiddenToast: true } as any)).data,
+  spendForm: async (): Promise<SpendFormInfo> =>
+    (await apiClient.get('/suites/spend/form', { skipNotFoundToast: true, skipForbiddenToast: true } as any)).data,
 }
