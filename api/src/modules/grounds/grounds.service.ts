@@ -1,3 +1,4 @@
+import { withoutTheLeadsSetUpForAMember } from './the-leads-set-up-is-the-leads-in-the-anchor';
 import { aFindingThatReadsRight } from './a-finding-reads-right';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
 import { refuseSomeoneHeldForASeat, refuseSomeoneAwaitingTheOrganisation, theCheckInsHeldForASeat } from '../participants/held-for-a-seat';
@@ -2898,8 +2899,10 @@ export class GroundsService {
         .filter((t) => !objectiveRowsAsStored.some((o: any) => aWeekHasPassedSinceNotTold(o) && (o.text ?? '') === t)),
     ]);
     /* A goal whose whole sentence carried a number this reader may not read is not left as a goal with no words (it is not served, and what the person's own row says is said plainly). */
-    if (!Array.isArray((thePage as any).participants)) return thePage;
-    return {
+    /* In an anchor check-in the lead's own set-up (her aim, what it will cover, what a complete answer holds) is hers alone (decision 96, item 8). */
+    const asAMemberReadsIt = <P extends Record<string, any>>(page: P): P => withoutTheLeadsSetUpForAMember(page, { startedFrom: (ground as any).startedFrom ?? null, runsIt: viewerRunsThisGround });
+    if (!Array.isArray((thePage as any).participants)) return asAMemberReadsIt(thePage);
+    return asAMemberReadsIt({
       ...thePage,
       participants: ((thePage as any).participants as any[]).map((p: any) => {
         const o = p?.objective;
@@ -2908,7 +2911,7 @@ export class GroundsService {
         const blank = typeof o.text === 'string' && !o.text.trim();
         return { ...p, objective: { ...o, all, ...(blank ? { text: null, described: 'What this person is aiming for is set, and it carries a number you are not given on this page.' } : {}) } };
       }),
-    } as typeof thePage;
+    } as typeof thePage);
   }
 
   /**
