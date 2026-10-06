@@ -81,7 +81,12 @@ export function doorsFor(f: Pick<RolloutFacts, 'whatsappOn'>): { title: string; 
     { title: 'People', line: 'Invite people, set their roles and teams, and let guests in.', to: '/org/members' },
     {
       title: 'Connections',
-      line: f.whatsappOn ? 'Connect WhatsApp, bring in your numbers, and use your own address.' : 'Bring in your numbers, and use your own address.',
+      /* SCREEN FAULT 3: "and use your own address" named a feature Connections does not offer -
+         `ConnectionsPage.tsx` leaves "Your own address" out entirely (Hafsah, 29 September, item
+         11), on purpose, because nothing behind it is built. This names what the page actually
+         offers instead: WhatsApp, your numbers, and the people/goals/roles/handbook/API
+         connections under "More you can connect". */
+      line: f.whatsappOn ? 'Connect WhatsApp, bring in your numbers, and connect your other tools.' : 'Bring in your numbers, and connect your other tools.',
       to: '/settings/connections',
     },
     { title: 'Suites', line: 'Switch on leave, spending and onboarding when you need them.', to: '/settings/suites' },

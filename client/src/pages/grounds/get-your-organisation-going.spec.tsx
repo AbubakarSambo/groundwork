@@ -82,7 +82,7 @@ describe('the new admin', () => {
     const doors = [...document.querySelectorAll('.gwui-welcome-door')].map(a => [a.querySelector('b')?.textContent, a.querySelector('span')?.textContent, a.getAttribute('href')])
     expect(doors).toEqual([
       ['People', 'Invite people, set their roles and teams, and let guests in.', '/org/members'],
-      ['Connections', 'Bring in your numbers, and use your own address.', '/settings/connections'],
+      ['Connections', 'Bring in your numbers, and connect your other tools.', '/settings/connections'],
       ['Suites', 'Switch on leave, spending and onboarding when you need them.', '/settings/suites'],
       ['Plan and billing', 'Your seats, your card and your invoices.', '/billing'],
     ])
@@ -91,7 +91,15 @@ describe('the new admin', () => {
   it('the Connections door names WhatsApp only while WhatsApp is switched on', async () => {
     open(ADMIN, { ...NEW, whatsappOn: true })
     await screen.findByRole('heading', { name: 'You’re an admin at Nyali Foods' })
-    expect(screen.getByText('Connect WhatsApp, bring in your numbers, and use your own address.')).toBeTruthy()
+    expect(screen.getByText('Connect WhatsApp, bring in your numbers, and connect your other tools.')).toBeTruthy()
+  })
+
+  /* SCREEN FAULT 3: Connections has no "your own address" feature - ConnectionsPage.tsx leaves it
+     out on purpose (Hafsah, 29 September, item 11) - so the Today card must never promise it. */
+  it('never promises "your own address", which Connections does not offer', async () => {
+    open(ADMIN)
+    await screen.findByRole('heading', { name: 'You’re an admin at Nyali Foods' })
+    expect(document.body.textContent).not.toMatch(/own address/)
   })
 
   it('with WhatsApp switched on, the fourth row, and "0 of 4 done", as the prototype has it', async () => {
