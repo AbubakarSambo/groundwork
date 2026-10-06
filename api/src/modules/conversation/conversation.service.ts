@@ -126,7 +126,7 @@ import { theOneWorthAsking, askAboutItBlockFor } from './what-keeps-happening-be
 import { mayCoach } from './participation-timeline';
 import { theirApprovedLeave } from '../suites/who-is-away';
 import { aNewIdeaIn, afterTheirTurn, anIdeaReadBackAsAPromise, withoutAskingWhatToCapture } from './ideas-from-the-team';
-import { aRequestAfterTheirTurn, withoutACannotApprove } from './a-request-offered-in-the-check-in';
+import { aRequestAfterTheirTurn, theyAreAnsweringAnOffer, withoutACannotApprove, withoutAPromiseToPassItOn } from './a-request-offered-in-the-check-in';
 import { stillAsking } from './one-question-per-turn';
 import { oneThingAsked, wouldLeaveAQuestionOut, asksMoreThanOneThing, withTheOneMoreLine, ASK_ONE_THING } from './a-turn-asks-one-thing';
 import { A_CHECK_IN_TAKES_ANSWERS, theCeilingIsReached, howMuchRoomIsLeft } from './there-is-a-ceiling-and-it-is-not-a-surprise';
@@ -2805,7 +2805,15 @@ export class ConversationService {
     // is in your record" where the list wanted "here is what is NOW in your
     // record". No phrase list is ever complete, so the model says it outright
     // instead. Costs nothing: it rides on the reply it was already generating.
-    const signalled = hadCloseMarker || this.closesInOtherWords(reply, message);
+    /* A yes or a no to an offer of a request that is waiting is never the person saying they are done (known issue B12). */
+    const answeringAnOffer = await theyAreAnsweringAnOffer(this.prisma, {
+      groundId: checkIn.groundId,
+      startedFrom: (checkIn as any).ground?.startedFrom
+        ?? (await (this.prisma as any).ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { startedFrom: true } })?.catch?.(() => null))?.startedFrom ?? null,
+      participantId: (checkIn as any).participantId ?? null,
+      message,
+    });
+    const signalled = !answeringAnOffer && (hadCloseMarker || this.closesInOtherWords(reply, message));
     const close: { ready: boolean; ask?: string; sayFirst?: string; nextStep?: { isLead: boolean; personSaid: string[] } } = signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : { ready: false };
     /* A close on an apology says, first, that none was owed. See an-apology-is-not-owed. */
     if (close.ready && !close.ask && isAnApology(message)) close.sayFirst = NOTHING_TO_APOLOGISE_FOR;
@@ -3020,6 +3028,14 @@ export class ConversationService {
       if (taken.cut.length) {
         this.logger?.warn?.(`Check-in ${checkIn.id}: took off what contradicts the request offer: ${JSON.stringify(taken.cut)}`);
         answer.reply = taken.text;
+      }
+    }
+    /* In an anchor check-in with no offer or form on the reply, no promise to pass a request on: nothing here does (known issue B12). */
+    if (startedFrom === STARTED_FROM_THE_ANCHOR && !request.requestOffer && !request.openTheRequest) {
+      const kept = withoutAPromiseToPassItOn(answer.reply);
+      if (kept.cut.length) {
+        this.logger?.warn?.(`Check-in ${checkIn.id}: took off a promise to pass a request on: ${JSON.stringify(kept.cut)}`);
+        if (kept.text) answer.reply = kept.text;
       }
     }
     if (request.sayFirst) answer.reply = [request.sayFirst, answer.reply].filter(Boolean).join('\n\n');
