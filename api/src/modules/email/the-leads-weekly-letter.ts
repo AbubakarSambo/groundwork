@@ -1,5 +1,5 @@
 import { CheckInStatus, GroundStatus } from '@prisma/client';
-import { nameToCall } from '../engagement/a-name-to-call-them';
+import { nameToCall, aNameToList } from '../engagement/a-name-to-call-them';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
@@ -112,9 +112,12 @@ export function theWeekInSentences(w: AWeekInOneCheckIn): string[] {
   const waiting = theWaitingSentence(w);
   if (waiting) out.push(`${waiting}.`);
   if (w.checkedIn > 0 && w.notYet.length) {
-    const named = w.notYet.slice(0, w.notYet.length > 3 ? 2 : 3);
+    /* Somebody with no name is counted with the others, never listed as "Someone". */
+    const named = w.notYet.filter(aNameToList).slice(0, w.notYet.length > 3 ? 2 : 3);
     const others = w.notYet.length - named.length;
-    const who = listed(others > 0 ? [...named, others === 1 ? 'one other person' : `${aNumber(others)} others`] : named);
+    const who = !named.length
+      ? (others === 1 ? 'someone' : `${aNumber(others)} people`)
+      : listed(others > 0 ? [...named, others === 1 ? 'one other person' : `${aNumber(others)} others`] : named);
     out.push(`${capital(who)} did not check in.`);
   }
   return out;
@@ -153,7 +156,7 @@ const WEEK = 7 * 86_400_000;
 export async function theWeekOf(prisma: any, g: { id: string; label: string; initiatorId: string }, now: Date): Promise<AWeekInOneCheckIn> {
   const since = new Date(now.getTime() - WEEK);
   const [people, finished, saidNext, done, waiting, doneRows, waitingRows] = await Promise.all([
-    prisma.groundParticipant.findMany({ where: { groundId: g.id }, select: { id: true, userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, email: true, awaitingOrgApproval: true } } } }),
+    prisma.groundParticipant.findMany({ where: { groundId: g.id }, select: { id: true, userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } }),
     prisma.checkIn.findMany({ where: { groundId: g.id, status: CheckInStatus.COMPLETED, completedAt: { gte: since, lte: now } }, select: { participantId: true } }),
     prisma.groundCommitment.findMany({ where: { groundId: g.id, participantId: { not: null }, createdAt: { gte: since, lte: now } }, select: { participantId: true } }),
     prisma.groundCommitment.count({ where: { groundId: g.id, status: 'DONE', settledAt: { gte: since, lte: now } } }),

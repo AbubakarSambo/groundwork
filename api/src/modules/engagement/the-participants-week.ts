@@ -1,6 +1,6 @@
 import { GroundStatus } from '@prisma/client';
 import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
-import { nameToCall } from './a-name-to-call-them';
+import { nameToCall, aNameToList } from './a-name-to-call-them';
 import { aNumberInWords } from './a-number-in-words';
 import { theEngagementMoment } from './the-engagement-release-moment';
 import { thereIsASessionToCome } from './heres-what-is-new';
@@ -112,7 +112,7 @@ export async function sendTheParticipantsWeeks(
          person who is somebody the check-in lets them see (peers visible), or in their own words for it. */
       const waits: any[] = await prisma.groundDependency.findMany({
         where: { fromParticipantId: { in: mine.participantIds }, status: { in: ['WAITING', 'BLOCKING'] }, clearedAt: null },
-        select: { what: true, onLabel: true, ground: { select: { label: true, peersVisibleToEachOther: true } }, onParticipant: { select: { nameGiven: true, user: { select: { firstName: true } } } } },
+        select: { what: true, onLabel: true, ground: { select: { label: true, peersVisibleToEachOther: true } }, onParticipant: { select: { nameGiven: true, user: { select: { firstName: true, lastName: true } } } } },
         orderBy: { createdAt: 'asc' },
       });
       /* What they kept, only from check-ins still going: their own settled commitments there, in the last four weeks. */
@@ -126,7 +126,7 @@ export async function sendTheParticipantsWeeks(
         open: own.open.filter((s) => inOpen(s.checkIn)).map((s) => s.text),
         waitingOn: waits.filter((d) => inOpen(d.ground?.label)).filter((d) => !!d.what?.trim()).map((d) => ({
           what: d.what,
-          from: d.onLabel?.trim() || (d.ground?.peersVisibleToEachOther !== false ? (d.onParticipant ? nameToCall(d.onParticipant) : null) : null),
+          from: d.onLabel?.trim() || (d.ground?.peersVisibleToEachOther !== false ? (d.onParticipant && aNameToList(nameToCall(d.onParticipant)) ? nameToCall(d.onParticipant) : null) : null),
         })),
         waitingOnYou: own.askedOfYou.filter((i) => inOpen(i.checkIn)),
       };

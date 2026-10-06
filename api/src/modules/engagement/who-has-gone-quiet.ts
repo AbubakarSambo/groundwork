@@ -2,7 +2,7 @@ import { CheckInStatus, GroundStatus } from '@prisma/client';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
 import { theEngagementMoment } from './the-engagement-release-moment';
-import { nameToCall } from './a-name-to-call-them';
+import { nameToCall, namesWithTheRestCounted } from './a-name-to-call-them';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 import { whoOnACheckInIsAway } from '../suites/who-is-away';
 import { aNumberInWords } from './a-number-in-words';
@@ -42,7 +42,7 @@ export const quietIn = (c: AQuietCheckIn) => c.neverAnswered + c.stoppedAfterAns
 function theKinds(c: AQuietCheckIn): string {
   const parts: string[] = [];
   if (c.neverAnswered > 0) parts.push(`${aNumberInWords(c.neverAnswered)} ${c.neverAnswered === 1 ? 'has' : 'have'} never answered`);
-  if (c.stoppedAfterAnswering.length > 0) parts.push(`${listed(c.stoppedAfterAnswering)} answered before and ${c.stoppedAfterAnswering.length === 1 ? 'has' : 'have'} not answered since`);
+  if (c.stoppedAfterAnswering.length > 0) parts.push(`${listed(namesWithTheRestCounted(c.stoppedAfterAnswering, aNumberInWords))} answered before and ${c.stoppedAfterAnswering.length === 1 ? 'has' : 'have'} not answered since`);
   return parts.join(', and ');
 }
 
@@ -79,7 +79,9 @@ export function theAcrossWords(firstName: string | null | undefined, cs: AQuietC
       : `${capital(aNumberInWords(total))} people have not answered the latest check-in across ${aNumberInWords(quiet.length)} of your check-ins`,
     lines: [
       one
-        ? `Hello ${firstName?.trim() || 'there'}. ${capital(aNumberInWords(total))} of the ${aNumberInWords(one.ofHowMany)} people in "${one.label}" ${total === 1 ? 'has' : 'have'} not answered the latest check-in.`
+        ? (one.ofHowMany === 1
+          ? `Hello ${firstName?.trim() || 'there'}. The one person in "${one.label}" has not answered the latest check-in.`
+          : `Hello ${firstName?.trim() || 'there'}. ${capital(aNumberInWords(total))} of the ${aNumberInWords(one.ofHowMany)} people in "${one.label}" ${total === 1 ? 'has' : 'have'} not answered the latest check-in.`)
         : `Hello ${firstName?.trim() || 'there'}. ${capital(aNumberInWords(total))} people have not answered the latest check-in, across ${aNumberInWords(quiet.length)} of your check-ins.`,
       /* One check-in is named once, in the subject and the first line, not again in every sentence. */
       ...quiet.map((c) => (one ? `${capital(theKinds(c))}.` : `In "${c.label}", ${theKinds(c)}.`)),
@@ -139,7 +141,7 @@ export async function sendWhoHasGoneQuiet(
       for (const g of theirs) {
         const rows: any[] = await prisma.checkIn.findMany({
           where: { groundId: g.id },
-          select: { participantId: true, sessionNumber: true, status: true, createdAt: true, participant: { select: { userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, email: true, awaitingOrgApproval: true } } } } },
+          select: { participantId: true, sessionNumber: true, status: true, createdAt: true, participant: { select: { userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } } },
         });
         /* Somebody on approved leave is not one who has gone quiet. */
         const away = await Promise.resolve(whoOnACheckInIsAway(prisma, g.id, now)).catch(() => new Map());

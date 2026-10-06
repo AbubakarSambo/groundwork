@@ -59,7 +59,7 @@ describe('eight mornings with nothing new', () => {
     d.setAnswers(d.omarIn);
     for (let n = 4; n < 8; n++) await d.morning(n);
     expect(d.sent).toHaveLength(2);
-    expect(d.sent[1]).toContain('one of two people have checked in'.replace('one of two people have', '1 of 2 people have'));
+    expect(d.sent[1]).toContain('1 of 2 people has checked in');
     expect(d.sent[0]).not.toBe(d.sent[1]);
   });
 

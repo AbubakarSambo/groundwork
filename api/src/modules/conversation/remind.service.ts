@@ -281,6 +281,7 @@ export class RemindService {
             email: true,
             userId: true,
             lastNudgedAt: true,
+            nameGiven: true,
             user: { select: { firstName: true, lastName: true, emailNotifications: true, isActive: true, deletedAt: true } },
           },
         },
@@ -350,7 +351,7 @@ export class RemindService {
           if (participant.userId && participant.userId === (checkIn.ground as any).initiatorId) {
             entry.leadIsOpenToo = true;
           } else {
-            const named = nameToCall({ user: participant.user as any, email: participant.email });
+            const named = nameToCall({ user: participant.user as any, nameGiven: (participant as any).nameGiven });
             if (!entry.whoEmails.includes(participant.email)) { entry.who.push(named); entry.whoEmails.push(participant.email); entry.whoNudgedAt.push(participant.lastNudgedAt ?? null); }
           }
           entry.checkInIds.push(checkIn.id);

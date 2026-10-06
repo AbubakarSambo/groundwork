@@ -1,4 +1,4 @@
-import { nameToCall } from '../engagement/a-name-to-call-them';
+import { nameToCall, aNameToList } from '../engagement/a-name-to-call-them';
 import { createHash } from 'crypto';
 import { CheckInStatus, GroundStatus } from '@prisma/client';
 import type { PrismaService } from '../prisma/prisma.service';
@@ -72,7 +72,7 @@ export function aCheckInInASentence(c: ACheckInToday): string | null {
   const waitingOn = named.length
     ? `, and ${listed(others > 0 ? [...named, others === 1 ? 'one other person' : `${others} others`] : named)} ${missing === 1 && !named.includes('you') ? 'has' : 'have'} not yet`
     : '';
-  return `${where}, ${c.answered} of ${c.ofHowMany} people have checked in${waitingOn}.`;
+  return `${where}, ${c.answered} of ${c.ofHowMany} people ${c.answered === 1 ? 'has' : 'have'} checked in${waitingOn}.`;
 }
 
 /** What waits for the lead to decide, in one sentence. Null when nothing does. */
@@ -184,7 +184,7 @@ async function theOpenSession(prisma: PrismaService, groundId: string, now: Date
     where: { groundId, OR: [{ availableFrom: null }, { availableFrom: { lte: now } }] },
     select: {
       status: true, sessionNumber: true, completedAt: true,
-      participant: { select: { userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, email: true, awaitingOrgApproval: true } } } },
+      participant: { select: { userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } },
     },
   });
   if (!rows.length) return null;
@@ -197,7 +197,7 @@ async function theOpenSession(prisma: PrismaService, groundId: string, now: Date
     .filter((r) => r.status !== CheckInStatus.COMPLETED)
     /* The lead is one of the people who can answer, and she is "you" to herself, never her own name in the third person. */
     .map((r) => (r.participant?.userId && r.participant.userId === leadUserId ? 'you' : nameToCall(r.participant as any)))
-    .filter((n: string) => !!n)
+    .filter(aNameToList)
     .sort((a: string, b: string) => (a === 'you' ? -1 : b === 'you' ? 1 : 0));
   const times = done.map((r) => r.completedAt).filter((t: unknown): t is Date => t instanceof Date);
   /* An answer with no time recorded is not evidence that anything happened since the last summary. */

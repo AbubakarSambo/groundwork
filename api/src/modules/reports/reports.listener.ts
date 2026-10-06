@@ -219,7 +219,8 @@ export class ReportsListener {
     const who = ground.participants.find((p) => p.id === event.participantId);
     const participantEmail = who?.user?.email;
     if (!participantEmail || participantEmail === ground.initiator.email) return;
-    const participantName = [who?.user?.firstName, who?.user?.lastName].filter((x) => x?.trim()).join(' ').trim() || participantEmail;
+    /* Never the address in place of a name (Hafsah, 6 October). */
+    const participantName = [who?.user?.firstName, who?.user?.lastName].filter((x) => x?.trim() && !x.includes('@')).join(' ').trim() || nameToCall({ user: who?.user as any });
     /* Counted now, and without the person who just checked in, the lead reading this, and anybody not expected (who-has-not-checked-in-yet.ts). */
     const stillPending = whoIsLeftToCheckIn(ground.participants as any, { justCheckedIn: event.participantId, readerEmail: ground.initiator.email });
 
