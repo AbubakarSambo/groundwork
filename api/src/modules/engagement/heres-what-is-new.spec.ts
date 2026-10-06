@@ -85,6 +85,13 @@ describe('the follow-up line is only said where it is true', () => {
   });
 });
 
+describe('a check-in left open that has nothing more to come', () => {
+  it('is never mentioned, and a lead with only that gets nothing', async () => {
+    const dead = [{ id: 'g1', label: 'Old pilot', initiatorId: 'u-w', runsUntilEnded: false, endsAt: new Date('2026-09-15T00:00:00Z'), createdAt: new Date('2026-06-01T00:00:00Z'), timelineDays: 30 }];
+    expect(await world({ grounds: dead }).run()).toEqual({ tried: 0 });
+  });
+});
+
 describe('who is not written to', () => {
   it('a lead who has had it', async () => { expect(await world({ had: true }).run()).toEqual({ tried: 0 }); });
   it('a lead with no check-in made before the release and still going', async () => { expect(await world({ grounds: [] }).run()).toEqual({ tried: 0 }); });

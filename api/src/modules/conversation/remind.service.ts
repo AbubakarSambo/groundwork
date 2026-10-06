@@ -8,6 +8,8 @@ import { EmailService } from '../email/email.service';
 import { CheckInStatus } from '@prisma/client';
 import { worthNudging, whatToSendThem } from './who-is-worth-nudging';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
+import { theEngagementMoment } from '../engagement/the-engagement-release-moment';
+import { hasBeenToldOnce, nowToldOnce, isAlreadyHeld } from '../engagement/a-message-sent-once';
 import { nobodyElseIsIn, theLeadsFirstWords } from '../engagement/the-leads-own-first-check-in';
 import { theNudgeLineFor } from '../engagement/a-follow-up-from-their-own-record';
 import { WorkspaceNotifierService } from '../workspace/workspace-notifier.service';
@@ -264,6 +266,7 @@ export class RemindService {
             /* For the channel notice: `tell` is scoped to an organisation. */
             organizationId: true,
             initiatorId: true,
+            createdAt: true,
             brief: true,
             chaseAfterDays: true,
             chasingStopped: true,
@@ -375,11 +378,14 @@ export class RemindService {
 
       /* THE LEAD WHO MADE IT AND ADDED NOBODY is not chased as if somebody had invited her (decision 109, journey 1). */
       const isTheLead = !!participant.userId && participant.userId === (checkIn.ground as any).initiatorId;
-      if (isTheLead && nobodyElseIsIn(theRound as any, participant.userId)) {
+      if (isTheLead && nobodyElseIsIn(theRound as any, participant.userId) && (await this.theLeadsFirstMessageIsFor((checkIn.ground as any).createdAt))) {
+        const once = `lead-first:${checkIn.groundId}`;
+        if (await hasBeenToldOnce(this.prisma, once) || await isAlreadyHeld(this.prisma, 'sendLeadFirstCheckIn', participant.email)) continue;
         try {
           const w = theLeadsFirstWords(participant.user?.firstName, checkIn.ground.label, (checkIn.ground as any).brief);
-          await this.email.sendLeadFirstCheckIn(participant.email, w.subject, w.lines, w.linkLabel, `${frontendUrl}/grounds/${checkIn.groundId}`, participant.id);
-          await this.prisma.groundParticipant.update({ where: { id: participant.id }, data: { lastNudgedAt: now } });
+          const went = await this.email.sendLeadFirstCheckIn(participant.email, w.subject, w.lines, w.linkLabel, `${frontendUrl}/grounds/${checkIn.groundId}`, participant.id);
+          if (went === 'sent') await nowToldOnce(this.prisma, once);
+          if (went !== 'suppressed') await this.prisma.groundParticipant.update({ where: { id: participant.id }, data: { lastNudgedAt: now } });
         } catch (err: any) {
           this.logger.error(`The lead's first-check-in message failed for check-in ${checkIn.id}: ${err.message}`);
         }
@@ -495,6 +501,12 @@ export class RemindService {
         this.logger.error(`Telling the lead about "${entry.label}" failed: ${err.message}`);
       }
     }
+  }
+
+  /** Whether a check-in was made after the engagement messages began: an existing check-in keeps the chase it always had (decision 109 item 2). Unreadable means no. */
+  private async theLeadsFirstMessageIsFor(madeAt: Date | null | undefined): Promise<boolean> {
+    if (!madeAt) return false;
+    try { return new Date(madeAt).getTime() >= (await theEngagementMoment(this.prisma)).getTime(); } catch { return false; }
   }
 
   /**

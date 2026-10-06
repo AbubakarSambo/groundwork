@@ -1,5 +1,7 @@
 import { GroundStatus } from '@prisma/client';
 import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
+import { theEngagementMoment } from './the-engagement-release-moment';
+import { thereIsASessionToCome } from './heres-what-is-new';
 import { theOwnWeekOf } from '../grounds/your-board';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 
@@ -65,14 +67,24 @@ export async function sendTheParticipantsWeeks(
   now: Date = new Date(),
 ): Promise<{ tried: number }> {
   const { prisma } = deps;
+  /* WHAT IS REALLY STILL GOING (decision 109 item 2): an answer since the engagement messages began, or a session still to come. A check-in left
+     open that nobody has answered since, and that has nothing more to come, is dead, and is never written about. Unreadable moment: nothing is sent. */
+  let began: Date;
+  try { began = await theEngagementMoment(prisma, now); } catch { return { tried: 0 }; }
   const rows: any[] = await everyRowAPageAtATime((page: any) => prisma.groundParticipant.findMany({
     where: { userId: { not: null }, managingOnly: false, ground: { status: { notIn: TERMINAL } } },
-    select: { id: true, userId: true, ground: { select: { label: true } } },
+    select: {
+      id: true, userId: true,
+      ground: { select: { label: true, runsUntilEnded: true, endsAt: true, timelineDays: true, createdAt: true } },
+      checkIns: { where: { status: 'COMPLETED', completedAt: { gte: began } }, select: { id: true }, take: 1 },
+    },
     orderBy: { id: 'asc' },
     ...page,
   }), 1000);
   const open = new Map<string, { labels: Set<string>; participantIds: string[] }>();
   for (const r of rows) {
+    const stillGoing = (r.checkIns?.length ?? 0) > 0 || thereIsASessionToCome(r.ground, now);
+    if (!stillGoing) continue;
     const o = open.get(r.userId) ?? { labels: new Set<string>(), participantIds: [] };
     o.labels.add(r.ground.label);
     o.participantIds.push(r.id);

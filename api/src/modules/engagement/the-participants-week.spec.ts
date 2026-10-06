@@ -1,5 +1,6 @@
 import { sendTheParticipantsWeeks, theirWeekInWords } from './the-participants-week';
 import { ROUTINE_EMAILS } from './one-routine-message-a-day';
+import { ENGAGEMENT_MOMENT_KEY } from './the-engagement-release-moment';
 import { whatThisMailIs } from '../email/nothing-goes-out-that-was-turned-off';
 
 /**
@@ -28,9 +29,11 @@ const board = (over: any = {}) => ({
 function world(b: any = board(), own: any[] = [{ what: 'The budget from finance', ground: { label: 'Sales team, Q4' } }, { what: 'The retired report', ground: { label: 'Old pilot' } }]) {
   const sent: any[] = [];
   const prisma: any = {
+    platformSetting: { findUnique: async ({ where }: any) => (where.key === ENGAGEMENT_MOMENT_KEY ? { value: { at: '2026-10-01T00:00:00Z' } } : null) },
     groundParticipant: { findMany: async () => [
-      { id: 'p1', userId: 'u-v', ground: { label: 'Sales team, Q4' } },
-      { id: 'p2', userId: 'u-v', ground: { label: 'Kenya launch' } },
+      { id: 'p1', userId: 'u-v', ground: { label: 'Sales team, Q4', runsUntilEnded: true }, checkIns: [] },
+      { id: 'p2', userId: 'u-v', ground: { label: 'Kenya launch', runsUntilEnded: false, endsAt: new Date('2099-01-01'), createdAt: new Date('2026-10-02') }, checkIns: [] },
+      { id: 'p3', userId: 'u-v', ground: { label: 'Dead pilot', runsUntilEnded: false, endsAt: new Date('2026-09-01'), createdAt: new Date('2026-06-01') }, checkIns: [] },
     ] },
     user: { findUnique: async () => ({ email: 'vera@x.test', firstName: 'Vera', role: 'MEMBER', organizationId: 'o1', isActive: true, deletedAt: null, awaitingOrgApproval: false }) },
     groundDependency: { findMany: async () => own },
@@ -57,6 +60,11 @@ describe('what Vera reads', () => {
       linkLabel: 'Open your page',
       linkUrl: 'https://app.test/you',
     }]);
+  });
+
+  it('a check-in left open that nobody has answered since and has nothing to come is never written about', async () => {
+    const w = world(board({ saidYoudDo: [{ text: 'Close the dead pilot', checkIn: 'Dead pilot', state: 'open' }], askedOfYou: { items: [{ who: null, what: 'Old thing', checkIn: 'Dead pilot' }] }, keptLately: null }), []);
+    expect(await w.run()).toEqual({ tried: 0 });
   });
 
   it('says "somebody" where the check-in does not let her see who, and nothing from the check-in that stalled', async () => {

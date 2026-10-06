@@ -109,8 +109,10 @@ export async function sendHeresWhatIsNew(
       if (had) continue;
       const stands: AnExistingCheckIn[] = [];
       for (const g of theirs) {
+        /* A check-in left open with nothing more to come is dead, and is never mentioned (decision 109 item 2). */
+        if (!thereIsASessionToCome(g, now)) continue;
         const s = await theOpenSession(prisma, g.id, leadId);
-        if (s) stands.push({ ...s, label: g.label, moreToCome: thereIsASessionToCome(g, now) });
+        if (s) stands.push({ ...s, label: g.label, moreToCome: true });
       }
       if (!stands.length) continue;
       const w = theWhatIsNewWords(user.firstName, stands);
