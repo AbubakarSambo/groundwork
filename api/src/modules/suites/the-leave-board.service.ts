@@ -34,6 +34,13 @@ export const LEAVE_REFUSED = {
 
 export interface Reader { userId: string; organizationId: string }
 
+/**
+ * HOW A DECISION IS ANSWERED, FOR MANY IN A ROW (the-decisions-in-a-batch.service.ts). `lean`: give nothing back, because the caller
+ * says what happened for each; `collect`: whoever decides the next step is not told now but gathered, and told once for all that
+ * arrive together.
+ */
+export interface ADecisionHow { lean?: boolean; collect?: { approverUserIds: string[]; request: AWaitingRequest }[] }
+
 /** One request passed on because it waited too long, or its approver was away. */
 export interface PassedOn { ref: string; step: number; from: WhoDecides; to: WhoDecides; why: WhyPassedOn }
 
@@ -410,7 +417,7 @@ export class LeaveBoardService {
    * not the last moves it to the next step, and whoever decides that one is told; only the last step's
    * approval, or a decline at any step, ends it, and then the person who asked is told.
    */
-  async decide(reader: Reader, id: string, outcome: 'approved' | 'declined', reasonGiven?: unknown) {
+  async decide(reader: Reader, id: string, outcome: 'approved' | 'declined', reasonGiven?: unknown, how: ADecisionHow = {}) {
     /* A reason may go with a decline (decision 85, build step 7), and is told to the person. */
     const reason = outcome === 'declined' ? wordsGiven(reasonGiven) : null;
     if (reason === 'too long') throw new BadRequestException(QUESTION_REFUSED.tooLong);
@@ -440,8 +447,8 @@ export class LeaveBoardService {
         }
         await decided();
         await this.recordPassed(row, moved.passed);
-        await this.tellWhoDecides(next, people, answers);
-        return this.board(reader);
+        await this.tellWhoDecides(next, people, answers, {}, how.collect);
+        return (how.lean ? undefined : await this.board(reader)) as Awaited<ReturnType<LeaveBoardService['board']>>;
       }
       passed = moved.passed;
     }
@@ -449,7 +456,7 @@ export class LeaveBoardService {
     await decided();
     await this.recordPassed(row, passed);
     await this.afterTheEnd(row, outcome, reader.userId, answers, reason);
-    return this.board(reader);
+    return (how.lean ? undefined : await this.board(reader)) as Awaited<ReturnType<LeaveBoardService['board']>>;
   }
 
   /** It ends: approved at the last step, or declined at any. False when somebody answered it first. */

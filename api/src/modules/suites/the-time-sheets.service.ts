@@ -206,7 +206,7 @@ export class TimeSheetsService {
    * the last, the week moves to the next step and whoever approves that one is told; the last step's
    * approval ends it, and then the person is told. Hours cannot be declined.
    */
-  async approve(reader: Reader, personId: string, weekOf: Day, today = new Date()) {
+  async approve(reader: Reader, personId: string, weekOf: Day, today = new Date(), how: { lean?: boolean } = {}) {
     const answers = await this.suiteAnswers(reader.organizationId);
     const role = await this.roleOf(reader);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(weekOf ?? '')) throw new BadRequestException(TIME_REFUSED.nothingToApprove);
@@ -237,7 +237,7 @@ export class TimeSheetsService {
         await decided();
         await this.recordPassed(reader.organizationId, personId, monday, moved.passed, total);
         await this.tellWhoApproves(reader.organizationId, personId, monday, entries as Entry[], { ...next, approved: false });
-        return this.board(reader, today);
+        return (how.lean ? undefined : await this.board(reader, today)) as Awaited<ReturnType<TimeSheetsService['board']>>;
       }
       lastStep = moved.where.step;
       passed = moved.passed;
@@ -246,7 +246,7 @@ export class TimeSheetsService {
     await decided();
     await this.recordPassed(reader.organizationId, personId, monday, passed, total);
     await this.tellThePerson(reader.organizationId, personId, monday, entries as Entry[], reader.userId);
-    return this.board(reader, today);
+    return (how.lean ? undefined : await this.board(reader, today)) as Awaited<ReturnType<TimeSheetsService['board']>>;
   }
 
   /**

@@ -13,6 +13,7 @@ import { RoleMapService } from './the-role-map.service';
 import { SpendingService } from './the-spending.service';
 import { SpendingForFinanceService } from './the-spending-for-finance.service';
 import { ApprovalsQueueService } from './the-approvals-queue.service';
+import { DecisionsInABatchService } from './the-decisions-in-a-batch.service';
 import { ARequestFiledFromItsForm } from './a-request-filed-from-its-form';
 import { TodosService } from './the-todos.service';
 import { CustomersService } from './the-customers.service';
@@ -21,6 +22,10 @@ import { EquipmentService } from './the-equipment.service';
 class SwitchDto {
   @IsBoolean() on!: boolean;
   @IsOptional() @IsObject() answers?: Record<string, unknown>;
+}
+
+class DecisionsDto {
+  @IsArray() decisions!: unknown[];
 }
 
 class WordsDto {
@@ -161,6 +166,7 @@ export class SuitesController {
     private readonly finance: SpendingForFinanceService,
     private readonly filed: ARequestFiledFromItsForm,
     private readonly queue: ApprovalsQueueService,
+    private readonly batch: DecisionsInABatchService,
   ) {}
 
   @Get()
@@ -179,6 +185,12 @@ export class SuitesController {
   @ApiOperation({ summary: 'Everything that waits for you to approve or decline, leave and spending together, oldest first, a page at a time, with the counts of the whole of it. Only what waits for you.' })
   theQueue(@CurrentUser() user: CurrentUserData, @Query('page') page?: string, @Query('pageSize') pageSize?: string, @Query('suite') suite?: string) {
     return this.queue.queue({ userId: user.id, organizationId: user.organizationId }, { page, pageSize, suite });
+  }
+
+  @Post('decisions')
+  @ApiOperation({ summary: 'Answer up to 50 requests in one call: { decisions: [{ suite: leave|spend|hours, id, answer: approve|decline, reason? }] }. Each is checked exactly as its own route checks it, and each gets its own result; one that fails never stops the others.' })
+  decisions(@CurrentUser() user: CurrentUserData, @Body() dto: DecisionsDto) {
+    return this.batch.decide({ userId: user.id, organizationId: user.organizationId }, dto);
   }
 
   @Get('leave/board')

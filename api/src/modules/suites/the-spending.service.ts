@@ -10,7 +10,7 @@ import { whyPassOn } from './a-request-waits-too-long';
 import { aRequestsHistory, recordIt, saidAsADate } from './a-request-is-recorded';
 import { claimIt, theyGotThereFirst, whereItIsNow } from './a-request-is-answered-once';
 import { readDuties } from './who-holds-each-duty';
-import type { PassedOn } from './the-leave-board.service';
+import type { ADecisionHow, PassedOn } from './the-leave-board.service';
 import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
 import { LEAVE_QUESTION_KIND, QUESTION_REFUSED, aQuestionSaid, aReasonSaid, wordsGiven, type AQuestion } from './a-question-about-a-request';
 import { aSpendRequest, spendInWords, type AWaitingRequest, whereItIsOnTheBoard, whereYourRequestIs, type WhereItStands } from './a-request-in-words';
@@ -246,7 +246,7 @@ export class SpendingService {
    * that is not the last moves it to the next step, and whoever decides that one is told; only the last
    * step's yes, or a no at any step, ends it, and then the person who asked is told.
    */
-  async decide(reader: Reader, id: string, outcome: 'approved' | 'declined', today = new Date(), reasonGiven?: unknown) {
+  async decide(reader: Reader, id: string, outcome: 'approved' | 'declined', today = new Date(), reasonGiven?: unknown, how: ADecisionHow = {}) {
     /* A reason may go with a decline (build step 9, as leave has), and is told to the person. */
     const reason = outcome === 'declined' ? wordsGiven(reasonGiven) : null;
     if (reason === 'too long') throw new BadRequestException(QUESTION_REFUSED.tooLong);
@@ -274,8 +274,8 @@ export class SpendingService {
         }
         await decided();
         await this.recordPassed(r, moved.passed);
-        await this.tellWhoDecides(next, answers);
-        return this.board(reader, today);
+        await this.tellWhoDecides(next, answers, {}, how.collect);
+        return (how.lean ? undefined : await this.board(reader, today)) as Awaited<ReturnType<SpendingService['board']>>;
       }
       passed = moved.passed;
     }
@@ -283,7 +283,7 @@ export class SpendingService {
     await decided();
     await this.recordPassed(r, passed);
     await this.afterTheEnd(r, outcome, reader.userId, answers, reason);
-    return this.board(reader, today);
+    return (how.lean ? undefined : await this.board(reader, today)) as Awaited<ReturnType<SpendingService['board']>>;
   }
 
   /** It ends: approved at the last step, or declined at any. False when somebody answered it first. */
