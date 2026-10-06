@@ -78,6 +78,12 @@ const lowerFirst = (s: string) => `${s.charAt(0).toLowerCase()}${s.slice(1)}`;
  * fact is wholly about them (they closed all of them; all of them wait on them), so a name never reads as the best or worst of several. Nobody is
  * called ahead or behind. The body says the same two facts in the same words.
  */
+/** The two facts of a week as one phrase, or null where neither holds. Used by the weekly letter and by the report-ready notice to the lead. */
+export function theFactsOfTheWeek(w: AWeekInOneCheckIn): string | null {
+  const facts = [theDoneSentence(w), theWaitingSentence(w)].filter((x): x is string => !!x);
+  return facts.length ? facts.map((f, i) => (i ? lowerFirst(f) : f)).join('; ') : null;
+}
+
 export function theSubjectFor(weeks: AWeekInOneCheckIn[]): string {
   const counted = weeks.filter((w) => w.ofHowMany > 0);
   if (counted.length !== 1) {

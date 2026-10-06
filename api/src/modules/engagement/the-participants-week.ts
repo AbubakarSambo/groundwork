@@ -1,5 +1,6 @@
 import { GroundStatus } from '@prisma/client';
 import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
+import { theOwnWeekOf } from '../grounds/your-board';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 
 /**
@@ -86,16 +87,17 @@ export async function sendTheParticipantsWeeks(
       const board = await deps.board.forReader({ userId, email: user.email, organizationId: user.organizationId, role: user.role });
       const inOpen = (label: string) => mine.labels.has(label);
       /* What they are waiting on: their own handoffs, in their own words, in check-ins still going. */
-      const own: any[] = await prisma.groundDependency.findMany({
+      const waits: any[] = await prisma.groundDependency.findMany({
         where: { fromParticipantId: { in: mine.participantIds }, status: { in: ['WAITING', 'BLOCKING'] }, clearedAt: null },
         select: { what: true, ground: { select: { label: true } } },
         orderBy: { createdAt: 'asc' },
       });
+      const own = theOwnWeekOf(board);
       const week: TheirWeek = {
-        kept: board?.keptLately ? { kept: board.keptLately.kept, of: board.keptLately.of } : null,
-        open: (board?.saidYoudDo ?? []).filter((s: any) => s.state === 'open' && inOpen(s.checkIn)).map((s: any) => s.text),
-        waitingOn: own.filter((d) => inOpen(d.ground?.label)).map((d) => d.what).filter((t: string) => !!t?.trim()),
-        waitingOnYou: (board?.askedOfYou?.items ?? []).filter((i: any) => inOpen(i.checkIn)).map((i: any) => ({ who: i.who ?? null, what: i.what, checkIn: i.checkIn })),
+        kept: own.kept,
+        open: own.open.filter((s) => inOpen(s.checkIn)).map((s) => s.text),
+        waitingOn: waits.filter((d) => inOpen(d.ground?.label)).map((d) => d.what).filter((t: string) => !!t?.trim()),
+        waitingOnYou: own.askedOfYou.filter((i) => inOpen(i.checkIn)),
       };
       const words = theirWeekInWords(user.firstName, week);
       if (!words) continue;

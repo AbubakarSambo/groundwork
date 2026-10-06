@@ -19,7 +19,8 @@ describe('the report-ready mail', () => {
     expect(tell).toMatch(/p\.user\?\.passwordHash \|\| !p\.inviteToken\s*\? `\$\{frontend\}\/grounds\/\$\{groundId\}\/session\/\$\{sessionNumber\}`\s*: `\$\{frontend\}\/invite\?token=\$\{p\.inviteToken\}&next=\$\{encodeURIComponent\(`\/grounds\/\$\{groundId\}\/session\/\$\{sessionNumber\}`\)\}`/);
     /* Decision 53 (29 September 2026) added a fourth argument: the sentence naming who shared the
        report, when it was not the lead - see who-shared-it-because-the-lead-left.ts. */
-    expect(tell).toMatch(/sendReportReady\(p\.email, ground\.label, linkFor\(p\), sharedByAnAdminSentence, ground\.id\)/);
+    /* Changed under decision 109: the call also carries the subject, a fact about who checked in (theReportReadySubject). */
+    expect(tell).toMatch(/sendReportReady\(p\.email, ground\.label, linkFor\(p\), sharedByAnAdminSentence, ground\.id, await this\.theReportReadySubject\(ground, p\)/);
     /* And release() sends through it, not on its own. */
     const release = reports.slice(reports.indexOf('async release('), reports.indexOf('async tellThemTheReportIsReady('));
     expect(release).toContain('await this.tellThemTheReportIsReady(groundId, roundNow, undefined, sharedBecauseLeadLeft?.sentence)');

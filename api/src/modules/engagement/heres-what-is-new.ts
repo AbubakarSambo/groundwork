@@ -66,7 +66,7 @@ export function theWhatIsNewWords(firstName: string | null | undefined, checkIns
   return { subject, lines, linkLabel: 'See your check-ins' };
 }
 
-async function theOpenSession(prisma: any, groundId: string, leadUserId: string): Promise<AnExistingCheckIn | null> {
+export async function theOpenSession(prisma: any, groundId: string, leadUserId: string): Promise<AnExistingCheckIn | null> {
   const rows: any[] = await prisma.checkIn.findMany({
     where: { groundId },
     select: { status: true, sessionNumber: true, participant: { select: { userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, awaitingOrgApproval: true } } } } },

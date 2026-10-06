@@ -29,6 +29,8 @@ import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check
 import { sendHeresWhatIsNew as sendHeresWhatIsNewToLeads } from '../engagement/heres-what-is-new';
 import { sendTheParticipantsWeeks } from '../engagement/the-participants-week';
 import { YourBoardService } from './your-board.service';
+import { theOpenSession } from '../engagement/heres-what-is-new';
+import { theRanOutOfTimeSubject } from '../engagement/the-leads-subjects-carry-the-facts';
 import { sendTheTestCheckInMessages } from '../engagement/a-test-check-in-moves-on';
 import { theirPromiseToFollowUp } from '../engagement/a-follow-up-from-their-own-record';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
@@ -326,16 +328,19 @@ export class GroundsCron implements OnApplicationBootstrap {
       // GW-06: notify all parties that their ground has stalled.
       const stalledGrounds = await this.prisma.ground.findMany({
         where: { id: { in: staleIds } },
-        select: { id: true, label: true, participants: { select: { id: true, email: true } } },
+        select: { id: true, label: true, initiatorId: true, participants: { select: { id: true, email: true, userId: true } } },
       });
       const frontend = this.config.get<string>('resend.frontendUrl') || '';
       for (const g of stalledGrounds) {
         /* Somebody on approved leave is not told they have let it lapse (week 23). */
         const away = await whoOnACheckInIsAway(this.prisma, g.id);
+        /* WHERE IT STOOD, for the subject (decision 109 item 3): the count for everybody, and to the lead only, who had not checked in. */
+        const stood = await theOpenSession(this.prisma, g.id, (g as any).initiatorId).catch(() => null);
         for (const p of g.participants) {
           if (away.has(p.id)) continue;
+          const subject = theRanOutOfTimeSubject(g.label, stood, !!p.userId && p.userId === (g as any).initiatorId);
           await this.email
-            .sendStalledNotification(p.email, g.label, `${frontend}/grounds/${g.id}`)
+            .sendStalledNotification(p.email, g.label, `${frontend}/grounds/${g.id}`, subject)
             .catch((err: any) => this.logger.error(`Stalled notification failed for ground ${g.id}: ${err.message}`));
         }
       }

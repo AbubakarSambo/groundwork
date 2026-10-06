@@ -1213,12 +1213,12 @@ export class EmailService implements OnModuleInit {
    * reports/who-shared-it-because-the-lead-left.ts, which builds the sentence. Null in the
    * ordinary case, where the lead released it themselves and nothing extra is said.
    */
-  async sendReportReady(email: string, groundLabel: string, reportUrl: string, sharedByAnAdminSentence?: string, groundId?: string): Promise<void> {
+  async sendReportReady(email: string, groundLabel: string, reportUrl: string, sharedByAnAdminSentence?: string, groundId?: string, subjectLine?: string): Promise<void> {
     /* Who can see what people said, as the invitation says it (whoSeesWhatYouSay): not "it does not quote anybody", which is not true. */
     const whoSees = await this.whoSeesWhatYouSay(groundId ? { groundId } as DeliveryContext : undefined);
     await this.sendEmail({
       to: email,
-      subject: `The shared picture for ${groundLabel} is ready`,
+      subject: subjectLine ?? `The shared picture for ${groundLabel} is ready`,
       /*
        * WHAT GROUNDWORK IS, AND WHO CAN SEE THIS.
        *
@@ -1428,10 +1428,10 @@ export class EmailService implements OnModuleInit {
    *
    * There is one now, it belongs to whoever runs the check-in, and this says so.
    */
-  async sendStalledNotification(email: string, groundLabel: string, groundUrl: string): Promise<void> {
+  async sendStalledNotification(email: string, groundLabel: string, groundUrl: string, subjectLine?: string): Promise<void> {
     await this.sendEmail({
       to: email,
-      subject: `"${groundLabel}" ran out of time`,
+      subject: subjectLine ?? `"${groundLabel}" ran out of time`,
       html: this.layout(
         `<p>The check-in <strong>${escapeHtml(groundLabel)}</strong> has passed the time it was given, so nothing can be added to it right now.</p>
          <p>Everything already answered is kept, exactly as it is. Whoever runs this check-in can give it more time, and it opens again from where it left off.</p>

@@ -1,3 +1,6 @@
+import { theOpenSession } from '../engagement/heres-what-is-new';
+import { theSharedPictureSubject } from '../engagement/the-leads-subjects-carry-the-facts';
+import { theFactsOfTheWeek, theWeekOf } from '../email/the-leads-weekly-letter';
 import { theRecordsClock, theDayItBegan, wholeDaysTo } from '../board/a-wait-is-dated-not-counted';
 import { THE_REPORT_IN_SIMPLER_WORDS } from '../grounds/what-is-sent-in-simpler-words';
 import { aWaitOnOneself } from '../board/a-thing-is-not-somebody';
@@ -5141,6 +5144,18 @@ happened, and what is in the way.`;
   }
 
   /**
+   * THE SUBJECT OF THE REPORT-READY NOTICE, AS A FACT (decision 109 item 3). Everybody is told how many people checked in; the lead is told the week's
+   * two facts (what was done and by whom, what waits and on whom) where there are any, as facts and never comparisons. Counts and first names only:
+   * nothing anybody said, and nothing from the report itself.
+   */
+  private async theReportReadySubject(ground: { id: string; label: string; initiatorId: string }, p: { userId: string | null }): Promise<string | undefined> {
+    const stood = await theOpenSession(this.prisma, ground.id, ground.initiatorId);
+    const isTheLead = !!p.userId && p.userId === ground.initiatorId;
+    const facts = isTheLead ? theFactsOfTheWeek(await theWeekOf(this.prisma, ground, new Date())) : null;
+    return theSharedPictureSubject(ground.label, stood, facts);
+  }
+
+  /**
    * TELL EACH PERSON THIS ROUND'S REPORT IS READY, ONCE, WITH A LINK THAT OPENS IT.
    *
    * Hafsah, 22 Sep 2026, after a live round: "people don't really get a link to the report once they
@@ -5190,7 +5205,7 @@ happened, and what is in the way.`;
       } catch { continue; }
       try {
         if (aStandingUpdate && theOneLine) await this.email.sendTeamUpdateAllIn(p.email, theOneLine, ground.participants.length, linkFor(p), sharedByAnAdminSentence);
-        else await this.email.sendReportReady(p.email, ground.label, linkFor(p), sharedByAnAdminSentence, ground.id);
+        else await this.email.sendReportReady(p.email, ground.label, linkFor(p), sharedByAnAdminSentence, ground.id, await this.theReportReadySubject(ground, p).catch(() => undefined));
       } catch (err: any) {
         failed += 1;
         this.logger.error(`Report-ready mail failed for ${p.email} on ${groundId} round ${sessionNumber}: ${err?.message}`);
