@@ -8,6 +8,7 @@ import { loadLookups, type Lookups } from './the-lookups';
 import { couldBeNamed, decidesIt, everyRuleIn, passWhatTheyAlreadyApproved, theStepsFor, whoComesNext, whoDecidesNow, type APassedStep, type DecidesNow, type WhoDecides } from './who-may-decide';
 import { whyPassOn, type WhyPassedOn } from './a-request-waits-too-long';
 import { aRequestsHistory, recordIt } from './a-request-is-recorded';
+import { claimIt, theyGotThereFirst, whereItIsNow } from './a-request-is-answered-once';
 import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
 import { aLeaveRequest, leaveInWords, whereItIsOnTheBoard, whereYourRequestIs, type WhereItStands } from './a-request-in-words';
 import { firstNamesOf, readWorkflow, whoInWords, type AWorkflow } from './the-approval-steps';
@@ -414,31 +415,53 @@ export class LeaveBoardService {
     if (row.userId === reader.userId || !decidesIt(now.who, { userId: reader.userId, role }, row.userId)) throw new ForbiddenException(LEAVE_REFUSED.notYours);
     if (row.status !== 'waiting') throw new BadRequestException(LEAVE_REFUSED.alreadyDecided);
     const approvedByIds = [...(row.approvedByIds ?? []), ...(outcome === 'approved' ? [reader.userId] : [])];
-    await recordIt(this.prisma, { organizationId: row.organizationId, suite: 'leave', ref: id, kind: outcome, byUserId: reader.userId, step: now.step, basis: { row: 'leave_requests', id, ...(reason ? { withAReason: true } : {}) } });
+    /*
+     * ONE ANSWER WINS (a-request-is-answered-once.ts). What this answer would do is worked out first and nothing is written
+     * or recorded until the write that keeps it has found the request still waiting where it was read.
+     */
+    const here = whereItIsNow(row);
+    const decided = () => recordIt(this.prisma, { organizationId: row.organizationId, suite: 'leave', ref: id, kind: outcome, byUserId: reader.userId, step: now.step, basis: { row: 'leave_requests', id, ...(reason ? { withAReason: true } : {}) } });
+    let passed: APassedStep[] = [];
     if (outcome === 'approved' && !now.last) {
       /* The next step, unless whoever decides it has already approved it: then that step is passed too (who-may-decide.ts). */
-      const moved = await this.passOnFrom(row, people, answers, { step: now.step + 1, escalatedTo: 0 }, approvedByIds);
+      const moved = await this.passOnFrom(row, people, answers, { step: now.step + 1, escalatedTo: 0 }, approvedByIds, false);
       if (!moved.done) {
         const next = { ...row, step: moved.where.step, escalatedTo: moved.where.escalatedTo, stepSince: new Date(), approvedByIds };
-        await this.prisma.leaveRequest.update({ where: { id }, data: { step: next.step, escalatedTo: next.escalatedTo, stepSince: next.stepSince, approvedByIds } });
+        if (!(await claimIt(this.prisma.leaveRequest, here, { step: next.step, escalatedTo: next.escalatedTo, stepSince: next.stepSince, approvedByIds }))) {
+          throw await theyGotThereFirst(this.prisma, this.prisma.leaveRequest, id, reader.userId);
+        }
+        await decided();
+        await this.recordPassed(row, moved.passed);
         await this.tellWhoDecides(next, people, answers);
         return this.board(reader);
       }
+      passed = moved.passed;
     }
-    await this.finish(row, outcome, reader.userId, approvedByIds, answers, reason);
+    if (!(await this.claimTheEnd(row, here, outcome, reader.userId, approvedByIds, reason))) throw await theyGotThereFirst(this.prisma, this.prisma.leaveRequest, id, reader.userId);
+    await decided();
+    await this.recordPassed(row, passed);
+    await this.afterTheEnd(row, outcome, reader.userId, answers, reason);
     return this.board(reader);
   }
 
-  /** It ends: approved at the last step, or declined at any. The person is told, and HR when the admin chose that. */
-  private async finish(row: Row, outcome: 'approved' | 'declined', byUserId: string, approvedByIds: string[], answers: { rules: LeaveRules }, reason?: string | null): Promise<void> {
-    await this.prisma.leaveRequest.update({
-      where: { id: row.id },
-      data: { status: outcome, decidedById: byUserId, decidedAt: new Date(), approvedByIds, ...(reason ? { declineReason: reason } : {}) },
-    });
+  /** It ends: approved at the last step, or declined at any. False when somebody answered it first. */
+  private claimTheEnd(row: Row, here: ReturnType<typeof whereItIsNow>, outcome: 'approved' | 'declined', byUserId: string, approvedByIds: string[], reason?: string | null): Promise<boolean> {
+    return claimIt(this.prisma.leaveRequest, here, { status: outcome, decidedById: byUserId, decidedAt: new Date(), approvedByIds, ...(reason ? { declineReason: reason } : {}) });
+  }
+
+  /** After it ended: the person is told, and HR when the admin chose that. */
+  private async afterTheEnd(row: Row, outcome: 'approved' | 'declined', byUserId: string, answers: { rules: LeaveRules }, reason?: string | null): Promise<void> {
     await this.tellThePerson(row, outcome, byUserId, reason);
     if (outcome === 'approved' && answers.rules.tellHr) await this.recordHrTold(row);
     /* A question still waiting for the person's answer in Ask Groundwork is no longer asked. */
     await this.forgetTheQuestionsInAskGroundwork(row);
+  }
+
+  /** It ends, from the clock: true when this was the answer kept. */
+  private async finish(row: Row, outcome: 'approved' | 'declined', byUserId: string, approvedByIds: string[], answers: { rules: LeaveRules }): Promise<boolean> {
+    if (!(await this.claimTheEnd(row, whereItIsNow(row), outcome, byUserId, approvedByIds))) return false;
+    await this.afterTheEnd(row, outcome, byUserId, answers);
+    return true;
   }
 
   /**
@@ -446,12 +469,12 @@ export class LeaveBoardService {
    * already approved it at an earlier step, with "Omar had already approved it, so this step was
    * passed." kept in the record for each.
    */
-  private async passOnFrom(row: Row, people: Map<string, any>, answers: { approver: string | null; workflow?: AWorkflow; rules?: LeaveRules }, from: { step: number; escalatedTo: number }, approvedByIds: string[]) {
+  private async passOnFrom(row: Row, people: Map<string, any>, answers: { approver: string | null; workflow?: AWorkflow; rules?: LeaveRules }, from: { step: number; escalatedTo: number }, approvedByIds: string[], record = true, shared: { lookups?: Lookups; on?: Date } = {}) {
     const moved = await passWhatTheyAlreadyApproved(this.prisma, theStepsFor('leave', answers, workingDays(row.startsOn, row.endsOn)), {
       organizationId: row.organizationId, requesterUserId: row.userId,
       managerExternalId: people.get(row.userId)?.managerExternalId ?? null, team: people.get(row.userId)?.department ?? null,
-    }, from, approvedByIds);
-    await this.recordPassed(row, moved.passed);
+    }, from, approvedByIds, shared);
+    if (record) await this.recordPassed(row, moved.passed);
     return moved;
   }
 
@@ -562,29 +585,36 @@ export class LeaveBoardService {
     const rows = (await this.prisma.leaveRequest.findMany({ where: { organizationId, status: 'waiting' } })) as (Row & { askedAt?: Date })[];
     if (!rows.length) return [];
     const people = await this.directory(organizationId, rows);
+    /* Who decides each request is worked out in memory from what is read once, for the day the clock is run for. */
+    const shared = { lookups: (await loadLookups(this.prisma, organizationId, today).catch(() => undefined)) as Lookups | undefined, on: today };
     const out: PassedOn[] = [];
     for (const r of rows) {
       const n = await whoComesNext(this.prisma, theStepsFor('leave', answers, workingDays(r.startsOn, r.endsOn)), {
         organizationId, requesterUserId: r.userId,
         managerExternalId: people.get(r.userId)?.managerExternalId ?? null, team: people.get(r.userId)?.department ?? null,
-      }, r);
+      }, r, shared);
       if (!n) continue;
-      const why = await whyPassOn(this.prisma, organizationId, n.now, r.stepSince ?? r.askedAt ?? today, today, answers.workflow.escalateAfter);
+      const why = await whyPassOn(this.prisma, organizationId, n.now, r.stepSince ?? r.askedAt ?? today, today, answers.workflow.escalateAfter, shared.lookups);
       if (!why) continue;
-      await recordIt(this.prisma, {
+      /* Passed to somebody who already approved it at an earlier step: that step is passed for them. */
+      const after = await this.passOnFrom(r, people, answers, { step: n.now.step, escalatedTo: n.next.at }, r.approvedByIds ?? [], false, shared);
+      const escalated = () => recordIt(this.prisma, {
         organizationId, suite: 'leave', ref: r.id, kind: 'escalated', step: n.now.step, toUserId: n.next.who.kind === 'admin' ? null : n.next.who.userId,
         basis: { row: 'leave_requests', id: r.id, fromUserId: n.now.who.kind === 'admin' ? null : n.now.who.userId, ...why },
       });
-      /* Passed to somebody who already approved it at an earlier step: that step is passed for them. */
-      const after = await this.passOnFrom(r, people, answers, { step: n.now.step, escalatedTo: n.next.at }, r.approvedByIds ?? []);
       if (after.done) {
-        await this.finish(r, 'approved', after.passed[after.passed.length - 1].userId, r.approvedByIds ?? [], answers);
+        /* Written only if the request is still waiting where it was read: an answer given a moment ago wins, and the clock passes nothing on. */
+        if (!(await this.finish(r, 'approved', after.passed[after.passed.length - 1].userId, r.approvedByIds ?? [], answers))) continue;
+        await escalated();
+        await this.recordPassed(r, after.passed);
         out.push({ ref: r.id, step: n.now.step, from: n.now.who, to: n.next.who, why });
         continue;
       }
       const moved = { ...r, step: after.where.step, escalatedTo: after.where.escalatedTo, stepSince: today };
-      await this.prisma.leaveRequest.update({ where: { id: r.id }, data: { ...(after.passed.length ? { step: moved.step } : {}), escalatedTo: moved.escalatedTo, stepSince: today } });
-      await this.tellWhoDecides(moved, people, answers);
+      if (!(await claimIt(this.prisma.leaveRequest, whereItIsNow(r), { ...(after.passed.length ? { step: moved.step } : {}), escalatedTo: moved.escalatedTo, stepSince: today }))) continue;
+      await escalated();
+      await this.recordPassed(r, after.passed);
+      await this.tellWhoDecides(moved, people, answers, shared);
       out.push({ ref: r.id, step: n.now.step, from: n.now.who, to: n.next.who, why });
     }
     return out;
@@ -609,11 +639,11 @@ export class LeaveBoardService {
   }
 
   /** Whoever decides the step a request is on is told on WhatsApp (decision 82, item 1). */
-  async tellWhoDecides(row: Row, people?: Map<string, any>, answers?: { perYear: number | null; approver: string | null; workflow?: AWorkflow; rules?: LeaveRules }): Promise<void> {
+  async tellWhoDecides(row: Row, people?: Map<string, any>, answers?: { perYear: number | null; approver: string | null; workflow?: AWorkflow; rules?: LeaveRules }, shared: { lookups?: Lookups; on?: Date } = {}): Promise<void> {
     if (!this.told) return;
     try {
       const a = answers ?? (await this.suiteAnswers(row.organizationId));
-      const now = await this.now(row, people ?? (await this.directory(row.organizationId, [row])), a);
+      const now = await this.now(row, people ?? (await this.directory(row.organizationId, [row])), a, shared);
       const first = await this.told.firstNameOf(row.userId);
       await this.told.waiting(row.organizationId, await this.told.approversOf(row.organizationId, now.who, row.userId), aLeaveRequest(row.id, row.userId, first, dayOf(row.startsOn), dayOf(row.endsOn)));
     } catch { /* the request stands */ }

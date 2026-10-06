@@ -1,6 +1,7 @@
 import type { PrismaService } from '../prisma/prisma.service';
 import { whoIsAwayOn } from './who-is-away';
 import type { DecidesNow } from './who-may-decide';
+import type { Lookups } from './the-lookups';
 
 /**
  * A REQUEST THAT WAITS TOO LONG IS PASSED ON (decision 85; step 4 of the build list in
@@ -41,13 +42,14 @@ export type WhyPassedOn = { because: 'waited'; days: number } | { because: 'away
  * it waits for, or that person is on approved leave today. An admin, as a group, is never "away".
  */
 export async function whyPassOn(
-  prisma: PrismaService, organizationId: string, now: DecidesNow, since: Date, today: Date, escalateAfter: number | undefined,
+  prisma: PrismaService, organizationId: string, now: DecidesNow, since: Date, today: Date, escalateAfter: number | undefined, lookups?: Pick<Lookups, 'away'>,
 ): Promise<WhyPassedOn | null> {
   if (!escalateAfter) return null;
   const waited = workingDaysSince(since, today);
   if (waited >= escalateAfter) return { because: 'waited', days: waited };
   if (now.who.kind !== 'admin') {
-    const away = await whoIsAwayOn(prisma, [now.who.userId], organizationId, today).catch(() => new Map());
+    /* Read once for the whole run when it was (the-lookups.ts), and asked of the database for this one person otherwise. */
+    const away = lookups ? lookups.away : await whoIsAwayOn(prisma, [now.who.userId], organizationId, today).catch(() => new Map());
     if (away.has(now.who.userId)) return { because: 'away' };
   }
   return null;

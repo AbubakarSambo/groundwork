@@ -203,15 +203,16 @@ export function aHundredPeople(opts: Options = {}) {
 
   const queue = new ApprovalsQueueService(prisma);
   const told: { to: string[]; request: any }[] = [];
+  const decided: { request: any; outcome: string; by: string }[] = [];
   const whatsapp: any = {
     approversOf: async (_o: string, who: any) => (who.kind === 'admin' ? [idOf('ceo'), idOf('ops.head')] : [who.userId]),
     firstNameOf: async (id: string) => users.find((u) => u.id === id)?.firstName ?? '',
     waiting: async (_o: string, to: string[], request: any) => { told.push({ to, request }); },
-    decided: async () => true, asked: async () => true, answered: async () => true,
+    decided: async (_o: string, request: any, outcome: string, by: string) => { decided.push({ request, outcome, by }); return true; }, asked: async () => true, answered: async () => true,
   };
   const leaveBoard = new LeaveBoardService(prisma, whatsapp);
   const spending = new SpendingService(prisma, whatsapp);
   const as = (key: string) => ({ userId: idOf(key), organizationId: ORG });
   const queryCount = () => calls.length;
-  return { prisma, queue, leaveBoard, spending, as, leave, spend, events, people, calls, queryCount, told, suites, roles };
+  return { prisma, queue, leaveBoard, spending, as, leave, spend, events, people, calls, queryCount, told, suites, roles, directory, decided };
 }
