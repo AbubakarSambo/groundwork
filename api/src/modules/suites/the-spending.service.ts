@@ -44,6 +44,8 @@ export interface Waiting {
   firstName: string;
   amount: number;
   what: string;
+  /** The line as the prototype reads it: "Kamau: KES 18,000 for fuel for Kisumu deliveries" (request 162, item 3). Currency when the organisation has set one; what it is for in lower case after "for". */
+  says: string;
   team: string | null;
   /** What the team has left this month before this request, when it has a budget. */
   left: number | null;
@@ -206,7 +208,7 @@ export class SpendingService {
       const nm = names.get(r.userId);
       if (!nm?.full) continue;
       waiting.push({
-        id: r.id, name: nm.full, firstName: nm.first, amount: n(r.amount), what: r.what, team: r.team,
+        id: r.id, name: nm.full, firstName: nm.first, amount: n(r.amount), what: r.what, says: `${nm.first}: ${spendInWords(n(r.amount), answers.currency, r.what)}`, team: r.team,
         left: leftOf(r.team),
         over: answers.limit != null && n(r.amount) > answers.limit,
         approver: who.kind === 'person' ? { kind: 'person', firstName: (await this.names([who.userId])).get(who.userId)?.first ?? '' } : { kind: who.kind },

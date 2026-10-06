@@ -367,7 +367,7 @@ export class LeaveBoardService {
     const perYear = kinds.length ? kinds[0].perYear : answers.perYear;
     const daysLeft = kinds.length ? kinds[0].daysLeft : this.daysLeft(answers.perYear, rows.filter((r) => r.status === 'approved'), today.getUTCFullYear());
     return {
-      daysLeftSaid: daysOfLeaveLeftSaid({ perYear, daysLeft, kinds }),
+      daysLeftSaid: daysOfLeaveLeftSaid({ perYear, daysLeft, kinds }, 'Groundwork'),
       /* With kinds set, the first kind's (the one taken when somebody does not say); otherwise as before. */
       perYear: kinds.length ? kinds[0].perYear : answers.perYear,
       daysLeft: kinds.length ? kinds[0].daysLeft : this.daysLeft(answers.perYear, rows.filter((r) => r.status === 'approved'), today.getUTCFullYear()),

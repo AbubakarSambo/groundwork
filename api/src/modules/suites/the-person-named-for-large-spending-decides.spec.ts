@@ -117,6 +117,8 @@ describe('Omar, a member named for anything over KES 20,000', () => {
     expect(b.reader).toBe('approver');
     expect(b.waiting).toEqual([{
       id: 's-2', name: 'Lina Mutua', firstName: 'Lina', amount: 95000, what: 'a new laptop', team: 'Product',
+      /* Added by request 162, item 3. */
+      says: 'Lina: KES 95,000 for a new laptop',
       left: 60000, over: true, approver: { kind: 'person', firstName: 'Omar' }, mayDecide: true,
       /* Where it is, in a full sentence (decision 85, build step 4). */
       where: 'It is waiting for you.',

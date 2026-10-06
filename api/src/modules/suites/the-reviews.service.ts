@@ -14,7 +14,7 @@ import {
 } from './the-record-read-for-a-review';
 import { monthsToDrawOn, theFirstCheckInOf, theOpenDecisionsAbout, whereItStandsSaid, type Stands } from './where-a-review-stands';
 import { SuggestionsService } from '../suggestions/suggestions.service';
-import { PATTERNS_NOTE, theBriefingsHeading, theCountsSaid, theEarlierReviews, thePatternsForTheBriefing, whoDecidesTheReview, type ABriefing } from './a-review-briefing';
+import { PATTERNS_NOTE, theBriefingsHeading, theCountsSaid, theEarlierReviews, theOneWhoDecidesSaid, thePatternsForTheBriefing, whoDecidesTheReview, type ABriefing } from './a-review-briefing';
 import type { ForTheLead } from '../suggestions/a-suggestion-told-like-a-signal';
 import { AReviewToldOnWhatsApp } from './a-review-told-on-whatsapp.service';
 import {
@@ -121,6 +121,8 @@ export interface ForTheWriter {
   /** What Groundwork understands from the record, only the lines from check-ins this reader is in. Null for a review started before it existed. */
   record: TheRecordServed | null;
   managersWords: string | null;
+  /** Who wrote those words, by sign-in, so the screen can tell the reader's own from somebody else's even where two people share a first name (request 162, item 6). Null until they are written. */
+  managersWordsById: string | null;
   theirView: string | null;
   decision: { says: string; reasons: string } | null;
   mayWrite: boolean;
@@ -160,6 +162,8 @@ export interface ForThePerson {
    * the prototype's "What Wairimu writes"). Null until then. The heading beside it is `managersWordsHeading`.
    */
   managersWords: string | null;
+  /** Who wrote them, by sign-in (request 162, item 6). Null until they are written. */
+  managersWordsById: string | null;
   managersWordsHeading: string | null;
   /**
    * WHERE THE TWO VIEWS DIFFER (decision 93, row 15; the prototype's "where she and Wairimu see things differently").
@@ -251,7 +255,7 @@ export class ReviewsService {
     const me = [...directory.values()].find((p) => p.userId === reader.userId) ?? null;
     const reviews = await this.prisma.performanceReview.findMany({
       where: { organizationId: reader.organizationId, evaluationDueId: { in: dues.map((d) => d.id) } },
-      select: { id: true, evaluationDueId: true, decidedAt: true, startedAt: true, startedById: true, decidedById: true },
+      select: { id: true, evaluationDueId: true, decidedAt: true, startedAt: true, startedById: true, decidedById: true, managersWords: true, managersWordsById: true, theirView: true },
     });
     const byDue = new Map(reviews.map((r) => [r.evaluationDueId, r]));
     const signIns = dues.map((d) => directory.get(d.personExternalId)?.userId).filter((u): u is string => !!u);
@@ -280,6 +284,10 @@ export class ReviewsService {
           stands, firstName: this.firstOf(p), readerUserId: reader.userId, waitingFor,
           months: monthsToDrawOn(p.userId ? firstCheckIns.get(p.userId) : null, today),
           startedAt: (r as any)?.startedAt ?? null, decidedAt: r?.decidedAt ?? null,
+          /* What is written so far, so the sentence is true of this review (request 162, item 2). */
+          wordsBy: r?.managersWords?.trim() && r.managersWordsById
+            ? (r.managersWordsById === reader.userId ? 'you' : await this.firstNameOf(r.managersWordsById, directory)) : null,
+          hasTheirView: !!r?.theirView?.trim(),
         }),
         reviewId: r?.id ?? null,
         mayStart: stands === 'ready' && writesIt,
@@ -338,7 +346,7 @@ export class ReviewsService {
    * reviews about this reader, only once started, and only what one() already serves them is said.
    */
   async mine(reader: Reader): Promise<YourReview[]> {
-    await this.suiteAnswers(reader.organizationId);
+    const answers = await this.suiteAnswers(reader.organizationId);
     const directory = await this.directory(reader.organizationId);
     const me = [...directory.values()].find((p) => p.userId === reader.userId);
     if (!me) return [];
@@ -352,7 +360,7 @@ export class ReviewsService {
       if (!due) continue;
       const stands = r.decidedAt && r.decision && r.decisionReasons ? 'decided' : 'started';
       /* The person who actually started it, or decided it: never the line manager by default (bug 2). */
-      const writer = await this.firstNameOf(theOneWhoWrote(r), directory);
+      const writer = (await this.theWriterNamed(reader.organizationId, r, me, answers.writer, directory)).first;
       out.push({ id: r.id, dueOn: dayOf(due.dueOn), writtenWithFirstName: writer, stands, says: yourReviewSaid(stands, writer, !!r.theirView?.trim()) });
     }
     return out.sort((a, b) => b.dueOn.localeCompare(a.dueOn));
@@ -363,9 +371,17 @@ export class ReviewsService {
     const answers = await this.suiteAnswers(reader.organizationId);
     const { row, person, directory } = await this.theReview(reader, id);
     const role = await this.roleOf(reader);
-    /* Whoever started it, or decided it, is named; never the line manager by default (bug 2). */
-    const writerId = theOneWhoWrote(row as any);
-    const writerFirst = await this.firstNameOf(writerId, directory);
+    /*
+     * Whoever started it, or decided it, is named, while they may still write it; never the line manager by default (bug 2).
+     * Where the person who started it can no longer write it, the name is whoever the organisation's rule lets write it now,
+     * or "an admin", so the words and `mayWrite` always agree (request 162, item 1).
+     */
+    const named = await this.theWriterNamed(reader.organizationId, row as any, person, answers.writer, directory);
+    const writerId = named.id;
+    const writerFirst = named.first;
+    /* The words' own author, which can be somebody other than whoever decides now (request 162, item 6). */
+    const wordsById = row.managersWords?.trim() ? ((row as any).managersWordsById ?? null) : null;
+    const wordsFirst = wordsById ? (wordsById === writerId ? writerFirst : await this.firstNameOf(wordsById, directory)) : null;
     const startedByFirst = await this.firstNameOf((row as any).startedById ?? null, directory);
     const decision = row.decision && row.decisionReasons ? { says: row.decision, reasons: row.decisionReasons } : null;
     const dueOn = dayOf(row.due.dueOn);
@@ -381,9 +397,10 @@ export class ReviewsService {
         record: await this.theRecordServed(row, person, reader.userId, writerId, writerFirst),
         theirView: row.theirView ?? null,
         managersWords: row.managersWords?.trim() ? row.managersWords : null,
-        managersWordsHeading: row.managersWords?.trim() ? `What ${writerFirst ?? 'the person who writes your review'} writes` : null,
+        managersWordsById: wordsById,
+        managersWordsHeading: row.managersWords?.trim() ? `What ${wordsFirst ?? writerFirst ?? 'the person who writes your review'} writes` : null,
         whereYouDiffer: row.managersWords?.trim() && row.theirView?.trim()
-          ? { says: whereYouDifferSaid(writerFirst), managersWords: row.managersWords, yourView: row.theirView }
+          ? { says: whereYouDifferSaid(wordsFirst ?? writerFirst), managersWords: row.managersWords, yourView: row.theirView }
           : null,
         decision,
         /* The count is of check-ins with whoever started the review (theRecordForRecognising), so that person is named. */
@@ -395,7 +412,7 @@ export class ReviewsService {
     const readsIt = writes || role === 'ADMIN' || (role === 'LEAD' && !!me && inTheLeadsTeam(me, person));
     if (!readsIt) throw new ForbiddenException(REVIEW_REFUSED.notYours);
     const record = await this.theRecordServed(row, person, reader.userId, writerId, writerFirst);
-    const briefing = await this.theBriefing(row, person, reader.userId, writes, writerFirst, record);
+    const briefing = await this.theBriefing(row, person, reader.userId, writes, theOneWhoDecidesSaid(writerFirst, named.anAdmin), record);
     /* The writer, and (decision 93, row 17) an admin; the suggestion service itself reads only a check-in the admin has access to. A lead who does not write it reads none. */
     const suggestion = (writes || role === 'ADMIN') && person.userId && this.suggestions
       ? await this.suggestions.latestForTheLeadAbout(person.userId, reader).catch(() => null)
@@ -406,7 +423,7 @@ export class ReviewsService {
       writtenWith: await this.fullNameOf(writerId, directory), writtenWithFirstName: writerFirst,
       dueOn, noticed: this.noticedOf(row.noticed, writes),
       record,
-      managersWords: row.managersWords ?? null, theirView: row.theirView ?? null, decision, mayWrite: writes, suggestion,
+      managersWords: row.managersWords ?? null, managersWordsById: wordsById, theirView: row.theirView ?? null, decision, mayWrite: writes, suggestion,
       /* The writer reads it as "you"; an admin and a lead of the team who does not write it read it too, with the writer named (decision 93, row 16). */
       recognise: recognising && theWriterMayReadIt({ theirView: row.theirView ?? null, startedAt: (row as any).startedAt })
         ? (writes ? recogniseForTheWriter(this.firstOf(person), recognising) : recogniseForAnotherReader(this.firstOf(person), recognising, startedByFirst))
@@ -593,6 +610,27 @@ export class ReviewsService {
           : `You are not in any check-in with ${first} ${period}, so nothing from the record is here for you. ${first} reads what Groundwork understands from the record, and can mark any line as wrong and say what is true.`,
       whoReads: null, parts, mayCorrect: false,
     };
+  }
+
+  /**
+   * WHO THE WORDS NAME AS WRITING A REVIEW (request 162, item 1): whoever decided it; else whoever started it, while the
+   * organisation's rule still lets them write it; else whoever the rule names now; else nobody by name, and `anAdmin` says
+   * any admin may. So the name a reader is told always agrees with what `mayWrite` lets somebody do.
+   */
+  private async theWriterNamed(
+    organizationId: string, row: { startedById?: string | null; decidedById?: string | null; decidedAt?: Date | null }, p: Person, writer: string | null, directory: Map<string, Person>,
+  ): Promise<{ id: string | null; first: string | null; anAdmin: boolean }> {
+    const rule = await this.theWriter(organizationId, p, writer).catch(() => null);
+    const candidate = theOneWhoWrote(row);
+    if (candidate) {
+      const decided = !!(row.decidedAt && row.decidedById);
+      const role = decided || !rule ? null : await this.roleOf({ userId: candidate, organizationId });
+      if (decided || !rule || decidesIt(rule, { userId: candidate, role }, p.userId ?? `person:${p.externalId}`)) {
+        return { id: candidate, first: await this.firstNameOf(candidate, directory), anAdmin: false };
+      }
+    }
+    if (rule && rule.kind !== 'admin') return { id: rule.userId, first: await this.firstNameOf(rule.userId, directory), anAdmin: false };
+    return { id: null, first: null, anAdmin: !!rule && rule.kind === 'admin' };
   }
 
   /** Whether this reader writes the review with this person, by the organisation's answer (who-may-decide.ts). */
