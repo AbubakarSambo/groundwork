@@ -78,7 +78,7 @@ describe('a lead, a member and a guest', () => {
       unmount()
       open(user, 'whatsapp')
       expect(screen.getByText('Only an admin in your organisation can set this up. Ask whoever manages Groundwork for your organisation.')).toBeTruthy()
-      expect(screen.queryByText('Connect WhatsApp')).toBeNull()
+      expect(screen.queryByText('Use your organisation’s own WhatsApp number')).toBeNull()
       for (const fn of Object.values(api)) expect(fn).not.toHaveBeenCalled()
     })
   }
@@ -177,13 +177,25 @@ describe('Grace, an admin, reads Connections', () => {
     expect(within(wa).queryByLabelText('App secret')).toBeNull()
   })
 
-  it('with WhatsApp on and no number of her own: "Not set up", and the way to set it up', async () => {
+  /*
+   * DECISION 112, 7 October: with no number of her own, this section used to lead with "People
+   * check in by replying to your organisation's WhatsApp number" and a "Set it up" button, which
+   * read as though setting up an own number were the normal next step. It now leads with how
+   * WhatsApp works on Groundwork's own number, points her at Plan and billing to turn it on, and
+   * folds setting up her own number under "Advanced", shut, with "Not set up" moved onto that fold.
+   */
+  it('with WhatsApp on and no number of her own: Groundwork’s own number, and her own folded under "Advanced"', async () => {
     serve()
     open(GRACE)
     const wa = await screen.findByRole('region', { name: 'WhatsApp' })
-    expect(within(wa).getByText('Not set up')).toBeTruthy()
-    expect(within(wa).getByText('People check in by replying to your organisation’s WhatsApp number.')).toBeTruthy()
-    expect(hrefOf(wa, 'Set it up')).toBe('/settings/whatsapp')
+    expect(within(wa).getByText('Your people check in by replying to Groundwork’s WhatsApp number. A reply is their check-in, exactly as if typed here.')).toBeTruthy()
+    expect(hrefOf(wa, 'Plan and billing')).toBe('/billing#billing-whatsapp')
+    const advanced = within(wa).getByText('Advanced: use your organisation’s own WhatsApp number').closest('details') as HTMLElement
+    expect(advanced).toBeTruthy()
+    expect(advanced.hasAttribute('open')).toBe(false)
+    expect(within(advanced).getByText('Not set up')).toBeTruthy()
+    expect(within(advanced).getByText('Most organisations never need this. Groundwork’s own number already works for everyone.')).toBeTruthy()
+    expect(hrefOf(advanced, 'Set it up')).toBe('/settings/whatsapp')
   })
 
   it('while WhatsApp is not switched on, and she has no number of her own, the page does not mention it', async () => {
@@ -346,9 +358,10 @@ describe('Grace, an admin, connects WhatsApp step by step', () => {
     const connectionsLink = screen.getByRole('link', { name: 'Connections' })
     expect(connectionsLink.getAttribute('href')).toBe('/settings/connections')
     expect(connectionsLink.closest('nav')?.textContent).toBe('Connections')
-    expect(screen.getByRole('heading', { name: 'Connect WhatsApp' })).toBeTruthy()
-    /* GROUP 1'S THIRD REVIEW: full plain sentences. */
-    expect(screen.getByText('People check in by replying to your organisation’s WhatsApp number. Most of it happens in Meta’s settings. You can stop at any step, and what you have entered is kept.')).toBeTruthy()
+    /* DECISION 112, 7 October: retitled, and its first sentence says it is optional and advanced,
+       because Groundwork's own number already works for everyone without any of this. */
+    expect(screen.getByRole('heading', { name: 'Use your organisation’s own WhatsApp number' })).toBeTruthy()
+    expect(screen.getByText('This is optional and advanced. Groundwork’s own number already works for everyone, without any of this. Most of it happens in Meta’s settings. You can stop at any step, and what you have entered is kept.')).toBeTruthy()
     await screen.findByText('Paste three things from Meta')
     for (const [label, hint] of [
       ['Phone number ID', 'You find it in Meta, under WhatsApp, then API Setup.'],
