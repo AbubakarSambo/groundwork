@@ -43,25 +43,11 @@ It was drawn from `docs/morning-report.md`, `docs/weekly-plan.md`, `docs/run-log
 
 ## Broken
 
-**B1. On the live line, a scheduled job's lock can stay held and later runs skip silently.**
-- Where: `withAdvisoryLock` in `api/src/modules/prisma/prisma.service.ts` on `mine/wip/live-base`. The lock is taken and released through whichever pooled connection is free, so the release can happen on another connection and release nothing. Later runs then log "held elsewhere - skipping this run". It covers reminders, session-ready notices, the stall sweep, the auto-close, the half-hour warning, deferred invites, invite expiry, held mail, the report backstop and the Google sign-in clean-up.
-- Who: existing users, today, on live.
-- Why it was left: it is fixed on this branch only (`ca89aa5c`, `pg_try_advisory_xact_lock` inside one transaction).
-- Recommendation: ship the release. Until then, check the live logs for "held elsewhere". If it shows, a restart clears it, or the one-file fix can go to live on its own.
-
 **B2. Groundwork cannot write first to anybody on WhatsApp, because no template is approved.**
 - Where: every message Groundwork starts outside the 24 hours: opening notices, reminders, approvals, decisions, review notices, the lead's daily summary and the first message to a number (`groundwork_first_contact`). `WHATSAPP_APPROVED_TEMPLATES` is empty. `lead_daily_summary` also ends with a blank (`docs/whatsapp-templates.md`, item 8), which Meta refuses, although decision 109 item 10 says to fix it.
 - Who: the paid client first, and the existing clients once they turn WhatsApp on.
 - Why it was left: only Hafsah can submit templates to Meta. The template fix was decided this morning and not yet made.
 - Recommendation: reword `lead_daily_summary` to end on fixed words, fix `checkin_team_almost_in`'s blank order, then submit every template, including `groundwork_first_contact`, `groundwork_request_waiting`, `groundwork_request_decided`, `groundwork_requests_waiting`, `groundwork_review_started`, `groundwork_review_decided` and the two anchor ones. Until approval, first contact stays by email.
-
-**B6. The seat count: does a guest with an account take a seat? (screens workspace, request 174 item 10) Needs Hafsah.**
-- Where: `api/src/common/seats.ts`, and the sentence "Your plan covers 5 people… all 5 are taken" with one person in the check-in and four guests.
-- Who: existing users and the paid client.
-- Two readings. The prototype (A4 people.txt, "He takes a seat"; F2, "Every person with a Groundwork account… Guests with no account don't") and the 27 September decision (`f7e2bb71`) count a guest with an account as a seat, and the code counts them again (the leave-them-out change, `172aa319`, was reverted in `f1501f86`). `docs/existing-users.md` says the count leaves guests out.
-- What it changes: the seats are what an invitation is checked against and what the billing page prints, and plans are priced by team size ("Up to 20 people"). Counting guests can make a plan read as full when only a few people are staff, so a lead is told there is no room, or an organisation is nudged to the next plan sooner; leaving them out frees room and lowers what is counted.
-- Why it was left: it is a pricing decision. It is in the morning report under Needs Hafsah.
-- Recommendation: Hafsah decides which reading is the rule, and the other document is corrected.
 
 **B7. The release-night steps that only Hafsah or Abubakar can take have not been taken.**
 - Where: `docs/deploy.md`: our migrations on a copy of the real data after the backup; the two existing-client checks on a copy of the live data (`existing-clients-compare.ts` and `existing-clients-check.ts`); the four one-off scripts (`stamp-said-word-for-word.ts`, `bring-the-checkability-read-up-to-date.ts`, `give-each-check-in-its-kind-of-work.ts`, `bring-a-check-in-up-to-date.ts`); and step 13a, switching billing on.
@@ -75,23 +61,11 @@ It was drawn from `docs/morning-report.md`, `docs/weekly-plan.md`, `docs/run-log
 - Why it was left: only Abubakar knows the hosted settings.
 - Recommendation: Abubakar answers questions 1 to 9 before release.
 
-**B10. Rate limits may count every visitor as one address.**
-- Where: the API does not set "trust proxy", so behind the host's proxy everyone can share one address. The sign-in limit is five a minute.
-- Who: everyone, on the live line too. Several people signing in at once can be refused.
-- Why it was left: it is the same on live, was not changed by this work, and depends on the host's proxy.
-- Recommendation: confirm the proxy hops with Abubakar and set `trust proxy` to match.
-
-**B11. The anchor's lead gets an ordinary check-in, the wrong prompt and the wrong schedule.**
-- Where: after the anchor set-up chat, both "I set this up and check in myself" and "I check in once…" open an ordinary first check-in that repeats the opening question, her answered session is saved `NOT_STARTED`, and `/grounds/:id` falls back to the project prompt (requests 167 item 2 and 168 item 3). `RECOMMENDED_CADENCE.HELP_TEAM_UNDERSTAND` is `FORTNIGHTLY` in `grounds.service.ts`, the commit plans 12 sessions and no end, and boards say "Session 1 of 12", where the anchor is one month and weekly (requests 167 item 6 and 168 item 4).
-- Who: nobody today (`release.anchorScenario` is off). Every anchor lead once it is on.
-- Why it was left: found on 7 October, not yet taken up.
-- Recommendation: create no lead check-in for an anchor check-in, set its cadence to weekly, plan only what fits in the month, and walk it again end to end before switching the anchor on.
-
-**B12. An anchor member's check-in still mishandles two of the offers inside it.**
-- Where: "Yes, capture it" (an idea) is stored as her answer to the open baseline question, and the next turn asks "What did you understand you were meant to do?"; and with leave on, a reply can still say "I can't directly help with time off requests" when its wording slips past the filter that takes such sentences off (requests 167 item 4, 168 items 5 and 7). The payment offer's Yes closing the check-in, leave and spending being offered while that suite is off, and a reply promising to "pass that leave request to Halima" are fixed (`d2ad4ba7`).
-- Who: nobody today. Every anchor member once it is on.
-- Why it was left: the idea's Yes goes through the idea reading and the baseline question's own state, which is the anchor walk's (B7), and the filter is a list of sentences, so a new wording needs a new line.
-- Recommendation: fix each with a test that reads the reply as the member, then walk it again.
+**B11 (rest). The anchor still borrows the project's questions for its members, and its wording needs the prompt text.**
+- Where: `api/src/modules/conversation/prompt-library.ts`, `startingRoleQuestionsFor` and `STARTING_SCENARIOS` read `HELP_TEAM_UNDERSTAND` as `NEW_PROJECT` (line 2861 and the pack at line 3508), so a member's check-in in an anchor check-in can still ask the project's "What did you understand the brief to be?", and the first-turn question about whether they are the person this check-in is about (requests 167 item 3 and 168 item 5). `RECOMMENDED_CADENCE`, the planned length and the lead's own check-in are fixed in code (below).
+- Who: nobody today (`release.anchorScenario` is off). Every anchor member once it is on.
+- Why it was left: it is the conversation's own instructions, and the 24-scenario run was using them when this was fixed. Nothing was changed in a prompt or in a stored prompt version.
+- Recommendation: after the run, give the anchor its own role questions in `STARTING_ROLE_QUESTIONS`, and if a stored version overrides the file, make the new one the active one and prove it from the report's `promptVersionId`.
 
 ---
 
@@ -414,10 +388,10 @@ It was drawn from `docs/morning-report.md`, `docs/weekly-plan.md`, `docs/run-log
 | Seriousness | Entries |
 | --- | --- |
 | Privacy | 6 |
-| Broken | 8 |
+| Broken | 4 |
 | Wrong | 39 |
 | Untidy | 12 |
-| **All** | **65** |
+| **All** | **61** |
 
 ---
 
@@ -443,4 +417,9 @@ Moved out of the list above. Each has a spec read as each person who reads it, a
 - **B8.** The production build leaves out the specs, harnesses, fixtures and journeys (`tsconfig.build.json`, which `nest build` uses by itself): `npm run build` takes about 14 seconds and 2.2 GB on Node 20.20, where it ran out of memory on the default heap; `npm run check:production-start` passes on Node 20.20.2 (the build, `node dist/main` starting, `/health` answering, `/embed.js` 200). Built once on Node 20 and started, on a throwaway local database.
 - **B4.** A slow reading of the lead's set-up no longer holds the save of a check-in: the save waits for it for up to twenty seconds and answers either way (`990a6640`). The screens' own open-on-load is theirs to check.
 - **B5.** People a lead names while her check-in waits for an admin are held, not dropped, and invited once when an admin accepts it (`6c918a75`); and no other door writes to them first: the seat release, the 6 am sweep and the address heals leave a waiting or declined check-in alone, and the approval invites a colleague who already has an account (`009052b9`).
-- **B12 (part).** A yes to an offered request never closes an anchor check-in, leave and spending are not offered while that suite is off, and no reply promises to pass a request on (`d2ad4ba7`).
+- **B1.** A scheduled job's lock is held on one connection for the whole job, so a later run is no longer skipped because a release landed on another connection (`ca89aa5c`, `pg_try_advisory_xact_lock` inside one transaction). It still needs this branch to be released to reach the live line.
+- **B6.** Decided on 7 October (decision 111 in `docs/decisions-merged.md`): a guest who has a Groundwork account takes a seat, and a guest with no account does not, following the prototype. The code already counts this way (`f7e2bb71`; the leave-them-out change `172aa319` was reverted in `f1501f86`), so nothing changes. `docs/existing-users.md` is the document to correct.
+- **B10.** Each visitor is counted by their own address in the rate limits: the API trusts the host's proxy for the number of hops it is told (one in production, none anywhere else, `TRUST_PROXY_HOPS` to change it) and reads only the last of them from `X-Forwarded-For`, so an address a visitor writes into the header is never believed (`c83ce044`). Abubakar still confirms the number of hops (`docs/deploy.md`, the settings table).
+- **B11.** In the anchor, with the switch on: the lead's set-up conversation is saved as done and as a set-up, so Today no longer asks her for a first check-in that repeats the opening question; her row is marked as managing, so no later session is made for her and she is not counted among the people who check in; the month is weekly, ends in a month, and plans four sessions where it planned twelve with no end (`fd583ba5`).
+- **B12.** In the anchor: "Yes, capture it" and "Not now" are no longer read as what the person said, so they are not counted as the baseline's answer and not kept as a note; and "I can't directly help with time off requests" and its other wordings are taken off the reply along with the other refusals (`fd583ba5`). The idea's reply no longer asks about the baseline's first question again for want of an answer.
+- **B12 (earlier part).** A yes to an offered request never closes an anchor check-in, leave and spending are not offered while that suite is off, and no reply promises to pass a request on (`d2ad4ba7`).
