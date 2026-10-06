@@ -2,6 +2,22 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## The role interview, and setting up from a plan (6 October, piece 5, parts E and F)
+
+**How it was run.** The same build as above (`cd6ddac9`), local database `gw_wa_own`, port 3059. No model keys are on this computer. The role interview needs none (no model words it). Reading a pasted plan into proposals does need one, so the proposals a plan would give were written as the stored rows that reading leaves; the specs run the reading with a model double and check every quote. Everything after that is the real route.
+
+| Part | Reader | What they read or what happened | Result |
+| --- | --- | --- | --- |
+| E Sending | Wanjiru (a lead, not an admin); Piet (a colleague) | Both are refused with 403. | proved |
+| E | Grace, an admin | Sends it to Miriam for Sales rep. Sending again says "Miriam Test already has the role interview waiting for Sales rep." | proved |
+| E Answering | Miriam, in Ask Groundwork | "What do you own in your job as Sales rep? Tell me in your own words, for example "the sales target and the sales team"." Then "What do you decide yourself, without asking anybody first?", "Who do you depend on to do your job?" and "And who depends on you to do theirs?" Then: You said you own "my own customers and their deals", you decide "what discount I give up to 10 percent", you depend on "the Sales lead and Operations for stock", and "the customers I sign, for their first delivery" depend on you. Shall I save this for the role map? Nothing is written before her yes. | proved |
+| E | Miriam, after yes | "I have saved this for the role map. It shows what the Sales rep job owns. It is about the job and not about you." One row, her words as typed. | proved |
+| E The map | Grace; Wanjiru and Piet; Miriam | Grace reads Sales rep owns "My own customers and their deals", held by Miriam Test and Piet Test. A lead who is not an admin and a colleague are refused (403). Miriam reads her own answers and Piet none. | proved |
+| F Reading | Wanjiru, the lead | Six cards, each with the exact words of the plan: "The goal for qualified enterprise deals is 12 by 30 September.", "Miriam is responsible for the Westgate account.", "Miriam will send the price list by Friday.", "We review every quote over 1 million with finance.", "Groundwork will ask Miriam: which accounts have a buying process?" and "It is not decided yet whether to open Kisumu." Miriam, Grace and Piet are each refused (403) and cannot confirm. | proved |
+| F Saying yes | Wanjiru | Each yes writes exactly one thing where it belongs: a target, a role on the check-in, a commitment, a rule, a question kept for the lead and not asked yet, a decision. A second yes is refused. A stored proposal whose number is not in its own quote is refused with "That is not in the plan as written, so nothing was added." Nothing is written before the yes. | 24 of 24 |
+
+See `api/journey/the-role-interview-and-a-plan-as-each-reader-reads-them.ts`.
+
 ## Links between check-ins, and the strategy's history (6 October, piece 5, parts C and D)
 
 **How it was run.** A worktree at `12d83677` built with `nest build`, the local database `gw_wa_own` with the new migration applied, the API on port 3059. For D, Tana's planning tool signs in with its own credential and pushes priorities. For C the rows a finished conversation leaves (a handoff that names the other check-in) are written directly, because there are no model keys here. The WhatsApp journey was rerun at `e05a8e2a` first: 32 of 32.
