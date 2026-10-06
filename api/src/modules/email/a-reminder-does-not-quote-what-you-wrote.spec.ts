@@ -18,7 +18,7 @@ describe('the session-ready sweep', () => {
     expect(sweep).not.toContain('recordEntries');
     expect(sweep).not.toContain('Last time');
     expect(service).not.toContain('Last time:');
-    expect(service).toMatch(/async sendSessionReady\(email: string, groundLabel: string, checkInUrl: string\)/);
+    expect(service).toMatch(/async sendSessionReady\(email: string, groundLabel: string, checkInUrl: string, simplerWords\?: boolean \| null\)/);
   });
 });
 

@@ -708,7 +708,7 @@ export class GroundsCron implements OnApplicationBootstrap {
           select: {
             id: true,
             email: true,
-            ground: { select: { label: true } },
+            ground: { select: { label: true, simplerWords: true } },
             /* No recordEntries here, structurally (NL-007): this sweep used to put the person's last
                private record line into the mail and the WhatsApp body as "Last time: ...". The product's
                central promise is that nothing they wrote reaches a mailbox; the reminder never needed it. */
@@ -735,7 +735,7 @@ export class GroundsCron implements OnApplicationBootstrap {
          * every session on whichever number the organisation uses. This sweep used to send its own
          * WhatsApp message as well, so a person got two for one session (survey items 7 and 8).
          */
-        await this.email.sendSessionReady(p.email, p.ground.label, checkInUrl);
+        await this.email.sendSessionReady(p.email, p.ground.label, checkInUrl, p.ground.simplerWords);
 
         await this.prisma.checkIn.update({ where: { id: ci.id }, data: { sessionReadyNotifiedAt: now } });
       } catch (err: any) {
@@ -772,7 +772,7 @@ export class GroundsCron implements OnApplicationBootstrap {
       },
       select: {
         id: true, groundId: true, sessionNumber: true, createdAt: true, availableFrom: true, participantId: true,
-        ground: { select: { label: true, scenario: true, organizationId: true, overWhatsApp: true, cadence: true, chaseAfterDays: true, chasingStopped: true, tellTheLead: true, startedFrom: true, initiator: { select: { firstName: true } } } },
+        ground: { select: { label: true, scenario: true, organizationId: true, overWhatsApp: true, cadence: true, chaseAfterDays: true, chasingStopped: true, tellTheLead: true, startedFrom: true, simplerWords: true, initiator: { select: { firstName: true } } } },
         participant: { select: { id: true, email: true, userId: true, user: { select: { firstName: true, email: true, phoneNumber: true, isActive: true, deletedAt: true } } } },
       },
       ...page,
@@ -818,8 +818,8 @@ export class GroundsCron implements OnApplicationBootstrap {
         if (!phone) continue;
         const who = { firstName: user?.firstName, label: ci.ground.label };
         let said;
-        if (what === 'overdue') said = itIsOverdue(who);
-        else if (what === 'due-tomorrow') said = itIsDueTomorrow(who, dueAt!);
+        if (what === 'overdue') said = itIsOverdue(who, ci.ground.simplerWords);
+        else if (what === 'due-tomorrow') said = itIsDueTomorrow(who, dueAt!, ci.ground.simplerWords);
         else {
           /*
            * ON AN ANCHOR CHECK-IN, THE ANCHOR'S NUDGE (piece 30; decision 105 item 3): the person's own last open promise,
@@ -828,11 +828,11 @@ export class GroundsCron implements OnApplicationBootstrap {
           const theirs = ci.ground.startedFrom === STARTED_FROM_THE_ANCHOR && (await theAnchorScenarioIsOn(this.prisma))
             ? await theirOwnLastOpenPromise(this.prisma, ci.groundId, ci.participantId)
             : null;
-          if (theirs) said = itFollowsUpTheirPromise(who, theirs);
+          if (theirs) said = itFollowsUpTheirPromise(who, theirs, ci.ground.simplerWords);
           else {
             const counts = await this.whoHasAnswered(ci.groundId, ci.sessionNumber);
             const chase = whichChase({ ...counts, aboutOnePerson: isEvaluationCheckIn(ci.ground.scenario) });
-            said = chase === 'team-almost-in' ? theTeamIsAlmostIn(who, counts.answered, counts.ofHowMany) : yourViewMatters(who, ci.ground.initiator?.firstName);
+            said = chase === 'team-almost-in' ? theTeamIsAlmostIn(who, counts.answered, counts.ofHowMany, ci.ground.simplerWords) : yourViewMatters(who, ci.ground.initiator?.firstName, ci.ground.simplerWords);
           }
         }
         const rank = MORNING_ORDER.indexOf(what);
@@ -942,7 +942,7 @@ export class GroundsCron implements OnApplicationBootstrap {
       },
       select: {
         id: true, groundId: true, availableFrom: true, participantId: true,
-        ground: { select: { label: true, organizationId: true, overWhatsApp: true } },
+        ground: { select: { label: true, organizationId: true, overWhatsApp: true, simplerWords: true } },
         participant: { select: { id: true, email: true, userId: true, user: { select: { firstName: true, email: true, phoneNumber: true, isActive: true, deletedAt: true } } } },
       },
       ...page,
@@ -965,7 +965,7 @@ export class GroundsCron implements OnApplicationBootstrap {
           : null;
         const phone = person?.phone ?? user?.phoneNumber ?? null;
         if (!phone) continue;
-        const said = itOpensSoon({ firstName: user?.firstName, label: ci.ground.label }, new Date(ci.availableFrom));
+        const said = itOpensSoon({ firstName: user?.firstName, label: ci.ground.label }, new Date(ci.availableFrom), ci.ground.simplerWords);
         await this.whatsapp.sendFor(ci.ground.organizationId, phone, said.text, { checkInId: ci.id, kind: said.kind, params: said.params });
         sent++;
       } catch (err: any) {

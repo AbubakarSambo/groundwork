@@ -190,6 +190,8 @@ export async function howItEnds(c: any): Promise<string[]> {
     const g = await api('/grounds', { token: wairimu.token, body: { label: k.label, moment: 'STARTING', timelineDays: 84, brief: `This check-in is about ${k.kind}: what moved this week, what is stuck, and what each person needs.`, ...k.body } });
     if (!g?.id) { keep(`- The check-in could not be created: ${JSON.stringify(g).slice(0, 200)}`); continue; }
     if (g.status === 'AWAITING_APPROVAL') await api(`/grounds/${g.id}/approve`, { token: grace.token, body: {} });
+    /* WHATSAPP_SIMPLER_WORDS=1: the lead has switched "Use simpler words" on for this check-in, to read what each person receives with it on. */
+    if (process.env.WHATSAPP_SIMPLER_WORDS === '1') await prisma.ground.update({ where: { id: g.id }, data: { simplerWords: true } });
     if (k.anchor) await prisma.ground.update({ where: { id: g.id }, data: { startedFrom: 'anchor' } });
     if (k.keptInTheApp) await prisma.ground.update({ where: { id: g.id }, data: { overWhatsApp: false } });
     for (const p of [done, early, halfway]) {

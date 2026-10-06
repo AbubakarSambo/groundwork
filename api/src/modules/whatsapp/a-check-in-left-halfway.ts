@@ -37,15 +37,18 @@ export function withinTheDay(now: Date): boolean {
   return h >= 7 && h < 20;
 }
 
-export function carryOnSaying(firstName: string | null | undefined, label: string): string {
+export function carryOnSaying(firstName: string | null | undefined, label: string, simplerWords?: boolean | null): string {
+  if (simplerWords) return `Hi ${firstName?.trim() || 'there'}, your check-in for "${label}" is still open. Everything you have said is saved. Write here to carry on when you are ready.`;
   return `Hi ${firstName?.trim() || 'there'}, your check-in for "${label}" is still open, and everything you have said so far is kept. Reply here to carry on whenever you are ready.`;
 }
 
-export function closesInHalfAnHourSaying(label: string): string {
+export function closesInHalfAnHourSaying(label: string, simplerWords?: boolean | null): string {
+  if (simplerWords) return `Your check-in for "${label}" will close in 30 minutes if you say nothing more. Add anything you still want saved now.`;
   return `Your check-in for "${label}" closes in 30 minutes if nothing else is said. Add anything you still want on the record now.`;
 }
 
-export function closedByTheClockSaying(label: string): string {
+export function closedByTheClockSaying(label: string, simplerWords?: boolean | null): string {
+  if (simplerWords) return `Your check-in for "${label}" has closed, because nothing was said for twelve hours. Everything you said is saved. Your report will come in a moment.`;
   return `Your check-in for "${label}" has closed, because nothing was said for twelve hours. Everything you said is kept on the record, and your report follows in a moment.`;
 }
 
@@ -55,12 +58,12 @@ type Sender = { sendFor: (org: string, phone: string, text: string, context: { c
  * The person's phone, when this session is one they were doing on WhatsApp and it is not kept in the app.
  * Null otherwise.
  */
-export async function theirPhoneForThisSession(prisma: any, checkInId: string): Promise<{ organizationId: string; phone: string; firstName: string | null; label: string } | null> {
+export async function theirPhoneForThisSession(prisma: any, checkInId: string): Promise<{ organizationId: string; phone: string; firstName: string | null; label: string; simplerWords: boolean } | null> {
   const ci = await prisma.checkIn?.findUnique?.({
     where: { id: checkInId },
     select: {
       startedAt: true, createdAt: true,
-      ground: { select: { organizationId: true, label: true, overWhatsApp: true } },
+      ground: { select: { organizationId: true, label: true, overWhatsApp: true, simplerWords: true } },
       participant: { select: { email: true, user: { select: { firstName: true, phoneNumber: true, deletedAt: true } } } },
     },
   })?.catch?.(() => null);
@@ -75,7 +78,7 @@ export async function theirPhoneForThisSession(prisma: any, checkInId: string): 
   const began = new Date(ci.startedAt ?? ci.createdAt).getTime();
   if (began < WHATSAPP_HALFWAY_MESSAGES_FROM.getTime()) return null;
   if (!person?.whatsappLastInboundAt || new Date(person.whatsappLastInboundAt).getTime() < began) return null;
-  return { organizationId: ci.ground.organizationId, phone, firstName: ci.participant?.user?.firstName ?? null, label: ci.ground.label };
+  return { organizationId: ci.ground.organizationId, phone, firstName: ci.participant?.user?.firstName ?? null, label: ci.ground.label, simplerWords: ci.ground.simplerWords === true };
 }
 
 /** The one reminder to carry on, when it is due. True when it went. */
@@ -87,19 +90,19 @@ export async function remindThemToCarryOn(prisma: any, whatsapp: Sender, checkIn
   if (already) return false;
   const to = await theirPhoneForThisSession(prisma, checkIn.id);
   if (!to) return false;
-  return (await whatsapp.sendFor(to.organizationId, to.phone, carryOnSaying(to.firstName, to.label), { checkInId: checkIn.id, kind: CARRY_ON })).sent;
+  return (await whatsapp.sendFor(to.organizationId, to.phone, carryOnSaying(to.firstName, to.label, to.simplerWords), { checkInId: checkIn.id, kind: CARRY_ON })).sent;
 }
 
 /** The thirty-minute warning, to the phone as well as on the record. */
 export async function warnTheirPhone(prisma: any, whatsapp: Sender, checkInId: string): Promise<boolean> {
   const to = await theirPhoneForThisSession(prisma, checkInId);
   if (!to) return false;
-  return (await whatsapp.sendFor(to.organizationId, to.phone, closesInHalfAnHourSaying(to.label), { checkInId, kind: CLOSES_IN_HALF_AN_HOUR })).sent;
+  return (await whatsapp.sendFor(to.organizationId, to.phone, closesInHalfAnHourSaying(to.label, to.simplerWords), { checkInId, kind: CLOSES_IN_HALF_AN_HOUR })).sent;
 }
 
 /** Closed by the clock: say so, before the report follows. Read before the session is closed, because closing clears nothing it needs. */
 export async function tellThemTheClockClosedIt(prisma: any, whatsapp: Sender, checkInId: string): Promise<boolean> {
   const to = await theirPhoneForThisSession(prisma, checkInId);
   if (!to) return false;
-  return (await whatsapp.sendFor(to.organizationId, to.phone, closedByTheClockSaying(to.label), { checkInId, kind: CLOSED_BY_THE_CLOCK })).sent;
+  return (await whatsapp.sendFor(to.organizationId, to.phone, closedByTheClockSaying(to.label, to.simplerWords), { checkInId, kind: CLOSED_BY_THE_CLOCK })).sent;
 }
