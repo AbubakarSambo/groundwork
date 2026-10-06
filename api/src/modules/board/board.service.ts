@@ -442,7 +442,7 @@ export class BoardService {
     const viewer = requestingUserId
       ? await this.prisma.user.findUnique({
         where: { id: requestingUserId },
-        select: { role: true, organizationId: true, awaitingOrgApproval: true },
+        select: { role: true, organizationId: true, awaitingOrgApproval: true, email: true },
       })
       : null;
     /* Whoever runs it, set it up or administers it reads a goal not told (decisions 5 and 86); the person it is about, and a colleague, do not. */
