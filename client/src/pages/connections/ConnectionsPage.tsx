@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { integrationsApi, type Credential } from '@/api/integrations'
 import { useAuthStore } from '@/stores/auth'
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
+import { possessiveOf } from '@/lib/a-possessive'
 import { Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
 import { WhatsAppKeysNeedTypingAgainNote, WhatsAppKeysRetypeForm } from './WhatsAppKeysNeedTypingAgain'
 import {
@@ -229,7 +230,7 @@ function WhatsAppSection({ orgName, glance }: { orgName: string; glance: { peopl
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'The connection was not removed. Try again.'),
   })
 
-  const whose = orgName ? `${orgName}’s WhatsApp Business number` : 'your WhatsApp Business number'
+  const whose = orgName ? `${possessiveOf(orgName)} WhatsApp Business number` : 'your WhatsApp Business number'
   return (
     <Section heading="WhatsApp" action={connection ? <Tag tone={connection.enabled ? 'proven' : 'plain'}>{connection.enabled ? 'Connected' : 'Switched off'}</Tag> : <Tag tone="plain">Not set up</Tag>}>
       <Panel>

@@ -101,7 +101,19 @@ describe('Grace, an admin, reads Connections', () => {
     open(GRACE)
     const wa = await screen.findByRole('region', { name: 'WhatsApp' })
     await within(wa).findByText('Connected')
-    expect(wa.textContent).toContain('Your people check in by replying to +254 709 000 111, Baridi Appliances’s WhatsApp Business number. A reply is their check-in, exactly as if typed here.')
+    /* SCREEN FAULT 5b, FIXED: "Baridi Appliances’s" was wrong English - a name already ending in
+       "s" takes just an apostrophe (possessiveOf, client/src/lib/a-possessive.ts). This used to pin
+       that mistake; it now reads "Baridi Appliances’". */
+    expect(wa.textContent).toContain('Your people check in by replying to +254 709 000 111, Baridi Appliances’ WhatsApp Business number. A reply is their check-in, exactly as if typed here.')
+  })
+
+  it('a name ending in "s" ("Kijani Foods") takes just an apostrophe, not "\'s" (screen fault 5b)', async () => {
+    serve({ connection: CONNECTED })
+    open({ ...GRACE, organizationName: 'Kijani Foods' })
+    const wa = await screen.findByRole('region', { name: 'WhatsApp' })
+    await within(wa).findByText('Connected')
+    expect(wa.textContent).toContain('Kijani Foods’ WhatsApp Business number')
+    expect(wa.textContent).not.toContain('Kijani Foods’s')
     await within(wa).findByText('people checking in on WhatsApp')
     expect(within(wa).getByText('6')).toBeTruthy()
     expect(within(wa).getByText('212')).toBeTruthy()

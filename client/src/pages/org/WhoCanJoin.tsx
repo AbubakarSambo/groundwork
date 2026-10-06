@@ -109,7 +109,7 @@ export function WhoCanJoin({ orgName }: { orgName: string }) {
       </Panel>
       {confirming && (
         <Modal title={data.domain ? 'Change the domain' : 'Name the domain'} onClose={() => setConfirming(false)}>
-          <Stack gap={16}>
+          <Stack gap={18}>
             <Note>
               {myDomain
                 ? (willTurnOn
