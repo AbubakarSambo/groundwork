@@ -12,10 +12,15 @@ import {
 } from '@/components/gw/ui'
 
 /**
- * CONNECT WHATSAPP (F1, #/settings/whatsapp, group 1 of the screens rebuilt from the shared parts).
- * Wording copied from docs/prototype/screens/F1-connections/whatsapp.txt, and, where that screen
- * shows nothing (the bodies of steps 4 to 6, and a connected number), from what the product's
- * Connect page said before (docs/morning-report-ui.md, item 29).
+ * USE YOUR ORGANISATION'S OWN WHATSAPP NUMBER (F1, #/settings/whatsapp, group 1 of the screens
+ * rebuilt from the shared parts). Wording copied from docs/prototype/screens/F1-connections/
+ * whatsapp.txt, and, where that screen shows nothing (the bodies of steps 4 to 6, and a connected
+ * number), from what the product's Connect page said before (docs/morning-report-ui.md, item 29).
+ *
+ * RETITLED, AND ITS FIRST SENTENCE CHANGED (decision 112, 7 October): this page used to be called
+ * "Connect WhatsApp", as though setting it up were the normal next step. It is optional and
+ * advanced - Groundwork's own number already works for everyone without it - so the title and the
+ * lede say that before anything else. Its steps are unchanged.
  *
  * The real connection, never a pretend one (not-to-build.md): each step is done only when the server
  * says so. Step 2 when the number is saved; step 3 when Meta's handshake answered or a message came
@@ -231,8 +236,8 @@ export function WhatsAppSetupPage() {
       <PageTitle title="Settings" subtitle={orgName} />
       <PageTitle
         crumbs={[{ label: 'Connections', to: '/settings/connections' }]}
-        title="Connect WhatsApp"
-        subtitle="People check in by replying to your organisation’s WhatsApp number. Most of it happens in Meta’s settings. You can stop at any step, and what you have entered is kept."
+        title="Use your organisation’s own WhatsApp number"
+        subtitle="This is optional and advanced. Groundwork’s own number already works for everyone, without any of this. Most of it happens in Meta’s settings. You can stop at any step, and what you have entered is kept."
       />
 
       {whatsapp.isError && <Note tone="error">Connections did not load.</Note>}
