@@ -9,6 +9,7 @@ import { ApiExcludeEndpoint, ApiOperation, ApiProperty, ApiPropertyOptional, Api
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import type { RawBodyRequest } from '@nestjs/common';
+import { theirKey } from '../whatsapp/an-organisations-own-keys';
 import { Public, CurrentUser, Roles, Role } from '../../common';
 import { PrismaService } from '../prisma/prisma.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
@@ -312,7 +313,7 @@ export class WhatsAppForAnOrganisationController {
       return { received: true };
     }
     const raw = req.rawBody ?? Buffer.from(JSON.stringify(req.body ?? {}));
-    this.whatsapp.verifySignatureWith(own.appSecret, req.headers as Record<string, string | string[] | undefined>, raw);
+    this.whatsapp.verifySignatureWith(theirKey(own, 'appSecret'), req.headers as Record<string, string | string[] | undefined>, raw);
     if (!own.enabled) return { received: true };
     try {
       await this.inbound.handle(organizationId, req.body);
