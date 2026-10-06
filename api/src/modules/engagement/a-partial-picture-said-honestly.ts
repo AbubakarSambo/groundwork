@@ -13,10 +13,14 @@ const listed = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -
 export function thePartialPicture(label: string, progress: { answered: string[]; ofHowMany: number }, left?: WhoIsLeft) {
   const n = progress.answered.length;
   const of = progress.ofHowMany;
+  const verb = n === 1 ? 'has' : 'have';
+  /* "You" is the lead herself, so the verb is "have" whenever she is one of them. */
+  const who = capital(listed(progress.answered));
+  const isHave = progress.answered.length === 1 && progress.answered[0] !== 'you' ? 'has' : 'have';
   return {
-    subject: `${capital(aNumberInWords(n))} of ${aNumberInWords(of)} people have checked in on "${label}", and it is not the whole team's view yet`,
+    subject: `${capital(aNumberInWords(n))} of ${aNumberInWords(of)} people ${verb} checked in on "${label}", and it is not the whole team's view yet`,
     lines: [
-      `${capital(aNumberInWords(n))} of ${aNumberInWords(of)} people have checked in so far: ${listed(progress.answered)}.`,
+      `${who} ${isHave} checked in so far, ${aNumberInWords(n)} of the ${aNumberInWords(of)} people in it.`,
       "That is not yet the whole team's view, so Groundwork has not drawn any conclusion about the team from it.",
       ...(left && left.count > 0 ? [haveNotCheckedInSaid(left)] : []),
       'The shared picture is made once everyone is in.',

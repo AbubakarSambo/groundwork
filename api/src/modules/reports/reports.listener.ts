@@ -1,3 +1,4 @@
+import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { whoIsLeftToCheckIn } from '../email/who-has-not-checked-in-yet';
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
@@ -224,8 +225,10 @@ export class ReportsListener {
     const frontendUrl = this.config.get<string>('resend.frontendUrl') || 'http://localhost:5173';
     const groundUrl = `${frontendUrl}/grounds/${event.groundId}`;
     /* WHO IS IN, for the lead's honest read of a partial picture (decision 109, journey 4): first names of the people who can answer and have, and how many can. */
-    const counted = ground.participants.filter((p) => !p.managingOnly && !p.user?.awaitingOrgApproval && p.user?.isActive !== false && !p.user?.deletedAt);
-    const answered = counted.filter((p) => p.checkIns.length > 0).map((p) => (p.user?.firstName ?? '').trim() || p.user?.email || '').filter((x) => !!x);
+    const counted = ground.participants.filter((p) => !p.managingOnly && !isNotLetInYet(p as any) && p.user?.isActive !== false && !p.user?.deletedAt);
+    /* The lead is "you", first, as she is everywhere she reads herself. */
+    const nameOf = (p: (typeof counted)[number]) => (p.user?.email === ground.initiator.email ? 'you' : (p.user?.firstName ?? '').trim() || p.user?.email || '');
+    const answered = counted.filter((p) => p.checkIns.length > 0).map(nameOf).filter((x) => !!x).sort((a, b) => (a === 'you' ? -1 : b === 'you' ? 1 : 0));
     await this.email.sendParticipantCheckedIn(ground.initiator.email, participantName, ground.label, groundUrl, stillPending, { answered, ofHowMany: counted.length });
   }
 
