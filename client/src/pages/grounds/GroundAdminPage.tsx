@@ -159,7 +159,7 @@ export function GroundAdminPage() {
    * useOpenSession.ts), called from here instead, so the lead never leaves this page for her own
    * session.
    */
-  const { open: openMySession, paywall } = useOpenSession(id)
+  const { open: openMySession, openFailed: myOpenSessionFailed, openError: myOpenSessionError, retryOpen: retryMyOpenSession, paywall } = useOpenSession(id)
   /**
    * CHECK-INS FIRST, because that is what a ground is for.
    *
@@ -1103,8 +1103,18 @@ export function GroundAdminPage() {
    * have left two copies of one rule on one screen - which is how the roster and the counter came
    * to disagree in the first place.
    */
+  /*
+   * REQUEST 174, ITEM 2 (report tab, fault d): "Session 1 of 12" STUCK WHILE SESSION 2 WAS BEING
+   * ANSWERED. This fed every row of `ground.participants` into the rule unfiltered, including
+   * somebody held at the organisation's door (`notLetInYet`) - decision 77, the same rule
+   * `whoIsInRound` already applies for the roster and the counter just below. Someone not let in
+   * yet never has a completed session and never will, so their row is permanently empty, which
+   * permanently caps "the lowest number anybody has finished" at zero and the header at "Session
+   * 1" - whatever everybody actually let in has done. Left out here the same way they are left out
+   * of `roundDone`/`total`, so the header reads the same served state the rest of this page does.
+   */
   const openRoundFromRule = whichSessionIsThisCheckInOn(
-    (ground.participants ?? []).map((p: any) =>
+    (ground.participants ?? []).filter((p: any) => !p.notLetInYet).map((p: any) =>
       ((ground.checkIns ?? []) as any[])
         .filter((c) => c.participantId === p.id && c.status === 'COMPLETED')
         .map((c) => c.sessionNumber ?? 0),
@@ -1591,7 +1601,17 @@ export function GroundAdminPage() {
             */
             if ((ground.participants ?? []).length > 0) {
               const total = whoIsInRound((ground.participants ?? []) as any[], openRound, (ground as any).scenario).length
-              parts.push(`${roundDone} of ${total} people have checked in for session ${openRound}.`)
+              /*
+               * REQUEST 174, ITEM 2 (report tab, fault b): "0 of 1 people have checked in" is not a
+               * sentence anybody writes - nobody says "zero people" where "nobody" is the plain
+               * word, and "1 people" is simply wrong. Zero says so plainly; one person is a person,
+               * not a one-member "people".
+               */
+              parts.push(
+                roundDone === 0
+                  ? 'Nobody has checked in yet.'
+                  : `${roundDone} of ${total} ${roundDone === 1 ? 'person has' : 'people have'} checked in for session ${openRound}.`,
+              )
             }
             if (roundWentBack) parts.push(`It went back to session ${openRound}, because somebody new was added. Nothing anybody wrote is lost.`)
           }
@@ -1712,7 +1732,20 @@ export function GroundAdminPage() {
           <div>
             {viewerIsAParty ? (
               myOpenCheckIn && !myOpenOpensLater ? (
-                <Note>Opening your check-in…</Note>
+                /* A FAILED OPEN SAYS SO, WITH A WAY BACK IN - the probe above
+                   (myOpenSessionAutoOpenFired) only ever fires once per mount, so
+                   without this a failed attempt left this note standing with nothing
+                   to read and nothing to press. See request 174, item 2. */
+                myOpenSessionFailed ? (
+                  <Note>
+                    {myOpenSessionError}{' '}
+                    <Button kind="quiet" size="small" onClick={() => { retryMyOpenSession(); openMySession(myOpenCheckIn, { isFreeGround: (ground as any)?.isFreeGround, groundLabel: (ground as any)?.label, isInitiator }) }}>
+                      Try again
+                    </Button>
+                  </Note>
+                ) : (
+                  <Note>Opening your check-in…</Note>
+                )
               ) : (
                 /* REVIEW ROUND 3, ITEM 2: NOTHING OPEN RIGHT NOW - the prototype's own between-check-ins
                    card, shown here directly rather than by sending her to the participant page for it. */
