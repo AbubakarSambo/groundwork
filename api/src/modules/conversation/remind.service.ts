@@ -291,7 +291,7 @@ export class RemindService {
        target. */
     const forTheLead = new Map<string, {
       to: string; leadName: string | null; label: string; chasedOn: number[];
-      who: string[]; whoEmails: string[]; whoNudgedAt: (Date | null)[]; checkInIds: string[];
+      who: string[]; whoEmails: string[]; whoNudgedAt: (Date | null)[]; checkInIds: string[]; leadIsOpenToo: boolean;
       /* For the channel notice: `tell` is scoped to an organisation, not to a ground. */
       organizationId: string;
     }>();
@@ -341,15 +341,17 @@ export class RemindService {
             who: [],
             whoEmails: [],
             whoNudgedAt: [],
+            leadIsOpenToo: false,
             checkInIds: [],
             organizationId: checkIn.ground.organizationId,
           };
-          /* The name they are known by here, and their address only if that is all
-             there is. A lead reading a list of email addresses cannot tell who is
-             who any faster than they could before the email arrived. */
-          /* The lead is never written about in the third person to herself: she is "you" (decision 109 review). */
-          const named = participant.userId && participant.userId === (checkIn.ground as any).initiatorId ? 'you' : (participant.user?.firstName ?? participant.email);
-          if (!entry.who.includes(named)) { entry.who.push(named); entry.whoEmails.push(participant.email); entry.whoNudgedAt.push(participant.lastNudgedAt ?? null); }
+          /* THE LEAD IS NEVER ONE OF THE PEOPLE THE LEAD IS TOLD HAVE NOT STARTED (decision 109 review). Her own open check-in is her own line below. */
+          if (participant.userId && participant.userId === (checkIn.ground as any).initiatorId) {
+            entry.leadIsOpenToo = true;
+          } else {
+            const named = participant.user?.firstName ?? participant.email;
+            if (!entry.who.includes(named)) { entry.who.push(named); entry.whoEmails.push(participant.email); entry.whoNudgedAt.push(participant.lastNudgedAt ?? null); }
+          }
           entry.checkInIds.push(checkIn.id);
           forTheLead.set(key, entry);
         }
@@ -461,6 +463,8 @@ export class RemindService {
       const remindedNames = entry.who.filter((_, i) => !!entry.whoNudgedAt[i]);
       const stamps = entry.whoNudgedAt.filter((d): d is Date => !!d).map((d) => new Date(d).getTime());
       const lastRemindedOn = stamps.length ? whenItWas(new Date(Math.max(...stamps)), 'day') : null;
+      /* When she is the only one who has not started there is nothing to tell her about other people (decision 109 review). */
+      if (entry.who.length === 0) continue;
       const composed = theEmailForTheLead({
         leadName: entry.leadName,
         groundLabel: entry.label,
@@ -469,6 +473,7 @@ export class RemindService {
         link: `${frontendUrl}/grounds`,
         remindedNames,
         lastRemindedOn,
+        leadIsOpenToo: entry.leadIsOpenToo,
       });
       if (!composed) continue;
 

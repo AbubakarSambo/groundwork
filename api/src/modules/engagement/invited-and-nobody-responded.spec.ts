@@ -46,7 +46,7 @@ describe('what Wairimu reads when four people have not started', () => {
       'Wairimu,',
       'Omar, Vera, Bisi and Femi have not started their check-in on "Kenya launch".',
       expect.stringMatching(/^Groundwork reminded them, the last time on .*19.*, and has now stopped reminding them\.$/),
-      'Groundwork will not remind them again. If you still want their view, a short note from you is the next step.',
+      'Groundwork will not remind them again. If you still want their view, a short note from you is the next step. You can send a fresh link from the check-in page with Resend invite.',
       'You could write, "I would value your view on Kenya launch. It takes about five minutes, and I will send you a fresh link if you reply."',
       'https://app.test/grounds',
     ]);
@@ -75,21 +75,31 @@ describe('what Wairimu reads when four people have not started', () => {
   });
 });
 
-describe('the lead is one of the people who has not started', () => {
+describe('the lead has not started either', () => {
   beforeEach(() => jest.useFakeTimers().setSystemTime(NOW));
   afterEach(() => jest.useRealTimers());
-  it('reads "you", never her own name, and the verb agrees', async () => {
-    const w = sweep({});
-    /* Omar is the lead of this check-in. */
+  function asLead(w: ReturnType<typeof sweep>, who: string[]) {
     const rows = (w.service as any).prisma.checkIn.findMany;
     const orig = rows.getMockImplementation();
     rows.mockImplementation(async (a: any) => {
       const r: any[] = await orig(a);
-      return r.map((x) => (x.participant.user.firstName === 'Omar' ? { ...x, ground: { ...x.ground, initiatorId: 'u0' } } : x));
+      return r.filter((x) => who.includes(x.participant.user.firstName)).map((x) => (x.participant.user.firstName === 'Omar' ? { ...x, ground: { ...x.ground, initiatorId: 'u0' } } : x));
     });
+  }
+  it('in a mixed round she is left out of the list, and has her own line', async () => {
+    const w = sweep({});
+    asLead(w, ['Omar', 'Vera', 'Bisi']);
     await w.service.sendScheduledNudges();
-    expect(w.told[0].subject).toBe('You, Vera, Bisi and Femi have not started "Kenya launch"');
-    expect(w.told[0].text).toContain('You, Vera, Bisi and Femi have not started their check-in on "Kenya launch".');
-    expect(w.told[0].text).not.toMatch(/Omar/);
+    expect(w.told[0].subject).toBe('Vera and Bisi have not started "Kenya launch"');
+    const lines = w.told[0].text.split('\n').filter(Boolean);
+    expect(lines[1]).toBe('Vera and Bisi have not started their check-in on "Kenya launch". Your own check-in is still open too.');
+    expect(w.told[0].text).not.toMatch(/Omar|You, /);
+    expect(w.told[0].text).toContain('You can send a fresh link from the check-in page with Resend invite.');
+  });
+  it('when she is the only one, nothing is sent, because there is nobody else to tell her about', async () => {
+    const w = sweep({});
+    asLead(w, ['Omar']);
+    await w.service.sendScheduledNudges();
+    expect(w.told).toEqual([]);
   });
 });
