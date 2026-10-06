@@ -21,8 +21,8 @@
  * WHO SIGNS IN, AND AS WHAT. Every person has the same password, which is written in the output
  * and is local only. The emails are fixed so the screens workspace can keep its own notes:
  *
- *   amina@suites.test    admin, and the approver for leave and for spending
- *   daniel@suites.test   lead, who asks for leave and for spending and writes a review
+ *   amina@suites.test    admin, the approver for what Daniel asks and for spending above the limit
+ *   daniel@suites.test   lead, the manager of Grace, Peter and Sara: approves their leave and writes their reviews
  *   grace@suites.test    team, with a request in every state and a review of her own
  *   peter@suites.test    team, whose requests are the declined ones
  *   sara@suites.test     team, who has asked for nothing, for the empty states
@@ -44,10 +44,12 @@ const THE_PEOPLE = [
 ];
 
 const email = (key: string) => `${key}@suites.test`;
+/** A whole day counted from today, moved to a weekday so no leave starts or ends on a weekend (request 162, item 5). */
 const day = (daysFromToday: number) => {
   const d = new Date();
   d.setUTCHours(0, 0, 0, 0);
   d.setUTCDate(d.getUTCDate() + daysFromToday);
+  while (d.getUTCDay() === 0 || d.getUTCDay() === 6) d.setUTCDate(d.getUTCDate() + (daysFromToday >= 0 ? 1 : -1));
   return d;
 };
 const at = (daysFromToday: number) => new Date(Date.now() + daysFromToday * 86400000);
@@ -102,19 +104,25 @@ export async function loadTheSuites(url: string) {
      * THE THREE SUITES, ON, WITH AMINA AS THE APPROVER. `answers` is keyed by question id and a
      * "person" answer holds a user id and never a name, which is what the suite rules read.
      */
-    const suites: { suite: string; answers: Record<string, unknown> }[] = [
-      { suite: 'leave', answers: { approver: users.amina.id, workflow: 'one_approver', daysAYear: 21 } },
-      { suite: 'spend', answers: { approver: users.amina.id, workflow: 'one_approver', limit: 50000, above: users.amina.id, categories: ['Fuel', 'Travel', 'Equipment'] } },
-      { suite: 'reviews', answers: { approver: users.amina.id, workflow: 'one_approver' } },
+    /*
+     * The ids are the questions' own (the-ten-suites.ts): leave asks "days" and a choice between "Their manager" and
+     * "An admin"; reviews ask who writes each one with the person (request 162, item 4). The categories are a spending
+     * rule, not an answer, so they are kept where the rules are (`spendRules`).
+     */
+    const suites: { suite: string; answers: Record<string, unknown>; isOn?: boolean }[] = [
+      { suite: 'leave', answers: { days: 21, approver: 'Their manager' } },
+      { suite: 'spend', answers: { currency: 'KES', limit: 50000, above: users.amina.id } },
+      { suite: 'reviews', answers: { every: 'Every 6 months', writer: 'Their manager' } },
+      { suite: 'spendRules', isOn: false, answers: { categories: [{ name: 'Fuel' }, { name: 'Travel' }, { name: 'Equipment' }], categoryCalled: 'category' } },
     ];
     for (const s of suites) {
       await db.organizationSuite.upsert({
         where: { organizationId_suite: { organizationId: org.id, suite: s.suite } },
-        update: { isOn: true, answers: s.answers as any, changedById: users.amina.id },
-        create: { organizationId: org.id, suite: s.suite, isOn: true, answers: s.answers as any, changedById: users.amina.id },
+        update: { isOn: s.isOn ?? true, answers: s.answers as any, changedById: users.amina.id },
+        create: { organizationId: org.id, suite: s.suite, isOn: s.isOn ?? true, answers: s.answers as any, changedById: users.amina.id },
       });
     }
-    said.push(`three suites on: ${suites.map((s) => s.suite).join(', ')}, approver Amina Yusuf`);
+    said.push('three suites on: leave, spend, reviews. Daniel is the manager of Grace, Peter and Sara, and so approves their leave and writes their reviews; Amina is the admin and the approver above the limit');
 
     /* LEAVE, one in each state a screen draws. Cleared first so a second run does not stack them. */
     await db.leaveRequest.deleteMany({ where: { organizationId: org.id } });
@@ -122,11 +130,13 @@ export async function loadTheSuites(url: string) {
       data: [
         { organizationId: org.id, userId: users.daniel.id, startsOn: day(14), endsOn: day(18), status: 'waiting', askedAt: at(-2), stepSince: at(-2) },
         { organizationId: org.id, userId: users.grace.id, startsOn: day(30), endsOn: day(37), status: 'waiting', askedAt: at(-9), stepSince: at(-9) },
-        { organizationId: org.id, userId: users.grace.id, startsOn: day(-20), endsOn: day(-16), status: 'approved', askedAt: at(-30), decidedById: users.amina.id, decidedAt: at(-28), approvedByIds: [users.amina.id] },
-        { organizationId: org.id, userId: users.peter.id, startsOn: day(3), endsOn: day(10), status: 'declined', askedAt: at(-6), decidedById: users.amina.id, decidedAt: at(-5), declineReason: 'Two people are already away that week and the route would have nobody on it.' },
+        /* Grace is away this week, and Sara stands in for her, so "Who's off" has somebody in it (request 162, item 5). */
+        { organizationId: org.id, userId: users.grace.id, startsOn: day(-1), endsOn: day(2), status: 'approved', standInUserId: users.sara.id, askedAt: at(-12), decidedById: users.daniel.id, decidedAt: at(-10), approvedByIds: [users.daniel.id] },
+        { organizationId: org.id, userId: users.grace.id, startsOn: day(-20), endsOn: day(-16), status: 'approved', askedAt: at(-30), decidedById: users.daniel.id, decidedAt: at(-28), approvedByIds: [users.daniel.id] },
+        { organizationId: org.id, userId: users.peter.id, startsOn: day(3), endsOn: day(10), status: 'declined', askedAt: at(-6), decidedById: users.daniel.id, decidedAt: at(-5), declineReason: 'Two people are already away that week and the route would have nobody on it.' },
       ],
     });
-    said.push('leave: 2 waiting (one of them nine days old), 1 approved, 1 declined with a reason');
+    said.push('leave: 2 waiting (one of them nine days old), 2 approved (Grace is away this week with Sara standing in), 1 declined with a reason');
 
     /* SPENDING, the same, with one under the limit and one over it. */
     await db.spendRequest.deleteMany({ where: { organizationId: org.id } });
@@ -162,8 +172,8 @@ export async function loadTheSuites(url: string) {
       await db.performanceReview.create({
         data: {
           organizationId: org.id, evaluationDueId: due.id, personExternalId: s.person,
-          startedById: users.daniel.id, startedAt: at(-4), recordFrom: at(-120),
-          ...(words ? { managersWords: words, managersWordsById: users.daniel.id, managersWordsAt: at(-3) } : {}),
+          startedById: s.person === 'daniel' ? users.amina.id : users.daniel.id, startedAt: at(-4), recordFrom: at(-120),
+          ...(words ? { managersWords: words, managersWordsById: s.person === 'daniel' ? users.amina.id : users.daniel.id, managersWordsAt: at(-3) } : {}),
           ...(s.stage === 'their view' || s.stage === 'decided'
             ? { theirView: 'I agree about the routes. The part I would add is that the second one took three weeks longer because the warehouse cut-off moved.', theirViewAt: at(-2) }
             : {}),
