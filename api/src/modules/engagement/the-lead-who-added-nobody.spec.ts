@@ -59,14 +59,20 @@ describe('Wairimu, with nobody else in it', () => {
       to: 'wairimu@x.test',
       subject: 'You set up "Sales team, Q4", and nobody else is in it yet',
       lines: [
-        'Hello Wairimu. You set up "Sales team, Q4", and nobody else has been added to it yet.',
-        'What you told Groundwork you wanted was: "Why we keep missing the Q4 sales target".',
+        'Hello Wairimu. Nobody else has been added to "Sales team, Q4" yet.',
+        'You set up "Sales team, Q4" to find out, in your words, "Why we keep missing the Q4 sales target".',
         'You do not need to set anything else up. Add the people involved, starting with three, and Groundwork will take it from there.',
       ],
       linkLabel: 'Add the people involved',
       linkUrl: 'https://app.test/grounds/g1',
     }]);
     expect(JSON.stringify(w.sent)).not.toMatch(/invit|complete your setup|Your check-in is waiting/i);
+  });
+
+  it('cuts a long brief to its first sentence, and says no colon anywhere', () => {
+    const w = theLeadsFirstWords('Wairimu', 'Sales team, Q4', 'Why we keep missing the Q4 target. Last quarter it was worse, and the board is asking. Nobody agrees on the cause.');
+    expect(w.lines[1]).toBe('You set up "Sales team, Q4" to find out, in your words, "Why we keep missing the Q4 target".');
+    expect([w.subject, ...w.lines, w.linkLabel].join(' ')).not.toMatch(/:/);
   });
 
   it('with others added, she is chased about her own answer as anybody is, and not sent this', async () => {
@@ -108,7 +114,7 @@ describe('the words with no brief', () => {
   it('leave out what she did not say and never invent it', () => {
     const w = theLeadsFirstWords('Wairimu', 'Kenya launch', '');
     expect(w.lines).toEqual([
-      'Hello Wairimu. You set up "Kenya launch", and nobody else has been added to it yet.',
+      'Hello Wairimu. Nobody else has been added to "Kenya launch" yet.',
       'You do not need to set anything else up. Add the people involved, starting with three, and Groundwork will take it from there.',
     ]);
   });
