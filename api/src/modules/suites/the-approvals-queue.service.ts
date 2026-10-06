@@ -100,9 +100,11 @@ export function theQueueSaid(counts: TheQueue['counts']): string {
   if (!counts.all) return 'Nothing is waiting for you to approve or decline.';
   const parts = [counts.leave ? `${inWords(counts.leave)} for leave` : null, counts.spend ? `${inWords(counts.spend)} to spend` : null].filter(Boolean);
   const head = `${capital(inWords(counts.all))} ${counts.all === 1 ? 'request is' : 'requests are'} waiting for you to approve or decline${parts.length === 2 ? `: ${parts.join(' and ')}` : ''}.`;
-  return counts.pastTheDeadline
-    ? `${head} ${capital(inWords(counts.pastTheDeadline))} of them ${counts.pastTheDeadline === 1 ? 'has' : 'have'} waited longer than your organisation allows before a request is passed on.`
-    : head;
+  const late = counts.pastTheDeadline;
+  if (!late) return head;
+  const allowed = 'longer than your organisation allows before a request is passed on';
+  if (late === counts.all) return `${head} ${counts.all === 1 ? 'It has' : 'All of them have'} waited ${allowed}.`;
+  return `${head} ${late > 10 ? `Of them, ${late} have` : `${capital(inWords(late))} of them ${late === 1 ? 'has' : 'have'}`} waited ${allowed}.`;
 }
 
 type Row = {
@@ -125,13 +127,65 @@ export class ApprovalsQueueService {
     today = new Date(),
   ): Promise<TheQueue> {
     const org = reader.organizationId;
+    const read = await this.readTheWaiting(org, today);
+    const role = read.lookups.roles.get(reader.userId) ?? null;
+    if (!role || role === 'GUEST') throw new ForbiddenException('Only people in this organisation can read what waits for them.');
+    if (!read.leaveOn && !read.spendOn) throw new NotFoundException(`Neither leave nor spending is switched on. ${AN_ADMIN_SWITCHES_IT_ON}`);
+
+    /* Which are the reader's: the ones the one approval resolver says they decide now. */
+    const mine = read.waiting.filter((m) => m.row.userId !== reader.userId && decidesIt(m.now.who, { userId: reader.userId, role }, m.row.userId));
+
+    const late = read.late;
+    const counts = {
+      all: mine.length, leave: mine.filter((m) => m.suite === 'leave').length, spend: mine.filter((m) => m.suite === 'spend').length,
+      pastTheDeadline: mine.filter(late).length,
+    };
+
+    const shown = input.suite === 'leave' || input.suite === 'spend' ? mine.filter((m) => m.suite === input.suite) : mine;
+    const pageSize = Math.min(THE_QUEUE_LONGEST_PAGE, Math.max(1, Math.floor(Number(input.pageSize)) || THE_QUEUE_PAGE));
+    const pages = Math.max(1, Math.ceil(shown.length / pageSize));
+    const page = Math.min(pages, Math.max(1, Math.floor(Number(input.page)) || 1));
+    const onThePage = shown.slice((page - 1) * pageSize, page * pageSize);
+
+    return {
+      counts, page, pageSize, pages, says: theQueueSaid(counts),
+      items: await this.putIntoWords(onThePage, { reader, lookups: read.lookups, spendAnswers: read.spendAnswers, late, today }),
+    };
+  }
+
+  /**
+   * WHO EACH WAITING REQUEST WAITS FOR, FOR EVERYBODY AT ONCE: for each person something waits for, how many (the same counts as
+   * their queue) and which, oldest first. One request that waits for any admin waits for each of them. This is the one read the
+   * summary of what waits (a-request-told-on-whatsapp.service.ts) is made from, so it costs the same as one person's queue.
+   */
+  async whatWaitsForEveryone(organizationId: string, today = new Date()): Promise<Map<string, { counts: TheQueue['counts']; refs: { suite: 'leave' | 'spend'; id: string; since: Date }[]; oldestWorkingDays: number }>> {
+    const read = await this.readTheWaiting(organizationId, today);
+    const out = new Map<string, { counts: TheQueue['counts']; refs: { suite: 'leave' | 'spend'; id: string; since: Date }[]; oldestWorkingDays: number }>();
+    if (!read.leaveOn && !read.spendOn) return out;
+    const admins = [...read.lookups.roles].filter(([, role]) => role === 'ADMIN').map(([id]) => id);
+    for (const m of read.waiting) {
+      const who = m.now.who.kind === 'admin' ? admins : [m.now.who.userId];
+      for (const id of who) {
+        if (id === m.row.userId) continue;
+        const one = out.get(id) ?? { counts: { all: 0, leave: 0, spend: 0, pastTheDeadline: 0 }, refs: [], oldestWorkingDays: 0 };
+        one.counts.all += 1;
+        one.counts[m.suite] += 1;
+        if (read.late(m)) one.counts.pastTheDeadline += 1;
+        one.refs.push({ suite: m.suite, id: m.row.id, since: m.since });
+        one.oldestWorkingDays = Math.max(one.oldestWorkingDays, workingDaysSince(m.since, today));
+        out.set(id, one);
+      }
+    }
+    for (const one of out.values()) one.refs.sort((a, b) => a.since.getTime() - b.since.getTime() || a.id.localeCompare(b.id));
+    return out;
+  }
+
+  /** Everything the queue and the summary are made from: the waiting requests, each with who decides it now. Fixed number of reads. */
+  private async readTheWaiting(org: string, today: Date) {
     const suites = await this.suiteRows(org);
     const leaveOn = !!suites.leave?.isOn;
     const spendOn = !!suites.spend?.isOn;
     const lookups = await loadLookups(this.prisma, org, today, { duties: dutiesFrom(suites[DUTIES_ROW]?.answers) });
-    const role = lookups.roles.get(reader.userId) ?? null;
-    if (!role || role === 'GUEST') throw new ForbiddenException('Only people in this organisation can read what waits for them.');
-    if (!leaveOn && !spendOn) throw new NotFoundException(`Neither leave nor spending is switched on. ${AN_ADMIN_SWITCHES_IT_ON}`);
 
     const workflows = workflowsFrom(suites[WORKFLOWS_ROW]?.answers);
     const leaveAnswers = {
@@ -149,44 +203,29 @@ export class ApprovalsQueueService {
     };
 
     const [leaveRows, spendRows] = await Promise.all([
-      leaveOn ? (this.prisma.leaveRequest.findMany({ where: { organizationId: org, status: 'waiting', userId: { not: reader.userId } } }) as Promise<Row[]>) : Promise.resolve([] as Row[]),
-      spendOn ? (this.prisma.spendRequest.findMany({ where: { organizationId: org, status: 'waiting', userId: { not: reader.userId } } }) as Promise<Row[]>) : Promise.resolve([] as Row[]),
+      leaveOn ? (this.prisma.leaveRequest.findMany({ where: { organizationId: org, status: 'waiting' } }) as Promise<Row[]>) : Promise.resolve([] as Row[]),
+      spendOn ? (this.prisma.spendRequest.findMany({ where: { organizationId: org, status: 'waiting' } }) as Promise<Row[]>) : Promise.resolve([] as Row[]),
     ]);
 
-    /* Who decides each request now, in memory, and which are the reader's. */
-    type Mine = { suite: 'leave' | 'spend'; row: Row; now: DecidesNow; since: Date; days?: number };
-    const mine: Mine[] = [];
+    /* Who decides each request now, in memory. */
+    type Waiting = { suite: 'leave' | 'spend'; row: Row; now: DecidesNow; since: Date; days?: number };
+    const waiting: Waiting[] = [];
     const asker = (r: Row) => ({ organizationId: org, requesterUserId: r.userId, managerExternalId: lookups.entryOf.get(r.userId)?.managerExternalId ?? null });
     for (const r of leaveRows ?? []) {
       const days = workingDays(r.startsOn as Date, r.endsOn as Date);
       const now = await whoDecidesNow(this.prisma, theStepsFor('leave', leaveAnswers, days), { ...asker(r), team: lookups.entryOf.get(r.userId)?.department ?? null }, r, { lookups, on: today });
-      if (decidesIt(now.who, { userId: reader.userId, role }, r.userId)) mine.push({ suite: 'leave', row: r, now, since: r.stepSince ?? r.askedAt ?? today, days });
+      waiting.push({ suite: 'leave', row: r, now, since: r.stepSince ?? r.askedAt ?? today, days });
     }
     for (const r of spendRows ?? []) {
       const team = r.team?.trim() || lookups.entryOf.get(r.userId)?.department?.trim() || null;
       const now = await whoDecidesNow(this.prisma, theStepsFor('spend', spendAnswers, num(r.amount)), { ...asker(r), team }, r, { lookups, on: today });
-      if (decidesIt(now.who, { userId: reader.userId, role }, r.userId)) mine.push({ suite: 'spend', row: r, now, since: r.stepSince ?? r.createdAt ?? today });
+      waiting.push({ suite: 'spend', row: r, now, since: r.stepSince ?? r.createdAt ?? today });
     }
-
     /* Oldest first, and by id after that, so no two pages ever hold the same request. */
-    mine.sort((a, b) => a.since.getTime() - b.since.getTime() || a.row.id.localeCompare(b.row.id));
+    waiting.sort((a, b) => a.since.getTime() - b.since.getTime() || a.row.id.localeCompare(b.row.id));
     const allow = (suite: 'leave' | 'spend') => workflows[suite]?.escalateAfter;
-    const late = (m: Mine) => { const a = allow(m.suite); return !!a && workingDaysSince(m.since, today) >= a; };
-    const counts = {
-      all: mine.length, leave: mine.filter((m) => m.suite === 'leave').length, spend: mine.filter((m) => m.suite === 'spend').length,
-      pastTheDeadline: mine.filter(late).length,
-    };
-
-    const shown = input.suite === 'leave' || input.suite === 'spend' ? mine.filter((m) => m.suite === input.suite) : mine;
-    const pageSize = Math.min(THE_QUEUE_LONGEST_PAGE, Math.max(1, Math.floor(Number(input.pageSize)) || THE_QUEUE_PAGE));
-    const pages = Math.max(1, Math.ceil(shown.length / pageSize));
-    const page = Math.min(pages, Math.max(1, Math.floor(Number(input.page)) || 1));
-    const onThePage = shown.slice((page - 1) * pageSize, page * pageSize);
-
-    return {
-      counts, page, pageSize, pages, says: theQueueSaid(counts),
-      items: await this.putIntoWords(onThePage, { reader, lookups, spendAnswers, late, today }),
-    };
+    const late = (m: { suite: 'leave' | 'spend'; since: Date }) => { const a = allow(m.suite); return !!a && workingDaysSince(m.since, today) >= a; };
+    return { leaveOn, spendOn, lookups, spendAnswers, waiting, late };
   }
 
   /** Only the page asked for is put into words: its names, and the leave already approved in its teams. */

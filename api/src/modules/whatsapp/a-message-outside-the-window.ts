@@ -27,6 +27,8 @@ export const BUSINESS_INITIATED: ReadonlySet<string> = new Set([
   'checkin-open', 'due-tomorrow', 'opens-soon', 'closes-soon', 'overdue', 'team-almost-in', 'your-view-matters', 'lead-summary',
   'anchor-weekly-insight', 'anchor-follow-up',
   'report', 'report-retry', 'request-waiting', 'request-decided', 'review-started', 'review-decided',
+  /* What waits for an approver, said once for all of it (the-approvals-summary.ts). */
+  'requests-waiting',
   /* A check-in left halfway (a-check-in-left-halfway.ts): the reminder to carry on, the half-hour warning, and the clock closing it. */
   'carry-on', 'closes-in-half-an-hour', 'closed-by-the-clock',
 ]);
@@ -50,6 +52,12 @@ export const FIRST_MESSAGES: ReadonlySet<string> = new Set([
    * (GET /suites/reviews/mine), so nothing is lost.
    */
   'review-started', 'review-decided',
+  /*
+   * WHAT WAITS FOR AN APPROVER, SAID ONCE FOR ALL OF IT. An approver with many requests waiting is told in one message, not one for
+   * each (a request on its own still goes straight away, decision 92). It is Groundwork writing first, so it counts towards the
+   * person's one message of the day like the lead's summary, and is held when that has gone.
+   */
+  'requests-waiting',
   /*
    * THE ANCHOR'S WEEKLY INSIGHT (piece 28; decision 105 item 2). It is the lead's one message of that day: it goes on
    * Friday before the daily summary, so the summary that day is held back by the same count. That is the whole of
@@ -166,6 +174,8 @@ export const TEMPLATES: Record<string, ATemplate> = {
   report: aTemplate('groundwork_report_ready', 'Your report for {{1}} is ready. {{2}} Open Groundwork to read it.'),
   /* Ours, proposed to Hafsah (decision 82, item 1): an approval waiting, and the decision told to the person. */
   'request-waiting': aTemplate('groundwork_request_waiting', 'Hi {{1}}, {{2}} has asked for {{3}}, and it is waiting for you. Reply here to approve or decline it, or open Groundwork to read it first.'),
+  /* Ours, proposed to Hafsah: everything waiting for an approver, said once. {{2}} is the whole paragraph, in plain full sentences. */
+  'requests-waiting': aTemplate('groundwork_requests_waiting', 'Hi {{1}}. {{2}} Open Groundwork to read and answer: {{3}}'),
   'request-decided': aTemplate('groundwork_request_decided', 'Hi {{1}}, your request for {{2}} was {{3}} by {{4}}. Open Groundwork to read it.'),
   /*
    * Ours, proposed to Hafsah (item 16): a review waits for the person in the app. Never anything the

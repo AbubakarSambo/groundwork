@@ -10,7 +10,7 @@ import { whyPassOn, type WhyPassedOn } from './a-request-waits-too-long';
 import { aRequestsHistory, recordIt } from './a-request-is-recorded';
 import { claimIt, theyGotThereFirst, whereItIsNow } from './a-request-is-answered-once';
 import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
-import { aLeaveRequest, leaveInWords, whereItIsOnTheBoard, whereYourRequestIs, type WhereItStands } from './a-request-in-words';
+import { aLeaveRequest, leaveInWords, type AWaitingRequest, whereItIsOnTheBoard, whereYourRequestIs, type WhereItStands } from './a-request-in-words';
 import { firstNamesOf, readWorkflow, whoInWords, type AWorkflow } from './the-approval-steps';
 import { ownedInWords, whatTheyOwnWhileAway } from './what-they-own-while-away';
 import { aLeaveRequestAsTheApproverReadsIt, theClashSaid, whoIsOffNamed } from './a-leave-request-as-the-approver-reads-it';
@@ -587,7 +587,7 @@ export class LeaveBoardService {
    * working days for one person, or whose approver is on approved leave today, moves to the next rule
    * on its step's list, and whoever that names is told. Nothing moves while the admin has set no days.
    */
-  async passOnWhatWaitsTooLong(organizationId: string, today = new Date()): Promise<PassedOn[]> {
+  async passOnWhatWaitsTooLong(organizationId: string, today = new Date(), collect?: { approverUserIds: string[]; request: AWaitingRequest }[]): Promise<PassedOn[]> {
     const answers = await this.suiteAnswers(organizationId).catch(() => null);
     if (!answers?.workflow?.escalateAfter) return [];
     const rows = (await this.prisma.leaveRequest.findMany({ where: { organizationId, status: 'waiting' } })) as (Row & { askedAt?: Date })[];
@@ -596,6 +596,7 @@ export class LeaveBoardService {
     /* Who decides each request is worked out in memory from what is read once, for the day the clock is run for. */
     const shared = { lookups: (await loadLookups(this.prisma, organizationId, today).catch(() => undefined)) as Lookups | undefined, on: today };
     const out: PassedOn[] = [];
+    const toTell: { approverUserIds: string[]; request: AWaitingRequest }[] = [];
     for (const r of rows) {
       const n = await whoComesNext(this.prisma, theStepsFor('leave', answers, workingDays(r.startsOn, r.endsOn)), {
         organizationId, requesterUserId: r.userId,
@@ -622,9 +623,12 @@ export class LeaveBoardService {
       if (!(await claimIt(this.prisma.leaveRequest, whereItIsNow(r), { ...(after.passed.length ? { step: moved.step } : {}), escalatedTo: moved.escalatedTo, stepSince: today }))) continue;
       await escalated();
       await this.recordPassed(r, after.passed);
-      await this.tellWhoDecides(moved, people, answers, shared);
+      await this.tellWhoDecides(moved, people, answers, shared, toTell);
       out.push({ ref: r.id, step: n.now.step, from: n.now.who, to: n.next.who, why });
     }
+    /* Whoever many were passed on to is written to once; whoever one was passed on to, as before. */
+    /* Told together with what the other suites passed on at the same time, when the clock is collecting (a-request-waits-too-long.cron.ts). */
+    if (collect) collect.push(...toTell); else await this.tellThemTogether(organizationId, toTell, today);
     return out;
   }
 
@@ -646,14 +650,31 @@ export class LeaveBoardService {
     return aRequestsHistory(this.prisma, reader.organizationId, 'leave', id, reader.userId);
   }
 
+  /**
+   * What the clock passed on is told together: an approver whom one request was passed on to is told of it, as before, and one whom
+   * several were passed on to is written to once for all of them (a-request-told-on-whatsapp.service.ts). A sender that cannot say it
+   * together tells each, as it always did.
+   */
+  private async tellThemTogether(organizationId: string, batch: { approverUserIds: string[]; request: AWaitingRequest }[], today: Date): Promise<void> {
+    if (!this.told || !batch.length) return;
+    try {
+      if (typeof this.told.waitingMany === 'function') await this.told.waitingMany(organizationId, batch, today);
+      else for (const b of batch) await this.told.waiting(organizationId, b.approverUserIds, b.request);
+    } catch { /* the requests stand */ }
+  }
+
   /** Whoever decides the step a request is on is told on WhatsApp (decision 82, item 1). */
-  async tellWhoDecides(row: Row, people?: Map<string, any>, answers?: { perYear: number | null; approver: string | null; workflow?: AWorkflow; rules?: LeaveRules }, shared: { lookups?: Lookups; on?: Date } = {}): Promise<void> {
+  async tellWhoDecides(row: Row, people?: Map<string, any>, answers?: { perYear: number | null; approver: string | null; workflow?: AWorkflow; rules?: LeaveRules }, shared: { lookups?: Lookups; on?: Date } = {}, batch?: { approverUserIds: string[]; request: AWaitingRequest }[]): Promise<void> {
     if (!this.told) return;
     try {
       const a = answers ?? (await this.suiteAnswers(row.organizationId));
       const now = await this.now(row, people ?? (await this.directory(row.organizationId, [row])), a, shared);
       const first = await this.told.firstNameOf(row.userId);
-      await this.told.waiting(row.organizationId, await this.told.approversOf(row.organizationId, now.who, row.userId), aLeaveRequest(row.id, row.userId, first, dayOf(row.startsOn), dayOf(row.endsOn)));
+      const approverUserIds = await this.told.approversOf(row.organizationId, now.who, row.userId);
+      const request = aLeaveRequest(row.id, row.userId, first, dayOf(row.startsOn), dayOf(row.endsOn));
+      /* Passed on by the clock with others: collected, and told together at the end, so an approver is not told once for each. */
+      if (batch) { batch.push({ approverUserIds, request }); return; }
+      await this.told.waiting(row.organizationId, approverUserIds, request);
     } catch { /* the request stands */ }
   }
 

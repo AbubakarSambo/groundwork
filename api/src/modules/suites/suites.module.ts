@@ -22,11 +22,12 @@ import { ARequestWaitsTooLongCron } from './a-request-waits-too-long.cron';
 import { SpendingForFinanceService } from './the-spending-for-finance.service';
 import { ARequestFiledFromItsForm } from './a-request-filed-from-its-form';
 import { ApprovalsQueueService } from './the-approvals-queue.service';
+import { TheApproversSummaryCron } from './the-approvers-summary.cron';
 
 @Module({
   imports: [SuggestionsModule],
   controllers: [SuitesController],
-  providers: [SuitesService, OnboardingBoardService, LeaveBoardService, TimeSheetsService, ReviewsService, LeavingBoardService, RoleMapService, SpendingService, TodosService, CustomersService, EquipmentService, CustomerStandingService, AnthropicService, ReviewsProposedService, ReviewsProposedCron, ARequestToldOnWhatsApp, AReviewToldOnWhatsApp, ARequestWaitsTooLongCron, SpendingForFinanceService, ARequestFiledFromItsForm, ApprovalsQueueService],
+  providers: [SuitesService, OnboardingBoardService, LeaveBoardService, TimeSheetsService, ReviewsService, LeavingBoardService, RoleMapService, SpendingService, TodosService, CustomersService, EquipmentService, CustomerStandingService, AnthropicService, ReviewsProposedService, ReviewsProposedCron, ARequestToldOnWhatsApp, AReviewToldOnWhatsApp, ARequestWaitsTooLongCron, SpendingForFinanceService, ARequestFiledFromItsForm, ApprovalsQueueService, TheApproversSummaryCron],
   exports: [SuitesService, LeaveBoardService, TimeSheetsService, ReviewsService, ReviewsProposedService, SpendingService, EquipmentService, ARequestToldOnWhatsApp, SpendingForFinanceService, ApprovalsQueueService],
 })
 export class SuitesModule {}
