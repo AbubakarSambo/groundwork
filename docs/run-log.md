@@ -2,6 +2,23 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## Links between check-ins, and the strategy's history (6 October, piece 5, parts C and D)
+
+**How it was run.** A worktree at `12d83677` built with `nest build`, the local database `gw_wa_own` with the new migration applied, the API on port 3059. For D, Tana's planning tool signs in with its own credential and pushes priorities. For C the rows a finished conversation leaves (a handoff that names the other check-in) are written directly, because there are no model keys here. The WhatsApp journey was rerun at `e05a8e2a` first: 32 of 32.
+
+| Part | Reader | What they read or what happened | Result |
+| --- | --- | --- | --- |
+| C Waiting on another team | Wanjiru, leads Sales | Sales is waiting on Finance for "the Westgate credit terms", due "by Friday" (a Friday, `dueWord` "Fri"), and "The Westgate credit terms are due by Friday." | built before, proved |
+| C Asked of this check-in | Fatuma, leads Finance, who cannot open Sales | Nothing of Sales: no team, no person, no words. This is the rule from request 18 (you read only what you may already open). | as designed |
+| C | Grace, an admin who may open both | Finance's page reads that Sales team, Q3 asked for the Westgate credit terms, asked by Miriam, with a way to open Sales. | proved |
+| C | Miriam (in Sales); Piet (a third check-in); Kofi (a guest from another company) | Miriam reads the Sales links and is refused Finance (404). Piet is refused Sales (404). Kofi reads nothing of Sales. | proved |
+| D Before any change | Grace | The Company page carries `strategy: null`, as it read before. | proved |
+| D After their system adds a third priority | Grace, Wanjiru, Miriam | All three read "Strategy v2, since 6 October." and, newest first, "This version added “Build a stronger organisation”." and "Strategy v1, since 1 September." (the earliest priority was set on 1 September). Only priority titles, no person, measure or target. | 3 of 3 |
+| D | Kofi, a guest | The Company page is refused with 403. | proved |
+| D | Everyone | Pushing the same priority again makes no new version, and opening the page again and again writes none. | proved |
+
+18 of 18 checks pass. See `api/journey/links-between-check-ins-and-the-strategy-history.ts`.
+
 ## An organisation's own WhatsApp number, and a guest's Ask Groundwork (6 October, piece 5, parts A and B)
 
 **How it was run.** A worktree of `wip/release` built with `nest build`, a local database `gw_wa_own`, the API on port 3059. For A, Meta's Graph API was a recorder on a loopback port, and every message in was signed here with the secret of the number it was for. For B there is no recorder: the guest's answers are written by rules, so no model is needed. Both journeys refuse anything that is not a local API and a local `gw_` database.

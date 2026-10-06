@@ -6247,3 +6247,19 @@ The admin types the token and the app secret again on the same page and saves. U
 > We cannot save your number's keys safely yet. This is on our side, not yours. Contact Groundwork and we will put it right.
 
 Saving anything else (the display number, the business account) still works with no key, when no new token or secret is typed. The setting's name is never shown to the customer.
+
+## 6 October: the strategy's history on the Company page, for the screens to show
+
+`GET /company` now carries `strategy`, next to `line`, for every reader who may open the page (a guest is still refused). It is `null` until the organisation's priorities have changed once, so draw nothing in its place.
+
+    strategy: {
+      says: "Strategy v2, since 6 October.",       // the line to show; v1's date is the day its earliest priority was set
+      number: 2,
+      history: [                                    // newest first, for the History tab
+        { number: 2, says: "Strategy v2, since 6 October.", priorities: ["Grow revenue 50%, enterprise first", "Improve delivery", "Build a stronger organisation"],
+          whatChanged: "This version added “Build a stronger organisation”." },
+        { number: 1, says: "Strategy v1, since 1 September.", priorities: [...], whatChanged: null }
+      ]
+    }
+
+`whatChanged` reads "This version added “X” and removed “Y”.", or "This version changed the wording of a priority." It holds only priority titles. It never holds a person, a measure, a target or anything anybody said. Not built: "One sales goal still points to last quarter's strategy".
