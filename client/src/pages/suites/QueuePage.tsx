@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { queueApi, leaveBoardApi, spendApi, type AQueueItem } from '@/api/suites'
+import { queueApi, leaveBoardApi, spendApi, decisionsApi, type AQueueItem, type ADecisionResult } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row, Tabs, FieldLabel, TextArea } from '@/components/gw/ui'
 import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
@@ -40,65 +40,56 @@ export function QueueLink({ userId }: { userId?: string }) {
  * spending boards use), so every item here may be approved or declined exactly as those boards
  * already do (`leaveBoardApi.decide`/`spendApi.decide`, by `item.suite`).
  *
- * APPROVING SEVERAL AT ONCE sends the same decide call for each selected item, one after another,
- * never together: the engine keeps each answer once and tells each person once either way. If one
- * is refused - another approver answered first, say - that item's own served sentence is shown
- * beside it and the rest carry on. Declining stays one at a time, with its own optional reason,
- * named for who reads it, the same as the leave and spending boards.
+ * APPROVING SEVERAL AT ONCE now sends the batch route the engine built for it (`POST
+ * /suites/decisions`, docs/answers-from-engine.md "For the screens: the batch decision, ready"),
+ * one call for up to 50 answers at a time, in order, and one that fails never stops the rest
+ * (`DecisionsInABatchService`). More than 50 selected go in chunks of 50, one call after another,
+ * with "Working through 50 of 120…" shown while they run. Each result's own served sentence (`says`)
+ * is shown word for word, beside the request's name when `says` does not already name them, and a
+ * failed one is marked plainly as not done. The summary is the served top `says` for one call, or,
+ * across several chunks, one line of our own that adds them up in the same form. A whole-call
+ * refusal (none selected, an outsider, no suite on) shows its served sentence and changes nothing.
+ * Declining stays one at a time, with its own optional reason, named for who reads it, the same as
+ * the leave and spending boards.
  *
  * PAGING, NEVER A HUNDRED ROWS AT ONCE: the page opens with the first 25, oldest first, and "Show
  * more" asks the server for more of the same filtered list (capped at the server's own limit of 100
  * at a time).
  */
 const DID_NOT_GO = 'That did not go through, and nothing has changed. Try again.'
-const WAIT_A_MOMENT = 'Waiting a moment before carrying on…'
-const SENT_TOO_FAST = 'This one could not be sent just now. Try it again in a minute.'
-const ALREADY_DECIDED_SAYS = 'This request has already been decided.'
 const PAGE_STEP = 25
 const PAGE_MAX = 100
+const MOST_IN_A_CALL = 50
 
 type SuiteFilter = 'all' | 'leave' | 'spend'
 
-type ARequestResult = { id: string; name: string; ok: boolean; message: string | null; alreadyDecided: boolean }
+/** One result from the batch call, with the selected request's own name beside it for display. */
+type ADecisionRow = ADecisionResult & { name: string | null; firstName: string | null }
 
-/** "0" through "10" in words, as the queue's own sentences do; past ten, the number itself. */
+/** "0" through "10" in words, as the engine's own sentences do; past ten, the number itself. */
 const NUMBER_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten']
 const inWords = (n: number) => (n >= 0 && n <= 10 ? NUMBER_WORDS[n] : String(n))
 const capital = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`
 
-/** A refusal that means "somebody else already decided this", whichever way the server said it: a 409, or its own "already decided" sentence. */
-function isAlreadyDecided(status: number | undefined, message: string | undefined): boolean {
-  return status === 409 || message === ALREADY_DECIDED_SAYS
+/**
+ * OUR OWN ROLL-UP, FOR SEVERAL CHUNKS ONLY, in the exact form the engine's single-call `says` uses
+ * (`the-decisions-in-a-batch.service.ts`), so a batch of more than 50 reads no differently from one
+ * the engine answered in a single call.
+ */
+function addedUp(results: ADecisionResult[]): string {
+  const total = results.length
+  const answered = results.filter(r => r.ok).length
+  const left = total - answered
+  if (!left) return total === 1 ? 'The answer was kept.' : `All ${inWords(total)} answers were kept.`
+  if (!answered) return total === 1 ? 'The answer could not be kept, and it says why.' : `None of the ${inWords(total)} answers could be kept, and each says why.`
+  return `${capital(inWords(answered))} of the ${inWords(total)} answers ${answered === 1 ? 'was' : 'were'} kept. ${capital(inWords(left))} could not be kept, and ${left === 1 ? 'it says' : 'each says'} why.`
 }
 
-const wait = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms))
-
-/**
- * SENDS ONE DECIDE CALL, WAITING OUT THE RATE LIMIT (fault 2d of the live walk). Approving several
- * sends one request per item, and the API allows 60 a minute - at a hundred people, a long batch can
- * run into it. On a 429, wait (the server's own `Retry-After`, or 10 seconds with none) and try that
- * one request again, up to 3 times in all, before counting it as not sent.
- */
-async function sendIt(fn: () => Promise<unknown>, onWaiting: () => void): Promise<{ ok: true } | { ok: false; status?: number; rawMessage?: string; tooFast?: boolean }> {
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      await fn()
-      return { ok: true }
-    } catch (e: any) {
-      const status = e?.response?.status
-      if (status === 429) {
-        if (attempt < 2) {
-          onWaiting()
-          const retryAfter = Number(e?.response?.headers?.['retry-after'])
-          await wait((Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : 10) * 1000)
-          continue
-        }
-        return { ok: false, status, tooFast: true }
-      }
-      return { ok: false, status, rawMessage: e?.response?.data?.message }
-    }
-  }
-  return { ok: false, tooFast: true }
+/** The served `says`, with the request's name beside it only when `says` does not already name them. */
+function lineFor(r: ADecisionRow): string {
+  const named = !!r.name && (r.says.includes(r.name) || (!!r.firstName && r.says.includes(r.firstName)))
+  const prefix = r.name && !named ? `${r.name}: ` : ''
+  return r.ok ? `${prefix}${r.says}` : `${prefix}Not done. ${r.says}`
 }
 
 export function QueuePage() {
@@ -109,11 +100,11 @@ export function QueuePage() {
   const [suite, setSuite] = useState<SuiteFilter>(fromParams === 'leave' || fromParams === 'spend' ? fromParams : 'all')
   const [pageSize, setPageSize] = useState(PAGE_STEP)
   const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [failures, setFailures] = useState<Record<string, string>>({})
   const [batchProblem, setBatchProblem] = useState<string | null>(null)
   /* What happened to each request in the last "Approve the N selected", kept on screen after the list
-     refreshes (Hafsah, 7 October: always show the result for each, and say plainly if any failed). */
-  const [results, setResults] = useState<ARequestResult[] | null>(null)
+     refreshes (Hafsah, 7 October: always show the result for each, and say plainly if any failed;
+     6 October's batch route: the rows and the summary are the server's own `says`). */
+  const [results, setResults] = useState<{ rows: ADecisionRow[]; summary: string } | null>(null)
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['suite-queue', suite, pageSize],
@@ -127,52 +118,44 @@ export function QueuePage() {
   const refused = (error as { response?: { status?: number; data?: { message?: string } } } | null)?.response
 
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
-  const [waitingOnARetry, setWaitingOnARetry] = useState(false)
   const approveSelected = useMutation({
     mutationFn: async () => {
       const items = (data?.items ?? []).filter(i => selected.has(i.id))
-      setProgress({ done: 0, total: items.length })
-      const fails: Record<string, string> = {}
-      const each: ARequestResult[] = []
+      const total = items.length
       setResults(null)
-      for (const item of items) {
-        const outcome = await sendIt(
-          () => (item.suite === 'leave' ? leaveBoardApi.decide(item.id, 'approve') : spendApi.decide(item.id, 'approve')),
-          () => setWaitingOnARetry(true),
-        )
-        setWaitingOnARetry(false)
-        if (outcome.ok) {
-          each.push({ id: item.id, name: item.name, ok: true, message: null, alreadyDecided: false })
-        } else {
-          const alreadyDecided = isAlreadyDecided(outcome.status, outcome.rawMessage)
-          const message = outcome.tooFast
-            ? SENT_TOO_FAST
-            : alreadyDecided
-              ? `${item.name}’s request had already been decided by someone else, so nothing changed.`
-              : (outcome.rawMessage || DID_NOT_GO)
-          fails[item.id] = message
-          each.push({ id: item.id, name: item.name, ok: false, message, alreadyDecided })
-        }
-        setProgress(p => (p ? { ...p, done: p.done + 1 } : p))
+      setProgress(total > MOST_IN_A_CALL ? { done: 0, total } : null)
+      const named = new Map<string, AQueueItem>(items.map(i => [`${i.suite}|${i.id}`, i]))
+      const all: ADecisionResult[] = []
+      const sayings: string[] = []
+      for (let start = 0; start < items.length; start += MOST_IN_A_CALL) {
+        const chunk = items.slice(start, start + MOST_IN_A_CALL)
+        const res = await decisionsApi.decide(chunk.map(i => ({ suite: i.suite, id: i.id, answer: 'approve' as const })))
+        all.push(...res.results)
+        sayings.push(res.says)
+        if (total > MOST_IN_A_CALL) setProgress({ done: Math.min(start + chunk.length, total), total })
       }
-      return { fails, each }
+      const rows: ADecisionRow[] = all.map(r => {
+        const item = r.suite ? named.get(`${r.suite}|${r.id}`) : undefined
+        return { ...r, name: item?.name ?? null, firstName: item?.firstName ?? null }
+      })
+      /* One call: the served top `says` stands as the summary. Several chunks: our own line, added
+         up in the same form, so a batch of more than 50 reads no differently from one. */
+      const summary = sayings.length === 1 ? sayings[0] : addedUp(all)
+      return { rows, summary }
     },
-    onSuccess: ({ fails, each }) => {
+    onSuccess: ({ rows, summary }) => {
       setBatchProblem(null)
-      setFailures(fails)
-      setResults(each)
+      setResults({ rows, summary })
       setSelected(new Set())
       qc.invalidateQueries({ queryKey: ['suite-queue'] })
     },
-    /* Each item's own failure is already caught and shown beside it (`fails`, above); this is only
-       for something unexpected breaking the batch itself, e.g. the browser losing its connection
-       mid-run - never left silent, as every mutation here must say what happened when it failed. */
-    onError: () => setBatchProblem(DID_NOT_GO),
-    onSettled: () => { setProgress(null); setWaitingOnARetry(false) },
+    /* A whole-call refusal (none selected, an outsider, no suite on): shown as served, and nothing
+       changes - the selection and the list stand exactly as they were. */
+    onError: (e: any) => setBatchProblem(e?.response?.data?.message || DID_NOT_GO),
+    onSettled: () => setProgress(null),
   })
 
   function afterOne() {
-    setFailures({})
     qc.invalidateQueries({ queryKey: ['suite-queue'] })
   }
 
@@ -252,14 +235,14 @@ export function QueuePage() {
                     <p className="gwui-panel-text-muted">Tick the requests you want to approve together.</p>
                   )}
                 </div>
-                {progress && <Note>{waitingOnARetry ? WAIT_A_MOMENT : `Working through ${progress.done} of ${progress.total}…`}</Note>}
+                {progress && <Note>{`Working through ${progress.done} of ${progress.total}…`}</Note>}
                 {results && <TheResults results={results} onDone={() => setResults(null)} />}
                 {batchProblem && <Note tone="error">{batchProblem}</Note>}
 
                 <RowList label="Waiting for approval">
                   {items.map(item => (
                     <AQueueRow key={item.id} item={item} selected={selected.has(item.id)} onToggle={() => toggleOne(item.id)}
-                      failure={failures[item.id] ?? null} onChanged={afterOne} />
+                      onChanged={afterOne} />
                   ))}
                 </RowList>
 
@@ -283,11 +266,10 @@ function emptyQueueSays(suite: SuiteFilter): string {
   return 'Nothing is waiting for you to approve or decline.'
 }
 
-function AQueueRow({ item, selected, onToggle, failure, onChanged }: {
+function AQueueRow({ item, selected, onToggle, onChanged }: {
   item: AQueueItem
   selected: boolean
   onToggle: () => void
-  failure: string | null
   onChanged: () => void
 }) {
   const [problem, setProblem] = useState<string | null>(null)
@@ -311,7 +293,7 @@ function AQueueRow({ item, selected, onToggle, failure, onChanged }: {
         <p className="gwui-panel-text">{item.waitedSays}</p>
         {item.clash && <p className="gwui-panel-text">{item.clash.says}</p>}
         {item.standingIn && <p className="gwui-panel-text">{item.standingIn.says}</p>}
-        {(failure || problem) && <Note tone="error">{failure ?? problem}</Note>}
+        {problem && <Note tone="error">{problem}</Note>}
         {declining && (
           <form className="gwui-suite-ask" onSubmit={e => { e.preventDefault(); decide.mutate('decline') }}>
             <div className="gwui-suite-q">
@@ -340,34 +322,20 @@ function AQueueRow({ item, selected, onToggle, failure, onChanged }: {
 
 /*
  * THE RESULT OF EACH REQUEST IN THE LAST BATCH, AND ONE PLAIN SENTENCE ON HOW MANY DID NOT GO
- * THROUGH. Fault 2c of the live walk: a request someone else had already decided used to read "X's
- * request was not approved. This request has already been decided.", and was counted the same as any
- * other failure. It now has its own plain sentence, and its own count in the summary, apart from a
- * genuine failure.
+ * THROUGH. The batch route (6 October, the engine's "the batch decision, ready") now answers each
+ * request itself, in a full sentence (`says`), so every row and the top summary are the server's own
+ * words, never ones this screen works out - only the roll-up across several chunks is ours
+ * (`addedUp`, in the same form).
  */
-function TheResults({ results, onDone }: { results: ARequestResult[]; onDone: () => void }) {
-  const already = results.filter(r => !r.ok && r.alreadyDecided)
-  const otherFailed = results.filter(r => !r.ok && !r.alreadyDecided)
-  const approved = results.length - already.length - otherFailed.length
-  const counted = (n: number) => (n === 1 ? '1 request' : `${n} requests`)
-  const summary = already.length === 0
-    ? (otherFailed.length === 0
-      ? `All ${counted(results.length)} were approved.`
-      : approved === 0
-        ? `None of the ${counted(results.length)} could be approved.`
-        : `${counted(approved)} ${approved === 1 ? 'was' : 'were'} approved. ${counted(otherFailed.length)} could not be approved.`)
-    : [
-      approved ? `${capital(inWords(approved))} ${approved === 1 ? 'was' : 'were'} approved.` : null,
-      `${capital(inWords(already.length))} had already been decided by someone else.`,
-      otherFailed.length ? `${capital(inWords(otherFailed.length))} could not be approved.` : null,
-    ].filter(Boolean).join(' ')
+function TheResults({ results, onDone }: { results: { rows: ADecisionRow[]; summary: string }; onDone: () => void }) {
+  const anyFailed = results.rows.some(r => !r.ok)
   return (
     <Section heading="What happened">
-      <Note tone={already.length || otherFailed.length ? 'error' : undefined}>{summary}</Note>
+      <Note tone={anyFailed ? 'error' : undefined}>{results.summary}</Note>
       <RowList label="What happened">
-        {results.map(r => (
-          <Row key={r.id} columns="minmax(0, 1fr)">
-            <span>{r.ok ? `${r.name}’s request was approved.` : r.alreadyDecided ? r.message : `${r.name}’s request was not approved. ${r.message ?? ''}`.trim()}</span>
+        {results.rows.map((r, i) => (
+          <Row key={`${r.suite ?? 'unknown'}-${r.id}-${i}`} columns="minmax(0, 1fr)">
+            <span>{lineFor(r)}</span>
           </Row>
         ))}
       </RowList>

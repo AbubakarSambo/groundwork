@@ -9,17 +9,20 @@ import type { AQueueItem, TheQueue } from '@/api/suites'
 /**
  * THE APPROVER'S QUEUE (new for the screens, request 160/162), AS EACH READER SEES IT. Who is served
  * what, and the exact sentences, are tested on the server (the-approvers-queue-at-a-hundred-people-
- * as-each-reader-reads-it.spec.ts, several-at-once-as-each-reader-reads-it.spec.ts). Here: that the
- * page draws the served `says`/`where`/`waitedSays`/`clash`/`standingIn` sentences, that it pages
- * with "Show more" and filters by suite, that approving several carries one refusal past the rest,
- * and that declining stays one at a time.
+ * as-each-reader-reads-it.spec.ts, many-answers-in-one-call-as-each-reader-reads-it.spec.ts). Here:
+ * that the page draws the served `says`/`where`/`waitedSays`/`clash`/`standingIn` sentences, that it
+ * pages with "Show more" and filters by suite, that approving several sends the batch route the
+ * engine built for it (6 October, "the batch decision, ready"), one call for up to 50 and chunks of
+ * 50 beyond that, that every result and the summary are shown exactly as served, and that declining
+ * stays one at a time.
  */
 vi.mock('@/api/suites', () => ({
   queueApi: { get: vi.fn() },
   leaveBoardApi: { decide: vi.fn() },
   spendApi: { decide: vi.fn() },
+  decisionsApi: { decide: vi.fn() },
 }))
-import { queueApi, leaveBoardApi, spendApi } from '@/api/suites'
+import { queueApi, leaveBoardApi, spendApi, decisionsApi } from '@/api/suites'
 
 const AISHA: AQueueItem = {
   id: 'q-1', suite: 'leave', name: 'Aisha Otieno', firstName: 'Aisha', team: 'Sales',
@@ -65,20 +68,6 @@ function open(served: TheQueue | Error = QUEUE) {
 const refusal = (status: number, message: string) => Object.assign(new Error(String(status)), { response: { status, data: { message } } })
 const rows = () => within(screen.getByRole('list', { name: 'Waiting for approval' })).getAllByRole('listitem')
 const rowOf = (name: string) => rows().find(li => li.textContent?.includes(name))!
-
-/**
- * ONLY THE QUEUE'S OWN LONG RETRY WAITS (2+ seconds) ARE FAKED, so testing-library's own short
- * internal polling (its 50ms interval, its 1000ms default timeout) still runs for real and the tests
- * stay fast without hanging. `run` defaults to calling the callback at once; the "waiting" test passes
- * its own, so it can release the wait on its own schedule.
- */
-function mockLongSetTimeouts(run: (fn: () => void) => void = fn => fn()) {
-  const real = global.setTimeout
-  return vi.spyOn(global, 'setTimeout').mockImplementation(((fn: any, ms?: number, ...args: any[]) => {
-    if ((ms ?? 0) >= 2000) { run(fn); return 0 as any }
-    return (real as any)(fn, ms, ...args)
-  }) as any)
-}
 
 beforeEach(() => { vi.clearAllMocks() })
 
@@ -145,130 +134,106 @@ describe('paging with "Show more"', () => {
 })
 
 describe('approving several at once', () => {
-  it('approves each selected item in turn, through the same decide calls the boards use, and carries one refusal past the rest', async () => {
-    ;(leaveBoardApi.decide as any).mockResolvedValue({ waiting: [], off: [] })
-    ;(spendApi.decide as any).mockRejectedValue(refusal(400, 'Only KES 20,000 or less may be approved without a second person.'))
+  /*
+   * THE BATCH ROUTE THE ENGINE BUILT FOR IT (6 October, docs/answers-from-engine.md, "For the
+   * screens: the batch decision, ready"): "Approve the N selected" now sends `POST /suites/decisions`
+   * (`decisionsApi.decide`) rather than the old one-by-one loop with its 429 retry, which the route's
+   * own limit of 50 at a time makes unnecessary. Up to 50 selected go in a single call, in order.
+   */
+  it('sends one call for up to 50 selected, in the order given, with the exact decisions', async () => {
+    ;(decisionsApi.decide as any).mockResolvedValue({
+      results: [
+        { id: 'q-1', suite: 'leave', ok: true, says: 'You approved Aisha’s leave from Monday 12 October to Friday 16 October.' },
+        { id: 'q-2', suite: 'spend', ok: true, says: 'You approved Kamau’s request to spend KES 18,000 for fuel for Kisumu deliveries.' },
+      ],
+      answered: 2,
+      says: 'All two answers were kept.',
+    })
     open()
     await screen.findByRole('list', { name: 'Waiting for approval' })
     fireEvent.click(screen.getByLabelText('Select all on this page'))
-    const approveAll = screen.getByRole('button', { name: 'Approve the 2 selected' })
-    fireEvent.click(approveAll)
-    await waitFor(() => expect(leaveBoardApi.decide).toHaveBeenCalledWith('q-1', 'approve'))
-    await waitFor(() => expect(spendApi.decide).toHaveBeenCalledWith('q-2', 'approve'))
-    expect(await within(rowOf('Kamau')).findByText('Only KES 20,000 or less may be approved without a second person.')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Approve the 2 selected' }))
+    await waitFor(() => expect(decisionsApi.decide).toHaveBeenCalledTimes(1))
+    expect(decisionsApi.decide).toHaveBeenCalledWith([
+      { suite: 'leave', id: 'q-1', answer: 'approve' },
+      { suite: 'spend', id: 'q-2', answer: 'approve' },
+    ])
+    expect(leaveBoardApi.decide).not.toHaveBeenCalled()
+    expect(spendApi.decide).not.toHaveBeenCalled()
     /* The queue is re-read once the batch is done, so the approver sees what is left to decide. */
     await waitFor(() => expect((queueApi.get as any).mock.calls.length).toBeGreaterThan(1))
   })
 
-  it('shows the result for each request, and says plainly that one failed (Hafsah, 7 October)', async () => {
-    ;(leaveBoardApi.decide as any).mockResolvedValue({ waiting: [], off: [] })
-    ;(spendApi.decide as any).mockRejectedValue(refusal(400, 'Only KES 20,000 or less may be approved without a second person.'))
-    open()
-    await screen.findByRole('list', { name: 'Waiting for approval' })
-    fireEvent.click(screen.getByLabelText('Select all on this page'))
-    fireEvent.click(screen.getByRole('button', { name: 'Approve the 2 selected' }))
-    const results = await screen.findByRole('list', { name: 'What happened' })
-    expect(await screen.findByText('1 request was approved. 1 request could not be approved.')).toBeInTheDocument()
-    expect(within(results).getByText('Aisha Otieno’s request was approved.')).toBeInTheDocument()
-    expect(within(results).getByText('Kamau Njenga’s request was not approved. Only KES 20,000 or less may be approved without a second person.')).toBeInTheDocument()
-  })
-
-  /*
-   * FAULT 2c OF THE LIVE WALK: a request someone else had already decided (a 409, or the server's
-   * own "This request has already been decided." sentence) used to read as an ordinary failure,
-   * counted the same as any other. It now has its own plain sentence, and its own count apart from a
-   * genuine failure, in the summary.
-   */
-  it('tells a request someone else already decided apart from a genuine failure, in the row and in the summary', async () => {
-    ;(leaveBoardApi.decide as any).mockResolvedValue({ waiting: [], off: [] })
-    ;(spendApi.decide as any).mockRejectedValue(refusal(409, 'Wairimu approved this request a moment ago, so your answer was not kept.'))
-    open()
-    await screen.findByRole('list', { name: 'Waiting for approval' })
-    fireEvent.click(screen.getByLabelText('Select all on this page'))
-    fireEvent.click(screen.getByRole('button', { name: 'Approve the 2 selected' }))
-    const results = await screen.findByRole('list', { name: 'What happened' })
-    expect(await screen.findByText('One was approved. One had already been decided by someone else.')).toBeInTheDocument()
-    expect(within(results).getByText('Aisha Otieno’s request was approved.')).toBeInTheDocument()
-    expect(within(results).getByText('Kamau Njenga’s request had already been decided by someone else, so nothing changed.')).toBeInTheDocument()
-  })
-
-  it('says so when every one went through', async () => {
-    ;(leaveBoardApi.decide as any).mockResolvedValue({ waiting: [], off: [] })
-    ;(spendApi.decide as any).mockResolvedValue({ waiting: [] })
-    open()
-    await screen.findByRole('list', { name: 'Waiting for approval' })
-    fireEvent.click(screen.getByLabelText('Select all on this page'))
-    fireEvent.click(screen.getByRole('button', { name: 'Approve the 2 selected' }))
-    expect(await screen.findByText('All 2 requests were approved.')).toBeInTheDocument()
-  })
-
-  /*
-   * FAULT 2d OF THE LIVE WALK: the API allows 60 calls a minute, and a long batch can run into it. On
-   * a 429, the request is waited out and tried again (the server's own Retry-After, or 10 seconds
-   * with none), up to 3 times in all, before it is counted as not sent. `setTimeout` is mocked to run
-   * its callback at once, rather than slow these tests down by really waiting - what it is asked to
-   * wait is checked directly, on the mock's own call.
-   */
-  it('waits out a 429 and tries again, before succeeding', async () => {
-    ;(leaveBoardApi.decide as any).mockResolvedValue({ waiting: [], off: [] })
-    let calls = 0
-    ;(spendApi.decide as any).mockImplementation(async () => {
-      calls += 1
-      if (calls < 3) throw refusal(429, 'Too many requests.')
-      return { waiting: [] }
+  it('shows each result’s served `says`, word for word, beside the request’s name only when `says` does not already name them, and marks a failure plainly as not done', async () => {
+    ;(decisionsApi.decide as any).mockResolvedValue({
+      results: [
+        { id: 'q-1', suite: 'leave', ok: true, says: 'You approved Aisha’s leave from Monday 12 October to Friday 16 October.' },
+        { id: 'q-2', suite: 'spend', ok: false, says: 'Only KES 20,000 or less may be approved without a second person.' },
+      ],
+      answered: 1,
+      says: 'One of the two answers was kept. One could not be kept, and it says why.',
     })
-    const setTimeoutSpy = mockLongSetTimeouts()
-    open()
-    await screen.findByRole('list', { name: 'Waiting for approval' })
-    fireEvent.click(screen.getByLabelText('Select all on this page'))
-    fireEvent.click(screen.getByRole('button', { name: 'Approve the 2 selected' }))
-    expect(await screen.findByText('All 2 requests were approved.')).toBeInTheDocument()
-    expect(calls).toBe(3)
-    setTimeoutSpy.mockRestore()
-  })
-
-  it('waits the server’s own Retry-After, or 10 seconds with none, before trying again', async () => {
-    ;(leaveBoardApi.decide as any).mockResolvedValue({ waiting: [], off: [] })
-    const tooFast = () => Object.assign(new Error('429'), { response: { status: 429, data: { message: 'Too many requests.' }, headers: { 'retry-after': '3' } } })
-    ;(spendApi.decide as any).mockRejectedValueOnce(tooFast()).mockResolvedValueOnce({ waiting: [] })
-    const setTimeoutSpy = mockLongSetTimeouts()
-    open()
-    await screen.findByRole('list', { name: 'Waiting for approval' })
-    fireEvent.click(screen.getByLabelText('Select all on this page'))
-    fireEvent.click(screen.getByRole('button', { name: 'Approve the 2 selected' }))
-    expect(await screen.findByText('All 2 requests were approved.')).toBeInTheDocument()
-    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 3000)
-    setTimeoutSpy.mockRestore()
-  })
-
-  it('shows “Waiting a moment before carrying on…” while a retry waits', async () => {
-    ;(leaveBoardApi.decide as any).mockResolvedValue({ waiting: [], off: [] })
-    let releaseTheWait: () => void = () => {}
-    const theWait = new Promise<void>(resolve => { releaseTheWait = resolve })
-    const setTimeoutSpy = mockLongSetTimeouts(fn => { theWait.then(() => fn()) })
-    ;(spendApi.decide as any).mockRejectedValueOnce(refusal(429, 'Too many requests.')).mockResolvedValueOnce({ waiting: [] })
-    open()
-    await screen.findByRole('list', { name: 'Waiting for approval' })
-    fireEvent.click(screen.getByLabelText('Select all on this page'))
-    fireEvent.click(screen.getByRole('button', { name: 'Approve the 2 selected' }))
-    expect(await screen.findByText('Waiting a moment before carrying on…')).toBeInTheDocument()
-    releaseTheWait()
-    expect(await screen.findByText('All 2 requests were approved.')).toBeInTheDocument()
-    setTimeoutSpy.mockRestore()
-  })
-
-  it('gives up on a request after three tries, 429 each time, and says it could not be sent just now', async () => {
-    ;(leaveBoardApi.decide as any).mockResolvedValue({ waiting: [], off: [] })
-    ;(spendApi.decide as any).mockRejectedValue(refusal(429, 'Too many requests.'))
-    const setTimeoutSpy = mockLongSetTimeouts()
     open()
     await screen.findByRole('list', { name: 'Waiting for approval' })
     fireEvent.click(screen.getByLabelText('Select all on this page'))
     fireEvent.click(screen.getByRole('button', { name: 'Approve the 2 selected' }))
     const results = await screen.findByRole('list', { name: 'What happened' })
-    expect(within(results).getByText('Kamau Njenga’s request was not approved. This one could not be sent just now. Try it again in a minute.')).toBeInTheDocument()
-    expect(spendApi.decide).toHaveBeenCalledTimes(3)
-    setTimeoutSpy.mockRestore()
+    /* The summary is the served top `says`, shown exactly as served. */
+    expect(await screen.findByText('One of the two answers was kept. One could not be kept, and it says why.')).toBeInTheDocument()
+    expect(within(results).getByText('You approved Aisha’s leave from Monday 12 October to Friday 16 October.')).toBeInTheDocument()
+    expect(within(results).getByText('Kamau Njenga: Not done. Only KES 20,000 or less may be approved without a second person.')).toBeInTheDocument()
+  })
+
+  it('a whole-call refusal shows its served sentence, and changes nothing', async () => {
+    ;(decisionsApi.decide as any).mockRejectedValue(refusal(403, 'Only people in this organisation can answer requests here.'))
+    open()
+    await screen.findByRole('list', { name: 'Waiting for approval' })
+    fireEvent.click(screen.getByLabelText('Select all on this page'))
+    fireEvent.click(screen.getByRole('button', { name: 'Approve the 2 selected' }))
+    expect(await screen.findByText('Only people in this organisation can answer requests here.')).toBeInTheDocument()
+    /* Nothing changes: the selection stands, and the queue is not re-read. */
+    expect(screen.getByRole('button', { name: 'Approve the 2 selected' })).toBeInTheDocument()
+    expect(queueApi.get).toHaveBeenCalledTimes(1)
+  })
+
+  /*
+   * MORE THAN 50 SELECTED: one call per 50, one after another, in order, showing "Working through 50
+   * of 60…" while the second call is still out. The final summary adds the chunks up in the same form
+   * the engine's own single-call `says` uses, so a batch of more than 50 reads no differently.
+   */
+  it('more than 50 selected go in chunks of 50, one call after another: two calls for 60, with exact bodies', async () => {
+    const sixty = Array.from({ length: 60 }, (_, i) => ({
+      id: `q-${i + 1}`, suite: 'spend' as const, name: `Person ${i + 1}`, firstName: `Person${i + 1}`, team: null,
+      waitingSince: '2026-10-01T09:00:00.000Z', workingDaysWaiting: 1, pastTheDeadline: false,
+      says: `Person ${i + 1} asked to spend KES 1,000 on something.`, waitedSays: 'It has waited 1 working day.',
+      where: 'It is waiting for you.', amount: 1000, line: null, startsOn: null, endsOn: null, clash: null, standingIn: null,
+    }))
+    open({ ...QUEUE, counts: { all: 60, leave: 0, spend: 60, pastTheDeadline: 0 }, items: sixty, says: 'Sixty requests are waiting for you to approve or decline.' })
+    await screen.findByRole('list', { name: 'Waiting for approval' })
+    let releaseSecond: () => void = () => {}
+    const second = new Promise<void>(resolve => { releaseSecond = resolve })
+    ;(decisionsApi.decide as any)
+      .mockImplementationOnce(async (decisions: any[]) => ({
+        results: decisions.map(d => ({ id: d.id, suite: d.suite, ok: true, says: `You approved ${d.id}.` })),
+        answered: decisions.length, says: 'All fifty answers were kept.',
+      }))
+      .mockImplementationOnce(async (decisions: any[]) => {
+        await second
+        return { results: decisions.map(d => ({ id: d.id, suite: d.suite, ok: true, says: `You approved ${d.id}.` })), answered: decisions.length, says: 'All ten answers were kept.' }
+      })
+    fireEvent.click(screen.getByLabelText('Select all on this page'))
+    fireEvent.click(screen.getByRole('button', { name: 'Approve the 60 selected' }))
+    await waitFor(() => expect(decisionsApi.decide).toHaveBeenCalledTimes(2))
+    const [firstBody, secondBody] = (decisionsApi.decide as any).mock.calls.map((c: any[]) => c[0])
+    expect(firstBody).toHaveLength(50)
+    expect(firstBody[0]).toEqual({ suite: 'spend', id: 'q-1', answer: 'approve' })
+    expect(firstBody[49]).toEqual({ suite: 'spend', id: 'q-50', answer: 'approve' })
+    expect(secondBody).toHaveLength(10)
+    expect(secondBody[0]).toEqual({ suite: 'spend', id: 'q-51', answer: 'approve' })
+    expect(secondBody[9]).toEqual({ suite: 'spend', id: 'q-60', answer: 'approve' })
+    expect(await screen.findByText('Working through 50 of 60…')).toBeInTheDocument()
+    releaseSecond()
+    expect(await screen.findByText('All 60 answers were kept.')).toBeInTheDocument()
   })
 
   /* Fault 2a of the live walk: "Approve the 0 selected" used to show, disabled, before anybody had
@@ -284,7 +249,6 @@ describe('approving several at once', () => {
     expect(screen.queryByText('Tick the requests you want to approve together.')).toBeNull()
   })
 })
-
 describe('the link to the queue, shown elsewhere (Today, the sidebar)', () => {
   /* Live walk at a hundred people, fault 2: the link under "What needs you" used to be the server's
      whole counts sentence drawn as the link text, which read as one long underlined sentence. It is

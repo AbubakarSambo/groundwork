@@ -358,6 +358,23 @@ export const queueApi = {
     (await apiClient.get('/suites/queue', { params })).data,
 }
 
+/**
+ * THE BATCH DECISION (POST /suites/decisions), ready from the engine (docs/answers-from-engine.md,
+ * "For the screens: the batch decision, ready"). Between 1 and 50 decisions at once; every one is
+ * answered by the route that answers it alone, in the order given, and one that fails never stops
+ * the others. `says` is the server's own summary sentence ("All four answers were kept.", or "One of
+ * the six answers was kept. Five could not be kept, and each says why."). A whole-call refusal (none,
+ * more than 50, an outsider, or no suite on) throws instead, and is shown as any other refusal.
+ */
+export interface ADecisionGiven { suite: 'leave' | 'spend' | 'hours'; id: string; answer: 'approve' | 'decline'; reason?: string }
+export interface ADecisionResult { id: string; suite: 'leave' | 'spend' | 'hours' | null; ok: boolean; says: string }
+export interface TheDecisionsResult { results: ADecisionResult[]; answered: number; says: string }
+
+export const decisionsApi = {
+  decide: async (decisions: ADecisionGiven[]): Promise<TheDecisionsResult> =>
+    (await apiClient.post('/suites/decisions', { decisions })).data,
+}
+
 /** To-dos (GET /suites/todos/board): what each person said they will do in their check-ins. */
 export interface TodoList {
   people: { name: string; firstName: string; todos: { id: string; text: string; source: 'check-in'; on: string; checkIn: string }[] }[]
