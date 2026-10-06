@@ -1833,7 +1833,25 @@ export function GroundAdminPage() {
                    * had been wrong on its own for as long as anybody had two sessions; it
                    * only became visible once something true stood next to it.
                    */
-                  const allDone = theirSessions.length > 0 && theirSessions.every((c: any) => c.status === 'COMPLETED')
+                  /**
+                   * "EVERY SESSION DONE" MEANS NO SESSION IS STILL TO COME, NOT "EVERY ROW THAT
+                   * EXISTS SO FAR IS COMPLETE". FAULT 2.
+                   *
+                   * `theirSessions.every(...COMPLETED)` is true for somebody who has finished
+                   * session 1 of 6 and has no session-2 row yet, because a row that does not exist
+                   * cannot fail the check. Esther and Kwesi read "Every session done" in session 1
+                   * of 6 for exactly this reason, with a red "Begin the last check-in" sitting right
+                   * below. A person is done only when their completed count reaches the planned
+                   * total (`plannedSessions`, from the cadence and timeline - see sessionCount.ts),
+                   * or the check-in has already ended, in which case there is nothing left to plan
+                   * for anybody.
+                   */
+                  const theirCompletedSessionNumbers = new Set(
+                    theirSessions.filter((c: any) => c.status === 'COMPLETED').map((c: any) => c.sessionNumber),
+                  )
+                  const allDone = theirSessions.length > 0
+                    && theirSessions.every((c: any) => c.status === 'COMPLETED')
+                    && (!!ended || (plannedSessions != null && theirCompletedSessionNumbers.size >= plannedSessions))
                   const anyGoing = theirSessions.some((c: any) => c.status === 'IN_PROGRESS')
                   const statusDotClass = allDone ? 'ga-status-dot-done' : anyGoing ? 'ga-status-dot-going' : 'ga-status-dot-waiting'
                   const statusLabel = allDone
