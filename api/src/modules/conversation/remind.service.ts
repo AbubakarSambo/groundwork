@@ -7,7 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CheckInStatus } from '@prisma/client';
 import { worthNudging, whatToSendThem } from './who-is-worth-nudging';
-import { theAnchorNudgeFor } from './the-anchor-nudge';
+import { theNudgeLineFor } from '../engagement/a-follow-up-from-their-own-record';
 import { WorkspaceNotifierService } from '../workspace/workspace-notifier.service';
 import {
   whatToDoToday,
@@ -195,7 +195,7 @@ export class RemindService {
 
       // #34: Pass otherPartyCompleted so the email includes the appropriate note.
       /* Their own last open promise, to them only, on an anchor check-in (piece 30). */
-      const theAnchorLine = await theAnchorNudgeFor(this.prisma, ground as any, participant.id);
+      const theAnchorLine = await theNudgeLineFor(this.prisma, ground as any, (ground as any).createdAt, participant.id);
       await this.email.sendNudge(participant.email, specificThing, checkInUrl, undefined, everyoneElseHasAnswered(participant.id, theWholeRound as any), theAnchorLine, participant.id);
 
       await this.prisma.groundParticipant.update({
@@ -375,7 +375,7 @@ export class RemindService {
           undefined,
           otherPartyCompleted,
           /* Their own last open promise, to them only, on an anchor check-in (piece 30). */
-          await theAnchorNudgeFor(this.prisma, { id: checkIn.groundId, startedFrom: (checkIn.ground as any).startedFrom }, participant.id),
+          await theNudgeLineFor(this.prisma, { id: checkIn.groundId, startedFrom: (checkIn.ground as any).startedFrom }, (checkIn as any).createdAt, participant.id),
           /* So the reminder carries its own way out. */
           participant.id,
           (checkIn.ground as any).simplerWords,
