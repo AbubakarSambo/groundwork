@@ -67,7 +67,7 @@ export async function fetchMembers(): Promise<{ data: OrgMember[]; meta: { total
 }
 
 export function nameOf(m: Pick<OrgMember, 'firstName' | 'lastName' | 'email'>): string {
-  return `${m.firstName ?? ''} ${m.lastName ?? ''}`.trim() || m.email
+  return `${m.firstName ?? ''} ${m.lastName ?? ''}`.trim() || m.email || ''
 }
 
 /**
@@ -82,8 +82,8 @@ export function firstNameOf(m: Pick<OrgMember, 'firstName' | 'lastName' | 'email
   return whole.split(/\s+/)[0] || whole
 }
 
-export function initialsOf(name: string): string {
-  const parts = name.replace(/@.*/, '').split(/[\s._-]+/).filter(Boolean)
+export function initialsOf(name: string | null | undefined): string {
+  const parts = (name ?? '').replace(/@.*/, '').split(/[\s._-]+/).filter(Boolean)
   return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?'
 }
 
