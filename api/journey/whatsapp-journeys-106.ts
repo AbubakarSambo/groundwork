@@ -147,7 +147,7 @@ const KINDS: { kind: string; label: string; body: Record<string, unknown>; ancho
   { kind: 'anchor', label: 'Ending: anchor', body: { scenario: 'NEW_PROJECT', cadence: 'WEEKLY' }, anchor: true },
   { kind: 'kept in the app', label: 'Ending: kept in the app', body: { scenario: 'OKR_ALIGNMENT', cadence: 'WEEKLY' }, keptInTheApp: true },
 ];
-const NAMES = ['Lulu', 'Moraa', 'Nuru', 'Akinyi', 'Bahati', 'Chebet', 'Dalia', 'Eshe', 'Faraja', 'Gathoni', 'Halima', 'Itai', 'Jabali', 'Kamau', 'Laila', 'Makena', 'Neema', 'Okoth', 'Pendo', 'Rehema', 'Sefu'];
+const NAMES = ['Lulu', 'Moraa', 'Nuru', 'Akinyi', 'Bahati', 'Chebet', 'Dalia', 'Eshe', 'Faraja', 'Gathoni', 'Halima', 'Itai', 'Jabali', 'Kamau', 'Laila', 'Makena', 'Neema', 'Okoth', 'Pendo', 'Rehema', 'Sefu', 'Tabu', 'Uzoma', 'Vumi', 'Wekesa', 'Yara', 'Zuri', 'Abeo', 'Binti', 'Cheka', 'Dede'];
 const ANSWERS = [
   'This week I finished the two customer visits I had planned and wrote up both.',
   'The Naivas order went through on Tuesday, but Quickmart is still waiting on their buyer.',
@@ -246,41 +246,93 @@ export async function howItEnds(c: any): Promise<string[]> {
       check(`${k.kind}: "finish" early is answered with what is still needed, and nothing is closed`, /I need a little more from you before this check-in can close\./.test(fin.text), fin.text);
     }
 
-    /* (c) Stopping halfway: the reminder, the half-hour warning, the clock's close. */
+    /*
+     * (c) Stopping halfway, through the REAL sweeps. The reminder sweep and the warning job are called as the schedules call
+     * them; the close is the real autoCloseStaleCheckIns, which reads the real clock. Turn times are set honestly: the
+     * person's real turns are moved back to the quiet being tested, and the warning turn the real warning job injects
+     * stays at its own place on the line (about half an hour before the close, as the person was told). The reminder only
+     * speaks between seven and eight in Lagos, so that sweep is given a clock inside the day, and the turns are placed
+     * against it.
+     */
     if (!k.keptInTheApp) {
-      const ci = await ciOf(halfway);
-      await says(halfway, 'START');
-      await says(halfway, ANSWERS[0]);
-      await says(halfway, ANSWERS[1]);
-      /* Eleven in the morning UTC, noon in Lagos, tomorrow: within the day, and never in the past, so no sweep closes it meanwhile. */
-      const noon = new Date(); noon.setUTCDate(noon.getUTCDate() + 1); noon.setUTCHours(11, 0, 0, 0);
-      /* Every turn keeps its order a second apart. Moving them all to one instant left "the last turn" to chance: a reminder is only for somebody whose last turn is Groundwork's question, and the person's own turn could be read as the last. */
-      const placeTurns = async (lastAt: number) => {
-        const turns = await prisma.conversationTurn.findMany({ where: { checkInId: ci.id }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], select: { id: true, role: true } });
+      const THE_WARNING = 'This session closes in 30 minutes if nothing else is said. Add anything you still want on the record now.';
+      const startHalfway = async (who: any) => {
+        const ci = await ciOf(who);
+        await says(who, 'START');
+        await says(who, ANSWERS[0]);
+        await says(who, ANSWERS[1]);
+        return ci;
+      };
+      /* The person's real turns, each a second apart, the last at `lastAt`. The injected warning is never one of them. */
+      const placeTurns = async (ci: any, lastAt: number) => {
+        const turns = await prisma.conversationTurn.findMany({ where: { checkInId: ci.id, NOT: { content: THE_WARNING } }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], select: { id: true } });
         for (let i = 0; i < turns.length; i++) await prisma.conversationTurn.update({ where: { id: turns[i].id }, data: { createdAt: new Date(lastAt - (turns.length - 1 - i) * 1000) } });
       };
-      await placeTurns(noon.getTime() - 3.5 * 3600_000);
-      await prisma.$executeRawUnsafe(`UPDATE whatsapp_sends SET created_at = created_at - interval '1 day', sent_at = sent_at - interval '1 day' WHERE phone = '${halfway.phone}'`);
+      const placeTheWarning = async (ci: any, at: number) => { await prisma.conversationTurn.updateMany({ where: { checkInId: ci.id, content: THE_WARNING }, data: { createdAt: new Date(at) } }); };
+      const dayBefore = (who: any) => prisma.$executeRawUnsafe(`UPDATE whatsapp_sends SET created_at = created_at - interval '1 day', sent_at = sent_at - interval '1 day' WHERE phone = '${who.phone}' AND kind <> 'answered-here'`);
+      const statusOf = async (ci: any) => (await prisma.checkIn.findUnique({ where: { id: ci.id }, select: { status: true } }))?.status;
+      /* A clock inside the day in Lagos, tomorrow, for the reminder sweep only. */
+      const noon = new Date(); noon.setUTCDate(noon.getUTCDate() + 1); noon.setUTCHours(11, 0, 0, 0);
+      const HR = 3600_000;
+
+      /* The person who stops halfway, and (for the leave case) another who is on approved leave. */
+      const ci = await startHalfway(halfway);
+      const names2 = NAMES.splice(0, 1);
+      const [onLeave] = await Promise.all(names2.map((n) => make(n, 'Mwangi', 'MEMBER', orgs.on, 'kito', { department: 'Sales', manager: wairimu.externalId })));
+      await signIn(onLeave);
+      const added = await api(`/grounds/${g.id}/participants`, { token: wairimu.token, body: { email: onLeave.email, roleAsDescribed: 'Sales' } });
+      if (added?.refused) keep(`- ${onLeave.first} could not be added: ${added.message}`);
+      const lrow = await prisma.groundParticipant.findFirst({ where: { groundId: g.id, email: onLeave.email } });
+      if (lrow && !lrow.userId) await prisma.groundParticipant.update({ where: { id: lrow.id }, data: { userId: onLeave.userId } });
+      await cron.sendSessionReadyNotificationsInner(); await waitQuiet(800);
+      const ciLeave = await startHalfway(onLeave);
+      const from = new Date(); const to = new Date(Date.now() + 3 * DAY);
+      await prisma.leaveRequest.create({ data: { organizationId: orgs.on.id, userId: onLeave.userId, startsOn: new Date(from.toISOString().slice(0, 10)), endsOn: new Date(to.toISOString().slice(0, 10)), status: 'approved' } });
+      await dayBefore(halfway); await dayBefore(onLeave);
+
+      /* 3 hours: the reminder sweep. */
+      await placeTurns(ci, noon.getTime() - 3.5 * HR); await placeTurns(ciLeave, noon.getTime() - 3.5 * HR);
       const r0 = outbox.length;
       await cron.remindThoseWhoStoppedHalfwayInner(noon);
       await waitQuiet(800);
-      keep(`- Three hours quiet: ${halfway.first} reads ${quote(toPhone(halfway, r0))}`);
+      keep(`- Three hours quiet: ${halfway.first} reads ${quote(toPhone(halfway, r0))}; ${onLeave.first}, who is on approved leave, reads ${quote(toPhone(onLeave, r0))}`);
       check(`${k.kind}: one reminder to carry on reaches the phone`, toPhone(halfway, r0).length === 1 && /is still open[.,] ?(and e|E)verything you have said (so far )?is (kept|saved)/.test(toPhone(halfway, r0)[0] ?? ''), JSON.stringify(toPhone(halfway, r0)));
-      await placeTurns(Date.now() - 11.1 * 3600_000);
+      check(`${k.kind}: nothing reaches somebody on approved leave, not the reminder`, toPhone(onLeave, r0).length === 0, JSON.stringify(toPhone(onLeave, r0)));
+      const r0b = outbox.length;
+      await cron.remindThoseWhoStoppedHalfwayInner(noon);
+      await waitQuiet(500);
+      check(`${k.kind}: the reminder is sent once`, toPhone(halfway, r0b).length === 0, JSON.stringify(toPhone(halfway, r0b)));
+
+      /* 11 hours: the real warning job, which injects its turn at its real time. */
+      await placeTurns(ci, Date.now() - 11.1 * HR); await placeTurns(ciLeave, Date.now() - 11.1 * HR);
       const r1 = outbox.length;
       await cron.fireSessionClosingWarnings();
       await waitQuiet(800);
-      keep(`- Eleven hours quiet: ${halfway.first} reads ${quote(toPhone(halfway, r1))}`);
+      keep(`- Eleven hours quiet: ${halfway.first} reads ${quote(toPhone(halfway, r1))}; ${onLeave.first}, on leave, reads ${quote(toPhone(onLeave, r1))}`);
       check(`${k.kind}: the half-hour warning reaches the phone`, toPhone(halfway, r1).some((t: string) => /(closes|will close) in 30 minutes if (nothing else is said|you say nothing more)/.test(t)), JSON.stringify(toPhone(halfway, r1)));
-      await placeTurns(Date.now() - 12.1 * 3600_000);
-      const r2 = outbox.length; const at2 = new Date();
-      await tellThemTheClockClosedIt(prisma, whatsapp, ci.id);
-      await conversation.closeByTheClock(ci.id);
-      for (let i = 0; i < 40 && !toPhone(halfway, r2).some((t: string) => /Your report for|Your check-in on/.test(t)); i++) await waitQuiet(1000);
-      keep(`- Twelve hours quiet, the clock closes it: ${halfway.first} reads ${quote(toPhone(halfway, r2))}`);
-      keep(`- What the lead receives then: on WhatsApp ${quote(toPhone(wairimu, r2))}; by email ${quote(await emailsTo(wairimu.email, at2))}`);
+      check(`${k.kind}: the warning does not reach somebody on approved leave`, toPhone(onLeave, r1).length === 0, JSON.stringify(toPhone(onLeave, r1)));
+      const warned = await prisma.conversationTurn.count({ where: { checkInId: ci.id, content: THE_WARNING } });
+      check(`${k.kind}: the app's own warning turn was written once`, warned === 1, String(warned));
+
+      /* After the warning, nothing is said but the close: the reminder does not follow it, and the close has not come early. */
+      const r2 = outbox.length;
+      await placeTurns(ci, Date.now() - 11.6 * HR); await placeTheWarning(ci, Date.now() - 0.5 * HR);
+      await cron.remindThoseWhoStoppedHalfwayInner(noon);
+      await cron.autoCloseStaleCheckIns();
+      await waitQuiet(1500);
+      keep(`- After the warning, at 11.6 hours: ${halfway.first} reads ${quote(toPhone(halfway, r2))}; the session is ${await statusOf(ci)}`);
+      check(`${k.kind}: after the warning nothing is sent and the session is not closed before the twelve hours`, toPhone(halfway, r2).length === 0 && (await statusOf(ci)) === 'IN_PROGRESS', `${JSON.stringify(toPhone(halfway, r2))} ${await statusOf(ci)}`);
+
+      /* 12 hours: the real close, which must count from the person's last real turn, not from the warning half an hour ago. */
+      await placeTurns(ci, Date.now() - 12.1 * HR); await placeTheWarning(ci, Date.now() - 0.6 * HR);
+      const r3 = outbox.length; const at3 = new Date();
+      await cron.autoCloseStaleCheckIns();
+      for (let i = 0; i < 40 && !toPhone(halfway, r3).some((t: string) => /Your report for|Your check-in on/.test(t)); i++) await waitQuiet(1000);
+      keep(`- Twelve hours quiet, the clock closes it: ${halfway.first} reads ${quote(toPhone(halfway, r3))}`);
+      keep(`- What the lead receives then: on WhatsApp ${quote(toPhone(wairimu, r3))}; by email ${quote(await emailsTo(wairimu.email, at3))}`);
       const kept = await prisma.conversationTurn.count({ where: { checkInId: ci.id, role: 'PERSON' } });
-      check(`${k.kind}: the clock's close is said on the phone, the report follows, and what was said is kept`, toPhone(halfway, r2).some((t: string) => /has closed, because nothing was said for twelve hours/.test(t)) && kept >= 2, `${kept} turns kept; ${JSON.stringify(toPhone(halfway, r2))}`);
+      check(`${k.kind}: the real close sweep closes it at twelve hours, the phone is told why, the report follows, and what was said is kept`, (await statusOf(ci)) === 'COMPLETED' && toPhone(halfway, r3).some((t: string) => /has closed, because nothing was said for twelve hours/.test(t)) && kept >= 2, `${await statusOf(ci)}; ${kept} turns kept; ${JSON.stringify(toPhone(halfway, r3))}`);
+      check(`${k.kind}: the lead is told nothing on WhatsApp`, toPhone(wairimu, r3).length === 0, JSON.stringify(toPhone(wairimu, r3)));
     } else {
       keep('- "finish" early and stopping halfway do not reach a phone for a check-in kept in the app: the reminder, the warning and the close are never sent for it.');
     }
