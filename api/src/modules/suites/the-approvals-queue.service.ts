@@ -11,7 +11,7 @@ import { DUTIES_ROW } from './who-holds-each-duty';
 import { workingDays } from './the-leave-board.service';
 import { workingDaysSince } from './a-request-waits-too-long';
 import { leaveInWords, spendInWords, whatTheMoneyIsFor, whereItIsOnTheBoard } from './a-request-in-words';
-import { theClashSaid } from './a-leave-request-as-the-approver-reads-it';
+import { theClashSaid, whoIsOffNamed } from './a-leave-request-as-the-approver-reads-it';
 import { saidAsADay } from './who-is-away';
 
 /**
@@ -231,13 +231,14 @@ export class ApprovalsQueueService {
         const startsOn = dayOf(r.startsOn as Date); const endsOn = dayOf(r.endsOn as Date);
         const days = m.days ?? workingDays(r.startsOn as Date, r.endsOn as Date);
         const off = team
-          ? [...new Set(approved.filter((a) => a.userId !== r.userId && c.lookups.entryOf.get(a.userId)?.department?.trim() === team && overlaps(a, r as { startsOn: Date; endsOn: Date })).map((a) => a.userId))].map(firstOf).filter(Boolean)
-          : [];
+          ? whoIsOffNamed([...new Set(approved.filter((a) => a.userId !== r.userId && c.lookups.entryOf.get(a.userId)?.department?.trim() === team && overlaps(a, r as { startsOn: Date; endsOn: Date })).map((a) => a.userId))]
+              .map((id) => ({ id, first: firstOf(id), full: fullOf(id) })))
+          : { count: 0, names: [] as string[] };
         return {
           id: r.id, suite: 'leave', name: fullOf(r.userId), firstName: first, team, waitingSince: m.since.toISOString(), workingDaysWaiting: waited, pastTheDeadline,
           says: `${first} asked for ${leaveInWords(startsOn, endsOn)}, which is ${days} working ${days === 1 ? 'day' : 'days'}.`,
           waitedSays, where, amount: null, line: null, startsOn, endsOn,
-          clash: team && off.length ? { count: off.length, names: off, says: theClashSaid(team, off, startsOn === endsOn) } : null,
+          clash: team && off.count ? { count: off.count, names: off.names, says: theClashSaid(team, off.names, startsOn === endsOn) } : null,
           standingIn,
         };
       }

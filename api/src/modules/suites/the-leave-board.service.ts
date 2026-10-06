@@ -13,7 +13,7 @@ import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
 import { aLeaveRequest, leaveInWords, whereItIsOnTheBoard, whereYourRequestIs, type WhereItStands } from './a-request-in-words';
 import { firstNamesOf, readWorkflow, whoInWords, type AWorkflow } from './the-approval-steps';
 import { ownedInWords, whatTheyOwnWhileAway } from './what-they-own-while-away';
-import { aLeaveRequestAsTheApproverReadsIt } from './a-leave-request-as-the-approver-reads-it';
+import { aLeaveRequestAsTheApproverReadsIt, theClashSaid, whoIsOffNamed } from './a-leave-request-as-the-approver-reads-it';
 import { LEAVE_QUESTION_KIND, QUESTION_REFUSED, aQuestionSaid, aReasonSaid, wordsGiven, type AQuestion } from './a-question-about-a-request';
 import { hereSince, inASentence, readLeaveRules, theKindOf, theRulesThatApply, type ALeaveKind, type LeaveRules } from './the-leave-rules';
 import { readDuties } from './who-holds-each-duty';
@@ -58,8 +58,10 @@ export interface Waiting {
   rules: string[];
   /** The department the overlap is counted in, or null when the directory gives none. */
   team: string | null;
-  /** The first names of others in the same team already off on any of those days. */
+  /** The first names of others in the same team already off on any of those days (full names where two share a first name). */
   alsoOff: string[];
+  /** How many, who, and the sentence, the same as the approver's queue says it; null when the person has no team or nobody is off. */
+  clash: { count: number; names: string[]; says: string } | null;
   standIn: string | null;
   /** Whether this reader is the one who approves it. */
   mayDecide: boolean;
@@ -240,10 +242,12 @@ export class LeaveBoardService {
       const decides = decidesIt(now.who, { userId: reader.userId, role }, r.userId);
       if (!inScope(r.userId) && !decides) continue;
       const team = people.get(r.userId)?.department?.trim() || null;
-      const alsoOff = team
-        ? approved.filter((a) => a.userId !== r.userId && people.get(a.userId)?.department?.trim() === team && overlaps(a, r))
-            .map((a) => names.get(a.userId)?.first).filter((n): n is string => !!n)
-        : [];
+      /* Each person once, by first name, and by full name where two share a first name; the approver reads how many and who. */
+      const off = team
+        ? whoIsOffNamed(approved.filter((a) => a.userId !== r.userId && people.get(a.userId)?.department?.trim() === team && overlaps(a, r))
+            .map((a) => ({ id: a.userId, first: names.get(a.userId)?.first ?? '', full: names.get(a.userId)?.full ?? '' })))
+        : { count: 0, names: [] as string[] };
+      const alsoOff = off.names;
       const first = names.get(r.userId)?.first ?? '';
       const days = workingDays(r.startsOn, r.endsOn);
       const kind = theKindOf(r.kind, answers.rules);
@@ -264,7 +268,9 @@ export class LeaveBoardService {
         leaveKind: kind?.name ?? null,
         rules,
         team,
-        alsoOff: [...new Set(alsoOff)],
+        alsoOff,
+        /* The same sentence and the same count the approver's queue reads (the-approvals-queue.service.ts). Null with no team, or nobody off. */
+        clash: team && off.count ? { count: off.count, names: alsoOff, says: theClashSaid(team, alsoOff, r.startsOn.getTime() === r.endsOn.getTime()) } : null,
         standIn,
         mayDecide: decides,
         where: whereItIsOnTheBoard(await this.whereItStands(r, now, decides ? reader.userId : undefined, reader.userId, shared.lookups?.names)),
@@ -273,7 +279,7 @@ export class LeaveBoardService {
         said: aLeaveRequestAsTheApproverReadsIt({
           firstName: first, startsOn: dayOf(r.startsOn), endsOn: dayOf(r.endsOn), days, daysLeft, team,
           kindName: kind ? inASentence(kind) : null,
-          alsoOff: [...new Set(alsoOff)], standIn, owns, more: [...rules, ...asked],
+          alsoOff, standIn, owns, more: [...rules, ...asked],
         }),
       });
     }

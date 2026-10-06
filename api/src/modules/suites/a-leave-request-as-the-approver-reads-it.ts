@@ -42,6 +42,18 @@ export interface TheApproversView {
   more?: string[];
 }
 
+/**
+ * The people off, each once, by their first name, and by their full name where two of them share a first name, so "Amara and Amara
+ * are also off" is never what an approver reads. `people` may name somebody twice (two stretches of leave); they are counted once.
+ */
+export function whoIsOffNamed(people: { id: string; first: string; full: string }[]): { count: number; names: string[] } {
+  /* In the order of their names, so the board and the queue say the same sentence whichever read comes first. */
+  const once = [...new Map(people.filter((p) => p.first).map((p) => [p.id, p])).values()].sort((a, b) => a.first.localeCompare(b.first) || a.full.localeCompare(b.full) || a.id.localeCompare(b.id));
+  const firsts = new Map<string, number>();
+  for (const p of once) firsts.set(p.first, (firsts.get(p.first) ?? 0) + 1);
+  return { count: once.length, names: once.map((p) => ((firsts.get(p.first) ?? 0) > 1 ? p.full || p.first : p.first)) };
+}
+
 /** How many names are said before the rest are counted: "Brian, Joy, Neema, Aisha, Kofi and 7 others". */
 export const NAMES_SAID_BEFORE_COUNTING = 5;
 
