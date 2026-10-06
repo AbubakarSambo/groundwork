@@ -77,7 +77,8 @@ export function theEndOfMonthRead(input: { herWords: string; record: TheMonthRec
     whatShouldHappenNext: next,
     reveal,
     revealSaid: theRevealSaid(reveal),
-    continueOptions: THE_CONTINUE_OPTIONS.map((o) => ({ ...o })),
+    /* "Turn on the suites that fit" is offered only when some were found; the count is not made yet, so for now it is not. */
+    continueOptions: THE_CONTINUE_OPTIONS.filter((o) => o.key !== 'turnOnRelevantSuites' || reveal.suitesRelevantToWorkAlreadyBeingDone > 0).map((o) => ({ ...o })),
   };
 }
 

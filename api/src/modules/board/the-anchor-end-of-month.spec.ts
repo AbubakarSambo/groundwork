@@ -72,8 +72,7 @@ describe('the end of the month, as the lead reads it', () => {
     expect(e.continueOptions).toEqual([
       { key: 'keepThisGroundRunning', label: 'Keep this check-in running' },
       { key: 'startRecommendedGrounds', label: 'Start the recommended check-ins' },
-      { key: 'turnOnRelevantSuites', label: 'Turn on the suites that fit' },
-      { key: 'continueGroundworkForTheTeam', label: 'Continue Groundwork for the team' },
+            { key: 'continueGroundworkForTheTeam', label: 'Continue Groundwork for the team' },
     ]);
   });
 
@@ -152,7 +151,6 @@ describe('the end of the month reads in plain sentences, and an ended check-in d
       'Groundwork did not find a working relationship that needs aligning.',
       'One thing somebody said they would do is still open.',
       'No idea from your team was captured.',
-      'Groundwork did not find a suite that fits work your team is already doing.',
     ]);
     const read = everyString(e);
     expect(read.filter((s) => /\bGrounds?\b/.test(s))).toEqual([]);
@@ -168,7 +166,6 @@ describe('the end of the month reads in plain sentences, and an ended check-in d
       'Groundwork found four working relationships that need aligning.',
       '17 things people said they would do are still open.',
       'Seven ideas from your team were captured.',
-      'Groundwork found one suite that fits work your team is already doing.',
     ]);
     const one = theRevealSaid({ projectsThatCouldHaveTheirOwnGround: 1, sharedObjectivesWorthTracking: 1, workingRelationshipsNeedingAlignment: 1, activeCommitments: 1, teamGeneratedIdeas: 1, suitesRelevantToWorkAlreadyBeingDone: 0 });
     expect(one.lines.slice(0, 5)).toEqual([
@@ -182,7 +179,7 @@ describe('the end of the month reads in plain sentences, and an ended check-in d
 
   it('names the four ways on without the word "Ground"', async () => {
     const e = (await boardAs(anchor(), ...AMINA)).theEndOfMonthRead;
-    expect(e.continueOptions.map((o: any) => o.label)).toEqual(['Keep this check-in running', 'Start the recommended check-ins', 'Turn on the suites that fit', 'Continue Groundwork for the team']);
+    expect(e.continueOptions.map((o: any) => o.label)).toEqual(['Keep this check-in running', 'Start the recommended check-ins', 'Continue Groundwork for the team']);
   });
 
   it('while the check-in is still running, the board says which week of the month it is', async () => {
@@ -194,7 +191,7 @@ describe('the end of the month reads in plain sentences, and an ended check-in d
   it('once the check-in has ended, the board says it has ended and nobody is being chased', async () => {
     const b = (await boardAs(anchor({ status: 'RESOLVED' }), ...AMINA)).theMonthBoard;
     expect(b.weekSaid).toBe('This check-in has ended.');
-    expect(b.whatGroundworkIsWorkingOnNext).toEqual(['This check-in has ended, so Groundwork is not asking anyone for more.']);
+    expect(b.whatGroundworkIsWorkingOnNext).toEqual(['Groundwork is not asking anyone for more.']);
     expect(everyString(b).join(' ')).not.toMatch(/Week 4 of the month|checking in with the/);
   });
 });
@@ -203,5 +200,17 @@ describe('an ended check-in has no line about who is active', () => {
   it('serves the active line while it runs, and not once it has ended', async () => {
     expect((await boardAs(anchor(), ...AMINA)).activeLine?.line).toMatch(/active/);
     expect((await boardAs(anchor({ status: 'RESOLVED' }), ...AMINA)).activeLine).toBeUndefined();
+  });
+});
+
+describe('the suites are not claimed until they are counted (6 October)', () => {
+  it('leaves the suites line out and does not offer to turn suites on while the count is nothing', async () => {
+    const e = (await boardAs(anchor(), ...AMINA)).theEndOfMonthRead;
+    expect(e.revealSaid.lines.join(' ')).not.toMatch(/suite/);
+    expect(e.continueOptions.map((o: any) => o.key)).not.toContain('turnOnRelevantSuites');
+  });
+  it('says wording with no "account" on the month board', async () => {
+    const b = (await boardAs(anchor(), ...AMINA)).theMonthBoard;
+    expect(JSON.stringify(b)).not.toMatch(/\baccounts?\b/i);
   });
 });
