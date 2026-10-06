@@ -1,4 +1,4 @@
-import { theParticipantAsServed, theFitAsServed } from './a-transcript-serves-only-what-is-theirs';
+import { theParticipantAsServed, theFitAsServed, theCheckInRowAsServed } from './a-transcript-serves-only-what-is-theirs';
 import { theNumberInTheNameIsKept } from './an-aim-said-twice-is-one-aim';
 import { theDayKeptApart } from '../board/an-aim-is-a-sentence-about-somebody';
 import { suggestAnswers } from './suggested-answers';
@@ -785,7 +785,7 @@ export class ConversationService {
     const runsIt = (checkIn as any).participant?.partyType === 'INITIATOR';
     return {
       checkIn: {
-        ...checkIn,
+        ...theCheckInRowAsServed(checkIn as any, runsIt),
         participant: theParticipantAsServed((checkIn as any).participant, runsIt),
         theirAnswerFitted: theFitAsServed((checkIn as any).theirAnswerFitted, runsIt),
         groundLabel: ground?.label ?? null,

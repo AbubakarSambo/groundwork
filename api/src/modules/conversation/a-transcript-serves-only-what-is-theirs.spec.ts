@@ -20,7 +20,11 @@ const wairimu = { ...juma, id: 'p-wairimu', userId: 'u-wairimu', email: 'wairimu
 function transcriptFor(participant: any) {
   const prisma: any = {
     checkIn: { findUnique: jest.fn(async () => ({ id: 'ci1', groundId: 'g1', participantId: participant.id, sessionNumber: 1, isSelfCorrection: false, status: 'IN_PROGRESS', participant,
-      theirAnswerFitted: { participantId: participant.id, kind: THE_LEADS_WORDS, values: [{ field: 'jobs', value: 'finishes most jobs' }], completeness: 0.5 } })) },
+      theirAnswerFitted: { participantId: participant.id, kind: THE_LEADS_WORDS, values: [{ field: 'jobs', value: 'finishes most jobs' }], completeness: 0.5 },
+      /* The rest of the row, none of it the person's to read here. */
+      sessionPlan: { leadBrief: THE_LEADS_WORDS, watchFor: ['PATTERN-WATCH-FOR'], coachingPath: { noticed: 'PATTERN-NOTICED' } },
+      probeSources: ['pattern:B1'], specificityLevel: 'LOW', specificityDimensions: { who: 0.2 }, whatWeHave: { claims: ['CLAIM-HELD'], challenges: ['CHALLENGE-HELD'] },
+      warningFiredAt: new Date(), patternsAnalyzedAt: new Date(), leadToldAt: new Date(), sessionReport: { yourRole: 'Installer' } })) },
     conversationTurn: { findMany: jest.fn(async () => [{ id: 't1', role: TurnRole.AI, content: 'What are you working on?', createdAt: new Date() }]) },
     ground: { findUnique: jest.fn(async () => ({ id: 'g1', label: 'Installs, Q3', scenario: 'NEW_PROJECT' })) },
   };
@@ -51,6 +55,18 @@ describe('Juma reads his own transcript', () => {
     expect(out.checkIn.theirAnswerFitted.kind).toBeUndefined();
   });
 
+  it('and the rest of the check-in row carries none of the lead\'s set-up, labels or ratings', async () => {
+    const out = await transcriptFor(juma).getTranscript('ci1', 'u-juma');
+    for (const key of ['sessionPlan', 'probeSources', 'specificityLevel', 'specificityDimensions', 'whatWeHave', 'warningFiredAt', 'patternsAnalyzedAt', 'leadToldAt']) {
+      expect(out.checkIn).not.toHaveProperty(key);
+    }
+    const wire = JSON.stringify(out);
+    expect(wire).not.toMatch(/PATTERN-WATCH-FOR|PATTERN-NOTICED|pattern:B1|CLAIM-HELD|CHALLENGE-HELD|LOW/);
+    /* What the screen reads is all still there. */
+    expect(out.checkIn).toMatchObject({ id: 'ci1', groundId: 'g1', sessionNumber: 1, status: 'IN_PROGRESS', groundLabel: 'Installs, Q3', scenario: 'NEW_PROJECT' });
+    expect(out.checkIn.sessionReport).toEqual({ yourRole: 'Installer' });
+  });
+
   it('and still reads what is his: his name, his turns, his own fitted answer', async () => {
     const out = await transcriptFor(juma).getTranscript('ci1', 'u-juma');
     expect(out.checkIn.participant).toMatchObject({ id: 'p-juma', nameGiven: 'Juma', partyType: 'PARTICIPANT', userId: 'u-juma' });
@@ -65,6 +81,7 @@ describe('Wairimu, who runs it, reads her own transcript', () => {
     const out = await transcriptFor(wairimu).getTranscript('ci1', 'u-wairimu');
     expect(out.checkIn.participant.roleAsDescribed).toBe('Runs sales.');
     expect(out.checkIn.theirAnswerFitted.kind).toBe(THE_LEADS_WORDS);
+    expect(out.checkIn.sessionPlan.watchFor).toEqual(['PATTERN-WATCH-FOR']);
   });
 });
 
