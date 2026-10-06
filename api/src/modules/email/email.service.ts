@@ -14,6 +14,7 @@ import { DeliveryService, DeliveryContext } from './delivery.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { theCheckInForAnEmail } from './the-check-in-for-an-email';
 import { STOP_LINE } from '../conversation/ignoring-it-should-be-enough';
+import { ROUTINE_EMAILS, THEY_HAD_ONE_TODAY, theirRoutineMessagesToday } from '../engagement/one-routine-message-a-day';
 import { NOT_SENT_WHILE_AWAY, whatThisMailIs, whetherToSend } from './nothing-goes-out-that-was-turned-off';
 import { whoIsAwayOn } from '../suites/who-is-away';
 import { inQuietHours, nextAllowedMoment } from './nothing-lands-at-3am';
@@ -406,7 +407,10 @@ export class EmailService implements OnModuleInit {
       this.logger.log(`Not sending "${options.subject}": that check-in has no address on it yet.`);
       return undefined;
     }
-    const rather = sender ? await this.wouldTheyRatherNot(options.to, sender, context) : null;
+    /* ONE ROUTINE MESSAGE A PERSON A DAY, ACROSS EMAIL AND WHATSAPP TOGETHER (decision 109, item 6). Asked after the person's own wishes, and only of the
+       routine senders: approvals, openings and closings, and everything somebody asked for are never counted or held back. */
+    const rather = (sender ? await this.wouldTheyRatherNot(options.to, sender, context) : null)
+      ?? (sender && ROUTINE_EMAILS.has(sender) ? await this.theyHadTheirOneToday(options.to) : null);
     if (rather) {
       /* Logged rather than silent: an email that did not go out for a good reason is still a thing
          somebody may be waiting for, and "nothing happened" is the hardest kind of bug to chase. */
@@ -428,6 +432,12 @@ export class EmailService implements OnModuleInit {
       if (held) return undefined;
     }
     return this.deliverNow(options, context, sender);
+  }
+
+  /** Whether this person has already been sent the day's one routine message, by email or on WhatsApp (decision 109, item 6). Null when they have not. */
+  private async theyHadTheirOneToday(to: string): Promise<string | null> {
+    const had = await theirRoutineMessagesToday(this.prisma as any, { email: to });
+    return had.email + had.whatsapp >= 1 ? THEY_HAD_ONE_TODAY : null;
   }
 
   /** The recipient's zone and quiet hours, from their roster row. Nobody on the roster: no hold. */
@@ -528,7 +538,8 @@ export class EmailService implements OnModuleInit {
       throw new Error(`Failed to send email: ${error.message}`);
     }
     this.logger.log(`Email sent to ${options.to} (id: ${data?.id})`);
-    this.writeItDown(options, sender, 'sent', null);
+    /* Waited for where it is counted: the day's one routine message is read from this record, and the next send in the same sweep must see it. */
+    if (sender && ROUTINE_EMAILS.has(sender)) await this.writeItDown(options, sender, 'sent', null); else void this.writeItDown(options, sender, 'sent', null);
     if (data?.id) await this.delivery.recordSend(data.id, options.to, context);
     return undefined;
   }
@@ -537,8 +548,8 @@ export class EmailService implements OnModuleInit {
    * THE LEDGER. A failure the product knows about, written where a person can find it. Fire-and-forget:
    * a ledger that cannot be written must not stop a mail that can be sent.
    */
-  private writeItDown(options: { to: string; subject: string }, sender: string | undefined, outcome: 'sent' | 'held' | 'suppressed' | 'failed', because: string | null): void {
-    this.prisma.notification
+  private writeItDown(options: { to: string; subject: string }, sender: string | undefined, outcome: 'sent' | 'held' | 'suppressed' | 'failed', because: string | null): Promise<unknown> {
+    return this.prisma.notification
       .create({ data: { channel: 'email', toAddress: options.to, sender: sender ?? null, subject: options.subject, outcome, because } })
       .catch((err: any) => this.logger.warn(`Could not record a notification for ${options.to}: ${err?.message}`));
   }

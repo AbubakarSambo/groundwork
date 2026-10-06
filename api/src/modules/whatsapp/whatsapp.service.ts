@@ -48,6 +48,7 @@ import { WhichNumber, inboundKeysFrom, whichNumberOf } from './one-number-per-co
 import { GroundworksOwnNumber, OurNumber } from './groundworks-own-number';
 import { aSignInsNumberChanged, refuseANumberOnSomebodyElse } from './one-number-for-a-person';
 import { FIRST_CONTACT, FIRST_CONTACT_NOT_APPROVED, theFirstContactLine } from './the-first-message-to-a-number';
+import { aRoutineWhatsApp, theirRoutineMessagesToday } from '../engagement/one-routine-message-a-day';
 import { ATemplate, insideTheServiceWindow, isBusinessInitiated, WENT_BEFORE_THIS_RELEASE, NOT_TURNED_ON_QUIETLY, templateFor, OUTSIDE_THE_WINDOW, THEY_SAID_STOP, FIRST_MESSAGES, APPROVALS, ONLY_HELD_BY_NOT_NOW, OPENING_OR_CLOSING, NOT_TODAY, THEY_SAID_NOT_NOW } from './a-message-outside-the-window';
 
 /**
@@ -749,7 +750,11 @@ export class WhatsAppService implements OnModuleInit {
     /* Approvals go straight away (decision 92): only the person's own "Not now" holds them, never how many they have had. */
     if (APPROVALS.has(kind) || ONLY_HELD_BY_NOT_NOW.has(kind)) return null;
     const went = (rows ?? []).filter((r) => r.kind && FIRST_MESSAGES.has(r.kind.split(':')[0])).length;
-    return went >= (OPENING_OR_CLOSING.has(kind) ? 2 : 1) ? NOT_TODAY : null;
+    if (went >= (OPENING_OR_CLOSING.has(kind) ? 2 : 1)) return NOT_TODAY;
+    /* ONE ROUTINE MESSAGE A DAY ACROSS EMAIL AND WHATSAPP (decision 109, item 6): a routine message does not go to somebody who has had a routine
+       email today. A check-in opening or closing is an exception, as it always was. */
+    if (aRoutineWhatsApp(kind) && (await theirRoutineMessagesToday(this.prisma as any, { phone: to })).email >= 1) return NOT_TODAY;
+    return null;
   }
 
   /** "Not now": nothing more is written first to this person today. Kept in the send record, which the rule above reads. */
