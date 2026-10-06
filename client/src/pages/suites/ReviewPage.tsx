@@ -25,12 +25,14 @@ import { Page, PageTitle, Section, Panel, Button, Note, ProofMark, FieldLabel, T
  * already did this; `ManagersWords` and the person's own view now check `r.decision` too).
  *
  * THE WRITER'S WORDS (`managersWords`) are shown read-only, attributed to whoever wrote them
- * (`writtenWithFirstName`), unless this reader is that very writer (their own first name matches),
- * when it reads "What you write" and is editable, pre-filled with their own words as before. Where the
- * API says this reader may still write (`mayWrite`) but the words on record are someone else's - the
- * review was reassigned after its first writer wrote something - the existing words stay read-only
- * under that name, and this reader is offered their own box instead, which never starts pre-filled
- * with somebody else's words.
+ * (`writtenWithFirstName`), unless this reader is that very writer, when it reads "What you write"
+ * and is editable, pre-filled with their own words as before. WHOSE WORDS THEY ARE IS DECIDED BY
+ * `managersWordsById` (request 162, item 6), by sign-in, never by comparing first names - two people
+ * can share a first name, and the saved words can be a reassigned writer's rather than this reader's
+ * even when the names happen to match. Where the API says this reader may still write (`mayWrite`)
+ * but the words on record are someone else's - the review was reassigned after its first writer wrote
+ * something - the existing words stay read-only under that name, and this reader is offered their own
+ * box instead, which never starts pre-filled with somebody else's words.
  *
  * REBUILT FROM THE SHARED PARTS: `Page`/`PageTitle` (its own `crumbs`), `Section` (`.gwui-cards-3`,
  * the review's own three-column row, the prototype's own shape) for "What Groundwork noticed",
@@ -83,12 +85,12 @@ export function ReviewPage() {
           </div>
         )
       )}
-      {data && <TheReview r={data} myFirstName={user?.firstName ?? null} />}
+      {data && <TheReview r={data} myUserId={user?.id ?? null} />}
     </Page>
   )
 }
 
-function TheReview({ r, myFirstName }: { r: AReview; myFirstName: string | null }) {
+function TheReview({ r, myUserId }: { r: AReview; myUserId: string | null }) {
   const person = r.reader === 'person'
   const writer = r.reader === 'writer'
   const manager = r.writtenWithFirstName
@@ -116,7 +118,7 @@ function TheReview({ r, myFirstName }: { r: AReview; myFirstName: string | null 
             )}
         </Section>
 
-        <ManagersWords r={r} myFirstName={myFirstName} />
+        <ManagersWords r={r} myUserId={myUserId} />
 
         <Words
           heading={person ? 'Your own view' : `${r.firstName}’s own view`}
@@ -146,14 +148,18 @@ function TheReview({ r, myFirstName }: { r: AReview; myFirstName: string | null 
  * `managersWordsHeading` ("What Wairimu writes"), since the person never writes it (decision 93, row 15).
  *
  * For whoever writes it, a lead or an admin: always shown read-only, attributed by name
- * (`writtenWithFirstName`), UNLESS this reader is that very writer (their own first name matches), in
- * which case it reads "What you write" and stays editable, pre-filled with their own words, exactly as
- * before. Where the API says this reader may write (`mayWrite`) but the words on record were somebody
- * else's - the writer was reassigned after they wrote something - the existing words stay read-only
- * under their name, and this reader is offered their own box instead, starting empty, never pre-filled
- * with somebody else's words (item 3).
+ * (`writtenWithFirstName`), UNLESS the words on record are this reader's own. WHOSE WORDS THEY ARE IS
+ * `managersWordsById` (request 162, item 6), by sign-in, never a first-name guess - two people can
+ * share a first name, and a review can be reassigned after its first writer has already written
+ * something, in which case the new writer's own name can equal the old writer's `writtenWithFirstName`
+ * by coincidence. Once words exist, this reader is the writer only when `managersWordsById` is their
+ * own id; with none written yet, this reader is the writer when the API says they may write it
+ * (`mayWrite`). Where the words on record are somebody else's but the API still says this reader may
+ * write - the review was reassigned after its first writer wrote something - the existing words stay
+ * read-only under their name, and this reader is offered their own box instead, starting empty, never
+ * pre-filled with somebody else's words (item 3).
  */
-function ManagersWords({ r, myFirstName }: { r: AReview; myFirstName: string | null }) {
+function ManagersWords({ r, myUserId }: { r: AReview; myUserId: string | null }) {
   if (r.reader === 'person') {
     const heading = r.managersWordsHeading ?? (r.writtenWithFirstName ? `What ${r.writtenWithFirstName} writes` : null)
     if (!heading) return null
@@ -165,7 +171,7 @@ function ManagersWords({ r, myFirstName }: { r: AReview; myFirstName: string | n
   }
 
   const manager = r.writtenWithFirstName
-  const theWriterIsMe = !manager || (!!myFirstName && manager === myFirstName)
+  const theWriterIsMe = r.managersWords ? (!!myUserId && r.managersWordsById === myUserId) : r.mayWrite
   const mayEdit = r.mayWrite && !r.decision
 
   if (theWriterIsMe) {

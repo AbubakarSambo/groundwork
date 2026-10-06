@@ -34,6 +34,7 @@ const FOR_WAIRIMU: AReview = {
   reader: 'writer', id: 'r-a', name: 'Aisha Otieno', firstName: 'Aisha', writtenWith: 'Wairimu Kamau', writtenWithFirstName: 'Wairimu',
   dueOn: '2027-03-01', noticed: NOTICED,
   managersWords: 'Aisha is our strongest closer with butcheries. I want her to lead supermarkets next.',
+  managersWordsById: 'u-w',
   theirView: 'I want to lead the supermarket accounts, but I need faster stock.', decision: null, mayWrite: true,
 }
 const FOR_GRACE: AReview = { ...FOR_WAIRIMU, reader: 'admin', mayWrite: false }
@@ -41,6 +42,7 @@ const FOR_AISHA: AReview = {
   reader: 'person', id: 'r-a', firstName: 'Aisha', writtenWithFirstName: 'Wairimu', dueOn: '2027-03-01', noticed: NOTICED,
   theirView: null,
   managersWords: 'Aisha is our strongest closer with butcheries. I want her to lead supermarkets next.',
+  managersWordsById: 'u-w',
   managersWordsHeading: 'What Wairimu writes',
   whereYouDiffer: null,
   decision: { says: 'Aisha leads the supermarket accounts from April.', reasons: 'She closed 9 sales, all paid.' },
@@ -50,16 +52,21 @@ const GRACE = { id: 'u-g', firstName: 'Grace', role: 'ADMIN', organizationName: 
 const WAIRIMU = { id: 'u-w', firstName: 'Wairimu', role: 'LEAD', organizationName: 'Baridi Appliances' }
 const AISHA = { id: 'u-a', firstName: 'Aisha', role: 'MEMBER', organizationName: 'Baridi Appliances' }
 const AMINA = { id: 'u-am', firstName: 'Amina', role: 'ADMIN', organizationName: 'Baridi Appliances' }
+/* A second Daniel: the organisation has two people called Daniel, so a first-name guess would get this wrong. */
+const DANIEL_TWO = { id: 'u-d2', firstName: 'Daniel', role: 'ADMIN', organizationName: 'Baridi Appliances' }
 
 /*
  * Fault 3 of the live walk: Peter's review, started by Daniel, his manager, who had already written
  * his words; Amina, an admin the rules now also name to write it, read "What you write" with Daniel's
- * words pre-filled, so saving would have overwritten Daniel's words as her own.
+ * words pre-filled, so saving would have overwritten Daniel's words as her own. `managersWordsById`
+ * ('u-d', the first Daniel's own sign-in, never 'u-d2') is what the screen now checks (request 162,
+ * item 6) - not `writtenWithFirstName`, which only ever held a name and cannot tell two Daniels apart.
  */
 const FOR_AMINA_ON_PETER: AReview = {
   reader: 'writer', id: 'r-p', name: 'Peter Otieno', firstName: 'Peter', writtenWith: 'Daniel Kiprotich', writtenWithFirstName: 'Daniel',
   dueOn: '2027-03-01', noticed: [],
   managersWords: 'Peter has carried the Kisumu route on his own since June.',
+  managersWordsById: 'u-d',
   theirView: null, decision: null, mayWrite: true,
 }
 
@@ -338,5 +345,20 @@ describe('one review', () => {
     fireEvent.change(own, { target: { value: 'Peter is ready for a bigger route.' } })
     fireEvent.click(save)
     await waitFor(() => expect(reviewsApi.words).toHaveBeenCalledWith('r-p', 'Peter is ready for a bigger route.'))
+  })
+
+  /*
+   * Request 162, item 6: whose words these are is decided by sign-in (`managersWordsById`), never by
+   * comparing first names. Two people called Daniel: the one who actually wrote `managersWords` is
+   * 'u-d', not this reader, 'u-d2' - a first-name guess would have matched "Daniel" to "Daniel" and
+   * wrongly pre-filled the other Daniel's words into this reader's own, editable box.
+   */
+  it('a second Daniel reads the first Daniel’s words read-only, by id, though their first names match', async () => {
+    ;(reviewsApi.one as any).mockResolvedValue(FOR_AMINA_ON_PETER)
+    open(DANIEL_TWO, '/suite/reviews/r-p')
+    const words = await screen.findByRole('region', { name: 'What Daniel writes' })
+    expect(within(words).getByText('“Peter has carried the Kisumu route on his own since June.”')).toBeInTheDocument()
+    const own = within(words).getByLabelText('What you write') as HTMLTextAreaElement
+    expect(own.value).toBe('')
   })
 })
