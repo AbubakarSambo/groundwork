@@ -4,6 +4,29 @@ This is the report from the screens workspace, on the branch `wip/prototype-ui`.
 workspace writes its own report in `docs/morning-report.md`, so the two computers never edit the
 same file.
 
+## Morning, 7 October: the night's work, in short
+
+Abubakar has pull request #322 going to production. No pull request was opened from here. Pushes went only to `wip/prototype-ui` on Hafsah's copy, and the engine's `mine/wip/release` was merged regularly.
+
+**Finished**
+- **The anchor, end to end on the screens.**
+  - The front door at /start/team creates an anchor check-in, saved as "Help my team understand", weekly, for one month.
+  - The side panel's seven items tick as the lead answers.
+  - Once the conversation is `ready`, the lead goes straight to the reveal and then the people step, with Name and email, before the confirmation email. There is no fork, and she never gets a check-in of her own.
+  - A member's ideas are open, with the "Raised by" line.
+  - The recognition sentence, the nudge, the month board first, and the end of month in the engine's sentences.
+- **The leave and payment forms work.** They read the engine's form reads: kinds of leave, who covers, currency and categories. Each form is filled in from what the person said, and sends to the new routes.
+- **Newly served parts drawn.** "Connect WhatsApp", shown as an optional convenience in Settings and in a person's own check-in. "Remind them" on a paused check-in. Billing's "How it began" line, and the WhatsApp-off sentence for leads and members.
+
+**Tests:** the client passes, 4,404 of 4,404, and the type check is clean, at 6dfded29.
+
+**Waiting on the engine (requests 167 and 168)**
+- Two privacy faults: a member is served the lead's objective and set-up probes on the ground read, and the lead's note about them (`roleAsDescribed`) on the transcript.
+- The lead still gets a check-in created for her.
+- The anchor's cadence default is fortnightly.
+- Wording in members' check-ins and on the lead's board.
+- The suites seed's form data.
+
 ## Morning, 6 October: the screens for the release, in short
 
 **What is done**
