@@ -57,6 +57,7 @@ describe('a board never serves an empty line', () => {
     expect(src).toContain('aBoardWithNoEmptyLine(everyStoredSentenceReadsRight(');
     expect(src).toMatch(/const asServed = [A-Za-z]*\(*aBoardWithNoEmptyLine\(/);
     /* The anchor's own parts (request 149) are added after it, so the board is held in `asServed` and returned with them. */
-    expect(src).toContain('return { ...asServed,');
+    /* And then the lead's own aim is walled off from a member of an anchor check-in (P13), around the same object. */
+    expect(src).toContain('return withoutTheLeadsSetUpForAMember({ ...asServed,');
   });
 });

@@ -93,3 +93,33 @@ describe('the journey runner only talks to this computer', () => {
   it.each(['http://localhost:3000', 'http://127.0.0.1:3000'])('%s is this computer', (u) => expect(onThisComputer(u)).toBe(true));
   it.each(['https://api.myground.work', 'http://10.0.0.5:3000', 'not a url'])('%s is not', (u) => expect(onThisComputer(u)).toBe(false));
 });
+
+
+/*
+ * THE LEAD'S AIM IS HERS ALONE ON THE BOARD TOO (decision 96, item 8; known issue P13, reviewer's audit 7 October).
+ * Read with the anchor switched off, as a person in the check-in, the lead, and an admin who runs it: the person reads no objective, the
+ * others read the aim; a check-in not started from the anchor reads as before.
+ */
+const THE_AIM = 'Amina is aiming for the sales and production teams to coordinate on timelines';
+const withAnAim = (s: Setup): Setup => ({ ...s, objectives: [{ id: 'o-aim', groundId: 'g1', name: THE_AIM, target: null, ownerParticipantId: null, sortOrder: 0, assumes: null, isADecisionAboutAPerson: false, createdAt: new Date('2026-09-08') }] });
+
+describe('the board of an anchor check-in, and the lead\'s aim', () => {
+  const aims = (b: any) => JSON.stringify(b.objectives ?? []);
+
+  it('a person in it reads none of it', async () => {
+    for (const b of [await boardAs(withAnAim(anchor(false, 'anchor')), ...RUKIA), await boardAs(withAnAim(anchor(false, 'anchor')), ...BARAKA)]) {
+      expect(b.objectives ?? []).toEqual([]);
+      expect(JSON.stringify(b)).not.toContain('coordinate on timelines');
+    }
+  });
+
+  it('the lead reads it, and so does an admin who runs it', async () => {
+    expect(aims(await boardAs(withAnAim(anchor(false, 'anchor')), ...AMINA))).toContain('aiming for the sales and production teams to coordinate on timelines');
+    expect(aims(await boardAs({ ...withAnAim(anchor(false, 'anchor')), createdByUserId: 'u-setup' } as any, ...SETUP_ADMIN))).toContain('coordinate on timelines');
+  });
+
+  it('a check-in not started from the anchor is read as it was by its people', async () => {
+    const b = await boardAs(withAnAim(anchor(false, null)), ...RUKIA);
+    expect(aims(b)).toContain('coordinate on timelines');
+  });
+});
