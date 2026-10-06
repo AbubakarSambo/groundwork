@@ -97,7 +97,7 @@ export class AdminService implements OnApplicationBootstrap {
         include: {
           participant: {
             select: {
-              id: true, roleAsDescribed: true, detectedFunction: true, detectedFunctionConfidence: true,
+              id: true, roleAsDescribed: true, detectedFunction: true, detectedFunctionConfidence: true, nameGiven: true,
               user: { select: { firstName: true, lastName: true, email: true } },
               ground: { select: { id: true, label: true, scenario: true, organization: { select: { name: true } } } },
             },
@@ -110,7 +110,8 @@ export class AdminService implements OnApplicationBootstrap {
       count: rows.length,
       rows: rows.map((r) => ({
         participantId: r.participantId,
-        who: fullNameToCall({ user: r.participant.user }),
+        /* The name they were given when invited, before "Someone" (review of 1678157c). */
+        who: fullNameToCall({ user: r.participant.user, nameGiven: (r.participant as any).nameGiven }),
         organisation: r.participant.ground?.organization?.name ?? null,
         ground: r.participant.ground?.label ?? null,
         scenario: r.participant.ground?.scenario ?? null,
