@@ -261,7 +261,7 @@ export class WhoIsWaitingAtTheDoorService {
       const who = fullNameToCall({ user: person });
       if (asker?.email) {
         this.email
-          .sendTheyAreInNow(asker.email, asker.firstName ?? 'there', who, ground?.label ?? null)
+          .sendTheyAreInNow(asker.email, asker.firstName ?? 'there', who, ground?.label ?? null, request.email)
           .catch((err: any) => this.logger.warn(`Could not tell ${asker.email} that ${request.email} was let in: ${err.message}`));
       }
     }
@@ -291,13 +291,17 @@ export class WhoIsWaitingAtTheDoorService {
        with nothing in it a person can act on, and the person who invited them is the one who
        should say so if anything is to be said. The lead is told instead. */
     if (request.requestedByUserId) {
-      const asker = await this.prisma.user.findUnique({
-        where: { id: request.requestedByUserId },
-        select: { email: true, firstName: true },
-      });
+      const [asker, person] = await Promise.all([
+        this.prisma.user.findUnique({
+          where: { id: request.requestedByUserId },
+          select: { email: true, firstName: true },
+        }),
+        request.userId ? this.prisma.user.findUnique({ where: { id: request.userId }, select: { firstName: true, lastName: true } }) : null,
+      ]);
       if (asker?.email) {
+        /* Their name, never the address in its place (Hafsah, 6 October); the address goes in a sentence of its own. */
         this.email
-          .sendTheyWereNotLetIn(asker.email, asker.firstName ?? 'there', request.email, reason?.trim() || null)
+          .sendTheyWereNotLetIn(asker.email, asker.firstName ?? 'there', fullNameToCall({ user: person }), reason?.trim() || null, request.email)
           .catch((err: any) => this.logger.warn(`Could not tell ${asker.email} about the decline: ${err.message}`));
       }
     }

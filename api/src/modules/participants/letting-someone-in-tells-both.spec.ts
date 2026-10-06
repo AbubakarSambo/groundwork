@@ -42,7 +42,8 @@ describe('letting someone in', () => {
       ['peter@ouma-agencies.co.ke', 'you are in'],
       ['wairimu@baridi.co.ke', 'they are in'],
     ]);
-    expect(sent[1].args).toEqual(['Wairimu', 'Peter Ouma', 'Sales team, Q3']);
+    /* The address now goes along too, for the sentence of its own the mail says it in when there is no name (review of 1678157c). */
+    expect(sent[1].args).toEqual(['Wairimu', 'Peter Ouma', 'Sales team, Q3', 'peter@ouma-agencies.co.ke']);
   });
 
   it('and does not write to the admin about her own invitation', async () => {

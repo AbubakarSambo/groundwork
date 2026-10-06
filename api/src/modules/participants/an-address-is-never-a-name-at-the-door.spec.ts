@@ -54,3 +54,46 @@ describe('who the lead meant, as the lead confirms it', () => {
   });
 });
 
+
+/* Review of 1678157c: the mails themselves, as the admin and the lead read them. The address was still the name in the waiting mail's subject and first
+   sentence, and in the "not added" mail; "by Someone" sat mid-sentence. The address is now said in a sentence of its own, and never where the name goes. */
+import { EmailService } from '../email/email.service';
+function mails() {
+  const sent: { subject: string; html: string }[] = [];
+  const email = new EmailService({ get: () => undefined } as any, {} as any, {} as any);
+  jest.spyOn(email as any, 'sendEmail').mockImplementation(async (msg: any) => { sent.push({ subject: msg.subject, html: msg.html }); return undefined; });
+  return { email, sent };
+}
+const theNamePlaces = (m: { subject: string; html: string }) => m.subject + ' ' + m.html.replace(/The address (they were|you) invited (them )?with is <strong>[^<]*<\/strong>\./g, '');
+
+describe('the mails about somebody at the door, as they are read', () => {
+  it('the admin reads "Someone is waiting", invited by somebody on the team, with the address in a sentence of its own', async () => {
+    const { email, sent } = mails();
+    await email.sendSomebodyIsWaiting('admin@x.test', 'Grace', 'amina.otieno@x.test', 'Someone', 'Sales', { name: '', organisationName: 'Kito' });
+    expect(sent[0].subject).toBe('Someone is waiting to be let into Kito.');
+    expect(sent[0].html).toContain('<strong>Someone</strong> was invited to check in on <strong>Sales</strong> by somebody on your team, and they are not in your organisation yet. The address they were invited with is <strong>amina.otieno@x.test</strong>.');
+    expect(leaks(theNamePlaces(sent[0]))).toBe(false);
+  });
+  it('and the name when there is one, with no address at all', async () => {
+    const { email, sent } = mails();
+    await email.sendSomebodyIsWaiting('admin@x.test', 'Grace', 'amina.otieno@x.test', 'Wairimu Njoroge', 'Sales', { name: 'Amina Otieno', organisationName: 'Kito' });
+    expect(sent[0].subject).toBe('Amina Otieno is waiting to be let into Kito.');
+    expect(sent[0].html).toContain('<strong>Amina Otieno</strong> was invited to check in on <strong>Sales</strong> by Wairimu Njoroge');
+    expect(sent[0].html).not.toContain('@');
+  });
+  it('the lead reads "the person you invited" when they are let in or not, never the address as a name', async () => {
+    const { email, sent } = mails();
+    await email.sendTheyAreInNow('w@x.test', 'Wairimu', 'Someone', 'Sales', 'amina.otieno@x.test');
+    await email.sendTheyWereNotLetIn('w@x.test', 'Wairimu', 'Someone', null, 'amina.otieno@x.test');
+    expect(sent[0].subject).toBe('The person you invited can check in now');
+    expect(sent[0].html).toContain('An admin has let in the person you invited, so they can start <strong>Sales</strong>. They have been told. The address you invited them with is <strong>amina.otieno@x.test</strong>.');
+    expect(sent[1].subject).toBe('The person you invited was not added to your organisation');
+    for (const m of sent) expect(leaks(theNamePlaces(m))).toBe(false);
+  });
+  it('and by name when they have one', async () => {
+    const { email, sent } = mails();
+    await email.sendTheyAreInNow('w@x.test', 'Wairimu', 'Amina Otieno', 'Sales', 'amina.otieno@x.test');
+    expect(sent[0].subject).toBe('Amina Otieno can check in now');
+    expect(sent[0].html).not.toContain('@');
+  });
+});

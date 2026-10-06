@@ -259,14 +259,16 @@ export class EmailService implements OnModuleInit {
   ): Promise<void> {
     const name = (known.name ?? '').trim();
     const org = (known.organisationName ?? '').trim();
+    /* AN ADDRESS IS NEVER A NAME (Hafsah, 6 October). With no name the person is "Someone", and the address the admin needs is said in a sentence of its own,
+       never in the subject or where the name goes. `who` is the address they were invited with. */
+    const named = name && !name.includes('@') ? name : 'Someone';
+    const by = theInviter(addedBy);
     await this.sendEmail({
       to,
-      subject: name
-        ? `${name} is waiting to be let into ${org || 'your organisation'}.`
-        : `${who} is waiting to be let into ${org || 'your organisation'}.`,
+      subject: `${named} is waiting to be let into ${org || 'your organisation'}.`,
       html: this.layout(
         `<p>${greeting(adminFirstName)}</p>
-         <p><strong>${escapeHtml(who)}</strong> was invited to check in${checkInLabel ? ` on <strong>${escapeHtml(checkInLabel)}</strong>` : ''} by ${escapeHtml(addedBy)}, and they are not in your organisation yet.</p>
+         <p><strong>${escapeHtml(named)}</strong> was invited to check in${checkInLabel ? ` on <strong>${escapeHtml(checkInLabel)}</strong>` : ''} by ${escapeHtml(by)}, and they are not in your organisation yet.${named === 'Someone' && who?.includes('@') ? ` The address they were invited with is <strong>${escapeHtml(who)}</strong>.` : ''}</p>
          <p>They can sign in, and they cannot start until you approve them joining. Nobody outside your organisation is added to it, or counted on your plan, without this.</p>
          <p><a href="${this.frontendUrl.replace(/\/$/, '')}/org/members" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">See who is waiting →</a></p>`,
       ),
@@ -307,13 +309,15 @@ export class EmailService implements OnModuleInit {
    * straight away, and tells whoever invited them." Only the person was told, so the second half was
    * not true: the lead found out when an answer arrived, or did not.
    */
-  async sendTheyAreInNow(to: string, firstName: string, who: string, checkIn: string | null): Promise<void> {
+  async sendTheyAreInNow(to: string, firstName: string, who: string, checkIn: string | null, address?: string | null): Promise<void> {
+    /* With no name, "the person you invited", and the address they were invited with in its own sentence, never in the name's place. */
+    const nameless = !who?.trim() || who.trim() === 'Someone' || who.includes('@');
     await this.sendEmail({
       to,
-      subject: `${who} can check in now`,
+      subject: nameless ? 'The person you invited can check in now' : `${who} can check in now`,
       html: this.layout(
         `<p>${greeting(firstName)}</p>
-         <p>An admin has let <strong>${escapeHtml(who)}</strong> in, so they can start ${checkIn ? `<strong>${escapeHtml(checkIn)}</strong>` : 'the check-in you invited them to'}. They have been told.</p>`,
+         <p>An admin has let in ${nameless ? 'the person you invited' : `<strong>${escapeHtml(who)}</strong>`}, so they can start ${checkIn ? `<strong>${escapeHtml(checkIn)}</strong>` : 'the check-in you invited them to'}. They have been told.${nameless && address?.includes('@') ? ` The address you invited them with is <strong>${escapeHtml(address)}</strong>.` : ''}</p>`,
       ),
     }, undefined, 'sendTheyAreInNow');
   }
@@ -326,13 +330,15 @@ export class EmailService implements OnModuleInit {
    * one who can say something useful, and the one who needs to know their check-in is short a
    * person.
    */
-  async sendTheyWereNotLetIn(to: string, firstName: string, who: string, reason: string | null): Promise<void> {
+  async sendTheyWereNotLetIn(to: string, firstName: string, who: string, reason: string | null, address?: string | null): Promise<void> {
+    /* With no name, "the person you invited", and the address in its own sentence, never in the name's place (Hafsah, 6 October). */
+    const nameless = !who?.trim() || who.trim() === 'Someone' || who.includes('@');
     await this.sendEmail({
       to,
-      subject: `${who} was not added to your organisation`,
+      subject: nameless ? 'The person you invited was not added to your organisation' : `${who} was not added to your organisation`,
       html: this.layout(
         `<p>${greeting(firstName)}</p>
-         <p>An admin has decided not to add <strong>${escapeHtml(who)}</strong> to your organisation, so they cannot check in on it.</p>
+         <p>An admin has decided not to add ${nameless ? 'the person you invited' : `<strong>${escapeHtml(who)}</strong>`} to your organisation, so they cannot check in on it.${nameless && address?.includes('@') ? ` The address you invited them with is <strong>${escapeHtml(address)}</strong>.` : ''}</p>
          ${reason ? `<p style="border-left:3px solid #E2E0DB;padding:8px 14px;margin:18px 0;color:#4A4540;">${escapeHtml(reason)}</p>` : ''}
          <p>They have not been told. If they should hear anything about it, that is yours to say.</p>`,
       ),
@@ -1905,4 +1911,10 @@ export function escapeHtml(s: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+/* Who invited them, for the middle of a sentence: "Someone", the word for a person with no name, reads "somebody on your team" there. */
+function theInviter(addedBy: string | null | undefined): string {
+  const by = (addedBy ?? '').trim();
+  return !by || by === 'Someone' || by.includes('@') ? 'somebody on your team' : by;
 }

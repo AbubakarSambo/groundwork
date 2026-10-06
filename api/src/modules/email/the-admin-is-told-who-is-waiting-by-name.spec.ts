@@ -17,8 +17,9 @@ describe('the admin is told who is waiting', () => {
     expect(await subjectOf('peter@ouma-agencies.co.ke', { name: 'Peter Ouma', organisationName: 'Baridi Appliances' }))
       .toBe('Peter Ouma is waiting to be let into Baridi Appliances.');
   });
-  it('by address only when they gave no name, still with the organisation', async () => {
+  /* Changed on 7 October (review of 1678157c): this asserted the address as the name in the subject, which is the defect (Hafsah, 6 October: an address is never a name). */
+  it('as "Someone" when they gave no name, never by address, still with the organisation', async () => {
     expect(await subjectOf('newcomer@example.test', { name: '', organisationName: 'Baridi Appliances' }))
-      .toBe('newcomer@example.test is waiting to be let into Baridi Appliances.');
+      .toBe('Someone is waiting to be let into Baridi Appliances.');
   });
 });
