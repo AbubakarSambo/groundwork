@@ -43,15 +43,35 @@ export function SendTheReportToEveryone({ groundId, participants, answered }: {
   const reachable = participants.filter((p) => answered.has(p.id) && p.partyType !== 'INITIATOR' && p.wantsTheReport !== false && !!p.email && !p.email.endsWith('@unclaimed.invalid'))
   const declined = participants.filter((p) => answered.has(p.id) && p.wantsTheReport === false)
   const [how, setHow] = useState<'NAMED' | 'ANONYMOUS'>('NAMED')
+  /**
+   * ONCE EVERYBODY WHO ASKED FOR IT ALREADY HAS IT, THE BUTTON HAS NOTHING LEFT TO DO.
+   *
+   * "Send to 1" used to answer "Everybody who asked for it already has it." as a toast that faded,
+   * leaving the same live "Send to 1" button behind it - press it again and it says the same thing
+   * again. `reachable` only asks who is allowed to be sent the report, not who already has this
+   * round's copy, so it stays the same count before and after a send that reached nobody. This
+   * remembers that answer so the button gives way to the sentence instead of repeating itself.
+   */
+  const [everybodyAlreadyTold, setEverybodyAlreadyTold] = useState(false)
   const send = useMutation({
     mutationFn: () => reportsApi.sendToEveryone(groundId, how),
     onSuccess: (r) => {
-      toast.success(r.sent === 0 && r.alreadyTold > 0 ? 'Everybody who asked for it already has it.' : `Sent to ${r.sent} ${r.sent === 1 ? 'person' : 'people'}${r.alreadyTold ? `; ${r.alreadyTold} already had it` : ''}.`)
+      if (r.sent === 0 && r.alreadyTold > 0) {
+        setEverybodyAlreadyTold(true)
+        toast.success('Everybody who asked for it already has it.')
+      } else {
+        setEverybodyAlreadyTold(false)
+        toast.success(`Sent to ${r.sent} ${r.sent === 1 ? 'person' : 'people'}${r.alreadyTold ? `; ${r.alreadyTold} already had it` : ''}.`)
+      }
       qc.invalidateQueries({ queryKey: ['ground', groundId] })
     },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not send. Try again.'),
   })
   if (!answered.size) return null
+  /* Nothing left for the button to do: either nobody here may be sent it, or the last press
+     already reached everybody it could. Either way, say so instead of offering a press that can
+     only repeat the same answer. */
+  const nothingLeftToSend = reachable.length === 0 || everybodyAlreadyTold
   return (
     <section aria-label="Send the report to everyone" style={{ marginTop: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -63,10 +83,13 @@ export function SendTheReportToEveryone({ groundId, participants, answered }: {
             person had to request. Two full sentences in place of one joined with a semicolon.
           */}
           {reachable.length} {reachable.length === 1 ? 'person has' : 'people have'} answered.{declined.length ? ` ${declined.length} ${declined.length === 1 ? 'person' : 'people'} said no thanks.` : ''} Each gets a link to this session's report, once.
+          {everybodyAlreadyTold && ' Everybody who asked for it already has it.'}
         </p>
-        <Button kind="secondary" size="small" onClick={() => send.mutate()} disabled={send.isPending || reachable.length === 0}>
-          {send.isPending ? 'Sending…' : `Send ${how === 'ANONYMOUS' ? 'anonymised ' : ''}to ${reachable.length}`}
-        </Button>
+        {!nothingLeftToSend && (
+          <Button kind="secondary" size="small" onClick={() => send.mutate()} disabled={send.isPending}>
+            {send.isPending ? 'Sending…' : `Send ${how === 'ANONYMOUS' ? 'anonymised ' : ''}to ${reachable.length}`}
+          </Button>
+        )}
       </div>
       {reachable.length > 0 && (
         <fieldset style={{ border: 0, padding: 0, margin: '12px 0 0' }}>
