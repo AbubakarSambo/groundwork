@@ -60,15 +60,20 @@ function fetchRollout(): Promise<RolloutFacts> {
   return apiClient.get('/users/rollout').then(r => r.data.data ?? r.data)
 }
 
-/** The prototype's four steps, in its order. The WhatsApp one only while WhatsApp is on. */
+/**
+ * THE PROTOTYPE'S THREE STEPS, in its order (decision 112, 7 October). This used to add a fourth,
+ * "Connect WhatsApp (optional)", leading to the page that sets up an organisation's own number -
+ * which made setting up an own number look like a normal early step, when Groundwork's own number
+ * already works for everyone and needs no setup at all. Dropped. There is no served fact yet for
+ * "the platform's WhatsApp is on but the organisation has not turned it on", so no "Turn on
+ * WhatsApp" step is added in its place either; see docs/requests-to-engine.md.
+ */
 export function getItGoing(f: RolloutFacts): Step[] {
-  const steps: Step[] = [
+  return [
     { key: 'invite', title: 'Invite your team', to: '/org/members', done: f.people > 1 },
     { key: 'admin', title: 'Add a second admin', to: '/org/members', done: f.admins > 1 },
     { key: 'checkin', title: 'Start your first check-in', to: '/start', done: f.checkIns > 0 },
   ]
-  if (f.whatsappOn) steps.push({ key: 'wa', title: 'Connect WhatsApp (optional)', to: '/settings/whatsapp', done: !!f.whatsappConnected })
-  return steps
 }
 
 /**
@@ -85,8 +90,12 @@ export function doorsFor(f: Pick<RolloutFacts, 'whatsappOn'>): { title: string; 
          `ConnectionsPage.tsx` leaves "Your own address" out entirely (Hafsah, 29 September, item
          11), on purpose, because nothing behind it is built. This names what the page actually
          offers instead: WhatsApp, your numbers, and the people/goals/roles/handbook/API
-         connections under "More you can connect". */
-      line: f.whatsappOn ? 'Connect WhatsApp, bring in your numbers, and connect your other tools.' : 'Bring in your numbers, and connect your other tools.',
+         connections under "More you can connect".
+         DECISION 112: "Connect WhatsApp" used to promise setting up an organisation's own number.
+         Groundwork's own number already works for everyone once an admin turns WhatsApp on, so
+         this says "Turn on WhatsApp" instead - true whether or not the organisation ever connects
+         a number of its own. */
+      line: f.whatsappOn ? 'Turn on WhatsApp, bring in your numbers, and connect your other tools.' : 'Bring in your numbers, and connect your other tools.',
       to: '/settings/connections',
     },
     { title: 'Suites', line: 'Switch on leave, spending and onboarding when you need them.', to: '/settings/suites' },

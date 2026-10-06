@@ -88,10 +88,14 @@ describe('the new admin', () => {
     ])
   })
 
+  /* DECISION 112, 7 October: this used to say "Connect WhatsApp", which read as though setting up
+     an organisation's own number were the normal next step. Updated to "Turn on WhatsApp", true
+     whether or not the organisation ever connects a number of its own - Groundwork's own number
+     already works once an admin turns WhatsApp on. */
   it('the Connections door names WhatsApp only while WhatsApp is switched on', async () => {
     open(ADMIN, { ...NEW, whatsappOn: true })
     await screen.findByRole('heading', { name: 'You’re an admin at Nyali Foods' })
-    expect(screen.getByText('Connect WhatsApp, bring in your numbers, and connect your other tools.')).toBeTruthy()
+    expect(screen.getByText('Turn on WhatsApp, bring in your numbers, and connect your other tools.')).toBeTruthy()
   })
 
   /* SCREEN FAULT 3: Connections has no "your own address" feature - ConnectionsPage.tsx leaves it
@@ -102,10 +106,17 @@ describe('the new admin', () => {
     expect(document.body.textContent).not.toMatch(/own address/)
   })
 
-  it('with WhatsApp switched on, the fourth row, and "0 of 4 done", as the prototype has it', async () => {
+  /*
+   * UPDATED FOR DECISION 112, 7 October. This used to show a fourth row, "Connect WhatsApp
+   * (optional)", leading to the page that sets up an organisation's own number, whenever WhatsApp
+   * was switched on anywhere - which made setting up an own number look like a normal early step.
+   * Groundwork's own number already works for everyone once an admin turns WhatsApp on in Plan and
+   * billing, so this checklist stays at three steps whether or not WhatsApp is switched on.
+   */
+  it('stays at three steps even with WhatsApp switched on', async () => {
     open(ADMIN, { ...NEW, whatsappOn: true })
-    expect(await screen.findByText('0 of 4 done')).toBeTruthy()
-    expect(screen.getByText('Connect WhatsApp (optional)')).toBeTruthy()
+    expect(await screen.findByText('0 of 3 done')).toBeTruthy()
+    expect(screen.queryByText('Connect WhatsApp (optional)')).toBeNull()
   })
 
   it('ticks what has happened', async () => {
@@ -147,9 +158,13 @@ describe('everybody else', () => {
 })
 
 describe('the steps', () => {
-  it('are the prototype\'s, in its order', () => {
-    expect(getItGoing({ ...NEW, whatsappOn: true }).map(s => s.title)).toEqual([
-      'Invite your team', 'Add a second admin', 'Start your first check-in', 'Connect WhatsApp (optional)',
-    ])
+  /* DECISION 112, 7 October: no "Connect WhatsApp" step any more, with WhatsApp on or off - see the
+     comment on getItGoing. */
+  it('are the prototype\'s three, in its order, whatever WhatsApp\'s own state', () => {
+    for (const whatsappOn of [true, false]) {
+      expect(getItGoing({ ...NEW, whatsappOn }).map(s => s.title)).toEqual([
+        'Invite your team', 'Add a second admin', 'Start your first check-in',
+      ])
+    }
   })
 })
