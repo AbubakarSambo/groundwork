@@ -6180,3 +6180,11 @@ With the suite off, both answer with the sentence the board uses ("The leave sui
 3. **After the lead's conversation is `ready`, go straight to the reveal and the people step.** Do not show the ordinary fork ("I set this up and check in myself") and do not start a second conversation.
 4. **Give `HELP_TEAM_UNDERSTAND` a label in `SCENARIO_LABELS`** ("Help my team understand"), so an anchor check-in never prints the raw key.
 5. **The end-of-month read no longer offers "Turn on the suites that fit" until suites are really counted.** `continueOptions` has three entries until then, and `revealSaid.lines` has five.
+
+## 6 October: the suites at a hundred people, and requests 160 and 162
+
+**Request 160.** Done in `seed-a-hundred-check-ins.ts`: `ACTIVE` where nobody answered; Imani is a member who runs nothing and is in 15.
+
+**Request 162.** (1) A review's "who decides" now agrees with `mayWrite`: it names whoever the organisation's rule lets write it, or "an admin". (2) `standsSays` says what is written in that review. (3) Spending lines read "KES 120,000 for two tablets for the field team"; the board's waiting spending carries `says` ("Grace: KES 120,000 for two tablets for the field team"). (4) The leave page says "so Groundwork cannot say how many you have left"; the seed uses the questions' ids. (5) The seed has a stand-in and leave this week. (6) `managersWordsById` is served beside `managersWords`.
+
+**New for the screens.** `GET /suites/queue?page=&pageSize=&suite=` (`counts`, `says`, `items` with `says`, `where`, `waitedSays`, `clash`, `standingIn`); `clash` on each waiting leave request on the leave board; `GET /suites/spend/finance/totals?month=2026-10` for finance and admins. A stand-in can decide on the leave, spending and hours boards and opens them as an "approver".
