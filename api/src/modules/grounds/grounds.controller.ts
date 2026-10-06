@@ -282,8 +282,8 @@ export class GroundsController {
   /** ONE stored proposal, checked again against its own quote, written into the table it belongs in, once. */
   @Post(':id/plan/proposals/:pid/confirm')
   @ApiOperation({ summary: 'Lead only: confirm one proposal from a plan, which writes exactly one thing. For a goal with a number, send direction "AIM", "LIMIT", "RATE", "DEADLINE" or "ZERO" as the lead answered the card\'s whichWay question; without it, no kind is set.' })
-  async confirmPlanProposal(@Param('id') id: string, @Param('pid') pid: string, @CurrentUser('id') userId: string, @Body() dto?: { direction?: 'AIM' | 'LIMIT' | 'RATE' | 'DEADLINE' | 'ZERO' | null }) {
-    return this.plans.confirm(id, userId, pid, { direction: dto?.direction });
+  async confirmPlanProposal(@Param('id') id: string, @Param('pid') pid: string, @CurrentUser('id') userId: string, @Body() dto?: { email?: string; direction?: 'AIM' | 'LIMIT' | 'RATE' | 'DEADLINE' | 'ZERO' | null }) {
+    return this.plans.confirm(id, userId, pid, { direction: dto?.direction, email: dto?.email });
   }
 
   @Post(':id/plan/proposals/:pid/not-now')
