@@ -38,6 +38,16 @@ describe('Use simpler words, as an admin and as a participant', () => {
     const { grounds } = service({ viewer: { role: 'ADMIN', organizationId: 'org1' } });
     expect((await grounds.setSimplerWords('g1', 'admin-1', true)).simplerWords).toBe(true);
   });
+  it('refuses anything that is not true or false, with a sentence, and changes nothing', async () => {
+    const { grounds, update } = service({});
+    for (const bad of ['yes', 1, null, undefined]) await expect(grounds.setSimplerWords('g1', 'lead-1', bad)).rejects.toThrow('Say whether to use simpler words, with true or false.');
+    expect(update).not.toHaveBeenCalled();
+  });
+  it('says "read" to somebody who may not read it, and "change" to somebody who may not change it', async () => {
+    const { grounds } = service({});
+    await expect(grounds.getSimplerWords('g1', 'someone-else')).rejects.toThrow('can read this.');
+    await expect(grounds.setSimplerWords('g1', 'someone-else', true)).rejects.toThrow('can change this.');
+  });
   it('does not let a participant read it or change it, and changes nothing', async () => {
     const { grounds, update } = service({});
     await expect(grounds.setSimplerWords('g1', 'someone-else', true)).rejects.toBeInstanceOf(ForbiddenException);

@@ -853,7 +853,7 @@ export class GroundsController {
     @CurrentUser('id') userId: string,
     @Body() body: { on: boolean },
   ) {
-    return this.grounds.setSimplerWords(id, userId, body?.on === true);
+    return this.grounds.setSimplerWords(id, userId, body?.on);
   }
 
   @Patch(':id/over-whatsapp')
