@@ -12,6 +12,7 @@ import { copy } from '@/components/gw/copying-can-fail'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { scrollToId } from '@/lib/scroll-to'
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
+import { aPersonsSentenceForAServerError } from '@/lib/a-persons-sentence-for-a-server-error'
 import {
   Page, PageTitle, Section, Panel, Stack, FieldRows, FieldRow, Button, Tag, Note, TextField, FieldLabel, SwitchRow,
 } from '@/components/gw/ui'
@@ -83,6 +84,15 @@ function ThingsWeDoByHand() {
     onError: () => toast.error('That did not send. What you wrote is still here - try again.'),
   })
 
+  /* SCREEN FAULT 4c, CHECKED: "Sahar Jamal, a partner at Groundwork" is not a prototype sample name
+     invented for a screenshot - she is a real, named member of Groundwork's own team (the "Partner,
+     coach and setup" on the public About page, docs/prototype/source/s19.js's `R.about`, and
+     about.txt), the actual person this paid "coach in the room" service names in the prototype's
+     own pricing page (s19.js). There is no served field for who she is - this is a fact about
+     Groundwork's own staff, the same kind of fact a company's own site names about itself, not
+     about the organisation using the product - so it stays hard-coded, same as the prototype has
+     it. A prior review (group 1) already checked this introduces her by name only after saying who
+     she is; see the "group 1 review fixes" tests below. */
   const open: Record<string, string> = asked.data?.open ?? {}
   const rows = [
     { subject: 'COACHING', title: 'A coach in the room', what: 'Sahar Jamal, a partner at Groundwork who coaches teams and helps them set up, reads the report with your team and turns what it found into a decision somebody owns.' },
@@ -136,7 +146,7 @@ export function BillingPage() {
   const setWhatsAppMut = useMutation({
     mutationFn: (on: boolean) => billingApi.setWhatsApp(on),
     onSuccess: (r) => qc.setQueryData(['billing-whatsapp'], r),
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'WhatsApp did not change. Try again.'),
+    onError: (e: any) => toast.error(aPersonsSentenceForAServerError(e?.response?.data?.message, 'WhatsApp did not change. Try again.')),
   })
 
   const freeGrounds = livePricing?.free.groundLimit ?? FALLBACK_FREE_LIMITS.groundLimit
@@ -164,7 +174,7 @@ export function BillingPage() {
   const createSubscriptionMut = useMutation({
     mutationFn: (plan: SubscriptionPlan) => billingApi.createSubscription(plan),
     onSuccess: r => { if (r.checkoutUrl) window.location.href = r.checkoutUrl },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not start checkout. Try again.'),
+    onError: (e: any) => toast.error(aPersonsSentenceForAServerError(e?.response?.data?.message, 'Could not start checkout. Try again.')),
   })
   const changePlanMut = useMutation({
     mutationFn: (plan: SubscriptionPlan) => billingApi.changeSubscriptionPlan(plan),
@@ -241,6 +251,16 @@ export function BillingPage() {
   const busy = createSubscriptionMut.isPending || changePlanMut.isPending
   const choosePlan = (plan: SubscriptionPlan) => (isSubscribed ? changePlanMut.mutate(plan) : createSubscriptionMut.mutate(plan))
   const scrollToPlans = () => scrollToId('billing-plans', 'start')
+  /* SCREEN FAULT 4b: a team of 8 used to be offered Starter, "Up to 5 people", with no warning that
+     it does not fit them - the plan grid drew `capLabel` and nothing else. Only served numbers: the
+     plan's own member cap (the pricing table) and the organisation's own people count (the status
+     the admin already reads as "27 of 100 people"). */
+  const peopleCount = billingStatus?.people?.count ?? null
+  function tooSmallFor(plan: SubscriptionPlan): string | null {
+    const cap = livePricing?.plans.find(p => p.plan === plan)?.memberCap ?? null
+    if (cap == null || peopleCount == null || peopleCount <= cap) return null
+    return `This plan is for up to ${cap} ${cap === 1 ? 'person' : 'people'}, and ${orgName} has ${peopleCount}.`
+  }
 
   return (
     <Page>
@@ -381,6 +401,7 @@ export function BillingPage() {
                   <p className="gwui-plan-name">{PLAN_LABELS[plan]}</p>
                   <p className="gwui-plan-price">{priceFigure}{showsPerMonth && <span>/mo</span>}</p>
                   <p className="gwui-plan-cap">{capLabel(plan)}</p>
+                  {tooSmallFor(plan) && <Note tone="amber">{tooSmallFor(plan)}</Note>}
                   {/* tag("act","Your plan") in the prototype (s20.js/s21.js): the navy tag, not green. */}
                   {mine ? <Tag tone="action">Your plan</Tag> : (
                     <Button kind="secondary" size="small" wide disabled={busy || isPaused} onClick={() => choosePlan(plan)}>{pending ? 'Opening…' : 'Move to this'}</Button>
