@@ -78,8 +78,15 @@ export function RoleMapPage() {
                   return (
                     <tr key={r.name}>
                       <th scope="row" className={nobody ? 'gwui-nobody' : undefined}>{r.name}</th>
-                      <td>{r.owns ?? ''}</td>
-                      <td className={nobody ? 'gwui-nobody' : undefined}>{heldBy(r.heldBy)}</td>
+                      {/* FAULT 3 OF THE LIVE WALK (6 October): stacked at 375 wide, a role read as a
+                          bare "Operations director / (blank) / Amina Yusuf", with nothing to say which
+                          value was what it owns and which was who holds it. Labelled the same way
+                          ReviewsBoardPage's table already is. */}
+                      {/* FAULT 7B OF THE LIVE WALK (6 October): "What it owns" was blank on every row
+                          nobody had answered yet, with no words to say so - unlike "Who holds it",
+                          which always says "Nobody" rather than leaving a gap. */}
+                      <td><span className="gwui-record-table-label" aria-hidden="true">What it owns</span>{r.owns ?? 'Nobody has said yet.'}</td>
+                      <td className={nobody ? 'gwui-nobody' : undefined}><span className="gwui-record-table-label" aria-hidden="true">Who holds it</span>{heldBy(r.heldBy)}</td>
                     </tr>
                   )
                 })}
