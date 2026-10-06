@@ -68,10 +68,20 @@ describe('Amani, who stopped halfway on WhatsApp', () => {
   });
 });
 
-describe('off at release', () => {
-  it('the switch reads off with no row, and every one of the three asks it first', async () => {
-    const { theHalfwayMessagesAreOn } = require('../admin/what-is-hidden-at-release');
-    expect(await theHalfwayMessagesAreOn({ platformSetting: { findUnique: async () => null } })).toBe(false);
+describe('on unless the row says off', () => {
+  const { theHalfwayMessagesAreOn } = require('../admin/what-is-hidden-at-release');
+  const row = (value: unknown) => ({ platformSetting: { findUnique: async () => (value === undefined ? null : { value }) } });
+
+  it('a missing or broken row reads as on; only { "on": false } switches it off', async () => {
+    expect(await theHalfwayMessagesAreOn(row(undefined))).toBe(true);
+    expect(await theHalfwayMessagesAreOn(row({ on: true }))).toBe(true);
+    expect(await theHalfwayMessagesAreOn(row({ nonsense: 1 }))).toBe(true);
+    expect(await theHalfwayMessagesAreOn({ platformSetting: { findUnique: async () => { throw new Error('no table'); } } })).toBe(true);
+    expect(await theHalfwayMessagesAreOn(row({ on: false }))).toBe(false);
+    expect(await theHalfwayMessagesAreOn(row(false))).toBe(false);
+  });
+
+  it('every one of the three asks it first', () => {
     const src = withoutComments(require('fs').readFileSync(require('path').join(__dirname, '..', 'grounds', 'grounds.cron.ts'), 'utf8'));
     expect(src).toContain('this.whatsapp && (await theHalfwayMessagesAreOn(this.prisma)) ? tellThemTheClockClosedIt(');
     expect(src).toContain('if (this.whatsapp && (await theHalfwayMessagesAreOn(this.prisma))) await warnTheirPhone(');
