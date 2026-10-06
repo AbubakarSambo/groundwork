@@ -1172,7 +1172,7 @@ export function GroundAdminPage() {
    * open round, which cannot be true unless the round moved back under them.
    */
   const roundWentBack = (ground.participants ?? []).some((p: any) =>
-    (ground.checkIns ?? []).filter((c: any) => c.participantId === p.id && c.status === 'COMPLETED').length >= openRound,
+    (ground.checkIns ?? []).filter((c: any) => c.participantId === p.id && c.status === 'COMPLETED').length > openRound,
   )
   /**
    * The report has three states worth telling apart, and only the last is good
