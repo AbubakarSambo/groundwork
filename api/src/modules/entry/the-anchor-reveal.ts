@@ -62,7 +62,9 @@ export function whoSheIsTryingToMove(names: string[]): string {
 export function whoYouAreMovingSaid(text: string): string {
   const t = text.trim().replace(/[.!?]+$/, '');
   if (/^you\b/i.test(t)) return asASentence(t);
-  return `You are trying to move ${t.charAt(0).toLowerCase()}${t.slice(1)} with you.`;
+  /* Only a leading "The", "A" or "An" is lower-cased, and "My" or "Our" becomes "your"; a name or anything else stays as written. */
+  const said = t.replace(/^(?:the|a|an)\s/i, (m) => m.toLowerCase()).replace(/^(?:my|our)\s/i, 'your ');
+  return `You are trying to move ${said} with you.`;
 }
 
 export const NOT_WRITTEN_DOWN = {
