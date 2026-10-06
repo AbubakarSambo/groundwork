@@ -159,3 +159,11 @@ describe('once it is captured, nothing asks what to capture (release walk)', () 
     expect(withoutAskingWhatToCapture(t)).toEqual({ text: t, cut: [] });
   });
 });
+
+describe('after a capture Groundwork does not say how it feels (6 October)', () => {
+  it('takes off "I\'m glad you found this helpful"', () => {
+    const out = withoutAskingWhatToCapture("I have captured it for the team.\n\nI'm glad you found this helpful, Grace.\n\nWhat else would you like to say?");
+    expect(out.text).not.toMatch(/glad/);
+    expect(out.text).toContain('What else would you like to say?');
+  });
+});

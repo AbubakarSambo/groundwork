@@ -201,7 +201,8 @@ export function anIdeaReadBackAsAPromise(reply: string, theirIdeas: string[], th
  * already captured, in their words, so a sentence of the model's that asks about capturing is taken off. Read-side
  * and narrow: only on the turn that captured, and only sentences about capturing.
  */
-const ASKS_ABOUT_CAPTURING = /\bcaptur(?:e|ed|es|ing)\b/i;
+/* And how Groundwork feels about it: "I'm glad you found this helpful" was said after a capture, to somebody who had said nothing of the kind. */
+const ASKS_ABOUT_CAPTURING = /\bcaptur(?:e|ed|es|ing)\b|\b(?:I(?:'m| am)|we(?:'re| are)) (?:so )?(?:glad|pleased|happy|delighted)\b/i;
 export function withoutAskingWhatToCapture(reply: string): { text: string; cut: string[] } {
   const cut: string[] = [];
   const paragraphs = String(reply ?? '').split(/\n{2,}/).map((p) => {

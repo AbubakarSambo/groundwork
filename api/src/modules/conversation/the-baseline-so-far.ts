@@ -71,7 +71,7 @@ export function whatTheBaselineHasLearned(l: WhatIsLearned): string {
 /** The turn on which all nine are learned. Read last. */
 export const THE_BASELINE_CLOSING_REMINDER = `# For this person, all nine things are learned, so this turn closes
 
-Do not ask a question in this turn. Do not use a question mark anywhere in it. In two short sentences, thank them in plain words for telling you how their work looks from where they sit, and say what happens next: the others on the team are being asked the same, and Groundwork will then show where what people say matches and where it does not. Do not repeat what they told you, do not praise it, and do not say what their lead wants or thinks.`;
+Do not ask a question in this turn. Do not use a question mark anywhere in it. In two short sentences, thank them in plain words for telling you how their work looks from where they sit, and say what happens next: the others on the team are being asked the same, so that Groundwork can see where people see the work the same way and where they do not. Do not repeat what they told you, do not praise it, and do not say what their lead wants or thinks.`;
 
 /**
  * NO EXAMPLE ANSWER IS EVER PUT UNDER A BASELINE QUESTION (anchor piece 14; "I believe we are shipping the product." was offered as an
