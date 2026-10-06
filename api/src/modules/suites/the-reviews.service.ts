@@ -288,6 +288,8 @@ export class ReviewsService {
           wordsBy: r?.managersWords?.trim() && r.managersWordsById
             ? (r.managersWordsById === reader.userId ? 'you' : await this.firstNameOf(r.managersWordsById, directory)) : null,
           hasTheirView: !!r?.theirView?.trim(),
+          /* Who writes and decides it: the reader ("you"), the person the rule names, or an admin (the same answer as `mayWrite`). */
+          decider: r && !r.decidedAt ? (writesIt ? 'you' : (await this.theWriterNamed(reader.organizationId, r as any, p, answers.writer, directory)).first ?? 'an admin') : null,
         }),
         reviewId: r?.id ?? null,
         mayStart: stands === 'ready' && writesIt,

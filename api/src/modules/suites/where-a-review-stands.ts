@@ -107,6 +107,8 @@ export function whereItStandsSaid(input: {
    */
   wordsBy?: string | null;
   hasTheirView?: boolean;
+  /** Who writes and decides this review: "you" for the reader who does, a first name, or "an admin" when any admin may. Left out, the words' author is. */
+  decider?: string | null;
 }): string {
   const name = input.firstName.trim() || 'this person';
   if (input.stands === 'not-yet' && input.waitingFor) {
@@ -123,10 +125,15 @@ export function whereItStandsSaid(input: {
     const on = input.startedAt ? whenItWas(input.startedAt, 'full', 'UTC') : null;
     const head = on ? `Started on ${on}.` : 'Started.';
     const by = input.wordsBy?.trim() || null;
-    const written = by ? (by === 'you' ? 'You have written' : `${by} has written`) : null;
-    if (written && input.hasTheirView) return `${head} ${written} and ${name} has added a view of their own. It now waits for a decision.`;
+    const decider = input.decider?.trim() || by;
+    const written = by ? (by === 'you' ? 'You have written the review' : `${by} has written the review`) : null;
+    const waitsFor = decider === 'you' ? 'your decision' : decider ? `${decider === 'an admin' ? 'an admin' : decider} to decide` : 'a decision';
+    if (written && input.hasTheirView) return `${head} ${written}, and ${name} has added a view of their own. It now waits for ${waitsFor}.`;
     if (written) return `${head} ${written}, and ${name} can read it and add a view of their own.`;
-    if (input.hasTheirView) return `${head} ${name} has added a view of their own, and the words that go with it have not been written yet.`;
+    if (input.hasTheirView) {
+      const notYet = decider === 'you' ? 'You have not written the review yet.' : decider && decider !== 'an admin' ? `${decider} has not written the review yet.` : 'Nobody has written the review yet.';
+      return `${head} ${name} has added a view of their own. ${notYet}`;
+    }
     return `${head} ${name} can read it and add a view of their own.`;
   }
   if (input.months >= 1) return `Ready to start. ${input.months} ${input.months === 1 ? 'month' : 'months'} of check-ins to draw on.`;
