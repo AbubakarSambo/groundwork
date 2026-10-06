@@ -1097,7 +1097,21 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * "Reports" row built from it can say truthfully how many of the whole roster checked in,
    * instead of "1 of 1" for a reader who is restricted to their own one-person list.
    */
-  const sessionRows = buildSessionRows(groundForSignals as any, user?.id, labelInASentence, (data as any)?.participants)
+  /*
+   * SCREEN FAULT 9, PART 2: THE SERVER'S OWN GRID KNOWS WHICH SESSIONS SOMEBODY IS ACTUALLY ON.
+   * `checkInGrid.rows[].cells` already says "na" for a session somebody joined after - passed to
+   * `buildSessionRows` so its own "waitingOn" can agree with it, rather than naming them from
+   * `whoIsInRound`'s blanket eligibility rule alone. See the parameter's own note.
+   */
+  const onSessionFromGrid = (data as any)?.checkInGrid
+    ? new Map(
+        ((data as any).checkInGrid.rows as { participantId: string; cells: Record<string, string> }[]).map((r) => [
+          r.participantId,
+          new Set(Object.entries(r.cells).filter(([, v]) => v !== 'na').map(([s]) => Number(s))),
+        ]),
+      )
+    : null
+  const sessionRows = buildSessionRows(groundForSignals as any, user?.id, labelInASentence, (data as any)?.participants, onSessionFromGrid)
 
   /* Where the run is, read once, so the top and the foot of the board gate the ending panel on the
      same answer (the-exit-belongs-at-the-exit). */

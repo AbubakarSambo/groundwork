@@ -48,11 +48,15 @@ const base = {
     { id: 'p-lead', name: 'Wairimu Kamau', role: null, managingOnly: true, signedOffAt: null },
     { id: 'p-aisha', name: 'Aisha Otieno', role: null, managingOnly: false, signedOffAt: null },
   ],
+  /* `cells` is keyed by session number as a string (Record<string, string>, api/board.ts), not
+     an array - fixed here (screen fault 9, part 2) so a party actually on session 1 is read as
+     on it, once BoardPage.tsx starts reading this grid to tell buildSessionRows who is really on
+     each session. */
   checkInGrid: {
     sessions: [1],
     rows: [
-      { participantId: 'p-lead', name: 'Wairimu Kamau', managingOnly: true, cells: ['done'] },
-      { participantId: 'p-aisha', name: 'Aisha Otieno', managingOnly: false, cells: ['done'] },
+      { participantId: 'p-lead', name: 'Wairimu Kamau', managingOnly: true, cells: { '1': 'done' } },
+      { participantId: 'p-aisha', name: 'Aisha Otieno', managingOnly: false, cells: { '1': 'done' } },
     ],
   },
 }
