@@ -27,26 +27,11 @@ It was drawn from `docs/morning-report.md`, `docs/weekly-plan.md`, `docs/run-log
 - Why it was left: taking the numbers out of the model's input would weaken "notices what does not add up", which is on the must-keep list, so it needs Hafsah to choose.
 - Recommendation: option 2 in the morning report: give the model the gap without the number, keep the read-side net, and check with a scenario run that no engine number drops.
 
-**P5. On an evaluation check-in, a job search and a lead's wish to let somebody go are readable by the other side.**
-- Where: the report and board of a performance plan, promotion, renewal or probation. In the adversarial scenario, Tunde says "I'm actually looking for another job", which his lead reads, and Tunde reads "Dayo Ogunleye has concluded the only path forward is an exit."
-- Who: people on evaluation check-ins and their leads.
-- Why it was left: both follow the rule that what people say in a check-in can be shown to the people in it, and decisions 86 and 99 item 3 say no restriction is added that is not Hafsah's.
-- Recommendation: Hafsah decides whether these two kinds of sentence stay private on evaluation check-ins.
-
-**P6. An admin who is not in a check-in reads everybody's exact words on its board.**
-- Where: "Who owns what" and other sections of the board, in quotation marks with names, for an organisation admin who is not in the check-in and did not set it up.
-- Who: everyone in check-ins of organisations with several admins.
-- Why it was left: it was already so before this work, and the wall for an admin without access (decision 60, point 4) covers only evaluation check-ins. It is Hafsah's call.
-- Recommendation: Hafsah decides whether an admin outside a check-in reads people's exact words on ordinary check-ins.
+**P6. (Decided: it stays.) An admin who is not in a check-in reads everybody's exact words on its board.**
+- Decided 7 October (decision 110): an admin reads a check-in's board, as decision 5 says, except on evaluation check-ins the admin has no access to. That wall exists and is pinned in `an-admin-does-not-read-an-evaluation-check-in-in-grounds-or-on-the-board.spec.ts`, `an-admin-does-not-read-a-check-in-that-decides-about-a-person.spec.ts` and `an-admin-does-not-read-the-leads-description-in-the-judgement.spec.ts`; they pass. No change.
 
 **P7. (Decided, no change.) Groundwork's staff read people's outcome feedback notes word for word in the back office.**
 - Decided 7 October (decision 110): Groundwork staff keep reading customers' feedback notes word for word, because those notes are sent to Groundwork. They are never linked to anybody's check-in content. No change.
-
-**P8. An admin's To-dos board shows every person's to-dos across check-ins (screens workspace).**
-- Where: the To-dos suite's board for an admin, when that suite is on.
-- Who: everyone in an organisation that turns the To-dos suite on.
-- Why it was left: the prototype shows the list to an admin, while the rules say each person's load across check-ins is private. The screens workspace kept it but left out to-dos from check-ins the admin may not read.
-- Recommendation: Hafsah decides whether an admin sees this list at all.
 
 **P9. "What the room is about" is stored on the check-in with full names, outside the wrapper that handles names and anonymous sharing.**
 - Where: the check-in's stored room summary, served by the board and the check-in page.
@@ -87,12 +72,6 @@ It was drawn from `docs/morning-report.md`, `docs/weekly-plan.md`, `docs/run-log
 - Who: the paid client first, and the existing clients once they turn WhatsApp on.
 - Why it was left: only Hafsah can submit templates to Meta. The template fix was decided this morning and not yet made.
 - Recommendation: reword `lead_daily_summary` to end on fixed words, fix `checkin_team_almost_in`'s blank order, then submit every template, including `groundwork_first_contact`, `groundwork_request_waiting`, `groundwork_request_decided`, `groundwork_requests_waiting`, `groundwork_review_started`, `groundwork_review_decided` and the two anchor ones. Until approval, first contact stays by email.
-
-**B3. People held for a seat who have already answered lose every page they can read today (Finding 7).**
-- Where: the board, the report and the check-in page refuse anyone with `awaiting_seat` since `39b2c296`. Today (`whatNeedsYou`) does not know about this case either.
-- Who: existing users. On the local copy, 41 people on 20 check-ins. The live count is not known.
-- Why it was left: it is privacy row 5, which Hafsah kept in decision 93, so the question is hers.
-- Recommendation: before release, count them on a copy of the live data with the read-only query in `docs/morning-report.md`. If there are any, either let a person who has already answered keep reading, or clear their hold on release night.
 
 **B6. The seat count: does a guest with an account take a seat? (screens workspace, request 174 item 10) Needs Hafsah.**
 - Where: `api/src/common/seats.ts`, and the sentence "Your plan covers 5 people… all 5 are taken" with one person in the check-in and four guests.
@@ -490,11 +469,11 @@ It was drawn from `docs/morning-report.md`, `docs/weekly-plan.md`, `docs/run-log
 
 | Seriousness | Entries |
 | --- | --- |
-| Privacy | 11 |
-| Broken | 10 |
+| Privacy | 9 |
+| Broken | 9 |
 | Wrong | 39 |
 | Untidy | 12 |
-| **All** | **72** |
+| **All** | **69** |
 
 ---
 
@@ -511,6 +490,9 @@ Moved out of the list above. Each has a spec read as each person who reads it, a
 - **P2.** A person's own transcript carries nothing the lead typed about them or set up: not her description of them, her expectation of them, their invitation token, the session plan, the labels, or how their answers were rated (`d68ce7dc`, `8b03b56e`). The lead reads her own row whole; a colleague and an admin are refused. The lead's private note on whether a goal was told is served only to whoever runs the check-in (`c8d868c7`), and adding somebody already added returns an explicit shape and ignores a token a caller sends (`9e9dde61`). The live line has the same leak: it spreads the whole row.
 - **P13.** In an anchor check-in the lead's own set-up (her aim, what it will cover, what a complete answer holds) is not served to a member, on the check-in page (`db145b50`) or on the board (`d8265840`), whether or not the anchor is on.
 - **P3.** A total is given only when three or more people have a number, in every place one is served (`ef85ec06`, decision 110).
+- **P5.** On an evaluation check-in the lead's private notes, setup words, brief and description of the person never reach the person (decision 110): every read of them was checked, each serves the person and a colleague nothing, and a spec pins it (`91355814`). What the person says reaching the lead, and what the lead says in her own check-in, are unchanged: that is decision 4.
+- **P8.** The To-dos board is one list for each check-in, never one person's list across check-ins (`2cfe6675`). The reply is now `checkIns`, not `people`, so the screens' board follows.
+- **B3.** A person held for a seat keeps their own answers and their own report and nothing else: their You page names their own report, and opening or answering a new session is refused (the commit below).
 - **B4.** A slow reading of the lead's set-up no longer holds the save of a check-in: the save waits for it for up to twenty seconds and answers either way (`990a6640`). The screens' own open-on-load is theirs to check.
 - **B5.** People a lead names while her check-in waits for an admin are held, not dropped, and invited once when an admin accepts it (`6c918a75`); and no other door writes to them first: the seat release, the 6 am sweep and the address heals leave a waiting or declined check-in alone, and the approval invites a colleague who already has an account (`009052b9`).
 - **B12 (part).** A yes to an offered request never closes an anchor check-in, leave and spending are not offered while that suite is off, and no reply promises to pass a request on (`d2ad4ba7`).

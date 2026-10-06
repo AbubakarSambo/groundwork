@@ -6334,6 +6334,18 @@ What we merged from your lists: requests 159, 161, 163, 167, 168, 169, 170, 172,
 | 10 Seats | Done, `172aa319`: a guest holds no seat in the organisation that has them as a guest. |
 | 11 The ending page | Open, not looked at in this pass. |
 
+## 7 October: the To-dos board is one list for each check-in (decision 110, P8), for the screens
+
+`GET /suites/todos/board` no longer answers `{ people: [...] }`, because one list for each person across check-ins is that person's load across check-ins, which is private unless they share it (decision 4). It answers:
+
+    { checkIns: [ { id, label, people: [ { name, firstName, todos: [ { id, text, source, on, checkIn } ] } ] } ] }
+
+Check-ins are in order of their name, and inside a check-in the people are in order of their name. The same person in two check-ins is in two lists, and nothing joins them. Who may open the board and which check-ins it reads are unchanged. The screens' board and its spec (`the-todos-as-each-reader-see-them.spec.tsx`) need to follow the new shape; nothing on the board may add one person's lines across check-ins again.
+
+## 7 October: held for a seat (decision 110, B3), for the screens
+
+A person held for a seat who has already answered keeps their own report: `GET /you` carries it in `ownReports` (the check-in's name, when it finished, and `to: /checkin/<id>/report`, which reads their own session report). Nothing else of that check-in is served to them: not the list entry, the board, the colleagues or the shared report. Opening or answering a new session is refused with the sentence the invitation page gives ("This check-in cannot start for you yet, because there is no seat for you on the plan. You will get your invitation as soon as there is one."). Somebody held who never answered is given nothing of the check-in.
+
 # From the screens workspace, 7 October: every known problem not fixed yet, for docs/known-issues.md
 
 Every problem the screens workspace found and did not fix. It comes from the walks (anchor, suites at a hundred people, Kijani, the existing clients' use cases), from the requests, and from the morning report and the handover. Each is marked SCREENS, ENGINE, SEED or HAFSAH, most serious first. Please fold it into `docs/known-issues.md` (request 175). The table in `docs/requests-to-engine.md` never had its status column kept up, so for requests 100 to 157, your own answers in this file are the record of what is closed.
