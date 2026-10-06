@@ -68,17 +68,16 @@ describe('Amani, who stopped halfway on WhatsApp', () => {
   });
 });
 
-describe('on unless the row says off', () => {
+describe('off unless the row says on', () => {
   const { theHalfwayMessagesAreOn } = require('../admin/what-is-hidden-at-release');
   const row = (value: unknown) => ({ platformSetting: { findUnique: async () => (value === undefined ? null : { value }) } });
 
-  it('a missing or broken row reads as on; only { "on": false } switches it off', async () => {
-    expect(await theHalfwayMessagesAreOn(row(undefined))).toBe(true);
-    expect(await theHalfwayMessagesAreOn(row({ on: true }))).toBe(true);
-    expect(await theHalfwayMessagesAreOn(row({ nonsense: 1 }))).toBe(true);
-    expect(await theHalfwayMessagesAreOn({ platformSetting: { findUnique: async () => { throw new Error('no table'); } } })).toBe(true);
+  it('a missing, broken or unreadable row reads as off; only { "on": true } switches it on', async () => {
+    expect(await theHalfwayMessagesAreOn(row(undefined))).toBe(false);
+    expect(await theHalfwayMessagesAreOn(row({ nonsense: 1 }))).toBe(false);
+    expect(await theHalfwayMessagesAreOn({ platformSetting: { findUnique: async () => { throw new Error('no table'); } } })).toBe(false);
     expect(await theHalfwayMessagesAreOn(row({ on: false }))).toBe(false);
-    expect(await theHalfwayMessagesAreOn(row(false))).toBe(false);
+    expect(await theHalfwayMessagesAreOn(row({ on: true }))).toBe(true);
   });
 
   it('every one of the three asks it first', () => {

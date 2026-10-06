@@ -22,11 +22,9 @@ export const ANCHOR_SCENARIO_KEY = 'release.anchorScenario';
 export const REQUEST_OFFER_IN_THE_CHECK_IN_KEY = 'release.requestOfferInTheCheckIn';
 /**
  * The three WhatsApp messages for somebody who stops a check-in halfway (decision 107): the reminder to
- * carry on, the half-hour warning on the phone, and the clock's close. They were off at release because
- * the end-to-end run of 5 October did not prove the reminder and the warning for every kind. The run of
- * 6 October did (docs/run-log.md), so they are ON unless the row says { "on": false }: a missing or broken
- * row reads as on. Only a session the person was doing on WhatsApp ever gets one, and no session started
- * before WHATSAPP_HALFWAY_MESSAGES_FROM can (see a-check-in-left-halfway.ts).
+ * carry on, the half-hour warning on the phone, and the clock's close. OFF unless the row says { "on": true }:
+ * a missing, broken or unreadable row reads as off (it fails closed). They stay off until an end-to-end run
+ * that drives the real sweeps proves them for every kind.
  */
 export const WHATSAPP_HALFWAY_MESSAGES_KEY = 'release.whatsappHalfwayMessages';
 
@@ -105,8 +103,4 @@ export const theRequestOfferIsShown = async (prisma: Reader) => {
  * one when this is turned off, so the caller asks this only for something new.
  */
 export const theAnchorScenarioIsOn = (prisma: Reader) => aSwitch(prisma, ANCHOR_SCENARIO_KEY);
-export const theHalfwayMessagesAreOn = async (prisma: Reader) => {
-  const v = (await theRow(prisma, WHATSAPP_HALFWAY_MESSAGES_KEY)) as { on?: unknown } | boolean | null;
-  if (typeof v === 'boolean') return v;
-  return v?.on !== false;
-};
+export const theHalfwayMessagesAreOn = (prisma: Reader) => aSwitch(prisma, WHATSAPP_HALFWAY_MESSAGES_KEY);

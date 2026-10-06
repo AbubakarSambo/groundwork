@@ -857,7 +857,9 @@ and for Baraka himself "You are blocked" became "are blocked". The verb is requi
 
 My own Ask welcome broke the no-colons rule and the client's ratchet caught it at 61 against 60.
 
-## The halfway messages, run 7 (6 October)
+## The halfway messages, run 7 (6 October): superseded, see the correction below
+
+**Correction after review.** This run switched them on by default and said "42 of 42". It did not prove what it claimed: the close was called directly, not through the real sweep; turn times were set to one instant each, which hid that the injected warning restarts the 12-hour clock; and the line about leave was not a leave check. They are OFF by default again. Read the rest as what that run did see, not as proof.
 
 Built from `1eb91691` with `release.whatsappHalfwayMessages` absent from the database (`gw_wa_oct6b`, a new copy). The API and the script ran on the local build in a scratch worktree, with the signed local webhook, the local recorder, and the number and secrets saved on /admin/whatsapp by the script. **42 of 42 checks passed** for sales, onboarding, project, a performance plan, a cohort, the anchor, and a check-in kept in the app. For each of the six kinds the person read the reminder, the half-hour warning and the close, and what they said was kept.
 
