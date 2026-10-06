@@ -272,6 +272,12 @@ export class WhatsAppForAnOrganisationController {
    * THE REPLY IS RETURNED, NEVER SENT. We hold no credential for their number in this arrangement
    * and must not: the only thing that ever speaks to their customers is them.
    */
+  /*
+   * @Public() TAKES THE SESSION GUARD OFF; MachineTokenGuard IS WHAT REPLACES IT (see public-api.controller.ts). Without it the global
+   * session guard met the machine token first and refused it ("User not found or inactive"), so a customer's own system could never
+   * hand us a message: the relay had never once worked with the credential it is meant to be called with.
+   */
+  @Public()
   @Post('integrations/whatsapp/relay')
   @UseGuards(MachineTokenGuard)
   @RequiresScope('checkins:write')
