@@ -153,7 +153,7 @@ export function TheJudgement({ it, hideWhatThisCannotTellYou }: {
               {it.whatWeFailedToAsk.map((w, i) => (
                 <div key={i}>
                   <div className="gwui-ink-text">{w.about}</div>
-                  {typeof w.howManyMissedIt === 'number' && <div className="gwui-fs-13-5 gwui-ink-sub">{howManyNeverReachedIt(w.howManyMissedIt)}</div>}
+                  {typeof w.howManyMissedIt === 'number' && <div className="gwui-note">{howManyNeverReachedIt(w.howManyMissedIt)}</div>}
                 </div>
               ))}
             </Stack>
