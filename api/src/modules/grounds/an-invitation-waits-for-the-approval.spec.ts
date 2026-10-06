@@ -11,7 +11,7 @@ import { GroundsService } from './grounds.service';
  *   - somebody waiting for a seat, or whose start date is ahead, is not invited by the approval.
  * "No invite is sent before the approval" is the point of the gate, because an email cannot be recalled by declining afterwards.
  */
-function world(opts: { status?: string; held?: any[] } = {}) {
+function world(opts: { status?: string; held?: any[]; existing?: any } = {}) {
   const status = { value: opts.status ?? 'AWAITING_APPROVAL' };
   const ground: any = () => ({ id: 'g1', organizationId: 'org1', initiatorId: 'nandi', label: 'Kilimani estates, Q4', isFreeGround: false, freeParticipantCap: 4, cadence: 'FORTNIGHTLY', status: status.value, scenario: 'NEW_PROJECT' });
   const participants: any[] = [...(opts.held ?? [])];
@@ -32,7 +32,7 @@ function world(opts: { status?: string; held?: any[] } = {}) {
     user: { findUnique: jest.fn(async () => ({ id: 'nandi', firstName: 'Nandi', email: 'nandi@x.test' })), count: jest.fn(async () => 0) },
     organization: { findUnique: jest.fn(async () => ({ subscriptionPlan: null, subscriptionStatus: null })) },
     groundParticipant: {
-      findFirst: jest.fn(async () => null),
+      findFirst: jest.fn(async () => opts.existing ?? null),
       count: jest.fn(async () => participants.length),
       findMany: jest.fn(async ({ where }: any) => participants.filter((p) => p.groundId === where.groundId || !where.groundId).filter((p) => p.invitedAt === null && p.notifiedAt === null && p.awaitingSeat === false && p.partyType === 'PARTICIPANT')),
       update: jest.fn(async ({ where, data }: any) => Object.assign(participants.find((p) => p.id === where.id) ?? {}, data)),
@@ -129,5 +129,39 @@ describe('the one rule that holds either way', () => {
     await service.addParticipant('g1', 'org1', 'nandi', { email: 'wanjiku@x.test' } as any);
     await service.declineGround('g1', 'org1', 'grace', 'Not this quarter.');
     expect(email.sendTheInviteThisGroundSends).not.toHaveBeenCalled();
+  });
+});
+
+
+/*
+ * ADDING SOMEBODY SHE HAS ALREADY ADDED (reviewer's audit, 7 October). The lead is given back an explicit shape, never the participant row,
+ * and a token a caller sends is never used: tokens are made by the server. While the check-in waits, adding somebody again writes to nobody.
+ */
+const THE_ROW = { id: 'p-1', groundId: 'g1', email: 'wanjiku@x.test', partyType: 'PARTICIPANT', userId: null, roleAsDescribed: 'Leads Kilimani sales', invitedAt: null, notifiedAt: null, soloArtifactAt: null, createdAt: new Date('2026-10-01'),
+  inviteToken: 'the-real-token', inviteTokenExpiresAt: new Date(), stopRemindersToken: 'STOP-TOKEN', specificityHistory: [0.4], soloArtifact: 'PRIVATE-SUMMARY', detectedFunction: 'SALES', detectedFunctionConfidence: 0.8 };
+
+describe('the lead adds somebody she has already added', () => {
+  it('is given back what a first add gives back, and none of the rest of the row', async () => {
+    const { service } = world({ status: 'OPEN', existing: { ...THE_ROW } });
+    const out = await service.addParticipant('g1', 'org1', 'nandi', { email: 'wanjiku@x.test' } as any);
+    expect(out.alreadyInvited).toBe(true);
+    expect(Object.keys(out).sort()).toEqual(['alreadyInvited', 'createdAt', 'devUrl', 'email', 'id', 'invitedAt', 'notifiedAt', 'partyType', 'roleAsDescribed', 'saying', 'soloArtifactAt', 'userId'].sort());
+    expect(JSON.stringify(out)).not.toMatch(/STOP-TOKEN|PRIVATE-SUMMARY|the-real-token|specificityHistory|detectedFunction/);
+  });
+
+  it('while the check-in waits, nothing is sent and the lead is told when it will go', async () => {
+    const { service, email } = world({ existing: { ...THE_ROW } });
+    const out = await service.addParticipant('g1', 'org1', 'nandi', { email: 'wanjiku@x.test' } as any);
+    expect(email.sendTheInviteThisGroundSends).not.toHaveBeenCalled();
+    expect(out.notInvitedBecause).toBe('waiting_for_approval');
+    expect(out.saying).toBe('The invitation to wanjiku@x.test will go as soon as an admin accepts this check-in.');
+    expect(JSON.stringify(out)).not.toMatch(/STOP-TOKEN|PRIVATE-SUMMARY|the-real-token/);
+  });
+
+  it('a token the caller sends is ignored: the one on the new row is the server\'s own', async () => {
+    const { service, participants } = world({ status: 'OPEN' });
+    await service.addParticipant('g1', 'org1', 'nandi', { email: 'new@x.test', inviteToken: 'CHOSEN-BY-THE-CALLER' } as any);
+    expect(participants[0].inviteToken).toMatch(/^[0-9a-f]{64}$/);
+    expect(participants[0].inviteToken).not.toBe('CHOSEN-BY-THE-CALLER');
   });
 });
