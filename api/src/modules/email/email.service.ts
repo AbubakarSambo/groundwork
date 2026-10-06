@@ -181,6 +181,7 @@ export class EmailService implements OnModuleInit {
     const stopped = context?.participantId
       ? await this.prisma.groundParticipant.findUnique({ where: { id: context.participantId }, select: { remindersStoppedAt: true } }).catch(() => null)
       : null;
+    const byAddress = await (async () => this.prisma.emailAddressPreference.findUnique({ where: { email: address }, select: { unsubscribedAt: true } }))().catch(() => null);
     const [user, preference] = await Promise.all([
       this.prisma.user.findUnique({ where: { email: address }, select: { emailNotifications: true, isActive: true, deletedAt: true } }),
       /* Preferences are keyed by (organisation, externalId) and hold no address, so the roster is
@@ -211,7 +212,7 @@ export class EmailService implements OnModuleInit {
 
     /* Nobody to ask: a participant invited by address has no account and no preference, and
        refusing to write to them would mean nobody could ever be invited. */
-    if (!user && !preference && !stopped) return null;
+    if (!user && !preference && !stopped && !byAddress?.unsubscribedAt) return null;
 
     /* APPROVED LEAVE, BY DATES ONLY (week 23). A reminder or a "you have missed" mail does not go to
        somebody who is away today. Only asked for the senders that chase a person to answer. */
@@ -224,7 +225,7 @@ export class EmailService implements OnModuleInit {
 
     const answer = whetherToSend(kind, {
       emailNotifications: user?.emailNotifications,
-      unsubscribedAt: preference?.unsubscribedAt ?? null,
+      unsubscribedAt: preference?.unsubscribedAt ?? byAddress?.unsubscribedAt ?? null,
       remindersStoppedAt: stopped?.remindersStoppedAt ?? null,
       wantsDigest: preference?.roundDigest,
       wantsNudges: preference?.nudges,
@@ -349,7 +350,18 @@ export class EmailService implements OnModuleInit {
         where: { email: { equals: to.trim().toLowerCase(), mode: 'insensitive' } },
         select: { organizationId: true, externalId: true },
       });
-      if (!person) return null;
+      if (!person) {
+        /* NOBODY ON ANY ROSTER STILL GETS A WAY OUT (decision 109). Somebody invited by address, or with only
+           an account, is kept by the address alone. */
+        const address = to.trim().toLowerCase();
+        const row = await this.prisma.emailAddressPreference.upsert({
+          where: { email: address },
+          create: { email: address, unsubscribeToken: crypto.randomBytes(32).toString('base64url') },
+          update: {},
+          select: { unsubscribeToken: true },
+        });
+        return `${this.frontendUrl.replace(/\/$/, '')}/unsubscribe/${row.unsubscribeToken}`;
+      }
       const pref = await this.prisma.emailPreference.upsert({
         where: { organizationId_personExternalId: { organizationId: person.organizationId, personExternalId: person.externalId } },
         create: { organizationId: person.organizationId, personExternalId: person.externalId, unsubscribeToken: crypto.randomBytes(32).toString('base64url') },
@@ -497,7 +509,10 @@ export class EmailService implements OnModuleInit {
     const wayOut = sender && whatThisMailIs(sender) !== 'the way back in' ? await this.theWayToStopHearingFromUs(options.to) : null;
     if (wayOut) options = { ...options, html: `${options.html}${UNSUBSCRIBE_FOOTER(wayOut)}` };
     const text = plainTextOf(options.html);
-    const headers = wayOut ? { 'List-Unsubscribe': `<${wayOut}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } : undefined;
+    /* The one-click POST goes to the API, not the page: a mail program posts it with no person reading anything. */
+    const apiOrigin = (this.configService.get<string>('app.publicApiUrl') || '').replace(/\/$/, '');
+    const oneClick = wayOut && apiOrigin ? `${apiOrigin}/api/v1/unsubscribe/${wayOut.split('/unsubscribe/')[1]}` : wayOut;
+    const headers = wayOut ? { 'List-Unsubscribe': `<${oneClick}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } : undefined;
 
     if (this.isDev()) {
       this.logger.warn(`[DEV EMAIL] To: ${options.to} | Subject: ${options.subject}`);
@@ -1763,7 +1778,7 @@ export function plainTextOf(html: string): string {
 
 /** Appended to every mail we decided to send. The link works with no sign-in (round-digest.service.ts#unsubscribe). */
 export const UNSUBSCRIBE_FOOTER = (url: string) =>
-  `<p style="font-size:12px;color:#9B9590;margin-top:28px;">To stop these emails: <a href="${url}" style="color:#9B9590;">unsubscribe</a>. A link to sign in will still reach you if you ask for one.</p>`;
+  `<p style="font-size:12px;color:#9B9590;margin-top:28px;">To stop the emails we decide to send: <a href="${url}" style="color:#9B9590;">unsubscribe</a>. Emails you ask for, such as a sign-in link, will still reach you.</p>`;
 
 /** Takes out `<!-- ... -->` comments. A conditional comment for a mail client (`<!--[if`) is left alone. */
 export function withoutDeveloperComments(html: string): string {

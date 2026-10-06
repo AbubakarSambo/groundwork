@@ -28,8 +28,21 @@ type Which = 'unsubscribe' | 'stop-reminders'
 
 export function StopMailPage({ which }: { which: Which }) {
   const { token } = useParams<{ token: string }>()
-  const [state, setState] = useState<'working' | 'done' | 'failed'>('working')
+  const [state, setState] = useState<'working' | 'done' | 'failed' | 'asking'>('working')
   const [says, setSays] = useState('')
+  /* The question for the unsubscribe link, which asks before it stops anything (decision 109). */
+  const [question, setQuestion] = useState<{ title: string; says: string[]; keepLabel: string; stopLabel: string; turnBackOnLabel: string; stopped: boolean } | null>(null)
+  const [busy, setBusy] = useState(false)
+  async function answer(path: '' | '/undo') {
+    setBusy(true)
+    try {
+      const r = await fetch(`${API_ORIGIN}/api/v1/unsubscribe/${encodeURIComponent(token ?? '')}${path}`, { method: 'POST' })
+      const body = await r.json().catch(() => null)
+      if (r.status >= 500 || !body) { setState('failed'); return }
+      setSays(body?.data?.says ?? body?.says ?? '')
+      setState('done')
+    } catch { setState('failed') } finally { setBusy(false) }
+  }
 
   useEffect(() => {
     /* No button to press. They already pressed one, in their mail client. Asking for a second is
@@ -44,6 +57,13 @@ export function StopMailPage({ which }: { which: Which }) {
            could not answer at all is a failure worth showing somebody. */
         if (r.status >= 500 || !body) {
           setState('failed')
+          return
+        }
+        if (which === 'unsubscribe') {
+          const q = body?.data ?? body
+          setQuestion(q)
+          setState(q?.known === false ? 'done' : 'asking')
+          setSays((q?.says ?? []).join(' '))
           return
         }
         /* THE ENVELOPE. Every API response here is wrapped as `{ success, data }`, so reading
@@ -68,6 +88,22 @@ export function StopMailPage({ which }: { which: Which }) {
         </div>
         {state === 'working' && (
           <p style={{ fontSize: 15, color: 'var(--gw-sub)', margin: 0 }}>One moment.</p>
+        )}
+        {state === 'asking' && question && (
+          <>
+            <h1 style={{ fontSize: 21, fontWeight: 800, color: 'var(--gw-text)', margin: '0 0 10px' }}>{question.title}</h1>
+            {question.says.map((line, i) => (
+              <p key={i} style={{ fontSize: 14.5, color: 'var(--gw-sub)', lineHeight: 1.7, margin: '0 0 10px' }}>{line}</p>
+            ))}
+            {question.stopped ? (
+              <button type="button" disabled={busy} onClick={() => void answer('/undo')}>{question.turnBackOnLabel}</button>
+            ) : (
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                <a href="/" style={{ fontWeight: 700 }}>{question.keepLabel}</a>
+                <button type="button" disabled={busy} onClick={() => void answer('')}>{question.stopLabel}</button>
+              </div>
+            )}
+          </>
         )}
         {state === 'done' && (
           <>

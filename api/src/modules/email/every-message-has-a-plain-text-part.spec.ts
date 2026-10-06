@@ -29,8 +29,9 @@ describe('the way out', () => {
     expect(send).toContain("'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'");
     expect(UNSUBSCRIBE_FOOTER('https://x.test/u/t')).toContain('href="https://x.test/u/t"');
   });
-  it('is minted from the same preference row the digest uses, and only where a person exists to hang it on', () => {
+  /* Changed under decision 109: the old test held that an address on no roster got no footer, which is the defect. Everyone has one now; the behaviour is read in engagement/everyone-can-stop-the-mail-we-decide-to-send.spec.ts. */
+  it('is minted from the preference row the digest uses for a person on a roster, and from the address alone for everybody else', () => {
     expect(service).toMatch(/emailPreference\.upsert\(\{\s*where: \{ organizationId_personExternalId/);
-    expect(service).toMatch(/if \(!person\) return null;/);
+    expect(service).toMatch(/emailAddressPreference\.upsert\(/);
   });
 });

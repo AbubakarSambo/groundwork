@@ -8568,3 +8568,18 @@ model WeeklyReport {
   @@unique([groundId, weekStart])
   @@map("weekly_reports")
 }
+
+/// THE WAY OUT FOR AN ADDRESS WITH NO ROW ON ANY ROSTER (decision 109). The footer link used to exist only
+/// for people on a roster; somebody invited by address, or who has only an account, had no way to stop
+/// the mail. Keyed by the address alone, lower case. Read with `EmailPreference` by the one door every
+/// mail goes through, so either one stops what we decided to send.
+model EmailAddressPreference {
+  id               String    @id @default(uuid())
+  email            String    @unique
+  unsubscribeToken String    @unique @map("unsubscribe_token")
+  unsubscribedAt   DateTime? @map("unsubscribed_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@map("email_address_preferences")
+}
