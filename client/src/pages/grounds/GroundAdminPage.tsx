@@ -763,6 +763,11 @@ export function GroundAdminPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['ground', id] }),
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not change.'),
   })
+  const setSimplerWords = useMutation({
+    mutationFn: (on: boolean) => groundsApi.setSimplerWords(id!, on),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['ground', id] }),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not change.'),
+  })
   const setWhoSeesTargets = useMutation({
     mutationFn: (everybody: boolean) => groundsApi.setWhoSeesTargets(id!, everybody),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['ground', id] }); toast.success('Saved.') },
@@ -2561,6 +2566,7 @@ export function GroundAdminPage() {
             numbersShared={numbersShared} setWhoSeesTargets={setWhoSeesTargets}
             whatsAppIsOn={whatsAppIsOn}
             setOverWhatsApp={setOverWhatsApp}
+            setSimplerWords={setSimplerWords}
             expectsUnblocking={expectsUnblocking} setExpectThemToUnblock={setExpectThemToUnblock}
             setWorkTogether={setWorkTogether}
             setChasing={setChasing}

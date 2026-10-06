@@ -191,6 +191,7 @@ export function CheckInPeopleAndSetup(props: {
   numbersShared: boolean; setWhoSeesTargets: { mutate: (v: boolean) => void; isPending: boolean }
   whatsAppIsOn: boolean
   setOverWhatsApp: { mutate: (v: boolean | null) => void; isPending: boolean }
+  setSimplerWords: { mutate: (v: boolean) => void; isPending: boolean }
   expectsUnblocking: boolean; setExpectThemToUnblock: { mutate: (v: boolean) => void; isPending: boolean }
   setWorkTogether: { mutate: (v: boolean) => void; isPending: boolean }
   setChasing: { mutate: (v: { days?: number[]; stopped?: boolean; tellTheLead?: boolean }) => void; isPending: boolean }
@@ -207,6 +208,7 @@ export function CheckInPeopleAndSetup(props: {
   const [editingWhen, setEditingWhen] = useState(!!props.forceOpenTimeframe)
   const [editingReminders, setEditingReminders] = useState(false)
   const [editingWhere, setEditingWhere] = useState(false)
+  const [editingSimplerWords, setEditingSimplerWords] = useState(false)
   const [remindDaysText, setRemindDaysText] = useState(((ground as any)?.chaseAfterDays ?? [1]).join(', '))
   const [showAddPeople, setShowAddPeople] = useState(false)
   const [showInviteLink, setShowInviteLink] = useState(false)
@@ -339,6 +341,20 @@ export function CheckInPeopleAndSetup(props: {
               action={canEditRunOrAdmin ? <Button kind="quiet" size="small" onClick={() => setEditingWhere((v) => !v)}>Change</Button> : undefined}
             />
           )}
+          {/*
+           * "USE SIMPLER WORDS" (6 October answer). Read and changed only by the lead of this
+           * check-in, or an admin in this organisation - the same reach as every other row here,
+           * since a plain participant never opens this page at all (GroundPage.tsx sends them to
+           * GroundParticipantPage instead). Gated again here, defensively, so the row cannot appear
+           * if that ever changes.
+           */}
+          {canEditRunOrAdmin && (
+            <FieldRow
+              label="Use simpler words"
+              value={(ground as any).simplerWords ? 'On' : 'Off'}
+              action={<Button kind="quiet" size="small" onClick={() => setEditingSimplerWords((v) => !v)}>Change</Button>}
+            />
+          )}
           <FieldRow
             label="Reminders"
             value={(ground as any)?.chasingStopped
@@ -424,6 +440,18 @@ export function CheckInPeopleAndSetup(props: {
                 { key: 'on', label: 'On WhatsApp', description: 'The check-in, the reminders and the report go to their phone. They reply to the message and that reply is their answer.' },
                 { key: 'in', label: 'In Groundwork', description: 'This one stays here even though your organisation has a number. For a conversation you would rather was not on somebody’s phone.' },
               ]}
+            />
+          </Panel>
+        )}
+
+        {editingSimplerWords && canEditRunOrAdmin && (
+          <Panel>
+            <SwitchRow
+              title="Use simpler words"
+              detail="Everybody in this check-in is spoken to in short sentences and everyday words, and what is sent to them afterwards is written the same way."
+              on={!!(ground as any).simplerWords}
+              onChange={(on) => props.setSimplerWords.mutate(on)}
+              disabled={props.setSimplerWords.isPending}
             />
           </Panel>
         )}

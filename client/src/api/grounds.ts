@@ -166,6 +166,16 @@ export const groundsApi = {
       .then(r => r.data),
 
   /**
+   * "USE SIMPLER WORDS" (6 October answer). `false` for every check-in that exists and for a new
+   * one. Only the lead of the check-in, or an admin who runs it, may change it - the server refuses
+   * anybody else.
+   */
+  setSimplerWords: (id: string, on: boolean) =>
+    apiClient
+      .patch<{ id: string; simplerWords: boolean }>(`/grounds/${id}/simpler-words`, { on })
+      .then(r => r.data),
+
+  /**
    * THE KIND OF WORK THIS CHECK-IN IS ABOUT (request 76), and its own stage names. Only the lead,
    * or an admin of the organisation, can change it. `kind: null` clears it back to none. A name
    * that is not one of the eleven kinds is refused with a plain sentence, shown as the server gives
