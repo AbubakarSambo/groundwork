@@ -56,7 +56,13 @@ export function SendTheReportToEveryone({ groundId, participants, answered }: {
     <section aria-label="Send the report to everyone" style={{ marginTop: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <p style={{ fontSize: 13.5, color: 'var(--gw-text)', margin: 0 }}>
-          {reachable.length} {reachable.length === 1 ? 'person' : 'people'} answered and asked for the report{declined.length ? `; ${declined.length} said no thanks` : ''}. Each gets a link to this session's report, once.
+          {/*
+            ANSWERING IS NOT ASKING (real-user walk, Kijani Foods, fault 6). "2 people answered and
+            asked for the report" was not true: everyone who answers is counted here, whether or not
+            they asked for anything - `wantsTheReport !== false` is the default, not something a
+            person had to request. Two full sentences in place of one joined with a semicolon.
+          */}
+          {reachable.length} {reachable.length === 1 ? 'person has' : 'people have'} answered.{declined.length ? ` ${declined.length} ${declined.length === 1 ? 'person' : 'people'} said no thanks.` : ''} Each gets a link to this session's report, once.
         </p>
         <Button kind="secondary" size="small" onClick={() => send.mutate()} disabled={send.isPending || reachable.length === 0}>
           {send.isPending ? 'Sending…' : `Send ${how === 'ANONYMOUS' ? 'anonymised ' : ''}to ${reachable.length}`}
@@ -84,7 +90,9 @@ export function SendTheReportToEveryone({ groundId, participants, answered }: {
         <details style={{ marginTop: 8 }}>
           <summary style={{ fontSize: 12.5, color: 'var(--gw-navy)', cursor: 'pointer' }}>Who gets it</summary>
           <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12.5, color: 'var(--gw-sub)' }}>
-            {reachable.map((p) => <li key={p.id}>{nameOf(p) ? `${nameOf(p)} · ` : ''}{p.email}</li>)}
+            {/* A name and an address joined by a dot read as two fragments stapled together
+                (real-user walk, Kijani Foods, fault 6): "Esther Adeyemi (esther@kijani.test)". */}
+            {reachable.map((p) => <li key={p.id}>{nameOf(p) ? `${nameOf(p)} (${p.email})` : p.email}</li>)}
           </ul>
         </details>
       )}

@@ -42,7 +42,9 @@ describe('what now is not a button that does not work', () => {
   it('and still says what that link is not', () => {
     /* Owner-scoped. Offering "copy the link" beside a private report without saying so invites
        somebody to send it to a colleague who will be told the record does not exist. */
-    expect(CODE).toContain('opens only for people already entitled to read this')
+    /* "Entitled" was jargon (real-user walk, Kijani Foods, fault 6): plain words for the same
+       fact, that opening the link is not what lets someone read this. */
+    expect(CODE).toContain('opens only for people who may already read this')
   })
 
   /** A copy that silently fails is worse than no button: the person walks away with nothing. */
