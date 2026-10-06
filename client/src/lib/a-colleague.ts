@@ -91,3 +91,15 @@ export function isPlainWords(label: string | null | undefined): boolean {
 export function atTheStart(phrase: string): string {
   return phrase && isPlainWords(phrase) ? `${phrase[0].toUpperCase()}${phrase.slice(1)}` : phrase
 }
+
+/**
+ * THE OPPOSITE CASE: A SERVED PHRASE DROPPED MID-SENTENCE (real-user walk, Kijani Foods, fault 1).
+ * Some served `what` strings open with a capitalised article ("The Mwangi agency", "A new freezer")
+ * because the same string also has to stand as a title on its own elsewhere. Where the screen drops
+ * one into the middle of its own sentence ("for The Mwangi agency", "waiting on The Mwangi agency"),
+ * only the leading "A", "An" or "The" is wrong - lower-case it, and leave every other word,
+ * including a person's name, exactly as given.
+ */
+export function midSentence(phrase: string): string {
+  return phrase.replace(/^(A|An|The)(?=\s)/, (m) => m.toLowerCase())
+}

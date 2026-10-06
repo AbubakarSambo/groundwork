@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import { Page, PageTitle, Section, Panel, Button, Note, Empty, RowList, Row, FieldLabel, Select, TextField, TextArea, Tag, ExampleExchange } from '@/components/gw/ui'
 import { AskAQuestion } from './AskAQuestion'
 import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
+import { midSentence } from '@/lib/a-colleague'
 
 /**
  * SPENDING AND BUDGETS (E7, #/suite/spend, group 2 piece 4). What each reader is given is the server's
@@ -156,7 +157,9 @@ function ARequest({ w, board }: { w: SpendWaiting; board: SpendBoard }) {
     onSuccess: (b) => { setProblem(null); qc.setQueryData(['suite-spend'], b) },
     onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
   })
-  const title = `${w.firstName}: ${withCurrency(board.currency, w.amount)} for ${w.what}`
+  /* `w.what` can open with a capitalised article ("The Mwangi agency") where the same string also
+     stands as a title elsewhere; mid-sentence here, only that leading word is wrong (fault 1). */
+  const title = `${w.firstName}: ${withCurrency(board.currency, w.amount)} for ${midSentence(w.what)}`
   const known = whatToKnow(w, board.currency, board.limit)
   return (
     <Row columns="minmax(0, 1fr) auto">

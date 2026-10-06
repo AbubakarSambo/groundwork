@@ -4,6 +4,7 @@ import { financeApi, type FinanceRequest, type FinanceView } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row, FieldLabel, TextField } from '@/components/gw/ui'
 import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
+import { midSentence } from '@/lib/a-colleague'
 
 /**
  * THE REQUESTS FOR FINANCE (#/suite/spend/finance). Decision 85, item 2: "Finance verifies, codes,
@@ -119,7 +120,9 @@ export function FinancePage() {
   )
 }
 
-const title = (r: FinanceRequest, currency: string | null) => `${r.name}: ${withCurrency(currency, r.amount)} for ${r.what}`
+/* `r.what` can open with a capitalised article ("The Mwangi agency") where the same string also
+   stands as a title elsewhere; mid-sentence here, only that leading word is wrong (fault 1). */
+const title = (r: FinanceRequest, currency: string | null) => `${r.name}: ${withCurrency(currency, r.amount)} for ${midSentence(r.what)}`
 
 function Said({ r }: { r: FinanceRequest }) {
   return <>{r.said.map((line, i) => <p key={i} className="gwui-panel-text">{line}</p>)}</>
