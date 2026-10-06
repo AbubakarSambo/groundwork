@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { FinancePage } from './FinancePage'
 import { useAuthStore } from '@/stores/auth'
-import type { FinanceView } from '@/api/suites'
+import type { FinanceView, TheMonthsTotals } from '@/api/suites'
 
 /**
  * THE REQUESTS FOR FINANCE (#/suite/spend/finance), AS EACH READER SEES IT. Who is served what is
@@ -12,7 +12,7 @@ import type { FinanceView } from '@/api/suites'
  * Here: the server's own sentences, drawn as they come, for Omar (who looks after finance) and Grace
  * (an admin), the buttons each request offers, and what everybody else is told.
  */
-vi.mock('@/api/suites', () => ({ financeApi: { get: vi.fn(), check: vi.fn(), code: vi.fn(), evidence: vi.fn(), paid: vi.fn(), file: vi.fn() } }))
+vi.mock('@/api/suites', () => ({ financeApi: { get: vi.fn(), check: vi.fn(), code: vi.fn(), evidence: vi.fn(), paid: vi.fn(), file: vi.fn(), totals: vi.fn() } }))
 import { financeApi } from '@/api/suites'
 
 /* Real shapes, with the sentences the server writes (the-spending-for-finance.service.ts). */
@@ -47,6 +47,16 @@ const PAID = {
 const OMARS: FinanceView = { reader: 'finance', currency: 'KES', toPay: [CHIDIS, AMANIS], paid: [PAID], lines: ['Fuel', 'Office costs', 'Sales'] }
 const GRACES: FinanceView = { ...OMARS, reader: 'admin' }
 
+/* A plain default for the month's totals, read once this reader has already been let in above - its
+   own reader rules are tested separately (the-months-spending-for-finance-as-each-reader-reads-it.spec.tsx
+   on the server, and finance-totals-as-each-reader-sees-it.spec.tsx here). */
+const TOTALS: TheMonthsTotals = {
+  reader: 'finance', currency: 'KES', month: '2026-10', monthSays: 'October 2026',
+  all: { name: 'All teams', asked: { count: 0, amount: 0 }, approved: { count: 0, amount: 0 }, paid: { count: 0, amount: 0 }, waiting: { count: 0, amount: 0 }, declined: { count: 0 }, says: 'All teams have nothing approved in October 2026.' },
+  byTeam: [], byCategory: [],
+  says: 'Nobody asked to spend anything in October 2026.',
+}
+
 const OMAR = { id: 'u-o', firstName: 'Omar', role: 'MEMBER', organizationName: 'Baridi Appliances' }
 const GRACE = { id: 'u-g', firstName: 'Grace', role: 'ADMIN', organizationName: 'Baridi Appliances' }
 const WAIRIMU = { id: 'u-w', firstName: 'Wairimu', role: 'LEAD', organizationName: 'Baridi Appliances' }
@@ -54,6 +64,7 @@ const WAIRIMU = { id: 'u-w', firstName: 'Wairimu', role: 'LEAD', organizationNam
 function open(user: any, served: FinanceView | Error) {
   if (served instanceof Error) (financeApi.get as any).mockRejectedValue(served)
   else (financeApi.get as any).mockResolvedValue(served)
+  ;(financeApi.totals as any).mockResolvedValue(TOTALS)
   useAuthStore.setState({ user, token: 't', isAuthenticated: true } as any)
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
