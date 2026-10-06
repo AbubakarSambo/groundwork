@@ -46,7 +46,7 @@ export default function OpsCompanyPage() {
     queryKey: ['ops', 'people'],
     queryFn: opsApi.people,
     retry: false,
-    enabled: me.data?.capabilities.includes('contributor:read-all') ?? false,
+    enabled: me.data?.capabilities?.includes('contributor:read-all') ?? false,
   })
 
   if (detail.isError) {
@@ -173,7 +173,7 @@ export default function OpsCompanyPage() {
                the same permission as counting for them. Without it every
                introduction was recorded as whoever was signed in, which is the
                one thing the whole attribution design refuses. */
-            ...(me.data?.capabilities.includes('contributor:read-all')
+            ...(me.data?.capabilities?.includes('contributor:read-all')
               ? [
                   {
                     name: 'contributorKey',

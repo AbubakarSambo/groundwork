@@ -41,8 +41,8 @@ export function TimeSheetsPage() {
     retry: false,
   })
   const refused = (error as { response?: { status?: number; data?: { message?: string } } } | null)?.response
-  const current = data?.weeks.find(w => w.weekOf === data.thisWeek)
-  const earlier = data?.weeks.filter(w => w.weekOf !== data.thisWeek) ?? []
+  const current = data?.weeks?.find(w => w.weekOf === data.thisWeek)
+  const earlier = data?.weeks?.filter(w => w.weekOf !== data.thisWeek) ?? []
 
   return (
     <Page>

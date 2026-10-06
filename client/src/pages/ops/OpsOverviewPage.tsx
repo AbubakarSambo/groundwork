@@ -81,7 +81,7 @@ export default function OpsOverviewPage() {
   })
 
   const d = overview.data
-  const ask = (n: number) => d?.questions.find((q) => q.n === n)?.question ?? ''
+  const ask = (n: number) => d?.questions?.find((q) => q.n === n)?.question ?? ''
 
   return (
     <section className="gw-page" style={PAGE}>

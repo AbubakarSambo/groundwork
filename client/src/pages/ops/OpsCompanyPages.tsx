@@ -87,8 +87,8 @@ export function OpsQuarterPage() {
   })
 
   const qc = useQueryClient()
-  const maySet = me.data?.capabilities.includes('objectives:write') ?? false
-  const mayOpen = me.data?.capabilities.includes('periods:write') ?? false
+  const maySet = me.data?.capabilities?.includes('objectives:write') ?? false
+  const mayOpen = me.data?.capabilities?.includes('periods:write') ?? false
 
   /* THE GATE ON OPENING THE PERIOD, asked as a question rather than discovered
      by pressing the button. Everybody sees it: the answer is a list of names,
@@ -1049,7 +1049,7 @@ export function OpsRequestsPage() {
   const requests = useQuery({ queryKey: ['ops', 'requests'], queryFn: opsApi.requests, retry: false })
   const people = useQuery({ queryKey: ['ops', 'people'], queryFn: opsApi.people, retry: false })
 
-  const mayDecide = me.data?.capabilities.includes('resourcing:approve') ?? false
+  const mayDecide = me.data?.capabilities?.includes('resourcing:approve') ?? false
   const nameFor = (id: string) =>
     (people.data ?? []).find((p) => p.id === id)?.displayName ?? 'somebody no longer here'
 

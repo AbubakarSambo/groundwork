@@ -36,7 +36,7 @@ export function OpsContributionPage() {
   })
 
   /* Everybody's, where the caller may; otherwise just their own. */
-  const canSeeAll = me.data?.capabilities.includes('commercial:read-all') ?? false
+  const canSeeAll = me.data?.capabilities?.includes('commercial:read-all') ?? false
   const keys = canSeeAll ? (people.data ?? []).map((p) => p.key) : me.data ? [me.data.key] : []
 
   const ledgers = useQuery({

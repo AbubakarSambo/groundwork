@@ -129,7 +129,7 @@ export function WhatThisServes({
 export function TheFreeze() {
   const freeze = useQuery({ queryKey: ['ops', 'freeze'], queryFn: opsApi.freezeNow, retry: false })
   const me = useQuery({ queryKey: ['ops', 'me'], queryFn: opsApi.me, retry: false })
-  const mayDecide = me.data?.capabilities.includes('ceo:board') ?? false
+  const mayDecide = me.data?.capabilities?.includes('ceo:board') ?? false
   const f = freeze.data
   if (!f) return null
 

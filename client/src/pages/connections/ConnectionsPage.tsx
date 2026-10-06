@@ -124,7 +124,7 @@ export function ConnectionsPage() {
             value={<span>Your own product sends Groundwork its usage numbers.</span>}
             action={(
               <span className="gwui-invite-actions">
-                <Tag tone={glance.data?.figures.fromYourProduct ? 'proven' : 'plain'}>{glance.data?.figures.fromYourProduct ? 'Connected' : 'Not set up'}</Tag>
+                <Tag tone={glance.data?.figures?.fromYourProduct ? 'proven' : 'plain'}>{glance.data?.figures?.fromYourProduct ? 'Connected' : 'Not set up'}</Tag>
                 <Button kind="secondary" size="small" to="/settings/tools">Set it up</Button>
               </span>
             )}

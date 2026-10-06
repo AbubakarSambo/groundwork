@@ -603,7 +603,7 @@ Authorization: Bearer ${firstClientId ? 'gw_live_••••' : 'gw_live_••
             <Stack gap={12}>
               <div>
                 <FieldLabel htmlFor="tools-embed-domains">Sites allowed to show it</FieldLabel>
-                <TextArea id="tools-embed-domains" rows={2} placeholder={embed.data?.allowedDomains.join('\n') || 'app.yourcompany.com\nintranet.yourcompany.com'} value={embedDomains} onChange={e => setEmbedDomains(e.target.value)} />
+                <TextArea id="tools-embed-domains" rows={2} placeholder={embed.data?.allowedDomains?.join('\n') || 'app.yourcompany.com\nintranet.yourcompany.com'} value={embedDomains} onChange={e => setEmbedDomains(e.target.value)} />
                 <p className="gwui-field-help">One address per line. People see only what they’d see here, signed in as themselves.</p>
               </div>
 
@@ -618,7 +618,7 @@ Authorization: Bearer ${firstClientId ? 'gw_live_••••' : 'gw_live_••
                   </div>
                   <div>
                     <FieldLabel htmlFor="tools-embed-out">Departments that should see nothing at all</FieldLabel>
-                    <TextField id="tools-embed-out" placeholder={embed.data?.outOfScopeDepartments.join(', ') || 'You can leave this empty. Put a comma between names.'} value={embedOutOfScope} onChange={e => setEmbedOutOfScope(e.target.value)} />
+                    <TextField id="tools-embed-out" placeholder={embed.data?.outOfScopeDepartments?.join(', ') || 'You can leave this empty. Put a comma between names.'} value={embedOutOfScope} onChange={e => setEmbedOutOfScope(e.target.value)} />
                   </div>
                 </Stack>
               </Folded>

@@ -343,10 +343,10 @@ export function TheReportYouSawAtTheEnd({
           come from the session report now; with nothing in either, one line says so.
         */}
         <Block n={next()} label="Where this leaves you, settled and still open">
-          {(stands?.settled.length || stands?.open.length)
+          {((stands?.settled?.length ?? 0) || (stands?.open?.length ?? 0))
             ? <div style={{ display: 'grid', gap: 6 }}>
-                {stands!.settled.map((t, i) => <div key={`s${i}`} style={{ fontSize: 'var(--er-lead)', lineHeight: 1.5 }}>{`Everyone agrees that ${lowerFirst(t)}`}</div>)}
-                {stands!.open.map((t, i) => <div key={`o${i}`} style={{ fontSize: 'var(--er-lead)', lineHeight: 1.5 }}>{`This is still open. ${capitalize(t)}`}</div>)}
+                {(stands?.settled ?? []).map((t, i) => <div key={`s${i}`} style={{ fontSize: 'var(--er-lead)', lineHeight: 1.5 }}>{`Everyone agrees that ${lowerFirst(t)}`}</div>)}
+                {(stands?.open ?? []).map((t, i) => <div key={`o${i}`} style={{ fontSize: 'var(--er-lead)', lineHeight: 1.5 }}>{`This is still open. ${capitalize(t)}`}</div>)}
               </div>
             : <div style={{ fontSize: 'var(--er-lead)', color: 'var(--gw-sub)', lineHeight: 1.5 }}>Nothing is settled or unsettled yet. That comes once more than one person has checked in.</div>}
           <div style={{ fontSize: 'var(--er-body)', color: 'var(--gw-muted)', marginTop: 8 }}>

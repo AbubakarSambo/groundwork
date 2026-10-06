@@ -133,8 +133,8 @@ export function BillingPage() {
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'WhatsApp did not change. Try again.'),
   })
 
-  const freeGrounds = livePricing?.free.groundLimit ?? FALLBACK_FREE_LIMITS.groundLimit
-  const freeTeam = livePricing?.free.memberLimit ?? FALLBACK_FREE_LIMITS.memberLimit
+  const freeGrounds = livePricing?.free?.groundLimit ?? FALLBACK_FREE_LIMITS.groundLimit
+  const freeTeam = livePricing?.free?.memberLimit ?? FALLBACK_FREE_LIMITS.memberLimit
 
   function priceLabel(plan: SubscriptionPlan): string {
     const live = livePricing?.plans?.find(p => p.plan === plan)
