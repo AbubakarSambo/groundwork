@@ -4091,12 +4091,13 @@ export class GroundsService {
   private async partiesForMatching(groundId: string) {
     const rows = await this.prisma.groundParticipant.findMany({
       where: { groundId },
-      select: { id: true, email: true, user: { select: { firstName: true, lastName: true } } },
+      select: { id: true, email: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } },
     }).catch(() => [] as any[]);
+    /* The name they were given when invited counts too, so a person invited as "Amina" is matched and said back as Amina (review of 1678157c). */
     return rows.map((p: any) => ({
       id: p.id,
       email: p.email,
-      name: [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || null,
+      name: [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || (p.nameGiven ?? '').trim() || null,
     }));
   }
 

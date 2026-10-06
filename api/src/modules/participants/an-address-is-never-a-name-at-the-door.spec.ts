@@ -44,10 +44,14 @@ describe('asking for more time, as the lead reads the email', () => {
 });
 
 describe('who the lead meant, as the lead confirms it', () => {
-  it('reads "Someone" for a person with no name, not their address or the start of it', () => {
+  /* Changed on 7 October (review of 1678157c): "what you expect of Someone? ... Someone has not seen it yet" read as a name nobody has. */
+  it('reads "this person" for a person with no name when the lead typed the address, never the address or the start of it', () => {
     const m = whoTheyMeant('amina.otieno@x.test', [{ id: 'p1', email: 'amina.otieno@x.test', name: null }]);
-    expect(m).toEqual({ id: 'p1', label: 'Someone', firstName: 'Someone' });
+    expect(m).toEqual({ id: 'p1', label: 'this person', firstName: 'this person' });
     expect(leaks([m!.label, m!.firstName])).toBe(false);
+  });
+  it('and the word the lead used when she typed a name, which is hers', () => {
+    expect(whoTheyMeant('amina', [{ id: 'p1', email: 'amina.otieno@x.test', name: null }])).toEqual({ id: 'p1', label: 'Amina', firstName: 'Amina' });
   });
   it('still reads the name when there is one', () => {
     expect(whoTheyMeant('amina', [{ id: 'p1', email: 'a@x.test', name: 'Amina Otieno' }])).toEqual({ id: 'p1', label: 'Amina Otieno', firstName: 'Amina' });
