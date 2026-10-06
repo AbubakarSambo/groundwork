@@ -82,7 +82,13 @@ describe('Request leave', () => {
     expect(screen.getByRole('option', { name: 'Annual leave' })).toBeInTheDocument()
   })
 
-  it('shows who covers for you, by name, only when the form serves any stand-ins, and sends the id picked', async () => {
+  /*
+   * FAULT 5 OF THE LIVE WALK AT A HUNDRED PEOPLE: `standIns` carries no team to group by, so one
+   * dropdown of a hundred names, alphabetical, was the only choice. The field is now a searchable
+   * text field, filtered by a datalist of the served names; typing (or picking) a name sends that
+   * person's own id, never the typed text.
+   */
+  it('shows who covers for you, as a text field filtered by name, and sends the id of the one typed', async () => {
     ;(fileARequestApi.leaveForm as any).mockResolvedValue({
       kinds: [],
       standIns: [{ userId: 'u-miriam', name: 'Miriam' }, { userId: 'u-tomas', name: 'Tomas' }],
@@ -90,12 +96,27 @@ describe('Request leave', () => {
     ;(fileARequestApi.leave as any).mockResolvedValue({ id: 'r1', says: 'Sent.' })
     open()
     const standIn = await screen.findByLabelText('Who covers for you?')
-    expect(screen.getByRole('option', { name: 'Miriam' })).toBeInTheDocument()
-    fireEvent.change(standIn, { target: { value: 'u-tomas' } })
+    expect(document.querySelector('datalist option[value="Miriam"]')).toBeTruthy()
+    fireEvent.change(standIn, { target: { value: 'Tomas' } })
     fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-11-01' } })
     fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-11-03' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     await waitFor(() => expect(fileARequestApi.leave).toHaveBeenCalledWith({ startsOn: '2026-11-01', endsOn: '2026-11-03', standInUserId: 'u-tomas' }))
+  })
+
+  it('typing a name nobody served leaves the stand-in off the request, same as leaving it blank', async () => {
+    ;(fileARequestApi.leaveForm as any).mockResolvedValue({
+      kinds: [],
+      standIns: [{ userId: 'u-miriam', name: 'Miriam' }],
+    })
+    ;(fileARequestApi.leave as any).mockResolvedValue({ id: 'r1', says: 'Sent.' })
+    open()
+    const standIn = await screen.findByLabelText('Who covers for you?')
+    fireEvent.change(standIn, { target: { value: 'Somebody not on the list' } })
+    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-11-01' } })
+    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-11-03' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    await waitFor(() => expect(fileARequestApi.leave).toHaveBeenCalledWith({ startsOn: '2026-11-01', endsOn: '2026-11-03' }))
   })
 
   it('Send posts exactly the dates typed, with no kind and no stand-in when neither is picked', async () => {

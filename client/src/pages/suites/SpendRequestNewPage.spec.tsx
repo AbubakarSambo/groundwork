@@ -6,7 +6,9 @@ import { SpendRequestNewPage } from './SpendRequestNewPage'
 import { useAuthStore } from '@/stores/auth'
 
 /**
- * CREATE A PAYMENT REQUEST, FROM ITS OWN FORM (request 165, Hafsah 6 October;
+ * ASK TO SPEND MONEY, FROM ITS OWN FORM (request 165, Hafsah 6 October; renamed from
+ * "Create a payment request" - fault 5 of the live walk at a hundred people, to match "request to
+ * spend" everywhere else in the product;
  * docs/requests-to-engine.md; docs/answers-from-engine.md, "request 165, the forms for leave and
  * spending"). `GET /suites/spend/form` answers the currency, what the organisation calls a
  * category, and the categories themselves - never a limit of the form's own. `POST
@@ -41,10 +43,10 @@ beforeEach(() => {
   ;(fileARequestApi.spendForm as any).mockResolvedValue({ currency: null, categoryCalled: 'category', categories: [] })
 })
 
-describe('Create a payment request', () => {
+describe('Ask to spend money', () => {
   it('reads the title and the two fields, and starts empty with no prefill', async () => {
     open()
-    expect(await screen.findByRole('heading', { level: 1, name: 'Create a payment request' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Ask to spend money' })).toBeInTheDocument()
     expect(screen.getByLabelText('Amount')).toHaveValue(null)
     expect(screen.getByLabelText('What it is for')).toHaveValue('')
     expect(screen.queryByLabelText('Category')).toBeNull()
@@ -63,7 +65,7 @@ describe('Create a payment request', () => {
    */
   it('draws no top rule: the form is the only thing in its panel', async () => {
     open()
-    await screen.findByRole('heading', { level: 1, name: 'Create a payment request' })
+    await screen.findByRole('heading', { level: 1, name: 'Ask to spend money' })
     expect(document.querySelector('form.gwui-suite-ask')).toBeNull()
     expect(document.querySelector('form.gwui-suite-ask-alone')).toBeTruthy()
   })

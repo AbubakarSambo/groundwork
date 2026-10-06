@@ -7,7 +7,10 @@ import { whatFilingARequestSays } from '@/lib/file-a-request-error'
 import { Page, PageTitle, Panel, FieldLabel, TextField, Select, Button, Note } from '@/components/gw/ui'
 
 /**
- * CREATE A PAYMENT REQUEST, FROM ITS OWN FORM (request 165, Hafsah 6 October;
+ * ASK TO SPEND MONEY, FROM ITS OWN FORM (request 165, Hafsah 6 October;
+ * renamed from "Create a payment request" in the live walk at a hundred people, fault 5: everywhere
+ * else in the product already says "request to spend" ("Your request to spend KES 12,000..."), so
+ * the one page that lets somebody start one used a different name for the same thing.
  * docs/requests-to-engine.md; docs/answers-from-engine.md, "request 165, the forms for leave and
  * spending").
  *
@@ -55,8 +58,8 @@ export function SpendRequestNewPage() {
   return (
     <Page>
       <PageTitle
-        crumbs={[{ label: 'Your requests', to: '/suite/mine' }, { label: 'Create a payment request' }]}
-        title="Create a payment request"
+        crumbs={[{ label: 'Your requests', to: '/suite/mine' }, { label: 'Ask to spend money' }]}
+        title="Ask to spend money"
         subtitle="Say how much, and what it is for, and Groundwork will send it to the right person."
       />
       <Panel>

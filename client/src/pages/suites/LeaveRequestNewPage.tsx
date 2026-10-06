@@ -33,13 +33,20 @@ export function LeaveRequestNewPage() {
   const [startsOn, setStartsOn] = useState(prefill?.startsOn ?? '')
   const [endsOn, setEndsOn] = useState(prefill?.endsOn ?? '')
   const [kind, setKind] = useState('')
-  const [standInUserId, setStandInUserId] = useState('')
+  /* WHO COVERS, TYPED RATHER THAN PICKED FROM A HUNDRED NAMES (live walk at a hundred people, fault
+     5): `GET /suites/leave/form`'s `standIns` carries no team to group by, so the field is a
+     searchable choice instead - a text field that filters the list as it is typed, the same shared
+     parts (`TextField` plus a native `<datalist>`) the finance page already uses for its budget
+     line. What is actually sent is the matching person's id, never the typed text itself. */
+  const [standInQuery, setStandInQuery] = useState('')
   const [problem, setProblem] = useState<string | null>(null)
 
   const form = useQuery({ queryKey: ['leave-form'], queryFn: fileARequestApi.leaveForm, retry: false })
   /* With the suite off (or this reader refused for some other reason), the read fails and its own
      message is what the board already uses - read the same way a failed send is. */
   const offSentence = form.isError ? whatFilingARequestSays(form.error, user?.organizationName) : null
+  const standInMatch = form.data?.standIns.find(p => p.name.trim().toLowerCase() === standInQuery.trim().toLowerCase())
+  const standInUserId = standInMatch?.userId ?? ''
 
   const send = useMutation({
     mutationFn: () => fileARequestApi.leave({
@@ -85,10 +92,13 @@ export function LeaveRequestNewPage() {
             {form.data?.standIns && form.data.standIns.length > 0 && (
               <div className="gwui-suite-q">
                 <FieldLabel htmlFor="leave-stand-in">Who covers for you?</FieldLabel>
-                <Select id="leave-stand-in" value={standInUserId} onChange={e => setStandInUserId(e.target.value)}>
-                  <option value="">Nobody in particular</option>
-                  {form.data.standIns.map(p => <option key={p.userId} value={p.userId}>{p.name}</option>)}
-                </Select>
+                <TextField
+                  id="leave-stand-in" list="leave-stand-in-names" value={standInQuery}
+                  placeholder="Nobody in particular" onChange={e => setStandInQuery(e.target.value)}
+                />
+                <datalist id="leave-stand-in-names">
+                  {form.data.standIns.map(p => <option key={p.userId} value={p.name} />)}
+                </datalist>
               </div>
             )}
             <div><Button type="submit" disabled={!canSend}>Send</Button></div>
