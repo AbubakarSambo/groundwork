@@ -5626,15 +5626,20 @@ export class GroundsService {
      * already gone out cannot be recalled by declining afterwards - the person has
      * read it.
      */
+    /*
+     * THE PERSON IS NAMED NOW AND INVITED WHEN AN ADMIN ACCEPTS (known issue B5; screens request 174 item 3).
+     *
+     * This used to refuse, and a lead who is not an admin lost everybody she had named when she saved, with a note that stayed after
+     * approval. The point of the gate is that no invitation goes out before the approval, because an email cannot be recalled by
+     * declining afterwards. That still holds: the row is written with `invitedAt` null and no email goes, exactly as for a start date
+     * that is ahead or no seat, and `approve` sends it, once, when an admin accepts. The status is not moved on either, so naming
+     * somebody cannot take the check-in past the approval.
+     */
     const pending = await this.prisma.ground.findFirst({
       where: { id: groundId, organizationId, status: GroundStatus.AWAITING_APPROVAL },
       select: { id: true },
     });
-    if (pending) {
-      throw new BadRequestException(
-        'This check-in is waiting for an admin in your organisation to accept it. Nobody can be invited until then.',
-      );
-    }
+    const heldForApproval = !!pending;
 
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId } });
     if (!ground) throw new NotFoundException('Check-in not found');
@@ -5890,7 +5895,7 @@ export class GroundsService {
              was sent is the worst of the three outcomes: the lead believes they can still change
              their mind about somebody who has in fact never heard from us - and here, the reverse,
              believes somebody has been written to when they have not. */
-          invitedAt: startsInFuture || !waitingForASeat.room ? null : new Date(),
+          invitedAt: startsInFuture || heldForApproval || !waitingForASeat.room ? null : new Date(),
           startsAt: startsAt ?? null,
           inviteToken: token,
           inviteTokenExpiresAt,
@@ -5925,7 +5930,7 @@ export class GroundsService {
        * A ground still waiting on its lead stays waiting. The participant is
        * added and invited either way.
        */
-      if (ground.status !== GroundStatus.AWAITING_LEAD) {
+      if (ground.status !== GroundStatus.AWAITING_LEAD && !heldForApproval) {
         await tx.ground.update({ where: { id: groundId }, data: { status: GroundStatus.AWAITING_PARTIES } });
         movedTheGroundOn = true; /* Kept for the log line below; nothing is reverted. */
       }
@@ -5948,7 +5953,7 @@ export class GroundsService {
      */
     /* `waitingForASeat` holds the mail for the same reason `startsInFuture` does, and the row says
        so the same way: `invitedAt` stays null, so nothing believes they have been written to. */
-    if (!startsInFuture && waitingForASeat.room) {
+    if (!startsInFuture && !heldForApproval && waitingForASeat.room) {
     try {
       emailResult = await this.email.sendTheInviteThisGroundSends(
         ground,
@@ -6001,7 +6006,7 @@ export class GroundsService {
        * been added - Rule 3, nobody added silently - so stamping it for a deferred invite would claim
        * something that has not happened, and the cron would have nothing to look for.
        */
-      data: { notifiedAt: startsInFuture || !waitingForASeat.room ? null : new Date() },
+      data: { notifiedAt: startsInFuture || heldForApproval || !waitingForASeat.room ? null : new Date() },
     });
 
     this.usage.emit(UsageEventType.PARTICIPANT_INVITED, { organizationId, groundId, participantId: participant.id }).catch(() => undefined);
@@ -6040,13 +6045,15 @@ export class GroundsService {
      * mail did not send - and the screen read them all as one null and told the lead "invited on the
      * start date", false in two of the three. The row carries the facts; this names them.
      */
-    const notInvitedBecause: 'starts_later' | 'no_seat' | 'mail_failed' | null = emailFailed
+    const notInvitedBecause: 'starts_later' | 'no_seat' | 'mail_failed' | 'waiting_for_approval' | null = emailFailed
       ? 'mail_failed'
       : !waitingForASeat.room
         ? 'no_seat'
-        : invitedAt
-          ? null
-          : 'starts_later';
+        : heldForApproval
+          ? 'waiting_for_approval'
+          : invitedAt
+            ? null
+            : 'starts_later';
     return {
       id, email, partyType, userId, roleAsDescribed, invitedAt: emailFailed ? null : invitedAt, notifiedAt, soloArtifactAt, createdAt,
       notInvitedBecause,
@@ -6056,6 +6063,10 @@ export class GroundsService {
          see added-but-waiting-for-a-seat.ts for why this is a sentence and not a refusal. */
       awaitingSeat: !waitingForASeat.room,
       ...(waitingForASeat.room ? {} : { saying: waitingForASeat.saying }),
+      /* Named, and invited the moment an admin accepts this check-in; said as a sentence, never starting with an address. */
+      ...(heldForApproval && waitingForASeat.room
+        ? { saying: dto.displayName?.trim() || colleagueName ? `${(dto.displayName?.trim() || colleagueName)!.split(/\s+/)[0]} will be invited as soon as an admin accepts this check-in.` : `The invitation to ${email} will go as soon as an admin accepts this check-in.` }
+        : {}),
       /* Named, because "somebody from another organisation" is not something a lead can act on and
          a company name is. Never the person's other colleagues, only where they belong. */
       ...(fromAnotherOrg
@@ -6994,6 +7005,8 @@ export class GroundsService {
       data: { status: GroundStatus.OPEN, approvedById: adminUserId, approvedAt: new Date() },
       select: { id: true, status: true },
     });
+    /* The people the lead named while it waited are invited now, once each (known issue B5). */
+    await this.sendTheInvitationsHeldForApproval(groundId, organizationId).catch((err: any) => this.logger.error(`Held invitations for ground ${groundId} failed: ${err?.message}`));
 
     // The person who set it up is waiting on this, and nothing else would tell them.
     const creator = await this.prisma.user.findUnique({
@@ -7007,6 +7020,45 @@ export class GroundsService {
         .catch((err: any) => this.logger.error(`Approval email failed for ground ${ground.id}: ${err.message}`));
     }
     return { ...updated, alreadyDecided: false };
+  }
+
+  /**
+   * THE INVITATIONS THAT WAITED FOR THE APPROVAL, SENT ONCE (known issue B5).
+   *
+   * Everybody the lead named while the check-in waited is on it with `invitedAt` and `notifiedAt` empty. Those two empty fields are the
+   * whole of "held", and writing them is what makes this send each invitation once: a second run, or a second admin's click, finds
+   * nothing to send. Left alone: anybody waiting for a seat (they have none to be invited into), anybody whose start date is ahead
+   * (the cron sends on the day), and anybody who has left. When at least one went, the check-in moves on to waiting for its parties,
+   * as it would have the moment they were added.
+   */
+  private async sendTheInvitationsHeldForApproval(groundId: string, organizationId: string): Promise<number> {
+    const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId } });
+    if (!ground) return 0;
+    const held = await this.prisma.groundParticipant.findMany({
+      where: { groundId, partyType: PartyType.PARTICIPANT, invitedAt: null, notifiedAt: null, awaitingSeat: false, leftAt: null, userId: null },
+      select: { id: true, email: true, inviteToken: true, remitAsGiven: true, startsAt: true },
+    });
+    const due = held.filter((p) => !p.startsAt || p.startsAt.getTime() <= Date.now());
+    if (!due.length) return 0;
+    const initiator = await this.prisma.user.findUnique({ where: { id: ground.initiatorId }, select: { firstName: true } });
+    let sent = 0;
+    for (const p of due) {
+      /* Claimed first, so two approvals at once send once. */
+      const claimed = await this.prisma.groundParticipant.updateMany({ where: { id: p.id, invitedAt: null, notifiedAt: null }, data: { invitedAt: new Date(), notifiedAt: new Date() } });
+      if (!claimed?.count) continue;
+      try {
+        await this.email.sendTheInviteThisGroundSends(ground as any, p.email, `${initiator?.firstName ?? 'A founder'}`, p.inviteToken ?? '', p.remitAsGiven ?? undefined, { kind: 'PARTICIPANT_INVITE', participantId: p.id, groundId });
+        sent += 1;
+      } catch (err: any) {
+        /* The row says nothing went, so the lead can resend it from the check-in. */
+        await this.prisma.groundParticipant.update({ where: { id: p.id }, data: { invitedAt: null, notifiedAt: null } }).catch(() => undefined);
+        this.logger.error(`The held invitation to ${p.email} on ground ${groundId} did not send: ${err?.message}`);
+      }
+    }
+    if (sent > 0 && ground.status !== GroundStatus.AWAITING_LEAD) {
+      await this.prisma.ground.update({ where: { id: groundId }, data: { status: GroundStatus.AWAITING_PARTIES } }).catch(() => undefined);
+    }
+    return sent;
   }
 
   /**

@@ -78,7 +78,7 @@ describe('the service adds them rather than refusing', () => {
   });
 
   it('and holds the mail, so nothing reaches somebody who could not open it', () => {
-    expect(SRC).toMatch(/if \(!startsInFuture && waitingForASeat\.room\) \{/);
+    expect(SRC).toMatch(/if \(!startsInFuture && !heldForApproval && waitingForASeat\.room\) \{/);
   });
 
   /**
@@ -87,8 +87,8 @@ describe('the service adds them rather than refusing', () => {
    * been written to who has never heard from us.
    */
   it('and does not claim they were invited or notified', () => {
-    expect(SRC).toMatch(/invitedAt: startsInFuture \|\| !waitingForASeat\.room \? null : new Date\(\)/);
-    expect(SRC).toMatch(/notifiedAt: startsInFuture \|\| !waitingForASeat\.room \? null : new Date\(\)/);
+    expect(SRC).toMatch(/invitedAt: startsInFuture \|\| heldForApproval \|\| !waitingForASeat\.room \? null : new Date\(\)/);
+    expect(SRC).toMatch(/notifiedAt: startsInFuture \|\| heldForApproval \|\| !waitingForASeat\.room \? null : new Date\(\)/);
   });
 
   it('and hands the lead the sentence rather than an error', () => {

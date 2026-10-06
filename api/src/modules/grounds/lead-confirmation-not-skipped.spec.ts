@@ -42,7 +42,7 @@ const ADD_TX = (() => {
 
 describe('adding a participant while the ground still awaits its lead', () => {
   it('leaves the status alone', () => {
-    expect(ADD_TX).toMatch(/if \(ground\.status !== GroundStatus\.AWAITING_LEAD\) \{/);
+    expect(ADD_TX).toMatch(/if \(ground\.status !== GroundStatus\.AWAITING_LEAD && !heldForApproval\) \{/);
   });
 
   it('never advances status unconditionally again', () => {
