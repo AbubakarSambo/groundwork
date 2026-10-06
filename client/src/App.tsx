@@ -43,6 +43,7 @@ import { CompanyContextPage } from '@/pages/company/CompanyContextPage'
 import { SuitesPage } from '@/pages/suites/SuitesPage'
 import { OnboardingBoardPage } from '@/pages/suites/OnboardingBoardPage'
 import { LeaveBoardPage } from '@/pages/suites/LeaveBoardPage'
+import { QueuePage } from '@/pages/suites/QueuePage'
 import { YourRequestsPage } from '@/pages/suites/YourRequestsPage'
 import { LeaveRequestNewPage } from '@/pages/suites/LeaveRequestNewPage'
 import { SpendRequestNewPage } from '@/pages/suites/SpendRequestNewPage'
@@ -495,6 +496,7 @@ export default function App() {
             <Route path="/suite/leave/new" element={<RequireOrgSetup><LeaveRequestNewPage /></RequireOrgSetup>} />
             <Route path="/suite/spend/new" element={<RequireOrgSetup><SpendRequestNewPage /></RequireOrgSetup>} />
             <Route path="/suite/leave" element={<RequireOrgSetup><LeaveBoardPage /></RequireOrgSetup>} />
+            <Route path="/suite/queue" element={<RequireOrgSetup><QueuePage /></RequireOrgSetup>} />
             <Route path="/suite/time" element={<RequireOrgSetup><TimeSheetsPage /></RequireOrgSetup>} />
             <Route path="/suite/reviews" element={<RequireOrgSetup><ReviewsBoardPage /></RequireOrgSetup>} />
             <Route path="/suite/reviews/:id" element={<RequireOrgSetup><ReviewPage /></RequireOrgSetup>} />

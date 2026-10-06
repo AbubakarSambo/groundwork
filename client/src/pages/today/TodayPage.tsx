@@ -10,6 +10,7 @@ import { AppealsToDecide } from '@/components/gw/Suggestions'
 import { groundsApi } from '@/api/grounds'
 import { YouAreIn } from './YouAreIn'
 import { firstWordOfAName } from '@/lib/the-first-word-of-a-name'
+import { QueueLink } from '@/pages/suites/QueuePage'
 
 /**
  * TODAY (C1, #/today). The wording is copied from docs/prototype/screens/C1-today-and-check-ins/
@@ -102,6 +103,7 @@ export function TodayPage() {
               </EdgeList>
             )}
             <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/mine">Your own leave and spending requests</Link></p>
+            <QueueLink userId={user?.id} />
           </Section>
         </Stack>
 

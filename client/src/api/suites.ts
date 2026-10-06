@@ -92,6 +92,12 @@ export interface LeaveWaiting {
   questions: string[]
   /** The whole request as this reader reads it: the days, the days left, who else is off, the stand-in, what the person owns, the questions. */
   said: string[]
+  /**
+   * Others in the same team already off on those days, by approved leave, with how many, who, and
+   * the sentence (the same one the approver's queue says it). Null when the person has no team, or
+   * nobody is off (request 162's new-for-the-screens: `clash` on each waiting leave request).
+   */
+  clash?: { count: number; names: string[]; says: string } | null
 }
 export interface LeaveOff { id: string; name: string; startsOn: string; endsOn: string; kind: string; kindName?: string | null }
 /** A request whoever holds the HR duty is told of; served only to that person. */
@@ -180,6 +186,8 @@ export interface ReviewForTheWriter {
   dueOn: string
   noticed: Noticed[]
   managersWords: string | null
+  /** Who wrote them, by sign-in, so the screen can tell the reader's own words from somebody else's even where two people share a first name (request 162, item 6). Null until they are written. */
+  managersWordsById?: string | null
   theirView: string | null
   decision: { says: string; reasons: string } | null
   mayWrite: boolean
@@ -198,6 +206,8 @@ export interface ReviewForThePerson {
   theirView: string | null
   /** What the person who writes the review has written, word for word, once they have written it. Null until then. */
   managersWords: string | null
+  /** Who wrote them, by sign-in (request 162, item 6). Null until they are written. */
+  managersWordsById?: string | null
   /** The prototype's "What Wairimu writes". Null until `managersWords` exists. */
   managersWordsHeading: string | null
   /** Both views, side by side, once the writer and the person have each written theirs. Null until both exist. */
@@ -267,6 +277,8 @@ export interface SpendWaiting {
   firstName: string
   amount: number
   what: string
+  /** The line as the prototype reads it: "Kamau: KES 18,000 for fuel for Kisumu deliveries" (request 162, item 3). */
+  says: string
   team: string | null
   left: number | null
   over: boolean
@@ -299,6 +311,51 @@ export const spendApi = {
     (await apiClient.post(`/suites/spend/requests/${id}/question`, { question })).data,
   setBudget: async (team: string, amount: number): Promise<SpendBoard> =>
     (await apiClient.put('/suites/spend/budgets', { team, amount })).data,
+}
+
+/**
+ * THE APPROVER'S QUEUE (GET /suites/queue): everything that waits for this one person to approve or
+ * decline, leave and spending together, oldest first, a page at a time, with the counts of the whole
+ * of it (the-approvals-queue.service.ts). Approve and decline use the same calls the leave and
+ * spending boards already use (`leaveBoardApi.decide`/`spendApi.decide`), by `item.suite`.
+ */
+export interface AQueueItem {
+  id: string
+  suite: 'leave' | 'spend'
+  name: string
+  firstName: string
+  team: string | null
+  waitingSince: string
+  workingDaysWaiting: number
+  pastTheDeadline: boolean
+  /** The request in a full sentence: "Aisha asked for leave from Monday 12 October to Friday 16 October, which is 5 working days." */
+  says: string
+  /** How long it has waited, in a full sentence. */
+  waitedSays: string
+  /** Where it is, in a full sentence for this reader. */
+  where: string
+  amount: number | null
+  line: string | null
+  startsOn: string | null
+  endsOn: string | null
+  /** Others in the same team already off on those days, with how many, who, and the sentence. Leave only. */
+  clash: { count: number; names: string[]; says: string } | null
+  /** Set only when the reader reads this because they stand in for somebody on leave. */
+  standingIn: { name: string; until: string | null; says: string } | null
+}
+export interface TheQueue {
+  counts: { all: number; leave: number; spend: number; pastTheDeadline: number }
+  page: number
+  pageSize: number
+  pages: number
+  items: AQueueItem[]
+  /** One full sentence for the top of the page. */
+  says: string
+}
+
+export const queueApi = {
+  get: async (params?: { page?: number; pageSize?: number; suite?: 'leave' | 'spend' }): Promise<TheQueue> =>
+    (await apiClient.get('/suites/queue', { params })).data,
 }
 
 /** To-dos (GET /suites/todos/board): what each person said they will do in their check-ins. */
@@ -361,8 +418,37 @@ export interface FinanceView {
   lines: string[]
 }
 
+/** One line of the month's totals: a team, or a category, or all of them (GET /suites/spend/finance/totals). */
+export interface ATotal {
+  /** The team or category, or "All teams". */
+  name: string
+  asked: { count: number; amount: number }
+  approved: { count: number; amount: number }
+  paid: { count: number; amount: number }
+  waiting: { count: number; amount: number }
+  declined: { count: number }
+  /** The line in one full sentence. */
+  says: string
+}
+export interface TheMonthsTotals {
+  reader: 'finance' | 'admin'
+  currency: string | null
+  /** "2026-10". */
+  month: string
+  /** "October 2026". */
+  monthSays: string
+  all: ATotal
+  byTeam: ATotal[]
+  byCategory: ATotal[]
+  /** One full sentence for the top of the page. */
+  says: string
+}
+
 export const financeApi = {
   get: async (): Promise<FinanceView> => (await apiClient.get('/suites/spend/finance')).data,
+  /** The month's spending added up from the requests, by team and by category (`month`: "2026-10"; the current month when left out). */
+  totals: async (month?: string): Promise<TheMonthsTotals> =>
+    (await apiClient.get('/suites/spend/finance/totals', { params: month ? { month } : undefined })).data,
   check: async (id: string): Promise<FinanceView> => (await apiClient.post(`/suites/spend/requests/${id}/check`)).data,
   code: async (id: string, code: string): Promise<FinanceView> => (await apiClient.put(`/suites/spend/requests/${id}/code`, { code })).data,
   evidence: async (id: string, what: string): Promise<FinanceView> => (await apiClient.post(`/suites/spend/requests/${id}/evidence`, { what })).data,

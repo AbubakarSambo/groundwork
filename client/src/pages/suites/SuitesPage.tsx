@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { suitesApi, type AdminSuite, type Answers, type Question, type SuitesForAnAdmin, type SuitesForALead, type SuitesForADutyHolder } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { Page, PageTitle, Section, Panel, Button, Tag, Toggle, Note, Empty, RowList, Row, FieldLabel, TextField, TextArea, Select } from '@/components/gw/ui'
+import { QueueLink } from './QueuePage'
 
 /**
  * THE SUITES PAGE (E, #/settings/suites, group 2 piece 4). The wording is copied from
@@ -102,6 +103,7 @@ export function SuitesPage() {
 
       {/* Every reader has requests of their own, including a member, whom this page otherwise refuses. */}
       <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/mine">Your own leave and spending requests</Link></p>
+      <QueueLink userId={user?.id} />
     </Page>
   )
 }
