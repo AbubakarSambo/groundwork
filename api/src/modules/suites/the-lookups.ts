@@ -33,6 +33,8 @@ export interface Lookups {
   on: Date;
   /** First names of sign-ins asked for so far in this one read, so a name is asked of the database once and not once a request. */
   names: Map<string, string>;
+  /** The names this organisation knows (people, teams, customers), so a line that starts with one keeps its capital (a-request-in-words.ts). */
+  knownNames: string[];
 }
 
 const dayOf = (d: Date) => d.toISOString().slice(0, 10);
@@ -83,7 +85,7 @@ export async function loadLookups(prisma: PrismaService, organizationId: string,
     prisma.organizationMembership.findMany({ where: { organizationId }, select: { userId: true, role: true } }),
     prisma.person.findMany({
       where: { organizationId, active: true },
-      select: { externalId: true, linkedUserId: true, email: true, department: true, managerExternalId: true, givenName: true, displayName: true },
+      select: { externalId: true, linkedUserId: true, email: true, department: true, managerExternalId: true, givenName: true, familyName: true, displayName: true },
     }),
     already.duties ? Promise.resolve(already.duties) : readDuties(prisma, organizationId),
     leaveToday(prisma, organizationId, on),
@@ -102,5 +104,11 @@ export async function loadLookups(prisma: PrismaService, organizationId: string,
     byExternalId.set(p.externalId, e);
     if (p.userId && !entryOf.has(p.userId)) entryOf.set(p.userId, e);
   }
-  return { roles, entryOf, byExternalId, duties, cover: today.cover, away: today.away, on, names: new Map() };
+  /* Customers are the organisation's own counterparties (a Subject of that type); a read that cannot be made leaves them out. */
+  const customers: { title?: string | null }[] = await (prisma as any).subject?.findMany?.({ where: { organizationId, type: 'COUNTERPARTY' }, select: { title: true }, take: 2000 })?.catch?.(() => []) ?? [];
+  const knownNames = [...new Set([
+    ...signed.flatMap((p) => [p.givenName, p.familyName, p.displayName, p.department]),
+    ...customers.map((c) => c.title),
+  ].filter((x): x is string => !!x && x.trim().length >= 2))];
+  return { roles, entryOf, byExternalId, duties, cover: today.cover, away: today.away, on, names: new Map(), knownNames };
 }

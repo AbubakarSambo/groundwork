@@ -212,7 +212,7 @@ export class SpendingService {
       const nm = names.get(r.userId);
       if (!nm?.full) continue;
       waiting.push({
-        id: r.id, name: nm.full, firstName: nm.first, amount: n(r.amount), what: r.what, says: `${nm.first}: ${spendInWords(n(r.amount), answers.currency, r.what)}`, team: r.team,
+        id: r.id, name: nm.full, firstName: nm.first, amount: n(r.amount), what: r.what, says: `${nm.first}: ${spendInWords(n(r.amount), answers.currency, r.what, shared.lookups?.knownNames)}`, team: r.team,
         left: leftOf(r.team),
         over: answers.limit != null && n(r.amount) > answers.limit,
         approver: who.kind === 'person' ? { kind: 'person', firstName: (await firstNamesOf(this.prisma, [who.userId], undefined, shared.lookups?.names))[0] ?? '' } : { kind: who.kind },

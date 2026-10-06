@@ -107,11 +107,21 @@ describe('2. where a review stands is true of this review', () => {
 
 describe('3. a spending line reads with its currency and a lower-case word after "for"', () => {
   it('keeps a capital where it is somebody’s own, and lowers an ordinary word', () => {
-    expect(['Two tablets for the field team', 'Fuel for the Karen route', 'KRA fees for October', 'I need a laptop', 'Q4 fuel', 'fuel', 'A second scanner', 'An iron roof', 'A4 paper'].map(whatTheMoneyIsFor)).toEqual([
+    expect(['Two tablets for the field team', 'Fuel for the Karen route', 'KRA fees for October', 'I need a laptop', 'Q4 fuel', 'fuel', 'A second scanner', 'An iron roof', 'A4 paper'].map((x) => whatTheMoneyIsFor(x))).toEqual([
       'two tablets for the field team', 'fuel for the Karen route', 'KRA fees for October', 'I need a laptop', 'Q4 fuel', 'fuel', 'a second scanner', 'an iron roof', 'A4 paper',
     ]);
     expect(spendInWords(120000, 'KES', 'Two tablets for the field team')).toBe('KES 120,000 for two tablets for the field team');
     expect(spendInWords(18000, null, 'Fuel for the Karen route')).toBe('18,000 for fuel for the Karen route');
+  });
+  it('keeps the capital on a name the organisation knows (a customer, a person, a team) or that the text repeats, and lowers anything else', () => {
+    const known = ['Naivas', 'Kamau Njenga', 'Operations'];
+    expect(whatTheMoneyIsFor('Naivas deposit', known)).toBe('Naivas deposit');
+    expect(whatTheMoneyIsFor('Operations offsite', known)).toBe('Operations offsite');
+    expect(whatTheMoneyIsFor('Kamau travel', known)).toBe('Kamau travel');
+    expect(whatTheMoneyIsFor('Quickmart deposit for Quickmart', [])).toBe('Quickmart deposit for Quickmart');
+    expect(whatTheMoneyIsFor('Two tablets for the field team', known)).toBe('two tablets for the field team');
+    expect(spendInWords(40000, 'KES', 'Naivas deposit', known)).toBe('KES 40,000 for Naivas deposit');
+    expect(spendInWords(120000, 'KES', 'Two tablets for the field team', known)).toBe('KES 120,000 for two tablets for the field team');
   });
   it('Today says it the same way to the approver', () => {
     const items = waitingForYouToApprove({ leave: [], hours: [], spend: [{ firstName: 'Grace', amount: 120000, what: 'Two tablets for the field team', mayDecide: true } as any], currency: 'KES' }, 'org');

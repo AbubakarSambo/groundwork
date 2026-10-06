@@ -170,3 +170,15 @@ describe('what the clash says, to the people who read it', () => {
 });
 
 it('does not use idOf for anything it is not', () => { expect(idOf('x')).toBe('u-x'); expect(teamOf('ops.m1')).toBe('Operations'); });
+
+describe('a line that starts with a name the organisation knows keeps its capital', () => {
+  it('finance reads "on Operations offsite" and "on two tablets", from the same queue', async () => {
+    const w = aHundredPeople();
+    const mine = w.spend.filter((r) => r.status === 'waiting' && r.step >= 1 && !(r.step === 1 && r.amount > 50_000));
+    mine[0].what = 'Operations offsite';
+    mine[1].what = 'Two tablets for the field team';
+    const q = await w.queue.queue(w.as('finance.m1'), { pageSize: 100 }, TODAY);
+    expect(q.items.find((i) => i.id === mine[0].id)!.says).toMatch(/ on Operations offsite\.$/);
+    expect(q.items.find((i) => i.id === mine[1].id)!.says).toMatch(/ on two tablets for the field team\.$/);
+  });
+});

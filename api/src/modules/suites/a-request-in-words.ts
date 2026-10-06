@@ -1,4 +1,5 @@
 import { saidAsADay } from './who-is-away';
+import { aReasonInASentence } from './spend-said-in-chat';
 
 /**
  * A LEAVE, HOURS OR SPENDING REQUEST, IN THE WORDS EVERY READER READS (decision 82, item 1).
@@ -24,18 +25,20 @@ const listed = (names: string[]) => (names.length < 2 ? names.join('') : `${name
 
 /**
  * WHAT THE MONEY IS FOR, AS IT READS INSIDE A SENTENCE (request 162, item 3). People write it as its own line, with a capital
- * ("Two tablets for the field team"); after "for" or "on" it is a lower-case word. Only an ordinary word (or "A" and "An") is lowered: a name, an
- * abbreviation, a word with a digit in it and "I" keep their capital, because a capital there is the person's own. A name that is
- * an ordinary-looking word at the start of the line ("Naivas deposit") cannot be told from "Fuel" without a list of names, so it is lowered.
+ * ("Two tablets for the field team"); after "for" or "on" it is a lower-case word. It is the rule Ask's spending say-back already uses
+ * (aReasonInASentence, spend-said-in-chat.ts): the capital stays on an "I", an acronym, a word with a capital inside it, a name the
+ * organisation knows (a person, a team, a customer: `knownNames`), and a word the person wrote with a capital again later in the text.
+ * A first word with a digit in it ("Q4 fuel", "A4 paper") keeps its capital too.
  */
-export function whatTheMoneyIsFor(what: string): string {
+export function whatTheMoneyIsFor(what: string, knownNames: string[] = []): string {
   const w = (what ?? '').trim();
-  return /^(?:A|An|[A-Z][a-z]+)(?=\s|$)/.test(w) ? `${w.charAt(0).toLowerCase()}${w.slice(1)}` : w;
+  if (/^\S*\d/.test(w)) return w;
+  return aReasonInASentence(w, knownNames);
 }
 
 /** "KES 12,000 for fuel". */
-export function spendInWords(amount: number, currency: string | null, what: string): string {
-  return `${currency ? `${currency} ` : ''}${amount.toLocaleString('en-US')} for ${whatTheMoneyIsFor(what)}`;
+export function spendInWords(amount: number, currency: string | null, what: string, knownNames: string[] = []): string {
+  return `${currency ? `${currency} ` : ''}${amount.toLocaleString('en-US')} for ${whatTheMoneyIsFor(what, knownNames)}`;
 }
 
 /** "Amina's", "James'". */

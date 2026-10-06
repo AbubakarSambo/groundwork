@@ -284,8 +284,8 @@ export class ApprovalsQueueService {
       const amount = num(r.amount);
       return {
         id: r.id, suite: 'spend', name: fullOf(r.userId), firstName: first, team, waitingSince: m.since.toISOString(), workingDaysWaiting: waited, pastTheDeadline,
-        says: `${first} asked to spend ${c.spendAnswers.currency ? `${c.spendAnswers.currency} ` : ''}${amount.toLocaleString('en-US')} on ${whatTheMoneyIsFor(r.what ?? '')}.`,
-        waitedSays, where, amount, line: `${first}: ${spendInWords(amount, c.spendAnswers.currency, r.what ?? '')}`, startsOn: null, endsOn: null, clash: null, standingIn,
+        says: `${first} asked to spend ${c.spendAnswers.currency ? `${c.spendAnswers.currency} ` : ''}${amount.toLocaleString('en-US')} on ${whatTheMoneyIsFor(r.what ?? '', c.lookups.knownNames)}.`,
+        waitedSays, where, amount, line: `${first}: ${spendInWords(amount, c.spendAnswers.currency, r.what ?? '', c.lookups.knownNames)}`, startsOn: null, endsOn: null, clash: null, standingIn,
       };
     }).filter((i) => i.name);
   }
