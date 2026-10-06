@@ -18,7 +18,7 @@ import { formsOfTheSameNumber } from '../whatsapp/a-number-whatsapp-can-reach';
  */
 export const ROUTINE_EMAILS: ReadonlySet<string> = new Set([
   'sendNudge', 'sendAbsenceReminder', 'sendActivationReminder', 'sendActivationRevealReminder', 'sendFeedbackRequest',
-  'sendParticipantBlockedNudge', 'sendInviteAboutToLapse', 'sendCodeExpiryReminder', 'sendRoundDigest', 'sendTheLeadsWeeklyLetter',
+  'sendParticipantBlockedNudge', 'sendInviteAboutToLapse', 'sendCodeExpiryReminder', 'sendRoundDigest', 'sendTheLeadsWeeklyLetter', 'sendTestCheckInMovesOn',
 ]);
 
 /** A WhatsApp message Groundwork writes first that is the day's routine one: every first message except a check-in opening or closing. */

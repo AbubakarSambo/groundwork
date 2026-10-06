@@ -1026,6 +1026,18 @@ export class EmailService implements OnModuleInit {
   }
 
   /**
+   * A TEST CHECK-IN MOVES TOWARD ONE SMALL REAL ONE (decision 109 item 8). The words come from engagement/a-test-check-in-moves-on.ts:
+   * what the lead tried, and one real situation with a few real people. Nobody else's words are in it.
+   */
+  async sendTestCheckInMovesOn(email: string, subject: string, lines: string[], linkLabel: string, linkUrl: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject,
+      html: this.layout(lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('') + `<p><a href="${linkUrl}">${escapeHtml(linkLabel)}</a></p>`),
+    }, undefined, 'sendTestCheckInMovesOn');
+  }
+
+  /**
    * "GET UPDATES FROM YOUR TEAM" HAS TWO EMAILS AND THEY ARE THE WHOLE PRODUCT FOR THAT CARD.
    *
    * A two-minute setup is only worth anybody's time because of what arrives in the same week, so

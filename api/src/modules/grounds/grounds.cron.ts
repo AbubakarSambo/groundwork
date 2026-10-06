@@ -26,6 +26,7 @@ import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { keptOffThePhone } from '../whatsapp/a-check-in-kept-off-the-phone';
 import { whatToSendThisMorning, whichChase, whenItIsDue, itIsOverdue, itIsDueTomorrow, theTeamIsAlmostIn, yourViewMatters, itOpensSoon, MORNING_ORDER, itFollowsUpTheirPromise } from '../whatsapp/what-goes-to-a-phone';
 import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
+import { sendTheTestCheckInMessages } from '../engagement/a-test-check-in-moves-on';
 import { theirPromiseToFollowUp } from '../engagement/a-follow-up-from-their-own-record';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { isNotLetInYet } from './who-an-admin-did-not-let-in';
@@ -906,6 +907,24 @@ export class GroundsCron implements OnApplicationBootstrap {
       now,
     ).catch((err: any) => { this.logger.warn(`The leads' weekly letters could not be sent: ${err?.message}`); return { tried: 0 }; });
     if (result.tried) this.logger.log(`Email: ${result.tried} weekly lead letter(s) tried.`);
+    return result;
+  }
+
+  /**
+   * A TEST CHECK-IN MOVES TOWARD ONE SMALL REAL ONE (decision 109 item 8), Tuesday morning in Lagos. Once ever per lead; see
+   * engagement/a-test-check-in-moves-on.ts for what a test is and what is said.
+   */
+  @Cron('0 10 * * 2', { timeZone: 'Africa/Lagos' })
+  async sendTheTestCheckInMessages() {
+    await onceAcrossCopies(this.prisma, 'test-check-in-moves-on', theWeek(), () => this.sendTheTestCheckInMessagesInner());
+  }
+
+  async sendTheTestCheckInMessagesInner(now: Date = new Date()): Promise<{ tried: number }> {
+    const result = await sendTheTestCheckInMessages(
+      { prisma: this.prisma, email: this.email, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
+      now,
+    ).catch((err: any) => { this.logger.warn(`The test check-in messages could not be sent: ${err?.message}`); return { tried: 0 }; });
+    if (result.tried) this.logger.log(`Email: ${result.tried} test check-in message(s) tried.`);
     return result;
   }
 

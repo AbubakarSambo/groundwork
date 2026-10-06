@@ -249,6 +249,8 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendRoundDigest: 'we decided to send it',
   /* The lead's weekly letter on the anchor check-ins. Nobody asked this morning, so the stop link stops it. */
   sendTheLeadsWeeklyLetter: 'we decided to send it',
+  /* Nobody asked for it: a lead who has only tried her own check-in is shown one small real next step, once. */
+  sendTestCheckInMovesOn: 'we decided to send it',
 };
 
 export function whatThisMailIs(sender: string): WhatKindOfMail {
