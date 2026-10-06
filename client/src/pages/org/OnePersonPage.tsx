@@ -277,7 +277,14 @@ export function OnePersonPage() {
 
       <Section heading="What an admin can see">
         <Panel>
-          <p className="gwui-panel-text-muted">{`As an admin you can read every check-in at ${orgName}, change its setup, and ask us to end it. You don’t see anyone’s private notes.`}</p>
+          {/*
+            FAULT 5, 6 Oct 2026: "CHANGE ITS SETUP" WAS NEVER TRUE. Only the lead changes a
+            check-in's setup (the 1 October decision; `mayChangeSetup`, served on every check-in,
+            is the server's own answer). This also left out the one real limit on an admin's
+            reach: decision 5 and `who-may-read-this-check-in.ts` close a performance plan, a
+            promotion, a renewal or somebody's first 90 days unless the admin is given access.
+          */}
+          <p className="gwui-panel-text-muted">{`As an admin you can read every check-in at ${orgName}, and ask us to end it. A performance plan, a promotion, a renewal or somebody's first 90 days stays closed to you unless you are given access to it. You don’t see anyone’s private notes.`}</p>
         </Panel>
       </Section>
 

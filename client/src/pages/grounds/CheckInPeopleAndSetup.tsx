@@ -120,22 +120,33 @@ export function settingsChangeSentence(c: { changedAt: string; by: 'you' | 'lead
  * in this check-in, including your manager, can see what you say in it." - true for a participant,
  * who reads it on a check-in somebody else runs. But the lead reads this same sentence about her
  * own check-in: she is not being told about a manager of hers here, so the clause is dropped for
- * her. A participant never reaches this admin page, so their wording is unchanged.
+ * her.
+ *
+ * FAULT 5, 6 Oct 2026: AN ADMIN WHO IS NOT IN THE CHECK-IN IS NOT "YOU" EITHER. The comment above
+ * used to say "a participant never reaches this admin page", which stopped being true once an
+ * admin could read People and setup without being in the check-in herself (decision 5) - she saw
+ * "...can see what YOU say in it" about a check-in she says nothing in. `viewerIsInIt` is the lead
+ * or a participant; anybody else reads a third-person sentence that is true of her too.
  */
 export function peersVisibilitySentence(args: {
   peersVisible: boolean
   peersVisibleToEachOther: boolean | null
   peersDefaultHidden: boolean
   isInitiator: boolean
+  viewerIsInIt: boolean
 }): string {
-  const who = args.isInitiator
-    ? 'The people in this check-in can see what you say in it'
-    : 'The people in this check-in, including your manager, can see what you say in it'
-  if (args.peersVisible) return `${who}, once the team's report is shared. You are named to each other.`
+  const who = !args.viewerIsInIt
+    ? 'The people in this check-in can see what each other say in it'
+    : args.isInitiator
+      ? 'The people in this check-in can see what you say in it'
+      : 'The people in this check-in, including your manager, can see what you say in it'
+  const named = args.viewerIsInIt ? 'You are named to each other.' : 'They are named to each other.'
+  const notNamed = args.viewerIsInIt ? 'You are not named to each other.' : 'They are not named to each other.'
+  if (args.peersVisible) return `${who}, once the team's report is shared. ${named}`
   if (args.peersVisibleToEachOther == null) {
-    return `Not set, so this check-in uses the default for its kind: ${args.peersDefaultHidden ? 'hidden' : 'shown'}. ${who}, once the team's report is shared. ${args.peersDefaultHidden ? 'You are not named to each other.' : 'You are named to each other.'}`
+    return `Not set, so this check-in uses the default for its kind: ${args.peersDefaultHidden ? 'hidden' : 'shown'}. ${who}, once the team's report is shared. ${args.peersDefaultHidden ? notNamed : named}`
   }
-  return `${who}, once the team's report is shared. You are not named to each other.`
+  return `${who}, once the team's report is shared. ${notNamed}`
 }
 
 export function CheckInPeopleAndSetup(props: {
@@ -202,8 +213,27 @@ export function CheckInPeopleAndSetup(props: {
   const {
     ground, user, navigate, isInitiator, isOrgAdmin, viewerIsAParty, mySessionsDone, plannedSessions,
   } = props
-  const canEditRunOrAdmin = isInitiator || isOrgAdmin // aSettingOnlyTheLeadMayChange / updateTimeline / peer-visibility / people-work-together
+  /**
+   * FAULT 5: GATED ON WHAT THE SERVER SAYS, NOT ON ROLE.
+   *
+   * This used to be `isInitiator || isOrgAdmin`, so any org admin saw "Change" on Name, How
+   * often, Use simpler words and the other setup fields - and pressing it opened the field -
+   * even though the 1 October decision gives setup changes to the lead alone, and the server
+   * already refuses an admin's write. Naomi, an admin reading Tendai's check-in, saw and could
+   * open every one of these.
+   *
+   * `mayChangeSetup` (request 104, `GET /grounds/:id`) is the server's own answer to exactly this
+   * question - `ContextPage.tsx`'s `mayRewriteTheBrief` already reads it the same way. The
+   * `isInitiator || isOrgAdmin` fallback stays only for a payload that has not sent the field yet
+   * (older fixtures, mid-rollout), never as a second opinion once the server has spoken.
+   */
+  const canEditRunOrAdmin = typeof (ground as any)?.mayChangeSetup === 'boolean'
+    ? (ground as any).mayChangeSetup === true
+    : (isInitiator || isOrgAdmin) // aSettingOnlyTheLeadMayChange / updateTimeline / peer-visibility / people-work-together
   const canEditLeadOnly = isInitiator // setExternalVisibility / setChasing
+  /* FAULT 5: who "The people in this check-in ... say in it" is about - the lead or a participant,
+     never an admin merely reading. See `peersVisibilitySentence`. */
+  const viewerIsInIt = isInitiator || viewerIsAParty
 
   const [editingWhen, setEditingWhen] = useState(!!props.forceOpenTimeframe)
   const [editingReminders, setEditingReminders] = useState(false)
@@ -528,6 +558,7 @@ export function CheckInPeopleAndSetup(props: {
             peersVisibleToEachOther: (ground as any)?.peersVisibleToEachOther ?? null,
             peersDefaultHidden: props.peersDefaultHidden,
             isInitiator,
+            viewerIsInIt,
           })}
           on={props.peersVisible}
           onChange={(on) => props.setPeerVisibility.mutate(on)}

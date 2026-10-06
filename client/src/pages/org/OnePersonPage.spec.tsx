@@ -74,8 +74,12 @@ describe('what Grace reads about Miriam', () => {
     expect(screen.getByText('Sales team, Q3')).toBeTruthy()
     expect(screen.getByText('Checks in')).toBeTruthy()
     /* U.4 review, item 3 (30 Sept): nobody can end a check-in themselves yet - only ask us to. The
-       old sentence claimed a control that does not exist. */
-    expect(screen.getByText('As an admin you can read every check-in at Baridi Appliances, change its setup, and ask us to end it. You don’t see anyone’s private notes.')).toBeTruthy()
+       old sentence claimed a control that does not exist.
+       FAULT 5, 6 Oct 2026: "change its setup" was never true either - only the lead changes
+       setup (the 1 October decision; `mayChangeSetup`). Replaced with the real limit on an
+       admin's reach: decision 5 closes a performance plan, a promotion, a renewal or somebody's
+       first 90 days unless she is given access. */
+    expect(screen.getByText('As an admin you can read every check-in at Baridi Appliances, and ask us to end it. A performance plan, a promotion, a renewal or somebody\'s first 90 days stays closed to you unless you are given access to it. You don’t see anyone’s private notes.')).toBeTruthy()
     /* WhatsApp is off, so her number is not offered. And no label, no dash. */
     expect(screen.queryByLabelText('WhatsApp number for Miriam')).toBeNull()
     expect(container.textContent).not.toMatch(/ - |\bscore\b|at risk/i)
