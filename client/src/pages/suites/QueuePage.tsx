@@ -64,6 +64,9 @@ export function QueuePage() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [failures, setFailures] = useState<Record<string, string>>({})
   const [batchProblem, setBatchProblem] = useState<string | null>(null)
+  /* What happened to each request in the last "Approve the N selected", kept on screen after the list
+     refreshes (Hafsah, 7 October: always show the result for each, and say plainly if any failed). */
+  const [results, setResults] = useState<{ id: string; name: string; ok: boolean; message: string | null }[] | null>(null)
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['suite-queue', suite, pageSize],
@@ -82,19 +85,24 @@ export function QueuePage() {
       const items = (data?.items ?? []).filter(i => selected.has(i.id))
       setProgress({ done: 0, total: items.length })
       const fails: Record<string, string> = {}
+      const each: { id: string; name: string; ok: boolean; message: string | null }[] = []
+      setResults(null)
       for (const item of items) {
         try {
           await (item.suite === 'leave' ? leaveBoardApi.decide(item.id, 'approve') : spendApi.decide(item.id, 'approve'))
+          each.push({ id: item.id, name: item.name, ok: true, message: null })
         } catch (e: any) {
           fails[item.id] = e?.response?.data?.message || DID_NOT_GO
+          each.push({ id: item.id, name: item.name, ok: false, message: fails[item.id] })
         }
         setProgress(p => (p ? { ...p, done: p.done + 1 } : p))
       }
-      return fails
+      return { fails, each }
     },
-    onSuccess: (fails) => {
+    onSuccess: ({ fails, each }) => {
       setBatchProblem(null)
       setFailures(fails)
+      setResults(each)
       setSelected(new Set())
       qc.invalidateQueries({ queryKey: ['suite-queue'] })
     },
@@ -175,7 +183,8 @@ export function QueuePage() {
                     {`Approve the ${selected.size} selected`}
                   </Button>
                 </div>
-                {progress && <Note>{`Approved ${progress.done} of ${progress.total}…`}</Note>}
+                {progress && <Note>{`Working through ${progress.done} of ${progress.total}…`}</Note>}
+                {results && <TheResults results={results} onDone={() => setResults(null)} />}
                 {batchProblem && <Note tone="error">{batchProblem}</Note>}
 
                 <RowList label="Waiting for approval">
@@ -249,5 +258,30 @@ function AQueueRow({ item, selected, onToggle, failure, onChanged }: {
         </div>
       )}
     </Row>
+  )
+}
+
+/* The result of each request in the last batch, and one plain sentence on how many did not go through. */
+function TheResults({ results, onDone }: { results: { id: string; name: string; ok: boolean; message: string | null }[]; onDone: () => void }) {
+  const failed = results.filter(r => !r.ok)
+  const approved = results.length - failed.length
+  const counted = (n: number) => (n === 1 ? '1 request' : `${n} requests`)
+  const summary = failed.length === 0
+    ? `All ${counted(results.length)} were approved.`
+    : approved === 0
+      ? `None of the ${counted(results.length)} could be approved.`
+      : `${counted(approved)} ${approved === 1 ? 'was' : 'were'} approved. ${counted(failed.length)} could not be approved.`
+  return (
+    <Section heading="What happened">
+      <Note tone={failed.length ? 'error' : undefined}>{summary}</Note>
+      <RowList label="What happened">
+        {results.map(r => (
+          <Row key={r.id} columns="minmax(0, 1fr)">
+            <span>{r.ok ? `${r.name}’s request was approved.` : `${r.name}’s request was not approved. ${r.message ?? ''}`.trim()}</span>
+          </Row>
+        ))}
+      </RowList>
+      <Button kind="quiet" size="small" onClick={onDone}>Clear this</Button>
+    </Section>
   )
 }

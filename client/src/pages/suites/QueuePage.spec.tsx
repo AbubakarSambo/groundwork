@@ -146,6 +146,29 @@ describe('approving several at once', () => {
     await waitFor(() => expect((queueApi.get as any).mock.calls.length).toBeGreaterThan(1))
   })
 
+  it('shows the result for each request, and says plainly that one failed (Hafsah, 7 October)', async () => {
+    ;(leaveBoardApi.decide as any).mockResolvedValue({ waiting: [], off: [] })
+    ;(spendApi.decide as any).mockRejectedValue(refusal(409, 'Wairimu approved this request a moment ago, so your answer was not kept.'))
+    open()
+    await screen.findByRole('list', { name: 'Waiting for approval' })
+    fireEvent.click(screen.getByLabelText('Select all on this page'))
+    fireEvent.click(screen.getByRole('button', { name: 'Approve the 2 selected' }))
+    const results = await screen.findByRole('list', { name: 'What happened' })
+    expect(await screen.findByText('1 request was approved. 1 request could not be approved.')).toBeInTheDocument()
+    expect(within(results).getByText('Aisha Otieno’s request was approved.')).toBeInTheDocument()
+    expect(within(results).getByText('Kamau Njenga’s request was not approved. Wairimu approved this request a moment ago, so your answer was not kept.')).toBeInTheDocument()
+  })
+
+  it('says so when every one went through', async () => {
+    ;(leaveBoardApi.decide as any).mockResolvedValue({ waiting: [], off: [] })
+    ;(spendApi.decide as any).mockResolvedValue({ waiting: [] })
+    open()
+    await screen.findByRole('list', { name: 'Waiting for approval' })
+    fireEvent.click(screen.getByLabelText('Select all on this page'))
+    fireEvent.click(screen.getByRole('button', { name: 'Approve the 2 selected' }))
+    expect(await screen.findByText('All 2 requests were approved.')).toBeInTheDocument()
+  })
+
   it('offers nothing to approve until something is selected', async () => {
     open()
     await screen.findByRole('list', { name: 'Waiting for approval' })
