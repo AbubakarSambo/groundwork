@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { WhoCanJoin } from './WhoCanJoin'
 import { apiClient } from '@/api/client'
+import { useAuthStore } from '@/stores/auth'
 
 /** "WHO CAN JOIN" (A4 people.txt), AS AN ADMIN READS IT ON THE PEOPLE PAGE. */
 function open(answer: any, link: any = { on: false, code: null }) {
@@ -10,7 +11,10 @@ function open(answer: any, link: any = { on: false, code: null }) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(<QueryClientProvider client={qc}><WhoCanJoin orgName="Baridi Appliances" /></QueryClientProvider>)
 }
-beforeEach(() => { vi.restoreAllMocks() })
+beforeEach(() => {
+  vi.restoreAllMocks()
+  useAuthStore.setState({ user: { id: 'u1', email: 'amina@baridi.co.ke', firstName: 'Amina', lastName: 'Otieno', role: 'ADMIN', organizationId: 'o1' } as any })
+})
 
 describe('who can join', () => {
   it('the prototype\'s switch, off, with the admin\'s own domain', async () => {
@@ -42,18 +46,55 @@ describe('who can join', () => {
     expect(screen.getByRole('button', { name: 'Name it' })).toBeTruthy()
   })
 
-  it('an admin can change the domain to their own confirmed address\'s', async () => {
+  it('"Change" only opens a way to choose the domain - it does not call the server by itself (screen fault 1)', async () => {
     open({ on: true, domain: 'baridi.co.ke', whyNot: null })
     const patch = vi.spyOn(apiClient, 'patch').mockResolvedValue({ data: { success: true, data: { on: true, domain: 'newco.com', whyNot: null } } } as any)
     fireEvent.click(await screen.findByRole('button', { name: 'Change' }))
+    expect(await screen.findByRole('dialog')).toBeTruthy()
+    expect(patch).not.toHaveBeenCalled()
+  })
+
+  it('already on: confirming "Change" names the one domain it will use, without saying this turns it on', async () => {
+    open({ on: true, domain: 'baridi.co.ke', whyNot: null })
+    const patch = vi.spyOn(apiClient, 'patch').mockResolvedValue({ data: { success: true, data: { on: true, domain: 'baridi.co.ke', whyNot: null } } } as any)
+    fireEvent.click(await screen.findByRole('button', { name: 'Change' }))
+    expect(await screen.findByText('Change the domain people can join Baridi Appliances by to baridi.co.ke, your own email address\'s domain?')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Change it' }))
     await waitFor(() => expect(patch).toHaveBeenCalledWith('/users/organization/joining/domain', {}))
-    expect(await screen.findByText('Anyone with an @newco.com email')).toBeTruthy()
+    expect(await screen.findByText('Anyone with an @baridi.co.ke email')).toBeTruthy()
+  })
+
+  it('off: confirming "Change" warns this turns joining on, in the engine\'s own side effect (request 179)', async () => {
+    open({ on: false, domain: 'baridi.co.ke', whyNot: null })
+    const patch = vi.spyOn(apiClient, 'patch').mockResolvedValue({ data: { success: true, data: { on: true, domain: 'baridi.co.ke', whyNot: null } } } as any)
+    fireEvent.click(await screen.findByRole('button', { name: 'Change' }))
+    expect(await screen.findByText('Anyone with an email address at baridi.co.ke will be able to join Baridi Appliances. Turn this on?')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Turn this on' }))
+    await waitFor(() => expect(patch).toHaveBeenCalledWith('/users/organization/joining/domain', {}))
+  })
+
+  it('"Cancel" closes the confirmation and calls nothing', async () => {
+    open({ on: false, domain: 'baridi.co.ke', whyNot: null })
+    const patch = vi.spyOn(apiClient, 'patch').mockResolvedValue({} as any)
+    fireEvent.click(await screen.findByRole('button', { name: 'Change' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(patch).not.toHaveBeenCalled()
+  })
+
+  it('naming a domain also asks first, since there is nothing yet to turn off', async () => {
+    open({ on: false, domain: null, whyNot: 'Your organisation’s email address is at a public mail service, so there is no company domain for people to join by, until an admin names one.' })
+    const patch = vi.spyOn(apiClient, 'patch').mockResolvedValue({ data: { success: true, data: { on: true, domain: 'baridi.co.ke', whyNot: null } } } as any)
+    fireEvent.click(await screen.findByRole('button', { name: 'Name it' }))
+    expect(await screen.findByText('Anyone with an email address at baridi.co.ke will be able to join Baridi Appliances. Turn this on?')).toBeTruthy()
+    expect(patch).not.toHaveBeenCalled()
   })
 
   it('naming a domain is the server\'s own refusal, in a sentence', async () => {
     open({ on: false, domain: null, whyNot: 'Your organisation’s email address is at a public mail service, so there is no company domain for people to join by, until an admin names one.' })
     vi.spyOn(apiClient, 'patch').mockRejectedValue({ response: { data: { message: 'Your email address is at a public mail service, so it cannot be the domain people join by.' } } })
     fireEvent.click(await screen.findByRole('button', { name: 'Name it' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Turn this on' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Your email address is at a public mail service, so it cannot be the domain people join by.')
   })
 })
