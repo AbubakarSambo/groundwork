@@ -31,7 +31,7 @@ import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
-import { GroundsService, RECOMMENDED_MOMENT } from '../grounds/grounds.service';
+import { GroundsService, RECOMMENDED_MOMENT, DEFAULT_TIMELINE_DAYS } from '../grounds/grounds.service';
 import { EmailService } from '../email/email.service';
 import { AnthropicService, ChatTurn } from '../conversation/anthropic.service';
 import { ConversationService } from '../conversation/conversation.service';
@@ -2339,6 +2339,9 @@ from finishing at all.`;
       workingDays: dto.workingDays ?? undefined,
       startsAt: dto.checkInBy || undefined,
       endsAt: theAnchorIsOn ? theMonthEnds : dto.lastCheckInBy || undefined,
+      /* Thirty days, which is four weekly sessions. Without it the length was read from the end date, which counts the weeks that start inside it, five, and
+         the members read "Session 1 of 5" (review of fd583ba5). */
+      ...(theAnchorIsOn ? { timelineDays: DEFAULT_TIMELINE_DAYS.HELP_TEAM_UNDERSTAND } : {}),
       brief,
       freeParticipantCap: isBroadcast ? 100 : DEFAULT_FREE_MEMBER_LIMIT,
       /*

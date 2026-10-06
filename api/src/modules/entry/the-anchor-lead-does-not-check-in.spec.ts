@@ -45,6 +45,8 @@ describe('the lead who sets the anchor up', () => {
     expect(made.managingOnly).toBe(true);
     expect(made.cadence).toBe('WEEKLY');
     expect(made.runsUntilEnded).toBeUndefined();
+    /* Four sessions as the record counts them, not five read from the end date (review of fd583ba5: a real save read "Session 1 of 5"). */
+    expect(totalSessionsFor(made.timelineDays, made.cadence)).toBe(4);
     const days = (new Date(made.endsAt).getTime() - Date.now()) / 86_400_000;
     expect(days).toBeGreaterThan(29);
     expect(days).toBeLessThan(31);
@@ -57,6 +59,7 @@ describe('the lead who sets the anchor up', () => {
       expect(prisma.checkIn.update.mock.calls.filter((c: any[]) => c[0].data.status === 'COMPLETED')).toEqual([]);
       expect(grounds.create.mock.calls[0][2].managingOnly).toBeUndefined();
       expect(grounds.create.mock.calls[0][2].cadence).toBe('FORTNIGHTLY');
+      expect(grounds.create.mock.calls[0][2].timelineDays).toBeUndefined();
     }
   });
 });
