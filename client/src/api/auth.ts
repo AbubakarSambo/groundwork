@@ -143,7 +143,7 @@ export const authApi = {
    * and team, never an address (U.4). A guest gets only the people on their own check-ins here.
    */
   colleagues: () =>
-    apiClient.get<{ id: string; name: string; role: string; team: string | null }[]>('/users/colleagues').then(r => r.data),
+    apiClient.get<{ id: string; name: string; role: string; team: string | null }[]>('/users/colleagues').then(r => (Array.isArray(r.data) ? r.data : [])),
   teamInvite: (email: string) =>
     apiClient.post<{ message: string }>('/auth/team-invite', { email }).then(r => r.data),
 
@@ -192,7 +192,7 @@ export const authApi = {
    * answers. This is that queue, and the answer.
    */
   whoIsWaiting: () =>
-    apiClient.get<WaitingAtTheDoor[]>('/users/waiting').then(r => r.data),
+    apiClient.get<WaitingAtTheDoor[]>('/users/waiting').then(r => (Array.isArray(r.data) ? r.data : [])),
 
   /**
    * THE OTHER QUEUE AT THE SAME DOOR: people a lead has added to a check-in with no seat for them.
@@ -200,7 +200,7 @@ export const authApi = {
    * this is a purchase - and answered by making room rather than by saying yes.
    */
   waitingForASeat: () =>
-    apiClient.get<{ id: string; email: string; addedBy: string | null; forCheckIn: string | null; waitingSince: string; saying: string }[]>('/users/waiting/seats').then(r => r.data),
+    apiClient.get<{ id: string; email: string; addedBy: string | null; forCheckIn: string | null; waitingSince: string; saying: string }[]>('/users/waiting/seats').then(r => (Array.isArray(r.data) ? r.data : [])),
 
   sendTheHeldInvitations: () =>
     apiClient.post<{ sent: number; stillWaiting: number }>('/users/waiting/seats/release', {}).then(r => r.data),

@@ -118,8 +118,8 @@ export interface FeedbackSummaryData {
 }
 
 export const promptsApi = {
-  list: () => apiClient.get<PromptVersion[]>('/prompts').then((r) => r.data),
-  byKey: (key: string) => apiClient.get<PromptVersion[]>(`/prompts/by-key/${encodeURIComponent(key)}`).then((r) => r.data),
+  list: () => apiClient.get<PromptVersion[]>('/prompts').then((r) => (Array.isArray(r.data) ? r.data : [])),
+  byKey: (key: string) => apiClient.get<PromptVersion[]>(`/prompts/by-key/${encodeURIComponent(key)}`).then((r) => (Array.isArray(r.data) ? r.data : [])),
   create: (key: string, content: string, summary?: string) =>
     apiClient.post<PromptVersion>('/prompts', { key, content, summary }).then((r) => r.data),
   activate: (id: string) => apiClient.post<PromptVersion>(`/prompts/${id}/activate`).then((r) => r.data),
@@ -128,7 +128,7 @@ export const promptsApi = {
   platformFunnel: (range: PanelRange = 'all') =>
     apiClient.get<UsageFunnelData>('/prompts/platform-funnel', { params: { range } }).then((r) => r.data),
   orgList: () =>
-    apiClient.get<OrgListItem[]>('/prompts/org-list').then((r) => r.data),
+    apiClient.get<OrgListItem[]>('/prompts/org-list').then((r) => (Array.isArray(r.data) ? r.data : [])),
 
   /**
    * WHO IS REGISTERED IN ONE ORGANISATION. The account list, never their work.
@@ -199,5 +199,5 @@ export interface CodeAccuracy {
  * customer-facing number.
  */
 export const patternAccuracyApi = {
-  summary: () => apiClient.get<CodeAccuracy[]>('/patterns/accuracy').then(r => r.data),
+  summary: () => apiClient.get<CodeAccuracy[]>('/patterns/accuracy').then(r => (Array.isArray(r.data) ? r.data : [])),
 }

@@ -126,7 +126,7 @@ export function FinancePage() {
 
           <Section
             heading="Waiting to be paid"
-            action={data.toPay.length > 0 ? (
+            action={(data.toPay ?? []).length > 0 ? (
               <>
                 <Button kind="secondary" size="small" onClick={() => download.mutate('csv')} disabled={download.isPending}>Download as CSV</Button>
                 <Button kind="secondary" size="small" onClick={() => download.mutate('xlsx')} disabled={download.isPending}>Download as Excel</Button>
@@ -134,22 +134,22 @@ export function FinancePage() {
             ) : undefined}
           >
             {problem && <Note tone="error">{problem}</Note>}
-            {data.toPay.length === 0
+            {(data.toPay ?? []).length === 0
               ? <Empty>Nothing is waiting to be paid.</Empty>
               : (
                 <RowList label="Waiting to be paid">
-                  {data.toPay.map(r => <ARequest key={r.id} r={r} view={data} />)}
+                  {(data.toPay ?? []).map(r => <ARequest key={r.id} r={r} view={data} />)}
                 </RowList>
               )}
-            {data.toPay.length > 0 && <p className="gwui-panel-text-muted">The file only holds the requests that are waiting to be paid.</p>}
+            {(data.toPay ?? []).length > 0 && <p className="gwui-panel-text-muted">The file only holds the requests that are waiting to be paid.</p>}
           </Section>
 
           <Section heading="Paid in the last 60 days">
-            {data.paid.length === 0
+            {(data.paid ?? []).length === 0
               ? <Empty>Nothing has been paid in the last 60 days.</Empty>
               : (
                 <RowList label="Paid in the last 60 days">
-                  {data.paid.map(r => (
+                  {(data.paid ?? []).map(r => (
                     <Row key={r.id} columns="minmax(0, 1fr)">
                       <div>
                         <b>{title(r, data.currency)}</b>

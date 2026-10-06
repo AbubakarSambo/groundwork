@@ -189,7 +189,7 @@ export function AskGroundwork({
    * This is a screens-owned route (grounds, not ask or assistant); if it should instead come from
    * the engine's own /ask, that is a question for the engine workspace.
    */
-  const needsWiderAbout = !!here && !!page.data && !page.data.about.some((g) => g.id === here)
+  const needsWiderAbout = !!here && !!page.data && !(page.data.about ?? []).some((g) => g.id === here)
   const grounds = useQuery({ queryKey: ['grounds'], queryFn: groundsApi.list, enabled: needsWiderAbout })
   const about = useMemo(() => {
     const base = page.data?.about ?? []

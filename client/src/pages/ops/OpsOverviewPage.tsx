@@ -81,7 +81,7 @@ export default function OpsOverviewPage() {
   })
 
   const d = overview.data
-  const ask = (n: number) => d?.questions.find((q) => q.n === n)?.question ?? ''
+  const ask = (n: number) => d?.questions?.find((q) => q.n === n)?.question ?? ''
 
   return (
     <section className="gw-page" style={PAGE}>
@@ -157,7 +157,7 @@ export default function OpsOverviewPage() {
             <Band question={ask(4)}>
               <section style={CARD}>
                 <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '0 0 10px' }}>{d.share.says}</p>
-                {d.share.rows.map((r) => (
+                {(d.share.rows ?? []).map((r) => (
                   <div key={r.personKey} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '3px 0' }}>
                     <span style={{ fontSize: 13, width: 120, flex: 'none' }}>{r.person}</span>
                     <span style={{ fontSize: 13, fontWeight: 700, width: 84, flex: 'none', fontVariantNumeric: 'tabular-nums' }}>
@@ -169,7 +169,7 @@ export default function OpsOverviewPage() {
                     <span style={{ fontSize: 12.5, width: 40, textAlign: 'right', flex: 'none' }}>{r.share}%</span>
                   </div>
                 ))}
-                {d.share.rows.length === 0 && (
+                {(d.share.rows ?? []).length === 0 && (
                   <p style={{ fontSize: 13, color: 'var(--gw-sub)', margin: 0 }}>Nothing attributed yet.</p>
                 )}
               </section>

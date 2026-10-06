@@ -377,7 +377,7 @@ export function HomeOrChooseAnOrganisation({ home = 'list' }: { home?: 'today' |
     if (!justIn) { setGo('stay'); return }
     /* Only for somebody who belongs nowhere yet (U.4 review): an invited person already belongs to the
        organisation that invited them, and goes where the invitation leads. */
-    if ((offers.data?.byDomain.length ?? 0) > 0 && offers.data?.nowhereYet === true) setGo('welcome')
+    if ((offers.data?.byDomain?.length ?? 0) > 0 && offers.data?.nowhereYet === true) setGo('welcome')
     else if (myOrgs.length >= 2) setGo('orgs')
     else setGo('stay')
   }, [go, loaded, justIn, offers.isFetched, offers.data, myOrgs.length])

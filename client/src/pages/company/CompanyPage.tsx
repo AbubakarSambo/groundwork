@@ -102,7 +102,7 @@ function ThePage({ p }: { p: Page }) {
   return (
     <>
       <Section heading="Is the strategy moving?">
-        {p.priorities.length === 0 ? (
+        {!p.priorities?.length ? (
           <Empty>No priorities have come in from your organisation’s own systems yet.</Empty>
         ) : (
           <div className="gwui-cards-3">

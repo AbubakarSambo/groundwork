@@ -69,12 +69,12 @@ export function OnboardingBoardPage() {
           </div>
         )
       )}
-      {data && data.people.length === 0 && (
+      {data && (data.people ?? []).length === 0 && (
         <Empty title="Nobody is being set up right now." action={<Button kind="secondary" to="/start">Start a check-in</Button>}>
           Set someone up by starting a “Help a new hire get started” check-in.
         </Empty>
       )}
-      {data?.people.map(p => <ANewPerson key={p.id} p={p} />)}
+      {(data?.people ?? []).map(p => <ANewPerson key={p.id} p={p} />)}
     </Page>
   )
 }

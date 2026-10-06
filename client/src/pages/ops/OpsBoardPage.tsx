@@ -427,11 +427,11 @@ export default function OpsBoardPage() {
         * The personal panels come first. What the company is doing matters, but
         * what is waiting on YOU is the reason to open a page in the morning.
         */}
-      {board.data?.personalPanels.includes('approvals-waiting-on-you') && <WaitingOnYou />}
-      {board.data?.personalPanels.includes('your-standing') && me.data && (
+      {board.data?.personalPanels?.includes('approvals-waiting-on-you') && <WaitingOnYou />}
+      {board.data?.personalPanels?.includes('your-standing') && me.data && (
         <YourStanding personKey={me.data.key} />
       )}
-      {board.data?.personalPanels.includes('your-todos') && me.data && <YourTodos personKey={me.data.key} />}
+      {board.data?.personalPanels?.includes('your-todos') && me.data && <YourTodos personKey={me.data.key} />}
 
       {board.isLoading && <p style={{ fontSize: 13, color: 'var(--gw-sub)' }}>Working it out…</p>}
 
@@ -445,19 +445,19 @@ export default function OpsBoardPage() {
               alignItems: 'start',
             }}
           >
-            {board.data.numbers.map((n) => (
+            {(board.data.numbers ?? []).map((n) => (
               <Number key={n.key} number={n} />
             ))}
           </div>
 
-          {board.data.hiddenFromYou.length > 0 && (
+          {(board.data.hiddenFromYou ?? []).length > 0 && (
             /*
              * Said rather than silently missing. A board that quietly drops what
              * you may not see teaches you the wrong shape of the company.
              */
             <p style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 16 }}>
-              {board.data.hiddenFromYou.length} number
-              {board.data.hiddenFromYou.length === 1 ? ' on this board is' : 's on this board are'} not
+              {(board.data.hiddenFromYou ?? []).length} number
+              {(board.data.hiddenFromYou ?? []).length === 1 ? ' on this board is' : 's on this board are'} not
               yours to see.
             </p>
           )}

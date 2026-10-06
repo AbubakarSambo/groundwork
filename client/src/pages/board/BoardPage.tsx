@@ -1662,8 +1662,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     divergence: has('divergence') && allowed('divergence') && !!b.divergence,
     /* The note stands in for the block before a round has closed, so either one is enough to show. */
     whatTheRoomIsAbout: has('whatTheRoomIsAbout') && allowed('whatTheRoomIsAbout')
-      && (!!b.whatTheRoomIsAbout?.aims.length || !!b.whatTheRoomIsAbout?.places.length
-        || !!b.whatTheRoomIsAbout?.things.length || !!b.whatTheRoomIsAboutNote),
+      && (!!b.whatTheRoomIsAbout?.aims?.length || !!b.whatTheRoomIsAbout?.places?.length
+        || !!b.whatTheRoomIsAbout?.things?.length || !!b.whatTheRoomIsAboutNote),
     whoOwnsWhat: has('whoOwnsWhat') && !!b.whoOwnsWhat,
     dependencies: has('dependencies') && allowed('dependencies') && !!b.dependencies,
     checkInGrid: has('checkInGrid') && !!b.checkInGrid,
@@ -3856,9 +3856,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   </div>
                   <div className="gwui-pt-2 gwui-pb-12">
                     <RowList label="What people are trying to do">
-                    {b.whatTheRoomIsAbout.aims.length === 0 ? (
+                    {(b.whatTheRoomIsAbout.aims ?? []).length === 0 ? (
                       <Row columns="1fr" inset="list"><div className="gwui-fs-15 gwui-ink-muted">Nobody has said what they are after yet.</div></Row>
-                    ) : b.whatTheRoomIsAbout.aims.map((a) => (
+                    ) : (b.whatTheRoomIsAbout.aims ?? []).map((a) => (
                       <Row key={a.aim} columns="1fr" inset="list">
                         <div className="gwui-gap-10" style={{display: 'flex', alignItems: 'baseline'}}>
                           <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 600, flex: 1}}>{a.aim}</div>
@@ -3871,7 +3871,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   </div>
                 </Panel>
                 </div>
-                {([['Places named', b.whatTheRoomIsAbout.places], ['What it is about', b.whatTheRoomIsAbout.things]] as const).map(([label, rows]) => (
+                {([['Places named', b.whatTheRoomIsAbout.places ?? []], ['What it is about', b.whatTheRoomIsAbout.things ?? []]] as const).map(([label, rows]) => (
                   <Panel key={label} pad={false}>
                     <div className="gwui-pt-13 gwui-pr-15 gwui-pb-10 gwui-pl-15 gwui-fs-15 gwui-ink-dark gwui-rule-bottom" style={{fontWeight: 700}}>{label}</div>
                     <div className="gwui-pt-2 gwui-pb-12">

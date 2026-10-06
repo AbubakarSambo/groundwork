@@ -158,7 +158,7 @@ function CoachingSwitch() {
           </button>
           {open && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
-              {data.rows.map(r => (
+              {(data.rows ?? []).map(r => (
                 <div key={r.participantId} style={{ fontSize: 12, borderTop: '1px solid var(--gw-border)', paddingTop: 8 }}>
                   <div style={{ fontWeight: 700 }}>{r.who}{r.organisation ? ` · ${r.organisation}` : ''}{r.ground ? ` · ${r.ground}` : ''}</div>
                   <div style={{ color: 'var(--gw-muted)' }}>{r.roleAsDescribed ?? r.detectedFunction ?? 'Role not described'}{r.currentStep ? ` · next: ${r.currentStep}` : ''}</div>
@@ -944,7 +944,7 @@ function DropoffsTab({ data }: { data: UsageFunnelData }) {
         </div>
       </section>
 
-      {data.avgSessionMinutes.length > 0 && (
+      {(data.avgSessionMinutes ?? []).length > 0 && (
         <section>
           <div style={SL}>Avg session duration (min)</div>
           <div style={C}>
@@ -957,7 +957,7 @@ function DropoffsTab({ data }: { data: UsageFunnelData }) {
                 </tr>
               </thead>
               <tbody>
-                {data.avgSessionMinutes.map(row => (
+                {(data.avgSessionMinutes ?? []).map(row => (
                   <tr key={row.session}>
                     <td style={{ fontSize: 12, color: 'var(--gw-text)', padding: '4px 0', borderTop: '1px solid var(--gw-border)' }}>S{row.session}</td>
                     <td style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', textAlign: 'right', padding: '4px 0', borderTop: '1px solid var(--gw-border)' }}>{row.avgMinutes ?? ' - '}</td>
@@ -1030,11 +1030,11 @@ function PeopleInOrg({ organizationId }: { organizationId: string }) {
   if (isLoading) return <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', padding: '8px 0' }}>Loading the people…</div>
   /* Said, not swallowed: an empty panel where a list should be reads as nobody being there. */
   if (error) return <div style={{ fontSize: 11.5, color: 'var(--gw-red-t)', padding: '8px 0' }}>Could not load the people in this organisation.</div>
-  if (!data?.people.length) return <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', padding: '8px 0' }}>Nobody has a login here yet.</div>
+  if (!data?.people?.length) return <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', padding: '8px 0' }}>Nobody has a login here yet.</div>
 
   return (
     <div style={{ display: 'grid', gap: 6, paddingTop: 10, marginTop: 10, borderTop: '1px solid var(--gw-border)' }}>
-      {data.people.map((p) => (
+      {(data.people ?? []).map((p) => (
         <div key={p.id} style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', fontSize: 12 }}>
           <span style={{ fontWeight: 600, color: 'var(--gw-text)', minWidth: 110 }}>{p.name ?? '(no name given)'}</span>
           <a href={`mailto:${p.email}`} style={{ color: 'var(--gw-navy)' }}>{p.email}</a>
@@ -1110,7 +1110,8 @@ function OrgsTab({ orgs }: { orgs: OrgListItem[] }) {
 // ── Usage tab ─────────────────────────────────────────────────────────────────
 
 function UsageTab({ data }: { data: UsageStatsData }) {
-  const maxCount = Math.max(...data.sessionsLast14Days.map(d => d.count), 1)
+  const sessionsLast14Days = data.sessionsLast14Days ?? []
+  const maxCount = Math.max(...sessionsLast14Days.map(d => d.count), 1)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
@@ -1131,7 +1132,7 @@ function UsageTab({ data }: { data: UsageStatsData }) {
         <div style={SL}>Sessions - last 14 days</div>
         <div style={{ ...C, paddingBottom: 14 }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 80 }}>
-            {data.sessionsLast14Days.map(({ date, count }) => (
+            {sessionsLast14Days.map(({ date, count }) => (
               <div key={date} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
                 <div
                   title={`${count} session${count !== 1 ? 's' : ''}`}
@@ -1247,7 +1248,7 @@ function FeedbackTab({ data }: { data: FeedbackSummaryData }) {
         <Stat val={data.fairRate != null ? `${data.fairRate}%` : ' - '} label="Felt fair" accent={!!data.fairRate && data.fairRate >= 70} />
       </div>
 
-      {data.recent.length === 0 ? (
+      {(data.recent ?? []).length === 0 ? (
         <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 32 }}>Nobody has answered "did this feel fair" yet.</div>
       ) : (
         <div>
@@ -1261,7 +1262,7 @@ function FeedbackTab({ data }: { data: FeedbackSummaryData }) {
           */}
           <div style={SL}>Did it feel fair · recent answers</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {data.recent.map(f => (
+            {(data.recent ?? []).map(f => (
               <div key={f.id} style={{ ...C, borderLeft: `3px solid ${f.feltFair ? 'var(--gw-green-b)' : 'var(--gw-amber-b)'}` }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: f.note ? 5 : 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1441,7 +1442,8 @@ function InboxTab({ data, onRead }: {
   data: { messages: InboundMessage[]; unread: number }
   onRead: (id: string) => void
 }) {
-  if (!data.messages.length) {
+  const messages = data.messages ?? []
+  if (!messages.length) {
     return (
       <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.7 }}>
         Nothing has come in yet. Mail to hello@myground.work lands here once Resend is forwarding it
@@ -1453,11 +1455,11 @@ function InboxTab({ data, onRead }: {
   return (
     <div>
       <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginBottom: 12 }}>
-        {data.unread} unread of {data.messages.length}. Reply from your own mail - this is here so
+        {data.unread} unread of {messages.length}. Reply from your own mail - this is here so
         nothing sits unseen.
       </div>
       <div style={{ display: 'grid', gap: 8 }}>
-        {data.messages.map(m => (
+        {messages.map(m => (
           <div key={m.id} style={{
             border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px',
             background: m.readAt ? 'var(--gw-bg)' : 'white',
@@ -1519,7 +1521,8 @@ function CallRequestsTab({ data, onAnswered }: {
   data: { requests: CallRequestRow[] }
   onAnswered: (id: string) => void
 }) {
-  if (!data.requests.length) {
+  const requests = data.requests ?? []
+  if (!requests.length) {
     return (
       <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.7 }}>
         Nobody is waiting on a call. Requests arrive here from the pricing page, the Connect page and
@@ -1531,11 +1534,11 @@ function CallRequestsTab({ data, onAnswered }: {
   return (
     <div>
       <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginBottom: 12 }}>
-        {data.requests.length} waiting. Ring them, agree what it costs, and invoice it afterwards -
+        {requests.length} waiting. Ring them, agree what it costs, and invoice it afterwards -
         nothing here charges anybody.
       </div>
       <div style={{ display: 'grid', gap: 8 }}>
-        {data.requests.map(r => (
+        {requests.map(r => (
           <div key={r.id} style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px', background: 'white' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 3 }}>
               <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--gw-navy)' }}>

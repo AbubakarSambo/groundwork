@@ -92,7 +92,7 @@ export function ReviewsBoardPage() {
         )
       )}
 
-      {data && data.next.length === 0 && (
+      {data && (data.next ?? []).length === 0 && (
         <Section heading="The next reviews">
           <Empty>No reviews are due yet.</Empty>
         </Section>

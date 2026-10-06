@@ -112,7 +112,7 @@ export function HowItIsGoing({ summary, brief, glance, tone = 'light', waitingTo
       (the founder's own check-in board, among any other one-person check-in) - see `answeredSentence`. */
   readerIsTheOnlyPerson?: boolean
 }) {
-  const late = (glance?.inTheWay.count ?? 0) > 0
+  const late = (glance?.inTheWay?.count ?? 0) > 0
   const vars = tone === 'dark'
     ? {
         ['--gwui-how-story' as any]: BOARD_BODY_INK,

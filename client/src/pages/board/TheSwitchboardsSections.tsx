@@ -444,7 +444,7 @@ export function ByAreaSection({ data, kindOfWork }: { data: BoardPresent['byArea
   return (
     <Section heading={heading}>
       <Panel pad={false}>
-        {data.areas.map((a) => (
+        {(data.areas ?? []).map((a) => (
           <div key={a.area} className="gwui-panel-row">
             <Stack gap={2}>
               <p className="gwui-panel-text" style={{ fontWeight: 700 }}>{a.area}</p>
@@ -628,7 +628,7 @@ export function WhereTheMatterStandsSection({ data }: { data: BoardPresent['wher
   return (
     <Section heading={data.heading}>
       <Stack gap={6}>
-        {data.says.map((line, i) => (
+        {(data.says ?? []).map((line, i) => (
           <p key={i} className="gwui-panel-text">{line}</p>
         ))}
       </Stack>
@@ -714,7 +714,7 @@ export function WhereTheCohortStandsSection({ data }: { data: BoardPresent['wher
   return (
     <Section heading={data.heading} note={data.says}>
       <Panel pad={false}>
-        {data.groups.map((g) => (
+        {(data.groups ?? []).map((g) => (
           <div key={g.group} className="gwui-panel-row">
             {'state' in g && g.state === 'not-known' ? (
               <Note tone="muted">{g.why}</Note>
@@ -842,7 +842,7 @@ export function ReportedAgainstCriteriaSection({ data, kindOfWork }: { data: Boa
   return (
     <Section heading={heading} note={data.why}>
       <Panel pad={false}>
-        {data.stages.map((s) => (
+        {(data.stages ?? []).map((s) => (
           <div key={s.stage} className="gwui-panel-row">
             <p className="gwui-panel-text">{s.says}</p>
           </div>
@@ -868,7 +868,7 @@ export function WhereThisIsHeadingSection({ data, onRecordTheDecision }: {
         {/* Board review, sales piece C, item 7: the prototype labels this list "The possible
             outcomes" (board-as-lead.txt), the same way the two lists under it are each labelled -
             this had neither, so three outcomes read as an unheaded list above two headed ones. */}
-        {data.outcomes.length > 0 ? (
+        {(data.outcomes ?? []).length > 0 ? (
           <Stack gap={6}>
             <Note tone="muted">The possible outcomes</Note>
             {/*
@@ -877,7 +877,7 @@ export function WhereThisIsHeadingSection({ data, onRecordTheDecision }: {
               carries `more`, its own second sentence - this used to read only `says`, leaving the
               detail behind each outcome unread wherever this draws, not only on this one board.
             */}
-            <SentenceRows rows={data.outcomes.map((o) => ({ id: o.value, says: o.says, because: o.more }))} />
+            <SentenceRows rows={(data.outcomes ?? []).map((o) => ({ id: o.value, says: o.says, because: o.more }))} />
           </Stack>
         ) : (
           data.outcomesSays && <Note tone="muted">{data.outcomesSays}</Note>
@@ -886,8 +886,8 @@ export function WhereThisIsHeadingSection({ data, onRecordTheDecision }: {
           <div className="gwui-panel-row">
             <Stack gap={6}>
               <Note tone="muted">The signals behind them</Note>
-              {data.signals.length > 0 ? (
-                data.signals.map((s, i) => (
+              {(data.signals ?? []).length > 0 ? (
+                (data.signals ?? []).map((s, i) => (
                   <Stack gap={2} key={i}>
                     <p className="gwui-panel-text">{s.says}</p>
                     <Note tone="muted">{s.from}</Note>
@@ -901,8 +901,8 @@ export function WhereThisIsHeadingSection({ data, onRecordTheDecision }: {
           <div className="gwui-panel-row">
             <Stack gap={6}>
               <Note tone="muted">What would settle it</Note>
-              {data.whatWouldSettleIt.length > 0 ? (
-                data.whatWouldSettleIt.map((w, i) => <p className="gwui-panel-text" key={i}>{w}</p>)
+              {(data.whatWouldSettleIt ?? []).length > 0 ? (
+                (data.whatWouldSettleIt ?? []).map((w, i) => <p className="gwui-panel-text" key={i}>{w}</p>)
               ) : (
                 <Note tone="muted">{data.whatWouldSettleItSays}</Note>
               )}

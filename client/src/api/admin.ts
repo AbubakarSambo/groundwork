@@ -116,7 +116,7 @@ export const adminApi = {
     apiClient.get<{ checkedAt: string; flaggedCount: number; rows: { table: string; writer: string; count: number | null; lastWrite: string | null; shippedAt: string | null; flagged: boolean; needs?: string; error?: string }[] }>('/admin/writers').then(r => r.data),
   /** Every organisation that has asked for the API — ours among them. */
   getApiAccessRequests: () =>
-    apiClient.get<ApiAccessRequest[]>('/admin/api-access').then(r => r.data),
+    apiClient.get<ApiAccessRequest[]>('/admin/api-access').then(r => (Array.isArray(r.data) ? r.data : [])),
 
   decideApiAccess: (id: string, status: ApiAccessRequest['status'], note?: string) =>
     apiClient.patch(`/admin/api-access/${id}`, { status, note }).then(r => r.data),
@@ -149,7 +149,7 @@ export const adminApi = {
    * See the API's three-months-on-the-house.
    */
   listFreeRuns: () =>
-    apiClient.get<FreeRunRow[]>('/admin/free-runs').then(r => r.data),
+    apiClient.get<FreeRunRow[]>('/admin/free-runs').then(r => (Array.isArray(r.data) ? r.data : [])),
 
   grantFreeRun: (body: { email: string; months?: number; plan?: string; note?: string }) =>
     apiClient.post<FreeRunRow>('/admin/free-runs', body).then(r => r.data),
@@ -158,7 +158,7 @@ export const adminApi = {
     apiClient.post(`/admin/free-runs/${id}/withdraw`).then(r => r.data),
 
   getPricing: () =>
-    apiClient.get<PricingPlanRow[]>('/admin/pricing').then(r => r.data),
+    apiClient.get<PricingPlanRow[]>('/admin/pricing').then(r => (Array.isArray(r.data) ? r.data : [])),
 
   getFreeGroundLimit: () =>
     apiClient.get<{ freeGroundLimit: number }>('/admin/pricing/free-ground-limit').then(r => r.data),
@@ -188,7 +188,7 @@ export const adminApi = {
 
   /** Either field alone, or both. `memberCap: null` means unlimited, which is a value not an absence. */
   setPlanLimits: (plan: SubscriptionPlan, body: { amountCents?: number; memberCap?: number | null }) =>
-    apiClient.patch<PricingPlanRow[]>(`/admin/pricing/${plan}`, body).then(r => r.data),
+    apiClient.patch<PricingPlanRow[]>(`/admin/pricing/${plan}`, body).then(r => (Array.isArray(r.data) ? r.data : [])),
 
   /**
    * `setPricing` USED TO SIT HERE, AND IT WAS `setPlanLimits` WITH ONE FIELD. W-UX-C.

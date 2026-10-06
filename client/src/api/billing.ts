@@ -334,7 +334,7 @@ export const billingApi = {
     apiClient.post<{ ok: boolean; message: string; sessionsAdded?: number }>('/billing/contributor-codes/redeem', { code, groundId }).then(r => r.data),
 
   getContributorCodes: () =>
-    apiClient.get<ContributorCode[]>('/billing/contributor-codes').then(r => r.data),
+    apiClient.get<ContributorCode[]>('/billing/contributor-codes').then(r => (Array.isArray(r.data) ? r.data : [])),
 
   getContributorCodeShareCard: (codeId: string) =>
     apiClient.get<CodeShareCard>(`/billing/contributor-codes/${codeId}/share-card`).then(r => r.data),

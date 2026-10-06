@@ -36,7 +36,7 @@ export function OpsContributionPage() {
   })
 
   /* Everybody's, where the caller may; otherwise just their own. */
-  const canSeeAll = me.data?.capabilities.includes('commercial:read-all') ?? false
+  const canSeeAll = me.data?.capabilities?.includes('commercial:read-all') ?? false
   const keys = canSeeAll ? (people.data ?? []).map((p) => p.key) : me.data ? [me.data.key] : []
 
   const ledgers = useQuery({
@@ -80,7 +80,7 @@ export function OpsContributionPage() {
           <p style={LABEL}>Share of new revenue created</p>
           <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '4px 0 10px' }}>{share.data.says}</p>
 
-          {share.data.rows.map((r) => (
+          {(share.data.rows ?? []).map((r) => (
             <div key={r.personKey} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '4px 0' }}>
               <span style={{ fontSize: 13.5, width: 120, flex: 'none' }}>{r.person}</span>
               <span style={{ fontSize: 13.5, fontWeight: 700, width: 90, flex: 'none', fontVariantNumeric: 'tabular-nums' }}>
@@ -105,7 +105,7 @@ export function OpsContributionPage() {
             </p>
           )}
 
-          {share.data.rows.length === 0 && (
+          {(share.data.rows ?? []).length === 0 && (
             <p style={{ fontSize: 13, color: 'var(--gw-sub)', margin: 0 }}>
               Nothing attributed in this window.
             </p>

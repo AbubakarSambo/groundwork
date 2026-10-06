@@ -87,8 +87,8 @@ export function OpsQuarterPage() {
   })
 
   const qc = useQueryClient()
-  const maySet = me.data?.capabilities.includes('objectives:write') ?? false
-  const mayOpen = me.data?.capabilities.includes('periods:write') ?? false
+  const maySet = me.data?.capabilities?.includes('objectives:write') ?? false
+  const mayOpen = me.data?.capabilities?.includes('periods:write') ?? false
 
   /* THE GATE ON OPENING THE PERIOD, asked as a question rather than discovered
      by pressing the button. Everybody sees it: the answer is a list of names,
@@ -171,7 +171,7 @@ export function OpsQuarterPage() {
         <section style={{ ...CARD, marginBottom: 14 }}>
           <p style={LABEL}>What this period is aimed at</p>
           <p style={{ fontSize: 14, margin: '5px 0 0' }}>{aim.data.says}</p>
-          {aim.data.disagreements.map((d) => (
+          {(aim.data.disagreements ?? []).map((d) => (
             /* Said, never refused. Eight companies against three in the
                pipeline may be the target rather than a mistake — which it is
                belongs to whoever set it. */
@@ -761,7 +761,7 @@ export function OpsSpendPage() {
             />
           </div>
 
-          {balance.data.nobodyCanApprove.map((e) => (
+          {(balance.data.nobodyCanApprove ?? []).map((e) => (
             <p key={e.id} style={{ fontSize: 12.5, color: 'var(--gw-red-t)', margin: '8px 0 0' }}>
               {e.description} ({money(e.amount)}) - {e.why}
             </p>
@@ -1049,7 +1049,7 @@ export function OpsRequestsPage() {
   const requests = useQuery({ queryKey: ['ops', 'requests'], queryFn: opsApi.requests, retry: false })
   const people = useQuery({ queryKey: ['ops', 'people'], queryFn: opsApi.people, retry: false })
 
-  const mayDecide = me.data?.capabilities.includes('resourcing:approve') ?? false
+  const mayDecide = me.data?.capabilities?.includes('resourcing:approve') ?? false
   const nameFor = (id: string) =>
     (people.data ?? []).find((p) => p.id === id)?.displayName ?? 'somebody no longer here'
 

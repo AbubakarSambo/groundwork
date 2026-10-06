@@ -64,8 +64,8 @@ export function RoleMapPage() {
         )
       )}
 
-      {data && data.roles.length === 0 && <Empty>No roles are known yet.</Empty>}
-      {data && data.roles.length > 0 && (
+      {data && (data.roles ?? []).length === 0 && <Empty>No roles are known yet.</Empty>}
+      {data && (data.roles ?? []).length > 0 && (
         <>
           <Panel>
             <table className="gwui-record-table">
@@ -73,7 +73,7 @@ export function RoleMapPage() {
                 <tr><th scope="col">Role</th><th scope="col">What it owns</th><th scope="col">Who holds it</th></tr>
               </thead>
               <tbody>
-                {data.roles.map(r => {
+                {(data.roles ?? []).map(r => {
                   const nobody = r.heldBy.length === 0
                   return (
                     <tr key={r.name}>
@@ -93,7 +93,7 @@ export function RoleMapPage() {
               </tbody>
             </table>
           </Panel>
-          {data.nobody.map(n => (
+          {(data.nobody ?? []).map(n => (
             <p key={n.name} className="gwui-panel-text">{`Nobody owns ${inASentence(n.name)}.${n.why ? ` ${n.why}` : ''}`}</p>
           ))}
         </>

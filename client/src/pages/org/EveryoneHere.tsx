@@ -320,7 +320,7 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
               </ShowAFew>
             </PeopleTable>
           )}
-          {data?.meta.total != null && data.meta.total > everybody.length && (
+          {data?.meta?.total != null && data.meta.total > everybody.length && (
             <Note>{`Showing ${everybody.length} of ${data.meta.total} people.`}</Note>
           )}
         </Stack>

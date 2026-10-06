@@ -170,7 +170,7 @@ export const integrationsApi = {
   docsLink: () =>
     apiClient.get<{ path: string; expiresInMinutes: number }>('/integrations/credentials/docs-link').then(r => r.data),
 
-  listCredentials: () => apiClient.get<Credential[]>('/integrations/credentials').then(r => r.data),
+  listCredentials: () => apiClient.get<Credential[]>('/integrations/credentials').then(r => (Array.isArray(r.data) ? r.data : [])),
   issueCredential: (name: string, scopes: string[]) =>
     apiClient.post<IssuedCredential>('/integrations/credentials', { name, scopes }).then(r => r.data),
   /**
@@ -196,7 +196,7 @@ export const integrationsApi = {
   /** `deprecated` maps an old event name to the one to subscribe to instead (B13). */
   webhookEvents: () =>
     apiClient.get<{ available: string[]; notYetEmitted: string[]; deprecated?: Record<string, string> }>('/integrations/webhooks/events').then(r => r.data),
-  listEndpoints: () => apiClient.get<WebhookEndpoint[]>('/integrations/webhooks/endpoints').then(r => r.data),
+  listEndpoints: () => apiClient.get<WebhookEndpoint[]>('/integrations/webhooks/endpoints').then(r => (Array.isArray(r.data) ? r.data : [])),
   registerEndpoint: (url: string, events: string[]) =>
     apiClient.post<WebhookEndpoint & { secret: string }>('/integrations/webhooks/endpoints', { url, events }).then(r => r.data),
   removeEndpoint: (id: string) =>
@@ -208,7 +208,7 @@ export const integrationsApi = {
     apiClient.post<{ id: string; active: boolean }>(`/integrations/webhooks/endpoints/${id}/reactivate`, {}).then(r => r.data),
   /* Where we tell you. Routes existed with no caller; a notice engine with five live call sites read an
      empty table for every organisation because nothing could write a row. */
-  workspaceNotifiers: () => apiClient.get<WorkspaceNotifier[]>('/integrations/workspace').then(r => r.data),
+  workspaceNotifiers: () => apiClient.get<WorkspaceNotifier[]>('/integrations/workspace').then(r => (Array.isArray(r.data) ? r.data : [])),
   connectWorkspace: (kind: 'slack' | 'teams', url: string, channelSaid?: string) =>
     apiClient.post<{ kind: string; channelSaid: string | null; enabled: boolean }>(`/integrations/workspace/${kind}`, { url, channelSaid }).then(r => r.data),
   testWorkspace: (kind: 'slack' | 'teams') =>
@@ -226,7 +226,7 @@ export const integrationsApi = {
   setUpEmbed: (body: { allowedDomains: string[]; placement: 'floating' | 'anchor'; outOfScopeDepartments: string[] }) =>
     apiClient.post<EmbedConfig & { signingSecret: string }>('/integrations/embed', body).then(r => r.data),
   deliveries: (status?: string) =>
-    apiClient.get<WebhookDelivery[]>(`/integrations/webhooks/deliveries${status ? `?status=${status}` : ''}`).then(r => r.data),
+    apiClient.get<WebhookDelivery[]>(`/integrations/webhooks/deliveries${status ? `?status=${status}` : ''}`).then(r => (Array.isArray(r.data) ? r.data : [])),
   replay: (id: string) =>
     apiClient.post<{ replayed: boolean; delivered: boolean }>(`/integrations/webhooks/deliveries/${id}/replay`, {}).then(r => r.data),
 }
