@@ -15,7 +15,7 @@
 
 /** Added to the report's instructions when the check-in is set to use simpler words. Nothing else about the report changes. */
 export const THE_REPORT_IN_SIMPLER_WORDS =
-  'THIS CHECK-IN USES SIMPLER WORDS, FOR EVERYBODY IN IT. Write every sentence of the report in short sentences, one idea in each, using everyday words that a person with basic English knows. Use no idioms and no figures of speech. Keep every fact, number, name and quote exactly as it is: simpler words never mean fewer facts.';
+  'THIS CHECK-IN USES SIMPLER WORDS, FOR EVERYBODY IN IT. Write every sentence of the report in short sentences, one idea in each, using everyday words that a person with basic English knows. Use no idioms and no figures of speech. Keep every fact, number, name and quote exactly as it is: simpler words never mean fewer facts. Where you are not quoting the person, do not use work words such as pipeline, bottleneck, escalate or escalation. Say what happened instead: "sales not yet closed", "what is holding the work up", "asked somebody more senior".';
 
 /** What WhatsApp says when the person writes "finish" and the check-in is closed. */
 export function theCheckInIsCompleteSaying(simplerWords?: boolean | null): string {
