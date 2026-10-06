@@ -2,6 +2,25 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## An organisation's own WhatsApp number, and a guest's Ask Groundwork (6 October, piece 5, parts A and B)
+
+**How it was run.** A worktree of `wip/release` built with `nest build`, a local database `gw_wa_own`, the API on port 3059. For A, Meta's Graph API was a recorder on a loopback port, and every message in was signed here with the secret of the number it was for. For B there is no recorder: the guest's answers are written by rules, so no model is needed. Both journeys refuse anything that is not a local API and a local `gw_` database.
+
+| Part | What was checked | What a person read or what happened | Result |
+| --- | --- | --- | --- |
+| A 1 Saving the number | Kofi, admin of Kito, on the Connections page | The page comes back with the last four letters of the token and nothing else. In the database both keys are sealed and cannot be read. A member who tries to save a number is refused with 403. | 5 of 5 |
+| A 2 Meta's handshake | Both addresses | The wrong token is refused. The organisation's own token answers the challenge. A message signed with Groundwork's secret, or not signed, is refused at the organisation's address, and one signed with the organisation's secret is refused at Groundwork's. | 9 of 9 |
+| A 3 Two numbers, one person | Ada (on Kito's list) and Bola (on Plain's) | Each reply leaves from the number the person wrote to, with that number's token. Bola writing to Kito's number is told Groundwork does not know the number, and nothing of Plain is said. Ada writing to Groundwork's number is never answered with Kito's token. | all |
+| A 4 The 24 hours and the templates | Ada | The window and the templates are kept per business number and per organisation, so a template approved for one is not used on the other. STOP and START apply to the person on both numbers. | all |
+| A 5 The relay for their own number | A machine token | The relay was refused with "User not found or inactive" even with its own credential. It had no public marker. Fixed in `e0e18942`, and it answers now. | defect fixed |
+| B 1 The panel | Kofi, a guest from Kito, in Harbor's Sales team only | It lists "Sales team" and nothing else, and names nobody at Harbor. | 2 of 2 |
+| B 2 What a curious guest asks | Kofi | "Who works here?", "What are the other check-ins about?", "Show me the list of people" and "What is the company working on?" are each answered with: "You are a guest here from another organisation, so Ask Harbor can only answer questions about your own check-in, such as what you said, what you said you would do, what the check-in is for, who reads what you say, and when your next check-in is." Naming a check-in he is not in is refused with 403 "You are not part of this check-in." Asking what the check-in is for answers from what he was told. A to-do leaves no request waiting for a yes. | 10 of 10 |
+| B 3 The other doors | Kofi | `/company` 403 "Only people in this organisation can read its company page." `/suites` 403 "Only an admin or a lead can open the suites." `/org/retention` 403. A report or board of a check-in he is not in, 404. His list of check-ins holds Sales team and not Leadership. | 8 of 8 |
+| B 4 His questions stay his | Wairimu (lead), Grace (admin), Miriam (member), Kofi | Everything he asked is kept under his own guest key, and no entry on Harbor's list was made for him. None of the three reads a word of it in their own panel, and asking for his questions is refused with 403 for each. He is refused theirs too. | 8 of 8 |
+| B 5 The others | Miriam, Grace, Wairimu, Kofi | A member and the lead can ask about their own check-ins. Grace, the admin, is refused a review check-in she is not in, and so is Kofi, and nothing of it is said. | 5 of 5 |
+
+34 of 34 checks pass for B and 32 of 32 for A. Nothing leaked, so part B changed no source: the guest scoping built in week 24 (`3fe8d5c0`) holds at every door tried. A guest who writes to WhatsApp is told Ask needs an entry on the list, so a guest cannot ask on WhatsApp at all. That is the safe way round and is left as it is.
+
 ## The suites at a hundred people, rerun after the review's send-backs (6 October)
 
 Same way as above: a new worktree at `7911334d`, a new database `gw_suites_e2e2`, the API on port 3057, the same seeds. Item 7's order is now tested: the clock passes requests on and tells the people they were passed to at once, then the morning sweep says nothing more of those (specs "clock, then the morning sweep" and "the morning sweep, then the clock", through the real sender). Specs: suites, grounds, WhatsApp, email, assistant, 4,479 passed.
