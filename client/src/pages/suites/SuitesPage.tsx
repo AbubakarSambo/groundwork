@@ -201,6 +201,19 @@ function ASuite({ s, people, forYou }: { s: AdminSuite; people: SuitesForAnAdmin
     setAnswers(startFrom(s))
     setAsking(true)
   }
+  /*
+   * "SEE OR CHANGE ITS SETTINGS" (screen fault 6). A suite already on, with questions of its own,
+   * used to offer no way back into them - only the switch, which turns the suite off rather than
+   * opening them. `GET /suites` already serves every suite's own stored answers (`s.answers`,
+   * read by `startFrom` below), and `PUT /suites/:key` already accepts `{ on: true, answers }` to
+   * save them without touching the switch, so this opens the same form, filled in, and saves
+   * through the same call `pressed` already uses to switch on - it just never sends `on: false`.
+   */
+  function openSettings() {
+    setProblem(null)
+    setAnswers(startFrom(s))
+    setAsking(true)
+  }
   const allAnswered = s.questions.every(q => (answers[q.id] ?? '').trim() !== '')
 
   return (
@@ -210,6 +223,9 @@ function ASuite({ s, people, forYou }: { s: AdminSuite; people: SuitesForAnAdmin
           <h3 className="gwui-panel-heading">{s.name}</h3>
           <p className="gwui-panel-text">{s.line}</p>
           {s.on && BOARDS[s.key] && <Link className="gwui-plain-link" to={forYou && s.key === 'spend' ? '/suite/spend/finance' : BOARDS[s.key].to}>{forYou && s.key === 'spend' ? 'Open the requests for finance' : 'Open its board'}</Link>}
+          {s.on && s.questions.length > 0 && !asking && (
+            <Button kind="quiet" size="small" onClick={openSettings}>See or change its settings</Button>
+          )}
         </div>
         <div className="gwui-suite-switch">
           <Tag>{s.on ? 'On' : 'Off'}</Tag>
@@ -222,13 +238,13 @@ function ASuite({ s, people, forYou }: { s: AdminSuite; people: SuitesForAnAdmin
           className="gwui-suite-ask"
           onSubmit={e => { e.preventDefault(); if (allAnswered) flip.mutate({ on: true, given: answers }) }}
         >
-          <p className="gwui-panel-text">Answer these first, and it switches on.</p>
+          <p className="gwui-panel-text">{s.on ? 'Change your answers below, then save them.' : 'Answer these first, and it switches on.'}</p>
           {s.questions.map(q => (
             <AQuestion key={q.id} suite={s.key} q={q} value={answers[q.id] ?? ''} people={people}
               onChange={v => setAnswers(a => ({ ...a, [q.id]: v }))} />
           ))}
           <div className="gwui-edge-acts">
-            <Button kind="primary" size="small" type="submit" disabled={!allAnswered || flip.isPending}>Switch it on</Button>
+            <Button kind="primary" size="small" type="submit" disabled={!allAnswered || flip.isPending}>{s.on ? 'Save' : 'Switch it on'}</Button>
             <Button kind="quiet" size="small" onClick={() => { setAsking(false); setProblem(null) }}>Cancel</Button>
           </div>
         </form>

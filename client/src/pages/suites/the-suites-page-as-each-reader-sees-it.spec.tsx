@@ -148,6 +148,58 @@ describe('Grace, an admin, reads the Suites page', () => {
     expect(screen.queryByRole('link', { name: 'Open its board' })).toBeNull()
   })
 
+  /*
+   * SCREEN FAULT 6: a suite that was switched on, with questions of its own, offered no way back
+   * into them - only the switch, which would turn it off. "See or change its settings" opens the
+   * same form, filled in with what is already on record (`GET /suites`' own `answers`), and saves
+   * through the same PUT /suites/:key the switch itself uses, with `on` left exactly as it is.
+   */
+  it('a suite that is on, with questions, offers "See or change its settings"', async () => {
+    open(GRACE, withOn('leave', { days: 21, approver: 'Their manager' }))
+    await screen.findByRole('heading', { level: 2, name: 'People' })
+    const c = card('Leave requests')
+    expect(within(c).getByRole('button', { name: 'See or change its settings' })).toBeInTheDocument()
+  })
+
+  it('a suite that is on, with no questions, offers no such door - there is nothing to see', async () => {
+    open(GRACE, withOn('todos'))
+    await screen.findByRole('heading', { level: 2, name: 'People' })
+    expect(within(card('To-dos')).queryByRole('button', { name: 'See or change its settings' })).toBeNull()
+  })
+
+  it('a suite that is off offers no such door either', async () => {
+    open(GRACE, GRACES)
+    await screen.findByRole('heading', { level: 2, name: 'People' })
+    expect(within(card('Leave requests')).queryByRole('button', { name: 'See or change its settings' })).toBeNull()
+  })
+
+  it('opens the same form, filled in with what is on record, and saves it with the switch left on', async () => {
+    open(GRACE, withOn('leave', { days: 21, approver: 'Their manager' }))
+    await screen.findByRole('heading', { level: 2, name: 'People' })
+    const c = card('Leave requests')
+    fireEvent.click(within(c).getByRole('button', { name: 'See or change its settings' }))
+    expect(within(c).getByText('Change your answers below, then save them.')).toBeInTheDocument()
+    expect(within(c).getByLabelText('How many days of leave does each person have in a year?')).toHaveValue(21)
+    expect(within(c).getByLabelText('Who approves a request for time off?')).toHaveValue('Their manager')
+    fireEvent.change(within(c).getByLabelText('How many days of leave does each person have in a year?'), { target: { value: '25' } })
+    ;(suitesApi.switch as any).mockResolvedValue(withOn('leave', { days: 25, approver: 'Their manager' }))
+    fireEvent.click(within(c).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(suitesApi.switch).toHaveBeenCalledWith('leave', true, { days: '25', approver: 'Their manager' }))
+    /* Still on throughout - this never sent `on: false`. */
+    await waitFor(() => expect(within(card('Leave requests')).getByRole('switch')).toHaveAttribute('aria-checked', 'true'))
+  })
+
+  it('"Cancel" leaves its answers exactly as they were, and sends nothing', async () => {
+    open(GRACE, withOn('leave', { days: 21, approver: 'Their manager' }))
+    await screen.findByRole('heading', { level: 2, name: 'People' })
+    const c = card('Leave requests')
+    fireEvent.click(within(c).getByRole('button', { name: 'See or change its settings' }))
+    fireEvent.change(within(c).getByLabelText('How many days of leave does each person have in a year?'), { target: { value: '25' } })
+    fireEvent.click(within(c).getByRole('button', { name: 'Cancel' }))
+    expect(within(c).queryByText('Change your answers below, then save them.')).toBeNull()
+    expect(suitesApi.switch).not.toHaveBeenCalled()
+  })
+
   it('reads "Already part of Groundwork", each with a link to where it lives', async () => {
     open(GRACE, GRACES)
     const region = await screen.findByRole('region', { name: 'Already part of Groundwork' })
