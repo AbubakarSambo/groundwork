@@ -73,8 +73,8 @@ export function TodosPage() {
         )
       )}
 
-      {data && data.people.length === 0 && <Empty>Nobody has anything on their list yet.</Empty>}
-      {data && data.people.map(p => (
+      {data && (data.people ?? []).length === 0 && <Empty>Nobody has anything on their list yet.</Empty>}
+      {data && (data.people ?? []).map(p => (
         <Section key={p.name} heading={p.name}>
           <RowList label={p.name}>
             {p.todos.map(t => (

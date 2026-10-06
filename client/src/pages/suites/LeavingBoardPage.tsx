@@ -78,13 +78,13 @@ export function LeavingBoardPage() {
 
       {data && (
         <>
-          {data.lists.length === 0 && <Empty>Nobody is leaving.</Empty>}
-          {data.lists.map(l => <AList key={l.id} l={l} owners={data.owners} onDone={done} onFailed={failed} />)}
+          {(data.lists ?? []).length === 0 && <Empty>Nobody is leaving.</Empty>}
+          {(data.lists ?? []).map(l => <AList key={l.id} l={l} owners={data.owners} onDone={done} onFailed={failed} />)}
 
-          {data.departures.length > 0 && (
+          {(data.departures ?? []).length > 0 && (
             <Section heading="Already left, with no list yet">
               <RowList label="Already left, with no list yet">
-                {data.departures.map(d => (
+                {(data.departures ?? []).map(d => (
                   <Row key={d.personId} columns="minmax(0, 1fr) auto">
                     <b>{`${d.name} left on ${longDay(d.departedOn)}.`}</b>
                     <Button kind="secondary" size="small" onClick={() => start.mutate({ personId: d.personId, lastDay: d.departedOn })}
@@ -97,10 +97,10 @@ export function LeavingBoardPage() {
 
           <StartAList people={data.people} onStart={(personId, lastDay) => start.mutate({ personId, lastDay })} busy={start.isPending} />
 
-          {data.strain.length > 0 && (
+          {(data.strain ?? []).length > 0 && (
             <Section heading="Signs a team is under strain">
               <Panel>
-                {data.strain.map((s, i) => <p key={i} className="gwui-panel-text">{s.says}</p>)}
+                {(data.strain ?? []).map((s, i) => <p key={i} className="gwui-panel-text">{s.says}</p>)}
                 <p className="gwui-panel-text-muted">This is shown for the team, never for one named person, and nobody is scored.</p>
               </Panel>
             </Section>

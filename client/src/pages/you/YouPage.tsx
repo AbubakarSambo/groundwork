@@ -83,7 +83,7 @@ export function YouPage() {
 
   return (
     <Page>
-      <PageTitle title="You" subtitle={data ? theYouSubtitle(data.checkIns) : 'What’s yours, across your check-ins. Only you see this page.'} />
+      <PageTitle title="You" subtitle={data ? theYouSubtitle(data.checkIns ?? []) : 'What’s yours, across your check-ins. Only you see this page.'} />
 
       {isLoading && <Note>Loading…</Note>}
       {isError && (
@@ -102,8 +102,15 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
   /* "Your work in each" (below) is the one list here that carries each check-in's own id, so it is
      the one list that can reliably be told apart when two share a label - the same check this
      page's sidebar already makes for its own list (tell-apart-the-same-name.ts). */
-  const checkInsWithDates = b.checkIns.map(c => ({ id: c.id, label: c.label, ...startOf.get(c.id) }))
-  const nothingYet = b.checkIns.length === 0 && b.todos.length === 0
+  const checkIns = b.checkIns ?? []
+  const goals = b.goals ?? []
+  const todos = b.todos ?? []
+  const saidYoudDo = b.saidYoudDo ?? []
+  const ownReports = b.ownReports ?? []
+  const turns = b.turns ?? []
+  const askedOfYouItems = b.askedOfYou?.items ?? []
+  const checkInsWithDates = checkIns.map(c => ({ id: c.id, label: c.label, ...startOf.get(c.id) }))
+  const nothingYet = checkIns.length === 0 && todos.length === 0
   const myPatterns = (b.patterns ?? []).filter((p) => p.yours !== false)
   return (
     <>
@@ -141,12 +148,12 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
           </div>
         ) : null}
 
-        {(b.goals.length > 0 || b.todos.length > 0 || !!b.contributed?.length) && (
+        {(goals.length > 0 || todos.length > 0 || !!b.contributed?.length) && (
           <div className="gwui-cards-3">
-            {b.goals.length > 0 && (
+            {goals.length > 0 && (
               <Panel as="section" heading="Your goals">
                 <ul className="gwui-panel-list">
-                  {b.goals.map(g => (
+                  {goals.map(g => (
                     <li key={g.id}>
                       {g.says}
                       {g.checkIn && <p className="gwui-panel-text-muted">{g.checkIn}</p>}
@@ -155,10 +162,10 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
                 </ul>
               </Panel>
             )}
-            {b.todos.length > 0 && (
+            {todos.length > 0 && (
               <Panel as="section" heading="Your to-dos">
                 <ul className="gwui-panel-list">
-                  {b.todos.map(t => <li key={t.id}>{t.text}{t.when ? <span className="gwui-ink-sub"> {t.when}</span> : null}</li>)}
+                  {todos.map(t => <li key={t.id}>{t.text}{t.when ? <span className="gwui-ink-sub"> {t.when}</span> : null}</li>)}
                 </ul>
               </Panel>
             )}
@@ -176,7 +183,7 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
           </Panel>
         )}
 
-        {b.turns.length > 0 && (
+        {turns.length > 0 && (
           <section className="gwui-first-run" aria-label="Your turn">
             {/* THE PROTOTYPE'S OWN CARD (you-board-miriam.jpg: "Your sales check-in closes at 6pm /
                 About two minutes." in its own box, a dark 2px inset edge, navy "Start it") - the
@@ -185,12 +192,12 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
                 ONE NAVY BUTTON (Hafsah, 30 September; TodayPage.tsx, "only the first 'Start it' is
                 navy"): with more than one turn open, only the first "Start it" stays navy - the
                 rest are white, the same rule Today applies to its own repeated "Start it". */}
-            {b.turns.map((t, i) => (
+            {turns.map((t, i) => (
               <div key={t.key} className="gwui-welcome-card">
                 <div className="gwui-welcome-card-head">
                   <span className="gwui-edge-h">{t.title}</span>
                   <Button
-                    kind={t.action.label === 'Start it' && i === b.turns.findIndex(m => m.action.label === 'Start it') ? 'primary' : 'secondary'}
+                    kind={t.action.label === 'Start it' && i === turns.findIndex(m => m.action.label === 'Start it') ? 'primary' : 'secondary'}
                     size="small"
                     to={t.action.to}
                   >
@@ -204,14 +211,14 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
         )}
       </Section>
 
-      {!!b.askedOfYou?.items.length && (
+      {!!askedOfYouItems.length && (
         <Section
           heading="Everything asked of you this week"
           note="From every check-in you’re in. Only you see this."
-          foot={b.askedOfYou.says}
+          foot={b.askedOfYou?.says}
         >
           <RowList label="Everything asked of you this week">
-            {b.askedOfYou.items.map(a => (
+            {askedOfYouItems.map(a => (
               <Row key={a.id} columns="minmax(0, 1fr) minmax(0, 2fr) auto">
                 <div>
                   {a.who ? <><b>{a.who}</b><div className="gwui-ink-sub">{a.checkIn}</div></> : <b>{a.checkIn}</b>}
@@ -224,7 +231,7 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
         </Section>
       )}
 
-      {b.saidYoudDo.length > 0 && (
+      {saidYoudDo.length > 0 && (
         <Section heading="What you said you’d do" note="From every check-in">
           {/*
             WIDTH CHECK, ITEM 11: AT 1024 THE DUE-DATE WRAPPED ("Tuesday 29\nSeptember"). The
@@ -236,7 +243,7 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
             names.
           */}
           <RowList label="What you said you’d do">
-            {b.saidYoudDo.map(s => (
+            {saidYoudDo.map(s => (
               <Row key={s.id} columns="minmax(0, 2fr) minmax(0, 1fr) minmax(150px, 1fr) auto">
                 <b>{s.text}</b>
                 <span>{s.checkIn}</span>
@@ -254,12 +261,12 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
         </Section>
       )}
 
-      {(b.ownReports.length > 0 || b.checkIns.length > 0) && (
+      {(ownReports.length > 0 || checkIns.length > 0) && (
         <div className="gwui-cards-2">
-          {b.ownReports.length > 0 && (
+          {ownReports.length > 0 && (
             <Section heading="Your own reports">
               <RowList label="Your own reports">
-                {b.ownReports.map(r => (
+                {ownReports.map(r => (
                   <Row key={r.to} columns="minmax(0, 1fr) auto auto">
                     <b>{r.checkIn}</b>
                     <span>{whenItWas(r.at, 'dayAndMonthLong')}</span>
@@ -269,10 +276,10 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
               </RowList>
             </Section>
           )}
-          {b.checkIns.length > 0 && (
+          {checkIns.length > 0 && (
             <Section heading="Your work in each">
               <RowList label="Your work in each">
-                {b.checkIns.map(c => {
+                {checkIns.map(c => {
                   const apart = whatTellsItApart(checkInsWithDates, checkInsWithDates.find(x => x.id === c.id)!)
                   return (
                     <Row key={c.id} columns="minmax(0, 1fr) auto">

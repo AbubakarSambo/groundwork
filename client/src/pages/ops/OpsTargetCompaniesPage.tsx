@@ -86,9 +86,9 @@ export default function OpsTargetCompaniesPage() {
             every page now, and a second way home is clutter rather than help. */}
         <p style={LABEL}>Target companies</p>
         <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-navy)', margin: '4px 0 2px' }}>
-          {data?.period.name ?? 'Loading'}
+          {data?.period?.name ?? 'Loading'}
         </h1>
-        {data?.period.goal && (
+        {data?.period?.goal && (
           <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', margin: 0 }}>{data.period.goal}</p>
         )}
         <select
@@ -230,7 +230,7 @@ export default function OpsTargetCompaniesPage() {
                     label: 'Which company',
                     required: true,
                     options: (everyCompany.data ?? [])
-                      .filter((c) => !data.companies.some((onTheList) => onTheList.key === c.key))
+                      .filter((c) => !(data.companies ?? []).some((onTheList) => onTheList.key === c.key))
                       .map((c) => ({ value: c.key, label: c.name })),
                   },
                 ]}
@@ -238,7 +238,7 @@ export default function OpsTargetCompaniesPage() {
                 invalidate={[['ops']]}
                 submitLabel="Put them on it"
               />
-              {data.companies.length > 0 && (
+              {(data.companies ?? []).length > 0 && (
                 <Adder
                   title="Take one off"
                   fields={[
@@ -246,7 +246,7 @@ export default function OpsTargetCompaniesPage() {
                       name: 'key',
                       label: 'Which company',
                       required: true,
-                      options: data.companies.map((c) => ({ value: c.key, label: c.name })),
+                      options: (data.companies ?? []).map((c) => ({ value: c.key, label: c.name })),
                     },
                   ]}
                   /* Off the target list, not deleted. They are still a company. */
@@ -291,7 +291,7 @@ export default function OpsTargetCompaniesPage() {
                 </tr>
               </thead>
               <tbody>
-                {data.companies.map((c) => (
+                {(data.companies ?? []).map((c) => (
                   <tr key={c.id} style={{ borderTop: '1px solid var(--gw-border)' }}>
                     <td style={{ padding: '10px 12px', fontWeight: 600 }}>
                       <Link
@@ -324,7 +324,7 @@ export default function OpsTargetCompaniesPage() {
                     </td>
                   </tr>
                 ))}
-                {data.companies.length === 0 && (
+                {(data.companies ?? []).length === 0 && (
                   <tr>
                     <td colSpan={5} style={{ padding: '14px 12px', color: 'var(--gw-sub)' }}>
                       No companies on this list yet.

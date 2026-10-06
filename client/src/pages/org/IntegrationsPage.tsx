@@ -281,7 +281,7 @@ export function IntegrationsPage() {
                     </label>
                     {termsOpen && terms.data && (
                       <ol>
-                        {terms.data.terms.map(t => (
+                        {(terms.data.terms ?? []).map(t => (
                           <li key={t.heading} className="gwui-panel-text-muted"><b className="gwui-panel-text">{t.heading}.</b> {t.body}</li>
                         ))}
                       </ol>
@@ -339,7 +339,7 @@ export function IntegrationsPage() {
               )}
               {termsOpen && terms.data && (
                 <ol>
-                  {terms.data.terms.map(t => (
+                  {(terms.data.terms ?? []).map(t => (
                     <li key={t.heading} className="gwui-panel-text-muted"><b className="gwui-panel-text">{t.heading}.</b> {t.body}</li>
                   ))}
                 </ol>

@@ -55,14 +55,14 @@ export function EquipmentPage() {
         )
       )}
 
-      {data && data.items.length === 0 && <Empty>No equipment is listed yet.</Empty>}
-      {data && data.items.length > 0 && (
+      {data && (data.items ?? []).length === 0 && <Empty>No equipment is listed yet.</Empty>}
+      {data && (data.items ?? []).length > 0 && (
         <Panel>
           <table className="gwui-record-table">
             <thead>
               <tr><th scope="col">Item</th><th scope="col">Who has it</th><th scope="col">How it is</th><th scope="col"><span className="gwui-sr-only">Change</span></th></tr>
             </thead>
-            <tbody>{data.items.map(i => <AnItem key={i.id} item={i} people={data.people} />)}</tbody>
+            <tbody>{(data.items ?? []).map(i => <AnItem key={i.id} item={i} people={data.people ?? []} />)}</tbody>
           </table>
         </Panel>
       )}

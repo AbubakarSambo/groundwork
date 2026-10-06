@@ -53,15 +53,15 @@ export function CustomersPage() {
         )
       )}
 
-      {data && data.customers.length === 0 && <Empty>No customers are known yet.</Empty>}
-      {data && data.customers.length > 0 && (
+      {data && (data.customers ?? []).length === 0 && <Empty>No customers are known yet.</Empty>}
+      {data && (data.customers ?? []).length > 0 && (
         <Panel>
           <table className="gwui-record-table">
             <thead>
               <tr><th scope="col">Customer</th><th scope="col">Where it stands</th><th scope="col">Who owns it</th><th scope="col">Last contact</th></tr>
             </thead>
             <tbody>
-              {data.customers.map(c => (
+              {(data.customers ?? []).map(c => (
                 <tr key={c.id}>
                   <th scope="row">{c.name}</th>
                   <td>{c.standing ?? ''}</td>

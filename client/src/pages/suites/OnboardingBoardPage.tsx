@@ -63,8 +63,8 @@ export function OnboardingBoardPage() {
           </div>
         )
       )}
-      {data && data.people.length === 0 && <Empty>Nobody is being set up right now.</Empty>}
-      {data?.people.map(p => <ANewPerson key={p.id} p={p} />)}
+      {data && (data.people ?? []).length === 0 && <Empty>Nobody is being set up right now.</Empty>}
+      {(data?.people ?? []).map(p => <ANewPerson key={p.id} p={p} />)}
     </Page>
   )
 }

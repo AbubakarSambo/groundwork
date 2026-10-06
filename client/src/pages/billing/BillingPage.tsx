@@ -137,12 +137,12 @@ export function BillingPage() {
   const freeTeam = livePricing?.free.memberLimit ?? FALLBACK_FREE_LIMITS.memberLimit
 
   function priceLabel(plan: SubscriptionPlan): string {
-    const live = livePricing?.plans.find(p => p.plan === plan)
+    const live = livePricing?.plans?.find(p => p.plan === plan)
     if (live) return live.amountCents === null ? 'Contact us' : formatMonthlyPrice(live.amountCents)
     return PLAN_PRICES[plan]
   }
   function capLabel(plan: SubscriptionPlan): string {
-    return formatMemberCap(livePricing?.plans.find(p => p.plan === plan)?.memberCap)
+    return formatMemberCap(livePricing?.plans?.find(p => p.plan === plan)?.memberCap)
   }
 
   const generateCode = useMutation({

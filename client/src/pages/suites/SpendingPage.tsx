@@ -93,17 +93,17 @@ export function SpendingPage() {
             <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/spend/finance">Open the requests for finance</Link></p>
           )}
           <Section heading="Waiting for a yes or no">
-            {data.waiting.length === 0
+            {(data.waiting ?? []).length === 0
               ? <Empty>Nothing is waiting for a yes or no.</Empty>
               : (
                 <RowList label="Waiting for a yes or no">
-                  {data.waiting.map(w => <ARequest key={w.id} w={w} board={data} />)}
+                  {(data.waiting ?? []).map(w => <ARequest key={w.id} w={w} board={data} />)}
                 </RowList>
               )}
           </Section>
 
           <Section heading="Each team’s budget this month">
-            {data.budgets.length === 0
+            {(data.budgets ?? []).length === 0
               ? <Empty>No budget is set for this month.</Empty>
               : (
                 <Panel>
@@ -112,7 +112,7 @@ export function SpendingPage() {
                       <tr><th scope="col">Team</th><th scope="col">Budget</th><th scope="col">Spent so far</th><th scope="col">Left</th></tr>
                     </thead>
                     <tbody>
-                      {data.budgets.map(b => (
+                      {(data.budgets ?? []).map(b => (
                         <tr key={b.team}>
                           <th scope="row">{b.team}</th>
                           <td>{money(b.budget)}</td>
@@ -138,7 +138,7 @@ export function SpendingPage() {
             <p className="gwui-panel-text">In their check-in, in chat, or on WhatsApp. Nobody fills in a form.</p>
           </Section>
 
-          {data.teams.length > 0 && <SetABudget teams={data.teams} />}
+          {(data.teams ?? []).length > 0 && <SetABudget teams={data.teams} />}
         </>
       )}
     </Page>
