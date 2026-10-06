@@ -60,7 +60,7 @@ export interface Waiting {
   team: string | null;
   /** The first names of others in the same team already off on any of those days (full names where two share a first name). */
   alsoOff: string[];
-  /** How many, who, and the sentence, the same as the approver's queue says it; null when the person has no team or nobody is off. */
+  /** The most off on any one day, who, and the sentence, the same as the approver's queue says it; null when the person has no team or nobody is off. */
   clash: { count: number; names: string[]; says: string } | null;
   standIn: string | null;
   /** Whether this reader is the one who approves it. */
@@ -242,9 +242,11 @@ export class LeaveBoardService {
       const team = people.get(r.userId)?.department?.trim() || null;
       /* Each person once, by first name, and by full name where two share a first name; the approver reads how many and who. */
       const off = team
-        ? whoIsOffNamed(approved.filter((a) => a.userId !== r.userId && people.get(a.userId)?.department?.trim() === team && overlaps(a, r))
-            .map((a) => ({ id: a.userId, first: names.get(a.userId)?.first ?? '', full: names.get(a.userId)?.full ?? '' })))
-        : { count: 0, names: [] as string[] };
+        ? whoIsOffNamed(
+          approved.filter((a) => a.userId !== r.userId && people.get(a.userId)?.department?.trim() === team && overlaps(a, r))
+            .map((a) => ({ id: a.userId, first: names.get(a.userId)?.first ?? '', full: names.get(a.userId)?.full ?? '', startsOn: a.startsOn, endsOn: a.endsOn })),
+          r)
+        : { count: 0, names: [] as string[], busiest: 0 };
       const alsoOff = off.names;
       const first = names.get(r.userId)?.first ?? '';
       const days = workingDays(r.startsOn, r.endsOn);
@@ -268,7 +270,7 @@ export class LeaveBoardService {
         team,
         alsoOff,
         /* The same sentence and the same count the approver's queue reads (the-approvals-queue.service.ts). Null with no team, or nobody off. */
-        clash: team && off.count ? { count: off.count, names: alsoOff, says: theClashSaid(team, alsoOff, r.startsOn.getTime() === r.endsOn.getTime()) } : null,
+        clash: team && off.count ? { count: off.busiest, names: alsoOff, says: theClashSaid(team, alsoOff, r.startsOn.getTime() === r.endsOn.getTime(), off.busiest) } : null,
         standIn,
         mayDecide: decides,
         where: whereItIsOnTheBoard(await this.whereItStands(r, now, decides ? reader.userId : undefined, reader.userId, shared.lookups?.names)),
@@ -277,7 +279,7 @@ export class LeaveBoardService {
         said: aLeaveRequestAsTheApproverReadsIt({
           firstName: first, startsOn: dayOf(r.startsOn), endsOn: dayOf(r.endsOn), days, daysLeft, team,
           kindName: kind ? inASentence(kind) : null,
-          alsoOff, standIn, owns, more: [...rules, ...asked],
+          alsoOff, busiest: off.busiest, standIn, owns, more: [...rules, ...asked],
         }),
       });
     }

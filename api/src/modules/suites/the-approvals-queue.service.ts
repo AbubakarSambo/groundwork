@@ -66,7 +66,7 @@ export interface AQueueItem {
   startsOn: string | null;
   endsOn: string | null;
   /**
-   * Leave only: others in the same team already off on those days, by approved leave, with how many and who, and the sentence
+   * Leave only: others in the same team already off on those days, by approved leave: `count` is the most of them off on any one day, `names` who, and the sentence
    * (the same one the leave board says). Null when the person has no team, or nobody is off.
    */
   clash: { count: number; names: string[]; says: string } | null;
@@ -270,14 +270,16 @@ export class ApprovalsQueueService {
         const startsOn = dayOf(r.startsOn as Date); const endsOn = dayOf(r.endsOn as Date);
         const days = m.days ?? workingDays(r.startsOn as Date, r.endsOn as Date);
         const off = team
-          ? whoIsOffNamed([...new Set(approved.filter((a) => a.userId !== r.userId && c.lookups.entryOf.get(a.userId)?.department?.trim() === team && overlaps(a, r as { startsOn: Date; endsOn: Date })).map((a) => a.userId))]
-              .map((id) => ({ id, first: firstOf(id), full: fullOf(id) })))
-          : { count: 0, names: [] as string[] };
+          ? whoIsOffNamed(
+            approved.filter((a) => a.userId !== r.userId && c.lookups.entryOf.get(a.userId)?.department?.trim() === team && overlaps(a, r as { startsOn: Date; endsOn: Date }))
+              .map((a) => ({ id: a.userId, first: firstOf(a.userId), full: fullOf(a.userId), startsOn: a.startsOn, endsOn: a.endsOn })),
+            r as { startsOn: Date; endsOn: Date })
+          : { count: 0, names: [] as string[], busiest: 0 };
         return {
           id: r.id, suite: 'leave', name: fullOf(r.userId), firstName: first, team, waitingSince: m.since.toISOString(), workingDaysWaiting: waited, pastTheDeadline,
           says: `${first} asked for ${leaveInWords(startsOn, endsOn)}, which is ${days} working ${days === 1 ? 'day' : 'days'}.`,
           waitedSays, where, amount: null, line: null, startsOn, endsOn,
-          clash: team && off.count ? { count: off.count, names: off.names, says: theClashSaid(team, off.names, startsOn === endsOn) } : null,
+          clash: team && off.count ? { count: off.busiest, names: off.names, says: theClashSaid(team, off.names, startsOn === endsOn, off.busiest) } : null,
           standingIn,
         };
       }

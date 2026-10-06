@@ -154,7 +154,7 @@ describe('what the clash says, to the people who read it', () => {
     expect(asked).toHaveLength(2);
     const off = w.people.filter((p) => ['ops.m1', 'ops.m2', 'ops.m4', 'ops.m3'].includes(p.key)).map((p) => p.first);
     for (const i of asked) {
-      expect(i.clash).toEqual({ count: 4, names: expect.arrayContaining(off), says: expect.stringMatching(/ are also off on some of those days, so Operations would be five short\.$/) });
+      expect(i.clash).toEqual({ count: 3, names: expect.arrayContaining(off), says: expect.stringMatching(/ are also off on some of those days\. On the busiest of them, Operations would be four short\.$/) });
     }
     /* A request in a team where nobody is off has no clash. */
     expect(q.items.find((i) => i.team === 'Operations' && i.startsOn === '2026-10-21')!.clash).toBeNull();
