@@ -29,4 +29,31 @@ describe('sayWhatTheySaid', () => {
     expect(sayWhatTheySaid('Amani Wekesa', 'Competitor pricing is the main obstacle.', 'Amani Wekesa'))
       .toBe('You said competitor pricing is the main obstacle.')
   })
+
+  /**
+   * REQUEST 174, ITEM 7: "Amani Wekesa said describes the start date as October 1st…" - the view is
+   * a subjectless predicate ("describes ...", "is waiting ..."), written to be read as "{who}
+   * describes ..." directly, not as a clause to report with "said" in front of it. The name goes at
+   * its start, the sentence otherwise exactly as served - never a quote, because this was never the
+   * person's own words to begin with.
+   */
+  it('puts the name straight in front of a served phrase that already starts with a verb, with no "said"', () => {
+    expect(sayWhatTheySaid('Amani Wekesa', 'describes the start date as October 1st as the deadline.', null))
+      .toBe('Amani Wekesa describes the start date as October 1st as the deadline.')
+  })
+
+  it('does the same for "is waiting ..."', () => {
+    expect(sayWhatTheySaid('Baraka Mwangi', 'is waiting for budget approval.', 'Amani Wekesa'))
+      .toBe('Baraka Mwangi is waiting for budget approval.')
+  })
+
+  /**
+   * The served view is always written in the third person (the model's own `participantLabel` is
+   * never "you"), so reading it back for the reader's own row needs the verb re-conjugated too -
+   * otherwise swapping in "You" produces "You is waiting", a name with the wrong grammar for it.
+   */
+  it('re-conjugates the verb for the reader\'s own row, rather than printing "You is ..."', () => {
+    expect(sayWhatTheySaid('Amani Wekesa', 'is waiting for budget approval.', 'Amani Wekesa'))
+      .toBe('You are waiting for budget approval.')
+  })
 })
