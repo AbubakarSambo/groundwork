@@ -88,6 +88,25 @@ export function mergeStyle(existing: StyleObservation | null, seen: StyleObserva
   };
 }
 
+/** The plain-words rule. One sentence, used for a person who asked what our terms mean and for a check-in set to use simpler words. */
+export const THE_PLAIN_WORDS_RULE =
+  'They have asked before what our terms mean. Use plain words: "this conversation" rather than "this ground", "what you are answerable for" rather than "your remit". If you must use a product word, define it in the same sentence, once, without making a point of it.';
+
+/**
+ * WHAT THE MODEL IS TOLD WHEN THE LEAD HAS SWITCHED ON "USE SIMPLER WORDS", FOR EVERYBODY IN THE CHECK-IN.
+ * The plain-words rule above, plus the three things that make writing easy to read. Empty when the
+ * switch is off, so a check-in that never switched it on is composed exactly as it was.
+ */
+export function simplerWordsGuidance(on: boolean | null | undefined): string {
+  if (!on) return '';
+  const lines = [
+    'Write short sentences, one idea in each. Use everyday words that a person with basic English knows. Use no idioms and no figures of speech, because they do not translate.',
+    THE_PLAIN_WORDS_RULE.replace('They have asked before what our terms mean. ', ''),
+    'Keep to this in every message, including the last one that closes the check-in, and do not tell the person you are doing it.',
+  ];
+  return `THIS CHECK-IN USES SIMPLER WORDS, FOR EVERYBODY IN IT:\n${lines.map((l) => `- ${l}`).join('\n')}\n\n`;
+}
+
 /**
  * The block handed to the engine. Guidance on manner, never a description of the
  * person - "prefers plain language" is help; "this user is basic" is a label,
@@ -102,9 +121,7 @@ export function styleGuidance(s: StyleObservation | null, groundsSeen: number): 
     );
   }
   if (s.needsPlainLanguage) {
-    lines.push(
-      'They have asked before what our terms mean. Use plain words: "this conversation" rather than "this ground", "what you are answerable for" rather than "your remit". If you must use a product word, define it in the same sentence, once, without making a point of it.',
-    );
+    lines.push(THE_PLAIN_WORDS_RULE);
   }
   if (s.answersBriefly) {
     lines.push(

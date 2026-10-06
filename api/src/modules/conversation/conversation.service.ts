@@ -115,7 +115,7 @@ import {
 import { buildDeliveriesBlock } from './what-they-say-they-delivered';
 import { buildNotesBlock } from './between-session-notes';
 import { closeReadiness, askedToFinish } from './close-readiness';
-import { observeStyle, mergeStyle, styleGuidance } from './person-style';
+import { observeStyle, mergeStyle, styleGuidance, simplerWordsGuidance } from './person-style';
 import { readOutcome, isGenericStep } from './coaching-step';
 import { theBehavioursAnybodyCanBeRead, universalSignalRead } from '../board/a-role-nobody-mapped-is-still-a-person';
 import { WHAT_KIND_OF_WORK_PROMPT, WHAT_KIND_OF_WORK_SCHEMA, theJobTheyDescribed } from '../board/a-job-is-read-from-what-they-do';
@@ -3824,13 +3824,15 @@ export class ConversationService {
     let styleBlock = '';
     try {
       const uid = checkIn.participant?.userId;
-      const g = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { organizationId: true } });
+      const g = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { organizationId: true, simplerWords: true } });
       if (uid && g) {
         const prof = await this.prisma.personStyleProfile.findUnique({
           where: { userId_organizationId: { userId: uid, organizationId: g.organizationId } },
         });
         if (prof) styleBlock = styleGuidance(prof, prof.groundsSeen);
       }
+      /* "Use simpler words": for everybody in the check-in, whether or not they have a profile. Empty when off. */
+      styleBlock += simplerWordsGuidance(g?.simplerWords);
     } catch { /* never block a check-in over a nicety */ }
 
     /*
