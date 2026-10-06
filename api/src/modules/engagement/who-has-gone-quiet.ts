@@ -2,7 +2,7 @@ import { CheckInStatus, GroundStatus } from '@prisma/client';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
 import { theEngagementMoment } from './the-engagement-release-moment';
-import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
+import { nameToCall } from './a-name-to-call-them';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 import { whoOnACheckInIsAway } from '../suites/who-is-away';
 import { aNumberInWords } from './a-number-in-words';
@@ -106,7 +106,7 @@ export function theQuietIn(rows: any[], label: string, leadUserId: string, now: 
   for (const r of counted) {
     if (r.status === CheckInStatus.COMPLETED) continue;
     const before = rows.some((x) => x.participantId === r.participantId && (x.sessionNumber ?? 0) < latest && x.status === CheckInStatus.COMPLETED);
-    if (before) stopped.push(theFirstNameOfAParticipant(r.participant) ?? '');
+    if (before) stopped.push(nameToCall(r.participant));
     else never++;
   }
   return { label, ofHowMany: counted.length, neverAnswered: never, stoppedAfterAnswering: stopped.filter((n) => !!n) };
@@ -139,7 +139,7 @@ export async function sendWhoHasGoneQuiet(
       for (const g of theirs) {
         const rows: any[] = await prisma.checkIn.findMany({
           where: { groundId: g.id },
-          select: { participantId: true, sessionNumber: true, status: true, createdAt: true, participant: { select: { userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } } },
+          select: { participantId: true, sessionNumber: true, status: true, createdAt: true, participant: { select: { userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, email: true, awaitingOrgApproval: true } } } } },
         });
         /* Somebody on approved leave is not one who has gone quiet. */
         const away = await Promise.resolve(whoOnACheckInIsAway(prisma, g.id, now)).catch(() => new Map());
@@ -150,7 +150,7 @@ export async function sendWhoHasGoneQuiet(
           for (const c of Array.isArray(closed) ? closed : []) by.set(c.participantId, (by.get(c.participantId) ?? 0) + 1);
           const onlyOne = by.size === 1 ? [...by][0] : null;
           const who = onlyOne ? rows.find((r) => r.participantId === onlyOne[0])?.participant : null;
-          const name = who ? (who.userId === leadId ? 'you' : theFirstNameOfAParticipant(who) ?? null) : null;
+          const name = who ? (who.userId === leadId ? 'you' : nameToCall(who)) : null;
           found.push({ ...q, groundId: g.id, closedAllBy: name && onlyOne ? { name, count: onlyOne[1] } : null });
         }
       }

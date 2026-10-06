@@ -5,7 +5,7 @@ import { isAlreadyHeld } from './a-message-sent-once';
 import { theEngagementMoment } from './the-engagement-release-moment';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 import { aNumberInWords } from './a-number-in-words';
-import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
+import { nameToCall } from './a-name-to-call-them';
 
 /**
  * "HERE IS WHAT IS NEW", ONCE, TO A LEAD WHO WAS ALREADY HERE (decision 109 item 2).
@@ -77,7 +77,7 @@ export function theWhatIsNewWords(firstName: string | null | undefined, checkIns
 export async function theOpenSession(prisma: any, groundId: string, leadUserId: string): Promise<AnExistingCheckIn | null> {
   const rows: any[] = await prisma.checkIn.findMany({
     where: { groundId },
-    select: { status: true, sessionNumber: true, participant: { select: { userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, awaitingOrgApproval: true } } } } },
+    select: { status: true, sessionNumber: true, participant: { select: { userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, email: true, awaitingOrgApproval: true } } } } },
   });
   if (!rows.length) return null;
   const latest = Math.max(...rows.map((r) => r.sessionNumber ?? 0));
@@ -87,7 +87,7 @@ export async function theOpenSession(prisma: any, groundId: string, leadUserId: 
   if (!counted.some((r) => r.participant?.userId !== leadUserId)) return null;
   const answered = counted.filter((r) => r.status === CheckInStatus.COMPLETED).length;
   const notYet = counted.filter((r) => r.status !== CheckInStatus.COMPLETED)
-    .map((r) => (r.participant?.userId === leadUserId ? 'you' : theFirstNameOfAParticipant(r.participant) ?? ''))
+    .map((r) => (r.participant?.userId === leadUserId ? 'you' : nameToCall(r.participant)))
     .filter((n: string) => !!n)
     .sort((a: string, b: string) => (a === 'you' ? -1 : b === 'you' ? 1 : 0));
   return { label: '', ofHowMany: counted.length, answered, notYet };

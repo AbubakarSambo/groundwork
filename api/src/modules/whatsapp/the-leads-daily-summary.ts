@@ -1,4 +1,4 @@
-import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
+import { nameToCall } from '../engagement/a-name-to-call-them';
 import { CheckInStatus, GroundStatus } from '@prisma/client';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { WhatsAppService } from './whatsapp.service';
@@ -166,7 +166,7 @@ async function theOpenSession(prisma: PrismaService, groundId: string, now: Date
     where: { groundId, OR: [{ availableFrom: null }, { availableFrom: { lte: now } }] },
     select: {
       status: true, sessionNumber: true, completedAt: true,
-      participant: { select: { userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, awaitingOrgApproval: true } } } },
+      participant: { select: { userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, email: true, awaitingOrgApproval: true } } } },
     },
   });
   if (!rows.length) return null;
@@ -178,7 +178,7 @@ async function theOpenSession(prisma: PrismaService, groundId: string, now: Date
   const notYet = counted
     .filter((r) => r.status !== CheckInStatus.COMPLETED)
     /* The lead is one of the people who can answer, and she is "you" to herself, never her own name in the third person. */
-    .map((r) => (r.participant?.userId && r.participant.userId === leadUserId ? 'you' : theFirstNameOfAParticipant(r.participant as any) ?? ''))
+    .map((r) => (r.participant?.userId && r.participant.userId === leadUserId ? 'you' : nameToCall(r.participant as any)))
     .filter((n: string) => !!n)
     .sort((a: string, b: string) => (a === 'you' ? -1 : b === 'you' ? 1 : 0));
   const times = done.map((r) => r.completedAt).filter((t: unknown): t is Date => t instanceof Date);

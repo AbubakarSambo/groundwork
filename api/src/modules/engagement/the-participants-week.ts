@@ -1,5 +1,6 @@
 import { GroundStatus } from '@prisma/client';
 import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
+import { nameToCall } from './a-name-to-call-them';
 import { aNumberInWords } from './a-number-in-words';
 import { theEngagementMoment } from './the-engagement-release-moment';
 import { thereIsASessionToCome } from './heres-what-is-new';
@@ -125,7 +126,7 @@ export async function sendTheParticipantsWeeks(
         open: own.open.filter((s) => inOpen(s.checkIn)).map((s) => s.text),
         waitingOn: waits.filter((d) => inOpen(d.ground?.label)).filter((d) => !!d.what?.trim()).map((d) => ({
           what: d.what,
-          from: d.onLabel?.trim() || (d.ground?.peersVisibleToEachOther !== false ? (d.onParticipant?.user?.firstName ?? d.onParticipant?.nameGiven ?? null) : null),
+          from: d.onLabel?.trim() || (d.ground?.peersVisibleToEachOther !== false ? (d.onParticipant ? nameToCall(d.onParticipant) : null) : null),
         })),
         waitingOnYou: own.askedOfYou.filter((i) => inOpen(i.checkIn)),
       };

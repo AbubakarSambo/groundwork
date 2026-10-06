@@ -1,5 +1,5 @@
 import { CheckInStatus, GroundStatus } from '@prisma/client';
-import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
+import { nameToCall } from '../engagement/a-name-to-call-them';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
@@ -153,7 +153,7 @@ const WEEK = 7 * 86_400_000;
 export async function theWeekOf(prisma: any, g: { id: string; label: string; initiatorId: string }, now: Date): Promise<AWeekInOneCheckIn> {
   const since = new Date(now.getTime() - WEEK);
   const [people, finished, saidNext, done, waiting, doneRows, waitingRows] = await Promise.all([
-    prisma.groundParticipant.findMany({ where: { groundId: g.id }, select: { id: true, userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } }),
+    prisma.groundParticipant.findMany({ where: { groundId: g.id }, select: { id: true, userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, email: true, awaitingOrgApproval: true } } } }),
     prisma.checkIn.findMany({ where: { groundId: g.id, status: CheckInStatus.COMPLETED, completedAt: { gte: since, lte: now } }, select: { participantId: true } }),
     prisma.groundCommitment.findMany({ where: { groundId: g.id, participantId: { not: null }, createdAt: { gte: since, lte: now } }, select: { participantId: true } }),
     prisma.groundCommitment.count({ where: { groundId: g.id, status: 'DONE', settledAt: { gte: since, lte: now } } }),
@@ -167,13 +167,13 @@ export async function theWeekOf(prisma: any, g: { id: string; label: string; ini
   const finishedIds = new Set((finished as any[]).map((r) => r.participantId).filter((id: string) => countedIds.has(id)));
   const notYet = counted
     .filter((p) => !finishedIds.has(p.id))
-    .map((p) => (p.userId && p.userId === g.initiatorId ? 'you' : theFirstNameOfAParticipant(p) ?? ''))
+    .map((p) => (p.userId && p.userId === g.initiatorId ? 'you' : nameToCall(p)))
     .filter((n: string) => !!n)
     .sort((a: string, b: string) => (a === 'you' ? -1 : b === 'you' ? 1 : 0));
   const nameOf = (id: string) => {
     const p = counted.find((c) => c.id === id);
     if (!p) return null;
-    return p.userId && p.userId === g.initiatorId ? 'you' : theFirstNameOfAParticipant(p) ?? null;
+    return p.userId && p.userId === g.initiatorId ? 'you' : nameToCall(p);
   };
   const tally = (ids: string[]) => {
     const by = new Map<string, number>();
