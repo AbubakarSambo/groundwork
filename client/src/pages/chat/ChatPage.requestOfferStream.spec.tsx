@@ -43,6 +43,9 @@ const requestOffer = {
   no: 'No',
 }
 
+/* Waits allow for a loaded machine: the full suite runs 600-odd files at once, and the page's own
+   transcript read waits up to two seconds by design. The timing gap itself is proven by the test
+   that streams with no yield at all. */
 describe('the stream carries the request offer through', () => {
   beforeEach(() => vi.clearAllMocks())
 
@@ -67,10 +70,10 @@ describe('the stream carries the request offer through', () => {
     fireEvent.change(box, { target: { value: "I'm taking Friday off." } })
     fireEvent.click(screen.getByRole('button', { name: /Send message/i }))
 
-    await screen.findAllByText(requestOffer.question)
+    await screen.findAllByText(requestOffer.question, {}, { timeout: 6000 })
     expect(screen.getByRole('button', { name: 'Yes' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'No' })).toBeTruthy()
-  })
+  }, 20000)
 
   it("the stream's done event carries openTheRequest through to the screen", async () => {
     ;(conversationApi.transcript as any).mockResolvedValue({
@@ -96,9 +99,9 @@ describe('the stream carries the request offer through', () => {
     fireEvent.change(box, { target: { value: 'Yes' } })
     fireEvent.click(screen.getByRole('button', { name: /Send message/i }))
 
-    await screen.findAllByText(openTheRequest.says)
+    await screen.findAllByText(openTheRequest.says, {}, { timeout: 6000 })
     expect(screen.getByRole('button', { name: 'Request leave' })).toBeTruthy()
-  })
+  }, 20000)
 })
 
 /**
@@ -135,5 +138,5 @@ describe('the screen keeps up with a stream that never yields', () => {
 
     expect(await screen.findByText('I shipped the report.')).toBeTruthy()
     expect(await screen.findByText('Got it, thanks.')).toBeTruthy()
-  })
+  }, 20000)
 })
