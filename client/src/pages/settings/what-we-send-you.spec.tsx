@@ -45,7 +45,7 @@ describe('What we send you', () => {
   it('reads the title and detail the engine serves, switched on by default', () => {
     open({ ...baseUser, emailNotifications: true, emailsStoppedFromAMail: false })
     expect(screen.getByText('Emails from Groundwork that we decide to send')).toBeTruthy()
-    expect(screen.getByText('Reminders, summaries and insights that nobody asked for that morning. Emails you ask for, such as sign-in links, invitations, reports and approvals, always reach you.')).toBeTruthy()
+    expect(screen.getByText('Reminders, summaries and insights Groundwork sends without being asked.')).toBeTruthy()
     const toggle = screen.getByRole('switch')
     expect(toggle.getAttribute('aria-checked')).toBe('true')
   })

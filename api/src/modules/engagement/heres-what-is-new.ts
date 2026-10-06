@@ -1,0 +1,124 @@
+import { CheckInStatus, GroundStatus } from '@prisma/client';
+import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
+import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
+import { theReleaseMoment } from '../grounds/the-release-moment';
+import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
+import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
+
+/**
+ * "HERE IS WHAT IS NEW", ONCE, TO A LEAD WHO WAS ALREADY HERE (decision 109 item 2).
+ *
+ * An existing client is not emailed by surprise (decisions 88 and 90), but decision 109 lets them have the value-first messages, and they start with
+ * this one email, built from their own check-ins. It is sent once ever, to a lead with at least one check-in that was made BEFORE the release and is
+ * still going. A check-in that stalled, ended or is held is not mentioned, and a lead whose only check-ins are like that is not written to at all.
+ * A lead who joined after the release is not sent it: for them nothing is new.
+ *
+ * It says only what is true of their own check-ins now, and what Groundwork now does that it did not do before. It goes through the one door, so
+ * it is the day's one routine message, and a person who turned these emails off does not get it.
+ */
+export const WHATS_NEW_SENDER = 'sendHeresWhatIsNew';
+
+const TERMINAL: GroundStatus[] = [...A_GROUND_THE_JOBS_LEAVE_ALONE, ...A_GROUND_IS_HELD];
+
+export interface AnExistingCheckIn { label: string; ofHowMany: number; answered: number; notYet: string[]; /** Whether it has a session still to come, which is what the follow-up is for. */ moreToCome?: boolean }
+
+/**
+ * WHETHER THIS CHECK-IN HAS A SESSION STILL TO COME. The follow-up (a person's own promise, said back to them) is sent for a session that begins after
+ * the release, so it is only true of an existing check-in that will have one: it runs until it is ended, or its planned end is still ahead.
+ */
+export function thereIsASessionToCome(g: { runsUntilEnded?: boolean | null; endsAt?: Date | null; timelineDays?: number | null; createdAt?: Date | null }, now: Date): boolean {
+  if (g.runsUntilEnded) return true;
+  const end = g.endsAt ?? (g.createdAt && g.timelineDays ? new Date(g.createdAt.getTime() + g.timelineDays * 86_400_000) : null);
+  return !!end && end.getTime() > now.getTime();
+}
+
+const people = (n: number) => `${n} ${n === 1 ? 'person' : 'people'}`;
+const listed = (names: string[]) => (names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
+
+/** One check-in, in one sentence, from the count alone. */
+export function whereOneStands(c: AnExistingCheckIn): string {
+  if (c.answered <= 0) return `In "${c.label}", nobody has checked in yet, out of ${people(c.ofHowMany)}.`;
+  if (c.answered >= c.ofHowMany) return `In "${c.label}", ${c.ofHowMany === 1 ? 'the one person who can answer has' : `all ${c.ofHowMany} people have`} checked in.`;
+  const named = c.notYet.slice(0, 3);
+  const others = c.ofHowMany - c.answered - named.length;
+  const who = named.length ? `, and ${listed(others > 0 ? [...named, others === 1 ? 'one other person' : `${others} others`] : named)} ${c.ofHowMany - c.answered === 1 ? 'has' : 'have'} not yet` : '';
+  return `In "${c.label}", ${c.answered} of ${c.ofHowMany} people have checked in${who}.`;
+}
+
+/** True only for the check-ins that have a session to come; said for all, for some by name, or not at all. */
+function theFollowUpSentence(checkIns: AnExistingCheckIn[]): string | null {
+  const some = checkIns.filter((c) => c.moreToCome !== false);
+  if (!some.length) return null;
+  const where = some.length === checkIns.length ? '' : ` in ${listed(some.map((c) => `"${c.label}"`))}`;
+  return `What is new is that Groundwork now follows up${where} with each person about the thing they said they would do, in their own words and only to them.`;
+}
+
+export function theWhatIsNewWords(firstName: string | null | undefined, checkIns: AnExistingCheckIn[]) {
+  const subject = checkIns.length === 1
+    ? `${checkIns[0].answered} of ${checkIns[0].ofHowMany} people have checked in on "${checkIns[0].label}", and here is what is new`
+    : `Here is where your ${checkIns.length} check-ins stand, and what is new`;
+  const lines = [
+    `Hello ${firstName?.trim() || 'there'}. Here is where your check-ins stand today.`,
+    ...checkIns.map(whereOneStands),
+    ...(theFollowUpSentence(checkIns) ? [theFollowUpSentence(checkIns)!] : []),
+    'You can also stop the emails we decide to send from the link at the bottom of any of them, or in Settings, and turn them back on in Settings. Emails you ask for, such as sign-in links and reports, always reach you.',
+  ];
+  return { subject, lines, linkLabel: 'See your check-ins' };
+}
+
+export async function theOpenSession(prisma: any, groundId: string, leadUserId: string): Promise<AnExistingCheckIn | null> {
+  const rows: any[] = await prisma.checkIn.findMany({
+    where: { groundId },
+    select: { status: true, sessionNumber: true, participant: { select: { userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, awaitingOrgApproval: true } } } } },
+  });
+  if (!rows.length) return null;
+  const latest = Math.max(...rows.map((r) => r.sessionNumber ?? 0));
+  const counted = rows.filter((r) => (r.sessionNumber ?? 0) === latest && !r.participant?.managingOnly && !isNotLetInYet(r.participant));
+  if (!counted.length) return null;
+  const answered = counted.filter((r) => r.status === CheckInStatus.COMPLETED).length;
+  const notYet = counted.filter((r) => r.status !== CheckInStatus.COMPLETED)
+    .map((r) => (r.participant?.userId === leadUserId ? 'you' : theFirstNameOfAParticipant(r.participant) ?? ''))
+    .filter((n: string) => !!n)
+    .sort((a: string, b: string) => (a === 'you' ? -1 : b === 'you' ? 1 : 0));
+  return { label: '', ofHowMany: counted.length, answered, notYet };
+}
+
+/** The sweep. Returns how many were tried; the sender decides whether each may go. */
+export async function sendHeresWhatIsNew(
+  deps: { prisma: any; email: { sendHeresWhatIsNew: (to: string, subject: string, lines: string[], linkLabel: string, linkUrl: string) => Promise<unknown> }; frontendUrl: string },
+  now: Date = new Date(),
+): Promise<{ tried: number }> {
+  const { prisma } = deps;
+  let release: Date;
+  try { release = await theReleaseMoment(prisma, now); } catch { return { tried: 0 }; }
+  const grounds: any[] = await everyRowAPageAtATime((page: any) => prisma.ground.findMany({
+    /* Made before the release, and still going: stalled, ended and held ones are never mentioned. */
+    where: { status: { notIn: TERMINAL }, createdAt: { lt: release } },
+    select: { id: true, label: true, initiatorId: true, runsUntilEnded: true, endsAt: true, timelineDays: true, createdAt: true },
+    ...page,
+  }), 1000);
+  const byLead = new Map<string, any[]>();
+  for (const g of grounds) byLead.set(g.initiatorId, [...(byLead.get(g.initiatorId) ?? []), g]);
+  const link = `${(deps.frontendUrl || '').replace(/\/$/, '')}/grounds`;
+  let tried = 0;
+  for (const [leadId, theirs] of byLead) {
+    try {
+      const user = await prisma.user.findUnique({ where: { id: leadId }, select: { email: true, firstName: true, deletedAt: true, isActive: true } });
+      if (!user?.email || user.deletedAt || user.isActive === false) continue;
+      const had = await prisma.notification.findFirst({ where: { channel: 'email', sender: WHATS_NEW_SENDER, toAddress: user.email.trim().toLowerCase(), outcome: { in: ['sent', 'held'] } }, select: { id: true } });
+      if (had) continue;
+      const stands: AnExistingCheckIn[] = [];
+      for (const g of theirs) {
+        const s = await theOpenSession(prisma, g.id, leadId);
+        if (s) stands.push({ ...s, label: g.label, moreToCome: thereIsASessionToCome(g, now) });
+      }
+      if (!stands.length) continue;
+      const w = theWhatIsNewWords(user.firstName, stands);
+      await deps.email.sendHeresWhatIsNew(user.email, w.subject, w.lines, w.linkLabel, link);
+      tried++;
+    } catch {
+      /* One lead's email that could not be put together never stops the others. */
+    }
+  }
+  return { tried };
+}

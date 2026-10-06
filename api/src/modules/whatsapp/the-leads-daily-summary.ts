@@ -3,6 +3,7 @@ import { CheckInStatus, GroundStatus } from '@prisma/client';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { WhatsAppService } from './whatsapp.service';
 import { TEMPLATES, fill } from './a-message-outside-the-window';
+import { formsOfTheSameNumber } from './a-number-whatsapp-can-reach';
 import { keptOffThePhone } from './a-check-in-kept-off-the-phone';
 import { everyRowAPageAtATime } from './every-row-a-page-at-a-time';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
@@ -51,7 +52,7 @@ export interface ACheckInToday {
  */
 export function somethingUsefulHappened(checkIns: ACheckInToday[], waiting: AWaitingRequest[], lastSummaryAt: Date | null): boolean {
   if (waiting.length) return true;
-  return checkIns.some((c) => c.answered > 0 && (!lastSummaryAt || !c.lastAnswerAt || c.lastAnswerAt > lastSummaryAt));
+  return checkIns.some((c) => c.answered > 0 && (!lastSummaryAt || (!!c.lastAnswerAt && c.lastAnswerAt > lastSummaryAt)));
 }
 
 /** One check-in, in one sentence. Null when nobody can answer it yet. */
@@ -143,7 +144,7 @@ export async function sendTheLeadsDailySummaries(
       const waiting = await whatWaitsForYouToDecide({ userId: lead.leadId, organizationId: lead.organizationId }, deps.boards);
       const paragraph = theSummaryParagraph(lead.checkIns, waiting);
       if (!paragraph) continue;
-      const last = await (async () => prisma.whatsAppSend.findFirst({ where: { phone, kind: 'lead-summary', sentAt: { not: null } }, orderBy: { sentAt: 'desc' }, select: { sentAt: true } }))().catch(() => null);
+      const last = await (async () => prisma.whatsAppSend.findFirst({ where: { phone: { in: formsOfTheSameNumber(phone) }, kind: 'lead-summary', sentAt: { not: null } }, orderBy: { sentAt: 'desc' }, select: { sentAt: true } }))().catch(() => null);
       if (!somethingUsefulHappened(lead.checkIns, waiting, last?.sentAt ?? null)) continue;
       const link = lead.checkIns.length === 1 ? `${base}/grounds/${lead.checkIns[0].groundId}/board` : `${base}/grounds`;
       const message = theLeadsDailySummary(user.firstName, paragraph, link);
@@ -181,6 +182,7 @@ async function theOpenSession(prisma: PrismaService, groundId: string, now: Date
     .filter((n: string) => !!n)
     .sort((a: string, b: string) => (a === 'you' ? -1 : b === 'you' ? 1 : 0));
   const times = done.map((r) => r.completedAt).filter((t: unknown): t is Date => t instanceof Date);
-  const lastAnswerAt = times.length === done.length && times.length ? new Date(Math.max(...times.map((t) => t.getTime()))) : null;
+  /* An answer with no time recorded is not evidence that anything happened since the last summary. */
+  const lastAnswerAt = times.length ? new Date(Math.max(...times.map((t) => t.getTime()))) : null;
   return { ofHowMany: counted.length, answered: done.length, notYet, lastAnswerAt };
 }

@@ -125,23 +125,44 @@ export function theEmailForTheLead(input: {
   whoHasNotStarted: string[];
   chasedOn: number[];
   link: string;
+  /** The people Groundwork really did send a reminder to, and the day of the last one, from the record of what was sent. When absent, the schedule is said instead. */
+  remindedNames?: string[];
+  lastRemindedOn?: string | null;
 }): TheLeadsEmail | null {
   if (input.whoHasNotStarted.length === 0) return null;
 
-  const days = input.chasedOn.join(', ');
+  const names = input.whoHasNotStarted;
+  const listed = names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+  const have = names.length === 1 ? 'has' : 'have';
+  const days = input.chasedOn.length ? `day ${input.chasedOn.join(', day ')}` : null;
+
+  /*
+   * WHAT GROUNDWORK DID, SAID AS ITS OWN DOING (decision 109, journey 3). The lead is not handed the chasing: "so this is yours now rather than the
+   * system's" told her a job was hers. She is told who has not started, what was sent and when, that it has stopped, and offered words she may send.
+   * Only people who were really sent a reminder are said to have been reminded.
+   */
+  const reminded = input.remindedNames ?? names;
+  const remindedList = reminded.length < 2 ? reminded.join('') : `${reminded.slice(0, -1).join(', ')} and ${reminded[reminded.length - 1]}`;
+  const did = reminded.length === 0
+    ? 'Groundwork has stopped sending them reminders.'
+    : `Groundwork reminded ${reminded.length === names.length ? 'them' : remindedList}${input.lastRemindedOn ? `, the last time on ${input.lastRemindedOn}` : days ? `, on ${days}` : ''}, and has now stopped reminding ${reminded.length === names.length ? 'them' : 'those people'}.`;
+
   const lines = [
     input.leadName ? `${input.leadName},` : 'Hello,',
     '',
-    `On "${input.groundLabel}", these people have not started their check-in:`,
-    ...input.whoHasNotStarted.map((n) => `- ${n}`),
+    `${listed} ${have} not started their check-in on "${input.groundLabel}".`,
     '',
-    `They were reminded on ${days === '' ? 'no days' : `day ${days}`} and the reminders have stopped, so this is yours now rather than the system's.`,
+    did,
+    '',
+    'You do not need to do anything. If you would like to write to them yourself, this message is ready for you to send:',
+    '',
+    `"I would value your view on ${input.groundLabel}. It takes about five minutes, and the link in the email Groundwork sent you opens it."`,
     '',
     input.link,
   ];
 
   return {
-    subject: `Not started on "${input.groundLabel}"`,
+    subject: `${listed} ${have} not started "${input.groundLabel}"${reminded.length ? ', and Groundwork has reminded them' : ''}`,
     text: lines.join('\n'),
   };
 }

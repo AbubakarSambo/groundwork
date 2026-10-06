@@ -7,7 +7,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CheckInStatus } from '@prisma/client';
 import { worthNudging, whatToSendThem } from './who-is-worth-nudging';
-import { theAnchorNudgeFor } from './the-anchor-nudge';
+import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
+import { nobodyElseIsIn, theLeadsFirstWords } from '../engagement/the-leads-own-first-check-in';
+import { theNudgeLineFor } from '../engagement/a-follow-up-from-their-own-record';
 import { WorkspaceNotifierService } from '../workspace/workspace-notifier.service';
 import {
   whatToDoToday,
@@ -108,7 +110,7 @@ export class RemindService {
         user: { select: { firstName: true, emailNotifications: true, isActive: true, deletedAt: true, awaitingOrgApproval: true } },
         checkIns: {
           where: { sessionNumber: checkIn.sessionNumber },
-          select: { id: true, status: true },
+          select: { id: true, status: true, createdAt: true },
         },
       },
     });
@@ -120,7 +122,7 @@ export class RemindService {
      */
     const requesterRow = await this.prisma.groundParticipant.findFirst({
       where: { groundId: ground.id, userId: requestingUserId },
-      select: { id: true, managingOnly: true, user: { select: { isActive: true, deletedAt: true, awaitingOrgApproval: true } }, checkIns: { where: { sessionNumber: checkIn.sessionNumber }, select: { status: true } } },
+      select: { id: true, managingOnly: true, user: { select: { isActive: true, deletedAt: true, awaitingOrgApproval: true } }, checkIns: { where: { sessionNumber: checkIn.sessionNumber }, select: { status: true, createdAt: true } } },
     });
     const theWholeRound = [...allParticipants, ...(requesterRow ? [requesterRow as any] : [])];
 
@@ -132,7 +134,7 @@ export class RemindService {
      */
     const considered = allParticipants.map((p) => ({
       ...p,
-      session: p.checkIns[0] ? { id: p.checkIns[0].id, status: p.checkIns[0].status as any } : null,
+      session: p.checkIns[0] ? { id: p.checkIns[0].id, status: p.checkIns[0].status as any, createdAt: (p.checkIns[0] as any).createdAt ?? null } : null,
       managingOnly: p.managingOnly,
       hasAccepted: p.userId !== null,
       /* A leaver's address may now belong to somebody else. Undefined for an invitee with no
@@ -195,8 +197,8 @@ export class RemindService {
 
       // #34: Pass otherPartyCompleted so the email includes the appropriate note.
       /* Their own last open promise, to them only, on an anchor check-in (piece 30). */
-      const theAnchorLine = await theAnchorNudgeFor(this.prisma, ground as any, participant.id);
-      await this.email.sendNudge(participant.email, specificThing, checkInUrl, undefined, everyoneElseHasAnswered(participant.id, theWholeRound as any), theAnchorLine, participant.id);
+      const theAnchorLine = await theNudgeLineFor(this.prisma, ground as any, (participant.session as any)?.createdAt, participant.id);
+      await this.email.sendNudgeFromAPress(participant.email, specificThing, checkInUrl, undefined, everyoneElseHasAnswered(participant.id, theWholeRound as any), theAnchorLine, participant.id);
 
       await this.prisma.groundParticipant.update({
         where: { id: participant.id },
@@ -261,6 +263,8 @@ export class RemindService {
             simplerWords: true,
             /* For the channel notice: `tell` is scoped to an organisation. */
             organizationId: true,
+            initiatorId: true,
+            brief: true,
             chaseAfterDays: true,
             chasingStopped: true,
             tellTheLead: true,
@@ -271,6 +275,7 @@ export class RemindService {
           select: {
             id: true,
             email: true,
+            userId: true,
             lastNudgedAt: true,
             user: { select: { firstName: true, emailNotifications: true, isActive: true, deletedAt: true } },
           },
@@ -283,7 +288,7 @@ export class RemindService {
        target. */
     const forTheLead = new Map<string, {
       to: string; leadName: string | null; label: string; chasedOn: number[];
-      who: string[]; checkInIds: string[];
+      who: string[]; whoEmails: string[]; checkInIds: string[];
       /* For the channel notice: `tell` is scoped to an organisation, not to a ground. */
       organizationId: string;
     }>();
@@ -331,6 +336,7 @@ export class RemindService {
             label: checkIn.ground.label,
             chasedOn: policy.days,
             who: [],
+            whoEmails: [],
             checkInIds: [],
             organizationId: checkIn.ground.organizationId,
           };
@@ -338,7 +344,7 @@ export class RemindService {
              there is. A lead reading a list of email addresses cannot tell who is
              who any faster than they could before the email arrived. */
           const named = participant.user?.firstName ?? participant.email;
-          if (!entry.who.includes(named)) entry.who.push(named);
+          if (!entry.who.includes(named)) { entry.who.push(named); entry.whoEmails.push(participant.email); }
           entry.checkInIds.push(checkIn.id);
           forTheLead.set(key, entry);
         }
@@ -361,11 +367,24 @@ export class RemindService {
       /* "Yours is the last one we are waiting for" only when it is true of this person (the-last-one-we-are-waiting-for.ts). */
       const theRound = await this.prisma.groundParticipant.findMany({
         where: { groundId: checkIn.groundId },
-        select: { id: true, managingOnly: true, user: { select: { isActive: true, deletedAt: true, awaitingOrgApproval: true } }, checkIns: { where: { sessionNumber: checkIn.sessionNumber }, select: { status: true } } },
+        select: { id: true, userId: true, managingOnly: true, user: { select: { isActive: true, deletedAt: true, awaitingOrgApproval: true } }, checkIns: { where: { sessionNumber: checkIn.sessionNumber }, select: { status: true, createdAt: true } } },
       });
       const otherPartyCompleted = everyoneElseHasAnswered(participant.id, theRound as any);
 
       const checkInUrl = this.email.buildCheckInUrl(checkIn.id);
+
+      /* THE LEAD WHO MADE IT AND ADDED NOBODY is not chased as if somebody had invited her (decision 109, journey 1). */
+      const isTheLead = !!participant.userId && participant.userId === (checkIn.ground as any).initiatorId;
+      if (isTheLead && nobodyElseIsIn(theRound as any, participant.userId)) {
+        try {
+          const w = theLeadsFirstWords(participant.user?.firstName, checkIn.ground.label, (checkIn.ground as any).brief);
+          await this.email.sendLeadFirstCheckIn(participant.email, w.subject, w.lines, w.linkLabel, `${frontendUrl}/grounds/${checkIn.groundId}`, participant.id);
+          await this.prisma.groundParticipant.update({ where: { id: participant.id }, data: { lastNudgedAt: now } });
+        } catch (err: any) {
+          this.logger.error(`The lead's first-check-in message failed for check-in ${checkIn.id}: ${err.message}`);
+        }
+        continue;
+      }
 
       try {
         await this.email.sendNudge(
@@ -375,7 +394,7 @@ export class RemindService {
           undefined,
           otherPartyCompleted,
           /* Their own last open promise, to them only, on an anchor check-in (piece 30). */
-          await theAnchorNudgeFor(this.prisma, { id: checkIn.groundId, startedFrom: (checkIn.ground as any).startedFrom }, participant.id),
+          await theNudgeLineFor(this.prisma, { id: checkIn.groundId, startedFrom: (checkIn.ground as any).startedFrom }, (checkIn as any).createdAt, participant.id),
           /* So the reminder carries its own way out. */
           participant.id,
           (checkIn.ground as any).simplerWords,
@@ -426,12 +445,22 @@ export class RemindService {
      * nothing would ever say so.
      */
     for (const [, entry] of forTheLead) {
+      /* What was really sent, from the record of it: only people who were sent a reminder are said to have been reminded. */
+      const sentTo: { toAddress: string; createdAt: Date }[] = await Promise.resolve((this.prisma as any).notification?.findMany?.({
+        where: { channel: 'email', sender: { in: ['sendNudge', 'sendNudgeFromAPress'] }, outcome: 'sent', toAddress: { in: entry.whoEmails.map((e) => e.trim().toLowerCase()) } },
+        select: { toAddress: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
+      })).catch(() => null) ?? [];
+      const knownSends = Array.isArray(sentTo) ? sentTo : [];
+      const remindedNames = entry.who.filter((_, i) => knownSends.some((n) => n.toAddress === entry.whoEmails[i].trim().toLowerCase()));
+      const lastRemindedOn = knownSends[0]?.createdAt ? whenItWas(new Date(knownSends[0].createdAt), 'day') : null;
       const composed = theEmailForTheLead({
         leadName: entry.leadName,
         groundLabel: entry.label,
         whoHasNotStarted: entry.who,
         chasedOn: entry.chasedOn,
         link: `${frontendUrl}/grounds`,
+        ...(knownSends.length || (this.prisma as any).notification?.findMany ? { remindedNames, lastRemindedOn } : {}),
       });
       if (!composed) continue;
 

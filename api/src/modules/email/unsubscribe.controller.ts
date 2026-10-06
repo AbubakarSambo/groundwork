@@ -1,4 +1,5 @@
-import { Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
+import { Controller, Get, HttpCode, Param, Post, Res } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from '../../common';
 import { TheWaysToStopMail } from '../engagement/the-ways-to-stop-mail';
@@ -17,10 +18,22 @@ import { TheWaysToStopMail } from '../engagement/the-ways-to-stop-mail';
  */
 @Controller()
 export class UnsubscribeController {
-  constructor(private readonly stops: TheWaysToStopMail) {}
+  constructor(private readonly stops: TheWaysToStopMail, private readonly config: ConfigService) {}
 
+  /**
+   * A PERSON WHO OPENS THE API'S ADDRESS (it is the one in the List-Unsubscribe header) IS SENT TO THE PAGE, NEVER SHOWN RAW JSON. It changes nothing.
+   */
   @Public()
   @Get('unsubscribe/:token')
+  @Throttle({ global: { limit: 20, ttl: 60_000 } })
+  async toThePage(@Param('token') token: string, @Res() res: any) {
+    const front = (this.config.get<string>('resend.frontendUrl') || '').replace(/\/$/, '');
+    return res.redirect(302, `${front}/unsubscribe/${encodeURIComponent(token)}`);
+  }
+
+  /** What the page asks, and changes nothing. */
+  @Public()
+  @Get('unsubscribe/:token/question')
   @HttpCode(200)
   /* Slower than a normal route on purpose. The token is long and random, so guessing is not worth
      attempting - but nothing should be able to sit and try. */

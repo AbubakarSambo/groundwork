@@ -47,10 +47,10 @@ describe('the lead\'s weekly letter, as the lead reads it', () => {
     expect(out).toEqual({ tried: 1 });
     expect(w.sent).toEqual([{
       to: 'wairimu@baridi.test',
-      subject: "Your team's week",
+      subject: 'Two things people said they would do were done; three handoffs are still waiting',
       lines: [
         'Your team is starting to move.',
-        'This week, 8 of 10 people checked in. Four people said what they will do next. Two things people said they would do were done. Three handoffs are still waiting on someone. Omar and Juma did not check in.',
+        'This week, eight of ten people checked in. Four people said what they will do next. Two things people said they would do were done. Three handoffs are still waiting. Omar and Juma did not check in.',
       ],
       linkLabel: "See this week's picture",
       linkUrl: 'https://app.test/grounds/g-anchor/board',
@@ -93,11 +93,11 @@ describe('the words, in other weeks', () => {
   });
   it('everyone in, and single counts, read as a person would say them', () => {
     expect(theWeekInSentences(week({ ofHowMany: 3, checkedIn: 3, saidWhatNext: 1, done: 1, waiting: 1 })).join(' ')).toBe(
-      'This week, all 3 people checked in. One person said what they will do next. One thing people said they would do was done. One handoff is still waiting on someone.');
+      'This week, all three people checked in. One person said what they will do next. One thing people said they would do was done. One handoff is still waiting.');
   });
   it('names up to three who did not check in, then counts the rest, and the lead is "you"', () => {
     expect(theWeekInSentences(week({ checkedIn: 1, notYet: ['you', 'Omar', 'Juma'] })).slice(-1)[0]).toBe('You, Omar and Juma did not check in.');
-    expect(theWeekInSentences(week({ checkedIn: 1, notYet: ['Omar', 'Juma', 'Femi', 'Bisi'] })).slice(-1)[0]).toBe('Omar, Juma and 2 others did not check in.');
+    expect(theWeekInSentences(week({ checkedIn: 1, notYet: ['Omar', 'Juma', 'Femi', 'Bisi'] })).slice(-1)[0]).toBe('Omar, Juma and two others did not check in.');
   });
   it('a check-in nobody can answer yet has no letter', () => {
     expect(theLeadsLetter([week({ ofHowMany: 0 })])).toBeNull();

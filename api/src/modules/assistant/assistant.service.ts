@@ -2555,7 +2555,7 @@ export class AssistantService {
     const mail = theMail(latest, me);
 
     try {
-      await this.email.sendRoundDigest(me.email, mail.subject, mail.text);
+      await this.email.sendMeThat(me.email, mail.subject, mail.text);
     } catch (error) {
       /* Said plainly rather than swallowed. Somebody who asked for an email and got a cheerful
          "sent" that never arrived stops trusting everything else this says. */

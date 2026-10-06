@@ -511,3 +511,22 @@ export function yourBoard(
     keptLately: keptLately(mineCommitments, now, rows.leave ?? []),
   };
 }
+
+
+/**
+ * THE PART OF YOUR OWN BOARD THAT YOUR WEEKLY EMAIL SAYS (decision 109, spec 25).
+ *
+ * Cut from the board served to you and nowhere else, so that the count of what you kept stays worked out in this file alone (the guard in
+ * kept-in-the-last-four-weeks-is-yours-alone.spec.ts reads that). It only repeats what is already on your own board, for you.
+ */
+export function theOwnWeekOf(board: (Partial<YourBoard> & { askedOfYou?: { items?: { who: string | null; what: string; checkIn: string }[] } | null }) | null | undefined): {
+  kept: { kept: number; of: number } | null;
+  open: { text: string; checkIn: string }[];
+  askedOfYou: { who: string | null; what: string; checkIn: string }[];
+} {
+  return {
+    kept: board?.keptLately ? { kept: board.keptLately.kept, of: board.keptLately.of } : null,
+    open: (board?.saidYoudDo ?? []).filter((s) => s.state === 'open').map((s) => ({ text: s.text, checkIn: s.checkIn })),
+    askedOfYou: (board?.askedOfYou?.items ?? []).map((i) => ({ who: i.who ?? null, what: i.what, checkIn: i.checkIn })),
+  };
+}

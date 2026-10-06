@@ -13,6 +13,8 @@ export interface DeliveryContext {
   kind: 'PARTICIPANT_INVITE' | 'LEAD_INVITE' | 'MAGIC_LINK' | 'REMINDER' | 'OTHER';
   participantId?: string;
   groundId?: string;
+  /** Set by the one door when it has decided what became of the mail, for a caller that must know (decision 109). */
+  outcome?: 'sent' | 'held' | 'suppressed';
 }
 
 const INVITE_KINDS = new Set(['PARTICIPANT_INVITE', 'LEAD_INVITE', 'REMINDER']);

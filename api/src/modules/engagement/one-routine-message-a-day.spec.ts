@@ -20,6 +20,8 @@ function world() {
     { email: 'vera@x.test', phone: '+254700000001', organizationId: 'o1', externalId: 'vera', timezone: null },
     { email: 'omar@x.test', phone: '+254700000002', organizationId: 'o1', externalId: 'omar', timezone: null },
   ];
+  /* Kai has an account and a number on it, and is on no roster. */
+  const users: any[] = [{ email: 'kai@x.test', phoneNumber: '+254700000009' }];
   const prisma: any = {
     notification: {
       create: jest.fn(async ({ data }: any) => { notifications.push({ ...data, createdAt: new Date() }); return data; }),
@@ -33,7 +35,7 @@ function world() {
       findMany: jest.fn(async ({ where }: any) => people.filter((p) => where.OR.some((c: any) => (c.email ? p.email === c.email.equals : c.phone ? c.phone.in.includes(p.phone) : false)))),
       findFirst: jest.fn(async () => ({ organizationId: 'o1', externalId: 'vera', timezone: null })),
     },
-    user: { findUnique: jest.fn(async () => null) },
+    user: { findUnique: jest.fn(async () => null), findMany: jest.fn(async ({ where }: any) => users.filter((u) => where.OR.some((c: any) => (c.email ? u.email === c.email.equals.toLowerCase() : c.phoneNumber ? c.phoneNumber.in.includes(u.phoneNumber) : false)))) },
     emailPreference: { findMany: jest.fn(async () => []), findUnique: jest.fn(async () => null) },
     emailDelivery: { findFirst: jest.fn(async () => null) },
     groundParticipant: { findUnique: jest.fn(async () => null) },
@@ -47,7 +49,7 @@ function world() {
   const emailed = (to: string, sender: string) => email.sendEmail({ to, subject: `${sender} for ${to}`, html: '<p>Hello</p>' }, undefined, sender);
   const wentOn = (phone: string, kind: string, when = NOW) => sends.push({ phone, kind, sentAt: when, createdAt: when });
   const ask = (phone: string, kind: string) => wa.howOftenToday(phone, kind);
-  return { emailed, wentOn, ask, notifications, sends };
+  return { emailed, wentOn, ask, notifications, sends, email, prisma, people };
 }
 
 describe('after one routine email, to Vera', () => {
@@ -131,8 +133,71 @@ describe('nobody else, and no other day', () => {
 describe('what counts as routine', () => {
   it('is the mail Groundwork decided to send, without the openings, closings and approvals', () => {
     for (const s of ['sendSessionReady', 'sendTimeRunningOut', 'sendStalledNotification', 'sendReopenedNotification', 'sendApprovalsSummary', 'sendWebhookEndpointDying']) expect(ROUTINE_EMAILS.has(s)).toBe(false);
-    for (const s of ['sendNudge', 'sendAbsenceReminder', 'sendRoundDigest', 'sendTheLeadsWeeklyLetter', 'sendFeedbackRequest']) expect(ROUTINE_EMAILS.has(s)).toBe(true);
+    for (const s of ['sendNudge', 'sendAbsenceReminder', 'sendRoundDigest', 'sendFeedbackRequest']) expect(ROUTINE_EMAILS.has(s)).toBe(true);
+    /* Not routine, and never held for the day's one: what was asked for by a press or a request, what is billing, an invitation about to lapse, a participant being blocked, and the lead's Friday letter (it outranks the morning's WhatsApp summary). */
+    for (const s of ['sendNudgeFromAPress', 'sendMeThat', 'sendCodeExpiryReminder', 'sendInviteAboutToLapse', 'sendParticipantBlockedNudge', 'sendTheLeadsWeeklyLetter']) expect(ROUTINE_EMAILS.has(s)).toBe(false);
     expect(['overdue', 'due-tomorrow', 'lead-summary', 'carry-on', 'anchor-follow-up'].every(aRoutineWhatsApp)).toBe(true);
     expect(['checkin-open', 'opens-soon', 'closes-soon', 'closes-in-half-an-hour', 'request-waiting', 'not-now'].some(aRoutineWhatsApp)).toBe(false);
+  });
+});
+
+describe('what a person asked for is never routine (review of the one-a-day rule)', () => {
+  it('the lead pressing Remind still goes after a routine email, and does not use up the day', async () => {
+    const w = world();
+    await w.emailed('vera@x.test', 'sendNudge');
+    await w.emailed('vera@x.test', 'sendNudgeFromAPress');
+    expect(w.notifications.map((n) => [n.sender, n.outcome])).toEqual([['sendNudge', 'sent'], ['sendNudgeFromAPress', 'sent']]);
+    const fresh = world();
+    await fresh.emailed('vera@x.test', 'sendNudgeFromAPress');
+    await fresh.emailed('vera@x.test', 'sendNudge');
+    expect(fresh.notifications.map((n) => [n.sender, n.outcome])).toEqual([['sendNudgeFromAPress', 'sent'], ['sendNudge', 'sent']]);
+  });
+
+  it('"send me that" from the assistant is never counted or held', async () => {
+    const w = world();
+    await w.emailed('vera@x.test', 'sendNudge');
+    await w.emailed('vera@x.test', 'sendMeThat');
+    expect(w.notifications.map((n) => [n.sender, n.outcome])).toEqual([['sendNudge', 'sent'], ['sendMeThat', 'sent']]);
+  });
+
+  it('the lead\'s Friday letter, a code about to expire and an invitation about to lapse still go', async () => {
+    const w = world();
+    await w.emailed('vera@x.test', 'sendNudge');
+    for (const s of ['sendTheLeadsWeeklyLetter', 'sendCodeExpiryReminder', 'sendInviteAboutToLapse', 'sendParticipantBlockedNudge']) await w.emailed('vera@x.test', s);
+    expect(w.notifications.slice(1).map((n) => n.outcome)).toEqual(['sent', 'sent', 'sent', 'sent']);
+  });
+});
+
+describe('one person, found by the number on their sign-in too', () => {
+  it('Kai has no roster row; an email to him then uses the day for his WhatsApp, and the other way round', async () => {
+    const w = world();
+    await w.emailed('kai@x.test', 'sendNudge');
+    expect(await w.ask('+254700000009', 'overdue')).toBe(NOT_TODAY);
+    const v = world();
+    v.wentOn('+254700000009', 'overdue');
+    await v.emailed('kai@x.test', 'sendNudge');
+    expect(v.notifications[0].outcome).toBe('suppressed');
+  });
+});
+
+describe('a mail held for the morning is asked again before it goes', () => {
+  it('and is put away if they were sent their one in the meantime, or stopped these emails', async () => {
+    const w = world();
+    const held = { toAddress: 'vera@x.test', subject: 'Your check-in is waiting', html: '<p>Hi</p>', sender: 'sendNudge', context: null };
+    await w.emailed('vera@x.test', 'sendRoundDigest');
+    await (w.email as any).deliverHeld(held);
+    expect(w.notifications.map((n) => [n.sender, n.outcome])).toEqual([['sendRoundDigest', 'sent'], ['sendNudge', 'suppressed']]);
+    expect(w.email.deliverNow).toHaveBeenCalledTimes(1);
+
+    const v = world();
+    await (v.email as any).deliverHeld(held);
+    expect(v.notifications).toEqual([expect.objectContaining({ sender: 'sendNudge', outcome: 'sent' })]);
+  });
+});
+
+describe('the invitation about to lapse says what became of it', () => {
+  it('sent, or refused, so the sweep stamps only what is on its way', async () => {
+    const w = world();
+    expect(await (w.email as any).sendInviteAboutToLapse('vera@x.test', 'Sales team, Q4', 'https://app.test/invite?token=t', 'p1')).toBe('sent');
   });
 });

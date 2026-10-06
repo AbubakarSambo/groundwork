@@ -26,7 +26,15 @@ import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { keptOffThePhone } from '../whatsapp/a-check-in-kept-off-the-phone';
 import { whatToSendThisMorning, whichChase, whenItIsDue, itIsOverdue, itIsDueTomorrow, theTeamIsAlmostIn, yourViewMatters, itOpensSoon, MORNING_ORDER, itFollowsUpTheirPromise } from '../whatsapp/what-goes-to-a-phone';
 import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
-import { theirOwnLastOpenPromise } from '../conversation/the-anchor-nudge';
+import { sendWhoHasGoneQuiet as sendWhoHasGoneQuietToLeads } from '../engagement/who-has-gone-quiet';
+import { sendTheReportFollowUps } from '../engagement/the-report-follow-up';
+import { sendHeresWhatIsNew as sendHeresWhatIsNewToLeads } from '../engagement/heres-what-is-new';
+import { sendTheParticipantsWeeks } from '../engagement/the-participants-week';
+import { YourBoardService } from './your-board.service';
+import { theOpenSession } from '../engagement/heres-what-is-new';
+import { theRanOutOfTimeSubject } from '../engagement/the-leads-subjects-carry-the-facts';
+import { sendTheTestCheckInMessages } from '../engagement/a-test-check-in-moves-on';
+import { theirPromiseToFollowUp } from '../engagement/a-follow-up-from-their-own-record';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { isNotLetInYet } from './who-an-admin-did-not-let-in';
 
@@ -98,6 +106,8 @@ export class GroundsCron implements OnApplicationBootstrap {
     @Optional() private leave?: LeaveBoardService,
     @Optional() private timeSheets?: TimeSheetsService,
     @Optional() private spending?: SpendingService,
+    /* The You board, read for each person's own week by email (decision 109). Optional and last for the same reason. */
+    @Optional() private yourBoard?: YourBoardService,
   ) {}
 
   /**
@@ -320,16 +330,19 @@ export class GroundsCron implements OnApplicationBootstrap {
       // GW-06: notify all parties that their ground has stalled.
       const stalledGrounds = await this.prisma.ground.findMany({
         where: { id: { in: staleIds } },
-        select: { id: true, label: true, participants: { select: { id: true, email: true } } },
+        select: { id: true, label: true, initiatorId: true, participants: { select: { id: true, email: true, userId: true } } },
       });
       const frontend = this.config.get<string>('resend.frontendUrl') || '';
       for (const g of stalledGrounds) {
         /* Somebody on approved leave is not told they have let it lapse (week 23). */
         const away = await whoOnACheckInIsAway(this.prisma, g.id);
+        /* WHERE IT STOOD, for the subject (decision 109 item 3): the count for everybody, and to the lead only, who had not checked in. */
+        const stood = await theOpenSession(this.prisma, g.id, (g as any).initiatorId).catch(() => null);
         for (const p of g.participants) {
           if (away.has(p.id)) continue;
+          const subject = theRanOutOfTimeSubject(g.label, stood, !!p.userId && p.userId === (g as any).initiatorId);
           await this.email
-            .sendStalledNotification(p.email, g.label, `${frontend}/grounds/${g.id}`)
+            .sendStalledNotification(p.email, g.label, `${frontend}/grounds/${g.id}`, subject)
             .catch((err: any) => this.logger.error(`Stalled notification failed for ground ${g.id}: ${err.message}`));
         }
       }
@@ -635,8 +648,9 @@ export class GroundsCron implements OnApplicationBootstrap {
       });
       for (const p of aboutToLapse) {
         try {
-          await this.email.sendInviteAboutToLapse(p.email, p.ground.label, this.email.buildInviteUrl(p.inviteToken!), p.id);
-          await this.prisma.groundParticipant.update({ where: { id: p.id }, data: { inviteExpiryWarnedAt: now } });
+          const went = await this.email.sendInviteAboutToLapse(p.email, p.ground.label, this.email.buildInviteUrl(p.inviteToken!), p.id);
+          /* Stamped only when it is on its way (sent, or held for the morning and sent then). One that was refused is tried again tomorrow, while there is still time to say it. */
+          if (went !== 'suppressed') await this.prisma.groundParticipant.update({ where: { id: p.id }, data: { inviteExpiryWarnedAt: now } });
         } catch (err: any) {
           this.logger.warn(`Could not warn ${p.email} about a lapsing invite: ${err?.message}`);
         }
@@ -825,9 +839,7 @@ export class GroundsCron implements OnApplicationBootstrap {
            * ON AN ANCHOR CHECK-IN, THE ANCHOR'S NUDGE (piece 30; decision 105 item 3): the person's own last open promise,
            * to them only, in place of the chase. Every gate above still holds, and the sender counts it as the day's one.
            */
-          const theirs = ci.ground.startedFrom === STARTED_FROM_THE_ANCHOR && (await theAnchorScenarioIsOn(this.prisma))
-            ? await theirOwnLastOpenPromise(this.prisma, ci.groundId, ci.participantId)
-            : null;
+          const theirs = await theirPromiseToFollowUp(this.prisma, { id: ci.groundId, startedFrom: ci.ground.startedFrom }, ci.createdAt, ci.participantId);
           if (theirs) said = itFollowsUpTheirPromise(who, theirs, ci.ground.simplerWords);
           else {
             const counts = await this.whoHasAnswered(ci.groundId, ci.sessionNumber);
@@ -908,6 +920,97 @@ export class GroundsCron implements OnApplicationBootstrap {
       now,
     ).catch((err: any) => { this.logger.warn(`The leads' weekly letters could not be sent: ${err?.message}`); return { tried: 0 }; });
     if (result.tried) this.logger.log(`Email: ${result.tried} weekly lead letter(s) tried.`);
+    return result;
+  }
+
+  /**
+   * A TEST CHECK-IN MOVES TOWARD ONE SMALL REAL ONE (decision 109 item 8), Tuesday morning in Lagos. Once ever per lead; see
+   * engagement/a-test-check-in-moves-on.ts for what a test is and what is said.
+   */
+  @Cron('0 10 * * 2', { timeZone: 'Africa/Lagos' })
+  async sendTheTestCheckInMessages() {
+    await onceAcrossCopies(this.prisma, 'test-check-in-moves-on', theWeek(), () => this.sendTheTestCheckInMessagesInner());
+  }
+
+  async sendTheTestCheckInMessagesInner(now: Date = new Date()): Promise<{ tried: number }> {
+    const result = await sendTheTestCheckInMessages(
+      { prisma: this.prisma, email: this.email, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
+      now,
+    ).catch((err: any) => { this.logger.warn(`The test check-in messages could not be sent: ${err?.message}`); return { tried: 0 }; });
+    if (result.tried) this.logger.log(`Email: ${result.tried} test check-in message(s) tried.`);
+    return result;
+  }
+
+  /**
+   * THE FOLLOW-UP AFTER A REPORT (decision 109; section 36, journey 6), mid-morning in Lagos on weekdays: a week after a report went out, once, to a
+   * lead who has not opened a next session. See engagement/the-report-follow-up.ts.
+   */
+  @Cron('0 11 * * 1-5', { timeZone: 'Africa/Lagos' })
+  async sendTheReportFollowUps() {
+    await onceAcrossCopies(this.prisma, 'report-follow-up', theDay(), () => this.sendTheReportFollowUpsInner());
+  }
+
+  async sendTheReportFollowUpsInner(now: Date = new Date()): Promise<{ tried: number }> {
+    const result = await sendTheReportFollowUps(
+      { prisma: this.prisma, email: this.email, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
+      now,
+    ).catch((err: any) => { this.logger.warn(`The report follow-ups could not be sent: ${err?.message}`); return { tried: 0 }; });
+    if (result.tried) this.logger.log(`Email: ${result.tried} report follow-up(s) tried.`);
+    return result;
+  }
+
+  /**
+   * WHO HAS GONE QUIET (decision 109; section 36, journeys 7 and 9), Wednesday mid-morning in Lagos: once a week to a lead, as an insight about the
+   * team or across her check-ins. See engagement/who-has-gone-quiet.ts.
+   */
+  @Cron('0 10 * * 3', { timeZone: 'Africa/Lagos' })
+  async sendWhoHasGoneQuiet() {
+    await onceAcrossCopies(this.prisma, 'who-has-gone-quiet', theWeek(), () => this.sendWhoHasGoneQuietInner());
+  }
+
+  async sendWhoHasGoneQuietInner(now: Date = new Date()): Promise<{ tried: number }> {
+    const result = await sendWhoHasGoneQuietToLeads(
+      { prisma: this.prisma, email: this.email, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
+      now,
+    ).catch((err: any) => { this.logger.warn(`The "gone quiet" messages could not be sent: ${err?.message}`); return { tried: 0 }; });
+    if (result.tried) this.logger.log(`Email: ${result.tried} "gone quiet" message(s) tried.`);
+    return result;
+  }
+
+  /**
+   * "HERE IS WHAT IS NEW", ONCE, to a lead who was already here (decision 109 item 2), mid-morning in Lagos on weekdays. Once ever per lead,
+   * and only about check-ins made before the release that are still going. See engagement/heres-what-is-new.ts.
+   */
+  @Cron('30 10 * * 1-5', { timeZone: 'Africa/Lagos' })
+  async sendHeresWhatIsNew() {
+    await onceAcrossCopies(this.prisma, 'heres-what-is-new', theDay(), () => this.sendHeresWhatIsNewInner());
+  }
+
+  async sendHeresWhatIsNewInner(now: Date = new Date()): Promise<{ tried: number }> {
+    const result = await sendHeresWhatIsNewToLeads(
+      { prisma: this.prisma, email: this.email, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
+      now,
+    ).catch((err: any) => { this.logger.warn(`The "what is new" emails could not be sent: ${err?.message}`); return { tried: 0 }; });
+    if (result.tried) this.logger.log(`Email: ${result.tried} "what is new" email(s) tried.`);
+    return result;
+  }
+
+  /**
+   * EVERY PERSON'S WEEK BY EMAIL (decision 109; spec 25), Thursday morning in Lagos, from their own You board and nothing else. See
+   * engagement/the-participants-week.ts.
+   */
+  @Cron('0 9 * * 4', { timeZone: 'Africa/Lagos' })
+  async sendTheParticipantsWeeks() {
+    await onceAcrossCopies(this.prisma, 'participants-week', theWeek(), () => this.sendTheParticipantsWeeksInner());
+  }
+
+  async sendTheParticipantsWeeksInner(now: Date = new Date()): Promise<{ tried: number }> {
+    if (!this.yourBoard) return { tried: 0 };
+    const result = await sendTheParticipantsWeeks(
+      { prisma: this.prisma, board: this.yourBoard, email: this.email, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
+      now,
+    ).catch((err: any) => { this.logger.warn(`The participants' weeks could not be sent: ${err?.message}`); return { tried: 0 }; });
+    if (result.tried) this.logger.log(`Email: ${result.tried} participant week(s) tried.`);
     return result;
   }
 
@@ -1036,33 +1139,12 @@ export class GroundsCron implements OnApplicationBootstrap {
      */
     const returnNudges = 0;
 
-    // 2. Activation reminders to admins sitting on an unactivated report.
-    const reportReady = await this.prisma.ground.findMany({
-      where: { status: GroundStatus.REPORT_READY, billingActivatedAt: null },
-      select: {
-        id: true,
-        label: true,
-        participants: {
-          where: { partyType: PartyType.INITIATOR },
-          select: { id: true, email: true, lastNudgedAt: true },
-          take: 1,
-        },
-      },
-    });
-
-    let activationNudges = 0;
-    for (const g of reportReady) {
-      const initiator = g.participants[0];
-      if (!initiator) continue;
-      if (initiator.lastNudgedAt && initiator.lastNudgedAt >= throttleBefore) continue;
-      try {
-        await this.email.sendActivationReminder(initiator.email, g.label, `${frontend}/grounds/${g.id}`);
-        await this.prisma.groundParticipant.update({ where: { id: initiator.id }, data: { lastNudgedAt: now } });
-        activationNudges++;
-      } catch (err: any) {
-        this.logger.error(`Activation reminder failed for ground ${g.id}: ${err.message}`);
-      }
-    }
+    /*
+     * 2. THE ACTIVATION REMINDER IS GONE (decision 109). It looked for grounds in REPORT_READY, a status that has not been written since June, so it never
+     * fired, and the lead who sat on a report was never followed up. The follow-up after a report is its own sweep now (engagement/the-report-follow-up.ts),
+     * from what the record shows changed.
+     */
+    const activationNudges = 0;
 
     // 3. Reveal reminders: a party whose report has been released but who has
     // not activated their own ReportActivation yet. Distinct from the

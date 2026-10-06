@@ -25,6 +25,7 @@ import { howLongInWords } from '../auth/how-long-a-link-lasts';
 import { shouldSayWhatGroundworkIs, withWhatGroundworkIs } from './what-groundwork-is';
 import { haveNotCheckedInSaid, type WhoIsLeft } from './who-has-not-checked-in-yet';
 import { whatTheTeamGets, whatTheLeadGets, THE_TEAM_BUTTON, THE_LEAD_BUTTON } from './one-line-one-link-one-report';
+import { thePartialPicture } from '../engagement/a-partial-picture-said-honestly';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { theAnchorInvitation } from '../entry/the-anchor-people-step';
 import { STARTED_FROM_THE_ANCHOR, theCheckInWasStartedFromTheAnchor } from '../conversation/the-anchor-weekly-check-in';
@@ -428,6 +429,7 @@ export class EmailService implements OnModuleInit {
          somebody may be waiting for, and "nothing happened" is the hardest kind of bug to chase. */
       this.logger.log(`Not sending "${options.subject}" to ${options.to}: ${rather}`);
       this.writeItDown(options, sender, 'suppressed', rather);
+      if (context) context.outcome = 'suppressed';
       return undefined;
     }
 
@@ -441,9 +443,11 @@ export class EmailService implements OnModuleInit {
      */
     if (sender && whatThisMailIs(sender) === 'we decided to send it') {
       const held = await this.holdForTheMorning(options, context, sender);
-      if (held) return undefined;
+      if (held) { if (context) context.outcome = 'held'; return undefined; }
     }
-    return this.deliverNow(options, context, sender);
+    const went = await this.deliverNow(options, context, sender);
+    if (context) context.outcome = 'sent';
+    return went;
   }
 
   /** Whether this person has already been sent the day's one routine message, by email or on WhatsApp (decision 109, item 6). Null when they have not. */
@@ -482,6 +486,17 @@ export class EmailService implements OnModuleInit {
 
   /** A held mail, when its moment has come. Skips the hold and the preference gate, both already asked. */
   async deliverHeld(row: { toAddress: string; subject: string; html: string; sender: string | null; context: unknown }): Promise<void> {
+    /* WHILE IT WAS HELD, SOMETHING MAY HAVE CHANGED: they may have stopped these emails, or been sent their one routine message another way. Asked again. */
+    const options = { to: row.toAddress, subject: row.subject, html: row.html };
+    if (row.sender) {
+      const rather = (await this.wouldTheyRatherNot(row.toAddress, row.sender, (row.context ?? undefined) as DeliveryContext | undefined))
+        ?? (ROUTINE_EMAILS.has(row.sender) ? await this.theyHadTheirOneToday(row.toAddress) : null);
+      if (rather) {
+        this.logger.log(`Not sending the held "${row.subject}" to ${row.toAddress}: ${rather}`);
+        await this.writeItDown(options, row.sender, 'suppressed', rather);
+        return;
+      }
+    }
     await this.deliverNow({ to: row.toAddress, subject: row.subject, html: row.html }, (row.context ?? undefined) as DeliveryContext | undefined, row.sender ?? undefined);
   }
 
@@ -511,8 +526,13 @@ export class EmailService implements OnModuleInit {
     const text = plainTextOf(options.html);
     /* The one-click POST goes to the API, not the page: a mail program posts it with no person reading anything. */
     const apiOrigin = (this.configService.get<string>('app.publicApiUrl') || '').replace(/\/$/, '');
-    const oneClick = wayOut && apiOrigin ? `${apiOrigin}/api/v1/unsubscribe/${wayOut.split('/unsubscribe/')[1]}` : wayOut;
-    const headers = wayOut ? { 'List-Unsubscribe': `<${oneClick}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } : undefined;
+    /* RFC 8058: the one-click header is promised only where the address in it really takes a POST and stops the mail with no page. That is the API's
+       route, so it needs PUBLIC_API_URL. Without it the mail carries only the link to the page, and no one-click promise it cannot keep. */
+    const headers: Record<string, string> | undefined = wayOut
+      ? (apiOrigin
+        ? { 'List-Unsubscribe': `<${apiOrigin}/api/v1/unsubscribe/${wayOut.split('/unsubscribe/')[1]}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' }
+        : { 'List-Unsubscribe': `<${wayOut}>` })
+      : undefined;
 
     if (this.isDev()) {
       this.logger.warn(`[DEV EMAIL] To: ${options.to} | Subject: ${options.subject}`);
@@ -872,7 +892,8 @@ export class EmailService implements OnModuleInit {
   }
 
   /** Two days before their invitation lapses, the invitee is told, with the link that still works. */
-  async sendInviteAboutToLapse(email: string, groundLabel: string, inviteUrl: string, participantId: string): Promise<void> {
+  async sendInviteAboutToLapse(email: string, groundLabel: string, inviteUrl: string, participantId: string): Promise<'sent' | 'held' | 'suppressed'> {
+    const context: DeliveryContext = { kind: 'REMINDER', participantId };
     await this.sendEmail({
       to: email,
       subject: `Your invitation to ${groundLabel} lapses in two days`,
@@ -881,7 +902,8 @@ export class EmailService implements OnModuleInit {
         `<p><a href="${inviteUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Add my account →</a></p>` +
         `<p style="font-size:12px;color:#9B9590;">You are never obligated to take part. If you would rather not, ignore this and nothing more comes about it.</p>${(await this.theWayToStopBeingChased(participantId)) ?? ''}`,
       ),
-    }, { kind: 'REMINDER', participantId }, 'sendInviteAboutToLapse');
+    }, context, 'sendInviteAboutToLapse');
+    return context.outcome ?? 'sent';
   }
 
   /** An invitation lapsed unopened; the lead who sent it can resend or take them off. */
@@ -1026,6 +1048,36 @@ export class EmailService implements OnModuleInit {
   }
 
   /**
+   * A TEST CHECK-IN MOVES TOWARD ONE SMALL REAL ONE (decision 109 item 8). The words come from engagement/a-test-check-in-moves-on.ts:
+   * what the lead tried, and one real situation with a few real people. Nobody else's words are in it.
+   */
+  async sendTestCheckInMovesOn(email: string, subject: string, lines: string[], linkLabel: string, linkUrl: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject,
+      html: this.layout(lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('') + `<p><a href="${linkUrl}">${escapeHtml(linkLabel)}</a></p>`),
+    }, undefined, 'sendTestCheckInMovesOn');
+  }
+
+  /** "HERE IS WHAT IS NEW", once, to a lead who was already here (decision 109 item 2). Words: engagement/heres-what-is-new.ts. */
+  async sendHeresWhatIsNew(email: string, subject: string, lines: string[], linkLabel: string, linkUrl: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject,
+      html: this.layout(lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('') + `<p><a href="${linkUrl}">${escapeHtml(linkLabel)}</a></p>`),
+    }, undefined, 'sendHeresWhatIsNew');
+  }
+
+  /** THE PARTICIPANT'S WEEK (decision 109, spec 25): their own board, to them only. Words: engagement/the-participants-week.ts. */
+  async sendYourWeek(email: string, subject: string, lines: string[], linkLabel: string, linkUrl: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject,
+      html: this.layout(lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('') + `<p><a href="${linkUrl}">${escapeHtml(linkLabel)}</a></p>`),
+    }, undefined, 'sendYourWeek');
+  }
+
+  /**
    * "GET UPDATES FROM YOUR TEAM" HAS TWO EMAILS AND THEY ARE THE WHOLE PRODUCT FOR THAT CARD.
    *
    * A two-minute setup is only worth anybody's time because of what arrives in the same week, so
@@ -1162,12 +1214,12 @@ export class EmailService implements OnModuleInit {
    * reports/who-shared-it-because-the-lead-left.ts, which builds the sentence. Null in the
    * ordinary case, where the lead released it themselves and nothing extra is said.
    */
-  async sendReportReady(email: string, groundLabel: string, reportUrl: string, sharedByAnAdminSentence?: string, groundId?: string): Promise<void> {
+  async sendReportReady(email: string, groundLabel: string, reportUrl: string, sharedByAnAdminSentence?: string, groundId?: string, subjectLine?: string): Promise<void> {
     /* Who can see what people said, as the invitation says it (whoSeesWhatYouSay): not "it does not quote anybody", which is not true. */
     const whoSees = await this.whoSeesWhatYouSay(groundId ? { groundId } as DeliveryContext : undefined);
     await this.sendEmail({
       to: email,
-      subject: `The shared picture for ${groundLabel} is ready`,
+      subject: subjectLine ?? `The shared picture for ${groundLabel} is ready`,
       /*
        * WHAT GROUNDWORK IS, AND WHO CAN SEE THIS.
        *
@@ -1196,6 +1248,21 @@ export class EmailService implements OnModuleInit {
    * the context, so it has to be there.
    */
   async sendNudge(email: string, groundLabel: string, checkInUrl: string, scenario: string | undefined, otherPartyCompleted: boolean | undefined, theAnchorLine: string | null | undefined, participantId: string, simplerWords?: boolean | null): Promise<void> {
+    const mail = await this.theNudge(groundLabel, `<a href="${checkInUrl}">Check in</a>`, scenario, otherPartyCompleted, theAnchorLine, participantId, simplerWords);
+    await this.sendEmail({ to: email, ...mail }, { kind: 'REMINDER', participantId }, 'sendNudge');
+  }
+
+  /**
+   * THE LEAD PRESSED "REMIND" (decision 109, review of the one-a-day rule). Somebody asked for this one, so it is never counted toward the person's
+   * one routine message of the day and never held back for it. It is still a reminder, so the person's own opt-out still stops it, as it always did.
+   */
+  async sendNudgeFromAPress(email: string, groundLabel: string, checkInUrl: string, scenario: string | undefined, otherPartyCompleted: boolean | undefined, theAnchorLine: string | null | undefined, participantId: string, simplerWords?: boolean | null): Promise<void> {
+    const mail = await this.theNudge(groundLabel, `<a href="${checkInUrl}">Check in</a>`, scenario, otherPartyCompleted, theAnchorLine, participantId, simplerWords);
+    await this.sendEmail({ to: email, ...mail }, { kind: 'REMINDER', participantId }, 'sendNudgeFromAPress');
+  }
+
+  /** The reminder's subject and words, the same whichever way it came. */
+  private async theNudge(groundLabel: string, link: string, scenario: string | undefined, otherPartyCompleted: boolean | undefined, theAnchorLine: string | null | undefined, participantId: string, simplerWords?: boolean | null): Promise<{ subject: string; html: string }> {
     const words = THE_EMAILS.nudge(simplerWords);
     const subjectMap: Record<string, string> = {
       NEW_HIRE: 'Your 90-day check-in is waiting',
@@ -1214,13 +1281,43 @@ export class EmailService implements OnModuleInit {
     const otherPartyNote = otherPartyCompleted
       ? `<p><strong>${words.theOtherHasAnswered}</strong></p>`
       : '';
-    await this.sendEmail({
-      to: email,
+    return {
       subject,
       /* A reminder with no way to stop it is the whole defect. This is the second mail it goes on. */
       /* On an anchor check-in, the anchor's own line (piece 30): their own open promise said back to them, or what has changed. */
-      html: this.layout(`<p>Your check-in for <strong>${escapeHtml(groundLabel)}</strong> ${words.stillOpen}</p>${theAnchorLine ? `<p>${escapeHtml(theAnchorLine)}</p>` : ''}${otherPartyNote}<p><a href="${checkInUrl}">Check in</a></p>${(await this.theWayToStopBeingChased(participantId)) ?? ''}`),
-    }, { kind: 'REMINDER', participantId }, 'sendNudge');
+      html: this.layout(`<p>Your check-in for <strong>${escapeHtml(groundLabel)}</strong> ${words.stillOpen}</p>${theAnchorLine ? `<p>${escapeHtml(theAnchorLine)}</p>` : ''}${otherPartyNote}<p>${link}</p>${(await this.theWayToStopBeingChased(participantId)) ?? ''}`),
+    };
+  }
+
+  /** THE LEAD WHO ADDED NOBODY (decision 109, journey 1). Words: engagement/the-leads-own-first-check-in.ts. */
+  async sendLeadFirstCheckIn(email: string, subject: string, lines: string[], linkLabel: string, linkUrl: string, participantId: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject,
+      html: this.layout(lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('') + `<p><a href="${linkUrl}">${escapeHtml(linkLabel)}</a></p>`),
+    }, { kind: 'REMINDER', participantId }, 'sendLeadFirstCheckIn');
+  }
+
+  /** THE FOLLOW-UP AFTER A REPORT (decision 109, journey 6). Says what became of it, so the sweep stamps only what is on its way. Words: engagement/the-report-follow-up.ts. */
+  async sendTheReportFollowUp(email: string, subject: string, lines: string[], linkLabel: string, linkUrl: string): Promise<'sent' | 'held' | 'suppressed'> {
+    const context: DeliveryContext = { kind: 'OTHER' };
+    await this.sendEmail({
+      to: email,
+      subject,
+      html: this.layout(lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('') + `<p><a href="${linkUrl}">${escapeHtml(linkLabel)}</a></p>`),
+    }, context, 'sendTheReportFollowUp');
+    return context.outcome ?? 'sent';
+  }
+
+  /** WHO HAS GONE QUIET, as an insight to the lead (decision 109, journeys 7 and 9). Says what became of it. Words: engagement/who-has-gone-quiet.ts. */
+  async sendWhoHasGoneQuiet(email: string, subject: string, lines: string[], linkLabel: string, linkUrl: string): Promise<'sent' | 'held' | 'suppressed'> {
+    const context: DeliveryContext = { kind: 'OTHER' };
+    await this.sendEmail({
+      to: email,
+      subject,
+      html: this.layout(lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('') + `<p><a href="${linkUrl}">${escapeHtml(linkLabel)}</a></p>`),
+    }, context, 'sendWhoHasGoneQuiet');
+    return context.outcome ?? 'sent';
   }
 
   /**
@@ -1294,17 +1391,18 @@ export class EmailService implements OnModuleInit {
   }
 
   /** Participant checked in. The lead is told by the person's name, with how many are still to come. */
-  async sendParticipantCheckedIn(adminEmail: string, participantName: string, groundLabel: string, groundUrl: string, stillPending?: number | WhoIsLeft): Promise<void> {
+  async sendParticipantCheckedIn(adminEmail: string, participantName: string, groundLabel: string, groundUrl: string, stillPending?: number | WhoIsLeft, progress?: { answered: string[]; ofHowMany: number }): Promise<void> {
     const left: WhoIsLeft | undefined = typeof stillPending === 'number' ? { names: [], count: stillPending } : stillPending;
+    const partial = progress && progress.answered.length > 0 && progress.answered.length < progress.ofHowMany ? thePartialPicture(groundLabel, progress, left) : null;
     const pendingNote = left && left.count > 0
       ? `<p>${escapeHtml(haveNotCheckedInSaid(left))} The report is made once everyone is in.</p>`
       : `<p>Everyone has now checked in. The shared report is ready to go out.</p>`;
     await this.sendEmail({
       to: adminEmail,
-      subject: `${participantName} has checked in on ${groundLabel}`,
+      subject: partial ? partial.subject : `${participantName} has checked in on ${groundLabel}`,
       html: this.layout(
         `<p><strong>${escapeHtml(participantName)}</strong> has checked in on <strong>${escapeHtml(groundLabel)}</strong>.</p>
-         ${pendingNote}
+         ${partial ? partial.lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('') : pendingNote}
          <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View check-in →</a></p>
          <p style="font-size:12px;color:#9B9590;">You can see who has checked in and read what they said in the check-in, and the shared picture once it is ready. Everybody in it is told the moment the picture is ready.</p>`,
       ),
@@ -1363,10 +1461,10 @@ export class EmailService implements OnModuleInit {
    *
    * There is one now, it belongs to whoever runs the check-in, and this says so.
    */
-  async sendStalledNotification(email: string, groundLabel: string, groundUrl: string): Promise<void> {
+  async sendStalledNotification(email: string, groundLabel: string, groundUrl: string, subjectLine?: string): Promise<void> {
     await this.sendEmail({
       to: email,
-      subject: `"${groundLabel}" ran out of time`,
+      subject: subjectLine ?? `"${groundLabel}" ran out of time`,
       html: this.layout(
         `<p>The check-in <strong>${escapeHtml(groundLabel)}</strong> has passed the time it was given, so nothing can be added to it right now.</p>
          <p>Everything already answered is kept, exactly as it is. Whoever runs this check-in can give it more time, and it opens again from where it left off.</p>
@@ -1738,6 +1836,18 @@ export class EmailService implements OnModuleInit {
    * link, with nowhere to put a quote or a finding. Composing it here would put the shape back in a
    * template, and a template is edited by whoever needs one more field in it.
    */
+  /**
+   * "SEND ME THAT" FROM THE ASSISTANT (decision 109). The person asked for this email, so it is not a routine message: it is never counted toward
+   * the day's one, never held back for it, and never stopped by the opt-out for what we decide to send. Same shape as the digest.
+   */
+  async sendMeThat(email: string, subject: string, text: string): Promise<void> {
+    const html = text
+      .split('\n')
+      .map((line) => (line.trim() ? `<p>${escapeHtml(line)}</p>` : ''))
+      .join('');
+    await this.sendEmail({ to: email, subject, html }, undefined, 'sendMeThat');
+  }
+
   async sendRoundDigest(email: string, subject: string, text: string): Promise<void> {
     const html = text
       .split('\n')
@@ -1778,7 +1888,7 @@ export function plainTextOf(html: string): string {
 
 /** Appended to every mail we decided to send. The link works with no sign-in (round-digest.service.ts#unsubscribe). */
 export const UNSUBSCRIBE_FOOTER = (url: string) =>
-  `<p style="font-size:12px;color:#9B9590;margin-top:28px;">To stop the emails we decide to send: <a href="${url}" style="color:#9B9590;">unsubscribe</a>. Emails you ask for, such as a sign-in link, will still reach you.</p>`;
+  `<p style="font-size:12px;color:#9B9590;margin-top:28px;">If you would rather not get the emails we decide to send, you can <a href="${url}" style="color:#9B9590;">stop them here</a>.</p>`;
 
 /** Takes out `<!-- ... -->` comments. A conditional comment for a mail client (`<!--[if`) is left alone. */
 export function withoutDeveloperComments(html: string): string {

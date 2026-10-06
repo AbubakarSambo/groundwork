@@ -35,13 +35,20 @@ export function StopMailPage({ which }: { which: Which }) {
   /* The question for the unsubscribe link, which asks before it stops anything (decision 109). */
   const [question, setQuestion] = useState<{ title: string; says: string[]; keepLabel: string; stopLabel: string; turnBackOnLabel: string; stopped: boolean } | null>(null)
   const [busy, setBusy] = useState(false)
+  /* After a stop: its heading, and whether the page offers the undo (somebody with no account has
+     only this link to come back by). From the engine's review of the opt-out (1fe53cb2). */
+  const [doneTitle, setDoneTitle] = useState('Done.')
+  const [canUndo, setCanUndo] = useState(false)
   async function answer(path: '' | '/undo') {
     setBusy(true)
     try {
       const r = await fetch(`${API_ORIGIN}/api/v1/unsubscribe/${encodeURIComponent(token ?? '')}${path}`, { method: 'POST' })
       const body = await r.json().catch(() => null)
       if (r.status >= 500 || !body) { setState('failed'); return }
-      setSays(body?.data?.says ?? body?.says ?? '')
+      const d = body?.data ?? body
+      setSays(Array.isArray(d?.says) ? d.says.join(' ') : d?.says ?? '')
+      setDoneTitle(d?.title ?? (path === '/undo' ? 'These emails are back on' : 'These emails are turned off'))
+      setCanUndo(path === '' && d?.canUndo === true)
       setState('done')
     } catch { setState('failed') } finally { setBusy(false) }
   }
@@ -52,7 +59,11 @@ export function StopMailPage({ which }: { which: Which }) {
     let alive = true
     void (async () => {
       try {
-        const r = await fetch(`${API_ORIGIN}/api/v1/${which}/${encodeURIComponent(token ?? '')}`)
+        /* The unsubscribe question is read from its own address (the engine's 1fe53cb2); an API from
+           before it has none and answers 404 there, so the page falls back to the plain read. */
+        const base = `${API_ORIGIN}/api/v1/${which}/${encodeURIComponent(token ?? '')}`
+        let r = await fetch(which === 'unsubscribe' ? `${base}/question` : base)
+        if (which === 'unsubscribe' && r.status === 404) r = await fetch(base)
         const body = await r.json().catch(() => null)
         if (!alive) return
         /* A 404 here still means the mail stops, because the token is gone. Only a server that
@@ -74,6 +85,7 @@ export function StopMailPage({ which }: { which: Which }) {
           setQuestion({ ...q, says: lines })
           setState(q?.known === false ? 'done' : 'asking')
           setSays(lines.join(' '))
+          if (q?.known === false) setDoneTitle(q?.title ?? 'That link is not one we recognise')
           return
         }
         /* THE ENVELOPE. Every API response here is wrapped as `{ success, data }`, so reading
@@ -123,5 +135,11 @@ export function StopMailPage({ which }: { which: Which }) {
     )
   }
 
-  return <AuthCard title="Done." sub={says} />
+  return (
+    <AuthCard title={which === 'unsubscribe' ? doneTitle : 'Done.'} sub={says}>
+      {which === 'unsubscribe' && canUndo && (
+        <Button kind="secondary" disabled={busy} onClick={() => void answer('/undo')}>Turn them back on</Button>
+      )}
+    </AuthCard>
+  )
 }

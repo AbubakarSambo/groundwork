@@ -44,7 +44,7 @@ function aMorning(opts: { onLeave?: boolean; onlyThePlan?: boolean; waiting?: bo
   const boards: any = {
     leave: { board: jest.fn(async () => ({ waiting: opts.waiting === false ? [] : [{ id: 'l-1', name: 'Amina Yusuf', startsOn: '2026-10-05', endsOn: '2026-10-09', mayDecide: true }] })) },
   };
-  return { run: () => sendTheLeadsDailySummaries({ prisma, whatsapp, boards, frontendUrl: 'https://myground.work' }, NOW), sent };
+  return { prisma, run: () => sendTheLeadsDailySummaries({ prisma, whatsapp, boards, frontendUrl: 'https://myground.work' }, NOW), sent };
 }
 
 describe("what Wairimu reads on her phone", () => {
@@ -53,7 +53,7 @@ describe("what Wairimu reads on her phone", () => {
     expect(await m.run()).toEqual({ tried: 1 });
     expect(m.sent).toHaveLength(1);
     expect(m.sent[0].text).toBe(
-      "Good morning Wairimu. Here's today's summary of your check-ins: In \"Sales team, Q3\", 5 of 6 people have checked in, and Omar has not yet. Amina's leave from Monday 5 October to Friday 9 October is waiting for you to approve or decline. Open the board for the full picture: https://myground.work/grounds/g-sales/board Reply not now and we will leave you alone for the day.",
+      "Good morning Wairimu. Here's today's summary of your check-ins: In \"Sales team, Q3\", 5 of 6 people have checked in, and Omar has not yet. Amina's leave from Monday 5 October to Friday 9 October is waiting for you to approve or decline. Open the board for the full picture: https://myground.work/grounds/g-sales/board If you would rather not hear from us here again today, reply \"not now\".",
     );
     expect(m.sent[0].context).toEqual({ kind: 'lead-summary', params: ['Wairimu', expect.any(String), 'https://myground.work/grounds/g-sales/board'] });
     expect(m.sent[0].context.params[1]).not.toMatch(/[\r\n\t]/);
@@ -104,6 +104,18 @@ describe('a morning when nothing useful happened', () => {
     expect(await m.run()).toEqual({ tried: 1 });
     expect(m.sent[0].context.params[1]).toBe('In "Sales team, Q3", 5 of 6 people have checked in, and Omar has not yet.');
   });
+  it('an answer with no time recorded does not count as something new', async () => {
+    const m = aMorning({ waiting: false, lastSummary: yesterday });
+    expect(await m.run()).toEqual({ tried: 0 });
+  });
+  it('the last summary is found by every form of her number, so a number written another way does not hide it', async () => {
+    const asked: any[] = [];
+    const m = aMorning({ waiting: false, lastSummary: yesterday, answeredAt: new Date('2026-10-04T15:00:00Z') });
+    const orig = m.prisma.whatsAppSend.findFirst;
+    m.prisma.whatsAppSend.findFirst = jest.fn(async (a: any) => { asked.push(a.where.phone.in); return orig(a); });
+    await m.run();
+    expect(asked[0]).toEqual(expect.arrayContaining(['+254711000111', '254711000111']));
+  });
   it('and it goes when something waits for her, even if nobody has checked in', async () => {
     const m = aMorning({ nobodyIn: true, lastSummary: yesterday });
     expect(await m.run()).toEqual({ tried: 1 });
@@ -121,7 +133,7 @@ describe('each sentence', () => {
   it('the whole message goes as Hafsah\'s registered template, word for word', () => {
     const m = theLeadsDailySummary('Wairimu', theSummaryParagraph([{ label: 'Sales team, Q3', ofHowMany: 6, answered: 6, notYet: [] }], [])!, 'https://myground.work/grounds');
     expect(TEMPLATES[m.kind].name).toBe('lead_daily_summary');
-    expect(m.text).toBe("Good morning Wairimu. Here's today's summary of your check-ins: In \"Sales team, Q3\", all 6 people have checked in. Open the board for the full picture: https://myground.work/grounds Reply not now and we will leave you alone for the day.");
+    expect(m.text).toBe("Good morning Wairimu. Here's today's summary of your check-ins: In \"Sales team, Q3\", all 6 people have checked in. Open the board for the full picture: https://myground.work/grounds If you would rather not hear from us here again today, reply \"not now\".");
   });
 });
 

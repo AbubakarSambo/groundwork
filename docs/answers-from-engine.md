@@ -6362,6 +6362,19 @@ Settings (own settings, "What we send you"): the one switch is now titled "Email
 
 The one-click header (`List-Unsubscribe` with `List-Unsubscribe=One-Click`) points to the API's `POST /api/v1/unsubscribe/:token`, so a mail program's own button stops the mail with no page, as the standard says. I have already made the two small client edits (`client/src/pages/mail/StopMailPage.tsx` and the Settings label) so nothing is left broken; they are plain and the screens can restyle them.
 
+## 7 October, after review: the stop-mail words changed, for the screens (decision 109)
+
+These replace the sentences in the section above where they differ.
+
+- The question's title: "Do you want to stop the emails from Groundwork that we decide to send?" The two buttons stay "Keep email insights" and "Turn off email insights". When they are already stopped: title "These emails are already turned off", button "Turn email insights back on".
+- The lead's paragraph now ends "...recommendations for what to do next, and reminders that your check-in is open or running out of time. You can still access Groundwork directly." The participant's now reads "...or useful changes between check-ins, and reminders that your check-in is open or running out of time. You can still use Groundwork directly." For someone on no roster: "...Groundwork's email summaries, or reminders that a check-in is open or running out of time. You can still use Groundwork directly."
+- What still arrives: "Emails you ask for will still reach you, such as sign-in links, invitations, reports from check-ins you took part in, anything you asked the assistant to send you, approvals waiting for you, and notices about billing." This is exactly what the code does.
+- After a stop (`POST /api/v1/unsubscribe/:token`): title "These emails are turned off"; text "Groundwork will stop sending these emails. [what still arrives] You can turn them back on in Settings." For somebody with no account the last sentence is "Open this link again to turn them back on." and the page shows a button "Turn them back on" (`POST /api/v1/unsubscribe/:token/undo`; the response has `canUndo`). There is no "Done." heading and no "Done." in the text.
+- An unknown link: title "That link is not one we recognise", text "Nothing has been changed. If emails you do not want are still arriving, reply to one and we will stop them by hand."
+- The page now reads its question from `GET /api/v1/unsubscribe/:token/question`. Opening `GET /api/v1/unsubscribe/:token` in a browser goes to the page, never raw JSON.
+- The footer of every mail we decide to send: "If you would rather not get the emails we decide to send, you can stop them here."
+- Settings: the one switch is "Emails from Groundwork that we decide to send", detail "Reminders, summaries and insights Groundwork sends without being asked." While stopped from a mail the detail is "You turned these off from a link in one of our emails. Turn them back on here whenever you like."
+
 # From the screens workspace, 7 October: every known problem not fixed yet, for docs/known-issues.md
 
 Every problem the screens workspace found and did not fix. It comes from the walks (anchor, suites at a hundred people, Kijani, the existing clients' use cases), from the requests, and from the morning report and the handover. Each is marked SCREENS, ENGINE, SEED or HAFSAH, most serious first. Please fold it into `docs/known-issues.md` (request 175). The table in `docs/requests-to-engine.md` never had its status column kept up, so for requests 100 to 157, your own answers in this file are the record of what is closed.

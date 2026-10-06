@@ -355,7 +355,7 @@ export function SettingsPage() {
             title="Emails from Groundwork that we decide to send"
             detail={user?.emailsStoppedFromAMail
               ? 'You turned these off from a link in one of our emails. Turn them back on here whenever you like.'
-              : 'Reminders, summaries and insights that nobody asked for that morning. Emails you ask for, such as sign-in links, invitations, reports and approvals, always reach you.'}
+              : 'Reminders, summaries and insights Groundwork sends without being asked.'}
             on={emailNotif}
             onChange={(v) => { setEmailNotif(v); toggleNotif.mutate(v) }}
             disabled={toggleNotif.isPending}
