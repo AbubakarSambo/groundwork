@@ -20,7 +20,7 @@ import { askTheReportsDoor } from '../reports/one-persons-circumstances-stay-the
 import { rememberedCompose } from '../reports/a-line-worded-once-is-kept';
 import { wordPatternEvidence } from '../reports/pattern-evidence-in-plain-words';
 import { withoutBankDetails, withoutBankDetailsInEachTurn } from '../documents/bank-details-are-never-kept';
-import { hasEnded, hasStalled, isHeld, isShut, mayChangeOnItsOwn, whyItRefuses, WHILE_IT_IS_HELD, IT_RAN_OUT_OF_TIME } from './a-ground-that-has-ended';
+import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD, hasEnded, hasStalled, isHeld, isShut, mayChangeOnItsOwn, whyItRefuses, WHILE_IT_IS_HELD, IT_RAN_OUT_OF_TIME } from './a-ground-that-has-ended';
 import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT } from './an-answer-includes-a-refusal';
 import { isNotLetInYet, whoIsNotLetInYet, theWaitingToBeLetInLine } from './who-an-admin-did-not-let-in';
 import { waitsOnAManagingOnlyLead } from './the-lead-who-only-asks';
@@ -1371,7 +1371,8 @@ export class GroundsService {
       if (userEmail) {
         await this.prisma.groundParticipant.updateMany({
           /* Never a row held for a seat: it is not offered until its invitation goes (U.4 re-review). */
-          where: { email: userEmail.toLowerCase(), userId: null, awaitingSeat: false },
+          /* Nor a row on a check-in still waiting for an admin to accept it: that person is invited by the approval, and is not on the check-in before it (known issue B5). */
+          where: { email: userEmail.toLowerCase(), userId: null, awaitingSeat: false, ground: { status: { not: GroundStatus.AWAITING_APPROVAL } } },
           data: { userId },
         });
       }
@@ -6503,7 +6504,9 @@ export class GroundsService {
    */
   async releaseAnyoneWaitingForASeat(organizationId: string): Promise<{ sent: number; stillWaiting: number }> {
     const waiting = await this.prisma.groundParticipant.findMany({
-      where: { awaitingSeat: true, ground: { organizationId } },
+      /* Not into a check-in that is over, stopped or paused, nor one still waiting for an admin to accept it, nor one an admin declined (that is closed):
+         the seat is not the only reason nobody has been written to (known issue B5). */
+      where: { awaitingSeat: true, ground: { organizationId, status: { notIn: [...A_GROUND_THE_JOBS_LEAVE_ALONE, ...A_GROUND_IS_HELD, GroundStatus.AWAITING_APPROVAL] } } },
       orderBy: { createdAt: 'asc' },
       select: {
         id: true, email: true, inviteToken: true, groundId: true,
@@ -7049,7 +7052,8 @@ export class GroundsService {
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId } });
     if (!ground) return 0;
     const held = await this.prisma.groundParticipant.findMany({
-      where: { groundId, partyType: PartyType.PARTICIPANT, invitedAt: null, notifiedAt: null, awaitingSeat: false, leftAt: null, userId: null },
+      /* Not filtered on `userId`: a colleague who already has an account is a person who has opened Groundwork, not one already invited, and is invited like anybody else. */
+      where: { groundId, partyType: PartyType.PARTICIPANT, invitedAt: null, notifiedAt: null, awaitingSeat: false, leftAt: null },
       select: { id: true, email: true, inviteToken: true, remitAsGiven: true, startsAt: true },
     });
     const due = held.filter((p) => !p.startsAt || p.startsAt.getTime() <= Date.now());

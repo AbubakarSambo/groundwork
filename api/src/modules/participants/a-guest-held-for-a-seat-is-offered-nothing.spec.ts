@@ -68,8 +68,10 @@ describe('a held guest is offered no check-in', () => {
     const heals = auth.match(/groundParticipant\.updateMany\(\{\s*where: \{ email: [^}]*userId: null[^}]*\}/g) ?? [];
     expect(heals.length).toBeGreaterThanOrEqual(5);
     for (const h of heals) expect(h).toContain('awaitingSeat: false');
+    /* And none on a check-in still waiting for an admin to accept it (known issue B5): that person is invited by the approval. */
+    for (const h of heals) expect(h).toContain("ground: { status: { not: 'AWAITING_APPROVAL'");
     const grounds = strip(readFileSync(join(__dirname, '..', 'grounds', 'grounds.service.ts'), 'utf8'));
-    expect(grounds).toContain("where: { email: userEmail.toLowerCase(), userId: null, awaitingSeat: false },");
+    expect(grounds).toContain("where: { email: userEmail.toLowerCase(), userId: null, awaitingSeat: false, ground: { status: { not: GroundStatus.AWAITING_APPROVAL } } },");
   });
 
   it('and adding writes the guest held exactly when there is no seat, and releasing clears it', () => {

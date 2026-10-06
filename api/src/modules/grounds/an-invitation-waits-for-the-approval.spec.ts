@@ -112,6 +112,14 @@ describe('Grace accepts it', () => {
     expect(email.sendTheInviteThisGroundSends.mock.calls[0][1]).toBe('ready@x.test');
   });
 
+  it('a colleague who already has an account, and opened Groundwork early, is invited like anybody else', async () => {
+    const row = { id: 'colleague', groundId: 'g1', partyType: 'PARTICIPANT', email: 'colleague@x.test', invitedAt: null, notifiedAt: null, awaitingSeat: false, leftAt: null, userId: 'u-colleague', inviteToken: 't', remitAsGiven: null, startsAt: null };
+    const { service, email } = world({ held: [row] });
+    await service.approve('g1', 'org1', 'grace');
+    expect(email.sendTheInviteThisGroundSends).toHaveBeenCalledTimes(1);
+    expect(email.sendTheInviteThisGroundSends.mock.calls[0][1]).toBe('colleague@x.test');
+  });
+
   it('an invitation that fails to send is put back as not sent, so it can be resent', async () => {
     const { service, email, participants } = world();
     await service.addParticipant('g1', 'org1', 'nandi', { email: 'wanjiku@x.test' } as any);
