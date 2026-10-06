@@ -80,6 +80,13 @@ describe('what a member reads when she asks about time off, with leave on', () =
   it('keeps a sentence that only mentions leave', () => {
     expect(withoutACannotApprove('Thanks for telling me you are on leave on Friday.').text).toBe('Thanks for telling me you are on leave on Friday.');
   });
+  it('keeps a sentence where leave or a payment comes later and is not what is refused (review of fd583ba5)', () => {
+    for (const kept of [
+      "I don't manage your calendar, so tell me when your leave starts.",
+      'We cannot support the client until the payment terms are agreed, you said.',
+      "We don't want to manage the handover badly before the leaver goes.",
+    ]) expect(withoutACannotApprove(kept).text).toBe(kept);
+  });
 });
 
 describe('the idea offer\'s own answer', () => {
