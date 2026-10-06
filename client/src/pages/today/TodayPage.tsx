@@ -58,6 +58,7 @@ export function TodayPage() {
   const name = firstWordOfAName(user?.firstName)
   const greeting = name ? `${partOfTheDay(now)}, ${name}` : partOfTheDay(now)
   const needs = data?.needs ?? []
+  const comingUp = data?.comingUp ?? []
 
   return (
     <Page>
@@ -105,8 +106,8 @@ export function TodayPage() {
           </Section>
         </Stack>
 
-        {data && data.comingUp.length > 0 && (
-          <ComingUp items={data.comingUp.map(c => ({ when: whenItComes(c.at, now), what: c.what, to: c.to }))} />
+        {comingUp.length > 0 && (
+          <ComingUp items={comingUp.map(c => ({ when: whenItComes(c.at, now), what: c.what, to: c.to }))} />
         )}
       </div>
     </Page>
