@@ -32,7 +32,7 @@ describe('what a person reads, word for word as Hafsah wrote it', () => {
     expect(itIsOverdue(MIRIAM).text).toBe("Hi Miriam, your check-in for the sales team is overdue. It's still open, so you can answer here now.");
   });
   it('checkin_team_almost_in, with the counts in the blanks Hafsah numbered', () => {
-    expect(theTeamIsAlmostIn(MIRIAM, 3, 5).text).toBe("Hi Miriam, 3 of 5 people have checked in for the sales team, and the team's picture is coming together without your part. Add yours and it's included.");
+    expect(theTeamIsAlmostIn(MIRIAM, 3, 5).text).toBe('Hi Miriam, 3 of 5 people have checked in for the sales team. Your check-in is still open, and you can answer here.');
   });
   it("checkin_your_view_matters, with the lead's first name", () => {
     expect(yourViewMatters(MIRIAM, 'Wairimu').text).toBe("Hi Miriam, your check-in for the sales team is still waiting. Your answers help Wairimu understand what's in your way, and where they can help. It takes about five minutes, and you can answer here.");
@@ -46,7 +46,7 @@ describe('what a person reads, word for word as Hafsah wrote it', () => {
   });
   it("outside the 24 hours the same words go as the template, with the product's words as its parameters", () => {
     const n = theTeamIsAlmostIn(MIRIAM, 3, 5);
-    expect(n.params).toEqual(['Miriam', 'the sales team', '3', '5']);
+    expect(n.params).toEqual(['Miriam', '3', '5', 'the sales team']);
     expect(fill(TEMPLATES[n.kind].body, n.params)).toBe(n.text);
     expect(TEMPLATES[n.kind].components(n.text, n.params)[0].parameters.map((p) => p.text)).toEqual(n.params);
   });

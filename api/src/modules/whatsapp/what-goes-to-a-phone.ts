@@ -32,8 +32,8 @@ export const itIsDueTomorrow = (w: WhoAndWhat, dueAt: Date, simplerWords?: boole
 export const itOpensSoon = (w: WhoAndWhat, opensAt: Date, simplerWords?: boolean | null) => notice('opens-soon', [first(w), w.label, whenItWas(opensAt, 'hourOfDay')], simplerWords);
 /** checkin_overdue: only while it is still open (whatToSendThisMorning decides). */
 export const itIsOverdue = (w: WhoAndWhat, simplerWords?: boolean | null) => notice('overdue', [first(w), w.label], simplerWords);
-/** checkin_team_almost_in: {{3}} of {{4}} people, never anything they said. */
-export const theTeamIsAlmostIn = (w: WhoAndWhat, answered: number, ofHowMany: number, simplerWords?: boolean | null) => notice('team-almost-in', [first(w), w.label, String(answered), String(ofHowMany)], simplerWords);
+/** checkin_team_almost_in: {{2}} of {{3}} people, for {{4}}, never anything they said. */
+export const theTeamIsAlmostIn = (w: WhoAndWhat, answered: number, ofHowMany: number, simplerWords?: boolean | null) => notice('team-almost-in', [first(w), String(answered), String(ofHowMany), w.label], simplerWords);
 /**
  * THE ANCHOR'S NUDGE ON WHATSAPP (piece 30; decision 105 item 3): the person's own last open promise, to them only.
  * The promise is made safe for a template blank: no new line, no tab, no run of more than four spaces, and cut at a

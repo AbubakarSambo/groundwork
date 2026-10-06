@@ -158,7 +158,7 @@ export const TEMPLATES: Record<string, ATemplate> = {
   'opens-soon': aTemplate('checkin_opens_soon', "Hi {{1}}, your check-in for {{2}} opens in an hour, at {{3}}. Reply here when it opens and we'll begin."),
   'closes-soon': aTemplate('checkin_closes_soon', 'Hi {{1}}, your check-in for {{2}} closes in an hour, at {{3}}. Five minutes now means your view is part of this round.'),
   overdue: aTemplate('checkin_overdue', "Hi {{1}}, your check-in for {{2}} is overdue. It's still open, so you can answer here now."),
-  'team-almost-in': aTemplate('checkin_team_almost_in', "Hi {{1}}, {{3}} of {{4}} people have checked in for {{2}}, and the team's picture is coming together without your part. Add yours and it's included."),
+  'team-almost-in': aTemplate('checkin_team_almost_in', 'Hi {{1}}, {{2}} of {{3}} people have checked in for {{4}}. Your check-in is still open, and you can answer here.'),
   'your-view-matters': aTemplate('checkin_your_view_matters', "Hi {{1}}, your check-in for {{2}} is still waiting. Your answers help {{3}} understand what's in your way, and where they can help. It takes about five minutes, and you can answer here."),
   'lead-summary': aTemplate('lead_daily_summary', "Good morning {{1}}. Here is today's summary of your check-ins. {{2}} You can open your board for the full picture here {{3}} If you would rather not hear from us here again today, reply \"not now\"."),
   /* Ours, proposed to Hafsah (anchor piece 28, decision 105 item 2): the weekly insight. It ends with words, not a blank. */
@@ -170,7 +170,7 @@ export const TEMPLATES: Record<string, ATemplate> = {
   /* Ours, proposed to Hafsah (decision 82, item 1): an approval waiting, and the decision told to the person. */
   'request-waiting': aTemplate('groundwork_request_waiting', 'Hi {{1}}, {{2}} has asked for {{3}}, and it is waiting for you. Reply here to approve or decline it, or open Groundwork to read it first.'),
   /* Ours, proposed to Hafsah: everything waiting for an approver, said once. {{2}} is the whole paragraph, in plain full sentences. */
-  'requests-waiting': aTemplate('groundwork_requests_waiting', 'Hi {{1}}. {{2}} Open Groundwork to read and answer: {{3}}'),
+  'requests-waiting': aTemplate('groundwork_requests_waiting', 'Hi {{1}}. {{2}} You can read and answer them in Groundwork here {{3}} and nothing is decided until you do.'),
   'request-decided': aTemplate('groundwork_request_decided', 'Hi {{1}}, your request for {{2}} was {{3}} by {{4}}. Open Groundwork to read it.'),
   /*
    * Ours, proposed to Hafsah (item 16): a review waits for the person in the app. Never anything the
