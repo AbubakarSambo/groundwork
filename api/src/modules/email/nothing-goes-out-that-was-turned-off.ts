@@ -251,6 +251,8 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendTheLeadsWeeklyLetter: 'we decided to send it',
   /* Nobody asked for it: a lead who has only tried her own check-in is shown one small real next step, once. */
   sendTestCheckInMovesOn: 'we decided to send it',
+  /* The one email an existing client gets about what is new, from their own check-ins. */
+  sendHeresWhatIsNew: 'we decided to send it',
 };
 
 export function whatThisMailIs(sender: string): WhatKindOfMail {

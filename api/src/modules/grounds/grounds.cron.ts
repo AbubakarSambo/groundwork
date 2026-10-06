@@ -26,6 +26,7 @@ import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { keptOffThePhone } from '../whatsapp/a-check-in-kept-off-the-phone';
 import { whatToSendThisMorning, whichChase, whenItIsDue, itIsOverdue, itIsDueTomorrow, theTeamIsAlmostIn, yourViewMatters, itOpensSoon, MORNING_ORDER, itFollowsUpTheirPromise } from '../whatsapp/what-goes-to-a-phone';
 import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
+import { sendHeresWhatIsNew as sendHeresWhatIsNewToLeads } from '../engagement/heres-what-is-new';
 import { sendTheTestCheckInMessages } from '../engagement/a-test-check-in-moves-on';
 import { theirPromiseToFollowUp } from '../engagement/a-follow-up-from-their-own-record';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
@@ -925,6 +926,24 @@ export class GroundsCron implements OnApplicationBootstrap {
       now,
     ).catch((err: any) => { this.logger.warn(`The test check-in messages could not be sent: ${err?.message}`); return { tried: 0 }; });
     if (result.tried) this.logger.log(`Email: ${result.tried} test check-in message(s) tried.`);
+    return result;
+  }
+
+  /**
+   * "HERE IS WHAT IS NEW", ONCE, to a lead who was already here (decision 109 item 2), mid-morning in Lagos on weekdays. Once ever per lead,
+   * and only about check-ins made before the release that are still going. See engagement/heres-what-is-new.ts.
+   */
+  @Cron('30 10 * * 1-5', { timeZone: 'Africa/Lagos' })
+  async sendHeresWhatIsNew() {
+    await onceAcrossCopies(this.prisma, 'heres-what-is-new', theDay(), () => this.sendHeresWhatIsNewInner());
+  }
+
+  async sendHeresWhatIsNewInner(now: Date = new Date()): Promise<{ tried: number }> {
+    const result = await sendHeresWhatIsNewToLeads(
+      { prisma: this.prisma, email: this.email, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
+      now,
+    ).catch((err: any) => { this.logger.warn(`The "what is new" emails could not be sent: ${err?.message}`); return { tried: 0 }; });
+    if (result.tried) this.logger.log(`Email: ${result.tried} "what is new" email(s) tried.`);
     return result;
   }
 

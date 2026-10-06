@@ -1037,6 +1037,15 @@ export class EmailService implements OnModuleInit {
     }, undefined, 'sendTestCheckInMovesOn');
   }
 
+  /** "HERE IS WHAT IS NEW", once, to a lead who was already here (decision 109 item 2). Words: engagement/heres-what-is-new.ts. */
+  async sendHeresWhatIsNew(email: string, subject: string, lines: string[], linkLabel: string, linkUrl: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject,
+      html: this.layout(lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('') + `<p><a href="${linkUrl}">${escapeHtml(linkLabel)}</a></p>`),
+    }, undefined, 'sendHeresWhatIsNew');
+  }
+
   /**
    * "GET UPDATES FROM YOUR TEAM" HAS TWO EMAILS AND THEY ARE THE WHOLE PRODUCT FOR THAT CARD.
    *
