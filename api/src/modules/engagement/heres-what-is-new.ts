@@ -35,6 +35,7 @@ export function thereIsASessionToCome(g: { runsUntilEnded?: boolean | null; ends
 }
 
 const people = (n: number) => `${aNumberInWords(n)} ${n === 1 ? 'person' : 'people'}`;
+const capLine = (t: string) => `${t.charAt(0).toUpperCase()}${t.slice(1)}`;
 const cap = (t: string) => `${t.charAt(0).toUpperCase()}${t.slice(1)}`;
 const listed = (names: string[]) => (names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
 
@@ -45,7 +46,7 @@ export function whereOneStands(c: AnExistingCheckIn): string {
   const named = c.notYet.slice(0, 3);
   const others = c.ofHowMany - c.answered - named.length;
   const who = named.length ? `, and ${listed(others > 0 ? [...named, others === 1 ? 'one other person' : `${aNumberInWords(others)} others`] : named)} ${c.ofHowMany - c.answered === 1 && !named.includes('you') ? 'has' : 'have'} not yet` : '';
-  return `In "${c.label}", ${aNumberInWords(c.answered)} of ${aNumberInWords(c.ofHowMany)} people have checked in${who}.`;
+  return `In "${c.label}", ${aNumberInWords(c.answered)} of ${aNumberInWords(c.ofHowMany)} people ${c.answered === 1 ? 'has' : 'have'} checked in${who}.`;
 }
 
 /** True only for the check-ins that have a session to come; said for all, for some by name, or not at all. */
@@ -56,7 +57,10 @@ function theFollowUpSentence(checkIns: AnExistingCheckIn[]): string | null {
   return `What is new is that Groundwork now follows up${where} with each person about the thing they said they would do, in their own words and only to them.`;
 }
 
-export function theWhatIsNewWords(firstName: string | null | undefined, checkIns: AnExistingCheckIn[]) {
+/** The most check-ins listed by name: a lead with many gets the most recent still going, and a count of the rest. */
+export const MOST_LISTED = 5;
+
+export function theWhatIsNewWords(firstName: string | null | undefined, checkIns: AnExistingCheckIn[], andMore = 0) {
   const follow = theFollowUpSentence(checkIns);
   /* NOTHING NEW TO SAY, NOTHING SENT (decision 109 review): the one new thing is the follow-up, so a lead with no check-in it applies to is not written to. */
   if (!follow) return null;
@@ -64,10 +68,11 @@ export function theWhatIsNewWords(firstName: string | null | undefined, checkIns
     ? (checkIns[0].answered <= 0
       ? `Nobody has checked in on "${checkIns[0].label}" yet, and here is what is new`
       : `${cap(aNumberInWords(checkIns[0].answered))} of ${aNumberInWords(checkIns[0].ofHowMany)} people ${checkIns[0].answered === 1 ? 'has' : 'have'} checked in on "${checkIns[0].label}", and here is what is new`)
-    : `Here is where your ${aNumberInWords(checkIns.length)} check-ins stand, and what is new`;
+    : `Here is where your ${aNumberInWords(checkIns.length + andMore)} check-ins stand, and what is new`;
   const lines = [
     `Hello ${firstName?.trim() || 'there'}. Here is where your check-ins stand today.`,
     ...checkIns.map(whereOneStands),
+    ...(andMore > 0 ? [`${capLine(aNumberInWords(andMore))} more ${andMore === 1 ? 'is' : 'are'} still going.`] : []),
     follow,
     'You can also stop the emails we decide to send from the link at the bottom of any of them, or in Settings, and turn them back on in Settings. Emails you ask for, such as sign-in links and reports, always reach you.',
   ];
@@ -118,14 +123,24 @@ export async function sendHeresWhatIsNew(
       const had = await prisma.notification.findFirst({ where: { channel: 'email', sender: WHATS_NEW_SENDER, toAddress: user.email.trim().toLowerCase(), outcome: 'sent' }, select: { id: true } });
       if (had || await isAlreadyHeld(prisma, WHATS_NEW_SENDER, user.email)) continue;
       const stands: AnExistingCheckIn[] = [];
-      for (const g of theirs) {
+      /* Each check-in once, by its own id and by its name (a title is never listed twice), the most recent first, and only the most recent few by name. */
+      const seenIds = new Set<string>();
+      const seenNames = new Set<string>();
+      const newestFirst = [...theirs].sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime());
+      let beyond = 0;
+      for (const g of newestFirst) {
+        const name = String(g.label ?? '').trim().toLowerCase();
+        if (seenIds.has(g.id) || (name && seenNames.has(name))) continue;
         /* A check-in left open with nothing more to come is dead, and is never mentioned (decision 109 item 2). */
         if (!thereIsASessionToCome(g, now)) continue;
         const s = await theOpenSession(prisma, g.id, leadId);
-        if (s) stands.push({ ...s, label: g.label, moreToCome: true });
+        if (!s) continue;
+        seenIds.add(g.id); if (name) seenNames.add(name);
+        if (stands.length >= MOST_LISTED) { beyond++; continue; }
+        stands.push({ ...s, label: g.label, moreToCome: true });
       }
       if (!stands.length) continue;
-      const w = theWhatIsNewWords(user.firstName, stands);
+      const w = theWhatIsNewWords(user.firstName, stands, beyond);
       if (!w) continue;
       await deps.email.sendHeresWhatIsNew(user.email, w.subject, w.lines, w.linkLabel, link);
       tried++;
