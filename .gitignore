@@ -116,6 +116,7 @@ api/journey/*
 !api/journey/the-role-interview-and-a-plan-as-each-reader-reads-them.ts
 !api/journey/context-through-ask-side-by-side-with-the-old-chat.ts
 !api/journey/a-plan-names-somebody-who-is-not-on-the-check-in.ts
+!api/journey/a-lead-who-is-not-an-admin-saves-a-check-in-that-waits.ts
 
 # THE ANCHOR JOURNEY (anchor piece 35). Its reader rules live in api/src/modules/board/the-anchor-readers.ts, because
 # nothing in api/src may import from outside api/src. Read-only, and it refuses anything that is not this computer.
