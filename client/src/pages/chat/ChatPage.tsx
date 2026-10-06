@@ -586,10 +586,15 @@ export function ChatPage() {
   // that has none yet.
   useEffect(() => {
     if (checkInId && !opened && openedRef.current !== checkInId) {
-      openedRef.current = checkInId
       let cancelled = false
       const jitter = Math.random() * 2000
       const t = setTimeout(async () => {
+        /* The guard is taken when the open really starts, not when it is scheduled: React's
+           development mode runs this effect twice, and a guard taken at scheduling let the first
+           run's cancelled timer block the second run, so the page sat on "Opening your session…"
+           for good (browser button test, 7 October). */
+        if (cancelled || openedRef.current === checkInId) return
+        openedRef.current = checkInId
         try {
           const t = await conversationApi.transcript(checkInId)
           if (cancelled) return
