@@ -107,8 +107,8 @@ describe('2. where a review stands is true of this review', () => {
 
 describe('3. a spending line reads with its currency and a lower-case word after "for"', () => {
   it('keeps a capital where it is somebody’s own, and lowers an ordinary word', () => {
-    expect(['Two tablets for the field team', 'Fuel for the Karen route', 'KRA fees for October', 'I need a laptop', 'Q4 fuel', 'fuel'].map(whatTheMoneyIsFor)).toEqual([
-      'two tablets for the field team', 'fuel for the Karen route', 'KRA fees for October', 'I need a laptop', 'Q4 fuel', 'fuel',
+    expect(['Two tablets for the field team', 'Fuel for the Karen route', 'KRA fees for October', 'I need a laptop', 'Q4 fuel', 'fuel', 'A second scanner', 'An iron roof', 'A4 paper'].map(whatTheMoneyIsFor)).toEqual([
+      'two tablets for the field team', 'fuel for the Karen route', 'KRA fees for October', 'I need a laptop', 'Q4 fuel', 'fuel', 'a second scanner', 'an iron roof', 'A4 paper',
     ]);
     expect(spendInWords(120000, 'KES', 'Two tablets for the field team')).toBe('KES 120,000 for two tablets for the field team');
     expect(spendInWords(18000, null, 'Fuel for the Karen route')).toBe('18,000 for fuel for the Karen route');

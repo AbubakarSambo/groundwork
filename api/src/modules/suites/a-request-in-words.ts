@@ -24,13 +24,13 @@ const listed = (names: string[]) => (names.length < 2 ? names.join('') : `${name
 
 /**
  * WHAT THE MONEY IS FOR, AS IT READS INSIDE A SENTENCE (request 162, item 3). People write it as its own line, with a capital
- * ("Two tablets for the field team"); after "for" or "on" it is a lower-case word. Only an ordinary word is lowered: a name, an
+ * ("Two tablets for the field team"); after "for" or "on" it is a lower-case word. Only an ordinary word (or "A" and "An") is lowered: a name, an
  * abbreviation, a word with a digit in it and "I" keep their capital, because a capital there is the person's own. A name that is
  * an ordinary-looking word at the start of the line ("Naivas deposit") cannot be told from "Fuel" without a list of names, so it is lowered.
  */
 export function whatTheMoneyIsFor(what: string): string {
   const w = (what ?? '').trim();
-  return /^[A-Z][a-z]+(?=\s|$)/.test(w) ? `${w.charAt(0).toLowerCase()}${w.slice(1)}` : w;
+  return /^(?:A|An|[A-Z][a-z]+)(?=\s|$)/.test(w) ? `${w.charAt(0).toLowerCase()}${w.slice(1)}` : w;
 }
 
 /** "KES 12,000 for fuel". */
