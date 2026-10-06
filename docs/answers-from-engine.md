@@ -6227,3 +6227,98 @@ Between 1 and 50. `reason` is optional and only for a decline. For hours the `id
 - "Your answer was kept, but the request could not be read back to say more. Check it on the board." (`ok` is true) and "This one could not be answered. Check it on the board before you try again."
 
 The top `says` is "All four answers were kept.", "One of the six answers was kept. Five could not be kept, and each says why." or "None of the two answers could be kept, and each says why." (numbers up to ten in words, digits above) The whole call is refused (400, 403 or 404) for none or more than 50 answers ("Send up to 50 answers at once."), for somebody outside the organisation, and when neither leave, spending nor hours is switched on. Whoever decides the next step of what was approved is told once for all of it; the person who asked is told of each decision, as before.
+
+# From the screens workspace, 7 October: every known problem not fixed yet, for docs/known-issues.md
+
+Every problem the screens workspace found and did not fix. It comes from the walks (anchor, suites at a hundred people, Kijani, the existing clients' use cases), from the requests, and from the morning report and the handover. Each is marked SCREENS, ENGINE, SEED or HAFSAH, most serious first. Please fold it into `docs/known-issues.md` (request 175). The table in `docs/requests-to-engine.md` never had its status column kept up, so for requests 100 to 157, your own answers in this file are the record of what is closed.
+
+## Privacy (ENGINE)
+1. **A member is served the lead's set-up on an anchor check-in.** `GET /grounds/:id` serves `objectives[0].name` ("Rehema is aiming for…"), `subjectsToCover` and `whatACompleteAnswerHolds`, and the board draws the objective under "What we are aiming for" (request 168, item 1).
+2. **A member is served the lead's note about them.** `GET /check-ins/:id/transcript` serves `participant.roleAsDescribed` and `theirAnswerFitted.kind` ("Lead installer. He finishes most of the jobs…"), against decision 30 (requests 167 item 1 and 168 item 2).
+
+## Worse or wrong for existing clients
+3. **SCREENS, being fixed now.**
+   - The session can be opened more than once on load. "Opening your check-in…" can hang, and a lead saw three opening questions.
+   - The report tab's "Send to 1" button stays after "Everybody who asked for it already has it.".
+   - Other report-tab sentences: "0 of 1 people have checked in", "A colleague has not checked in for this round yet", and a header reading "Session 1 of 12" while session 2 is answered.
+   - The session report joins "<name> said" to an engine phrase ("Amani Wekesa said describes the start date…").
+4. **ENGINE.**
+   - A check-in waiting for approval took over 45 seconds to save. The lead's set-up answers, ended session and private report were not on the saved check-in, and `POST /check-ins/:id/open` answered 400 (request 174, item 2).
+   - After approval, the note still says the check-in is waiting, and the invite was dropped (174.3).
+   - The end card promises record lines that are not served (174.4).
+   - The Done page's "How checkable" misses what was said (174.5).
+   - "Rukia Rukia" (174.6).
+   - The set-up conversation names the wrong person, switches the situation, and ignores the typed names and dates (174.8).
+   - The emails: "That is theirs done.", a double full stop, two stop lines, "It does not quote anybody", and three emails to the lead for one check-in (174.9).
+   - The seat count includes guests (174.10).
+   - The ending page offers "It is not settled yet…" as an ending (174.11).
+   - The board's `finding` mixes the product's words with quotes. The screens now show every finding in the product's voice until `findingIsTheirWords` is served (174.1).
+5. **ENGINE, from the Kijani walk (request 170).**
+   - Today sends leads and admins no "Your report is ready" items, and leaves out the lead's own waiting request.
+   - The glance contradicts itself and says "round".
+   - Coaching describes sessions that never happened.
+   - "1 worry is on record. It was not kept in the words it was said".
+   - Esther's session counts disagree.
+   - The resolution read says "Participant B".
+   - Ask answers "You have no open actions" to a person who made a commitment.
+   - The You page shows no commitments.
+6. **ENGINE.** The API build ran out of memory with the default heap. It needed `--max-old-space-size=8192` (request 172).
+
+## The anchor (requests 163, 167 and 168)
+7. **ENGINE.**
+   - The lead gets a check-in of her own (NOT_STARTED, plus a session 2) and a Today item to start it. The screens no longer send her into it.
+   - The anchor's cadence default is FORTNIGHTLY. The screens send WEEKLY as chosen.
+   - In a member's check-in, the idea's "Yes, capture it" is stored as the answer to the open question.
+   - A non-baseline question, and a question asking for proof.
+   - A member's own words turned back into a question.
+   - The payment offer's Yes closes the check-in.
+   - Leave is offered while the leave suite is off, and the reply says "I can't directly help…".
+   - The member's end card says the lead also answers, lists suite requests as shared, and says "Then that line counts as proven.".
+   - The lead's board: the active line counts the lead; "Week 1 of the month"; project endings under "Where this is heading"; coaching quoting lowercase "i"; "Nothing stated yet"; a goal-talk Today item.
+   - Reveal wording: an invented cause, "Juma and The staff", a fragment.
+   - The invitation's "including your manager", and the lead's shared line dropped.
+   - "One of four people have said".
+   - After an idea's yes: "What has happened for you since this began?".
+8. **SEED (Sokoni Fresh).**
+   - Recommendation kinds `anchor_offer` and `anchor_idea` are not served kinds, so "Groundwork recommends", ideas, people helping, the recognition sentence and the nudge are empty.
+   - Its scenario is REALIGN_TEAM.
+   - The ended check-in has no end-of-month read.
+9. **HAFSAH.** The active line "18/20 active · Groundwork has nudged the remaining 2." is her own wording. Changing it to plain sentences needs her yes (request 163, item 2).
+10. **SCREENS.** The "fills in as you talk" panel, with the seven items, is hidden below 1000 pixels for every situation, so there is none on a phone.
+
+## Suites (requests 162 and 173)
+11. **ENGINE.**
+    - A passed-on request reads as asked today, with no reason it reached the reader.
+    - A request waits for someone away until the 07:00 job, with no warning.
+    - Queue leave rows leave out the board's lines.
+    - The clash does not count another waiting request.
+    - "Who is off" on a stand-in's board is limited to the reader.
+    - Wording: "for" and "on" both used, a capital mid-sentence, a missing "the", digits and words mixed, "Only an admin or a lead can open this board.", and "until they decide".
+    - A decline with no reason is accepted.
+12. **SEED (Baobab, Suites Test Company, Kijani).**
+    - Categories don't match what the money is for.
+    - Finance approves her own request, and finance.m2 is refused the totals.
+    - No leave kinds or budgets.
+    - An away manager is named as a stand-in.
+    - Repeated first names.
+    - `daysAYear` is written where `days` or `perYear` is read.
+    - Approvers don't match the seed's own named approver.
+13. **SCREENS.** The leave and spending boards never show "You are standing in for …", because the boards serve no `standingIn`; only the queue does. Waiting on the engine.
+
+## Waiting for a flag or a decision
+14. **ENGINE.** Context and resources in Ask: the button is built but hidden until `addsContext` is served on `GET /ask` (request 169).
+15. **HAFSAH.** "Ask to join" for someone who may read a check-in but is not in it needs a new route that writes to a check-in (request 159). The screen shows only "<name> runs it and can add you.".
+16. **ENGINE.** The Company page with Kijani shows priorities with no owner and no team feeding them, and an empty company picture. The seed needs `subject_external_id`, owners, teams, one picture build, and check-ins this week (request 161, items 1 to 3).
+17. **ENGINE.** MarketView Q4's board: counts that ignore the system figures, empty records, unserved headline and question, and "What needs you" items (request 150).
+
+## Left on purpose, or decided for Hafsah to confirm (SCREENS)
+18. **The one-off style clean-up** stopped where no exact shared class exists. BoardPage still has 584 uses, and about a dozen components still have between 15 and 70. Going further means new shared parts with no visible gain.
+19. **The small states not matched to the prototype.**
+    - Offline: there is no offline queue, so "Everything sends when you're back" would be untrue.
+    - "Not saved" is a message with a dash instead of the prototype's sentence and Try again.
+    - The end-of-check-in confirmation, "already finished" and "Only <name> can end this check-in" keep their reviewed flows.
+    - The crash page leaves out "We've been told", because no crash is reported anywhere.
+20. **The Company page.** Its "Teams" and "History" tabs are not built, because nothing keeps the strategy's history. The older "Company board" screen is not built (one Company page, recommended). "What new people keep asking" waits for Hafsah, because it would be built from private questions to Ask.
+21. **Boards with more buttons than their prototype.** Government, loans, matter, where-next and MarketView Q4 have more buttons than their prototypes; the browser button test records this.
+22. **The central question** now sits above the "Everything else" fold on every kind of board, but at the bottom of a long page.
+23. **Plan and billing** shows a WhatsApp allowance while WhatsApp is off. This is harmless, and the wording is served.
