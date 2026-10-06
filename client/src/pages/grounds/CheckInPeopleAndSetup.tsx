@@ -12,7 +12,7 @@ import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
 import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
 import type { GroundCadence } from '@/api/grounds'
 import { SELECTABLE_CADENCES, sessionsFor, cadenceLabel } from '@/lib/cadence'
-import { SCENARIO_LABELS } from '@/lib/scenario-catalog'
+import { scenarioLabel } from '@/lib/scenario-catalog'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 /**
@@ -280,7 +280,7 @@ export function CheckInPeopleAndSetup(props: {
               row until the server can take it - see docs/requests-to-engine.md. */}
           <FieldRow
             label="Situation"
-            value={SCENARIO_LABELS[ground.scenario as keyof typeof SCENARIO_LABELS] ?? ground.scenario}
+            value={ground.scenario ? scenarioLabel(ground.scenario, ground.brief) : ''}
           />
           {viewerIsAParty && (() => {
             const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === user?.id)
