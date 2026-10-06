@@ -91,7 +91,7 @@ const STORED_REPORTS: Record<string, any> = {
 /* Kofi's next check-in opens in three days. */
 const KOFI_NEXT = new Date(Date.now() + 3 * 24 * 3600 * 1000);
 
-function fixture(opts: { leakyReport?: boolean; contextInAsk?: boolean } = {}) {
+function fixture(opts: { leakyReport?: boolean; contextInAsk?: boolean; suitesOn?: string[] } = {}) {
   const db: Record<string, any[]> = {
     organization: [{ id: ORG, name: 'Baridi' }],
     person: [
@@ -201,6 +201,8 @@ function fixture(opts: { leakyReport?: boolean; contextInAsk?: boolean } = {}) {
   });
   const prisma: any = Object.fromEntries(Object.keys(db).map((k) => [k, table(k)]));
   /* `release.contextInAskGroundwork` is off as shipped: the line about adding context is read only when it is on. */
+  /* Leave and spending are switched on unless a test says otherwise: Ask offers to file them only where they are on. */
+  prisma.organizationSuite = { findMany: jest.fn(async () => (opts.suitesOn ?? ['leave', 'spend']).map((suite: string) => ({ suite }))) };
   prisma.platformSetting = { findUnique: jest.fn(async ({ where }: any) => (opts.contextInAsk && where.key === 'release.contextInAskGroundwork' ? { value: { on: true } } : null)) };
   prisma.subject = { findMany: jest.fn(async () => []), count: jest.fn(async () => 0) };
   prisma.detectionQuietPeriod = { findMany: jest.fn(async () => []) };
@@ -415,7 +417,7 @@ describe('an entry with their address that nobody has claimed', () => {
 
   it('is never claimed with an address nobody confirmed, and nothing is made instead', async () => {
     const { controller, asUser, db, prisma } = fixture();
-    expect(await controller.mine(asUser(readers.uma))).toEqual({ canAsk: false, why: CONFIRM_YOUR_EMAIL('Ask Baridi'), about: [], turns: [], ...BARIDI_ASK, welcome: null });
+    expect(await controller.mine(asUser(readers.uma))).toEqual({ canAsk: false, why: CONFIRM_YOUR_EMAIL('Ask Baridi'), about: [], turns: [], ...BARIDI_ASK, starters: [], welcome: null });
     await expect(controller.question(asUser(readers.uma), { message: REQUEST })).rejects.toThrow(new ForbiddenException(CONFIRM_YOUR_EMAIL('Ask Baridi')));
     expect(db.person.find((p) => p.id === 'pe-uma')!.linkedUserId).toBeNull();
     expect(prisma.person.create).not.toHaveBeenCalled();
@@ -439,7 +441,7 @@ describe('somebody the directory switched off', () => {
   for (const [who, how] of [['sid', 'whose entry is linked to them'], ['sue', 'whose address is on it']] as const) {
     it(`${who}, ${how}, is refused and nothing is written`, async () => {
       const { controller, asUser, db, prisma } = fixture();
-      expect(await controller.mine(asUser(readers[who]))).toEqual({ canAsk: false, why: SWITCHED_OFF('Ask Baridi'), about: [], turns: [], ...BARIDI_ASK, welcome: null });
+      expect(await controller.mine(asUser(readers[who]))).toEqual({ canAsk: false, why: SWITCHED_OFF('Ask Baridi'), about: [], turns: [], ...BARIDI_ASK, starters: [], welcome: null });
       await expect(controller.question(asUser(readers[who]), { message: REQUEST })).rejects.toThrow(new ForbiddenException(SWITCHED_OFF('Ask Baridi')));
       await expect(controller.answer(asUser(readers[who]), { proposalId: '00000000-0000-4000-8000-000000000999', answer: 'yes' }))
         .rejects.toThrow(new ForbiddenException(SWITCHED_OFF('Ask Baridi')));
@@ -553,7 +555,8 @@ describe('a guest from another organisation', () => {
     /* A guest reads the host organisation's name too: he is a guest in Baridi's Groundwork, and
        the sentence he is already given says "so Ask Baridi can only answer...". (Decision 100.) */
     expect(await controller.mine(asUser(readers.kofi))).toEqual({
-      canAsk: true, about: [{ id: 'g-sales', label: 'Sales team, Q3' }], turns: [], ...BARIDI_ASK, starters: STARTERS_WITH_A_CHECK_IN, welcome: BARIDI_WELCOME,
+      /* Changed under the starters review: a guest is offered only what Ask answers a guest (their own check-in), never the company, leave or spending, and is welcomed as a guest. */
+      canAsk: true, about: [{ id: 'g-sales', label: 'Sales team, Q3' }], turns: [], ...BARIDI_ASK, starters: STARTERS_WITH_A_CHECK_IN.filter((l) => /my check-in|did I say|next check-in/.test(l)).filter((l) => !/priorities|leave/.test(l)), welcome: 'This is Ask Baridi. You are a guest here, so I answer you only about your own check-in. What you ask me stays private.',
     });
   });
 

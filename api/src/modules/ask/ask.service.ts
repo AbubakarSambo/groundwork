@@ -1,9 +1,10 @@
-import { askName, askNameOf, askFirstWelcome, ASK_CAPTION, ASK_ADD_LINE, askStarters } from '../assistant/ask-name';
+import { askName, askNameOf, askFirstWelcome, ASK_CAPTION, ASK_ADD_LINE, askStarters, askStartersFor } from '../assistant/ask-name';
 import { contextIsInAskGroundwork } from '../admin/what-is-hidden-at-release';
 import { whatWasSaid } from '../assistant/what-was-said-is-what-is-kept';
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AssistantService } from '../assistant/assistant.service';
+import { theCheckInsHeldForASeat } from '../participants/held-for-a-seat';
 import { A_GROUND_IS_OVER } from '../grounds/a-ground-that-has-ended';
 import { ReportsService } from '../reports/reports.service';
 import { GroundsService } from '../grounds/grounds.service';
@@ -222,18 +223,45 @@ export class AskService {
     }
   }
 
-  /** The check-ins Ask Groundwork may be about for this person: ones they run or take part in. */
-  private async whatItMayBeAbout(asker: Asker): Promise<{ id: string; label: string }[]> {
-    const grounds = await this.prisma.ground.findMany({
+  /**
+   * The check-ins Ask Groundwork may be about for this person: ones they run or take part in, that have not ended, and that they are not held for a seat on
+   * (a check-in somebody is held for is refused to them everywhere, so Ask does not offer it either). Each carries whether they run it and whether they
+   * take part in it as a person, which the suggested questions need.
+   */
+  private async theirCheckIns(asker: Asker): Promise<{ id: string; label: string; runsIt: boolean; takesPart: boolean }[]> {
+    const grounds: any[] = await this.prisma.ground.findMany({
       where: {
         organizationId: asker.organizationId,
         status: { notIn: A_GROUND_IS_OVER },
         OR: [{ initiatorId: asker.userId }, { participants: { some: { userId: asker.userId } } }],
       },
-      select: { id: true, label: true },
+      select: { id: true, label: true, initiatorId: true, createdByUserId: true },
       orderBy: { createdAt: 'asc' },
     });
-    return grounds.map((g) => ({ id: g.id, label: g.label }));
+    const held = await theCheckInsHeldForASeat(this.prisma as any, grounds.map((g) => g.id), asker.userId).catch(() => new Set<string>());
+    /* Where they take part as a person, and not only manage: their own rows. */
+    const parts: any[] = grounds.length
+      ? await (async () => this.prisma.groundParticipant.findMany({ where: { groundId: { in: grounds.map((g) => g.id) }, userId: asker.userId }, select: { groundId: true, managingOnly: true } }))().catch(() => [])
+      : [];
+    const takesPartIn = new Set((Array.isArray(parts) ? parts : []).filter((p) => p.managingOnly !== true).map((p) => p.groundId));
+    return grounds.filter((g) => !held.has(g.id)).map((g) => ({
+      id: g.id,
+      label: g.label,
+      runsIt: g.initiatorId === asker.userId || (!!g.createdByUserId && g.createdByUserId === asker.userId),
+      takesPart: takesPartIn.has(g.id),
+    }));
+  }
+
+  private async whatItMayBeAbout(asker: Asker): Promise<{ id: string; label: string }[]> {
+    return (await this.theirCheckIns(asker)).map((g) => ({ id: g.id, label: g.label }));
+  }
+
+  /** The suites this organisation has switched on, among the two Ask can file a request for. */
+  private async suitesThatAreOn(organizationId: string): Promise<Set<string>> {
+    try {
+      const rows: any[] = await (async () => this.prisma.organizationSuite.findMany({ where: { organizationId, suite: { in: ['leave', 'spend'] }, isOn: true }, select: { suite: true } }))();
+      return new Set(rows.map((r) => r.suite as string));
+    } catch { return new Set(); }
   }
 
   private refuseAnybodyElse(asker: Asker, askedFor: string | null) {
@@ -252,8 +280,25 @@ export class AskService {
     try { organisationName = (await this.prisma.organization.findUnique({ where: { id: asker.organizationId }, select: { name: true } }))?.name ?? null; } catch { organisationName = null; }
     const name = askName(organisationName);
     const contextIsHere = await contextIsInAskGroundwork(this.prisma);
-    const welcome = shown.canAsk && shown.turns.length === 0 ? askFirstWelcome(organisationName, contextIsHere) : null;
-    return { ...shown, askName: name, caption: ASK_CAPTION, addLine: contextIsHere ? ASK_ADD_LINE : null, welcome, starters: askStarters((shown.about ?? []).length > 0, contextIsHere) };
+    /* WHAT IS OFFERED IS WHAT THIS READER CAN BE ANSWERED (decision 36 for a guest; the suites that are on; the check-ins they can use). */
+    const mine = await this.theirCheckIns(asker);
+    const standing = await this.standingOf(asker);
+    const suitesOn = await this.suitesThatAreOn(asker.organizationId);
+    const welcome = shown.canAsk && shown.turns.length === 0
+      ? askFirstWelcome(organisationName, contextIsHere, { leaveIsOn: suitesOn.has('leave'), spendingIsOn: suitesOn.has('spend'), isAGuest: standing.is === 'guest' })
+      : null;
+    const starters = shown.canAsk
+      ? askStartersFor({
+          isAGuest: standing.is === 'guest',
+          takesPartInOne: mine.some((g) => g.takesPart),
+          hasOneToUse: mine.length > 0,
+          runsOne: mine.some((g) => g.runsIt),
+          leaveIsOn: suitesOn.has('leave'),
+          spendingIsOn: suitesOn.has('spend'),
+          contextIsHere,
+        })
+      : [];
+    return { ...shown, askName: name, caption: ASK_CAPTION, addLine: contextIsHere ? ASK_ADD_LINE : null, welcome, starters };
   }
 
   private async forReaderBare(asker: Asker, askedFor: string | null) {
