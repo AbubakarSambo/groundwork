@@ -25,7 +25,7 @@ function world(opts: { grounds?: any[]; had?: boolean; inactive?: boolean } = {}
     notification: { findFirst: async () => (opts.had ? { id: 'n' } : null) },
   };
   const email = { sendHeresWhatIsNew: jest.fn(async (to: string, subject: string, lines: string[], linkLabel: string, linkUrl: string) => { sent.push({ to, subject, lines, linkLabel, linkUrl }); }) };
-  return { run: () => sendHeresWhatIsNew({ prisma, email, frontendUrl: 'https://app.test/' }, NOW), sent, asked };
+  return { prisma, run: () => sendHeresWhatIsNew({ prisma, email, frontendUrl: 'https://app.test/' }, NOW), sent, asked };
 }
 
 describe('what Wairimu reads', () => {
@@ -100,5 +100,22 @@ describe('who is not written to', () => {
     expect(whatThisMailIs('sendHeresWhatIsNew')).toBe('we decided to send it');
     expect(ROUTINE_EMAILS.has('sendHeresWhatIsNew')).toBe(true);
     expect(whetherToSend('we decided to send it', { unsubscribedAt: new Date() }, 'sendHeresWhatIsNew')).toMatchObject({ send: false });
+  });
+});
+
+describe('the subject and the lead\'s own line', () => {
+  it('nobody has checked in', () => {
+    expect(theWhatIsNewWords('W', [{ label: 'Sales team, Q4', ofHowMany: 5, answered: 0, notYet: [], moreToCome: true }])!.subject).toBe('Nobody has checked in on "Sales team, Q4" yet, and here is what is new');
+  });
+  it('one of five has', () => {
+    expect(theWhatIsNewWords('W', [{ label: 'Sales team, Q4', ofHowMany: 5, answered: 1, notYet: ['Omar'], moreToCome: true }])!.subject).toBe('One of five people has checked in on "Sales team, Q4", and here is what is new');
+  });
+  it('the lead who has not checked in is "you", with the right verb', () => {
+    expect(whereOneStands({ label: 'X', ofHowMany: 3, answered: 2, notYet: ['you'] })).toBe('In "X", two of three people have checked in, and you have not yet.');
+  });
+  it('a check-in where only the lead is in it is left out, and a lead with only that gets nothing', async () => {
+    const w = world();
+    (w.prisma as any).checkIn.findMany = async () => [row('Wairimu', 'COMPLETED', 'u-w')];
+    expect(await w.run()).toEqual({ tried: 0 });
   });
 });

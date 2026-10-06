@@ -44,7 +44,7 @@ export function whereOneStands(c: AnExistingCheckIn): string {
   if (c.answered >= c.ofHowMany) return `In "${c.label}", ${c.ofHowMany === 1 ? 'the one person who can answer has' : `all ${aNumberInWords(c.ofHowMany)} people have`} checked in.`;
   const named = c.notYet.slice(0, 3);
   const others = c.ofHowMany - c.answered - named.length;
-  const who = named.length ? `, and ${listed(others > 0 ? [...named, others === 1 ? 'one other person' : `${aNumberInWords(others)} others`] : named)} ${c.ofHowMany - c.answered === 1 ? 'has' : 'have'} not yet` : '';
+  const who = named.length ? `, and ${listed(others > 0 ? [...named, others === 1 ? 'one other person' : `${aNumberInWords(others)} others`] : named)} ${c.ofHowMany - c.answered === 1 && !named.includes('you') ? 'has' : 'have'} not yet` : '';
   return `In "${c.label}", ${aNumberInWords(c.answered)} of ${aNumberInWords(c.ofHowMany)} people have checked in${who}.`;
 }
 
@@ -61,7 +61,9 @@ export function theWhatIsNewWords(firstName: string | null | undefined, checkIns
   /* NOTHING NEW TO SAY, NOTHING SENT (decision 109 review): the one new thing is the follow-up, so a lead with no check-in it applies to is not written to. */
   if (!follow) return null;
   const subject = checkIns.length === 1
-    ? `${cap(aNumberInWords(checkIns[0].answered))} of ${aNumberInWords(checkIns[0].ofHowMany)} people ${checkIns[0].answered === 1 ? 'has' : 'have'} checked in on "${checkIns[0].label}", and here is what is new`
+    ? (checkIns[0].answered <= 0
+      ? `Nobody has checked in on "${checkIns[0].label}" yet, and here is what is new`
+      : `${cap(aNumberInWords(checkIns[0].answered))} of ${aNumberInWords(checkIns[0].ofHowMany)} people ${checkIns[0].answered === 1 ? 'has' : 'have'} checked in on "${checkIns[0].label}", and here is what is new`)
     : `Here is where your ${aNumberInWords(checkIns.length)} check-ins stand, and what is new`;
   const lines = [
     `Hello ${firstName?.trim() || 'there'}. Here is where your check-ins stand today.`,
@@ -81,6 +83,8 @@ export async function theOpenSession(prisma: any, groundId: string, leadUserId: 
   const latest = Math.max(...rows.map((r) => r.sessionNumber ?? 0));
   const counted = rows.filter((r) => (r.sessionNumber ?? 0) === latest && !r.participant?.managingOnly && !isNotLetInYet(r.participant));
   if (!counted.length) return null;
+  /* A check-in where only the lead is in it has nothing to say about anybody else (decision 109 review). */
+  if (!counted.some((r) => r.participant?.userId !== leadUserId)) return null;
   const answered = counted.filter((r) => r.status === CheckInStatus.COMPLETED).length;
   const notYet = counted.filter((r) => r.status !== CheckInStatus.COMPLETED)
     .map((r) => (r.participant?.userId === leadUserId ? 'you' : theFirstNameOfAParticipant(r.participant) ?? ''))
