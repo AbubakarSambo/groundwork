@@ -102,7 +102,7 @@ export function simplerWordsGuidance(on: boolean | null | undefined): string {
   const lines = [
     'Write short sentences, one idea in each. Use everyday words that a person with basic English knows. Use no idioms and no figures of speech, because they do not translate.',
     THE_PLAIN_WORDS_RULE.replace('They have asked before what our terms mean. ', ''),
-    'Keep to this in every message, including the last one that closes the check-in, and do not tell the person you are doing it.',
+    'Simpler words never mean saying less. Keep every commitment, name, date and number the person gave you. When you close, say back each thing they said they will do, as you would without this rule. When you quote the person, use their own words unchanged. Still ask one question at a time, still ask for proof, and still ask the questions you are given about a pattern or coaching. Only the words get simpler. Keep to this in every message, including the last one, and do not tell the person you are doing it.',
   ];
   return `THIS CHECK-IN USES SIMPLER WORDS, FOR EVERYBODY IN IT:\n${lines.map((l) => `- ${l}`).join('\n')}\n\n`;
 }

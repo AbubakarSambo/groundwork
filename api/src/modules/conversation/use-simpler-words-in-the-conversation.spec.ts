@@ -66,6 +66,8 @@ describe.each(READERS)('the conversation, as %s', (_n, party) => {
     const on = await prompt(sc, party, n, true);
     expect(on).toMatch(/THIS CHECK-IN USES SIMPLER WORDS, FOR EVERYBODY IN IT/);
     expect(on).toMatch(/Write short sentences/);
+    expect(on).toContain('Simpler words never mean saying less. Keep every commitment, name, date and number the person gave you. When you close, say back each thing they said they will do, as you would without this rule.');
+    expect(off).not.toContain('Simpler words never mean saying less');
     expect(on).toMatch(/Use plain words: "this conversation" rather than "this ground"/);
     expect(on.replace(simplerWordsGuidance(true) + '\n\n', '')).toBe(off);
   });
