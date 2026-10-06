@@ -47,7 +47,7 @@ describe('the lead\'s weekly letter, as the lead reads it', () => {
     expect(out).toEqual({ tried: 1 });
     expect(w.sent).toEqual([{
       to: 'wairimu@baridi.test',
-      subject: "Your team's week",
+      subject: '2 commitments were closed; 3 handoffs are still waiting',
       lines: [
         'Your team is starting to move.',
         'This week, 8 of 10 people checked in. Four people said what they will do next. Two things people said they would do were done. Three handoffs are still waiting on someone. Omar and Juma did not check in.',
