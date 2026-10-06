@@ -378,9 +378,16 @@ export const decisionsApi = {
     (await apiClient.post('/suites/decisions', { decisions })).data,
 }
 
-/** To-dos (GET /suites/todos/board): what each person said they will do in their check-ins. */
+/**
+ * TO-DOS (GET /suites/todos/board): what each person said they will do in their check-ins.
+ * Decision 110, P8: an admin reads these by check-in, never gathered into one list for a person
+ * across check-ins (a person's own load across check-ins stays private). `checkIns` is the
+ * engine's served shape (request 176); until it ships, `people` is regrouped by check-in on the
+ * screen (TodosPage.tsx).
+ */
 export interface TodoList {
   people: { name: string; firstName: string; todos: { id: string; text: string; source: 'check-in'; on: string; checkIn: string }[] }[]
+  checkIns?: { id: string; name: string; todos: { id: string; text: string; on: string; person: { name: string; firstName: string } }[] }[]
 }
 
 export const todosApi = {
