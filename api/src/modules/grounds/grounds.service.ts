@@ -122,7 +122,8 @@ export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
   NEW_COFOUNDER: 90,
   NEW_ADVISOR: 365,
   NEW_PROJECT: 90,
-  HELP_TEAM_UNDERSTAND: 90, // the anchor behaves as NEW_PROJECT did
+  /** One month, and nothing longer: the anchor is a month of weekly check-ins (requests 167 and 168, known issue B11). */
+  HELP_TEAM_UNDERSTAND: 30,
   NEW_MANAGER: 90,
   CONTRACT_RENEWAL: 60,
   /** Short, and it has an end: it finishes when the contract is signed. A review that runs for a
@@ -270,7 +271,8 @@ export const RECOMMENDED_CADENCE: Record<GroundScenario, Cadence> = {
   /** Weekly, because the window is 30 days and the leaver is walking out of it. */
   ROLE_HANDOVER: Cadence.WEEKLY,
   NEW_PROJECT: Cadence.FORTNIGHTLY,
-  HELP_TEAM_UNDERSTAND: Cadence.FORTNIGHTLY,
+  /** Weekly, for the one month the anchor lasts (anchor plan, section 20). */
+  HELP_TEAM_UNDERSTAND: Cadence.WEEKLY,
   NEW_COFOUNDER: Cadence.FORTNIGHTLY,
   NEW_MANAGER: Cadence.FORTNIGHTLY,
   /** Monthly, not fortnightly: 26 check-ins a year is a job, not an advisory relationship. */

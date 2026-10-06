@@ -171,6 +171,8 @@ export async function aRequestAfterTheirTurn(
  * while an offer or the request's own form is attached, and only those sentences.
  */
 const CANNOT_APPROVE = /\b(?:I|we|Groundwork)\s+(?:can(?:'|’)?t|cannot|can not|am not able to|are not able to|is not able to|am unable to|are unable to|don(?:'|’)t have the (?:power|authority) to)\s+(?:\w+\s+){0,2}?(?:approve|grant|authori[sz]e|sign off|okay|ok)\b/i;
+/* The other wording of the same refusal: "I can't directly help with time off requests." (screens request 168 item 7, known issue B12). */
+const CANNOT_HELP_WITH_IT = /\b(?:I|we|Groundwork)\s+(?:can(?:'|’)?t|cannot|can not|am not able to|are not able to|am unable to|are unable to|don(?:'|’)t|do not)\s+(?:\w+\s+){0,2}?(?:help|assist|handle|deal|process|manage|take care|do anything|support)\b[^.!?\n]*\b(?:leave|time off|day off|days off|holiday|vacation|annual leave|sick leave|spending|expense|payment)/i;
 const SENT_ELSEWHERE = /\b(?:that(?:'|’)s|that is|this is|it(?:'|’)s|it is)\s+(?:a conversation|something|a question|a decision|one)\s+(?:you(?:'|’)d|you would|you(?:'|’)ll|you will)\s+(?:need|have)\s+to\s+(?:have|take up|raise|ask)\b|\byou(?:'|’)d (?:need|have) to (?:ask|speak (?:to|with)|talk (?:to|with)|check with|raise (?:it|this|that) with|take (?:it|this|that) up with)\b|\byou would (?:need|have) to (?:ask|speak (?:to|with)|talk (?:to|with)|check with|raise (?:it|this|that) with|take (?:it|this|that) up with)\b/i;
 
 export function withoutACannotApprove(reply: string): { text: string; cut: string[] } {
@@ -178,7 +180,7 @@ export function withoutACannotApprove(reply: string): { text: string; cut: strin
   const paragraphs = String(reply ?? '').split(/\n{2,}/).map((p) => {
     const sentences = p.match(/[^.!?]+(?:[.!?]+["'”’)]*|$)/g) ?? [p];
     const kept = sentences.filter((s) => {
-      const hit = CANNOT_APPROVE.test(s) || SENT_ELSEWHERE.test(s);
+      const hit = CANNOT_APPROVE.test(s) || CANNOT_HELP_WITH_IT.test(s) || SENT_ELSEWHERE.test(s);
       if (hit) cut.push(s.trim());
       return !hit;
     });

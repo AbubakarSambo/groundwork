@@ -126,7 +126,7 @@ import { familyFor, BoardFamily } from '../board/board-families';
 import { theOneWorthAsking, askAboutItBlockFor } from './what-keeps-happening-becomes-a-question';
 import { mayCoach } from './participation-timeline';
 import { theirApprovedLeave } from '../suites/who-is-away';
-import { aNewIdeaIn, afterTheirTurn, anIdeaReadBackAsAPromise, withoutAskingWhatToCapture } from './ideas-from-the-team';
+import { aNewIdeaIn, afterTheirTurn, anIdeaReadBackAsAPromise, withoutAskingWhatToCapture, anAnswerToTheIdeaOffer } from './ideas-from-the-team';
 import { aRequestAfterTheirTurn, theyAreAnsweringAnOffer, withoutACannotApprove, withoutAPromiseToPassItOn } from './a-request-offered-in-the-check-in';
 import { stillAsking } from './one-question-per-turn';
 import { oneThingAsked, wouldLeaveAQuestionOut, asksMoreThanOneThing, withTheOneMoreLine, ASK_ONE_THING } from './a-turn-asks-one-thing';
@@ -2985,8 +2985,11 @@ export class ConversationService {
      * challenge about accumulated claims, not a comment on the word just typed. See
      * what-we-have-so-far and reading-what-they-just-said.
      */
-    this.noteWhatTheySaid(checkIn.id, message).catch((err: any) =>
-      this.logger?.warn?.(`Notes not updated for ${checkIn.id}: ${err?.message}`));
+    /* The idea offer's own yes or no is not something they said about the work (known issue B12). */
+    if (!((checkIn as any).ground?.startedFrom === STARTED_FROM_THE_ANCHOR && anAnswerToTheIdeaOffer(message))) {
+      this.noteWhatTheySaid(checkIn.id, message).catch((err: any) =>
+        this.logger?.warn?.(`Notes not updated for ${checkIn.id}: ${err?.message}`));
+    }
     /* Suggested answers under the question: task 2.6, screens request 7a. See suggested-answers. */
     const suggestedAnswers = sessionComplete ? [] : await this.suggestedAnswersFor(aiTurn.id, aiTurn.content ?? '', message, checkIn.id);
     /*
@@ -4016,6 +4019,10 @@ export class ConversationService {
       .catch(() => [] as { role: 'AI' | 'PERSON'; content: string }[]);
     if (latestMessage && (turnsThisSession.length === 0 || turnsThisSession[turnsThisSession.length - 1].content !== latestMessage)) {
       turnsThisSession.push({ role: 'PERSON', content: latestMessage });
+    }
+    /* In the anchor, a click on the idea offer answers the offer and not the question that was open, so no read of what they have told us counts it (known issue B12). */
+    if (aCheckInStartedFromTheAnchor(ground)) {
+      for (let i = turnsThisSession.length - 1; i >= 0; i--) if (turnsThisSession[i].role === 'PERSON' && anAnswerToTheIdeaOffer(turnsThisSession[i].content)) turnsThisSession.splice(i, 1);
     }
 
     /*

@@ -2311,6 +2311,13 @@ from finishing at all.`;
      * refused by the pending gate, so both contributors were dropped. Nothing about
      * that failure named the approval; it looked like the vanish bug.
      */
+    /*
+     * THE ANCHOR IS ONE MONTH OF WEEKLY CHECK-INS, AND THE LEAD DOES NOT CHECK IN (requests 167 and 168, known issue B11).
+     * Only with the switch on. Her set-up conversation is the one thing she gives; her own row is marked as managing, so no later session is made for her
+     * and she is not counted among the people who check in; the month has an end, whatever the page sent; and the weeks are weekly.
+     */
+    const theAnchorIsOn = dto.scenario === ANCHOR_ENTRY_SCENARIO && (await theAnchorScenarioIsOn(this.prisma));
+    const theMonthEnds = theAnchorIsOn ? new Date((dto.checkInBy ? new Date(dto.checkInBy).getTime() : Date.now()) + 30 * 86_400_000).toISOString() : undefined;
     const ground = await this.grounds.create(organizationId, initiatorId, {
       label,
       scenario,
@@ -2326,12 +2333,12 @@ from finishing at all.`;
          * available answer, and it is a recommendation the lead can change afterwards.
          */
         moment: RECOMMENDED_MOMENT[scenario],
-      cadence: chosenCadence,
-      runsUntilEnded: dto.runsUntilEnded === true ? true : undefined,
+      cadence: theAnchorIsOn ? Cadence.WEEKLY : chosenCadence,
+      runsUntilEnded: theAnchorIsOn ? undefined : dto.runsUntilEnded === true ? true : undefined,
       cadenceAnchorDay: dto.cadenceAnchorDay ?? undefined,
       workingDays: dto.workingDays ?? undefined,
       startsAt: dto.checkInBy || undefined,
-      endsAt: dto.lastCheckInBy || undefined,
+      endsAt: theAnchorIsOn ? theMonthEnds : dto.lastCheckInBy || undefined,
       brief,
       freeParticipantCap: isBroadcast ? 100 : DEFAULT_FREE_MEMBER_LIMIT,
       /*
@@ -2359,7 +2366,7 @@ from finishing at all.`;
        * a-lead-who-is-not-a-party.spec.ts exists for: that call rejects a ground its own creator
        * just made, so the choice was silently dropped every time.
        */
-      ...(dto.managingOnly === true ? { managingOnly: true } : {}),
+      ...(dto.managingOnly === true || theAnchorIsOn ? { managingOnly: true } : {}),
     }, role);
 
     /* A check-in saved from the anchor conversation remembers it, once, so the weeks that follow read as the anchor's weeks. Only with the switch on. */
@@ -2415,6 +2422,15 @@ from finishing at all.`;
       where: { groundId: ground.id, participantId: participant.id, sessionNumber: 1 },
     });
     if (!checkIn) throw new BadRequestException('Session 1 check-in not found');
+
+    /*
+     * IN THE ANCHOR, HER SET-UP CONVERSATION IS HER PART, SO IT IS SAVED AS DONE (requests 167 item 2 and 168 item 3).
+     * It was saved NOT_STARTED, so Today asked her for a first check-in that repeated the opening question. It is marked as a set-up conversation, which every
+     * count of check-ins leaves out, and as completed, so nothing is asked of her again. Only with the switch on.
+     */
+    if (theAnchorIsOn) {
+      await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.COMPLETED, completedAt: new Date(), isSetup: true } });
+    }
 
     /*
      * SETUP IS NOT THE LEAD'S CHECK-IN. Decided by Hafsah, 15 September 2026: "the setup does not

@@ -61,6 +61,12 @@ const squash = (t: string) => t.replace(/\s+/g, ' ').trim().toLowerCase();
 const isTheYes = (m: string) => squash(m).replace(/[.!]+$/, '') === squash(YES_CAPTURE_IT);
 const isTheNo = (m: string) => /^\s*(not now|no\b|nope)/i.test(m);
 
+/**
+ * THE BUTTON'S ANSWER IS NOT AN ANSWER TO THE CHECK-IN (known issue B12). "Yes, capture it" and "Not now" answer the offer, not the question the check-in
+ * had open, so they are never read as what the person said: not as the baseline's answer, not as a note of what they said, not as progress.
+ */
+export const anAnswerToTheIdeaOffer = (m: string): boolean => isTheYes(String(m ?? '')) || squash(String(m ?? '')).replace(/[.!]+$/, '') === squash(NOT_NOW);
+
 /** The idea, only if it is the person's own words, found in what they wrote. */
 export function theirOwnIdea(message: string, idea: string | null | undefined): string | null {
   const said = String(idea ?? '').trim().replace(/^["'“‘]|["'”’]$/g, '').replace(/[.!?]+$/, '');
