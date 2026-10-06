@@ -307,3 +307,15 @@ describe('who she is moving keeps names as written', () => {
     expect(theLeadsReveal({ messages: [], heard: { tryingToMove: said } }).whoYouAreTryingToMove).toBe(reads);
   });
 });
+
+describe('who she is moving: general first words read in lower case', () => {
+  it.each([
+    ['Everyone in dispatch', 'You are trying to move everyone in dispatch with you.'],
+    ['Both supervisors', 'You are trying to move both supervisors with you.'],
+    ['Twelve nurses', 'You are trying to move twelve nurses with you.'],
+    ['Staff at the depot', 'You are trying to move staff at the depot with you.'],
+    ['Oscar and Wanjiru', 'You are trying to move Oscar and Wanjiru with you.'],
+  ])('%s', (said, reads) => {
+    expect(theLeadsReveal({ messages: [], heard: { tryingToMove: said } }).whoYouAreTryingToMove).toBe(reads);
+  });
+});
