@@ -83,12 +83,13 @@ export class WhatEachSideUnderstands {
 
     const participant = await this.prisma.groundParticipant.findUnique({
       where: { id: event.participantId },
-      select: { email: true, user: { select: { firstName: true, lastName: true } } },
+      select: { email: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } },
     });
-    const who = fullNameToCall({ user: participant?.user });
+    const who = fullNameToCall({ user: participant?.user, nameGiven: participant?.nameGiven });
 
+    /* Their row's id goes with the reading, so two people with no name ("Someone" each) are two readings, not one said twice (review of 1678157c). */
     const done = await this.agreements.whatTheyUnderstandItToBe(
-      ground.organizationId, event.groundId, version.id, who, out,
+      ground.organizationId, event.groundId, version.id, who, out, event.participantId,
     );
     this.logger.log(
       `Recorded ${done.recorded} understanding(s) from ${event.checkInId}: `
