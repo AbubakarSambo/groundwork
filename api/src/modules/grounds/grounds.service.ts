@@ -1,3 +1,4 @@
+import { theInvitedRowAsServed } from './the-invited-row-as-served';
 import { withoutTheLeadsSetUpForAMember } from './the-leads-set-up-is-the-leads-in-the-anchor';
 import { aFindingThatReadsRight } from './a-finding-reads-right';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
@@ -5637,7 +5638,8 @@ export class GroundsService {
     // create/link a user, set userId, and enter their private check-in.
     // If the entry flow pre-generated a token (so the share link could be shown
     // immediately before auth), honour it here - no separate lookup needed.
-    const token = dto.inviteToken ?? crypto.randomBytes(32).toString('hex');
+    /* Tokens are made here and nowhere else: one a caller supplies is ignored (reviewer's audit, 7 October). */
+    const token = crypto.randomBytes(32).toString('hex');
     const inviteTokenExpiresAt = inviteExpiryFrom();
 
     // Prevent duplicate participant - surface a clean 400 instead of a Prisma constraint error.
@@ -5680,10 +5682,12 @@ export class GroundsService {
        * organiser typed an address they had already invited, got a 201 identical to a first
        * invitation, and had no way to tell the two apart — so nothing stopped them doing it a
        * third time, and each one really did send another email.
+       *
+       * AN EXPLICIT SHAPE, NOT THE ROW (reviewer's audit, 7 October): the row carries the stop-reminders token, the invitation's expiry,
+       * how specific their answers were, what function they were detected in, and their private summary, none of which the lead is told.
        */
       return {
-        ...existing,
-        inviteToken: undefined,
+        ...theInvitedRowAsServed(existing),
         devUrl: emailResult?.devUrl,
         alreadyInvited: true,
         saying: `${dto.email.toLowerCase()} was already invited and has not opened it yet. We have sent the invitation again - it uses the same link.`,
