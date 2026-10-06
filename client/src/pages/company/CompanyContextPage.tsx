@@ -111,7 +111,7 @@ function Priority({ pr, readsTargets }: { pr: CompanyPriority; readsTargets: boo
   const success = [pr.measure, pr.target].filter((s): s is string => !!s && !!s.trim())
   return (
     <Panel as="section" aria-label={`Priority ${pr.number}`}>
-      <span className="gwui-ink-sub gwui-fs-13-5">Priority {pr.number}</span>
+      <span className="gwui-note">Priority {pr.number}</span>
       <h3 className="gwui-panel-heading">{pr.title}</h3>
       {readsTargets && success.length > 0 && (
         <>
