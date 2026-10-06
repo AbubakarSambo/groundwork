@@ -72,5 +72,5 @@ export const THE_EMAILS = {
       : { stillOpen: 'is still open.', theOtherHasAnswered: 'They have already shared their side. Yours is the last one we are waiting for.' },
   /** "A new check-in is ready for X." */
   nextCheckInOpen: (simplerWords?: boolean | null) =>
-    simplerWords ? { before: 'Your next check-in for', after: 'is open. It takes about five minutes.' } : { before: 'A new check-in is ready for', after: '.' },
+    simplerWords ? { before: 'Your next check-in for', after: ' is open. It takes about five minutes.' } : { before: 'A new check-in is ready for', after: '.' },
 } as const;
