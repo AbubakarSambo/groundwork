@@ -7,6 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CheckInStatus } from '@prisma/client';
 import { worthNudging, whatToSendThem } from './who-is-worth-nudging';
+import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { nobodyElseIsIn, theLeadsFirstWords } from '../engagement/the-leads-own-first-check-in';
 import { theNudgeLineFor } from '../engagement/a-follow-up-from-their-own-record';
 import { WorkspaceNotifierService } from '../workspace/workspace-notifier.service';
@@ -287,7 +288,7 @@ export class RemindService {
        target. */
     const forTheLead = new Map<string, {
       to: string; leadName: string | null; label: string; chasedOn: number[];
-      who: string[]; checkInIds: string[];
+      who: string[]; whoEmails: string[]; checkInIds: string[];
       /* For the channel notice: `tell` is scoped to an organisation, not to a ground. */
       organizationId: string;
     }>();
@@ -335,6 +336,7 @@ export class RemindService {
             label: checkIn.ground.label,
             chasedOn: policy.days,
             who: [],
+            whoEmails: [],
             checkInIds: [],
             organizationId: checkIn.ground.organizationId,
           };
@@ -342,7 +344,7 @@ export class RemindService {
              there is. A lead reading a list of email addresses cannot tell who is
              who any faster than they could before the email arrived. */
           const named = participant.user?.firstName ?? participant.email;
-          if (!entry.who.includes(named)) entry.who.push(named);
+          if (!entry.who.includes(named)) { entry.who.push(named); entry.whoEmails.push(participant.email); }
           entry.checkInIds.push(checkIn.id);
           forTheLead.set(key, entry);
         }
@@ -443,12 +445,22 @@ export class RemindService {
      * nothing would ever say so.
      */
     for (const [, entry] of forTheLead) {
+      /* What was really sent, from the record of it: only people who were sent a reminder are said to have been reminded. */
+      const sentTo: { toAddress: string; createdAt: Date }[] = await Promise.resolve((this.prisma as any).notification?.findMany?.({
+        where: { channel: 'email', sender: { in: ['sendNudge', 'sendNudgeFromAPress'] }, outcome: 'sent', toAddress: { in: entry.whoEmails.map((e) => e.trim().toLowerCase()) } },
+        select: { toAddress: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
+      })).catch(() => null) ?? [];
+      const knownSends = Array.isArray(sentTo) ? sentTo : [];
+      const remindedNames = entry.who.filter((_, i) => knownSends.some((n) => n.toAddress === entry.whoEmails[i].trim().toLowerCase()));
+      const lastRemindedOn = knownSends[0]?.createdAt ? whenItWas(new Date(knownSends[0].createdAt), 'day') : null;
       const composed = theEmailForTheLead({
         leadName: entry.leadName,
         groundLabel: entry.label,
         whoHasNotStarted: entry.who,
         chasedOn: entry.chasedOn,
         link: `${frontendUrl}/grounds`,
+        ...(knownSends.length || (this.prisma as any).notification?.findMany ? { remindedNames, lastRemindedOn } : {}),
       });
       if (!composed) continue;
 
