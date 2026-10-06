@@ -27,6 +27,8 @@ import { keptOffThePhone } from '../whatsapp/a-check-in-kept-off-the-phone';
 import { whatToSendThisMorning, whichChase, whenItIsDue, itIsOverdue, itIsDueTomorrow, theTeamIsAlmostIn, yourViewMatters, itOpensSoon, MORNING_ORDER, itFollowsUpTheirPromise } from '../whatsapp/what-goes-to-a-phone';
 import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
 import { sendHeresWhatIsNew as sendHeresWhatIsNewToLeads } from '../engagement/heres-what-is-new';
+import { sendTheParticipantsWeeks } from '../engagement/the-participants-week';
+import { YourBoardService } from './your-board.service';
 import { sendTheTestCheckInMessages } from '../engagement/a-test-check-in-moves-on';
 import { theirPromiseToFollowUp } from '../engagement/a-follow-up-from-their-own-record';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
@@ -100,6 +102,8 @@ export class GroundsCron implements OnApplicationBootstrap {
     @Optional() private leave?: LeaveBoardService,
     @Optional() private timeSheets?: TimeSheetsService,
     @Optional() private spending?: SpendingService,
+    /* The You board, read for each person's own week by email (decision 109). Optional and last for the same reason. */
+    @Optional() private yourBoard?: YourBoardService,
   ) {}
 
   /**
@@ -944,6 +948,25 @@ export class GroundsCron implements OnApplicationBootstrap {
       now,
     ).catch((err: any) => { this.logger.warn(`The "what is new" emails could not be sent: ${err?.message}`); return { tried: 0 }; });
     if (result.tried) this.logger.log(`Email: ${result.tried} "what is new" email(s) tried.`);
+    return result;
+  }
+
+  /**
+   * EVERY PERSON'S WEEK BY EMAIL (decision 109; spec 25), Thursday morning in Lagos, from their own You board and nothing else. See
+   * engagement/the-participants-week.ts.
+   */
+  @Cron('0 9 * * 4', { timeZone: 'Africa/Lagos' })
+  async sendTheParticipantsWeeks() {
+    await onceAcrossCopies(this.prisma, 'participants-week', theWeek(), () => this.sendTheParticipantsWeeksInner());
+  }
+
+  async sendTheParticipantsWeeksInner(now: Date = new Date()): Promise<{ tried: number }> {
+    if (!this.yourBoard) return { tried: 0 };
+    const result = await sendTheParticipantsWeeks(
+      { prisma: this.prisma, board: this.yourBoard, email: this.email, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
+      now,
+    ).catch((err: any) => { this.logger.warn(`The participants' weeks could not be sent: ${err?.message}`); return { tried: 0 }; });
+    if (result.tried) this.logger.log(`Email: ${result.tried} participant week(s) tried.`);
     return result;
   }
 

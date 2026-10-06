@@ -1046,6 +1046,15 @@ export class EmailService implements OnModuleInit {
     }, undefined, 'sendHeresWhatIsNew');
   }
 
+  /** THE PARTICIPANT'S WEEK (decision 109, spec 25): their own board, to them only. Words: engagement/the-participants-week.ts. */
+  async sendYourWeek(email: string, subject: string, lines: string[], linkLabel: string, linkUrl: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject,
+      html: this.layout(lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('') + `<p><a href="${linkUrl}">${escapeHtml(linkLabel)}</a></p>`),
+    }, undefined, 'sendYourWeek');
+  }
+
   /**
    * "GET UPDATES FROM YOUR TEAM" HAS TWO EMAILS AND THEY ARE THE WHOLE PRODUCT FOR THAT CARD.
    *
