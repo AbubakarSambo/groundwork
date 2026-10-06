@@ -11,7 +11,7 @@ import { useAuthStore } from '@/stores/auth'
  * the answer box is there only when a question waits, and a person whose suite is off is told so in
  * the server's words.
  */
-vi.mock('@/api/suites', () => ({ yourRequestsApi: { leave: vi.fn(), spending: vi.fn(), answerLeave: vi.fn(), answerSpending: vi.fn() } }))
+vi.mock('@/api/suites', () => ({ yourRequestsApi: { leave: vi.fn(), spending: vi.fn(), hours: vi.fn(), answerLeave: vi.fn(), answerSpending: vi.fn() } }))
 import { yourRequestsApi } from '@/api/suites'
 
 const refusal = (status: number, message: string) => Object.assign(new Error(String(status)), { response: { status, data: { message } } })
@@ -42,9 +42,12 @@ const SPENDING = {
   }],
 }
 
-function open(leave: any, spending: any) {
+const OFF = Object.assign(new Error('404'), { response: { status: 404, data: { message: 'Time sheets are not switched on in your organisation.' } } })
+
+function open(leave: any, spending: any, hours: any = OFF) {
   ;(yourRequestsApi.leave as any).mockImplementation(() => (leave instanceof Error ? Promise.reject(leave) : Promise.resolve(leave)))
   ;(yourRequestsApi.spending as any).mockImplementation(() => (spending instanceof Error ? Promise.reject(spending) : Promise.resolve(spending)))
+  ;(yourRequestsApi.hours as any).mockImplementation(() => (hours instanceof Error ? Promise.reject(hours) : Promise.resolve(hours)))
   useAuthStore.setState({ user: AISHA, token: 't', isAuthenticated: true } as any)
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(<QueryClientProvider client={qc}><MemoryRouter><YourRequestsPage /></MemoryRouter></QueryClientProvider>)
@@ -135,5 +138,35 @@ describe('Aisha reads her own requests', () => {
     open(Object.assign(new Error('x'), { response: { status: 500, data: {} } }), SPENDING)
     expect(await screen.findByText('Your requests did not load.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy()
+  })
+
+  /*
+   * FAULT 1 OF THE LIVE WALK (6 October): after confirming hours in chat a member is told
+   * "...you will see it under your hours.", but /suite/mine drew only leave and spending. Added as
+   * a third section, every sentence the server's own (GET /suites/time/mine).
+   */
+  it('reads her own hours, week by week, in the server’s own words', async () => {
+    open(LEAVE, SPENDING, {
+      standing: 'You have recorded 31 hours this week. You still need 9 hours by Friday at 17:00.',
+      weeks: [
+        { weekOf: '2026-10-05', minutes: { Naivas: 180, Lakeside: 60 }, total: 240, approved: false, where: 'Your hours for the week of Monday 5 October are waiting for Daniel.' },
+        { weekOf: '2026-09-28', minutes: { Naivas: 420 }, total: 420, approved: true, where: 'Your hours for the week of Monday 28 September are approved by Daniel.' },
+      ],
+    })
+    expect(await screen.findByText('You have recorded 31 hours this week. You still need 9 hours by Friday at 17:00.')).toBeTruthy()
+    expect(screen.getByText('Your hours for the week of Monday 5 October are waiting for Daniel.')).toBeTruthy()
+    expect(screen.getByText('Your hours for the week of Monday 28 September are approved by Daniel.')).toBeTruthy()
+  })
+
+  it('is told, in plain words, when she has given no hours yet', async () => {
+    open(LEAVE, SPENDING, { standing: null, weeks: [] })
+    expect(await screen.findByText('You have not given any hours yet.')).toBeTruthy()
+  })
+
+  it('reads the server’s words when time sheets are off, and still reads leave and spending', async () => {
+    open(LEAVE, SPENDING, Object.assign(new Error('404'), { response: { status: 404, data: { message: 'Time sheets are not switched on in your organisation.' } } }))
+    expect(await screen.findByText('Time sheets are not switched on in your organisation.')).toBeTruthy()
+    expect(screen.getByText('You have 16 days of leave left this year, out of 21.')).toBeTruthy()
+    expect(screen.getByText('Your request to spend KES 12,000 for tyres for the van is approved by Fatuma.')).toBeTruthy()
   })
 })

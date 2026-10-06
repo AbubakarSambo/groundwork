@@ -53,10 +53,15 @@ export function TodayPage() {
   /* Only read after joining, for "You are in." (the same list the sidebar reads, so no extra request). */
   /* "Your own leave and spending requests" only where a suite is on for this person: with both off
      (almost every existing client), the link opened a page that only says the suite is off. The same
-     queries as the page itself, so opening it costs nothing more. */
+     queries as the page itself, so opening it costs nothing more.
+     FAULT 1 OF THE LIVE WALK (6 October): hours gates the same link the same way, and the link's own
+     words change once hours are part of what it opens - "Your own requests" reads true for leave,
+     spending and hours together, where "Your own leave and spending requests" would leave hours out. */
   const yourLeave = useQuery({ queryKey: ['your-leave'], queryFn: yourRequestsApi.leave, enabled: !!user, retry: false, staleTime: 60_000 })
   const yourSpending = useQuery({ queryKey: ['your-spending'], queryFn: yourRequestsApi.spending, enabled: !!user, retry: false, staleTime: 60_000 })
-  const aSuiteIsOnForYou = yourLeave.isSuccess || yourSpending.isSuccess
+  const yourHours = useQuery({ queryKey: ['your-hours'], queryFn: yourRequestsApi.hours, enabled: !!user, retry: false, staleTime: 60_000 })
+  const aSuiteIsOnForYou = yourLeave.isSuccess || yourSpending.isSuccess || yourHours.isSuccess
+  const requestsLinkLabel = yourHours.isSuccess ? 'Your own requests' : 'Your own leave and spending requests'
   const grounds = useQuery({ queryKey: ['grounds'], queryFn: groundsApi.list, enabled: !!user && params.get('welcome') === '1', staleTime: 30_000 })
 
   const now = new Date()
@@ -117,7 +122,7 @@ export function TodayPage() {
                 ))}
               </EdgeList>
             )}
-            {aSuiteIsOnForYou && <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/mine">Your own leave and spending requests</Link></p>}
+            {aSuiteIsOnForYou && <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/mine">{requestsLinkLabel}</Link></p>}
             <QueueLink userId={user?.id} />
           </Section>
 

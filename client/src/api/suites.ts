@@ -117,7 +117,11 @@ export const leaveBoardApi = {
 export interface TimeWeek {
   weekOf: string
   clients: string[]
-  people: { personId: string; name: string; minutes: Record<string, number>; total: number; approved: boolean; mayApprove: boolean }[]
+  /** `where` is the server's own sentence for this row, for example "They are waiting for Daniel."
+   *  or "Daniel approved these hours." - read only where the cell would otherwise say nothing
+   *  (fault 2 of the live walk, 6 October): a reader who neither approves this row nor already sees
+   *  it marked Approved used to read a blank last cell. */
+  people: { personId: string; name: string; minutes: Record<string, number>; total: number; approved: boolean; mayApprove: boolean; where?: string }[]
 }
 export interface TimeAgreement { client: string; work: string; hours: number; span: 'whole' | 'month'; usedMinutes: number }
 export interface TimeBoard { thisWeek: string; weeks: TimeWeek[]; agreements: TimeAgreement[] | null }
@@ -509,10 +513,22 @@ export interface YourRequest {
 export interface YourLeave { daysLeftSaid: string; requests: YourRequest[] }
 export interface YourSpending { requests: YourRequest[] }
 
+/**
+ * A PERSON'S OWN HOURS (GET /suites/time/mine, fault 1 of the live walk, 6 October). After
+ * confirming hours in chat a person is told "...you will see it under your hours.", but there was
+ * nowhere on /suite/mine that showed them. `where` is the server's own sentence for each week, for
+ * example "Your hours for the week of Monday 5 October are waiting for Daniel."; `standing` is
+ * where this person stands against the time sheet rules this week (null with no rule, or none set
+ * for this person) - the same sentence Today and Ask Groundwork already read.
+ */
+export interface YourHoursWeek { weekOf: string; minutes: Record<string, number>; total: number; approved: boolean; where: string }
+export interface YourHours { weeks: YourHoursWeek[]; standing: string | null }
+
 export const yourRequestsApi = {
   /* Quiet on 404 and 403, for the same reason as the queue: the page says the suite is off in words. */
   leave: async (): Promise<YourLeave> => (await apiClient.get('/suites/leave/mine', { skipNotFoundToast: true, skipForbiddenToast: true } as any)).data,
   spending: async (): Promise<YourSpending> => (await apiClient.get('/suites/spend/mine', { skipNotFoundToast: true, skipForbiddenToast: true } as any)).data,
+  hours: async (): Promise<YourHours> => (await apiClient.get('/suites/time/mine', { skipNotFoundToast: true, skipForbiddenToast: true } as any)).data,
   answerLeave: async (id: string, answer: string): Promise<YourLeave> =>
     (await apiClient.post(`/suites/leave/requests/${id}/answer`, { answer })).data,
   answerSpending: async (id: string, answer: string): Promise<YourSpending> =>

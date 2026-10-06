@@ -16,7 +16,7 @@ vi.mock('@/api/suites', async (orig) => {
   const real: any = await orig()
   return {
     ...real,
-    yourRequestsApi: { ...real.yourRequestsApi, leave: vi.fn(), spending: vi.fn() },
+    yourRequestsApi: { ...real.yourRequestsApi, leave: vi.fn(), spending: vi.fn(), hours: vi.fn() },
     queueApi: { get: vi.fn().mockRejectedValue(Object.assign(new Error('off'), { response: { status: 404 } })) },
   }
 })
@@ -32,9 +32,10 @@ function open() {
 const off = () => Promise.reject(Object.assign(new Error('off'), { response: { status: 404, data: { message: 'The leave suite is not switched on.' } } }))
 
 describe('"Your own leave and spending requests" on Today', () => {
-  it('is not offered when both suites are off', async () => {
+  it('is not offered when all three are off', async () => {
     ;(yourRequestsApi.leave as any).mockImplementation(off)
     ;(yourRequestsApi.spending as any).mockImplementation(off)
+    ;(yourRequestsApi.hours as any).mockImplementation(off)
     open()
     await screen.findByText('Nothing needs you right now.')
     await new Promise(r => setTimeout(r, 50))
@@ -44,7 +45,23 @@ describe('"Your own leave and spending requests" on Today', () => {
   it('is offered when a suite answers', async () => {
     ;(yourRequestsApi.leave as any).mockResolvedValue({ requests: [] })
     ;(yourRequestsApi.spending as any).mockImplementation(off)
+    ;(yourRequestsApi.hours as any).mockImplementation(off)
     open()
     expect(await screen.findByRole('link', { name: 'Your own leave and spending requests' })).toHaveAttribute('href', '/suite/mine')
+  })
+
+  /*
+   * FAULT 1 OF THE LIVE WALK (6 October): a member who gives hours in chat was told "...you will
+   * see it under your hours.", but Today's link never considered hours at all, with leave and
+   * spending both off. Gated the same way as the other two, and renamed once hours answer, since
+   * "leave and spending" would otherwise leave hours unsaid.
+   */
+  it('is offered, and renamed "Your own requests", when only hours answers', async () => {
+    ;(yourRequestsApi.leave as any).mockImplementation(off)
+    ;(yourRequestsApi.spending as any).mockImplementation(off)
+    ;(yourRequestsApi.hours as any).mockResolvedValue({ weeks: [], standing: null })
+    open()
+    expect(await screen.findByRole('link', { name: 'Your own requests' })).toHaveAttribute('href', '/suite/mine')
+    expect(screen.queryByRole('link', { name: 'Your own leave and spending requests' })).toBeNull()
   })
 })
