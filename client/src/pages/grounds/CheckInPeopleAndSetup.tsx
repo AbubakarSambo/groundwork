@@ -595,10 +595,22 @@ export function CheckInPeopleAndSetup(props: {
         />
         {/* THE TEAM'S REPORT SHARING IS NOT A SETTING HERE. Release happens from the report itself
             (Board/Context), so this row says the true, current state rather than offering a control
-            this tab does not have. */}
+            this tab does not have.
+
+            FAULT 4 (LIVE RE-WALK): "NOT SHARED YET... WHEN IT IS READY" READ AS IF IT WERE NOT
+            READY, FOR A GROUND THAT WAS. This said so for every unreleased report, including a
+            `REPORT_READY` one - while the header (GroundAdminPage.tsx's own `reportState`) read
+            "The report is ready to read." about the very same ground. Distinguished now: once the
+            report is actually ready, this says so, in the same words the header uses. */}
         <FieldRow
           label="The team's report"
-          value={ground.report?.releasedAt ? `Shared on ${whenItWas(ground.report.releasedAt, 'dayAndMonthLong')}.` : 'Not shared yet. Share it from the report when it is ready.'}
+          value={
+            ground.report?.releasedAt
+              ? `Shared on ${whenItWas(ground.report.releasedAt, 'dayAndMonthLong')}.`
+              : ground.status === 'REPORT_READY'
+                ? 'The report is ready. It has not been shared yet.'
+                : 'Not shared yet. Share it from the report when it is ready.'
+          }
         />
         </FieldRows>
         {props.settingsChangeCount > 0 && (

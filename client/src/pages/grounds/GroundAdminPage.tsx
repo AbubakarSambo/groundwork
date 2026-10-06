@@ -1122,6 +1122,14 @@ export function GroundAdminPage() {
   )
   const sessionsDone = openRoundFromRule - 1
   /**
+   * NEAR ITS END: ITS LAST SESSION IS THE NEXT ONE (fault 4, live re-walk). The same rule the
+   * board already uses for "It's yours to decide how this ends" (BoardPage.tsx's `whereTheRunIs`,
+   * `done >= planned - 1`) - here, `sessionsDone` is that `done`, and `plannedSessions` that
+   * `planned`. With no plan at all, a check-in is never "near its end" by this rule; it can only
+   * be ended early, which the button already allows either way, right below.
+   */
+  const nearTheEnd = plannedSessions != null && plannedSessions > 0 && sessionsDone >= plannedSessions - 1
+  /**
    * HOW MANY SESSIONS *YOU* HAVE FINISHED, which is not the same number.
    *
    * `sessionsDone` is the round EVERYONE has finished - the person furthest behind sets the pace,
@@ -1238,12 +1246,20 @@ export function GroundAdminPage() {
    * Checked first, ahead of the round-based guesses below: when the server has actually marked
    * the ground `REPORT_READY`, the header says so in the same words, rather than re-deriving a
    * possibly-stale answer from `report`/`everyoneIn`/`roundDone`.
+   *
+   * FAULT 4 (LIVE RE-WALK): "READY TO READ" IS NOT THE SAME CLAIM AS "SHARED". This read "The
+   * report is ready to read." for a `REPORT_READY` ground whatever `releasedAt` said, while People
+   * and setup's own "The team's report" row (CheckInPeopleAndSetup.tsx) read "Not shared yet.
+   * Share it from the report when it is ready." for that same ground - true, but written as if the
+   * report were NOT ready, when it is. Both now distinguish ready-but-not-shared from ready-and-
+   * shared, in the same words: "ready to read" only once it is actually released (the one claim
+   * both "ready" and "shared" together support); ready but unreleased says so plainly instead.
    */
   const reportState: string =
     (ground as any).report?.releasedAt
       ? 'report sent to everyone'
       : (ground as any).status === 'REPORT_READY'
-        ? 'the report is ready to read'
+        ? 'the report is ready. It has not been shared yet'
         : (ground as any).report
           ? (everyoneIn ? 'everyone is in, report on its way' : roundDone > 0 ? 'report being written' : 'waiting for the first check-in')
           : 'no report yet'
@@ -2404,8 +2420,14 @@ export function GroundAdminPage() {
               The seat notice went with them. It is a fact about adding somebody, and it belongs
               where somebody is added - which is also where it can be said BEFORE an address is
               typed rather than after the button is pressed.
+
+              FAULT 4 (LIVE RE-WALK): NOT UNTIL IT IS NEAR ITS END. My work offered "Begin the last
+              check-in" in session 1 of 6, with five more sessions still to come - a red button for
+              ending the whole engagement, beside nothing saying it was early to do so. Gated on
+              `nearTheEnd` now (defined above, beside `sessionsDone`): the same "its last session is
+              the next one" rule the board already uses for its own ending control.
             */}
-            {isInitiator && !['RESOLVED', 'CLOSED', 'STALLED', 'AWAITING_LEAD'].includes(ground.status) && (
+            {isInitiator && nearTheEnd && !['RESOLVED', 'CLOSED', 'STALLED', 'AWAITING_LEAD'].includes(ground.status) && (
               confirmClosing ? (
                 <Stack gap={10}>
                   {/* GROUP 3'S REVIEW, BATCH A FAULT 6: "SESSION" IS INTERNAL JARGON HERE; THE

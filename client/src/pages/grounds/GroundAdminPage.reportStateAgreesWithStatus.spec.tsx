@@ -44,11 +44,11 @@ function ground() {
   }
 }
 
-function renderPage() {
+function renderPage(initialEntry = '/grounds/g1') {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={['/grounds/g1']}>
+      <MemoryRouter initialEntries={[initialEntry]}>
         <Routes><Route path="/grounds/:id" element={<GroundAdminPage />} /></Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -61,10 +61,30 @@ beforeEach(() => {
 })
 
 describe('the header reads the same report state as People and setup and the sidebar', () => {
-  it('says the report is ready to read, not that it is still being written', async () => {
+  /*
+   * FAULT 4 (LIVE RE-WALK): "READY TO READ" READ AS "SHARED", AND IT IS NOT THE SAME CLAIM.
+   * This pinned "The report is ready to read." for a `REPORT_READY` ground with no `releasedAt` -
+   * true, but it said nothing about sharing, while People and setup's own "The team's report" row
+   * (CheckInPeopleAndSetup.tsx) read "Not shared yet..." for the very same ground, as if the report
+   * were not ready at all. The header now says both halves, in the same words setup now does: the
+   * report is ready, and it has not been shared yet.
+   */
+  it('says the report is ready and that it has not been shared yet, not that it is still being written', async () => {
     renderPage()
     await waitFor(() => expect(screen.getAllByText(/Amara - Review/i).length).toBeGreaterThan(0))
-    expect(await screen.findByText(/The report is ready to read\./)).toBeTruthy()
+    expect(await screen.findByText(/The report is ready\. It has not been shared yet\./)).toBeTruthy()
     expect(screen.queryByText(/Report being written\./)).toBeNull()
+  })
+
+  /*
+   * FAULT 4 (LIVE RE-WALK): PEOPLE AND SETUP'S "THE TEAM'S REPORT" ROW NOW AGREES WITH THE HEADER.
+   * It used to read "Not shared yet. Share it from the report when it is ready." for this same
+   * `REPORT_READY` ground - true about sharing, but written as if the report were not ready, which
+   * is the half the header already got right. Both now say the same thing.
+   */
+  it('and People and setup says the same thing about the same ground', async () => {
+    renderPage('/grounds/g1?tab=settings')
+    expect(await screen.findByText('The report is ready. It has not been shared yet.')).toBeTruthy()
+    expect(screen.queryByText('Not shared yet. Share it from the report when it is ready.')).toBeNull()
   })
 })
