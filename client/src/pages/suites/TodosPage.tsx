@@ -56,7 +56,16 @@ interface ACheckIn { id: string; name: string; todos: { id: string; text: string
 
 /** Regroups the server's per-person shape into one list per check-in, in the order each check-in
  *  is first met. Dropped once the engine serves `checkIns` itself (request 176). */
-function byCheckIn(people: TodoList['people']): ACheckIn[] {
+/** The engine's own shape: one list for each check-in, its people inside it. */
+function fromServed(checkIns: NonNullable<TodoList['checkIns']>): ACheckIn[] {
+  return checkIns.map(ci => ({
+    id: ci.id,
+    name: ci.label,
+    todos: ci.people.flatMap(p => p.todos.map(t => ({ id: t.id, text: t.text, on: t.on, person: { name: p.name, firstName: p.firstName } }))),
+  }))
+}
+
+function byCheckIn(people: NonNullable<TodoList['people']>): ACheckIn[] {
   const order: string[] = []
   const byName = new Map<string, ACheckIn>()
   for (const p of people) {
@@ -82,7 +91,7 @@ export function TodosPage() {
     retry: false,
   })
   const refused = (error as { response?: { status?: number; data?: { message?: string } } } | null)?.response
-  const checkIns = data ? (data.checkIns ?? byCheckIn(data.people)) : []
+  const checkIns = data ? (data.checkIns ? fromServed(data.checkIns) : byCheckIn(data.people ?? [])) : []
 
   return (
     <Page>

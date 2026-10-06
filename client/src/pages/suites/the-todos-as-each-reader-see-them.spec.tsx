@@ -31,7 +31,7 @@ const GRACES: TodoList = {
     { name: 'Wairimu Kamau', firstName: 'Wairimu', todos: [{ id: 'c-4', text: 'Decide whether a price range counts as money ready', source: 'check-in', on: '2026-09-24', checkIn: 'Sales team, Q3' }] },
   ],
 }
-const WAIRIMUS: TodoList = { people: [GRACES.people[0], { name: 'Miriam Wanjiku', firstName: 'Miriam', todos: [GRACES.people[1].todos[0]] }, GRACES.people[2]] }
+const WAIRIMUS: TodoList = { people: [GRACES.people![0], { name: 'Miriam Wanjiku', firstName: 'Miriam', todos: [GRACES.people![1].todos[0]] }, GRACES.people![2]] }
 
 const GRACE = { id: 'u-g', firstName: 'Grace', role: 'ADMIN', organizationName: 'Baridi Appliances' }
 const WAIRIMU = { id: 'u-w', firstName: 'Wairimu', role: 'LEAD', organizationName: 'Baridi Appliances' }
@@ -111,15 +111,14 @@ describe('Grace, an admin', () => {
     expect(screen.getByText('Juma said they would ride Ngong Road with him again.')).toBeInTheDocument()
   })
 
-  it('serves the engine’s future `checkIns` shape directly, without regrouping', async () => {
+  it('draws the engine’s served shape, one list for each check-in with its people (7 October answer)', async () => {
     open(GRACE, {
-      people: [],
       checkIns: [
-        { id: 'ci-1', name: 'Sales team, Q3', todos: [
-          { id: 'c-1', text: 'Visit Westgate Deli on Friday', on: '2026-09-24', person: { name: 'Miriam Wanjiku', firstName: 'Miriam' } },
+        { id: 'ci-1', label: 'Sales team, Q3', people: [
+          { name: 'Miriam Wanjiku', firstName: 'Miriam', todos: [{ id: 'c-1', text: 'Visit Westgate Deli on Friday', source: 'check-in', on: '2026-09-24', checkIn: 'Sales team, Q3' }] },
         ] },
-        { id: 'ci-2', name: 'Product course', todos: [
-          { id: 'c-6', text: 'Finish the product course', on: '2026-09-20', person: { name: 'Miriam Wanjiku', firstName: 'Miriam' } },
+        { id: 'ci-2', label: 'Product course', people: [
+          { name: 'Miriam Wanjiku', firstName: 'Miriam', todos: [{ id: 'c-6', text: 'Finish the product course', source: 'check-in', on: '2026-09-20', checkIn: 'Product course' }] },
         ] },
       ],
     })

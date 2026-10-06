@@ -385,9 +385,14 @@ export const decisionsApi = {
  * engine's served shape (request 176); until it ships, `people` is regrouped by check-in on the
  * screen (TodosPage.tsx).
  */
+/**
+ * The To-dos board, one list for each check-in (decision 110, P8; the engine's answer of 7 October).
+ * The same person in two check-ins is in two lists, and nothing joins them. `people` is the old
+ * shape, kept optional only so a server that has not yet moved still draws, regrouped by check-in.
+ */
 export interface TodoList {
-  people: { name: string; firstName: string; todos: { id: string; text: string; source: 'check-in'; on: string; checkIn: string }[] }[]
-  checkIns?: { id: string; name: string; todos: { id: string; text: string; on: string; person: { name: string; firstName: string } }[] }[]
+  checkIns?: { id: string; label: string; people: { name: string; firstName: string; todos: { id: string; text: string; source: 'check-in'; on: string; checkIn: string }[] }[] }[]
+  people?: { name: string; firstName: string; todos: { id: string; text: string; source: 'check-in'; on: string; checkIn: string }[] }[]
 }
 
 export const todosApi = {
