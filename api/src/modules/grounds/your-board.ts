@@ -530,3 +530,16 @@ export function theOwnWeekOf(board: (Partial<YourBoard> & { askedOfYou?: { items
     askedOfYou: (board?.askedOfYou?.items ?? []).map((i) => ({ who: i.who ?? null, what: i.what, checkIn: i.checkIn })),
   };
 }
+
+
+/**
+ * THE COUNT OF WHAT YOU KEPT, FOR YOUR OWN WEEKLY EMAIL (decision 109, spec 25), over the rows of the check-ins the email is about. Kept here so that the
+ * count is worked out in this file alone (the guard in kept-in-the-last-four-weeks-is-yours-alone.spec.ts). It is yours and goes to you.
+ */
+export function theOwnKept(
+  rows: readonly { status: string | null; createdAt?: Date | string | null; settledAt?: Date | string | null }[],
+  now: Date = new Date(),
+): { kept: number; of: number } | null {
+  const r = keptLately(rows, now, []);
+  return r ? { kept: r.kept, of: r.of } : null;
+}

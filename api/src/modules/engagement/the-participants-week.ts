@@ -1,8 +1,9 @@
 import { GroundStatus } from '@prisma/client';
 import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
+import { aNumberInWords } from './a-number-in-words';
 import { theEngagementMoment } from './the-engagement-release-moment';
 import { thereIsASessionToCome } from './heres-what-is-new';
-import { theOwnWeekOf } from '../grounds/your-board';
+import { theOwnWeekOf, theOwnKept } from '../grounds/your-board';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 
 /**
@@ -20,37 +21,44 @@ import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 export const PARTICIPANT_WEEK_SENDER = 'sendYourWeek';
 
 const TERMINAL: GroundStatus[] = [...A_GROUND_THE_JOBS_LEAVE_ALONE, ...A_GROUND_IS_HELD];
-const things = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+const cap = (t: string) => `${t.charAt(0).toUpperCase()}${t.slice(1)}`;
 const listed = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
-const quoted = (xs: string[]) => xs.map((x) => `"${x.trim().replace(/[.!?]+$/, '')}"`);
+const trimmed = (t: string) => t.trim().replace(/[.!?]+$/, '');
+const quoted = (xs: string[]) => xs.map((x) => `"${trimmed(x)}"`);
+const thing = (n: number) => (n === 1 ? 'thing' : 'things');
 
 export interface TheirWeek {
-  /** From the board's own "kept lately". */
+  /** What they kept and settled in the last four weeks, in check-ins still going. */
   kept: { kept: number; of: number } | null;
   /** What they said they would do, still open, in their own words. */
   open: string[];
-  /** What they are waiting on, in their own words. */
-  waitingOn: string[];
+  /** What they are waiting on, in their own words, and from whom where they and the check-in let it be said. */
+  waitingOn: { what: string; from: string | null }[];
   /** What waits on them, as the board serves it: who is null where the check-in does not let them see. */
   waitingOnYou: { who: string | null; what: string; checkIn: string }[];
 }
 
-/** The email, or null where nothing useful is left to say. */
+/** The email, or null where nothing useful is left to say. Full sentences, numbers in words, no colon anywhere. */
 export function theirWeekInWords(firstName: string | null | undefined, w: TheirWeek) {
+  /* A kept count of nothing is not said: "You kept none of two" is a verdict, and the open things below it say what is true. */
+  const kept = w.kept && w.kept.of > 0 && w.kept.kept > 0 ? w.kept : null;
   const facts: string[] = [];
-  if (w.kept && w.kept.of > 0) facts.push(`You kept ${w.kept.kept} of ${w.kept.of} things you said you would do`);
-  if (w.waitingOnYou.length) facts.push(`${things(w.waitingOnYou.length, 'request is', 'requests are')} waiting on you`);
-  if (!facts.length && w.open.length) facts.push(`${things(w.open.length, 'thing you said you would do is', 'things you said you would do are')} still open`);
-  if (!facts.length && !w.waitingOn.length) return null;
-  if (!facts.length) facts.push(`You are waiting on ${things(w.waitingOn.length, 'thing', 'things')}`);
+  if (kept) facts.push(kept.of === kept.kept && kept.of === 1 ? 'You kept the one thing you said you would do' : `You kept ${aNumberInWords(kept.kept)} of the ${aNumberInWords(kept.of)} ${thing(kept.of)} you said you would do`);
+  if (w.waitingOnYou.length) facts.push(`${aNumberInWords(w.waitingOnYou.length)} ${w.waitingOnYou.length === 1 ? 'request is' : 'requests are'} waiting on you`);
+  if (!facts.length && w.open.length) facts.push(`${cap(aNumberInWords(w.open.length))} ${thing(w.open.length)} you said you would do ${w.open.length === 1 ? 'is' : 'are'} still open`);
+  if (!facts.length && w.waitingOn.length) facts.push(`You are waiting on ${aNumberInWords(w.waitingOn.length)} ${thing(w.waitingOn.length)}`);
+  if (!facts.length) return null;
+  const subject = facts.map((f, i) => (i ? `${f.charAt(0).toLowerCase()}${f.slice(1)}` : cap(f))).join('; ');
+
   const lines = [`Hello ${firstName?.trim() || 'there'}. Here is your week in Groundwork. Only you can read this.`];
-  if (w.kept && w.kept.of > 0) lines.push(`Your progress: you kept ${w.kept.kept} of the ${w.kept.of} things you said you would do in the last four weeks.`);
-  if (w.open.length) lines.push(`Still open from you: ${listed(quoted(w.open.slice(0, 3)))}${w.open.length > 3 ? `, and ${w.open.length - 3} more` : ''}.`);
-  if (w.waitingOn.length) lines.push(`You are waiting on: ${listed(quoted(w.waitingOn.slice(0, 3)))}${w.waitingOn.length > 3 ? `, and ${w.waitingOn.length - 3} more` : ''}.`);
-  if (w.waitingOnYou.length) {
-    lines.push(`${things(w.waitingOnYou.length, 'request is', 'requests are')} waiting on you: ${listed(w.waitingOnYou.slice(0, 3).map((r) => `${r.who ?? 'somebody'} is waiting for "${r.what.trim().replace(/[.!?]+$/, '')}" in "${r.checkIn}"`))}.`);
+  if (kept) lines.push(kept.of === 1 ? 'You kept the one thing you said you would do in the last four weeks.' : `You kept ${aNumberInWords(kept.kept)} of the ${aNumberInWords(kept.of)} things you said you would do in the last four weeks.`);
+  if (w.open.length) {
+    const shown = w.open.slice(0, 3);
+    lines.push(`${cap(aNumberInWords(w.open.length))} ${thing(w.open.length)} you said you would do ${w.open.length === 1 ? 'is' : 'are'} still open, ${listed(quoted(shown))}${w.open.length > 3 ? `, and ${aNumberInWords(w.open.length - 3)} more` : ''}.`);
   }
-  return { subject: facts.join('; '), lines, linkLabel: 'Open your page' };
+  for (const d of w.waitingOn.slice(0, 3)) lines.push(`You are waiting for "${trimmed(d.what)}"${d.from ? ` from ${d.from}` : ''}.`);
+  for (const r of w.waitingOnYou.slice(0, 3)) lines.push(`${cap(r.who ?? 'somebody')} ${r.who === 'you' ? 'are' : 'is'} waiting for "${trimmed(r.what)}" from you in "${r.checkIn}".`);
+  return { subject, lines, linkLabel: 'Open your page' };
 }
 
 /**
@@ -74,19 +82,20 @@ export async function sendTheParticipantsWeeks(
   const rows: any[] = await everyRowAPageAtATime((page: any) => prisma.groundParticipant.findMany({
     where: { userId: { not: null }, managingOnly: false, ground: { status: { notIn: TERMINAL } } },
     select: {
-      id: true, userId: true,
+      id: true, userId: true, groundId: true,
       ground: { select: { label: true, runsUntilEnded: true, endsAt: true, timelineDays: true, createdAt: true } },
       checkIns: { where: { status: 'COMPLETED', completedAt: { gte: began } }, select: { id: true }, take: 1 },
     },
     orderBy: { id: 'asc' },
     ...page,
   }), 1000);
-  const open = new Map<string, { labels: Set<string>; participantIds: string[] }>();
+  const open = new Map<string, { labels: Set<string>; participantIds: string[]; groundIds: string[] }>();
   for (const r of rows) {
     const stillGoing = (r.checkIns?.length ?? 0) > 0 || thereIsASessionToCome(r.ground, now);
     if (!stillGoing) continue;
-    const o = open.get(r.userId) ?? { labels: new Set<string>(), participantIds: [] };
+    const o = open.get(r.userId) ?? { labels: new Set<string>(), participantIds: [], groundIds: [] };
     o.labels.add(r.ground.label);
+    o.groundIds.push(r.groundId);
     o.participantIds.push(r.id);
     open.set(r.userId, o);
   }
@@ -98,17 +107,26 @@ export async function sendTheParticipantsWeeks(
       if (!user?.email || user.deletedAt || user.isActive === false || user.awaitingOrgApproval) continue;
       const board = await deps.board.forReader({ userId, email: user.email, organizationId: user.organizationId, role: user.role });
       const inOpen = (label: string) => mine.labels.has(label);
-      /* What they are waiting on: their own handoffs, in their own words, in check-ins still going. */
+      /* What they are waiting on: their own handoffs, in their own words, in check-ins still going. Who they wait on is said only where they named a
+         person who is somebody the check-in lets them see (peers visible), or in their own words for it. */
       const waits: any[] = await prisma.groundDependency.findMany({
         where: { fromParticipantId: { in: mine.participantIds }, status: { in: ['WAITING', 'BLOCKING'] }, clearedAt: null },
-        select: { what: true, ground: { select: { label: true } } },
+        select: { what: true, onLabel: true, ground: { select: { label: true, peersVisibleToEachOther: true } }, onParticipant: { select: { nameGiven: true, user: { select: { firstName: true } } } } },
         orderBy: { createdAt: 'asc' },
       });
+      /* What they kept, only from check-ins still going: their own settled commitments there, in the last four weeks. */
+      const commitments: any[] = await Promise.resolve(prisma.groundCommitment.findMany({
+        where: { groundId: { in: mine.groundIds }, participantId: { in: mine.participantIds }, status: { in: ['DONE', 'NOT_DONE'] } },
+        select: { status: true, createdAt: true, settledAt: true },
+      })).catch(() => []);
       const own = theOwnWeekOf(board);
       const week: TheirWeek = {
-        kept: own.kept,
+        kept: theOwnKept(Array.isArray(commitments) ? commitments : [], now),
         open: own.open.filter((s) => inOpen(s.checkIn)).map((s) => s.text),
-        waitingOn: waits.filter((d) => inOpen(d.ground?.label)).map((d) => d.what).filter((t: string) => !!t?.trim()),
+        waitingOn: waits.filter((d) => inOpen(d.ground?.label)).filter((d) => !!d.what?.trim()).map((d) => ({
+          what: d.what,
+          from: d.onLabel?.trim() || (d.ground?.peersVisibleToEachOther !== false ? (d.onParticipant?.user?.firstName ?? d.onParticipant?.nameGiven ?? null) : null),
+        })),
         waitingOnYou: own.askedOfYou.filter((i) => inOpen(i.checkIn)),
       };
       const words = theirWeekInWords(user.firstName, week);
