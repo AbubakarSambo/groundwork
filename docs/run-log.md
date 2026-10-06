@@ -261,6 +261,27 @@ Everything is quoted, word for word.
 | After "finish" | "Your check-in is complete and on record. Your report follows in a moment." | "Your check-in is finished, and your answers are saved. Your report will come in a moment." |
 | The report on the phone, last line | "Here is a conversation worth having. Which of those conversations ..." | "Here is one thing worth talking about. Which of those conversations ..." |
 
+**Re-run after the rule was changed to say "simpler words never mean saying less" (`cfd5724b`), 6 October.** The sales and the new-hire (senior hire) scenarios of the 24-scenario runner, each run twice on the real model on two copies of the database, once with the switch off and once with it on (the on copy forces the switch on for every check-in the run makes; a first on run that did not do this was thrown away because its check-ins were off). Scored with `tools/score_run.py`:
+
+| | Off | On |
+| --- | --- | --- |
+| proof asked for (turns) | 6 | 6 |
+| past words brought back (turns) | 25 | 37 |
+| specific detail asked for (turns) | 35 | 41 |
+| blocker checked (turns) | 15 | 25 |
+| commitments recorded | 22 | 27 |
+| differences found / agreements found / per-person findings | 10 / 17 / 18 | 11 / 21 / 20 |
+| patterns found | 33 | 47 |
+| turns that ask more than one question | 0 | 0 |
+| every problem in what people read | 0 | 0 |
+| jargon in Groundwork's turns / in reports and boards | 19 / 22 | 13 / 45 |
+
+Nothing in the engine value fell. The counts are for two scenarios and one run each, so differences of a few are the model's own variation, not an effect. One number is worse: jargon in reports and boards, 22 off and 45 on. Nothing in the rule asks for it, and these are word counts on two reports; it is not explained and should be looked at before this is shown to a customer.
+
+Closing turns, quoted. Off: "You said you will call the credit team directly this afternoon. / That’s all for today. Below is what I wrote down from your answers. Is anything wrong?" On: "You will follow up with all 22 customers by the end of today to push for missing documents. / That is all for today. Below is what I wrote down from what you said. Is anything wrong?" and, new hire, on: "Understood. By the end of the week, you will send follow-up emails to each client asking them to confirm their review of the QBRs. If you don't hear back, you will make a note of it. / That is all for today. ..." **Not every close says the commitment back, off or on.** Off has "Understood." alone twice; on has "That is the work you will do." and, for the senior hire's first session, a close with nothing before it. The earlier on-run finding (commitment say-back dropped) is therefore not fully gone; it is no worse than off here, but it is not fixed.
+
+From the committed code (`cb561c20`) with the switch on, the sales check-in on WhatsApp: "You said you will call the Quickmart buyer on Monday to ask for a date in writing. / That is all for today. Write "finish" to end this check-in. Your report will come to this chat." then, after "finish", "Your check-in is finished, and your answers are saved. Your report will come in a moment." then "Your report for Ending: sales is ready. ... Here is one thing worth talking about. Which of those conversations was with someone who can actually decide, with the budget and the authority?" The reminder at three hours: "Hi Nuru, your check-in for "Ending: sales" is still open. Everything you have said is saved. Write here to carry on when you are ready." and at eleven hours: "Your check-in for "Ending: sales" will close in 30 minutes if you say nothing more. Add anything you still want saved now." The onboarding check-in was not reached in this WhatsApp run (the database ran out of connections while other runs were using it), so the WhatsApp side is read for sales only.
+
 **What is plainer, and what is not yet.** The closing turn (the model's own sentence before the close, and the close), the reply to "finish", and the line that introduces the report's one question are plainer with the setting on. The report's own middle sentences are the same with it on and off, because they are fixed sentences in the report builder: "Not everyone has answered yet, so there is nothing to agree or differ with." and "Somebody named a number, and nothing is tracking it." and "There are 2 more worries on record, and nobody is waiting on anybody." They have no plain form yet. The report's model-written parts do get the plain-words rule, but a report was not written afresh in this run, so that is proved only in the prompt (a test), not in a live report. The reminders and the emails have their plain forms and tests, and are not sent from this run: the code that sends them is another builder's, and a reminder outside the 24 hours is sent as a template Meta has approved, so a plainer reminder there needs a plainer template approved first.
 
 ## WhatsApp end to end, from the settings saved in the back office (5 October, night)
