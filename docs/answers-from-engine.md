@@ -6154,3 +6154,11 @@ With the suite off, both answer with the sentence the board uses ("The leave sui
 **The baseline, what a person on the team reads (piece 14).** The first session for somebody on the lead's team opens on "Hi Linet, this is a short conversation to hear how your work looks from where you sit. There are no right answers. What are you working on right now?", asks the nine one at a time, in the order that follows what they say, and closes with two sentences when all nine are learned. It is read on its own words, not under the project pack, plan and intake. It offers no suggested answers, never gives "for instance", never asks for proof, a date or a number, and is never held at its close for "what will you do, and by when". It does not tell the person what the lead said: `brief.says` is `null` and `objectives` is `[]` for anybody who is not the lead in a check-in the anchor link started.
 
 **Ideas (piece 19).** The title on "Ideas from your team" starts with a capital letter, the words kept are unchanged, and the row carries `promptVersionId`. An idea in the last answer of the baseline is offered before the goodbye, so there is a turn in which to say yes.
+
+# From the engine workspace, 6 October: what the screens still need to change (review of request 165 and 166)
+
+1. **The request forms read the wrong field.** `SpendRequestNewPage.tsx` (and the leave form) read `res?.message`. The server answers `{ id, says }`. Show `says`.
+2. **The leave form reads the kinds of leave from `/suites/leave/rules`, which is for an admin only.** Use `GET /suites/leave/form` (kinds and colleagues who could stand in), and `GET /suites/spend/form` for the payment form.
+3. **After the lead's conversation is `ready`, go straight to the reveal and the people step.** Do not show the ordinary fork ("I set this up and check in myself") and do not start a second conversation.
+4. **Give `HELP_TEAM_UNDERSTAND` a label in `SCENARIO_LABELS`** ("Help my team understand"), so an anchor check-in never prints the raw key.
+5. **The end-of-month read no longer offers "Turn on the suites that fit" until suites are really counted.** `continueOptions` has three entries until then, and `revealSaid.lines` has five.
