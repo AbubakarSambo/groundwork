@@ -641,7 +641,19 @@ export function ChatPage() {
           */
           if (t.brief) setBrief(t.brief)
           if (t.connectWhatsApp) setConnectWhatsApp(t.connectWhatsApp)
-          if (t.endCard) setEndCard(t.endCard)
+          /*
+            SCREEN FAULT 3: THE END CARD WAS GONE AFTER A RELOAD, AND THE HEADER READ "ABOUT TWO
+            MINUTES" AGAIN. The engine had already closed this conversation - that is exactly what
+            `t.endCard` being served means, before the person has pressed "That's right, finish" -
+            but only `completed` (set from `t.checkIn.status === 'COMPLETED'` below, which this
+            session has not reached yet) ever set `done`, so a reload left `done` false: the end
+            card (gated on `done`) did not render, the header fell back to its "About two minutes"
+            default, and the only way forward was the manual "Finish my check-in now" fallback
+            further down. The served state is the one source of truth for whether this
+            conversation has closed, so it is read from here too, not only from the live reply
+            that first closed it.
+          */
+          if (t.endCard) { setEndCard(t.endCard); setDone(true) }
           if (t.mayCompleteAfter) setMayCompleteAfter(t.mayCompleteAfter)
           /*
             AND WHICH SESSION THIS IS, FOR THE SAME REASON AS THE BAND ABOVE.
@@ -1551,12 +1563,15 @@ export function ChatPage() {
               for the one floor everybody reads. */}
           {!done && !completed && !declined && opened && msgs.filter(m => m.role === 'PERSON' && !m.id.startsWith('local-')).length >= mayCompleteAfter && (
             <div className="gwui-ci-finish-wrap">
-              <button
-                onClick={() => setDone(true)}
-                className="gwui-ci-finish-link"
-              >
+              {/*
+                SCREEN FAULT 3: A 32px TEXT LINK WAS THE ONLY WAY FORWARD HERE, BELOW THE 40px
+                FLOOR EVERY TAPPABLE CONTROL ON A PHONE NEEDS. `Button` (components/gw/ui) is
+                44px tall at every width, the same shared part every other action on this page
+                already uses, so this one no longer needs its own undersized class.
+              */}
+              <Button kind="secondary" onClick={() => setDone(true)}>
                 Finish my check-in now
-              </button>
+              </Button>
             </div>
           )}
           {declined && (
