@@ -2923,7 +2923,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     groundId?: string,
   ): Promise<boolean> {
     if (!requestingUserOrgId || ground.organizationId !== requestingUserOrgId) return false;
-    const user = await this.prisma.user.findUnique({ where: { id: requestingUserId }, select: { role: true, organizationId: true } });
+    const user = await this.prisma.user.findUnique({ where: { id: requestingUserId }, select: { role: true, organizationId: true, email: true } });
     /* On a performance plan, a promotion, a renewal or a probation an admin reads only what they were given
        access to (decision 5, request 78); the rule lives in who-may-read-this-check-in.ts, not here. Every read
        here is reading only, so the admin asked to approve it reads it too (decision 75, item 2): whether it
@@ -4126,7 +4126,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         scenario: true,
         createdByUserId: true,
         report: { select: { releasedAt: true, releasedSessions: true } },
-        participants: { select: { userId: true } },
+        participants: { select: { userId: true, email: true } },
       },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
@@ -4985,7 +4985,7 @@ happened, and what is in the way.`;
    * "why the report goes to both parties simultaneously".)
    */
   async generateForAdmin(groundId: string, organizationId: string, adminUserId?: string) {
-    const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId }, include: { participants: { select: { userId: true } } } });
+    const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId }, include: { participants: { select: { userId: true, email: true } } } });
     if (!ground) throw new NotFoundException('Check-in not found');
     /* A performance plan, a promotion or a renewal is not an admin's to touch without access (decision 5, request 78). */
     if (isEvaluationCheckIn(ground.scenario) && !runsOrSetItUp(adminUserId, ground)) throw new NotFoundException('Check-in not found');
@@ -5843,7 +5843,7 @@ happened, and what is in the way.`;
     return WORDING_NEW_LINES.run(true, async () => {
       const ground = await this.prisma.ground.findUnique({
         where: { id: groundId },
-        select: { organizationId: true, initiatorId: true, scenario: true, participants: { select: { userId: true } }, report: { select: { direction: true } } },
+        select: { organizationId: true, initiatorId: true, scenario: true, participants: { select: { userId: true, email: true } }, report: { select: { direction: true } } },
       } as any).catch(() => null) as any;
       if (!ground) return [];
       if (ground.scenario === 'DISCOVERY' && !ground.report?.direction) {
@@ -6845,7 +6845,7 @@ happened, and what is in the way.`;
     if (!served || typeof served !== 'object') return served;
     const ground = await (this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { initiatorId: true, organizationId: true, scenario: true, createdByUserId: true, participants: { select: { userId: true } }, report: { select: { releasedAt: true, releasedSessions: true } } } as any,
+      select: { initiatorId: true, organizationId: true, scenario: true, createdByUserId: true, participants: { select: { userId: true, email: true } }, report: { select: { releasedAt: true, releasedSessions: true } } } as any,
     }) as Promise<any>).catch(() => null);
     if (!ground) return served;
     const isParty = ((ground.participants ?? []) as any[]).some((p) => p.userId === requestingUserId);
@@ -6871,7 +6871,7 @@ happened, and what is in the way.`;
     if (!served || typeof served !== 'object') return served;
     /* An admin with access to the check-in reads it too (decision 93, row 9); a colleague never does. */
     const groundForAccess = requestingUserOrgId
-      ? await (this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, organizationId: true, scenario: true, createdByUserId: true, status: true, approvedById: true, participants: { select: { userId: true } } } as any }) as Promise<any>).catch(() => null)
+      ? await (this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, organizationId: true, scenario: true, createdByUserId: true, status: true, approvedById: true, participants: { select: { userId: true, email: true } } } as any }) as Promise<any>).catch(() => null)
       : null;
     const adminReadsIt = !!groundForAccess && groundForAccess.initiatorId !== requestingUserId
       && !((groundForAccess.participants ?? []) as any[]).some((p) => p.userId === requestingUserId)

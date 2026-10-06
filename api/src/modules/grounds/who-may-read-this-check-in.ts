@@ -36,6 +36,8 @@ export interface Viewer {
   organizationId?: string | null;
   /** The department of the Person linked to this user, when there is one. Null is "no department", never "everyone's". */
   department?: string | null;
+  /** The address on their account, so an admin the lead named as the person it is about can be recognised before they are linked to the check-in (P11). */
+  email?: string | null;
 }
 
 export interface CheckInInView {
@@ -48,7 +50,7 @@ export interface CheckInInView {
   scenario: GroundScenario | null | undefined;
   initiatorId: string | null;
   createdByUserId?: string | null;
-  participants?: { userId: string | null }[];
+  participants?: { userId: string | null; email?: string | null }[];
   /** The department of the Person linked to the lead who runs it, when known. */
   leadDepartment?: string | null;
   /**
@@ -63,13 +65,19 @@ export interface CheckInInView {
 export const WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS = {
   scenario: true,
   createdByUserId: true,
-  participants: { select: { userId: true } },
+  participants: { select: { userId: true, email: true } },
   /* Decision 75, item 2: the admin asked to approve it reads it. */
   status: true,
   approvedById: true,
 } as const;
 
 export type ReadLevel = 'own' | 'shared' | 'lead';
+
+/** Whether the lead named this reader, by address, among the people on the check-in. Case does not matter in an address. */
+export function aPersonNamedAtSetup(viewer: Viewer | null | undefined, checkIn: Pick<CheckInInView, 'participants'>): boolean {
+  const mine = (viewer?.email ?? '').trim().toLowerCase();
+  return !!mine && (checkIn.participants ?? []).some((p) => (p.email ?? '').trim().toLowerCase() === mine);
+}
 
 /** An admin of THIS organisation. An admin of a different one is a stranger. Says nothing about evaluation check-ins. */
 export function adminsTheOrg(viewer: Viewer | null | undefined, organizationId: string): boolean {
@@ -118,6 +126,10 @@ export function adminsThisOrg(viewer: Viewer | null | undefined, checkIn: CheckI
 export function askedToApproveIt(viewer: Viewer | null | undefined, checkIn: CheckInInView): boolean {
   if (!adminsTheOrg(viewer, checkIn.organizationId)) return false;
   if (!viewer?.userId) return false;
+  /* THE ADMIN THE LEAD NAMED AS THE PERSON IT IS ABOUT IS NOT ASKED TO APPROVE IT (decision 110, P11). While it waits, the people the lead named
+     at setup are on it with no account linked yet, and nothing else says who it is about, so an admin who is its subject read their own plan's
+     setup. The lead names them at setup; the match is on the address. They read as a person in it does, which is to say not at all, until they are invited. */
+  if (aPersonNamedAtSetup(viewer, checkIn)) return false;
   if (checkIn.scenario === undefined || !isEvaluationCheckIn(checkIn.scenario)) return false;
   if (checkIn.status === 'AWAITING_APPROVAL') return true;
   return !!checkIn.approvedById && checkIn.approvedById === viewer.userId;
@@ -148,6 +160,8 @@ export function leadsTheSameDepartment(viewer: Viewer | null | undefined, checkI
 export function whatTheyMayRead(userId: string, viewer: Viewer | null | undefined, checkIn: CheckInInView): ReadLevel | null {
   if (runsIt(userId, { ...viewer, userId }, checkIn)) return 'lead';
   if (checkIn.createdByUserId && checkIn.createdByUserId === userId) return 'lead';
+  /* The person the lead named at setup reads nothing of it while it waits for an admin to accept it (decision 110, P11): they have not been invited, and it is about them. */
+  if (checkIn.status === 'AWAITING_APPROVAL' && aPersonNamedAtSetup(viewer, checkIn)) return null;
   /* Before taking part: an admin asked to approve it who also takes part in it is not handed the manager's view. */
   if ((checkIn.participants ?? []).some((p) => p.userId === userId)) return 'own';
   if (askedToApproveIt({ ...viewer, userId }, checkIn)) return 'lead';
