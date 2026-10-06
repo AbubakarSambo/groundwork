@@ -1,7 +1,7 @@
 import { CheckInStatus, GroundStatus } from '@prisma/client';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
-import { theReleaseMoment } from '../grounds/the-release-moment';
+import { theEngagementMoment } from './the-engagement-release-moment';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
 
@@ -87,7 +87,7 @@ export async function sendTheTestCheckInMessages(
 ): Promise<{ tried: number }> {
   const { prisma } = deps;
   let release: Date;
-  try { release = await theReleaseMoment(prisma, now); } catch { return { tried: 0 }; }
+  try { release = await theEngagementMoment(prisma, now); } catch { return { tried: 0 }; }
   const grounds: any[] = await everyRowAPageAtATime((page: any) => prisma.ground.findMany({
     where: { status: { notIn: TERMINAL }, createdAt: { gte: release, lte: new Date(now.getTime() - THE_TRIAL_DAYS * DAY) } },
     select: { id: true, label: true, scenario: true, startedFrom: true, createdAt: true, initiatorId: true },

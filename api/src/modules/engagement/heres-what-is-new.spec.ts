@@ -1,7 +1,7 @@
 import { sendHeresWhatIsNew, theWhatIsNewWords, whereOneStands, thereIsASessionToCome } from './heres-what-is-new';
 import { ROUTINE_EMAILS } from './one-routine-message-a-day';
 import { whatThisMailIs, whetherToSend } from '../email/nothing-goes-out-that-was-turned-off';
-import { RELEASE_MOMENT_KEY } from '../grounds/the-release-moment';
+import { ENGAGEMENT_MOMENT_KEY as RELEASE_MOMENT_KEY } from './the-engagement-release-moment';
 
 /**
  * "HERE IS WHAT IS NEW", AS AN EXISTING CLIENT READS IT (decision 109 item 2).

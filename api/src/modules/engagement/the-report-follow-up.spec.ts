@@ -1,5 +1,5 @@
 import { sendTheReportFollowUps, theFollowUpWords } from './the-report-follow-up';
-import { RELEASE_MOMENT_KEY } from '../grounds/the-release-moment';
+import { ENGAGEMENT_MOMENT_KEY as RELEASE_MOMENT_KEY } from './the-engagement-release-moment';
 
 /**
  * JOURNEY 6: THE LEAD WHO RECEIVED A REPORT AND DID NOT COME BACK (decision 109; spec sections 11 and 36), AS WAIRIMU READS IT.

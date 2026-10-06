@@ -1,5 +1,5 @@
 import { sendWhoHasGoneQuiet, theTeamWords, theAcrossWords } from './who-has-gone-quiet';
-import { RELEASE_MOMENT_KEY } from '../grounds/the-release-moment';
+import { ENGAGEMENT_MOMENT_KEY as RELEASE_MOMENT_KEY } from './the-engagement-release-moment';
 
 /**
  * JOURNEYS 9 AND 7: PEOPLE WHO HAVE STOPPED ANSWERING, AS WAIRIMU READS IT (decision 109; spec sections 15 to 17).

@@ -1,7 +1,7 @@
 import { CheckInStatus, GroundStatus } from '@prisma/client';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
-import { theReleaseMoment } from '../grounds/the-release-moment';
+import { theEngagementMoment } from './the-engagement-release-moment';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
 
@@ -90,7 +90,7 @@ export async function sendHeresWhatIsNew(
 ): Promise<{ tried: number }> {
   const { prisma } = deps;
   let release: Date;
-  try { release = await theReleaseMoment(prisma, now); } catch { return { tried: 0 }; }
+  try { release = await theEngagementMoment(prisma, now); } catch { return { tried: 0 }; }
   const grounds: any[] = await everyRowAPageAtATime((page: any) => prisma.ground.findMany({
     /* Made before the release, and still going: stalled, ended and held ones are never mentioned. */
     where: { status: { notIn: TERMINAL }, createdAt: { lt: release } },

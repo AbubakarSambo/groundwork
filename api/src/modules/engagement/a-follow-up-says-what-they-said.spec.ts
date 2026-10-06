@@ -1,6 +1,6 @@
 import { theNudgeLineFor } from './a-follow-up-from-their-own-record';
 import { RemindService } from '../conversation/remind.service';
-import { RELEASE_MOMENT_KEY } from '../grounds/the-release-moment';
+import { ENGAGEMENT_MOMENT_KEY as RELEASE_MOMENT_KEY } from './the-engagement-release-moment';
 
 /**
  * THE FOLLOW-UP SAYS WHAT THE PERSON SAID, AND ONLY FOR A SESSION THAT BEGAN AFTER THE RELEASE (review of 2e2af68e).

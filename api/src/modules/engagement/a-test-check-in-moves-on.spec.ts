@@ -1,5 +1,5 @@
 import { sendTheTestCheckInMessages, theTestWords, isATestCheckIn } from './a-test-check-in-moves-on';
-import { RELEASE_MOMENT_KEY } from '../grounds/the-release-moment';
+import { ENGAGEMENT_MOMENT_KEY as RELEASE_MOMENT_KEY } from './the-engagement-release-moment';
 import { whatThisMailIs } from '../email/nothing-goes-out-that-was-turned-off';
 
 /**

@@ -1,6 +1,6 @@
 import { theNudgeLineFor, theirPromiseToFollowUp } from './a-follow-up-from-their-own-record';
 import { itFollowsUpTheirPromise } from '../whatsapp/what-goes-to-a-phone';
-import { RELEASE_MOMENT_KEY } from '../grounds/the-release-moment';
+import { ENGAGEMENT_MOMENT_KEY as RELEASE_MOMENT_KEY } from './the-engagement-release-moment';
 
 /**
  * THE FOLLOW-UP FOR EVERY CHECK-IN (decision 109 item 10), AS VERA READS IT.

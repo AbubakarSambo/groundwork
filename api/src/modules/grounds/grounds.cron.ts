@@ -29,6 +29,7 @@ import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check
 import { sendWhoHasGoneQuiet as sendWhoHasGoneQuietToLeads } from '../engagement/who-has-gone-quiet';
 import { sendTheReportFollowUps } from '../engagement/the-report-follow-up';
 import { sendHeresWhatIsNew as sendHeresWhatIsNewToLeads } from '../engagement/heres-what-is-new';
+import { theEngagementMoment } from '../engagement/the-engagement-release-moment';
 import { sendTheParticipantsWeeks } from '../engagement/the-participants-week';
 import { YourBoardService } from './your-board.service';
 import { theOpenSession } from '../engagement/heres-what-is-new';
@@ -120,6 +121,13 @@ export class GroundsCron implements OnApplicationBootstrap {
       this.logger.log(`Warnings that a check-in is about to run out of time go only to check-ins that reach that point after ${at.toISOString()}.`);
     } catch (err: any) {
       this.logger.warn(`The release moment could not be read or written yet: ${err?.message ?? err}`);
+    }
+    /* The engagement messages (decision 109) have a moment of their own, written once by the first start of this code. */
+    try {
+      const at = await theEngagementMoment(this.prisma);
+      this.logger.log(`The engagement messages are only about what began after ${at.toISOString()}.`);
+    } catch (err: any) {
+      this.logger.warn(`The engagement moment could not be read or written yet: ${err?.message ?? err}`);
     }
   }
 
