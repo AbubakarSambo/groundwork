@@ -53,7 +53,7 @@ describe("what Wairimu reads on her phone", () => {
     expect(await m.run()).toEqual({ tried: 1 });
     expect(m.sent).toHaveLength(1);
     expect(m.sent[0].text).toBe(
-      "Good morning Wairimu. Here's today's summary of your check-ins: In \"Sales team, Q3\", 5 of 6 people have checked in, and Omar has not yet. Amina's leave from Monday 5 October to Friday 9 October is waiting for you to approve or decline. Open the board for the full picture: https://myground.work/grounds/g-sales/board If you would rather not hear from us here again today, reply \"not now\".",
+      "Good morning Wairimu. Here is today's summary of your check-ins. In \"Sales team, Q3\", 5 of 6 people have checked in, and Omar has not yet. Amina's leave from Monday 5 October to Friday 9 October is waiting for you to approve or decline. You can open your board for the full picture here https://myground.work/grounds/g-sales/board If you would rather not hear from us here again today, reply \"not now\".",
     );
     expect(m.sent[0].context).toEqual({ kind: 'lead-summary', params: ['Wairimu', expect.any(String), 'https://myground.work/grounds/g-sales/board'] });
     expect(m.sent[0].context.params[1]).not.toMatch(/[\r\n\t]/);
@@ -133,7 +133,7 @@ describe('each sentence', () => {
   it('the whole message goes as Hafsah\'s registered template, word for word', () => {
     const m = theLeadsDailySummary('Wairimu', theSummaryParagraph([{ label: 'Sales team, Q3', ofHowMany: 6, answered: 6, notYet: [] }], [])!, 'https://myground.work/grounds');
     expect(TEMPLATES[m.kind].name).toBe('lead_daily_summary');
-    expect(m.text).toBe("Good morning Wairimu. Here's today's summary of your check-ins: In \"Sales team, Q3\", all 6 people have checked in. Open the board for the full picture: https://myground.work/grounds If you would rather not hear from us here again today, reply \"not now\".");
+    expect(m.text).toBe("Good morning Wairimu. Here is today's summary of your check-ins. In \"Sales team, Q3\", all 6 people have checked in. You can open your board for the full picture here https://myground.work/grounds If you would rather not hear from us here again today, reply \"not now\".");
   });
 });
 

@@ -70,3 +70,13 @@ describe('the lead pressing Remind', () => {
     expect(r.lines).toEqual([null]);
   });
 });
+
+describe('a promise stored in the third person', () => {
+  it.each(['amina will send the contract', 'Amina will send the contract.', 'the finance team will approve it', "James'll call the bank", 'Amina is going to send the contract'])('"%s" is not said back to Vera', async (said) => {
+    expect(await theNudgeLineFor(prismaWith(said), { id: 'g', startedFrom: null }, AFTER, 'p-v')).toBeNull();
+  });
+  it('and her own promises in other shapes still are', async () => {
+    expect(await theNudgeLineFor(prismaWith('send Amina the contract'), { id: 'g', startedFrom: null }, AFTER, 'p-v')).toBe("You mentioned you would send Amina the contract. I'd love to hear how it went.");
+    expect(await theNudgeLineFor(prismaWith('I will ask Amina to send the contract'), { id: 'g', startedFrom: null }, AFTER, 'p-v')).toBe("You mentioned you would ask Amina to send the contract. I'd love to hear how it went.");
+  });
+});

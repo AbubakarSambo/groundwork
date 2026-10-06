@@ -1219,7 +1219,7 @@ export class EmailService implements OnModuleInit {
     const whoSees = await this.whoSeesWhatYouSay(groundId ? { groundId } as DeliveryContext : undefined);
     await this.sendEmail({
       to: email,
-      subject: subjectLine ?? `The shared picture for ${groundLabel} is ready`,
+      subject: subjectLine ?? `The shared picture for "${groundLabel}" is ready`,
       /*
        * WHAT GROUNDWORK IS, AND WHO CAN SEE THIS.
        *

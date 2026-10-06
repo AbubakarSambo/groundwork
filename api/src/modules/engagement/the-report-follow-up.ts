@@ -22,7 +22,7 @@ export const REPORT_FOLLOW_UP_SENDER = 'sendTheReportFollowUp';
 export const A_WEEK = 7;
 const DAY = 86_400_000;
 
-export interface WhatChangedSinceTheReport { done: number; cleared: number; waiting: number; open: number; scenario?: string | null }
+export interface WhatChangedSinceTheReport { done: number; cleared: number; waiting: number; open: number; scenario?: string | null; daysSinceTheReport?: number }
 
 const things = (n: number, one: string, many: string) => `${aNumberInWords(n)} ${n === 1 ? one : many}`;
 const capital = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
@@ -34,11 +34,16 @@ export function theFollowUpWords(firstName: string | null | undefined, label: st
   const stillThere: string[] = [];
   if (c.waiting > 0) stillThere.push(`${things(c.waiting, 'handoff is', 'handoffs are')} still waiting`);
   if (c.open > 0) stillThere.push(`${things(c.open, 'thing people said they would do is', 'things people said they would do are')} still open`);
-  const subject = changed.length
-    ? `Since the report on "${label}" went out, ${changed.join(' and ')}${stillThere.length ? `, and ${stillThere.join(' and ')}` : ''}`
-    : stillThere.length
-      ? `${capital(stillThere.join(' and '))} on "${label}", and nothing has been marked done since the report went out`
-      : `Nothing has changed on "${label}" since the report went out`;
+  /* A subject that carries the finding and stays short (under about a hundred characters): counts in words, the check-in's name cut if it is long. */
+  const name = label.length > 30 ? `${label.slice(0, 27).trimEnd()}...` : label;
+  const moved = c.done + c.cleared;
+  const subject = moved > 0 && c.waiting > 0
+    ? `${capital(things(moved, 'thing', 'things'))} on "${name}" moved after the report, and ${things(c.waiting, 'handoff still waits', 'handoffs still wait')}`
+    : moved > 0
+      ? `${capital(things(moved, 'thing', 'things'))} on "${name}" moved after the report went out`
+      : c.waiting > 0
+        ? `${capital(things(c.waiting, 'handoff', 'handoffs'))} on "${name}" still ${c.waiting === 1 ? 'waits' : 'wait'}, and nothing has been marked done since the report`
+        : `Nothing has been marked done or cleared on "${name}" since the report went out`;
   const lines = [
     `Hello ${firstName?.trim() || 'there'}. The report for "${label}" went out on ${whenItWas(wentOut, 'day')}.`,
     changed.length ? `Since then, ${changed.join(' and ')}.` : 'Since then, nothing has been marked done or cleared.',
@@ -81,7 +86,7 @@ export async function sendTheReportFollowUps(
         prisma.groundDependency.count({ where: { groundId: r.groundId, status: { not: 'CLEARED' } } }),
         prisma.groundCommitment.count({ where: { groundId: r.groundId, status: 'UNKNOWN' } }),
       ]);
-      const w = theFollowUpWords(lead.firstName, r.ground.label, r.releasedAt, { done, cleared, waiting, open, scenario: r.ground.scenario });
+      const w = theFollowUpWords(lead.firstName, r.ground.label, r.releasedAt, { done, cleared, waiting, open, scenario: r.ground.scenario, daysSinceTheReport: Math.floor((now.getTime() - new Date(r.releasedAt).getTime()) / DAY) });
       const went = await deps.email.sendTheReportFollowUp(lead.email, w.subject, w.lines, w.linkLabel, `${base}/grounds/${r.groundId}/board`);
       await nowToldOnce(prisma, once, went, { sender: REPORT_FOLLOW_UP_SENDER, to: lead.email });
       if (went !== 'suppressed') tried++;

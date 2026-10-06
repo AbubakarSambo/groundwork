@@ -160,7 +160,7 @@ export const TEMPLATES: Record<string, ATemplate> = {
   overdue: aTemplate('checkin_overdue', "Hi {{1}}, your check-in for {{2}} is overdue. It's still open, so you can answer here now."),
   'team-almost-in': aTemplate('checkin_team_almost_in', "Hi {{1}}, {{3}} of {{4}} people have checked in for {{2}}, and the team's picture is coming together without your part. Add yours and it's included."),
   'your-view-matters': aTemplate('checkin_your_view_matters', "Hi {{1}}, your check-in for {{2}} is still waiting. Your answers help {{3}} understand what's in your way, and where they can help. It takes about five minutes, and you can answer here."),
-  'lead-summary': aTemplate('lead_daily_summary', "Good morning {{1}}. Here's today's summary of your check-ins: {{2}} Open the board for the full picture: {{3}} If you would rather not hear from us here again today, reply \"not now\"."),
+  'lead-summary': aTemplate('lead_daily_summary', "Good morning {{1}}. Here is today's summary of your check-ins. {{2}} You can open your board for the full picture here {{3}} If you would rather not hear from us here again today, reply \"not now\"."),
   /* Ours, proposed to Hafsah (anchor piece 28, decision 105 item 2): the weekly insight. It ends with words, not a blank. */
   /* Ours, proposed to Hafsah (anchor piece 30, decision 105 item 3): the nudge with the person's own promise, to them only. */
   'anchor-follow-up': aTemplate('anchor_checkin_follow_up', "Hi {{1}}, last time you said you would {{2}}. I'd love to hear how it went. Your check-in for {{3}} is open, and you can answer here."),

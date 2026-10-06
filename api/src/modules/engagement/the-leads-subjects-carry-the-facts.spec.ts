@@ -40,7 +40,7 @@ describe('"the shared picture is ready"', () => {
     expect(theSharedPictureSubject('Sales team, Q4', { ofHowMany: 6, answered: 6, notYet: [] }, null)).toBe('All six people on "Sales team, Q4" have checked in, and the shared picture is ready');
   });
   it('is the old plain subject when it knows nothing', () => {
-    expect(theSharedPictureSubject('Sales team, Q4', null, null)).toBe('The shared picture for Sales team, Q4 is ready');
+    expect(theSharedPictureSubject('Sales team, Q4', null, null)).toBe('The shared picture for "Sales team, Q4" is ready');
     expect(howManyCheckedIn({ ofHowMany: 0, answered: 0, notYet: [] })).toBeNull();
   });
   it('no subject compares or judges', () => {
@@ -68,6 +68,6 @@ describe('what the mail carries', () => {
     const w = door();
     await w.email.sendStalledNotification('a@x.test', 'Sales team, Q4', 'https://app.test/g');
     await w.email.sendReportReady('a@x.test', 'Sales team, Q4', 'https://app.test/r');
-    expect(w.sent.map((m) => m.subject)).toEqual(['"Sales team, Q4" ran out of time', 'The shared picture for Sales team, Q4 is ready']);
+    expect(w.sent.map((m) => m.subject)).toEqual(['"Sales team, Q4" ran out of time', 'The shared picture for "Sales team, Q4" is ready']);
   });
 });

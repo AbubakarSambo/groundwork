@@ -30,6 +30,9 @@ export function theAnchorNudgeLine(theirOwnPromise: string | null | undefined): 
  */
 export function withoutALeadingWill(said: string | null): string | null {
   if (!said) return null;
+  /* A PROMISE STORED IN THE THIRD PERSON IS NOT SAID BACK (decision 109 review): "amina will send the contract" is somebody else's promise, or a promise about somebody
+     else, and "you mentioned you would amina will send the contract" is neither true nor English. Where the one who would do it is not the speaker, it is not said. */
+  if ((/^(?:[\w-]+\s+){1,3}(?:will|would|shall|should|must|is going to|are going to|has to|needs to)\b/i.test(said) || /^(?:[\w-]+\s+){0,2}[\w-]+'ll\b/i.test(said)) && !/^(?:i|we|you)\b/i.test(said)) return null;
   const rest = said.replace(/^(?:i\s+)?(?:am\s+|are\s+|'m\s+|'re\s+)?(?:will|'ll|shall|going to)(?:\s+|$)/i, '').trim();
   return rest ? rest[0].toLowerCase() + rest.slice(1) : null;
 }
