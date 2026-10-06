@@ -23,26 +23,160 @@ export function insideTheServiceWindow(lastInboundAt: Date | string | null | und
 }
 
 /** The kinds of send the product starts, as opposed to a reply to something the person just wrote. */
-export const BUSINESS_INITIATED: ReadonlySet<string> = new Set(['session-ready', 'opening', 'report', 'report-retry', 'nudge']);
+export const BUSINESS_INITIATED: ReadonlySet<string> = new Set([
+  'checkin-open', 'due-tomorrow', 'opens-soon', 'closes-soon', 'overdue', 'team-almost-in', 'your-view-matters', 'lead-summary',
+  'anchor-weekly-insight', 'anchor-follow-up',
+  'report', 'report-retry', 'request-waiting', 'request-decided', 'review-started', 'review-decided',
+  /* A check-in left halfway (a-check-in-left-halfway.ts): the reminder to carry on, the half-hour warning, and the clock closing it. */
+  'carry-on', 'closes-in-half-an-hour', 'closed-by-the-clock',
+]);
+
+/**
+ * HOW OFTEN GROUNDWORK WRITES FIRST (decision 83, alongside decision 13). These are the messages
+ * Groundwork starts on its own; each person gets at most one a day, or two on a day one of their
+ * check-ins opens or closes. A report is not one of them: it follows the person finishing.
+ *
+ * APPROVALS (decision 82, item 1, changed by decision 92). Telling an approver that a request waits for
+ * them is NOT one of them any more: it goes straight away (see APPROVALS below). Telling a person what was
+ * decided about their own request is NOT one of them, for the same reason as the report: it answers
+ * something they did (they asked). It still never goes after STOP, and outside the 24 hours it goes
+ * only as its approved template.
+ */
+export const FIRST_MESSAGES: ReadonlySet<string> = new Set([
+  'checkin-open', 'due-tomorrow', 'opens-soon', 'closes-soon', 'overdue', 'team-almost-in', 'your-view-matters', 'lead-summary',
+  /*
+   * A REVIEW (item 16). The person did nothing to start their review or to have it decided, so both
+   * count towards their one message of the day. Held back, the review still waits for them in the app
+   * (GET /suites/reviews/mine), so nothing is lost.
+   */
+  'review-started', 'review-decided',
+  /*
+   * THE ANCHOR'S WEEKLY INSIGHT (piece 28; decision 105 item 2). It is the lead's one message of that day: it goes on
+   * Friday before the daily summary, so the summary that day is held back by the same count. That is the whole of
+   * "it replaces that day's daily summary".
+   */
+  'anchor-weekly-insight',
+  /* The anchor's nudge (piece 30; decision 105 item 3): one of the morning's chases, so it counts the same way. */
+  'anchor-follow-up',
+  /* A check-in left halfway: the one reminder to carry on is the day's first message; the half-hour warning is a closing. */
+  'carry-on', 'closes-in-half-an-hour',
+]);
+/**
+ * APPROVALS GO STRAIGHT AWAY (decision 92, item 3). Telling an approver that a request waits for them
+ * (and telling them a question was answered, or that a step was passed on to them) is never held for
+ * the morning summary, whatever else the person has had today, and it does not use up the one message
+ * of the day either. Only "Not now" and "stop" still hold it: those are the person's own word.
+ */
+export const APPROVALS: ReadonlySet<string> = new Set(['request-waiting']);
+/** The messages that mark a day a check-in opens or closes, when two may go. */
+export const OPENING_OR_CLOSING: ReadonlySet<string> = new Set(['checkin-open', 'opens-soon', 'closes-soon', 'closes-in-half-an-hour']);
+/**
+ * THE MESSAGES THAT WENT BEFORE THIS RELEASE: the report after a session closes. Every other message
+ * Groundwork starts is new, and goes to an organisation only once it has turned WhatsApp on (decisions
+ * 78 and 88), or when it already had a number of its own connected.
+ */
+export const WENT_BEFORE_THIS_RELEASE: ReadonlySet<string> = new Set(['report', 'report-retry']);
+export const NOT_TURNED_ON_QUIETLY = 'This organisation has not turned on WhatsApp; not sent';
+export const NOT_TODAY = 'Groundwork has already written first to this person as often as it may today; not sent';
+export const THEY_SAID_NOT_NOW = 'This person replied "Not now" today; not sent';
 
 export function isBusinessInitiated(kind: string | null | undefined): boolean {
   return !!kind && BUSINESS_INITIATED.has(kind);
 }
 
+/**
+ * A TEMPLATE PARAMETER IS ONE LINE (hosted item). WhatsApp refuses a parameter with a line break, a
+ * tab, or more than four spaces in a row, so whatever the product puts into one is made a single
+ * line first, and kept within the limit.
+ */
+export const A_TEMPLATE_BODY_LIMIT = 1024;
+export function oneLine(text: string, limit = A_TEMPLATE_BODY_LIMIT): string {
+  const flat = (text ?? '').replace(/[\r\n\t]+/g, ' ').replace(/ {2,}/g, ' ').trim();
+  return flat.length <= limit ? flat : `${flat.slice(0, limit - 1).replace(/\s+\S*$/, '')}…`;
+}
+
 export interface ATemplate {
   name: string;
   language: string;
-  /** The body's positional parameters, in Meta's shape, from the plain text the caller would have sent. */
-  components: (text: string) => { type: 'body'; parameters: { type: 'text'; text: string }[] }[];
+  /** The approved wording, with {{1}}, {{2}} where the product puts its own words. The same words go as free text inside the window. */
+  body: string;
+  /** The body's positional parameters, in Meta's shape. `params` are the product's own words for {{1}}, {{2}}; without them the composed text is the one parameter. */
+  components: (text: string, params?: string[]) => { type: 'body'; parameters: { type: 'text'; text: string }[] }[];
 }
 
-/** The three business-initiated bodies. Names are ours; approval is Meta's. */
+/**
+ * The product's words for a body's blanks, each one line, and together within WhatsApp's 1,024
+ * characters for the whole body: when they would not fit, the longest is cut at a word and ends "…".
+ */
+export function withinTheLimit(body: string, params: string[]): string[] {
+  const fixed = body.replace(/\{\{\d+\}\}/g, '').length;
+  const out = params.map((p) => oneLine(p ?? ''));
+  let over = fixed + out.reduce((n, p) => n + p.length, 0) - A_TEMPLATE_BODY_LIMIT;
+  while (over > 0) {
+    const i = out.reduce((best, p, j) => (p.length > out[best].length ? j : best), 0);
+    const keep = Math.max(1, out[i].length - over - 1);
+    const cut = oneLine(out[i], keep + 1);
+    over -= out[i].length - cut.length;
+    if (cut.length >= out[i].length) break;
+    out[i] = cut;
+  }
+  return out;
+}
+
+const aTemplate = (name: string, body: string): ATemplate => ({
+  name,
+  language: 'en',
+  body,
+  components: (text, params) => [{ type: 'body', parameters: withinTheLimit(body, params?.length ? params : [text]).map((p) => ({ type: 'text' as const, text: p })) }],
+});
+
+/** The words a person reads, from a template's body and the product's own words for its blanks. */
+export function fill(body: string, params: string[]): string {
+  const fitted = withinTheLimit(body, params);
+  return body.replace(/\{\{(\d+)\}\}/g, (_m, n) => fitted[Number(n) - 1] ?? '');
+}
+
+/**
+ * Every business-initiated body. Hafsah's eight (decision 83) word for word, and five of ours that
+ * hers do not cover, kept as a proposal for her (the report, a request waiting, a request decided, a review started, a review decided). Names are
+ * ours; approval is Meta's. docs/whatsapp-templates.md holds the same wording, for submitting.
+ * The parameters are in the order the body numbers them, whatever order they appear in.
+ */
 export const TEMPLATES: Record<string, ATemplate> = {
-  'session-ready': { name: 'groundwork_session_ready', language: 'en', components: (text) => [{ type: 'body', parameters: [{ type: 'text', text: text.slice(0, 1024) }] }] },
-  opening: { name: 'groundwork_check_in_opened', language: 'en', components: (text) => [{ type: 'body', parameters: [{ type: 'text', text: text.slice(0, 1024) }] }] },
-  report: { name: 'groundwork_report_ready', language: 'en', components: (text) => [{ type: 'body', parameters: [{ type: 'text', text: text.slice(0, 1024) }] }] },
+  'checkin-open': aTemplate('checkin_open', 'Hi {{1}}, your check-in for {{2}} is open. It takes about five minutes, and you can answer right here. Reply START to begin.'),
+  'due-tomorrow': aTemplate('checkin_due_tomorrow', 'Hi {{1}}, your check-in for {{2}} is due tomorrow, {{3}}. You can answer here whenever suits you before then.'),
+  'opens-soon': aTemplate('checkin_opens_soon', "Hi {{1}}, your check-in for {{2}} opens in an hour, at {{3}}. Reply here when it opens and we'll begin."),
+  'closes-soon': aTemplate('checkin_closes_soon', 'Hi {{1}}, your check-in for {{2}} closes in an hour, at {{3}}. Five minutes now means your view is part of this round.'),
+  overdue: aTemplate('checkin_overdue', "Hi {{1}}, your check-in for {{2}} is overdue. It's still open, so you can answer here now."),
+  'team-almost-in': aTemplate('checkin_team_almost_in', "Hi {{1}}, {{3}} of {{4}} people have checked in for {{2}}, and the team's picture is coming together without your part. Add yours and it's included."),
+  'your-view-matters': aTemplate('checkin_your_view_matters', "Hi {{1}}, your check-in for {{2}} is still waiting. Your answers help {{3}} understand what's in your way, and where they can help. It takes about five minutes, and you can answer here."),
+  'lead-summary': aTemplate('lead_daily_summary', "Good morning {{1}}. Here's today's summary of your check-ins: {{2}} Open the board for the full picture: {{3}}"),
+  /* Ours, proposed to Hafsah (anchor piece 28, decision 105 item 2): the weekly insight. It ends with words, not a blank. */
+  /* Ours, proposed to Hafsah (anchor piece 30, decision 105 item 3): the nudge with the person's own promise, to them only. */
+  'anchor-follow-up': aTemplate('anchor_checkin_follow_up', "Hi {{1}}, last time you said you would {{2}}. I'd love to hear how it went. Your check-in for {{3}} is open, and you can answer here."),
+  'anchor-weekly-insight': aTemplate('anchor_weekly_insight', "Hi {{1}}. {{2}} This week's picture is on the board at {{3}}, if you want the rest."),
+  /* Ours, proposed to Hafsah: hers do not cover it. */
+  report: aTemplate('groundwork_report_ready', 'Your report for {{1}} is ready. {{2}} Open Groundwork to read it.'),
+  /* Ours, proposed to Hafsah (decision 82, item 1): an approval waiting, and the decision told to the person. */
+  'request-waiting': aTemplate('groundwork_request_waiting', 'Hi {{1}}, {{2}} has asked for {{3}}, and it is waiting for you. Reply here to approve or decline it, or open Groundwork to read it first.'),
+  'request-decided': aTemplate('groundwork_request_decided', 'Hi {{1}}, your request for {{2}} was {{3}} by {{4}}. Open Groundwork to read it.'),
+  /*
+   * Ours, proposed to Hafsah (item 16): a review waits for the person in the app. Never anything the
+   * review says, only who started or decided it, so its contents stay in the app.
+   */
+  'review-started': aTemplate('groundwork_review_started', 'Hi {{1}}, {{2}} has started your review. Open Groundwork to read it and add your own view before you meet.'),
+  'review-decided': aTemplate('groundwork_review_decided', 'Hi {{1}}, {{2}} has decided your review. Open Groundwork to read the decision and the reasons.'),
 };
 TEMPLATES['report-retry'] = TEMPLATES.report;
+/*
+ * THE FIRST MESSAGE TO A NUMBER (decision 106 item 2). Ours, for Hafsah: whatever the first message is, it goes
+ * in this one template, naming the organisation, with the message's own words, and how to end it. Hafsah's
+ * eight are unchanged. See the-first-message-to-a-number.ts and docs/whatsapp-templates.md.
+ */
+TEMPLATES['first-contact'] = aTemplate('groundwork_first_contact', 'This is Groundwork, writing for {{1}}. {{2}} Not you? Reply STOP.');
+
+/** The names an organisation submits to Meta, once each: every template the product starts. */
+export const THE_NAMES_TO_SUBMIT: string[] = [...new Set(Object.values(TEMPLATES).map((t) => t.name))];
 
 export function templateFor(kind: string | null | undefined, approved: readonly string[]): ATemplate | null {
   const t = kind ? TEMPLATES[kind] : null;
@@ -56,5 +190,8 @@ export const THEY_SAID_STOP = 'This person said STOP on WhatsApp; not sent';
 export const A_STOP_WORD = /^\s*(stop|unsubscribe|opt\s*out)\s*[.!]?\s*$/i;
 export const A_START_WORD = /^\s*(start|unstop|resume|opt\s*in)\s*[.!]?\s*$/i;
 
-export const STOPPED_SAYING = 'Stopped. Nothing more comes to this number from Groundwork unless you reply START. Your check-ins are still in Groundwork.';
+/** A number Groundwork does not know (decision 106, item 5). */
+export const UNKNOWN_NUMBER_SAYING = 'Groundwork does not know this number yet. If you use Groundwork, add this number under Settings, or ask your admin to add it, then write again.';
+/* Decision 106 item 7: the last sentence is true because a decision that cannot go by WhatsApp goes by email (a-request-told-on-whatsapp.service.ts). */
+export const STOPPED_SAYING = 'Stopped. Nothing more comes to this number from Groundwork unless you reply START. Your check-ins are still in Groundwork. Leave and spending decisions still reach you by email.';
 export const RESUMED_SAYING = 'Resumed. Your check-in notices come here again.';

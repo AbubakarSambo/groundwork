@@ -1,33 +1,44 @@
 import { useEffect } from 'react'
 import { useAuthStore } from '@/stores/auth'
 import { MARKETING_URL } from '@/lib/marketing'
+import { Button, Stack } from '@/components/gw/ui'
+import { AuthCard } from './auth-kit'
 
 /**
- * A REAL ADDRESS FOR SIGNING OUT, because the marketing site needs one it can link to. W15-2.
+ * "YOU'RE SIGNED OUT" (A2, #/signout).
  *
- * Signing out existed only as a button inside the app shell, which is fine until the header on the
- * static marketing site has to offer it. A link cannot call a store, so there has to be a URL that
- * means "end my session", and this is it.
+ * Every way of signing out ends here: the Sign out in the sidebar's menu, in "More" on a phone, in
+ * Settings, on the organisation setup page and in the back office, and the Sign out link in the
+ * marketing site's header (a static page cannot call the store, only follow a link, which is why this
+ * address exists at all. W15-2).
  *
- * It clears and leaves. No confirmation step: somebody who navigated to this address has already
- * decided, and a page asking "are you sure you want to sign out?" is the kind of politeness that
- * only ever costs a second click.
+ * It clears the session as it opens, so arriving here IS signing out, whichever door you came
+ * through. It used to go straight on to the marketing site, and the other doors went to `/` or
+ * `/auth`; so being signed out looked different depending on where you pressed it, and on the
+ * marketing site it did not look like anything had happened at all.
  *
- * Lands on the marketing site rather than the sign-in form, because arriving at a password box
- * immediately after signing out reads as the sign-out having failed.
+ * The words are the prototype's (docs/prototype/screens/A2-accounts-and-signing-in/signout.txt),
+ * without its second sentence, "Anything you'd started is saved." Signing out clears the drafts this
+ * browser was keeping (lib/what-signing-out-takes-with-it.ts), so that is not yet a promise this page
+ * can make. It waits for Hafsah.
  */
 export function SignOutPage() {
   const logout = useAuthStore((s) => s.logout)
 
   useEffect(() => {
-    /** `logout` clears the token, the store, and the shared signed-in flag. */
+    /** `logout` clears the token, the store, and the shared signed-in flag. Harmless if already done. */
     logout()
-    window.location.replace(MARKETING_URL)
   }, [logout])
 
   return (
-    <div style={{ minHeight: '60vh', display: 'grid', placeItems: 'center', padding: 24 }}>
-      <div style={{ fontSize: 13.5, color: 'var(--gw-sub)' }}>Signing you out...</div>
-    </div>
+    /* True: signing out clears this browser only. There is no sign-out on the server, and a
+       session on another device lasts until it ends there, or until a password reset raises the
+       account's token epoch. */
+    <AuthCard title="You’re signed out" sub="You are still signed in on your other devices.">
+      <Stack gap={10}>
+        <Button wide to="/auth">Sign in again</Button>
+        <a href={MARKETING_URL} className="gwui-btn gwui-btn-quiet gwui-btn-wide">Go to the home page</a>
+      </Stack>
+    </AuthCard>
   )
 }

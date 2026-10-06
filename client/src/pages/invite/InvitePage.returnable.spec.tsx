@@ -64,6 +64,14 @@ describe('coming back to an invite link you have already used', () => {
     })
   })
 
+  /* Found in the browser journeys: Chrome gave the button no name, because its words sat inside a status element, so a person using a screen reader (and any test that looks for the button by its words) could not find it. */
+  it('puts the button\'s words in the button itself, not in a status element inside it', async () => {
+    renderInvite()
+    const button = await screen.findByRole('button', { name: /Pick up where I left off/i })
+    expect(button.querySelector('[role="status"]')).toBeNull()
+    expect(button.textContent).toBe('Pick up where I left off')
+  })
+
   it('carries straight on when this is the browser they joined on', async () => {
     ;(participantsApi.accept as any).mockResolvedValue({ resumed: true, groundId: 'g1', checkInId: 'ci9' })
     renderInvite()
@@ -72,6 +80,15 @@ describe('coming back to an invite link you have already used', () => {
 
     // THE POINT: click, get distracted, come back - and land back in the session.
     await waitFor(() => expect(navigated).toContain('/checkin/ci9'))
+  })
+
+  /* U.3: somebody still waiting for an admin, coming back on the same browser. */
+  it('lands on "Almost in" when they are still waiting to be let in, never on the check-in', async () => {
+    ;(participantsApi.accept as any).mockResolvedValue({ resumed: true, groundId: 'g1', checkInId: null, queuedForApproval: true })
+    renderInvite()
+    fireEvent.click(await screen.findByRole('button', { name: /Pick up where I left off/i }))
+    await waitFor(() => expect(navigated).toContain('/join/waiting'))
+    expect(navigated.some(to => to.startsWith('/checkin/') || to.startsWith('/grounds/'))).toBe(false)
   })
 
   it('emails a way in rather than signing in a different browser', async () => {
@@ -106,7 +123,7 @@ describe('coming back to an invite link you have already used', () => {
     })
     renderInvite()
 
-    fireEvent.click(await screen.findByRole('button', { name: /Add my version/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /Answer today’s check-in now/i }))
 
     await waitFor(() => expect(navigated).toContain('/checkin/ci1'))
   })

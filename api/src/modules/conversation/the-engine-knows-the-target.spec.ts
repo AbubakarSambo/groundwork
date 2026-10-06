@@ -92,14 +92,20 @@ describe('and the service actually fetches them', () => {
      * required `objectives` to be the ONLY thing in the braces. What this test is for is that the
      * prompt-feeding query fetches the objectives at all - not the order of the keys beside them.
      */
+    /* Gained isADecisionAboutAPerson (decision 46, 29 September 2026) alongside the rest, and who set it and
+       which way it goes (decision 69, 1 October 2026). */
     expect(CODE).toMatch(
-      /const ground = await this\.prisma\.ground\.findUnique\(\{\s*where: \{ id: checkIn\.groundId \},\s*include: \{[\s\S]{0,400}?objectives: \{ select: \{ name: true, target: true, ownerParticipantId: true \}/,
+      /const ground = await this\.prisma\.ground\.findUnique\(\{\s*where: \{ id: checkIn\.groundId \},\s*include: \{[\s\S]{0,400}?objectives: \{ select: \{ name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true, setByParticipantId: true, direction: true \}/,
     );
   });
 
   it('and passes them into the intake block rather than fetching and dropping them', () => {
     /** Fetched, typed, passed, rendered. Any one of the four missing makes the other three inert. */
-    expect(CODE).toMatch(/objectives: \(ground as any\)\.objectives \?\? \[\]/);
+    /* Since week 0 they pass through the rule for whose number is whose business first: the targets
+       this person may see, not every target on the check-in. Stricter, not weaker. */
+    /* Since 1 October 2026 also without a goal the lead has not told them about (decision 56), and worded
+       as sentences about whoever set each one (decision 69). Stricter again. */
+    expect(CODE).toMatch(/objectives: this\.theTargetsAsSentences\(this\.theTargetsThisPersonMaySee\(ground as any, checkIn as any, untoldHere\)/);
   });
 });
 

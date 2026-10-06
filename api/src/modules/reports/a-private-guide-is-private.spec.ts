@@ -81,8 +81,10 @@ describe('a private guide is private', () => {
     const lead = asLead();
     expect(lead.id).toBe('r1');
     expect((lead.engagement as any).currentBestReading).toBe('as it stands');
-    /* The documented decision stands: a lead still sees everyone's reads. */
-    expect((lead.engagement as any).specificitySignal).toEqual({ 'the initiator': 'moderate', 'Renewals owner': 'high' });
+    /* This used to pin "a lead still sees everyone's reads". Hafsah's decision, 28 September 2026:
+       leads and admins are never sent how anyone's answers were rated. The lead keeps only the
+       read of their own answers, like every other reader. */
+    expect((lead.engagement as any).specificitySignal).toEqual({ 'the initiator': 'moderate' });
   });
 
   it('a per-person confidence band is reduced to the reader\'s own', () => {

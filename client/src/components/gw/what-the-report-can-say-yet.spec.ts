@@ -92,3 +92,56 @@ describe('what the report can say so far', () => {
     for (const line of shown) expect(line.toLowerCase()).not.toContain('account')
   })
 })
+
+/*
+ * U.8 FIFTH REVIEW, SECOND PASS: `parties: null` MEANS "MORE THAN ONE, EXACT NUMBER NOT KNOWN" -
+ * NEVER A FABRICATED TOTAL.
+ *
+ * `GroundParticipantPage.tsx` used to fall back to `aTeamReportComes ? 2 : 1` once its own primary
+ * source (`sessionProgress.total`) went null at report release - which said "X of 2 have answered"
+ * for a real team of three or more, untrue the moment there were more than two people on it.
+ * `parties: null` is the honest version: it says something true instead of a guessed total.
+ */
+const knownTeamOfUnknownSize = (o: Partial<CoverageFacts> = {}): CoverageFacts => ({
+  iHaveCheckedIn: true,
+  answered: 1,
+  parties: null,
+  waitingOn: [],
+  corroborated: null,
+  documentBackedPct: null,
+  roundsFinished: 1,
+  ...o,
+})
+
+describe('parties: null - a team exists but the exact count is not known', () => {
+  it('never states a number of parties, in the headline or any row', () => {
+    const { rows, headline } = whatItCanSay(knownTeamOfUnknownSize())
+    expect(headline).not.toMatch(/of \d+ have answered/)
+    expect(headline).not.toMatch(/\d+ more (person|people)/)
+    for (const r of rows) expect(r.because ?? '').not.toMatch(/of \d+ have answered/)
+  })
+
+  it('says something true instead - the team\'s report is already out', () => {
+    const { rows } = whatItCanSay(knownTeamOfUnknownSize())
+    const differences = rows.find(r => r.short === 'differences')!
+    expect(differences.because).toBe('The team’s report is already out.')
+  })
+
+  it('can show differences, since an unknown party count only ever means the round has completed', () => {
+    const { rows } = whatItCanSay(knownTeamOfUnknownSize())
+    const differences = rows.find(r => r.short === 'differences')!
+    expect(differences.can).toBe(true)
+  })
+
+  it('never claims to compare against a specific outstanding count', () => {
+    const { headline } = whatItCanSay(knownTeamOfUnknownSize({ answered: 0 }))
+    expect(headline).not.toContain('until')
+  })
+
+  it('a genuinely solo check-in still gets its true count of one, not null', () => {
+    const { rows } = whatItCanSay(knownTeamOfUnknownSize({ parties: 1, answered: 1 }))
+    const differences = rows.find(r => r.short === 'differences')!
+    expect(differences.because).toBe('Nobody else is on this check-in yet')
+    expect(differences.can).toBe(false)
+  })
+})

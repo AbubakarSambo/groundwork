@@ -54,12 +54,52 @@ export interface Capability {
  */
 export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
   {
+    key: 'what_can_you_do',
+    does: 'Say what this reader can do here, in plain sentences: the check-ins they are in or run, the suites switched on for them and what waits for them to approve',
+    writes: 'nothing',
+    ordered: 'First, because "help" and "what can you do" are whole messages that no other lane should read, and "how do I use this" would otherwise be read as a handbook question. Whole message only, so "help me think through the Q4 target" stays with its own lane.',
+    owns: ['What can you help me with?', 'help', 'what can you do', 'what can I ask you?', 'how can you help', 'how do I use this'],
+    refuses: ['help me think through the Q4 target', 'what can you see', 'how do I swap the on-call rota'],
+  },
+  {
+    key: 'set_up_a_suite',
+    does: 'For an admin, set up how leave requests, spending requests, time sheets or performance reviews work by describing it. Only what is missing is asked, one question at a time, the whole of it is said back in plain sentences, and nothing is set until you say yes. Anybody else is told that an admin sets it up, and nothing changes.',
+    writes: 'after you confirm it',
+    ordered: 'First of all, because "set up our leave process" holds the word leave, which the leave lane would read as a request for time off. Narrow: a word for setting up, then only the suite and words such as process or rules to the end, and never a check-in.',
+    owns: ['Set up our employee leave process', 'set up leave requests', 'configure how leave works', 'set up our spending approvals', 'set up the expenses process', 'set up timesheets', 'set up performance reviews', 'set up our review process'],
+    refuses: ['set up a check-in', 'I want leave on 20 October', 'what is our leave policy', 'set up a check-in about our leave process', 'I spent 12,000 on fuel', 'how do we handle expenses', 'I did 6 hours on Atlas today', 'set up a review for Aisha'],
+  },
+  {
     key: 'tick_off_a_to_do',
-    does: 'Close one of your own to-dos by naming it',
+    does: 'Mark one of your own to-dos or commitments as done by naming it. It is said back first.',
     writes: 'after you confirm it',
     ordered: 'First, because "done: send the rota" holds the same words as the to-do it closes.',
     owns: ['done: send the rota', 'tick off the rota', 'mark the rota as done'],
     refuses: ['what did I commit to', 'what am I on'],
+  },
+  {
+    key: 'move_a_deadline',
+    does: 'Move the day on one of your own commitments, or on one you set for somebody on a check-in you run. It is said back with both days first.',
+    writes: 'after you confirm it',
+    ordered: 'Above adding a to-do, because "push the rota back to Friday" changes something that already has a day.',
+    owns: ['move the Westgate price list to Tuesday', 'push the rota back to Friday', 'change the deadline on the report to 7 October'],
+    refuses: ['what did I commit to', 'what is on my list?'],
+  },
+  {
+    key: 'add_a_commitment',
+    does: 'Write down something you will do, with the day if you give one. It is said back first, and it is yours.',
+    writes: 'after you confirm it',
+    ordered: 'Above adding a to-do, because a commitment is to somebody and a to-do is a note to yourself.',
+    owns: ['add a commitment: book the room by Friday', 'commit me to sending the report'],
+    refuses: ['add the rota to my to-do list', 'remind me to book the room'],
+  },
+  {
+    key: 'think_it_through',
+    does: 'Lay out two to four options for something you are deciding, such as a target, with what each would mean, what it assumes and what would show it is working. It never says which to choose and writes nothing.',
+    writes: 'nothing',
+    ordered: 'Above the objective lane, because "help me think through the Q4 target" holds the word target and must not open a draft. Below the lanes that change something.',
+    owns: ['help me think through the Q4 target', 'what are my options for the Atlas deadline', 'let us think it through', 'brainstorm how to hit the quarter'],
+    refuses: ['set a target for Q4', 'add a commitment: call the depot', 'what should we talk about'],
   },
   {
     key: 'add_a_to_do',
@@ -184,12 +224,70 @@ export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
     refuses: ['where am I needed'],
   },
   {
+    key: 'how_is_the_team',
+    does: 'How the team is doing, for a lead: what the board and the latest report of each check-in they run say, read to them alone',
+    writes: 'nothing',
+    ordered: 'Above how_am_i_doing and what_should_we_talk_about, because "how is the team doing" is about the people, not the asker.',
+    owns: ['how is the team doing?', 'how is my team getting on', 'how is everyone doing'],
+    refuses: ['how am I doing', 'what should we talk about'],
+  },
+  {
     key: 'how_am_i_doing',
     does: 'The coaching step waiting for somebody, if there is one',
     writes: 'nothing',
     ordered: 'Below the suggestion lane, which offers something specific and expires.',
     owns: ['how am I doing', 'how are things going for me'],
     refuses: ['how does the freeze work', 'what should we talk about'],
+  },
+  {
+    key: 'who_is_away',
+    does: 'Who is off in a week or a day, from approved leave, as far as the reader may know: everyone for an admin, the lead\u2019s own team for a lead, your own team for a member (dates only), and only your own leave for a guest',
+    writes: 'nothing',
+    ordered: 'Above who_is, because "who is off next week" begins with "who is" and was answered by looking up a person called "off next week".',
+    owns: ['who is off next week?', 'who is away this week', 'who is on leave tomorrow', 'is anyone off today'],
+    refuses: ['who is Femi', 'who is waiting on me'],
+  },
+  {
+    key: 'who_approves',
+    does: 'Who approves your leave, your hours or your requests to spend, said in plain words from the approval rule the admin set',
+    writes: 'nothing',
+    ordered: 'Above who_is and how_we_work. It needs the word for approving beside a word for leave, hours or spending.',
+    owns: ['who approves expenses?', 'who approves my leave', 'who signs off spending', 'who do I ask to approve my hours'],
+    refuses: ['how do we handle expenses', 'who is Femi'],
+  },
+  {
+    key: 'your_requests',
+    does: 'Your own leave days left, where your own requests to take leave or to spend stand, and what is waiting for you to approve or decline',
+    writes: 'nothing',
+    ordered: 'Above what_next and what_should_we_talk_about, because "what is waiting for me to approve" holds words those lanes read as something else. Your own record only.',
+    owns: ['how many days of leave do I have left?', 'where is my request to spend?', 'what is waiting for me to approve?', 'what is my leave balance', 'has my leave been approved'],
+    refuses: ['what should I do next', 'what should we talk about', 'what is on my list'],
+  },
+  {
+    key: 'what_is_due',
+    does: 'What is due on your own commitments and to-dos, soonest first, and how many requests wait for your decision',
+    writes: 'nothing',
+    ordered: 'Above what_next, which names one thing; this lists what has a date.',
+    owns: ['what is due?', 'what is due this week', 'what is overdue', 'what deadlines do I have'],
+    refuses: ['what should I do next', 'what is on my list?'],
+  },
+  {
+    key: 'what_next',
+    does: 'The one thing to do next, from your own commitments, to-dos and what is waiting on you, and why it is first',
+    writes: 'nothing',
+    ordered:
+      'Above where_am_i_needed. "What should I do this week" is where to spend attention across people; this is one next action, and needs the word next, now or first.',
+    owns: ['what should I do next?', 'what do I do next', 'what is next for me'],
+    refuses: ['what should I do this week', 'what is on my list?', 'what am I on'],
+  },
+  {
+    key: 'what_did_they_say',
+    does: 'What a named colleague said, only as much of it as you may already read, and which check-in it is from',
+    writes: 'nothing',
+    ordered:
+      'Above what_did_i_say, which owns the first person. The name cannot be I, we, the or any other pronoun, so "what did we agree" stays with what_came_of_it.',
+    owns: ['what did Femi say last week?', 'what has Femi said', 'what did Femi Adeyemi tell me yesterday'],
+    refuses: ['what did I say about pricing', 'what did we agree', 'what did the last check-in say'],
   },
   {
     key: 'what_did_i_say',
@@ -207,6 +305,58 @@ export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
       'Last of the answering lanes, because it is the broadest. It owns "how does the X work", which is a question about a thing rather than about doing something - and deliberately not a bare "how", which would take "how am I doing".',
     owns: ['how do we handle expenses', 'how does the freeze work', 'how do the phases work'],
     refuses: ['how am I doing', 'what am I on'],
+  },
+  {
+    key: 'context_line',
+    does:
+      'Type one line straight onto a check-in\'s context - a strategy note, a way of working, a '
+      + 'decision, something unsettled - with no conversation needed, for the lead who runs it or an '
+      + 'admin covering for them. The same door as the Context and resources page\'s own "type it in" '
+      + 'box.',
+    writes: 'after you confirm it',
+    ordered:
+      'Above add_context and anchored on the whole message, so a kind word used in passing elsewhere '
+      + 'never lands here by accident - the lead has to open with the kind and a colon. See decision '
+      + '50, item 17.',
+    owns: ['decision: we will drop the pilot', 'strategy: focus on the Lagos market', 'unsettled: who owns marketing'],
+    refuses: ['add this as context', 'what is missing from this check-in'],
+  },
+  {
+    key: 'lead_note',
+    does:
+      'A note only the lead sees, about the whole check-in or about one named person, never shared '
+      + 'or shown to that person.',
+    writes: 'after you confirm it',
+    ordered:
+      'Above add_context, on the word "private" or "privately" - a bare "note:" is ambiguous with a '
+      + 'shared context note and is left unplaced rather than guessed onto either. See decision 50, item 9.',
+    owns: ['private note: Dayo keeps missing the Friday call', 'note privately that the budget is not settled'],
+    refuses: ['add this as context', 'context note: we will focus on retention'],
+  },
+  {
+    key: 'questions_for_people',
+    does:
+      'The lead\'s exact questions waiting to be asked of somebody, and confirming or leaving one out, '
+      + 'word for word, before it ever reaches that person\'s check-in.',
+    writes: 'after you confirm it',
+    ordered:
+      'Above add_context, narrow on the phrase "questions for people" or a name after confirm/decline. '
+      + 'See the lead\'s exact question rule and decision 50, item 8.',
+    owns: ['questions for people', 'confirm the question for Ben', 'leave out the question for Ben'],
+    refuses: ['add this as context', 'what did I commit to'],
+  },
+  {
+    key: 'add_context',
+    does:
+      'Add or change a check-in\'s setup - how long it runs, how often people check in, what doing '
+      + 'well looks like, its documents and targets - for the lead who runs it, or an admin covering '
+      + 'for them. The same setup conversation as before, reached from here.',
+    writes: 'after you confirm it',
+    ordered:
+      'Above how_we_work only, so a real handbook question never lands here first. Below everything '
+      + 'more specific: "context" and "what is missing" are narrow words nothing else here owns.',
+    owns: ['add this as context', 'the context for the Q4 check-in', 'what is missing from this check-in'],
+    refuses: ['set an objective for the quarter', 'what are my objectives', 'how does the freeze work'],
   },
   {
     key: 'what_you_can_see',

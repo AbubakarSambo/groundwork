@@ -12,6 +12,9 @@ import { BillingPage } from './BillingPage'
  * confirmation says the real consequence (everything works until the period end, then stops), offers
  * pause in the same place for somebody who wants to stop paying sooner, and a scheduled end can be
  * kept instead.
+ *
+ * U.19: the two buttons read "Pause" and "Cancel", under "Stopping", as the prototype's Plan and
+ * billing has them (settings-billing.txt), so this finds them by those words. What they do is unchanged.
  */
 /* Hoisted, because vi.mock factories run before the file's own top-level statements. */
 const m = vi.hoisted(() => ({
@@ -57,7 +60,7 @@ describe('cancelling a subscription', () => {
 
   it('asks first, says when access stops, and offers pause in the same place', async () => {
     renderBilling()
-    fireEvent.click(await screen.findByText('Cancel subscription'))
+    fireEvent.click(await screen.findByText('Cancel'))
     const dialog = await screen.findByRole('dialog', { name: /cancel at the end of the period/i })
     expect(dialog.textContent).toMatch(/keeps working until/i)
     expect(dialog.textContent).toMatch(/then it stops/i)
@@ -68,14 +71,14 @@ describe('cancelling a subscription', () => {
 
   it('ends it at the period end only when they say so', async () => {
     renderBilling()
-    fireEvent.click(await screen.findByText('Cancel subscription'))
+    fireEvent.click(await screen.findByText('Cancel'))
     fireEvent.click(await screen.findByText(/^End it on /))
     await waitFor(() => expect(cancelSubscription).toHaveBeenCalledTimes(1))
   })
 
   it('"pause instead" pauses, and cancels nothing', async () => {
     renderBilling()
-    fireEvent.click(await screen.findByText('Cancel subscription'))
+    fireEvent.click(await screen.findByText('Cancel'))
     fireEvent.click(await screen.findByText('Pause instead'))
     await waitFor(() => expect(pauseSubscription).toHaveBeenCalledTimes(1))
     expect(cancelSubscription).not.toHaveBeenCalled()
@@ -83,7 +86,7 @@ describe('cancelling a subscription', () => {
 
   it('pausing has its own confirmation that says what it does', async () => {
     renderBilling()
-    fireEvent.click(await screen.findByText('Pause subscription'))
+    fireEvent.click(await screen.findByText('Pause'))
     const dialog = await screen.findByRole('dialog', { name: /pause the subscription/i })
     expect(dialog.textContent).toMatch(/nothing is charged while it is paused/i)
     expect(dialog.textContent).toMatch(/starts again when you press resume/i)
@@ -99,6 +102,6 @@ describe('a subscription that is ending', () => {
     expect((await screen.findByText(/^Ending on /)).textContent).toMatch(/everything works until then/i)
     fireEvent.click(await screen.findByText('Keep subscription'))
     await waitFor(() => expect(keepSubscription).toHaveBeenCalledTimes(1))
-    expect(screen.queryByText('Cancel subscription')).toBeNull()
+    expect(screen.queryByText('Cancel')).toBeNull()
   })
 })

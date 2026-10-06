@@ -1,10 +1,12 @@
-import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 import type Stripe from 'stripe';
 import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { StripeService } from './stripe.service';
-import { PricingService, PLAN_LABELS, DEFAULT_FREE_GROUND_LIMIT } from './pricing.service';
+import { PricingService, PLAN_LABELS, DEFAULT_FREE_GROUND_LIMIT, freePlanApplies, WHATSAPP_ADD_ON_KIND } from './pricing.service';
+import { WhatsAppAddOnService } from './whatsapp-add-on.service';
+import { claimTheSlot, theDay } from '../prisma/once-across-copies';
 
 /**
  * WHAT SOMEBODY READS WHEN THEY RUN OUT OF SEATS.
@@ -20,6 +22,33 @@ export function freeSeatLimitMessage(limit: number): string {
   return `The free plan covers ${limit} people, including you, so you can invite ${limit - 1} others. Subscribe to add more people.`;
 }
 
+/**
+ * WHAT A NEW ORGANISATION WITH NO PLAN READS, once the free trial's switch is on and the free plan has
+ * stopped for new organisations (Hafsah, 27 September). Never read while the switch is off.
+ */
+export const NO_PLAN_TO_OPEN = 'Your organisation has no plan yet. Choose one on Plan and billing to open a check-in.';
+export const NO_PLAN_TO_ADD = 'Your organisation has no plan yet. Choose one on Plan and billing to add people.';
+/* The prototype's words (upgrade.txt), for anybody in a check-in whose organisation has no plan. */
+/** "When Baridi Appliances was set up, it had 20 or more people, so it began on a plan." Null when nobody was asked. */
+export function theSizeItStartedWith(org: { name?: string | null; teamSizeSaid?: string | null; teamSizeLine?: number | null }): { said: 'fewer' | 'more'; line: number; says: string } | null {
+  const said = org.teamSizeSaid === 'fewer' || org.teamSizeSaid === 'more' ? org.teamSizeSaid : null;
+  const line = Number(org.teamSizeLine);
+  if (!said || !Number.isInteger(line) || line < 2) return null;
+  const who = (org.name ?? '').trim() || 'your organisation';
+  const says = said === 'more'
+    ? `When ${who} was set up, it had ${line} or more people, so it began on a plan.`
+    : `When ${who} was set up, it had fewer than ${line} people.`;
+  return { said, line, says };
+}
+
+/* "Remind them" (upgrade.txt, "Anyone else, once it has paused"): what the person reads back. */
+export const THE_ADMINS_ARE_REMINDED = 'We have reminded your admins that you are waiting. You can remind them again tomorrow.';
+export const REMINDED_TODAY_ALREADY = 'You already reminded your admins today. You can remind them again tomorrow.';
+export const NOTHING_IS_PAUSED = 'This check-in is not paused, so there is nobody to remind.';
+export const NO_ADMIN_TO_REMIND = 'Your organisation has no admin to remind yet. Tell the person who runs this check-in.';
+
+export const PAUSED_UNTIL_THEY_SUBSCRIBE = 'This check-in is paused until your team subscribes. Only an admin can do that, and your answers so far are kept.';
+
 export function paidSeatLimitMessage(planLabel: string, cap: number): string {
   return `Your ${planLabel} plan covers ${cap} people, including you. Move to a larger plan to add more.`;
 }
@@ -27,7 +56,7 @@ import { EmailService } from '../email/email.service';
 import { CareFeeStatus, GroundStatus, BillingEventType, BillingEventStatus, UserRole, UsageEventType, SubscriptionPlan } from '@prisma/client';
 import { UsageService } from '../usage/usage.service';
 import * as crypto from 'crypto';
-import { SEAT_WHERE, SEAT_RELATION_COUNT } from '../../common/seats';
+import { seatsIn } from '../../common/seats';
 import { isSubscribed, isCovered, whatCoversThem, ACTIVE, type SubscriptionStatus } from '../../common/subscription';
 
 /**
@@ -61,7 +90,28 @@ export class BillingService {
     private config: ConfigService,
     private email: EmailService,
     private usage: UsageService,
+    /* WhatsApp, the paid add-on (decision 78): its Stripe line follows the plan. Optional so a test
+       that builds billing by hand without it still runs; Nest always provides it. */
+    @Optional() private whatsappAddOn?: WhatsAppAddOnService,
   ) {}
+
+  /**
+   * WHETHER THE FREE PLAN APPLIES TO THIS ORGANISATION. Always yes while the free trial's switch is
+   * off, so nothing about today's billing changes; once it is on, only for an organisation that was
+   * already here (see `freePlanApplies`). Read defensively: a pricing read that fails means "yes",
+   * never a team cut off.
+   */
+  private async theFreePlanAppliesTo(org: { createdAt?: Date | null } | null | undefined): Promise<boolean> {
+    const trial = typeof (this.pricing as any)?.getFreeTrial === 'function'
+      ? await this.pricing.getFreeTrial().catch(() => null)
+      : null;
+    return freePlanApplies(trial, org?.createdAt ?? null);
+  }
+
+  /** The seat limit of somebody with no cover: the free plan's, or only the person who created it. */
+  private async theUncoveredSeatLimit(org: { createdAt?: Date | null } | null | undefined): Promise<number> {
+    return (await this.theFreePlanAppliesTo(org)) ? this.pricing.getFreeMemberLimit() : 1;
+  }
 
   /**
    * Session balance gate. Returns allowed: true when the ground has at least one
@@ -90,6 +140,7 @@ export class BillingService {
           subscriptionPlan: true, subscriptionStatus: true, freeSessionsUsed: true, freeExtensionUsed: true,
           /* A free run covers exactly what the plan it was given covers - see whatCoversThem. */
           freeUntil: true, freePlan: true,
+          createdAt: true,
         },
       });
       if (org && isCovered(org)) {
@@ -98,6 +149,11 @@ export class BillingService {
 
       const balance = ground?.sessionsBalance ?? 0;
       if (balance > 0) return { allowed: true, sessionsBalance: balance };
+
+      /* Once the free plan has stopped for this organisation, there is nothing free left to offer. */
+      if (org && !(await this.theFreePlanAppliesTo(org))) {
+        return { allowed: false, reason: PAUSED_UNTIL_THEY_SUBSCRIBE, sessionsBalance: 0, freeExtensionAvailable: false };
+      }
 
       return {
         allowed: false,
@@ -135,16 +191,24 @@ export class BillingService {
   async canCreateGround(
     organizationId: string,
     accessCode?: string,
-  ): Promise<{ allowed: boolean; reason?: string; freeReason?: 'FREE_TIER' | 'ACCESS_CODE'; codeId?: string; groundsUsed?: number }> {
+  ): Promise<{ allowed: boolean; reason?: string; freeReason?: 'FREE_TIER' | 'ACCESS_CODE'; codeId?: string; groundsUsed?: number; noPlan?: true; sessionsToStart?: number }> {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
-      select: { subscriptionPlan: true, subscriptionStatus: true, careFeeStatus: true, freeUntil: true, freePlan: true },
+      select: { subscriptionPlan: true, subscriptionStatus: true, careFeeStatus: true, freeUntil: true, freePlan: true, createdAt: true },
     });
     if (!org) return { allowed: false, reason: 'Organization not found' };
 
+    /*
+     * THE FREE FIRST SESSION GOES WITH THE FREE PLAN. A check-in opened under cover starts with one
+     * session in hand, which is the session it may still run after the cover ends. Once the free
+     * trial's switch is on, an organisation the free plan no longer applies to starts with none.
+     */
+    const freePlan = await this.theFreePlanAppliesTo(org);
+    const noFreeSession = freePlan ? {} : { sessionsToStart: 0 };
+
     // 1. Paying, or inside a free run we gave them: unlimited grounds either way.
     if (isCovered(org)) {
-      return { allowed: true };
+      return { allowed: true, ...noFreeSession };
     }
 
     // 1b. Org is on legacy active care fee plan. Deliberately does NOT return
@@ -173,6 +237,12 @@ export class BillingService {
         return { allowed: false, reason: 'Access code has already been fully redeemed' };
       }
       return { allowed: true, freeReason: 'ACCESS_CODE', codeId: code.id };
+    }
+
+    // 3a. No free plan for this organisation (the free trial's switch is on, and it is new): pay first.
+    if (!freePlan) {
+      if (careFeeCovers) return { allowed: true, ...noFreeSession };
+      return { allowed: false, reason: NO_PLAN_TO_OPEN, noPlan: true };
     }
 
     // 3. Free tier: up to the limit a platform admin has set, defaulting to what we shipped.
@@ -255,12 +325,19 @@ export class BillingService {
    * sources, same order, so the number shown on the paste screen and the number that refuses an
    * invitation cannot disagree - which is the failure this whole path exists to avoid.
    */
+  /**
+   * HOW MANY SEATS ARE TAKEN, counted one way for the gate, the billing page and the People page:
+   * see `seatsIn` in common/seats.ts. Guests do not hold a seat.
+   */
+  async seatsTaken(organizationId: string): Promise<number> {
+    return this.prisma.user.count({ where: seatsIn(organizationId) });
+  }
+
   async seatsLeft(organizationId: string): Promise<number | null> {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
       select: {
-        subscriptionPlan: true, subscriptionStatus: true, freeUntil: true, freePlan: true,
-        _count: { select: SEAT_RELATION_COUNT },
+        subscriptionPlan: true, subscriptionStatus: true, freeUntil: true, freePlan: true, createdAt: true,
       },
     });
     if (!org) return null;
@@ -268,10 +345,10 @@ export class BillingService {
     const covered = whatCoversThem(org);
     const cap = covered.plan
       ? await this.pricing.memberCapFor(covered.plan as any)
-      : await this.pricing.getFreeMemberLimit();
+      : await this.theUncoveredSeatLimit(org);
     if (cap === null || cap === undefined) return null;
     /* Never negative: an organisation already over its cap has no room, not room owed back. */
-    return Math.max(0, cap - (org._count.users ?? 0));
+    return Math.max(0, cap - (await this.seatsTaken(organizationId)));
   }
 
   /**
@@ -284,13 +361,13 @@ export class BillingService {
   async seatsIncludedFor(organizationId: string): Promise<number | null> {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
-      select: { subscriptionPlan: true, subscriptionStatus: true, freeUntil: true, freePlan: true },
+      select: { subscriptionPlan: true, subscriptionStatus: true, freeUntil: true, freePlan: true, createdAt: true },
     });
     if (!org) return null;
     const covered = whatCoversThem(org);
     const cap = covered.plan
       ? await this.pricing.memberCapFor(covered.plan as any)
-      : await this.pricing.getFreeMemberLimit();
+      : await this.theUncoveredSeatLimit(org);
     return cap ?? null;
   }
 
@@ -298,12 +375,11 @@ export class BillingService {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
       select: {
-        subscriptionPlan: true, subscriptionStatus: true, freeUntil: true, freePlan: true,
-        _count: { select: SEAT_RELATION_COUNT },
+        subscriptionPlan: true, subscriptionStatus: true, freeUntil: true, freePlan: true, createdAt: true,
       },
     });
     if (!org) return { allowed: true };
-    const count = org._count.users ?? 0;
+    const count = await this.seatsTaken(organizationId);
     /* Covered is covered: a free run we gave them buys the seats its plan buys. */
     const covered = whatCoversThem(org);
     const subscribed = covered.covers !== 'free tier';
@@ -321,9 +397,12 @@ export class BillingService {
      * stopped from adding more.
      */
     if (!subscribed) {
-      const freeLimit = await this.pricing.getFreeMemberLimit();
+      /* The same limit the billing page reports: the free plan's, or, once the free plan has stopped
+         for this organisation, nobody but the person who created it until it pays. */
+      const freeLimit = await this.theUncoveredSeatLimit(org);
       if (count >= freeLimit) {
-        return { allowed: false, reason: freeSeatLimitMessage(freeLimit) };
+        const free = await this.theFreePlanAppliesTo(org);
+        return { allowed: false, reason: free ? freeSeatLimitMessage(freeLimit) : NO_PLAN_TO_ADD };
       }
       return { allowed: true };
     }
@@ -379,9 +458,11 @@ export class BillingService {
     if (ground.isFreeGround) throw new ForbiddenException('This check-in has unlimited free sessions - nothing to extend.');
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
-      select: { freeExtensionUsed: true },
+      select: { freeExtensionUsed: true, createdAt: true },
     });
     if (!org) throw new NotFoundException('Organization not found');
+    /* The free extension is part of the free plan: none for an organisation it no longer applies to. */
+    if (!(await this.theFreePlanAppliesTo(org))) throw new ForbiddenException(NO_PLAN_TO_OPEN);
     if (org.freeExtensionUsed) throw new ForbiddenException('Your organisation has already used its one free extension. This does not reset; subscribing is the way to keep going.');
 
     const now = new Date();
@@ -570,7 +651,10 @@ export class BillingService {
 
     const newPriceId = await this.pricing.getOrCreateStripePrice(newPlan);
     const sub = await this.stripe.stripe.subscriptions.retrieve(org.subscriptionStripeId);
-    const itemId = sub.items.data[0]?.id;
+    /* The plan's own line, never the WhatsApp add-on's, which is a second line on the same subscription. */
+    const itemId = sub.items.data.find(
+      (i: any) => i.id !== org.whatsappAddOnItemId && i.price?.metadata?.kind !== WHATSAPP_ADD_ON_KIND,
+    )?.id;
     if (!itemId) throw new NotFoundException('Subscription has no billable item.');
 
     const updated = await this.stripe.stripe.subscriptions.update(org.subscriptionStripeId, {
@@ -585,6 +669,8 @@ export class BillingService {
       data: { subscriptionPlan: newPlan, subscriptionPeriodEnd: periodEnd },
     });
 
+    /* The WhatsApp add-on's line moves to the new plan's add-on price. */
+    await this.whatsappAddOn?.syncTheStripeLine(organizationId).catch((err: any) => this.logger.error(`WhatsApp add-on line for ${organizationId} did not follow the plan change: ${err?.message}`));
     await this.tellThemBillingChanged(organizationId, `Your plan changed to ${PLAN_LABELS[newPlan]}.`).catch(() => undefined);
     this.logger.log(`Org ${organizationId} subscription changed to plan ${newPlan}`);
     return { plan: newPlan, periodEnd };
@@ -827,15 +913,28 @@ export class BillingService {
     };
     people: { count: number; cap: number | null };
     /**
+     * True when nothing covers the organisation and the free plan applies to it. False when it has no
+     * plan and the free plan has stopped for it (the free trial's switch is on and it is new).
+     */
+    onTheFreePlan: boolean;
+    /**
      * Set while an organisation is inside a free run we gave them, so the page can say it plainly:
      * what it covers and the day it ends. Null when they are paying or on the free tier.
      */
-    onTheHouse: { plan: SubscriptionPlan; until: Date } | null;
+    onTheHouse: { plan: SubscriptionPlan; until: Date; freeTrial: boolean } | null;
     /** Counts only. See the comment where these are assembled. */
     /** Admin only. Absent for anybody else - see the controller. */
     usage?: { checkIns: number; reportsReleased: number; peopleTakingPart: number };
     activeGrounds: Array<{ groundId: string; label: string; startedAt: Date | null; sessionsBalance: number }>;
     card?: { brand: string; last4: string } | null;
+    /** Admin only: the subscription payments recorded from Stripe, newest first, for "Invoices". */
+    invoices?: Array<{ paidOn: Date; amountCents: number; currency: string }>;
+    /**
+     * Admin only: what was said about the team's size when the organisation was made (settings-billing.txt, "Baridi
+     * started with 27, so it began on a plan"). Only the answer is kept, never a count, so the sentence says the answer.
+     * Null when nobody was asked.
+     */
+    startedWith?: { said: 'fewer' | 'more'; line: number; says: string } | null;
   }> {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
@@ -849,20 +948,26 @@ export class BillingService {
         freeExtensionUsed: true,
         freeUntil: true,
         freePlan: true,
+        freeTrialStartedAt: true,
+        createdAt: true,
+        name: true,
+        teamSizeSaid: true,
+        teamSizeLine: true,
       },
     });
     if (!org) throw new NotFoundException('Organization not found');
 
-    const peopleCount = await this.prisma.user.count({ where: { organizationId, ...SEAT_WHERE } });
+    const peopleCount = await this.seatsTaken(organizationId);
     /**
      * THE SAME CAP THE GATE WILL APPLY. Read from the same two sources in the same order, so the
      * number on this page and the number that refuses an invitation cannot be different numbers.
      */
     const covers = whatCoversThem(org);
+    const onTheFreePlan = !covers.plan && (await this.theFreePlanAppliesTo(org));
     const peopleCap =
       covers.plan
         ? await this.pricing.memberCapFor(covers.plan as any)
-        : await this.pricing.getFreeMemberLimit();
+        : await this.theUncoveredSeatLimit(org);
 
     /* Three counts, in parallel with each other and cheap - all indexed by organisation. */
     const [everyGround, reportsOut, tookPart] = await Promise.all([
@@ -885,6 +990,19 @@ export class BillingService {
       where: { organizationId, status: GroundStatus.ACTIVE },
       select: { id: true, label: true, billingActivatedAt: true, sessionsBalance: true },
     });
+
+    /*
+     * INVOICES (U.19), from what the webhook already records once per paid Stripe invoice. Read only
+     * for an admin. Optional-chained like the other models a test double may not carry.
+     */
+    const invoices = includeUsage
+      ? await (this.prisma.billingEvent?.findMany?.({
+        where: { organizationId, type: BillingEventType.SUBSCRIPTION_FEE, status: BillingEventStatus.PAID },
+        orderBy: { periodStart: 'desc' },
+        take: 12,
+        select: { periodStart: true, amountCents: true, currency: true },
+      }) ?? Promise.resolve([])).catch(() => [])
+      : [];
 
     let card: { brand: string; last4: string } | null = null;
     if (org.stripeCustomerId && org.defaultPaymentMethodId) {
@@ -913,9 +1031,11 @@ export class BillingService {
        * and showing no ceiling to the only people who have one is how person six got added.
        */
       people: { count: peopleCount, cap: peopleCap },
+      onTheFreePlan,
       /* Said plainly, with the day it ends, because a free run nobody can see ends as a surprise. */
       onTheHouse: covers.covers === 'on the house' && covers.until && org.freePlan
-        ? { plan: org.freePlan, until: covers.until }
+        /* `freeTrial` says these are the free trial's months (U.19), not a free run we gave by hand. */
+        ? { plan: org.freePlan, until: covers.until, freeTrial: !!org.freeTrialStartedAt }
         : null,
       /*
        * WHAT THIS ACCOUNT HAS ACTUALLY DONE, which is what makes a renewal defensible.
@@ -943,7 +1063,31 @@ export class BillingService {
         sessionsBalance: g.sessionsBalance,
       })),
       card,
+      invoices: includeUsage
+        ? (invoices ?? []).map((i: any) => ({ paidOn: i.periodStart, amountCents: i.amountCents, currency: i.currency }))
+        : undefined,
+      startedWith: includeUsage ? theSizeItStartedWith(org as any) : undefined,
     };
+  }
+
+  /**
+   * "REMIND THEM" (upgrade.txt): somebody whose check-in is paused until the team subscribes asks Groundwork to remind
+   * the organisation's admins. At most once a day for each person, counted by the UTC day, and only while that check-in
+   * is really paused. The admins get the same email the refusal itself sends them (sendPaymentRequestEmail). Never says
+   * it reminded anybody it did not.
+   */
+  async remindTheAdmins(organizationId: string, userId: string, groundId: string, now: Date = new Date()): Promise<{ reminded: boolean; says: string }> {
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true, organization: { select: { name: true } } } });
+    if (!ground || ground.organizationId !== organizationId) throw new NotFoundException('That check-in is not in your organisation.');
+    const gate = await this.canStartSession(groundId);
+    if (gate.allowed) return { reminded: false, says: NOTHING_IS_PAUSED };
+    const admins = await this.prisma.user.findMany({ where: { organizationId, role: UserRole.ADMIN, deletedAt: null }, select: { email: true } });
+    if (!admins.length) return { reminded: false, says: NO_ADMIN_TO_REMIND };
+    if (!(await claimTheSlot(this.prisma, `remind-the-admins.${userId}`, theDay(now)))) return { reminded: false, says: REMINDED_TODAY_ALREADY };
+    for (const a of admins) {
+      await this.email.sendPaymentRequestEmail(a.email, ground.organization?.name ?? 'your organisation', groundId).catch(() => undefined);
+    }
+    return { reminded: true, says: THE_ADMINS_ARE_REMINDED };
   }
 
   /**
@@ -1136,6 +1280,8 @@ export class BillingService {
               await this.email.sendSubscriptionConfirmed(orgData.email, plan, periodEnd).catch(() => undefined);
             }
             this.logger.log(`Org subscription activated: org ${orgId} plan ${plan}`);
+            /* An organisation that turned WhatsApp on gets its add-on line now, if its trial is over. */
+            await this.whatsappAddOn?.syncTheStripeLine(orgId).catch((err: any) => this.logger.error(`WhatsApp add-on line for ${orgId} was not added after checkout: ${err?.message}`));
           }
           break;
         }
@@ -1194,7 +1340,8 @@ export class BillingService {
           const orgData = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { email: true, subscriptionPlan: true } });
           await this.prisma.organization.update({
             where: { id: orgId },
-            data: { subscriptionPlan: null, subscriptionStatus: 'cancelled' satisfies SubscriptionStatus, subscriptionStripeId: null, subscriptionPeriodEnd: null, subscriptionEndsAt: null },
+            /* The add-on's line ended with the subscription it was on. */
+            data: { subscriptionPlan: null, subscriptionStatus: 'cancelled' satisfies SubscriptionStatus, subscriptionStripeId: null, subscriptionPeriodEnd: null, subscriptionEndsAt: null, whatsappAddOnItemId: null },
           });
           if (orgData?.email && orgData.subscriptionPlan) {
             await this.email.sendSubscriptionCancelled(orgData.email, orgData.subscriptionPlan).catch(() => undefined);

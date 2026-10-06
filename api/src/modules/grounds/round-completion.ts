@@ -3,6 +3,8 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CheckInStatus } from '@prisma/client';
 import { GroundworkEvents, RoundCompletedEvent } from '../../common/events';
 import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT } from './an-answer-includes-a-refusal';
+import { whoOnACheckInIsAway } from '../suites/who-is-away';
+import { whoIsNotLetInYet } from './who-an-admin-did-not-let-in';
 
 /**
  * A ROUND CLOSING, DECIDED IN ONE PLACE.
@@ -32,10 +34,23 @@ export async function recordRoundCompletion(
   groundId: string,
   roundNumber: number,
 ): Promise<boolean> {
-  const participants = await prisma.groundParticipant.findMany({
+  const everyone = await prisma.groundParticipant.findMany({
     where: { groundId, managingOnly: false },
-    select: { id: true },
+    select: { id: true, userId: true },
   });
+  /*
+   * NOBODY AN ADMIN HAS NOT LET IN YET (decision 77). They cannot answer, so the session does not wait
+   * on them: it closes once everybody let in has answered. Anything they did answer still counts. Once
+   * they are let in they are waited on again, from the next time this is asked.
+   */
+  const notLetIn = await whoIsNotLetInYet(prisma, everyone as any[]);
+  const theyAnsweredIt = notLetIn.size
+    ? new Set(((await (prisma.checkIn.findMany?.({
+      where: { groundId, sessionNumber: roundNumber, status: { in: AN_ANSWER }, participantId: { in: [...notLetIn.keys()] } },
+      select: { participantId: true },
+    }) as any) ?? []) as any[]).map((c) => c.participantId))
+    : new Set<string>();
+  const participants = everyone.filter((p) => !notLetIn.has(p.id) || theyAnsweredIt.has(p.id));
   /*
    * A ground with nobody to hear from has not completed a session; it is misconfigured. Returning
    * false keeps it out of the record rather than closing session after session against an empty list.
@@ -50,7 +65,19 @@ export async function recordRoundCompletion(
       participantId: { in: participants.map((p) => p.id) },
     },
   });
-  if (answered < participants.length) return false;
+  /* Somebody on approved leave today is not waited on (week 23). Those who answered anyway are
+     already in `answered`; the ones who did not are taken off what the round needs. */
+  const away = await whoOnACheckInIsAway(prisma, groundId);
+  let notWaitedOn = 0;
+  if (away.size) {
+    const spoke = await prisma.checkIn.findMany({
+      where: { groundId, sessionNumber: roundNumber, status: { in: AN_ANSWER }, participantId: { in: [...away.keys()] } },
+      select: { participantId: true },
+    });
+    const spokeIds = new Set(spoke.map((c) => c.participantId));
+    notWaitedOn = [...away.keys()].filter((id) => participants.some((p) => p.id === id) && !spokeIds.has(id)).length;
+  }
+  if (answered < participants.length - notWaitedOn) return false;
   const completed = await prisma.checkIn.count({
     where: {
       groundId,
@@ -63,7 +90,7 @@ export async function recordRoundCompletion(
 
   try {
     await prisma.roundCompletion.create({
-      data: { groundId, sessionNumber: roundNumber, participantCount: participants.length },
+      data: { groundId, sessionNumber: roundNumber, participantCount: participants.length - notWaitedOn },
     });
   } catch {
     /*

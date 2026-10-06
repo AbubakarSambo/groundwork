@@ -3,6 +3,7 @@ import { whatMightHelp, NOT_A_STANDARD } from '../detectors/what-worked-for-some
 import { PrismaService } from '../prisma/prisma.service';
 import { runIntake, trustFrom, COMPLETION_WORDS, PROBLEM_WORDS } from './intake';
 import { ALIGNMENT_FEED_ONLY_CODES, PATTERN_PROBE_BY_CODE } from '../patterns/pattern-library';
+import { hasBeenSeenInThreePeriods } from '../patterns/who-reads-a-pattern';
 import { CheckInStatus, RecordEntryType } from '@prisma/client';
 
 // ---------------------------------------------------------------------------
@@ -309,13 +310,21 @@ export class ConversationContextService {
     // The WHERE clause excludes them at the DB level; the post-query filter is
     // a defense-in-depth guard in case the DB result set ever contains a stale
     // or unexpected code value.
+    /*
+     * STATUS ALONE IS NOT THREE PERIODS (decision 57, item 8, 30 September 2026). `status:
+     * SURFACED` is true of a bad-faith code once it has genuinely reached three periods, but
+     * `observePositive` sets it SURFACED the moment a good-news code is seen ONCE - "surfaces
+     * immediately" is right for a board badge, and wrong for shaping a probe question here, which
+     * this decision holds to the same three-period floor as everything else. Read the honest count
+     * instead of trusting the status column.
+     */
     const surfacedRaw = await this.prisma.patternDetection.findMany({
       where: { participantId, status: 'SURFACED', code: { notIn: [...ALIGNMENT_FEED_ONLY_CODES] } },
-      select: { code: true },
+      select: { code: true, periodsObserved: true, seenInSessions: true },
     });
     // GW-07 defense-in-depth: filter again in memory so a DB inconsistency
     // cannot leak a feed-only code into the conversation context.
-    const surfacedCodes = surfacedRaw.filter((p) => !ALIGNMENT_FEED_ONLY_CODES.has(p.code));
+    const surfacedCodes = surfacedRaw.filter((p) => !ALIGNMENT_FEED_ONLY_CODES.has(p.code) && hasBeenSeenInThreePeriods(p));
     const patternProbes = surfacedCodes
       .map((p) => PATTERN_PROBE_BY_CODE.get(p.code))
       .filter((probe): probe is string => Boolean(probe));
@@ -391,9 +400,15 @@ export class ConversationContextService {
       }
     }
 
-    // Escalate contradictions to tier 3 if a pattern has already surfaced for this party.
-    const surfacedCount = await this.prisma.patternDetection.count({ where: { participantId, status: 'SURFACED' } });
-    if (surfacedCount >= 1) injections.forEach((i) => { if (i.type === 'CONTRADICTION') i.tier = 3; });
+    /* Escalate contradictions to tier 3 if a pattern has genuinely reached three periods for this
+       party (decision 57, item 8) - not merely SURFACED, which a good-news code reaches after one. */
+    const surfacedForEscalation = await this.prisma.patternDetection.findMany({
+      where: { participantId, status: 'SURFACED' },
+      select: { periodsObserved: true, seenInSessions: true },
+    });
+    if (surfacedForEscalation.some((p) => hasBeenSeenInThreePeriods(p))) {
+      injections.forEach((i) => { if (i.type === 'CONTRADICTION') i.tier = 3; });
+    }
 
     // -------------------------------------------------------------------------
     // Degree 3: org-wide name mentions - invisible labour detection.

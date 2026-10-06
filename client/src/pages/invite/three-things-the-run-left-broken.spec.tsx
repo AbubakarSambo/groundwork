@@ -34,9 +34,16 @@ describe('a check-in is not named after a database value', () => {
      * CLASSIFIED from what the person said, then the first thing they actually typed, and only then
      * "Untitled". A raw enum value never reaches the label, which is what this file is about.
      */
+    /*
+     * U.6 REVIEW: the fallback is handed the situation the LEAD picked, in its plain words, not the
+     * classified one: a check-in set up as "Help someone get back on track" was called "Drift".
+     */
     const chat = readFileSync(join(__dirname, '..', 'enter', 'EntryChatPage.tsx'), 'utf8')
     expect(chat).toMatch(/export function fallbackGroundName\(/)
-    expect(chat).toMatch(/fallbackGroundName\(onboardingSelections\.classifiedScenario, onboardingSelections\.initial\)/)
+    /* Handed the situation the LEAD picked, never the classifier's (the "Drift" case). */
+    /* And never her own first words (U.6 review): an invitation never carries the lead's words. */
+    expect(chat).toMatch(/fallbackGroundName\(theSituationTheLeadPicked\(\) \?\? onboardingSelections\.classifiedScenario, orgName\.trim\(\) \|\| user\?\.organization\?\.name \|\| undefined\)/)
+    expect(chat).not.toMatch(/fallbackGroundName\([^)]*onboardingSelections\.initial/)
     /* And the raw key is turned into words rather than printed: "NEW_HIRE" is not a name. */
     expect(chat).toMatch(/\.replace\(\/_\/g, ' '\)/)
   })
@@ -94,9 +101,16 @@ describe('an invited person reads the disclosure before they commit, once', () =
     /**
      * It used to arrive on the NEXT screen, after "Add my version" - a disclosure shown after
      * the decision it is meant to inform.
+     *
+     * UPDATED 29 September, item 11 conflict A: "Nobody you work with reads it" said no manager
+     * and no admin ever saw a person's words, which decision 1 in CLAUDE.md's privacy rules makes
+     * untrue for every check-in. It is replaced by "Who can read what you write", built from the
+     * check-in's own settings (`whoCanReadThis`) so it can never say something the server does not
+     * actually do.
      */
     expect(INVITE).toMatch(/What happens to what you write/)
-    expect(INVITE).toMatch(/Nobody you work with reads it/)
+    expect(INVITE).toMatch(/Who can read what you write/)
+    expect(INVITE).not.toMatch(/Nobody you work with reads it/)
     expect(INVITE).toMatch(/Nothing here trains a model/)
   })
 

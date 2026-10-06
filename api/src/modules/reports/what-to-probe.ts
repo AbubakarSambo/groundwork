@@ -25,17 +25,26 @@
  */
 export interface ProbeInput {
   who: string;
+  /**
+   * The same person inside a sentence for this reader: "you" where they are reading their own row, their
+   * name otherwise (request 107 b: "Baraka Mwangi and Amani Wekesa are waiting on them" was said to the
+   * person they were waiting on). Defaults to `who`.
+   */
+  whoInASentence?: string;
   participantId: string;
   role: string | null;
   answeredThisSession: boolean;
   /** Surfaced patterns for this person. Recurrence is carried, because it is the finding. */
   patterns: { code: string; periodsObserved: number; signal: string; probe?: string }[];
   /** What they say they are waiting on. */
-  waitingOn: { what: string; who: string | null; daysOld: number; escalated: boolean; kind?: Kind | null }[];
+  /** `since`: the day it began, in words ("27 September"), said in place of a count of days (request 117, part 9). */
+  waitingOn: { what: string; who: string | null; daysOld: number; escalated: boolean; kind?: Kind | null; since?: string | null }[];
   /** What somebody else's record says they are waiting on from this person. */
-  holdingUp: { what: string; who: string | null; daysOld: number; kind?: Kind | null }[];
+  holdingUp: { what: string; who: string | null; daysOld: number; kind?: Kind | null; since?: string | null }[];
   /** Anything concrete they put on record: a target, a number, an attached document. */
   concrete: string[];
+  /** Of `concrete`, the ones stamped as the person's own words, word for word. Only those are quoted. */
+  concreteWordForWord?: string[];
   documentsAttached: number;
   sessionNumber: number;
   totalSessions: number | null;
@@ -53,6 +62,8 @@ export interface WhatToProbe {
   triedToUnblock: string;
 }
 import { WHAT_IT_MEANS, WHO_CAN_MOVE_IT, type Kind } from '../board/what-kind-of-thing-is-in-the-way';
+import { aThingInTheirOwnWords } from '../board/a-holder-in-their-own-words';
+import { eachWaitUnderWhoeverHoldsIt, waitingOnEachHolder } from './each-wait-under-whoever-holds-it';
 
 /**
  * HOW LONG, IN WORDS SOMEBODY WOULD USE.
@@ -64,13 +75,27 @@ import { WHAT_IT_MEANS, WHO_CAN_MOVE_IT, type Kind } from '../board/what-kind-of
 const howLong = (n: number) => (n <= 0 ? '' : n === 1 ? ' since yesterday' : ` for ${n} days`);
 
 /**
+ * THE DAY THE OLDEST BEGAN, NOT A COUNT OF DAYS FROM THE READING (request 117, part 9). The probe said "for 5
+ * days" where the board's row said "4 days", and both moved every time the page was opened. Where the caller
+ * gives the day, the sentence says it; a caller that gives only a count keeps the count.
+ */
+export const theOldestSince = (xs: { daysOld: number; since?: string | null }[]): string | null =>
+  [...xs].sort((a, b) => b.daysOld - a.daysOld)[0]?.since ?? null;
+const sinceOrHowLong = (xs: { daysOld: number; since?: string | null }[]): string => {
+  const since = theOldestSince(xs);
+  return since ? ` since ${since}` : howLong(Math.max(...xs.map((d) => d.daysOld)));
+};
+
+/**
  * WHAT THEY ARE WAITING ON, AS ITS OWN CLAUSE.
  *
  * The sentence used to run "waiting N days for ${what}", and `what` is text somebody said - so it
  * produced "waiting 0 days for to be paid for the nights". Anything that concatenates a preposition
  * onto captured text will do this eventually. A colon takes whatever the text is.
  */
-const theThing = (what: string) => what.replace(/[.\s]+$/, '');
+/** What somebody waits for, said from the reader's side: "my" in their words is "your" to them and "their" to anybody else. */
+const theThing = (what: string, theirOwn?: boolean) =>
+  (theirOwn === undefined ? what : aThingInTheirOwnWords(what, theirOwn) ?? what).replace(/[.\s]+$/, '');
 
 /**
  * WHAT KIND OF THING IS IN THE WAY, SAID ONCE FOR THE GROUP.
@@ -109,9 +134,15 @@ function earlyDays(i: ProbeInput): boolean {
 export function whatToProbe(i: ProbeInput): WhatToProbe {
   const probe: string[] = [];
   const encourage: string[] = [];
+  /* Every sentence has its person in it, by name or as "you", never "them" and never no subject at all (request 107 b). */
+  const them = (i.whoInASentence ?? i.who).trim() || 'this person';
+  const you = them.toLowerCase() === 'you';
+  const He = you ? 'You' : them.charAt(0).toUpperCase() + them.slice(1);
+  const is = you ? 'are' : 'is';
+  const has = you ? 'have' : 'has';
 
   if (!i.answeredThisSession) {
-    probe.push('Has not answered this session. Nothing below is from this round.');
+    probe.push(`${He} ${has} not answered this session, so nothing below is from this round.`);
   }
 
   /*
@@ -128,8 +159,17 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
     const named = [...new Set(i.holdingUp.map((d) => d.who).filter(Boolean))] as string[];
     const who = named.length ? andList(named) : 'Somebody';
     const oldest = Math.max(...i.holdingUp.map((d) => d.daysOld));
+    const Who = `${who.charAt(0).toUpperCase()}${who.slice(1)}`;
+    const many = named.length > 1 || /^you$/i.test(who);
+    /* Each thing once: a wait recorded twice is one thing (item 18). */
+    const items = andList([...new Map(i.holdingUp.map((d) => [theThing(d.what, false).toLowerCase(), theThing(d.what, false)] as const)).values()]);
+    const since = theOldestSince(i.holdingUp);
     probe.push(
-      `${who} ${named.length > 1 ? 'are' : 'is'} waiting on them${howLong(oldest)} for ${andList(i.holdingUp.map((d) => theThing(d.what)))}. Ask what that is waiting on.`,
+      !since
+        ? `${Who} ${many ? 'are' : 'is'} waiting on ${you ? 'you' : them}${howLong(oldest)} for ${items}. Ask what that is waiting on.`
+        : i.holdingUp.length === 1 && !many
+          ? `${Who} has been waiting on ${you ? 'you' : them} for ${items} since ${since}. Ask what that is waiting on.`
+          : `${Who} ${many ? 'are' : 'is'} waiting on ${you ? 'you' : them} for ${items}. The first of these waits began on ${since}. Ask what that is waiting on.`,
     );
     const kind = whatKindOfThing(i.holdingUp);
     if (kind) probe.push(kind);
@@ -139,19 +179,39 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
     const escalated = i.waitingOn.filter((d) => d.escalated);
     const notYet = i.waitingOn.filter((d) => !d.escalated);
     if (escalated.length) {
-      const oldest = Math.max(...escalated.map((d) => d.daysOld));
       probe.push(
-        `Waiting${howLong(oldest)} for ${andList(escalated.map((d) => theThing(d.what)))}, and has escalated. Ask what happened after they did.`,
+        `${He} ${has} been waiting for ${andList(escalated.map((d) => theThing(d.what, you)))}${sinceOrHowLong(escalated)}, and ${has} raised it higher. Ask what happened after that.`,
       );
     }
-    if (notYet.length) {
-      const from = [...new Set(notYet.map((d) => d.who).filter(Boolean))] as string[];
+    /*
+     * A WAIT ON THE READER IS NOT ONE TO RAISE HIGHER (item 21, the founder's board). Ada read "Tunde Bakare has
+     * been waiting on you for the formalized agreement, ... since 30 September, and nothing on record says it was
+     * raised higher. Ask what has stopped Tunde Bakare raising it." The person who could move it is the one
+     * reading, so the sentence says that instead, in the words the board's own row uses.
+     */
+    const onTheReader = notYet.filter((d) => /^you$/i.test((d.who ?? '').trim()));
+    if (onTheReader.length && !you) {
+      const since = theOldestSince(onTheReader);
+      const things = andList([...new Map(onTheReader.map((d) => [theThing(d.what, false).toLowerCase(), theThing(d.what, false)] as const)).values()]);
+      probe.push(`${He} ${has} been waiting on you for ${things}${since ? ` since ${since}` : howLong(Math.max(...onTheReader.map((d) => d.daysOld)))}. Give ${them} an answer, or say when you will.`);
+      const kind = whatKindOfThing(onTheReader);
+      if (kind) probe.push(kind);
+    }
+    const elsewhere = onTheReader.length && !you ? notYet.filter((d) => !onTheReader.includes(d)) : notYet;
+    if (elsewhere.length) {
+      const notYet = elsewhere;
       const oldest = Math.max(...notYet.map((d) => d.daysOld));
-      const items = andList(notYet.map((d) => theThing(d.what)));
+      /* Each wait under whoever holds it, and each thing once (item 18). See each-wait-under-whoever-holds-it.ts. */
+      const onEach = waitingOnEachHolder(eachWaitUnderWhoeverHoldsIt(notYet));
+      const since = theOldestSince(notYet);
+      /* With the day it began where the caller gives it: "has been waiting on you for the price list since 28 September". */
+      const waited = since
+        ? `${He} ${has} been waiting ${onEach}${onEach.includes(', and ') ? ',' : ''} since ${since}`
+        : `${He} ${has} been waiting${howLong(oldest)} ${onEach}`;
       probe.push(
         earlyDays(i)
-          ? `Waiting${howLong(oldest)}${from.length ? ` on ${andList(from)}` : ''} for ${items}, with no escalation on record. This early that is worth showing them rather than asking about.`
-          : `Waiting${howLong(oldest)}${from.length ? ` on ${andList(from)}` : ''} for ${items}, with no escalation on record. Ask what has stopped them raising it.`,
+          ? `${waited}, and nothing on record says it was raised higher. ${you ? 'It is early. What is being held up, and would help raising it be useful?' : `It is early, so ask ${them} what is being held up and whether help raising it would be useful.`}`
+          : `${waited}, and nothing on record says it was raised higher. Ask what has stopped ${you ? 'you' : them} raising it.`,
       );
       const kind = whatKindOfThing(notYet);
       if (kind) probe.push(kind);
@@ -163,23 +223,42 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
    * person can answer it. Anything about why they do it is not.
    */
   for (const p of i.patterns.filter((x) => x.periodsObserved >= 2)) {
+    const said = /[.!?]$/.test(p.signal.trim()) ? p.signal.trim() : `${p.signal.trim()}.`;
     probe.push(
-      `${p.signal} On record across ${p.periodsObserved} sessions.${p.probe ? ` Worth asking: ${p.probe}` : ''}`,
+      `${said} On record across ${p.periodsObserved} sessions.${p.probe ? ` Worth asking: ${p.probe}` : ''}`,
     );
   }
 
   if (i.concrete.length) {
     /* "Checkable" is the product's own word for this and it does not belong in front of a person -
        it is on the list of words we do not use, and it was printed three times on one report. */
-    encourage.push(`Worth getting on record, where anyone could check it later: ${andList(i.concrete.slice(0, 2).map(theThing))}.`);
+    /*
+     * THEIR OWN LINES, IN QUOTATION MARKS, AND THE POINT IN A SENTENCE OF ITS OWN (request 111 e). It read
+     * "Worth getting on record, where anyone could check it later: Twelve signed supply contracts ... and I
+     * want us to sign 12 shops.": two pieces joined with a colon, and "I" in the middle of a sentence about
+     * somebody else. The lines are what the person said, so they are quoted as theirs.
+     */
+    const chosen = i.concrete.slice(0, 2);
+    const theirWords = new Set(i.concreteWordForWord ?? []);
+    if (chosen.every((t) => theirWords.has(t))) {
+      const lines = chosen.map((t) => `"${theThing(t).replace(/^["“]|["”]$/g, '')}."`);
+      encourage.push(lines.length === 1
+        ? `${He} said, ${lines[0]} That is worth getting on record, so anyone can check it later.`
+        : `${He} said, ${lines[0]} ${He} also said, ${lines[1]} Both are worth getting on record, so anyone can check them later.`);
+    } else {
+      /* A line the record wrote in its own words is not a quote, and it is not ours to reword, so it is counted. */
+      encourage.push(`${He} put ${chosen.length === 1 ? 'one thing' : 'two things'} on record that anyone could check later, which is worth recognising.`);
+    }
   }
   if (i.documentsAttached > 0) {
     encourage.push(
-      `Attached ${i.documentsAttached === 1 ? 'a document' : `${i.documentsAttached} documents`}, so their side can be checked rather than taken on trust.`,
+      /* With its person in it (item 21, the distribution operations board): "Attached a document, ..." had no subject. */
+      `${He} attached ${i.documentsAttached === 1 ? 'a document' : `${i.documentsAttached} documents`}, so ${you ? 'your' : 'their'} side can be checked rather than taken on trust.`,
     );
   }
   if (i.answeredThisSession && !encourage.length && (i.waitingOn.length || i.patterns.length)) {
-    encourage.push('Named a problem out loud rather than reporting everything as fine.');
+    /* Kwabena read "Named a problem out loud rather than reporting everything as fine." with nobody in it (item 21). */
+    encourage.push(`${He} named a problem out loud rather than reporting everything as fine.`);
   }
 
   /*
@@ -196,11 +275,11 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
     const escalated = i.waitingOn.filter((d) => d.escalated).length;
     const asked = i.waitingOn.length - escalated;
     if (escalated && asked) {
-      triedToUnblock = `Escalated ${escalated} of ${i.waitingOn.length}. The ${asked === 1 ? 'other was' : 'others were'} asked for and not escalated.`;
+      triedToUnblock = `${escalated} of ${i.waitingOn.length} ${escalated === 1 ? 'was' : 'were'} taken above the person ${escalated === 1 ? 'it was' : 'they were'} with. The ${asked === 1 ? 'other was' : 'others were'} asked for, and nothing more is on record.`;
     } else if (escalated) {
-      triedToUnblock = `Escalated ${escalated === 1 ? 'it' : `all ${escalated}`}.`;
+      triedToUnblock = escalated === 1 ? 'It was taken above the person it was with.' : `All ${escalated} were taken above the person they were with.`;
     } else if (asked) {
-      triedToUnblock = `Asked, and the record shows no escalation. It does not say whether anything happened outside the check-ins.`;
+      triedToUnblock = `It was asked for, and nothing on record shows it was taken any further. It does not say whether anything happened outside the check-ins.`;
     } else {
       triedToUnblock = 'The record does not say what they did about it.';
     }

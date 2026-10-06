@@ -1,4 +1,5 @@
 import { apiClient } from './client'
+import type { TheIdeaOfferInTheCheckIn, TheRequestOfferInTheCheckIn, TheRequestToOpen } from './anchorShapes'
 
 /**
  * What this check-in is about, so the person answering is not guessing.
@@ -18,12 +19,36 @@ export interface CheckInBrief {
    */
   alsoSay?: string | null
 }
+/*
+ * SUGGESTED ANSWERS (B3): two to four short answers the person might give, under each question, such
+ * as "Sent it. They liked it but want to wait until after December." and "Not yet". They are the
+ * engine's to write and arrive with its reply. Asked of the engine workspace in
+ * docs/requests-to-engine.md, request 7; the screen draws nothing until they come.
+ */
 /** `mayCompleteAfter`: the turn floor the server holds this check-in to. The screen offers to finish at that count and not before, so the offer is never refused. */
-export interface OpenCheckInResponse { reply: string; groundId?: string; brief?: CheckInBrief | null; mayCompleteAfter?: number }
-export interface SendMessageResponse { reply: string; sessionComplete?: boolean }
-export interface TranscriptTurn { id: string; role: 'AI' | 'PERSON'; content: string }
+export interface OpenCheckInResponse { reply: string; groundId?: string; brief?: CheckInBrief | null; mayCompleteAfter?: number; suggestedAnswers?: string[]; ideaOffer?: TheIdeaOfferInTheCheckIn | null; requestOffer?: TheRequestOfferInTheCheckIn | null; openTheRequest?: TheRequestToOpen | null }
+/*
+ * THE END CARD'S PARTS THAT ONLY THE ENGINE CAN WRITE (B3, check-in-end-card.txt), sent with the reply
+ * that closes the conversation. Asked of the engine workspace in docs/requests-to-engine.md,
+ * request 7; the card shows only what is there.
+ *
+ *   inYourRecord   "Green Mart has a quote" / "From the photo you added", with its mark
+ *   next           "If Green Mart sends a written order, add a photo of it. Then the sale counts as proven."
+ */
+export interface TheEndCard {
+  inYourRecord?: { says: string; how?: string | null; mark?: string | null }[]
+  next?: string[]
+}
+/*
+ * PIECE 21: THE YES IN THE PERSON'S CHECK-IN (plan section 5 row 21; decision 96, item 10;
+ * docs/answers-from-engine.md, "Request 149, missing (1)", `TheIdeaOfferInTheCheckIn`). Attached to
+ * the reply that offers it, to the person alone, in their own check-in. Shape only - not served
+ * yet, so this is `undefined` on every reply until the engine's own idea record (piece 19) exists.
+ */
+export interface SendMessageResponse { reply: string; sessionComplete?: boolean; suggestedAnswers?: string[]; endCard?: TheEndCard | null; ideaOffer?: TheIdeaOfferInTheCheckIn | null; requestOffer?: TheRequestOfferInTheCheckIn | null; openTheRequest?: TheRequestToOpen | null }
+export interface TranscriptTurn { id: string; role: 'AI' | 'PERSON'; content: string; suggestedAnswers?: string[]; ideaOffer?: TheIdeaOfferInTheCheckIn | null; requestOffer?: TheRequestOfferInTheCheckIn | null; openTheRequest?: TheRequestToOpen | null }
 export interface PriorRecordEntrySession { sessionNumber: number; entries: { type: string; text: string }[] }
-export interface TranscriptResponse { checkIn: { status: string; sessionNumber: number; groundId?: string }; turns: TranscriptTurn[]; priorTurns?: TranscriptTurn[]; priorSessionNumber?: number | null; priorRecordEntries?: PriorRecordEntrySession[]; /** What the check-in is about. On every load, not only the one that opens it. */ brief?: CheckInBrief | null; mayCompleteAfter?: number }
+export interface TranscriptResponse { checkIn: { status: string; sessionNumber: number; groundId?: string }; turns: TranscriptTurn[]; priorTurns?: TranscriptTurn[]; priorSessionNumber?: number | null; priorRecordEntries?: PriorRecordEntrySession[]; /** What the check-in is about. On every load, not only the one that opens it. */ brief?: CheckInBrief | null; mayCompleteAfter?: number; /** The end card's parts, once the conversation has closed. See TheEndCard. */ endCard?: TheEndCard | null }
 
 const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api/v1` : '/api/v1'
 
@@ -91,9 +116,14 @@ export const conversationApi = {
   /**
    * The report this session ended on, as it was read. Not the same object as `artifact`, which is
    * the two-line summary a background job writes afterwards.
+   *
+   * `skipForbiddenToast`: a session report is only ever readable by the person who wrote it
+   * (`SessionReportPage.tsx`'s own isError branch already says so, in its own sentence). Without
+   * it, opening somebody else's session also raised the client's generic "That one is not yours to
+   * open" toast on top of that sentence - group 3's review, request batch A, fault 4.
    */
   sessionReport: (checkInId: string) =>
-    apiClient.get(`/check-ins/${checkInId}/session-report`, { skipNotFoundToast: true })
+    apiClient.get(`/check-ins/${checkInId}/session-report`, { skipNotFoundToast: true, skipForbiddenToast: true } as any)
       .then(r => r.data as { report: import('./entry').EntryReport | null; finishedAt: string | null; sessionNumber: number | null; groundId: string | null; isInitiator: boolean }),
 
   documentReceived: (checkInId: string) =>

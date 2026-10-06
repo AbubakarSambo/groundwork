@@ -46,3 +46,20 @@ export function theFloorFor(isSelfCorrection: boolean, scenario?: string | null)
   if (isSelfCorrection) return A_CORRECTION_IS_NOT_DONE_IN;
   return scenario === 'TEAM_UPDATES' ? AN_UPDATE_IS_NOT_DONE_IN : A_CHECK_IN_IS_NOT_DONE_IN;
 }
+
+
+/**
+ * WHETHER THERE IS ALMOST NOTHING HERE YET, READ ONE WAY BY BOTH ENDS OF THE CLOSE (request 47).
+ *
+ * The server's completion refuses an empty record: under 50 characters in all (20 for a
+ * correction), or fewer than two answers of twelve characters or more (one for a correction). The
+ * engine's close did not ask, so a person who said "please finish" after three short answers read
+ * "Your report is ready now. Speak soon." and was then refused. Both ends read this now, so the
+ * closing words are never written for a record the server will not write.
+ */
+export function almostNothingHereYet(personTurns: string[], isSelfCorrection: boolean): boolean {
+  const lengths = personTurns.map((t) => (t ?? '').trim().length);
+  const total = lengths.reduce((a, b) => a + b, 0);
+  const real = lengths.filter((n) => n >= 12).length;
+  return total < (isSelfCorrection ? 20 : 50) || real < (isSelfCorrection ? 1 : 2);
+}

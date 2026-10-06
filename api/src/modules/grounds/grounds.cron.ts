@@ -1,19 +1,43 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap, Optional } from '@nestjs/common';
+import { NOT_HELD_FOR_A_SEAT } from '../participants/held-for-a-seat';
+import { LeaveBoardService } from '../suites/the-leave-board.service';
+import { TimeSheetsService } from '../suites/the-time-sheets.service';
+import { SpendingService } from '../suites/the-spending.service';
+import { organisationsThatTurnedWhatsAppOn } from '../whatsapp/only-where-whatsapp-is-turned-on';
+import { sendTheLeadsDailySummaries } from '../whatsapp/the-leads-daily-summary';
+import { sendTheAnchorWeeklyInsights } from '../whatsapp/the-anchor-weekly-insight';
+import { sendTheLeadsWeeklyLetters } from '../email/the-leads-weekly-letter';
+import { theAnchorScenarioIsOn, theHalfwayMessagesAreOn } from '../admin/what-is-hidden-at-release';
+import { onceAcrossCopies, theDay, theWeek } from '../prisma/once-across-copies';
+import { theReleaseMoment, reachedTheWarningPointBefore } from './the-release-moment';
+import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { deadlineOf } from './when-the-clock-starts';
-import { A_GROUND_IS_OVER, A_GROUND_IS_HELD, A_GROUND_HAS_STOPPED } from './a-ground-that-has-ended';
+import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD, A_GROUND_HAS_STOPPED } from './a-ground-that-has-ended';
 import { AN_ANSWER } from './an-answer-includes-a-refusal';
 import { recordRoundCompletion } from './round-completion';
+import { awayUntilOn, leaveOfThePeopleOn, whoOnACheckInIsAway } from '../suites/who-is-away';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { keptOffThePhone } from '../whatsapp/a-check-in-kept-off-the-phone';
+import { whatToSendThisMorning, whichChase, whenItIsDue, itIsOverdue, itIsDueTomorrow, theTeamIsAlmostIn, yourViewMatters, itOpensSoon, MORNING_ORDER, itFollowsUpTheirPromise } from '../whatsapp/what-goes-to-a-phone';
+import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
+import { theirOwnLastOpenPromise } from '../conversation/the-anchor-nudge';
+import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
+import { isNotLetInYet } from './who-an-admin-did-not-let-in';
+
+/* Every kind a morning message is recorded under, sent, held or as a template. */
+const MORNING_KINDS = ['overdue', 'due-tomorrow', 'team-almost-in', 'your-view-matters', 'anchor-follow-up'].flatMap((k) => [k, `${k}:template`, `${k}:held`]);
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { GroundStatus, CheckInStatus, TurnRole, PartyType, ReportActivationStatus } from '@prisma/client';
 import { PatternsService } from '../patterns/patterns.service';
 import { ConversationService } from '../conversation/conversation.service';
 import { WARN_BEFORE_IT_LAPSES_DAYS } from '../participants/how-long-an-invite-lasts';
+import { remindThemToCarryOn, warnTheirPhone, tellThemTheClockClosedIt } from '../whatsapp/a-check-in-left-halfway';
 
 const INACTIVITY_AUTO_CLOSE_MS = 12 * 60 * 60 * 1000;     // 12 hours
 const MAX_SESSION_AGE_MS = 48 * 60 * 60 * 1000;            // 48 hours
@@ -21,7 +45,14 @@ const WARNING_WINDOW_START_MS = 11 * 60 * 60 * 1000;       // 11h of inactivity
 const WARNING_WINDOW_END_MS = 11.5 * 60 * 60 * 1000;       // 11h30m of inactivity
 
 /* One list, in one place: a-ground-that-has-ended.ts. */
-const TERMINAL: GroundStatus[] = A_GROUND_IS_OVER;
+/*
+ * ...and a check-in that already stalled is skipped by every job that skips an ended one, exactly as on
+ * the live main line, where STALLED sat in the ended list. Separating the two (so a person can reopen a
+ * stalled check-in) must not make these jobs treat a stalled check-in as a live one: on release morning
+ * that would email, remind, announce and WhatsApp people on check-ins that went quiet weeks ago. Once a
+ * lead gives it more time it is no longer STALLED, and every job picks it up again.
+ */
+const TERMINAL: GroundStatus[] = A_GROUND_THE_JOBS_LEAVE_ALONE;
 /**
  * AND A GROUND THAT HAS ALREADY STOPPED IS NOT STOPPED AGAIN.
  *
@@ -51,7 +82,7 @@ const NUDGE_THROTTLE_DAYS = 3;
 const OPEN_STATUSES: CheckInStatus[] = [CheckInStatus.NOT_STARTED, CheckInStatus.IN_PROGRESS];
 
 @Injectable()
-export class GroundsCron {
+export class GroundsCron implements OnApplicationBootstrap {
   private readonly logger = new Logger(GroundsCron.name);
 
   constructor(
@@ -63,7 +94,24 @@ export class GroundsCron {
     private whatsapp: WhatsAppService,
     /** Last, so the specs that build this positionally keep compiling. The sweep only decides which sessions are stale; finishing one is the conversation module's job. */
     private conversation: ConversationService,
+    /* The three boards, read only for what waits for a lead to decide in their daily summary (decision 82, item 9). Optional and last for the same reason. */
+    @Optional() private leave?: LeaveBoardService,
+    @Optional() private timeSheets?: TimeSheetsService,
+    @Optional() private spending?: SpendingService,
   ) {}
+
+  /**
+   * THE FIRST START OF THIS VERSION WRITES THE RELEASE MOMENT (decision 74, item 7). See
+   * the-release-moment.ts. Never throws: the warning job writes it too, if this could not.
+   */
+  async onApplicationBootstrap() {
+    try {
+      const at = await theReleaseMoment(this.prisma);
+      this.logger.log(`Warnings that a check-in is about to run out of time go only to check-ins that reach that point after ${at.toISOString()}.`);
+    } catch (err: any) {
+      this.logger.warn(`The release moment could not be read or written yet: ${err?.message ?? err}`);
+    }
+  }
 
   /**
    * Daily sweep: transition any ground past its timelineDays to STALLED.
@@ -89,7 +137,7 @@ export class GroundsCron {
    */
   @Cron('0 6 * * *', { timeZone: 'UTC' })
   async inviteJoinersWhoStartToday() {
-    await this.prisma.withAdvisoryLock(CronLock.DEFERRED_INVITES, async () => {
+    await onceAcrossCopies(this.prisma, 'invite-joiners-who-start-today', theDay(), () => this.prisma.withAdvisoryLock(CronLock.DEFERRED_INVITES, async () => {
       const now = new Date();
       const due = await this.prisma.groundParticipant.findMany({
         where: {
@@ -139,7 +187,7 @@ export class GroundsCron {
           this.logger.error(`Deferred invite for participant ${p.id} did not send; it will be retried tomorrow. ${(err as Error).message}`);
         }
       }
-    });
+    }));
   }
 
   /**
@@ -160,14 +208,25 @@ export class GroundsCron {
    */
   @Cron('0 2 * * *', { timeZone: 'UTC' })
   async warnBeforeTimeRunsOut() {
-    await this.prisma.withAdvisoryLock(CronLock.STALL_GROUNDS, async () => {
+    await onceAcrossCopies(this.prisma, 'warn-before-time-runs-out', theDay(), () => this.prisma.withAdvisoryLock(CronLock.STALL_GROUNDS, async () => {
+      /*
+       * NOT FOR WHAT REACHED THIS POINT BEFORE THE RELEASE (decision 74, item 7). See
+       * the-release-moment.ts. When the moment cannot be read, nobody is emailed tonight.
+       */
+      let releasedAt: Date;
+      try {
+        releasedAt = await theReleaseMoment(this.prisma);
+      } catch (err: any) {
+        this.logger.error(`No warning was sent tonight, because the release moment could not be read: ${err?.message ?? err}`);
+        return;
+      }
       const candidates = await this.prisma.ground.findMany({
         where: {
           status: { notIn: [...TERMINAL, ...HELD, ...STOPPED] },
           stallWarningSentAt: null,
         },
         select: {
-          id: true, label: true, createdAt: true, startsAt: true, timelineDays: true,
+          id: true, label: true, createdAt: true, startsAt: true, timelineDays: true, runsUntilEnded: true,
           initiator: { select: { email: true } },
         },
       });
@@ -187,6 +246,9 @@ export class GroundsCron {
          * date gets the notice tonight and is stalled tomorrow if nobody acts.
          */
         if (daysLeft > DAYS_OF_NOTICE) continue;
+        /* Already this close, or past its end, before the release: no email, no stamp, so it is not
+           stalled either. It stays as it is until its lead ends or extends it. */
+        if (reachedTheWarningPointBefore(deadline, DAYS_OF_NOTICE, releasedAt)) continue;
         /* Stamped before the send, so a mailer that throws cannot turn one notice into a daily one. */
         await this.prisma.ground.update({ where: { id: g.id }, data: { stallWarningSentAt: new Date() } });
         const to = g.initiator?.email;
@@ -197,12 +259,12 @@ export class GroundsCron {
         warned += 1;
       }
       if (warned) this.logger.log(`Warned ${warned} lead(s) that a check-in is about to run out of time.`);
-    });
+    }));
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_3AM, { timeZone: 'UTC' })
   async stallOverdueGrounds() {
-    await this.prisma.withAdvisoryLock(CronLock.STALL_GROUNDS, async () => {
+    await onceAcrossCopies(this.prisma, 'stall-overdue-check-ins', theDay(), () => this.prisma.withAdvisoryLock(CronLock.STALL_GROUNDS, async () => {
       /*
        * NOTHING STALLS THAT WAS NEVER WARNED.
        *
@@ -220,7 +282,7 @@ export class GroundsCron {
           status: { notIn: [...TERMINAL, ...HELD, ...STOPPED] },
           stallWarningSentAt: { not: null },
         },
-        select: { id: true, createdAt: true, startsAt: true, timelineDays: true, status: true },
+        select: { id: true, createdAt: true, startsAt: true, timelineDays: true, runsUntilEnded: true, status: true },
       });
 
       const staleIds = candidates
@@ -257,17 +319,20 @@ export class GroundsCron {
       // GW-06: notify all parties that their ground has stalled.
       const stalledGrounds = await this.prisma.ground.findMany({
         where: { id: { in: staleIds } },
-        select: { id: true, label: true, participants: { select: { email: true } } },
+        select: { id: true, label: true, participants: { select: { id: true, email: true } } },
       });
       const frontend = this.config.get<string>('resend.frontendUrl') || '';
       for (const g of stalledGrounds) {
+        /* Somebody on approved leave is not told they have let it lapse (week 23). */
+        const away = await whoOnACheckInIsAway(this.prisma, g.id);
         for (const p of g.participants) {
+          if (away.has(p.id)) continue;
           await this.email
             .sendStalledNotification(p.email, g.label, `${frontend}/grounds/${g.id}`)
             .catch((err: any) => this.logger.error(`Stalled notification failed for ground ${g.id}: ${err.message}`));
         }
       }
-    });
+    }));
   }
 
   /**
@@ -285,6 +350,10 @@ export class GroundsCron {
    */
   @Cron('0 5 * * 1', { timeZone: 'UTC' }) // Every Monday at 05:00 UTC
   async weeklyPeriodBoundary() {
+    await onceAcrossCopies(this.prisma, 'weekly-period-boundary', theWeek(), () => this.weeklyPeriodBoundaryHere());
+  }
+
+  private async weeklyPeriodBoundaryHere() {
     const activeGrounds = await this.prisma.ground.findMany({
       where: { status: { in: [GroundStatus.ACTIVE, GroundStatus.AWAITING_PARTIES, GroundStatus.REPORT_READY] } },
       select: { id: true },
@@ -325,6 +394,10 @@ export class GroundsCron {
    */
   @Cron('30 5 * * 1', { timeZone: 'UTC' }) // Every Monday at 05:30 UTC
   async weeklyConcentrationRisk() {
+    await onceAcrossCopies(this.prisma, 'weekly-concentration-risk', theWeek(), () => this.weeklyConcentrationRiskHere());
+  }
+
+  private async weeklyConcentrationRiskHere() {
     // Collect distinct org IDs from active grounds.
     const activeGrounds = await this.prisma.ground.findMany({
       where: { status: { in: [GroundStatus.ACTIVE, GroundStatus.AWAITING_PARTIES, GroundStatus.REPORT_READY] } },
@@ -405,6 +478,9 @@ export class GroundsCron {
          * walked away had an empty record and no next session. One place finishes a session now;
          * this decides only that it is time. See ConversationService.closeByTheClock.
          */
+        /* Their phone is told it closed, with what they said kept, before the report follows (a-check-in-left-halfway.ts). */
+        const toldTheirPhone = this.whatsapp && (await theHalfwayMessagesAreOn(this.prisma)) ? tellThemTheClockClosedIt(this.prisma, this.whatsapp, checkIn.id).catch(() => false) : Promise.resolve(false);
+        await toldTheirPhone;
         await this.conversation.closeByTheClock(checkIn.id);
 
         this.logger.warn(`Auto-closed check-in ${checkIn.id} (session ${checkIn.sessionNumber}): ${reason}`);
@@ -449,6 +525,36 @@ export class GroundsCron {
     if (orphaned.length > 0) {
       this.logger.warn(`${orphaned.length} check-in(s) hold a person's turn with no reply after an hour: ${orphaned.join(', ')}`);
     }
+  }
+
+  /**
+   * ONE REMINDER TO CARRY ON, for somebody who stopped halfway on WhatsApp (Hafsah, 5 October, night). After
+   * three hours of quiet in the day, once per session. See whatsapp/a-check-in-left-halfway.ts.
+   */
+  @Cron('*/30 * * * *', { timeZone: 'UTC' })
+  async remindThoseWhoStoppedHalfway() {
+    await this.remindThoseWhoStoppedHalfwayInner(new Date());
+  }
+
+  async remindThoseWhoStoppedHalfwayInner(now: Date): Promise<{ sent: number }> {
+    /* Off at release (release.whatsappHalfwayMessages); see what-is-hidden-at-release.ts. */
+    if (!this.whatsapp || !(await theHalfwayMessagesAreOn(this.prisma))) return { sent: 0 };
+    const open = await this.prisma.checkIn.findMany({
+      where: { status: CheckInStatus.IN_PROGRESS, ground: { status: { notIn: HELD } } },
+      select: { id: true },
+    });
+    let sent = 0;
+    for (const c of open) {
+      try {
+        const last = await this.prisma.conversationTurn.findFirst({ where: { checkInId: c.id }, orderBy: { createdAt: 'desc' }, select: { createdAt: true, role: true } });
+        if (last && now.getTime() - last.createdAt.getTime() >= WARNING_WINDOW_START_MS) continue;
+        if (await remindThemToCarryOn(this.prisma, this.whatsapp, c, last as any, now)) sent++;
+      } catch (err: any) {
+        this.logger.warn(`The reminder to carry on could not be sent for check-in ${c.id}: ${err?.message}`);
+      }
+    }
+    if (sent) this.logger.log(`WhatsApp: ${sent} reminder(s) to carry on a check-in.`);
+    return { sent };
   }
 
   /**
@@ -498,6 +604,8 @@ export class GroundsCron {
           where: { id: checkIn.id },
           data: { warningFiredAt: now },
         });
+        /* And to their phone, when they were doing this session on WhatsApp (a-check-in-left-halfway.ts). */
+        if (this.whatsapp && (await theHalfwayMessagesAreOn(this.prisma))) await warnTheirPhone(this.prisma, this.whatsapp, checkIn.id).catch(() => false);
 
         this.logger.log(`Session-closing warning injected for check-in ${checkIn.id} (inactive ~${Math.round(inactiveMs / 3_600_000)}h)`);
         warned++;
@@ -516,7 +624,7 @@ export class GroundsCron {
    */
   @Cron('0 7 * * *', { timeZone: 'UTC' })
   async tellThemBeforeAnInviteLapses() {
-    await this.prisma.withAdvisoryLock(CronLock.INVITE_EXPIRY, async () => {
+    await onceAcrossCopies(this.prisma, 'tell-them-before-an-invite-lapses', theDay(), () => this.prisma.withAdvisoryLock(CronLock.INVITE_EXPIRY, async () => {
       const now = new Date();
       const soon = new Date(now.getTime() + WARN_BEFORE_IT_LAPSES_DAYS * 24 * 60 * 60 * 1000);
       const frontend = this.config.get<string>('resend.frontendUrl') || '';
@@ -549,7 +657,7 @@ export class GroundsCron {
         }
       }
       if (aboutToLapse.length || lapsed.length) this.logger.log(`Invite expiry: warned ${aboutToLapse.length}, told the lead about ${lapsed.length}.`);
-    });
+    }));
   }
 
   /**
@@ -562,7 +670,7 @@ export class GroundsCron {
    */
   @Cron(CronExpression.EVERY_DAY_AT_9AM, { timeZone: 'UTC' })
   async sendReminders() {
-    await this.prisma.withAdvisoryLock(CronLock.SEND_REMINDERS, async () => this.sendRemindersInner());
+    await onceAcrossCopies(this.prisma, 'send-reminders', theDay(), () => this.prisma.withAdvisoryLock(CronLock.SEND_REMINDERS, async () => this.sendRemindersInner()));
   }
 
   /**
@@ -591,10 +699,11 @@ export class GroundsCron {
         status: CheckInStatus.NOT_STARTED,
         sessionReadyNotifiedAt: null,
         availableFrom: { lte: now },
-        participant: { userId: { not: null }, ground: { status: { notIn: TERMINAL } } },
+        participant: { userId: { not: null }, ...NOT_HELD_FOR_A_SEAT, ground: { status: { notIn: TERMINAL } } },
       },
       select: {
         id: true,
+        groundId: true,
         participant: {
           select: {
             id: true,
@@ -610,42 +719,260 @@ export class GroundsCron {
       take: 200,
     });
 
+    /* Nobody on approved leave today is told a check-in is open. It is not stamped as told, so they
+       hear on the first day they are back (week 23). */
+    const leave = await leaveOfThePeopleOn(this.prisma, [...new Set(newlyOpen.map((c: any) => c.groundId).filter(Boolean))]);
+
     for (const ci of newlyOpen) {
       const p = ci.participant;
+      if (awayUntilOn(leave.get(p.id), now)) continue;
       const checkInUrl = this.email.buildCheckInUrl(ci.id);
       try {
         /**
-         * WHATSAPP IS IN ADDITION TO EMAIL, NOT INSTEAD OF IT. Her decision.
-         *
-         * This was `if (whatsapp) ... else email`, so the moment somebody added a phone number they
-         * STOPPED getting check-in emails. Nobody chose that: adding a number is opting IN to a second
-         * reminder, not opting out of the first, and the person who typed it in had no way to know it
-         * had silenced their inbox. It also put every reminder for that person behind one channel that
-         * is not even live yet - WhatsApp is key-gated and off - so on a production account with a
-         * number saved and the toggle later switched on, reminders would have quietly narrowed to a
-         * single dependency.
-         *
-         * EMAIL GOES FIRST AND IS AWAITED. It is the channel that works, and the one the
-         * `sessionReadyNotifiedAt` stamp is really promising. WhatsApp follows in its own try, so a
-         * failure there cannot lose the email, cannot leave the stamp unwritten, and cannot cause the
-         * next cron pass to email the same person twice.
+         * THE EMAIL. WhatsApp is in addition to email, never instead of it (her decision): this sends
+         * the email whatever number the person has, and the WhatsApp notice for the same session is
+         * the opening notice (webhooks.listener.ts, `announceOpenedSessions` below), which now goes for
+         * every session on whichever number the organisation uses. This sweep used to send its own
+         * WhatsApp message as well, so a person got two for one session (survey items 7 and 8).
          */
         await this.email.sendSessionReady(p.email, p.ground.label, checkInUrl);
-
-        if (p.user?.phoneNumber && (await this.whatsapp.isEnabled())) {
-          try {
-            await this.whatsapp.sendMessage(p.user.phoneNumber, `Your next check-in for ${p.ground.label} is open.\n${checkInUrl}`, { checkInId: ci.id, kind: 'session-ready' });
-          } catch (waErr: any) {
-            // The email is already out. A second channel failing is worth knowing about, not retrying.
-            this.logger.warn(`WhatsApp session-ready failed for check-in ${ci.id}, email was sent: ${waErr.message}`);
-          }
-        }
 
         await this.prisma.checkIn.update({ where: { id: ci.id }, data: { sessionReadyNotifiedAt: now } });
       } catch (err: any) {
         this.logger.error(`Session-ready notification failed for check-in ${ci.id}: ${err.message}`);
       }
     }
+  }
+
+  /**
+   * WHATSAPP REMINDERS AND NUDGES, IN HAFSAH'S WORDS (survey item 7, decisions 82 and 83).
+   *
+   * Nothing reminded anybody on WhatsApp. Every morning, half an hour after the email reminders, each
+   * person with a check-in not yet answered gets at most ONE of these, the most useful first:
+   *   - checkin_overdue, once, and only while the check-in is still open (late answers are taken);
+   *   - checkin_due_tomorrow, once;
+   *   - on the lead's chase days, by the email reminder's own rule: checkin_team_almost_in when at
+   *     least half of the people who can answer have, checkin_your_view_matters when fewer have.
+   * Never to somebody on approved leave, never about a check-in the lead keeps in the app, never to a
+   * guest through an entry on the host's list. STOP, "Not now", how often Groundwork may write first
+   * and the 24-hour window are the sender's (whatsapp.service.ts): outside the window it goes as the
+   * approved template, and while that is not approved it is recorded as not sent, with the reason.
+   */
+  @Cron('30 8 * * *', { timeZone: 'UTC' })
+  async sendWhatsAppReminders() {
+    await onceAcrossCopies(this.prisma, 'send-whatsapp-reminders', theDay(), () => this.sendWhatsAppRemindersInner());
+  }
+
+  async sendWhatsAppRemindersInner(now: Date = new Date()): Promise<{ sent: number }> {
+    const waiting: any[] = await everyRowAPageAtATime((page) => this.prisma.checkIn.findMany({
+      where: {
+        status: CheckInStatus.NOT_STARTED,
+        OR: [{ availableFrom: null }, { availableFrom: { lte: now } }],
+        participant: { userId: { not: null }, ...NOT_HELD_FOR_A_SEAT, ground: { status: { notIn: [...TERMINAL, ...HELD] } } },
+      },
+      select: {
+        id: true, groundId: true, sessionNumber: true, createdAt: true, availableFrom: true, participantId: true,
+        ground: { select: { label: true, scenario: true, organizationId: true, overWhatsApp: true, cadence: true, chaseAfterDays: true, chasingStopped: true, tellTheLead: true, startedFrom: true, initiator: { select: { firstName: true } } } },
+        participant: { select: { id: true, email: true, userId: true, user: { select: { firstName: true, email: true, phoneNumber: true, isActive: true, deletedAt: true } } } },
+      },
+      ...page,
+    }));
+    const turnedOn = await organisationsThatTurnedWhatsAppOn(this.prisma, this.whatsapp, waiting.map((c) => c.ground.organizationId));
+    const leave = await leaveOfThePeopleOn(this.prisma, [...new Set(waiting.map((c) => c.groundId))]);
+    const hoursSince = (d: Date | null | undefined) => (d ? (now.getTime() - new Date(d).getTime()) / 3_600_000 : null);
+
+    /* What each person could be sent, kept to the one most useful per person. */
+    const best = new Map<string, { rank: number; go: () => Promise<unknown> }>();
+    for (const ci of waiting) {
+      try {
+        if (keptOffThePhone(ci.ground)) continue;
+        if (!turnedOn.has(ci.ground.organizationId)) continue;
+        if (awayUntilOn(leave.get(ci.participantId), now)) continue;
+        const user = ci.participant.user;
+        if (user && (user.isActive === false || user.deletedAt)) continue;
+        const before: { kind: string | null; createdAt: Date }[] = await this.prisma.whatsAppSend.findMany({
+          /*
+           * ONLY WHAT WENT, OR WAS HELD BY THE ADD-ON OR THE LIMIT. A message refused because the person had
+           * said STOP, or because its template was not approved yet, reached nobody, and was written down
+           * all the same. Counted as "had", it stopped the overdue and the due-tomorrow message for good:
+           * after START, or once Meta approved the template, the person never read them.
+           */
+          where: { checkInId: ci.id, kind: { in: MORNING_KINDS }, OR: [{ sentAt: { not: null } }, { kind: { endsWith: ':held' } }] },
+          orderBy: { createdAt: 'desc' },
+          select: { kind: true, createdAt: true },
+        });
+        const had = new Set(before.map((b) => (b.kind ?? '').split(':')[0]));
+        const lastChase = before.find((b) => /^(team-almost-in|your-view-matters|anchor-follow-up)/.test(b.kind ?? ''));
+        const dueAt = whenItIsDue(ci.availableFrom ?? ci.createdAt, ci.ground.cadence);
+        const what = whatToSendThisMorning({
+          policy: { days: ci.ground.chaseAfterDays, stopped: ci.ground.chasingStopped, tellTheLead: ci.ground.tellTheLead },
+          daysOpen: Math.floor((now.getTime() - new Date(ci.createdAt).getTime()) / 86_400_000),
+          dueAt, now, alreadyHad: had, hoursSinceLastChase: hoursSince(lastChase?.createdAt),
+        });
+        if (!what) continue;
+        if (await isAGuestIn(this.prisma, ci.ground.organizationId, { userId: ci.participant.userId, email: ci.participant.email, userEmail: user?.email })) continue;
+        const person = ci.participant.email
+          ? await this.prisma.person.findFirst({ where: { organizationId: ci.ground.organizationId, email: ci.participant.email, active: true }, select: { phone: true } })
+          : null;
+        const phone = person?.phone ?? user?.phoneNumber ?? null;
+        if (!phone) continue;
+        const who = { firstName: user?.firstName, label: ci.ground.label };
+        let said;
+        if (what === 'overdue') said = itIsOverdue(who);
+        else if (what === 'due-tomorrow') said = itIsDueTomorrow(who, dueAt!);
+        else {
+          /*
+           * ON AN ANCHOR CHECK-IN, THE ANCHOR'S NUDGE (piece 30; decision 105 item 3): the person's own last open promise,
+           * to them only, in place of the chase. Every gate above still holds, and the sender counts it as the day's one.
+           */
+          const theirs = ci.ground.startedFrom === STARTED_FROM_THE_ANCHOR && (await theAnchorScenarioIsOn(this.prisma))
+            ? await theirOwnLastOpenPromise(this.prisma, ci.groundId, ci.participantId)
+            : null;
+          if (theirs) said = itFollowsUpTheirPromise(who, theirs);
+          else {
+            const counts = await this.whoHasAnswered(ci.groundId, ci.sessionNumber);
+            const chase = whichChase({ ...counts, aboutOnePerson: isEvaluationCheckIn(ci.ground.scenario) });
+            said = chase === 'team-almost-in' ? theTeamIsAlmostIn(who, counts.answered, counts.ofHowMany) : yourViewMatters(who, ci.ground.initiator?.firstName);
+          }
+        }
+        const rank = MORNING_ORDER.indexOf(what);
+        const key = ci.participant.userId ?? phone;
+        const kept = best.get(key);
+        if (kept && kept.rank <= rank) continue;
+        const message = said;
+        best.set(key, { rank, go: () => this.whatsapp.sendFor(ci.ground.organizationId, phone, message.text, { checkInId: ci.id, kind: message.kind, params: message.params }) });
+      } catch (err: any) {
+        this.logger.warn(`WhatsApp reminder failed for check-in ${ci.id}: ${err?.message}`);
+      }
+    }
+    let sent = 0;
+    for (const { go } of best.values()) {
+      try { await go(); sent++; } catch (err: any) { this.logger.warn(`WhatsApp reminder could not be sent: ${err?.message}`); }
+    }
+    if (sent) this.logger.log(`WhatsApp: ${sent} morning reminder(s) tried.`);
+    return { sent };
+  }
+
+  /**
+   * THE LEAD'S DAILY SUMMARY ON WHATSAPP (decision 82, item 9), at seven in the morning in Lagos, an
+   * hour and a half before the reminders, so it is the lead's one message of the day. What it says,
+   * and what it never says, is in whatsapp/the-leads-daily-summary.ts; how often, STOP, "Not now",
+   * the 24 hours and the template are the sender's.
+   */
+  @Cron('0 7 * * *', { timeZone: 'Africa/Lagos' })
+  async sendTheLeadsDailySummaries() {
+    await onceAcrossCopies(this.prisma, 'lead-daily-summary', theDay(), () => this.sendTheLeadsDailySummariesInner());
+  }
+
+  async sendTheLeadsDailySummariesInner(now: Date = new Date()): Promise<{ tried: number }> {
+    const result = await sendTheLeadsDailySummaries(
+      { prisma: this.prisma, whatsapp: this.whatsapp, boards: { leave: this.leave, timeSheets: this.timeSheets, spending: this.spending }, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
+      now,
+    ).catch((err: any) => { this.logger.warn(`The leads' daily summaries could not be sent: ${err?.message}`); return { tried: 0 }; });
+    if (result.tried) this.logger.log(`WhatsApp: ${result.tried} lead summary message(s) tried.`);
+    return result;
+  }
+
+  /**
+   * THE ANCHOR'S WEEKLY INSIGHT ON WHATSAPP (anchor piece 28), Friday at half past six in the morning in Lagos, before
+   * the daily summary at seven, which it replaces that day (decision 105 item 2). Only while the anchor switch is on.
+   */
+  @Cron('30 6 * * 5', { timeZone: 'Africa/Lagos' })
+  async sendTheAnchorWeeklyInsights() {
+    await onceAcrossCopies(this.prisma, 'anchor-weekly-insight', theWeek(), () => this.sendTheAnchorWeeklyInsightsInner());
+  }
+
+  async sendTheAnchorWeeklyInsightsInner(now: Date = new Date()): Promise<{ tried: number }> {
+    const result = await sendTheAnchorWeeklyInsights(
+      { prisma: this.prisma, whatsapp: this.whatsapp, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
+      now,
+    ).catch((err: any) => { this.logger.warn(`The anchor's weekly insights could not be sent: ${err?.message}`); return { tried: 0 }; });
+    if (result.tried) this.logger.log(`WhatsApp: ${result.tried} anchor weekly insight(s) tried.`);
+    return result;
+  }
+
+  /**
+   * THE LEAD'S WEEKLY LETTER BY EMAIL (anchor piece 29), Friday at three in the afternoon in Lagos, only
+   * while the anchor switch is on. One letter per lead, from the past seven days of the check-ins they
+   * started from the anchor link. What it says and never says is in email/the-leads-weekly-letter.ts.
+   */
+  @Cron('0 15 * * 5', { timeZone: 'Africa/Lagos' })
+  async sendTheLeadsWeeklyLetters() {
+    await onceAcrossCopies(this.prisma, 'lead-weekly-letter', theWeek(), () => this.sendTheLeadsWeeklyLettersInner());
+  }
+
+  async sendTheLeadsWeeklyLettersInner(now: Date = new Date()): Promise<{ tried: number }> {
+    if (!(await theAnchorScenarioIsOn(this.prisma))) return { tried: 0 };
+    const result = await sendTheLeadsWeeklyLetters(
+      { prisma: this.prisma, email: this.email, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
+      now,
+    ).catch((err: any) => { this.logger.warn(`The leads' weekly letters could not be sent: ${err?.message}`); return { tried: 0 }; });
+    if (result.tried) this.logger.log(`Email: ${result.tried} weekly lead letter(s) tried.`);
+    return result;
+  }
+
+  /**
+   * HOW MANY OF A SESSION'S PEOPLE HAVE CHECKED IN, for checkin_team_almost_in. Counts leave out
+   * anybody not yet let in (decision 77) and anybody only managing; never anything anybody said.
+   */
+  private async whoHasAnswered(groundId: string, sessionNumber: number): Promise<{ answered: number; ofHowMany: number }> {
+    const rows: any[] = await this.prisma.checkIn.findMany({
+      where: { groundId, sessionNumber },
+      select: { status: true, participant: { select: { managingOnly: true, user: { select: { awaitingOrgApproval: true } } } } },
+    });
+    const counted = rows.filter((r) => !r.participant?.managingOnly && !isNotLetInYet(r.participant));
+    return { answered: counted.filter((r) => r.status === CheckInStatus.COMPLETED).length, ofHowMany: counted.length };
+  }
+
+  /**
+   * checkin_opens_soon: an hour before a session opens at a set time, once. Every quarter of an hour,
+   * for sessions opening between 45 and 60 minutes from now, with the same rules as the morning.
+   */
+  @Cron('*/15 * * * *', { timeZone: 'UTC' })
+  async sendWhatsAppOpensSoon() {
+    await this.sendWhatsAppOpensSoonInner().catch((err) => this.logger.warn(`WhatsApp opens-soon sweep failed: ${err?.message}`));
+  }
+
+  async sendWhatsAppOpensSoonInner(now: Date = new Date()): Promise<{ sent: number }> {
+    const soon: any[] = await everyRowAPageAtATime((page) => this.prisma.checkIn.findMany({
+      where: {
+        status: CheckInStatus.NOT_STARTED,
+        availableFrom: { gt: new Date(now.getTime() + 45 * 60_000), lte: new Date(now.getTime() + 60 * 60_000) },
+        participant: { userId: { not: null }, ...NOT_HELD_FOR_A_SEAT, ground: { status: { notIn: [...TERMINAL, ...HELD] } } },
+      },
+      select: {
+        id: true, groundId: true, availableFrom: true, participantId: true,
+        ground: { select: { label: true, organizationId: true, overWhatsApp: true } },
+        participant: { select: { id: true, email: true, userId: true, user: { select: { firstName: true, email: true, phoneNumber: true, isActive: true, deletedAt: true } } } },
+      },
+      ...page,
+    }), 200);
+    const turnedOn = await organisationsThatTurnedWhatsAppOn(this.prisma, this.whatsapp, soon.map((c) => c.ground.organizationId));
+    const leave = await leaveOfThePeopleOn(this.prisma, [...new Set(soon.map((c) => c.groundId))]);
+    let sent = 0;
+    for (const ci of soon) {
+      try {
+        if (keptOffThePhone(ci.ground)) continue;
+        if (!turnedOn.has(ci.ground.organizationId)) continue;
+        if (awayUntilOn(leave.get(ci.participantId), new Date(ci.availableFrom))) continue;
+        const user = ci.participant.user;
+        if (user && (user.isActive === false || user.deletedAt)) continue;
+        const before = await this.prisma.whatsAppSend.findFirst({ where: { checkInId: ci.id, kind: { in: ['opens-soon', 'opens-soon:template'] } }, select: { id: true } });
+        if (before) continue;
+        if (await isAGuestIn(this.prisma, ci.ground.organizationId, { userId: ci.participant.userId, email: ci.participant.email, userEmail: user?.email })) continue;
+        const person = ci.participant.email
+          ? await this.prisma.person.findFirst({ where: { organizationId: ci.ground.organizationId, email: ci.participant.email, active: true }, select: { phone: true } })
+          : null;
+        const phone = person?.phone ?? user?.phoneNumber ?? null;
+        if (!phone) continue;
+        const said = itOpensSoon({ firstName: user?.firstName, label: ci.ground.label }, new Date(ci.availableFrom));
+        await this.whatsapp.sendFor(ci.ground.organizationId, phone, said.text, { checkInId: ci.id, kind: said.kind, params: said.params });
+        sent++;
+      } catch (err: any) {
+        this.logger.warn(`WhatsApp opens-soon failed for check-in ${ci.id}: ${err?.message}`);
+      }
+    }
+    return { sent };
   }
 
   /**
@@ -662,20 +989,21 @@ export class GroundsCron {
         status: CheckInStatus.NOT_STARTED,
         openedAnnouncedAt: null,
         OR: [{ availableFrom: null }, { availableFrom: { lte: now } }],
-        participant: { userId: { not: null }, ground: { status: { notIn: TERMINAL } } },
+        participant: { userId: { not: null }, ...NOT_HELD_FOR_A_SEAT, ground: { status: { notIn: TERMINAL } } },
       },
       select: {
         id: true,
         groundId: true,
         participantId: true,
         sessionNumber: true,
-        participant: { select: { email: true, ground: { select: { organizationId: true } } } },
+        participant: { select: { email: true, userId: true, ground: { select: { organizationId: true } } } },
       },
       take: 200,
     });
     for (const ci of opened) {
       try {
-        const person = ci.participant.email
+        /* A guest's check-in is announced as nobody's on the host's list. See a-guest-is-never-somebody-on-the-hosts-list. */
+        const person = ci.participant.email && !(await isAGuestIn(this.prisma, ci.participant.ground.organizationId, ci.participant))
           ? await this.prisma.person.findFirst({
               where: { organizationId: ci.participant.ground.organizationId, email: ci.participant.email, active: true },
               select: { externalId: true },
@@ -751,10 +1079,20 @@ export class GroundsCron {
     const pendingReveal = await this.prisma.groundParticipant.findMany({
       where: {
         userId: { not: null },
+        ...NOT_HELD_FOR_A_SEAT,
         partyType: PartyType.PARTICIPANT,
         ground: { status: { notIn: TERMINAL }, report: { releasedAt: { not: null } } },
         OR: [{ lastNudgedAt: null }, { lastNudgedAt: { lt: throttleBefore } }],
         reportActivations: { none: { status: ReportActivationStatus.ACTIVATED } },
+        /*
+         * U.10 REVIEW: "Your report for 'Sales team, Q3' is ready to view" told Faraji this before
+         * he had checked in at all. This query only asked whether the GROUND's report had been
+         * released, never whether THIS participant had answered anything - so anybody added to a
+         * ground where somebody else's report went out got the same email, about a report that, for
+         * them, does not yet exist to view. A reveal reminder is about a party's own report being
+         * ready; a party who has never checked in has no report of their own to be ready.
+         */
+        checkIns: { some: { status: CheckInStatus.COMPLETED } },
       },
       select: {
         id: true,
@@ -799,7 +1137,7 @@ export class GroundsCron {
    */
   @Cron('0 4 * * *', { timeZone: 'UTC' })
   async synthesisBackstop() {
-    await this.prisma.withAdvisoryLock(CronLock.SYNTHESIS_BACKSTOP, async () => {
+    await onceAcrossCopies(this.prisma, 'synthesis-backstop', theDay(), () => this.prisma.withAdvisoryLock(CronLock.SYNTHESIS_BACKSTOP, async () => {
       const grounds = await this.prisma.ground.findMany({
         where: { status: { notIn: [...TERMINAL, ...HELD] } },
         select: { id: true },
@@ -827,8 +1165,11 @@ export class GroundsCron {
            picture cannot help anybody, and a round whose picture was empty keeps no snapshot at all,
            so bounding the re-emit to one round per ground is what keeps this from firing daily. */
         const closed: { sessionNumber: number; anAccount: (typeof answers)[number] }[] = [];
+        /* Somebody on approved leave today is not waited on (week 23). */
+        const away = await whoOnACheckInIsAway(this.prisma, g.id);
         for (const [sessionNumber, rows] of rounds) {
-          if (new Set(rows.map((r) => r.participantId)).size < parties.length) continue;
+          const spoke = new Set(rows.map((r) => r.participantId));
+          if (parties.some((p) => !spoke.has(p.id) && !away.has(p.id))) continue;
           const anAccount = rows.find((r) => r.status === CheckInStatus.COMPLETED);
           if (!anAccount) continue;
           closed.push({ sessionNumber, anAccount });
@@ -855,7 +1196,7 @@ export class GroundsCron {
       if (triggered > 0) {
         this.logger.warn(`Synthesis backstop: re-triggered ${triggered} round(s) that closed and were never recorded or released`);
       }
-    });
+    }));
   }
 
   /**
@@ -866,6 +1207,10 @@ export class GroundsCron {
    */
   @Cron('0 10 * * *', { timeZone: 'UTC' })
   async sendFeedbackRequests() {
+    await onceAcrossCopies(this.prisma, 'send-feedback-requests', theDay(), () => this.sendFeedbackRequestsHere());
+  }
+
+  private async sendFeedbackRequestsHere() {
     const now = new Date();
     const closedAfter = new Date(now.getTime() - 72 * 60 * 60 * 1000);
     const closedBefore = new Date(now.getTime() - 24 * 60 * 60 * 1000);

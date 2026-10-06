@@ -9,6 +9,12 @@ export const GroundworkEvents = {
      new organisation, a request for the API, a request for a call or coaching. Listened to in
      back-office/the-team-is-told.service.ts. */
   ORG_SIGNED_UP: 'org.signedUp',
+  /* WHAT SOMEBODY SAID ABOUT THEIR TEAM'S SIZE on "Create an organisation" (U.3), asked only while the
+     free trial is on. Billing listens, and grants the trial to a team under its size (U.19). */
+  ORG_SIZE_SAID: 'org.sizeSaid',
+  /* A CHECK-IN WAS STARTED FROM THE ANCHOR LINK, with the anchor switch on (anchor piece 34). Billing listens, and gives
+     the anchor's one-month trial while its own setting is on. */
+  ANCHOR_CHECK_IN_STARTED: 'anchor.checkInStarted',
   API_ACCESS_ASKED: 'apiAccess.asked',
   CALL_ASKED: 'call.asked',
   /** A session became open to somebody. The moment a host system can tell them, in their own channel. */
@@ -38,7 +44,19 @@ export const GroundworkEvents = {
    * email/invite-bounced.listener.ts.
    */
   INVITE_BOUNCED: 'invite.bounced',
+  /**
+   * SOMETHING THEY SAID THEY WOULD DO WAS SETTLED, done or not done (week 9): by the check-in's own
+   * words after it finished, or by the person by hand. Settling from a check-in is a model call that
+   * finishes after CHECK_IN_COMPLETED has already fired, so anything counted from settled commitments
+   * (a suggestion, week 10) listens for this too, or it would always read the record one check-in late.
+   */
+  COMMITMENTS_SETTLED: 'commitments.settled',
 } as const;
+
+export interface CommitmentsSettledEvent {
+  groundId: string;
+  participantId: string;
+}
 
 export interface InviteBouncedEvent {
   participantId: string;
@@ -103,6 +121,18 @@ export interface BlockerEvent {
 /* A plain constant for the one file that may not carry the product's name (see
    nobody-connects-without-being-let-in.spec: no exemption for us anywhere in the access gate). */
 export const API_ACCESS_ASKED_EVENT = 'apiAccess.asked';
+
+export interface AnchorCheckInStartedEvent {
+  organizationId: string;
+  groundId: string;
+}
+
+export interface OrgSizeSaidEvent {
+  organizationId: string;
+  said: 'fewer' | 'more';
+  /** The team size they were shown, which is the trial's size at the moment they answered. */
+  line: number;
+}
 
 export interface OrgSignedUpEvent {
   organizationId: string;

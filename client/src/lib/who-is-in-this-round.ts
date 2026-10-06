@@ -10,17 +10,27 @@
  */
 export const THE_LEAD_ONLY_ASKS = ['TEAM_UPDATES', 'DISCOVERY']
 
+/**
+ * DECISION 77: SOMEBODY NOT LET IN YET IS NOT COUNTED EITHER (docs/answers-from-engine.md, request
+ * 101 (b), ~line 2205). "Rukia's 'Reports' rows read 'Session 1, 27 Sept / 4 of 6 checked in' and
+ * 'Session 2, 30 Sept / 2 of 6 checked in'", beside the headline's own "4 of 5 people have
+ * answered this round." - Faraji Odhiambo, held at the organisation's door, was still in this
+ * function's denominator, while the server's own count already leaves him out. A person still
+ * held at the door was never going to answer, the same reason a managing-only lead is left out
+ * past session 1 - so `notLetInYet` is checked here first, before anything else.
+ */
 export function countsInRound(
-  p: { managingOnly?: boolean | null },
+  p: { managingOnly?: boolean | null; notLetInYet?: boolean | null },
   sessionNumber: number | null | undefined,
   scenario: string | null | undefined,
 ): boolean {
+  if (p.notLetInYet) return false
   if (!p.managingOnly) return true
   if (THE_LEAD_ONLY_ASKS.includes(scenario ?? '')) return false
   return (sessionNumber ?? 1) <= 1
 }
 
-export function whoIsInRound<T extends { managingOnly?: boolean | null }>(
+export function whoIsInRound<T extends { managingOnly?: boolean | null; notLetInYet?: boolean | null }>(
   participants: T[],
   sessionNumber: number | null | undefined,
   scenario: string | null | undefined,

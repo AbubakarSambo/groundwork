@@ -1,3 +1,4 @@
+import { someOfThemHave } from './some-of-them-has-or-have';
 /**
  * "ALL OF US ARE LISTING GOALS TOO LOW TO MEET THE OBJECTIVE."
  *
@@ -62,6 +63,18 @@ export interface HowTheNumbersSit {
  * @param targets every objective on the check-in, owned and unowned
  * @param peopleInTheCheckIn how many people are being asked (not counting anybody managing only)
  */
+/**
+ * THE OBJECTIVE, SAID WITHOUT ITS NUMBER TWICE (requests 127, 129, 135, 136). The line below is what the report writer
+ * is given, and it echoed it: "The objective is 100 All 100 tasks for the release are deployed to production." The
+ * number was put in front of a name that already held it. Where the name holds the number, the name is quoted as it is.
+ */
+export function theObjectiveSaid(target: number, name: string): string {
+  const n = target.toLocaleString('en-US');
+  const said = String(name ?? '').trim().replace(/\s+/g, ' ');
+  const holdsIt = new RegExp(`(?<![\\d.,])${String(target)}(?![\\d])|(?<![\\d.,])${n.replace(/[,.]/g, '\\$&')}(?![\\d])`).test(said);
+  return holdsIt ? `the objective, in the lead's own words, is "${said.replace(/[.!?]+$/, '')}"` : `the objective is ${n} ${said.replace(/^\d[\d,]*\s*/, '')}`;
+}
+
 export function howTheNumbersSit(targets: ATarget[], peopleInTheCheckIn: number): HowTheNumbersSit {
   const withNumbers = (targets ?? []).filter((t) => typeof t.target === 'number' && t.target! > 0);
   const whole = withNumbers.filter((t) => !t.ownerParticipantId);
@@ -83,7 +96,7 @@ export function howTheNumbersSit(targets: ATarget[], peopleInTheCheckIn: number)
     return {
       ...nothing,
       whole: theWhole.target!,
-      says: `THE NUMBERS: the objective is ${theWhole.target!.toLocaleString('en-US')} ${theWhole.name.replace(/^\d[\d,]*\s*/, '')}, and nobody in this check-in has a number of their own against it. Nothing here can tell any one person whether they are on track, because no part of the objective has been given to anybody. Say so, and say that agreeing who carries how much is the thing to do next.`,
+      says: `THE NUMBERS: ${theObjectiveSaid(theWhole.target!, theWhole.name)}, and nobody in this check-in has a number of their own against it. Nothing here can tell any one person whether they are on track, because no part of the objective has been given to anybody. Say so, and say that agreeing who carries how much is the thing to do next.`,
     };
   }
 
@@ -123,7 +136,7 @@ export function howTheNumbersSit(targets: ATarget[], peopleInTheCheckIn: number)
       says: `${head} - ${short.toLocaleString('en-US')} short. ${
         everybodyHasOne
           ? 'Everybody has a number and together they do not reach it.'
-          : `${peopleWithATarget} of ${peopleInTheCheckIn} people have a number of their own, so part of the gap may simply be nobody carrying it yet.`
+          : someOfThemHave(peopleWithATarget, peopleInTheCheckIn, 'a number of their own, so part of the gap may simply be nobody carrying it yet.')
       } Lead with this: it is arithmetic, it is not a judgement about anybody, and the thing to do next is to agree who carries the ${short.toLocaleString('en-US')} that nobody is carrying.`,
       whole: theWhole.target!, partsTotal, peopleWithATarget, peopleInTheCheckIn, comparable: true,
     };

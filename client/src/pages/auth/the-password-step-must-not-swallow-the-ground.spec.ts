@@ -72,7 +72,9 @@ describe('the password step keeps hold of where the person was going', () => {
      * So a success carries the token INSTEAD of redirecting, and the button out of the screen
      * spends it.
      */
-    expect(CODE).toMatch(/return \{ \.\.\.outcome, passwordSetupToken: res\.passwordSetupToken \}/)
+    /* U.2: wrapped in confirmFirst, which puts "Your email is confirmed" in front of it for an
+       account the link has just made, and otherwise returns it unchanged. */
+    expect(CODE).toMatch(/return confirmFirst\(\{ \.\.\.outcome, passwordSetupToken: res\.passwordSetupToken \}\)/)
     expect(CODE).not.toMatch(/return passwordStep\(`\/grounds\/\$\{outcome\.groundId\}`\)/)
   })
 
@@ -89,7 +91,9 @@ describe('the password step keeps hold of where the person was going', () => {
 
   it('an explicit destination is preserved through the detour', () => {
     /** An invite or report link must still land there after the password, not on a generic list. */
-    expect(CODE).toMatch(/return passwordStep\(fromParam\) \?\? \{ kind: 'redirect', to: fromParam \}/)
+    /* U.2: wrapped in confirmFirst, as above. U.3 review: the destination is `goingTo`, the one on the
+       URL or, when the emailed link has none, the one the server kept with the link. */
+    expect(CODE).toMatch(/return confirmFirst\(passwordStep\(goingTo\) \?\? \{ kind: 'redirect', to: goingTo \}\)/)
   })
 
   it('and a commit FAILURE stays on this screen instead', () => {

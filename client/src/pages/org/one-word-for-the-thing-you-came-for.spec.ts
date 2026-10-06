@@ -46,8 +46,14 @@ describe('one word for the thing you came for', () => {
   })
 
   it('says it on the button, the heading and the checklist', () => {
-    expect(PAGE).toContain('Issue a key')
-    expect(PAGE).toContain('<div style={S.sec}>Keys</div>')
-    expect(PAGE).toContain('title="Issue a key"')
+    /* UPDATED (30 September, the shared-parts rebuild, group 1's last page): this used to pin the
+       page's own old inline-style markup (`<div style={S.sec}>Keys</div>`, a custom `Step` part
+       with a `title` prop) and the verb "Issue". The rebuild uses the shared `Section`/`Steps`/
+       `Step` parts (no inline styles, per this task) and the prototype's own verb for this button
+       (tools.txt, s5.js: `act("Create a key", ...)`) - "Create", not "Issue". The word is still one
+       word, "key", everywhere a person reads it - checked in full by the test above. */
+    expect(PAGE).toContain('Create a key')
+    expect(PAGE).toMatch(/heading="Keys"/)
+    expect(PAGE).toMatch(/Create a key\. One per system/)
   })
 })

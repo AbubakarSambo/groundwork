@@ -24,6 +24,18 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     let errors: any = null;
     /* A machine-readable reason, where a route gives one (e.g. BACK_OFFICE_CODE_REQUIRED). */
     let code: string | null = null;
+    /**
+     * A REFUSAL THAT ASKS FOR MORE HAS TO SAY SO IN THE BODY THE CLIENT ACTUALLY READS.
+     *
+     * `conversation.service.ts`'s completion gate throws `BadRequestException({ message, canContinue:
+     * true })` so the client can tell "answer more, then try again" apart from every other refusal
+     * and re-open the composer instead of leaving it disabled. This filter used to rebuild the body
+     * from `message`/`errors`/`code` alone and drop everything else on the thrown object - so the
+     * live response never carried `canContinue`, the client fell back to its default refusal
+     * handling, and the end card stayed up over a disabled box. Passed through explicitly, as a
+     * boolean only, the same way `code` is: never the whole exception, never a class name or a stack.
+     */
+    let canContinue: boolean | null = null;
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
@@ -46,6 +58,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
           errors = responseObj.errors || null;
         }
         code = typeof responseObj.code === 'string' ? responseObj.code : null;
+        canContinue = typeof responseObj.canContinue === 'boolean' ? responseObj.canContinue : null;
       }
     } else if (exception instanceof Error) {
       /**
@@ -116,6 +129,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       message,
       errors,
       ...(code ? { code } : {}),
+      ...(canContinue !== null ? { canContinue } : {}),
       timestamp: new Date().toISOString(),
       path: request.url,
     });
@@ -124,6 +138,19 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
 /** One sentence for a pipe failure; the sentences themselves travel as `errors` / `details`. */
 export function summariseValidation(sentences: string[]): string {
+  /*
+   * A MESSAGE ALREADY WRITTEN FOR A PERSON IS PASSED ON AS IT IS. U.2 re-review.
+   *
+   * The pipe's own messages start with the field's name ("message must be a string") and read best
+   * behind "The request did not validate:". A DTO that wrote its own sentence ("Your password needs a
+   * number or a symbol.") was read to a person as "The request did not validate: Your password needs
+   * a number or a symbol.", two pieces joined by a colon. A message that begins with a capital letter
+   * and ends with a full stop is a sentence somebody wrote to be read; those are passed on alone, and
+   * several of them are joined as sentences. Nothing else changes, and the full list still travels as
+   * `errors` / `details`.
+   */
+  const written = [...new Set(sentences.map((s) => String(s).trim()))];
+  if (written.length && written.every((s) => /^[A-Z].*[.!?]$/.test(s))) return written.join(' ');
   const fields = [...new Set(sentences.map((s) => String(s).split(' ')[0]).filter(Boolean))];
   if (!fields.length) return 'The request did not validate.';
   return fields.length === 1

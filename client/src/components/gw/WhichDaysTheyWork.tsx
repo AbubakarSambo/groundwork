@@ -31,54 +31,73 @@ export function whatTheDaysMean(days: number[] | null | undefined): string {
   return `Only ${on.map((d) => DAYS[d]).join(', ')}. A check-in never opens on the other days.`
 }
 
+/* U.6: drawn as the prototype's setup draws it (setup.txt): "On which days", the week from Monday,
+   then "Weekdays only" and "Any day is fine" as two choices. Still the one picker: the entry setup
+   and the check-in's own Setup both use this, with the same look and the same choices. */
+const WEEK_FROM_MONDAY = [1, 2, 3, 4, 5, 6, 0]
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+function Choice({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={onClick}
+      style={{
+        padding: '7px 13px', borderRadius: 999, fontSize: 13, fontFamily: 'inherit', cursor: 'pointer', fontWeight: 600,
+        border: `1px solid ${on ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
+        background: on ? 'var(--gw-navy)' : 'white', color: on ? 'white' : 'var(--gw-text)',
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
 export function WhichDaysTheyWork({
   value,
   onChange,
-  label = 'Which days does this team work?',
+  label = 'On which days',
 }: {
   value: number[]
   onChange: (days: number[]) => void
   label?: string
 }) {
-  const weekdaysOnly = isWeekdaysOnly(value)
+  const days = workingDaysOf(value)
+  const weekdaysOnly = isWeekdaysOnly(days)
   return (
-    <div>
-      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', marginBottom: 6 }}>
-        {label} <span style={{ fontWeight: 500 }}>(optional)</span>
-      </div>
+    <section aria-label={label} style={{ marginBottom: 16 }}>
+      <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', margin: '0 0 8px' }}>{label}</h3>
       <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
-        {DAYS.map((d, i) => {
-          const on = value.includes(i)
+        {WEEK_FROM_MONDAY.map((i) => {
+          const on = days.includes(i)
           return (
             <button
-              key={d}
+              key={i}
               type="button"
               aria-pressed={on}
-              aria-label={d}
-              onClick={() => onChange(on ? value.filter((x) => x !== i) : [...value, i].sort((a, b) => a - b))}
+              aria-label={DAY_NAMES[i]}
+              onClick={() => onChange(on ? days.filter((x) => x !== i) : [...days, i].sort((a, b) => a - b))}
               style={{
-                flex: 1, padding: '6px 0', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                flex: 1, padding: '6px 0', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                 border: `1px solid ${on ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
                 background: on ? 'var(--gw-blue-bg)' : 'white',
                 color: on ? 'var(--gw-navy)' : 'var(--gw-muted)',
               }}
             >
-              {d}
+              {DAYS[i]}
             </button>
           )
         })}
       </div>
-      <button
-        type="button"
-        onClick={() => onChange(weekdaysOnly ? [] : [...WEEKDAYS])}
-        style={{ background: 'none', border: 'none', color: 'var(--gw-navy)', cursor: 'pointer', fontSize: 11.5, padding: 0, fontFamily: 'inherit' }}
-      >
-        {weekdaysOnly ? 'Clear - any day is fine' : 'Weekdays only, skip weekends'}
-      </button>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <Choice on={weekdaysOnly} onClick={() => onChange([...WEEKDAYS])}>Weekdays only</Choice>
+        <Choice on={days.length === 0} onClick={() => onChange([])}>Any day is fine</Choice>
+      </div>
       {/* Said in plain words, because seven small buttons do not tell anybody what will happen. */}
-      <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 6, lineHeight: 1.5 }}>
+      <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 6, lineHeight: 1.5 }}>
         {whatTheDaysMean(value)}
       </div>
-    </div>
+    </section>
   )
 }

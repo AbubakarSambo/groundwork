@@ -10,6 +10,7 @@ import {
   GIVE_UP_AFTER_MS,
   MOST_REDIRECTS,
 } from './whether-we-can-read-it';
+import { withoutBankDetails } from './bank-details-are-never-kept';
 
 export type WhatCameBack =
   | { read: true; text: string; from: string }
@@ -83,7 +84,9 @@ export class ReadItIfWeCanService {
         return { read: false, because: 'it is not readable without signing in' };
       }
 
-      return { read: true, text, from: plan.asked };
+      /* With its bank details already gone, before the assistant keeps it as a document. See
+         bank-details-are-never-kept. */
+      return { read: true, text: withoutBankDetails(text), from: plan.asked };
     }
 
     return { read: false, because: 'that address redirected too many times' };

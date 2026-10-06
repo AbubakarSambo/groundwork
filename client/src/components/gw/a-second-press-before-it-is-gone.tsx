@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import './ui/gw-ui.css'
 
 /**
  * A SECOND PRESS BEFORE IT IS GONE.
@@ -12,6 +13,11 @@ import { useState } from 'react'
  * "Are you sure?" is the thing being replaced. Not `window.confirm` here - AppShell keeps its own,
  * by a written decision (switching-organisation-is-not-a-stray-click.spec.tsx), and that is a
  * different case: a navigation, not a deletion.
+ *
+ * BOARD REVIEW, 30 SEPTEMBER: rebuilt from the shared parts to join `REBUILT_PAGES` - the question
+ * itself read at 12.5px, below the prototype's own 13px floor. `danger`/caution each get their own
+ * pair of classes in gw-ui.css rather than a colour picked at render time, since only two variants
+ * exist and neither is data-driven.
  */
 export function useAreYouSure<T = string>() {
   const [armed, setArmed] = useState<T | null>(null)
@@ -34,13 +40,18 @@ export function Confirm({ saying, confirmLabel, keepLabel = 'Keep it', pending =
   onKeep: () => void
 }) {
   return (
-    <div role="group" aria-label={saying} style={{ padding: '10px 12px', borderRadius: 8, background: danger ? 'var(--gw-red-bg)' : 'var(--gw-amber-bg)', border: `1px solid ${danger ? 'var(--gw-red-b-soft)' : 'var(--gw-amber-b-soft)'}`, marginTop: 8 }}>
-      <div style={{ fontSize: 12.5, color: danger ? 'var(--gw-red-t)' : 'var(--gw-amber-t)', lineHeight: 1.5, marginBottom: 8 }}>{saying}</div>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <button type="button" onClick={onConfirm} disabled={pending} style={{ padding: '7px 12px', borderRadius: 6, border: 'none', background: danger ? 'var(--gw-red-t)' : 'var(--gw-navy)', color: 'white', fontSize: 12.5, fontWeight: 700, cursor: pending ? 'wait' : 'pointer', fontFamily: 'inherit' }}>
+    <div role="group" aria-label={saying} className={`gwui-confirm ${danger ? 'gwui-confirm-danger' : 'gwui-confirm-caution'}`}>
+      <div className={`gwui-confirm-saying ${danger ? 'gwui-confirm-saying-danger' : 'gwui-confirm-saying-caution'}`}>{saying}</div>
+      <div className="gwui-confirm-actions">
+        <button
+          type="button"
+          onClick={onConfirm}
+          disabled={pending}
+          className={`gwui-confirm-btn ${danger ? 'gwui-confirm-btn-danger' : 'gwui-confirm-btn-caution'}`}
+        >
           {pending ? pendingLabel : confirmLabel}
         </button>
-        <button type="button" onClick={onKeep} disabled={pending} style={{ padding: '7px 12px', borderRadius: 6, border: '1px solid var(--gw-border)', background: 'white', color: 'var(--gw-sub)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+        <button type="button" onClick={onKeep} disabled={pending} className="gwui-confirm-btn gwui-confirm-btn-keep">
           {keepLabel}
         </button>
       </div>

@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import type { TheLeadsReveal, ThePeopleStepRules } from './anchorShapes';
 
 const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api/v1` : '/api/v1'
 
@@ -28,6 +29,17 @@ export interface EntryReport {
   alsoCameUp?: { name: string; context: string }[]
   alsoCameUpNote?: string | null
   suggestedParties: { role: string; reason: string }[]
+  /**
+   * PIECE 8/9: THE LEAD'S REVEAL, "Help my team understand" (plan section 5, row 3;
+   * docs/answers-from-engine.md, "Request 149 (1 of 6)", `TheLeadsReveal`). Served now, only on an
+   * anchor draft's own report (`scenario === 'HELP_TEAM_UNDERSTAND'`) and only while
+   * `release.anchorScenario` is on - the key is absent otherwise, never `undefined` with the switch
+   * on. Present only for the lead: there is no other reader of a setup report, since it is read
+   * before anybody else has joined. `carrying`, `whatTheTeamNeedsToUnderstand` and `seeingToday`
+   * still read their "not written down yet" sentence until the seven fields are pulled from the
+   * lead's words (a model step, request 149 missing (2)).
+   */
+  leadsReveal?: TheLeadsReveal | null
 }
 
 // ── Entry session storage ─────────────────────────────────────────────────────
@@ -236,6 +248,7 @@ export const entryApi = {
 
   commit: (payload: {
     groundLabel: string
+    setupKey?: string
     orgName?: string
     scenario?: string
     /* The four-field card sends these directly rather than through an interview - see
@@ -246,7 +259,8 @@ export const entryApi = {
     cadenceChosen?: boolean
     history: ChatTurn[]
     report?: EntryReport | null
-    contributors: { email: string; context?: string; inviteToken?: string; note?: string }[]
+    /** A colleague picked from the list is sent by `colleagueId`, never by address (U.4). */
+    contributors: { email?: string; colleagueId?: string; context?: string; inviteToken?: string; note?: string }[]
     // Coordinator/lead path: the committer sets the ground up for someone else
     // to run. The lead is invited to confirm and becomes the initiator; the
     // onboarding context travels as `brief` (the coordinator has no transcript).
@@ -264,7 +278,7 @@ export const entryApi = {
       /* `waiting` is true where the invitation has NOT gone: the check-in starts in the future and
          the row is written uninvited, for the cron to send on the day. The screen has to say so, or
          "all participants i added didnt get an email" is what it produces. */
-      contributors?: { email: string; waiting?: boolean }[]
+      contributors?: { email: string; waiting?: boolean; waitingBecause?: 'starts_later' | 'no_seat' | 'mail_failed'; saying?: string }[]
       failedInvites?: string[]
       /* Why each one failed, in the API's own words. See entry.service.ts. */
       whyInvitesFailed?: { email: string; because: string }[]
@@ -277,6 +291,49 @@ export const entryApi = {
     apiClient.patch<{ ok: true }>('/entry/draft', { draftToken, payload }).then(r => r.data),
 }
 
+/**
+ * THE ANCHOR SCENARIO'S FRONT DOOR CALLS (plan pieces 1 and 2; docs/answers-from-engine.md,
+ * "Request 144 (1)" and "Request 144 (2) and (3)"). Both are open to a visitor who is not signed in.
+ */
+export const entryAnchorApi = {
+  /**
+   * `GET /entry/anchor-available`: the one public signal of whether `release.anchorScenario` is on.
+   * Answers only `{ available }`, cached by the server for 30 seconds. This is the call the landing
+   * page asks before it decides whether to show itself at all, replacing the old stub that could
+   * only ever answer false (`anchor-scenario-is-on.ts`).
+   */
+  available: (): Promise<{ available: boolean }> =>
+    apiClient.get('/entry/anchor-available').then(r => r.data),
+
+  /**
+   * `GET /entry/anchor-start?source=<mark>`: called once on arrival at `/start/team`. With the
+   * switch on it answers the situation key (`HELP_TEAM_UNDERSTAND`), a label for the ground, the
+   * source mark read back exactly as sent (or `null`), and `thePeopleStep`
+   * (docs/answers-from-engine.md, "Request 149 (2 of 6)") - the people step's own heading, intro,
+   * context label, button and limit sentence, carried from here through to the entry chat's people
+   * step rather than read off the fixed `ANCHOR_PEOPLE_STEP_RULES`. With the switch off it answers
+   * 404 - the caller is expected to show the engine's own sentence rather than invent one.
+   *
+   * `firstQuestion` (request 163, item 9): the engine's own opening line for the anchor
+   * conversation, "What's happening right now that makes you wish your team saw more of what you
+   * see?". Not served yet - the caller falls back to `THE_ANCHOR_FIRST_QUESTION` (TheSetup.tsx)
+   * until it is.
+   */
+  start: (source?: string | null): Promise<{
+    available: true
+    scenario: 'HELP_TEAM_UNDERSTAND'
+    startedFrom: 'anchor'
+    groundLabel: string
+    source: string | null
+    thePeopleStep?: ThePeopleStepRules
+    firstQuestion?: string
+  }> =>
+    apiClient.get('/entry/anchor-start', {
+      params: source ? { source } : undefined,
+      skipNotFoundToast: true,
+    } as any).then(r => r.data),
+}
+
 // ── Join API (QR / broadcast link) ───────────────────────────────────────────
 
 /**
@@ -285,7 +342,7 @@ export const entryApi = {
  */
 export const openLinkApi = {
   whatThisIs: (token: string) =>
-    apiClient.get<{ groundLabel: string; theQuestion: string | null; askedBy: string | null; scenario: string }>(
+    apiClient.get<{ groundLabel: string; theQuestion: string | null; askedBy: string | null; scenario: string; schedule?: string | null; endsAt?: string | null }>(
       '/entry/open', { params: { t: token } },
     ).then(r => r.data),
 
@@ -300,10 +357,13 @@ export const openLinkApi = {
 }
 
 export const joinApi = {
+  /* `skipNotFoundToast`: the /join page already says this itself in its own sentence (the same
+     reasoning as participantsApi.preview). Without it, a bad link raised a second, differently
+     worded toast on top of the page's own message - group 3's review, request batch A, fault 3. */
   preview: (token: string) =>
     apiClient.get<{ groundId: string; groundLabel: string; scenario: string; initiatorName: string }>(
       '/entry/join-preview',
-      { params: { t: token } },
+      { params: { t: token }, skipNotFoundToast: true } as any,
     ).then(r => r.data),
 
   /**

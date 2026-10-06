@@ -27,14 +27,47 @@ const CHAT = SERVICE.slice(SERVICE.indexOf('async contextChat('), SERVICE.indexO
 
 describe('the setup chat goes through the boundary', () => {
   it('the reply does', () => {
-    /* `changeSay` is the reply on a turn where they asked to change something - see
-       what-the-lead-wants-changed. Either way it goes through the boundary. */
-    expect(CHAT).toContain('reply: forHumans(changeSay ?? reply)');
+    /*
+     * `changeSay` is the reply on a turn where they asked to change something - see
+     * what-the-lead-wants-changed. FIX 3 (30 September 2026) added `spokenReply`, which is exactly
+     * `changeSay ?? reply` with the opening turn's greeting stripped - still built from the same two
+     * sources, and still returned through `forHumans` either way, so the boundary this test protects
+     * is unchanged.
+     *
+     * FOUND LIVE AGAIN, 30 September 2026, on the four live checks: `changeSay` is the PRODUCT's own
+     * sentence, built deterministically in this function (`restatesSuccess`/`whatTheyWantChanged`),
+     * never the model's - so it no longer passes through the model-sentence guard at all (rule 2 of
+     * the fix). Only `reply`, the model's own text, does, and only through `whatTheModelsReplyShows`,
+     * which reads structurally for a question rather than by pattern - see
+     * nothing-proposed-that-nobody-said.ts.
+     */
+    /* Request 92, point 7: the model's own text also loses any sentence with the bare word "ground", and
+       says nothing at all beside a Yes and No answer (Ask Groundwork). */
+    expect(CHAT).toContain("whatTheModelsReplyShows(withoutTheWordGround(reply), proposal.kind !== 'none')");
+    expect(CHAT).toContain("const withoutFalsePromises = changeSay ?? (yesOrNoOnly ? '' :");
+    expect(CHAT).toContain('const spokenReply = isOpeningTurn ? withoutTheOpeningGreeting(withoutFalsePromises) : withoutFalsePromises;');
+    expect(CHAT).toContain('let replyText = forHumans(openedOn ? `${openedOn} ${spokenReply}`.trim() : spokenReply);');
   });
 
-  /** The proposal is said to a person too - "I will set this to run for 90 days" - so it does as well. */
+  /**
+   * The proposal is said to a person too - "I will set this to run for 90 days" - so it does as
+   * well.
+   *
+   * FOUND LIVE, 30 September 2026, on the four live checks (item 16): the reply and `proposal.say`
+   * used to be built from the same source and shown twice on the one turn - once as the reply, again
+   * underneath it as the say-back. `sayBack` is computed once, through `forHumans`, and the reply is
+   * checked against it so a lead is never shown the same sentence twice on one turn - see the
+   * "shown once, not shown twice" test below.
+   */
   it('and so does the proposal it asks you to confirm', () => {
-    expect(CHAT).toContain('say: forHumans(proposal.say)');
+    /* Every proposal goes through the boundary except the paste's list, which the product writes itself
+       and which forHumans would run into one paragraph (request 92, point 6). */
+    expect(CHAT).toContain("(proposal.kind as string) === 'everything' ? (proposal.say as string) : forHumans(proposal.say);");
+    expect(CHAT).toContain('say: sayBack as string,');
+  });
+
+  it('the reply never repeats the say-back word for word', () => {
+    expect(CHAT).toContain('if (sayBack && (replyText === sayBack || replyText.includes(sayBack))) {');
   });
 
   /** The hardcoded reply beside it carried the same word, and no boundary can fix a literal. */

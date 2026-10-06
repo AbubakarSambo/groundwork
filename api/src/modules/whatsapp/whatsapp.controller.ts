@@ -1,3 +1,4 @@
+import * as crypto from 'crypto';
 import { Controller, Get, Post, Query, Body, Logger, ForbiddenException, Req, Res } from '@nestjs/common';
 import type { RawBodyRequest } from '@nestjs/common';
 import type { Request, Response } from 'express';
@@ -6,8 +7,9 @@ import { Public } from '../../common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { WhatsAppService } from './whatsapp.service';
+import { UNKNOWN_NUMBER_SAYING } from './a-message-outside-the-window';
 import { WhatsAppForAnOrganisationService } from '../public-api/whatsapp-for-an-organisation.service';
-import { pickWasAsked, pickedOrganisation, whichOrganisationAsText } from '../public-api/a-whatsapp-message-is-routed';
+import { pickWasAsked, pickedOrganisation, whichOrganisationAsText, A_SWITCH_WORD } from '../public-api/a-whatsapp-message-is-routed';
 
 /**
  * Inbound WhatsApp webhook. Meta calls GET once to verify the endpoint, then POSTs every inbound
@@ -35,18 +37,31 @@ export class WhatsAppController {
 
   /* Bare text, not the { success, data } envelope: Meta compares the body to the challenge byte for byte. Found 10 Sep 2026. */
   @Get()
-  verify(
+  async verify(
     @Query('hub.mode') mode: string,
     @Query('hub.verify_token') token: string,
     @Query('hub.challenge') challenge: string,
     @Res() res: Response,
-  ): void {
-    const expected = this.config.get<string>('whatsapp.verifyToken');
-    if (mode === 'subscribe' && expected && token === expected) {
+  ): Promise<void> {
+    /* Saved in the back office first, then the server setting (groundworks-own-number.ts). */
+    const expected = (await this.whatsapp.ours()).verifyToken;
+    if (mode === 'subscribe' && expected && WhatsAppController.sameToken(token, expected)) {
       res.status(200).type('text/plain').send(challenge);
       return;
     }
     throw new ForbiddenException('Webhook verification failed');
+  }
+
+  /**
+   * THE VERIFY TOKEN, COMPARED IN CONSTANT TIME. A plain === stops at the first wrong character, so
+   * how long a refusal takes can say how much of a guess was right. Lengths first, because
+   * timingSafeEqual throws on unequal lengths rather than answering false.
+   */
+  static sameToken(given: string | undefined | null, expected: string): boolean {
+    if (typeof given !== 'string') return false;
+    const a = Buffer.from(given, 'utf8');
+    const b = Buffer.from(expected, 'utf8');
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
   }
 
   @Post()
@@ -61,7 +76,7 @@ export class WhatsAppController {
      * is the right default here.
      */
     const raw = req.rawBody ?? Buffer.from(JSON.stringify(req.body ?? {}));
-    this.whatsapp.verifySignature(req.headers as Record<string, string | string[] | undefined>, raw);
+    await this.whatsapp.verifySignature(req.headers as Record<string, string | string[] | undefined>, raw);
 
     /**
      * AND NOT AT ALL WHEN THE CHANNEL IS OFF. The toggle and the credentials govern SENDING; this
@@ -83,7 +98,8 @@ export class WhatsAppController {
       if (!message?.from) return { received: true };
       const fromNumber: string = message.from;
       const organizationId = await this.whichOrganisation(fromNumber, message);
-      if (organizationId) await this.inbound.handle(organizationId, body);
+      /* Written to Groundwork's number, so every reply goes back on Groundwork's number (survey item 8). */
+      if (organizationId) await this.inbound.handle(organizationId, body, 'ours');
     } catch (err: any) {
       /*
        * SILENCE IS THE ONE OUTCOME THIS CHANNEL CANNOT PRODUCE. A spent balance, a paused ground, an
@@ -107,7 +123,7 @@ export class WhatsAppController {
   private async whichOrganisation(fromNumber: string, message: any): Promise<string | null> {
     const orgs = await this.whatsapp.whichOrganisations(fromNumber);
     if (orgs.length === 0) {
-      await this.whatsapp.sendMessage(fromNumber, "We don't recognize this number yet. Add it in your Groundwork Settings, then message us again.", { kind: 'refusal' });
+      await this.whatsapp.sendMessage(fromNumber, UNKNOWN_NUMBER_SAYING, { kind: 'refusal' });
       return null;
     }
     if (orgs.length === 1) return orgs[0].id;
@@ -118,9 +134,22 @@ export class WhatsAppController {
       const picked = pickedOrganisation(text, orgs);
       if (picked) {
         await this.prisma.whatsAppOrganisationPick.update({ where: { phone }, data: { organizationId: picked.id, pickPendingAt: null } });
-        await this.whatsapp.sendMessage(fromNumber, `${picked.name}. Carry on - what you write here goes to your check-in there.`);
+        await this.whatsapp.sendMessage(fromNumber, `${picked.name}. Carry on. What you write here goes to your check-in there. Write "switch" to choose again.`);
+        /* Chosen again after "switch": the check-ins open there follow, as "switch" gives inside one organisation. */
+        if (kept.organizationId) {
+          await this.inbound.handle(picked.id, { entry: [{ changes: [{ value: { messages: [{ from: fromNumber, type: 'text', text: { body: 'switch' } }] } }] }] }, 'ours');
+        }
         return null;
       }
+    }
+    /*
+     * "SWITCH" CHOOSES AGAIN (survey item 12). A number on two rosters kept its first pick for good.
+     * Now "switch" asks again which organisation, and the answer replaces the pick.
+     */
+    if (kept?.organizationId && A_SWITCH_WORD.test(text)) {
+      await this.prisma.whatsAppOrganisationPick.update({ where: { phone }, data: { pickPendingAt: new Date() } });
+      await this.whatsapp.sendMessage(fromNumber, whichOrganisationAsText(orgs), { kind: 'which-one' });
+      return null;
     }
     if (kept?.organizationId && orgs.some((o) => o.id === kept.organizationId)) return kept.organizationId;
     await this.prisma.whatsAppOrganisationPick.upsert({

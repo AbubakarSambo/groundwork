@@ -41,13 +41,15 @@ const entry = (ground: any) => {
   return { svc, prisma, email };
 };
 
-const closed = { id: 'g', organizationId: 'org', label: 'L', scenario: 'S', status: GroundStatus.CLOSED, endState: 'KEEP', initiator: { firstName: 'A' }, initiatorId: 'lead', isFreeGround: false, freeParticipantCap: 5 };
+const closed = { id: 'g', organizationId: 'org', label: 'L', scenario: 'NEW_HIRE', status: GroundStatus.CLOSED, endState: 'KEEP', initiator: { firstName: 'A' }, initiatorId: 'lead', isFreeGround: false, freeParticipantCap: 5 };
 const held = { ...closed, status: GroundStatus.PAUSED, endState: null };
 const live = { ...closed, status: GroundStatus.ACTIVE, endState: null };
 
 describe('the preview', () => {
   it('refuses a closed ground in the words of the decision that closed it', async () => {
-    await expect(grounds(closed).getJoinPreview('jt')).rejects.toThrow('This check-in ended: keep.');
+    /* It used to read "This check-in ended: keep.", the stored value after a colon. The ending is now
+       its own sentence (decision 75, item 48). */
+    await expect(grounds(closed).getJoinPreview('jt')).rejects.toThrow('This check-in has ended. The person stays in the role.'); /* Changed 5 Oct 2026: the KEEP ending's neutral form. */
   });
   it('refuses a held ground as on hold', async () => {
     await expect(grounds(held).getJoinPreview('jt')).rejects.toThrow(/on hold/);

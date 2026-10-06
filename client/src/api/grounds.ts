@@ -1,5 +1,6 @@
 import { apiClient } from './client'
 import type { Ground } from '@/types'
+import type { ServedPattern } from './patterns'
 
 export interface Delivery {
   id: string
@@ -11,6 +12,20 @@ export interface Delivery {
   carriedIntoCheckInId: string | null
 }
 
+
+/** One card the server read out of a plan, as it sends it. */
+export interface PlanCard {
+  id: string
+  kind: string
+  says: string
+  heading: string
+  landsIn: string
+  from: string
+  fromThePlan: string
+  note?: string
+  whichWay?: string
+  directionSuggested?: string
+}
 
 export type GroundScenario =
   | 'TEAM_UPDATES'
@@ -45,7 +60,9 @@ export interface CreateGroundBody {
 }
 
 export interface AddParticipantBody {
-  email: string
+  /** Their address, or leave it out and send `colleagueId` for somebody picked from the list (U.4). */
+  email?: string
+  colleagueId?: string
   roleAsDescribed?: string
   /** Optional, never inferred; blank means blank. */
   department?: string
@@ -72,13 +89,32 @@ export interface OrgRosterEntry {
   createdByAdmin: boolean
   lead: { id: string; firstName: string; lastName: string; email: string }
   memberCount: number
-  members: { email: string; partyType: 'INITIATOR' | 'PARTICIPANT'; roleAsDescribed: string | null; accepted: boolean; latestSpecificity: string | null }[]
+  members: { email: string; partyType: 'INITIATOR' | 'PARTICIPANT'; roleAsDescribed: string | null; accepted: boolean }[]
   contributedParties: number
   report: { agreements: string[]; divergences: unknown[]; releasedAt: string | null } | null
   lastActivity: string | null
 }
 
+/** "Out of time" (U.3): where a check-in that ran past its end date stands, for a person taking part. */
+export interface MoreTimeStanding {
+  outOfTime: boolean
+  checkInName: string
+  leadFirstName: string | null
+  ranUntil: string | null
+  /** Set when they already asked today. */
+  askedAt: string | null
+  /** "All 38 of your check-ins" (item 11): check-ins (Grounds) this person has ever been part of,
+      never sessions (CheckIn rounds) within them. */
+  checkInsCount: number
+}
+
 export const groundsApi = {
+  /** "Ask Wairimu for more time" (U.3). */
+  moreTime: (id: string) =>
+    apiClient.get<MoreTimeStanding>(`/grounds/${id}/more-time`).then(r => r.data),
+  askForMoreTime: (id: string) =>
+    apiClient.post<{ asked: true; askedAt: string }>(`/grounds/${id}/more-time`).then(r => r.data),
+
   list: () =>
     apiClient.get<Ground[]>('/grounds').then(r => (Array.isArray(r.data) ? r.data : [])),
 
@@ -129,6 +165,17 @@ export const groundsApi = {
       .patch<{ id: string; overWhatsApp: boolean | null }>(`/grounds/${id}/over-whatsapp`, { over })
       .then(r => r.data),
 
+  /**
+   * THE KIND OF WORK THIS CHECK-IN IS ABOUT (request 76), and its own stage names. Only the lead,
+   * or an admin of the organisation, can change it. `kind: null` clears it back to none. A name
+   * that is not one of the eleven kinds is refused with a plain sentence, shown as the server gives
+   * it. A later read never overwrites the lead's own choice.
+   */
+  setKindOfWork: (id: string, body: { kind?: string | null; stages?: string[] | null }) =>
+    apiClient
+      .patch<{ id: string; kindOfWork: string | null; kindOfWorkSetBy: string | null; workStages: string[] | null }>(`/grounds/${id}/kind-of-work`, body)
+      .then(r => r.data),
+
   setExpectThemToUnblock: (id: string, expect: boolean) =>
     apiClient
       .patch<{ id: string; expectThemToUnblock: boolean }>(`/grounds/${id}/expect-them-to-unblock`, { expect })
@@ -137,6 +184,17 @@ export const groundsApi = {
   // Initiator-only: whether participants can see each other's email. restrict=true hides.
   setExternalVisibility: (id: string, restrict: boolean) =>
     apiClient.patch<{ id: string; restrictExternalVisibility: boolean }>(`/grounds/${id}/external-visibility`, { restrict }).then(r => r.data),
+
+  /**
+   * REMINDERS (People and setup, "How it runs"). `PATCH /grounds/:id/chasing` has existed since the
+   * chasing cron read `chaseAfterDays`/`chasingStopped`/`tellTheLead`, and nothing on any screen ever
+   * wrote to it - so whether this check-in reminds people, on which day, and whether the lead hears
+   * who never started, could not be set from the product. Whoever set the check-in up only.
+   */
+  setChasing: (id: string, body: { days?: number[]; stopped?: boolean; tellTheLead?: boolean }) =>
+    apiClient
+      .patch<{ days: number[]; stopped: boolean; tellTheLead: boolean }>(`/grounds/${id}/chasing`, body)
+      .then(r => r.data),
 
   /*
    * `create` USED TO SIT HERE, and it went with the flow that called it.
@@ -264,7 +322,8 @@ export const groundsApi = {
       sessions: { sessionNumber: number; completedAt: string | null; status: string }[]
       specificity: { scores: number[]; avg: number; label: string } | null
       confidence: { score: number; label: string; description: string } | null
-      patterns: { observation: string; sessionNumber: number | null }[] | null
+      /** Your own patterns, and nobody else's. See api/src/modules/patterns/who-reads-a-pattern.ts. */
+      patterns: ServedPattern[] | null
       insightsLocked: boolean
     }>(`/grounds/${groundId}/my-record`).then(r => r.data),
 
@@ -488,6 +547,19 @@ export const groundsApi = {
       canShowMovement: boolean
       frozenReason: string
     }>(`/grounds/${groundId}/baseline-entries`).then(r => r.data),
+
+  /** A plan, pasted or already a document on the check-in, read into separate cards. Nothing is stored until a yes. */
+  readAPlan: (groundId: string, input: { text?: string; documentId?: string }) =>
+    apiClient.post<{ proposals: PlanCard[]; says: string }>(`/grounds/${groundId}/plan/proposals`, input).then(r => r.data),
+  /** "Waiting for you to confirm": the cards still waiting. The lead's only. */
+  planCardsWaiting: (groundId: string) =>
+    apiClient.get<{ proposals: PlanCard[] }>(`/grounds/${groundId}/plan/proposals`).then(r => r.data),
+  confirmPlanCard: (groundId: string, cardId: string, direction?: string | null) =>
+    apiClient.post(`/grounds/${groundId}/plan/proposals/${cardId}/confirm`, direction ? { direction } : {}).then(r => r.data),
+  planCardNotNow: (groundId: string, cardId: string) =>
+    apiClient.post(`/grounds/${groundId}/plan/proposals/${cardId}/not-now`).then(r => r.data),
+  editPlanCard: (groundId: string, cardId: string, says: string) =>
+    apiClient.patch<PlanCard>(`/grounds/${groundId}/plan/proposals/${cardId}`, { says }).then(r => r.data),
 
   contextChat: (groundId: string, history: { role: 'user' | 'assistant'; content: string }[]) =>
     apiClient

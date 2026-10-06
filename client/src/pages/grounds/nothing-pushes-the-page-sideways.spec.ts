@@ -27,7 +27,17 @@ describe('nothing pushes the page sideways', () => {
 
   it('the standing view label is gone from the lead view (10 Sep 2026): the rail, the card and "Led by" already say it; only the admin variant remains, and it wraps', () => {
     expect(CODE).not.toMatch(/you are running this/)
-    const i = CODE.indexOf('you are an admin here')
+    /**
+     * ROUND 5, ITEM H1: THE ADMIN VARIANT IS ONE NOTE NOW, NOT TWO.
+     *
+     * "you are an admin here, not its lead" was a small standing line; a separate blue box below
+     * it said the same fact in more words ("You are looking at this as an admin, not as its
+     * lead"). Both are gone, folded into the one line the prototype itself uses
+     * (read-only-view.txt, A4): "You can read this check-in's board and reports. {name} runs it."
+     * - which the rule this file protects (no promise about length may be `nowrap`) still applies
+     * to, since the name it interpolates can be any length.
+     */
+    const i = CODE.indexOf("You can read this check-in")
     expect(i).toBeGreaterThan(-1)
     expect(CODE.slice(Math.max(0, i - 200), i)).not.toMatch(/whiteSpace: 'nowrap'[^<]*$/)
   })

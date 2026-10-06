@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { join } from 'path'
+import { statusWord, roleWord } from './people-here'
 
 /**
  * THE PEOPLE PAGE, READ AS AN ADMIN PUTTING 160 PEOPLE ON.
@@ -9,49 +10,43 @@ import { join } from 'path'
  * at that size: a way to paste, a way to see where each person actually got to, and a way to make
  * somebody else an admin.
  *
- * Source-read rather than rendered, and bounded to the part each claim is about - a guard on this
- * page passed three times today against deliberately broken copy because it read the whole file
- * and every word it wanted appeared somewhere else in it.
+ * U.4 moved each of these into its own part of the page, as the prototype draws it: pasting into
+ * InvitePeople.tsx, where each person got to into people-here.ts (read on the list and on one
+ * person's page), and the role onto one person's page, OnePersonPage.tsx. The guards follow them
+ * there; the promises are the same. The prototype's statuses replace "Checked in" and "Answered on
+ * 1 of 3" (see statusWord), and the rendered page is checked in OrgMembersPage.spec.tsx,
+ * InvitePeople.spec.tsx and OnePersonPage.spec.tsx.
  */
-const PAGE = readFileSync(join(__dirname, 'OrgMembersPage.tsx'), 'utf8')
+const INVITE = readFileSync(join(__dirname, 'InvitePeople.tsx'), 'utf8')
+const ONE = readFileSync(join(__dirname, 'OnePersonPage.tsx'), 'utf8')
 
 describe('pasting a company in', () => {
-  it('checks the list before anything is sent', () => {
-    /* The send button only exists once an answer has come back. */
-    const send = PAGE.slice(PAGE.indexOf('Check the list'), PAGE.indexOf('{answer && ('))
-    expect(send).toContain('answer && answer.preview && answer.rows.some')
-  })
-
-  it('stops offering to send once it has sent', () => {
-    /* It kept the button after the send, which reads as though the first click did nothing. */
-    const send = PAGE.slice(PAGE.indexOf('Check the list'), PAGE.indexOf('{answer && ('))
-    expect(send).toContain('answer.preview &&')
+  it('checks the list before anything is sent, and offers the rest only while it is still a check', () => {
+    expect(INVITE).toContain('mutationFn: () => pasteMany(pasted, true, role)')
+    expect(INVITE).toContain("a.rows.every((r) => r.result === 'invited')")
+    expect(INVITE).toContain('answer.preview && canGo > 0')
   })
 
   it('changes tense once the invitations have gone', () => {
-    /* "Will be invited" after they were invited is the same failure in words. */
-    const map = PAGE.slice(PAGE.indexOf('const HOW_IT_READS'), PAGE.indexOf('export function OrgMembersPage'))
+    const map = INVITE.slice(INVITE.indexOf('const HOW_IT_READS'), INVITE.indexOf('const ROLES'))
     expect(map).toContain("sent: 'Invited'")
-    expect(PAGE).toContain('answer.preview ? how.says : (how.sent ?? how.says)')
+    expect(INVITE).toContain('answer.preview ? how.says : (how.sent ?? how.says)')
   })
 
   it('previews and sends through one call, one flag apart', () => {
-    /* Two calls would be two implementations that disagree on the screen where somebody decides
-       whether to email their whole company. */
-    const calls = PAGE.match(/apiClient\.post\('\/users\/invitations'/g) ?? []
+    const calls = INVITE.match(/apiClient\.post\('\/users\/invitations'/g) ?? []
     expect(calls).toHaveLength(1)
-    expect(PAGE).toContain('pasteMany(pasted, true)')
-    expect(PAGE).toContain('pasteMany(pasted, false)')
+    expect(INVITE).toContain('pasteMany(pasted, true, role)')
+    expect(INVITE).toContain('pasteMany(pasted, false, role)')
   })
 
   it('says how many seats are left before the send, not during it', () => {
-    const block = PAGE.slice(PAGE.indexOf('{answer && ('), PAGE.indexOf('{/* Members list */}'))
-    expect(block).toContain('room for {answer.seatsLeft}')
-    expect(block).toContain('See the plans')
+    expect(INVITE).toContain('Your plan has room for ${answer.seatsLeft} more')
+    expect(INVITE).toContain('See the plans')
   })
 
   it('names what will happen to every kind of row', () => {
-    const map = PAGE.slice(PAGE.indexOf('const HOW_IT_READS'), PAGE.indexOf('export function OrgMembersPage'))
+    const map = INVITE.slice(INVITE.indexOf('const HOW_IT_READS'), INVITE.indexOf('const ROLES'))
     for (const kind of ['invited', 'already here', 'repeated', 'not an email', 'no seat']) {
       expect(map).toContain(`${kind.includes(' ') ? `'${kind}'` : kind}:`)
     }
@@ -59,61 +54,44 @@ describe('pasting a company in', () => {
 })
 
 describe('where each person got to', () => {
-  const from = PAGE.indexOf("WHERE THEY GOT TO")
-  const row = PAGE.slice(from, PAGE.indexOf('SUB-ADMINS', from))
-
-  it('tells an unopened invitation from an account from somebody who has used it', () => {
-    expect(row).toContain('Checked in')
-    expect(row).toContain('Invited, not opened')
-    /* And the third state says whether they are on anything at all. "Signed in, not checked in"
-       was the same sentence for somebody with no check-in and somebody sitting on five of them
-       having answered none - and the green badge above was the same for somebody up to date and
-       somebody who answered once. Both now carry the count. */
-    expect(row).toContain('Signed in, not on a check-in')
-    expect(row).toContain('answered none')
-    expect(row).toContain('Answered on ${m.checkInsAnswered ?? 1} of ${m.checkInsOn}')
+  const m = (over: any) => ({ id: 'x', email: 'x@y.co', firstName: 'X', lastName: '', role: 'MEMBER', isActive: true, isEmailVerified: true, createdAt: '', ...over })
+  it('tells an unopened invitation, an account on nothing, one not answered yet, and somebody checking in apart', () => {
+    expect(statusWord(m({ state: 'invited' }))).toBe('Invited, not opened')
+    expect(statusWord(m({ state: 'signed in', checkInsOn: 0 }))).toBe('Signed in, not on a check-in')
+    /* Somebody on five check-ins who has answered none is not the same as somebody on none. */
+    expect(statusWord(m({ state: 'signed in', checkInsOn: 5, checkInsAnswered: 0 }))).toBe('Not answered yet')
+    expect(statusWord(m({ state: 'checked in', checkInsOn: 2, checkInsAnswered: 1 }))).toBe('Checking in')
+    expect(statusWord(m({ awaitingOrgApproval: true }))).toBe('Waiting to be let in')
+    /* U.4 re-review: a guest added with no seat for them, as the prototype's row reads. */
+    expect(statusWord(m({ role: 'GUEST', heldForASeat: true, state: 'signed in', checkInsOn: 1, checkInsNotOpened: 1 }))).toBe('No seat on your plan')
+    expect(statusWord(m({ role: 'GUEST', heldForASeat: false, state: 'signed in', checkInsOn: 1, checkInsNotOpened: 1 }))).toBe('Invited, not opened')
+    /* U.4 review: added by name, invitation not opened yet. It read "Signed in, not on a check-in". */
+    expect(statusWord(m({ state: 'signed in', checkInsOn: 1, checkInsAnswered: 0, checkInsNotOpened: 1 }))).toBe('Invited, not opened')
+    expect(statusWord(m({ state: 'signed in', checkInsOn: 2, checkInsAnswered: 0, checkInsNotOpened: 1 }))).toBe('Not answered yet')
   })
 })
 
 describe('what somebody is here', () => {
-  const control = PAGE.slice(PAGE.indexOf('SUB-ADMINS'), PAGE.indexOf('</select>'))
+  it('offers the three things an admin means, and writes one field', () => {
+    expect(ONE).toContain("{ value: 'ADMIN', title: 'Admin'")
+    expect(ONE).toContain("{ value: 'LEAD', title: 'Can open check-ins'")
+    expect(ONE).toContain("{ value: 'MEMBER', title: 'Takes part'")
+    expect(ONE).toContain('apiClient.patch(`/users/${id}`, { role: what })')
+    expect(ONE).not.toContain('mayOpenCheckIns')
+  })
 
-  it('offers the three things an admin means, not two', () => {
+  it('offers no change on your own role or the owner\'s: the server refuses both', () => {
     /*
-     * Takes part, can open check-ins, admin. The middle one is the named lead.
-     *
-     * Asserted by value rather than by label. This read `>Admin<` and broke when that option
-     * started saying what an admin does - "Admin - manages people and billing" - which was the
-     * point: the other two options are verb phrases and this one was the role name on its own,
-     * the only one you had to already know. What matters here is that all three are offered.
+     * REBUILT (design-audit.md section 3, "One person"): the per-button `locked` variable is gone -
+     * the role choice is now the shared `ChoiceCards`, which takes one group-level `disabled` and
+     * locks every card but the chosen one. The rule itself (nobody may change their own role or the
+     * owner's) is unchanged, only where it is written.
      */
-    expect(control).toContain('roleMut.mutate({ id: m.id, what: e.target.value')
-    expect(control).toContain('>Takes part<')
-    expect(control).toContain('>Can open check-ins<')
-    expect(control).toMatch(/<option value="ADMIN">Admin\b/)
+    expect(ONE).toContain('disabled={isOwner || isMe ||')
   })
 
-  it('writes one field, because a role is what an admin means', () => {
-    /*
-     * Briefly this wrote a role and a separate flag, to keep a lead from inheriting admin powers.
-     * Nothing in this product grants privilege by not being a MEMBER, so there was nothing to
-     * inherit and the second field was a second source of truth for no reason.
-     */
-    const write = PAGE.slice(PAGE.indexOf('const roleMut'), PAGE.indexOf('function handleInvite'))
-    expect(write).toContain('{ role: what }')
-    expect(write).not.toContain('mayOpenCheckIns')
-  })
-
-  it('is a badge on your own row, not a control', () => {
-    /* The server refuses the last admin demoting themselves. A control that exists to be refused
-       is worse than no control. */
-    expect(control).toContain('m.id === user?.id')
-    /* "account" is a banned word in this product's copy; the person owns an organisation. */
-    expect(control).toContain("{iAmTheOwner ? 'You \u00b7 owner' : 'You'}")
-  })
-
-  it('and no control at all on the row of whoever owns the organisation', () => {
-    /* Another admin cannot change them - the server refuses it - so the page does not offer it. */
-    expect(control).toContain('m.id === ownerId ? null :')
+  it('and the owner reads as "Owner" in the list', () => {
+    expect(roleWord({ id: 'a', role: 'ADMIN' }, 'a')).toBe('Owner')
+    expect(roleWord({ id: 'b', role: 'LEAD' }, 'a')).toBe('Can open check-ins')
   })
 })

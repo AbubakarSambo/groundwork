@@ -28,7 +28,13 @@ const CSS = readFileSync(join(__dirname, '..', '..', 'index.css'), 'utf8')
 describe('a page has a name and a body', () => {
   it('the routed content is a <main>, in both shell branches', () => {
     /* The chromeless branch returns children directly and was the easier one to forget. */
-    expect(SHELL).toContain('<main id="main" className="gw-main-content">')
+    /**
+     * REVIEW ROUND 3, ITEM 7: THE CLASS IS CONDITIONAL NOW - `gw-main-content gw-focus` on the
+     * conversation (so it can drop the room the app's bottom bar used to reserve, which that page
+     * no longer shows), `gw-main-content` alone everywhere else. Still one <main id="main">, still
+     * carrying `gw-main-content` either way.
+     */
+    expect(SHELL).toContain("<main id=\"main\" className={onConversationPage ? 'gw-main-content gw-focus' : 'gw-main-content'}>")
     expect(SHELL).toContain('<main id="main">{children}</main>')
   })
 
@@ -43,7 +49,7 @@ describe('a page has a name and a body', () => {
      * therefore pointless. Its position relative to the other chrome is the whole feature.
      */
     const skip = APP.indexOf('href="#main"')
-    for (const later of ['<Toaster', '<HelpModal', '<HelpButton', '<AppShell']) {
+    for (const later of ['<Toaster', '<HelpModal', '<AppShell']) {
       expect(APP.indexOf(later)).toBeGreaterThan(skip)
     }
   })

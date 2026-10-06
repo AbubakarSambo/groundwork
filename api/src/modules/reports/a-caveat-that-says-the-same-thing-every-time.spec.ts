@@ -37,7 +37,7 @@ describe('a caveat that says something different depending on what is true', () 
     expect(out.total).toBe(3);
     expect(out.says[0]).toContain('1 of the 3');
     /* Neither half can be read on its own. */
-    expect(out.says[0]).toContain('line up with something outside');
+    expect(out.says[0]).toMatch(/lines? up with something other than what the person said/);
     expect(out.says[0]).toContain('because somebody said');
   });
 

@@ -259,10 +259,22 @@ describe('patchDraft reaches a signup that has no user yet', () => {
 });
 
 describe('patchDraft is token-gated', () => {
-  it('rejects a missing/unknown token and refuses consumed drafts', async () => {
-    const { service } = makeService(); // findUnique -> null
+  /*
+   * CHANGED IN THE U.2 REVIEW, and why. An unknown token used to be refused with "Draft not found".
+   * entry-save now gives an address with an account a token of the same shape that is stored nowhere,
+   * so a 404 here would say which addresses have accounts (Hafsah's rule of 26 September). An
+   * unknown or used token is answered { ok: true } and NOTHING IS WRITTEN, which is what this test
+   * protects: it is still token-gated.
+   */
+  it('refuses a missing token, and writes nothing for an unknown or used one', async () => {
+    const { service, prisma } = makeService(); // findUnique -> null
     await expect(service.patchDraft('', { orgName: 'X' })).rejects.toThrow('draftToken required');
-    await expect(service.patchDraft('bad-token', { orgName: 'X' })).rejects.toThrow('Draft not found');
+    await expect(service.patchDraft('bad-token', { orgName: 'X' })).resolves.toEqual({ ok: true });
+    expect(prisma.entryDraft.update).not.toHaveBeenCalled();
+    expect(prisma.pendingSignup.update).not.toHaveBeenCalled();
+    prisma.entryDraft.findUnique = jest.fn(async () => ({ id: 'd1', consumedAt: new Date(), payload: {} }))
+    await expect(service.patchDraft('used-token', { orgName: 'X' })).resolves.toEqual({ ok: true });
+    expect(prisma.entryDraft.update).not.toHaveBeenCalled();
   });
 
   it('shallow-merges the patch into the stored payload', async () => {
@@ -326,5 +338,102 @@ describe('ISSUE-17 tripwire: stateless endpoints never touch the draft table', (
     await service.chat([{ role: 'user', content: 'hello' }] as any, undefined, undefined);
     anthropic.extract = jest.fn(async () => null);
     await service.report([{ role: 'user', content: 'hello' }] as any, undefined, undefined);
+  });
+});
+
+describe('the commit says why an invitation waits (U.6 review)', () => {
+  /* The page the link opens lists as invited only those written to, and says why each other one
+     was not; it can only do that if the commit passes the reason on. */
+  it('passes on "starts later" and "no seat", with the seat sentence', async () => {
+    const { service, grounds } = makeService();
+    grounds.addParticipant
+      .mockResolvedValueOnce({ invitedAt: null, notInvitedBecause: 'starts_later' })
+      .mockResolvedValueOnce({ invitedAt: null, notInvitedBecause: 'no_seat', saying: 'Held for a seat.' })
+      .mockResolvedValueOnce({ invitedAt: new Date() });
+    const res: any = await service.commit('org1', 'u1', {
+      groundLabel: 'Help someone get back on track', history: HISTORY, scenario: 'PIP',
+      contributors: [{ email: 'later@x.test' }, { email: 'guest@other.test' }, { email: 'sent@x.test' }],
+    } as any);
+    expect(res.contributors).toEqual([
+      expect.objectContaining({ email: 'later@x.test', waiting: true, waitingBecause: 'starts_later' }),
+      expect.objectContaining({ email: 'guest@other.test', waiting: true, waitingBecause: 'no_seat', saying: 'Held for a seat.' }),
+      expect.objectContaining({ email: 'sent@x.test', waiting: false }),
+    ]);
+    expect(res.contributors[2].waitingBecause).toBeUndefined();
+  });
+});
+
+describe('a future start holds the invitations from the commit too (U.6 review)', () => {
+  /* Read live: start 5 October, and the invitation went the moment the confirmation link was opened
+     on 27 September. addParticipant holds an invitation only when it is handed the start (see
+     an-invite-waits-for-the-first-day.spec.ts, and the on-the-day cron that sends it); the commit
+     never handed it one. */
+  it('hands each person the check-in\'s start, so nothing is sent before it', async () => {
+    const { service, grounds } = makeService();
+    grounds.addParticipant.mockResolvedValue({ invitedAt: null, notInvitedBecause: 'starts_later' });
+    const res: any = await service.commit('org1', 'u1', {
+      groundLabel: 'Help someone get back on track', history: HISTORY, scenario: 'PIP', checkInBy: '2026-10-05',
+      contributors: [{ email: 'daniel@x.test' }],
+    } as any);
+    expect(grounds.addParticipant.mock.calls[0][3]).toMatchObject({ email: 'daniel@x.test', startsAt: '2026-10-05' });
+    expect(res.contributors[0]).toMatchObject({ waiting: true, waitingBecause: 'starts_later' });
+  });
+
+  it('and with "Now", hands no start, so it goes at once', async () => {
+    const { service, grounds } = makeService();
+    grounds.addParticipant.mockResolvedValue({ invitedAt: new Date() });
+    await service.commit('org1', 'u1', {
+      groundLabel: 'Help someone get back on track', history: HISTORY, scenario: 'PIP',
+      contributors: [{ email: 'daniel@x.test' }],
+    } as any);
+    expect(grounds.addParticipant.mock.calls[0][3].startsAt).toBeUndefined();
+  });
+});
+
+describe('a second setup is a second check-in, by its key, never by its name (U.6 review)', () => {
+  /* Read live: Daniel's check-in, then Grace's a few minutes later, both "Help someone get back on
+     track"; the second save handed back Daniel's check-in and Grace's was never made. */
+  function withAStatefulDraft(start: any) {
+    const made = makeService();
+    let row: any = start ? { ...start } : null;
+    let n = 0;
+    made.grounds.create.mockImplementation(async () => ({ id: `g-${++n}` }));
+    made.prisma.entryDraft.findUnique = jest.fn(async () => (row ? { ...row } : null));
+    made.prisma.entryDraft.create = jest.fn(async ({ data }: any) => { if (row) throw new Error('unique'); row = { id: 'd1', updatedAt: new Date(), groundId: null, ...data }; return row; });
+    made.prisma.entryDraft.updateMany = jest.fn(async ({ where, data }: any) => {
+      if (!row || where.id !== row.id) return { count: 0 };
+      if ('consumedAt' in where && where.consumedAt === null && row.consumedAt) return { count: 0 };
+      if (where.updatedAt && row.updatedAt.getTime() !== new Date(where.updatedAt).getTime()) return { count: 0 };
+      if ('groundId' in where && where.groundId === null && row.groundId) return { count: 0 };
+      row = { ...row, ...data, updatedAt: new Date(row.updatedAt.getTime() + 1) };
+      return { count: 1 };
+    });
+    made.prisma.ground.findUnique = jest.fn(async ({ where }: any) => ({ id: where.id, joinToken: `jt-${where.id}`, participants: [] }));
+    return { ...made, row: () => row };
+  }
+  const body = (setupKey: string) => ({ setupKey, groundLabel: 'Help someone get back on track', scenario: 'PIP', history: HISTORY, contributors: [] });
+
+  it('two different setups a minute apart, with the same topic name, make two check-ins', async () => {
+    const s = withAStatefulDraft({ id: 'd1', userId: 'u1', consumedAt: new Date(Date.now() - 60_000), groundId: 'g-daniel', updatedAt: new Date(), payload: { setupKey: 'daniel' }, history: [] });
+    const grace: any = await s.service.commit('org1', 'u1', body('grace') as any);
+    expect(s.grounds.create).toHaveBeenCalledTimes(1);
+    expect(grace.groundId).toBe('g-1');
+    expect(grace.groundId).not.toBe('g-daniel');
+  });
+
+  it('the same save retried makes one check-in', async () => {
+    const s = withAStatefulDraft(null);
+    const first: any = await s.service.commit('org1', 'u1', body('grace') as any);
+    const again: any = await s.service.commit('org1', 'u1', body('grace') as any);
+    expect(s.grounds.create).toHaveBeenCalledTimes(1);
+    expect(again.groundId).toBe(first.groundId);
+  });
+
+  it('and with no key, a different check-in soon after is still made, not handed the old one', async () => {
+    const s = withAStatefulDraft({ id: 'd1', userId: 'u1', consumedAt: new Date(Date.now() - 60_000), groundId: 'g-daniel', updatedAt: new Date(), payload: {}, history: [] });
+    s.prisma.ground.findUnique = jest.fn(async ({ where }: any) => ({ id: where.id, label: 'Daniel, first weeks', joinToken: 'jt', participants: [] }));
+    const res: any = await s.service.commit('org1', 'u1', { ...body(''), setupKey: undefined, groundLabel: 'Grace, first weeks' } as any);
+    expect(s.grounds.create).toHaveBeenCalledTimes(1);
+    expect(res.groundId).toBe('g-1');
   });
 });

@@ -1,6 +1,14 @@
 import { Controller, Get, Post, Param, Body, NotFoundException, ForbiddenException, ParseIntPipe } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ReportsService } from './reports.service';
+import { releasedSessionsOf, whatReleasingThisSessionDoes } from './each-sessions-picture-is-released-on-its-own';
+
+/** The sessions now released, the one this release shared, and the sentence that says so. */
+function whatWasReleased(report: { releasedSessions?: number[] | null } | null) {
+  const releasedSessions = releasedSessionsOf(report) ?? [];
+  const sessionNumber = releasedSessions.length ? releasedSessions[releasedSessions.length - 1] : null;
+  return { releasedSessions, sessionNumber, saying: sessionNumber ? whatReleasingThisSessionDoes(sessionNumber) : null };
+}
 import { CurrentUser, Roles, Role } from '../../common';
 
 @ApiTags('Reports')
@@ -73,15 +81,29 @@ export class ReportsController {
   @Post('generate')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Manually trigger or retry report synthesis (admin only)' })
-  async generate(@Param('groundId') groundId: string, @CurrentUser('organizationId') organizationId: string) {
-    return this.reports.generateForAdmin(groundId, organizationId);
+  async generate(@Param('groundId') groundId: string, @CurrentUser('id') userId: string, @CurrentUser('organizationId') organizationId: string) {
+    return this.reports.generateForAdmin(groundId, organizationId, userId);
   }
 
+  /* No role gate here. The person who runs a check-in may be a member with "Can open check-ins", and the
+     service already refuses everybody but the lead (and an admin where the lead has left): decision 76. */
   @Post('release')
-  @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Release the report to both parties simultaneously' })
-  async release(@Param('groundId') groundId: string, @CurrentUser('organizationId') organizationId: string) {
-    return this.reports.release(groundId, organizationId);
+  @ApiOperation({ summary: "Release the team's picture of the current session to everyone in the check-in" })
+  async release(
+    @Param('groundId') groundId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('organizationId') organizationId: string,
+  ) {
+    /* THE STORED ROW NEVER GOES BACK OVER THE WIRE. This returned the raw report: every person's
+       ratings, every private guide and the concern flags, to any admin who pressed Release. Hafsah,
+       28 September 2026: leads and admins are never sent how anyone's answers were rated. The
+       screen only refreshes after this; it reads the report through GET, which filters it. */
+    /* Only the person who runs the check-in shares its report (request 57); another admin is refused. */
+    const released = await this.reports.releaseAsTheLead(groundId, userId, organizationId);
+    /* Each session's picture is released on its own (decision 76, item 4), and the lead is told
+       plainly which one went: "This shares the team's picture of session 2 with everyone in the
+       check-in." */
+    return { groundId, releasedAt: (released as any)?.releasedAt ?? null, ...whatWasReleased(released as any) };
   }
 
   /**
@@ -111,7 +133,11 @@ export class ReportsController {
 
   @Get('activation-status')
   @ApiOperation({ summary: 'Check which participants have shown theirs' })
-  async activationStatus(@Param('groundId') groundId: string, @CurrentUser('id') userId: string) {
-    return this.reports.getActivationStatusForUser(groundId, userId);
+  async activationStatus(
+    @Param('groundId') groundId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('organizationId') organizationId: string,
+  ) {
+    return this.reports.getActivationStatusForUser(groundId, userId, organizationId);
   }
 }

@@ -24,6 +24,18 @@ import { describe, it, expect } from 'vitest'
  * branches, to save some markup.
  *
  * The chrome is shared, which is the part a person sees. The mechanics stay where they are tested.
+ *
+ * U.20 UPDATE (the invitation's rebuild, design-audit.md section 3): `/invite` is no longer one of
+ * the three `Arrival` pages. It is the first screen rebuilt from `components/gw/ui`
+ * (rebuilt-pages.ts), whose own `Page narrow` + `Mark` is now the prototype-accurate version of the
+ * same idea `Arrival`'s `plain` mode approximated - a cream page, a small mark, no header band.
+ *
+ * GROUP 3, PIECE 1 UPDATE (signing in and joining): `/join` and `/verify-email` are rebuilt the same
+ * way now, so all three of the routes this file once called "arrivals" draw `Page`/`Mark` rather
+ * than `Arrival`. `Arrival` itself is not removed - `JoinConfirmPage.tsx` (a later step of the join
+ * flow, outside this task) still renders inside it - so its own file and header still exist, and
+ * this file keeps proving the thing that mattered about each of the three: one consistent frame,
+ * never three different ideas of how much product surrounds a link from an email.
  */
 const P = (p: string) => readFileSync(join(__dirname, '../../pages', p), 'utf8')
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
@@ -36,12 +48,16 @@ const ARRIVALS = {
 
 describe('every arrival uses the same shell', () => {
   for (const [route, file] of Object.entries(ARRIVALS)) {
-    it(`${route} renders inside Arrival`, () => {
+    it(`${route} renders inside the shared Page/Mark, now that it is rebuilt`, () => {
       const code = strip(P(file))
-      expect(code).toMatch(/import \{ Arrival \} from '@\/components\/gw\/Arrival'/)
-      expect(code).toMatch(/<Arrival/)
+      expect(code).not.toMatch(/from '@\/components\/gw\/Arrival'/)
+      expect(code).toMatch(/import \{[^}]*\bPage\b[^}]*\bMark\b[^}]*\} from '@\/components\/gw\/ui'/)
+      expect(code).toMatch(/<Page narrow>/)
+      expect(code).toMatch(/<Mark/)
     })
+  }
 
+  for (const [route, file] of Object.entries(ARRIVALS)) {
     it(`${route} no longer rolls its own full-height page`, () => {
       /**
        * The specific divergence: each of these built its own `minHeight: 100vh` wrapper with its own
@@ -51,10 +67,12 @@ describe('every arrival uses the same shell', () => {
     })
   }
 
-  it('and the shell is the thing that carries the header', () => {
+  it('and Arrival itself still carries the header, for the step of the join flow still on it', () => {
     const shell = strip(readFileSync(join(__dirname, 'Arrival.tsx'), 'utf8'))
     expect(shell).toMatch(/className="gw-hdr"/)
     expect(shell).toMatch(/<GroundworkLogo \/>/)
+    expect(strip(readFileSync(join(__dirname, '../../pages/join/JoinConfirmPage.tsx'), 'utf8')))
+      .toMatch(/from '@\/components\/gw\/Arrival'/)
   })
 })
 
@@ -78,37 +96,49 @@ describe('what the shell must not have taken over', () => {
   it('and all three still say the same thing when the link is dead', () => {
     // W8-62. Verified rendered: "This invite link did not work", "This join link did not work",
     // "This sign-in link did not work", each with a way out.
-    for (const file of Object.values(ARRIVALS)) expect(strip(P(file))).toMatch(/<LinkProblem/)
+    /* U.2 review: /verify-email says it on the account card, "That link didn’t work", with a box to
+       ask for a new link; /invite and /join keep LinkProblem, whose way on is the person who invited them. */
+    for (const file of Object.values(ARRIVALS)) expect(strip(P(file))).toMatch(/<LinkProblem|<LinkDidNotWork/)
   })
 })
 
 describe('the rail on the entry flow, and the way out of a session', () => {
   /**
-   * BOTH OF THESE WERE THINGS SHE REMEMBERED WORKING, AND SHE WAS RIGHT BOTH TIMES.
+   * REVERSED AGAIN, GROUP 3 REVIEW BATCH B (1 October) - AND THIS TIME AGAINST THE PROTOTYPE
+   * ITSELF, NOT AGAINST SOMEBODY'S MEMORY OF THE PRODUCT.
    *
-   * I had written "show the rail when signed in, hide it for a stranger" into a plan as work to do,
-   * and it was already the behaviour - so I recorded that as a wrong plan item. She then said the
-   * rail HAD been there on a signed-out window. Also right, and the mechanism was sitting in the
-   * file: `AppSidebar` carries a branch commented "Entry ground shown when unauthenticated on
-   * /start", which draws the check-in being built for somebody with no account yet.
+   * The history: `showSidebar` once required `isAuthenticated`, so a branch in `AppSidebar` meant
+   * to draw an "entry ground" rail for a stranger on /start (name, renameable, session count, a
+   * navy "+ Start a check-in", a "Not saved yet" card, "Sign in") could never run. Hafsah
+   * remembered that rail, it was restored (`isEntryFlow`, OR'd into `showSidebar`), and this test
+   * pinned the restoration.
    *
-   * It could never run. `showSidebar` required `isAuthenticated`, so the sidebar was never mounted
-   * for a stranger, which makes `isEntryPage = !isAuthenticated && pathname === '/start'` false
-   * whenever it is evaluated. An auth gate added later killed the branch without removing it. The
-   * same shape as the G37 defect, on the client this time, where my sweep for that class had not
-   * looked.
+   * But the prototype's own signed-out #/start (start.jpg) draws none of that - no sidebar at
+   * all, just the mark and the one question. The restored rail was real, but it was never what the
+   * prototype draws, and this same review's picture check found it sitting over "See every
+   * situation" on a phone (w375-out-_start.png) because of it. `showSidebar` is `isAuthenticated`
+   * again; a signed-out /start keeps its own way to sign in on the page itself now
+   * (`EntryChatPage.tsx`'s `Mark` + "Sign in" row), not in a rail the prototype never shows.
    */
   const SHELL = strip(readFileSync(join(__dirname, 'AppShell.tsx'), 'utf8'))
 
-  it('the entry flow gets the rail without being signed in', () => {
-    expect(SHELL).toMatch(/const isEntryFlow = location\.pathname === '\/start'/)
-    expect(SHELL).toMatch(/\(isAuthenticated \|\| isEntryFlow\) && !CHROMELESS/)
+  it('the entry flow no longer gets the rail without being signed in', () => {
+    expect(SHELL).toMatch(/const showSidebar =\s*isAuthenticated && !CHROMELESS/)
+    expect(SHELL).not.toMatch(/const isEntryFlow = location\.pathname === '\/start'/)
+    expect(SHELL).not.toMatch(/isAuthenticated \|\| isEntryFlow/)
   })
 
-  it('and the branch that draws it is therefore reachable', () => {
-    // `isEntryPage` was dead for as long as the auth gate existed. It is the thing being restored.
+  it('and the branch that drew it is unreachable again, deliberately', () => {
+    // `isEntryPage` still exists (AppSidebar's own branch), but AppSidebar no longer mounts at
+    // all for a signed-out /start, so the branch below it never runs while signed out.
     expect(SHELL).toMatch(/const isEntryPage = !isAuthenticated && location\.pathname === '\/start'/)
     expect(SHELL).toMatch(/\{isEntryPage && \(/)
+  })
+
+  it('and the page itself keeps a way to sign in, with the shared mark', () => {
+    const ENTRY = strip(readFileSync(join(__dirname, '..', '..', 'pages', 'enter', 'EntryChatPage.tsx'), 'utf8'))
+    expect(ENTRY).toMatch(/<Mark \/>/)
+    expect(ENTRY).toMatch(/Sign in/)
   })
 })
 
@@ -126,13 +156,20 @@ describe('the check-in is not a trap', () => {
 
   it('the exit is on the left, where nothing floats over it', () => {
     /**
-     * Anchored on the button's own title, because `ChatPage` has two `gw-hdr` blocks - the loading
-     * state draws one too - and slicing from the first one measured the wrong header entirely.
+     * ROUND 5, ITEM B: THE BACK BUTTON MOVED INTO ConversationCard.tsx's OWN SLOT.
+     *
+     * `className="gw-back"` and a literal `title="Leave this session..."` used to sit directly in
+     * ChatPage.tsx, above the card. Both now live one level up: ChatPage passes `backTitle` and
+     * `onBack` to `<ConversationCard>`, which renders its own back button - always before the
+     * `header` slot in its own source - so the way back still sits above the card, on the left, as
+     * "← Sales team, Q3" does in check-in-start.jpg. The guarantee splits accordingly: ChatPage
+     * really does pass a real title and a real leave handler, and ConversationCard really does
+     * draw the back button before the header.
      */
-    const i = CHAT.indexOf('title="Leave this session')
-    expect(i).toBeGreaterThan(0)
-    const header = CHAT.slice(i - 600, i + 900)
-    expect(header.indexOf('gw-back')).toBeLessThan(header.indexOf('gw-logo'))
+    expect(CHAT).toMatch(/backTitle="Leave this session\. Everything you have said is already saved\."/)
+    expect(CHAT).toMatch(/onBack=\{leave\}/)
+    const CARD = strip(readFileSync(join(__dirname, 'ui/ConversationCard.tsx'), 'utf8'))
+    expect(CARD.indexOf('← {backLabel}')).toBeLessThan(CARD.indexOf('{header}'))
   })
 
   it('and it returns you to the check-in, not to the list of every ground', () => {

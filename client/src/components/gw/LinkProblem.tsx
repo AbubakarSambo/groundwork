@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { MARKETING_URL } from '@/lib/marketing'
-
-
+import { PageTitle, Note, Button, Stack } from '@/components/gw/ui'
 
 /**
  * A LINK FROM AN EMAIL THAT DOES NOT WORK. W8-62.
@@ -26,6 +25,12 @@ import { MARKETING_URL } from '@/lib/marketing'
  * expired" and "this token was already used" are the same instruction to the person
  * reading it, and telling an unauthenticated caller which of the three it was is a
  * small oracle about links they do not hold.
+ *
+ * REBUILT FROM THE SHARED PARTS (Hafsah's first review, U.20 sixth round): shared with `/join`
+ * and sign-in, so rebuilding it here (not each caller) gives every one of them the new parts.
+ * `PageTitle` for the heading, `Note` for the sentence, the standard `Button`. The old red ✕ is
+ * gone with it - none of the prototype's own "something went wrong" screens draw one, and every
+ * other narrow arrival screen in this family is a plain heading, no icon.
  */
 export function LinkProblem({ kind, detail }: { kind: 'invite' | 'join' | 'sign-in'; detail?: string }) {
   const navigate = useNavigate()
@@ -33,25 +38,22 @@ export function LinkProblem({ kind, detail }: { kind: 'invite' | 'join' | 'sign-
   const what = kind === 'sign-in' ? 'sign-in link' : `${kind} link`
 
   return (
-    <div style={{ textAlign: 'center', maxWidth: 340, margin: '0 auto' }}>
-      <div style={{ fontSize: 26, marginBottom: 12, color: 'var(--gw-sub)' }}>✕</div>
-      <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>This {what} did not work</div>
-      <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.7, marginBottom: 20 }}>
-        {detail ?? `${what[0].toUpperCase()}${what.slice(1)}s are single use and they expire.`}
-        {kind === 'sign-in'
-          ? ' Ask for a new one below.'
-          : ' Ask whoever invited you to send a new one - they can do that from the check-in.'}
-      </div>
-
-      <button className="gw-btn" onClick={() => navigate('/auth')}>
-        {kind === 'sign-in' ? 'Get a new link' : 'Sign in instead'}
-      </button>
-
-      <div style={{ marginTop: 16 }}>
-        <a href={MARKETING_URL} style={{ fontSize: 12, color: 'var(--gw-sub)', textDecoration: 'none' }}>
-          What is Groundwork?
-        </a>
-      </div>
+    <div style={{ textAlign: 'center' }}>
+      <Stack gap={12}>
+        <PageTitle title={`This ${what} did not work`} />
+        <Note>
+          {/* A sentence of the page's or the server's own already says what to do. Adding the general
+              one after it said the same thing twice ("ask whoever added you to send a new invite. Ask
+              whoever invited you to send a new one"), found in the running app in U.3. */}
+          {detail ?? `${what[0].toUpperCase()}${what.slice(1)}s are single use and they expire.${kind === 'sign-in'
+            ? ' Ask for a new one below.'
+            : ' Ask the person who invited you to send a new one. They can do that from the check-in.'}`}
+        </Note>
+        <Button size="big" wide onClick={() => navigate('/auth')}>
+          {kind === 'sign-in' ? 'Get a new link' : 'Sign in instead'}
+        </Button>
+        <p className="gwui-fine"><a href={MARKETING_URL}>What is Groundwork?</a></p>
+      </Stack>
     </div>
   )
 }

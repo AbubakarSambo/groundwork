@@ -25,6 +25,7 @@ import {
   classifyCoverageReason,
 } from './coverage';
 import { MIN_COACHING_CONFIDENCE, roleMapFor, priorFunctionFromRole } from './role-maps';
+import { anArticleSaidMidSentence } from './a-holder-in-their-own-words';
 
 // ---------------------------------------------------------------------------
 // Input shapes - plain data, no Prisma client, no ground object.
@@ -198,7 +199,7 @@ const stamp = (d?: Date | number) => (d instanceof Date ? d.getTime() : (d ?? 0)
  * The newest row wins, because a handoff someone has stopped describing as
  * blocking is no longer blocking.
  */
-export function dedupeDependencies<T extends ReadDependency>(deps: T[]): T[] {
+export function dedupeDependencies<T extends ReadDependency>(deps: T[], alsoKeep?: (kept: T, said: T) => void): T[] {
   const norm = (t: string) =>
     (t ?? '')
       .toLowerCase()
@@ -232,9 +233,13 @@ export function dedupeDependencies<T extends ReadDependency>(deps: T[]): T[] {
       if ((d.what ?? '').trim().length > ((hit as any).what ?? '').trim().length) (hit as any).what = d.what;
       (hit as any).onParticipantId = d.onParticipantId ?? hit.onParticipantId;
       (hit as any).onLabel = d.onLabel ?? hit.onLabel;
+      /* Each time it was said, kept so the board can say how often it was raised (request 107 c). */
+      (hit as any).raisedAt = [...((hit as any).raisedAt ?? []), { at: d.createdAt ?? null, checkInId: (d as any).sourceCheckInId ?? null }];
+      /* Anything else a caller needs kept from a later mention. No caller passes it, nothing changes. */
+      alsoKeep?.(hit, d);
       continue;
     }
-    out.push({ ...d });
+    out.push({ ...d, raisedAt: [{ at: d.createdAt ?? null, checkInId: (d as any).sourceCheckInId ?? null }] } as T);
   }
   return out;
 }
@@ -476,6 +481,11 @@ export type ContributionRead = {
   isBlocked?: boolean;
   ownVoice?: null;
   guard?: string;
+  /** Nothing they have said so far could be checked by somebody else. The one form of the rating a
+      lead may read, as "Nothing checkable" beside the name (decisions 40 and 43). */
+  nothingCheckable?: boolean;
+  /** They have not finished a check-in yet, so there are no answers to read at all (request 116 c). */
+  notCheckedInYet?: boolean;
 } & Partial<Confidence>;
 
 /**
@@ -537,6 +547,32 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
       const mine = input.checkIns.filter((c) => c.participantId === p.id);
       const completed = mine.filter((c) => c.status === CheckInStatus.COMPLETED).length;
 
+      /*
+       * NOBODY GETS A READ ON ANSWERS THEY NEVER GAVE (request 116 c). Faraji Odhiambo had never
+       * checked in on "Sales team, Q3", and the lead read "Nothing Faraji Odhiambo has said so far is
+       * checkable": a read on what he said, when he had said nothing. With no finished check-in there
+       * are no answers to read, so the row says that and nothing else, and is never "nothing checkable".
+       */
+      if (completed === 0) {
+        return {
+          participantId: p.id,
+          name: nameOf(p.id),
+          remit: p.roleAsDescribed,
+          remitDefined: true,
+          position: null,
+          positionLabel: null,
+          reason: `${nameOf(p.id) ?? 'This person'} has not checked in yet.`,
+          isBlocked: blocked.has(p.id),
+          ownVoice: null,
+          nothingCheckable: false,
+          notCheckedInYet: true,
+          confidence: 0,
+          evidenceCount: 0,
+          shown: true,
+          basis: 'Nothing is on record yet, because there has been no check-in.',
+        };
+      }
+
       const myEntries = entries.filter((e) => e.participantId === p.id);
       const worthChecking = myEntries.filter((e) => tierOf(e.text, e.verifiability) !== 'LOW' && saysSomethingCheckable(e.text));
       const high = worthChecking.filter((e) => tierOf(e.text, e.verifiability) === 'HIGH').length;
@@ -582,7 +618,7 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
         reasonParts.push(`${completed} check-in${completed === 1 ? '' : 's'} on record, nothing specific named yet.`);
       } else if (checkable === 0) {
         reasonParts.push(
-          `${completed} check-in${completed === 1 ? '' : 's'} on record. Nothing named so far could be checked by anyone else - no named people, organisations, numbers or dates.`,
+          `${completed} check-in${completed === 1 ? '' : 's'} on record. Nothing named so far could be checked by anyone else, because no people, organisations, numbers or dates were named.`,
         );
       } else {
         reasonParts.push(
@@ -647,7 +683,7 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
         );
         if (thatOneIsWaiting) {
           reasonParts.push(
-            `That person is also waiting on them for ${waitingOnThem.length} ${waitingOnThem.length === 1 ? 'thing' : 'things'}, so read it as one account rather than as confirmation that the work arrived.`,
+            `That person is also waiting on ${nameOf(p.id) ?? 'this person'} for ${waitingOnThem.length} ${waitingOnThem.length === 1 ? 'thing' : 'things'}, so read it as what one person said rather than as confirmation that the work arrived.`,
           );
         } else if (!allFromOne) {
           reasonParts.push('Separate people naming the same work is worth more than the count of what anybody said.');
@@ -673,7 +709,7 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
         reasonParts.push(
           somebodyHoldsIt
             ? 'Part of this is blocked on someone else (see what people are waiting on), which is different from being behind. Separate the two before reading anything into it.'
-            : `What they say is in the way is outside this check-in${theirs[0]?.onLabel ? ` (${theirs[0].onLabel})` : ''}, with nothing on record about escalating it. That is a thing to ask about, not a reason to read this as blocked.`,
+            : `What they say is in the way sits outside this check-in${theirs[0]?.onLabel ? `, with ${anArticleSaidMidSentence(theirs[0].onLabel)}` : ''}, and nothing on record says anybody has chased it. That is a thing to ask about, not a reason to read this as blocked.`,
         );
       }
       /*
@@ -698,7 +734,7 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
         // describes it flatly looks identical to someone who did not do it, and
         // on this kind of ground there is no colleague who could tell them apart.
         reasonParts.push(
-          'Nobody else on this ground sees this person\'s work, so there is no second account to check any of this against. Read it as one account, not as confirmed.',
+          'Nobody else on this ground sees this person\'s work, so nobody else has said anything to check this against. Read it as what one person said, not as confirmed.',
         );
       } else if (!peopleWorkTogether && completed >= 3) {
         /* The setting says they work separately and somebody named their work anyway. That is worth
@@ -708,7 +744,7 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
         );
       }
       if (map) {
-        reasonParts.push(`Read against ${map.label}: on track here means ${map.onTrackMeans.toLowerCase()}`);
+        reasonParts.push(`Their work is read against what being on track means for ${map.label.charAt(0).toLowerCase()}${map.label.slice(1)}, which is ${map.onTrackMeans.charAt(0).toLowerCase()}${map.onTrackMeans.slice(1)}`);
         /*
          * AND WHERE THAT DISAGREES WITH THEIR STATED ROLE, SAY SO.
          *
@@ -730,8 +766,8 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
         if (stated && stated.fn !== p.detectedFunction) {
           const statedMap = roleMapFor(stated.fn as any);
           reasonParts.push(
-            `Their stated role reads as ${(statedMap?.label ?? stated.fn.toLowerCase().replace(/_/g, ' '))}, and the account does not bear that out - `
-            + 'so they are being read against what the record shows rather than against the title. '
+            `Their stated role reads as ${(statedMap?.label ?? stated.fn.toLowerCase().replace(/_/g, ' '))}, and the account does not bear that out. `
+            + 'So they are being read against what the record shows rather than against the title. '
             + 'If the title is right, that difference is the thing to look at first.',
           );
         }
@@ -751,6 +787,7 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
         fnConfident,
         isBlocked,
         ownVoice: null,
+        nothingCheckable: onlyReportsAbsence,
         ...conf,
         shown: onlyReportsAbsence ? true : conf.shown,
         guard:
@@ -919,8 +956,8 @@ export function buildCoverage(input: ReadInput, nameOf: NameOf): CoverageResult 
         : kind === CoverageKind.LEAKING
           ? `${longestQuietRun} check-ins in a row added nothing specific to the record, and nothing is blocking them. The work has not stopped existing, so it is worth asking where it is going.`
           : kind === CoverageKind.ABSORBING
-            ? `This account describes picking up work outside this remit ${absorbingIn.length} time${absorbingIn.length === 1 ? '' : 's'}.`
-            : "Nothing in anyone's account describes this person's work moving elsewhere.";
+            ? `This person described picking up work outside this remit ${absorbingIn.length} time${absorbingIn.length === 1 ? '' : 's'}.`
+            : "Nobody has said anything about this person's work moving elsewhere.";
 
     // Credit is surfaced WHATEVER the coverage reading is. The person absorbing
     // other people's work is very often the same quiet load-bearer others keep

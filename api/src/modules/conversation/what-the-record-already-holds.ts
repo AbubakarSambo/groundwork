@@ -52,6 +52,8 @@ export interface InTheWay {
 }
 
 import { stillToAsk, waysThrough, type Effort } from './a-blocker-is-not-a-blocker-until-you-have-tried';
+/* Numbers as a person reads them, "120 million" rather than 120000000 (decision 69, the board's own wording). */
+import { aNumberPeopleCanRead as readable } from '../board/an-aim-is-a-sentence-about-somebody';
 
 export const A_DAY = 24 * 60 * 60 * 1000;
 
@@ -92,11 +94,27 @@ export function sayOneThingInTheWay(row: InTheWay, now: Date): string {
  * than send the model a heading with nothing under it - which reads as an absence of facts rather
  * than an absence of block, and invites the model to fill it.
  */
+/** Words that make a line about something that happened into bad news, or no news. */
+const NOT_GOOD_NEWS = /\b(not|n't|no|never|nothing|still (?:waiting|pending)|delayed|late|failed|lost|missed|stuck|blocked|cancel+ed|rejected|declined|behind|overdue|short of)\b/i;
+
+/** Of the lines that record something that happened, the ones that are good news. */
+export function theGoodNewsIn(rows: { text: string; type?: string | null }[]): string[] {
+  return (rows ?? [])
+    .filter((r) => r?.type === 'PROGRESS' && !NOT_GOOD_NEWS.test(r.text ?? ''))
+    .map((r) => String(r.text ?? '').replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+}
+
 export function whatTheRecordAlreadyHolds(input: {
   targets: TargetOnRecord[];
   inTheWay: InTheWay[];
   /** What this person themselves said last session, oldest first. Their own words only. */
   saidLastTime: string[];
+  /**
+   * The lines from last session that record something that happened and is not bad news, in their
+   * own words. Task 2.4 (week 3): good news first, when there is some. Empty when there is none.
+   */
+  wentWellLastTime?: string[];
   now: Date;
   /**
    * WHETHER THIS CHECK-IN EXPECTS PEOPLE TO HAVE TRIED, which is a decision its lead makes.
@@ -134,14 +152,14 @@ export function whatTheRecordAlreadyHolds(input: {
       'this person is aiming for as though nobody has said - ask where they are against it, and ' +
       'what the next ones are by name.\n' +
       (mine.length
-        ? `Theirs, said by them: ${mine.map((t) => `${t.name}, ${t.count} of ${t.target}`).join('; ')}\n`
+        ? `Theirs, said by them: ${mine.map((t) => `${t.name}, ${readable(t.count)} of ${readable(t.target as number)}`).join('; ')}\n`
         : '') +
       (setForThem.length
-        ? `Set for them by the lead - put these to them as the lead's expectation, in the lead's name, never as "you said" and never as something "the opener set": ${setForThem.map((t) => `${t.name}, ${t.count} of ${t.target}`).join('; ')}\n`
+        ? `Set for them by the lead - put these to them as the lead's expectation, in the lead's name, never as "you said" and never as something "the opener set": ${setForThem.map((t) => `${t.name}, ${readable(t.count)} of ${readable(t.target as number)}`).join('; ')}\n`
         : '') +
       (theRest.length
         ? 'Set for the whole check-in, not said by this person. The count on it is EVERYBODY\'S together, never this person\'s standing: never "you are at", "the record shows you at", never a difference between it and their own number. Never put these to them as "you said": ' +
-          theRest.map((t) => `${t.name}, the whole check-in is at ${t.count} of ${t.target}`).join('; ')
+          theRest.map((t) => `${t.name}, the whole check-in is at ${readable(t.count)} of ${readable(t.target as number)}`).join('; ')
         : ''),
     );
   }
@@ -185,6 +203,22 @@ export function whatTheRecordAlreadyHolds(input: {
           }).join(' / ')
         : '\nThis check-in does not ask people to unblock themselves. Record what is in their way ' +
           'and do not ask what they tried.'),
+    );
+  }
+
+  /*
+   * GOOD NEWS FIRST, WHEN THERE IS SOME. Task 2.4, week 3; the conversation standard's second point:
+   * "Kariuki Butchery paid on Monday. That's a sale that counts." Their own line, said back plainly
+   * as what happened. Never praise, and never more than they said: a sales judgement once praised a
+   * claim the record's own numbers contradicted.
+   */
+  const wentWell = (input.wentWellLastTime ?? []).filter((s) => saidLastTime.includes(s)).slice(0, 2);
+  if (wentWell.length > 0) {
+    parts.push(
+      'GOOD NEWS FROM LAST TIME, in their own words. Open with it: say what happened back to them in ' +
+      'one plain sentence, before anything else, then ask your question. Say it as a fact they told ' +
+      'you. Do not praise it, and do not add anything they did not say.\n' +
+      wentWell.map((s) => `- "${s}"`).join('\n'),
     );
   }
 

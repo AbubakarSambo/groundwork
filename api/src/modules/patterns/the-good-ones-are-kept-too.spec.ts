@@ -47,10 +47,16 @@ describe('the good ones are detected and kept, the same as the bad ones', () => 
   it('the service keeps them instead of dropping them on the floor', () => {
     const src = readFileSync(join(__dirname, 'patterns.service.ts'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-    /* The line that used to throw every non-bad-faith code away now has the good ones taken out
-       in front of it, and routed to the method that was already there for them. */
-    expect(src).toMatch(/if \(isPositiveCode\(d\.code\)\) \{[\s\S]{0,600}observePositive\(/);
+    /*
+     * Since the five-reads build (30 September 2026), one read (whatOneReadKeeps) decides what it
+     * would keep - isPositiveCode(d.code) is taken out in front of the bad-faith drop, the same as
+     * before, but it now pushes to `kept` rather than writing straight away. observePositive() is
+     * called once per check-in, after the five reads are counted, by the write loop that follows.
+     * Both halves of that journey are checked here.
+     */
+    expect(src).toMatch(/if \(isPositiveCode\(d\.code\)\) \{[\s\S]{0,750}kept\.push\(/);
     expect(src.indexOf('isPositiveCode(d.code)')).toBeLessThan(src.indexOf('if (!isBadFaithCode(d.code)) continue;'));
+    expect(src).toMatch(/if \(isPositiveCode\(code\)\) \{[\s\S]{0,200}observePositive\(/);
   });
 
   it('they surface immediately, which is the product’s own written rule for good news', () => {
@@ -63,11 +69,20 @@ describe('the good ones are detected and kept, the same as the bad ones', () => 
     expect(positive).toMatch(/PatternStatus\.SURFACED/);
   });
 
+  /*
+   * Since 28 September 2026 a person's own record serves patterns through patterns/who-reads-a-pattern,
+   * and the softening wrapper ("Your record across sessions shows something worth noticing") is gone
+   * for every kind, so this reads what is served rather than the branch that used to choose it.
+   */
   it('and nobody softens a compliment, which one hardcoded copy of the list would have done', () => {
     const grounds = readFileSync(join(__dirname, '..', 'grounds', 'grounds.service.ts'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(grounds).not.toMatch(/const POSITIVE_CODES = new Set\(\['R3'\]\)/);
-    expect(grounds).toMatch(/observation: isPositiveCode\(d\.code\)/);
+    expect(grounds).not.toMatch(/worth noticing/);
+    const { servedPatterns } = require('./who-reads-a-pattern');
+    const [served] = servedPatterns([{ id: 'x', participantId: 'p', code: 'R3', observationText: 'Credited Ngozi for the pricing sheet.', seenInSessions: [1, 2, 3] }], { participantId: 'p', runsIt: false }, { on: true });
+    expect(served.kind).toBe('good');
+    expect(served.whatHappened).toBe('Credited Ngozi for the pricing sheet.');
   });
 
   it('the schema lets the model answer with a good one, which is where this actually failed', () => {
@@ -123,9 +138,21 @@ describe('carrying is its own thing, neither a good sign nor a fault', () => {
   });
 
   it('it takes the three-period rule, because one hard week is not carrying the place', () => {
+    /*
+     * Since the five-reads build (30 September 2026), a single read no longer writes anything -
+     * whatOneReadKeeps only decides what one read would keep, and analyzeCheckIn writes once a
+     * code is kept by three of the five. A carrying code is never routed through
+     * observePositive (that stays for the isPositiveCode branch only), so it lands in the same
+     * write path as a bad-faith code - this.observe(), which is where the three-period rule
+     * lives. That is what this test checks now, in two parts.
+     */
     const src = readFileSync(join(__dirname, 'patterns.service.ts'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-    expect(src).toMatch(/if \(isCarryingCode\(d\.code\)\) \{[\s\S]{0,200}this\.observe\(/);
+    // The carrying branch keeps the code (for the vote) without surfacing it immediately.
+    expect(src).toMatch(/if \(isCarryingCode\(d\.code\)\) \{[\s\S]{0,120}kept\.push\(/);
+    // And the write loop only calls observePositive for a positive code - everything else,
+    // carrying included, goes through this.observe(), which is where THREE_PERIOD_RULE lives.
+    expect(src).toMatch(/if \(isPositiveCode\(code\)\) \{[\s\S]{0,200}observePositive\([\s\S]{0,200}\} else \{[\s\S]{0,150}this\.observe\(/);
   });
 
   it('but skips the confirming call, which is there to slow an accusation down', () => {
@@ -135,16 +162,18 @@ describe('carrying is its own thing, neither a good sign nor a fault', () => {
     expect(branch).not.toMatch(/confirmDetection/);
   });
 
+  /* Served through patterns/who-reads-a-pattern since 28 September 2026: the kind comes from the plain names. */
   it('the board gives it its own word, not one of the other two', () => {
     expect(lib.WHAT_A_CARRYING_CODE_IS_CALLED).toBe('Carrying');
-    const grounds = readFileSync(join(__dirname, '..', 'grounds', 'grounds.service.ts'), 'utf8');
-    expect(grounds).toMatch(/isCarryingCode\(pd\.code\)\s*\?\s*WHAT_A_CARRYING_CODE_IS_CALLED/);
+    const { plainNameOf } = require('./plain-pattern-names');
+    for (const c of lib.CARRYING_CODES) expect(plainNameOf(c.code).kind).toBe('carrying');
   });
 
   it('and nobody softens it as bad news about them', () => {
-    const grounds = readFileSync(join(__dirname, '..', 'grounds', 'grounds.service.ts'), 'utf8')
-      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-    expect(grounds).toMatch(/isPositiveCode\(d\.code\) \|\| isCarryingCode\(d\.code\)/);
+    const { servedPatterns } = require('./who-reads-a-pattern');
+    const [served] = servedPatterns([{ id: 'x', participantId: 'p', code: 'A2', observationText: 'Fixed the pricing sheet the night before the pitch.', seenInSessions: [1, 2, 3] }], { participantId: 'p', runsIt: false }, { on: true });
+    expect(served.kind).toBe('carrying');
+    expect(served.whatHappened).toBe('Fixed the pricing sheet the night before the pitch.');
   });
 
   it('every reader of the code catalogue knows about it, or the report dies on a missing code', () => {

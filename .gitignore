@@ -58,7 +58,13 @@ api/journey/org-sim/out-verify/
 .vercel
 
 # Journey drivers written to run a whole setup end to end. Scratch, not product.
-api/journey/
+#
+# `api/journey/*` rather than `api/journey/`, and the difference is the whole section below.
+# A trailing slash excludes the DIRECTORY, and git will not look inside an excluded directory,
+# so not one of the `!` lines under here did anything - `the-real-gate` and `two-scenarios`
+# survived only because they were already tracked, and a new file in either would have been
+# ignored in silence, which is the exact thing those lines were written to prevent.
+api/journey/*
 
 # EXCEPT THE TWO THAT DEFINE DONE, which are not scratch and were one `rm` from gone.
 #
@@ -77,7 +83,65 @@ api/journey/
 !api/journey/the-real-gate/
 !api/journey/two-scenarios/
 
+# HOW STEADY PATTERNS ARE ACROSS RUNS (decision 57, item 4). Read-only: reads existing run folders
+# under api/journey/all-24/ (which stay out, as always - see below) and writes nothing back.
+!api/journey/pattern-steadiness.ts
+!api/journey/pattern-steadiness.spec.ts
+
+# THE LIVE PROOF THAT ASK GROUNDWORK SAVES THE SAME THING THE OLD CONTEXT CHAT DOES (decision 50,
+# piece 2, step (c)). Local-only and it refuses to run against anything else - see the file itself.
+!api/journey/context-chat-equivalence.ts
+# Reads a stored run's conversations twice through the pattern detector; writes nothing to the database.
+!api/journey/the-detector-read-twice.ts
+!api/journey/how-steady-each-way-is.py
+!api/journey/how-steady-each-way-is-2.py
+!api/journey/the-four-live-checks.ts
+
+# AND THE FOUR SEEDS THE SCREENS WORKSPACE LOADS (requests 154, 155 and the review company,
+# 5-6 October 2026). They were written, committed and reported as done, and not one of them was in
+# the commit: `git add -A api/journey` on an ignored path does nothing and says nothing, so three
+# requests were answered with instructions pointing at files that existed on one computer only.
+# The screens workspace found it (request 156), which is the second time in two weeks this rule has
+# hidden a file somebody else needed.
+!api/journey/a-database-on-this-computer.ts
+!api/journey/seed-the-suites-for-the-screens.ts
+!api/journey/seed-a-company-for-review.ts
+!api/journey/seed-an-anchor-check-in.ts
+!api/journey/seed-a-hundred-check-ins.ts
+
+# THE ANCHOR JOURNEY (anchor piece 35). Its reader rules live in api/src/modules/board/the-anchor-readers.ts, because
+# nothing in api/src may import from outside api/src. Read-only, and it refuses anything that is not this computer.
+!api/journey/anchor/
+api/journey/anchor/*
+!api/journey/anchor/walk-the-anchor-as-each-reader.ts
+!api/journey/anchor/walk-the-anchor-as-each-reader.spec.ts
+
+# AND THE 24-SCENARIO RUNNER, for the same reason, asked for by the screens workspace on
+# 26 September 2026: `api/journey/all-24/` only existed on one computer, so the other workspace
+# could not run the scenarios or the scorer - and no task on either list may be ticked without
+# them. The right answers themselves live here too, in `theDecision` on each scenario.
+#
+# SOURCE ONLY. Every run writes a folder of transcripts beside these files, and those stay out:
+# the directory is re-ignored and the files are named one at a time.
+!api/journey/all-24/
+api/journey/all-24/*
+!api/journey/all-24/run.ts
+!api/journey/all-24/scenarios.ts
+!api/journey/all-24/refresh.ts
+!api/journey/the-suite/
+api/journey/the-suite/*
+!api/journey/the-suite/run.ts
+!api/journey/the-suite/scenarios.ts
+
 # Audit and fix-plan working notes. Written while reading the product, kept on disk, never in a PR:
 # they are how the work was decided, not the work. The product docs (api-terms, edge-protection)
 # stay tracked - those are things the product itself points at.
 docs/audit/
+
+# The prototype screens: 34MB of screenshots, kept on this computer and out of git.
+# They are reference for building, not part of the product, and git history is the wrong
+# place for a folder of images that will be replaced wholesale each time it is redrawn.
+docs/prototype/
+
+# The made-up people the browser user journeys share while they run (e2e/user-journeys-world.ts).
+e2e/.user-journeys-world.json

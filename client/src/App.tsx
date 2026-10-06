@@ -1,7 +1,10 @@
+import { useEffect, useState } from 'react'
 import { PageCrash } from '@/components/gw/PageCrash'
 import EveryReportSideBySide from '@/pages/preview/EveryReportSideBySide'
+import PartsSamplePage from '@/pages/dev/PartsSamplePage'
+import ConversationPreviewPage from '@/pages/dev/ConversationPreviewPage'
 import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation, Link } from 'react-router-dom'
-import { QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { queryClient } from '@/lib/queryClient'
 import { Toaster } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
@@ -13,7 +16,9 @@ import { SignOutPage } from '@/pages/auth/SignOutPage'
 import { MagicVerifyPage } from '@/pages/auth/MagicVerifyPage'
 import { GoogleCallbackPage } from '@/pages/auth/GoogleCallbackPage'
 import { ChoosePasswordPage } from '@/pages/auth/ChoosePasswordPage'
+import { GoogleFailedPage } from '@/pages/auth/GoogleFailedPage'
 import { EntryChatPage } from '@/pages/enter/EntryChatPage'
+import { AnchorLandingPage } from '@/pages/enter/AnchorLandingPage'
 import { ChatPage } from '@/pages/chat/ChatPage'
 import SessionReportPage from '@/pages/report/SessionReportPage'
 import RoundReportPage from '@/pages/report/RoundReportPage'
@@ -31,10 +36,32 @@ function ChatRedirect() {
   return <Navigate to={`/checkin/${checkInId}`} replace />
 }
 import { GroundsListPage } from '@/pages/grounds/GroundsListPage'
+import { TodayPage } from '@/pages/today/TodayPage'
+import { YouPage } from '@/pages/you/YouPage'
+import { CompanyPage } from '@/pages/company/CompanyPage'
+import { CompanyContextPage } from '@/pages/company/CompanyContextPage'
+import { SuitesPage } from '@/pages/suites/SuitesPage'
+import { OnboardingBoardPage } from '@/pages/suites/OnboardingBoardPage'
+import { LeaveBoardPage } from '@/pages/suites/LeaveBoardPage'
+import { YourRequestsPage } from '@/pages/suites/YourRequestsPage'
+import { LeaveRequestNewPage } from '@/pages/suites/LeaveRequestNewPage'
+import { SpendRequestNewPage } from '@/pages/suites/SpendRequestNewPage'
+import { TimeSheetsPage } from '@/pages/suites/TimeSheetsPage'
+import { ReviewsBoardPage } from '@/pages/suites/ReviewsBoardPage'
+import { ReviewPage } from '@/pages/suites/ReviewPage'
+import { LeavingBoardPage } from '@/pages/suites/LeavingBoardPage'
+import { RoleMapPage } from '@/pages/suites/RoleMapPage'
+import { SpendingPage } from '@/pages/suites/SpendingPage'
+import { FinancePage } from '@/pages/suites/FinancePage'
+import { TodosPage } from '@/pages/suites/TodosPage'
+import { CustomersPage } from '@/pages/suites/CustomersPage'
+import { EquipmentPage } from '@/pages/suites/EquipmentPage'
+import { AskPage } from '@/pages/ask/AskPage'
 import { GroundParticipantPage } from '@/pages/grounds/GroundParticipantPage'
 import { GroundPage } from '@/pages/grounds/GroundPage'
 import { ReportPage } from '@/pages/report/ReportPage'
 import { BoardPage } from '@/pages/board/BoardPage'
+import EndingPage from '@/pages/grounds/EndingPage'
 import { TeamBoardsPage } from '@/pages/boards/TeamBoardsPage'
 import { BillingPage } from '@/pages/billing/BillingPage'
 import { PricingPage } from '@/pages/billing/PricingPage'
@@ -63,6 +90,7 @@ import { OpsEverybodyPage } from '@/pages/ops/OpsEverybodyPage'
 import { OpsResourcesPage } from '@/pages/ops/OpsResourcesPage'
 import { OpsWorkplanPage } from '@/pages/ops/OpsWorkplanPage'
 import { ApiAccessPage } from '@/pages/admin/ApiAccessPage'
+import { WhatsAppSettingsPage } from '@/pages/admin/WhatsAppSettingsPage'
 import { OpsDeploymentPage, OpsMarketingPage } from '@/pages/ops/OpsSellingPages'
 import { OpsRoadmapPage, OpsReadinessPage, OpsTechPage, OpsUXPage } from '@/pages/ops/OpsBuildingPages'
 import {
@@ -79,16 +107,28 @@ import {
 import { PromptVersioningPage } from '@/pages/prompts/PromptVersioningPage'
 import { PromptTestPage } from '@/pages/prompts/PromptTestPage'
 import { IntegrationsPage } from '@/pages/org/IntegrationsPage'
+import { ConnectionsPage } from '@/pages/connections/ConnectionsPage'
+import { WhatsAppSetupPage } from '@/pages/connections/WhatsAppSetupPage'
 import { AdminPage } from '@/pages/admin/AdminPage'
 import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
+import { MorePage } from '@/pages/more/MorePage'
 import { ADoorYouCannotOpen } from '@/components/gw/a-door-you-cannot-open-says-so'
 import { OrgMembersPage } from '@/pages/org/OrgMembersPage'
+import { OnePersonPage } from '@/pages/org/OnePersonPage'
 import { LeadsGuidePage } from '@/pages/org/LeadsGuidePage'
-import { OrgSetupPage } from '@/pages/org/OrgSetupPage'
+import { OrgNewPage } from '@/pages/org/OrgNewPage'
+import { OrgsPage } from '@/pages/org/OrgsPage'
+import { WelcomePage } from '@/pages/org/WelcomePage'
+import { JoinByLinkPage } from '@/pages/join/JoinByLinkPage'
+import { StopRemindersPage } from '@/pages/mail/StopRemindersPage'
+import { WaitingForAnAdminPage } from '@/pages/join/WaitingForAnAdminPage'
+import { useYourOrganisations } from '@/components/gw/your-organisations'
+import { takeJustSignedIn, stillToChoose } from '@/lib/choose-an-organisation'
+import { authApi } from '@/api/auth'
 import { NotFoundPage } from '@/pages/notfound/NotFoundPage'
 import { StopMailPage } from '@/pages/mail/StopMailPage'
-import { HelpModal, HelpButton } from '@/components/gw/HelpModal'
+import { HelpModal } from '@/components/gw/HelpModal'
 import { AppShell } from '@/components/gw/AppShell'
 import { TalkToUsPage } from '@/pages/talk/TalkToUsPage'
 import type { JSX } from 'react'
@@ -177,7 +217,7 @@ function MayOpenCheckIns({ children }: { children: React.ReactNode }) {
   return <ADoorYouCannotOpen may={user?.mayOpenCheckIns !== false} what="open a check-in">{children}</ADoorYouCannotOpen>
 }
 
-function AdminsOnly({ children, what = 'add people to your organisation' }: { children: React.ReactNode; what?: 'add people to your organisation' | 'connect your systems' }) {
+function AdminsOnly({ children, what = 'add people to your organisation' }: { children: React.ReactNode; what?: 'add people to your organisation' | 'connect your systems' | 'open People' }) {
   const { user } = useAuthStore()
   return <ADoorYouCannotOpen may={user?.role === 'ADMIN'} what={what}>{children}</ADoorYouCannotOpen>
 }
@@ -305,11 +345,47 @@ function RootRoute() {
     )
   }
   /**
-   * Signed in, the root IS your grounds - her ask, and it was already true. Worth stating rather
-   * than leaving as an unlabelled fall-through, because the signed-out branch above returns early
-   * and it is easy to read this as unreachable.
+   * Signed in, the root is Today (C1, U.5), as in the prototype, where home is #/today. It was the
+   * check-ins list until Today existed. Worth stating rather than leaving as an unlabelled
+   * fall-through, because the signed-out branch above returns early and it is easy to read this as
+   * unreachable.
    */
-  return <GroundsListPage />
+  return <HomeOrChooseAnOrganisation home="today" />
+}
+
+/**
+ * THE FIRST STOP RIGHT AFTER SIGNING IN (A3, U.3). Once: the flag is cleared as it is read.
+ *
+ *   - Somebody who belongs nowhere yet, whose confirmed email domain an organisation lets join, is
+ *     offered it first, on "Where do you work?" (#/welcome). Never somebody who was invited: they
+ *     already belong to the organisation that invited them (U.4 review).
+ *   - Otherwise somebody in two or more organisations is asked which to open (#/orgs).
+ *   - Everybody else lands on Today (C1, U.5), as in the prototype. After that, the check-ins list is
+ *     at its own address, and the root is Today.
+ */
+export function HomeOrChooseAnOrganisation({ home = 'list' }: { home?: 'today' | 'list' }) {
+  const { search } = useLocation()
+  const { myOrgs, loaded } = useYourOrganisations()
+  const [justIn] = useState(() => stillToChoose())
+  const offers = useQuery({ queryKey: ['where-can-i-join'], queryFn: authApi.whereCanIJoin, enabled: justIn, retry: false })
+  const [go, setGo] = useState<'welcome' | 'orgs' | 'stay' | null>(null)
+  useEffect(() => {
+    if (go !== null || !loaded) return
+    if (justIn && !offers.isFetched) return
+    takeJustSignedIn()
+    if (!justIn) { setGo('stay'); return }
+    /* Only for somebody who belongs nowhere yet (U.4 review): an invited person already belongs to the
+       organisation that invited them, and goes where the invitation leads. */
+    if ((offers.data?.byDomain.length ?? 0) > 0 && offers.data?.nowhereYet === true) setGo('welcome')
+    else if (myOrgs.length >= 2) setGo('orgs')
+    else setGo('stay')
+  }, [go, loaded, justIn, offers.isFetched, offers.data, myOrgs.length])
+  if (go === 'welcome') return <Navigate to="/welcome" replace />
+  if (go === 'orgs') return <Navigate to="/orgs" replace />
+  if (!justIn) return home === 'today' ? <Navigate to={`/today${search}`} replace /> : <GroundsListPage />
+  /* Just signed in, and still finding out whether to offer an organisation first. Said, not blank. */
+  if (go === null) return <p className="gw-t-body" style={{ padding: 32, color: 'var(--gw-sub)' }}>Loading…</p>
+  return <Navigate to={`/today${search}`} replace />
 }
 
 function SessionGuard({ children }: { children: React.ReactNode }) {
@@ -329,10 +405,10 @@ export default function App() {
           <a href="#main" className="gw-skip">Skip to content</a>
           <Toaster position="top-right" richColors />
           <HelpModal />
-          <HelpButton />
-          <AppShell>
-          {/* A render error in one page used to blank the entire app. W8-63. */}
+          {/* A render error in one page used to blank the entire app. W8-63. Outside the shell, so
+              the crash card takes the whole window (crash.jpg) and a broken sidebar is caught too. */}
           <PageCrash>
+          <AppShell>
           <Routes>
             {/* Public */}
             <Route path="/" element={<RootRoute />} />
@@ -355,6 +431,8 @@ export default function App() {
                 GOOGLE_CLIENT_ID/SECRET are set - the button that starts the flow
                 only renders when /auth/methods says google is available. */}
             <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
+            {/* One page for every way a Google sign-in can fail. A2. */}
+            <Route path="/google-failed" element={<GoogleFailedPage />} />
             {/* One page, two links. Both URLs are sent in emails, so both keep resolving. W8-49. */}
             <Route path="/set-password" element={<ChoosePasswordPage />} />
             <Route path="/reset-password" element={<ChoosePasswordPage />} />
@@ -374,19 +452,61 @@ export default function App() {
               * whole point of this door. They become the admin of their own organisation.
               */}
             <Route path="/start" element={<MayOpenCheckIns><EntryChatPage /></MayOpenCheckIns>} />
+            {/*
+              The anchor scenario's own front door (plan pieces 1 and 2, docs/anchor-scenario-plan.md
+              section 5, address suggested in section 1). Open to a stranger, like /start: the page
+              itself redirects to /start unless the engine's public switch, `GET /entry/anchor-
+              available`, says the anchor scenario is on (request 144 (1)).
+            */}
+            <Route path="/start/team" element={<AnchorLandingPage />} />
             <Route path="/invite" element={<InvitePage />} />
             <Route path="/join" element={<JoinPage />} />
             {/* The QR code's own door: answer first, say who you are at the end. */}
             <Route path="/answer" element={<AnswerFirstPage />} />
             <Route path="/join/confirm" element={<JoinConfirmPage />} />
+            {/* "Almost in" (A3): somebody from outside, waiting for an admin to let them in. */}
+            <Route path="/join/waiting" element={<RequireAuth><WaitingForAnAdminPage /></RequireAuth>} />
 
-            {/* Post-auth setup: an org admin whose org is missing contact email / stage / plan is
-                sent here by RequireOrgSetup before reaching anything else below. Plain RequireAuth,
-                not RequireOrgSetup, so this route itself can never redirect-loop. */}
-            <Route path="/org/setup" element={<RequireAuth><OrgSetupPage /></RequireAuth>} />
+            {/* "Create an organisation" (A3). Plain RequireAuth: it is where somebody makes or names
+                one, so nothing about their organisation may be asked of them first. The old
+                /org/setup address goes to it, with its query, because links to it are out there. */}
+            <Route path="/org-new" element={<RequireAuth><OrgNewPage /></RequireAuth>} />
+            <Route path="/org/setup" element={<KeepTheQuery to="/org-new" />} />
+            {/* "Choose an organisation" (A3). */}
+            <Route path="/orgs" element={<RequireAuth><OrgsPage /></RequireAuth>} />
+            {/* "Where do you work?" (A3): join by email domain, as a guest, or create one. */}
+            <Route path="/welcome" element={<RequireAuth><WelcomePage /></RequireAuth>} />
+            {/* An organisation's own invite link (A3, #/j/baridi). Public: the person may not have an account yet. */}
+            <Route path="/j/:code" element={<JoinByLinkPage />} />
 
             {/* Main app - require auth, and (for an ADMIN) a completed org setup */}
-            <Route path="/grounds" element={<RequireOrgSetup><GroundsListPage /></RequireOrgSetup>} />
+            <Route path="/grounds" element={<RequireOrgSetup><HomeOrChooseAnOrganisation /></RequireOrgSetup>} />
+            {/* Today (C1, U.5): what needs you now. Home after signing in, as in the prototype. */}
+            <Route path="/today" element={<RequireOrgSetup><TodayPage /></RequireOrgSetup>} />
+            {/* The You board (C2, U.12): yours alone, and the server refuses anybody else. */}
+            <Route path="/you" element={<RequireOrgSetup><YouPage /></RequireOrgSetup>} />
+            {/* The Company page (D2, U.15) and its context: what each reader is given is the server's. */}
+            <Route path="/company" element={<RequireOrgSetup><CompanyPage /></RequireOrgSetup>} />
+            <Route path="/company/context" element={<RequireOrgSetup><CompanyContextPage /></RequireOrgSetup>} />
+            {/* THE SUITES PAGE (E, U.17). What each reader is given is the server's (GET /suites). */}
+            <Route path="/settings/suites" element={<RequireOrgSetup><SuitesPage /></RequireOrgSetup>} />
+            <Route path="/suite/onboard" element={<RequireOrgSetup><OnboardingBoardPage /></RequireOrgSetup>} />
+            <Route path="/suite/mine" element={<RequireOrgSetup><YourRequestsPage /></RequireOrgSetup>} />
+            <Route path="/suite/leave/new" element={<RequireOrgSetup><LeaveRequestNewPage /></RequireOrgSetup>} />
+            <Route path="/suite/spend/new" element={<RequireOrgSetup><SpendRequestNewPage /></RequireOrgSetup>} />
+            <Route path="/suite/leave" element={<RequireOrgSetup><LeaveBoardPage /></RequireOrgSetup>} />
+            <Route path="/suite/time" element={<RequireOrgSetup><TimeSheetsPage /></RequireOrgSetup>} />
+            <Route path="/suite/reviews" element={<RequireOrgSetup><ReviewsBoardPage /></RequireOrgSetup>} />
+            <Route path="/suite/reviews/:id" element={<RequireOrgSetup><ReviewPage /></RequireOrgSetup>} />
+            <Route path="/suite/leaving" element={<RequireOrgSetup><LeavingBoardPage /></RequireOrgSetup>} />
+            <Route path="/suite/roles" element={<RequireOrgSetup><RoleMapPage /></RequireOrgSetup>} />
+            <Route path="/suite/spend" element={<RequireOrgSetup><SpendingPage /></RequireOrgSetup>} />
+            <Route path="/suite/spend/finance" element={<RequireOrgSetup><FinancePage /></RequireOrgSetup>} />
+            <Route path="/suite/todos" element={<RequireOrgSetup><TodosPage /></RequireOrgSetup>} />
+            <Route path="/suite/customers" element={<RequireOrgSetup><CustomersPage /></RequireOrgSetup>} />
+            <Route path="/suite/equipment" element={<RequireOrgSetup><EquipmentPage /></RequireOrgSetup>} />
+            {/* Ask Groundwork as its own page (D1, #/chat), which is how a phone opens it. */}
+            <Route path="/chat" element={<RequireOrgSetup><AskPage /></RequireOrgSetup>} />
             {/*
               * REFUSED AT THE DOOR, NOT ON SUBMIT. Both of these were behind RequireOrgSetup alone,
               * so a member who typed the address got the whole flow and was turned away at the end.
@@ -420,8 +540,23 @@ export default function App() {
               tool, so it sits behind the same gate as the rest of the platform back office.
             */}
             <Route path="/preview/reports" element={<RequirePlatformAdmin><EveryReportSideBySide /></RequirePlatformAdmin>} />
+            {/*
+              THE SHARED PARTS' SAMPLE PAGE (design-audit.md section 4, step 1), development only.
+              `import.meta.env.DEV` is false in a built, production app, so this route does not
+              exist there at all - not hidden, absent. Nothing it shows needs a signed-in person.
+            */}
+            {import.meta.env.DEV && <Route path="/dev/parts" element={<PartsSamplePage />} />}
+            {/*
+              THE LIVE CONVERSATION, PICTURED WITHOUT A REAL SESSION, development only - same guard
+              as /dev/parts above. Every unfinished check-in on this machine has not started, and
+              opening ChatPage.tsx for real starts one, so this draws the same frame from the same
+              shared parts with fixed words instead. See ConversationPreviewPage.tsx.
+            */}
+            {import.meta.env.DEV && <Route path="/dev/conversation" element={<ConversationPreviewPage />} />}
             <Route path="/boards" element={<RequireOrgSetup><TeamBoardsPage /></RequireOrgSetup>} />
             <Route path="/grounds/:id/board" element={<RequireOrgSetup><BoardPage /></RequireOrgSetup>} />
+            {/* U.11: "How does this end?", where the lead decides, with a reason. */}
+            <Route path="/grounds/:id/end" element={<RequireOrgSetup><EndingPage /></RequireOrgSetup>} />
             {/*
               EVERY REPORT SURFACE ON ONE PAGE, while the rebuild runs.
               
@@ -452,6 +587,9 @@ export default function App() {
                 plan is optional, not part of org setup - the free tier is the default, not a
                 step anyone completes. */}
             <Route path="/billing" element={<RequireAuth><BillingPage /></RequireAuth>} />
+            {/* The prototype's address for this page (F2-billing/settings-billing.txt): the same
+                page as /billing, reached from Settings rather than the rail's "Plan and billing". */}
+            <Route path="/settings/billing" element={<RequireAuth><BillingPage /></RequireAuth>} />
             <Route path="/pricing" element={<PricingPage />} />
             {/* PUBLIC, because the person this is for has not signed up. The pricing page's three
                 paid services all ended at a mailto, which does nothing without a configured mail
@@ -530,7 +668,10 @@ export default function App() {
             <Route path="/prompts" element={<Navigate to="/admin/prompts" replace />} />
             <Route path="/prompts/test" element={<Navigate to="/admin/prompts/test" replace />} />
             <Route path="/settings" element={<RequireOrgSetup><SettingsPage /></RequireOrgSetup>} />
-            <Route path="/org/members" element={<RequireOrgSetup><AdminsOnly><OrgMembersPage /></AdminsOnly></RequireOrgSetup>} />
+            {/* "More", the phone's menu for everything the bottom bar has no room for (A1). */}
+            <Route path="/more" element={<RequireOrgSetup><MorePage /></RequireOrgSetup>} />
+            <Route path="/org/members" element={<RequireOrgSetup><AdminsOnly what="open People"><OrgMembersPage /></AdminsOnly></RequireOrgSetup>} />
+            <Route path="/org/members/:id" element={<RequireOrgSetup><AdminsOnly what="open People"><OnePersonPage /></AdminsOnly></RequireOrgSetup>} />
             {/*
               * THE PAGE AN ADMIN SENDS THEIR LEADS. Signed in, like the rest of /org, because
               * everybody being briefed was just invited and has an account. Not admin-only: it is
@@ -543,9 +684,15 @@ export default function App() {
                 server, and since A12 the door is at the route: AdminsOnly, the same gate /org/members
                 has, rather than the page mounting and refusing - the pattern RequirePlatformAdmin's
                 note above was written to remove. */}
-            <Route path="/org/integrations" element={<RequireOrgSetup><AdminsOnly what="connect your systems"><IntegrationsPage /></AdminsOnly></RequireOrgSetup>} />
+            {/* Connections (F1, U.18): the page, WhatsApp step by step, and your own tools. The old address, which emails still carry, opens your own tools, the page it always was. */}
+            <Route path="/settings/connections" element={<RequireOrgSetup><AdminsOnly what="connect your systems"><ConnectionsPage /></AdminsOnly></RequireOrgSetup>} />
+            <Route path="/settings/whatsapp" element={<RequireOrgSetup><AdminsOnly what="connect your systems"><WhatsAppSetupPage /></AdminsOnly></RequireOrgSetup>} />
+            <Route path="/settings/tools" element={<RequireOrgSetup><AdminsOnly what="connect your systems"><IntegrationsPage /></AdminsOnly></RequireOrgSetup>} />
+            <Route path="/org/integrations" element={<Navigate to="/settings/tools" replace />} />
             <Route path="/admin" element={<RequirePlatformAdmin><AdminPage /></RequirePlatformAdmin>} />
             <Route path="/admin/api-access" element={<RequirePlatformAdmin><ApiAccessPage /></RequirePlatformAdmin>} />
+            {/* Groundwork's own WhatsApp number and its keys, set by staff (5 Oct 2026). Staff only, on the API too. */}
+            <Route path="/admin/whatsapp" element={<RequirePlatformAdmin><WhatsAppSettingsPage /></RequirePlatformAdmin>} />
             <Route path="/admin/dashboard" element={<RequirePlatformAdmin><AdminDashboardPage /></RequirePlatformAdmin>} />
 
             {/* Any unmatched path renders a real not-found page rather than
@@ -557,11 +704,12 @@ export default function App() {
                 mail to stop must not need an account to say so, and the unsubscribe link had been
                 pointing at a route that did not exist, so it drew the not-found page below. */}
             <Route path="/unsubscribe/:token" element={<StopMailPage which="unsubscribe" />} />
-            <Route path="/stop-reminders/:token" element={<StopMailPage which="stop-reminders" />} />
+            {/* "Stop these reminders" (A3, #/stop), with the check-in's name and the prototype's two ways on. */}
+            <Route path="/stop-reminders/:token" element={<StopRemindersPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
-          </PageCrash>
           </AppShell>
+          </PageCrash>
         </SessionGuard>
       </BrowserRouter>
     </QueryClientProvider>

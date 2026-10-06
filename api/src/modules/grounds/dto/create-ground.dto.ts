@@ -32,6 +32,11 @@ export class CreateGroundDto {
   @Min(1)
   timelineDays?: number;
 
+  @ApiPropertyOptional({ description: 'True when the check-in runs until the lead ends it. There is then no length and no planned last session.' })
+  @IsOptional()
+  @IsBoolean()
+  runsUntilEnded?: boolean;
+
   @ApiPropertyOptional({ enum: Cadence })
   @IsOptional()
   @IsEnum(Cadence)

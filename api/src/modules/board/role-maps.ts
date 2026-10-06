@@ -121,7 +121,7 @@ export const ROLE_MAPS: Record<RoleFunction, RoleMap> = {
     label: 'Sales and expansion',
     rootFailure: 'Avoidance. Fear of exposure and rejection, dressed as productivity.',
     rootSuccess: 'Deliberate exposure. The scary right thing, in reps, on the right targets.',
-    onTrackMeans: 'Named buyers with budget and authority, real pipeline moving, dated next actions.',
+    onTrackMeans: 'Named buyers with budget and authority, real sales moving towards a close, dated next actions.',
     goingWrongLooksLike: 'Plenty of activity and warm conversations, no named buyer who can actually decide.',
     neutralProbes: [
       /* Read on a live board with a word missing: "someone who can actually buy, budget and authority". */
@@ -130,8 +130,10 @@ export const ROLE_MAPS: Record<RoleFunction, RoleMap> = {
       'It went quiet, then what did you try?',
       'What is the next action on that, and by when?',
     ],
+    /* Plain words, and what happens rather than how somebody feels (request 111 e): it reached a rep as "You are
+       made to feel like a failure by a broken internal clock", which is jargon and a read on her feelings. */
     protectAgainst:
-      'A rep is made to feel like a failure by a broken internal clock: the buyer-side process takes weeks and none of it is visible to them. Silence is usually a stage, not a rejection.',
+      'Buyers take weeks to decide, and the person selling cannot see most of that time. A week of silence usually means the buyer is still deciding, not that they said no.',
     commonModes: [UniversalMode.AVOIDANCE, UniversalMode.UNDER_PERSISTENCE, UniversalMode.VAGUENESS],
     // Paired by index, so the coach always knows what it is coaching TOWARD.
     // Sales is where the coaching is most valuable and most dangerous, because
@@ -337,7 +339,7 @@ export const ROLE_MAPS: Record<RoleFunction, RoleMap> = {
     neutralProbes: [
       'What did you do this period that only you could have done?',
       'Did they author that, or did you hand it to them?',
-      'That call has been open a while - what is the decision, and when?',
+      'What is the decision, and when will it be made?',
       'Whose was that miss?',
     ],
     protectAgainst:
@@ -376,7 +378,7 @@ export const ROLE_MAPS: Record<RoleFunction, RoleMap> = {
     onTrackMeans: 'Activity tied to a named outcome, channel bets made and learned from, dead channels killed.',
     goingWrongLooksLike: 'Reach and impressions reported with no revenue line; busy producing with no owned number.',
     neutralProbes: [
-      'What did that turn into - pipeline, conversion, sign-ups?',
+      'What did that turn into? Was it pipeline, conversion or sign-ups?',
       'Which number do you own here?',
       'Which channel is not working, and what happens to it?',
       'Who is the audience that actually buys, and are you reaching them?',
@@ -462,7 +464,7 @@ export const ROLE_MAPS: Record<RoleFunction, RoleMap> = {
     neutralProbes: [
       'Which of these should someone else own, and what would it take to hand it over?',
       'Did they author that, or did you hand it to them?',
-      'Last period they committed to something - did that happen?',
+      'Last period they committed to something. Did that happen?',
       'Which conversation have you been putting off?',
     ],
     protectAgainst:
@@ -533,7 +535,7 @@ export const ROLE_MAPS: Record<RoleFunction, RoleMap> = {
       'Which customer is still waiting, and on what?',
     ],
     protectAgainst:
-      'Support work is invisible when it goes well: the reward for solving something cleanly is that nobody hears about it. So this person is routinely read as low-value by people counting outputs, and their real contribution - the escalations that never happened - leaves no record unless somebody asks for it.',
+      'Support work goes unseen when it goes well. When a problem is solved cleanly, nobody hears about it. People who count outputs may read this person as low-value. The escalations that never happened leave no record unless somebody asks for them.',
     /**
      * INVISIBILITY, not a mode called absorption - there is no such mode, and
      * reaching for one I had imagined was worth catching: the seven universal modes

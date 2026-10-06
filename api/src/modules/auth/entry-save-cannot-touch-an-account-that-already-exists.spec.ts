@@ -42,11 +42,21 @@ describe('an address with an account', () => {
     expect(prisma.entryDraft.create).not.toHaveBeenCalled();
   });
 
-  it('gets no draftToken back, so there is nothing to keep editing with', async () => {
-    const { svc } = service(ada);
+  /*
+   * CHANGED IN THE U.2 REVIEW, and why. This used to require that an existing address got no
+   * draftToken. That made the reply itself say which addresses have accounts, against Hafsah's rule
+   * of 26 September. What this test protects is unchanged: nothing the caller is given can write to
+   * the account's draft. The token it gets now is stored nowhere, so it opens nothing.
+   */
+  it('gets a token that opens nothing, so there is still nothing to keep editing with', async () => {
+    const { svc, prisma } = service(ada);
     const res = await svc.entrySave('ada@acme.test', attackersDraft);
-    expect(res).toEqual({ message: 'Check your email for your sign-in link.', email: 'ada@acme.test' });
-    expect(res).not.toHaveProperty('draftToken');
+    expect(Object.keys(res).sort()).toEqual(['draftToken', 'email', 'message']);
+    expect(res.draftToken).toMatch(/^[0-9a-f]{64}$/);
+    /* Stored nowhere: no draft, no waiting sign-up, nothing a later edit could reach. */
+    expect(prisma.entryDraft.upsert).not.toHaveBeenCalled();
+    expect(prisma.entryDraft.create).not.toHaveBeenCalled();
+    expect(prisma.pendingSignup.upsert).not.toHaveBeenCalled();
   });
 
   it('is still sent the link - that is the one effect', async () => {
@@ -59,8 +69,10 @@ describe('an address with an account', () => {
     const { svc, prisma } = service(ada);
     prisma.emailVerificationToken.findFirst = jest.fn(async () => ({ token: 'fresh' }));
     const res = await svc.entrySave('ada@acme.test', attackersDraft);
-    expect(res).not.toHaveProperty('draftToken');
+    /* The same fields as any other reply (U.2 review), and still nothing written. */
+    expect(Object.keys(res).sort()).toEqual(['draftToken', 'email', 'message']);
     expect(prisma.entryDraft.upsert).not.toHaveBeenCalled();
+    expect(prisma.pendingSignup.upsert).not.toHaveBeenCalled();
   });
 });
 

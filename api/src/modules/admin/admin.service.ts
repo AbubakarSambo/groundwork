@@ -12,12 +12,16 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { SEAT_RELATION_COUNT } from '../../common/seats';
-import { isCovered } from '../../common/subscription';
+import { isCovered, ACTIVE } from '../../common/subscription';
 import { A_CUSTOMER, A_REAL_CHECK_IN } from '../prompts/what-the-platform-has-actually-done';
 import { COACHING_LIVE_KEY } from '../conversation/conversation.service';
 import {
   CORRECTION_WINDOW_KEY, DEFAULT_CORRECTION_WINDOW_DAYS, MAX_CORRECTION_WINDOW_DAYS, isAWindow,
 } from '../conversation/the-window-for-correcting-a-record';
+import {
+  SUGGESTION_THRESHOLDS_KEY, SUGGESTION_THRESHOLD_LABELS, isValidSuggestionThresholds,
+  thresholdsInForce, type SuggestionThresholds,
+} from '../suggestions/thresholds';
 
 @Injectable()
 export class AdminService implements OnApplicationBootstrap {
@@ -159,6 +163,44 @@ export class AdminService implements OnApplicationBootstrap {
   }
 
   /**
+   * THE THRESHOLDS FOR A SUGGESTION (week 10, decision 33; decision 61). Read the same defensive
+   * way suggestions itself reads them - a bad row means nothing set, never a guess.
+   *
+   * `readSuggestionThresholds` never returns anything but an object, so `?? DEFAULT_...` never
+   * fired: a database with no row at all read back as `{}`, not the support default decision 61
+   * sets from day one. The migration `20260930110000_the_first_threshold_for_extra_support` writes
+   * the row so this should not happen in practice, but the read falls back properly too, only when
+   * the row itself is missing - a row that exists, even empty, is something an admin set and is
+   * read exactly as stored, never overwritten by a default here. The rule is `thresholdsInForce`,
+   * the same one the engine reads with, so this page never shows a threshold the engine is not using.
+   */
+  async getSuggestionThresholds(): Promise<{ thresholds: SuggestionThresholds; labels: typeof SUGGESTION_THRESHOLD_LABELS }> {
+    const row = await this.prisma.platformSetting.findUnique({ where: { key: SUGGESTION_THRESHOLDS_KEY } }).catch(() => null);
+    const thresholds = thresholdsInForce(row);
+    return { thresholds, labels: SUGGESTION_THRESHOLD_LABELS };
+  }
+
+  /**
+   * Written the same way the WhatsApp switch, the correction window and the two free limits are
+   * written, from the same page. Anything that is not the documented shape is refused with a plain
+   * sentence rather than silently dropped or guessed at - see thresholds.ts for what is checked.
+   */
+  async setSuggestionThresholds(thresholds: unknown, adminUserId: string): Promise<{ thresholds: SuggestionThresholds }> {
+    if (!isValidSuggestionThresholds(thresholds)) {
+      throw new BadRequestException(
+        'Each verdict (keep, reward, support, plan, exit) needs a keptBelow fraction greater than 0 and no more than 1, ' +
+          'and a whole number of settled commitments (overPeriods) greater than 0. Send only those keys.',
+      );
+    }
+    await this.prisma.platformSetting.upsert({
+      where: { key: SUGGESTION_THRESHOLDS_KEY },
+      create: { key: SUGGESTION_THRESHOLDS_KEY, value: thresholds as any, updatedBy: adminUserId },
+      update: { value: thresholds as any, updatedBy: adminUserId },
+    });
+    return { thresholds };
+  }
+
+  /**
    * ZERO-ROW DETECTION.
    *
    * Three subsystems were wired and never fired for the life of the codebase, and all three were
@@ -261,7 +303,7 @@ export class AdminService implements OnApplicationBootstrap {
         this.prisma.contributorCode.count(),
         this.prisma.contributorCodeRedemption.count(),
         this.prisma.ground.groupBy({
-          by: ['freeReason'],
+          by: ['freeReason', 'isFreeGround'],
           where: A_REAL_CHECK_IN,
           _count: { id: true },
         }),
@@ -274,6 +316,7 @@ export class AdminService implements OnApplicationBootstrap {
       redemptionsCount,
       freeReasonBreakdown: freeReasonBreakdown.map((r) => ({
         freeReason: r.freeReason,
+        isFreeGround: r.isFreeGround,
         count: r._count.id,
       })),
     };
@@ -300,16 +343,22 @@ export class AdminService implements OnApplicationBootstrap {
       this.getAllCodes(),
       this.getFeedback(),
       this.getUsagePatterns(),
-      this.prisma.organization.count({ where: { ...A_CUSTOMER, subscriptionPlan: { not: null } } }),
+      /* PAYING NOW, as isSubscribed reads it (item 19). A paused or past-due subscription keeps its
+         plan, and was counted as subscribed. */
+      this.prisma.organization.count({ where: { ...A_CUSTOMER, subscriptionPlan: { not: null }, subscriptionStatus: ACTIVE } }),
       this.prisma.ground.aggregate({ where: A_REAL_CHECK_IN, _sum: { sessionsBalance: true } }),
     ]);
 
-    /* The four buckets the page draws as a bar. `freeReason` is null on a ground
-       somebody paid for, which is the "paid" column - a name rather than a gap. */
-    const breakdown = { FIRST_GROUND: 0, FREE_TIER: 0, ACCESS_CODE: 0, paid: 0 };
+    /* The four buckets the page draws as a bar, and a fifth it does not draw yet.
+       PAID IS A CHECK-IN THAT TOOK A PAID SLOT (item 19): `isFreeGround: false`, the billing record
+       stamped at creation. "Paid" was read as "no free reason", and a check-in made free by a path
+       that names no reason (the API, an enterprise organisation's own setup) has none, so on the
+       test database 27 free check-ins were counted as paid. They are `freeNoReasonGiven` now. */
+    const breakdown = { FIRST_GROUND: 0, FREE_TIER: 0, ACCESS_CODE: 0, paid: 0, freeNoReasonGiven: 0 };
     for (const row of stats.freeReasonBreakdown) {
-      if (row.freeReason === null) breakdown.paid += row.count;
-      else if (row.freeReason in breakdown) breakdown[row.freeReason as 'FIRST_GROUND'] += row.count;
+      if (!row.isFreeGround) breakdown.paid += row.count;
+      else if (row.freeReason === 'FIRST_GROUND' || row.freeReason === 'FREE_TIER' || row.freeReason === 'ACCESS_CODE') breakdown[row.freeReason] += row.count;
+      else breakdown.freeNoReasonGiven += row.count;
     }
 
     return {
@@ -485,6 +534,7 @@ export class AdminService implements OnApplicationBootstrap {
         status: true,
         cadence: true,
         timelineDays: true,
+        runsUntilEnded: true,
         startsAt: true,
         endsAt: true,
         createdAt: true,
@@ -543,7 +593,8 @@ export class AdminService implements OnApplicationBootstrap {
       moment: ground.moment,
       status: ground.status,
       cadence: ground.cadence,
-      timelineDays: ground.timelineDays,
+      timelineDays: ground.runsUntilEnded ? null : ground.timelineDays,
+      runsUntilEnded: ground.runsUntilEnded,
       startsAt: ground.startsAt,
       endsAt: ground.endsAt,
       createdAt: ground.createdAt,

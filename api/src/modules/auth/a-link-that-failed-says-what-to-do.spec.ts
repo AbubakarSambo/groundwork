@@ -57,8 +57,10 @@ describe('the messages a failed link produces', () => {
   });
 
   it('an unrecognised link says links expire, and where to get another', () => {
-    expect(CONSUME).toMatch(/single use and they expire/);
+    /* U.2 review: in full sentences now, with nothing joined by a dash. */
+    expect(CONSUME).toContain('Each link works only once, and only for a short while.');
     expect(CONSUME).toMatch(/sign-in page/);
+    expect(CONSUME).not.toMatch(/'This link did not work\.[^']* - /);
   });
 
   it('an already-used one gets the different instruction, because it is a different situation', () => {
@@ -71,7 +73,8 @@ describe('the messages a failed link produces', () => {
        it sends them looking for a password they never chose. */
     expect(DEAD_LINK).toMatch(/address is confirmed/);
     expect(CONSUME).toContain('whatToSayAboutADeadLink');
-    expect(DEAD_LINK).toMatch(/Forgot your password/);
+    /* U.2: the sign-in screen's link reads "Forgot password?", so the sentence names that. */
+    expect(DEAD_LINK).toMatch(/"Forgot password\?"/);
   });
 
   it('and the expired case still uses the caller\'s own wording', () => {

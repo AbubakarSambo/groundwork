@@ -33,8 +33,14 @@ describe('nothing here is not could not load', () => {
     expect(SRC).toContain('!isLoading && !isError && grounds.length === 0')
   })
 
-  it('and so is the onboarding block, which is also about an empty account', () => {
-    expect(SRC).toContain('!isLoading && !isError && <AdminFirstRun />')
+  it('and the onboarding block is not on the list at all any more, but on Today, reading its own facts', () => {
+    /* U.5: it moved to Today. It never read the list: its ticks come from GET /users/rollout, so a
+       list that failed to load cannot make it claim an empty account. */
+    expect(SRC).not.toContain('<AdminFirstRun />')
+    const today = readFileSync(join(__dirname, '..', 'today', 'TodayPage.tsx'), 'utf8')
+    expect(today).toContain('<AdminFirstRun />')
+    const card = readFileSync(join(__dirname, 'an-admin-lands-on-a-check-in-list.tsx'), 'utf8')
+    expect(card).toContain("apiClient.get('/users/rollout')")
   })
 
   it('a failure says so, and says the record is safe', () => {

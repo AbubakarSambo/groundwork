@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { HOW_A_SITUATION_IS_CHOSEN, OR_PICK_ONE_THAT_FITS, WHAT_THAT_SOUNDS_LIKE } from '@/lib/one-way-to-say-what-a-situation-does'
-import { SCENARIO_LABELS, SCENARIO_GROUPS } from '@/lib/scenario-catalog'
+import { HOW_A_SITUATION_IS_CHOSEN, WHAT_THAT_SOUNDS_LIKE } from '@/lib/one-way-to-say-what-a-situation-does'
+import { SCENARIO_LABELS, SCENARIO_GROUPS, scenarioLabel, SCENARIO_FACTS, CADENCE_VALUE, type ScenarioKey } from '@/lib/scenario-catalog'
 /*
  * THE CATALOGUE'S CARDS, IMPORTED FROM THE PAGE THAT OWNS THEM.
  *
@@ -9,13 +9,8 @@ import { SCENARIO_LABELS, SCENARIO_GROUPS } from '@/lib/scenario-catalog'
  * already exported and already the thing the signed-in picker reads. Moving it into lib/ is the
  * tidier home and is a separate change - doing it here would bury the fix in a file move.
  */
-import { SCENARIOS, groupOfCard } from '@/pages/grounds/CreateGroundPage'
-import { theWordsForPickingASituation } from '@/pages/grounds/whose-situation-is-it'
-
-/* One pair of sentences for the freeform card, shared with the setup step. */
-const THE_WORDS = theWordsForPickingASituation()
-import { SituationCard } from '@/components/gw/SituationCard'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { groupOfCard } from '@/pages/grounds/CreateGroundPage'
+import { useSearchParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { entryApi } from '@/api/entry'
 import { billingApi } from '@/api/billing'
@@ -28,18 +23,39 @@ import { plannedSessionsFor } from '@/lib/sessionCount'
 import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { toast } from 'sonner'
 import AskYourTeamOneThing from './AskYourTeamOneThing'
+import { TheDoor } from './TheDoor'
+import { TheSetup, theDay, ANCHOR_PEOPLE_STEP_RULES, takeTheServedPeopleStep, THE_ANCHOR_FIRST_QUESTION, takeTheServedFirstQuestion, theAnchorStartSucceededForThisTab } from './TheSetup'
+import type { ThePeopleStepRules } from '@/api/anchorShapes'
+import { TheLeadsReveal } from '@/components/gw/TheLeadsReveal'
+import { FillsInAsYouTalk } from './FillsInAsYouTalk'
+import { sentenceCase } from '@/pages/grounds/how-a-row-reads'
+import { EverySituation } from './EverySituation'
 import { scrollTo } from '@/lib/scroll-to'
 import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd'
-import { WhatThisCheckInStillNeeds } from '@/components/gw/WhatThisCheckInStillNeeds'
 import { nothingInternalReachesTheBubble } from '@/lib/nothing-internal-reaches-the-bubble'
-import { clearEntryHandover } from '@/pages/auth/entry-handover'
+import { clearEntryHandover, theSetupKey, SETUP_KEY } from '@/pages/auth/entry-handover'
 import { rememberWhoWasNotInvited } from '@/pages/grounds/who-was-not-invited'
 import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
 import { copy } from '@/components/gw/copying-can-fail'
-import { whenTheCheckInsLand, sayTheDate, whatIsSetAndWhatIsNot, type Cadence as CadenceName } from '@/components/gw/when-the-check-ins-land'
+import { whatIsSetAndWhatIsNot, whenTheCheckInsLand } from '@/components/gw/when-the-check-ins-land'
 import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
+import { Button, Callout, Note, TextField, TextArea, Bubble, Composer, PhaseSteps, Modal, Mark } from '@/components/gw/ui'
+
+/*
+ * A COLLEAGUE ON THE INVITE LIST, BY ID (U.4). The list of colleagues carries no addresses, so a
+ * colleague is queued as "colleague:<id>" and sent as `colleagueId`; the server finds the address.
+ * Everybody typed by hand is still their address.
+ */
+const A_COLLEAGUE = 'colleague:'
+function asSomeoneToInvite(entry: string): { email?: string; colleagueId?: string; context?: string } {
+  const dash = entry.indexOf(' - ')
+  const head = dash === -1 ? entry : entry.slice(0, dash)
+  const context = dash === -1 ? undefined : entry.slice(dash + 3)
+  const who = head.startsWith(A_COLLEAGUE) ? { colleagueId: head.slice(A_COLLEAGUE.length) } : { email: head }
+  return context === undefined ? who : { ...who, context }
+}
 
 /** What a person may say in one message. The API's cap on every door; the same number here so a turn is never refused. */
 const A_MESSAGE_MAX = 8000
@@ -63,6 +79,8 @@ interface EntrySession {
   cadenceChosen?: boolean
   groundName?: string
   plannedFrom?: { timelineDays: number; cadence: string } | null
+  /** The people step's own served rules (item 2), carried across a reload. */
+  thePeopleStep?: ThePeopleStepRules
 }
 
 interface OnboardingSelections {
@@ -92,16 +110,16 @@ interface OnboardingSelections {
  * settled is a design call, and silently picking one here would be making it by accident.
  */
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', marginBottom: 4 }}>{children}</div>
+  return <div className="gwui-ec-field-label">{children}</div>
 }
 
 function CardTitle({ children, weight = 600 }: { children: React.ReactNode; weight?: 600 | 700 }) {
-  return <div style={{ fontSize: 13, fontWeight: weight, color: 'var(--gw-text)', marginBottom: 2 }}>{children}</div>
+  return <div className={`gwui-ec-card-title${weight === 700 ? ' gwui-ec-card-title-700' : ''}`}>{children}</div>
 }
 
 /** The hairline either side of an "or" divider. */
 function Rule() {
-  return <div style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
+  return <div className="gwui-ec-rule" />
 }
 
 function saveSession(s: EntrySession) {
@@ -117,7 +135,7 @@ function loadSession(): EntrySession | null {
   return null
 }
 export function clearEntrySession() {
-  try { localStorage.removeItem(STORAGE_KEY) } catch { /* */ }
+  try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(SETUP_KEY) } catch { /* */ }
 }
 
 /** Which branch the load-or-start effect takes. Pure so it can be pinned by
@@ -311,20 +329,61 @@ export function isCorrectionTurn(t: { role: string; content: string }): boolean 
  * still travels - on the coordinator path this is the only context a lead inherits, and dropping it
  * would lose the handover - but as sentences rather than a form, and punctuated once.
  */
-export function composeLeadBrief(sels: { initial?: string; whoInvolved?: string; decision?: string; goals?: string[]; brief?: string }): string {
+/**
+ * WHAT THE PERSON TYPED IN SETUP, AND NOTHING ELSE (U.7 re-check). Their own turns, without the
+ * sentence a situation card posts for them, and without a document folded into the chat.
+ */
+export function theirOwnSetupWords(history: { role: string; content: string }[]): string[] {
+  const cards = new Set(SITUATION_CARDS.map((c) => c.message))
+  return history
+    .filter((t) => t.role === 'user')
+    .map((t) => (t.content ?? '').trim())
+    .filter((t) => t && !cards.has(t) && !t.startsWith('[Document:') && !t.startsWith('[Situation picked'))
+}
+
+export function composeLeadBrief(
+  sels: { initial?: string; whoInvolved?: string; decision?: string; goals?: string[]; brief?: string },
+): string {
   /* Ends every fragment exactly once, whatever the person typed. */
   const sentence = (t?: string) => {
     const trimmed = (t ?? '').trim()
     if (!trimmed) return ''
     return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`
   }
+  /*
+   * EACH ANSWER, AS GROUNDWORK UNDERSTOOD IT, AFTER THE QUESTION IT ANSWERED (U.7 third review).
+   *
+   * These answers are what setup drew out of the conversation, not anybody's exact words. So there
+   * are no quotation marks (the U.7 re-check quoted them as "Wanjiru said", which put words in her
+   * mouth), no name, and no fixed opening to glue them onto ("It matters now because whether to
+   * confirm him."). The question comes first, in a sentence that says what follows is a reading of
+   * the answer, and the answer stands as its own sentence: a clause, a noun, a single word or a
+   * question all read the same way. Nothing on the server reads these openings back out; the
+   * server cuts them off before anything is shown to the people in the check-in
+   * (what-someone-who-does-not-run-it-reads.ts).
+   */
+  const itsOwnSentence = (t?: string) => {
+    const b = (t ?? '').trim().replace(/^["“”']+|["“”']+$/g, '').trim()
+    if (!b) return ''
+    return sentence(b[0].toUpperCase() + b.slice(1))
+  }
+  const afterTheQuestion = (question: string, answer?: string) => {
+    const a = itsOwnSentence(answer)
+    return a ? `When asked ${question}, the answer was taken to mean this. ${a}` : ''
+  }
+  const goals = (sels.goals ?? []).map(itsOwnSentence).filter(Boolean)
+  const goalLine = goals.length === 0
+    ? ''
+    : goals.length === 1
+      ? `When asked what this is aiming at, the answer was taken to mean this. ${goals[0]}`
+      : `When asked what this is aiming at, the answer was taken to mean these ${goals.length} things. ${goals.join(' ')}`
   return [
     /* Unlabelled and first: the band above it already says what this is. */
     sentence(sels.initial),
-    sels.whoInvolved ? sentence(`Who is part of this: ${sels.whoInvolved}`) : '',
-    sels.decision ? sentence(`Why now: ${sels.decision}`) : '',
-    sels.goals?.length ? sentence(`What it is aiming at: ${sels.goals.join(', ')}`) : '',
-    sels.brief ? sentence(`Focus: ${sels.brief}`) : '',
+    afterTheQuestion('who is part of this', sels.whoInvolved),
+    afterTheQuestion('why this matters now', sels.decision),
+    goalLine,
+    afterTheQuestion('what the questions should focus on', sels.brief),
   ].filter(Boolean).join(' ')
 }
 
@@ -1041,20 +1100,60 @@ export function itIsStillAskingSomething(reply: string): boolean {
   return lastSentence.trim().endsWith('?')
 }
 
-export function fallbackGroundName(classifiedScenario?: string, firstDescription?: string): string {
-  const fromScenario = (classifiedScenario ?? '')
+/*
+ * THE NAME WHEN THE LEAD GAVE NONE: THE TOPIC, IN PLAIN WORDS, NEVER HER OWN WORDS (U.6 review).
+ *
+ * A check-in's label is the subject line of the invitation email ("{lead} would like your take on
+ * {label}"), so it names the topic and never the person: see a-label-is-a-subject-line.spec.ts. And an
+ * invitation never carries the lead's private words, not even reworded (Hafsah, 27 September): this
+ * used to fall back to the first thing she typed, so "Daniel isn't hitting his targets" would have gone
+ * to Daniel as the subject of his own invitation. Her words are never used now.
+ *
+ * In order: the situation she picked, or else the one the conversation settled on, said in its plain
+ * card words from the catalogue ("Get a project back on track", never "DRIFT"); an unknown key is
+ * turned into words rather than printed; else "A check-in", with the organisation when it is known.
+ */
+/**
+ * WHAT OPENING THE EMAILED LINK DOES, AS THE SAVE CARD SAYS IT (U.6 review), in full sentences. Only
+ * what it always does. An invitation can wait (the check-in starts later, there is no seat for the
+ * person, an admin has to accept the check-in first) or fail (an address that cannot be invited), so
+ * this never says the link sends them. The page that opens shows who was invited and who has to wait
+ * (MagicVerifyPage); when the start is later, the one thing that is certain is said as well.
+ */
+export function whatOpeningTheLinkDoes(people: number, startsOnLater: string | null): string {
+  if (people === 0) return 'Opening it saves your check-in.'
+  const later = startsOnLater ? ` Nobody is invited before ${theDay(new Date(`${startsOnLater}T00:00:00`))}.` : ''
+  return `Opening it saves your check-in. Then you see who was invited and who has to wait.${later}`
+}
+
+/* U.6 review: a sentence, not pieces joined with dashes: "daniel@x.test (Daniel). Your note: He is
+   the subject of this check-in." Shown on the lead's own page only; nothing of it reaches the person. */
+export function anEntryAsASentence(entry: string, shownAs: (head: string) => string = (h) => h): string {
+  const [who, ...rest] = entry.split(' - ')
+  const address = shownAs(who)
+  if (!rest.length) return `${address}.`
+  const [name, ...note] = rest.length > 1 ? rest : ['', ...rest]
+  const said = note.join(' - ').trim()
+  return `${address}${name ? ` (${name.trim()})` : ''}.${said ? ` Your note: ${said.replace(/([^.?!])$/, '$1.')}` : ''}`
+}
+
+/* "daniel@x.test is waiting to be invited." or "a@x.test and b@x.test are waiting to be invited." */
+export function whoIsWaitingSentence(who: string[]): string {
+  const list = who.length <= 1 ? who.join('') : `${who.slice(0, -1).join(', ')} and ${who[who.length - 1]}`
+  return `${list} ${who.length === 1 ? 'is' : 'are'} waiting to be invited.`
+}
+
+export function fallbackGroundName(situation?: string, where?: string): string {
+  const known = situation ? (SCENARIO_LABELS as Record<string, string>)[situation] : undefined
+  if (known) return sentenceCase(known)
+  const fromScenario = (situation ?? '')
     .trim()
     .replace(/_/g, ' ')
     .toLowerCase()
     .replace(/^\w/, (c) => c.toUpperCase())
   if (fromScenario) return fromScenario
-
-  const said = (firstDescription ?? '').trim().replace(/\s+/g, ' ')
-  if (said) {
-    const clipped = said.length > 60 ? said.slice(0, 57).trimEnd() + '...' : said
-    return clipped.replace(/^\w/, (c) => c.toUpperCase())
-  }
-  return 'Untitled'
+  const at = (where ?? '').trim()
+  return at ? `A check-in at ${at}` : 'A check-in'
 }
 
 /**
@@ -1065,12 +1164,37 @@ export function fallbackGroundName(classifiedScenario?: string, firstDescription
  * steps advance on a timer because they describe stages of one request, and the
  * last one stays until the report arrives however long that takes.
  */
+/*
+ * PRIMARY-BUTTONS-NEVER-TOGETHER: this page's own `kind="primary"` Buttons never render at once.
+ * - "Start my check-in" (showAdminBriefing) is an early `return` - it replaces this component's
+ *   whole output, so nothing else in this file renders alongside it.
+ * - "Save this" (signed in), "Save my check-in" (anonymous) and "Done" (once the email is sent)
+ *   come from one three-way ternary keyed on `user` and `emailSent` - exactly one branch mounts.
+ * - "Invite and finish" renders only from the closed-bar's own `closed && !showSave` branch, the
+ *   alternative of which is the check-in composer (never a primary button).
+ * - "Add to session" (the doc-context dialog) only mounts while `docContextMode && uploadedDoc`,
+ *   and is a full-screen Modal in front of anything else, so even granting it could in principle
+ *   coexist with the save card's own hidden primary (see the-entry-chats-own-test-helpers.ts for
+ *   why that one is hidden from a person regardless), nobody ever sees two navy buttons at once.
+ */
 export function EntryChatPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const scenario = params.get('scenario') ?? ''
   const urlMode = params.get('mode') ?? ''
-  const urlInitial = params.get('initial') ?? ''
+  /**
+   * PIECE 25, "YES, SET IT UP" OPENS HERE PREFILLED (plan piece 25, docs/anchor-scenario-plan.md
+   * section 5 row 9; docs/answers-from-engine.md, "Request 148 (1)"). BoardPage.tsx's "Groundwork
+   * recommends" calls `POST /entry/draft-from-set-up` and navigates here with the answer as router
+   * state - never a query param, since `people` carries real addresses (never put personal data in
+   * a URL). `anchorSetUp.initial` joins the ordinary `?initial=` below, so everything that already
+   * seeds the first message from a URL (the restore branch, the auto-send effect) works for this
+   * path too without being duplicated. `aim` and `people` are seeded separately, just below,
+   * because nothing else carries those today.
+   */
+  const anchorSetUp = (location.state as { anchorSetUp?: { initial?: string; aim?: string | null; people?: { email: string; displayName?: string }[] } } | null)?.anchorSetUp
+  const urlInitial = params.get('initial') ?? anchorSetUp?.initial ?? ''
   /* The rail's Start a check-in. A saved setup used to swallow it: the page restored the old one and
      the picker never showed, "unless I click go backwards". Now it asks. */
   const wantsANewOne = params.get('new') === '1'
@@ -1087,6 +1211,8 @@ export function EntryChatPage() {
 
   // Situation cards shown before user types first message
   const [pickedSituation, setPickedSituation] = useState<string | null>(null)
+  /* U.6: the first screen shows one box; "See every situation" swaps it for the whole list. */
+  const [seeingEverySituation, setSeeingEverySituation] = useState(false)
   /**
    * THE CARD'S SCENARIO KEY, WHICH IS NOT THE SAME THING AS ITS LABEL.
    *
@@ -1131,9 +1257,6 @@ export function EntryChatPage() {
    * the same twenty-two situations, behaving differently. Reported as a regression, and it is one
    * in the sense that matters: the two screens agreed yesterday and do not today.
    */
-  const [situationGroup, setSituationGroup] = useState<string>(SITUATION_GROUPS[0]?.key ?? '')
-  /** Which card has its examples open. One at a time, so the grid never doubles in height. */
-  const [openCardInfo, setOpenCardInfo] = useState<string | null>(null)
   // Once the user dismisses the natural-close banner, never re-show it
   const [endPromptDismissed, setEndPromptDismissed] = useState(false)
 
@@ -1141,6 +1264,13 @@ export function EntryChatPage() {
   const defaultSels: OnboardingSelections = { mode: urlMode || 'new', initial: urlInitial || '' }
   const [onboardingStep, setOnboardingStep] = useState(1)
   const [onboardingSelections, setOnboardingSelections] = useState<OnboardingSelections>(defaultSels)
+  /**
+   * THE PEOPLE STEP'S OWN RULES, DRAWN FROM WHAT THE LANDING PAGE WAS SERVED (item 2;
+   * docs/answers-from-engine.md, "Request 149 (2 of 6)"). `ANCHOR_PEOPLE_STEP_RULES` is the fallback
+   * only, used until a served `ThePeopleStepRules` is picked up below - from `sessionStorage` on a
+   * fresh arrival from the anchor landing page, or from the saved draft on a reload.
+   */
+  const [thePeopleStepRules, setThePeopleStepRules] = useState<ThePeopleStepRules>(ANCHOR_PEOPLE_STEP_RULES)
   const [onboardingHistory, setOnboardingHistory] = useState<Turn[]>([])
   const [onboardingReady, setOnboardingReady] = useState(false)
   const [onboardingLoading, setOnboardingLoading] = useState(false)
@@ -1181,6 +1311,7 @@ export function EntryChatPage() {
    */
   function pickADifferentSituation() {
     setPickedSituation(null)
+    setSeeingEverySituation(false)
     /* Or the next situation is set up with the last one's first question. */
     setPickedScenario(null)
     setOnboardingHistory([{ role: 'assistant', content: THE_OPENING_QUESTION }])
@@ -1214,13 +1345,22 @@ export function EntryChatPage() {
    * THE PEOPLE ALREADY HERE. A lead had to type every colleague's address in full, for people the
    * organisation already knows. Read once when signed in; empty for a stranger, who has nobody yet.
    */
-  const [colleagues, setColleagues] = useState<{ email: string; name: string | null }[]>([])
+  /* Id, name, role and team, never an address (U.4). A colleague is queued as "colleague:<id>" and
+     the server looks the address up when the check-in is made. */
+  const [colleagues, setColleagues] = useState<{ id: string; name: string; role: string; team: string | null }[]>([])
   useEffect(() => {
     if (!user) return
     authApi.colleagues().then(setColleagues).catch(() => setColleagues([]))
   }, [user])
   /** A colleague whose name is the one mentioned, when exactly one matches. Never a guess between two. */
-  function colleagueNamed(label: string): { email: string; name: string | null } | null {
+  /** A queued entry as a person reads it: a colleague by name, anybody else by the address typed. */
+  function shownAs(head: string): string {
+    if (!head.startsWith(A_COLLEAGUE)) return head
+    return colleagues.find((c) => c.id === head.slice(A_COLLEAGUE.length))?.name ?? 'A colleague'
+  }
+  function shownEntry(entry: string): string { return anEntryAsASentence(entry, shownAs) }
+  function whoIsWaiting(): string { return whoIsWaitingSentence(inviteAdded.map((e) => shownAs(e.split(' - ')[0]))) }
+  function colleagueNamed(label: string): { id: string; name: string; team: string | null } | null {
     const name = label.split(' - ')[0].trim().toLowerCase()
     if (name.length < 2) return null
     const hits = colleagues.filter(c => {
@@ -1230,9 +1370,65 @@ export function EntryChatPage() {
     })
     return hits.length === 1 ? hits[0] : null
   }
-  function queueColleague(c: { email: string; name: string | null }, note?: string, key?: string) {
-    const entry = note ? `${c.email} - ${note}` : c.email
-    setInviteAdded(prev => (prev.some(e => e === c.email || e.startsWith(`${c.email} - `)) ? prev : [...prev, entry]))
+  /**
+   * WHETHER THIS DRAFT IS AN ANCHOR ONE (plan piece 11, the people step; docs/anchor-scenario-plan
+   * .md section 5 row 4). `HELP_TEAM_UNDERSTAND` (the anchor scenario's own situation key, request
+   * 144 (2) and (3)) can only ever arrive as `onboardingSelections.classifiedScenario`, the URL's
+   * own `?scenario=` (the anchor landing page's button, item 2), or `pickedSituation` - never as
+   * `onboardingSelections.mode`, which is always a mode key ('new', 'look_back', ...) and never a
+   * situation. So, unlike the invite block's own `s` just below (which falls back through mode
+   * first, for its existing sensitive-situation check), this checks each place on its own rather
+   * than taking the first truthy one in a chain - `mode` is always set to something once onboarding
+   * starts, and would otherwise mask a real `?scenario=HELP_TEAM_UNDERSTAND` before it was ever
+   * classified. Every other situation's people step keeps its ordinary wording and has no limit of
+   * its own.
+   */
+  function isAnchorDraft(): boolean {
+    return onboardingSelections.classifiedScenario === 'HELP_TEAM_UNDERSTAND'
+      || scenario === 'HELP_TEAM_UNDERSTAND'
+      || pickedSituation === 'HELP_TEAM_UNDERSTAND'
+  }
+
+  /**
+   * FAULT 1: OPEN THE ANCHOR'S CONVERSATION DIRECTLY ONLY WHILE THE SWITCH IS REALLY ON.
+   *
+   * `isAnchorDraft()` alone is just the URL's `?scenario=HELP_TEAM_UNDERSTAND` (or its classified
+   * equivalent), which survives in a bookmark or a forwarded link long after Hafsah might switch
+   * `release.anchorScenario` back off - and the engine then no longer runs the anchor conversation
+   * for that key. Skipping the door and the situation picker is only right while the switch is
+   * genuinely on, so this also checks `theAnchorStartSucceededForThisTab()` (TheSetup.tsx): whether
+   * `GET /entry/anchor-start` actually answered, for this browser tab, which `AnchorLandingPage.tsx`
+   * only ever reaches once the switch has said yes. A stale link with the switch off never gets that
+   * confirmation, so this reads false and the page falls back to today's ordinary door - exactly the
+   * plan's own rule ("Do it only when the anchor switch is on... a stale link... keeps today's
+   * behaviour"). Every OTHER anchor-only behaviour on this page (the people step, the reveal, the
+   * invite wording) still reads the plain `isAnchorDraft()` above, unchanged - it is only the door
+   * itself, and the question that replaces it, this one extra check guards.
+   */
+  function anchorConversationOpensDirectly(): boolean {
+    return isAnchorDraft() && theAnchorStartSucceededForThisTab()
+  }
+
+  /**
+   * THE 19-PERSON LIMIT (the lead plus 19 is 20, decision 96 item 3; `thePeopleStepRules.mayAdd`,
+   * served or else `ANCHOR_PEOPLE_STEP_RULES`), for an anchor draft only. `true` means the add
+   * actually happened; every place that adds a contributor checks this first and shows the engine's
+   * own limit sentence instead when it does not.
+   */
+  function mayAddOneMorePerson(): boolean {
+    if (!isAnchorDraft()) return true
+    if (inviteAdded.length >= thePeopleStepRules.mayAdd) {
+      toast.error(thePeopleStepRules.limitSentence)
+      return false
+    }
+    return true
+  }
+
+  function queueColleague(c: { id: string; name: string }, note?: string, key?: string) {
+    if (!mayAddOneMorePerson()) return
+    const head = `${A_COLLEAGUE}${c.id}`
+    const entry = note ? `${head} - ${note}` : head
+    setInviteAdded(prev => (prev.some(e => e === head || e.startsWith(`${head} - `)) ? prev : [...prev, entry]))
     if (key) setQueuedFromSuggestion(prev => new Set(prev).add(key))
   }
   /* The note that travels with a queued address, remembered when the field opens so Save can
@@ -1327,7 +1523,7 @@ export function EntryChatPage() {
     queryFn: () => authApi.methods(),
     staleTime: 5 * 60 * 1000,
   })
-  const [cadenceAnchorDay, setCadenceAnchorDay] = useState<number | null>(null) // 0=Sun..6=Sat for "every Monday"
+  const [cadenceAnchorDay] = useState<number | null>(null) // 0=Sun..6=Sat for "every Monday"
   /* Which days this team works. Empty means nobody said, which is not the same as every day - and
      it is never pre-set to Monday-Friday, because that is one region's office week rather than a
      fact about anybody's. */
@@ -1367,20 +1563,49 @@ export function EntryChatPage() {
    * behaviour, which is right for a link we did not write.
    */
   useEffect(() => {
-    const known = SITUATION_CARDS.find((c) => c.scenario === scenario)
-    setGroundName(known ? known.label : scenario ? scenario.replace(/\+/g, ' ') : '')
+    /* U.6 review: a situation is not a name, so arriving with ?scenario= no longer names the check-in
+       after its type. It stays unnamed until the lead names it, or aNameForIt does at the save. */
+    setGroundName('')
     setSessions(1)
   }, [])
 
-  // Load or start session
+  /*
+   * WHAT THE SETUP SHOWS IS WHAT IS SAVED (U.6 review). Read live: the setup said "Not set yet. This
+   * will run every 2 weeks unless you pick one." and listed fortnightly dates, and the check-in was
+   * saved weekly for 90 days ("Session 1 of 12", "Ends 3 Jan 2027"). An unpicked rhythm is not sent as
+   * a choice, so the server takes the situation's own rhythm and length; the page showed its own
+   * default instead. It shows the server's now: the situation the save will carry (the same expression
+   * as the payload), its recommended rhythm while none is picked, and its usual end while none is set,
+   * which then goes with the save as the end, so the dates listed are the dates used.
+   */
+  const theSituationSaved = (onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario || '') as ScenarioKey
+  const [endChosen, setEndChosen] = useState(false)
   useEffect(() => {
-    const saved = loadSession()
-    const branch = saved ? (wantsANewOne ? 'conflict' : entryRestoreBranch(saved, scenario)) : 'fresh'
-    // Closed-but-unsaved sessions MUST restore too: they hold the report and
-    // the locked transcript. Excluding them made the fallback below DELETE an
-    // ended session on reload, right when it is most valuable.
-    if (saved && branch === 'restore') {
-      // Restore existing session
+    const facts = SCENARIO_FACTS[theSituationSaved]
+    if (!facts) return
+    if (!cadenceChosen) setCadence(CADENCE_VALUE[facts.cadence] as typeof cadence)
+    if (!endChosen && facts.cadence !== 'One time') {
+      const from = checkInBy ? new Date(`${checkInBy}T00:00:00`) : new Date()
+      /* The length said in the conversation first ("six weeks"), else the situation's usual one. */
+      const days = plannedFrom?.timelineDays ?? facts.timelineDays
+      /* The end is the day of the last check-in, as many as that length holds at this rhythm. */
+      const gap = ({ DAILY: 1, WEEKLY: 7, FORTNIGHTLY: 14, MONTHLY: 30 } as Record<string, number>)[cadenceChosen ? cadence : CADENCE_VALUE[facts.cadence]] ?? 1
+      const n = Math.max(1, Math.floor(days / gap))
+      const end = gap === 30
+        ? new Date(from.getFullYear(), from.getMonth() + (n - 1), from.getDate())
+        : new Date(from.getFullYear(), from.getMonth(), from.getDate() + gap * (n - 1))
+      setLastCheckInBy(`${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`)
+    }
+  }, [theSituationSaved, cadenceChosen, cadence, endChosen, checkInBy, plannedFrom?.timelineDays])
+
+  /*
+   * PUTS BACK THE SETUP THIS DEVICE KEPT.
+   *
+   * It used to live only inside the mount effect below, so the one other way in - "Carry on with
+   * this one" on the in-progress card - closed the card and left the empty first screen behind it.
+   * The setup only came back after reloading /start. Both ways in now use this.
+   */
+  function restoreTheSavedSetup(saved: EntrySession) {
       setHistory(saved.history)
       if (saved.report) { try { setSessionReport(JSON.parse(saved.report)) } catch { /* legacy plain text - discard */ } }
       /* "Others check in, I read what comes back" survives a reload. There are no lead details to
@@ -1395,6 +1620,9 @@ export function EntryChatPage() {
       if (saved.plannedFrom) setPlannedFrom(saved.plannedFrom)
       if (saved.onboardingSelections) {
         setOnboardingSelections(saved.onboardingSelections)
+      }
+      if (saved.thePeopleStep) {
+        setThePeopleStepRules(saved.thePeopleStep)
       }
       // A closed session stays closed across reloads - "this session's answers
       // then lock" must survive a refresh. (closed was saved but never restored,
@@ -1424,6 +1652,17 @@ export function EntryChatPage() {
           setOnboardingReady((saved as any).onboardingReady ?? false)
         }
       }
+  }
+
+  // Load or start session
+  useEffect(() => {
+    const saved = loadSession()
+    const branch = saved ? (wantsANewOne ? 'conflict' : entryRestoreBranch(saved, scenario)) : 'fresh'
+    // Closed-but-unsaved sessions MUST restore too: they hold the report and
+    // the locked transcript. Excluding them made the fallback below DELETE an
+    // ended session on reload, right when it is most valuable.
+    if (saved && branch === 'restore') {
+      restoreTheSavedSetup(saved)
     } else if (saved && branch === 'conflict') {
       // Arriving with a new scenario while ANY session exists (open or closed):
       // ask, never silently discard. Show inline conflict modal instead of
@@ -1433,6 +1672,12 @@ export function EntryChatPage() {
       setShowNewScenarioConflict(true)
     } else {
       clearEntrySession()
+      /*
+       * THE SERVED PEOPLE STEP, PICKED UP ONCE (item 2). Only the anchor landing page's button
+       * leaves anything here, so this is a no-op for every other way of arriving at this page.
+       */
+      const servedPeopleStep = takeTheServedPeopleStep()
+      if (servedPeopleStep) setThePeopleStepRules(servedPeopleStep)
       /*
        * THE SCENARIO KEY IS NOT A DESCRIPTION OF ANYTHING.
        *
@@ -1489,7 +1734,7 @@ export function EntryChatPage() {
      the cadence and the name lived in a plain zustand store and did not, so "12 sessions planned" came back
      as "1 session planned" - the number the person agreed to, replaced. */
   function persistOnboarding(h: Turn[], sels: OnboardingSelections, step: number, obHistory?: Turn[], obReady?: boolean) {
-    saveSession({ scenario, history: h, closed: false, onboardingStep: step, onboardingSelections: sels, sessions, cadence, cadenceChosen, groundName, plannedFrom, ...(obHistory !== undefined ? { onboardingHistory: obHistory, onboardingReady: obReady ?? false } : {}) } as any)
+    saveSession({ scenario, history: h, closed: false, onboardingStep: step, onboardingSelections: sels, sessions, cadence, cadenceChosen, groundName, plannedFrom, thePeopleStep: thePeopleStepRules, ...(obHistory !== undefined ? { onboardingHistory: obHistory, onboardingReady: obReady ?? false } : {}) } as any)
   }
 
   /*
@@ -1501,7 +1746,7 @@ export function EntryChatPage() {
    * came back as "1 session planned" after a reload, with the conversation intact above it.
    */
   function persistCheckin(h: Turn[], cl = false, rep = '') {
-    saveSession({ scenario, history: h, closed: cl, report: rep, onboardingStep: ONBOARDING_STEPS, onboardingSelections, sessions, cadence, cadenceChosen, groundName, plannedFrom } as any)
+    saveSession({ scenario, history: h, closed: cl, report: rep, onboardingStep: ONBOARDING_STEPS, onboardingSelections, sessions, cadence, cadenceChosen, groundName, plannedFrom, thePeopleStep: thePeopleStepRules } as any)
   }
 
   /*
@@ -1745,7 +1990,12 @@ export function EntryChatPage() {
   }
 
   // AI-driven onboarding send
-  async function sendOnboarding(text: string) {
+  /*
+   * `scenarioNow` is the situation this very turn starts from. Setting state and sending in the same
+   * click left the send reading the old state, so a card's first turn went out with no situation
+   * and its own first question was never asked. Passed straight through, it cannot be stale.
+   */
+  async function sendOnboarding(text: string, scenarioNow?: string | null) {
     if (!text.trim() || onboardingLoading) return
     const userTurn: Turn = { role: 'user', content: text.trim() }
     const newHistory = [...onboardingHistory, userTurn]
@@ -1770,7 +2020,7 @@ export function EntryChatPage() {
       let draft = ''
       const res = await entryApi.onboardStream(
         withoutPickedOpener(newHistory) as Turn[],
-        onboardingSelections.classifiedScenario || pickedScenario || scenario || undefined,
+        onboardingSelections.classifiedScenario || (scenarioNow === undefined ? pickedScenario : scenarioNow) || scenario || undefined,
         onboardingSelections.mode === 'something_new' ? 'STARTING' : undefined,
         (text) => { draft += text; setOnboardingDraft(draft) },
         /*
@@ -1948,9 +2198,41 @@ export function EntryChatPage() {
    * is already there. The early return above is kept as a cheap first check, but it
    * is no longer what makes this safe.
    */
+  /**
+   * THE REST OF "YES, SET IT UP": `aim` AND `people`. `aim` is the engine's own sentence for what
+   * the new check-in is working towards, kept as this draft's name - the same field the admin
+   * section lets the lead rename. `people` are taken in exactly as commit takes them elsewhere on
+   * this page (a plain email, the same shape typing one by hand produces), each shown as
+   * `leftOut[].why` already told the lead on the board, not repeated here. Seeded once, the same
+   * guard as the initial message just below, so a restored session is never overwritten.
+   */
+  useEffect(() => {
+    if (phase !== 'onboarding' || !anchorSetUp) return
+    /* `groundName` defaults to 'Entry session' (the store's own default, never a name anybody
+       chose), so the check is against that default rather than emptiness. */
+    if (anchorSetUp.aim && (!groundName || groundName === 'Entry session')) setGroundName(anchorSetUp.aim)
+    if (anchorSetUp.people?.length) {
+      setInviteAdded(prev => (prev.length ? prev : anchorSetUp.people!.map(c => c.email)))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase])
+
   useEffect(() => {
     if (phase !== 'onboarding') return
-    const INTRO = THE_OPENING_QUESTION
+    /*
+     * FAULT 1 (the anchor's own first question, no door). An anchor arrival (`?scenario=
+     * HELP_TEAM_UNDERSTAND`, with the switch confirmed on - `anchorConversationOpensDirectly()`,
+     * above) opens on the engine's own opening line, never the ordinary picker's
+     * `THE_OPENING_QUESTION`. `takeTheServedFirstQuestion()` reads what `AnchorLandingPage.tsx`
+     * carried across from `GET /entry/anchor-start` (request 163 item 9); until the engine serves
+     * it, `THE_ANCHOR_FIRST_QUESTION` is the plan's own wording (docs/anchor-scenario-plan.md
+     * section 6). This is the ONLY assistant turn ever placed in this draft's history for an anchor
+     * arrival - nothing below sends a word on the lead's behalf; she types the first answer herself,
+     * into the ordinary composer, which carries `scenario` (this page's own URL-derived constant)
+     * straight through `sendOnboarding` to `entryApi.onboardStream`'s `scenario` field (see
+     * `atTheDoor`, below, for where the door itself is skipped).
+     */
+    const INTRO = anchorConversationOpensDirectly() ? (takeTheServedFirstQuestion() ?? THE_ANCHOR_FIRST_QUESTION) : THE_OPENING_QUESTION
     // If URL params pre-populate, inject as first user message
     if (urlInitial) {
       setOnboardingHistory(prev => {
@@ -1995,12 +2277,6 @@ export function EntryChatPage() {
 
   function handleCheckinKey(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
-  }
-
-  function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    setInput(e.target.value)
-    e.target.style.height = '38px'
-    e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -2052,7 +2328,9 @@ export function EntryChatPage() {
    */
   function buildCommitPayload() {
     return {
-        groundLabel: groundName || scenario || fallbackGroundName(onboardingSelections.classifiedScenario, onboardingSelections.initial),
+        /* Which setup this is, so a retried save is the same check-in and a new setup is a new one (U.6 review). */
+        setupKey: theSetupKey(),
+        groundLabel: groundName.trim() || fallbackGroundName(theSituationTheLeadPicked() ?? onboardingSelections.classifiedScenario, orgName.trim() || user?.organization?.name || undefined),
         orgName: orgName.trim() || undefined,
         // Prefer the AI-classified scenario; fall back to mode key, then URL param.
         scenario: onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario || undefined,
@@ -2071,11 +2349,7 @@ export function EntryChatPage() {
         // Each contributor gets its own token - the server generates one per participant.
         // Do NOT pass a shared inviteToken here; it would cause unique constraint failures
         // on the second contributor and silently drop them.
-        contributors: inviteAdded.map(entry => {
-          const dashIdx = entry.indexOf(' - ')
-          if (dashIdx === -1) return { email: entry }
-          return { email: entry.slice(0, dashIdx), context: entry.slice(dashIdx + 3) }
-        }),
+        contributors: inviteAdded.map(asSomeoneToInvite),
         /**
          * THE DOCUMENT SURVIVES AS A DOCUMENT, not just as words in the chat.
          *
@@ -2126,6 +2400,13 @@ export function EntryChatPage() {
         ...(composeLeadBrief(onboardingSelections)
           ? { brief: composeLeadBrief(onboardingSelections) }
           : {}),
+        /*
+         * WHAT THEY TYPED IN SETUP, THEIR OWN MESSAGES (U.7 re-check). The brief above is put together
+         * from their answers; these are the words themselves, kept for the Context page's "What you
+         * wrote" and shown to nobody else. A picked situation card and a folded-in document are not
+         * things they typed.
+         */
+        leadsOwnWords: theirOwnSetupWords(onboardingHistory),
         ...(flowPath === 'lead' ? { managingOnly: true } : {}),
       }
   }
@@ -2316,10 +2597,11 @@ export function EntryChatPage() {
         setDraftToken(res.draftToken)
         try { localStorage.setItem('gw_draft_token', res.draftToken) } catch { /* */ }
       } else {
-        /* No token means the address already has an account and the server wrote nothing for it - by
-           design, since this request is unauthenticated. Post-email edits stay in localStorage and
-           travel with the same-browser commit; a token left over from an earlier session must not be
-           used to patch a draft this address no longer has. */
+        /* No token: nothing was stored for this request. (Since the U.2 review an address that already
+           has an account gets a token too, of the same shape and stored nowhere, so the reply does not
+           say which addresses have accounts; patching with it changes nothing, and the edits travel in
+           localStorage with the same-browser commit, as before.) A token left over from an earlier
+           session must not be used to patch a draft this address no longer has. */
         setDraftToken(null)
         try { localStorage.removeItem('gw_draft_token') } catch { /* */ }
       }
@@ -2337,7 +2619,7 @@ export function EntryChatPage() {
     if (!emailSent || !draftToken) return
     const t = setTimeout(() => {
       const patch = {
-        groundLabel: groundName || scenario || fallbackGroundName(onboardingSelections.classifiedScenario, onboardingSelections.initial),
+        groundLabel: groundName.trim() || fallbackGroundName(theSituationTheLeadPicked() ?? onboardingSelections.classifiedScenario, orgName.trim() || user?.organization?.name || undefined),
         orgName: orgName.trim() || undefined,
         cadence,
         /* The page's default is not a choice; the server records only a confirmed pick as one. */
@@ -2347,11 +2629,7 @@ export function EntryChatPage() {
         checkInBy: checkInBy.trim() || undefined,
         lastCheckInBy: lastCheckInBy.trim() || undefined,
         inviteNote: inviteNote.trim() || undefined,
-        contributors: inviteAdded.map(entry => {
-          const dashIdx = entry.indexOf(' - ')
-          if (dashIdx === -1) return { email: entry }
-          return { email: entry.slice(0, dashIdx), context: entry.slice(dashIdx + 3) }
-        }),
+        contributors: inviteAdded.map(asSomeoneToInvite),
       }
       entryApi.patchDraft(draftToken, patch).catch(() => { /* best-effort: localStorage still mirrors this */ })
       // Keep the local commit body (gw_commit_payload) in sync with these
@@ -2425,6 +2703,7 @@ export function EntryChatPage() {
 
   function submitInviteContext() {
     if (!inviteContextFor) return
+    if (!inviteAdded.includes(inviteContextFor) && !mayAddOneMorePerson()) return
     const entry = inviteContextFor + (inviteContext.trim() ? ` - ${inviteContext.trim()}` : '')
     const newAdded = inviteAdded.includes(inviteContextFor) ? inviteAdded : [...inviteAdded, entry]
     setInviteAdded(newAdded)
@@ -2452,46 +2731,105 @@ export function EntryChatPage() {
     } catch { /* */ }
   }
 
+  /*
+   * AT THE DOOR: nothing has been said and nothing picked. The prototype's first screen has no name,
+   * no plan and no steps on it, because there is nothing yet to name, plan or step through.
+   */
+  /*
+   * HOW MANY ARE PLANNED, FROM WHAT IS SET NOW (U.6 review). The header said "1 session planned" while
+   * "How often" said every week: the number was the conversation's first guess and never followed a
+   * later choice. It follows the rhythm and the chosen end now, the way the server will count them.
+   */
+  const plannedNow = (() => {
+    if (cadence === 'ONE_TIME') return 1
+    if (cadence === 'SEQUENTIAL') return sessions
+    if (lastCheckInBy) {
+      const all = whenTheCheckInsLand({ cadence, anchorDay: null, startsAt: checkInBy ? new Date(`${checkInBy}T00:00:00`) : null, workingDays, howMany: 400 })
+      const n = all.filter((d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` <= lastCheckInBy).length
+      return Math.max(1, n)
+    }
+    const days = plannedFrom?.timelineDays
+    const gap = ({ DAILY: 1, WEEKLY: 7, FORTNIGHTLY: 14, MONTHLY: 30 } as Record<string, number>)[cadence]
+    return days && gap ? Math.max(1, Math.floor(days / gap)) : sessions
+  })()
+  /*
+   * THE SITUATION THE LEAD PICKED, not the one the classifier moved it to (U.6 review): the card she
+   * pressed, found again from its sentence after a reload, or a known ?scenario= she arrived with.
+   * Nothing when she described it herself; then the situation the conversation settled on is used.
+   */
+  function theSituationTheLeadPicked(): string | undefined {
+    /* The card's own name where there is one, so "Connect goals across the team" is not named after
+       the situation it shares. fallbackGroundName says it in sentence case. */
+    if (pickedSituation && pickedSituation !== 'other') return pickedSituation
+    const card = SITUATION_CARDS.find((c) => onboardingHistory.some((m) => m.role === 'user' && m.content === c.message))
+    if (card) return card.label
+    return scenario && (SCENARIO_LABELS as Record<string, string>)[scenario] ? scenario : undefined
+  }
+  /* Whether the start is after today, which is the one case where nobody is invited on saving, for certain. */
+  const startsLater = (() => {
+    if (!checkInBy) return false
+    const t = new Date(); const today = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
+    return checkInBy > today
+  })()
+  /*
+   * FAULT 1: AN ANCHOR ARRIVAL IS NEVER AT THE DOOR. `isAnchorDraft()` is true from the first
+   * render (`?scenario=HELP_TEAM_UNDERSTAND`), before anything has been picked or sent, so without
+   * this the door and its five examples showed underneath the anchor's own opening line (the
+   * `history.length === 1 && !pickedSituation` condition was true for every fresh arrival, anchor
+   * or not). The plan says the landing "enters the scenario at once" - no door, no situation
+   * picker, straight onto the conversation.
+   */
+  const atTheDoor = phase === 'onboarding' && onboardingHistory.length === 1 && !onboardingLoading && !pickedSituation && !anchorConversationOpensDirectly()
+  /** Words typed at the door, or on the list, open the conversation as describing it yourself. */
+  function describeItInYourOwnWords(text: string) {
+    setSeeingEverySituation(false)
+    setPickedSituation('other')
+    setPickedScenario(null)
+    sendOnboarding(text, null)
+  }
+
+  /* Seemingly unreachable, the same finding the previous commit made about CreateGroundPage's own
+     render: nothing in this file calls `setShowAdminBriefing(true)`, only this block's own
+     `setShowAdminBriefing(false)`. Documented rather than deleted, same as that finding - a page
+     losing a screen is a bigger decision than a rendering rebuild, so this still gets the same
+     shared-parts treatment as everything else, in case something upstream starts reaching it. */
   if (showAdminBriefing) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--gw-bg)', padding: '24px 20px' }}>
-        <div style={{ maxWidth: 480, width: '100%' }}>
-          <div style={{ marginBottom: 24 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', letterSpacing: '-.01em' }}>Groundwork</span>
+      <div className="gwui-ec-briefing">
+        <div className="gwui-ec-briefing-inner">
+          <div className="gwui-ec-briefing-brand">
+            <span className="gwui-ec-briefing-wordmark">Groundwork</span>
           </div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-text)', lineHeight: 1.2, marginBottom: 8 }}>You're up first.</h1>
-          <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.7, marginBottom: 24 }}>
+          <h1 className="gwui-ec-briefing-title">You're up first.</h1>
+          <p className="gwui-ec-briefing-sub">
             Yours is the first one in. Here is what to expect.
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28 }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 16px', background: 'white', borderRadius: 10, border: '1px solid var(--gw-border)' }}>
-              <span style={{ fontSize: 16, flexShrink: 0 }}>⏱</span>
+          <div className="gwui-ec-briefing-list">
+            <div className="gwui-ec-briefing-card">
+              <span className="gwui-ec-briefing-icon">⏱</span>
               <div>
                 <CardTitle weight={700}>About 10 minutes</CardTitle>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>Answer in your own words. The questions are based on what you just described. There are no right answers.</div>
+                <div className="gwui-ec-briefing-card-body">Answer in your own words. The questions are based on what you just described. There are no right answers.</div>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 16px', background: 'white', borderRadius: 10, border: '1px solid var(--gw-border)' }}>
-              <span style={{ fontSize: 16, flexShrink: 0 }}>📨</span>
+            <div className="gwui-ec-briefing-card">
+              <span className="gwui-ec-briefing-icon">📨</span>
               <div>
                 <CardTitle weight={700}>Invite links come after</CardTitle>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>Once you finish, you will get invite links to send to the other people involved. They check in independently.</div>
+                <div className="gwui-ec-briefing-card-body">Once you finish, you will get invite links to send to the other people involved. They check in independently.</div>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 16px', background: 'white', borderRadius: 10, border: '1px solid var(--gw-border)' }}>
-              <span style={{ fontSize: 16, flexShrink: 0 }}>📄</span>
+            <div className="gwui-ec-briefing-card">
+              <span className="gwui-ec-briefing-icon">📄</span>
               <div>
                 <CardTitle weight={700}>The shared report</CardTitle>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>When everyone is in, the report shows where the team agrees, where it differs, and what to do next.</div>
+                <div className="gwui-ec-briefing-card-body">When everyone is in, the report shows where the team agrees, where it differs, and what to do next.</div>
               </div>
             </div>
           </div>
-          <button
-            onClick={() => { setShowAdminBriefing(false); startCheckin.mutate() }}
-            style={{ width: '100%', padding: '14px 20px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-          >
+          <Button kind="primary" wide onClick={() => { setShowAdminBriefing(false); startCheckin.mutate() }}>
             Start my check-in
-          </button>
+          </Button>
         </div>
       </div>
     )
@@ -2515,33 +2853,55 @@ export function EntryChatPage() {
   return (
     /* The viewport less the nav strip pinned over it, and dvh so a phone's address bar sliding away
        does not leave the composer under the fold. See --gw-bottom-nav in AppShell. */
-    <div style={{ height: 'calc(100dvh - var(--gw-bottom-nav, 0px))', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)', position: 'relative', overflow: 'hidden' }}>
+    <div className="gwui-ec-frame">
+
+      {/*
+        GROUP 3 REVIEW, BATCH B: A SIGNED-OUT READER HAS NO SIDEBAR HERE NOW (AppShell.tsx's
+        `showSidebar`, start.jpg draws none) - so this is the only mark and the only way to sign
+        in this reader has on /start. Not shown once there is a session header below (a stranger
+        partway into onboarding still has no account, but by then they are mid-conversation, not
+        at the door, and the session header already carries its own way out).
+
+        `anchorConversationOpensDirectly() && phase === 'onboarding'` (fault 1) is kept alongside
+        `atTheDoor` on purpose: an anchor arrival is never "at the door", but it is still a
+        stranger's very first
+        screen, with nothing below it yet either - so it needs the same mark and the same way to
+        sign in, from her first render, not only once `atTheDoor` happened to be true. The `phase`
+        check keeps it from reappearing beside the session header once the check-in itself starts.
+      */}
+      {!user && (atTheDoor || (anchorConversationOpensDirectly() && phase === 'onboarding')) && (
+        <div className="gwui-mark-row">
+          <Mark />
+          <Link to="/auth" className="gwui-plain-link">Sign in</Link>
+        </div>
+      )}
 
       {/* Session header */}
-      <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--gw-border)', flexShrink: 0, background: 'white', display: 'flex', alignItems: 'center', gap: 8 }}>
+      {/* U.6 review: not on the setup conversation, which start-chat.txt draws without a name, a plan or steps. */}
+      {!atTheDoor && phase !== 'onboarding' && (
+      <div className="gwui-ec-session-header">
         {user && (
-          <button type="button" onClick={() => navigate('/grounds')} style={{ background: 'none', border: 'none', padding: 0, fontFamily: 'inherit', fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer', flexShrink: 0, userSelect: 'none' }}>← Check-ins</button>
+          <button type="button" onClick={() => navigate('/grounds')} className="gwui-plain-link gwui-ec-session-back">← Check-ins</button>
         )}
-        <div style={{ flex: 1 }}>
+        <div className="gwui-ec-session-name-row">
           {renamingGround ? (
-            <input
+            <TextField
               ref={groundRenameRef}
               value={renameInput}
               onChange={e => setRenameInput(e.target.value)}
               onBlur={() => { setGroundName(renameInput.trim() || groundName); setRenamingGround(false) }}
               onKeyDown={e => { if (e.key === 'Enter') { setGroundName(renameInput.trim() || groundName); setRenamingGround(false) } if (e.key === 'Escape') setRenamingGround(false) }}
-              style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', border: '1px solid var(--gw-border)', borderRadius: 5, padding: '2px 8px', fontFamily: 'inherit', outline: 'none', width: '100%', maxWidth: 320 }}
               autoFocus
             />
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div className="gwui-ec-picked-row">
               {groundName ? (
                 <>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)' }}>{groundName}</span>
-                  <button onClick={() => { setRenameInput(groundName); setRenamingGround(true) }} style={{ background: 'none', border: 'none', color: 'var(--gw-muted)', cursor: 'pointer', fontSize: 12, padding: 0, fontFamily: 'inherit' }} title="Rename">✎</button>
+                  <span className="gwui-ec-session-name">{groundName}</span>
+                  <button type="button" onClick={() => { setRenameInput(groundName); setRenamingGround(true) }} className="gwui-plain-link" title="Rename">✎</button>
                 </>
               ) : (
-                <button onClick={() => { setRenameInput(''); setRenamingGround(true) }} style={{ background: 'none', border: '1px dashed var(--gw-border)', borderRadius: 5, color: 'var(--gw-sub)', cursor: 'pointer', fontSize: 12, padding: '2px 10px', fontFamily: 'inherit', fontWeight: 500 }}>
+                <button type="button" onClick={() => { setRenameInput(''); setRenamingGround(true) }} className="gwui-plain-link">
                   {/* "Name this ground" used the product's own word for a thing
                       the reader has not met yet - on the first screen a stranger
                       sees, before anything explains what a ground is. Judged
@@ -2551,22 +2911,22 @@ export function EntryChatPage() {
               )}
             </div>
           )}
-          <div style={{ fontSize: 11, color: 'var(--gw-sub)', display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+          <div className="gwui-ec-session-status">
             {phase === 'checkin' ? (
               <>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--gw-green-live)', display: 'inline-block', flexShrink: 0 }} />
+                <span className="gwui-ec-live-dot" />
                 Session 1 in progress
               </>
-            ) : 'Getting started · session is about 10 minutes'}
+            ) : 'Getting started, and this session is about 10 minutes.'}
           </div>
         </div>
 
         {/* Sessions counter */}
-        <div style={{ flexShrink: 0, textAlign: 'right' }}>
+        <div className="gwui-ec-sessions-count">
           {editingSessions ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 11, color: 'var(--gw-sub)' }}>sessions:</span>
-              <input
+            <span className="gwui-invite-link-row">
+              <span className="gwui-fine">sessions:</span>
+              <TextField
                 type="number" min={1}
                 value={sessionsInput}
                 onChange={e => setSessionsInput(e.target.value)}
@@ -2581,15 +2941,15 @@ export function EntryChatPage() {
                   if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
                   if (e.key === 'Escape') setEditingSessions(false)
                 }}
-                style={{ width: 44, fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 5, padding: '2px 6px', fontFamily: 'inherit', outline: 'none', textAlign: 'center' }}
                 autoFocus
               />
-            </div>
+            </span>
           ) : (
-            <button
+            <Button
+              kind="secondary"
+              size="small"
               onClick={() => { setSessionsInput(String(sessions)); setEditingSessions(true) }}
-              style={{ background: 'none', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
-              title={plannedFrom ? `${sessions} ${sessions === 1 ? 'session' : 'sessions'} - from ${plannedFrom.timelineDays} days, ${plannedFrom.cadence.toLowerCase()}. Click to change.` : 'Edit number of sessions'}
+              aria-label={plannedFrom ? `${sessions} ${sessions === 1 ? 'session' : 'sessions'}, planned from ${plannedFrom.timelineDays} days, ${plannedFrom.cadence.toLowerCase()}. Click to change.` : 'Edit number of sessions'}
             >
               {/*
                 This read "1/{sessions}" - so during setup, before anyone has
@@ -2605,21 +2965,18 @@ export function EntryChatPage() {
                 timeline and cadence the engine extracted (see onboard, above)
                 and traceable to them in the button's title.
               */}
-              {/* The space is in the STRING: two spans separated by a margin read as "12sessions planned" in every text extraction. */}
-              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)' }}>{sessions}</span>
-              <span style={{ fontSize: 10, color: 'var(--gw-sub)' }}>
-                {' '}{sessions === 1 ? 'session planned' : 'sessions planned'}
-              </span>
-            </button>
+              {plannedNow} {plannedNow === 1 ? 'session planned' : 'sessions planned'}
+            </Button>
           )}
         </div>
       </div>
+      )}
 
       {/* Phase stepper: makes which phase you are in legible at a glance.
           1 Describe the situation -> 2 Your check-in (or Hand-off) -> 3 Save & invite. */}
-      {(() => {
+      {!atTheDoor && phase !== 'onboarding' && (() => {
         /* Both answers at the fork lead into the same first check-in, so the step bar is the same for both. */
-        const step = phase === 'onboarding' ? 1 : (closed || showSave ? 3 : 2)
+        const step = closed || showSave ? 3 : 2
         /* "Hand-off to your lead" named a step that no longer exists - handing the context to
            somebody else was removed on 7 September. Somebody who picks "I set this check-in up only"
            was being promised a hand-off screen they would never reach. */
@@ -2630,19 +2987,8 @@ export function EntryChatPage() {
           'Save this and invite the people involved.',
         ]
         return (
-          <div style={{ padding: '7px 20px', borderBottom: '1px solid var(--gw-border)', background: 'var(--gw-paper)', flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              {labels.map((l, i) => (
-                <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <span style={{ width: 15, height: 15, borderRadius: '50%', fontSize: 9.5, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: i + 1 === step ? 'var(--gw-navy)' : (i + 1 < step ? 'var(--gw-green-b)' : '#E5E2DC'), color: i + 1 <= step ? 'white' : 'var(--gw-muted)' }}>{i + 1 < step ? '✓' : i + 1}</span>
-                    <span style={{ fontSize: 11.5, fontWeight: i + 1 === step ? 700 : 500, color: i + 1 === step ? 'var(--gw-text)' : 'var(--gw-muted)' }}>{l}</span>
-                  </div>
-                  {i < labels.length - 1 && <span style={{ color: 'var(--gw-border)', fontSize: 11 }}>→</span>}
-                </div>
-              ))}
-            </div>
-            <div style={{ fontSize: 10.5, color: 'var(--gw-sub)', marginTop: 2 }}>{hints[step - 1]}</div>
+          <div className="gwui-ec-phase-bar">
+            <PhaseSteps labels={labels} hints={hints} current={step} />
           </div>
         )
       })()}
@@ -2662,18 +3008,22 @@ export function EntryChatPage() {
         * want to take. The confirmation still stands in front of it, so nothing is thrown away by
         * a stray click.
         */}
-      {(
-        <div style={{ padding: '6px 20px', borderBottom: '1px solid var(--gw-border)', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexShrink: 0 }}>
+      {!atTheDoor && (
+        <div className={`gwui-ec-bar${phase === 'onboarding' ? ' gwui-ec-bar-onboarding' : ''}`}>
+          {/* U.6 review: the setup conversation's title, from start-chat.txt and new.txt. */}
+          {phase === 'onboarding' && (
+            <h1 className="gwui-ec-onboarding-title">Set up a check-in</h1>
+          )}
           {confirmClear ? (
-            <span style={{ fontSize: 12, color: 'var(--gw-sub)', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span className="gwui-ec-confirm-clear">
               {closed
                 ? 'This will throw away this session and everything in it. Are you sure?'
                 : phase === 'checkin' ? 'This will clear your check-in. Are you sure?' : 'This will start over. Are you sure?'}
-              <button onClick={handleClearSession} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 12, fontWeight: 600, padding: 0, fontFamily: 'inherit' }}>Yes, clear</button>
-              <button onClick={() => setConfirmClear(false)} style={{ background: 'none', border: 'none', color: 'var(--gw-sub)', cursor: 'pointer', fontSize: 12, padding: 0, fontFamily: 'inherit' }}>Cancel</button>
+              <button type="button" onClick={handleClearSession} className="gwui-plain-link">Yes, clear</button>
+              <button type="button" onClick={() => setConfirmClear(false)} className="gwui-plain-link">Cancel</button>
             </span>
           ) : (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <span className="gwui-ec-which-row">
               {/*
                 * PICK A DIFFERENT SITUATION, which is the thing somebody actually wants.
                 *
@@ -2706,19 +3056,17 @@ export function EntryChatPage() {
                 */}
               {phase === 'onboarding' && onboardingHistory.length > 1 && (() => {
                 const chosen = onboardingSelections.classifiedScenario || pickedScenario || scenario
-                const label = chosen ? (SCENARIO_LABELS as Record<string, string>)[chosen] : null
+                const label = chosen ? sentenceCase(scenarioLabel(chosen, onboardingSelections.brief)) : null
                 return (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span className="gwui-ec-picked-row">
+                    {/* U.6 review: start-chat.txt's words, "This sounds like" and "It’s something else". */}
                     {label && (
-                      <span style={{ fontSize: 11, color: 'var(--gw-sub)' }}>
-                        Set up as <span style={{ fontWeight: 700, color: 'var(--gw-text)' }}>{label}</span>
+                      <span className="gwui-panel-text-muted">
+                        This sounds like <b>{label}</b>.
                       </span>
                     )}
-                    <button
-                      onClick={pickADifferentSituation}
-                      style={{ background: 'none', border: 'none', color: 'var(--gw-navy)', cursor: 'pointer', fontSize: 11, padding: 0, fontFamily: 'inherit', textDecoration: 'underline' }}
-                    >
-                      ← Pick a different situation
+                    <button type="button" onClick={pickADifferentSituation} className="gwui-plain-link">
+                      It’s something else
                     </button>
                   </span>
                 )
@@ -2729,8 +3077,9 @@ export function EntryChatPage() {
                   straight through. Once a session has CLOSED it always confirms: that is the state
                   where somebody has the most written down and the least expectation of losing it. */}
               <button
+                type="button"
                 onClick={() => (phase === 'checkin' || closed || onboardingHistory.length > 1) ? setConfirmClear(true) : handleClearSession()}
-                style={{ background: 'none', border: 'none', color: 'var(--gw-muted)', cursor: 'pointer', fontSize: 11, padding: 0, fontFamily: 'inherit', textDecoration: 'underline' }}
+                className="gwui-plain-link"
               >
                 {closed ? 'Start over' : phase === 'checkin' ? 'Clear check-in' : 'Start over'}
               </button>
@@ -2741,28 +3090,27 @@ export function EntryChatPage() {
 
       {/* Sessions upgrade prompt */}
       {showSessionsUpgrade && (
-        <div style={{ background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-          <div style={{ flex: 1, fontSize: 13, color: 'var(--gw-navy)', lineHeight: 1.5 }}>
-            {/* There is no per-session billing. The old copy told a brand-new
-                person "additional sessions are $5 each" at the moment they were
-                deciding whether to start - and it was not even true: their
-                first ground is free with unlimited sessions. */}
-            <strong>{sessions} sessions</strong> means signing in, and it is free. Save your session below to get set up.
-          </div>
-          <button onClick={() => { setShowSessionsUpgrade(false); setShowSave(true) }}
-            style={{ flexShrink: 0, background: 'var(--gw-navy)', color: 'white', border: 'none', borderRadius: 7, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-            Save &amp; set up →
+        <Callout tone="info" role="status">
+          {/* There is no per-session billing. The old copy told a brand-new
+              person "additional sessions are $5 each" at the moment they were
+              deciding whether to start - and it was not even true: their
+              first ground is free with unlimited sessions. */}
+          <b>{sessions} sessions</b> means signing in, and it is free. Save your session below to get set up.{' '}
+          <button type="button" className="gwui-plain-link" onClick={() => { setShowSessionsUpgrade(false); setShowSave(true) }}>
+            Save and set up
           </button>
-          <button onClick={() => setShowSessionsUpgrade(false)} style={{ background: 'none', border: 'none', color: 'var(--gw-sub)', cursor: 'pointer', fontSize: 14 }}>✕</button>
-        </div>
+          {' '}
+          <button type="button" className="gwui-plain-link" onClick={() => setShowSessionsUpgrade(false)}>Not now</button>
+        </Callout>
       )}
 
       {/* Main content area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <div className="gwui-ec-main">
 
         {/* PHASE: ONBOARDING (AI-driven) */}
         {phase === 'onboarding' && (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div className="gwui-ec-onboarding">
+          <div className="gwui-ec-onboarding-col">
             {/*
               * SAID BEFORE THE SETUP WORK, NOT AFTER IT.
               *
@@ -2776,21 +3124,11 @@ export function EntryChatPage() {
               * save, after giving their whole account.
               */}
             {refusedByThePlan && (
-              <div style={{ background: 'var(--gw-amber-bg)', borderBottom: '1px solid var(--gw-amber-bd)', padding: '12px 20px', flexShrink: 0 }}>
-                <div style={{ maxWidth: 680, margin: '0 auto' }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>
-                    You have used all of your free check-ins
-                  </div>
-                  <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
-                    {refusedByThePlan} You can still set this one up and it stays on this device, but it cannot be saved to your account until then.
-                  </div>
-                  <button
-                    onClick={() => navigate('/billing')}
-                    style={{ padding: '8px 16px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-                  >
-                    See plans
-                  </button>
-                </div>
+              <div className="gwui-ec-refusal-band">
+                <Callout tone="warning" title={whetherTheyMayOpenOne.data?.noPlan ? 'No plan yet' : 'You have used all of your free check-ins'}>
+                  {refusedByThePlan} You can still set this one up and it stays on this device, but it cannot be saved to your account until then.{' '}
+                  <button type="button" className="gwui-plain-link" onClick={() => navigate('/billing')}>See plans</button>
+                </Callout>
               </div>
             )}
 
@@ -2808,8 +3146,9 @@ export function EntryChatPage() {
               aria-live="polite"
               // The picker needs the width for a multi-column grid so all 8
               // cards sit above the fold at laptop heights; conversation
-              // bubbles keep the narrow reading column.
-              style={{ flex: 1, overflowY: 'auto', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12, maxWidth: onboardingHistory.length === 1 && !pickedSituation && phase === 'onboarding' ? 1080 : 680, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}
+              // bubbles keep the narrow reading column. An anchor arrival has no picker to be wide
+              // for (fault 1): it goes straight to the narrow, conversational column.
+              className={`gwui-ec-messages ${onboardingHistory.length === 1 && !pickedSituation && !anchorConversationOpensDirectly() && phase === 'onboarding' ? 'gwui-ec-messages-wide' : 'gwui-ec-messages-narrow'}`}
             >
               {onboardingHistory.map((m, i) => {
                 /*
@@ -2825,191 +3164,74 @@ export function EntryChatPage() {
                  * holds exactly one turn, and it is also the model's first turn once the
                  * conversation starts. Only the bubble goes, and only while the picker is up.
                  */
-                if (i === 0 && m.role === 'assistant' && onboardingHistory.length === 1 && !pickedSituation && phase === 'onboarding') return null
+                if (i === 0 && m.role === 'assistant' && phase === 'onboarding' && m.content === THE_OPENING_QUESTION) return null /* U.6 review: start-chat.txt opens on the lead's own words; the opener still goes to the model. */
                 /* A CARD IS A PICK, NOT SOMETHING THEY SAID. The card's message travels as the first
                    user turn so the model has a situation; drawing it as a navy bubble put words in
                    their mouth ("I have a new hire starting and want to..."). It is drawn as a pick. */
                 const picked = m.role === 'user' && SITUATION_CARDS.find((c) => c.message === m.content)
                 if (picked) {
                   return (
-                    <div key={i} style={{ alignSelf: 'flex-end', fontSize: 12.5, color: 'var(--gw-sub)', padding: '6px 12px', border: '1px solid var(--gw-border)', borderRadius: 999, background: 'white' }}>
-                      You picked <strong style={{ color: 'var(--gw-text)' }}>{picked.label}</strong>
+                    <div key={i} className="gwui-ec-picked-chip">
+                      You picked <b>{picked.label}</b>
                     </div>
                   )
                 }
                 return (
-                <div
-                  key={i}
-                  style={{
-                    maxWidth: '82%',
-                    alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
-                    background: m.role === 'user' ? 'var(--gw-navy)' : 'white',
-                    color: m.role === 'user' ? 'white' : 'var(--gw-text)',
-                    border: m.role === 'assistant' ? '1px solid var(--gw-border)' : 'none',
-                    borderRadius: m.role === 'user' ? '16px 16px 4px 16px' : '4px 16px 16px 16px',
-                    padding: '10px 14px',
-                    fontSize: 14,
-                    lineHeight: 1.65,
-                    whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0,
-                    boxShadow: m.role === 'assistant' ? '0 1px 3px rgba(0,0,0,.06)' : 'none',
-                  }}
-                >
-                  {/* THE LAST PLACE BEFORE A READER'S EYES. `[[SESSION_COMPLETE]]` was photographed
-                      in a bubble in production, with its markdown asterisks intact. Stripped on the
-                      server too - this is a net, not the fix. */}
-                  {nothingInternalReachesTheBubble(m.content)}
-                </div>
+                  <Bubble key={i} mine={m.role === 'user'}>
+                    {/* THE LAST PLACE BEFORE A READER'S EYES. `[[SESSION_COMPLETE]]` was photographed
+                        in a bubble in production, with its markdown asterisks intact. Stripped on the
+                        server too - this is a net, not the fix. */}
+                    {nothingInternalReachesTheBubble(m.content)}
+                  </Bubble>
                 )
               })}
 
-              {/* Situation cards - shown only before user has sent first message */}
-              {onboardingHistory.length === 1 && !onboardingLoading && !pickedSituation && (
-                <div style={{ alignSelf: 'flex-start', width: '100%' }}>
-                  {/* Seventeen situations will not fit above the fold at a
-                      laptop height - measured: even stripping the descriptions
-                      leaves 152px over, so the old "everything visible at once"
-                      rule is unreachable rather than merely expensive. The
-                      descriptions stay, because recognising your own situation
-                      matters MORE as the list gets longer. What was missing is
-                      any signal that the first screen is not the whole set. */}
-                  {/* DESCRIBE YOUR OWN, FIRST. It used to sit at the bottom under "None of these?",
-                      which is the right words for the end of a list and the wrong ones for the top:
-                      nothing has come before it to be none of. Same order as /grounds/new. */}
-                  <button
-                    onClick={() => { setPickedSituation('other'); setPickedScenario(null) }}
-                    style={{
-                      width: '100%', display: 'flex', alignItems: 'center', gap: 12,
-                      textAlign: 'left', padding: '14px 16px', borderRadius: 10,
-                      border: '1.5px solid var(--gw-navy)', background: 'white',
-                      cursor: 'pointer', fontFamily: 'inherit', marginBottom: 12,
-                    }}
-                  >
-                    <div style={{ flex: 1 }}>
-                      {/* Her words, and the same pair the setup step asks with - see whose-situation-is-it. */}
-                      <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 2 }}>{THE_WORDS.describeOwnQuestion}</div>
-                      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.45 }}>{THE_WORDS.describeOwnHelp}</div>
-                    </div>
-                    <span style={{ fontSize: 16, color: 'var(--gw-navy)', flexShrink: 0 }}>&rarr;</span>
-                  </button>
-
-                  {/*
-                    THE SECOND ROUTE, DRAWN AS ONE. This was 11px in the muted grey - the size and
-                    colour used for captions - directly under a full-width bordered card, so two
-                    ways in read as one way in and a remark about it.
-                  */}
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 6 }}>
-                    {OR_PICK_ONE_THAT_FITS}
-                  </div>
-                  <select
-                    className="gw-select"
-                    value={situationGroup}
-                    onChange={(e) => setSituationGroup(e.target.value)}
-                    aria-label="Which kind of situation"
-                    style={{ marginBottom: 10 }}
-                  >
-                    {SITUATION_GROUPS.map(g => (
-                      <option key={g.key} value={g.key}>
-                        {/* COUNTED FROM WHAT THE GROUP ACTUALLY RENDERS. This counted the entry
-                            chat's own list while the grid below now renders the catalogue's, so a
-                            situation present in one and not the other would have shown a number that
-                            did not match the cards under it. */}
-                        {g.heading} ({SCENARIOS.filter(c => c.scenario !== 'OPEN_READ' && groupOf(c) === g.key).length})
-                      </option>
-                    ))}
-                  </select>
-
-                  {/* One block per group, driven by SITUATION_GROUPS. This was
-                      two hand-copied sixty-line blocks differing only by their
-                      filter, which is how this picker fell eight cards behind
-                      /grounds/new without anyone noticing. */}
-                  {/* ONE GROUP AT A TIME, chosen above. Every group at once is what the "scroll for
-                      the rest" line existed to apologise for. */}
-                  {SITUATION_GROUPS.filter(g => g.key === situationGroup).map((group) => {
-                    const cards = SITUATION_CARDS.filter(c => c.group === group.key)
-                    if (!cards.length) return null
-                    return (
-                      <div key={group.key}>
-                        {/*
-                          * THE SAME CARD AS /grounds/new, BECAUSE IT IS LITERALLY THE SAME COMPONENT.
-                          *
-                          * This block used to draw its own: a smaller title, a 9.5px italic "typically
-                          * 90 days", and an "i" that opened a paragraph. The wizard drew a coloured
-                          * tag, the moment you would open the app, and a "How it runs" disclosure.
-                          * Same twenty-two situations, same groups, two different objects - and
-                          * reported twice, the second time after the LISTS had been reconciled:
-                          * "the scenario cards on the entry chat still look different from what's in
-                          * the wizard".
-                          *
-                          * It renders SCENARIOS now, the catalogue the signed-in picker reads, rather
-                          * than a second list of the same situations. What stays here is the one thing
-                          * that is genuinely different about this door: clicking does not select, it
-                          * SENDS - there is no Continue on a chat - so the sentence that starts the
-                          * conversation is looked up from the card.
-                          */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(235px, 1fr))', gap: 8 }}>
-                          {SCENARIOS.filter(c => c.scenario !== 'OPEN_READ' && groupOf(c) === group.key).map(card => (
-                            <SituationCard
-                              key={card.cardKey}
-                              card={card}
-                              label={card.label}
-                              expanded={openCardInfo === card.label}
-                              onToggleExpanded={() => setOpenCardInfo(openCardInfo === card.label ? null : card.label)}
-                              onPick={() => {
-                                const said = whatThisCardSays(card.label)
-                                if (!said) return
-                                setPickedSituation(card.label)
-                                setPickedScenario(card.scenario)
-                                sendOnboarding(said)
-                              }}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    )
-                  })}
-                  {/*
-                    * THE DESCRIBE-YOUR-OWN CARD USED TO BE HERE, AT THE BOTTOM.
-                    *
-                    * Its whole history is people trying to make the last item in a list findable:
-                    * first it looked disabled, then it was made to look like every other card and
-                    * became eighteenth in a scroll of near-identical tiles, then it was given an
-                    * accent edge and an arrow. Each fix was right about the problem and could not
-                    * reach it, because the problem was the position.
-                    *
-                    * It is the first thing on the picker now, above the dropdown, and its words
-                    * changed with the move: "None of these?" is the right question at the end of a
-                    * list and the wrong one at the top, where nothing has come before it to be none
-                    * of.
-                    */}
+              {/*
+                * THE WAY IN (U.6, B1). The prototype's first screen: one box, five examples and a
+                * link to every situation (TheDoor), or the list itself (EverySituation). Sending
+                * words from either is describing it in your own words, which clears any situation
+                * a card had set; starting from a card sends that card's own sentence, as the old
+                * grid did.
+                */}
+              {atTheDoor && (
+                <div className="gwui-ec-door-slot">
+                  {seeingEverySituation ? (
+                    <EverySituation
+                      signedIn={!!user}
+                      openerFor={(card) => whatThisCardSays(card.label)}
+                      onSend={describeItInYourOwnWords}
+                      onDescribe={() => setSeeingEverySituation(false) /* back to the one box: describing it is the first screen (U.6 review) */}
+                      onStart={(card, opener) => {
+                        setPickedSituation(card.label)
+                        setPickedScenario(card.scenario)
+                        sendOnboarding(opener, card.scenario)
+                      }}
+                    />
+                  ) : (
+                    <TheDoor signedIn={!!user} onSend={describeItInYourOwnWords} onSeeEverySituation={() => setSeeingEverySituation(true)} />
+                  )}
                 </div>
               )}
 
               {onboardingLoading && (
-                <div className="gw-msg-loading" style={{
-                  maxWidth: '82%', alignSelf: 'flex-start', background: 'white', color: 'var(--gw-text)',
-                  border: '1px solid var(--gw-border)', borderRadius: '4px 16px 16px 16px',
-                  padding: '10px 14px', fontSize: 14, lineHeight: 1.65,
-                  boxShadow: '0 1px 3px rgba(0,0,0,.06)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0,
-                }}>
+                <Bubble mine={false}>
                   {onboardingDraft ? onboardingDraft : (
-                    <>
-                      <span style={{ marginRight: 6, fontStyle: 'normal', color: 'var(--gw-muted)', fontSize: 11 }}>Thinking</span>
-                      <span className="gw-dot" /><span className="gw-dot" /><span className="gw-dot" />
-                    </>
+                    <span className="gwui-ci-dots">
+                      <span className="gwui-ec-thinking">Thinking</span>
+                      {[0, 1, 2].map(i => (
+                        <span key={i} className="gwui-ci-dot" style={{ animationDelay: `${i * 0.2}s` }} />
+                      ))}
+                    </span>
                   )}
-                </div>
+                </Bubble>
               )}
 
               {/* The fork, shown when the AI signals ready. Replaces the old
                   "are you involved?" question (which drove nothing but
                   check-in-vs-skip; ownership was never derived from it). */}
               {onboardingReady && !onboardingLoading && flowPath !== 'lead' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: '82%', alignSelf: 'flex-start', marginTop: 4 }}>
-                  <div style={{
-                    background: 'white', color: 'var(--gw-text)', border: '1px solid var(--gw-border)',
-                    borderRadius: '4px 16px 16px 16px', padding: '10px 14px', fontSize: 14, lineHeight: 1.65,
-                    boxShadow: '0 1px 3px rgba(0,0,0,.06)', marginBottom: 4,
-                  }}>
+                <div className="gwui-ec-fork">
+                  <Bubble mine={false}>
                     {/*
                       * IT IS ONE QUESTION, AND IT IS ABOUT WHO ANSWERS THE QUESTIONS. W15-3.
                       *
@@ -3041,7 +3263,7 @@ export function EntryChatPage() {
                     {(() => {
                       const sum = summariseSetup(onboardingSelections, yourRole, sessions, needsPeople)
                       return (
-                        <div style={{ marginBottom: 10 }}>
+                        <div className="gwui-ec-sofar">
                           {/*
                             A CHECK, NOT A DOCUMENT.
 
@@ -3056,18 +3278,18 @@ export function EntryChatPage() {
                             paragraph is the model's own writing and is in the chat three inches
                             above. So one-word labels, and every value clipped to two lines.
                           */}
-                          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: .3, color: 'var(--gw-sub)', marginBottom: 5 }}>
+                          <div className="gwui-ec-sofar-heading">
                             What I've got so far
                           </div>
                           {sum.have.map((h) => (
-                            <div key={h.label} style={{ display: 'flex', gap: 7, fontSize: 12.5, lineHeight: 1.5, marginBottom: 3 }}>
-                              <span style={{ color: 'var(--gw-sub)', fontWeight: 700, flex: '0 0 56px' }}>{shortLabel(h.label)}</span>
-                              <span style={{ color: 'var(--gw-text)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{h.value}</span>
+                            <div key={h.label} className="gwui-ec-sofar-row">
+                              <span className="gwui-ec-sofar-label">{shortLabel(h.label)}</span>
+                              <span className="gwui-ec-sofar-value">{h.value}</span>
                             </div>
                           ))}
                           {sum.missing.length > 0 && (
-                            <div style={{ fontSize: 12.5, lineHeight: 1.55, marginTop: 6, color: 'var(--gw-amber-t)' }}>
-                              <span style={{ fontWeight: 700 }}>Not said yet: </span>
+                            <div className="gwui-ec-sofar-missing">
+                              <b>Not said yet: </b>
                               {sum.missing.join(', ')}. You can add it in your check-in.
                             </div>
                           )}
@@ -3101,29 +3323,18 @@ export function EntryChatPage() {
                         words. "You said" put a sentence in their mouth; this attributes it to their text,
                         and the button beside it is how they change it. */}
                     {yourRole === 'a_party' ? (
-                      <div style={{ fontWeight: 700 }}>From what you wrote, you are one of the people involved.</div>
+                      <div className="gwui-ec-fork-note">From what you wrote, you are one of the people involved.</div>
                     ) : null}
-                  </div>
-                  <button
-                    onClick={startSelfPath}
-                    style={{
-                      padding: '11px 16px', borderRadius: 10, fontSize: 13, fontWeight: 700,
-                      border: '1px solid var(--gw-border)', background: 'white',
-                      color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-                    }}
-                  >
+                  </Bubble>
+                  {/* Two equal, parallel choices - neither is this screen's one primary action, so
+                      both stay secondary (white, bordered), matching the prototype's own weight for
+                      a choice between two options rather than a single way forward. */}
+                  <Button kind="secondary" wide onClick={startSelfPath}>
                     I set this up and check in myself
-                  </button>
-                  <button
-                    onClick={othersGiveTheAccounts}
-                    style={{
-                      padding: '11px 16px', borderRadius: 10, fontSize: 13, fontWeight: 700,
-                      border: '1px solid var(--gw-border)', background: 'white',
-                      color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-                    }}
-                  >
+                  </Button>
+                  <Button kind="secondary" wide onClick={othersGiveTheAccounts}>
                     I check in once to set the context, then only they check in
-                  </button>
+                  </Button>
                 </div>
               )}
 
@@ -3140,105 +3351,111 @@ export function EntryChatPage() {
                 * them it is a string, and nothing in the build says so.
                 */}
               {startCheckin.isPending && (
-                <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', padding: 16 }}>
+                <p className="gwui-fine gwui-fine-centre">
                   Starting your session…
-                </div>
+                </p>
               )}
             </div>
 
-            {/* Text input for onboarding - hidden once ready, loading checkin, or cards not yet dismissed */}
-            {!startCheckin.isPending && !onboardingReady && !(onboardingHistory.length === 1 && !pickedSituation) && (
-              <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
+            {/* Text input for onboarding - hidden once ready, loading checkin, or cards not yet dismissed.
+                An anchor arrival has no cards to dismiss (fault 1): the composer is there from the
+                first render, open on the engine's own opening line, so the lead can only ever type
+                her own first answer - never a word she did not write. */}
+            {!startCheckin.isPending && !onboardingReady && !(onboardingHistory.length === 1 && !pickedSituation && !anchorConversationOpensDirectly()) && (
+              <div className="gwui-ec-composer-wrap">
                 {/* Doc-add panel: paste or upload a document + context; the AI reads it. */}
                 {showDocPanel && (
-                  <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--gw-border)', background: 'var(--gw-paper-2)' }}>
-                    <div style={{ maxWidth: 680, margin: '0 auto' }}>
-                      <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                  <div className="gwui-ec-doc-panel">
+                    <div className="gwui-ec-doc-panel-inner">
+                      <div className="gwui-ec-doc-panel-tabs">
                         {(['paste', 'upload'] as const).map(t => (
-                          <button key={t} onClick={() => setDocTab(t)}
-                            style={{ fontSize: 12, fontWeight: 700, padding: '5px 12px', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit',
-                              border: `1px solid ${docTab === t ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
-                              background: docTab === t ? 'var(--gw-navy)' : 'white', color: docTab === t ? 'white' : 'var(--gw-sub)' }}>
+                          <Button key={t} kind={docTab === t ? 'primary' : 'secondary'} size="small" onClick={() => setDocTab(t)}>
                             {t === 'paste' ? 'Paste text' : 'Upload file'}
-                          </button>
+                          </Button>
                         ))}
-                        <div style={{ flex: 1 }} />
-                        <button onClick={() => setShowDocPanel(false)} style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                        <span className="gwui-ec-doc-panel-spacer" />
+                        <button type="button" onClick={() => setShowDocPanel(false)} className="gwui-plain-link">Cancel</button>
                       </div>
                       {docTab === 'upload' && (
-                        <label style={{ display: 'block', border: '1px dashed var(--gw-border)', borderRadius: 8, padding: '14px', textAlign: 'center', fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer', marginBottom: 8, background: 'white' }}>
+                        <label className="gwui-ec-doc-upload-label">
                           📎 Choose a text file (.txt, .md, .csv). For PDF or Word, paste the text instead.
-                          <input type="file" accept=".txt,.md,.csv,.json,.log" style={{ display: 'none' }}
+                          <input type="file" accept=".txt,.md,.csv,.json,.log" className="gwui-sr-only"
                             onChange={e => { const f = e.target.files?.[0]; if (f) handleDocFileUpload(f) }} />
                         </label>
                       )}
-                      <input type="text" placeholder="What is this? e.g. the onboarding guide I shared" value={docLabel}
-                        onChange={e => setDocLabel(e.target.value)}
-                        style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 6, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 6 }} />
-                      <textarea placeholder={docTab === 'upload' ? 'File contents will appear here once read. You can edit before sending.' : 'Paste the document text here…'}
-                        value={docPasteText} onChange={e => setDocPasteText(e.target.value)} rows={5}
-                        style={{ width: '100%', padding: '8px 10px', fontSize: 12, border: '1px solid var(--gw-border)', borderRadius: 6, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', resize: 'vertical', marginBottom: 6 }} />
-                      <input type="text" placeholder="Anything to note about it? (optional)" value={docContextNote}
-                        onChange={e => setDocContextNote(e.target.value)}
-                        style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 6, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }} />
-                      <button onClick={submitOnboardingDoc} disabled={!docPasteText.trim() || onboardingLoading}
-                        style={{ padding: '9px 16px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit', opacity: (docPasteText.trim() && !onboardingLoading) ? 1 : 0.4 }}>
+                      {/* U.8 review, found on the way: this field had a placeholder and nothing a screen
+                          reader announces as its name - a placeholder disappears the moment somebody
+                          types, and is not read as a label to begin with. */}
+                      <TextField type="text" aria-label="What is it?" placeholder="What is this? e.g. the onboarding guide I shared" value={docLabel}
+                        onChange={e => setDocLabel(e.target.value)} />
+                      <TextArea placeholder={docTab === 'upload' ? 'File contents will appear here once read. You can edit before sending.' : 'Paste the document text here…'}
+                        value={docPasteText} onChange={e => setDocPasteText(e.target.value)} rows={5} />
+                      <TextField type="text" placeholder="Anything to note about it? (optional)" value={docContextNote}
+                        onChange={e => setDocContextNote(e.target.value)} />
+                      <Button kind="secondary" onClick={submitOnboardingDoc} disabled={!docPasteText.trim() || onboardingLoading}>
                         Add document and let Groundwork read it
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 )}
                 {/* The composer keeps its own stacking context so a floating control can never take
                     a click meant for Send. It happened: the feedback button's mobile position put it
                     exactly on top of Send at 375px. See gw-fb-trigger-chat-mobile-safe. */}
-                <div style={{ padding: '10px 16px', position: 'relative', zIndex: 101 }}>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', maxWidth: 680, margin: '0 auto' }}>
-                    <button
-                      onClick={() => setShowDocPanel(v => !v)}
-                      disabled={onboardingLoading}
-                      title="Add a document (paste or upload) instead of typing it out"
-                      style={{ padding: '0 12px', borderRadius: 6, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-border)', cursor: 'pointer', fontSize: 13, fontWeight: 700, height: 38, whiteSpace: 'nowrap', opacity: onboardingLoading ? 0.5 : 1 }}
-                    >
-                      + Doc
-                    </button>
+                <div className="gwui-ec-composer-inner">
+                  <div className="gwui-ec-messages-narrow">
                     {/* A textarea, like the check-in composer two screens later: Enter sends, Shift+Enter breaks a
                         line, and a multi-line setup answer keeps its shape. Same position, same handler. */}
-                    <textarea
-                      placeholder="Type your response, or add a document with + Doc"
+                    <Composer
                       value={input}
-                      onChange={e => setInput(e.target.value)}
+                      onChange={setInput}
                       onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (input.trim()) sendOnboarding(input) } }}
+                      onSend={() => { if (input.trim()) sendOnboarding(input) }}
+                      onPlus={() => setShowDocPanel(v => !v)}
+                      plusGlyph="+ Doc"
+                      plusLabel="Add a document (paste or upload) instead of typing it out"
+                      plusDisabled={onboardingLoading}
                       disabled={onboardingLoading}
-                      rows={1}
-                      style={{
-                        flex: 1, padding: '10px 12px', fontSize: 13, border: '1px solid var(--gw-border)', resize: 'none', minHeight: 38, maxHeight: 120, lineHeight: 1.4,
-                        borderRadius: 6, fontFamily: 'inherit', outline: 'none', background: 'white',
-                        color: 'var(--gw-text)', opacity: onboardingLoading ? 0.5 : 1,
-                      }}
+                      sendDisabled={!input.trim()}
+                      sendText="Send"
+                      sendLabel="Send message"
+                      placeholder="Type your response, or add a document with + Doc"
                       autoFocus
                     />
-                    <button
-                      onClick={() => { if (input.trim()) sendOnboarding(input) }}
-                      disabled={!input.trim() || onboardingLoading}
-                      aria-label="Send message"
-                      style={{ padding: '0 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 18, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (input.trim() && !onboardingLoading) ? 1 : 0.35 }}
-                    >
-                      ↑
-                    </button>
                   </div>
                 </div>
               </div>
             )}
           </div>
+          {/* U.6: the panel that fills in as you talk (new.txt), beside the conversation on a wide
+              screen. Built only from what this page already holds from the conversation. */}
+          {!atTheDoor && (
+            <div className="gw-fills-in gwui-ec-fills-in">
+              <FillsInAsYouTalk
+                name={groundName}
+                situation={(() => {
+                  const chosen = onboardingSelections.classifiedScenario || pickedScenario || scenario
+                  return chosen ? sentenceCase(scenarioLabel(chosen, onboardingSelections.brief)) : ''
+                })()}
+                cadence={cadence}
+                cadenceChosen={cadenceChosen}
+                workingDays={workingDays}
+                startsOn={checkInBy}
+                endsOn={lastCheckInBy}
+                mentioned={onboardingSelections.peopleNamed ?? []}
+                added={inviteAdded.map((e) => shownAs(e.split(' - ')[0]))}
+              />
+            </div>
+          )}
+          </div>
         )}
 
         {/* PHASE: CHECK-IN (AI-driven, message 15+) */}
         {phase === 'checkin' && (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div className="gwui-ec-checkin">
             {/* Not-signed-up reminder: the entry user has no account until they save. */}
             {!user && (
-              <div style={{ background: 'var(--gw-amber-bg)', borderBottom: '1px solid var(--gw-amber-b-soft)', padding: '8px 16px', flexShrink: 0 }}>
-                <div style={{ maxWidth: 680, margin: '0 auto', fontSize: 12.5, color: 'var(--gw-amber-t)', lineHeight: 1.5 }}>
+              <div className="gwui-ec-checkin-notice">
+                <div className="gwui-ec-checkin-notice-inner">
                   You are not signed up yet. Your answers are saved to this device as you go, but save your email at the end to keep this record.
                 </div>
               </div>
@@ -3246,10 +3463,10 @@ export function EntryChatPage() {
             <div
               ref={msgsRef}
               aria-live="polite"
-              style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 680, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}
+              className="gwui-ec-checkin-messages"
             >
               {startCheckin.isPending && (
-                <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', padding: 24 }}>Starting your session…</div>
+                <div className="gwui-ec-checkin-starting">Starting your session…</div>
               )}
               {/*
                 W1. THE SEAM BETWEEN SETUP AND THE CHECK-IN.
@@ -3261,22 +3478,28 @@ export function EntryChatPage() {
                 five setup questions, a person cannot tell that the sixth is a
                 different sort of question unless something says so.
               */}
+              {/*
+                U.8 REVIEW: "Setup done · your check-in starts here", in capitals, joined with a
+                dot. CLAUDE.md's wording rule is the same one everywhere else on the product: plain,
+                full sentences, no pieces joined with dots, no work-label capitals. This is the same
+                seam the comment above it explains, said as a sentence a person would actually read.
+              */}
               {!startCheckin.isPending && displayedHistory.length <= 2 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '2px 12px 10px' }}>
+                <div className="gwui-ec-checkin-seam">
                   <Rule />
-                  <span style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gw-sub)', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                    Setup done · your check-in starts here
+                  <span className="gwui-ec-checkin-seam-text">
+                    Setup is done. Your check-in starts here.
                   </span>
                   <Rule />
                 </div>
               )}
               {!startCheckin.isPending && displayedHistory.length <= 2 && (
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', padding: '4px 12px 8px', lineHeight: 1.5 }}>
+                <div className="gwui-ec-checkin-note">
                   What you say from here is yours, and it goes on your private record. About 10 minutes, a few exchanges (around 3 answers), then you can end the session to get your report.
                 </div>
               )}
               {!startCheckin.isPending && displayedHistory.length <= 2 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', fontSize: 12, color: 'var(--gw-sub)', padding: '0 12px 10px', lineHeight: 1.5 }}>
+                <div className="gwui-ec-checkin-note gwui-ec-checkin-note-row">
                   <VennIcon size={22} />
                   <span>Your individual report is private. The shared report shows where everyone agrees and where they differ.</span>
                 </div>
@@ -3291,92 +3514,65 @@ export function EntryChatPage() {
                 session afterwards runs on memory alone.
               */}
               {!startCheckin.isPending && displayedHistory.length <= 2 && (
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', padding: '0 12px 12px', lineHeight: 1.5 }}>
-                  Anything else the check-ins should be held against - a plan, a brief, a spreadsheet - goes on the Context tab once this is saved. You can add it any time.
+                <div className="gwui-ec-checkin-note">
+                  Anything else the check-ins should be held against, such as a plan, a brief or a spreadsheet, goes on the Context and resources tab once this is saved. You can add it any time.
                 </div>
               )}
               {displayedHistory.map((m, i) => {
+                const typing = m.content === '…'
                 return (
-                  <div
-                    key={i}
-                    style={{
-                      maxWidth: '82%',
-                      alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
-                      background: m.role === 'user' ? 'var(--gw-navy)' : 'white',
-                      color: m.role === 'user' ? 'white' : 'var(--gw-text)',
-                      border: m.role === 'assistant' ? '1px solid var(--gw-border)' : 'none',
-                      borderRadius: m.role === 'user' ? '16px 16px 4px 16px' : '4px 16px 16px 16px',
-                      padding: '10px 14px',
-                      fontSize: 14,
-                      lineHeight: 1.65,
-                      whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0,
-                      opacity: (m.content === '…') ? 0.45 : 1,
-                      transition: 'opacity .3s',
-                      boxShadow: m.role === 'assistant' ? '0 1px 3px rgba(0,0,0,.06)' : 'none',
-                    }}
-                  >
-                    {m.content === '…' ? (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <Bubble key={i} mine={m.role === 'user'} opacity={typing ? 0.45 : 1}>
+                    {typing ? (
+                      <span className="gwui-ci-dots">
                         {[0, 1, 2].map(i2 => (
-                          <span key={i2} style={{
-                            display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
-                            background: 'var(--gw-sub)',
-                            animation: 'gwDotBounce 1.2s ease-in-out infinite',
-                            animationDelay: `${i2 * 0.2}s`,
-                          }} />
+                          <span key={i2} className="gwui-ci-dot" style={{ animationDelay: `${i2 * 0.2}s` }} />
                         ))}
-                        <style>{`@keyframes gwDotBounce { 0%,80%,100%{transform:translateY(0);opacity:.4} 40%{transform:translateY(-5px);opacity:1} }`}</style>
                       </span>
                     ) : nothingInternalReachesTheBubble(m.content)}
-                    {streamingIdx === i && <span style={{ display: 'inline-block', width: 2, height: '1em', background: 'var(--gw-navy)', marginLeft: 2, verticalAlign: 'text-bottom', animation: 'blink .7s step-end infinite' }} />}
-                  </div>
+                    {streamingIdx === i && <span className="gwui-ci-caret" />}
+                  </Bubble>
                 )
               })}
             </div>
 
             {/* Natural close prompt */}
             {showEndPrompt && !closed && (
-              <div style={{ padding: '12px 20px', background: 'var(--gw-blue-bg)', borderTop: '1px solid var(--gw-blue-b)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ flex: 1, fontSize: 13, color: 'var(--gw-navy)', lineHeight: 1.5 }}>
+              <div className="gwui-ec-natural-close">
+                <Callout tone="info">
                   This session has reached a natural close. Would you like to end and see your report?
+                </Callout>
+                <div className="gwui-ec-natural-close-actions">
+                  <Button kind="secondary" size="small" onClick={() => { setShowEndPrompt(false); setEndPromptDismissed(true) }}>
+                    Keep going
+                  </Button>
+                  <Button kind="secondary" redText size="small" onClick={() => setShowEndConfirm(true)}>
+                    End session
+                  </Button>
                 </div>
-                <button
-                  onClick={() => { setShowEndPrompt(false); setEndPromptDismissed(true) }}
-                  style={{ padding: '7px 12px', borderRadius: 6, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
-                >
-                  Keep going
-                </button>
-                <button
-                  onClick={() => setShowEndConfirm(true)}
-                  style={{ padding: '7px 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
-                >
-                  End session
-                </button>
               </div>
             )}
 
             {/* Quick action chips */}
             {!closed && displayedHistory.length >= 1 && (
-              <div style={{ padding: '8px 16px', borderTop: '1px solid var(--gw-border)', display: 'flex', gap: 7, flexWrap: 'wrap', flexShrink: 0, background: 'white', alignItems: 'center' }}>
+              <div className="gwui-ec-quick-actions">
                 {QUICK_ACTIONS.map(a => (
-                  <button key={a.label} onClick={() => send(a.msg)} disabled={loading}
-                    style={{ padding: '5px 12px', borderRadius: 20, fontSize: 12, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit', opacity: loading ? 0.5 : 1 }}>
+                  <button key={a.label} type="button" className="gwui-ec-quick-action" onClick={() => send(a.msg)} disabled={loading}>
                     {a.label}
                   </button>
                 ))}
-                <button onClick={() => send('What patterns are you noticing in what I have shared so far?')} disabled={loading}
-                  style={{ padding: '5px 12px', borderRadius: 20, fontSize: 12, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit', opacity: loading ? 0.5 : 1 }}>
+                <button type="button" className="gwui-ec-quick-action" onClick={() => send('What patterns are you noticing in what I have shared so far?')} disabled={loading}>
                   Patterns
                 </button>
-                <label htmlFor="entry-doc-upload-chip" title="Upload a document"
-                  style={{ padding: '5px 10px', borderRadius: 20, fontSize: 13, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit', opacity: loading ? 0.5 : 1 }}>
-                  📎
+                <label htmlFor="entry-doc-upload-chip" title="Upload a document" className="gwui-ec-quick-action gwui-ec-quick-action-attach">
+                  Attach a document
                 </label>
-                <input ref={fileRef} type="file" id="entry-doc-upload-chip" accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.png,.jpg,.jpeg,.md" style={{ display: 'none' }} onChange={handleFileChange} />
-                <div style={{ marginLeft: 'auto' }}>
-                  <button onClick={() => setShowEndConfirm(true)} disabled={loading}
-                    style={{ padding: '5px 12px', borderRadius: 20, fontSize: 12, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, opacity: loading ? 0.5 : 1 }}>
-                    End session →
+                <input ref={fileRef} type="file" id="entry-doc-upload-chip" accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.png,.jpg,.jpeg,.md" className="gwui-sr-only" onChange={handleFileChange} />
+                <div className="gwui-ec-quick-actions-end">
+                  {/* No arrow (U.8 review): a button says what it does, and the other "End session"
+                      button on this same screen (the natural-close prompt above) already says it
+                      without one. */}
+                  <button type="button" className="gwui-ec-quick-action gwui-ec-quick-action-navy" onClick={() => setShowEndConfirm(true)} disabled={loading}>
+                    End session
                   </button>
                 </div>
               </div>
@@ -3384,43 +3580,36 @@ export function EntryChatPage() {
 
             {/* Attached doc pill */}
             {uploadedDoc && (
-              <div style={{ padding: '6px 16px', background: 'var(--gw-blue-bg)', borderTop: '1px solid var(--gw-blue-b)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                <span style={{ fontSize: 12, color: 'var(--gw-navy)', flex: 1 }}>📎 {uploadedDoc.name}</span>
-                <button onClick={() => setUploadedDoc(null)} style={{ fontSize: 11, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer' }}>× remove</button>
+              <div className="gwui-ec-doc-pill">
+                <span className="gwui-ec-doc-pill-name">📎 {uploadedDoc.name}</span>
+                <button type="button" className="gwui-plain-link" onClick={() => setUploadedDoc(null)}>Remove</button>
               </div>
             )}
 
             {/* Input bar / save CTA */}
             {closed && !showSave ? (
-              <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0, padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>{'What you said is on record.'}</div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>{skippedCheckin ? 'After this one, only the people you invite check in. You read what comes back.' : 'Invite others to check in - the shared report releases when all parties are in.'}</div>
+              <div className="gwui-ec-invite-bar">
+                <div className="gwui-ec-invite-bar-text">
+                  <div className="gwui-ec-invite-bar-title">{'What you said is on record.'}</div>
+                  <div className="gwui-ec-invite-bar-sub">{skippedCheckin ? 'After this one, only the people you invite check in. You read what comes back.' : 'Invite others to check in. The shared report releases when all parties are in.'}</div>
                 </div>
-                <button
-                  onClick={() => setShowSave(true)}
-                  style={{ flexShrink: 0, padding: '8px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
-                >
-                  Invite &amp; finish →
-                </button>
+                <Button kind="primary" onClick={() => setShowSave(true)}>
+                  Invite and finish
+                </Button>
               </div>
             ) : !closed && (
-              <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
-                <div style={{ padding: '10px 16px', display: 'flex', gap: 8, alignItems: 'flex-end', maxWidth: 680, margin: '0 auto' }}>
-                  <textarea
-                    ref={taRef}
-                    placeholder="Type your response."
-                    value={input}
-                    onChange={autoResize}
-                    onKeyDown={handleCheckinKey}
-                    disabled={loading}
-                    style={{ flex: 1, resize: 'none', height: 38, maxHeight: 120, padding: '8px 10px', fontSize: 13, lineHeight: 1.4, border: '1px solid var(--gw-border)', borderRadius: 6, background: 'white', fontFamily: 'inherit', outline: 'none', color: 'var(--gw-text)' }}
-                  />
-                  <button onClick={() => send()} disabled={loading || !input.trim()} aria-label="Send message"
-                    style={{ padding: '0 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 18, flexShrink: 0, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (loading || !input.trim()) ? 0.35 : 1 }}>
-                    ↑
-                  </button>
-                </div>
+              <div className="gwui-ec-checkin-composer-wrap">
+                <Composer
+                  value={input}
+                  onChange={setInput}
+                  onKeyDown={handleCheckinKey}
+                  onSend={() => send()}
+                  disabled={loading}
+                  sendDisabled={loading || !input.trim()}
+                  sendLabel="Send message"
+                  placeholder="Type your response."
+                  inputRef={taRef}
+                />
               </div>
             )}
           </div>
@@ -3429,24 +3618,22 @@ export function EntryChatPage() {
 
       {/* Doc context overlay */}
       {docContextMode && uploadedDoc && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-          <div style={{ background: 'white', borderRadius: '14px 14px 0 0', padding: '20px 20px 32px', width: '100%', maxWidth: 560 }}>
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--gw-border)', margin: '0 auto 16px' }} />
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 4 }}>📎 {uploadedDoc.name}</div>
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 12, lineHeight: 1.55 }}>
-              What context does this document support from what you have shared so far?
-            </div>
-            <textarea autoFocus placeholder="e.g. This is the brief I referenced when I mentioned the project scope…"
-              value={docContext} onChange={e => setDocContext(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitDocContext() } }}
-              style={{ width: '100%', resize: 'none', minHeight: 80, padding: '10px 12px', fontSize: 13, lineHeight: 1.55, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 10 }}
-            />
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => { setDocContextMode(false); setUploadedDoc(null) }} style={{ padding: '10px 16px', borderRadius: 8, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-              <button onClick={submitDocContext} style={{ flex: 1, padding: '10px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Add to session</button>
-            </div>
+        <Modal title={`📎 ${uploadedDoc.name}`} onClose={() => { setDocContextMode(false); setUploadedDoc(null) }}>
+          <Note>
+            What context does this document support from what you have shared so far?
+          </Note>
+          <TextArea
+            autoFocus
+            placeholder="e.g. This is the brief I referenced when I mentioned the project scope…"
+            value={docContext}
+            onChange={e => setDocContext(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitDocContext() } }}
+          />
+          <div className="gwui-ec-modal-actions">
+            <Button kind="secondary" onClick={() => { setDocContextMode(false); setUploadedDoc(null) }}>Cancel</Button>
+            <Button kind="primary" onClick={submitDocContext}>Add to session</Button>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/*
@@ -3461,29 +3648,24 @@ export function EntryChatPage() {
         * 50 is this page's own number for a full-screen modal: the document panel a few lines up
         * already uses it. Two overlays on one screen at two different heights is the bug itself.
         */}
-      <div style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 50,
-        opacity: showSave ? 1 : 0, pointerEvents: showSave ? 'auto' : 'none',
-        // visibility keeps the hidden modal out of the accessibility tree and
-        // tab order - opacity alone leaves "Your account is on record" readable
-        // by screen readers on step 1, before anything is on record.
-        visibility: showSave ? 'visible' : 'hidden',
-        transition: 'opacity .3s, visibility .3s',
-        overflowY: 'auto', display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-        padding: '24px 16px 48px',
-      }}>
-        <div style={{ width: '100%', maxWidth: 640, background: 'white', borderRadius: 14, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,.22)' }}>
+      <div className={`gwui-ec-savecard-overlay ${showSave ? 'gwui-ec-savecard-overlay-shown' : 'gwui-ec-savecard-overlay-hidden'}`}>
+        {/* visibility (in the hidden class) keeps the hidden card out of the accessibility tree
+            and tab order - opacity alone leaves "Your account is on record" readable by screen
+            readers on step 1, before anything is on record. */}
+        <div className="gwui-ec-savecard">
 
           {/* Report header */}
-          <div style={{ background: 'var(--gw-dark)', color: 'white', padding: '20px 22px 16px' }}>
-            <div style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--gw-green-b)', fontWeight: 700, marginBottom: 6 }}>{skippedCheckin ? 'Session 1 · you set the context' : 'Session 1 · your private report'}</div>
-            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.01em', lineHeight: 1.2 }}>{groundName || 'What you said is on record.'}</div>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 6 }}>
-              <div style={{ flexShrink: 0, marginTop: 2, background: 'white', borderRadius: 4, padding: '2px 3px' }}><VennIcon size={22} /></div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,.6)', lineHeight: 1.5 }}>
+          <div className="gwui-ec-savecard-header">
+            {/* Full sentence, no dot, no capitals label (U.8 review): CLAUDE.md's wording rule
+                applies here the same as everywhere else a person reads. */}
+            <div className="gwui-ec-savecard-eyebrow">{skippedCheckin ? 'This is session 1. You set the context here.' : 'This is session 1. It is your private report.'}</div>
+            <div className="gwui-ec-savecard-title">{groundName || 'What you said is on record.'}</div>
+            <div className="gwui-ec-savecard-venn-row">
+              <div className="gwui-ec-savecard-venn-icon"><VennIcon size={22} /></div>
+              <div className="gwui-ec-savecard-venn-text">
                 {skippedCheckin
-                  ? <>You did the first check-in; after this one, only the people you invite check in. Once everyone has checked in, a <b style={{ color: 'rgba(255,255,255,.85)' }}>shared report</b> shows where they agree and where they differ.</>
-                  : <>This individual report is private to you. Once everyone has checked in, a separate <b style={{ color: 'rgba(255,255,255,.85)' }}>shared report</b> shows where everyone agrees and where they differ.</>}
+                  ? <>You did the first check-in; after this one, only the people you invite check in. Once everyone has checked in, a <b>shared report</b> shows where they agree and where they differ.</>
+                  : <>This individual report is private to you. Once everyone has checked in, a separate <b>shared report</b> shows where everyone agrees and where they differ.</>}
               </div>
             </div>
             {history.filter(m => m.role === 'user').length > 0 && !reportFailed && (() => {
@@ -3505,15 +3687,18 @@ export function EntryChatPage() {
                * records as decided may not come back - is gone with the grade word.
                */
               const turns = history.filter(m => m.role === 'user').length
+              /* A full sentence, not a label ("Depth:") joined to a clause with a dot (U.8 review). */
+              const said = `You gave ${turns} ${turns === 1 ? 'answer' : 'answers'}.`
+              const more = turns < 4 ? ' More answers make the report stronger.' : ''
               return (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
-                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,.55)' }}>Depth: {turns} {turns === 1 ? 'exchange' : 'exchanges'}{turns < 4 ? ' · more exchanges strengthen the report' : ''}</span>
+                <div className="gwui-ec-savecard-stat-row">
+                  <span className="gwui-ec-savecard-stat">{said}{more}</span>
                 </div>
               )
             })()}
           </div>
 
-          <div style={{ padding: '18px 20px 28px' }}>
+          <div className="gwui-ec-savecard-body">
 
             {/*
               Generating state.
@@ -3531,23 +3716,20 @@ export function EntryChatPage() {
               work, not a progress bar pretending to know.
             */}
             {generatingReport && !sessionReport && (
-              <div style={{ marginBottom: 18 }} role="status" aria-live="polite">
+              <div className="gwui-ec-savecard-status" role="status" aria-live="polite">
                 <SlowStep steps={CLOSING_STEPS} note="This one takes about half a minute. It is the only slow step." />
               </div>
             )}
 
             {/* ISSUE 15: report failed - show retry option */}
             {reportFailed && (
-              <div style={{ background: 'var(--gw-clay-bg)', borderRadius: 10, padding: '14px 16px', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ flex: 1, fontSize: 13, color: 'var(--gw-clay)', lineHeight: 1.5 }}>
+              <div className="gwui-ec-savecard-retry">
+                <div className="gwui-ec-savecard-retry-text">
                   We could not generate your report. Your responses are saved.
                 </div>
-                <button
-                  onClick={() => generateSessionReport(reportTurnsForRetry)}
-                  style={{ flexShrink: 0, padding: '8px 14px', borderRadius: 7, background: 'var(--gw-clay)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-                >
+                <Button kind="secondary" size="small" onClick={() => generateSessionReport(reportTurnsForRetry)}>
                   Retry
-                </button>
+                </Button>
               </div>
             )}
 
@@ -3556,38 +3738,9 @@ export function EntryChatPage() {
               <TheReportYouSawAtTheEnd
                 report={sessionReport}
                 correctedNote={reportWasCorrected && !generatingReport}
-                /*
-                  HOW OFTEN THIS RUNS, ASKED WHERE SOMEBODY IS STILL THINKING ABOUT THE WORK.
-
-                  `cadenceChosen` already exists on this page for exactly this distinction - it was
-                  added because "a value nobody had chosen was indistinguishable" from one somebody
-                  picked. Until now nothing acted on it: the unchosen FORTNIGHTLY went into the
-                  commit payload as though it had been decided.
-
-                  The standard half is not offered here. There is no Setup tab yet - the check-in is
-                  not saved - so a link to it would be a link to nothing.
-                */
-                stillNeeded={
-                  <WhatThisCheckInStillNeeds
-                    cadenceUnset={!cadenceChosen}
-                    cadence={cadence}
-                    onPickCadence={(c) => { setCadence(c as typeof cadence); setCadenceChosen(true) }}
-                    standardUnset={false}
-                    /* There is no ground and no Setup page yet on this path, so the date is set
-                       here or it is not set at all. See renderStartDate. */
-                    startDateUnset={!checkInBy}
-                    renderStartDate={
-                      <input
-                        type="date"
-                        value={checkInBy}
-                        min={new Date().toISOString().slice(0, 10)}
-                        onChange={(e) => setCheckInBy(e.target.value)}
-                        style={{ padding: '8px 11px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 12.5, fontFamily: 'inherit', color: checkInBy ? 'var(--gw-text)' : 'var(--gw-muted)', outline: 'none' }}
-                      />
-                    }
-                    onGoToSetup={() => { /* no ground yet on this path */ }}
-                  />
-                }
+                /* U.6 review: no "One thing this check-in still needs" here. It asked "When does this
+                   start?" and said no start date was set after the lead had chosen "Now". The setup
+                   right below (TheSetup) asks when it starts and how often, once. */
                 onRecordLine={
                   uploadedDoc
                     ? `Built from what you said today, and ${uploadedDoc.name}. Nobody else has attached anything yet.`
@@ -3595,36 +3748,32 @@ export function EntryChatPage() {
                 }
                 renderAdd={(key, label) =>
                   queuedFromSuggestion.has(key) ? (
-                    <div style={{ fontSize: 11.5, color: 'var(--gw-green-t)', fontWeight: 600, marginTop: 6 }}>✓ Added to invite list</div>
+                    <div className="gwui-ec-savecard-add-pending">✓ Added to invite list</div>
                   ) : addingContributorFor === key ? (
                     <>
-                      <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-                        <input
+                      <div className="gwui-ec-savecard-add-row">
+                        <TextField
                           type="email" autoFocus placeholder="their@email.com"
                           value={addingContributorEmail} onChange={e => { setAddingContributorEmail(e.target.value); setAddingContributorError('') }}
                           onKeyDown={e => e.key === 'Enter' && queueSuggestedContributor(key, label)}
-                          style={{ flex: 1, padding: '6px 9px', borderRadius: 6, border: '1px solid var(--gw-border)', fontSize: 12, fontFamily: 'inherit', outline: 'none' }}
                         />
-                        <button onClick={() => queueSuggestedContributor(key, label)} style={{ padding: '6px 10px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
+                        <Button kind="secondary" size="small" onClick={() => queueSuggestedContributor(key, label)}>Add</Button>
                       </div>
                       {addingContributorError && (
-                        <div style={{ fontSize: 11.5, color: 'var(--gw-red-t)', marginTop: 4 }}>{addingContributorError}</div>
+                        <div className="gwui-ec-savecard-add-error">{addingContributorError}</div>
                       )}
                     </>
                   ) : colleagueNamed(label) ? (
                     /* Already in the organisation: one click, no address to type. */
-                    <button
-                      onClick={() => queueColleague(colleagueNamed(label)!, label, key)}
-                      style={{ marginTop: 6, background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit' }}
-                    >
-                      + Add {colleagueNamed(label)!.name ?? colleagueNamed(label)!.email} ({colleagueNamed(label)!.email})
+                    <button type="button" className="gwui-plain-link" onClick={() => queueColleague(colleagueNamed(label)!, label, key)}>
+                      Add {colleagueNamed(label)!.name}{colleagueNamed(label)!.team ? ` (${colleagueNamed(label)!.team})` : ''}
                     </button>
                   ) : (
                     <button
+                      type="button" className="gwui-plain-link"
                       onClick={() => { setAddingContributorFor(key); setAddingContributorEmail(''); setAddingContributorLabel(label); setAddingContributorError('') }}
-                      style={{ marginTop: 6, background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
                     >
-                      + Add them
+                      Add them
                     </button>
                   )
                 }
@@ -3632,11 +3781,11 @@ export function EntryChatPage() {
                    correction conversation as the summary does; nothing separate to maintain. */
                 renderCorrect={(about) => (!showCorrection ? (
                   <button
+                    type="button" className="gwui-plain-link"
                     onClick={() => { setCorrectionText(`"${about}" is not right: `); setShowCorrection(true) }}
                     disabled={generatingReport}
-                    style={{ marginTop: 8, background: 'none', border: 'none', padding: 0, fontSize: 12, color: 'var(--gw-navy)', cursor: generatingReport ? 'wait' : 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
                   >
-                    This isn't right - correct it
+                    This isn't right, correct it
                   </button>
                 ) : null)}
                 correctionSlot={
@@ -3645,15 +3794,15 @@ export function EntryChatPage() {
                               not a one-shot patch. See the comment block above buildCorrectionTurn. */}
                           {!showCorrection ? (
                             <button
+                              type="button" className="gwui-plain-link"
                               onClick={() => setShowCorrection(true)}
                               disabled={generatingReport}
-                              style={{ marginTop: 10, background: 'none', border: 'none', padding: 0, fontSize: 12, color: 'var(--gw-green-b)', cursor: generatingReport ? 'wait' : 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
                             >
-                              This isn't right - correct it
+                              This isn't right, correct it
                             </button>
                           ) : (
-                            <div style={{ marginTop: 10 }}>
-                              <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', marginBottom: 6 }}>
+                            <div>
+                              <div className="gwui-ec-correction-intro">
                                 {/*
                                   W8. "We may ask a follow-up" reads like a warning that
                                   something might go wrong, and next to a button marked
@@ -3663,23 +3812,14 @@ export function EntryChatPage() {
                                   conversation is the difference between "the deadline is
                                   wrong" and a correction the record can act on.
                                 */}
-                                What did we get wrong? Say it plainly. This is a conversation, not a form - we will usually ask one thing back before the report changes, because "the deadline is wrong" does not say what the deadline is.
+                                What did we get wrong? Say it plainly. This is a conversation, not a form, and we will usually ask one thing back before the report changes, because "the deadline is wrong" does not say what the deadline is.
                               </div>
                               {correctionExchange.length > 0 && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
+                                <div className="gwui-ec-correction-thread">
                                   {correctionExchange.map((m, i) => (
                                     <div
                                       key={i}
-                                      style={{
-                                        alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
-                                        maxWidth: '88%',
-                                        padding: '7px 10px',
-                                        borderRadius: 8,
-                                        fontSize: 12.5,
-                                        lineHeight: 1.5,
-                                        background: m.role === 'user' ? 'var(--gw-green-b)' : 'rgba(255,255,255,.1)',
-                                        color: m.role === 'user' ? 'var(--gw-dark)' : 'rgba(255,255,255,.9)',
-                                      }}
+                                      className={`gwui-ec-correction-bubble ${m.role === 'user' ? 'gwui-ec-correction-bubble-user' : 'gwui-ec-correction-bubble-assistant'}`}
                                     >
                                       {m.role === 'user' && m.content.startsWith(CORRECTION_PREFIX)
                                         ? m.content.slice(CORRECTION_PREFIX.length).trim()
@@ -3693,29 +3833,29 @@ export function EntryChatPage() {
                                 value={correctionText}
                                 onChange={e => setCorrectionText(e.target.value)}
                                 placeholder="e.g. The deadline is not May - it is March 1."
-                                style={{ width: '100%', minHeight: 64, padding: '8px 10px', fontSize: 13, lineHeight: 1.55, border: 'none', borderRadius: 7, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', resize: 'vertical', background: 'rgba(255,255,255,.94)', color: 'var(--gw-text)' }}
+                                className="gwui-ec-correction-field"
                               />
-                              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                                <button
+                              <div className="gwui-ec-correction-actions">
+                                <Button
+                                  kind="secondary" size="small"
                                   onClick={submitReportCorrection}
                                   disabled={!correctionText.trim() || correctionLoading || generatingReport}
-                                  style={{ padding: '7px 14px', borderRadius: 7, background: 'var(--gw-green-b)', color: 'var(--gw-dark)', fontSize: 12, fontWeight: 700, border: 'none', cursor: !correctionText.trim() || correctionLoading || generatingReport ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: !correctionText.trim() || correctionLoading || generatingReport ? 0.6 : 1 }}
                                 >
                                   {generatingReport ? 'Redoing your report...' : correctionLoading ? 'Sending...' : correctionExchange.length > 0 ? 'Send' : 'Start'}
-                                </button>
+                                </Button>
                                 {correctionExchange.length > 0 && (
-                                  <button
+                                  <Button
+                                    kind="secondary" size="small"
                                     onClick={finishCorrection}
                                     disabled={correctionLoading || generatingReport}
-                                    style={{ padding: '7px 12px', borderRadius: 7, background: 'none', color: 'var(--gw-green-b)', fontSize: 12, border: '1px solid rgba(93,202,165,.5)', cursor: 'pointer', fontFamily: 'inherit' }}
                                   >
                                     I'm done, redo my report
-                                  </button>
+                                  </Button>
                                 )}
                                 <button
+                                  type="button" className="gwui-plain-link"
                                   onClick={() => { setShowCorrection(false); setCorrectionText(''); setCorrectionStartIndex(null) }}
                                   disabled={correctionLoading || generatingReport}
-                                  style={{ padding: '7px 12px', borderRadius: 7, background: 'none', color: 'rgba(255,255,255,.6)', fontSize: 12, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                                 >
                                   Cancel
                                 </button>
@@ -3748,62 +3888,47 @@ export function EntryChatPage() {
                 It always did set a date; the label just never said so. It says so now, and the date
                 field it opens is the answer to the question the button asks.
               */}
-              <div style={{ background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 15px', marginBottom: 12 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 7 }}>When should the invites go out?</div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: checkInBy ? 0 : 8 }}>
-                  <button
-                    onClick={() => setCheckInBy('')}
-                    style={{ padding: '7px 13px', borderRadius: 999, fontSize: 12.5, fontFamily: 'inherit', cursor: 'pointer', fontWeight: 700,
-                      border: `1px solid ${!checkInBy ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
-                      background: !checkInBy ? 'var(--gw-navy)' : 'white', color: !checkInBy ? 'white' : 'var(--gw-text)' }}
-                  >
-                    As soon as I save
-                  </button>
-                  <button
-                    onClick={() => { if (!checkInBy) { const d = new Date(); d.setDate(d.getDate() + 1); setCheckInBy(d.toISOString().slice(0, 10)) } }}
-                    style={{ padding: '7px 13px', borderRadius: 999, fontSize: 12.5, fontFamily: 'inherit', cursor: 'pointer', fontWeight: 700,
-                      border: `1px solid ${checkInBy ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
-                      background: checkInBy ? 'var(--gw-navy)' : 'white', color: checkInBy ? 'white' : 'var(--gw-text)' }}
-                  >
-                    On a date I pick
-                  </button>
-                </div>
-                {checkInBy ? (
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 9, flexWrap: 'wrap' }}>
-                    <input
-                      type="date"
-                      value={checkInBy}
-                      min={new Date().toISOString().slice(0, 10)}
-                      onChange={(e) => setCheckInBy(e.target.value)}
-                      style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none' }}
-                    />
-                    <span style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
-                      Your work is saved now. The invites go out on the morning of that date, and nobody hears anything before then.
-                    </span>
-                  </div>
-                ) : (
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
-                    Everyone named gets their invite the moment you press save.
-                  </div>
-                )}
-              </div>
+              {/*
+                PIECE 9: THE LEAD'S REVEAL, "Help my team understand" (plan section 5, row 3;
+                docs/answers-from-engine.md, "Request 149 (1 of 6)"). Served now, on `/entry/report`,
+                for an anchor draft's own report. Drawn only for an anchor draft, and only once the
+                engine has actually sent one - `sessionReport?.leadsReveal` is still `undefined` for
+                every other situation. Placed as the set-up screen's own last step, right before the
+                schedule and the people step, following the plan's "if unclear, show it on the
+                set-up screen's last step for an anchor draft".
+              */}
+              {isAnchorDraft() && <TheLeadsReveal reveal={sessionReport?.leadsReveal} />}
 
-              <div style={{ background: '#F0F4FA', borderRadius: 10, padding: '14px 16px', marginBottom: 18 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.06em' }}>What happens next</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {/* U.6: the prototype's setup (setup.txt). The start date is still what the invitations wait for. */}
+              <TheSetup
+                cadence={cadence}
+                cadenceChosen={cadenceChosen}
+                onCadence={(c) => { setCadence(c); setCadenceChosen(true) }}
+                anchorDay={null}
+                workingDays={workingDays}
+                daysPicker={<WhichDaysTheyWork value={workingDays} onChange={setWorkingDays} />}
+                startsOn={checkInBy}
+                onStartsOn={setCheckInBy}
+                endsOn={lastCheckInBy}
+                onEndsOn={(d) => { setEndChosen(true); setLastCheckInBy(d) }}
+              />
+
+              <div className="gwui-ec-savecard-whatnext">
+                <div className="gwui-ec-savecard-whatnext-title">What happens next</div>
+                <div className="gwui-ec-savecard-whatnext-list">
                   {(user
                     ? [
-                      checkInBy ? `Save this. Your invites go out on ${checkInBy}, not before.` : 'Save this. Your invites go out straight away.',
+                      startsLater ? `Save this. Nobody is invited before ${theDay(new Date(`${checkInBy}T00:00:00`))}.` : 'Save this. You then see who was invited and who has to wait.',
                       'Once they check in, everyone gets the shared report. It shows where you agree and where the conversation still needs to happen.',
                     ]
                     : [
                       'Save your email below to keep access to this report.',
-                      'Open the confirmation link we email you - that saves it and sends your invites.',
+                      'Open the confirmation link we email you. That saves it, then shows who was invited and who has to wait.',
                       'Once they check in, everyone gets the shared report. It shows where you agree and where the conversation still needs to happen.',
                     ]).map((step, i) => (
-                    <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                      <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'var(--gw-navy)', color: 'white', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
-                      <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55 }}>{step}</div>
+                    <div key={i} className="gwui-ec-savecard-whatnext-row">
+                      <div className="gwui-ec-savecard-whatnext-num">{i + 1}</div>
+                      <div className="gwui-ec-savecard-whatnext-text">{step}</div>
                     </div>
                   ))}
                 </div>
@@ -3821,40 +3946,32 @@ export function EntryChatPage() {
               * straight to their account.
               */}
             {user && !emailSent ? (
-              <div style={{ marginBottom: 20 }}>
-                <button
-                  onClick={saveAsSignedInUser}
-                  disabled={savingAsUser || (generatingReport && !sessionReport)}
-                  style={{ width: '100%', padding: '12px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: savingAsUser ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: savingAsUser ? 0.6 : 1 }}
-                >
-                  {savingAsUser ? 'Saving…' : 'Save this →'}
-                </button>
-                <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.5, textAlign: 'center', paddingTop: 8 }}>
+              <div className="gwui-ec-savecard-section">
+                <Button kind="primary" wide onClick={saveAsSignedInUser} disabled={savingAsUser || (generatingReport && !sessionReport)}>
+                  {savingAsUser ? 'Saving…' : 'Save this'}
+                </Button>
+                <div className="gwui-ec-savecard-helper">
                   Saving to {user.email}. No confirmation needed, you are already signed in.
                 </div>
                 {/* A WAY OUT OF THE CARD. It covers the whole page, including the page's own Start over,
                     so a card that cannot save (an old empty lead session) was a screen with one button
                     that failed. Seen 10 Sep 2026. Confirmed, like the page's own control. */}
-                <div style={{ textAlign: 'center', paddingTop: 6, fontSize: 11.5, color: 'var(--gw-muted)' }}>
+                <div className="gwui-ec-savecard-clear-row">
                   {confirmClearInCard ? (
-                    <span style={{ display: 'inline-flex', gap: 10, alignItems: 'center' }}>
+                    <span className="gwui-ec-savecard-clear-confirm">
                       This throws away this session and everything in it.
-                      <button type="button" onClick={handleClearSession} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 11.5, fontWeight: 600, padding: 0, fontFamily: 'inherit' }}>Start over</button>
-                      <button type="button" onClick={() => setConfirmClearInCard(false)} style={{ background: 'none', border: 'none', color: 'var(--gw-sub)', cursor: 'pointer', fontSize: 11.5, padding: 0, fontFamily: 'inherit' }}>Keep it</button>
+                      <button type="button" className="gwui-plain-link gwui-ec-savecard-clear-danger" onClick={handleClearSession}>Start over</button>
+                      <button type="button" className="gwui-plain-link" onClick={() => setConfirmClearInCard(false)}>Keep it</button>
                     </span>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={() => setConfirmClearInCard(true)}
-                      style={{ background: 'none', border: 'none', color: 'var(--gw-muted)', cursor: 'pointer', fontSize: 11.5, padding: 0, fontFamily: 'inherit', textDecoration: 'underline' }}
-                    >
+                    <button type="button" className="gwui-plain-link" onClick={() => setConfirmClearInCard(true)}>
                       Start over instead
                     </button>
                   )}
                 </div>
               </div>
             ) : !emailSent ? (
-              <div style={{ marginBottom: 20 }}>
+              <div className="gwui-ec-savecard-section">
                 {/*
                   * THE ORGANISATION'S NAME, ASKED BEFORE EITHER DOOR.
                   *
@@ -3869,24 +3986,28 @@ export function EntryChatPage() {
                   * above the email rather than below it: it is about the account being made, and
                   * the email is the thing that makes it.
                   */}
-                <input
+                <TextField
                   type="text" placeholder="Organisation name (optional)" value={orgName}
                   onChange={e => setOrgName(e.target.value)}
-                  style={{ width: '100%', padding: '12px 14px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 14, fontFamily: 'inherit', outline: 'none', marginBottom: 8, boxSizing: 'border-box' }}
+                  className="gwui-ec-savecard-field"
                 />
                 {trap.field}
                 {/* A form, so Enter and the button are one path and the page's own message is the only channel (noValidate). */}
                 <form noValidate onSubmit={e => { e.preventDefault(); handleSave() }}>
-                <input type="email" placeholder="your@email.com" value={email} onChange={e => { setEmail(e.target.value); setEmailError('') }}
-                  style={{ width: '100%', padding: '11px 13px', borderRadius: 8, border: `1px solid ${emailError ? 'var(--gw-danger)' : 'var(--gw-border)'}`, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }}
+                <TextField type="email" placeholder="your@email.com" value={email} onChange={e => { setEmail(e.target.value); setEmailError('') }}
+                  className={`gwui-ec-savecard-field ${emailError ? 'gwui-ec-savecard-field-error' : ''}`}
                 />
-                {emailError && <div style={{ fontSize: 12, color: 'var(--gw-red-t)', marginBottom: 6 }}>{emailError}</div>}
-                <button type="submit" disabled={saving || (generatingReport && !sessionReport)} style={{ width: '100%', padding: '12px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: saving ? 'wait' : generatingReport && !sessionReport ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: saving || (generatingReport && !sessionReport) ? 0.5 : 1 }}>
-                  {saving ? 'Saving…' : 'Save my check-in →'}
-                </button>
+                {emailError && <div className="gwui-ec-savecard-error">{emailError}</div>}
+                <Button kind="primary" wide type="submit" disabled={saving || (generatingReport && !sessionReport)}>
+                  {/* The anchor label replaces the ordinary one; "Saving…" is shared either way. */}
+                  {isAnchorDraft() ? <>{saving ? 'Saving…' : thePeopleStepRules.button}</> : null}
+                  {!isAnchorDraft() && <>{saving ? 'Saving…' : 'Save my check-in'}</>}
+                </Button>
                 </form>
-                <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.5, textAlign: 'center', paddingTop: 8 }}>
-                  We'll email you a confirmation link. Your report is saved and your invites go out the moment you open it.
+                <div className="gwui-ec-savecard-helper">
+                  {/* U.6 review: it promised the invites went out on opening the link, which a later start (or a
+                      seat, or an admin who must accept it) makes untrue. The same sentences as after saving. */}
+                  {`We'll email you a confirmation link. ${whatOpeningTheLinkDoes(inviteAdded.length, startsLater ? checkInBy : null)}`}
                 </div>
 
                 {/* SIGNING UP WITH GOOGLE, AT THE MOMENT SIGNING UP HAPPENS.
@@ -3901,24 +4022,21 @@ export function EntryChatPage() {
                     Google's own error page. */}
                 {authMethods?.google && (
                   <>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 0 8px' }}>
+                    <div className="gwui-ec-savecard-or-row">
                       <Rule />
-                      <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>or</span>
+                      <span className="gwui-ec-savecard-or-text">or</span>
                       <Rule />
                     </div>
-                    <button
-                      onClick={continueWithGoogle}
-                      style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'white', color: 'var(--gw-text)', fontSize: 14, fontWeight: 700, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
-                    >
+                    <Button kind="secondary" wide onClick={continueWithGoogle}>
                       Continue with Google
-                    </button>
-                    <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.5, textAlign: 'center', paddingTop: 8 }}>
-                      No confirmation email needed - your check-in is created as soon as you come back.
+                    </Button>
+                    <div className="gwui-ec-savecard-helper">
+                      No confirmation email needed. Your check-in is created as soon as you come back.
                     </div>
                   </>
                 )}
                 {/* The only way out of a full-screen save card, and a keyboard user inside it could not dismiss it. */}
-                <button type="button" onClick={() => setShowSave(false)} style={{ display: 'block', margin: '0 auto', background: 'none', border: 'none', fontFamily: 'inherit', textAlign: 'center', fontSize: 12, color: 'var(--gw-muted)', cursor: 'pointer', paddingTop: 10 }}>
+                <button type="button" className="gwui-plain-link" onClick={() => setShowSave(false)}>
                   Not now
                 </button>
               </div>
@@ -3958,18 +4076,18 @@ export function EntryChatPage() {
                   // subtree, and four unrelated specs went red on a scroll.
                   if (el) scrollTo(el)
                 }}
-                style={{ position: 'sticky', top: 8, zIndex: 5, background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 20, boxShadow: '0 2px 10px rgba(0,0,0,.06)' }}
+                className="gwui-ec-savecard-confirm-box"
               >
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 4 }}>Check your email</div>
-                <div style={{ fontSize: 13, color: 'var(--gw-green-t)', lineHeight: 1.6 }}>We sent a link to <strong>{email}</strong>. Click it to finish setting up and get your invite link.</div>
+                <div className="gwui-ec-savecard-confirm-title">Check your email</div>
+                <div className="gwui-ec-savecard-confirm-body">We sent a link to <strong>{email}</strong>. Click it to finish setting up and get your invite link.</div>
                 {inviteAdded.length > 0 ? (
-                  <div style={{ fontSize: 12, color: 'var(--gw-green-t)', lineHeight: 1.6, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--gw-green-b-soft)' }}>
-                    <strong>Waiting to send ({inviteAdded.length}):</strong> {inviteAdded.map(e => e.split(' - ')[0]).join(', ')}. Invites go out when you confirm your email.
+                  <div className="gwui-ec-savecard-confirm-sub">
+                    {whoIsWaiting()} Nobody is invited before you confirm your email.
                   </div>
                 ) : (
                   /* Saying nothing here read as "you have left something
                      undone". Nobody added is a perfectly good place to stop. */
-                  <div style={{ fontSize: 12, color: 'var(--gw-green-t)', lineHeight: 1.6, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--gw-green-b-soft)' }}>
+                  <div className="gwui-ec-savecard-confirm-sub">
                     No one added yet. You can invite people whenever you're ready.
                   </div>
                 )}
@@ -3979,161 +4097,30 @@ export function EntryChatPage() {
             {/* Admin setup - only shown after email sent */}
             {emailSent && (
             <div>
-            <div style={{ borderTop: '1px solid var(--gw-border)', marginBottom: 18 }} />
+            <div className="gwui-ec-savecard-divider" />
 
             {/* Ground + org naming */}
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', marginBottom: 6 }}>Name this situation</div>
-              <input
+            <div className="gwui-ec-savecard-name-block">
+              <div className="gwui-ec-savecard-name-label">Name this situation</div>
+              <TextField
                 type="text" placeholder="e.g. Kwame, first 90 days" value={groundName}
                 onChange={e => setGroundName(e.target.value)}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', marginBottom: 8 }}
+                className="gwui-ec-savecard-field"
               />
               {/* Asked one step earlier now, where both the email and Google paths pass. */}
 
-              <FieldLabel>
-                How often does everyone check in?
-                {!cadenceChosen && (
-                  <span style={{ fontWeight: 500, color: '#8A7B66' }}> Not set yet - this will run every 2 weeks unless you pick.</span>
-                )}
-              </FieldLabel>
-              <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
-                {(['ONE_TIME', 'DAILY', 'WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'SEQUENTIAL'] as const).map(c => {
-                  const labels: Record<string, string> = { ONE_TIME: 'One time', DAILY: 'Daily', WEEKLY: 'Weekly', FORTNIGHTLY: 'Every 2 weeks', MONTHLY: 'Monthly', SEQUENTIAL: 'When I check in' }
-                  return (
-                  <button key={c} onClick={() => { setCadence(c); setCadenceChosen(true) }} style={{
-                    flex: '1 0 30%', padding: '9px 4px', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                    border: `1px solid ${cadenceChosen && cadence === c ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
-                    background: cadenceChosen && cadence === c ? 'var(--gw-blue-bg)' : 'white',
-                    color: cadenceChosen && cadence === c ? 'var(--gw-navy)' : 'var(--gw-sub)',
-                  }}>
-                    {labels[c]}
-                  </button>
-                )})}
-              </div>
-              {/* Weekday anchor for weekly-style cadences ("every Monday") */}
-              {(cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY') && (
-                <div style={{ marginBottom: 8 }}>
-                  <FieldLabel>On which day? (optional)</FieldLabel>
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d, i) => (
-                      <button key={d} onClick={() => setCadenceAnchorDay(cadenceAnchorDay === i ? null : i)} style={{
-                        flex: 1, padding: '6px 0', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                        border: `1px solid ${cadenceAnchorDay === i ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
-                        background: cadenceAnchorDay === i ? 'var(--gw-blue-bg)' : 'white', color: cadenceAnchorDay === i ? 'var(--gw-navy)' : 'var(--gw-muted)',
-                      }}>{d}</button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {/*
-                WHICH DAYS THIS TEAM WORKS.
-
-                A daily cadence was +1 day flat, so it landed on Saturdays and Sundays, and daily is
-                the one rhythm with no day picker - so "weekdays only" could not be said at all.
-                Offered for every rhythm rather than only daily, because a fortnightly anchor lands
-                on a weekend too, just more quietly.
-
-                Nothing is pre-selected. Monday to Friday is one region's office week, not a fact
-                about anybody's: field teams work Saturdays and the week starts on Sunday across
-                much of where this is used.
-              */}
-              {cadence !== 'ONE_TIME' && (
-                <div style={{ marginBottom: 8 }}>
-                  <WhichDaysTheyWork value={workingDays} onChange={setWorkingDays} />
-                </div>
-              )}
-
-              {/* Day-of-month anchor for monthly ("on the 1st") */}
-              {cadence === 'MONTHLY' && (
-                <div style={{ marginBottom: 8 }}>
-                  <FieldLabel>On which day of the month? (optional)</FieldLabel>
-                  <select value={cadenceAnchorDay ?? ''} onChange={e => setCadenceAnchorDay(e.target.value ? Number(e.target.value) : null)}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', color: cadenceAnchorDay != null ? 'var(--gw-text)' : 'var(--gw-muted)' }}>
-                    <option value="">No fixed day (every ~30 days)</option>
-                    {Array.from({ length: 28 }, (_, i) => i + 1).map(day => (
-                      <option key={day} value={day}>{day}{day === 1 ? 'st' : day === 2 ? 'nd' : day === 3 ? 'rd' : 'th'} of the month</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
-                {cadence === 'ONE_TIME' ? 'Single session · one answer per person, no follow-up cadence.' :
-                 cadence === 'DAILY' ? 'Daily · a fresh check-in opens each day.' :
-                 cadence === 'WEEKLY' ? `Weekly${cadenceAnchorDay != null ? ` · every ${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][cadenceAnchorDay]}` : ''} · typical resolution in 4-6 weeks.` :
-                 cadence === 'MONTHLY' ? `Monthly${cadenceAnchorDay != null ? ` · on the ${cadenceAnchorDay}${cadenceAnchorDay === 1 ? 'st' : cadenceAnchorDay === 2 ? 'nd' : cadenceAnchorDay === 3 ? 'rd' : 'th'}` : ''} · typical resolution in 3-4 months.` :
-                 cadence === 'SEQUENTIAL' ? 'No fixed schedule · when you check in, your team gets their next check-in. Good for cascading updates to a group (e.g. field officers).' :
-                 `Every 2 weeks${cadenceAnchorDay != null ? ` · on ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][cadenceAnchorDay]}` : ''} · typical resolution in 6-8 weeks.`}
-              </div>
-              {cadence === 'ONE_TIME' ? (
-                <>
-                  <FieldLabel>Complete by</FieldLabel>
-                  <input
-                    type="date" value={checkInBy}
-                    onChange={e => setCheckInBy(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${emailError && !checkInBy ? 'var(--gw-danger)' : 'var(--gw-border)'}`, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', color: checkInBy ? 'var(--gw-text)' : 'var(--gw-muted)' }}
-                  />
-                </>
-              ) : (
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <div style={{ flex: 1 }}>
-                    <FieldLabel>Start date <span style={{ fontWeight: 400 }}>(first check-in)</span></FieldLabel>
-                    <input
-                      type="date" value={checkInBy}
-                      onChange={e => setCheckInBy(e.target.value)}
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${emailError && !checkInBy ? 'var(--gw-danger)' : 'var(--gw-border)'}`, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', color: checkInBy ? 'var(--gw-text)' : 'var(--gw-muted)' }}
-                    />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <FieldLabel>End date <span style={{ fontWeight: 400 }}>(last check-in, optional)</span></FieldLabel>
-                    <input
-                      type="date" value={lastCheckInBy}
-                      onChange={e => setLastCheckInBy(e.target.value)}
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', color: lastCheckInBy ? 'var(--gw-text)' : 'var(--gw-muted)' }}
-                    />
-                  </div>
-                </div>
-              )}
-              {emailError && !checkInBy && emailError.toLowerCase().includes('date') && (
-                <div style={{ fontSize: 11.5, color: 'var(--gw-danger)', marginTop: 6, fontWeight: 600 }}>Pick a date above so we know when to expect the first check-in.</div>
-              )}
-
-              {/*
-                WHAT THE FOUR FIELDS ACTUALLY PRODUCE.
-
-                A rhythm, a day of the week, a start date and a set of working days are four
-                controls nobody can compose in their head, and the only way to find out what they
-                produced was to wait for the first check-in to open on the wrong day. It says
-                "would" rather than "will" because nothing is scheduled until the check-in exists.
-              */}
-              {(() => {
-                const dates = whenTheCheckInsLand({
-                  cadence: cadence as CadenceName,
-                  anchorDay: cadenceAnchorDay,
-                  startsAt: checkInBy ? new Date(`${checkInBy}T00:00:00`) : null,
+              {/* U.6: the schedule is set before saving now, in TheSetup. What is still missing stays said here. */}
+              <div className="gwui-ec-savecard-name-hint">
+                {whatIsSetAndWhatIsNot({
+                  name: groundName,
+                  cadenceChosen,
+                  /* "Now" is a start: today. Only a start nobody could have chosen is missing, and
+                     the setup always has one. */
+                  startsAt: checkInBy ? new Date(`${checkInBy}T00:00:00`) : new Date(),
                   workingDays,
-                  howMany: cadence === 'DAILY' ? 5 : 4,
-                })
-                return (
-                  <div style={{ marginTop: 10, padding: '10px 12px', background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8 }}>
-                    <div style={{ fontSize: 11, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--gw-muted)', marginBottom: 5 }}>
-                      {dates.length > 1 ? 'Check-ins would open on' : 'The check-in would open on'}
-                    </div>
-                    <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.6 }}>
-                      {dates.map(sayTheDate).join(' · ')}{dates.length > 1 ? ' · and on from there' : ''}
-                    </div>
-                    <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 6, lineHeight: 1.5 }}>
-                      {whatIsSetAndWhatIsNot({
-                        name: groundName,
-                        cadenceChosen,
-                        startsAt: checkInBy ? new Date(`${checkInBy}T00:00:00`) : null,
-                        workingDays,
-                        peopleAdded: inviteAdded.length,
-                      })}
-                    </div>
-                  </div>
-                )
-              })()}
+                  peopleAdded: inviteAdded.length,
+                })}
+              </div>
             </div>
 
             {/* Invite contributors - before create account */}
@@ -4147,18 +4134,29 @@ export function EntryChatPage() {
                 "Someone's work is off track", 'Running a performance improvement plan', 'Co-founder or partner disagreement', 'A project is off track', 'You and a team member see it differently',
                 'Running a PIP', 'Team member not delivering', 'Cofounder or partner dispute',
               ].some(k => s.includes(k))
-              const inviteHeading = isSensitive ? 'Let them share their side' : 'Invite people'
-              const inviteSubtext = isSensitive
+              /*
+               * THE PEOPLE STEP, FOR AN ANCHOR DRAFT (plan piece 11; `HELP_TEAM_UNDERSTAND`, request
+               * 149 (2 of 6)): the engine's own served heading and intro (`thePeopleStepRules`,
+               * carried from `GET /entry/anchor-start`, or `ANCHOR_PEOPLE_STEP_RULES` if nothing was
+               * served) replace the ordinary ones, with the 19-person limit enforced wherever a
+               * contributor is actually added (`mayAddOneMorePerson`). Every other situation's
+               * wording here is unchanged.
+               */
+              const isAnchor = isAnchorDraft()
+              const inviteHeading = isAnchor ? thePeopleStepRules.heading : isSensitive ? 'Let them share their side' : 'Invite people'
+              const inviteSubtext = isAnchor
+                ? thePeopleStepRules.intro
+                : isSensitive
                 ? 'Send them a link so they can give their own version of the same work. When both sides are in, the report shows where you agree and where the conversation still needs to happen. It does not score anyone.'
                 : 'Each person gives their own version of the shared work, including their own part in it. When everyone has answered, the report shows where people agree, where they differ, and what the gap means for the work.'
               return (
-            <div style={{ borderBottom: '1px solid var(--gw-border)', marginBottom: 16, paddingBottom: 16 }}>
+            <div className="gwui-ec-savecard-invite-block">
               <FieldLabel>{inviteHeading}</FieldLabel>
-              <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 10 }}>
+              <div className="gwui-ec-savecard-invite-subtext">
                 {inviteSubtext}
               </div>
-              <div style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 8, padding: '8px 11px', lineHeight: 1.5, marginBottom: 10 }}>
-                Add them here now. Anyone you added from the report above is already on this list. Invites don't go out yet - they're sent once you save this check-in and confirm your email.
+              <div className="gwui-ec-savecard-invite-banner">
+                Add them here now. Anyone you added from the report above is already on this list. Nobody is invited before you save this check-in and confirm your email.
                 {' '}
                 {/*
                   * HOW MANY PEOPLE CAN BE ON THIS, SAID WHERE PEOPLE ARE ADDED.
@@ -4181,7 +4179,7 @@ export function EntryChatPage() {
                   night to think: someone opening a PIP or a co-founder dispute
                   is being asked to name the other party at the moment they are
                   least sure, and silence about a later made that feel final. */}
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 10 }}>
+              <div className="gwui-ec-savecard-invite-later">
                 Not ready? You can add people any time from the check-in itself. Nothing goes out until you do.
               </div>
               {(() => {
@@ -4193,16 +4191,16 @@ export function EntryChatPage() {
                 }
                 const notice = notices[s ?? '']
                 return notice ? (
-                  <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 8, padding: '10px 12px', marginBottom: 12, fontSize: 12, color: 'var(--gw-amber-t)', lineHeight: 1.55 }}>
+                  <div className="gwui-ec-savecard-invite-notice">
                     {notice}
                   </div>
                 ) : null
               })()}
 
               {inviteAdded.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
+                <div className="gwui-ec-savecard-invite-list">
                   {inviteAdded.map(e => (
-                    <div key={e} style={{ fontSize: 12, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', borderRadius: 6, padding: '5px 10px' }}>✓ {e}</div>
+                    <div key={e} className="gwui-ec-savecard-invite-chip">✓ {shownEntry(e)}</div>
                   ))}
                 </div>
               )}
@@ -4210,59 +4208,72 @@ export function EntryChatPage() {
               {/* Colleagues, picked the way a group chat picks them: search, tick, one button. Each goes on the list without a note; notes can be added on Setup. */}
               {!inviteContextFor && !bulkInviteMode && (
                 <PeoplePicker
-                  people={colleagues.filter((c) => c.email !== user?.email)}
-                  alreadyIn={inviteAdded.map((e) => e.split(' - ')[0])}
+                  people={colleagues.filter((c) => c.id !== user?.id)}
+                  alreadyIn={inviteAdded.map((e) => e.split(' - ')[0]).filter((h) => h.startsWith(A_COLLEAGUE)).map((h) => h.slice(A_COLLEAGUE.length))}
                   onAdd={(picked) => {
-                    for (const c of picked) queueColleague(c)
-                    toast.success(picked.length === 1 ? `${picked[0].name ?? picked[0].email} is on the list.` : `${picked.length} people are on the list. Invites go out when you save.`)
+                    /* A multi-select can ask for several at once, so the limit is checked against
+                       how many are really left, not once per item against a count that has not
+                       yet updated (queueColleague's own check is still right for every other
+                       path, which adds one at a time). */
+                    const room = isAnchorDraft() ? Math.max(0, thePeopleStepRules.mayAdd - inviteAdded.length) : picked.length
+                    const fit = picked.slice(0, room)
+                    for (const c of fit) queueColleague(c)
+                    if (fit.length < picked.length) toast.error(thePeopleStepRules.limitSentence)
+                    if (fit.length) toast.success(fit.length === 1 ? `${fit[0].name} is on the list.` : `${fit.length} people are on the list. Invites go out when you save.`)
                   }}
                 />
               )}
 
               {inviteContextFor ? (
-                <div style={{ background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>{inviteContextFor}</div>
+                <div className="gwui-ec-savecard-invite-context">
+                  <div className="gwui-ec-savecard-invite-context-head">
+                    <div className="gwui-ec-savecard-invite-context-name">{inviteContextFor}</div>
                     {bulkQueue.length > 0 && (
-                      <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{bulkQueue.length} more after this</div>
+                      <div className="gwui-ec-savecard-invite-context-more">{bulkQueue.length} more after this</div>
                     )}
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 8, lineHeight: 1.5 }}>What do you want them to focus on or cover?</div>
-                  <textarea autoFocus placeholder="e.g. They are the other side of this. They own the delivery timeline."
+                  <div className="gwui-ec-savecard-invite-context-ask">{isAnchorDraft() ? thePeopleStepRules.contextLabel : 'What do you want them to focus on or cover?'}</div>
+                  <TextArea autoFocus placeholder="e.g. They are the other side of this. They own the delivery timeline."
                     value={inviteContext} onChange={e => setInviteContext(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitInviteContext() } }}
-                    style={{ width: '100%', resize: 'none', minHeight: 60, padding: '8px 10px', fontSize: 13, lineHeight: 1.5, border: '1px solid var(--gw-border)', borderRadius: 7, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
+                    className="gwui-ec-savecard-field"
                   />
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => {
+                  <div className="gwui-ec-savecard-row-gap8 gwui-ec-savecard-row-gap8-grow-last">
+                    <Button kind="secondary" size="small" onClick={() => {
                       // Add without context, then advance queue
-                      const newAdded = inviteAdded.includes(inviteContextFor) ? inviteAdded : [...inviteAdded, inviteContextFor]
-                      setInviteAdded(newAdded)
+                      if (inviteAdded.includes(inviteContextFor) || mayAddOneMorePerson()) {
+                        const newAdded = inviteAdded.includes(inviteContextFor) ? inviteAdded : [...inviteAdded, inviteContextFor]
+                        setInviteAdded(newAdded)
+                      }
                       setInviteContext('')
                       const [next, ...rest] = bulkQueue
                       if (next) { setBulkQueue(rest); setInviteContextFor(next) } else { setInviteContextFor(null) }
-                    }} style={{ padding: '8px 14px', borderRadius: 7, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Skip</button>
-                    <button onClick={submitInviteContext} style={{ flex: 1, padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Add person</button>
+                    }}>Skip</Button>
+                    <Button kind="secondary" size="small" onClick={submitInviteContext}>Add person</Button>
                   </div>
                 </div>
               ) : bulkInviteMode ? (
                 <div>
-                  <textarea
+                  <TextArea
                     autoFocus
                     placeholder="Paste emails separated by commas or line breaks&#10;e.g. alice@co.com, bob@co.com"
                     value={bulkInviteText}
                     onChange={e => setBulkInviteText(e.target.value)}
-                    style={{ width: '100%', resize: 'none', minHeight: 80, padding: '10px 12px', fontSize: 13, lineHeight: 1.5, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
+                    className="gwui-ec-savecard-field"
                   />
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => { setBulkInviteMode(false); setBulkInviteText('') }} style={{ padding: '9px 14px', borderRadius: 7, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-                    <button
+                  <div className="gwui-ec-savecard-row-gap8 gwui-ec-savecard-row-gap8-grow-last">
+                    <Button kind="secondary" size="small" onClick={() => { setBulkInviteMode(false); setBulkInviteText('') }}>Cancel</Button>
+                    <Button
+                      kind="secondary" size="small"
                       onClick={() => {
-                        const emails = bulkInviteText
+                        const allEmails = bulkInviteText
                           .split(/[\n,]+/)
                           .map(e => e.trim().toLowerCase())
                           /* Not validation: this filters model-extracted mentions down to the ones that are addresses at all. Kept as is. */
                           .filter(e => e.includes('@') && !inviteAdded.some(a => a.startsWith(e)))
+                        const room = isAnchorDraft() ? Math.max(0, thePeopleStepRules.mayAdd - inviteAdded.length) : allEmails.length
+                        const emails = allEmails.slice(0, room)
+                        if (allEmails.length > emails.length) toast.error(thePeopleStepRules.limitSentence)
                         if (emails.length === 0) return
                         setBulkInviteText('')
                         setBulkInviteMode(false)
@@ -4272,37 +4283,32 @@ export function EntryChatPage() {
                         setInviteContextFor(first)
                         setInviteContext('')
                       }}
-                      style={{ flex: 1, padding: '9px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                     >
                       Add all
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ) : (
                 <>
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                    <input type="email" placeholder="name@company.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
+                  <div className="gwui-ec-savecard-invite-add-row">
+                    <TextField type="email" placeholder="name@company.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && addInviteEmail()}
-                      style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none' }}
                     />
-                    <button onClick={addInviteEmail} style={{ flexShrink: 0, padding: '10px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
+                    <Button kind="secondary" size="small" onClick={addInviteEmail}>Add</Button>
                   </div>
-                  <button
-                    onClick={() => setBulkInviteMode(true)}
-                    style={{ background: 'none', border: 'none', fontSize: 12, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', padding: 0, textDecoration: 'underline', marginBottom: 10 }}
-                  >
+                  <button type="button" className="gwui-plain-link" onClick={() => setBulkInviteMode(true)}>
                     Paste multiple emails
                   </button>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ flex: 1, fontSize: 12, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 7, padding: '8px 10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div className="gwui-ec-savecard-link-row">
+                    <div className="gwui-ec-savecard-link-box">
                       {window.location.origin}/invite?token={inviteToken}
                     </div>
-                    <button onClick={copyInviteLink} style={{ flexShrink: 0, padding: '8px 12px', borderRadius: 7, background: 'var(--gw-paper-2)', color: 'var(--gw-text)', fontSize: 12, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    <Button kind="secondary" size="small" onClick={copyInviteLink}>
                       {copiedLink ? 'Copied!' : 'Copy link'}
-                    </button>
+                    </Button>
                   </div>
-                  <input type="text" placeholder="Add a note to send with your link (optional)" value={inviteNote} onChange={e => setInviteNote(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', marginTop: 8 }}
+                  <TextField type="text" placeholder="Add a note to send with your link (optional)" value={inviteNote} onChange={e => setInviteNote(e.target.value)}
+                    className="gwui-ec-savecard-field"
                   />
                 </>
               )}
@@ -4328,7 +4334,7 @@ export function EntryChatPage() {
               just closes the panel.
             */}
             {closed && emailSent ? (
-              <div style={{ textAlign: 'center', paddingTop: 8 }}>
+              <div className="gwui-ec-savecard-done">
                 {/*
                   AND IT THREW AWAY THE PERSON SHE HAD JUST TYPED IN.
                   Adding somebody takes two clicks: the email opens a note box,
@@ -4348,12 +4354,9 @@ export function EntryChatPage() {
                   second click is a convenience for adding several people, not a
                   consent gate - the consent was typing the address.
                 */}
-                <button
-                  onClick={() => { if (inviteContextFor) submitInviteContext(); setShowSave(false) }}
-                  style={{ padding: '11px 28px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-                >
+                <Button kind="primary" onClick={() => { if (inviteContextFor) submitInviteContext(); setShowSave(false) }}>
                   Done
-                </button>
+                </Button>
                 {/*
                   W7. "DONE" CLOSED THE PANEL AND SAID NOTHING ABOUT THE EMAIL.
                   She pressed it and was left on the report with no sign that
@@ -4361,22 +4364,22 @@ export function EntryChatPage() {
                   in her inbox. The panel closing is the only feedback there was,
                   and a panel closing is what "Cancel" looks like.
                 */}
-                <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', paddingTop: 8, lineHeight: 1.6 }}>
+                <div className="gwui-ec-savecard-done-text">
                   {/*
                     Counts the person still sitting in the note box, because "Done"
                     now commits them. Reading inviteAdded alone made this sentence
                     quietly wrong by one: it promised to send 1 invite while two
                     people had been named.
                   */}
-                  Nothing else to do here. The link is in your inbox at <strong>{email}</strong>{(() => {
+                  Nothing else to do here. The link is in your inbox at <strong>{email}</strong>. {(() => {
                     const pending = inviteContextFor && !inviteAdded.some(e => e === inviteContextFor || e.startsWith(`${inviteContextFor} - `)) ? 1 : 0
                     const n = inviteAdded.length + pending
-                    return n > 0 ? ` - opening it saves your check-in and sends the ${n} invite${n === 1 ? '' : 's'}` : ' - opening it saves your check-in'
-                  })()}. You can reopen this any time from the bar below.
+                    return whatOpeningTheLinkDoes(n, startsLater ? checkInBy : null)
+                  })()} You can reopen this any time from the bar below.
                 </div>
               </div>
             ) : closed ? null : (
-              <button type="button" onClick={() => setShowSave(false)} style={{ display: 'block', margin: '0 auto', background: 'none', border: 'none', fontFamily: 'inherit', textAlign: 'center', fontSize: 12, color: 'var(--gw-muted)', cursor: 'pointer', paddingTop: 4 }}>
+              <button type="button" className="gwui-plain-link" onClick={() => setShowSave(false)}>
                 Later
               </button>
             )}
@@ -4386,24 +4389,32 @@ export function EntryChatPage() {
 
       {/* New scenario conflict modal */}
       {showNewScenarioConflict && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.55)', zIndex: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}>
-          <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 380, width: '100%' }}>
-            <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 8 }}>You have a check-in in progress</div>
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 18 }}>
-              Starting a new one clears the one you were setting up, and nothing you said in it is kept. Keep it to carry on where you left off.
+        <div className="gwui-ec-confirm-overlay">
+          <div className="gwui-ec-confirm-box">
+            <div className="gwui-ec-confirm-title">You have a check-in in progress</div>
+            <div className="gwui-ec-confirm-body">
+              Starting a new one clears the one you were setting up, and nothing you said in it is kept. Carry on with it to pick up where you left off.
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
+            <div className="gwui-ec-confirm-actions">
+              <Button
+                kind="secondary"
                 onClick={() => {
                   setShowNewScenarioConflict(false); setPendingNewScenario(null)
-                  /* Came from the rail with a saved setup: keeping it means restoring it, which the plain address does. */
-                  if (wantsANewOne) navigate('/start', { replace: true })
+                  /*
+                   * Carrying on means the kept setup is on the screen now, not after a reload. The
+                   * address goes back to plain /start as well, so a reload restores it too rather
+                   * than asking again.
+                   */
+                  const saved = loadSession()
+                  if (saved) restoreTheSavedSetup(saved)
+                  if (wantsANewOne || scenario || urlInitial) navigate('/start', { replace: true })
                 }}
-                style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--gw-paper-2)', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
               >
-                Keep current session
-              </button>
-              <button
+                {/* U.6 review: plain words, where it said "Keep current session" / "Start new scenario". */}
+                Carry on with this one
+              </Button>
+              <Button
+                kind="danger"
                 onClick={() => {
                   if (pendingNewScenario) {
                     clearEntrySession()
@@ -4439,10 +4450,9 @@ export function EntryChatPage() {
                   setShowNewScenarioConflict(false)
                   setPendingNewScenario(null)
                 }}
-                style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--gw-dark)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
               >
-                Start new scenario
-              </button>
+                Start a new one
+              </Button>
             </div>
           </div>
         </div>
@@ -4450,31 +4460,18 @@ export function EntryChatPage() {
 
       {/* End session confirmation modal */}
       {showEndConfirm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.55)', zIndex: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}>
-          <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 380, width: '100%' }}>
-            <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 8 }}>End this session?</div>
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 8 }}>
-              Your answers are saved on this device. Ending this session generates your report, and this session's answers then lock.
-            </div>
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 18 }}>
-              Once you save the record below, you can revisit and correct it any time from your report. The shared report releases once all parties have checked in.
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                onClick={() => setShowEndConfirm(false)}
-                style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--gw-paper-2)', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-              >
-                Keep going
-              </button>
-              <button
-                onClick={() => { setShowEndConfirm(false); handleEndSession() }}
-                style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--gw-dark)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-              >
-                End session
-              </button>
-            </div>
+        <Modal title="End this session?" onClose={() => setShowEndConfirm(false)}>
+          <Note>
+            Your answers are saved on this device. Ending this session generates your report, and this session's answers then lock.
+          </Note>
+          <Note>
+            Once you save the record below, you can revisit and correct it any time from your report. The shared report releases once all parties have checked in.
+          </Note>
+          <div className="gwui-ec-modal-actions">
+            <Button kind="secondary" onClick={() => setShowEndConfirm(false)}>Keep going</Button>
+            <Button kind="danger" onClick={() => { setShowEndConfirm(false); handleEndSession() }}>End session</Button>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

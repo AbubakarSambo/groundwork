@@ -1,206 +1,156 @@
-import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
+import { Link } from 'react-router-dom'
+import { Button, Tag } from '@/components/gw/ui'
+import { askNameFor } from '@/lib/ask-name'
 
 /**
- * WHAT AN ORG ADMIN SEES FIRST, WHICH IS A ROLLOUT AND NOT A CHECK-IN.
+ * WHAT A NEW ORGANISATION'S ADMIN SEES FIRST (A3 and C1, U.3): the welcome card and the prototype's
+ * checklist, "Get <organisation> going". Hafsah decided on 26 September that a new organisation's
+ * Today page shows these exactly as the prototype does, instead of a tour. U.3 built them on the
+ * check-ins list; U.5 moved them onto Today (pages/today/TodayPage.tsx), where the prototype has them.
  *
- * The first version of this file put People, Connect, Billing and Settings on the landing screen,
- * because signing up as an admin dropped you on an empty check-in list with one button on it and
- * the whole of an admin's job was behind a hamburger icon. That was right as far as it went.
+ * THE CARD'S DOORS, as the prototype draws them under the heading: People, Connections, Suites, and
+ * Plan and billing, each with its line. Suites came with its page (U.17). Connections names WhatsApp
+ * only while WhatsApp is switched on in Groundwork.
  *
- * It did not go far enough, and the person who signed up said why:
+ * WHAT USED TO BE HELD, ANSWERED 29 September, item 11 conflict B. The welcome card's old sentence,
+ * "You can see every board and report. They never see anyone's questions to Ask Groundwork, anyone's
+ * own report, or a lead's private notes.", went further than decision 5 (an admin reads a performance
+ * plan only with access to that check-in) and "They" pointed at nobody. Hafsah's exact sentence
+ * replaces it, in the first person, naming the exceptions decision 5 now covers - a performance plan,
+ * a promotion or a renewal alike, corrected the same day (item 11 answer 4): "You can see every board
+ * and report, including what people said in them. You never see anyone's questions to Ask Groundwork,
+ * anyone's own report, or a lead's private notes, and never a performance plan, promotion or renewal
+ * unless given access to that check-in."
  *
- *   "I need to come and put my whole org of 160 people on this, give leads the ability to set up
- *    grounds, train them, pay for it, add my team as sub admins, see usage, and know if the API
- *    will work for us."
+ * WHAT IS OURS. The prototype's code has a line under each step and a "Do it" button; no screen
+ * shows them, so only the step names, "Do it" and "Done" are used. "Connect WhatsApp (optional)" is
+ * shown only while WhatsApp is switched on in Groundwork: while it is off, nothing mentions it.
  *
- * None of that is a link to a page. It is a sequence with a finish line, and the four cards could
- * not say which parts of it were done. So this is the same idea, doing the job properly: the steps
- * of a rollout, each one reporting whether the thing itself actually happened.
+ * EVERY TICK IS A FACT FROM THE SERVER (GET /users/rollout): more people than the admin, a second
+ * admin, a check-in, the organisation's own WhatsApp number switched on. It stays past the first
+ * check-in and goes when every step is done. "Got it" is kept on the server, per person.
  *
- * IT NO LONGER DISAPPEARS. The old one hid as soon as there was a check-in, on the grounds that it
- * would be clutter. But the admin's job does not finish when the first check-in opens - that is step
- * two of five - and hiding the list at that moment is hiding it exactly when it starts being useful.
- * It shrinks instead, and goes away when the rollout is genuinely finished.
+ * It replaces "Setting up <organisation>", whose steps were ours. Choosing a plan and connecting your
+ * systems stay where they always were, under the organisation's name in the sidebar.
+ *
+ * REBUILT FROM THE SHARED PARTS (group 2): `Button` and `Tag` from `components/gw/ui` in place of
+ * the old kit, and the welcome card and checklist's own classes moved into `gw-ui.css` under the
+ * `gwui-` prefix (`gwui-welcome-card`, `gwui-get-going`, and so on), in place of the old `gw-`
+ * classes - no other change to what is drawn.
  */
-
 interface RolloutFacts {
   people: number
   admins: number
   checkIns: number
   paying: boolean
   connected: boolean
+  whatsappOn?: boolean
+  whatsappConnected?: boolean
+  welcomeCardSeen?: boolean
 }
 
-interface Step { key: string; title: string; body: string; to: string; done: boolean; optional?: boolean }
+interface Step { key: string; title: string; to: string; done: boolean }
 
-/*
- * THE STEPS ARE DECIDED SERVER SIDE and this renders them. The rule for what counts as done is a
- * product decision about somebody's rollout, not a detail of this screen, and two copies of it -
- * one here, one there - is how a page ends up ticking a step the product does not consider done.
- */
 function fetchRollout(): Promise<RolloutFacts> {
   return apiClient.get('/users/rollout').then(r => r.data.data ?? r.data)
 }
 
-/**
- * IS THE WORKSPACE STILL CALLED WHATEVER WE GUESSED?
- *
- * Signing up types no company name, so `verifyEmail` falls back to `${firstName}'s workspace` -
- * deliberately, because naming an organisation after the domain of an unverified address is worse
- * (GW-001). What nobody then does is ask.
- *
- * Walked as a second admin: their own home page said "Setting up Hafsah's workspace", and the
- * progress line underneath was about Hafsah too. Neither was wrong. The organisation really is
- * called that, and it is called that because a fallback named it and no screen has mentioned it
- * since. A person reading somebody else's name where their company should be does not conclude
- * "the name is unset", they conclude the product thinks they are somebody else.
- *
- * No column records whether a name was chosen, and this does not need one: the fallback produces
- * exactly one string and it can be recognised. Somebody who genuinely wants their workspace called
- * that gets one step they can complete by retyping it.
- */
-export function theNameIsStillTheOneWeGuessed(orgName: string | undefined, firstName: string | undefined): boolean {
-  if (!orgName || !firstName) return false
-  return orgName.toLowerCase() === `${firstName.trim().toLowerCase()}'s workspace`
+/** The prototype's four steps, in its order. The WhatsApp one only while WhatsApp is on. */
+export function getItGoing(f: RolloutFacts): Step[] {
+  const steps: Step[] = [
+    { key: 'invite', title: 'Invite your team', to: '/org/members', done: f.people > 1 },
+    { key: 'admin', title: 'Add a second admin', to: '/org/members', done: f.admins > 1 },
+    { key: 'checkin', title: 'Start your first check-in', to: '/start', done: f.checkIns > 0 },
+  ]
+  if (f.whatsappOn) steps.push({ key: 'wa', title: 'Connect WhatsApp (optional)', to: '/settings/whatsapp', done: !!f.whatsappConnected })
+  return steps
 }
 
-/*
- * Mirrors the server's own list. Kept in one place here: see `where-a-rollout-has-got-to.ts`.
- *
- * The `name` step is the one exception and is deliberately client-only: whether the workspace name
- * is still the fallback is decided by comparing it against the reader's own first name, which is
- * already in the auth store here and would be a second query there. Nothing renders the server's
- * list - `users.service.ts` imports only the facts type - so adding a step to it would be adding a
- * step nobody sees.
+/**
+ * THE WELCOME CARD'S DOORS, AS PLAIN SENTENCES (group 2's review, fault C). Each line used to be a
+ * fragment ("Invite people, set roles and teams, let guests in"); each is now one full sentence that
+ * says what is true, with no piece joined on by a comma standing in for a missing word.
  */
-function theRollout(f: RolloutFacts, nameStillGuessed: boolean): Step[] {
+export function doorsFor(f: Pick<RolloutFacts, 'whatsappOn'>): { title: string; line: string; to: string }[] {
   return [
-    { key: 'name', title: 'Name your workspace', body: 'It is called after whoever signed up, because nobody has said otherwise. Everyone here reads that name.', to: '/settings', done: !nameStillGuessed },
-    { key: 'people', title: 'Get your people in', body: 'Paste your list. Nobody is emailed until you have seen what will happen.', to: '/org/members', done: f.people > 1 },
-    /*
-      A LEAD CANNOT SEE THE OTHER HALF WITHOUT BEING IT.
-      A participant's own check-in is private, and a lead who asks for one gets a 403. That is
-      right and it stays. So the only way to see what you are asking your team to do is to be the
-      other person too, with a second email of your own, and nothing said so.
-    */
-    { key: 'pilot', title: 'Do a test run', body: 'Pick something real and small. Add a second email of your own as the other person, so you see what your team sees.', to: '/grounds/new', done: f.checkIns > 0 },
-    { key: 'second-admin', title: 'Give somebody else the keys', body: 'A second admin approves check-ins and adds people when you are not there.', to: '/org/members', done: f.admins > 1 },
-    { key: 'plan', title: 'Choose your plan', body: 'What it costs for the number of people you are putting on.', to: '/billing', done: f.paying },
-    { key: 'connect', title: 'Connect your systems', body: 'Your CRM, your HR system, your own product. Your engineers will want this page.', to: '/org/integrations', done: f.connected, optional: true },
+    { title: 'People', line: 'Invite people, set their roles and teams, and let guests in.', to: '/org/members' },
+    {
+      title: 'Connections',
+      line: f.whatsappOn ? 'Connect WhatsApp, bring in your numbers, and use your own address.' : 'Bring in your numbers, and use your own address.',
+      to: '/settings/connections',
+    },
+    { title: 'Suites', line: 'Switch on leave, spending and onboarding when you need them.', to: '/settings/suites' },
+    { title: 'Plan and billing', line: 'Your seats, your card and your invoices.', to: '/billing' },
   ]
 }
 
 export function AdminFirstRun() {
-  const navigate = useNavigate()
+  const qc = useQueryClient()
   const { user } = useAuthStore()
   const isAdmin = user?.role === 'ADMIN'
-
   const { data } = useQuery({ queryKey: ['rollout'], queryFn: fetchRollout, enabled: isAdmin, retry: false })
+  const gotIt = useMutation({
+    mutationFn: () => apiClient.post('/users/me/welcome-card/seen'),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['rollout'] }) },
+    /* The product's own sentence for a press that did not land; the card stays, so they can press again. */
+    onError: () => toast.error('That did not go through, and nothing has changed. Try again.'),
+  })
+  if (!isAdmin || !data) return null
 
-  if (!isAdmin) return null
+  const realOrgName = user.organization?.name?.trim() || user.organizationName
+  const orgName = realOrgName || 'your organisation'
+  const steps = getItGoing(data)
+  const done = steps.filter(s => s.done).length
+  const finished = done === steps.length
+  const showWelcome = !data.welcomeCardSeen && !gotIt.isSuccess
 
-  const orgName = user.organization?.name?.trim()
-  const nameStillGuessed = theNameIsStillTheOneWeGuessed(orgName, user.firstName)
-  const steps = data ? theRollout(data, nameStillGuessed) : []
-  const counted = steps.filter(s => !s.optional)
-  const done = counted.filter(s => s.done).length
-  const finished = counted.length > 0 && done === counted.length
-
-  /*
-   * FINISHED MEANS GONE. A checklist with every box ticked is a trophy, and a trophy at the top of
-   * a screen somebody opens every morning is clutter that used to be useful.
-   */
-  if (!data || finished) return null
-
-  /* The next thing to do, which is the only step most people will read. */
-  const next = steps.find(s => !s.done && !s.optional)
+  if (finished && !showWelcome) return null
 
   return (
-    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 14, background: 'var(--gw-card)', padding: '20px 22px', marginBottom: 18 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 3 }}>
-        {/* A heading, not a div that looks like one: this names the section under the page's h1,
-            and heading navigation is how most screen reader users move around a page. */}
-        <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-navy)', margin: 0 }}>
-          Setting up{orgName ? ` ${orgName}` : ''}
-        </h2>
-        {/*
-          * PROGRESS AS A FACT, not a bar. "2 of 4" is read in the time it takes to look at it, and
-          * a percentage of a four-item list is a decoration pretending to be information.
-          */}
-        {/*
-          * "1 of 4" beside five cards reads as a bug, and it was not one - Connect is optional and
-          * the counter was right to leave it out. Being right is not enough when the two numbers a
-          * person can see disagree: the counter now says what it counts, and the optional card
-          * carries a visible tag, so five cards and four needed stop contradicting each other.
-          */}
-        <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-sub)' }}>
-          {done} of {counted.length} needed{steps.length > counted.length ? `, plus ${steps.length - counted.length} optional` : ''}
-        </div>
-      </div>
-      {/*
-        * NOT THE NEXT STEP'S OWN WORDS. This printed `next.body` and the first card printed the
-        * same sentence three centimetres below it - the panel introducing itself by quoting the
-        * thing it was about to show. Seen on the rendered page; it reads fine in the code.
-        */}
-      {/*
-        AND WHOSE JOB IT IS DEPENDS ON WHETHER ANYBODY HAS DONE ANY OF IT.
-
-        "Your job as the admin here" is the right sentence for the person who set the organisation
-        up, and the wrong one for the SECOND admin - who arrives at an org where three of these are
-        already ticked, one of them ticked BY HER OWN EXISTENCE ("give somebody else the keys"), and
-        is told the whole list is her job. Walked as a second admin of a real organisation: the
-        largest thing on her dashboard was a to-do list for work somebody else had finished.
-
-        Nothing on this panel knows who did which step, and inventing that would mean a new record.
-        What it does know is whether any of it is done - so it stops assigning the list to the
-        reader once it is somebody's shared progress rather than a fresh org's first run.
-      */}
-      <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 16, maxWidth: 560 }}>
-        {done === 0
-          ? 'Your job as the admin here. Each one is ticked by the thing actually happening, not by visiting the page.'
-          : `Where ${orgName || 'this organisation'} has got to. Each one is ticked by the thing actually happening, not by visiting the page - and any admin's work ticks it, not only yours.`}
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(215px, 1fr))', gap: 10 }}>
-        {steps.map(s => (
-          <button
-            key={s.key}
-            onClick={() => navigate(s.to)}
-            style={{
-              textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', position: 'relative',
-              border: `1px solid ${s === next ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
-              borderRadius: 10, background: 'white', padding: '12px 14px',
-              /* Done steps stay visible and stop competing. Removing them loses the sense of a
-                 sequence, which is the thing that tells somebody how much is left. */
-              opacity: s.done ? 0.62 : 1,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 3 }}>
-              <span style={{
-                width: 15, height: 15, borderRadius: 8, flexShrink: 0, display: 'inline-flex',
-                alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700,
-                background: s.done ? 'var(--gw-green-bg)' : 'transparent',
-                color: 'var(--gw-green-t)',
-                border: `1px solid ${s.done ? 'var(--gw-green-b)' : 'var(--gw-border)'}`,
-              }}>{s.done ? '✓' : ''}</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)' }}>{s.title}</span>
-              {s.optional && (
-                <span style={{
-                  fontSize: 9.5, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase',
-                  padding: '2px 6px', borderRadius: 4, background: 'var(--gw-bg)',
-                  color: 'var(--gw-sub)', border: '1px solid var(--gw-border)',
-                }}>Optional</span>
-              )}
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
-              {s.body}
-            </div>
-          </button>
-        ))}
-      </div>
+    <div className="gwui-first-run">
+      {showWelcome && (
+        <section className="gwui-welcome-card" aria-label="Welcome">
+          <div className="gwui-welcome-card-head">
+            <h2>You’re an admin at {orgName}</h2>
+            <Button kind="quiet" size="small" onClick={() => gotIt.mutate()} disabled={gotIt.isPending}>Got it</Button>
+          </div>
+          <p className="gwui-welcome-card-line">
+            You can see every board and report, including what people said in them. You never see anyone’s
+            questions to {askNameFor(realOrgName)}, anyone’s own report, or a lead’s private notes, and never a
+            performance plan, promotion or renewal unless given access to that check-in.
+          </p>
+          <ul className="gwui-welcome-doors">
+            {doorsFor(data).map(d => (
+              <li key={d.to}>
+                <Link to={d.to} className="gwui-welcome-door">
+                  <b>{d.title}</b>
+                  <span>{d.line}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {!finished && (
+        <section className="gwui-get-going">
+          <div className="gwui-get-going-head">
+            <h2>Get {orgName} going</h2>
+            <span>{done} of {steps.length} done</span>
+          </div>
+          <ul>
+            {steps.map(s => (
+              <li key={s.key}>
+                <span className="gwui-get-going-title">{s.title}</span>
+                {s.done ? <Tag tone="proven">Done</Tag> : <Button kind="secondary" size="small" to={s.to}>Do it</Button>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   )
 }

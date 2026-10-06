@@ -1,10 +1,8 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { GroundChat } from './GroundChat'
+import { WhoIsInThis } from './WhoIsInThis'
 
 /**
  * WHO IS IN THIS, AND WHETHER THEY ARE DOING IT. W13-5.
@@ -21,120 +19,85 @@ import { GroundChat } from './GroundChat'
  * roster tells four people exactly who they are being measured against. A second rule here
  * would be a second place to get it wrong, which is the lesson from the two times a private
  * read leaked through an instruction rather than a query.
+ *
+ * ROUND 4, ITEM A STEP 2: MOVED FROM `GroundChat`'s Check-in tab TO `WhoIsInThis`, on People and
+ * setup. The component under test changed; the rule it protects did not, and every assertion
+ * below is the same one this file has always made.
  */
 
-vi.mock('@/api/grounds', () => ({
-  groundsApi: {
-    myTranscript: vi.fn(async () => ({ sessions: [] })),
-    myNotes: vi.fn(async () => []),
-  },
-}))
-
-function renderTopic(parties: { name: string; done: boolean; isSelf: boolean }[]) {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={qc}>
-      <MemoryRouter>
-        <GroundChat
-          groundId="g1"
-          openCheckInId={null}
-          openSessionNumber={null}
-          totalSessions={6}
-          nextOpensAt={null}
-          onOpenSession={() => {}}
-          openPending={false}
-          parties={parties}
-          brief="A brief, so the card's heading renders: it is gated on the brief now (fix plan C16)."
-        />
-      </MemoryRouter>
-    </QueryClientProvider>,
-  )
+function renderRoster(parties: { name: string; done: boolean; isSelf: boolean }[], extra: Partial<Parameters<typeof WhoIsInThis>[0]> = {}) {
+  return render(<WhoIsInThis parties={parties} {...extra} />)
 }
 
-describe('the roster on the check-in', () => {
-  it('names the other parties and says who has checked in', async () => {
-    renderTopic([
+describe('the roster on People and setup', () => {
+  it('names the other parties and says who has checked in, as full sentences', () => {
+    /*
+     * U.8 REVIEW: the roster read "Hafsah · checked in" / "You · waiting" - a name with a status
+     * word stuck on with a dot, which CLAUDE.md's wording rule (no pieces joined with dots) rules
+     * out same as any other screen. It is "Hafsah has checked in." and "You have not checked in
+     * yet." now, so this no longer looks for the bare word "waiting" - the honest sentence for
+     * somebody who has not checked in does not use it.
+     */
+    renderRoster([
       { name: 'Hafsah', done: true, isSelf: false },
       { name: 'Abubakar', done: false, isSelf: true },
     ])
-    expect(await screen.findByText(/Who is in this/)).toBeTruthy()
-    expect(screen.getByText(/Hafsah/)).toBeTruthy()
-    // `getAllByText`: "checked in" also appears in the card's closing line about the
-    // report, which is correct copy and not what this asserts.
-    expect(screen.getAllByText(/checked in/).length).toBeGreaterThan(0)
-    expect(screen.getByText(/waiting/)).toBeTruthy()
+    expect(screen.getByText(/Who is in this/)).toBeTruthy()
+    expect(screen.getByText('Hafsah has checked in.')).toBeTruthy()
+    expect(screen.getByText('You have not checked in yet.')).toBeTruthy()
   })
 
-  it('calls the reader "You" rather than repeating their own name at them', async () => {
-    renderTopic([
+  it('calls the reader "You" rather than repeating their own name at them', () => {
+    renderRoster([
       { name: 'Hafsah', done: true, isSelf: false },
       { name: 'Abubakar', done: false, isSelf: true },
     ])
-    expect(await screen.findByText(/You/)).toBeTruthy()
+    expect(screen.getByText(/You/)).toBeTruthy()
     expect(screen.queryByText(/Abubakar/)).toBeNull()
   })
 
-  it('says nothing at all on a check-in with one party', async () => {
+  it('says nothing about a roster on a check-in with one party', () => {
     /**
      * A roster of one is a sentence about yourself. It is also what a reader sees when the
-     * service has filtered the others out, and a heading over an empty list would advertise
-     * that there is something they cannot see.
+     * service has filtered the others out, and chips over an empty list would advertise that
+     * there is something they cannot see.
      */
-    renderTopic([{ name: 'Hafsah', done: true, isSelf: true }])
-    /**
-     * Waits on the card's own heading. It used to wait on the check-in's NAME, which this card no
-     * longer prints - the name, the scenario, the session count and the alignment read are all in
-     * the page header now, and a card that restates the header was the first thing somebody met on
-     * the tab where they were about to give their account.
-     */
-    await screen.findByText('About this check-in')
-    expect(screen.queryByText(/Who is in this/)).toBeNull()
+    renderRoster([{ name: 'Hafsah', done: true, isSelf: true }])
+    expect(screen.getByText(/Who is in this/)).toBeTruthy()
+    expect(screen.queryByText('Hafsah has checked in.')).toBeNull()
   })
 
-  it('says which kind of empty it is when peers are hidden', async () => {
+  it('says which kind of empty it is when peers are hidden', () => {
     /**
      * W14-5. With peer visibility off, the service filters the other parties out of the payload,
      * so this component gets a roster of one and used to render nothing at all. A participant
      * could not tell whether nobody else was here yet or whether they are not allowed to know -
      * and the second is a fact about the check-in they are in, not a detail.
      */
-    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    render(
-      <QueryClientProvider client={qc}>
-        <MemoryRouter>
-          <GroundChat
-            groundId="g1" openCheckInId={null} openSessionNumber={null} totalSessions={6}
-            nextOpensAt={null} onOpenSession={() => {}} openPending={false}
-            parties={[{ name: 'Abubakar', done: false, isSelf: true }]}
-            peersHidden
-          />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    )
-    expect(await screen.findByText(/check in without seeing each other/)).toBeTruthy()
+    renderRoster([{ name: 'Abubakar', done: false, isSelf: true }], { peersHidden: true })
+    /*
+     * U.8 third review: with no `leadName` given, this falls back to "Your lead" - the name-bearing
+     * case is pinned separately in who-is-in-this-when-peers-are-hidden.spec.tsx, along with the
+     * lead's own true sentence when she is the one reading it about herself.
+     */
+    expect(screen.getByText(/Your lead knows who is here/)).toBeTruthy()
     // And it still never says what anybody wrote.
     expect(screen.getByText(/will not see the others or what they wrote/)).toBeTruthy()
   })
 
-  it('and a genuinely single-party ground still says nothing', async () => {
+  it('and a genuinely single-party ground still shows no roster', () => {
     // The distinction the flag exists for: one party is not the same as a hidden roster.
-    renderTopic([{ name: 'Hafsah', done: true, isSelf: true }])
-    /**
-     * Waits on the card's own heading. It used to wait on the check-in's NAME, which this card no
-     * longer prints - the name, the scenario, the session count and the alignment read are all in
-     * the page header now, and a card that restates the header was the first thing somebody met on
-     * the tab where they were about to give their account.
-     */
-    await screen.findByText('About this check-in')
-    expect(screen.queryByText(/Who is in this/)).toBeNull()
+    renderRoster([{ name: 'Hafsah', done: true, isSelf: true }])
+    expect(screen.getByText(/Who is in this/)).toBeTruthy()
+    expect(screen.queryByText('Hafsah has checked in.')).toBeNull()
   })
 
-  it('and never renders anything a person wrote', async () => {
-    renderTopic([
+  it('and never renders anything a person wrote', () => {
+    renderRoster([
       { name: 'Hafsah', done: true, isSelf: false },
       { name: 'Abubakar', done: true, isSelf: true },
     ])
-    await screen.findByText(/Who is in this/)
+    screen.getByText(/Who is in this/)
     // The only per-person facts in the roster are a name and a state.
     expect(document.body.textContent ?? '').not.toMatch(/said|wrote|answered that/i)
   })
@@ -151,12 +114,12 @@ describe('the permission stays in the service', () => {
      * If this component grows its own `peersVisible` check, the rule exists in two places and
      * they will disagree. The service filters the payload; the component draws what it is given.
      */
-    expect(code('GroundChat.tsx')).not.toMatch(/peersVisible|restrictExternalVisibility|hidePeers/)
+    expect(code('WhoIsInThis.tsx')).not.toMatch(/peersVisible|restrictExternalVisibility|hidePeers/)
   })
 
   it('and the pages build the roster from the payload rather than from a role', () => {
     const part = code('../../pages/grounds/GroundParticipantPage.tsx')
-    expect(part).toMatch(/parties=\{\(ground\.participants \?\? \[\]\)/)
+    expect(part).toMatch(/whoIsInThisParties = \(ground\.participants \?\? \[\]\)/)
   })
 
   it('and both pages pass the check-in\'s peer rule, so an empty roster can explain itself', () => {
@@ -183,7 +146,7 @@ describe('the permission stays in the service', () => {
    */
   it('so the running view qualifies it by who is reading', () => {
     expect(code('../../pages/grounds/GroundAdminPage.tsx'))
-      .toMatch(/peersHidden=\{\(ground as any\)\.peersVisibleEffective === false && !canRunThisGround\}/)
+      .toMatch(/whoIsInThisPeersHidden = \(ground as any\)\.peersVisibleEffective === false && !canRunThisGround/)
   })
 
   /** The rule itself is unchanged for everybody it does apply to. */

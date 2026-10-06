@@ -1,12 +1,15 @@
-import { Controller, Post, Get, Patch, Body, Query, HttpCode, HttpStatus, UseGuards, Req, Res, Logger } from '@nestjs/common';
+import { aRoleToInviteAs } from '../users/the-role-an-invitation-gives';
+import { Controller, Post, Get, Patch, Body, Query, HttpCode, HttpStatus, UseGuards, Req, Res, Logger, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { IsString } from 'class-validator';
-import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
-import { RegisterDto, LoginDto, AuthResponseDto, VerifyEmailDto, SetPasswordDto, ResendVerificationDto, ForgotPasswordDto, ResetPasswordDto, MagicLinkRegisterDto, MemberSigninDto, UpdateProfileDto, EntrySaveDto } from './dto';
+import { GoogleCallbackGuard, GoogleStartGuard } from './google-callback.guard';
+import { aPathInThisApp } from '../../common/a-path-in-this-app';
+import { RegisterDto, LoginDto, AuthResponseDto, VerifyEmailDto, SetPasswordDto, ResendVerificationDto, ForgotPasswordDto, ResetPasswordDto, MagicLinkRegisterDto, MemberSigninDto, UpdateProfileDto, EntrySaveDto, CreateOrganisationDto } from './dto';
 import { Public, CurrentUser, CurrentUserData, Roles, Role } from '../../common';
+import { aNameFromAnEmailAddress } from '../../common/an-email-domain';
 
 /**
  * HOW MANY SIGN-INS A MINUTE, AND WHY IT IS A KNOB.
@@ -187,7 +190,7 @@ export class AuthController {
 
   @Public()
   @Get('google')
-  @UseGuards(AuthGuard('google'))
+  @UseGuards(GoogleStartGuard)
   @ApiOperation({ summary: 'Initiate Google OAuth login' })
   async googleAuth() {
     // Passport redirects to Google - no body needed
@@ -195,19 +198,30 @@ export class AuthController {
 
   @Public()
   @Get('google/callback')
-  @UseGuards(AuthGuard('google'))
+  @UseGuards(GoogleCallbackGuard)
   @ApiOperation({ summary: 'Google OAuth callback' })
   async googleCallback(@Req() req: any, @Res() res: any) {
     const frontendUrl = this.configService.get<string>('google.frontendUrl');
+    /* Cancelled at Google, a refused code, or a profile the strategy turned down: the guard has
+       logged why and hands over no user. The client has one page for it (U.2). */
+    if (!req.user) return res.redirect(`${frontendUrl}/google-failed`);
     try {
-      const { token, isNewUser, needsOrgName } = await this.authService.findOrCreateGoogleUser(req.user);
+      /* Where they were going, carried through Google as `state`, and checked again here (U.3 review). */
+      const next = aPathInThisApp(req.query?.state);
+      const outcome = await this.authService.findOrCreateGoogleUser(req.user, next);
+      /* From an invite link, or with a domain an organisation lets join: nothing is made yet, and the
+         confirmation page takes it from here, exactly as for an email sign-up. */
+      if (outcome.pendingToken) {
+        return res.redirect(`${frontendUrl}/verify-email?token=${outcome.pendingToken}&via=google`);
+      }
+      const { token, isNewUser, needsOrgName } = outcome;
       // Issue a short-lived (60s) exchange code so the full JWT is never in the URL.
-      const code = await this.authService.createOAuthExchangeCode(token);
+      const code = await this.authService.createOAuthExchangeCode(token!);
       // needsOrgName is false for anyone joining an org that already exists -
       // an invited participant must never be asked to name someone else's
       // organisation.
       return res.redirect(
-        `${frontendUrl}/auth/google/callback?code=${code}&new=${isNewUser}&nameOrg=${needsOrgName}`,
+        `${frontendUrl}/auth/google/callback?code=${code}&new=${isNewUser}&nameOrg=${needsOrgName}${next ? `&next=${encodeURIComponent(next)}` : ''}`,
       );
     } catch (err: any) {
       /*
@@ -229,7 +243,9 @@ export class AuthController {
        * it already understands.
        */
       this.logger.error(`Google sign-in failed for ${req?.user?.email ?? 'an unknown address'}: ${err?.message ?? err}`, err?.stack);
-      return res.redirect(`${frontendUrl}/auth?why=google-signin-failed`);
+      /* The client's "Google sign-in didn't finish" page (U.2). The old address,
+         /auth?why=google-signin-failed, still redirects there for any link already out. */
+      return res.redirect(`${frontendUrl}/google-failed`);
     }
   }
 
@@ -240,6 +256,48 @@ export class AuthController {
   @ApiOperation({ summary: 'Exchange a one-time OAuth code for a JWT' })
   async googleExchange(@Query('code') code: string) {
     return this.authService.redeemOAuthExchangeCode(code);
+  }
+
+  /**
+   * THE ORGANISATION NAME SUGGESTED FROM AN ADDRESS, at sign-up (U.2, U.3). The list of public mail
+   * domains lives on the server only (common/an-email-domain.ts), so the screen asks here. Says
+   * nothing about whether the address or its organisation is known.
+   */
+  @Public()
+  @Get('name-from-address')
+  @Throttle({ global: { limit: 60, ttl: 60_000 } })
+  @ApiOperation({ summary: 'The organisation name suggested from an email address, or null' })
+  nameFromAddress(@Query('email') email: string) {
+    return { name: aNameFromAnEmailAddress(email ?? '') };
+  }
+
+  /** "Where do you work?" (U.3): organisations this person may join by email domain, and open invitations. */
+  @Get('where-can-i-join')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Organisations I may join by email domain, and invitations open for my address' })
+  async whereCanIJoin(@CurrentUser() user: CurrentUserData) {
+    return this.authService.whereCanIJoin(user.id);
+  }
+
+  /** "Join" on "Where do you work?": by email domain, as "Takes part". Returns a token for it. */
+  @Post('join-by-domain')
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Join an organisation that lets anyone with my email domain join' })
+  async joinByDomain(@CurrentUser() user: CurrentUserData, @Body() dto: SwitchOrganizationDto) {
+    return this.authService.joinByDomain(user.id, dto.organizationId, (user.signedInVia as any) ?? 'password');
+  }
+
+  /**
+   * WHETHER WHATSAPP IS SWITCHED ON FOR THIS PERSON (U.3, Hafsah, 26 September): on in Groundwork
+   * (our credentials and the staff toggle), or through their organisation's own connected number.
+   * While it is off, the screens mention WhatsApp nowhere.
+   */
+  @Get('whatsapp')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Whether WhatsApp is switched on, here or for my organisation' })
+  async whatsappIsOn(@CurrentUser() user: CurrentUserData) {
+    return { on: await this.authService.whatsappIsOn(user.organizationId) };
   }
 
   @Get('my-organizations')
@@ -268,6 +326,21 @@ export class AuthController {
   @ApiOperation({ summary: 'Create your own organisation and switch into it, keeping the one you were listed in' })
   async startMyOwnWorkspace(@CurrentUser() user: CurrentUserData) {
     return this.authService.startMyOwnWorkspace(user.id);
+  }
+
+  /**
+   * "CREATE AN ORGANISATION" (U.3). The same door as start-my-own-workspace, with the name the person
+   * typed, an optional billing email and what they said about the team's size. A person may have
+   * more than one organisation of their own, each with its own plan (Hafsah, 26 September).
+   */
+  @Post('organizations')
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Create an organisation, become its owner, and switch into it' })
+  async createOrganisation(@CurrentUser() user: CurrentUserData, @Body() dto: CreateOrganisationDto) {
+    const name = (dto.name ?? '').trim();
+    if (name.length < 2) throw new BadRequestException('Give the organisation a name of at least two letters.');
+    return this.authService.startMyOwnWorkspace(user.id, { name, billingEmail: dto.billingEmail, teamSize: dto.teamSize });
   }
 
   @Get('me')
@@ -301,7 +374,7 @@ export class AuthController {
     if (dto._hp) {
       return { message: 'Check your email for your sign-in link.', email: dto.email.toLowerCase() };
     }
-    return this.authService.entrySave(dto.email, dto.draft);
+    return this.authService.entrySave(dto.email, dto.draft, dto.password, dto.next);
   }
 
   @Post('request-password-setup')
@@ -318,8 +391,9 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Throttle({ global: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Invite a colleague to Groundwork as a member of the same org' })
-  async teamInvite(@CurrentUser() user: CurrentUserData, @Body() body: { email: string }) {
+  async teamInvite(@CurrentUser() user: CurrentUserData, @Body() body: { email: string; role?: string; name?: string }) {
     const orgName = (user as any).organizationName ?? 'Groundwork';
-    return this.authService.teamInvite(orgName, body.email, user.organizationId);
+    /* The role and the name chosen on the People page (U.4). */
+    return this.authService.teamInvite(orgName, body.email, user.organizationId, { role: aRoleToInviteAs(body.role), name: body.name ?? null });
   }
 }

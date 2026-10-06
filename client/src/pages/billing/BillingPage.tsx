@@ -1,28 +1,71 @@
 import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { billingApi, PLAN_LABELS, PLAN_PRICES, formatMemberCap, formatMonthlyPrice, type SubscriptionPlan, FALLBACK_FREE_LIMITS } from '@/api/billing'
+import { billingApi, PLAN_LABELS, PLAN_PRICES, formatMemberCap, formatMonthlyPrice, formatDollars, isWhatsAppBillingAdmin, type SubscriptionPlan, FALLBACK_FREE_LIMITS } from '@/api/billing'
+import { theFreeTrialSentence } from '@/lib/the-free-trial'
+import { whatCoversThem, thePlanLine, theNextPaymentLine, whoCounts, theTrialNotices } from './what-plan-and-billing-says'
 import { groundsApi } from '@/api/grounds'
 import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
-import { scrollToId } from '@/lib/scroll-to'
-import { Stat, Pill } from '@/components/gw/kit'
 import { copy } from '@/components/gw/copying-can-fail'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import { scrollToId } from '@/lib/scroll-to'
+import {
+  Page, PageTitle, Section, Panel, Stack, FieldRows, FieldRow, Button, Tag, Note, TextField, FieldLabel, SwitchRow,
+} from '@/components/gw/ui'
 
 const PLANS: SubscriptionPlan[] = ['STARTER', 'SMALL_TEAM', 'GROWTH', 'BUSINESS', 'SCALE', 'ENTERPRISE']
 
-
 /**
- * ASKING FOR A CALL ABOUT COACHING OR SETUP.
+ * PLAN AND BILLING (F2, /billing and /settings/billing, group 1 of the screens rebuilt from the
+ * shared parts). Wording copied from docs/prototype/screens/F2-billing/settings-billing.txt and
+ * upgrade.txt (the free-trial notices, from what-plan-and-billing-says.ts, which already carries
+ * that wording).
  *
- * The pricing page names all three and this is where somebody acts on it. Integration has its own
- * button on the Connect page, next to the keys, which is where that question actually occurs.
+ * `/settings/billing` and `/billing` both render this component (see App.tsx); Stripe billing keeps
+ * working exactly as it does today - the Customer Portal for the card on file and past invoices,
+ * checkout for a first subscription, and the same pause/cancel/resume calls - test mode only.
  *
- * ONE OPEN REQUEST PER SUBJECT. Clicking the same one twice is somebody checking the first click
- * worked; asking about a coach must not make the setup button claim it was already asked.
+ * settings-checkout.txt, settings-paid.txt and settings-payfailed.txt are Stripe's own checkout and
+ * its return pages (PaymentPage, BillingCallbackPage), which this page hands off to and are not
+ * rebuilt here; this task's brief names BillingPage.tsx and what /settings/billing renders.
+ *
+ * REBUILT FROM THE SHARED PARTS: `Page`/`PageTitle` for the frame, `Section`/`Panel`/`FieldRows` for
+ * "Your plan" and "Invoices", a plain grid of `Panel`s for "Plans" (`.gwui-plan-grid`, since the
+ * shared parts have no plan-card component of their own), and the standard `Button`/`Tag`/`Note`
+ * everywhere else. "Share Groundwork with another organisation" is the product's access-code tool,
+ * the working equivalent of the prototype's "A code they can use to start".
+ *
+ * NO PRIMARY (NAVY) BUTTON ANYWHERE ON THIS PAGE (Hafsah, 30 September), matching
+ * settings-billing.jpg exactly: every plan card reads "Move to this" in white, and "Pause",
+ * "Cancel", "Contact us" and "Copy" are the same weight. The alternate states this screen can be
+ * in but the prototype does not draw - a subscription ending ("Keep subscription"), paused
+ * ("Resume subscription"), the two confirm dialogs, and the platform admin's "Send code"/
+ * "Generate" - used to be `kind="primary"`, which put a navy button on screen the prototype never
+ * has. They are `kind="secondary"` now, the same weight this page already gives "Pause" and
+ * "Move to this" in the state the prototype does draw.
+ *
+ * FIXED, 30 SEPTEMBER (the setting row, settings-billing.jpg): four things this page's own use of
+ * the shared parts got wrong, none of them the parts themselves.
+ *  1. Every price read "$25/mo/mo" - `priceLabel` already returns "$25/mo" (`formatMonthlyPrice`,
+ *     the one price formatter this page uses everywhere else), and the plan card appended a
+ *     second "/mo" after it. Now the card splits that same string instead of appending a new one.
+ *  2. The plan grid was five cards to a row (`repeat(auto-fit, minmax(200px,1fr))`); the prototype
+ *     (`.g3`, s20.js/s21.js) is three. Fixed in `gwui-plan-grid`.
+ *  3. "Move to this" and "Contact us" were the normal button size, half the card's width; the
+ *     prototype's are `"btn sec sm"`, the small size, filling the card. Both are `size="small"
+ *     wide` now.
+ *  4. The Enterprise card was a plain white `Panel` like every other plan card; the prototype
+ *     draws it alone on the warm chat-colour fill (`background:var(--band)`, the same colour as
+ *     `--chat`). `gwui-plan-card-enterprise` now sets `background: var(--gw-bg)` (the product's
+ *     name for that same colour, #F7F1E5).
+ * Also: the subtitle "Your plan, and how many people it covers." is gone - settings-billing.jpg
+ * has no subtitle under "Plan and billing" at all; it was the product's own invention. And the
+ * `FieldRows` under "Your plan", "Invoices" and "Your check-ins" no longer sit inside a `Panel` -
+ * see FieldRow.tsx: `srow` in the prototype has no side padding and sits flat on the page.
  */
+
 function ThingsWeDoByHand() {
   const qc = useQueryClient()
   const asked = useQuery({
@@ -40,70 +83,36 @@ function ThingsWeDoByHand() {
   })
 
   const open: Record<string, string> = asked.data?.open ?? {}
-
   const rows = [
-    { subject: 'COACHING', title: 'A coach in the room', what: 'Sahar reads the report with your team and turns what it found into a decision somebody owns.' },
-    { subject: 'HANDS_ON', title: 'Setting you up', what: 'A named person to get you running and train your team, over the first month.' },
+    { subject: 'COACHING', title: 'A coach in the room', what: 'Sahar Jamal, a partner at Groundwork who coaches teams and helps them set up, reads the report with your team and turns what it found into a decision somebody owns.' },
+    { subject: 'HANDS_ON', title: 'Setting you up', what: 'A named person gets you running and trains your team during your first month.' },
   ]
 
   return (
-    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 12, padding: '18px 20px', marginTop: 18, background: 'var(--gw-card)' }}>
-      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 3 }}>Things our team does by hand</div>
-      <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>
-        Not part of your plan and not charged to your card. Ask for a call, we tell you what it costs
-        before anybody starts, and it is invoiced afterwards.
-      </div>
-      <div style={{ display: 'grid', gap: 10 }}>
-        {rows.map(r => (
-          <div key={r.subject} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
-            <div style={{ flex: '1 1 260px' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)' }}>{r.title}</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>{r.what}</div>
-            </div>
-            {open[r.subject] ? (
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', whiteSpace: 'nowrap', paddingTop: 2 }}>
-                Asked. We will be in touch.
-              </div>
-            ) : (
-              <button
-                type="button"
-                disabled={ask.isPending}
-                onClick={() => ask.mutate(r.subject)}
-                style={{ flexShrink: 0, fontSize: 12.5, fontWeight: 700, padding: '7px 14px', borderRadius: 7, border: '1px solid var(--gw-border)', background: 'white', color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit' }}
-              >Request a call</button>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
+    <Section heading="Things our team does by hand" note="These are not part of your plan. We tell you what they cost before anyone starts, and invoice you afterwards.">
+      <Panel pad={false}>
+        <FieldRows>
+          {rows.map(r => (
+            <FieldRow
+              key={r.subject}
+              label={r.title}
+              value={r.what}
+              action={open[r.subject]
+                ? <span className="gwui-fine">Asked. We will be in touch.</span>
+                : <Button kind="secondary" size="small" disabled={ask.isPending} onClick={() => ask.mutate(r.subject)}>Request a call</Button>}
+            />
+          ))}
+        </FieldRows>
+      </Panel>
+    </Section>
   )
 }
 
 export function BillingPage() {
   const navigate = useNavigate()
-  const [params] = useSearchParams()
   const qc = useQueryClient()
   const user = useAuthStore(s => s.user)
-
-  /**
-   * THE SIDEBAR WAS THE ONLY THING HIDING THIS PAGE.
-   *
-   * `AppShell` marks the Billing item `adminOnly`, and that was the whole of it: the route is
-   * `RequireAuth` only and this component read `user` without ever looking at `user.role`. Signed in
-   * as a plain participant on a ground, typing the URL rendered the organisation's plan, its
-   * grounds, the full price ladder from $25 to $400 a month with live Subscribe buttons, and the
-   * access-code tools.
-   *
-   * The server was holding the line - the admin-only reads came back refused - so nothing sensitive
-   * was disclosed. What was wrong is that a member was being OFFERED controls over the
-   * organisation's money that they have no authority to use. A hidden link is not a permission.
-   *
-   * Found by signing in as a participant and typing the address, which is exactly what somebody
-   * being reviewed has a motive to do.
-   */
   const isAdmin = user?.role === 'ADMIN'
-
-  const groundId = params.get('groundId') ?? undefined
 
   const [genSessions, setGenSessions] = useState(1)
   const [genNote, setGenNote] = useState('')
@@ -113,49 +122,17 @@ export function BillingPage() {
   const [sendSessions, setSendSessions] = useState(5)
   const [sentTo, setSentTo] = useState<string | null>(null)
 
-  const { data: grounds = [], isLoading: groundsLoading } = useQuery({
-    queryKey: ['grounds'],
-    queryFn: groundsApi.list,
-    enabled: isAdmin,
+  const { data: grounds = [], isLoading: groundsLoading } = useQuery({ queryKey: ['grounds'], queryFn: groundsApi.list, enabled: isAdmin })
+  const { data: codes = [], isLoading: codesLoading } = useQuery({ queryKey: ['contributor-codes'], queryFn: billingApi.getContributorCodes, enabled: isAdmin })
+  const { data: billingStatus } = useQuery({ queryKey: ['billing-status'], queryFn: billingApi.status, enabled: isAdmin })
+  const { data: livePricing } = useQuery({ queryKey: ['public-pricing'], queryFn: billingApi.getPricing, enabled: isAdmin, staleTime: 60 * 1000 })
+  const { data: whatsapp } = useQuery({ queryKey: ['billing-whatsapp'], queryFn: billingApi.getWhatsApp, enabled: isAdmin })
+  const setWhatsAppMut = useMutation({
+    mutationFn: (on: boolean) => billingApi.setWhatsApp(on),
+    onSuccess: (r) => qc.setQueryData(['billing-whatsapp'], r),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'WhatsApp did not change. Try again.'),
   })
 
-  const { data: codes = [], isLoading: codesLoading } = useQuery({
-    queryKey: ['contributor-codes'],
-    queryFn: billingApi.getContributorCodes,
-    enabled: isAdmin,
-  })
-
-  const { data: billingStatus } = useQuery({
-    queryKey: ['billing-status'],
-    queryFn: billingApi.status,
-    /**
-     * Gated too, and this is what also removes the pair of overlapping "Access denied" toasts: a
-     * request that is never made cannot fail. Two identical failures rendered as two stacked toasts
-     * that truncated each other, which is its own small mess.
-     */
-    enabled: isAdmin,
-  })
-
-  /**
-   * Prices are admin-editable (Admin -> System -> Pricing), not fixed at build time - the
-   * static PLAN_PRICES strings below are only the pre-load fallback. Without this, this page
-   * could show "$25/mo" while checkout actually charges whatever's in the pricing_plans table.
-   */
-  const { data: livePricing } = useQuery({
-    queryKey: ['public-pricing'],
-    queryFn: billingApi.getPricing,
-    /**
-     * Admin-only, like every other read on this page, because `if (!isAdmin)` below returns before
-     * any price is rendered. I removed this gate on the grounds that the endpoint is public and a
-     * non-admin would otherwise read stale fallbacks - which was wrong: a member never reaches the
-     * plan list at all, so the request was work for a page they are being turned away from. The
-     * public pricing page has no such gate, which is where a non-admin actually reads a price.
-     */
-    enabled: isAdmin,
-    staleTime: 60 * 1000,
-  })
-
-  /** The live free limit, or what we shipped with, until the request lands. */
   const freeGrounds = livePricing?.free.groundLimit ?? FALLBACK_FREE_LIMITS.groundLimit
   const freeTeam = livePricing?.free.memberLimit ?? FALLBACK_FREE_LIMITS.memberLimit
 
@@ -164,40 +141,25 @@ export function BillingPage() {
     if (live) return live.amountCents === null ? 'Contact us' : formatMonthlyPrice(live.amountCents)
     return PLAN_PRICES[plan]
   }
-
-  /** No fallback: an absent seat count is honest, a stale one is the bug being removed. */
   function capLabel(plan: SubscriptionPlan): string {
     return formatMemberCap(livePricing?.plans.find(p => p.plan === plan)?.memberCap)
   }
 
   const generateCode = useMutation({
     mutationFn: () => billingApi.generateContributorCode(genSessions, genNote.trim() || undefined),
-    onSuccess: r => {
-      setNewCode(r.code)
-      qc.invalidateQueries({ queryKey: ['contributor-codes'] })
-      setGenNote('')
-    },
+    onSuccess: r => { setNewCode(r.code); qc.invalidateQueries({ queryKey: ['contributor-codes'] }); setGenNote('') },
     onError: () => toast.error('Could not generate code. Try again.'),
   })
-
   const sendCode = useMutation({
     mutationFn: () => billingApi.sendContributorCodeToEmail(sendEmail.trim(), sendSessions),
-    onSuccess: r => {
-      setSentTo(r.email)
-      setSendEmail('')
-      qc.invalidateQueries({ queryKey: ['contributor-codes'] })
-    },
+    onSuccess: r => { setSentTo(r.email); setSendEmail(''); qc.invalidateQueries({ queryKey: ['contributor-codes'] }) },
     onError: () => toast.error('The code did not send. Check the address and try again.'),
   })
-
   const createSubscriptionMut = useMutation({
     mutationFn: (plan: SubscriptionPlan) => billingApi.createSubscription(plan),
     onSuccess: r => { if (r.checkoutUrl) window.location.href = r.checkoutUrl },
-    /* The server's own sentence when billing is not set up on this deployment - "no card was touched" -
-       was swallowed into this generic toast. Say it when it is there. */
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not start checkout. Try again.'),
   })
-
   const changePlanMut = useMutation({
     mutationFn: (plan: SubscriptionPlan) => billingApi.changeSubscriptionPlan(plan),
     onSuccess: (_r, plan) => {
@@ -207,639 +169,421 @@ export function BillingPage() {
     },
     onError: () => toast.error('Your plan did not change. You have not been charged - try again.'),
   })
-
-  /**
-   * Stripe's Customer Portal: invoices, receipts, the card on file, and cancellation, on their
-   * screens rather than rebuilt on ours. The endpoint and the client call both already existed.
-   */
   const portalMut = useMutation({
     mutationFn: () => billingApi.portal(),
-    onSuccess: (res) => {
-      if (res?.portalUrl) window.location.assign(res.portalUrl)
-      else toast.error('Could not open the billing portal. Try again in a moment.')
-    },
+    onSuccess: (res) => { if (res?.portalUrl) window.location.assign(res.portalUrl); else toast.error('Could not open the billing portal. Try again in a moment.') },
     onError: () => toast.error('Could not open the billing portal. Try again in a moment.'),
   })
 
-  /*
-   * CANCELLING RUNS TO THE END OF WHAT WAS PAID FOR. This used to end the subscription that moment
-   * behind a window.confirm that promised "per-session billing" - a mode that no longer exists -
-   * and a customer who cancelled on day two lost the rest of the month. Now it schedules the end,
-   * the confirmation below says when access stops, and pause is offered in the same place for
-   * somebody who wants to stop paying sooner.
-   */
   const [confirming, setConfirming] = useState<'cancel' | 'pause' | null>(null)
-  const sayTheDate = (d: string | Date | null | undefined) =>
-    d ? whenItWas(d, 'full') : 'the end of the paid period'
+  const sayTheDate = (d: string | Date | null | undefined) => d ? whenItWas(d, 'full') : 'the end of the paid period'
   const cancelSubscriptionMut = useMutation({
     mutationFn: () => billingApi.cancelSubscription(),
-    onSuccess: (res) => {
-      qc.invalidateQueries({ queryKey: ['billing-status'] })
-      setConfirming(null)
-      toast.success(`Your subscription ends on ${sayTheDate(res?.endsAt)}. Everything works until then.`)
-    },
+    onSuccess: (res) => { qc.invalidateQueries({ queryKey: ['billing-status'] }); setConfirming(null); toast.success(`Your subscription ends on ${sayTheDate(res?.endsAt)}. Everything works until then.`) },
     onError: () => toast.error('Could not schedule the cancellation. Try again.'),
   })
-
   const keepSubscriptionMut = useMutation({
     mutationFn: () => billingApi.keepSubscription(),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['billing-status'] })
-      toast.success('Kept. Your subscription carries on as before.')
-    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['billing-status'] }); toast.success('Kept. Your subscription carries on as before.') },
     onError: () => toast.error('Could not undo the cancellation. Try again.'),
   })
-
   const pauseSubscriptionMut = useMutation({
     mutationFn: () => billingApi.pauseSubscription(),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['billing-status'] })
-      setConfirming(null)
-      toast.success('Paused. Nothing is charged until you resume.')
-    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['billing-status'] }); setConfirming(null); toast.success('Paused. Nothing is charged until you resume.') },
     onError: () => toast.error('Could not pause subscription. Try again.'),
   })
-
   const resumeSubscriptionMut = useMutation({
     mutationFn: () => billingApi.resumeSubscription(),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['billing-status'] })
-      toast.success('Subscription resumed.')
-    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['billing-status'] }); toast.success('Subscription resumed.') },
     onError: () => toast.error('Could not resume subscription. Try again.'),
   })
 
   async function copyToClipboard(text: string) {
-    if (await copy(text)) {
-      setCopied(text)
-      setTimeout(() => setCopied(null), 2000)
-    } else {
-      toast.error('Copying is not available here. Select the text and copy it yourself.')
-    }
+    if (await copy(text)) { setCopied(text); setTimeout(() => setCopied(null), 2000) }
+    else toast.error('Copying is not available here. Select the text and copy it yourself.')
   }
 
-  /**
-   * THE SUBSCRIPTION COMES FROM THE ORGANISATION, NOT FROM A GROUND. W14-6.
-   *
-   * This read `grounds[0].org` - "all grounds share the same org", which is true and beside the
-   * point. An organisation that has closed its grounds has no `grounds[0]`, so `orgSub` was
-   * undefined, `isSubscribed` was false, and a **paying customer saw "Free · No subscription"
-   * with no way to pause, resume or cancel**. The one page they would go to in order to stop
-   * being charged was the page that denied they were being charged.
-   *
-   * `/billing/status` now returns it, which is where an organisation-level fact belongs.
-   */
   const orgSub = billingStatus?.subscription ?? null
   const isSubscribed = !!(orgSub?.plan && orgSub?.status === 'active')
   const isPaused = orgSub?.status === 'paused'
-  /* A cancellation is scheduled: still active, still working, ending on this date. */
   const endsAt = orgSub?.endsAt ?? null
-  const peopleOverCap =
-    billingStatus?.people?.cap != null && billingStatus.people.count > billingStatus.people.cap
+  const peopleOverCap = billingStatus?.people?.cap != null && billingStatus.people.count > billingStatus.people.cap
   const hasBillingHistory = (billingStatus?.activeGrounds ?? []).length > 0
+  /* "IN PROGRESS": ONE SENTENCE ABOVE THE LIST WHEN IT IS TRUE OF EVERY ROW, never a tag repeated
+     on each one for a fact that is the same for all of them. See the comment where this is used. */
+  const allFreeRows = grounds.length > 0 && (grounds as any[]).every((g: any) => g.isFreeGround)
+  const anyExtensionUsed = (grounds as any[]).some((g: any) => g.org?.freeExtensionUsed ?? false)
 
   if (!isAdmin) {
     return (
-      <div style={{ padding: '48px 32px', maxWidth: 560 }}>
-        <div style={{ fontSize: 15, color: 'var(--gw-sub)' }}>
-          You need admin access to manage billing for your organisation.
-        </div>
-      </div>
+      <Page>
+        <PageTitle title="Plan and billing" subtitle="You need admin access to manage billing for your organisation." />
+      </Page>
     )
   }
 
   if (groundsLoading || codesLoading) {
-    return (
-      <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Loading...</div>
-      </div>
-    )
+    return <Page><p className="gwui-panel-text-muted">Loading…</p></Page>
   }
 
+  const orgName = (user as any)?.organization?.name?.trim() || (user as any)?.organizationName || ''
+  const covers = whatCoversThem(billingStatus)
+  const notices = theTrialNotices(billingStatus, livePricing)
+  const trialSentence = theFreeTrialSentence(livePricing?.trial)
+  const invoices = billingStatus?.invoices ?? []
+  const usage = billingStatus?.usage
+  const busy = createSubscriptionMut.isPending || changePlanMut.isPending
+  const choosePlan = (plan: SubscriptionPlan) => (isSubscribed ? changePlanMut.mutate(plan) : createSubscriptionMut.mutate(plan))
+  const scrollToPlans = () => scrollToId('billing-plans', 'start')
+
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)' }}>
-      <div style={{ maxWidth: 520, margin: '0 auto', padding: '32px 16px 64px' }}>
+    <Page>
+      {/* NO SUBTITLE HERE (Hafsah, 30 September, settings-billing.jpg): the prototype's own
+          Plan-and-billing page draws no sentence under its title at all - "Your plan, and how many
+          people it covers." was the product's own invention. */}
+      <PageTitle eyebrow={orgName} title="Plan and billing" />
 
-        <button type="button" style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 20, cursor: 'pointer' }} onClick={() => navigate(groundId ? `/grounds/${groundId}` : '/grounds')}>Back</button>
-
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-dark)', margin: '0 0 4px' }}>Billing</h1>
-        <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 28, lineHeight: 1.6 }}>
-          Your plan, and how many people it covers.
-        </div>
-
-        {/**
-          * AT A GLANCE, IN THE BOARD'S VOCABULARY. Stage 5.
-          *
-          * The three numbers that decide whether somebody upgrades - which plan, how many people
-          * against the cap, when it renews - were prose lines stacked inside a card, in a page whose
-          * whole job is a decision about money. The board answers "what is the state of this" with a
-          * row of serif numerals under small labels, and it is the best-reading page in the product
-          * for exactly that reason.
-          *
-          * `Stat` is the board's own component, not a copy of it, so this row cannot drift from the
-          * one on the board.
-          */}
-        {/*
-          * THE ROW SHOWS FOR A FREE ACCOUNT TOO, which is the whole point of it.
-          *
-          * It was behind `isSubscribed || isPaused`, so the one number that decides whether
-          * somebody upgrades - how many people they have against what their plan covers - was
-          * hidden from every organisation that had not upgraded yet. An admin working out what 160
-          * people costs could not see their own headcount on the page selling them the plan.
-          */}
-        {/*
-          THREE MONTHS ON THE HOUSE, SAID ON THE PAGE ABOUT MONEY.
-          Somebody inside a free run has no subscription and no card, so every other line on this
-          page reads as though they are on the free tier. This says what they actually have and the
-          day it stops, which is the number they need before it does.
-        */}
-        {billingStatus?.onTheHouse && (
-          <div style={{ marginBottom: 18, padding: '13px 16px', borderRadius: 10,
-                        background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b)' }}>
-            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--gw-green-t)', marginBottom: 3 }}>
-              You are on us until {whenItWas(billingStatus.onTheHouse.until, 'full')}
+      {notices.map((n) => (
+        <Panel key={n.key}>
+          <Stack gap={10}>
+            <p className="gwui-panel-text"><b>{n.heading}</b></p>
+            <p className="gwui-panel-text-muted">{n.body}</p>
+            <div className="gwui-invite-actions">
+              {n.choose && <Button kind="secondary" disabled={busy} onClick={() => choosePlan(n.choose!)}>{`Choose ${PLAN_LABELS[n.choose]}`}</Button>}
+              <Button kind="secondary" onClick={scrollToPlans}>{n.key === 'ending' ? 'See every plan' : 'See the plans'}</Button>
             </div>
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)' }}>
+          </Stack>
+        </Panel>
+      ))}
+
+      {billingStatus?.onTheHouse && !billingStatus.onTheHouse.freeTrial && (
+        <Panel>
+          <Stack gap={10}>
+            <p className="gwui-panel-text"><b>You are on us until {whenItWas(billingStatus.onTheHouse.until, 'full')}</b></p>
+            <p className="gwui-panel-text-muted">
               Everything the {PLAN_LABELS[billingStatus.onTheHouse.plan as SubscriptionPlan] ?? String(billingStatus.onTheHouse.plan)} plan
-              covers, at no cost. Nothing is charged and there is no card on file. After that date the free tier applies unless you subscribe.
-            </div>
-          </div>
-        )}
+              covers, at no cost. Nothing is charged and there is no card on file. After that date the free plan applies unless you subscribe.
+            </p>
+          </Stack>
+        </Panel>
+      )}
 
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
-          {(isSubscribed || isPaused) && (
-            <Stat
-              label="Plan"
-              value={PLAN_LABELS[orgSub!.plan as SubscriptionPlan] ?? String(orgSub!.plan)}
-              caption={priceLabel(orgSub!.plan as SubscriptionPlan)}
-              tone={isPaused ? 'warn' : undefined}
+      <Section heading="Your plan">
+        <FieldRows>
+          <FieldRow
+            label="Plan"
+            value={`${thePlanLine(billingStatus, livePricing, freeGrounds)}${peopleOverCap ? ' More people have accounts here than this plan covers.' : ''}`}
+            action={<Button kind="quiet" size="small" onClick={scrollToPlans}>Change</Button>}
+          />
+          <FieldRow
+            label="Next payment"
+            value={theNextPaymentLine(billingStatus, livePricing)}
+            action={(isSubscribed || isPaused) ? (
+              <Button kind="quiet" size="small" disabled={portalMut.isPending} onClick={() => portalMut.mutate()}>{portalMut.isPending ? 'Opening…' : 'Change card'}</Button>
+            ) : undefined}
+          />
+          <FieldRow label="Everyone counts" value={whoCounts(orgName)} />
+          {trialSentence && <FieldRow label="Free trial" value={trialSentence} />}
+          {usage && (
+            <FieldRow
+              label="So far"
+              value={`So far there have been ${usage.checkIns} ${usage.checkIns === 1 ? 'check-in' : 'check-ins'} and ${usage.reportsReleased} shared ${usage.reportsReleased === 1 ? 'report' : 'reports'}, with ${usage.peopleTakingPart} ${usage.peopleTakingPart === 1 ? 'person' : 'people'} taking part.`}
             />
           )}
-            {billingStatus?.people && (
-              <Stat
-                label="People"
-                value={billingStatus.people.cap != null
-                  ? `${billingStatus.people.count} of ${billingStatus.people.cap}`
-                  : String(billingStatus.people.count)}
-                caption={peopleOverCap ? 'Over what this plan covers' : billingStatus.people.cap != null ? 'Everyone with an account here' : 'No cap on this plan'}
-                tone={peopleOverCap ? 'bad' : undefined}
-              />
-            )}
-            {/*
-              * WHAT THIS ACCOUNT HAS ACTUALLY DONE. An admin asked to pay for a year needs to be
-              * able to say what was got for it, and this page could only say what it costs.
-              */}
-            {(billingStatus as any)?.usage && (
-              <Stat
-                label="Check-ins"
-                value={String((billingStatus as any).usage.checkIns)}
-                caption={`${(billingStatus as any).usage.reportsReleased} report${(billingStatus as any).usage.reportsReleased === 1 ? '' : 's'} released, ${(billingStatus as any).usage.peopleTakingPart} taking part`}
-              />
-            )}
-            {(isSubscribed || isPaused) && <Stat
-              label={isPaused ? 'Paused since' : 'Renews'}
-              value={orgSub?.periodEnd
-                ? whenItWas(orgSub.periodEnd, 'dayAndMonth')
-                : 'Not set'}
-              /**
-               * IT POINTED AT SOMETHING THAT IS NOT ON THE PAGE. W-UX-5.
-               *
-               * "On the card ending below" - and there is no card below, or anywhere else: this page
-               * has never shown a payment method, because Stripe is not wired yet. So the one line
-               * about how a person is charged referred to a thing they could scroll for and never
-               * find. Say the true thing instead, which is when it renews.
-               */
-              caption={isPaused ? 'Nothing is being charged' : 'Renews automatically'}
-              tone={isPaused ? 'warn' : undefined}
-            />}
-        </div>
-
-        {/* Current plan */}
-        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 12 }}>Current plan</div>
-        {isSubscribed || isPaused ? (
-          <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', marginBottom: 28 }}>
-            {/**
-              * SAID ONCE. Stage 5.
-              *
-              * The plan, the price and the seat count are in the tiles above now, and this card
-              * repeated all three - so a page about a decision on money stated the same three facts
-              * twice within one screen. What belongs here is the state and the two things you can do
-              * about it.
-              */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
-              <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-                {isPaused
-                  ? 'Paused. Nothing is being charged, and your check-ins stay as they are.'
-                  : endsAt
-                    ? `Ending on ${sayTheDate(endsAt)}. Everything works until then, and then it stops.`
-                    : peopleOverCap
-                      ? 'More people have accounts here than this plan covers. Moving up a plan is below.'
-                      : 'Running normally.'}
-              </div>
-              <Pill tone={isPaused || endsAt ? 'warn' : 'good'}>{isPaused ? 'Paused' : endsAt ? 'Ending' : 'Active'}</Pill>
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {endsAt ? (
-                <button
-                  onClick={() => keepSubscriptionMut.mutate()}
-                  disabled={keepSubscriptionMut.isPending}
-                  style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: keepSubscriptionMut.isPending ? 0.7 : 1 }}
-                >
-                  {keepSubscriptionMut.isPending ? 'Keeping...' : 'Keep subscription'}
-                </button>
-              ) : isPaused ? (
-                <button
-                  onClick={() => resumeSubscriptionMut.mutate()}
-                  disabled={resumeSubscriptionMut.isPending}
-                  style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: resumeSubscriptionMut.isPending ? 0.7 : 1 }}
-                >
-                  {resumeSubscriptionMut.isPending ? 'Resuming...' : 'Resume subscription'}
-                </button>
-              ) : (
-                <button
-                  onClick={() => setConfirming('pause')}
-                  disabled={pauseSubscriptionMut.isPending}
-                  style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', fontSize: 12, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit', opacity: pauseSubscriptionMut.isPending ? 0.7 : 1 }}
-                >
-                  {pauseSubscriptionMut.isPending ? 'Pausing...' : 'Pause subscription'}
-                </button>
-              )}
-              {/*
-                * INVOICES EXISTED AND WERE UNREACHABLE.
-                *
-                * Stripe issues an invoice for every payment and the API has had a Customer Portal
-                * endpoint all along - `billing.controller.ts`, "manage card, invoices,
-                * cancellation" - with a client function to call it. Nothing ever called it. Asked
-                * by somebody signing up: "do I get an invoice when I pay?" The answer was yes, and
-                * there was no way to see one.
-                *
-                * The portal is Stripe's own screen, so it opens in the same tab by assignment
-                * rather than through the router - it is not a route in this app.
-                */}
-              <button
-                onClick={() => portalMut.mutate()}
-                disabled={portalMut.isPending}
-                style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-navy)', fontSize: 12, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit', opacity: portalMut.isPending ? 0.7 : 1 }}
-              >
-                {portalMut.isPending ? 'Opening...' : 'Invoices and payment method'}
-              </button>
-              {!endsAt && !isPaused && (
-                <button
-                  onClick={() => setConfirming('cancel')}
-                  disabled={cancelSubscriptionMut.isPending}
-                  style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-clay)', fontSize: 12, fontWeight: 600, border: '1px solid #F0D6D3', cursor: 'pointer', fontFamily: 'inherit', opacity: cancelSubscriptionMut.isPending ? 0.7 : 1 }}
-                >
-                  Cancel subscription
-                </button>
-              )}
-            </div>
-
-            {confirming === 'cancel' && (
-              <div role="dialog" aria-label="Cancel at the end of the period" style={{ marginTop: 14, border: '1px solid #F0D6D3', background: '#FBF3F2', borderRadius: 10, padding: '14px 16px' }}>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-clay)', marginBottom: 6 }}>Cancel at the end of the period?</div>
-                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.65, maxWidth: 560, marginBottom: 10 }}>
-                  Everything keeps working until {sayTheDate(orgSub?.periodEnd)}, and then it stops. Nothing more is charged, and nothing is refunded, because you are using what you have paid for. If you want to stop paying but keep the door open, pause instead: nothing is charged while paused, your check-ins stay exactly as they are, and you resume when you choose.
-                </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button onClick={() => pauseSubscriptionMut.mutate()} disabled={pauseSubscriptionMut.isPending} style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                    {pauseSubscriptionMut.isPending ? 'Pausing...' : 'Pause instead'}
-                  </button>
-                  <button onClick={() => cancelSubscriptionMut.mutate()} disabled={cancelSubscriptionMut.isPending} style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-clay)', fontSize: 12, fontWeight: 600, border: '1px solid #F0D6D3', cursor: 'pointer', fontFamily: 'inherit' }}>
-                    {cancelSubscriptionMut.isPending ? 'Scheduling...' : `End it on ${sayTheDate(orgSub?.periodEnd)}`}
-                  </button>
-                  <button onClick={() => setConfirming(null)} style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', fontSize: 12, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}>
-                    Keep it
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {confirming === 'pause' && (
-              <div role="dialog" aria-label="Pause the subscription" style={{ marginTop: 14, border: '1px solid var(--gw-amber-b-soft)', background: 'var(--gw-amber-bg)', borderRadius: 10, padding: '14px 16px' }}>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>Pause the subscription?</div>
-                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.65, maxWidth: 560, marginBottom: 10 }}>
-                  Nothing is charged while it is paused, and your check-ins stay exactly as they are. Collection starts again when you press Resume, and not before.
-                </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button onClick={() => pauseSubscriptionMut.mutate()} disabled={pauseSubscriptionMut.isPending} style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                    {pauseSubscriptionMut.isPending ? 'Pausing...' : 'Pause'}
-                  </button>
-                  <button onClick={() => setConfirming(null)} style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', fontSize: 12, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}>
-                    Not now
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', marginBottom: 28 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-dark)' }}>Free</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 3 }}>Up to {freeGrounds} check-ins for teams of {freeTeam} or fewer, with unlimited sessions and reports.</div>
-              </div>
-              <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: 'var(--gw-paper-2)', color: 'var(--gw-muted)' }}>
-                No subscription
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* Empty state: no billing history yet */}
-        {!hasBillingHistory && !isSubscribed && !isPaused && (
-          <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '20px 18px', marginBottom: 28, textAlign: 'center' }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 6 }}>
-              Your first {freeGrounds} check-ins are free.
-            </div>
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 14 }}>
-              Create up to {freeGrounds} check-ins with unlimited sessions and reports, no card required. The free plan covers {freeTeam} people including you. Subscribe when your team outgrows it.
-            </div>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button
-                onClick={() => scrollToId('upgrade-section', 'start')}
-                style={{ padding: '9px 18px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-              >
-                View org plans
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/*
-          THE FOURTH COPY OF THE CHECK-IN LIST, AND ON A PAID PLAN IT SAID NOTHING. W-UX-5.
-          
-          Seen on the running page: ten rows, each carrying the identical badge "Unlimited sessions",
-          under a heading already carried by the rail, the list page and the attention line. The list
-          exists to show what differs per check-in - a session balance, a free stamp, a used
-          extension - and on a subscription NOTHING differs, by definition. So it was a tenfold
-          repetition of one fact, on the fourth screen to hold the same names.
-          
-          It stays for the accounts it means something to. A subscribed org gets the one fact once.
-        */}
-        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 12 }}>
-          {isSubscribed ? 'Your check-ins' : 'In progress'}
-        </div>
-
-        {isSubscribed && grounds.length > 0 ? (
-          <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 28, fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-            All {grounds.length} of your check-ins have unlimited sessions and reports on this plan.
-            Nothing is counted or charged per session.
-          </div>
-        ) : grounds.length === 0 ? (
-          <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: 20, marginBottom: 28, textAlign: 'center' }}>
-            <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Nothing active yet.</div>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 28 }}>
-            {(grounds as any[]).map((g: any) => {
-              const balance: number | undefined = g.sessionsBalance
-              const isFree: boolean = !!g.isFreeGround
-              const extUsed: boolean = g.org?.freeExtensionUsed ?? false
-              return (
-                <div key={g.id} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-dark)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.label}</div>
-                    <div style={{ marginTop: 4, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      {/*
-                        "FREE CHECK-IN" ON A $400/MONTH PLAN. W-UX-5.
-                        
-                        `isFreeGround` is a stamp left on the row from the day it was created, and it
-                        was tested BEFORE the subscription. So an org that started free and then paid
-                        saw every check-in it had ever opened labelled "Free check-in" - on the
-                        billing page, which is the one screen whose whole job is to say what is being
-                        charged for. The audit's line: "Makes a paying customer think nothing is
-                        being counted."
-                        
-                        What the org is paying NOW decides what the badge says. The stamp still
-                        matters - it is what exempts the row from the free-plan cap - it just does
-                        not get to describe a paid account.
-                      */}
-                      {isSubscribed ? (
-                        <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)' }}>Unlimited sessions</span>
-                      ) : isFree ? (
-                        <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)' }}>Free check-in</span>
-                      ) : balance !== undefined ? (
-                        <span style={{
-                          fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
-                          background: balance > 0 ? 'var(--gw-blue-bg)' : 'var(--gw-clay-bg)',
-                          color: balance > 0 ? 'var(--gw-navy)' : 'var(--gw-clay)',
-                        }}>
-                          {balance} session{balance !== 1 ? 's' : ''} left
-                        </span>
-                      ) : null}
-                      {!isSubscribed && !extUsed && (
-                        <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)', border: '1px solid var(--gw-green-b-soft)' }}>
-                          Free extension available
-                        </span>
-                      )}
-                      {!isSubscribed && extUsed && (
-                        <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: 'var(--gw-paper-2)', color: 'var(--gw-muted)' }}>
-                          Free extension used
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {!isFree && !isSubscribed && (
-                    <button
-                      /**
-                       * '/billing/payment' DOES NOT EXIST. It was the only
-                       * destination in the product that 404'd, and it was the one
-                       * that takes money: PaymentPage is mounted at
-                       * '/billing/checkout'. So "Add sessions" landed a paying
-                       * customer on "There is nothing at this address", which
-                       * tells them THEY mistyped something.
-                       *
-                       * PaymentPage already reads groundId/groundName from
-                       * location.state and falls back to query params, so the
-                       * payload was always right. Only the path was wrong.
-                       */
-                      onClick={() => navigate('/billing/checkout', { state: { groundId: g.id, groundName: g.label } })}
-                      style={{ flexShrink: 0, padding: '8px 14px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-                    >
-                      Add sessions
-                    </button>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
-
-        {/*
-          IT SAID "UPGRADE" TO A CUSTOMER WHO WAS ALREADY PAYING. W-UX-5.
-          
-          Seen on the running page: an org on Growth, with "Current" correctly marked against Growth,
-          under a heading reading "Upgrade your organisation" and a sentence offering to "unlock"
-          what it had already bought. The same table is a sales pitch to a free org and a plan
-          switcher to a paying one, and it only ever said the first thing.
-        */}
-        <div id="upgrade-section" style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 4 }}>
-          {isSubscribed ? 'Change your plan' : 'Upgrade your organisation'}
-        </div>
-        <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 14, lineHeight: 1.6 }}>
-          {isSubscribed
-            ? 'Every plan includes unlimited check-ins, sessions and reports. What changes is how many people your organisation covers.'
-            : 'Your team is getting value from Groundwork. Unlock unlimited check-ins and unlimited sessions for everyone in your organisation with one simple monthly subscription.'}
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 28 }}>
-          {PLANS.filter(p => p !== 'ENTERPRISE').map(plan => (
-            <div key={plan} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-dark)' }}>{PLAN_LABELS[plan]}</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2, minHeight: 16 }}>{capLabel(plan)}</div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-dark)' }}>{priceLabel(plan)}</span>
-                {isSubscribed && orgSub?.plan === plan ? (
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)' }}>Current</span>
-                ) : (
-                  /* One primary colour in the product. The subscribe buttons were
-                     the only purple thing in it - a hardcoded hex in three files
-                     with no token behind it, on the pages where somebody is
-                     deciding whether to trust us with money. W8-24. */
-                  <button
-                    onClick={() => isSubscribed ? changePlanMut.mutate(plan) : createSubscriptionMut.mutate(plan)}
-                    disabled={createSubscriptionMut.isPending || changePlanMut.isPending}
-                    style={{ padding: '7px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: (createSubscriptionMut.isPending || changePlanMut.isPending) ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: (createSubscriptionMut.isPending || changePlanMut.isPending) ? 0.7 : 1 }}
-                  >
-                    {/* Mid-flight the page says WHICH plan is being bought; the other five keep their word. */}
-                    {(createSubscriptionMut.isPending && createSubscriptionMut.variables === plan) || (changePlanMut.isPending && changePlanMut.variables === plan)
-                      ? (isSubscribed ? 'Switching…' : 'Subscribing…')
-                      : isSubscribed ? 'Switch' : 'Subscribe'}
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-
-          {/* Enterprise */}
-          <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-dark)' }}>Enterprise</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>Unlimited members</div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-dark)' }}>Contact us</span>
-              <a
-                href="mailto:hello@myground.work?subject=Enterprise plan enquiry"
-                style={{ padding: '7px 14px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 12, fontWeight: 700, textDecoration: 'none', fontFamily: 'inherit' }}
-              >
-                Contact
-              </a>
-            </div>
-          </div>
-        </div>
-
-        {/* Billing principles */}
-        <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', marginBottom: 28 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 12 }}>Billing</div>
-          <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 7 }}>
-            {[
-              'No upfront payment.',
-              'No credit card required to get started.',
-              'Pay when Groundwork is creating value for your team.',
-              'Choose between buying sessions or subscribing your organisation.',
-              'Pause your organisation subscription whenever you are no longer using Groundwork.',
-            ].map((line, i) => (
-              <li key={i} style={{ fontSize: 13, color: 'var(--gw-sub-d)', lineHeight: 1.6 }}>{line}</li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Access codes */}
-        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 12 }}>Access codes</div>
-
-        {codes.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-            {(codes as any[]).map((c: any) => (
-              <div key={c.code} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 4 }}>
-                  <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: 'var(--gw-dark)', letterSpacing: '.05em' }}>{c.code}</span>
-                  <button
-                    onClick={() => copyToClipboard(c.code)}
-                    style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 6, border: '1px solid var(--gw-border)', background: copied === c.code ? 'var(--gw-green-bg)' : 'white', color: copied === c.code ? 'var(--gw-green-t)' : 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
-                  >
-                    {copied === c.code ? 'Copied' : 'Copy'}
-                  </button>
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
-                  {c.sessionsGranted} session{c.sessionsGranted !== 1 ? 's' : ''} granted, {c.sessionsUsed ?? 0} used
-                  {c.note ? ` · ${c.note}` : ''}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {user?.isPlatformAdmin && <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px', marginBottom: 16 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 12 }}>Send access code by email</div>
-          <div style={{ marginBottom: 10 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--gw-sub)', marginBottom: 5 }}>Recipient email</label>
-            <input type="email" value={sendEmail} onChange={e => { setSendEmail(e.target.value); setSentTo(null) }} placeholder="name@example.com"
-              style={{ width: '100%', padding: '9px 11px', fontSize: 13, fontFamily: 'inherit', border: '1px solid var(--gw-border)', borderRadius: 7, background: 'var(--gw-paper-2)', color: 'var(--gw-dark)', outline: 'none', boxSizing: 'border-box' }} />
-          </div>
-          <div style={{ marginBottom: 14 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--gw-sub)', marginBottom: 5 }}>Check-ins to grant</label>
-            <input type="number" min={1} max={20} value={sendSessions} onChange={e => setSendSessions(Math.min(20, Math.max(1, Number(e.target.value))))}
-              style={{ width: '100%', padding: '9px 11px', fontSize: 13, fontFamily: 'inherit', border: '1px solid var(--gw-border)', borderRadius: 7, background: 'var(--gw-paper-2)', color: 'var(--gw-dark)', outline: 'none', boxSizing: 'border-box' }} />
-          </div>
-          <button onClick={() => sendCode.mutate()} disabled={sendCode.isPending || !sendEmail.trim()}
-            style={{ width: '100%', padding: '10px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: (sendCode.isPending || !sendEmail.trim()) ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: (sendCode.isPending || !sendEmail.trim()) ? 0.5 : 1 }}>
-            {sendCode.isPending ? 'Sending...' : 'Send code'}
-          </button>
-          {sentTo && (
-            <div style={{ marginTop: 12, fontSize: 13, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 7, padding: '10px 14px' }}>
-              Code sent to {sentTo}
-            </div>
-          )}
-        </div>}
-
-        {user?.isPlatformAdmin && <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px', marginBottom: 16 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 12 }}>Generate a code</div>
-          <div style={{ marginBottom: 10 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--gw-sub)', marginBottom: 5 }}>Check-ins to grant</label>
-            <input type="number" min={1} max={10} value={genSessions} onChange={e => setGenSessions(Math.min(10, Math.max(1, Number(e.target.value))))}
-              style={{ width: '100%', padding: '9px 11px', fontSize: 13, fontFamily: 'inherit', border: '1px solid var(--gw-border)', borderRadius: 7, background: 'var(--gw-paper-2)', color: 'var(--gw-dark)', outline: 'none', boxSizing: 'border-box' }} />
-          </div>
-          <div style={{ marginBottom: 14 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--gw-sub)', marginBottom: 5 }}>Note (optional)</label>
-            <input type="text" value={genNote} onChange={e => setGenNote(e.target.value)} placeholder="e.g. for the product team"
-              style={{ width: '100%', padding: '9px 11px', fontSize: 13, fontFamily: 'inherit', border: '1px solid var(--gw-border)', borderRadius: 7, background: 'var(--gw-paper-2)', color: 'var(--gw-dark)', outline: 'none', boxSizing: 'border-box' }} />
-          </div>
-          <button onClick={() => { setNewCode(null); generateCode.mutate() }} disabled={generateCode.isPending}
-            style={{ width: '100%', padding: '10px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: generateCode.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: generateCode.isPending ? 0.7 : 1 }}>
-            {generateCode.isPending ? 'Generating...' : 'Generate'}
-          </button>
-          {newCode && (
-            <div style={{ marginTop: 14, background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 8, padding: '12px 14px' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.06em' }}>New code</div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                <span style={{ fontFamily: 'monospace', fontSize: 16, fontWeight: 800, color: 'var(--gw-green-t)', letterSpacing: '.08em' }}>{newCode}</span>
-                <button onClick={() => copyToClipboard(newCode)}
-                  style={{ fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 6, border: '1px solid var(--gw-green-b-soft)', background: copied === newCode ? 'var(--gw-green-t)' : 'white', color: copied === newCode ? 'white' : 'var(--gw-green-t)', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>
-                  {copied === newCode ? 'Copied' : 'Copy'}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>}
-
+        </FieldRows>
+      </Section>
 
       {/*
-        * THE THREE THINGS OUR TEAM DOES BY HAND, WHERE SOMEBODY IS ALREADY THINKING ABOUT MONEY.
-        *
-        * None of them is bought here and none of them ever will be: each is a person's time, priced
-        * from rather than at, and a form cannot quote a week of work. So this asks for a call, our
-        * team rings back, and what is agreed is invoiced afterwards.
-        *
-        * NOT GATED ON THE PLAN. The services are for subscribers and our team says so on the call.
-        * Somebody on the free plan asking about coaching is the conversation most likely to end in
-        * a subscription, and refusing it here would lose exactly that.
-        */}
-      {isAdmin && <ThingsWeDoByHand />}
+       * WHATSAPP, THE PAID ADD-ON (decision 78, 2 October). Behind `release.planAndBillingNewParts`,
+       * as the server decides: while it is off, `GET /billing/whatsapp` serves only `{ sending,
+       * says }` even to an admin (`isWhatsAppBillingAdmin` reads false), so nothing here shows.
+       * Every price, limit and use figure is the server's own sentence (`whatsapp-add-on.service.ts`,
+       * "WHAT PLAN AND BILLING SAYS ABOUT WHATSAPP") - this draws `says` exactly as it comes and
+       * holds no number of its own.
+       */}
+      {isWhatsAppBillingAdmin(whatsapp) && (
+        <Section heading="WhatsApp">
+          <Panel>
+            <Stack gap={12}>
+              <SwitchRow
+                title={whatsapp.says.onOrOff}
+                on={whatsapp.on}
+                onChange={(on) => setWhatsAppMut.mutate(on)}
+                disabled={setWhatsAppMut.isPending}
+              />
+              <FieldRows>
+                {whatsapp.says.price && <FieldRow label="Price" value={whatsapp.says.price} />}
+                <FieldRow label="What is charged" value={whatsapp.says.charge} />
+                <FieldRow label="This month" value={whatsapp.says.use} />
+                {whatsapp.says.reachedTheLimit ? (
+                  <FieldRow label="Reached" value={whatsapp.says.reachedTheLimit} />
+                ) : whatsapp.says.atTheLimit ? (
+                  <FieldRow label="At the limit" value={whatsapp.says.atTheLimit} />
+                ) : null}
+              </FieldRows>
+            </Stack>
+          </Panel>
+        </Section>
+      )}
 
+      {!hasBillingHistory && covers === 'free' && (
+        <Panel>
+          <Stack gap={10}>
+            <p className="gwui-panel-text"><b>Your first {freeGrounds} check-ins are free.</b></p>
+            <p className="gwui-panel-text-muted">
+              Create up to {freeGrounds} check-ins with unlimited sessions and reports, no card required. The free plan covers {freeTeam} people including you. Subscribe when your team outgrows it.
+            </p>
+          </Stack>
+        </Panel>
+      )}
+
+      <div id="billing-plans">
+        <Section heading="Plans" note="Each plan is one monthly price, with as many check-ins and reports as you need.">
+          <div className="gwui-plan-grid">
+            {PLANS.filter(p => p !== 'ENTERPRISE').map(plan => {
+              const mine = (isSubscribed || isPaused) && orgSub?.plan === plan
+              const pending = (createSubscriptionMut.isPending && createSubscriptionMut.variables === plan) || (changePlanMut.isPending && changePlanMut.variables === plan)
+              /* THE PRICE'S OWN "/mo" (Hafsah, 30 September): `priceLabel` returns the whole string,
+                 e.g. "$25/mo", already carrying its own "/mo" (the one formatter every other price
+                 on this page uses, `formatMonthlyPrice`). The prototype's plan card splits it into
+                 the big figure and a small muted "/mo" beside it (s20.js/s21.js's `PLANS.map`) - so
+                 this splits the same string instead of appending a second "/mo" after it, which is
+                 what read "$25/mo/mo" before. */
+              const price = priceLabel(plan) ?? ''
+              const showsPerMonth = price.endsWith('/mo')
+              const priceFigure = showsPerMonth ? price.slice(0, -3) : price
+              return (
+                <Panel key={plan} className={mine ? 'gwui-plan-card gwui-plan-card-mine' : 'gwui-plan-card'}>
+                  <p className="gwui-plan-name">{PLAN_LABELS[plan]}</p>
+                  <p className="gwui-plan-price">{priceFigure}{showsPerMonth && <span>/mo</span>}</p>
+                  <p className="gwui-plan-cap">{capLabel(plan)}</p>
+                  {/* tag("act","Your plan") in the prototype (s20.js/s21.js): the navy tag, not green. */}
+                  {mine ? <Tag tone="action">Your plan</Tag> : (
+                    <Button kind="secondary" size="small" wide disabled={busy || isPaused} onClick={() => choosePlan(plan)}>{pending ? 'Opening…' : 'Move to this'}</Button>
+                  )}
+                </Panel>
+              )
+            })}
+            <Panel className="gwui-plan-card gwui-plan-card-enterprise">
+              <p className="gwui-plan-name">Enterprise</p>
+              <p className="gwui-plan-cap">For special needs, a lower price per person, or your own support person.</p>
+              <Button kind="secondary" size="small" wide onClick={() => { window.location.href = 'mailto:hello@myground.work?subject=Enterprise plan enquiry' }}>Contact us</Button>
+            </Panel>
+          </div>
+        </Section>
       </div>
-    </div>
+
+      {invoices.length > 0 && (
+        <Section heading="Invoices">
+          <FieldRows>
+            {invoices.map((i) => (
+              <FieldRow key={`${i.paidOn}-${i.amountCents}`} label={whenItWas(i.paidOn, 'dayAndMonthLong')} value={`${formatDollars(i.amountCents)}, paid.`} />
+            ))}
+          </FieldRows>
+          <Button kind="secondary" disabled={portalMut.isPending} onClick={() => portalMut.mutate()}>{portalMut.isPending ? 'Opening…' : 'Invoices and payment method'}</Button>
+        </Section>
+      )}
+
+      {(isSubscribed || isPaused) && (
+        <Section heading="Stopping">
+          <Panel>
+            <Stack gap={12}>
+              <div className="gwui-sentence-row">
+                <p className="gwui-panel-text-muted">
+                  {isPaused
+                    ? 'Paused. Nothing is being charged, and your check-ins stay as they are.'
+                    : endsAt
+                      ? `Ending on ${sayTheDate(endsAt)}. Everything works until then, and then it stops.`
+                      : 'Pause, or cancel at the end of this period. Either way, everything stays readable.'}
+                </p>
+                {endsAt ? (
+                  <Button kind="secondary" disabled={keepSubscriptionMut.isPending} onClick={() => keepSubscriptionMut.mutate()}>{keepSubscriptionMut.isPending ? 'Keeping…' : 'Keep subscription'}</Button>
+                ) : isPaused ? (
+                  <Button kind="secondary" disabled={resumeSubscriptionMut.isPending} onClick={() => resumeSubscriptionMut.mutate()}>{resumeSubscriptionMut.isPending ? 'Resuming…' : 'Resume subscription'}</Button>
+                ) : (
+                  <div className="gwui-invite-actions">
+                    <Button kind="secondary" disabled={pauseSubscriptionMut.isPending} onClick={() => setConfirming('pause')}>Pause</Button>
+                    <Button kind="quiet" disabled={cancelSubscriptionMut.isPending} onClick={() => setConfirming('cancel')}>Cancel</Button>
+                  </div>
+                )}
+              </div>
+
+              {confirming === 'cancel' && (
+                <div role="dialog" aria-label="Cancel at the end of the period">
+                  <Stack gap={10}>
+                    <p className="gwui-panel-text"><b>Cancel at the end of the period?</b></p>
+                    <p className="gwui-panel-text-muted">
+                      Everything keeps working until {sayTheDate(orgSub?.periodEnd)}, and then it stops. Nothing more is charged, and nothing is refunded, because you are using what you have paid for. If you want to stop paying but keep the door open, pause instead: nothing is charged while paused, your check-ins stay exactly as they are, and you resume when you choose.
+                    </p>
+                    <div className="gwui-invite-actions">
+                      <Button kind="secondary" onClick={() => pauseSubscriptionMut.mutate()} disabled={pauseSubscriptionMut.isPending}>{pauseSubscriptionMut.isPending ? 'Pausing…' : 'Pause instead'}</Button>
+                      <Button kind="secondary" onClick={() => cancelSubscriptionMut.mutate()} disabled={cancelSubscriptionMut.isPending}>{cancelSubscriptionMut.isPending ? 'Scheduling…' : `End it on ${sayTheDate(orgSub?.periodEnd)}`}</Button>
+                      <Button kind="quiet" onClick={() => setConfirming(null)}>Keep it</Button>
+                    </div>
+                  </Stack>
+                </div>
+              )}
+
+              {confirming === 'pause' && (
+                <div role="dialog" aria-label="Pause the subscription">
+                  <Stack gap={10}>
+                    <p className="gwui-panel-text"><b>Pause the subscription?</b></p>
+                    <p className="gwui-panel-text-muted">Nothing is charged while it is paused, and your check-ins stay exactly as they are. Collection starts again when you press Resume, and not before.</p>
+                    <div className="gwui-invite-actions">
+                      <Button kind="secondary" onClick={() => pauseSubscriptionMut.mutate()} disabled={pauseSubscriptionMut.isPending}>{pauseSubscriptionMut.isPending ? 'Pausing…' : 'Pause'}</Button>
+                      <Button kind="secondary" onClick={() => setConfirming(null)}>Not now</Button>
+                    </div>
+                  </Stack>
+                </div>
+              )}
+            </Stack>
+          </Panel>
+        </Section>
+      )}
+
+      <Section heading={isSubscribed ? 'Your check-ins' : 'In progress'}>
+        {isSubscribed && grounds.length > 0 ? (
+          <Panel>
+            <p className="gwui-panel-text-muted">
+              All {grounds.length} of your check-ins have unlimited sessions and reports on this plan. Nothing is counted or charged per session.
+            </p>
+          </Panel>
+        ) : grounds.length === 0 ? (
+          <Panel><p className="gwui-panel-text-muted">Nothing active yet.</p></Panel>
+        ) : (
+          <Stack gap={10}>
+            {/*
+             * ONE SENTENCE ABOVE THE LIST, NOT A TAG ON EVERY ROW (group 1 review): "Free
+             * check-in" and "Free extension available" repeated on every row read as clipped
+             * labels, not sentences, saying the same thing over and over for the same
+             * organisation-wide facts (every ground here is free the same way, and the free
+             * extension is an organisation's, not a ground's). Said once above the list instead,
+             * and only when it is true of every row - if the rows differ (some free, some metered,
+             * or the extension already used on this organisation), each row keeps its own tag
+             * below rather than a sentence that would not be true of all of them.
+             */}
+            {/*
+             * GROUP 1'S THIRD REVIEW: "You can extend any of them for free" was not true of
+             * anything on this page - the free extension is claimed from inside a check-in itself
+             * (SessionPaywallModal.tsx's "Continue for free", shown when a session completes),
+             * never from Plan and billing. Said truthfully, naming where it actually happens.
+             */}
+            {allFreeRows && !anyExtensionUsed && (
+              <p className="gwui-panel-text-muted">Each of these is a free check-in. You can extend one for free from its own check-in.</p>
+            )}
+            {allFreeRows && anyExtensionUsed && (
+              <p className="gwui-panel-text-muted">Each of these is a free check-in. The one free extension for your organisation has already been used.</p>
+            )}
+            <FieldRows>
+              {(grounds as any[]).map((g: any) => {
+                const balance: number | undefined = g.sessionsBalance
+                const isFree: boolean = !!g.isFreeGround
+                const extUsed: boolean = g.org?.freeExtensionUsed ?? false
+                return (
+                  <FieldRow
+                    key={g.id}
+                    /* WALKTHROUGH PASS 2, ITEM 6: EACH NAME HERE LINKS TO ITS OWN CHECK-IN. */
+                    label={<Link to={`/grounds/${g.id}`}>{g.label}</Link>}
+                    value={(
+                      <span className="gwui-invite-actions">
+                        {isSubscribed ? (
+                          <Tag tone="proven">Unlimited sessions</Tag>
+                        ) : allFreeRows ? null : isFree ? (
+                          <Tag tone="proven">Free check-in</Tag>
+                        ) : balance !== undefined ? (
+                          <Tag tone={balance > 0 ? 'plain' : 'concern'}>{balance} session{balance !== 1 ? 's' : ''} left</Tag>
+                        ) : null}
+                        {!isSubscribed && !allFreeRows && !extUsed && <Tag tone="proven">Free extension available</Tag>}
+                        {!isSubscribed && !allFreeRows && extUsed && <Tag tone="plain">Free extension used</Tag>}
+                      </span>
+                    )}
+                    action={!isFree && !isSubscribed
+                      ? <Button kind="secondary" size="small" onClick={() => navigate('/billing/checkout', { state: { groundId: g.id, groundName: g.label } })}>Add sessions</Button>
+                      : undefined}
+                  />
+                )
+              })}
+            </FieldRows>
+          </Stack>
+        )}
+      </Section>
+
+      {/*
+       * SHOWN ONLY TO SOMEONE WHO CAN MAKE OR SEE A CODE (group 1 review): generating a code is a
+       * platform admin's own action ("Send access code by email" and "Generate a code" below are
+       * already `user?.isPlatformAdmin` only) - so this section was a dead end for an ordinary
+       * admin, with nothing to see and no way to make one. Shown to a platform admin as before, or
+       * to any admin whose organisation already has a code to see.
+       */}
+      {(user?.isPlatformAdmin || codes.length > 0) && (
+        <Section heading="Share Groundwork with another organisation" note="A code they can use to start">
+          <Panel>
+            <Stack gap={12}>
+              <p className="gwui-panel-text-muted">A code gives another organisation sessions on us. Useful for a supplier or partner you want to check in with.</p>
+              {codes.length > 0 && (
+                <FieldRows>
+                  {(codes as any[]).map((c: any) => (
+                    <FieldRow
+                      key={c.code}
+                      label={c.code}
+                      value={`${c.sessionsGranted} session${c.sessionsGranted !== 1 ? 's' : ''} granted, ${c.sessionsUsed ?? 0} used${c.note ? `, ${c.note}` : ''}.`}
+                      action={<Button kind="secondary" size="small" onClick={() => copyToClipboard(c.code)}>{copied === c.code ? 'Copied' : 'Copy'}</Button>}
+                    />
+                  ))}
+                </FieldRows>
+              )}
+            </Stack>
+          </Panel>
+        </Section>
+      )}
+
+      {user?.isPlatformAdmin && (
+        <Section heading="Send access code by email">
+          <Panel>
+            <Stack gap={12}>
+              <div>
+                <FieldLabel htmlFor="billing-send-email">Recipient email</FieldLabel>
+                <TextField id="billing-send-email" type="email" value={sendEmail} onChange={e => { setSendEmail(e.target.value); setSentTo(null) }} placeholder="name@example.com" />
+              </div>
+              <div>
+                <FieldLabel htmlFor="billing-send-sessions">Check-ins to grant</FieldLabel>
+                <TextField id="billing-send-sessions" type="number" min={1} max={20} value={sendSessions} onChange={e => setSendSessions(Math.min(20, Math.max(1, Number(e.target.value))))} />
+              </div>
+              <Button kind="secondary" onClick={() => sendCode.mutate()} disabled={sendCode.isPending || !sendEmail.trim()}>{sendCode.isPending ? 'Sending…' : 'Send code'}</Button>
+              {sentTo && <Note>Code sent to {sentTo}</Note>}
+            </Stack>
+          </Panel>
+        </Section>
+      )}
+
+      {user?.isPlatformAdmin && (
+        <Section heading="Generate a code">
+          <Panel>
+            <Stack gap={12}>
+              <div>
+                <FieldLabel htmlFor="billing-gen-sessions">Check-ins to grant</FieldLabel>
+                <TextField id="billing-gen-sessions" type="number" min={1} max={10} value={genSessions} onChange={e => setGenSessions(Math.min(10, Math.max(1, Number(e.target.value))))} />
+              </div>
+              <div>
+                <FieldLabel htmlFor="billing-gen-note">Note (optional)</FieldLabel>
+                <TextField id="billing-gen-note" value={genNote} onChange={e => setGenNote(e.target.value)} placeholder="e.g. for the product team" />
+              </div>
+              <Button kind="secondary" onClick={() => { setNewCode(null); generateCode.mutate() }} disabled={generateCode.isPending}>{generateCode.isPending ? 'Generating…' : 'Generate'}</Button>
+              {newCode && (
+                <div className="gwui-secret-box">
+                  <p className="gwui-secret-box-label">New code</p>
+                  <div className="gwui-invite-link-row">
+                    <p className="gwui-secret-box-value">{newCode}</p>
+                    <Button kind="secondary" size="small" onClick={() => copyToClipboard(newCode)}>{copied === newCode ? 'Copied' : 'Copy'}</Button>
+                  </div>
+                </div>
+              )}
+            </Stack>
+          </Panel>
+        </Section>
+      )}
+
+      {isAdmin && <ThingsWeDoByHand />}
+    </Page>
   )
 }

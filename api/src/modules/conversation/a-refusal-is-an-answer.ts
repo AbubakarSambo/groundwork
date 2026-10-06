@@ -41,7 +41,20 @@ export function recordAndMoveOn(declinedWhat: string | null, next: { question?: 
   const first = declinedWhat ? whatTheAbsenceMeans(declinedWhat) : 'Understood.';
   if (next.question?.trim()) return `${first} ${next.question.trim()}`;
   if (next.owed?.trim()) return `${first} ${asAQuestion(next.owed)}`;
-  return first;
+  /*
+   * AND "Understood." ON ITS OWN IS A WHOLE TURN, WHICH IS WHY IT DOES NOT SHIP ALONE.
+   *
+   * Where something was declined by name, `first` already says what the record now shows and reads
+   * as a turn. Where nothing was named and there is nothing left to ask, this returned the single
+   * word - three times across the twenty-four-scenario run of 26 September, and the only count in
+   * the whole run that came out worse than the baseline. A person who has just declined a question
+   * gets one word back and is told nothing about what that means.
+   *
+   * We do not know WHAT was declined here, so the sentence cannot name it, but it can say the
+   * thing that is true either way and that the person is actually owed: nothing goes on the record
+   * about it.
+   */
+  return declinedWhat ? first : 'Understood. This record shows nothing more on that.';
 }
 
 /** The close, when nothing in the session carried a date, a number or a document: said, not chased. */

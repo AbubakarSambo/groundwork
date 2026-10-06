@@ -3,6 +3,7 @@ import { join } from 'path'
 import { describe, it, expect } from 'vitest'
 import { whichSessionIsThisCheckInOn } from '@/lib/which-session-are-we-on'
 import { groundTabs } from './ground-tabs'
+import { whatAnAdminHereCanSee } from '@/lib/what-an-admin-here-can-see'
 
 /**
  * THE LEAD'S SIDE OF THE GROUND. W8-66, W8-67.
@@ -35,8 +36,25 @@ const SRC = readFileSync(join(__dirname, 'GroundAdminPage.tsx'), 'utf8')
 const CODE = SRC.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 describe('the chat is here at all', () => {
-  it('GroundChat is mounted', () => {
-    expect(CODE).toContain('<GroundChat')
+  /**
+   * ROUND 4, ITEM A STEP 3: GroundChat's INLINE MOUNT ON THIS TAB IS RETIRED.
+   *
+   * Its three jobs are untangled now: the session history lives on My work
+   * (MyCheckInSessions.tsx), "who is in this" lives on People and setup (WhoIsInThis.tsx), and
+   * what is left of "the chat is here at all" is that a lead who is a party is sent straight to
+   * the focused conversation - not shown a read-only mount of it on this page.
+   */
+  it('a party is sent to the focused conversation, not shown a mount of GroundChat', () => {
+    expect(CODE).not.toContain('<GroundChat')
+    /**
+     * REVIEW ROUND 3, ITEM 2: NO MORE HAND-OFF TO THE PARTICIPANT PAGE. A lead who is a party
+     * used to be sent to `/grounds/:id/p?open=1` to open her own session - a second page, for
+     * what should be one check-in. She opens it from here now, through the same shared hook the
+     * participant page uses (useOpenSession.ts), and never lands on the other page for it.
+     */
+    expect(CODE).toMatch(/if \(tab !== 'chat' \|\| !viewerIsAParty\) return/)
+    expect(CODE).toContain('openMySession(myOpenCheckIn')
+    expect(CODE).not.toMatch(/\/grounds\/\$\{id\}\/p\?open=1/)
   })
 
   it('and it is the first tab, so it is what you land on', () => {
@@ -85,13 +103,24 @@ describe('a lead who is a party gets the real chat', () => {
      * takes it has their own check-ins and must get the conversation - keying this on
      * `isInitiator` would have given the most common kind of lead a read-only page about
      * a check-in they are actually in.
+     *
+     * ROUND 4, ITEM A STEP 3: the flag that decides is now the redirect's own condition
+     * (`viewerIsAParty`, computed from the same `ground.participants` read), not a prop handed to
+     * GroundChat.
      */
-    expect(CODE).toMatch(/viewerIsParty=\{\(ground\.participants \?\? \[\]\)\.some\(\(p: any\) => p\.userId === user\?\.id\)\}/)
+    expect(CODE).toMatch(/const viewerIsAParty = \(ground\?\.participants \?\? \[\]\)\.some\(\(p: any\) => p\.userId === user\?\.id\)/)
   })
 
-  it('and a lead who is not one gets the history, not somebody else\'s words', () => {
-    // The wall. There is no version of this where a lead reads a participant's turns.
-    expect(CODE).toContain('history={')
+  it('and a lead who is not one is told plainly, and pointed at the board', () => {
+    /**
+     * The wall. There is no version of this where a lead reads a participant's turns - and now
+     * there is no version where she reads a history summary standing in for them either
+     * (GroundChat's non-party `history` branch, retired with this step). She is told this check-in
+     * is not hers to answer, and sent to the board, which is where the shared picture lives.
+     */
+    expect(CODE).not.toContain('history={')
+    expect(CODE).toContain('You do not answer this check-in yourself.')
+    expect(CODE).toMatch(/to=\{`\/grounds\/\$\{id\}\/board`\}/)
   })
 })
 
@@ -104,9 +133,12 @@ describe('the four things mounting it exposed', () => {
     expect(CODE).not.toMatch(/lead\.email\.split/)
   })
 
+  /* U.7 review: the banner's sentence moved to what-an-admin-here-can-see, so the fallback is read
+     there, rendered, rather than looked for in this page's source. */
   it('and the fallback is a whole phrase, so the sentence still reads', () => {
-    expect(CODE).toMatch(/'The lead here'/)
     expect(CODE).not.toMatch(/'its lead'/)
+    const said = whatAnAdminHereCanSee({ leadName: null, leadFirstName: null, inIt: false })
+    expect(said).toBe('You can read this check-in\u2019s board and reports. You cannot see the lead\u2019s private notes, anyone\u2019s share of a target, or the documents people add here. Sharing the report and ending the check-in are the lead\u2019s to decide, and nothing you do here is hidden from them.')
   })
 
   /**
@@ -127,14 +159,25 @@ describe('the four things mounting it exposed', () => {
     expect(CODE).toMatch(/\.filter\(\(c: any\) => c\.participantId === p\.id\)/)
   })
 
-  it('the history resolves its names the same way', () => {
+  it('the history computation this protected is gone, not fixed twice', () => {
     /**
-     * The bite-check caught this gap: I had pinned the SORT's lookup and not the
-     * HISTORY's, and the history was the one that rendered "Nobody has checked in yet"
-     * over twelve completed sessions. Two callers, one mistake, one assertion.
+     * The bite-check caught this gap: I had pinned the SORT's lookup and not the HISTORY's, and
+     * the history was the one that rendered "Nobody has checked in yet" over twelve completed
+     * sessions. That `history={...}` reduce (building `{sessionNumber, date, people}` from
+     * `ci.participantId`, resolved through `nameOfParticipant`) only ever existed to feed
+     * GroundChat's non-party history view.
+     *
+     * ROUND 4, ITEM A STEP 3: that view is retired - a lead who is not a party is told plainly and
+     * sent to the board instead (see "a lead who is not one is told plainly", above) - so the
+     * computation this test pinned is gone from this file entirely, not merely correct. The bug
+     * class it guarded against (a session-history read that resolves names differently from the
+     * roster) cannot recur here because the code path does not exist here any more; the resolver
+     * itself, `nameOfParticipant`, is still exercised by "who is in this" (`whoIsInThisParties`,
+     * `p.id` rather than `ci.participantId` - a person, not a check-in row).
      */
-    expect(CODE).toContain('const who = nameOfParticipant(ci.participantId)')
+    expect(CODE).not.toContain('const who = nameOfParticipant(ci.participantId)')
     expect(CODE).not.toMatch(/ci\.participantName/)
+    expect(CODE).toContain('nameOfParticipant(p.id)')
   })
 
   /**
@@ -185,6 +228,15 @@ describe('a round completion is keyed by sessionNumber, the name the server uses
   it('the page never reads roundNumber', () => {
     const src = require('fs').readFileSync(require('path').join(__dirname, 'GroundAdminPage.tsx'), 'utf8');
     expect(src).not.toMatch(/\broundNumber\b/);
-    expect(src).toMatch(/roundCompletions[\s\S]{0,80}sessionNumber === n/);
+    /*
+     * U.10: THE COUNTING MOVED TO lib/session-rows.ts, SO ITS OWN CHECK MOVES WITH IT.
+     * `sessionRows` - the thing that used to compare roundCompletions against sessionNumber inline
+     * here - is now `buildSessionRows`, shared with the board's "Reports" table. This page no
+     * longer contains that comparison at all; the file it moved to still must not use `roundNumber`
+     * either, and must still key off `sessionNumber`.
+     */
+    const sessionRowsSrc = require('fs').readFileSync(require('path').join(__dirname, '..', '..', 'lib', 'session-rows.ts'), 'utf8');
+    expect(sessionRowsSrc).not.toMatch(/\broundNumber\b/);
+    expect(sessionRowsSrc).toMatch(/roundCompletions[\s\S]{0,80}sessionNumber === n/);
   });
 });

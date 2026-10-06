@@ -27,7 +27,8 @@ const SRC = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8')
 
 describe('what was stored is read through today’s rules', () => {
   it('cleans the AI’s turns when a session is opened', () => {
-    expect(SRC).toMatch(/t\.role === TurnRole\.AI \? \{ \.\.\.t, content: forHumans\(t\.content\) \} : t/);
+    /* The row is spread as `turn` since the end card: its unwritten record lines are taken off first. */
+    expect(SRC).toMatch(/t\.role === TurnRole\.AI \? \{ \.\.\.turn, content: forHumans\(t\.content\) \} : turn/);
     expect(SRC).toMatch(/turns: turns\.map\(asRead\)/);
   });
 

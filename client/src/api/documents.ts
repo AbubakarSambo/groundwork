@@ -21,18 +21,46 @@ export interface GroundDocument {
     forEverybody: { what: string; target: number; kind?: string | null; by?: string | null }[]
     dates: { what: string; when: string }[]
     unmatched: string[]
+    /** The numbers still waiting on a yes before anything is written. Ask Groundwork's own upload
+        step polls this (via `numbersWaiting` below) so it knows when to say "I've uploaded it." */
+    waiting?: { name: string; target: number; ownerParticipantId: string | null }[]
   } | null
+  /**
+   * `holds.waiting.length`. Only the upload response carries this ready-made, and it is always `0`
+   * there (the read has not landed yet) - see `documents.service.ts`, "AND THE TWO SLOW READS,
+   * AFTER THE ANSWER". Reading the list again later, `holds.waiting` is what tells you the real
+   * count; this field is absent there and `waiting.length` is read directly instead.
+   */
+  numbersWaiting?: number
   theContextWeHave?: string | null
   /**
    * Who can read it. Absent on deployments with CONTEXT_ENABLED off, where every
    * document is private to its uploader and there is nothing to choose.
    */
   visibility?: 'OPEN' | 'CLOSED' | 'OWN'
+  /** Whether the reader uploaded it. Only the uploader may move or delete it. */
+  mine?: boolean
+  /** What the uploader said it is for. Sent to the uploader alone. */
+  usedFor?: string | null
+  /** True for a few minutes after upload, while the read has not landed yet. */
+  stillReading?: boolean
+  /**
+   * WHAT THE READ TOOK AND LEFT OUT, item by item, with the page it is on. Asked of the engine
+   * workspace (docs/requests-to-engine.md, request 6); absent until it is sent, and the Add a
+   * document step shows only what is there.
+   */
+  read?: {
+    pages?: number | null
+    took?: { what: string; detail?: string | null; page?: number | null }[]
+    leftOut?: { what: string; page?: number | null; why: string }[]
+  } | null
 }
 
 export const documentsApi = {
+  /* No "That one is not yours to open" toast: a refused list is said on the page, in the documents
+     band, where the reader is looking (U.7 review). */
   list: (groundId: string) =>
-    apiClient.get<GroundDocument[]>(`/grounds/${groundId}/documents`).then(r => r.data),
+    apiClient.get<GroundDocument[]>(`/grounds/${groundId}/documents`, { skipForbiddenToast: true } as any).then(r => r.data),
 
   /**
    * `consentConfirmed` is still sent when the caller has it and is no longer read by the server. A
@@ -64,6 +92,10 @@ export const documentsApi = {
      accepts, not the subset one caller offers. See api/src/modules/documents/documents.service.ts. */
   setVisibility: (groundId: string, docId: string, visibility: 'OPEN' | 'OWN' | 'CLOSED') =>
     apiClient.patch<GroundDocument>(`/grounds/${groundId}/documents/${docId}/visibility`, { visibility }).then(r => r.data),
+
+  /** What your own document should be used for, said after it is read. Blank clears it. */
+  setNote: (groundId: string, docId: string, note: string) =>
+    apiClient.patch<GroundDocument>(`/grounds/${groundId}/documents/${docId}/note`, { note }).then(r => r.data),
 
   remove: (groundId: string, docId: string) =>
     apiClient.delete(`/grounds/${groundId}/documents/${docId}`).then(r => r.data),

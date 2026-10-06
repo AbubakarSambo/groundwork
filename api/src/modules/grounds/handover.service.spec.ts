@@ -2,7 +2,7 @@ import { HandoverService } from './handover.service';
 
 const NOW = new Date('2026-03-01T00:00:00Z');
 
-function svc(assignment: any) {
+function svc(assignment: any, extra: { commitments?: any[]; goals?: any[] } = {}) {
   const state = { rows: [assignment] as any[], events: [] as any[] };
   const prisma: any = {
     roleAssignment: {
@@ -14,7 +14,8 @@ function svc(assignment: any) {
       create: async ({ data }: any) => { const row = { id: 'successor', ...data }; state.rows.push(row); return row; },
     },
     person: { findFirst: async () => ({ email: 'leaver@x.com' }) },
-    commitment: { findMany: async () => [] },
+    commitment: { findMany: async () => extra.commitments ?? [] },
+    personObjective: { findMany: async ({ where }: any) => (extra.goals ?? []).filter((g: any) => where.id.in.includes(g.id) && (!where.awareness || g.awareness === where.awareness)) },
     contribution: { findMany: async () => [] },
     subject: { findMany: async () => [] },
   };
@@ -92,5 +93,21 @@ describe('reading a brief that is not there', () => {
     const out: any = await service.get('org-a', 'a1');
     expect(out.brief).toBeNull();
     expect(out.why).toMatch(/Nobody held this role before/);
+  });
+});
+
+describe('a role changing hands, and a goal the leaver was never told about', () => {
+  it('does not hand the successor a commitment copied from it (request 125, second privacy review)', async () => {
+    const { service, state } = svc(assignment(), {
+      commitments: [
+        { text: 'Close eight renewals a quarter', state: 'OPEN', dueAt: null, statedAt: new Date('2026-09-01'), sourcePersonObjectiveId: 'pg-untold' },
+        { text: 'Send the Westgate quote', state: 'OPEN', dueAt: null, statedAt: new Date('2026-09-02'), sourcePersonObjectiveId: null },
+      ],
+      goals: [{ id: 'pg-untold', awareness: 'NOT_TOLD', authoredBy: 'lead' }],
+    });
+    await service.endAssignment('org-a', 'a1', { successorPersonExternalId: 'newbie', endedAt: NOW });
+    const brief = JSON.stringify(state.rows.find((r) => r.id === 'successor').handoverBrief);
+    expect(brief).toContain('Westgate quote');
+    expect(brief).not.toContain('eight renewals');
   });
 });

@@ -39,9 +39,11 @@ describe('the three things that had nowhere else to be', () => {
     expect(GUIDE).toContain('Yours alone, and not part of the shared report')
     /* Rendered by the page rather than inside WhatYouAreCarryingForward now: her order puts it last, after
        sign-off, because it is private prep for a conversation rather than part of reading your
-       record. Having it third pushed the reading down the page. */
-    const PARTY_PAGE = strip(read('../grounds/GroundParticipantPage.tsx'))
-    expect(PARTY_PAGE).toContain('<WhatToWalkInWith')
+       record. Having it third pushed the reading down the page.
+       REVIEW ROUND 3, "YOUR WORK" REBUILD: moved again, into the shared `YourWork` component
+       both pages now call for My work/My record. */
+    const YOUR_WORK = strip(read('../../components/gw/checkin/YourWork.tsx'))
+    expect(YOUR_WORK).toContain('<WhatToWalkInWith')
   })
 
   it('the inferred claims are on the page that already corrects the record', () => {

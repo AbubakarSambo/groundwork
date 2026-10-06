@@ -1,0 +1,436 @@
+import { PLAIN_WORDS } from '../conversation/plain-words';
+
+/**
+ * THE KIND OF WORK A CHECK-IN IS ABOUT, AND THE RECORDS ITS BOARD NEEDS.
+ *
+ * Request 76, and Hafsah's ruling of 29 September 2026: all eleven kinds of board in the prototype
+ * stay, each matching its example (docs/modules.md G1, and SEED2 in docs/prototype/source/seed2.js
+ * and s36.js, s48.js, s52.js). The situation (the scenario) decides which sections a board has. The
+ * kind of work decides what goes inside them: a sales board's deal grid holds deals and their
+ * stages, an engineering board's holds releases and tasks, a law firm matter's timeline holds its
+ * deadlines.
+ *
+ * Until this, nothing recorded "sales" or "engineering" anywhere, so every board was drawn from its
+ * family alone.
+ *
+ * WHAT IS STORED. `Ground.kindOfWork` holds one of the eleven names below, exactly, or null. It is
+ * read from the lead's own words and the brief when setup is saved, checked here against the eleven
+ * (anything else is null, never the nearest match), and the lead can change it. A lead's choice is
+ * never overwritten by a later read.
+ *
+ * THE RECORDS. `WorkItem` rows, one table for every kind, each written either from a line somebody
+ * said in a check-in or by the lead. Nothing here is invented: a row the model offers from a check-in
+ * is kept only when its name is in the words of the line it points at.
+ */
+
+export const KINDS_OF_WORK = [
+  'sales org',
+  'engineering release',
+  'support desk',
+  'distribution operations',
+  'trader training programme',
+  "founder's own check-in",
+  'asset loans',
+  'MarketView where next',
+  'MarketView Q4',
+  'a law firm matter',
+  'a government programme',
+] as const;
+
+export type KindOfWork = (typeof KINDS_OF_WORK)[number];
+
+/**
+ * ONE OF THE ELEVEN, OR NOTHING. The code check on the model's answer and on what a lead sends: an
+ * exact name (ignoring capitals and spaces at the ends) is that kind; anything else is null. Never
+ * the nearest match, because a sales board drawn for a law firm is worse than the family's board.
+ */
+export function oneOfTheKinds(v: unknown): KindOfWork | null {
+  if (typeof v !== 'string') return null;
+  const t = v.trim().toLowerCase();
+  if (!t) return null;
+  return KINDS_OF_WORK.find((k) => k.toLowerCase() === t) ?? null;
+}
+
+/** A section of the board a kind of work fills from its own records, or says it cannot. */
+export interface ARecordSection {
+  /** The switchboard's own section name (docs/modules.md G2), exactly. */
+  section: string;
+  /** What the rows are, in plain words, plural: "deals", "releases and tasks". */
+  holds: string;
+  /** The `WorkItem.kind` values that belong here. Empty means Groundwork keeps no such record. */
+  itemKinds: string[];
+  /** The kind's default stage names, in order, from the prototype's example. The lead can change them. */
+  stages?: string[];
+  /** Said when Groundwork keeps no such record, so the screen can tell "not known" from "none yet". */
+  whyNotKnown?: string;
+}
+
+/*
+ * THE EXAMPLE FITS ITS OWN SECTION (screens request 88). One sentence said "such as payment records or
+ * a helpdesk" under the helpdesk's own section, which read oddly: the example named the very thing the
+ * section was about. Each section now names the kind of system that would hold its numbers.
+ */
+const FROM_ANOTHER_SYSTEM = 'Groundwork does not keep this yet. It needs numbers from another system.';
+const FROM_PAYMENT_RECORDS = 'Groundwork does not keep this yet. It needs numbers from another system, such as payment records.';
+const FROM_THE_HELPDESK = 'Groundwork does not keep this yet. It needs the ticket counts from the helpdesk itself.';
+
+/**
+ * EACH KIND'S RECORDS, FROM ITS PROTOTYPE EXAMPLE. The sections a kind fills, what each holds and,
+ * where the example shows them, the stages in order. A section listed with no `itemKinds` is one the
+ * example board draws but Groundwork has no record for; it is served as not known.
+ */
+export const RECORDS_FOR_EACH_KIND: Record<KindOfWork, ARecordSection[]> = {
+  'sales org': [
+    { section: 'Deal grid', holds: 'deals', itemKinds: ['deal'], stages: ['Contacted', 'Need established', 'Pitched', 'Qualified', 'Quoted', 'Won'] },
+    { section: 'Forecast', holds: 'where the sales numbers are likely to end up', itemKinds: [], whyNotKnown: FROM_PAYMENT_RECORDS },
+  ],
+  'engineering release': [
+    { section: 'Deal grid', holds: 'releases and tasks', itemKinds: ['release', 'task'], stages: ['Worked on', 'Written', 'Merged', 'Tested', 'Deployed', 'Used'] },
+  ],
+  'support desk': [
+    { section: 'Deal grid', holds: 'tickets', itemKinds: ['ticket'] },
+    { section: 'Themes', holds: 'ticket volume and causes from the helpdesk', itemKinds: [], whyNotKnown: FROM_THE_HELPDESK },
+  ],
+  'distribution operations': [
+    { section: 'Deal grid', holds: 'incidents', itemKinds: ['incident'] },
+  ],
+  'trader training programme': [
+    { section: 'Deal grid', holds: 'trader groups', itemKinds: ['group'], stages: ['Enrolled', 'Session 1', 'Session 2', 'Completed'] },
+  ],
+  "founder's own check-in": [
+    { section: 'Work plan', holds: 'commitments and decisions', itemKinds: ['commitment', 'decision'] },
+  ],
+  'asset loans': [
+    { section: 'Deal grid', holds: 'loans and their repayments', itemKinds: ['loan'], stages: ['Disbursed', 'Repaying', 'Late', 'Repaid'] },
+  ],
+  'MarketView where next': [
+    { section: 'Themes', holds: 'priorities people named', itemKinds: ['priority'] },
+  ],
+  'MarketView Q4': [
+    { section: 'Deal grid', holds: 'subscriptions', itemKinds: ['subscription'], stages: ['Said', 'Paid'] },
+    { section: 'Forecast', holds: 'where paying subscribers are likely to end up', itemKinds: [], whyNotKnown: FROM_PAYMENT_RECORDS },
+  ],
+  'a law firm matter': [
+    { section: 'Timeline', holds: 'deadlines', itemKinds: ['deadline'] },
+    { section: 'Obligations', holds: 'the parties', itemKinds: ['party'] },
+  ],
+  'a government programme': [
+    { section: 'Deal grid', holds: 'counties and their projects', itemKinds: ['county', 'project'] },
+  ],
+};
+
+/**
+ * WORK ITEMS THAT ARE NOT WORK (anchor pieces 19, 26 and 27; review of 1d9ef0a5). An idea, an idea waiting for its yes,
+ * and a request offered in a check-in are kept as work items, and none of them is a piece of work anybody owns. Every
+ * read of work items that shows them as work leaves these kinds out.
+ */
+export const KINDS_THAT_ARE_NOT_WORK = ['idea', 'idea-offered', 'request-offered'];
+
+/** Every `WorkItem.kind` a kind of work may hold. */
+export function itemKindsFor(kind: KindOfWork): string[] {
+  return RECORDS_FOR_EACH_KIND[kind].flatMap((s) => s.itemKinds);
+}
+
+/**
+ * THE SECTIONS SERVED WHEN NOBODY KNOWS THE KIND OF WORK. Every section any kind fills from its
+ * records, each as not known, so the screen draws the family's board and leaves these out.
+ */
+export const RECORD_SECTIONS: string[] = [...new Set(Object.values(RECORDS_FOR_EACH_KIND).flatMap((l) => l.map((s) => s.section)))];
+
+export const NOT_KNOWN_KIND = 'Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind.';
+
+/** What one row looks like on the board. */
+export interface AServedRecord {
+  id: string;
+  kind: string;
+  name: string;
+  stage: string | null;
+  owner: string | null;
+  ownerParticipantId: string | null;
+  due: string | null;
+  /** The day somebody last spoke about it in a check-in, "2026-09-30": the day of the line it came from. Null for one added on the board. */
+  lastSaidOn?: string | null;
+  /** Its group on a sales deal grid (request 112 a), and why it is there, in sentences from its own record. */
+  group?: 'likely' | 'possible' | 'next-quarter' | 'cooling' | 'cold' | 'won';
+  groupSays?: string;
+  fields: Record<string, string>;
+  /** "said" when it came from a check-in line, "lead" when the lead added it. */
+  from: 'said' | 'lead';
+  /** The line it came from, word for word, when it came from a check-in. */
+  said?: string;
+  /**
+   * WHO SAID IT, beside whose it is (screens request 89). One person can name another person's deal,
+   * so "in the owner's words" was wrong. A first name, named under the same rule as every other name
+   * on the board ("a colleague" where this reader may not name them), and the id only where they may.
+   * Both null for a record the lead added, which nobody said.
+   */
+  saidBy?: string | null;
+  saidByParticipantId?: string | null;
+  /** How it is known (request 107 c): "proof" where a document is behind its line, "said", or "lead" where it was added on the board. */
+  known?: 'proof' | 'said' | 'lead';
+  knownSays?: string;
+  /**
+   * THE PROOF MARK (request 108 c), the shape ProofMark reads: `proven`, `confirmed`, `said` or `memory`
+   * from the line it came from, and `none` for a record added on the board. Never upgraded.
+   */
+  mark?: 'proven' | 'confirmed' | 'said' | 'memory' | 'none';
+  /**
+   * Somebody says this record, which has nobody's name on it, is theirs (decision 76, item 3). Served to the lead
+   * alone, with the question in a plain sentence ("Amani Wekesa says the Westgate Deli deal is theirs. Is it?").
+   * Only her yes, through POST work-items/:itemId/claim, sets the owner.
+   */
+  ownerClaim?: { participantId: string; who: string; says: string };
+  /** What happens next, only as somebody said it: an open commitment that names it. Null where nobody has said. */
+  next?: string | null;
+  nextKnown?: 'said' | null;
+  nextSays?: string;
+  /** What it is worth, where somebody said (request 115 b), and the sentence where nobody has. */
+  value?: string | null;
+  valueSays?: string | null;
+  /** Each day somebody spoke about it in a check-in, newest first, and what those dates are. */
+  contactHistory?: { on: string; how: 'with proof' | 'in their words'; says: string }[];
+  contactHistorySays?: string;
+  /** The owner's own latest sentence that names it, word for word, where this reader may read their words. */
+  theirRead?: { who: string; words: string; says: string } | null;
+}
+
+export type AServedSection =
+  | { section: string; holds?: string; state: 'not-known'; why: string }
+  | { section: string; holds: string; state: 'none-yet' | 'filled'; stages?: string[]; rows: AServedRecord[] };
+
+/** Only plain string pairs survive in `fields`: a record's details are words, never nested data. */
+export function plainFields(v: unknown): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return out;
+  for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+    if (typeof val === 'string' && k.trim() && val.trim()) out[k.trim().slice(0, 60)] = val.trim().slice(0, 300);
+  }
+  return out;
+}
+
+/** The stage names this check-in uses: the lead's own, or the kind's defaults. */
+export function stagesFor(section: ARecordSection, leadsOwn: unknown): string[] | undefined {
+  if (!section.stages) return undefined;
+  if (Array.isArray(leadsOwn)) {
+    const own = leadsOwn.filter((s): s is string => typeof s === 'string' && !!s.trim()).map((s) => s.trim());
+    if (own.length) return own;
+  }
+  return section.stages;
+}
+
+/**
+ * THE SECTIONS FOR ONE BOARD. Pure: given the kind, the lead's stage names and the rows this reader
+ * may see (already walled and named by the caller), it says what each section holds.
+ */
+export function theRecordSections(kind: KindOfWork | null, leadsStages: unknown, rows: AServedRecord[]): AServedSection[] {
+  if (!kind) {
+    return RECORD_SECTIONS.map((section) => ({ section, state: 'not-known' as const, why: NOT_KNOWN_KIND }));
+  }
+  return RECORDS_FOR_EACH_KIND[kind].map((s) => {
+    if (!s.itemKinds.length) return { section: s.section, holds: s.holds, state: 'not-known' as const, why: s.whyNotKnown ?? FROM_ANOTHER_SYSTEM };
+    const seenNames = new Set<string>();
+    const mine = rows.filter((r) => s.itemKinds.includes(r.kind) && aNameThatNamesSomething((r as any).name)).filter((r) => {
+      /* Per person: two borrowers' tricycles are two loans, whatever article each was said with. A priority people name
+         together (the where-next board's themes) is one theme whoever named it. */
+      const key = `${r.kind}|${r.kind === 'priority' ? '' : ((r as any).ownerParticipantId ?? '')}|${theSameName((r as any).name)}`;
+      if (seenNames.has(key)) return false;
+      seenNames.add(key);
+      return true;
+    });
+    const stages = stagesFor(s, leadsStages);
+    return {
+      section: s.section,
+      holds: s.holds,
+      state: mine.length ? ('filled' as const) : ('none-yet' as const),
+      ...(stages ? { stages } : {}),
+      rows: mine,
+    };
+  });
+}
+
+// --- Reading the kind of work from setup -------------------------------------------------------
+
+export const THE_KIND_OF_WORK_PROMPT = `You are reading how a lead described a check-in they are setting up, to say what kind of work it is about.
+
+Choose one of these eleven kinds, or none:
+- "sales org": a sales team selling to customers, with deals that move through stages.
+- "engineering release": engineers building and shipping software, with tasks and releases.
+- "support desk": a customer support team answering tickets.
+- "distribution operations": sites, deliveries, equipment and suppliers, with incidents.
+- "trader training programme": a training or development programme for groups of people across places, with sessions.
+- "founder's own check-in": one person checking in with themselves about their own commitments and decisions.
+- "asset loans": people repaying loans for equipment or stock.
+- "MarketView where next": a workshop of many people choosing priorities or where to focus next.
+- "MarketView Q4": a quarter's goals for a product, such as paying subscribers and weekly users, checked against a payments system.
+- "a law firm matter": a legal case or matter, with parties, a court and deadlines.
+- "a government programme": a government or public programme run through counties or regions and their projects.
+
+Give the kind's name exactly as written above. Choose a kind only when the lead's words clearly say it. When the work is none of these, or you are not sure, give none. A wrong kind is worse than none.`;
+
+export const THE_KIND_OF_WORK_SCHEMA = {
+  name: 'emit_kind_of_work',
+  description: 'Emit the kind of work this check-in is about, or none.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      kind: { type: 'string', description: 'One of the eleven names exactly, or "none".' },
+    },
+    required: ['kind'],
+  },
+};
+
+/** The lead's words the read is given: the name, the brief, and the end they are working toward. */
+export function theSetupWords(g: { label?: string | null; brief?: string | null; endState?: string | null; resolutionState?: string | null }): string {
+  return [
+    g.label ? `What the lead called it: ${g.label}` : '',
+    g.brief ? `What the lead said about it: ${g.brief}` : '',
+    g.endState ? `What they are working toward: ${g.endState}` : '',
+    g.resolutionState ? `How they hope it ends: ${g.resolutionState}` : '',
+  ].filter(Boolean).join('\n\n');
+}
+
+// --- Reading records from what people said -----------------------------------------------------
+
+export function theRecordsPrompt(kind: KindOfWork): string {
+  const sections = RECORDS_FOR_EACH_KIND[kind].filter((s) => s.itemKinds.length);
+  const lines = sections.map((s) => `- ${s.holds} (give kind as one of: ${s.itemKinds.map((k) => `"${k}"`).join(', ')})${s.stages ? `. Stages, in order: ${s.stages.join(', ')}` : ''}`);
+  return `You are reading lines people said in a check-in about ${kind === "founder's own check-in" ? 'their own work' : `a ${kind.replace(/^a /, '')}`}, to pick out the records its board keeps:
+${lines.join('\n')}
+
+Each line has an id. For every record a line names, give the id of the line, the kind, and the record's name as it was said in that line, word for word, such as a customer's name, a release's name, a ticket, a county or a party. Give a stage only when the line says it, using one of the stages above. Give a due date only when the line says one, as YYYY-MM-DD. Give other details only when the line says them, as short label and value pairs, such as Value and KES 90K.
+
+Leave out anything the line does not say. Never make up a record, a name, a stage or a date. When no line names a record, give an empty list.
+
+Each line says who said it. Every record is the speaker's own; do not give an owner.
+
+${PLAIN_WORDS}`;
+}
+
+export const THE_RECORDS_SCHEMA = {
+  name: 'emit_work_records',
+  description: 'Emit the records the lines name.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      records: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            lineId: { type: 'string' },
+            kind: { type: 'string' },
+            name: { type: 'string' },
+            stage: { type: 'string' },
+            due: { type: 'string' },
+            details: { type: 'array', items: { type: 'object', properties: { label: { type: 'string' }, value: { type: 'string' } } } },
+          },
+          required: ['lineId', 'kind', 'name'],
+        },
+      },
+    },
+    required: ['records'],
+  },
+};
+
+export interface AnOfferedRecord {
+  lineId?: string;
+  kind?: string;
+  name?: string;
+  stage?: string;
+  due?: string;
+  /** The person the line names as the one whose record it is, when that is not the speaker. */
+  owner?: string;
+  details?: { label?: string; value?: string }[];
+}
+
+/** A person in the check-in, with the names a line may call them by. */
+export interface APersonALineMayName {
+  id: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  nameGiven?: string | null;
+}
+
+const aWord = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const theNamesOf = (p: APersonALineMayName): string[] => {
+  const full = [p.firstName, p.lastName].map((x) => (x ?? '').trim()).filter(Boolean).join(' ');
+  const given = (p.nameGiven ?? '').trim();
+  return [...new Set([full, (p.firstName ?? '').trim(), given, given.split(/\s+/)[0] ?? ''].filter((n) => n.length >= 2))];
+};
+const saysTheName = (text: string, name: string) => new RegExp(`(?:^|[^\\p{L}])${aWord(name)}(?=$|[^\\p{L}])`, 'iu').test(text);
+
+/**
+ * WHOSE A RECORD IS: ALWAYS THE SPEAKER'S (run-26, replacing item 21's rule that let the model give another owner).
+ * Item 21, the founder's board, had let it be the person the speaker names (Ada's "Tunde ... is taking on everything
+ * engineering" was Tunde's). In run-26 that broke: Musa's "I signed for the loan" became Sunday's record and reached
+ * Sunday's board. So the model's offered owner is never used.
+ */
+export function theOwnerTheLineNames(
+  offered: string | null | undefined,
+  line: { text: string; participantId: string },
+  people: readonly APersonALineMayName[] | null | undefined,
+): string {
+  /* A record is always owned by the person who said it (run-26, Hafsah's release instruction). What the model offers as
+     an owner is never used; this keeps the signature so older callers compile. */
+  void offered; void people;
+  return line.participantId;
+}
+
+const squash = (s: string) => s.toLowerCase().replace(/[‘’“”'"]/g, '').replace(/\s+/g, ' ').trim();
+
+/*
+ * A WORD THAT POINTS AT SOMETHING ELSE IS NOT A RECORD'S NAME (item 21, the engineering board). Ifeoma's task list
+ * held rows named "it" ("I expect it to take about five weeks."), "that migration" and "this": a name that is only a
+ * pronoun, or "that", "this", "these" or "those" before one or two words, names nothing anybody could find again. Not
+ * kept when a check-in is read, and not served from rows already stored.
+ */
+const ONLY_POINTS_ELSEWHERE = /^(?:it|its|this|that|these|those|them|they|he|she|him|her|one|ones|something|everything|anything|the same|(?:this|that|these|those|which|what)(?:\s+[\p{Ll}-]+){1,2}|(?:\d+|some|all|most|many|few|each|one|two|three|four|five|six|seven|eight|nine|ten)\s+of\s+(?:those|these|them|it|that))$/u;
+/*
+ * ONE THING UNDER TWO ARTICLES IS ONE RECORD (item 21, the law firm matter). Adaeze's deadlines held "a four-hour
+ * acknowledgement" and "the four-hour acknowledgement" as two rows. A name is compared without a leading "a", "an" or
+ * "the", and without its case.
+ */
+/* And "to improve our customer retention" is "improve our customer retention" (the where-next board's themes). */
+export const theSameName = (name: string | null | undefined): string => squash(String(name ?? '').replace(/^\s*(?:a|an|the|to)\s+/i, ''));
+
+export function aNameThatNamesSomething(name: string | null | undefined): boolean {
+  const n = (name ?? '').trim().replace(/[.,;:!?]+$/, '');
+  /* "something I don't have" (the loans board): a name that starts with "something" names nothing. */
+  if (/^(?:something|anything|nothing|everything)\b/i.test(n)) return false;
+  return !!n && !ONLY_POINTS_ELSEWHERE.test(n.charAt(0).toLowerCase() + n.slice(1));
+}
+
+/**
+ * ONLY WHAT THE LINE SAYS. A record the model offers is kept only when its line is one of the lines
+ * it was given, its kind belongs to this kind of work, and its name is in that line's words. A stage
+ * must be one of the stages; a date must be a real date. Everything else is dropped, never guessed.
+ */
+export function onlyRecordsTheLinesSay(
+  kind: KindOfWork,
+  offered: AnOfferedRecord[] | null | undefined,
+  lines: { id: string; text: string; participantId: string }[],
+  leadsStages: unknown,
+  /** The people in the check-in, so a record the speaker says is somebody else's is theirs. See theOwnerTheLineNames. */
+  people: readonly APersonALineMayName[] = [],
+): { kind: string; name: string; stage: string | null; dueAt: Date | null; fields: Record<string, string>; sourceEntryId: string; ownerParticipantId: string }[] {
+  const byId = new Map(lines.map((l) => [l.id, l]));
+  const allowed = new Set(itemKindsFor(kind));
+  const out: ReturnType<typeof onlyRecordsTheLinesSay> = [];
+  const seen = new Set<string>();
+  for (const r of offered ?? []) {
+    const line = r.lineId ? byId.get(r.lineId) : undefined;
+    const name = (r.name ?? '').trim();
+    if (!line || !r.kind || !allowed.has(r.kind) || !name || name.length > 120 || !aNameThatNamesSomething(name)) continue;
+    if (!squash(line.text).includes(squash(name))) continue;
+    const section = RECORDS_FOR_EACH_KIND[kind].find((s) => s.itemKinds.includes(r.kind!))!;
+    const stages = stagesFor(section, leadsStages) ?? [];
+    const stage = stages.find((s) => s.toLowerCase() === (r.stage ?? '').trim().toLowerCase()) ?? null;
+    const due = /^\d{4}-\d{2}-\d{2}$/.test((r.due ?? '').trim()) ? new Date(`${r.due!.trim()}T00:00:00.000Z`) : null;
+    const fields = plainFields(Object.fromEntries((r.details ?? []).map((d) => [d?.label ?? '', d?.value ?? ''])));
+    const key = `${r.kind}|${squash(name)}|${line.id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ kind: r.kind, name, stage, dueAt: due && !isNaN(due.getTime()) ? due : null, fields, sourceEntryId: line.id, ownerParticipantId: theOwnerTheLineNames(r.owner, line, people) });
+  }
+  return out;
+}

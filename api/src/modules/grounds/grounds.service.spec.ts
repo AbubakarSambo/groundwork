@@ -175,7 +175,7 @@ describe('GroundsService.resendParticipantInvite - GW-24', () => {
  * ever gets loosened, this test goes red before merge.
  */
 describe('GroundsService.get - org boundary (GW-ORG-BOUNDARY)', () => {
-  const GROUND = { id: 'g1', organizationId: 'org-A', participants: [], checkIns: [] };
+  const GROUND = { id: 'g1', organizationId: 'org-A', scenario: 'NEW_PROJECT', participants: [], checkIns: [] };
 
   function makePrisma({ findFirstResult, participantLink, findUniqueResult, user }: any) {
     return {

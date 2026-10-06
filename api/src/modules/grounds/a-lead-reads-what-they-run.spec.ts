@@ -7,7 +7,7 @@ import { join } from 'path';
  * consulted in two places, neither a read; a lead could not see their own team's check-ins unless
  * they happened to have started them. Blank departments never match: no department is no scope.
  */
-const checkIn = { organizationId: 'org', initiatorId: 'other-lead', participants: [], leadDepartment: 'Finance' };
+const checkIn = { organizationId: 'org', scenario: 'NEW_PROJECT' as const, initiatorId: 'other-lead', participants: [], leadDepartment: 'Finance' };
 
 describe('a lead', () => {
   it('reads at lead on what they run, whatever their department', () => {

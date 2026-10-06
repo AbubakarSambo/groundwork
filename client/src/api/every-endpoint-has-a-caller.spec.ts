@@ -34,8 +34,6 @@ const KNOWN: Record<string, string> = {
     'Org-level "activate billing without payment". With Stripe unwired this is the only way to put a customer on a paid footing, and it has no surface at either end. Awaiting her call on who gets codes and where it is entered.',
   'authApi.memberSignin':
     'Magic sign-in link for an existing member. The sign-in page offers password and forgot-password only, so a member with no password has no self-serve way in. Small, real, undecided.',
-  'authApi.requestPasswordSetup':
-    'Lets a signed-in person generate their own password-setup token, which is the only route for somebody who signed in with Google and has no password. Left alone deliberately: whether setPassword is safe for an account that ALREADY has one needs checking before this ships as a change-password flow.',
   // ── Found by this guard, not by the hand sweep it replaced ──────────────────
   'pricingAdminApi.get':
     'THE SECOND ADMIN PRICING API. `/billing/admin/pricing` (get/update/reset) sits beside `adminApi` on `/admin/pricing`, which is the one the ops page uses. Two route families for the thing that must never disagree - what we charge. `reset` has no equivalent in the one we use. Needs collapsing onto one; which survives is a call, so it is not being guessed at.',
@@ -51,6 +49,8 @@ const KNOWN: Record<string, string> = {
     'POST /grounds/:id/activate, distinct from report activation. Approve and confirm-lead appear to cover the same ground now. Probably dead; not deleting a state-changing route on an assumption.',
   'promptsApi.create':
     'Creating a new prompt version. The versioning page can activate and test existing prompts but not add one, so new prompts are a database job today.',
+  'authApi.teamInvite':
+    'POST /auth/team-invite, one address at a time. Its only button was "Invite a team member" on the check-ins list, which went when the list was rebuilt to the prototype (U.5). Inviting now happens on People (POST /users/invitations, U.4), with a role and many addresses at once, and from the new organisation\'s checklist on Today. Kept, not deleted: whether this route retires is a call for the other workspace and Hafsah.',
   'groundsApi.getMediatorBrief':
     'A structural brief to hand a facilitator. Works, no UI. Where it belongs is a product call, and more live now that the coaching offer exists.',
 }

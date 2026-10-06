@@ -30,26 +30,37 @@ const source = readFileSync(join(__dirname, 'AppShell.tsx'), 'utf8')
 const stripped = source.replace(/\/\*[\s\S]*?\*\/|\{\/\*[\s\S]*?\*\/\}|\/\/[^\n]*/g, '')
 
 describe('the bottom bar on a phone', () => {
-  it('has a short name for the two labels that did not fit', () => {
-    expect(stripped).toMatch(/label: 'All check-ins',[\s\S]{0,80}short: 'Check-ins'/)
-    expect(stripped).toMatch(/label: 'Platform ops',[\s\S]{0,80}short: 'Ops'/)
+  /*
+   * REBUILT FOR A1 (layout-phone). The bar no longer draws the nav items with a short name each: it
+   * has its own few fixed words - Check-ins, Start, More - and every other door is on "More". The
+   * point of this file still holds, and is checked the new way: no label on the bar is long enough to
+   * lose its start in a cell at 320px, and the nowrap-and-ellipsis backstop is still there.
+   */
+  it('says a few short words, each fitting a fifth of a 320px screen', () => {
+    const bar = stripped.slice(stripped.indexOf('className="gw-sidebar-mobile"'), stripped.indexOf('</nav>', stripped.indexOf('className="gw-sidebar-mobile"')))
+    const words = [...bar.matchAll(/<PhoneIcon d="[a-z]+" \/>([A-Za-z -]+)\n/g)].map(m => m[1].trim())
+    /* U.5: Today came first when its page came, as layout-phone.txt has it. U.14: Chat came with
+       its page, so the bar has the prototype's five words and each cell is a fifth, not a third.
+       U.15: Company is in the source beside Start, because somebody who may not start a check-in
+       has Company in its place (ask-on-a-phone.txt). Only one of the two is ever drawn. */
+    expect(words).toEqual(['Today', 'Check-ins', 'Start', 'Company', 'Chat', 'More'])
+    /* On a screen of 360px or less the words are 12px, about 6.9px a character bold, with no
+       padding at the sides; a fifth of 320 is 64. */
+    expect(readFileSync(join(__dirname, '..', '..', 'index.css'), 'utf8')).toMatch(/@media \(max-width: 360px\) \{ \.gw-phone-bar-item \{ font-size: 12px; padding: 6px 0; \} \}/)
+    for (const w of words) expect(w.length * 6.9).toBeLessThan(320 / 5)
   })
 
-  it('and the compact item actually uses it, which is the whole wire', () => {
-    const compact = stripped.slice(stripped.indexOf('if (compact)'), stripped.indexOf('</NavLink>', stripped.indexOf('if (compact)')))
-    expect(compact).toMatch(/short \?\? item\.label/)
+  it('and no nav item keeps a second, short name any more', () => {
+    expect(stripped).not.toMatch(/short: '/)
   })
 
   it('while the desktop rail still says the full thing', () => {
-    /* Two readers, two widths. The rail has the room and "All" earns its place there. */
-    const afterCompact = stripped.slice(stripped.indexOf('if (compact)'))
-    const rail = afterCompact.slice(afterCompact.indexOf('return (', afterCompact.indexOf('</NavLink>')))
+    const rail = stripped.slice(stripped.indexOf('export function AppSidebar'), stripped.indexOf('<nav', stripped.indexOf('className="gw-rl-foot"')))
     expect(rail).toContain('{item.label}')
-    expect(rail).not.toMatch(/short \?\?/)
   })
 
   it('keeps the nowrap-and-ellipsis backstop from the earlier fix', () => {
-    /* It could not save this one, but it is still what stops a future long name breaking mid-word. */
-    expect(stripped).toMatch(/whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'/)
+    const CSS = readFileSync(join(__dirname, '../../index.css'), 'utf8')
+    expect(CSS).toMatch(/\.gw-phone-bar-item \{[^}]*white-space: nowrap; overflow: hidden; text-overflow: ellipsis;/)
   })
 })

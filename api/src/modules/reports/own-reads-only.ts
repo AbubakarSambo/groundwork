@@ -21,10 +21,9 @@
  * accounts, so a leak here does not just embarrass one person, it quietly
  * degrades every record that follows it.
  *
- * THE RULE, which is the one names already follow:
- *   a participant sees the read of their OWN record and nobody else's;
- *   the lead sees everyone, because leading is what the board is for and they
- *   see these reads there already.
+ * THE RULE, since 28 September 2026: a reader is sent the read of their OWN
+ *   answers and nobody else's, the lead and an org admin included. Hafsah's
+ *   decision; see below.
  *
  * Structural, at the read, for the reason two prompt-only guardrails on this
  * product leaked in a single day: a rule that lives in wording holds until the
@@ -36,7 +35,7 @@ export interface OwnReadsInput {
   viewerLabel: string | null;
   /** The reader's participant id, for the fields keyed that way. */
   viewerParticipantId: string | null;
-  /** Leads see everything here; they carry the ground. */
+  /** A lead or org admin. They keep concernFlags and leadershipGaps; like everyone, only their own rating. */
   viewerIsLead: boolean;
 }
 
@@ -61,7 +60,7 @@ const keepOwnById = (map: any, viewerParticipantId: string | null): any => {
 };
 
 /**
- * Strip other people's reads out of a report before it reaches a participant.
+ * Strip other people's ratings out of a report before it reaches any reader, the lead included.
  *
  * What deliberately STAYS for everybody:
  *   parties[] keeps sessions and whether each person contributed. That is
@@ -69,9 +68,9 @@ const keepOwnById = (map: any, viewerParticipantId: string | null): any => {
  *   something the others are entitled to know - it is why their own account has
  *   nothing to be compared against yet.
  *
- * What goes, for everyone but the reader themselves:
- *   specificityNotes, specificitySignal, recallNotes, the per-party
- *   specificityLabel, and the closing tiers.
+ * What goes, for every reader but the person it is about, the lead and an org admin included:
+ *   specificityNotes, specificitySignal, pictureConfidence, specificityCauses,
+ *   recallNotes, the per-party specificityLabel, and the closing tiers.
  *
  * What goes entirely for a participant:
  *   concernFlags, which is a list of concerns about named parties and has no
@@ -113,27 +112,33 @@ export function withoutOtherPeoplesReads<T extends Record<string, any>>(
     return { ...report, engagement: eng };
   })();
 
-  if (viewerIsLead) return withoutGuides;
-
+  /*
+   * NO READER IS SENT ANYONE'S RATING. Hafsah's decision, 28 September 2026: "leads and admins are
+   * never sent how anyone's answers were rated. Ratings may be used inside the engine to build
+   * reports, but are never served to any reader." Until then the lead returned here with every
+   * person's reads, on the rule this file used to state ("the lead sees everyone"), which
+   * contradicted CLAUDE.md. So other people's ratings come off for every reader, the lead and an
+   * org admin included, and before the lead's early return. Nothing on any report screen reads them.
+   *
+   * A reader keeps the read of their OWN answers, which is the decision of 1 September 2026 (see
+   * specificity-is-yours-to-see.spec.ts) and the Done page's "Only you see it". A lead who gave an
+   * account keeps theirs; an org admin with no account of their own keeps none.
+   */
   const engagement = withoutGuides.engagement && typeof withoutGuides.engagement === 'object'
     ? { ...(withoutGuides.engagement as Record<string, any>) }
     : null;
 
   if (engagement) {
-    if ('specificityNotes' in engagement) engagement.specificityNotes = keepOwnByLabel(engagement.specificityNotes, viewerLabel);
-    if ('recallNotes' in engagement) engagement.recallNotes = keepOwnByLabel(engagement.recallNotes, viewerLabel);
-    if ('specificitySignal' in engagement) engagement.specificitySignal = keepOwnByKey(engagement.specificitySignal, viewerLabel);
-    /* Keyed by label the same way, and missed the same way: a per-person confidence band. */
-    if ('pictureConfidence' in engagement) engagement.pictureConfidence = keepOwnByKey(engagement.pictureConfidence, viewerLabel);
-    if ('specificityCauses' in engagement) engagement.specificityCauses = keepOwnByLabel(engagement.specificityCauses, viewerLabel);
-    // Concerns about people. Not a participant's to read about anyone, including
-    // themselves - a concern is raised with a person, never delivered to them in
-    // a document alongside their colleagues' names.
-    delete engagement.concernFlags;
-    // Per-party quality label lives on parties[] too. Participation stays.
+    for (const k of ['specificityNotes', 'recallNotes', 'specificityCauses']) {
+      if (k in engagement) engagement[k] = keepOwnByLabel(engagement[k], viewerLabel);
+    }
+    for (const k of ['specificitySignal', 'pictureConfidence']) {
+      if (k in engagement) engagement[k] = keepOwnByKey(engagement[k], viewerLabel);
+    }
+    /* The per-party label goes too. Participation (sessions, whether they contributed) stays. */
     if (Array.isArray(engagement.parties)) {
       engagement.parties = engagement.parties.map((p: any) =>
-        p?.label === viewerLabel ? p : { ...p, specificityLabel: undefined },
+        p?.label && p.label === viewerLabel ? p : { ...p, specificityLabel: undefined, confidence: undefined },
       );
     }
   }
@@ -144,6 +149,20 @@ export function withoutOtherPeoplesReads<T extends Record<string, any>>(
   if (finalSynthesis && 'tiers' in finalSynthesis) {
     finalSynthesis.tiers = keepOwnById(finalSynthesis.tiers, viewerParticipantId);
   }
+
+  const withoutRatings: Record<string, any> = {
+    ...withoutGuides,
+    ...(engagement ? { engagement } : {}),
+    ...(finalSynthesis ? { finalSynthesis } : {}),
+  };
+
+  if (viewerIsLead) return withoutRatings as T;
+
+  /* Concerns about people. Not a participant's to read about anyone, including themselves - a
+     concern is raised with a person, never delivered to them in a document alongside their
+     colleagues' names. */
+  /* `engagement` is this call's own copy, and the lead has already returned with it. */
+  if (engagement) delete engagement.concernFlags;
 
   /**
    * LEADERSHIP GAPS ARE ABOUT HOW ONE PERSON IS LEADING, AND THEY WERE GOING TO
@@ -161,11 +180,7 @@ export function withoutOtherPeoplesReads<T extends Record<string, any>>(
    * should see a read of the person leading them. Silently shipping it to
    * everyone is not that answer.
    */
-  const out: Record<string, any> = {
-    ...withoutGuides,
-    ...(engagement ? { engagement } : {}),
-    ...(finalSynthesis ? { finalSynthesis } : {}),
-  };
+  const out: Record<string, any> = { ...withoutRatings };
   delete out.leadershipGaps;
   return out as T;
 }

@@ -1,549 +1,440 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
+import { useRef, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api/auth'
 import { myDataApi, type MyData } from '@/api/my-data'
-import { Sec, Card } from '@/components/gw/kit'
-import { apiClient } from '@/api/client'
+import { todaysPasswordRules } from '@/pages/auth/password-rules'
+import {
+  Page, PageTitle, Section, Panel, Stack, FieldRows, FieldRow, SwitchRow, Steps, Step,
+  Button, TextField, FieldLabel, SubHeading,
+} from '@/components/gw/ui'
+
+/**
+ * SETTINGS (A4, #/settings, group 1 of the screens rebuilt from the shared parts). Wording copied
+ * from docs/prototype/screens/A4-people-roles-and-access/own-settings.txt.
+ *
+ * REBUILT FROM THE SHARED PARTS: `Page`/`PageTitle` for the frame, `Section`/`Panel` for each block,
+ * `FieldRows`/`FieldRow` for "Your name", "Email" and "WhatsApp", `SwitchRow` for "What we send
+ * you", `Steps`/`Step` for the password checklist, and the standard `Button`/`TextField`/`Note`.
+ *
+ * FieldRows SIT FLAT ON THE PAGE, NOT IN A PANEL (Hafsah, 30 September, the setting row):
+ * `srow` (docs/prototype/source/s5.js) draws each row at the page's own left edge, under the
+ * section heading, with no white box around it - `Organisation` and `You` no longer wrap their
+ * `FieldRows` in a `Panel`.
+ *
+ * "CHANGE PASSWORD" IS THIS SCREEN'S ONE PRIMARY BUTTON (Hafsah, 30 September, own-settings.jpg):
+ * the prototype draws it as the one navy button on this page ("one primary button per screen" is
+ * about the screen having ONE, not zero) - every other "Change"/"Save" here stays a small quiet
+ * button (`setShell`'s `srow(...)`, `"btn quiet sm"` throughout own-settings.txt).
+ *
+ * PRIMARY-BUTTONS-NEVER-TOGETHER: `ChangePassword`'s two `kind="primary"` buttons - the closed
+ * state's "Change password" and the open form's own "Change password" submit - belong to a single
+ * `if (!open)` branch each, so only one of the two is ever on screen at once; the other is the
+ * form's "Cancel" (quiet), never a second primary button beside it.
+ *
+ * PASSWORD, AS THE PRODUCT ACTUALLY WORKS (a gap against the prototype, kept honest rather than
+ * hidden): the prototype's form asks for the current password, then a new one twice. Nothing signs
+ * a person in with a password they type here to prove who they are - most people never set one, and
+ * sign in with Google or an email link instead, which is why that sentence stays on this page. What
+ * the server actually offers (`POST /auth/request-password-setup` then `POST /auth/set-password`,
+ * both there since the sign-up flow was built, and never called from anywhere until now) proves who
+ * you are by your signed-in session, not by a current password, so there is no "current password"
+ * field here. The requirement checklist is the prototype's own four rules, read from the same file
+ * the server checks (password-rules.ts), minus "both passwords match" which only applies once you
+ * have typed the second box.
+ *
+ * "WHAT WE SEND YOU": the product holds one email preference today, `emailNotifications`, covering
+ * check-in invites and reminders together. The prototype's other two rows - "Reports ready" and "A
+ * short list each morning, only on days something does" - have no setting behind them anywhere in
+ * the product, so they are left off rather than shown as switches that do nothing (not-to-build.md).
+ * Both are requests to make, not screen work; see the morning report.
+ *
+ * "ORGANISATION", FOR AN ADMIN, KEPT FROM TODAY'S PRODUCT: the prototype's own-settings.txt does not
+ * draw this, but it is real, working functionality (renaming the organisation) with nowhere else in
+ * the product to reach it - CLAUDE.md: nothing valuable is lost. It stays here, admin only, exactly
+ * as it worked before this page was rebuilt.
+ */
+
+function ChangePassword({ email }: { email?: string | null }) {
+  const [open, setOpen] = useState(false)
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const setAuth = useAuthStore(s => s.setAuth)
+
+  const change = useMutation({
+    mutationFn: async () => {
+      const { token } = await authApi.requestPasswordSetup()
+      return authApi.setPassword(token, password)
+    },
+    onSuccess: (r) => {
+      setAuth(r.user, r.accessToken)
+      setPassword('')
+      setConfirm('')
+      setOpen(false)
+      toast.success('Your password is changed.')
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Your password did not change. Try again.'),
+  })
+
+  const rules = todaysPasswordRules(password, confirm, email)
+  const met = rules.every(r => r.met)
+
+  return (
+    <Section heading="Password" note="You can also sign in with Google or an email link">
+      <Panel>
+        {!open ? (
+          <Button kind="primary" onClick={() => setOpen(true)}>Change password</Button>
+        ) : (
+          <Stack gap={12}>
+            <div>
+              <FieldLabel htmlFor="settings-new-password">New password</FieldLabel>
+              <TextField id="settings-new-password" type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="new-password" />
+            </div>
+            <div>
+              <FieldLabel htmlFor="settings-confirm-password">Type it again</FieldLabel>
+              <TextField id="settings-confirm-password" type="password" value={confirm} onChange={e => setConfirm(e.target.value)} autoComplete="new-password" />
+            </div>
+            <Steps>
+              {rules.map(r => <Step key={r.text} done={r.met}>{r.text}</Step>)}
+            </Steps>
+            <div className="gwui-invite-actions">
+              <Button kind="primary" onClick={() => change.mutate()} disabled={!met || change.isPending}>
+                {change.isPending ? 'Saving…' : 'Change password'}
+              </Button>
+              <Button kind="quiet" onClick={() => { setOpen(false); setPassword(''); setConfirm('') }}>Cancel</Button>
+            </div>
+          </Stack>
+        )}
+      </Panel>
+    </Section>
+  )
+}
 
 export function SettingsPage() {
+  const whatsappOn = useWhatsAppIsOn()
   const navigate = useNavigate()
   const user = useAuthStore(s => s.user)
   const updateUser = useAuthStore(s => s.updateUser)
-  /**
-   * NOBODY COULD TELL US THEIR OWN NAME. W-UX-C.
-   *
-   * `authApi.updateProfile` has always existed and nothing in the product ever called it - one of
-   * the endpoints the audit found with no button. So the only names Groundwork ever held were the
-   * ones Google handed over at sign-in, or the ones an admin typed when inviting somebody.
-   *
-   * That is the ROOT of the complaint that started this whole pass: "Some people show as email
-   * addresses, others as names, in the same column." Three screens were showing addresses because
-   * for half the people there was genuinely no name to show, and no way to give one.
-   *
-   * Fixing the display without this would have been the more dishonest half of the job: the columns
-   * would agree, and half of them would still say "a teammate".
-   */
+  const logout = useAuthStore(s => s.logout)
+  const orgName = user?.organizationName ?? ''
+
   const [firstName, setFirstName] = useState(user?.firstName ?? '')
   const [lastName, setLastName] = useState(user?.lastName ?? '')
+  const [editingName, setEditingName] = useState(false)
   const saveName = useMutation({
     mutationFn: () => authApi.updateProfile({ firstName: firstName.trim(), lastName: lastName.trim() }),
     onSuccess: u => {
       updateUser({ firstName: u.firstName, lastName: u.lastName } as any)
+      setEditingName(false)
       toast.success('Your name is updated. This is what your team sees.')
     },
     onError: () => toast.error('Your name did not change. Nothing else was altered - try again.'),
   })
-  const nameChanged =
-    firstName.trim() !== (user?.firstName ?? '') || lastName.trim() !== (user?.lastName ?? '')
+  const nameChanged = firstName.trim() !== (user?.firstName ?? '') || lastName.trim() !== (user?.lastName ?? '')
 
-  const [orgName, setOrgName] = useState(user?.organizationName ?? '')
+  const [orgName2, setOrgName2] = useState(user?.organizationName ?? '')
+  const [editingOrgName, setEditingOrgName] = useState(false)
   const renameOrgMut = useMutation({
     mutationFn: (name: string) => authApi.renameOrganization(name),
-    onSuccess: org => { updateUser({ organizationName: org.name } as any); toast.success('Organisation name updated') },
+    onSuccess: (org) => { updateUser({ organizationName: org.name } as any); setEditingOrgName(false); toast.success('Organisation name updated.') },
     onError: () => toast.error('Could not rename the organisation. Try again.'),
   })
-  /*
-   * HOW CHECK-INS WORK HERE. Read before it is shown, so a toggle never renders in a state the
-   * organisation is not actually in.
-   */
-  const qc = useQueryClient()
-  const checkInsQuery = useQuery({
-    queryKey: ['how-check-ins-work'],
-    queryFn: () => apiClient.get('/users/organization/check-ins').then((r: any) => r.data.data ?? r.data),
-    enabled: user?.role === 'ADMIN',
-    retry: false,
-  })
-  const checkInSettings = useMutation({
-    mutationFn: (change: { whoMayOpen?: string; needsApproval?: boolean }) =>
-      apiClient.patch('/users/organization/check-ins', change),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['how-check-ins-work'] }); toast.success('Saved') },
-    onError: () => toast.error('Not saved. What you typed is still here - try again.'),
-  })
-  /* The defaults, which are the stricter of each - the same two this product starts an org on. */
-  const howCheckIns = checkInsQuery.data ?? { whoMayOpen: 'NAMED_LEADS', needsApproval: true }
 
-  const logout = useAuthStore(s => s.logout)
-
-  const [emailNotif, setEmailNotif] = useState(user?.emailNotifications ?? true)
-  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
-  const [notifSaved, setNotifSaved] = useState(false)
   const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber ?? '')
-  const [phoneSaved, setPhoneSaved] = useState(false)
-
+  const [editingPhone, setEditingPhone] = useState(false)
   const savePhone = useMutation({
     mutationFn: (val: string | null) => authApi.setPhoneNumber(val),
-    onSuccess: (updated) => {
-      updateUser(updated)
-      setPhoneSaved(true)
-      setTimeout(() => setPhoneSaved(false), 2000)
-    },
+    onSuccess: (updated) => { updateUser(updated); setEditingPhone(false); toast.success('Saved.') },
+    onError: () => toast.error('That did not save. Try again.'),
   })
 
+  const [emailNotif, setEmailNotif] = useState(user?.emailNotifications ?? true)
   const toggleNotif = useMutation({
     mutationFn: (val: boolean) => authApi.setEmailNotifications(val),
-    onSuccess: (updated) => {
-      updateUser(updated)
-      setNotifSaved(true)
-      setTimeout(() => setNotifSaved(false), 2000)
-    },
-  })
-
-  const leaveOrg = useMutation({
-    mutationFn: authApi.leaveOrg,
-    onSuccess: () => {
-      logout()
-      navigate('/auth')
-    },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.message ?? 'Could not leave the organisation. Try again.')
-    },
+    onSuccess: (updated) => updateUser(updated),
+    onError: () => toast.error('That did not change. Try again.'),
   })
 
   const [myData, setMyData] = useState<MyData | null>(null)
   const [showEraseConfirm, setShowEraseConfirm] = useState(false)
-
-  const loadMyData = useMutation({
-    mutationFn: myDataApi.get,
-    onSuccess: setMyData,
-    onError: () => toast.error('Could not load your data. Try again.'),
-  })
-
-  const eraseMyData = useMutation({
-    mutationFn: myDataApi.erase,
-    /* Not "erased": eraseAccount anonymises the way in and deliberately keeps what was shared,
-       because it is also the other people's picture of what happened. Saying erased contradicts
-       both the code and this page's own explanation three hundred lines below. */
-    onSuccess: () => { toast.success('Your way in is gone. What you shared stays with the check-ins you were part of.'); logout(); navigate('/auth') },
-    onError: () => toast.error('That did not happen. Nothing has changed - try again.'),
-  })
-
-  /**
-   * The download is built from what is already on screen rather than a second request, so what
-   * lands in the file is exactly what the page just said we hold. A second fetch could disagree.
-   */
-  function downloadMyData() {
-    if (!myData) return
-    const blob = new Blob([JSON.stringify(myData, null, 2)], { type: 'application/json' })
+  function saveAsAFile(data: MyData) {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
     a.download = 'groundwork-my-data.json'
+    /*
+     * ATTACHED BEFORE THE CLICK, REMOVED AFTER (group 1 re-review, fault G): clicking a link that
+     * was never part of the page is exactly the kind of thing a browser can handle inconsistently
+     * - including, on the picture that flagged this, focus drifting away from the button somebody
+     * actually pressed. A normal, connected element behaves like every other link on the page.
+     */
+    document.body.appendChild(a)
     a.click()
+    document.body.removeChild(a)
     URL.revokeObjectURL(url)
   }
-
-  function handleNotifToggle(val: boolean) {
-    setEmailNotif(val)
-    toggleNotif.mutate(val)
-  }
+  /*
+   * THE PROTOTYPE'S OWN ONE BUTTON, "Download it" (own-settings.txt, beside the heading): loaded
+   * on demand, never on every visit to Settings, so this is somebody's whole record and fetching
+   * it because they came to change a phone number would be the wrong default. One press both
+   * saves the file straight away and fills in the sentence and the list below it, so nothing the
+   * page did before ("Show me") is lost - it is the same load, the file just comes with it now,
+   * matching the prototype's own single button rather than adding a second one beside it (the
+   * button-count check, e2e/the-prototype-count-of-buttons.spec.ts, holds the product to the
+   * prototype's own count for this screen).
+   */
+  const downloadItRef = useRef<HTMLButtonElement | HTMLAnchorElement>(null)
+  const loadMyData = useMutation({
+    mutationFn: myDataApi.get,
+    onSuccess: (data) => {
+      setMyData(data)
+      saveAsAFile(data)
+      /*
+       * GROUP 1 RE-REVIEW, FAULT G: a picture taken right after this press showed "Skip to
+       * content" over the Email label - the skip link briefly gaining focus once the download's
+       * own browser activity (a native file save) moved it away from this button. This keeps
+       * focus where the person's attention already is, on the button whose own text now confirms
+       * what happened, rather than leaving it to drift.
+       */
+      requestAnimationFrame(() => downloadItRef.current?.focus())
+    },
+    onError: () => toast.error('Could not load your data. Try again.'),
+  })
+  const eraseMyData = useMutation({
+    mutationFn: myDataApi.erase,
+    onSuccess: () => { toast.success('Your way in is gone. What you shared stays with the check-ins you were part of.'); logout(); navigate('/auth') },
+    onError: () => toast.error('That did not happen. Nothing has changed - try again.'),
+  })
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
+  const leaveOrg = useMutation({
+    mutationFn: authApi.leaveOrg,
+    onSuccess: () => { logout(); navigate('/auth') },
+    onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Could not leave the organisation. Try again.'),
+  })
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
-      <div className="gw-hdr">
-        {/* The rail already says Groundwork two inches to the left. This said it again, so
-              the page's own name is here instead - which is the thing a second line of
-              chrome could usefully carry. W13-11. */}
-              <div className="gw-logo">Settings</div>
-        <span
-          onClick={() => navigate('/grounds')}
-          style={{ fontSize: 13, color: 'var(--gw-sub)', cursor: 'pointer' }}
-        >
-          Back
-        </span>
-      </div>
+    <Page>
+      <PageTitle title="Settings" subtitle={orgName} />
 
-      <div className="gw-bd" style={{ maxWidth: 520, margin: '0 auto', width: '100%', paddingTop: 28 }}>
-        <h1 className="gw-ttl">Settings</h1>
+      <ChangePassword email={user?.email} />
 
-        <section style={{ marginBottom: 32 }}>
-          <Sec title="Profile" />
-          <Card pad="block">
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Your name</div>
-            <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
-              This is what your team sees next to what you said, on the board and in every report.
-              Without it we can only show your email address.
-            </div>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-              <input
-                value={firstName}
-                onChange={e => setFirstName(e.target.value)}
-                placeholder="First name"
-                aria-label="First name"
-                style={{ flex: 1, minWidth: 0, padding: '9px 11px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit' }}
-              />
-              <input
-                value={lastName}
-                onChange={e => setLastName(e.target.value)}
-                placeholder="Last name"
-                aria-label="Last name"
-                style={{ flex: 1, minWidth: 0, padding: '9px 11px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit' }}
-              />
-              <button
-                onClick={() => saveName.mutate()}
-                disabled={!nameChanged || !firstName.trim() || saveName.isPending}
-                style={{
-                  padding: '9px 16px', borderRadius: 7, border: 'none', fontFamily: 'inherit', fontSize: 13, fontWeight: 700,
-                  background: nameChanged && firstName.trim() ? 'var(--gw-navy)' : 'var(--gw-border)',
-                  color: nameChanged && firstName.trim() ? 'white' : 'var(--gw-muted)',
-                  cursor: saveName.isPending ? 'wait' : 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
-                }}
-              >
-                {saveName.isPending ? 'Saving…' : 'Save'}
-              </button>
-            </div>
-            {/* The one thing this button can refuse for, said out loud rather than left grey. */}
-            {nameChanged && !firstName.trim() && (
-              <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginBottom: 8 }}>
-                A first name is enough. A last name is optional.
-              </div>
+      {user?.role === 'ADMIN' && (
+        <Section heading="Organisation">
+          <FieldRows>
+            <FieldRow
+              label="Organisation name"
+              value={!editingOrgName ? (
+                <span>
+                  {orgName || 'Not set'}
+                  <span className="gwui-field-help">Everyone on your team sees this.</span>
+                </span>
+              ) : (
+                <Stack gap={10}>
+                  <TextField value={orgName2} onChange={e => setOrgName2(e.target.value)} placeholder={orgName || 'Organisation name'} aria-label="Organisation name" />
+                  <div className="gwui-invite-actions">
+                    <Button kind="secondary" size="small" onClick={() => renameOrgMut.mutate(orgName2.trim())} disabled={orgName2.trim().length < 2 || orgName2.trim() === orgName || renameOrgMut.isPending}>
+                      {renameOrgMut.isPending ? 'Saving…' : 'Save'}
+                    </Button>
+                    <Button kind="quiet" size="small" onClick={() => { setEditingOrgName(false); setOrgName2(orgName) }}>Cancel</Button>
+                  </div>
+                </Stack>
+              )}
+              action={!editingOrgName && <Button kind="quiet" size="small" onClick={() => setEditingOrgName(true)}>Change</Button>}
+            />
+          </FieldRows>
+          <p className="gwui-fine">
+            Who can open a check-in, and whether new check-ins wait for an admin, are set on the{' '}
+            <Link to="/org/members">People page</Link>. Your plan and how many people it covers are on{' '}
+            <Link to="/settings/billing">Plan and billing</Link>.
+          </p>
+        </Section>
+      )}
+
+      <Section heading="You">
+        <FieldRows>
+          <FieldRow
+            label="Your name"
+            value={!editingName ? (
+              <span>
+                {user?.firstName ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ''}` : 'Not set'}
+                <span className="gwui-field-help">This is what your team sees. A first name is enough.</span>
+              </span>
+            ) : (
+              <Stack gap={10}>
+                <div className="gwui-field-pair">
+                  <TextField value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="First name" aria-label="First name" />
+                  <TextField value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Last name" aria-label="Last name" />
+                </div>
+                <div className="gwui-invite-actions">
+                  <Button kind="secondary" size="small" onClick={() => saveName.mutate()} disabled={!nameChanged || !firstName.trim() || saveName.isPending}>
+                    {saveName.isPending ? 'Saving…' : 'Save'}
+                  </Button>
+                  <Button kind="quiet" size="small" onClick={() => { setEditingName(false); setFirstName(user?.firstName ?? ''); setLastName(user?.lastName ?? '') }}>Cancel</Button>
+                </div>
+              </Stack>
             )}
-            <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{user?.email}</div>
-            <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 1 }}>{user?.organizationName} · {user?.role === 'ADMIN' ? 'Admin' : 'Team member'}</div>
-          </Card>
-        </section>
+            action={!editingName && <Button kind="quiet" size="small" onClick={() => setEditingName(true)}>Change</Button>}
+          />
+          <FieldRow
+            label="Email"
+            value={<span>{user?.email}<span className="gwui-field-help">Where your sign-in links go.</span></span>}
+          />
+          {whatsappOn && (
+            <FieldRow
+              label="WhatsApp"
+              value={!editingPhone ? (
+                <span>
+                  {user?.phoneNumber || 'Not set'}
+                  <span className="gwui-field-help">You can check in by replying on WhatsApp.</span>
+                </span>
+              ) : (
+                <Stack gap={10}>
+                  <TextField value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} placeholder="+254 712 345 678" aria-label="Your WhatsApp number" />
+                  <div className="gwui-invite-actions">
+                    <Button kind="secondary" size="small" onClick={() => savePhone.mutate(phoneNumber || null)} disabled={savePhone.isPending}>
+                      {savePhone.isPending ? 'Saving…' : 'Save'}
+                    </Button>
+                    <Button kind="quiet" size="small" onClick={() => { setEditingPhone(false); setPhoneNumber(user?.phoneNumber ?? '') }}>Cancel</Button>
+                  </div>
+                </Stack>
+              )}
+              action={!editingPhone && <Button kind="quiet" size="small" onClick={() => setEditingPhone(true)}>Change</Button>}
+            />
+          )}
+        </FieldRows>
+      </Section>
 
-        {user?.role === 'ADMIN' && (
-          <section style={{ marginBottom: 32 }}>
-            <Sec title="Organisation" />
-            <Card pad="block">
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Organisation name</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
-                Everyone on your team sees this. If you signed up without being asked for it, we
-                guessed it from your email address.
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <input
-                  value={orgName}
-                  onChange={e => setOrgName(e.target.value)}
-                  placeholder={user?.organizationName ?? 'Organisation name'}
-                  style={{ flex: 1, padding: '9px 11px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit' }}
-                />
-                <button
-                  onClick={() => renameOrgMut.mutate(orgName.trim())}
-                  disabled={orgName.trim().length < 2 || orgName.trim() === user?.organizationName || renameOrgMut.isPending}
-                  style={{
-                    padding: '9px 16px', borderRadius: 7, border: 'none', fontFamily: 'inherit', fontSize: 13, fontWeight: 700,
-                    background: orgName.trim().length >= 2 && orgName.trim() !== user?.organizationName ? 'var(--gw-navy)' : 'var(--gw-border)',
-                    color: orgName.trim().length >= 2 && orgName.trim() !== user?.organizationName ? 'white' : 'var(--gw-muted)',
-                    cursor: renameOrgMut.isPending ? 'wait' : 'pointer', whiteSpace: 'nowrap',
-                  }}
-                >
-                  {renameOrgMut.isPending ? 'Saving…' : 'Save'}
-                </button>
-              </div>
-            </Card>
+      <Section heading="What we send you">
+        <FieldRows>
+          <SwitchRow
+            title="Check-in reminders"
+            detail="When a check-in opens and, once, if you haven’t answered."
+            on={emailNotif}
+            onChange={(v) => { setEmailNotif(v); toggleNotif.mutate(v) }}
+            disabled={toggleNotif.isPending}
+          />
+        </FieldRows>
+        <p className="gwui-fine">Notices say something is ready and link to it. They never include what anyone said.</p>
+      </Section>
 
+      <Section heading="Your data">
+        <Panel>
+          <Stack gap={12}>
+            <div className="gwui-sentence-row">
+              <SubHeading>Everything you’ve written</SubHeading>
+              {/*
+               * THE PROTOTYPE'S OWN OUTLINED BUTTON (own-settings.jpg; group 1 re-review, fault E):
+               * a quiet text link read as decoration, not something to press - "Download it" is
+               * `kind="secondary"`, the same outlined weight the prototype draws it in.
+               */}
+              <Button ref={downloadItRef} kind="secondary" size="small" onClick={() => loadMyData.mutate()} disabled={loadMyData.isPending}>
+                {loadMyData.isPending ? 'Downloading…' : 'Download it'}
+              </Button>
+            </div>
+            <p className="gwui-panel-text-muted">
+              The file holds every answer you gave and which check-in it came from, and nothing anyone else wrote. You can open it on any computer.
+            </p>
             {/*
-              * HOW CHECK-INS WORK HERE. Two settings, and they are separate on purpose.
-              *
-              * The default is the stricter of each: named leads only, and every check-in waits.
-              * An organisation that has thought about it can open either door; one that has not
-              * should not discover a door was open by finding a check-in nobody sanctioned.
-              *
-              * Both are written by the same rule the create path enforces, so what this page says
-              * and what actually happens cannot come apart - see `who-may-open-a-check-in.ts`.
-              */}
-            <Card pad="block">
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Who can open a check-in</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
-                Everybody can take part in a check-in somebody adds them to. This is about opening
-                one.
-              </div>
-              {([
-                ['NAMED_LEADS', 'Only people I name', 'You choose who on the People page. Everybody else takes part.'],
-                ['EVERYONE', 'Anybody here', 'Anybody signed in here can open one.'],
-              ] as const).map(([value, title, body]) => (
-                <label
-                  key={value}
-                  style={{ display: 'flex', gap: 9, alignItems: 'flex-start', padding: '9px 0', cursor: 'pointer' }}
-                >
-                  <input
-                    type="radio"
-                    name="who-may-open"
-                    checked={howCheckIns.whoMayOpen === value}
-                    onChange={() => checkInSettings.mutate({ whoMayOpen: value })}
-                    style={{ marginTop: 2 }}
-                  />
-                  <span>
-                    <span style={{ fontSize: 13, fontWeight: 600, display: 'block' }}>{title}</span>
-                    <span style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.5 }}>{body}</span>
-                  </span>
-                </label>
-              ))}
-            </Card>
-
-            <Card pad="block">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Check-ins wait for an admin</div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.5, maxWidth: 420 }}>
-                    Nobody is invited until an admin accepts it. Turn this off and a check-in starts
-                    the moment somebody opens it.
-                  </div>
-                </div>
-                <button
-                  onClick={() => checkInSettings.mutate({ needsApproval: !howCheckIns.needsApproval })}
-                  disabled={checkInSettings.isPending}
-                  /* On its own the button reads "On, button" and names nothing it controls. */
-                  aria-label="Check-ins wait for an admin"
-                  aria-pressed={howCheckIns.needsApproval}
-                  style={{
-                    padding: '8px 14px', borderRadius: 7, fontFamily: 'inherit', fontSize: 13,
-                    fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
-                    background: howCheckIns.needsApproval ? 'var(--gw-navy)' : 'white',
-                    color: howCheckIns.needsApproval ? 'white' : 'var(--gw-navy)',
-                    border: `1px solid var(--gw-navy)`,
-                  }}
-                >
-                  {howCheckIns.needsApproval ? 'On' : 'Off'}
-                </button>
-              </div>
-            </Card>
-          </section>
-        )}
-
-        <section style={{ marginBottom: 32 }}>
-          <Sec title="Email" />
-          <Card pad={false}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px' }}>
+             * "Saved. ..." (fault E): confirms the file actually saved, then states what it holds,
+             * with the real counts - never a second "Download all of it" button repeating the one
+             * action "Download it" already did.
+             */}
+            {myData && (
               <div>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>Check-in invites and reminders</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2, lineHeight: 1.5 }}>
-                  Emails when you are added to a check-in or when a check-in is due.
-                </div>
-              </div>
-              <button
-                onClick={() => handleNotifToggle(!emailNotif)}
-                disabled={toggleNotif.isPending}
-                style={{
-                  width: 44,
-                  height: 24,
-                  borderRadius: 12,
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: emailNotif ? 'var(--gw-navy)' : 'var(--gw-border)',
-                  position: 'relative',
-                  flexShrink: 0,
-                  transition: 'background .15s',
-                  marginLeft: 16,
-                }}
-                aria-label={emailNotif ? 'Turn off email notifications' : 'Turn on email notifications'}
-              >
-                <span style={{
-                  position: 'absolute',
-                  top: 3,
-                  left: emailNotif ? 23 : 3,
-                  width: 18,
-                  height: 18,
-                  borderRadius: '50%',
-                  background: 'white',
-                  transition: 'left .15s',
-                  boxShadow: '0 1px 3px rgba(0,0,0,.2)',
-                }} />
-              </button>
-            </div>
-            {notifSaved && (
-              <div style={{ fontSize: 12, color: 'var(--gw-green-t)', padding: '8px 16px', borderTop: '1px solid var(--gw-border)', background: 'var(--gw-green-bg)' }}>
-                Saved.
+                <p className="gwui-panel-text-muted">
+                  Saved. You have written {myData.recordEntries.length} answer{myData.recordEntries.length === 1 ? '' : 's'}, in{' '}
+                  {myData.grounds.length} check-in{myData.grounds.length === 1 ? '' : 's'}.
+                </p>
+                <Stack gap={0}>
+                  {myData.grounds.map(g => <p key={g.id} className="gwui-panel-text">{g.label}</p>)}
+                </Stack>
               </div>
             )}
-          </Card>
-        </section>
-
-        <section style={{ marginBottom: 32 }}>
-          <Sec title="WhatsApp" />
-          {/* A single block, not a list of rows: this panel was written as a row container and
-              filled with one block, so its content sat flush against the card edge while every
-              other panel was inset. Visible the moment the panels came onto the kit. */}
-          <Card pad="block">
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Your WhatsApp number</div>
-            <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
-              Add your number and you can check in and get reminders on WhatsApp as well as email.
-              Your emails keep coming either way. We know it is you by this number.
-              {' '}This only works if your organisation has connected a WhatsApp number. If nothing
-              arrives, ask whoever manages Groundwork where you work.
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                placeholder="+234 801 234 5678"
-                style={{ flex: 1, padding: '9px 12px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit' }}
-              />
-              <button
-                onClick={() => savePhone.mutate(phoneNumber || null)}
-                disabled={savePhone.isPending}
-                style={{ padding: '9px 16px', borderRadius: 7, border: 'none', background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: savePhone.isPending ? 0.6 : 1 }}
-              >
-                {savePhone.isPending ? 'Saving…' : 'Save'}
-              </button>
-            </div>
-            {phoneSaved && (
-              <div style={{ fontSize: 12, color: 'var(--gw-green-t)', marginTop: 8 }}>Saved.</div>
-            )}
-          </Card>
-        </section>
-
-        {/**
-          * WHAT WE HOLD ABOUT YOU. W14-9.
-          *
-          * The marketing site tells people their answers stay theirs. Nothing in the product ever
-          * showed them what "theirs" amounted to. The export and erase endpoints have both existed
-          * since the GDPR work and neither had a caller, so the claim was true and unevidenced.
-          *
-          * Loaded on demand rather than on page load: this is somebody's whole record, and fetching
-          * it every time anybody opens Settings is the wrong default for the one page that is meant
-          * to be careful with it.
-          */}
-        <section style={{ marginBottom: 32 }}>
-          <Sec title="Your data" />
-          <Card pad="block">
-            {!myData ? (
-              <>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>What Groundwork holds about you</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 12 }}>
-                  Everything you have written, which check-ins it came from, and nothing anybody else wrote.
-                </div>
-                <button
-                  onClick={() => loadMyData.mutate()}
-                  disabled={loadMyData.isPending}
-                  style={{ padding: '9px 16px', borderRadius: 7, border: '1px solid var(--gw-border)', background: 'var(--gw-slate)', color: 'var(--gw-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
-                >
-                  {loadMyData.isPending ? 'Loading…' : 'Show me'}
-                </button>
-              </>
-            ) : (
-              <>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>What Groundwork holds about you</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.7, marginBottom: 12 }}>
-                  {myData.recordEntries.length} things you wrote, across {myData.checkIns.length} check-ins,
-                  on {myData.grounds.length} {myData.grounds.length === 1 ? 'ground' : 'grounds'}:
-                  <div style={{ marginTop: 6 }}>
-                    {myData.grounds.map(g => (
-                      <div key={g.id} style={{ color: 'var(--gw-text)' }}>{g.label}</div>
-                    ))}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button
-                    onClick={downloadMyData}
-                    style={{ padding: '9px 16px', borderRadius: 7, border: '1px solid var(--gw-border)', background: 'var(--gw-slate)', color: 'var(--gw-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
-                  >
-                    Download all of it
-                  </button>
-                  {!showEraseConfirm ? (
-                    <button
-                      onClick={() => setShowEraseConfirm(true)}
-                      style={{ padding: '9px 16px', borderRadius: 7, border: '1px solid var(--gw-border)', background: 'none', color: 'var(--gw-red-t)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
-                    >
-                      Erase it
-                    </button>
-                  ) : null}
-                </div>
-                {showEraseConfirm && (
-                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--gw-border)' }}>
-                    <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 10 }}>
-                      {/**
-                        * What this actually does, read off `eraseAccount`, not off what erasure
-                        * usually means. It anonymises the account; what you wrote into a ground
-                        * stays, because the other people on it have their own claim on the shared
-                        * record. Saying "erases your answers" here would be a promise the server
-                        * does not keep.
-                        */}
-                      Your name and email are removed everywhere and cannot be brought back. What you wrote
-                      into these check-ins stays on the record, without your name on it, because the other
-                      people on them have their own account of the same events. Download a copy first if
-                      you want one.
-                    </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button
-                        onClick={() => eraseMyData.mutate()}
-                        disabled={eraseMyData.isPending}
-                        style={{ padding: '9px 18px', borderRadius: 6, background: 'var(--gw-red-t)', color: 'white', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}
-                      >
-                        {eraseMyData.isPending ? 'Erasing…' : 'Yes, erase it'}
-                      </button>
-                      <button
-                        onClick={() => setShowEraseConfirm(false)}
-                        style={{ padding: '9px 18px', borderRadius: 6, background: 'var(--gw-slate)', color: 'var(--gw-text)', border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </Card>
-        </section>
-
-        <section>
+          </Stack>
           {/*
-            SIGNING OUT, WHERE A PHONE CAN REACH IT.
-            
-            "Sign out" lived in one place: the user block at the bottom of the desktop rail. On a
-            phone that rail is replaced by a sixty-pixel bar of nav icons, and the user block is
-            not in it - so there was no way to sign out of Groundwork on a phone at all.
-            
-            It was on the check-ins page once and was taken off for a good reason, recorded there:
-            it was a second navigation bar for things the rail already had. That reason does not
-            apply here. Settings is in the mobile bar, this is the page about you, and on desktop
-            the rail's own button is still the one most people use.
-          */}
-          <Sec title="This device" />
-          <Card pad={false}>
-            <button
-              onClick={() => { logout(); navigate('/auth') }}
-              style={{ width: '100%', textAlign: 'left', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-            >
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>Sign out</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2 }}>
-                Signs you out of Groundwork on this device. Nothing you have written is affected.
-              </div>
-            </button>
-          </Card>
-
-          <Sec title="Membership" />
-          <Card pad={false}>
-            {!showLeaveConfirm ? (
-              <button
-                onClick={() => setShowLeaveConfirm(true)}
-                style={{ width: '100%', textAlign: 'left', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-              >
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-red-t)' }}>Leave {user?.organizationName}</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2 }}>
-                  Removes your access. Your past contributions stay on record for the check-ins you were part of.
-                </div>
-              </button>
-            ) : (
-              <div style={{ padding: '14px 16px' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Are you sure you want to leave?</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 14, lineHeight: 1.5 }}>
-                  You will lose access to {user?.organizationName} immediately. Your contributions to existing check-ins stay on record.
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    onClick={() => leaveOrg.mutate()}
-                    disabled={leaveOrg.isPending}
-                    style={{ padding: '9px 18px', borderRadius: 6, background: 'var(--gw-red-t)', color: 'white', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}
-                  >
-                    {leaveOrg.isPending ? 'Leaving...' : 'Yes, leave'}
-                  </button>
-                  <button
-                    onClick={() => setShowLeaveConfirm(false)}
-                    style={{ padding: '9px 18px', borderRadius: 6, background: 'var(--gw-slate)', color: 'var(--gw-text)', border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}
-                  >
-                    Cancel
-                  </button>
-                </div>
+           * "REMOVE YOUR NAME AND EMAIL", NEVER "ERASE IT" (group 1's third review): the old label
+           * said the opposite of what this does - your answers stay on the record, only your name
+           * and email go. Said plainly before the link, not just inside the confirmation, and the
+           * confirmation's own words now agree with the label.
+           *
+           * REACHABLE WITHOUT DOWNLOADING FIRST (fault E), as it was before "Download it" started
+           * saving a file on press: it no longer waits for `myData`. Still a plain text link
+           * (`.gwui-plain-link`), like "Cancel" and "Never mind" elsewhere on this page, rather than
+           * a second boxed button - the prototype's own screen has no erase flow at all, so a second
+           * always-visible button here would put this screen over the prototype's own button count
+           * (e2e/the-prototype-count-of-buttons.spec.ts already holds it to exactly the prototype's
+           * five).
+           */}
+          <Stack gap={12}>
+            {!showEraseConfirm && (
+              <div>
+                <p className="gwui-panel-text-muted">Your answers stay in the check-ins, without your name.</p>
+                <button type="button" className="gwui-plain-link" onClick={() => setShowEraseConfirm(true)}>Remove your name and email</button>
               </div>
             )}
-          </Card>
-        </section>
-      </div>
-    </div>
+            {showEraseConfirm && (
+              <Stack gap={10}>
+                <p className="gwui-panel-text-muted">
+                  Your name and email are removed everywhere and cannot be brought back. What you wrote
+                  into these check-ins stays on the record, without your name on it, because the other
+                  people on them have their own account of the same events. Download a copy first if
+                  you want one.
+                </p>
+                <div className="gwui-invite-actions">
+                  <Button kind="danger" onClick={() => eraseMyData.mutate()} disabled={eraseMyData.isPending}>
+                    {eraseMyData.isPending ? 'Removing…' : 'Yes, remove them'}
+                  </Button>
+                  <Button kind="quiet" onClick={() => setShowEraseConfirm(false)}>Cancel</Button>
+                </div>
+              </Stack>
+            )}
+          </Stack>
+        </Panel>
+      </Section>
+
+      <Section heading={`Leaving ${orgName || 'this organisation'}`}>
+        <Panel>
+          {!showLeaveConfirm ? (
+            <div className="gwui-sentence-row">
+              <p className="gwui-panel-text-muted">
+                You’ll lose access. What you shared stays in the check-ins you were part of, as it is today.
+              </p>
+              <Button kind="secondary" redText onClick={() => setShowLeaveConfirm(true)}>Leave</Button>
+            </div>
+          ) : (
+            <Stack gap={12}>
+              <p className="gwui-panel-text-muted">
+                You will lose access to {orgName} immediately. What you said in your check-ins stays on the record.
+              </p>
+              <div className="gwui-invite-actions">
+                <Button kind="danger" onClick={() => leaveOrg.mutate()} disabled={leaveOrg.isPending}>
+                  {leaveOrg.isPending ? 'Leaving…' : 'Yes, leave'}
+                </Button>
+                <Button kind="quiet" onClick={() => setShowLeaveConfirm(false)}>Cancel</Button>
+              </div>
+            </Stack>
+          )}
+        </Panel>
+      </Section>
+
+      <Section heading="This device">
+        <Panel>
+          <div className="gwui-sentence-row">
+            <div>
+              <p className="gwui-panel-text">Sign out</p>
+              <p className="gwui-panel-text-muted">Signs you out of Groundwork on this device. Nothing you have written is affected.</p>
+            </div>
+            {/* A PLAIN LINK, NOT A BUTTON (Hafsah, 30 September): "/signout" is a real page
+                (SignOutPage.tsx) that does the actual signing out as it opens - this only goes
+                there, and does nothing itself. */}
+            <Link className="gwui-open-link" to="/signout" replace>Sign out</Link>
+          </div>
+        </Panel>
+      </Section>
+    </Page>
   )
 }

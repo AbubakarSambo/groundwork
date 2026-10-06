@@ -1,9 +1,12 @@
 import { Injectable, ForbiddenException, NotFoundException, Logger } from '@nestjs/common';
+import { onceAcrossCopies, theDay } from '../prisma/once-across-copies';
+import { awayUntilOn, fallsInLeave, leaveOfThePeopleOn, theirApprovedLeave, whoOnACheckInIsAway } from '../suites/who-is-away';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CheckInStatus } from '@prisma/client';
 import { worthNudging, whatToSendThem } from './who-is-worth-nudging';
+import { theAnchorNudgeFor } from './the-anchor-nudge';
 import { WorkspaceNotifierService } from '../workspace/workspace-notifier.service';
 import {
   whatToDoToday,
@@ -50,7 +53,7 @@ export class RemindService {
 
     const ground = await this.prisma.ground.findUnique({
       where: { id: checkIn.groundId },
-      select: { id: true, label: true },
+      select: { id: true, label: true, startedFrom: true },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
 
@@ -134,7 +137,9 @@ export class RemindService {
         ? (Date.now() - p.lastNudgedAt.getTime()) / (1000 * 60 * 60)
         : null,
     }));
-    const incomplete = worthNudging(considered);
+    /* Somebody on approved leave today is not chased (week 23). */
+    const awayToday = await whoOnACheckInIsAway(this.prisma as any, ground.id);
+    const incomplete = worthNudging(considered).filter((p: any) => !awayToday.has(p.id));
 
     let count = 0;
     let reinvited = 0;
@@ -183,7 +188,9 @@ export class RemindService {
       const checkInUrl = this.email.buildCheckInUrl(participant.session!.id);
 
       // #34: Pass otherPartyCompleted so the email includes the appropriate note.
-      await this.email.sendNudge(participant.email, specificThing, checkInUrl, undefined, otherPartyCompleted, participant.id);
+      /* Their own last open promise, to them only, on an anchor check-in (piece 30). */
+      const theAnchorLine = await theAnchorNudgeFor(this.prisma, ground as any, participant.id);
+      await this.email.sendNudge(participant.email, specificThing, checkInUrl, undefined, otherPartyCompleted, theAnchorLine, participant.id);
 
       await this.prisma.groundParticipant.update({
         where: { id: participant.id },
@@ -220,6 +227,11 @@ export class RemindService {
   // timeZone pinned to UTC - previously implicit, same fix as grounds.cron.ts.
   @Cron(CronExpression.EVERY_DAY_AT_8AM, { timeZone: 'UTC' })
   async sendScheduledNudges(): Promise<void> {
+    /* Once for its time across every copy of the API (decision 74, item 7). */
+    await onceAcrossCopies(this.prisma, 'send-scheduled-nudges', theDay(), () => this.sendScheduledNudgesHere());
+  }
+
+  private async sendScheduledNudgesHere(): Promise<void> {
     const now = new Date();
     const frontendUrl = (this.email as any).frontendUrl ?? 'http://localhost:5173';
 
@@ -237,6 +249,8 @@ export class RemindService {
         ground: {
           select: {
             label: true,
+            /* Whether it is an anchor check-in, for the anchor's nudge (piece 30). */
+            startedFrom: true,
             /* For the channel notice: `tell` is scoped to an organisation. */
             organizationId: true,
             chaseAfterDays: true,
@@ -266,9 +280,15 @@ export class RemindService {
       organizationId: string;
     }>();
 
+    /* Approved leave, for every person in the sweep, in one read (week 23). */
+    const leave = await leaveOfThePeopleOn(this.prisma as any, [...new Set(notStarted.map((c) => c.groundId))]);
+
     for (const checkIn of notStarted) {
       // Skip if not yet available.
       if (checkIn.availableFrom && checkIn.availableFrom > now) continue;
+      /* Nobody on approved leave today is nudged, or counted among the people the lead is told have
+         not started. The round does not wait for them. */
+      if (checkIn.participantId && awayUntilOn(leave.get(checkIn.participantId), now)) continue;
 
       const daysElapsed = Math.floor((now.getTime() - checkIn.createdAt.getTime()) / (1000 * 60 * 60 * 24));
 
@@ -350,6 +370,8 @@ export class RemindService {
           checkInUrl,
           undefined,
           otherPartyCompleted,
+          /* Their own last open promise, to them only, on an anchor check-in (piece 30). */
+          await theAnchorNudgeFor(this.prisma, { id: checkIn.groundId, startedFrom: (checkIn.ground as any).startedFrom }, participant.id),
           /* So the reminder carries its own way out. */
           participant.id,
         );
@@ -460,15 +482,22 @@ export class RemindService {
     const cutoff = new Date(Date.now() - MISSED_THRESHOLD_DAYS * 24 * 60 * 60 * 1000);
 
     // Count NOT_STARTED check-ins for this participant that are past the nudge window.
-    const missedCheckIns = await this.prisma.checkIn.findMany({
+    const allUnstarted = await this.prisma.checkIn.findMany({
       where: {
         participantId,
         status: CheckInStatus.NOT_STARTED,
         createdAt: { lt: cutoff },
       },
       orderBy: { sessionNumber: 'desc' },
-      select: { id: true, sessionNumber: true, createdAt: true },
+      select: { id: true, sessionNumber: true, createdAt: true, availableFrom: true },
     });
+    /* A check-in that opened while the person was on approved leave is not a missed one (week 23). */
+    const who = await this.prisma.groundParticipant.findUnique({
+      where: { id: participantId },
+      select: { userId: true, ground: { select: { organizationId: true } } },
+    });
+    const theirLeave = who?.userId ? await theirApprovedLeave(this.prisma as any, who.userId, who.ground?.organizationId ?? null) : [];
+    const missedCheckIns = allUnstarted.filter((c) => !fallsInLeave((c as any).availableFrom ?? c.createdAt, theirLeave) && !fallsInLeave(c.createdAt, theirLeave));
 
     // Walk back from the most recent session counting consecutive misses.
     let consecutiveMissed = 0;

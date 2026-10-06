@@ -89,7 +89,7 @@ describe('the four reads', () => {
        standing for the first is read as the second, and that is a false finding. */
     expect(read(theSessionReport(base), 'Movement').value).toBe('No target set');
     expect(read(theSessionReport({ ...base, movedOnTargets: 0 }), 'Movement').value).toBe('None');
-    expect(read(theSessionReport({ ...base, movedOnTargets: 14 }), 'Movement').value).toBe('+14');
+    expect(read(theSessionReport({ ...base, movedOnTargets: 14, targetsMoved: 1 }), 'Movement').value).toBe('1 target');
   });
 
   it('and does not call one person\'s side "no differences"', () => {
@@ -145,7 +145,7 @@ describe('what each person said they did', () => {
       closed: false,
       answeredThisSession: [{ who: 'Ellie', isYou: false }],
     });
-    expect(out.whatEachPersonSaid[0].saying).toContain('opens to you when the report releases');
+    expect(out.whatEachPersonSaid[0].saying).toContain('opens to you when the report is released');
   });
 });
 

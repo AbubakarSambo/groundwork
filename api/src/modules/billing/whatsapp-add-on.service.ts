@@ -1,0 +1,384 @@
+import { BadRequestException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import { SubscriptionPlan, UserRole } from '@prisma/client';
+import { theNewBillingPartsAreShown } from '../admin/what-is-hidden-at-release';
+import { PrismaService } from '../prisma/prisma.service';
+import { onceAcrossCopies, theDay } from '../prisma/once-across-copies';
+import { EmailService } from '../email/email.service';
+import { PricingService, PLAN_LABELS, freePlanApplies, WHATSAPP_ADD_ON_KIND } from './pricing.service';
+import { StripeService } from './stripe.service';
+import { whatCoversThem } from '../../common/subscription';
+import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
+
+/**
+ * WHATSAPP IS A PAID ADD-ON (decision 78, 2 October 2026).
+ *
+ * WHAT IT COSTS. About 80% of the organisation's plan price, a month, read from `pricing_plans`
+ * (`whatsappAddOnCents`), edited by a platform admin at Admin, System, Pricing. Never in code.
+ *
+ * WHO TURNS IT ON. An admin of the organisation, on Plan and billing (PATCH /billing/whatsapp).
+ *
+ * WHEN IT IS CHARGED. Only once the free trial's switch (`pricing.freeTrial`) is on, which it is not
+ * until Hafsah switches it on. Then: nothing during a free trial or a free run, nothing on the free
+ * plan, and once the trial has ended and the organisation pays for a plan, a second monthly line on
+ * its Stripe subscription. While the switch is off, nothing about billing changes and WhatsApp goes
+ * exactly as it does today.
+ *
+ * WHEN A MESSAGE IS NOT SENT. Once the switch is on, an organisation that pays without the add-on, or
+ * whose trial ended without a plan, has its WhatsApp messages held, and the person reads why in the
+ * app. Organisations still on the free plan (made before the switch) keep WhatsApp as today.
+ *
+ * THE LIMIT. Every organisation has its plan's monthly limit (`whatsappMonthlyLimit`), counted per
+ * calendar month (UTC). At the limit nothing more goes by WhatsApp that month, check-ins carry on in
+ * the app, the person reads why, and the organisation's admins are told once.
+ *
+ * The platform switch and the credentials still gate everything, in WhatsAppService, as before.
+ */
+
+export const WHATSAPP_NOT_TURNED_ON = 'Your organisation has not turned on WhatsApp, so this check-in stays in the app.';
+export const WHATSAPP_REMINDERS_ARE_OFF = 'Your organisation has not turned on WhatsApp, so Groundwork does not send you reminders or summaries on WhatsApp.';
+export const WHATSAPP_NOT_ON_A_PAID_PLAN = 'Your organisation is not on a paid plan at the moment, so this check-in stays in the app.';
+
+export type WhyHeld = 'not turned on' | 'not on a paid plan' | 'at the limit';
+
+/** The calendar month a message counts towards, in UTC, as "2026-10". */
+export function monthOf(now: Date): string {
+  return now.toISOString().slice(0, 7);
+}
+
+/** The first day of the next calendar month, in UTC: when WhatsApp starts again after the limit. */
+export function theNextMonthStarts(now: Date): Date {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+}
+
+/** "1 November 2026", by the UTC calendar the monthly count keeps. */
+export function aDay(d: Date): string {
+  return whenItWas(d, 'full', 'UTC');
+}
+
+/** "October", by the UTC calendar the monthly count keeps. */
+function aMonthName(d: Date): string {
+  return whenItWas(d, 'month', 'UTC');
+}
+
+/** "$72", or "$12.50" when there are cents. */
+export function dollars(cents: number): string {
+  const whole = cents % 100 === 0;
+  return (cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: whole ? 0 : 2 });
+}
+
+function aNumber(n: number): string {
+  return n.toLocaleString('en-US');
+}
+
+/** What a person reads when a message to them was not sent by WhatsApp. */
+export function whatThePersonReads(why: WhyHeld, now: Date): string {
+  if (why === 'not turned on') return WHATSAPP_NOT_TURNED_ON;
+  if (why === 'not on a paid plan') return WHATSAPP_NOT_ON_A_PAID_PLAN;
+  return `Your organisation has used all its WhatsApp messages for this month, so this check-in stays in the app. WhatsApp starts again on ${aDay(theNextMonthStarts(now))}.`;
+}
+
+/** What the organisation's admins are told, once, when the month's limit is reached. */
+export function whatTheAdminIsToldAtTheLimit(limit: number, now: Date): string {
+  return `Your organisation has used all ${aNumber(limit)} of its WhatsApp messages for ${aMonthName(now)}. Nothing more is sent by WhatsApp until ${aDay(theNextMonthStarts(now))}. Check-ins carry on in the app, so nobody misses one.`;
+}
+
+export interface WhatsAppStanding {
+  /** Whether decision 78's rules apply yet: only once the free trial's switch is on. */
+  switchOn: boolean;
+  /** The plan whose add-on price and limit apply to this organisation now, or null if none does. */
+  plan: SubscriptionPlan | null;
+  /** True while the organisation is in its free trial (or another free run we gave it). */
+  inAFreeRun: boolean;
+  freeTrial: { months: number; endsOn: Date } | null;
+  /** True while the organisation is on the free plan. */
+  onTheFreePlan: boolean;
+  addOnOn: boolean;
+  addOnCents: number | null;
+  limit: number | null;
+  month: string;
+  sent: number;
+  /** Whether the add-on should be a line on the organisation's Stripe subscription now. */
+  charged: boolean;
+  /** Whether a WhatsApp message for this organisation may go now. */
+  sending: boolean;
+  heldBecause: WhyHeld | null;
+}
+
+const ORG_FIELDS = {
+  id: true, createdAt: true, subscriptionPlan: true, subscriptionStatus: true, subscriptionStripeId: true,
+  freeUntil: true, freePlan: true, freeTrialStartedAt: true, whatsappAddOnOn: true, whatsappAddOnItemId: true,
+} as const;
+
+@Injectable()
+export class WhatsAppAddOnService {
+  private readonly logger = new Logger(WhatsAppAddOnService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly pricing: PricingService,
+    private readonly stripe: StripeService,
+    @Optional() private readonly mailer?: EmailService,
+  ) {}
+
+  /** Where this organisation stands with WhatsApp now. Throws only for an organisation that does not exist. */
+  async standing(organizationId: string, now: Date = new Date()): Promise<WhatsAppStanding> {
+    const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: ORG_FIELDS });
+    if (!org) throw new NotFoundException('Organization not found');
+    const [trial, plans, use] = await Promise.all([
+      this.pricing.getFreeTrial(),
+      this.prisma.pricingPlan.findMany(),
+      this.prisma.whatsAppMonthlyUse.findUnique({ where: { organizationId_month: { organizationId, month: monthOf(now) } } }),
+    ]);
+    const cover = whatCoversThem(org, now);
+    const inAFreeRun = !!org.freeUntil && new Date(org.freeUntil).getTime() > now.getTime() && !!org.freePlan;
+    const switchOn = trial.on;
+    const onTheFreePlan = cover.covers === 'free tier' && freePlanApplies(trial, org.createdAt);
+
+    /* The plan that applies: what they pay for, else the free run's plan, else the plan the free plan's size fits. */
+    let plan: SubscriptionPlan | null = null;
+    if (inAFreeRun) plan = org.freePlan as SubscriptionPlan;
+    else if (cover.covers === 'paid') plan = org.subscriptionPlan as SubscriptionPlan;
+    else {
+      const freeSize = await this.pricing.getFreeMemberLimit();
+      const fits = plans
+        .filter((p) => p.amountCents !== null && (p.memberCap === null || p.memberCap >= freeSize))
+        .sort((a, b) => (a.amountCents as number) - (b.amountCents as number));
+      plan = fits[0]?.plan ?? null;
+    }
+    const row = plan ? plans.find((p) => p.plan === plan) : undefined;
+    const addOnCents = row?.whatsappAddOnCents ?? null;
+    const limit = row?.whatsappMonthlyLimit ?? null;
+    const sent = use?.sent ?? 0;
+
+    const charged = switchOn && org.whatsappAddOnOn && cover.covers === 'paid' && !!org.subscriptionStripeId && !inAFreeRun && addOnCents !== null;
+
+    let heldBecause: WhyHeld | null = null;
+    if (switchOn && !inAFreeRun && !onTheFreePlan) {
+      if (!org.whatsappAddOnOn) heldBecause = 'not turned on';
+      else if (cover.covers !== 'paid') heldBecause = 'not on a paid plan';
+    }
+    if (!heldBecause && limit !== null && sent >= limit) heldBecause = 'at the limit';
+
+    return {
+      switchOn,
+      plan,
+      inAFreeRun,
+      freeTrial: inAFreeRun && org.freeTrialStartedAt ? { months: trial.months, endsOn: new Date(org.freeUntil as Date) } : null,
+      onTheFreePlan,
+      addOnOn: org.whatsappAddOnOn,
+      addOnCents,
+      limit,
+      month: monthOf(now),
+      sent,
+      charged,
+      sending: heldBecause === null,
+      heldBecause,
+    };
+  }
+
+  /**
+   * WHETHER A WHATSAPP MESSAGE FOR THIS ORGANISATION MAY GO. Never throws: if the answer cannot be
+   * read, the message goes as it does today, and the failure is logged.
+   */
+  async mayWeSend(organizationId: string, now: Date = new Date()): Promise<{ send: true } | { send: false; why: WhyHeld; saying: string }> {
+    try {
+      const s = await this.standing(organizationId, now);
+      if (s.sending) return { send: true };
+      return { send: false, why: s.heldBecause as WhyHeld, saying: whatThePersonReads(s.heldBecause as WhyHeld, now) };
+    } catch (err: any) {
+      this.logger.warn(`Could not read WhatsApp standing for ${organizationId}, so the message goes as today: ${err?.message}`);
+      return { send: true };
+    }
+  }
+
+  /** One message went. Counted towards this calendar month. Never throws. */
+  async countSent(organizationId: string, now: Date = new Date()): Promise<void> {
+    const month = monthOf(now);
+    await this.prisma.whatsAppMonthlyUse
+      .upsert({
+        where: { organizationId_month: { organizationId, month } },
+        create: { organizationId, month, sent: 1 },
+        update: { sent: { increment: 1 } },
+      })
+      .catch((err: any) => this.logger.warn(`Could not count a WhatsApp message for ${organizationId}: ${err?.message}`));
+  }
+
+  /** One message was held. At the limit, the organisation's admins are told, once a month. Never throws. */
+  async countHeld(organizationId: string, why: WhyHeld, now: Date = new Date()): Promise<void> {
+    const month = monthOf(now);
+    try {
+      await this.prisma.whatsAppMonthlyUse.upsert({
+        where: { organizationId_month: { organizationId, month } },
+        create: { organizationId, month, held: 1 },
+        update: { held: { increment: 1 } },
+      });
+      if (why !== 'at the limit') return;
+      /* Claimed first, so two messages held at once cannot tell them twice. */
+      const claimed = await this.prisma.whatsAppMonthlyUse.updateMany({
+        where: { organizationId, month, adminToldAt: null },
+        data: { adminToldAt: now },
+      });
+      if (!claimed.count) return;
+      const s = await this.standing(organizationId, now);
+      await this.tellTheAdmins(organizationId, whatTheAdminIsToldAtTheLimit(s.limit ?? s.sent, now));
+    } catch (err: any) {
+      this.logger.warn(`Could not record a held WhatsApp message for ${organizationId}: ${err?.message}`);
+    }
+  }
+
+  private async tellTheAdmins(organizationId: string, what: string): Promise<void> {
+    if (!this.mailer) return;
+    const admins = await this.prisma.user.findMany({
+      where: { organizationId, role: UserRole.ADMIN, deletedAt: null },
+      select: { email: true, firstName: true },
+    });
+    for (const a of admins) {
+      await this.mailer.sendBillingChangeNotification(a.email, a.firstName ?? 'there', what).catch(() => undefined);
+    }
+  }
+
+  /**
+   * AN ADMIN OF THE ORGANISATION TURNS THE ADD-ON ON OR OFF. The Stripe line follows at once when it
+   * should be charged now, and otherwise when the trial ends (the nightly sweep below).
+   */
+  async turn(organizationId: string, on: boolean, now: Date = new Date()): Promise<WhatsAppStanding> {
+    if (typeof on !== 'boolean') throw new BadRequestException('Say whether WhatsApp should be on or off.');
+    const before = await this.standing(organizationId, now);
+    if (on && before.plan && before.addOnCents === null) {
+      throw new BadRequestException(`WhatsApp is not sold by itself on ${PLAN_LABELS[before.plan]}. Contact us to arrange it.`);
+    }
+    await this.prisma.organization.update({ where: { id: organizationId }, data: { whatsappAddOnOn: on, whatsappAddOnChangedAt: now } });
+    await this.syncTheStripeLine(organizationId, now);
+    return this.standing(organizationId, now);
+  }
+
+  /**
+   * THE STRIPE LINE FOLLOWS THE STANDING. Adds the add-on as a second item on the organisation's
+   * subscription when it should be charged, moves it to the right plan's price when the plan
+   * changed, and removes it when it should not be charged. Does nothing without a Stripe key.
+   */
+  async syncTheStripeLine(organizationId: string, now: Date = new Date()): Promise<'added' | 'moved' | 'removed' | 'unchanged' | 'no key'> {
+    if (!this.stripe.isConfigured) return 'no key';
+    const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: ORG_FIELDS });
+    if (!org) return 'unchanged';
+    const s = await this.standing(organizationId, now);
+    const itemId = org.whatsappAddOnItemId;
+
+    if (s.charged && s.plan && org.subscriptionStripeId) {
+      const priceId = await this.pricing.getOrCreateWhatsAppAddOnPrice(s.plan);
+      if (itemId) {
+        const item = await this.stripe.stripe.subscriptionItems.retrieve(itemId);
+        if (item.price?.id === priceId) return 'unchanged';
+        await this.stripe.stripe.subscriptionItems.update(itemId, { price: priceId, proration_behavior: 'create_prorations' });
+        this.logger.log(`WhatsApp add-on for ${organizationId} moved to the ${s.plan} price.`);
+        return 'moved';
+      }
+      const item = await this.stripe.stripe.subscriptionItems.create(
+        { subscription: org.subscriptionStripeId, price: priceId, quantity: 1, proration_behavior: 'create_prorations', metadata: { organizationId, kind: WHATSAPP_ADD_ON_KIND } },
+        { idempotencyKey: `wa_${organizationId}_${org.subscriptionStripeId}_${priceId}` },
+      );
+      await this.prisma.organization.update({ where: { id: organizationId }, data: { whatsappAddOnItemId: item.id } });
+      this.logger.log(`WhatsApp add-on added to ${organizationId}'s subscription.`);
+      return 'added';
+    }
+    if (itemId) {
+      if (org.subscriptionStripeId) {
+        await this.stripe.stripe.subscriptionItems.del(itemId, { proration_behavior: 'create_prorations' }).catch((err: any) => {
+          /* Already gone on Stripe's side is the same as removed. Anything else is thrown. */
+          if (err?.code !== 'resource_missing') throw err;
+        });
+      }
+      await this.prisma.organization.update({ where: { id: organizationId }, data: { whatsappAddOnItemId: null } });
+      this.logger.log(`WhatsApp add-on removed from ${organizationId}'s subscription.`);
+      return 'removed';
+    }
+    return 'unchanged';
+  }
+
+  /**
+   * EVERY NIGHT, THE LINES THAT SHOULD HAVE CHANGED. A trial ends at a time nobody presses anything,
+   * so this is what starts the add-on's charge once it has ended. Once across every copy of the API.
+   */
+  @Cron(CronExpression.EVERY_DAY_AT_1AM, { timeZone: 'UTC' })
+  async nightly(): Promise<void> {
+    await onceAcrossCopies(this.prisma, 'whatsapp-add-on-lines', theDay(), () => this.syncEveryLine());
+  }
+
+  async syncEveryLine(now: Date = new Date()): Promise<void> {
+    const orgs = await this.prisma.organization.findMany({
+      where: { OR: [{ whatsappAddOnOn: true, subscriptionStripeId: { not: null } }, { whatsappAddOnItemId: { not: null } }] },
+      select: { id: true },
+    });
+    for (const o of orgs) {
+      await this.syncTheStripeLine(o.id, now).catch((err: any) => this.logger.error(`WhatsApp add-on line for ${o.id} could not be brought up to date: ${err?.message}`));
+    }
+  }
+
+  /**
+   * WHAT PLAN AND BILLING SAYS ABOUT WHATSAPP, AS EACH READER MAY READ IT.
+   *
+   * An admin of the organisation reads all of it: the price on their plan, on or off, the trial,
+   * this month's use against the limit, and what happens at the limit. Anybody else in it, a lead, a
+   * member or a guest, reads only whether their check-ins go by WhatsApp, and why not.
+   */
+  async whatTheyRead(organizationId: string, isAdmin: boolean, now: Date = new Date()) {
+    const s = await this.standing(organizationId, now);
+    const personSays = s.heldBecause ? whatThePersonReads(s.heldBecause, now) : null;
+    /* The price, the trial, the use and the limit are hidden at release (docs/deploy.md): an admin reads what everybody reads. */
+    /*
+     * A LEAD OR A PERSON IN A CHECK-IN READS WHY NOT, ON THEIR OWN READ (screens gap, 5 October). With the add-on off and
+     * nothing held, they were served `sending: true` and nothing to say, while the three new WhatsApp messages (the
+     * morning reminder, the reminder before a session and the lead's daily summary) go only where WhatsApp is turned on.
+     * So they read that, plainly, and whether it is on.
+     */
+    const offSays = !s.addOnOn ? WHATSAPP_REMINDERS_ARE_OFF : null;
+    if (!isAdmin || !(await theNewBillingPartsAreShown(this.prisma))) return { on: s.addOnOn, sending: s.sending, says: personSays ?? offSays };
+
+    const label = s.plan ? PLAN_LABELS[s.plan] : null;
+    const says: Record<string, string | null> = {
+      onOrOff: s.addOnOn ? 'WhatsApp is on for your organisation.' : 'WhatsApp is off for your organisation, so check-ins stay in the app.',
+      /* An organisation on the free plan has no plan to name: the plan its size fits only sets its monthly limit
+         (release blocker, 5 October: the page read "on your Starter plan" to a free organisation). */
+      price: s.onTheFreePlan
+        ? null
+        : s.plan && s.addOnCents !== null
+          ? `WhatsApp costs ${dollars(s.addOnCents)} a month on your ${label} plan.`
+          : s.plan ? `WhatsApp is not sold by itself on your ${label} plan. Contact us to arrange it.` : null,
+      charge: !s.switchOn
+        ? 'Nothing is charged for WhatsApp at the moment.'
+        : s.onTheFreePlan
+          ? 'Nothing is charged for WhatsApp while you are on the free plan.'
+          : s.inAFreeRun && s.freeTrial
+            ? `Your free trial lasts ${s.freeTrial.months} ${s.freeTrial.months === 1 ? 'month' : 'months'} and ends on ${aDay(s.freeTrial.endsOn)}. Nothing is charged for WhatsApp until then.`
+            : s.inAFreeRun
+              ? 'Nothing is charged for WhatsApp while your free months last.'
+              : s.charged
+                ? 'WhatsApp is added to your monthly bill as a second line.'
+                : s.addOnOn
+                  ? 'WhatsApp is charged each month once you are on a paid plan.'
+                  : 'If you turn WhatsApp on, it is added to your monthly bill as a second line.',
+      use: s.limit !== null
+        ? `Your organisation has sent ${aNumber(s.sent)} of its ${aNumber(s.limit)} WhatsApp messages this month.`
+        : `Your organisation has sent ${aNumber(s.sent)} WhatsApp messages this month.`,
+      atTheLimit: s.limit !== null
+        ? `If your organisation sends all ${aNumber(s.limit)} messages in a month, nothing more is sent by WhatsApp until the next month begins. Check-ins carry on in the app, and you are told once.`
+        : null,
+      reachedTheLimit: s.heldBecause === 'at the limit' && s.limit !== null ? whatTheAdminIsToldAtTheLimit(s.limit, now) : null,
+      held: personSays,
+    };
+    return {
+      on: s.addOnOn,
+      /* Never a plan's name or price for an organisation on the free plan; its limit is in `use`. */
+      plan: s.onTheFreePlan ? null : s.plan,
+      price: s.onTheFreePlan || s.addOnCents === null ? null : { amountCents: s.addOnCents, currency: 'USD' },
+      charged: s.charged,
+      freeTrial: s.freeTrial,
+      onTheFreePlan: s.onTheFreePlan,
+      use: { month: s.month, sent: s.sent, limit: s.limit, startsAgainOn: theNextMonthStarts(now) },
+      sending: s.sending,
+      heldBecause: s.heldBecause,
+      says,
+    };
+  }
+}

@@ -16,7 +16,10 @@ describe('guarded submits', () => {
   it('the anonymous save has an in-flight flag, and Enter goes through the same form', () => {
     const entry = read('enter/EntryChatPage.tsx')
     expect(entry).toMatch(/async function handleSave\(\) \{\s*if \(saving\) return\s*setSaving\(true\)/)
-    expect(entry).toContain("{saving ? 'Saving…' : 'Save my check-in →'}")
+    /* 4d-3: the save card's own button is a plain sentence now, not an arrow (CLAUDE.md's wording
+       rule - "no pieces joined with... arrows"), and the shared Button part reads its own
+       disabled/pending state, so the guard only needs the label itself. */
+    expect(entry).toContain("{saving ? 'Saving…' : 'Save my check-in'}")
   })
   it('choosing a password returns while a save is pending', () => {
     expect(read('auth/ChoosePasswordPage.tsx')).toMatch(/function submit\(\) \{\s*if \(save\.isPending\) return/)
@@ -25,14 +28,34 @@ describe('guarded submits', () => {
     const chat = read('chat/ChatPage.tsx')
     expect(chat).toMatch(/onSuccess: async \(doc, \{ ctx \}\) => \{\s*setDocContextMode\(false\)/)
     expect(chat).not.toMatch(/uploadDoc\.mutate\(\{ file: pendingDoc, ctx: docContext \}\)\s*setDocContextMode\(false\)/)
-    expect(chat.match(/uploadDoc\.isPending \? 'Adding…' : 'Add to session'/g)?.length).toBe(2)
+    /* One "Add to session" now (the document-context sheet); the paste sheet's own button became
+       "Add it" in the U.8 review (plainer, and it never claimed to add a whole "session"). */
+    expect(chat.match(/uploadDoc\.isPending \? 'Adding…' : 'Add to session'/g)?.length).toBe(1)
+    expect(chat).toMatch(/uploadDoc\.isPending \? 'Adding…' : 'Add it'/)
   })
   it('the five setup writes go through useMutation and are disabled while pending', () => {
+    /*
+     * REPOINTED (People and setup rebuild, 29 Sept): these writes moved out of
+     * GroundAdminPage.tsx's `tab === 'settings'` branch into CheckInPeopleAndSetup.tsx, which is
+     * what this now reads. "Who can corroborate whom" is a shared `SwitchRow` now (`onChange`, with
+     * `disabled` wired to `setWorkTogether.isPending`) rather than the old hand-built radio cards'
+     * `onClick={() => { if (!x.isPending) x.mutate(o.v) }}`, so the literal `setWorkTogether.mutate(o.v)`
+     * this pinned is gone with that markup - the mutation is still one `useMutation`, still called
+     * through `.mutate(`, and still disabled while pending, which is what the test's name proves.
+     *
+     * COUNT DROPPED FROM 4 TO 3 (U.4 review, item 10, 30 Sept): "Situation" no longer offers
+     * `saveSetup.mutate({ scenario: ... })` - the update route takes no `scenario` field, so
+     * pressing Change and saving used to say "Updated" and silently change nothing. It is a plain
+     * row now, until the server can take it (docs/requests-to-engine.md), which removes one call,
+     * not the guard this test is about.
+     */
     const admin = read('grounds/GroundAdminPage.tsx')
+    const page = read('grounds/CheckInPeopleAndSetup.tsx')
     expect(admin).not.toMatch(/onClick=\{\(\) => groundsApi\.update\(/)
     expect(admin).not.toMatch(/onClick=\{\(\) => groundsApi\.setPeopleWorkTogether\(/)
-    expect(admin.match(/saveSetup\.mutate\(/g)?.length).toBe(4)
-    expect(admin).toContain('setWorkTogether.mutate(o.v)')
+    expect(page.match(/saveSetup\.mutate\(/g)?.length).toBe(3)
+    expect(page).toContain('onChange={(on) => props.setWorkTogether.mutate(on)}')
+    expect(page).toMatch(/disabled=\{!canEditRunOrAdmin \|\| props\.setWorkTogether\.isPending\}/)
   })
   it('the add-admin form clears only when the promotion happened', () => {
     const dash = read('admin/AdminDashboardPage.tsx')

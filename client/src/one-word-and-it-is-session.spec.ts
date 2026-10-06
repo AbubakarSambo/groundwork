@@ -34,7 +34,9 @@ const read = (...p: string[]) =>
 const SURFACES = {
   'the check-in header': read('pages', 'grounds', 'GroundAdminPage.tsx'),
   'the chat': read('pages', 'chat', 'ChatPage.tsx'),
-  'the report': read('pages', 'report', 'ReportPage.tsx'),
+  /* 'the report' pointed at ReportPage.tsx, whose only content (ReportBody) is deleted - see the
+     comment at the top of that file. The live report surface is the per-session page. */
+  'the report': read('pages', 'report', 'SessionReportPage.tsx'),
   'the participant page': read('pages', 'grounds', 'GroundParticipantPage.tsx'),
   'the scenario cards': read('pages', 'grounds', 'CreateGroundPage.tsx'),
   'the history panel': read('components', 'gw', 'HowThisHasMoved.tsx'),
@@ -73,6 +75,13 @@ describe('one word and it is session', () => {
   it('and the header counter names the session, not a round', () => {
     /* The string I shipped and had to take back. */
     expect(SURFACES['the check-in header']).not.toContain('Round {openRound}')
-    expect(SURFACES['the check-in header']).toContain('checked in for session {openRound}')
+    /*
+     * U.10 PICTURE-CHECK ROUND 7, ITEM 3: THE SENTENCE MOVED FROM JSX CHILDREN TO A TEMPLATE
+     * LITERAL. The header's "pieces side by side" (a scenario pill, a session pill, a checked-in
+     * count as separate spans) became one plain-sentence paragraph, built with
+     * `${openRound}` in a template string rather than `{openRound}` as a JSX child - the same
+     * word, "session", not "round", said the same way, just no longer inside a `<span>`.
+     */
+    expect(SURFACES['the check-in header']).toContain('checked in for session ${openRound}')
   })
 })

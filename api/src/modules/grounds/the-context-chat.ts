@@ -1,4 +1,6 @@
+import { PLAIN_WORDS, SPOKEN_TO_THE_READER } from '../conversation/plain-words';
 import { stillNeedsSomethingInWriting } from './what-the-documents-say';
+import { CADENCE_WORDS, CADENCES, type Cadence } from './what-the-context-chat-heard';
 /**
  * THE CONTEXT CHAT. G37 and G23, the last of the seven and the largest.
  *
@@ -35,6 +37,8 @@ import { stillNeedsSomethingInWriting } from './what-the-documents-say';
 export interface ContextGaps {
   /** No duration means the ground cannot say how many sessions it holds. */
   timelineDays: number | null;
+  /** It runs until the lead ends it (request 37): the length is answered, so it is not asked. */
+  runsUntilEnded?: boolean;
   /** No rhythm means the same. */
   cadence: string | null;
   /** How many measures this ground counts by. Zero means the board shows movement against nothing. */
@@ -123,10 +127,10 @@ const WORTH_COUNTING = new Set([
 export function contextGaps(g: ContextGaps): ContextGap[] {
   const gaps: ContextGap[] = [];
 
-  if (!g.timelineDays || g.timelineDays <= 0) {
+  if (!g.runsUntilEnded && (!g.timelineDays || g.timelineDays <= 0)) {
     gaps.push({
       key: 'timeline',
-      ask: 'How long should this run? Until a date, or for a set number of weeks - either is fine, but without it we cannot work out how many check-ins this holds.',
+      ask: 'How long should this run? You can give an end date or a number of weeks. I need it to work out how many check-ins there will be.',
       suggests: null,
     });
   }
@@ -134,7 +138,7 @@ export function contextGaps(g: ContextGaps): ContextGap[] {
   if (!g.cadence) {
     gaps.push({
       key: 'cadence',
-      ask: 'How often should people check in? Weekly, fortnightly, monthly, or once at the end.',
+      ask: 'How often should people check in? They can check in every week, every two weeks, every month, or once at the end.',
       suggests: null,
     });
   }
@@ -142,7 +146,7 @@ export function contextGaps(g: ContextGaps): ContextGap[] {
   if (!g.successLooksLike?.trim()) {
     gaps.push({
       key: 'success',
-      ask: 'What does doing well look like here? Not a target for one person - what would make you say, at the end, that this went the way it should have.',
+      ask: 'What does doing well look like here? I do not mean a target for one person. What would make you say, at the end, that this went the way it should have?',
       suggests: 'the plan, brief or terms this work was agreed against',
     });
   }
@@ -161,7 +165,7 @@ export function contextGaps(g: ContextGaps): ContextGap[] {
   if (g.targetCount === 0 && WORTH_COUNTING.has(g.scenario)) {
     gaps.push({
       key: 'targets',
-      ask: 'What is this counted by? Name the two or three measures - and if they are already in something you have attached, say so and I will take them from there.',
+      ask: 'How will you count whether this is going well? Name the two or three measures. If they are already in something you have attached, say so and I will take them from there.',
       suggests: 'the plan, budget or scorecard the numbers were set in',
     });
   }
@@ -169,7 +173,7 @@ export function contextGaps(g: ContextGaps): ContextGap[] {
   if (g.partyCount < 2) {
     gaps.push({
       key: 'parties',
-      ask: 'Who else is in this? One account is a record; two or more is where the report can show you what people mean differently by the same work.',
+      ask: 'Who else is in this? With one person, the report is a record of what they said. With two or more, it can show you where people understand the same work differently.',
       suggests: null,
     });
   }
@@ -326,5 +330,73 @@ export function contextChatPrompt(
     '3. You do not decide anything. You ask and you suggest. Nothing is saved until they confirm it, so put what you have understood back to them in their own words and let them correct it.',
     '',
     'When nothing important is missing, say so and stop. A setup conversation that will not end teaches people to skip setup.',
+    '',
+    PLAIN_WORDS,
+    '',
+    SPOKEN_TO_THE_READER,
   ].join('\n');
+}
+
+/**
+ * WHAT THIS CHECK-IN ALREADY HOLDS, WRITTEN BY THE PRODUCT, NOT ASKED OF THE MODEL. FIX 3.
+ *
+ * Driven live, item 15: a check-in that already had its length and rhythm set opened with "Hello,
+ * I'm here to help you set up your Groundwork check-in. First, tell me, what does doing well look
+ * like..." - a greeting, and not a word about what it already holds, even though the prompt's own
+ * "OPEN ON THAT, NOT ON A GREETING" rule only fires when `whatThisCheckInAlreadyHolds` has a target, a
+ * line, an action or a document to point at (see `hasList` in `contextChatPrompt`) - never for
+ * duration or cadence on their own, because those two never appeared in that list at all.
+ *
+ * So the length and the rhythm, when either is set, are said as a plain sentence by the product
+ * itself - "This check-in runs for 12 weeks and people check in once a week." - and it is PREPENDED
+ * to the model's reply on the opening turn, never asked of the model: a fact the ground's own columns
+ * already hold does not need a model call to say correctly, and a sentence written here cannot drift
+ * from what a re-run of the model would have said.
+ */
+export function openingLine(timelineDays: number | null, cadence: string | null, runsUntilEnded = false): string | null {
+  const parts: string[] = [];
+  if (runsUntilEnded) {
+    parts.push('runs until you end it');
+  } else if (timelineDays && timelineDays > 0) {
+    const weeks = Math.round(timelineDays / 7);
+    parts.push(weeks >= 4 && timelineDays % 7 === 0 ? `runs for ${weeks} weeks` : `runs for ${timelineDays} days`);
+  }
+  const c = (cadence ?? '').toUpperCase().trim();
+  if (CADENCES.includes(c as Cadence)) {
+    parts.push(`people check in ${CADENCE_WORDS[c as Cadence]}`);
+  }
+  return parts.length ? `This check-in ${parts.join(' and ')}.` : null;
+}
+
+/**
+ * THE GREETING THE MODEL STILL ADDS, DROPPED FROM AN OPENING TURN.
+ *
+ * "OPEN ON THAT, NOT ON A GREETING" is a prompt instruction, and the model does not reliably keep it,
+ * particularly on the very first turn of a conversation where nothing in `hasList` gave it a reason
+ * not to introduce itself. Narrow on purpose: only a self-introduction sentence at the very START of
+ * the reply is dropped, never a "hello" that shows up mid-conversation answering something the lead
+ * said, which is a normal, polite reply and not this defect.
+ */
+const OPENING_GREETING = /^(?:(?:hi|hey|hello|hiya|greetings|welcome)\b[^.!?\n]*[.!?]+\s*|[^.!?\n]*\bi(?:'m| am)\s+here to help[^.!?\n]*[.!?]+\s*)/i;
+
+/**
+ * DRIVEN LIVE: A SINGLE STRIP LEFT A SECOND GREETING SENTENCE STANDING.
+ *
+ * `openingSentence.test(the-context-chat.spec.ts)` proved a single sentence was stripped; the live
+ * run (30 September 2026) showed the model writing TWO in a row - "Hello! I'm here to help you set
+ * up your check-in." - and `String.replace` with no `/g` flag, on a pattern already anchored to `^`,
+ * only ever removes the first match it finds at that position: "Hello! " went, and "I'm here to help
+ * you set up your check-in." was still the first thing the lead read. Looped rather than given a
+ * `/g` flag, because `/g` on a pattern anchored with `^` only ever matches once anyway - what is
+ * needed is repetition FROM THE NEW START of the string after each removal, which only a loop gives.
+ * Bounded to five passes so a reply that never stops matching cannot loop forever.
+ */
+export function withoutTheOpeningGreeting(reply: string): string {
+  let out = reply;
+  for (let i = 0; i < 5; i++) {
+    const stripped = out.replace(OPENING_GREETING, '');
+    if (stripped === out) break;
+    out = stripped;
+  }
+  return out;
 }

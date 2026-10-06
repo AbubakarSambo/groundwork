@@ -1,0 +1,85 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { withoutACannotApprove, aRequestAfterTheirTurn, whatTheYesOpens } from './a-request-offered-in-the-check-in';
+
+/**
+ * ANCHOR PIECES 26 AND 27: A REQUEST SAID IN THE CHECK-IN IS OFFERED THERE, AS WHATSAPP DOES (section 22; decision 105
+ * item 4). The same reading and the same question; the yes is answered with the spec's sentence and a way to the form.
+ */
+function world(opts: { on?: boolean; offerOn?: boolean; startedFrom?: string | null; leaveOn?: boolean; spendOn?: boolean } = {}) {
+  const items: any[] = [];
+  const prisma: any = {
+    platformSetting: { findUnique: jest.fn(async ({ where }: any) => (opts.on === false ? null : where?.key === 'release.requestOfferInTheCheckIn' && opts.offerOn === false ? null : { value: { on: true } })) },
+    organizationSuite: { findUnique: jest.fn(async ({ where }: any) => ({ isOn: where.organizationId_suite.suite === 'leave' ? !!opts.leaveOn : !!opts.spendOn })) },
+    workItem: {
+      findMany: jest.fn(async (a: any) => items.filter((i) => i.kind === a.where.kind && i.ownerParticipantId === a.where.ownerParticipantId)),
+      create: jest.fn(async ({ data }: any) => { const r = { id: `w${items.length + 1}`, ...data }; items.push(r); return r; }),
+      delete: jest.fn(async ({ where }: any) => { items.splice(items.findIndex((i) => i.id === where.id), 1); }),
+    },
+  };
+  const turn = (message: string) => aRequestAfterTheirTurn(prisma, { groundId: 'g-1', organizationId: 'org-1', startedFrom: opts.startedFrom === undefined ? 'anchor' : opts.startedFrom, participantId: 'p-rukia', message });
+  return { turn, items };
+}
+
+describe('a request said in the check-in, as the person reads it', () => {
+  it('leave is offered with the WhatsApp question, and the yes opens Leave in the spec\'s words', async () => {
+    const w = world({ leaveOn: true });
+    expect((await w.turn("Can I take a day off on Friday?")).requestOffer).toEqual({ kind: 'leave', question: 'Shall I treat this as a leave request?', yes: 'Yes', no: 'No' });
+    const yes = await w.turn('Yes');
+    expect(yes.sayFirst).toBe("You can submit that through Leave here and it'll appear on your manager's board.");
+    expect(yes.openTheRequest).toEqual({ kind: 'leave', suiteIsOn: true, says: "You can submit that through Leave here and it'll appear on your manager's board.", button: 'Request leave' });
+    expect(w.items).toEqual([]);
+  });
+  it('spending, with Spending off, says the organisation has the option, and gives no button', async () => {
+    const w = world({ spendOn: false });
+    expect((await w.turn('I need to spend KES 4,000 on the workshop.')).requestOffer?.question).toBe('Shall I treat this as a spending request?');
+    const yes = await w.turn('yes please');
+    expect(yes.openTheRequest).toEqual({ kind: 'spending', suiteIsOn: false, says: 'Your organisation also has the option to manage spending requests through Groundwork.', button: null });
+  });
+  it('a no, or carrying on, leaves nothing; and something that only happened is not a request', async () => {
+    const w = world({ leaveOn: true });
+    await w.turn("Can I take a day off on Friday?");
+    expect(await w.turn('No')).toEqual({});
+    expect(w.items).toEqual([]);
+    expect((await w.turn('I was on leave on Monday.')).requestOffer).toBeUndefined();
+  });
+  it('nothing with the switch off, or on any other check-in', async () => {
+    expect(await world({ on: false }).turn("Can I take a day off on Friday?")).toEqual({});
+    expect(await world({ startedFrom: null }).turn("Can I take a day off on Friday?")).toEqual({});
+  });
+  it('the leave sentence when Leave is off is the spec\'s', () => {
+    expect(whatTheYesOpens('leave', false).says).toBe('Your organisation also has the option to manage leave through Groundwork.');
+  });
+  it('the check-in reply carries both, says the yes first, and a request is never also offered as an idea', () => {
+    const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
+    expect(src).toContain('...(request.requestOffer ? { requestOffer: request.requestOffer } : {}),');
+    expect(src).toContain('if (request.sayFirst) answer.reply = [request.sayFirst, answer.reply]');
+    expect(src).toContain('const idea = startedFrom && !request.requestOffer && !request.openTheRequest ? await afterTheirTurn(');
+  });
+});
+
+describe('the reply never contradicts the offer (review of pieces 26 and 27)', () => {
+  it('takes off "I can\'t directly approve time off. That\'s a conversation you\'d need to have with Rukia."', () => {
+    const r = withoutACannotApprove("Thanks for telling me about the funeral. I can't directly approve time off. That's a conversation you'd need to have with Rukia.\n\nHow is the Naivas order going?");
+    expect(r.text).toBe('Thanks for telling me about the funeral.\n\nHow is the Naivas order going?');
+    expect(r.cut).toEqual(["I can't directly approve time off.", "That's a conversation you'd need to have with Rukia."]);
+  });
+
+  it('takes off "I can\'t approve that request directly."', () => {
+    const r = withoutACannotApprove("I can't approve that request directly. What else is on your list this week?");
+    expect(r.text).toBe('What else is on your list this week?');
+  });
+
+  it('leaves every other sentence alone, word for word', () => {
+    const reply = 'Rukia approved the deck on Friday, so you can send it. What is still in your way?';
+    expect(withoutACannotApprove(reply)).toEqual({ text: reply, cut: [] });
+  });
+});
+
+describe('hidden at release until the form can send (request 165)', () => {
+  it('with release.requestOfferInTheCheckIn off, Rukia is offered nothing and nothing is kept, on an anchor check-in', async () => {
+    const w = world({ leaveOn: true, offerOn: false });
+    expect(await w.turn('Can I take a day off on Friday?')).toEqual({});
+    expect(w.items).toEqual([]);
+  });
+});

@@ -53,7 +53,7 @@ export function wasItThere(level: Level | undefined): boolean {
  * The past-tense forms are mine, because she only wrote the missing case; they are the same five
  * facts said as things that were there.
  */
-const THE_FIVE: { key: string; met: string; missing: string }[] = [
+export const THE_FIVE: { key: string; met: string; missing: string }[] = [
   {
     key: 'delivery',
     met: 'What you did, not just what was happening',
@@ -118,7 +118,7 @@ export function TheFiveThingsThatMakeItCheckable({
         "What was in what you said" over a list of absences, with the session number buried in a
         sub-line, left a person reading a permanent judgement instead of a note about session 1.
       */}
-      <div style={{ fontSize: 10.5, letterSpacing: '.09em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', marginBottom: 3 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-sub-d)', marginBottom: 3 }}>
         What would make your next check-in count for more
       </div>
       <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 11 }}>
@@ -132,6 +132,18 @@ export function TheFiveThingsThatMakeItCheckable({
             reader can check" - account means their account of what happened and reads as a login. */}
         Five things make a check-in something a reader can check. Add one or two next time.
       </div>
+      {/*
+        SAID OUT LOUD, NOT LEFT TO A TICK MARK.
+
+        The row below used to print the same noun phrase either way - "What you did, not just what
+        was happening" - whether or not the engine had found it, so the only thing that told found
+        from missing was a filled or empty circle. Somebody who cannot see the circle's colour, or
+        who is not looking closely, reads five identical lines. And a reader is also entitled to be
+        told, in words, that this read can miss real things they said.
+      */}
+      <p style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 11 }}>
+        Groundwork looked for these five things. It may have missed some of what you said.
+      </p>
 
       <div style={{ display: 'grid', gap: 7 }}>
         {rows.map(r => (
@@ -161,15 +173,14 @@ export function TheFiveThingsThatMakeItCheckable({
               color: r.there ? 'var(--gw-text)' : r.mostUseful ? 'var(--gw-text)' : 'var(--gw-sub)',
               fontWeight: r.mostUseful ? 700 : 400,
             }}>
-              {r.there ? r.met : r.missing}
-              {r.mostUseful && (
-                <span style={{
-                  marginLeft: 7, fontSize: 10, fontWeight: 700, letterSpacing: '.04em',
-                  textTransform: 'uppercase', color: 'var(--gw-navy)',
-                  background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)',
-                  borderRadius: 20, padding: '1px 7px', whiteSpace: 'nowrap',
-                }}>most useful</span>
-              )}
+              {/*
+                U.9 RE-REVIEW, ITEM A: A REAL SPACE, AND A SENTENCE, NOT A SHOUTED BADGE.
+                The badge sat right after the sentence with only a CSS margin between them, so the
+                text itself read "this time.MOST USEFUL" with nothing between the full stop and the
+                next word, and the badge shouted in capitals. It is now the sentence's own words.
+              */}
+              {r.there ? r.met : r.missing}. {r.there ? 'Groundwork found this.' : 'Groundwork did not pick this up this time.'}
+              {r.mostUseful && ' This is the one worth adding first.'}
             </span>
           </div>
         ))}

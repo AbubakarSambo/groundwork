@@ -54,17 +54,29 @@ describe('the sessions tab', () => {
     expect(SESSIONS_TAB).not.toContain('<ShareSection')
   })
 
-  it('but keeps the closing session, which is about sessions', () => {
-    expect(SESSIONS_TAB).toContain('Begin the closing session')
+  it('but keeps the closing control, worded with the plain word "check-in"', () => {
+    /*
+     * WORDING UPDATED (group 3's review, request batch A, fault 6): "session" is internal jargon
+     * on a button a lead presses; the product calls the thing a person answers a "check-in"
+     * everywhere else on this screen ("Start a new check-in"). This does not reopen the settled
+     * "session" vs "round" naming (one-word-and-it-is-session.spec.ts) - that is a different axis.
+     */
+    expect(SESSIONS_TAB).toContain('Begin the last check-in')
   })
 })
 
 describe('where they went', () => {
-  it('the ways in are together in Setup band 1', () => {
-    const bandOne = SETUP_TAB.slice(SETUP_TAB.indexOf('title="Who is in it"'), SETUP_TAB.indexOf('</Fold>'))
-    expect(bandOne).toContain('Add a person to this check-in')
-    expect(bandOne).toContain('Or share an access code instead')
-    expect(bandOne).toContain('<ShareSection')
+  it('the ways in are together, in "Who\'s in it"', () => {
+    /*
+     * REPOINTED (People and setup rebuild, 29 Sept): Setup's numbered "band 1" is gone with the
+     * rest of that accordion (see setup-asks-one-question-at-a-time.spec.ts); the add-person form,
+     * the access code and the link/QR share are together now in WhosInItRoster.tsx, which
+     * CheckInPeopleAndSetup.tsx renders under its own "Who's in it" heading.
+     */
+    const ROSTER = strip(readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'WhosInItRoster.tsx'), 'utf8'))
+    expect(ROSTER).toContain('Add a person to this check-in')
+    expect(ROSTER).toContain('Or share an access code instead')
+    expect(ROSTER).toContain('<ShareSection')
   })
 
   it('and the alignment feed is on the board, for whoever runs the check-in only', () => {

@@ -1,4 +1,6 @@
 import { tooManyPeopleFor } from './how-many-people-one-check-in-holds';
+import { tooManyForTheAnchor } from './the-anchor-people-step';
+import { theAddressOfAColleague, NOT_SOMEONE_HERE } from '../../common/colleagues';
 import { theyJustPastedSomething, withoutAskingForWhatTheyGave } from './they-just-gave-you-that';
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
 import { sessionClaims } from '../auth/a-session-token';
@@ -8,7 +10,7 @@ import {
   whatToSayAfterAsking,
   whyThisDidNotWork,
 } from './a-join-link-is-not-a-password';
-import { Injectable, Logger, BadRequestException, ForbiddenException, UnauthorizedException, NotFoundException } from '@nestjs/common';
+import { Injectable, Optional, Logger, BadRequestException, ForbiddenException, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { GroundScenario, GroundMoment, TurnRole, CheckInStatus, PartyType, Cadence, TokenType, UsageEventType } from '@prisma/client';
 import { namesWithoutPossessives } from './a-name-is-not-a-possessive';
@@ -42,6 +44,7 @@ import { oneScriptOnly } from '../conversation/one-script-per-conversation';
 import { withoutWhatTheyDeclined, saysTheOppositeOfWhatItMeans, putTheMissingWordBack } from './what-they-declined-is-not-a-gap';
 import { alreadyEstablished } from '../conversation/setup-already-asked-this';
 import { VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE } from '../conversation/prompt-library';
+import { PLAIN_WORDS } from '../conversation/plain-words';
 import { forHumans, hadCloseMarker, whatIsNewSince } from '../presentation/outbound';
 import { isADeadEnd, ASK_SOMETHING_OR_CLOSE } from '../conversation/a-reply-that-asks-nothing-is-a-dead-end';
 import {
@@ -63,10 +66,19 @@ import { whatIsSettledAndWhatIsNot, type WhatSetupHasSoFar } from './what-setup-
 import { whatTheyAlreadyHave, ENOUGH_TO_RECOGNISE_THEM } from './setup-is-not-a-stranger-to-somebody-who-is-signed-in';
 import { theSetupHasStoppedAsking } from './a-gate-that-can-never-open-is-shut';
 import { onboardingIsReady as theGate, whatSetupNeverGot, anAimIsOwedHere } from './a-check-in-with-no-aim-has-nothing-to-read-against';
+import { PromptsService } from '../prompts';
+import { theAnchorGuidance, ANCHOR_ENTRY_SCENARIO } from '../conversation/the-anchor-lead-conversation';
+import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
+import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
+import { TheAnchorDoor } from './the-anchor-door';
+import { theLeadsReveal } from './the-anchor-reveal';
+import type { TheLeadsReveal } from './the-anchor-served-shapes';
+import { draftFromASetUp, type ASetUpToStartFrom } from './a-set-up-can-start-from-a-recommendation';
 import { theClassifierPrompt, readTheClassification } from './which-situation-this-is';
 import { isAReplayRatherThanASecondSetup } from './a-second-setup-is-a-second-check-in';
 import { WHAT_ONE_PERSON_BUILDS } from './what-we-call-the-thing-a-person-builds';
 import { thisAlreadyHappened, LOOK_BACK_INSTEAD } from './this-already-happened';
+import { withoutBankDetails, withoutBankDetailsAnywhere } from '../documents/bank-details-are-never-kept';
 
 const SCENARIO_MAP: Record<string, GroundScenario> = {
   // Human-readable labels from legacy UI
@@ -101,6 +113,12 @@ const SCENARIO_MAP: Record<string, GroundScenario> = {
 };
 
 const scenarioLogger = new Logger('resolveScenario');
+
+/** A picked situation, only when it is one of ours; "other" or a label is not a choice to keep. */
+export function theSituationSheChose(picked?: string | null): GroundScenario | null {
+  if (!picked) return null;
+  return Object.values(GroundScenario).includes(picked as GroundScenario) ? (picked as GroundScenario) : null;
+}
 
 function resolveScenario(input?: string): GroundScenario {
   if (!input) return GroundScenario.NEW_PROJECT;
@@ -264,7 +282,7 @@ Rules:
 - Be specific to what was actually said. Do not invent. Never introduce a timeframe, date, number, or standard the person did not state (do not write "90 days" unless they said it).
 - Address the person directly as "you" and call it "what you shared". NEVER refer to them as "this account" or "the user".
 - CRITICAL: only this person has checked in. Alignment needs more than one person and CANNOT exist yet. Do NOT use the word "Aligned" or say alignment has been "reached". The ceiling when one person has answered is "Clear" (what they said is clear). Reserve "Aligned" for when somebody else has checked in separately.
-- alignmentReached items are things this person has said clearly - they are "clear, waiting on everybody else", never agreed by both. Each title is a heading a person reads next to other headings, so it names the settled thing in two to five words. "The quarterly target is clear" works; "quarter" does not.
+- alignmentReached items are things this person has said clearly. Each one is "clear, waiting on everybody else" and was never agreed by both. Each title is the first line of a card. A person reads it on its own, so write it as one plain, full sentence. "The quarterly target of five hundred contracts is clear" works; "quarter" does not.
 - The alignment status reflects THIS session only. No cross-reference yet, because nobody else has checked in.
 - Areas requiring alignment are things still unclear or unstated, not failures.
 - The recommended move is practical, not prescriptive.
@@ -296,7 +314,11 @@ Rules:
 - In mentionedPeople, list any person named or meaningfully referenced in the conversation who is not the person checking in. If someone was already confirmed as a participant in this check-in earlier in the conversation, still include them - the admin needs to see the full cast. Omit only truly anonymous or generic references with no name or identifiable role.
 - In suggestedParties, name any role whose independent account would materially change or strengthen this check-in's picture, but who was not mentioned by the person checking in. Typical triggers: a regulated sector with a clinical or compliance lead whose sign-off affects decisions described; a multi-layer authority structure where a board or chair sits above the mandate-giver; a finance function that controls data the person says they need. Do not suggest roles already confirmed as participants. If nothing is missing, return an empty array.
 - Authorship backstop: scan the conversation for any language where the person describes work produced by others - "I guided", "I helped them", "we built", "I shaped", "I oversaw", "I developed with". If the authorship of any output was not explicitly anchored to a named person during the session, add an entry in areasRequiringAlignment with title "Authorship not anchored" and observation "This session contains claims about work involving others where it was not made clear who produced the output. What was shared cannot confirm who authored what."
-- Clinical trigger: if the conversation mentions clinical work, patients, protocols, regulated procedures, medical decisions, or compliance sign-off, add a suggestedParties entry for a clinical lead, compliance officer, or protocol authority if not already named as a participant.`;
+- Clinical trigger: if the conversation mentions clinical work, patients, protocols, regulated procedures, medical decisions, or compliance sign-off, add a suggestedParties entry for a clinical lead, compliance officer, or protocol authority if not already named as a participant.
+
+${PLAIN_WORDS}
+
+ONE THING IN THE RULES ABOVE DOES NOT APPLY HERE. They say to use people's names. This report is written before anybody else has checked in, and the rule further up says to name nobody else personally - that rule wins. Say "the others" or name the role. Everything else in the rulebook holds: full sentences, plain words, no fragments, no management words, and the reader is "you".`;
 
 const ENTRY_REPORT_SCHEMA = {
   name: 'emit_entry_report',
@@ -337,7 +359,7 @@ const ENTRY_REPORT_SCHEMA = {
                * sibling field below already says this; it was the one that had been read back.
                */
               description:
-                'A short noun phrase naming what is unresolved, two to five words, sentence case. It is rendered as a card heading beside others like "Ownership of the board update" and "Escalation path not adopted", so it must read as a heading on its own. Never a fragment lifted out of a sentence: a live report produced "expect not shared", which tells the reader nothing.',
+                'One plain, full sentence saying what is unresolved. It is the first line of a card and it is read on its own, beside others like "Nobody has said who owns the board update" and "The way to raise a problem has not been agreed", so a person who reads only this sentence should know what is open. Never a heading and never a fragment lifted out of a sentence: a live report produced "expect not shared", which tells the reader nothing.',
             },
             observation: { type: 'string', description: 'What is unclear or unstated.' },
             whyItMatters: { type: 'string', description: 'Why leaving this unresolved causes problems.' },
@@ -354,7 +376,7 @@ const ENTRY_REPORT_SCHEMA = {
             title: {
               type: 'string',
               description:
-                'A short noun phrase naming what is settled, two to five words, sentence case. It is rendered as a card heading beside others like "Evidence baseline established" and "Team named", so it must read as a heading on its own. Never a bare noun lifted from the conversation: a live report produced the single word "quarter" as a heading, which tells the reader nothing.',
+                'One plain, full sentence saying what is settled. It is the first line of a card and it is read on its own, beside others like "You and the team agreed what counts as evidence" and "Everybody who is taking part has been named", so a person who reads only this sentence should know what was settled. Never a heading and never a bare noun lifted from the conversation: a live report produced the single word "quarter", which tells the reader nothing.',
             },
             note: { type: 'string', description: 'What is clear and agreed in this account.' },
           },
@@ -414,6 +436,8 @@ export interface EntryReport {
   /** W3. Named and shown, deliberately without a button. See splitMentions. */
   alsoCameUp?: { name: string; context: string }[];
   alsoCameUpNote?: string | null;
+  /** The anchor scenario's reveal, "Help my team understand". Present only for the anchor conversation with the switch on. See the-anchor-reveal. */
+  leadsReveal?: TheLeadsReveal | null;
 }
 
 const SCENARIO_OPENERS: Record<string, string> = {
@@ -462,6 +486,13 @@ export function buildEntrySystemPrompt(
    * knew the situation and the label. So the names travel now.
    */
   peopleNamed?: string[],
+  /**
+   * THE ANCHOR CONVERSATION'S OWN WORDS, in place of the situation's pack. The pack of the situation
+   * it would otherwise fall back to asks for a project's roster and a definition of success, and read
+   * in the same prompt it pulled the anchor lead back into those questions. Left out, nothing
+   * changes, and the prompt is byte for byte what it was.
+   */
+  anchorPack?: string,
 ): string {
   // partyType drives the opener + framing. INITIATOR (default) is the person
   // opening the ground ("what are you starting"); PARTICIPANT is an invitee
@@ -473,7 +504,7 @@ export function buildEntrySystemPrompt(
    * own first check-in, before a ground exists. So the table's "first" cell is the right one and
    * there is nothing to work out. See the-scenario-table.ts.
    */
-  const scenarioPack = buildScenarioPackForParty(scenario, partyType, moment, 'first');
+  const scenarioPack = anchorPack ?? buildScenarioPackForParty(scenario, partyType, moment, 'first');
   const runtimeCtx = buildRuntimeContext({
     scenario,
     partyType,
@@ -494,7 +525,8 @@ export function buildEntrySystemPrompt(
   });
   /* ONE SCRIPT. Where the situation says how to open, the base prompt's own interview is not sent
      alongside it. Nothing is deleted; see one-script-per-conversation.ts. */
-  return [oneScriptOnly(ENGINE_RULES, scenarioPack), scenarioPack, runtimeCtx, ...(settled ? [settled] : []), ENTRY_SESSION_ADDENDUM].join('\n\n---\n\n');
+  /* The anchor conversation leaves out the situation's intake as well: it carries the same project questions as the pack it replaces. */
+  return [oneScriptOnly(ENGINE_RULES, scenarioPack), scenarioPack, ...(anchorPack === undefined ? [runtimeCtx] : []), ...(settled ? [settled] : []), ENTRY_SESSION_ADDENDUM].join('\n\n---\n\n');
 }
 
 /** Merge the server-side EntryDraft (base) with whatever the browser sent
@@ -592,7 +624,31 @@ export class EntryService {
     private email: EmailService,
     private conversation: ConversationService,
     private events: EventEmitter2,
+    /* The stored version of the anchor conversation's words (anchor piece 5 to 7). Optional so that every other way of building this service is unchanged. */
+    @Optional() private prompts?: PromptsService,
   ) {}
+
+  private anchorDoor?: TheAnchorDoor;
+  private get theAnchorDoor(): TheAnchorDoor {
+    return (this.anchorDoor ??= new TheAnchorDoor(this.prisma));
+  }
+
+  /** Request 148 (1): the draft a new check-in starts from, out of a recommendation the lead said yes to. Writes nothing. */
+  draftFromSetUp(organizationId: string, leadUserId: string, setUp: ASetUpToStartFrom) {
+    return draftFromASetUp(this.prisma, organizationId, leadUserId, setUp);
+  }
+
+  /** Request 144 (1): is the anchor's front door open. */
+  anchorAvailable() {
+    return this.theAnchorDoor.available();
+  }
+
+  /** Request 144 (2): how a draft is started for the lead who arrived from the anchor link. Writes nothing. */
+  async anchorStart(source?: string) {
+    const out = await this.theAnchorDoor.start(source);
+    if (out.source) this.logger.log(`The anchor link was opened from "${out.source}".`);
+    return out;
+  }
 
   opener(scenario?: string): string {
     if (scenario && SCENARIO_OPENERS[scenario]) return SCENARIO_OPENERS[scenario];
@@ -600,6 +656,7 @@ export class EntryService {
   }
 
   async faq(question: string): Promise<string> {
+    question = withoutBankDetails(question);
     this.anonymousModelCall('faq', question.length);
     /* Prose, to a person, containing whatever they typed - so it needs the same guard as every
        other reply. It was the fourth path found without one. */
@@ -622,7 +679,16 @@ export class EntryService {
    * which-situation-this-is.ts; below the confidence bar the scenario is null and the flow keeps the
    * card the person chose rather than a guess.
    */
-  async classifyIntent(description: string, mode?: string): Promise<{ scenario: GroundScenario | null; confidence: 'high' | 'low' }> {
+  async classifyIntent(description: string, mode?: string, picked?: string): Promise<{ scenario: GroundScenario | null; confidence: 'high' | 'low' }> {
+    /*
+     * A SITUATION THE LEAD CHOSE IS HERS TO CHANGE, NOT THE CLASSIFIER'S (request 35). She picked
+     * "Help someone get back on track", said it was about Daniel, and the classifier read "once, in
+     * July" as a project gone off track: the bar switched to DRIFT without asking her. A picked key
+     * stands, and no model call is spent second-guessing it. Her way out is "It's something else".
+     */
+    const chosen = theSituationSheChose(picked);
+    if (chosen) return { scenario: chosen, confidence: 'high' };
+    description = withoutBankDetails(description);
     this.anonymousModelCall('classify-intent', description.length);
     const prompt = theClassifierPrompt(description, mode);
     try {
@@ -711,6 +777,9 @@ export class EntryService {
     /** Party path only: setup can finish, but nobody has been named yet and they are told so. */
     needsPeople: boolean;
   }> {
+    /* Decision 35: a bank or card number typed here is hidden before it is kept or read by a model. See documents/bank-details-are-never-kept. */
+    messages = withoutBankDetailsAnywhere(messages);
+    soFar = withoutBankDetailsAnywhere(soFar);
     if (!messages || messages.length === 0) throw new BadRequestException('messages required');
 
     /**
@@ -875,8 +944,8 @@ Your job is to gather these things through natural conversation:
    to". Hafsah, 17 September 2026, after reading it live: it is asking them to justify themselves,
    and the honest answer ("it just seemed sensible") feels wrong to type.
    ASK ABOUT THE TIMING, NOT THE MOTIVE, AND ALWAYS WITH EXAMPLES:
-   "What makes this the right time to set up a check-in on this - a new quarter, a quarter that
-    missed, a handover, needing the team lined up on it?"
+   "What makes this the right time to set up a check-in on this? Is it a new quarter, a quarter
+    that missed, a handover, or needing the team lined up on it?"
    SAY "SET UP A CHECK-IN", NOT "CHECK IN". Read live: "What makes this the right time to check in
    on the migration?" asks why they are answering questions today, which is not the question. What
    is being decided is whether to stand a check-in up at all, and for how long - so the sentence has
@@ -1007,11 +1076,12 @@ Rules:
       and the screen tells them so. Ask for the names once; do not hold the setup hostage to them.
   Once you are done gathering, On that turn your reply MUST be a warm closer that contains NO question mark anywhere. A closer and a question are mutually exclusive: if you have what you need, you close and you do NOT ask one more thing; if you still genuinely need one of those four items, you ask for it and you do NOT wrap up yet. Never do both in the same reply. Do not close with "does that sound right?", "shall we begin?", "anything else?", or any other trailing question. Do NOT claim to have what you need, and do not summarise what you took down: the screen prints what is actually on the record directly underneath your reply, including anything still missing, so a claim from you can only contradict it. Say what happens next (the next screen asks who gives the accounts, then the check-in itself) and stop.
 - AND SAY WHERE THE REST OF THE CONTEXT GOES, ONCE, IN THE CLOSER. A lead finishes setup believing
-  this conversation was their only chance to explain the situation. It is not: the Context tab takes
-  documents, notes and anything else the check-ins should be held against, and nothing in this flow
-  has ever said so - so the plan, the brief and the spreadsheet they already have never arrive, and
-  every session afterwards runs on memory. One clause, in the closer, in plain words: anything else
-  worth holding this against goes on the Context tab, any time.
+  this conversation was their only chance to explain the situation. It is not: the Context and
+  resources tab takes documents, notes and anything else the check-ins should be held against, and
+  nothing in this flow has ever said so - so the plan, the brief and the spreadsheet they already
+  have never arrive, and every session afterwards runs on memory. One clause, in the closer, in
+  plain words: anything else worth holding this against goes on the Context and resources tab, any
+  time.
 - THE CLOSER MUST NOT READ AS THE END OF EVERYTHING. "Thank you, that gives me what I need to set
   this up for you." is a full stop, and the screen then asks another question, so the product looks
   like it changed its mind. It is a HANDOVER, not a finish: say what you have, then say plainly that
@@ -1140,6 +1210,7 @@ Fields:
 - goals: array of what they need from this
 - brief: anything specific to focus on or probe
 - cadence: how often they check in, IF they said. One of "DAILY", "WEEKLY", "FORTNIGHTLY", "MONTHLY", "ONE_TIME". Map their own words: "weekly" or "every week" -> WEEKLY; "every two weeks", "fortnightly", "every other week" -> FORTNIGHTLY; "monthly" or "once a month" -> MONTHLY; "just once", "a single check-in" -> ONE_TIME. Omit it entirely if they did not say.
+- runsUntilEnded: true ONLY if they said it runs until they end it themselves ("when I end it", "until I stop it", "no end date"). Then leave timelineDays out.
 - timelineDays: how long the whole period runs, in days, IF they said. "90 days" or "three months" -> 90; "60 days" -> 60; "a quarter" -> 90; "two weeks" -> 14; "three weeks" -> 21; "a month" -> 30. Omit if they did not say.
 
 Only include a field if it has been clearly communicated. Omit fields that are still unknown.
@@ -1191,6 +1262,7 @@ from finishing at all.`;
           // brief and then dropped on the way to the enum.
           cadence: { type: 'string', enum: ['DAILY', 'WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'ONE_TIME'] },
           timelineDays: { type: 'number' },
+          runsUntilEnded: { type: 'boolean' },
         },
         /**
          * MODE REQUIRED, AND THIS IS WHY THE SETUP USED TO DEAD-END.
@@ -1210,7 +1282,7 @@ from finishing at all.`;
       },
     };
 
-    let extracted: { mode?: string; initial?: string; whoInvolved?: string; peopleNamed?: string[]; decision?: string; goals?: string[]; brief?: string; cadence?: string; timelineDays?: number; yourRole?: string } = {};
+    let extracted: { mode?: string; initial?: string; whoInvolved?: string; peopleNamed?: string[]; decision?: string; goals?: string[]; brief?: string; cadence?: string; timelineDays?: number; runsUntilEnded?: boolean; yourRole?: string } = {};
     /* Kept out of the try so a failed reply still fails the turn; a failed extraction is logged below. */
     const extractionInFlight: Promise<typeof extracted | null | Error> = (async () =>
       this.anthropic.extract<typeof extracted>(EXTRACT_SYSTEM, messages, EXTRACT_TOOL, { thinkingBudget: CONVERSATION_THINKING_BUDGET_FOR_EXTRACT, fast: true }))()
@@ -1304,7 +1376,9 @@ from finishing at all.`;
    * this singleton and read by the controller after an await, so two visitors finishing in the same
    * tick could decide each other's close. It travels with the reply now.
    */
-  async chat(messages: ChatTurn[], scenario?: string, groundLabel?: string, onDelta?: (text: string) => void, peopleNamed?: string[], alreadySaid?: string[]): Promise<{ reply: string; closed: boolean }> {
+  async chat(messages: ChatTurn[], scenario?: string, groundLabel?: string, onDelta?: (text: string) => void, peopleNamed?: string[], alreadySaid?: string[]): Promise<{ reply: string; closed: boolean; promptVersionId?: string | null }> {
+    /* Decision 35: a bank or card number typed here is hidden before it is kept or read by a model. See documents/bank-details-are-never-kept. */
+    messages = withoutBankDetailsAnywhere(messages);
     if (!messages || messages.length === 0) throw new BadRequestException('messages required');
 
     const lastUser = [...messages].reverse().find(m => m.role === 'user');
@@ -1329,14 +1403,20 @@ from finishing at all.`;
      */
     const mapped = resolveScenario(scenario);
     const theirLast = [...messages].reverse().find((m) => m.role === 'user')?.content ?? '';
-    const entrySystem = `${buildEntrySystemPrompt(mapped, groundLabel || scenario || '', PartyType.INITIATOR, undefined, peopleNamed)}\n\n---\n\n${theThingsThatCannotBeMissed(theirLast, theyPushedBackOnTheQuestions(theirLast))}`;
-    return this.guardedReplyWithClose(
+    /*
+     * THE ANCHOR LEAD'S GUIDANCE, ONLY WHEN THE SWITCH IS ON AND THIS IS THE ANCHOR CONVERSATION.
+     * Otherwise it is null and the text below is exactly what it always was.
+     */
+    const anchor = await theAnchorGuidance(() => theAnchorScenarioIsOn(this.prisma), this.prompts, scenario, messages);
+    const entrySystem = `${buildEntrySystemPrompt(mapped, groundLabel || scenario || '', PartyType.INITIATOR, undefined, peopleNamed, anchor?.text)}\n\n---\n\n${theThingsThatCannotBeMissed(theirLast, theyPushedBackOnTheQuestions(theirLast))}${anchor ? `\n\n---\n\n${anchor.last}` : ''}`;
+    const out = await this.guardedReplyWithClose(
       entrySystem,
       messages,
       onDelta,
       /* Theirs: the people they named, what they called it, and everything they typed in setup. */
       [...(peopleNamed ?? []), groundLabel ?? '', ...(alreadySaid ?? [])],
     );
+    return anchor ? { ...out, promptVersionId: anchor.promptVersionId } : out;
   }
 
 
@@ -1568,6 +1648,7 @@ from finishing at all.`;
 
 
   async report(messages: ChatTurn[], scenario?: string, groundLabel?: string, peopleNamed?: string[]): Promise<EntryReport | null> {
+    messages = withoutBankDetailsAnywhere(messages);
     if (!messages || messages.length === 0) throw new BadRequestException('messages required');
 
     const mapped = resolveScenario(scenario);
@@ -1687,11 +1768,20 @@ from finishing at all.`;
       alsoCameUp: split.alsoCameUp,
       alsoCameUpNote: split.note,
     });
-    return {
+    const served = {
       ...restored,
       mentionedPeople: namesWithoutPossessives(restored.mentionedPeople ?? []),
       alsoCameUp: namesWithoutPossessives(restored.alsoCameUp ?? []),
     };
+    /*
+     * THE LEAD'S REVEAL, for the anchor conversation only and only while the switch is on (request 149).
+     * Built from her own turns and the people she named, with no model call; with the switch off, or for
+     * any other situation, the report is exactly what it was, with no such key at all.
+     */
+    if (scenario === ANCHOR_ENTRY_SCENARIO && (await theAnchorScenarioIsOn(this.prisma))) {
+      return { ...served, leadsReveal: theLeadsReveal({ messages: messages as any, peopleNamed: [...alreadyNamed, ...served.mentionedPeople.map((m: any) => m.name)], reader: 'lead' }) } as EntryReport;
+    }
+    return served;
   }
 
   /**
@@ -1712,15 +1802,36 @@ from finishing at all.`;
     return u?.role ?? 'MEMBER';
   }
 
+  /**
+   * COLLEAGUES PICKED BY ID, GIVEN THEIR ADDRESSES (U.4). The list of colleagues carries no
+   * addresses, so a colleague queued in setup arrives as an id and is looked up here, in this
+   * organisation only. Somebody who is not here is refused rather than dropped.
+   */
+  private async withColleaguesAddressed<T extends { email?: string; colleagueId?: string }>(organizationId: string, contributors: T[]): Promise<(T & { email: string })[]> {
+    const out: (T & { email: string })[] = [];
+    for (const c of contributors) {
+      if (!c.colleagueId) { out.push(c as T & { email: string }); continue; }
+      const address = await theAddressOfAColleague(this.prisma as any, organizationId, c.colleagueId);
+      if (!address) throw new BadRequestException(NOT_SOMEONE_HERE);
+      const { colleagueId: _picked, ...rest } = c;
+      out.push({ ...(rest as T), email: address });
+    }
+    return out;
+  }
+
   async commit(
     organizationId: string,
     initiatorId: string,
     dto: {
       groundLabel: string;
+      /** Which setup this is: see EntryCommitDto.setupKey. */
+      setupKey?: string;
       orgName?: string;
       scenario?: string;
       cadence?: string;
       cadenceChosen?: boolean;
+      /** Runs until the lead ends it (request 37). */
+      runsUntilEnded?: boolean;
       cadenceAnchorDay?: number;
       workingDays?: number[];
       checkInBy?: string;
@@ -1732,14 +1843,19 @@ from finishing at all.`;
       /** True when they said the other people check in and they read what comes back. */
       managingOnly?: boolean;
       history: ChatTurn[];
+      /** What they typed in setup, their own messages only (LeadSetupWords, U.7 re-check). */
+      leadsOwnWords?: string[];
       /** Documents attached during the anonymous chat, kept as real records. */
       documents?: { fileName: string; content: string; mimeType?: string }[];
       report?: EntryReport | null;
       /** The setter's own part in this, from the report's yourRole or typed by them. */
       roleAsDescribed?: string;
-      contributors: { email: string; context?: string; inviteToken?: string; note?: string }[];
+      /** `colleagueId` instead of `email` for a colleague picked from the list (U.4); resolved in commitInner. */
+      contributors: { email: string; colleagueId?: string; context?: string; inviteToken?: string; note?: string }[];
     },
   ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string; waiting?: boolean }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[] }> {
+    /* Decision 35: a bank or card number typed here is hidden before it is kept or read by a model. See documents/bank-details-are-never-kept. */
+    dto = withoutBankDetailsAnywhere(dto);
     // ---- Server-side draft (written at entry-save, the ISSUE-17 consent
     // moment). The draft is the base and whatever the browser sent overlays
     // it, so commit works no matter which browser opened the magic link.
@@ -1759,6 +1875,15 @@ from finishing at all.`;
      * The protection this gives is real and stays: two requests seconds apart must not make two
      * grounds. See a-second-setup-is-a-second-check-in for what separates the two.
      */
+    /*
+     * BY IDENTITY, NEVER BY NAME (U.6 review). Read live: the same lead set up a check-in about Grace a
+     * few minutes after Daniel's, both named "Help someone get back on track", pressed save, and was
+     * handed Daniel's check-in; Grace's was never made. The client now sends a key per setup, and the
+     * key decides: the same key is the same save retried, a different key is a new check-in.
+     */
+    const key = dto.setupKey?.trim() || null;
+    if (key) return this.commitBySetupKey(organizationId, initiatorId, dto, draft, key);
+
     if (draft?.consumedAt) {
       const itMade = draft.groundId
         ? await this.prisma.ground.findUnique({ where: { id: draft.groundId }, select: { label: true } }).catch(() => null)
@@ -1771,6 +1896,10 @@ from finishing at all.`;
         return this.awaitConsumedDraftGround(initiatorId);
       }
       this.logger.log(`Entry commit for ${initiatorId}: the draft was consumed on ${new Date(draft.consumedAt).toISOString()} by ${JSON.stringify(itMade?.label ?? null)}, and this is a new check-in. Setting it up fresh.`);
+      /* A NEW CHECK-IN IS SET UP FRESH, AS THE LINE ABOVE SAYS (U.6 review). It fell through to the
+         claim below, which only claims an unconsumed draft, so it "lost the race" to itself and was
+         handed the old check-in anyway, whatever it was called. */
+      return this.commitInner(organizationId, initiatorId, dto);
     }
     if (draft) {
       const claimed = await this.prisma.entryDraft.updateMany({
@@ -1799,6 +1928,67 @@ from finishing at all.`;
       }
     }
     return this.commitInner(organizationId, initiatorId, dto);
+  }
+
+  /**
+   * ONE SETUP, ONE CHECK-IN, BY ITS KEY (U.6 review).
+   *
+   * The lead's draft row remembers which setup it last made a check-in for (`payload.setupKey`), so:
+   * - the same key, already made or being made: the same save retried; its check-in is returned.
+   * - the setup the draft itself holds, not made yet (signed out, opening the link): claimed and made
+   *   from the draft, as before.
+   * - any other key: a new check-in, made from this request alone, never the old draft's content.
+   * Claiming is one conditional write, so two requests with one key make one check-in.
+   */
+  private async commitBySetupKey(organizationId: string, initiatorId: string, dto: any, draft: any, key: string) {
+    const draftKey = (draft?.payload as any)?.setupKey ?? null;
+    if (draft && draftKey === key && draft.consumedAt) return this.awaitConsumedDraftGround(initiatorId);
+
+    if (draft && !draft.consumedAt && (draftKey === key || draftKey === null)) {
+      const claimed = await this.prisma.entryDraft.updateMany({
+        where: { id: draft.id, consumedAt: null },
+        data: { consumedAt: new Date(), payload: { ...((draft.payload as object) ?? {}), setupKey: key } as any },
+      });
+      if (claimed.count === 0) return this.awaitConsumedDraftGround(initiatorId);
+      const body = overlayDraftOntoBody(draft, dto);
+      try {
+        const result = await this.commitInner(organizationId, initiatorId, body);
+        await this.prisma.entryDraft.updateMany({ where: { id: draft.id }, data: { groundId: result.groundId } });
+        return result;
+      } catch (err) {
+        await this.prisma.entryDraft.updateMany({ where: { id: draft.id, groundId: null }, data: { consumedAt: null } }).catch(() => undefined);
+        throw err;
+      }
+    }
+
+    /* A new setup. The row is taken over for this key in one conditional write. */
+    let claimedId: string;
+    if (draft) {
+      const claimed = await this.prisma.entryDraft.updateMany({
+        where: { id: draft.id, updatedAt: draft.updatedAt },
+        data: { consumedAt: new Date(), groundId: null, payload: { ...((draft.payload as object) ?? {}), setupKey: key } as any },
+      });
+      if (claimed.count === 0) return this.awaitConsumedDraftGround(initiatorId);
+      claimedId = draft.id;
+    } else {
+      try {
+        const made = await this.prisma.entryDraft.create({
+          data: { userId: initiatorId, draftToken: crypto.randomBytes(24).toString('hex'), payload: { setupKey: key } as any, history: [] as any, consumedAt: new Date() },
+        });
+        claimedId = made.id;
+      } catch {
+        return this.awaitConsumedDraftGround(initiatorId);
+      }
+    }
+    try {
+      const result = await this.commitInner(organizationId, initiatorId, dto);
+      await this.prisma.entryDraft.updateMany({ where: { id: claimedId }, data: { groundId: result.groundId } });
+      return result;
+    } catch (err) {
+      /* Nothing was made: the key is let go, so the same save retried can make it. */
+      await this.prisma.entryDraft.updateMany({ where: { id: claimedId, groundId: null }, data: { payload: { ...((draft?.payload as object) ?? {}), setupKey: null } as any } }).catch(() => undefined);
+      throw err;
+    }
   }
 
   /** A consumed draft means a commit already ran (or is mid-flight). Return
@@ -1873,6 +2063,9 @@ from finishing at all.`;
     initiatorId: string,
     dto: Parameters<EntryService['commit']>[2],
   ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string; waiting?: boolean }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[] }> {
+    /* Colleagues picked by id get their addresses here, after the draft is laid over the body, so the
+       list of colleagues never carried an address (U.4). */
+    dto = { ...dto, contributors: await this.withColleaguesAddressed(organizationId, (dto.contributors ?? []) as any[]) };
     /*
      * NOTHING USABLE FROM ANY SOURCE, AND THERE ARE THREE OF THEM NOW.
      *
@@ -1922,6 +2115,12 @@ from finishing at all.`;
     /* One number, in one file, with the reason - see how-many-people-one-check-in-holds. */
     const tooMany = tooManyPeopleFor(dto.contributors.length);
     if (tooMany) throw new BadRequestException(tooMany);
+    /* The anchor's own limit: the lead plus 19 (decision 99, item 2). */
+    if (dto.scenario === ANCHOR_ENTRY_SCENARIO) {
+      const lead = await Promise.resolve(this.prisma.user?.findUnique?.({ where: { id: initiatorId }, select: { email: true } })).catch(() => null);
+      const tooManyForThisOne = tooManyForTheAnchor(dto.contributors.map((c) => c.email), lead?.email);
+      if (tooManyForThisOne) throw new BadRequestException(tooManyForThisOne);
+    }
 
     // Update org name if the admin filled it in.
     if (dto.orgName?.trim()) {
@@ -1977,6 +2176,7 @@ from finishing at all.`;
         /* A default the page sent is not a choice. Only a confirmed pick is handed on; the ground
            service records an absent cadence as unstated and takes the scenario's recommendation. */
         cadence: chosenCadence,
+        runsUntilEnded: dto.runsUntilEnded === true ? true : undefined,
         cadenceAnchorDay: dto.cadenceAnchorDay ?? undefined,
         workingDays: dto.workingDays ?? undefined,
         // Mirrors the self path a few lines below (dto.checkInBy/lastCheckInBy
@@ -2058,6 +2258,7 @@ from finishing at all.`;
          */
         moment: RECOMMENDED_MOMENT[scenario],
       cadence: chosenCadence,
+      runsUntilEnded: dto.runsUntilEnded === true ? true : undefined,
       cadenceAnchorDay: dto.cadenceAnchorDay ?? undefined,
       workingDays: dto.workingDays ?? undefined,
       startsAt: dto.checkInBy || undefined,
@@ -2092,6 +2293,13 @@ from finishing at all.`;
       ...(dto.managingOnly === true ? { managingOnly: true } : {}),
     }, role);
 
+    /* A check-in saved from the anchor conversation remembers it, once, so the weeks that follow read as the anchor's weeks. Only with the switch on. */
+    if (dto.scenario === ANCHOR_ENTRY_SCENARIO && (await theAnchorScenarioIsOn(this.prisma))) {
+      await this.prisma.ground.update({ where: { id: ground.id }, data: { startedFrom: STARTED_FROM_THE_ANCHOR } });
+      /* The anchor's one-month trial, given by billing only while its own setting is on (anchor piece 34). */
+      this.events?.emit?.(GroundworkEvents.ANCHOR_CHECK_IN_STARTED, { organizationId, groundId: ground.id });
+    }
+
     // Find the session 1 check-in and the initiator participant just created.
     const participant = await this.prisma.groundParticipant.findFirst({
       where: { groundId: ground.id, userId: initiatorId },
@@ -2110,6 +2318,29 @@ from finishing at all.`;
         .catch((err) => this.logger.warn(`Could not save the setter's role on ${ground.id}: ${err.message}`));
     }
     if (!participant) throw new BadRequestException('Participant not found after creating a check-in');
+
+    /*
+     * WHAT THEY TYPED IN SETUP, KEPT FOR THEM (U.7 re-check). The Context page showed the brief, which
+     * setup puts together from the answers it drew out, under "What you wrote". It was not what she
+     * wrote. Her own messages are kept here, apart from the ground's row so nothing spreads them, and
+     * are shown only to her while she leads it. Only on this path: on the coordinator's, the person
+     * committing is not the lead, and their words are not the lead's. A document folded into the chat
+     * and a picked situation card are not things they typed.
+     */
+    const theirOwnWords = (dto.leadsOwnWords ?? [])
+      .map((t) => (typeof t === 'string' ? t.trim() : ''))
+      .filter((t) => t && !t.startsWith('[Document:') && !t.startsWith('[Situation picked'))
+      .join('\n\n')
+      .slice(0, 20_000);
+    if (theirOwnWords) {
+      await (this.prisma as any).leadSetupWords
+        ?.upsert?.({
+          where: { groundId: ground.id },
+          create: { groundId: ground.id, authorUserId: initiatorId, text: theirOwnWords },
+          update: { authorUserId: initiatorId, text: theirOwnWords },
+        })
+        ?.catch?.((err: any) => this.logger.warn(`Could not keep the lead's setup words on ${ground.id}: ${err?.message}`));
+    }
 
     const checkIn = await this.prisma.checkIn.findFirst({
       where: { groundId: ground.id, participantId: participant.id, sessionNumber: 1 },
@@ -2248,7 +2479,7 @@ from finishing at all.`;
     // Invite each contributor. addParticipant generates a fresh token per participant.
     // Do NOT pass a shared client-side inviteToken here - it would collide on the unique constraint
     // for the second and subsequent contributors, silently dropping them.
-    const inviteResults: { email: string; devUrl?: string; waiting?: boolean }[] = [];
+    const inviteResults: { email: string; devUrl?: string; waiting?: boolean; waitingBecause?: string; saying?: string }[] = [];
     const failedInvites: string[] = [];
     /*
      * WHY EACH ONE FAILED, NOT JUST THAT IT DID.
@@ -2269,6 +2500,10 @@ from finishing at all.`;
           email: c.email,
           roleAsDescribed: c.context,
           note: c.note,
+          /* U.6 review: the check-in's start, so a future start holds the invitation until the
+             morning it starts (the on-the-day cron sends it), as adding someone on the check-in's
+             own page does. Without it the invitation went the moment the link was opened. */
+          ...(dto.checkInBy ? { startsAt: dto.checkInBy } : {}),
         });
         /*
          * WHETHER THE MAIL ACTUALLY WENT, WHICH THIS THREW AWAY.
@@ -2283,6 +2518,9 @@ from finishing at all.`;
           email: c.email,
           devUrl: (result as any)?.devUrl,
           waiting: !(result as { invitedAt?: Date | null })?.invitedAt,
+          /* U.6 review: why it waits, so the page after the link can say it truly for each person. */
+          ...((result as any)?.notInvitedBecause ? { waitingBecause: (result as any).notInvitedBecause } : {}),
+          ...((result as any)?.saying ? { saying: (result as any).saying } : {}),
         });
       } catch (err: any) {
         this.logger.error(`entry commit: failed to invite ${c.email}: ${err.message}`);
@@ -2358,6 +2596,7 @@ from finishing at all.`;
    * email was sent - org name, ground name, cadence, dates, contributors -
    * which previously lived only in localStorage and were lost cross-browser. */
   async patchDraft(draftToken: string, payload: Record<string, any>): Promise<{ ok: true }> {
+    payload = withoutBankDetailsAnywhere(payload);
     if (!draftToken || typeof draftToken !== 'string') throw new BadRequestException('draftToken required');
     if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new BadRequestException('payload must be an object');
     if (JSON.stringify(payload).length > 200_000) throw new BadRequestException('payload too large');
@@ -2377,7 +2616,8 @@ from finishing at all.`;
     if (pending) {
       /* The same test the EntryDraft branch below and the pendingJoin path run. A leaked or logged
          draft token was valid for ever on this branch alone (fix plan A10). */
-      if (pending.expiresAt < new Date()) throw new NotFoundException('Draft not found');
+      /* Answered like any token this does not hold (below): nothing is written. */
+      if (pending.expiresAt < new Date()) return { ok: true };
       const mergedPending = { ...((pending.payload ?? {}) as Record<string, any>), ...payload };
       const typedOrgName = typeof payload.orgName === 'string' ? payload.orgName.trim().slice(0, 120) : undefined;
       await this.prisma.pendingSignup.update({
@@ -2393,7 +2633,16 @@ from finishing at all.`;
     }
 
     const draft = await this.prisma.entryDraft.findUnique({ where: { draftToken } });
-    if (!draft || draft.consumedAt) throw new NotFoundException('Draft not found');
+    /*
+     * A TOKEN THIS DOES NOT HOLD IS ANSWERED LIKE ONE IT DOES, AND NOTHING IS WRITTEN. U.2 review.
+     *
+     * entry-save gives an address that already has an account a draft token of the same shape as a new
+     * address's, stored nowhere, so its reply cannot say which addresses have accounts (Hafsah's rule
+     * of 26 September). If this answered 404 for that token, calling it would say the same thing. So an
+     * unknown, expired or used token gets { ok: true } and changes nothing. The entry chat treats this
+     * call as best-effort already; its own copy in the browser carries the edits either way.
+     */
+    if (!draft || draft.consumedAt) return { ok: true };
 
     const merged = { ...(draft.payload as Record<string, any>), ...payload };
     await this.prisma.entryDraft.update({ where: { id: draft.id }, data: { payload: merged as any } });
@@ -2448,11 +2697,11 @@ from finishing at all.`;
 
     const ground = await this.prisma.ground.findUnique({
       where: { joinToken: dto.joinToken },
-      select: { id: true, status: true, endState: true },
+      select: { id: true, status: true, endState: true, scenario: true },
     });
     if (!ground) throw new NotFoundException(whyThisDidNotWork('that link is not one we know'));
     /* Nobody is mailed a way into a check-in that is over or on hold. See grounds.service#getJoinPreview. */
-    const refused = whyItRefuses(ground.status, ground.endState);
+    const refused = whyItRefuses(ground.status, ground.endState, 'anybody else', ground.scenario);
     if (refused) throw new BadRequestException(refused);
 
     const email = dto.email.trim().toLowerCase();
@@ -2513,11 +2762,11 @@ from finishing at all.`;
 
     const ground = await this.prisma.ground.findUnique({
       where: { joinToken: pending.joinToken },
-      select: { id: true, organizationId: true, status: true, endState: true, initiatorId: true, isFreeGround: true, freeParticipantCap: true },
+      select: { id: true, organizationId: true, status: true, endState: true, scenario: true, initiatorId: true, isFreeGround: true, freeParticipantCap: true },
     });
     if (!ground) throw new NotFoundException(whyThisDidNotWork('that link is not one we know'));
     /* Asked before anything is made: no account, no participant row and no session on a ground that has ended or is held. */
-    const refusedNow = whyItRefuses(ground.status, ground.endState);
+    const refusedNow = whyItRefuses(ground.status, ground.endState, 'anybody else', ground.scenario);
     if (refusedNow) throw new BadRequestException(refusedNow);
 
     const email = pending.email;
@@ -2576,6 +2825,13 @@ from finishing at all.`;
           update: {},
         });
       }
+      /* pending.roleAsDescribed is what THIS PERSON typed about THEMSELVES on the join page
+         ("Your part in this" - JoinPage.tsx) - their own words about their own role, never the
+         lead's private description of somebody (that is GroundParticipant.roleAsDescribed,
+         decision 30; PendingJoin's own comment says "what they told us about themselves"). Own
+         words about one's own role go to the person's own profile field, User.jobTitle - the same
+         distinction and the same field participants.service.ts#updateRole and
+         conversation.service.ts's role-correction write to, and never into roleAsDescribed. */
       if (!user) {
         user = await tx.user.create({
           data: {
@@ -2589,8 +2845,13 @@ from finishing at all.`;
             passwordHash: null,
             /* Holds no seat and cannot check in until somebody says yes. */
             awaitingOrgApproval: wait,
+            jobTitle: pending.roleAsDescribed ?? null,
           },
         });
+      } else if (pending.roleAsDescribed) {
+        /* An existing account, joining a further check-in, just typed their own words again - the
+           same statement updateRole writes whenever the person themselves gives it. */
+        user = await tx.user.update({ where: { id: user.id }, data: { jobTitle: pending.roleAsDescribed } });
       }
 
       /* THE QUEUE. One row per (organisation, person); a second link joins the request already waiting. */
@@ -2637,7 +2898,9 @@ from finishing at all.`;
             email,
             userId: user.id,
             partyType: PartyType.PARTICIPANT,
-            roleAsDescribed: pending.roleAsDescribed ?? null,
+            /* NEVER pending.roleAsDescribed here - see the note above the user create/update: that is
+               this person's own words about themselves, not the lead's private description this
+               column holds (decision 30). It went to User.jobTitle instead. */
             department: pending.department ?? null,
             invitedAt: new Date(),
             notifiedAt: new Date(),

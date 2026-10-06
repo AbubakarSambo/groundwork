@@ -46,7 +46,6 @@ function mutationsIn(src: string): { name: string; block: string }[] {
  * entry with the reason written beside it.
  */
 const NOT_YET_REVIEWED = new Set([
-  'settings/SettingsPage.tsx#savePhone', 'settings/SettingsPage.tsx#toggleNotif',
   'org/IntegrationsPage.tsx#askForAccess', 'org/IntegrationsPage.tsx#replay',
   'admin/AdminPage.tsx#toggle', 'admin/AdminPage.tsx#markAnswered', 'admin/AdminPage.tsx#markRead',
   'admin/ApiAccessPage.tsx#clearFlag',
@@ -82,8 +81,9 @@ describe('the five this batch fixed stay fixed', () => {
   it.each([
     ['grounds/GroundAdminPage.tsx', 'dismissRequest'],
     ['grounds/GroundAdminPage.tsx', 'remind'],
-    ['org/IntegrationsPage.tsx', 'toggleWa'],
-    ['org/IntegrationsPage.tsx', 'disconnectWa'],
+    /* U.18: switching WhatsApp on or off, and disconnecting it, moved to their own pages. */
+    ['connections/WhatsAppSetupPage.tsx', 'turn'],
+    ['connections/ConnectionsPage.tsx', 'disconnect'],
     ['billing/PricingPage.tsx', 'subscribeMut'],
   ])('%s#%s has an onError', (file, name) => {
     const src = readFileSync(join(__dirname, file), 'utf8')

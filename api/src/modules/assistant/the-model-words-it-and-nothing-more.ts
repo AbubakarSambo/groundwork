@@ -18,7 +18,15 @@
  * WORDS somebody used for a deadline and never a date inferred from them, and that reply asserted a
  * deadline the record does not have. Found by reading what came back rather than that it came back.
  */
-export const STYLE_VERSION = 'v3';
+import { PLAIN_WORDS, SPOKEN_TO_THE_READER } from '../conversation/plain-words';
+
+/*
+ * v4, 26 September 2026: the one wording rulebook arrived in this style. The cache key already
+ * hashes the whole system prompt, so a changed style rewords everything anyway; the version is
+ * bumped because it is what the assistant records against each reply, and a reply worded under the
+ * old rules and one worded under the new should not both read as v3.
+ */
+export const STYLE_VERSION = 'v4';
 
 /**
  * Kept as a versioned template separate from the engine, per §10.3 - so somebody can change how
@@ -39,7 +47,11 @@ Rules:
 - British spelling. No em dashes. Straight quotes.
 - Shorter than the draft where you can, never longer.
 - If the draft is already the clearest way to say it, return it unchanged.
-- Reply with the wording only. No preamble, no explanation, no quotes around it.`;
+- Reply with the wording only. No preamble, no explanation, no quotes around it.
+
+${PLAIN_WORDS}
+
+${SPOKEN_TO_THE_READER}`;
 
 /**
  * WHAT WOULD MAKE US KEEP THE DRAFT INSTEAD.
@@ -120,6 +132,19 @@ export function safeToUse(draft: string, composed: string | null | undefined, mu
   }
 
   /*
+   * AND A QUOTATION IS WHAT THE RECORD SAID, LETTER FOR LETTER (week 17).
+   *
+   * Anything in quotation marks in the wording has to be somewhere in the draft exactly as it is
+   * written there. Rewording may move a quote, never change it: a line put in somebody's mouth by
+   * tidying it is invented testimony, and reads exactly like the true version. Straight and curly
+   * marks are both read; an apostrophe inside a word is not a quotation mark.
+   */
+  for (const m of text.matchAll(/"([^"\n]{2,})"|\u201c([^\u201d\n]{2,})\u201d/g)) {
+    const quoted = (m[1] ?? m[2]).trim();
+    if (!draft.includes(quoted)) return false;
+  }
+
+  /*
    * AND THE PRODUCT'S OWN REASONING IS NEVER PUT IN THE READER'S MOUTH.
    *
    * Read on a participant's own report, 20 Sep 2026: "You described how a sales representative
@@ -132,7 +157,10 @@ export function safeToUse(draft: string, composed: string | null | undefined, mu
    */
   /* "you expect that no pattern will emerge from work like this" (run 6, 20 Sep 2026): a belief, not a word, put in the reader's mouth. */
   const ATTRIBUTES_TO_THE_READER = /\byou(?:'ve| have)? (said|say|says|described|describe|mentioned|mention|told|tell|reported|report|admitted|admit|explained|explain|noted|note|stated|state|wrote|write|expect|expected|believe|believed|think|thought|feel|felt|hope|hoped|assume|assumed|acknowledge|acknowledged|agree|agreed)\b/i;
-  if (ATTRIBUTES_TO_THE_READER.test(text) && !ATTRIBUTES_TO_THE_READER.test(draft)) return false;
+  /* Counted, not only looked for (5 October 2026, release round): a draft that held one real "you said" let a second, invented one
+     through ("You are in session 4 of 6 for this work, and you say that nothing has come up often enough yet to be called a pattern."). */
+  const attributions = (s: string) => (s.match(new RegExp(ATTRIBUTES_TO_THE_READER.source, 'gi')) ?? []).length;
+  if (attributions(text) > attributions(draft)) return false;
   /* Not splitting on a colon: "the client name: Alex Smith" would put an invented name in first
      position, where the sentence-start exemption lets it through. The conversation guard was
      written with the colon in and its own test caught it there. */

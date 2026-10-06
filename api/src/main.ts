@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { theAddressTheApiListensOn } from './the-address-the-api-listens-on';
 import { ValidationPipe, Logger, RequestMethod } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
@@ -220,7 +221,9 @@ async function bootstrap() {
   });
 
   const port = configService.get<number>('app.port') || 3000;
-  await app.listen(port, '0.0.0.0');
+  /* Narrowed to this machine only for an explicit development run; see the-address-the-api-listens-on.ts. */
+  const host = theAddressTheApiListensOn(process.env.NODE_ENV);
+  await app.listen(port, host);
   logger.log(`Groundwork API running on port ${port} (docs at /api/docs)`);
 }
 

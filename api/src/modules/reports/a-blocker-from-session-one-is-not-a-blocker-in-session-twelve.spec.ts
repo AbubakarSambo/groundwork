@@ -23,6 +23,8 @@ function aPrisma(o: { checkIns: { id: string }[]; deps: any[]; objectives: any[]
   } as any;
 }
 
+const LEAD = { participantId: null, isLead: true };
+
 describe('what this session holds', () => {
   it('counts only dependencies raised by this session\'s check-ins, and not self-blocks', async () => {
     const prisma = aPrisma({
@@ -34,27 +36,27 @@ describe('what this session holds', () => {
       ],
       objectives: [], snapshots: {},
     });
-    const r = await whatThisSessionHolds(prisma, 'g', 12);
+    const r = await whatThisSessionHolds(prisma, 'g', 12, LEAD);
     expect(r.blocked).toBe(1);
     expect(r.waiting).toBe(1);
   });
 
   it('a session with no check-ins has nothing raised in it, and does not ask the dependency table', async () => {
     const prisma = aPrisma({ checkIns: [], deps: [{ status: 'BLOCKING', fromParticipantId: 'a', onParticipantId: 'b' }], objectives: [], snapshots: {} });
-    const r = await whatThisSessionHolds(prisma, 'g', 3);
+    const r = await whatThisSessionHolds(prisma, 'g', 3, LEAD);
     expect(r.blocked).toBe(0);
     expect(prisma.groundDependency.findMany).not.toHaveBeenCalled();
   });
 
   it('movement is the difference between two snapshots, and unknown with only one', async () => {
     const objectives = [{ id: 'o1', count: 10 }];
-    const none = await whatThisSessionHolds(aPrisma({ checkIns: [], deps: [], objectives, snapshots: {} }), 'g', 1);
+    const none = await whatThisSessionHolds(aPrisma({ checkIns: [], deps: [], objectives, snapshots: {} }), 'g', 1, LEAD);
     expect(none.movedOnTargets).toBeNull();
-    const first = await whatThisSessionHolds(aPrisma({ checkIns: [], deps: [], objectives, snapshots: {} }), 'g', 2);
+    const first = await whatThisSessionHolds(aPrisma({ checkIns: [], deps: [], objectives, snapshots: {} }), 'g', 2, LEAD);
     expect(first.movedOnTargets).toBeNull();
-    const known = await whatThisSessionHolds(aPrisma({ checkIns: [], deps: [], objectives, snapshots: { 1: [{ objectiveId: 'o1', count: 6 }] } }), 'g', 2);
+    const known = await whatThisSessionHolds(aPrisma({ checkIns: [], deps: [], objectives, snapshots: { 1: [{ objectiveId: 'o1', count: 6 }] } }), 'g', 2, LEAD);
     expect(known.movedOnTargets).toBe(4);
-    const closed = await whatThisSessionHolds(aPrisma({ checkIns: [], deps: [], objectives, snapshots: { 1: [{ objectiveId: 'o1', count: 6 }], 2: [{ objectiveId: 'o1', count: 8 }] } }), 'g', 2);
+    const closed = await whatThisSessionHolds(aPrisma({ checkIns: [], deps: [], objectives, snapshots: { 1: [{ objectiveId: 'o1', count: 6 }], 2: [{ objectiveId: 'o1', count: 8 }] } }), 'g', 2, LEAD);
     expect(closed.movedOnTargets).toBe(2);
   });
 });

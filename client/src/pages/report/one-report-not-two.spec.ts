@@ -30,9 +30,15 @@ const PARTICIPANT = strip(readFileSync(path.join(__dirname, '../grounds/GroundPa
 const PARTY_REPORT = strip(readFileSync(path.join(__dirname, '../../components/gw/SharedReportForAParty.tsx'), 'utf8'))
 
 describe('one report, not two', () => {
-  it('the report body is a component, not a page only', () => {
-    expect(REPORT).toMatch(/export function ReportBody\(/)
-  })
+  /*
+   * "THE REPORT BODY IS A COMPONENT, NOT A PAGE ONLY" RETIRED WITH THE FILE.
+   *
+   * `ReportBody` and its inner components (`ResolutionSection`, `OutcomeFeedbackSection`,
+   * `PatternBlock`, `WhereTheRecordIsThin`, `WhatTheGroundCanTellYou`, `HiddenContributorsSection`
+   * and the rest) are deleted - every rule they enforced either held already on a live surface or
+   * was moved to one (see `docs/the-old-team-report-against-the-report-tab.md`). This was always
+   * expected to retire with the file; the rule that survives it is below.
+   */
 
   it('and no page carries a second report body at all', () => {
     /*
@@ -97,15 +103,19 @@ describe('one report, not two', () => {
   })
 
   /**
-   * Embedded, the surrounding page already says which check-in this is and how to get back, so the
-   * full-bleed wrapper and the dark header would be a second set of both.
+   * The header's read and the report's own headline were the same sentence, on one screen.
+   *
+   * U.10 PICTURE-CHECK ROUND 7, ITEM 3: THE HEADER'S OWN COPY OF THE HEADLINE IS GONE ENTIRELY,
+   * NOT JUST HIDDEN ON THE REPORT TAB. `{tab !== 'report' && (alignRead ? ...)}` was the corner
+   * that repeated the report's headline ("2 agreed, nothing still open") everywhere except the one
+   * tab where the report itself already said it. Hafsah's instruction dropped that corner outright
+   * - a clipped fragment, not a sentence - rather than keep the per-tab gate around it. The rule
+   * this test protects (the header must not repeat the report's own headline) is not weaker for
+   * that: there is no headline left in the header on ANY tab now, which is a stronger form of the
+   * same rule, not a smaller one.
    */
-  it('the page chrome is dropped when embedded', () => {
-    expect(REPORT).toMatch(/if \(embedded\) return/)
-  })
-
-  /** The header's read and the report's own headline were the same sentence, on one screen. */
-  it('the header stops repeating the report headline on that tab', () => {
-    expect(ADMIN).toMatch(/\{tab !== 'report' && \(/)
+  it('the header stops repeating the report headline anywhere, not only on that tab', () => {
+    expect(ADMIN).not.toContain('alignRead')
+    expect(ADMIN).not.toMatch(/agreed,.*still open/)
   })
 })

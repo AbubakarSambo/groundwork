@@ -8,6 +8,7 @@ import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
 import { Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
 import { copy } from '@/components/gw/copying-can-fail'
+import { Panel, Callout, SubHeading, FieldLabel, TextField, TextArea, Button, Note, Steps, Step } from '@/components/gw/ui'
 
 type Variant = 'admin' | 'participant'
 
@@ -38,6 +39,23 @@ interface Props {
   email?: string
 }
 
+/**
+ * REBUILT FROM THE SHARED PARTS (group 3, piece 4, B1-starting-a-check-in): the outer card is a
+ * `Panel` (`pad={false}`, each inner block a `.gwui-panel-row`, the prototype's own white,
+ * bordered, 12-pixel-corner panel); the two tinted banners are `Callout` with a `title` (the same
+ * two-line shape `AuthNotice` already draws for the amber tone, now also in green and in a new
+ * blue `tone="info"`); the email form uses `FieldLabel`/`TextField`/`Button`/`Note`; the
+ * participant variant's three-line checklist uses `Steps`/`Step`. The invite link itself no
+ * longer sits in a read-only text box to select by hand - it is plain text next to the Copy
+ * button, the same shape `TheInviteLink.tsx` already uses for the organisation's own invite link -
+ * because the button already copies it and a second way to select the same text added nothing.
+ * No API call, and no state the form keeps, changed.
+ *
+ * PRIMARY-BUTTONS-NEVER-TOGETHER: the participant variant's "Send me my link" and the admin
+ * variant's "Save and continue" are each the one primary submit button on their own early return -
+ * `variant === 'participant'` returns before the admin branch's button is ever reached, so the two
+ * never render at once.
+ */
 export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail }: Props) {
   const navigate = useNavigate()
   const [email, setEmail] = useState(initialEmail ?? '')
@@ -81,72 +99,6 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
     },
   })
 
-  if (variant === 'participant') {
-    return (
-      <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
-        {/* What happens next */}
-        <div style={{ padding: '14px 16px', background: 'var(--gw-green-bg)', borderBottom: '1px solid var(--gw-green-b)' }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 8 }}>
-            Session 1 is on record.
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
-              <span style={{ color: 'var(--gw-green-t)', fontWeight: 700, flexShrink: 0 }}>✓</span>
-              <span>Your check-in is saved. The report shows where people agree, where they differ, and what to do next.</span>
-            </div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
-              <span style={{ color: 'var(--gw-muted)', fontWeight: 700, flexShrink: 0 }}>2</span>
-              <span>Everyone else checks in independently. What they say is compared with what you said, to show where there is alignment and where there are gaps.</span>
-            </div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
-              <span style={{ color: 'var(--gw-muted)', fontWeight: 700, flexShrink: 0 }}>3</span>
-              <span>The report shows where everyone sees the same thing, where they do not, and what the gaps between them mean.</span>
-            </div>
-          </div>
-        </div>
-        {/* Save account */}
-        <div style={{ padding: '14px 16px', background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)' }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 3 }}>
-            Save this to receive the report.
-          </div>
-          <div style={{ fontSize: 12, color: 'var(--gw-blue-t)', lineHeight: 1.5 }}>
-            Enter the email where you received this invite. We will send you a link when the report is ready.
-          </div>
-        </div>
-        <div style={{ padding: '16px' }}>
-          <form onSubmit={save}>
-            {/* Once. Two renders shared an id and a name, which is invalid markup and exactly what makes a password
-                manager fill the trap and lock a real person out. */}
-            {trap.field}
-            <div className="gw-fld">
-              <label className="gw-label">Your email</label>
-              <input
-                className="gw-input"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={e => { setEmail(e.target.value); setEmailError('') }}
-                autoFocus
-              />
-            </div>
-            {emailError && <div className="gw-er" role="alert">{emailError}</div>}
-            <button
-              type="submit"
-              className="gw-btn"
-              disabled={saveSession.isPending}
-              style={{ marginTop: 4 }}
-            >
-              {saveSession.isPending ? 'Sending…' : 'Send me my link'}
-            </button>
-          </form>
-        </div>
-        <div style={{ padding: '0 16px 14px', textAlign: 'center' }}>
-          <StartOver onClear={onClear} />
-        </div>
-      </div>
-    )
-  }
-
   function save(e: React.FormEvent) {
     e.preventDefault()
     const trimmed = email.trim().toLowerCase()
@@ -186,130 +138,128 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
     setParticipantAdded(true)
   }
 
-  return (
-    <div
-      style={{
-        background: 'white',
-        border: '1px solid var(--gw-border)',
-        borderRadius: 12,
-        overflow: 'hidden',
-      }}
-    >
-      <div style={{ padding: '14px 16px', background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)' }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 3 }}>
-          Your first session is on record.
-        </div>
-        <div style={{ fontSize: 12, color: 'var(--gw-blue-t)', lineHeight: 1.5 }}>
-          {mode ? `${MODE_LABEL[mode]}. ` : ''}Enter your email to save it. The report builds as people check in - you will see alignment and gaps emerge over time.
-        </div>
-      </div>
-
-      {/* Section 1: email */}
-      <div style={{ padding: '16px', borderBottom: '1px solid var(--gw-border)' }}>
-        <form onSubmit={save}>
-          {/* The admin variant called entrySave with trap.filled and never rendered the trap, so its spam defence did nothing. */}
-          {trap.field}
-          <div className="gw-fld">
-            <label className="gw-label">Your email</label>
-            <input
-              className="gw-input"
+  if (variant === 'participant') {
+    return (
+      <Panel pad={false}>
+        <Callout tone="success" title="Session 1 is on record.">
+          <Steps>
+            <Step done>Your check-in is saved. The report shows where people agree, where they differ, and what to do next.</Step>
+            <Step>Everyone else checks in independently. What they say is compared with what you said, to show where there is alignment and where there are gaps.</Step>
+            <Step>The report shows where everyone sees the same thing, where they do not, and what the gaps between them mean.</Step>
+          </Steps>
+        </Callout>
+        <Callout tone="info" title="Save this to receive the report.">
+          Enter the email where you received this invite. We will send you a link when the report is ready.
+        </Callout>
+        <div className="gwui-panel-row">
+          <form onSubmit={save}>
+            {/* Once. Two renders shared an id and a name, which is invalid markup and exactly what makes a password
+                manager fill the trap and lock a real person out. */}
+            {trap.field}
+            <FieldLabel htmlFor="savecard-email-participant">Your email</FieldLabel>
+            <TextField
+              id="savecard-email-participant"
               type="email"
               placeholder="you@example.com"
               value={email}
               onChange={e => { setEmail(e.target.value); setEmailError('') }}
               autoFocus
             />
-          </div>
-          {emailError && <div className="gw-er" role="alert">{emailError}</div>}
-          <button
-            type="submit"
-            className="gw-btn"
-            disabled={saveSession.isPending}
-            style={{ marginTop: 4 }}
-          >
-            {saveSession.isPending ? 'Sending…' : 'Save and continue'}
-          </button>
-        </form>
-        <div style={{ marginTop: 10, fontSize: 11, color: 'var(--gw-muted)', textAlign: 'center', lineHeight: 1.5 }}>
-          A link lands in your inbox. Click it to finish saving and set a password.
+            {emailError && <Note tone="error">{emailError}</Note>}
+            <Button type="submit" disabled={saveSession.isPending}>
+              {saveSession.isPending ? 'Sending…' : 'Send me my link'}
+            </Button>
+          </form>
         </div>
+        <div className="gwui-panel-row" style={{ textAlign: 'center' }}>
+          <StartOver onClear={onClear} />
+        </div>
+      </Panel>
+    )
+  }
+
+  return (
+    <Panel pad={false}>
+      <Callout tone="info" title="Your first session is on record.">
+        {mode ? `${MODE_LABEL[mode]}. ` : ''}Enter your email to save it. The report builds as people check in - you will see alignment and gaps emerge over time.
+      </Callout>
+
+      {/* Section 1: email */}
+      <div className="gwui-panel-row">
+        <form onSubmit={save}>
+          {/* The admin variant called entrySave with trap.filled and never rendered the trap, so its spam defence did nothing. */}
+          {trap.field}
+          <FieldLabel htmlFor="savecard-email">Your email</FieldLabel>
+          <TextField
+            id="savecard-email"
+            type="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={e => { setEmail(e.target.value); setEmailError('') }}
+            autoFocus
+          />
+          {emailError && <Note tone="error">{emailError}</Note>}
+          <Button type="submit" disabled={saveSession.isPending}>
+            {saveSession.isPending ? 'Sending…' : 'Save and continue'}
+          </Button>
+        </form>
+        <p className="gwui-fine" style={{ textAlign: 'center' }}>
+          A link lands in your inbox. Click it to finish saving and set a password.
+        </p>
       </div>
 
       {/* Section 2: invite link */}
-      <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--gw-border)' }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 10 }}>
-          Share your invite link
-        </div>
+      <div className="gwui-panel-row">
+        <SubHeading>Share your invite link</SubHeading>
 
-        <div style={{ display: 'flex', gap: 7, alignItems: 'center', marginBottom: 10 }}>
-          <input
-            readOnly
-            value={inviteUrl}
-            style={{ flex: 1, fontSize: 11, padding: '7px 9px', border: '1px solid var(--gw-border)', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-sub)', fontFamily: 'inherit', minWidth: 0 }}
-            onClick={e => (e.target as HTMLInputElement).select()}
-          />
-          <button
-            onClick={copyLink}
-            style={{ padding: '7px 14px', borderRadius: 6, background: copied ? 'var(--gw-green-t)' : 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', flexShrink: 0, transition: 'background 0.15s' }}
-          >
+        <span className="gwui-invite-link-row">
+          <span className="gwui-invite-link-address">{inviteUrl}</span>
+          <Button kind="secondary" size="small" onClick={copyLink}>
             {copied ? 'Copied' : 'Copy link'}
-          </button>
-        </div>
+          </Button>
+        </span>
 
-        <div style={{ fontSize: 11, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 12 }}>
+        <p className="gwui-panel-text-muted">
           Each person checks in independently without seeing what you wrote. What they say is compared with what you said to show where you agree, where you differ, and what the gap means.
-        </div>
+        </p>
 
-        <div className="gw-fld" style={{ marginBottom: 0 }}>
-          <label className="gw-label">Add a note to send with your link <span style={{ fontWeight: 400, color: 'var(--gw-muted)' }}>(optional)</span></label>
-          <textarea
-            className="gw-ta"
-            rows={2}
-            value={note}
-            onChange={e => setNote(e.target.value)}
-            placeholder="e.g. I started this so we both know where things stand before we talk."
-          />
-        </div>
+        <FieldLabel htmlFor="savecard-note">Add a note to send with your link (optional)</FieldLabel>
+        <TextArea
+          id="savecard-note"
+          rows={2}
+          value={note}
+          onChange={e => setNote(e.target.value)}
+          placeholder="e.g. I started this so we both know where things stand before we talk."
+        />
       </div>
 
       {/* Section 3: send directly by email */}
-      <div style={{ padding: '14px 16px' }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8 }}>
-          Invite a participant
-        </div>
-        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 10 }}>
+      <div className="gwui-panel-row">
+        <SubHeading>Invite someone to answer</SubHeading>
+        <p className="gwui-panel-text-muted">
           Add their email and we will send them an invite once you have saved.
-        </div>
-        {participantError && <div className="gw-er" role="alert" style={{ marginBottom: 6 }}>{participantError}</div>}
+        </p>
+        {participantError && <Note tone="error">{participantError}</Note>}
         {participantAdded ? (
-          <div style={{ fontSize: 12, color: 'var(--gw-green-t)', lineHeight: 1.5 }}>
-            Saved. They will receive an invite once you have saved.
-          </div>
+          <Callout tone="success">Saved. They will receive an invite once you have saved.</Callout>
         ) : (
-          <div style={{ display: 'flex', gap: 7, alignItems: 'center' }}>
-            <input
-              className="gw-input"
+          <span className="gwui-invite-link-row">
+            <TextField
               type="email"
               placeholder="them@company.com"
               value={participantEmail}
               onChange={e => { setParticipantEmail(e.target.value); setParticipantAdded(false) }}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addParticipant() } }}
-              style={{ flex: 1, margin: 0 }}
             />
-            <button
-              onClick={addParticipant}
-              style={{ padding: '9px 16px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', flexShrink: 0 }}
-            >
-              Add
-            </button>
-          </div>
+            <Button kind="secondary" size="small" onClick={addParticipant}>Add</Button>
+          </span>
         )}
       </div>
 
-      <div style={{ padding: '0 16px 14px', textAlign: 'center' }}>
+      <div className="gwui-panel-row" style={{ textAlign: 'center' }}>
         <StartOver onClear={onClear} />
       </div>
-    </div>
+    </Panel>
   )
 }
 
@@ -330,10 +280,7 @@ function StartOver({ onClear }: { onClear: () => void }) {
     )
   }
   return (
-    <button
-      onClick={() => setAsking(true)}
-      style={{ background: 'none', border: 'none', fontSize: 11, color: 'var(--gw-muted)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', padding: 0 }}
-    >
+    <button type="button" onClick={() => setAsking(true)} className="gwui-plain-link">
       Start over
     </button>
   )

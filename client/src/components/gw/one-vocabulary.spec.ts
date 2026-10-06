@@ -77,21 +77,28 @@ describe('the palette is named', () => {
 })
 
 describe('the heading comes from the kit', () => {
-  const REPORT = strip(readFileSync(join(SRC, 'pages/report/ReportPage.tsx'), 'utf8'))
-
-  it('the report\'s section heading delegates rather than re-implementing', () => {
-    expect(REPORT).toMatch(/import \{ Sec \} from '@\/components\/gw\/kit'/)
-    expect(REPORT).toMatch(/return <Sec title=\{String\(children\)\} \/>/)
-  })
-
-  it('and no longer carries its own values for it', () => {
-    // The exact numbers that made the report's headings a slightly worse copy of the board's.
-    expect(REPORT).not.toMatch(/letterSpacing: '\.09em'/)
-  })
-
+  /*
+   * "THE REPORT'S SECTION HEADING DELEGATES RATHER THAN RE-IMPLEMENTING" RETIRED WITH ReportBody.
+   *
+   * `SecH` was `ReportBody`'s own wrapper around `Section`, inside `ReportPage.tsx`. `ReportBody`
+   * is deleted (see the comment at the top of `ReportPage.tsx` for where each of its sections
+   * went); the file left behind is a three-line redirect with no heading markup of its own, so
+   * there is nothing here to re-implement the kit's heading, and nothing for this assertion to
+   * protect. The rule itself - one shared heading component, not a bespoke one per page - is
+   * still enforced below, on settings, and by `the-rebuilt-pages-use-only-the-new-parts.spec.ts`
+   * for every page on that list.
+   */
   it('settings uses it too, rather than a sixth copy of the same label', () => {
+    /*
+     * UPDATED, GROUP 1 REBUILD: SettingsPage.tsx no longer imports kit.tsx's `Sec` at all - it is
+     * rebuilt from components/gw/ui (the-rebuilt-pages-use-only-the-new-parts.spec.ts enforces
+     * that directly, and more strictly than this check ever did). Its heading is `Section`, the
+     * shared part `Sec` itself was lifted out to become; this checks the same guarantee the old
+     * assertion did - one shared heading component, not a bespoke label - in the vocabulary the
+     * page now actually uses.
+     */
     const S = strip(readFileSync(join(SRC, 'pages/settings/SettingsPage.tsx'), 'utf8'))
-    expect(S).toMatch(/<Sec title="Your data" \/>/)
+    expect(S).toMatch(/<Section heading="Your data">/)
     expect(S).not.toMatch(/letterSpacing: '\.06em'/)
   })
 })
@@ -166,21 +173,35 @@ describe('the pages are built from the kit, not from inline styles', () => {
    * checked at the rendered page on a throwaway account signed up through the real flow.
    */
   it('Settings\' panels are Cards rather than six copies of one', () => {
+    /*
+     * UPDATED, GROUP 1 REBUILD: the page is rebuilt from components/gw/ui, so the shared panel is
+     * now `Panel` (gw-ui.css's `.gwui-panel`), not kit.tsx's `Card` - the same guarantee (one panel
+     * component, not six hand-rolled ones), in the vocabulary the page now uses. The exact old
+     * literal panel style this test used to look for cannot recur either way:
+     * the-rebuilt-pages-use-only-the-new-parts.spec.ts refuses any inline background/border/radius
+     * on this page at all, which is the stronger version of the same check.
+     */
     const S = strip(readFileSync(join(SRC, 'pages/settings/SettingsPage.tsx'), 'utf8'))
-    expect(S).toMatch(/import \{ Sec, Card \} from '@\/components\/gw\/kit'/)
-    // The exact panel that was written out six times.
+    expect(S).toMatch(/Panel/)
     expect(S).not.toMatch(/background: 'white', border: '0\.5px solid var\(--gw-border\)', borderRadius: 10/)
   })
 
-  it('and the panel holding one block says so', () => {
+  it('and "You" is one FieldRows, not several one-off panels', () => {
     /**
-     * The WhatsApp panel was written as a row container and filled with a single block, so its
-     * content sat flush against the card edge while every other panel was inset. Pre-existing, and
-     * invisible until the panels came onto one component. Measured after: all six inset at 33px.
+     * UPDATED, GROUP 1 REBUILD: the WhatsApp field sits inside "You"'s single `FieldRows` list,
+     * rather than a separate `Card pad="block"` of its own - so every row in that list is inset the
+     * same way by construction, not by each caller remembering to ask for it.
+     *
+     * CHANGED AGAIN (Hafsah, 30 September, the setting row, item 2): this used to also require a
+     * `<Panel pad={false}>` wrapping that `FieldRows` - which was itself the defect this task fixed.
+     * `srow` (docs/prototype/source/s5.js) has no side padding and sits flat on the page, under the
+     * section heading, never inside a white box - see FieldRow.tsx's own updated comment. "You" no
+     * longer wraps its `FieldRows` in a `Panel`, so this test no longer looks for one.
      */
     const S = strip(readFileSync(join(SRC, 'pages/settings/SettingsPage.tsx'), 'utf8'))
-    const whatsapp = S.slice(S.indexOf('<Sec title="WhatsApp" />'), S.indexOf('<Sec title="WhatsApp" />') + 200)
-    expect(whatsapp).toMatch(/<Card pad="block">/)
+    const you = S.slice(S.indexOf('<Section heading="You">'), S.indexOf('<Section heading="What we send you">'))
+    expect(you).toMatch(/<FieldRows>/)
+    expect(you).not.toMatch(/<Panel/)
   })
 
   it('Card has the one-block case, so a panel is never padded for rows it does not have', () => {
@@ -189,22 +210,30 @@ describe('the pages are built from the kit, not from inline styles', () => {
     expect(KIT).toMatch(/pad === 'block' \? '14px 16px'/)
   })
 
-  it('Billing answers "what is the state of this" with the board\'s Stat row', () => {
+  /*
+   * U.19: Plan and billing now answers "what is the state of this" the way the prototype's page does
+   * (settings-billing.txt): a "Your plan" list of rows, each a full sentence, rather than the board's
+   * Stat tiles. What these two checks were for is kept: the state is said in one place, and once.
+   */
+  it('Billing answers "what is the state of this" in the prototype\'s rows', () => {
+    /*
+     * UPDATED, GROUP 1 REBUILD: the rows are the shared `FieldRow` now (components/gw/ui), whose
+     * own label column renders each fact's name - `<b>Plan</b>` was kit.tsx's own row markup,
+     * which this page no longer writes at all. The guarantee is the same: one row, one label, one
+     * sentence, each said once.
+     */
     const B = strip(readFileSync(join(SRC, 'pages/billing/BillingPage.tsx'), 'utf8'))
-    expect(B).toMatch(/import \{ Stat, Pill \} from '@\/components\/gw\/kit'/)
-    for (const label of ['label="Plan"', 'label="People"']) expect(B).toContain(label)
+    for (const label of ['label="Plan"', 'label="Next payment"', 'label="Everyone counts"']) expect(B).toContain(label)
   })
 
   it('and says each of those facts once', () => {
-    /**
-     * The tiles at first sat above a card repeating all three - plan, price, seat count - so a page
-     * about a decision on money stated the same facts twice within one screen. The card is the
-     * state and the two things you can do about it.
-     */
     const B = strip(readFileSync(join(SRC, 'pages/billing/BillingPage.tsx'), 'utf8'))
-    const card = B.slice(B.indexOf('Current plan'), B.indexOf('Pause subscription'))
-    expect(card).not.toMatch(/PLAN_PRICES\[/)
-    expect(card).not.toMatch(/people\.count/)
+    expect(B.match(/thePlanLine\(/g) ?? []).toHaveLength(1)
+    /* UPDATED, GROUP 1 REBUILD: "Stopping" is `<Section heading="Stopping">` now, not an `id`
+       attribute of its own - the same slice, found the new way. */
+    const stopping = B.slice(B.indexOf('heading="Stopping"'), B.indexOf('role="dialog"'))
+    expect(stopping).not.toMatch(/PLAN_PRICES\[/)
+    expect(stopping).not.toMatch(/people\.count/)
   })
 })
 
@@ -241,9 +270,14 @@ describe('the same solo report reads the same to everybody', () => {
       expect(src).toMatch(/import \{ SoloReportBody \}/)
       expect(src).toMatch(/<SoloReportBody report=/)
     }
-    /* The party view reaches it through `WhatYouAreCarryingForward`, where the solo report and the whole
-       sharing decision moved together. */
-    expect(PARTICIPANT).toMatch(/<WhatYouAreCarryingForward/)
+    /*
+     * REVIEW ROUND 3, "YOUR WORK" REBUILD: THE PARTY VIEW REACHES IT THROUGH `YourWork` NOW
+     * (components/gw/checkin/YourWork.tsx), which is the one place that renders
+     * `WhatYouAreCarryingForward` on My work/My record for both pages.
+     */
+    expect(PARTICIPANT).toMatch(/<YourWork/)
+    const YOUR_WORK = strip(readFileSync(join(SRC, 'components/gw/checkin/YourWork.tsx'), 'utf8'))
+    expect(YOUR_WORK).toMatch(/<WhatYouAreCarryingForward/)
   })
 
   it('and neither walks the report itself any more', () => {

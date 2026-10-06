@@ -84,6 +84,6 @@ describe('and when it cannot be worked out at all', () => {
      * out, which is the failure being fixed.
      */
     await expect(svc({ explodes: true }).whatBacksEachClaim('g1')).rejects.toThrow();
-    expect(COULD_NOT_WORK_IT_OUT).toContain('Read all of it as one account');
+    expect(COULD_NOT_WORK_IT_OUT).toContain('Read all of it as what one person said');
   });
 });

@@ -54,15 +54,46 @@ describe('the menu has to be on the screen', () => {
   })
 
   it('and every admin destination is in it, by name', () => {
-    shell('/grounds')
-    for (const label of ['All check-ins', 'People', 'Connect', 'Billing', 'Settings']) {
-      expect(screen.getAllByText(label).length).toBeGreaterThan(0)
+    /*
+     * In the light sidebar (A1) the destinations are named as the design system names them, and
+     * each is asked for INSIDE the sidebar, so the phone's bar cannot satisfy this on its behalf:
+     * "Check-ins" (the whole list), People, Connections and Plan and billing under the organisation's
+     * name, and "Your settings" in the person's own menu, which opens from "Settings, help, sign out".
+     */
+    const { container } = shell('/grounds')
+    const rail = container.querySelector('.gw-sidebar-desktop') as HTMLElement
+    const inRail = (name: string) => [...rail.querySelectorAll('a, button')].filter(el => el.textContent?.trim() === name)
+    expect(inRail('Check-ins').map(a => a.getAttribute('href'))).toEqual(['/grounds'])
+    expect(inRail('People').map(a => a.getAttribute('href'))).toEqual(['/org/members'])
+    expect(inRail('Connections').map(a => a.getAttribute('href'))).toEqual(['/settings/connections'])
+    expect(inRail('Plan and billing').map(a => a.getAttribute('href'))).toEqual(['/billing'])
+    expect(rail).toHaveTextContent('Test Org')
+    fireEvent.click(screen.getByRole('button', { name: /Settings, help, sign out/ }))
+    expect(inRail('Your settings').map(a => a.getAttribute('href'))).toEqual(['/settings'])
+    for (const name of ['Help', 'Send feedback', 'Sign out']) expect(inRail(name)).toHaveLength(1)
+  })
+
+  it('and a member gets no admin part at all, and no organisation heading over it', () => {
+    useAuthStore.setState({ user: { ...ADMIN, role: 'MEMBER' }, token: 't', isAuthenticated: true } as any)
+    const { container } = shell('/grounds')
+    const rail = container.querySelector('.gw-sidebar-desktop') as HTMLElement
+    for (const name of ['People', 'Connections', 'Plan and billing']) {
+      expect([...rail.querySelectorAll('a')].filter(a => a.textContent?.trim() === name)).toHaveLength(0)
     }
+    expect(rail.querySelectorAll('.gw-rl-h')).toHaveLength(1)
+  })
+
+  it('and Platform ops is in the person\'s menu for Groundwork staff only', () => {
+    useAuthStore.setState({ user: { ...ADMIN, isPlatformAdmin: true }, token: 't', isAuthenticated: true } as any)
+    const { container } = shell('/grounds')
+    fireEvent.click(screen.getByRole('button', { name: /Settings, help, sign out/ }))
+    const rail = container.querySelector('.gw-sidebar-desktop') as HTMLElement
+    expect([...rail.querySelectorAll('a')].filter(a => a.textContent?.trim() === 'Platform ops').map(a => a.getAttribute('href'))).toEqual(['/admin'])
   })
 
   it('is not there on the pages that are deliberately bare', () => {
     /* Those carry their own header - see a-page-with-no-way-out. Being bare there is the design. */
-    const { container } = shell('/org/setup')
+    const { container } = shell('/org-new')
     expect(container.querySelector('.gw-sidebar-desktop')).toBeNull()
   })
 

@@ -23,7 +23,7 @@ function makeService(opts: { mine: any | null; takenHere?: boolean; otherUser?: 
     user: { findUnique: jest.fn(async () => opts.otherUser ?? null), update: userUpdate },
     $transaction: jest.fn(async (ops: any[]) => Promise.all(ops)),
   };
-  const svc = new ParticipantsService(prisma, { sign: () => 'jwt' } as any, {} as any);
+  const svc = new ParticipantsService(prisma, { sign: () => 'jwt' } as any, {} as any, {} as any);
   return { svc, prisma, participantUpdate, userUpdate };
 }
 

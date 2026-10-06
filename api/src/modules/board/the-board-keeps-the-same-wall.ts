@@ -34,6 +34,11 @@ export interface WhoMaySeeWhom {
   peersHidden: boolean;
   /** The reader's own participant row, when they are a party. */
   meParticipantId: string | null;
+  /**
+   * The lead's row, which the reader may also read. Set only for the new hire on an onboarding check-in, who reads their
+   * lead's own words and row (request 124, Hafsah's answer of 3 October; decision 3 and decision 4).
+   */
+  alsoThe?: string | null;
 }
 
 /**
@@ -46,7 +51,10 @@ export function onlyWhatThisReaderMaySee<T extends AboutOnePerson>(
 ): T[] | undefined {
   if (!rows) return rows;
   if (!who.peersHidden) return rows;
-  return rows.filter((r) => !!r.participantId && r.participantId === who.meParticipantId);
+  /* Something that is not a list cannot be walled row by row, so none of it goes, rather than an
+     error or all of it. A section with rows inside an object walls those rows itself. */
+  if (!Array.isArray(rows)) return [];
+  return rows.filter((r) => !!r.participantId && (r.participantId === who.meParticipantId || (!!who.alsoThe && r.participantId === who.alsoThe)));
 }
 
 /**
@@ -70,7 +78,13 @@ export function onlyHandoffsTheyAreIn<T extends { fromParticipantId?: string | n
  * The line a party reads in place of everybody else's rows, so a board that has quietly lost most
  * of itself does not read as broken or as though nobody else is in the check-in.
  */
+/** The same, on an onboarding check-in, where the new hire reads their lead's row as well as their own (request 124). */
+export const WHY_YOU_ONLY_SEE_YOURSELF_AND_YOUR_LEAD =
+  'On this check-in people give their views without seeing what each other said, so the person-by-person '
+  + 'part of this board shows you and your lead. Everything above it is built from everybody and is the same for all of you. '
+  + 'That covers where people said the same thing, where they said different things, and the question it turns on.';
+
 export const WHY_YOU_ONLY_SEE_YOURSELF =
-  'On this check-in people give their accounts without seeing each other, so the person-by-person '
-  + 'part of this board shows only you. Everything above it - what the accounts agree on, where they '
-  + 'differ, and the question it turns on - is built from everybody and is the same for all of you.';
+  'On this check-in people answer without seeing what each other said, so the person-by-person '
+  + 'part of this board shows only you. Everything above it is built from everybody and is the same for all of you. '
+  + 'That covers where people said the same thing, where they said different things, and the question it turns on.';

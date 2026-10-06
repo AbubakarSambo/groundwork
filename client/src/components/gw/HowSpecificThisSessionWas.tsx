@@ -47,7 +47,7 @@ export function HowSpecificThisSessionWas({ level, spots }: {
   if (at == null) return null
   return (
     <div style={{ marginBottom: 16 }}>
-      <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 6 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-sub-d)', marginBottom: 6 }}>
         How specific this session was
       </div>
       <div style={{ display: 'flex', gap: 4 }}>
@@ -55,7 +55,7 @@ export function HowSpecificThisSessionWas({ level, spots }: {
           <div
             key={s}
             style={{
-              flex: 1, textAlign: 'center', fontSize: 9, letterSpacing: '.03em', textTransform: 'uppercase',
+              flex: 1, textAlign: 'center', fontSize: 10.5,
               padding: '5px 2px', borderRadius: 5, fontWeight: 700,
               /* AN UNFILLED STEP IS NOT GREY TEXT ON A GREY BLOCK. It was --gw-muted on --gw-bg,
                  which is 4.5:1 at 9px uppercase - passing on a calculator and unreadable on a

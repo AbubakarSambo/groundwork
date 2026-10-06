@@ -176,8 +176,18 @@ export function ContextChat({ groundId }: { groundId: string }) {
       const said = [...next].reverse().find(m => m.role === 'user')?.content ?? ''
       setProposal(res.proposal && said ? { ...res.proposal, said } : null)
     },
-    onError: () => toast.error('That did not go through. Try again.'),
+    /*
+     * A FAILED LOOK FOR THE NEXT QUESTION IS NOT A FAILED YES. After a yes the page asks the chat once
+     * more for the next gap. That second request is slow (a model reads the whole record), and when it
+     * failed the lead read a red "That did not go through" under a target that HAD been saved. It is
+     * asked quietly: the lead's own message failing is still said, a follow-up that fails is not.
+     */
+    onError: () => {
+      if (asking.current === 'next') { asking.current = 'message'; return }
+      toast.error('That did not go through. Try again.')
+    },
   })
+  const asking = useRef<'message' | 'next'>('message')
 
   function start() {
     setOpen(true)
@@ -228,6 +238,7 @@ export function ContextChat({ groundId }: { groundId: string }) {
     setHistory(next)
     setText('')
     setProposal(null)
+    asking.current = 'message'
     send.mutate(next)
   }
 
@@ -238,6 +249,7 @@ export function ContextChat({ groundId }: { groundId: string }) {
       setProposal(null)
       qc.invalidateQueries({ queryKey: ['ground', groundId] })
       /** Ask again with the gap now closed, so the next question is the next real one. */
+      asking.current = 'next'
       send.mutate(history)
     },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That could not be saved. Try again.'),
@@ -290,13 +302,17 @@ export function ContextChat({ groundId }: { groundId: string }) {
     */
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '16px 18px', marginBottom: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--gw-sub)' }}>
-          The context chat
+        {/*
+          GROUP 3'S REVIEW, BATCH A FAULT 6: "THE CONTEXT CHAT" WAS SHOUTED IN CAPITALS
+          (textTransform: uppercase), which the plain-wording rule treats the same as typing it in
+          capitals. The prototype's own heading for this (B2-context, context.txt) is "Tell
+          Groundwork how this team works", said at ordinary case and weight.
+        */}
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)' }}>
+          Tell Groundwork how this team works
         </div>
-        <button
-          onClick={() => setOpen(false)}
-          style={{ background: 'none', border: 'none', color: 'var(--gw-muted)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}
-        >
+        {/* A quiet text link: the prototype's "Tell Groundwork how this team works" has no Close button. */}
+        <button type="button" onClick={() => setOpen(false)} className="gwui-plain-link">
           Close
         </button>
       </div>
@@ -315,7 +331,11 @@ export function ContextChat({ groundId }: { groundId: string }) {
         write about a person is ever quoted to them or in a report.
       */}
       <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>
-        Say it, paste it, or attach it: what lands here guides every check-in and the coaching.
+        {/*
+          GROUP 3'S REVIEW, BATCH A FAULT 6: "SAY IT, PASTE IT, OR ATTACH IT: WHAT LANDS HERE..."
+          JOINED TWO SENTENCES WITH A COLON.
+        */}
+        Say it, paste it, or attach it. What lands here guides every check-in and the coaching.
         Nothing is written until you say so.
       </div>
 
@@ -411,7 +431,8 @@ export function ContextChat({ groundId }: { groundId: string }) {
             disabled={attach.isPending}
             title="Attach a document to this check-in"
             aria-label="Attach a document to this check-in"
-            style={{ width: 34, height: 34, borderRadius: 8, background: 'none', border: 'none', color: 'var(--gw-sub)', fontSize: 16, cursor: attach.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
+            className="gwui-icon-btn"
+            style={{ cursor: attach.isPending ? 'wait' : 'pointer' }}
           >
             {attach.isPending ? '…' : '📎'}
           </button>

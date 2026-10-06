@@ -66,12 +66,27 @@ export interface WhatTheyWant {
    * must not get the report; the nudges checked this and the broadcasts did not.
    */
   stillHere?: boolean | null;
+  /**
+   * The last day of approved leave that covers today, when they are away (week 23). Dates only: no
+   * reason or kind of leave is ever read. A reminder or a "you have missed" mail does not go to
+   * somebody who is away.
+   */
+  awayUntil?: string | null;
 }
 
 export type WhetherToSend = { send: true } | { send: false; because: string };
 
 /** The senders each per-kind switch governs. */
 export const GOVERNED_BY_THE_DIGEST_SWITCH: ReadonlySet<string> = new Set(['sendRoundDigest']);
+/**
+ * THE MAILS THAT CHASE A PERSON TO ANSWER, WHICH DO NOT GO TO SOMEBODY ON APPROVED LEAVE (week 23).
+ * A mail that tells the lead something about the ground is not in this list; only the ones that ask
+ * the person themselves to do something, or tell them they have missed it.
+ */
+export const NOT_SENT_WHILE_AWAY: ReadonlySet<string> = new Set([
+  'sendNudge', 'sendAbsenceReminder', 'sendSessionReady', 'sendInviteAboutToLapse', 'sendFeedbackRequest',
+]);
+
 export const GOVERNED_BY_THE_NUDGE_SWITCH: ReadonlySet<string> = new Set(['sendNudge', 'sendAbsenceReminder']);
 
 /**
@@ -95,6 +110,10 @@ export function whetherToSend(kind: WhatKindOfMail, they: WhatTheyWant | null, s
   }
 
   if (kind !== 'we decided to send it') return { send: true };
+
+  if (they.awayUntil && sender && NOT_SENT_WHILE_AWAY.has(sender)) {
+    return { send: false, because: `they are on approved leave until ${they.awayUntil}, and a reminder does not go to somebody who is away` };
+  }
 
   if (they.unsubscribedAt) {
     return {
@@ -159,12 +178,17 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   /* The moment everybody has answered, which is the whole promise of that card. */
   sendTeamUpdateAllIn: 'asked for',
   sendGroundApproved: 'asked for',
+  /* The decision on a request the person made themselves (decision 106 item 7). */
+  sendRequestDecided: 'asked for',
   sendGroundDeclined: 'asked for',
   /* Both are answers to something the person or their lead set in motion, so neither is a mail we
      decided to send - and the way-back-in class is for account recovery, which this is not. */
   sendYouAreInNow: 'asked for',
   sendTheyWereNotLetIn: 'asked for',
+  sendTheyAreInNow: 'asked for',
   sendSomebodyIsWaiting: 'asked for',
+  /* A person in the check-in asked the lead for it; the lead gets their request (U.3). */
+  sendMoreTimeAsked: 'asked for',
   sendGroundClosed: 'asked for',
   sendResolutionProposal: 'asked for',
   sendLateCorrectionNotice: 'asked for',
@@ -221,6 +245,8 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendParticipantBlockedNudge: 'we decided to send it',
   sendCodeExpiryReminder: 'we decided to send it',
   sendRoundDigest: 'we decided to send it',
+  /* The lead's weekly letter on the anchor check-ins. Nobody asked this morning, so the stop link stops it. */
+  sendTheLeadsWeeklyLetter: 'we decided to send it',
 };
 
 export function whatThisMailIs(sender: string): WhatKindOfMail {

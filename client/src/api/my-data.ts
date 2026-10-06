@@ -16,6 +16,8 @@ export interface MyData {
   recordEntries: { id: string; type: string; text: string; createdAt: string }[]
   checkIns: { id: string; status: string; sessionNumber: number; completedAt: string | null; groundLabel: string }[]
   grounds: { id: string; label: string; scenario: string; status: string }[]
+  /** What you wrote back to a suggestion about you (U.13): your side and your appeal. */
+  yourSidesAndAppeals?: { groundLabel: string; yourSide: string | null; yourSideAt: string | null; yourAppeal: string | null; appealedAt: string | null }[]
 }
 
 export const myDataApi = {

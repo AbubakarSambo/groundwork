@@ -1,4 +1,5 @@
 import { insteadOfAFiller } from './the-same-sentence-five-times';
+import { theOwedThingAskedPlainly } from './each-owed-thing-asked-plainly';
 /**
  * THE CLOSE BAR.
  *
@@ -35,8 +36,15 @@ export function whatIsConcreteIn(lastTurn: string, attachedThisSession: boolean)
  * The one question. Product-written, the way the citation is: the model does not get to soften it
  * or turn it into three. It is short because it is the last thing they read before the report.
  */
+/*
+ * THE LINE IN FRONT OF THE PRODUCT'S ONE QUESTION AT A HELD CLOSE. It read "One more before this closes.",
+ * a clipped phrase with no verb, which the wording rule does not allow (1 October 2026). A full sentence,
+ * in one place, for every hold.
+ */
+export const ONE_MORE_QUESTION = 'I have one more question before we finish.';
+
 export const THE_ONE_CONCRETE_THING =
-  'One more before this closes. Put a date or a number on that, or name where it is written down.';
+  `${ONE_MORE_QUESTION} Put a date or a number on that, or name where it is written down.`;
 
 /**
  * THE OTHER HOLD: the session is closing with something it was for never raised. Product-written,
@@ -65,6 +73,9 @@ export const saidToThem = (what: string): string => {
  * label. The common shapes turn into plain questions; anything else is asked as "Tell me about ...".
  */
 export function asAQuestion(what: string): string {
+  /* Written out once for every owed line: one plain question each. See each-owed-thing-asked-plainly. */
+  const plainly = theOwedThingAskedPlainly(what);
+  if (plainly) return plainly;
   const t = saidToThem(what).trim().replace(/[.?!]+$/, '');
   const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
   /* Two clauses joined with ", and" are two questions in one: each is turned, then rejoined. */
@@ -103,7 +114,7 @@ export function asAQuestion(what: string): string {
 }
 
 export const theOneThingNeverAsked = (what: string): string =>
-  `One more before this closes. ${asAQuestion(what)}`;
+  `${ONE_MORE_QUESTION} ${asAQuestion(what)}`;
 
 /**
  * WHEN THE MODEL WILL NOT LET A QUESTION GO, THE PRODUCT MOVES THE CONVERSATION ON. Smoke run, 20 Sep
@@ -156,8 +167,15 @@ export function lastSubstantiveTurn(personSaid: string[]): string {
  * comes out here, at the moment the close is refused, and only then. What the goodbye was wrapped
  * around - anything they actually said - is left where it is.
  */
+/*
+ * "THIS CHECK-IN WILL CONTINUE IN TWO WEEKS" IS A GOODBYE TOO. Week 2 live run, 28 Sep 2026: the close
+ * was held and the product's "One more before this closes" went under it, so Tobi read that the
+ * check-in would continue in two weeks and, in the same turn, that it had one more question. Only
+ * the check-in, the session or the conversation continuing counts - never "you will continue",
+ * which is the person's own commitment and stays.
+ */
 const A_FAREWELL =
-  /(\bspeak soon\b|\bsee you (in|next|soon|then)\b|\btalk soon\b|\buntil next time\b|\byour report is (ready|yours|now yours)\b|\bthe report is yours\b|\bnothing in it needs acting on\b|\bnothing to act on\b|\bthat is everything for (today|now)\b|\bwe are done here\b|\bthanks for your time\b)/i;
+  /(\b(?:this|the|our) (?:check-in|session|conversation) (?:will |is going to )?(?:continue|resume|pick up|carry on)s? (?:in|next|on|after)\b|\bwe(?:'ll| will) (?:speak|talk) again\b|\bspeak soon\b|\bsee you (in|next|soon|then)\b|\btalk soon\b|\buntil next time\b|\byour report is (ready|yours|now yours)\b|\bthe report is yours\b|\bnothing in it needs acting on\b|\bnothing to act on\b|\bthat is everything for (today|now)\b|\bwe are done here\b|\bthanks for your time\b)/i;
 
 /**
  * A GOODBYE WITHOUT THE MARKER IS STILL A CLOSE. Smoke run, 20 Sep 2026: "Your report is ready now,
@@ -165,6 +183,9 @@ const A_FAREWELL =
  * left the marker off, so the product never ruled on the close, the person said "Ok, thank you", and
  * got "That did not come out right" with a hold underneath. The farewell IS the signal.
  */
+/** Any goodbye in it at all, question or not. For a turn the product has decided is not the last. */
+export const hasAGoodbye = (reply: string): boolean => A_FAREWELL.test(reply ?? '');
+
 export const saysGoodbye = (reply: string): boolean => A_FAREWELL.test(reply ?? '') && !/\?\s*$/.test((reply ?? '').trim());
 
 /**
@@ -197,7 +218,9 @@ export function withoutTheGoodbye(reply: string): string {
  * plan's questions were done, and the judge scored her session 1 for it: a strategy conversation that
  * ended on a personal to-do. The pack says not to ask it; the sentence is cut in code.
  */
-const HOMEWORK = /\b(what will you do about (?:this|that|it),? and by when|what is the (?:first|next|one) thing you will do(?: about (?:this|that|it))?,? and (?:by )?when|before we close:? what will you do)\b[^.!?]*[.!?]?/gi;
+/* "One thing before we close:" goes with the question it introduces. Left behind, the lead read "One
+   thing From everything you have said, what have you decided?" (pip, run 8). */
+const HOMEWORK = /\b(what will you do about (?:this|that|it),? and by when|what is the (?:first|next|one) thing you will do(?: about (?:this|that|it))?,? and (?:by )?when|(?:one (?:more |last )?thing,? )?before we close:? what will you do)\b[^.!?]*[.!?]?/gi;
 
 /** Does this turn ask the homework question at all? */
 export const asksForHomework = (text: string): boolean => {
@@ -237,12 +260,12 @@ export function withinTheHomeworkBudget(reply: string, earlierAiTurns: string[],
     HOMEWORK.lastIndex = 0;
     const swapped = decisionAsked ? withoutTheHomework(text).text : text.replace(HOMEWORK, THE_LEADS_DECISION).replace(/[ \t]{2,}/g, ' ').trim();
     HOMEWORK.lastIndex = 0;
-    if (decisionAsked && swapped === text) return { text: insteadOfAFiller((earlierAiTurns ?? []).length), changed: 'cut' };
+    if (decisionAsked && swapped === text) return { text: insteadOfAFiller((earlierAiTurns ?? []).length, earlierAiTurns ?? []), changed: 'cut' };
     return { text: swapped, changed: decisionAsked ? 'cut' : 'decision' };
   }
   if (earlier < 2) return { text, changed: 'kept' };
   const without = withoutTheHomework(text);
-  if (!without.cut) return { text: insteadOfAFiller((earlierAiTurns ?? []).length), changed: 'cut' };
+  if (!without.cut) return { text: insteadOfAFiller((earlierAiTurns ?? []).length, earlierAiTurns ?? []), changed: 'cut' };
   return { text: without.text, changed: 'cut' };
 }
 

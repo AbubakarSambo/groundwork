@@ -1,5 +1,5 @@
 import { BoardService } from './board.service';
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { GroundMode, GroundScenario } from '@prisma/client';
 
 /**
@@ -51,7 +51,15 @@ function serviceFor(ground: any = GROUND) {
     groundObjectiveSnapshot: none,
     groundParticipant: none,
   };
-  return new BoardService(prisma, /* wording pass: null ships the engine\'s own words */ { respond: async () => null } as any, { getSessionProgress: async () => null } as any);
+  return new BoardService(prisma, /* wording pass: null ships the engine\'s own words */ { respond: async () => null } as any, { getSessionProgress: async () => null } as any,
+    /*
+     * The report's name pass, stubbed to hand the row back as it is. These cases are about
+     * SHAPING, not about names, and their fixtures are written in plain words with no party
+     * labels in them - so the real pass and this one produce the same text. The argument is
+     * required rather than defaulted in the service on purpose: a board that quietly skipped it
+     * would serve "the initiator" to the lead again, which is the defect it exists to stop.
+     */
+    { theReportAsItWasShared: (g: any) => g?.report ?? null } as any);
 }
 
 describe('the admin who set the ground up', () => {
@@ -71,7 +79,7 @@ describe('the admin who set the ground up', () => {
   });
 
   it('leaves everybody else exactly where they were', async () => {
-    await expect(serviceFor().get('g1', 'a-stranger')).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(serviceFor().get('g1', 'a-stranger')).rejects.toBeInstanceOf(NotFoundException);
     await expect(serviceFor().get('g1', 'lead')).resolves.toBeDefined();
     await expect(serviceFor().get('g1', 'member')).resolves.toBeDefined();
   });
@@ -81,6 +89,6 @@ describe('the admin who set the ground up', () => {
     // here would hand the board to anyone whose id was also missing.
     const selfServe = { ...GROUND, createdByUserId: null };
     await expect(serviceFor(selfServe).get('g1', undefined as any))
-      .rejects.toBeInstanceOf(ForbiddenException);
+      .rejects.toBeInstanceOf(NotFoundException);
   });
 });

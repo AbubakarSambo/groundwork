@@ -23,11 +23,26 @@ describe('per-row guards', () => {
     expect(billing).toMatch(/createSubscriptionMut\.isPending && createSubscriptionMut\.variables === plan/)
     expect(billing).not.toContain("? '...' :")
   })
-  it('feedback says which answer is recording, and downloads go one session at a time', () => {
-    const report = read('report/ReportPage.tsx')
-    expect(report).toContain("submit.isPending && submit.variables === true ? 'Saving…' : 'It felt fair'")
-    expect(report).toContain("submit.isPending && submit.variables === false ? 'Saving…' : 'It did not'")
-    expect(report).toContain('disabled={downloadRecord.isPending && downloadRecord.variables === c.id}')
+  it('feedback says which answer is recording', () => {
+    /*
+     * MOVED FROM THE DEAD REPORT BODY (1 October 2026). `OutcomeFeedback.tsx` (now on the board) is
+     * the direct move of `ReportBody`'s `OutcomeFeedbackSection` - same two buttons, same guard.
+     */
+    const feedback = read('../components/gw/OutcomeFeedback.tsx')
+    expect(feedback).toContain("submit.isPending && submit.variables === true ? 'Saving…' : 'It felt fair'")
+    expect(feedback).toContain("submit.isPending && submit.variables === false ? 'Saving…' : 'It did not'")
+  })
+  it('and the download button says so while it is working', () => {
+    /*
+     * "DOWNLOADS GO ONE SESSION AT A TIME" DOES NOT TRANSLATE, AND THAT IS THE IMPROVEMENT.
+     *
+     * `ReportBody` looped over every one of a party's completed sessions and needed
+     * `variables === c.id` to say which row's download was in flight. The download now lives on
+     * `SessionReportPage.tsx`, which already IS one session - there is no row to disambiguate, so
+     * there is exactly one button and `downloadRecord.isPending` alone says whether it is working.
+     */
+    const session = read('report/SessionReportPage.tsx')
+    expect(session).toContain("downloadRecord.isPending ? 'Downloading…' : 'Download your record'")
   })
   it('"Send again" on a delivery row is guarded per row', () => {
     expect(read('org/IntegrationsPage.tsx')).toContain("disabled={replay.isPending && replay.variables === d.id}")

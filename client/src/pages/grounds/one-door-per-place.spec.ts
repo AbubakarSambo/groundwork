@@ -41,7 +41,8 @@ describe('the board still exists and is still reachable', () => {
   })
 
   it('and the report is what opens it - the first row of the session list', () => {
-    expect(LIST).toContain('Open the team board')
+    /* U.9: the board's row reads "The board", the prototype's words (sessions.txt). */
+    expect(LIST).toContain('{EVERY_SESSION.board}')
     expect(ADMIN).toMatch(/onOpenBoard=\{\(\) => navigate\(`\/grounds\/\$\{ground\.id\}\/board`\)\}/)
   })
 
@@ -53,14 +54,41 @@ describe('the board still exists and is still reachable', () => {
 })
 
 describe('but only once', () => {
-  it('nothing else on the lead page links to the board', () => {
+  /**
+   * U.10 PICTURE-CHECK ROUND 6, ITEM I: A SECOND, DELIBERATE ENTRANCE - THE SHARED HEADER'S TAB.
+   *
+   * This test used to hold the count at 1: the Report tab's "The board" row was the only door,
+   * because every OTHER entry in the old tab row changed what was below it while a "Team board"
+   * pill navigated away, which read as one tab behaving unlike its neighbours.
+   *
+   * That is no longer true of the tab row itself. TheCheckInHeader (item I) puts a "Board" tab in
+   * the SAME shared header every check-in page now uses - the prototype's own shape
+   * (board-as-lead.jpg), where Board sits beside Check-in, Context, My work and People and setup,
+   * all six tabs equally real links to a different page. The board's own header (built earlier in
+   * this same round) already has this "Board" tab; this page matching it is the point of item I,
+   * not a regression of the one-door rule. `groundTabs()` itself still does not carry a 'board' key
+   * (see "is not a tab" above) - "Board" is added once, in the header's own tab list, the same way
+   * on every check-in page - so there is still exactly one PLACE that decides the tab exists, even
+   * though the header itself is now the second on-page way to reach it (tab row, and the Report
+   * tab's own row) rather than the pill this test was written to keep out.
+   */
+  it('nothing OUTSIDE the tab row, the Report tab, the non-party Check-in message and the read-only redirect links to the board', () => {
     /**
-     * The tripwire is the COUNT, not the absence. One link is the tab handler above; a second is
-     * the pill that was removed, or any future re-addition of it.
+     * The tripwire is now the COUNT OF a tab-row/header-unrelated forms - the pill this test was
+     * written to keep out ("Team board →") - not the plain existence of the route string, which
+     * now appears once in the header's own tab list, once in the Report tab's row, once (round 4,
+     * item A step 3) in the Check-in tab's own message to a lead who is not a party - the one
+     * reader for whom the Check-in tab would otherwise have nothing to offer, and for whom "go
+     * read the board instead" is exactly the right door - and once more (Group 3's review,
+     * contradiction 1) in the read-only admin's own `?tab=report` redirect: the note under this
+     * reader's tabs tells them "You can read this check-in's board and reports", and the Board
+     * page is the one of their three tabs that actually has the reports, so a link carrying
+     * `?tab=report` now lands them there rather than on Context, where that sentence names
+     * nothing on screen.
      */
-    expect((ADMIN.match(/\/board`/g) ?? [])).toHaveLength(1)
+    expect((ADMIN.match(/\/board`/g) ?? [])).toHaveLength(4)
     /* The prop, its type and its one use. What matters is that the component renders ONE button. */
-    expect((LIST.match(/Open the team board/g) ?? [])).toHaveLength(1)
+    expect((LIST.match(/\{EVERY_SESSION\.board\}/g) ?? [])).toHaveLength(1)
     expect(ADMIN).not.toContain('Team board →')
   })
 })

@@ -1,10 +1,25 @@
+import { theEndingSaid, theOutcomeIsThat, TheEndingIsAbout } from '../resolution/end-states';
+import { connectWhatsAppFor, youCanAlsoAnswerOnWhatsApp } from '../whatsapp/connect-whatsapp';
+import { askName } from '../assistant/ask-name';
+import { peersAreNamedByDefaultOn } from '../reports/peers-are-named';
+
+/** The sentence about who sees what you say, for a check-in (whoSeesWhatYouSay). */
+export function whoSeesWhatYouSayIn(g: { scenario?: any; peersVisibleToEachOther?: boolean | null; organization?: { name?: string | null } | null } | null | undefined): string {
+  const ask = askName(g?.organization?.name ?? null);
+  const together = g ? (g.peersVisibleToEachOther ?? peersAreNamedByDefaultOn(g)) : true;
+  return together
+    ? `The people in this check-in, including your manager, can see what you say in it. Your questions to ${ask} stay private.`
+    : `Whoever runs this check-in can see what you say in it. The other people taking part do not see what you say. Your questions to ${ask} stay private.`;
+}
+import { keptOffThePhone } from '../whatsapp/a-check-in-kept-off-the-phone';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { DeliveryService, DeliveryContext } from './delivery.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { STOP_LINE } from '../conversation/ignoring-it-should-be-enough';
-import { whatThisMailIs, whetherToSend } from './nothing-goes-out-that-was-turned-off';
+import { NOT_SENT_WHILE_AWAY, whatThisMailIs, whetherToSend } from './nothing-goes-out-that-was-turned-off';
+import { whoIsAwayOn } from '../suites/who-is-away';
 import { inQuietHours, nextAllowedMoment } from './nothing-lands-at-3am';
 import { Resend } from 'resend';
 import * as nodemailer from 'nodemailer';
@@ -22,7 +37,8 @@ import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 @Injectable()
 export class EmailService implements OnModuleInit {
   private readonly logger = new Logger(EmailService.name);
-  private resend: Resend;
+  /** Made on the first real send, never at start-up. See `theResendClient` below. */
+  private resend: Resend | null = null;
   private fromEmail: string;
   private frontendUrl: string;
 
@@ -31,9 +47,40 @@ export class EmailService implements OnModuleInit {
     private delivery: DeliveryService,
     private prisma: PrismaService,
   ) {
-    this.resend = new Resend(this.configService.get<string>('resend.apiKey'));
     this.fromEmail = this.configService.get<string>('resend.fromEmail') || 'Groundwork <noreply@myground.work>';
     this.frontendUrl = this.configService.get<string>('resend.frontendUrl') || 'http://localhost:5173';
+  }
+
+  /**
+   * "You can also answer on WhatsApp: send Hi to <number>", with a "Connect WhatsApp" link that opens
+   * WhatsApp with Hi typed (decision 106 item 4). Only while WhatsApp is on for this check-in's organisation,
+   * the check-in is not kept in the app, and Groundwork's number has a display number saved. Otherwise nothing.
+   */
+  async theWhatsAppLine(email: string, context?: DeliveryContext): Promise<string> {
+    try {
+      if (!context?.groundId) return '';
+      const ground = await (this.prisma as any).ground?.findUnique?.({ where: { id: context.groundId }, select: { organizationId: true, overWhatsApp: true } });
+      if (!ground) return '';
+      const connect = await connectWhatsAppFor(this.prisma, this.configService, { organizationId: ground.organizationId, email, keptInTheApp: keptOffThePhone(ground), forTheInvitation: true });
+      if (!connect) return '';
+      return `<p>${escapeHtml(youCanAlsoAnswerOnWhatsApp(connect.number))}</p>
+         <p><a href="${connect.link}" style="display:inline-block;background:#25D366;color:#0A1628;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:bold;">${connect.says}</a></p>`;
+    } catch {
+      return '';
+    }
+  }
+
+  /**
+   * WHO SEES WHAT YOU SAY, AS AN INVITATION SAYS IT (5 October, a release blocker). The invitation said
+   * "Nobody on your team sees what you write", which is not true: what people say in a check-in can be
+   * shown word for word to the people in it (the privacy rule). The prototype's sentence (join-invite)
+   * where people see each other; where they do not (a cohort, a review), what is true there.
+   */
+  async whoSeesWhatYouSay(context?: DeliveryContext): Promise<string> {
+    const g = context?.groundId
+      ? await (this.prisma as any).ground?.findUnique?.({ where: { id: context.groundId }, select: { scenario: true, peersVisibleToEachOther: true, organization: { select: { name: true } } } })?.catch?.(() => null)
+      : null;
+    return whoSeesWhatYouSayIn(g);
   }
 
   buildInviteUrl(inviteToken: string): string {
@@ -68,6 +115,28 @@ export class EmailService implements OnModuleInit {
   private keyIsAPlaceholder(): boolean {
     const apiKey = this.configService.get<string>('resend.apiKey') ?? '';
     return !apiKey || apiKey.startsWith('re_...') || apiKey === 're_test';
+  }
+
+  /**
+   * THE CLIENT IS MADE ON THE FIRST REAL SEND, NOT WHEN THE API STARTS.
+   *
+   * Found by the screens workspace on 26 September 2026, setting up a second computer.
+   * `api/.env.example` says to leave `RESEND_API_KEY` empty, and with it empty the API would not
+   * start at all: the constructor built a Resend client, Resend refuses an empty key, and the whole
+   * process died with "Missing API key" before anything else ran.
+   *
+   * The service already knew better everywhere else. `keyIsAPlaceholder` treats an empty key,
+   * `re_...` and `re_test` as the same thing - nothing leaves this computer and every send is
+   * written to the log instead - and the send path below only reaches the client when
+   * `canSendForReal()` is true. The one line that made the client was never told.
+   *
+   * So it is made here, on demand, and an empty key now behaves exactly like a fake one, which is
+   * what the example file has always promised. Their workaround of setting `re_test` is no longer
+   * needed, though it still works.
+   */
+  private theResendClient(): Resend {
+    if (!this.resend) this.resend = new Resend(this.configService.get<string>('resend.apiKey'));
+    return this.resend;
   }
 
   private canSendForReal(): boolean {
@@ -143,6 +212,15 @@ export class EmailService implements OnModuleInit {
        refusing to write to them would mean nobody could ever be invited. */
     if (!user && !preference && !stopped) return null;
 
+    /* APPROVED LEAVE, BY DATES ONLY (week 23). A reminder or a "you have missed" mail does not go to
+       somebody who is away today. Only asked for the senders that chase a person to answer. */
+    const theirId = user && NOT_SENT_WHILE_AWAY.has(sender)
+      ? (await this.prisma.user.findUnique({ where: { email: address }, select: { id: true } }).catch(() => null))?.id ?? null
+      : null;
+    const awayUntil = theirId
+      ? (await whoIsAwayOn(this.prisma as any, [theirId], null).catch(() => new Map<string, string>())).get(theirId) ?? null
+      : null;
+
     const answer = whetherToSend(kind, {
       emailNotifications: user?.emailNotifications,
       unsubscribedAt: preference?.unsubscribedAt ?? null,
@@ -150,6 +228,7 @@ export class EmailService implements OnModuleInit {
       wantsDigest: preference?.roundDigest,
       wantsNudges: preference?.nudges,
       stillHere: user ? user.isActive && !user.deletedAt : undefined,
+      awayUntil,
     }, sender);
     return answer.send ? null : answer.because;
   }
@@ -169,10 +248,19 @@ export class EmailService implements OnModuleInit {
    * To the admins, because they are the only people who can answer it, and adding a person to the
    * organisation is now their decision rather than a side effect of somebody else's invitation.
    */
-  async sendSomebodyIsWaiting(to: string, adminFirstName: string, who: string, addedBy: string, checkInLabel: string | null): Promise<void> {
+  async sendSomebodyIsWaiting(
+    to: string, adminFirstName: string, who: string, addedBy: string, checkInLabel: string | null,
+    /* U.4 review: the subject names the person and the organisation when both are known, rather than
+       an address and "your organisation". A name is only ever one the person gave, never guessed. */
+    known: { name?: string | null; organisationName?: string | null } = {},
+  ): Promise<void> {
+    const name = (known.name ?? '').trim();
+    const org = (known.organisationName ?? '').trim();
     await this.sendEmail({
       to,
-      subject: `${who} is waiting to be let into your organisation`,
+      subject: name
+        ? `${name} is waiting to be let into ${org || 'your organisation'}.`
+        : `${who} is waiting to be let into ${org || 'your organisation'}.`,
       html: this.layout(
         `<p>${greeting(adminFirstName)}</p>
          <p><strong>${escapeHtml(who)}</strong> was invited to check in${checkInLabel ? ` on <strong>${escapeHtml(checkInLabel)}</strong>` : ''} by ${escapeHtml(addedBy)}, and they are not in your organisation yet.</p>
@@ -180,6 +268,22 @@ export class EmailService implements OnModuleInit {
          <p><a href="${this.frontendUrl.replace(/\/$/, '')}/org/members" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">See who is waiting →</a></p>`,
       ),
     }, undefined, 'sendSomebodyIsWaiting');
+  }
+
+  /**
+   * "ASK WAIRIMU FOR MORE TIME" (U.3, #/join/outoftime). The lead gets the request with one button,
+   * which opens the check-in where giving it more time is one press and reopens it.
+   */
+  async sendMoreTimeAsked(to: string, leadFirstName: string | null, who: string, checkInLabel: string, groundId: string): Promise<void> {
+    await this.sendEmail({
+      to,
+      subject: `${who} asked for more time on ${checkInLabel}`,
+      html: this.layout(
+        `<p>${greeting(leadFirstName)}</p>
+         <p><strong>${escapeHtml(who)}</strong> asked you to give <strong>${escapeHtml(checkInLabel)}</strong> more time. It reached its end date, so nobody can add to it until you do. Everything already in it is kept.</p>
+         <p><a href="${this.frontendUrl.replace(/\/$/, '')}/grounds/${encodeURIComponent(groundId)}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Give it more time →</a></p>`,
+      ),
+    }, undefined, 'sendMoreTimeAsked');
   }
 
   /** And the answer, to the person who was waiting. */
@@ -193,6 +297,22 @@ export class EmailService implements OnModuleInit {
          <p><a href="${this.frontendUrl.replace(/\/$/, '')}/grounds" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open my check-in →</a></p>`,
       ),
     }, undefined, 'sendYouAreInNow');
+  }
+
+  /**
+   * AND WHOEVER INVITED THEM IS TOLD TOO (U.4). The People page says "Letting someone in tells them
+   * straight away, and tells whoever invited them." Only the person was told, so the second half was
+   * not true: the lead found out when an answer arrived, or did not.
+   */
+  async sendTheyAreInNow(to: string, firstName: string, who: string, checkIn: string | null): Promise<void> {
+    await this.sendEmail({
+      to,
+      subject: `${who} can check in now`,
+      html: this.layout(
+        `<p>${greeting(firstName)}</p>
+         <p>An admin has let <strong>${escapeHtml(who)}</strong> in, so they can start ${checkIn ? `<strong>${escapeHtml(checkIn)}</strong>` : 'the check-in you invited them to'}. They have been told.</p>`,
+      ),
+    }, undefined, 'sendTheyAreInNow');
   }
 
   /**
@@ -399,7 +519,7 @@ export class EmailService implements OnModuleInit {
       const match = options.html.match(/href="([^"]+)"/);
       return match?.[1];
     }
-    const { data, error } = await this.resend.emails.send({ from: this.fromEmail, ...options, text, ...(headers ? { headers } : {}) });
+    const { data, error } = await this.theResendClient().emails.send({ from: this.fromEmail, ...options, text, ...(headers ? { headers } : {}) });
     if (error) {
       this.logger.error(`Failed to send email to ${options.to}: ${error.name} - ${error.message}`);
       this.writeItDown(options, sender, 'failed', `${error.name}: ${error.message}`);
@@ -540,7 +660,7 @@ export class EmailService implements OnModuleInit {
     await this.sendEmail({
       to: email,
       subject: `You've been added to ${orgName} on Groundwork`,
-      html: this.layout(`<p>${greeting(firstName)}</p><p>${escapeHtml(orgName)} added you to their Groundwork workspace. Groundwork runs structured check-ins across a team and surfaces alignment and gaps in a shared report. Your contributions stay private until the report is ready.</p><p><a href="${url}">Accept invite</a></p><p style="color:#888;font-size:12px;">If you were not expecting this, you can ignore this email. Nothing is active until you click the link.</p>`),
+      html: this.layout(`<p>${greeting(firstName)}</p><p>${escapeHtml(orgName)} added you to their Groundwork workspace. Groundwork runs structured check-ins across a team and surfaces alignment and gaps in a shared report. The people in each check-in you join can see what you say in it. Your questions to ${escapeHtml(askName(orgName))} stay private.</p><p><a href="${url}">Accept invite</a></p><p style="color:#888;font-size:12px;">If you were not expecting this, you can ignore this email. Nothing is active until you click the link.</p>`),
     }, undefined, 'sendUserInvite');
   }
 
@@ -574,7 +694,8 @@ export class EmailService implements OnModuleInit {
       html: this.layout(
         `<p>Hi,</p>
          <p><strong>${escapeHtml(founderName)}</strong> would like to know what you are seeing in <strong>${escapeHtml(groundLabel)}</strong>.</p>
-         <p>It is a short private check-in, about ten minutes, where you say what is actually going on from where you sit. Nobody on your team sees what you write. The shared picture shows where what you said and what everybody else said line up, and where they do not, and it never quotes you.</p>
+         <p>It is a short check-in, about ten minutes, where you say what is actually going on from where you sit.</p>
+         <p>${escapeHtml(await this.whoSeesWhatYouSay(context))}</p>
          <p>You are not being asked to be fair or balanced. You are being asked to be honest. What you share here is yours.</p>
          ${noteHtml}
          <!--
@@ -588,6 +709,7 @@ export class EmailService implements OnModuleInit {
            it. The button only has to say what pressing it starts.
          -->
          <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Start my check-in →</a></p>
+         ${await this.theWhatsAppLine(email, context)}
          <p style="font-size:12px;color:#9B9590;">You are never obligated to take part. If you would rather not, you can simply ignore this - declining is never shown as a negative.</p>
          ${stopLine ?? ''}`,
       ),
@@ -607,6 +729,19 @@ export class EmailService implements OnModuleInit {
    * whether anything happened - and the whole point of holding the invites is that
    * they cannot just carry on regardless.
    */
+  /**
+   * A LEAVE, HOURS OR SPENDING DECISION, BY EMAIL (decision 106 item 7). Sent when the WhatsApp message
+   * about it could not go: the person said STOP, has no number, or WhatsApp is off for them. The
+   * sentence is the same one WhatsApp would have carried.
+   */
+  async sendRequestDecided(email: string, sentence: string, what: string, outcome: 'approved' | 'declined'): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject: `Your request for ${what} was ${outcome}`,
+      html: this.layout(`<p>${escapeHtml(sentence)}</p>`),
+    }, undefined, 'sendRequestDecided');
+  }
+
   async sendGroundApproved(email: string, firstName: string, groundLabel: string, url: string): Promise<void> {
     await this.sendEmail({
       to: email,
@@ -649,7 +784,7 @@ export class EmailService implements OnModuleInit {
            nothing anywhere told anybody it was there, so it went unused. One
            sentence, in the email that gets opened before the check-in does.
          -->
-         <p>The Context tab on the check-in is where background goes - notes, and documents like a plan, a brief or a spreadsheet. What you upload is yours by default; mark it open to the check-in and everybody works from it, and their check-ins will have read it too.</p>
+         <p>The Context and resources tab on the check-in is where background goes - notes, and documents like a plan, a brief or a spreadsheet. What you upload is yours by default; mark it open to the check-in and everybody works from it, and their check-ins will have read it too.</p>
          <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Review and begin →</a></p>`,
       ),
     }, context ?? { kind: 'LEAD_INVITE' }, 'sendLeadInvite');
@@ -834,6 +969,19 @@ export class EmailService implements OnModuleInit {
   }
 
   /**
+   * THE LEAD'S WEEKLY LETTER (anchor piece 29). The words are built in the-leads-weekly-letter.ts from
+   * counts and first names only; here they are escaped, wrapped and posted. The way to stop it is the
+   * footer every mail we decide to send carries, and a lead who used it is not written to.
+   */
+  async sendTheLeadsWeeklyLetter(email: string, subject: string, lines: string[], linkLabel: string, linkUrl: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject,
+      html: this.layout(lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('') + `<p><a href="${linkUrl}">${escapeHtml(linkLabel)}</a></p>`),
+    }, undefined, 'sendTheLeadsWeeklyLetter');
+  }
+
+  /**
    * "GET UPDATES FROM YOUR TEAM" HAS TWO EMAILS AND THEY ARE THE WHOLE PRODUCT FOR THAT CARD.
    *
    * A two-minute setup is only worth anybody's time because of what arrives in the same week, so
@@ -859,12 +1007,12 @@ export class EmailService implements OnModuleInit {
         `<p style="border-left:3px solid #5DCAA5;padding:10px 16px;margin:20px 0;font-size:17px;">${escapeHtml(question)}</p>` +
         rest.map((l) => `<p>${escapeHtml(l)}</p>`).join('') +
         `<p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">${THE_TEAM_BUTTON} &rarr;</a></p>` +
+        (await this.theWhatsAppLine(email, context)) +
         /*
          * IT DID NOT GO INTO ONE SUMMARY UNREAD.
          *
-         * "Nobody on your team sees what you write" is true of a private alignment check-in, where
-         * the shared picture never quotes anybody - see the invite above, which says exactly that
-         * and may keep saying it. It is NOT true of a team update: the person who asked reads every
+         * "Nobody on your team sees what you write" was never true here, and since 5 October it is not
+         * said in any invitation (see whoSeesWhatYouSay). It is NOT true of a team update: the person who asked reads every
          * answer, and the report built from them goes back out to everybody who asked for it.
          *
          * Hafsah had the same sentence removed from the answering screen on 23 September 2026. It
@@ -907,7 +1055,7 @@ export class EmailService implements OnModuleInit {
   }
 
   /** The moment of value: everybody answered, and here is the one report. */
-  async sendTeamUpdateAllIn(email: string, theOneLine: string, howMany: number, reportUrl: string): Promise<void> {
+  async sendTeamUpdateAllIn(email: string, theOneLine: string, howMany: number, reportUrl: string, sharedByAnAdminSentence?: string): Promise<void> {
     const { subject, lines } = whatTheLeadGets({ theOneLine, howMany });
     const [allIn, question, ...rest] = lines;
     await this.sendEmail({
@@ -917,12 +1065,19 @@ export class EmailService implements OnModuleInit {
         `<p>${escapeHtml(allIn)}</p>` +
         `<p style="border-left:3px solid #5DCAA5;padding:10px 16px;margin:20px 0;font-size:17px;">${escapeHtml(question)}</p>` +
         rest.map((l) => `<p>${escapeHtml(l)}</p>`).join('') +
+        (sharedByAnAdminSentence ? `<p>${escapeHtml(sharedByAnAdminSentence)}</p>` : '') +
         `<p><a href="${reportUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">${THE_LEAD_BUTTON} &rarr;</a></p>`,
       ),
     }, undefined, 'sendTeamUpdateAllIn');
   }
 
-  async sendReportReady(email: string, groundLabel: string, reportUrl: string): Promise<void> {
+  /**
+   * `sharedByAnAdminSentence`: decision 53, 29 September 2026. Set only when another admin
+   * released this in the lead's place because the lead has left the organisation - see
+   * reports/who-shared-it-because-the-lead-left.ts, which builds the sentence. Null in the
+   * ordinary case, where the lead released it themselves and nothing extra is said.
+   */
+  async sendReportReady(email: string, groundLabel: string, reportUrl: string, sharedByAnAdminSentence?: string): Promise<void> {
     await this.sendEmail({
       to: email,
       subject: `The shared picture for ${groundLabel} is ready`,
@@ -937,6 +1092,7 @@ export class EmailService implements OnModuleInit {
       html: this.layout(
         `<p>Everybody on <strong>${escapeHtml(groundLabel)}</strong> has now checked in, so the shared picture is open to all of you at the same moment.</p>` +
         `<p>It shows where what you each said lines up, where it does not, and the one question worth answering together. It does not quote anybody: the words you wrote stay yours, and the record draws on them without showing them.</p>` +
+        (sharedByAnAdminSentence ? `<p>${escapeHtml(sharedByAnAdminSentence)}</p>` : '') +
         `<p><a href="${reportUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Read the shared picture →</a></p>` +
         `<p style="font-size:12px;color:#9B9590;">Groundwork is where the people involved in a piece of work each say how it is going, privately, and get one shared picture back.</p>`,
       ),
@@ -951,7 +1107,7 @@ export class EmailService implements OnModuleInit {
    * chased depended on which engine chased them; and the stop itself is honoured in sendEmail through
    * the context, so it has to be there.
    */
-  async sendNudge(email: string, groundLabel: string, checkInUrl: string, scenario: string | undefined, otherPartyCompleted: boolean | undefined, participantId: string): Promise<void> {
+  async sendNudge(email: string, groundLabel: string, checkInUrl: string, scenario: string | undefined, otherPartyCompleted: boolean | undefined, theAnchorLine: string | null | undefined, participantId: string): Promise<void> {
     const subjectMap: Record<string, string> = {
       NEW_HIRE: 'Your 90-day check-in is waiting',
       NEW_COFOUNDER: 'Your cofounder check-in is open',
@@ -973,7 +1129,8 @@ export class EmailService implements OnModuleInit {
       to: email,
       subject,
       /* A reminder with no way to stop it is the whole defect. This is the second mail it goes on. */
-      html: this.layout(`<p>Your check-in for <strong>${escapeHtml(groundLabel)}</strong> is still open.</p>${otherPartyNote}<p><a href="${checkInUrl}">Check in</a></p>${(await this.theWayToStopBeingChased(participantId)) ?? ''}`),
+      /* On an anchor check-in, the anchor's own line (piece 30): their own open promise said back to them, or what has changed. */
+      html: this.layout(`<p>Your check-in for <strong>${escapeHtml(groundLabel)}</strong> is still open.</p>${theAnchorLine ? `<p>${escapeHtml(theAnchorLine)}</p>` : ''}${otherPartyNote}<p><a href="${checkInUrl}">Check in</a></p>${(await this.theWayToStopBeingChased(participantId)) ?? ''}`),
     }, { kind: 'REMINDER', participantId }, 'sendNudge');
   }
 
@@ -1020,7 +1177,7 @@ export class EmailService implements OnModuleInit {
       subject: `The shared picture for "${groundLabel}" is waiting for you`,
       html: this.layout(
         `<p>All accounts are in for <strong>${escapeHtml(groundLabel)}</strong> and the shared report has been generated.</p>
-         <p>The report shows where accounts agree, where they differ, and what is still unresolved. Nobody's words are quoted - it draws on what was said without showing the raw text.</p>
+         <p>The report shows where accounts agree, where they differ, and what is still unresolved. The people in the check-in can read what each person said.</p>
          <p>Open the check-in to read and release the report to all parties.</p>
          <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Read and release the report →</a></p>`,
       ),
@@ -1058,7 +1215,7 @@ export class EmailService implements OnModuleInit {
         `<p><strong>${escapeHtml(participantName)}</strong> has checked in on <strong>${escapeHtml(groundLabel)}</strong>. That is theirs done.</p>
          ${pendingNote}
          <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View check-in →</a></p>
-         <p style="font-size:12px;color:#9B9590;">You can see who has checked in, and the shared picture once it is ready. You cannot see what anybody wrote: what people say stays private, and everybody in it is told the moment the picture is ready.</p>`,
+         <p style="font-size:12px;color:#9B9590;">You can see who has checked in and read what they said in the check-in, and the shared picture once it is ready. Everybody in it is told the moment the picture is ready.</p>`,
       ),
     }, undefined, 'sendParticipantCheckedIn');
   }
@@ -1171,13 +1328,13 @@ export class EmailService implements OnModuleInit {
   }
 
   /** Someone proposed an end state and the recipient has not yet confirmed. (GW-22) */
-  async sendResolutionProposal(email: string, proposerLabel: string, endState: string, groundUrl: string): Promise<void> {
-    const endStateLabel = this.endStateLabel(endState);
+  async sendResolutionProposal(email: string, proposerLabel: string, endState: string, groundUrl: string, scenario?: string | null, who?: TheEndingIsAbout | null): Promise<void> {
+    const endStateLabel = this.endStateLabel(endState, scenario, who);
     await this.sendEmail({
       to: email,
       subject: `${proposerLabel} suggested how to wrap this up`,
       html: this.layout(
-        `<p><strong>${escapeHtml(proposerLabel)}</strong> thinks this is where it lands: <em>${escapeHtml(endStateLabel)}</em>.</p>
+        `<p><strong>${escapeHtml(proposerLabel)}</strong> suggested how this ends.${endStateLabel ? ` <em>${escapeHtml(endStateLabel)}</em>` : ''}</p>
          <p>Whoever runs the check-in decides how it ends. Have a look, and if you see it differently, say so in your own check-in - what you said stays on the record beside what they decided.</p>
          <p><a href="${groundUrl}">Have a look</a></p>`,
       ),
@@ -1185,13 +1342,13 @@ export class EmailService implements OnModuleInit {
   }
 
   /** Ground closed. All parties confirmed the same end state. (GW-50) */
-  async sendGroundClosed(email: string, groundLabel: string, endState: string, groundUrl: string): Promise<void> {
-    const endStateLabel = this.endStateLabel(endState);
+  async sendGroundClosed(email: string, groundLabel: string, endState: string, groundUrl: string, scenario?: string | null, who?: TheEndingIsAbout | null): Promise<void> {
+    const endStateLabel = this.endStateLabel(endState, scenario, who);
     await this.sendEmail({
       to: email,
       subject: `"${groundLabel}" is now closed`,
       html: this.layout(
-        `<p>All parties have confirmed. <strong>${escapeHtml(groundLabel)}</strong> has been closed with the agreed outcome: <em>${escapeHtml(endStateLabel)}</em>.</p>
+        `<p><strong>${escapeHtml(groundLabel)}</strong> has been closed.${endStateLabel ? ` ${escapeHtml(theOutcomeIsThat(endStateLabel))}` : ''}</p>
          <p>Your record is permanent and both parties retain access to everything that was on the check-in.</p>
          <p><a href="${groundUrl}">View the check-in</a></p>`,
       ),
@@ -1421,43 +1578,19 @@ export class EmailService implements OnModuleInit {
         */
        `<p>${greeting(name)}</p>
          <p>We have not heard from you on <strong>${groundName}</strong> in a while.</p>
-         <p>There is still time. The shared picture cannot show what you are seeing until you say it, and what you write stays private until everybody is in. It belongs to you, not to the organisation.</p>
+         <p>There is still time. The shared picture cannot show what you are seeing until you say it. The people in this check-in can see what you say in it.</p>
          <p><a href="${checkInUrl}">Say how it is going</a></p>`,
       ),
     }, undefined, 'sendAbsenceReminder');
   }
 
-  private endStateLabel(value: string): string {
-    const labels: Record<string, string> = {
-      KEEP: 'Keep the hire',
-      EXTEND: 'Extend evaluation period',
-      RESTRUCTURE: 'Restructure',
-      EXIT: 'Part ways',
-      NOT_YET: 'Not yet - revisit with a named gap',
-      SEPARATE: 'Separate',
-      CONTINUE: 'Continue',
-      END: 'End the engagement',
-      RENEW: 'Renew',
-      RENEGOTIATE: 'Renew on revised terms',
-      COMPLETE: 'Mark complete',
-      DESCOPE: 'Descope',
-      STOP: 'Stop',
-      YES: 'Grant the ask',
-      NO: 'Decline',
-      ALIGNED: 'Shared picture established - aligned',
-      ESCALATE: 'Requires escalation or external decision',
-      GAPS_IDENTIFIED: 'Gaps identified - revision needed',
-      APPROVED: 'Workplan and budget approved',
-      REVISION_NEEDED: 'Revision needed before approval',
-      ON_TRACK: 'On track',
-      ATTENTION_NEEDED: 'Attention needed on named items',
-      REALIGNED: 'Team realigned on shared direction',
-      GAPS_REMAIN: 'Gaps remain - further conversation needed',
-      RESOLVED: 'Performance concern resolved',
-      EXTENDED: 'Plan extended with named conditions',
-      SEPARATED: 'Separation agreed',
-    };
-    return labels[value] ?? value;
+  /**
+   * The ending's own sentence, from the one list every screen reads (resolution/end-states.ts, decision
+   * 75 item 48). This file used to keep its own copy of the labels by value alone, which had drifted
+   * ("Part ways" where the panel said "Let them go"). Null where the value is not one of this kind's.
+   */
+  private endStateLabel(value: string, scenario?: string | null, who?: TheEndingIsAbout | null): string | null {
+    return theEndingSaid(scenario ?? null, value, who);
   }
 
   async sendCodeExpiryReminder(

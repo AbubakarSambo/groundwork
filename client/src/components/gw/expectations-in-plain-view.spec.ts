@@ -58,8 +58,14 @@ describe('nobody edits an expectation here', () => {
   })
 
   it('and it says where a disagreement goes instead', () => {
-    /** Without this, a read-only expectation reads as something you are stuck with. */
-    expect(PANEL).toMatch(/say so in your check-in:\s+it is probed there and goes on the record/)
+    /**
+     * Without this, a read-only expectation reads as something you are stuck with.
+     *
+     * WORDING UPDATED (group 3's review, request batch A, fault 6): "say so in your check-in: it is
+     * probed there and goes on the record" joined two sentences with a colon and used "probed",
+     * which is work jargon nobody reading their own expectations would use. Now two plain sentences.
+     */
+    expect(PANEL).toMatch(/say so in your check-in\.\s+You will be asked more about it there, and it will go on the record\./)
   })
 
   it('and says everyone sees the same list', () => {

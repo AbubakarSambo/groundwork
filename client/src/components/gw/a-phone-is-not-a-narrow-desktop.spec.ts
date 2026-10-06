@@ -25,7 +25,15 @@ const SHELL = readFileSync(join(__dirname, 'AppShell.tsx'), 'utf8')
 
 describe('a section heading on a narrow screen', () => {
   it('may wrap, and its source line may go to its own row', () => {
-    const sec = KIT.slice(KIT.indexOf('export function Sec('), KIT.indexOf('export function Sec(') + 2400)
+    /*
+     * U.10 REVIEW: `Sec` grew a `size="board"` branch, returned early, ahead of the default one
+     * this test is about - the board's own heading size (design-audit.md item, "the prototype's
+     * size"), additive and unrelated to phone wrapping. That pushed the default branch's
+     * `marginLeft: 'auto', textAlign: 'right'` line from offset 2677 past the old fixed 2400-char
+     * window, which is a window shifting under a real, intended change - not a regression - so the
+     * window is widened rather than the assertion weakened.
+     */
+    const sec = KIT.slice(KIT.indexOf('export function Sec('), KIT.indexOf('export function Sec(') + 3200)
     expect(sec).toMatch(/flexWrap: 'wrap'/)
     /* The one that clipped it: nowrap in a row with nowhere to go. */
     expect(sec).not.toMatch(/whiteSpace: 'nowrap'/)

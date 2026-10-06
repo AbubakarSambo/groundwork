@@ -59,7 +59,15 @@ function makeService(over: {
     groundPollOption: { deleteMany: optionDeleteMany, createMany: optionCreateMany },
   };
   return {
-    service: new BoardService(prisma, /* wording pass: null ships the engine\'s own words */ { respond: async () => null } as any, { getSessionProgress: async () => null } as any),
+    service: new BoardService(prisma, /* wording pass: null ships the engine\'s own words */ { respond: async () => null } as any, { getSessionProgress: async () => null } as any,
+    /*
+     * The report's name pass, stubbed to hand the row back as it is. These cases are about
+     * SHAPING, not about names, and their fixtures are written in plain words with no party
+     * labels in them - so the real pass and this one produce the same text. The argument is
+     * required rather than defaulted in the service on purpose: a board that quietly skipped it
+     * would serve "the initiator" to the lead again, which is the defect it exists to stop.
+     */
+    { theReportAsItWasShared: (g: any) => g?.report ?? null } as any),
     objectiveCreate, objectiveUpdate, optionDeleteMany, optionCreateMany, pollCreate,
   };
 }

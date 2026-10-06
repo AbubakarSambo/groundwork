@@ -110,7 +110,10 @@ describe('signing out', () => {
   it('is in the rail, so it is on every page', () => {
     const shell = read('components/gw/AppShell.tsx')
     expect(shell).toMatch(/Sign out/)
-    expect(shell).toMatch(/onClick=\{\(\) => \{ logout\(\); navigate\('\/'\) \}\}/)
+    /* U.2: it goes to "You're signed out" (/signout), the prototype's page, which ends the session
+       as it opens. It used to call logout() and go to "/". Calling logout() here first let the page
+       you were on redirect to sign-in before the navigation happened. */
+    expect(shell).toMatch(/onClick=\{\(\) => navigate\('\/signout', \{ replace: true \}\)\}/)
   })
 
   it('and it is a button, not a span with a click handler', () => {

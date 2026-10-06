@@ -15,7 +15,7 @@ describe('the webhook', () => {
   const controller = (handle: () => Promise<void>) => {
     const billing: any = { handleStripeEvent: jest.fn(handle), recordStripeEventFailure: jest.fn(async () => undefined) };
     const stripe: any = { constructEvent: jest.fn(() => event) };
-    return { c: new BillingController(billing, stripe, {} as any, { whatIsWaitingFor: async () => null } as any), billing };
+    return { c: new BillingController(billing, stripe, {} as any, { whatIsWaitingFor: async () => null } as any, {} as any), billing };
   };
 
   it('answers 200 and keeps the event when the handler throws', async () => {
@@ -35,7 +35,7 @@ describe('the webhook', () => {
   it('still refuses an event whose signature does not verify - that one is not kept', async () => {
     const billing: any = { handleStripeEvent: jest.fn(), recordStripeEventFailure: jest.fn() };
     const stripe: any = { constructEvent: jest.fn(() => { throw new Error('No signatures found'); }) };
-    const c = new BillingController(billing, stripe, {} as any, { whatIsWaitingFor: async () => null } as any);
+    const c = new BillingController(billing, stripe, {} as any, { whatIsWaitingFor: async () => null } as any, {} as any);
     await expect(c.webhook({ rawBody: Buffer.from('{}') }, 'bad')).rejects.toThrow(/signatures/);
     expect(billing.recordStripeEventFailure).not.toHaveBeenCalled();
   });

@@ -1,0 +1,324 @@
+{
+  "sales": {
+    "label": "Sales team, Q4 (dump test)",
+    "scenario": "OKR_ALIGNMENT",
+    "lead": "Amina Yusuf",
+    "roster": [
+      "Samuel Okoro",
+      "Ngozi Balogun",
+      "Dayo Adeyemi",
+      "Kemi Bello"
+    ],
+    "notOnCheckIn": [
+      "Tunde Afolabi",
+      "Musa Bello"
+    ],
+    "teamTargets": [
+      180000000,
+      35,
+      8
+    ],
+    "targets": [
+      [
+        "Samuel Okoro",
+        45000000
+      ],
+      [
+        "Samuel Okoro",
+        35
+      ],
+      [
+        "Ngozi Balogun",
+        35000000
+      ],
+      [
+        "Ngozi Balogun",
+        4
+      ],
+      [
+        "Dayo Adeyemi",
+        40000000
+      ]
+    ],
+    "notTargets": [
+      200000000,
+      200,
+      20000000,
+      900000,
+      96000000,
+      31000000,
+      19000000,
+      27000000,
+      6400000,
+      2100000,
+      14,
+      6,
+      2,
+      30,
+      21,
+      48
+    ],
+    "commitments": [
+      [
+        "Samuel Okoro",
+        "ikeja"
+      ],
+      [
+        "Ngozi Balogun",
+        "client b"
+      ],
+      [
+        "Dayo Adeyemi",
+        "lekki"
+      ]
+    ],
+    "questions": [
+      [
+        "Ngozi Balogun",
+        "client b"
+      ]
+    ],
+    "ownerless": [],
+    "mustNotBeFiledOn": {
+      "Kemi Bello": [
+        "tunde",
+        "musa",
+        "kaduna"
+      ]
+    }
+  },
+  "onboarding": {
+    "label": "Chidera onboarding (dump test)",
+    "scenario": "NEW_HIRE",
+    "lead": "Hannah Cole",
+    "roster": [
+      "Chidera Nwosu",
+      "Peter Adebayo"
+    ],
+    "notOnCheckIn": [
+      "Funmi Ojo",
+      "Tobi Lawal",
+      "Dr Okafor",
+      "Bisola Ade"
+    ],
+    "teamTargets": [],
+    "targets": [
+      [
+        "Chidera Nwosu",
+        15
+      ],
+      [
+        "Chidera Nwosu",
+        3
+      ],
+      [
+        "Chidera Nwosu",
+        18000000
+      ],
+      [
+        "Chidera Nwosu",
+        6000000
+      ],
+      [
+        "Chidera Nwosu",
+        20
+      ]
+    ],
+    "notTargets": [
+      10,
+      4,
+      90,
+      60,
+      30
+    ],
+    "commitments": [
+      [
+        "Peter Adebayo",
+        "crm"
+      ],
+      [
+        "Chidera Nwosu",
+        "role play"
+      ]
+    ],
+    "questions": [
+      [
+        "Peter Adebayo",
+        "october"
+      ]
+    ],
+    "ownerless": [],
+    "mustNotBeFiledOn": {
+      "Peter Adebayo": [
+        "territory",
+        "commission",
+        "laptop"
+      ]
+    }
+  },
+  "project": {
+    "label": "Warehouse move (dump test)",
+    "scenario": "NEW_PROJECT",
+    "lead": "Tolu Bakare",
+    "roster": [
+      "Ibrahim Danjuma",
+      "Zainab Musa",
+      "Chinedu Obi"
+    ],
+    "notOnCheckIn": [
+      "Grace Eze",
+      "Mr Adewale"
+    ],
+    "teamTargets": [
+      15000000
+    ],
+    "targets": [
+      [
+        "Zainab Musa",
+        4200
+      ]
+    ],
+    "notTargets": [
+      3100000,
+      1200000,
+      10,
+      6,
+      30,
+      3
+    ],
+    "commitments": [
+      [
+        "Ibrahim Danjuma",
+        "racking"
+      ],
+      [
+        "Ibrahim Danjuma",
+        "fire"
+      ],
+      [
+        "Zainab Musa",
+        "count"
+      ],
+      [
+        "Zainab Musa",
+        "label"
+      ],
+      [
+        "Chinedu Obi",
+        "rehearsal"
+      ],
+      [
+        "Chinedu Obi",
+        "vendor"
+      ]
+    ],
+    "questions": [
+      [
+        "Ibrahim Danjuma",
+        "fire inspector"
+      ],
+      [
+        "Zainab Musa",
+        "counted"
+      ]
+    ],
+    "ownerless": [
+      "truck"
+    ],
+    "mustNotBeFiledOn": {
+      "Ibrahim Danjuma": [
+        "truck"
+      ],
+      "Zainab Musa": [
+        "truck"
+      ],
+      "Chinedu Obi": [
+        "truck"
+      ]
+    }
+  },
+  "planning": {
+    "label": "Q4 priorities (dump test)",
+    "scenario": "OKR_ALIGNMENT",
+    "lead": "Bisola Ade",
+    "roster": [
+      "Amina Yusuf",
+      "Tobi Lawal",
+      "Ibrahim Danjuma",
+      "Funmi Ojo"
+    ],
+    "notOnCheckIn": [
+      "Hannah Cole",
+      "Dayo Adeyemi",
+      "Gbenga Salami"
+    ],
+    "teamTargets": [],
+    "targets": [
+      [
+        "Amina Yusuf",
+        520000000
+      ],
+      [
+        "Amina Yusuf",
+        25
+      ],
+      [
+        "Tobi Lawal",
+        3
+      ],
+      [
+        "Tobi Lawal",
+        2
+      ],
+      [
+        "Ibrahim Danjuma",
+        9
+      ],
+      [
+        "Ibrahim Danjuma",
+        5
+      ],
+      [
+        "Funmi Ojo",
+        30000000
+      ],
+      [
+        "Funmi Ojo",
+        35
+      ],
+      [
+        "Funmi Ojo",
+        5
+      ]
+    ],
+    "notTargets": [
+      410000000,
+      18,
+      4.2,
+      11,
+      12,
+      52000000,
+      8,
+      20,
+      5,
+      12
+    ],
+    "commitments": [],
+    "questions": [
+      [
+        "Amina Yusuf",
+        "25 dealers"
+      ]
+    ],
+    "ownerless": [],
+    "mustNotBeFiledOn": {
+      "Funmi Ojo": [
+        "abuja"
+      ]
+    },
+    "unownedMustNotBeTeamTargets": [
+      6,
+      4
+    ]
+  }
+}

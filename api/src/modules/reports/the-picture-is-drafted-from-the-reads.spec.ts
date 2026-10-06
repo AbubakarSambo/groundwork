@@ -35,7 +35,8 @@ describe('what the picture is made of', () => {
   it('every line traces to an engine output that was handed in', () => {
     expect(all).toContain(base.confidence.saying);
     expect(all).toContain('Repeated future-tense promises without completions.');
-    expect(all).toContain('work in this remit is described by others more than by its owner.');
+    /* Its own sentence now, after the names, never after a colon (request 101 a). */
+    expect(all).toContain('This is true of Tunde. Work in this remit is described by others more than by its owner.');
     expect(all).toContain('the on-call rota');
     expect(all).toContain(WHAT_IT_MEANS.DECISION);
   });
@@ -73,7 +74,8 @@ describe('what the picture is made of', () => {
     });
     const cov = out.filter((l) => l.key.startsWith('cov-'));
     expect(cov).toHaveLength(1);
-    expect(cov[0].text).toBe(`For everybody here: ${same[0].toLowerCase()}${same.slice(1)}`);
+    /* Two sentences, never joined by a colon (request 101 a). */
+    expect(cov[0].text).toBe(`This is true of everybody here. ${same}`);
     expect(readsAsAMailMerge(out.map((l) => l.text))).toBeNull();
   });
 
@@ -140,9 +142,46 @@ describe('a one-time session drafts from the differences and the direction', () 
     const drafts = draftThePicture({ ...base, ofPeople: 10, contribution: ten, coverage: [], blockers: [], patterns: [] });
     const con = drafts.filter((d: any) => d.key.startsWith('con-'));
     expect(con).toHaveLength(1);
-    expect(con[0].text).toMatch(/^For everybody here: 1 check-in on record/);
+    expect(con[0].text).toMatch(/^This is true of everybody here\. 1 check-in on record/);
     expect(con[0].text).not.toMatch(/Read against/);
     const other = draftThePicture({ ...base, ofPeople: 10, contribution: [{ name: 'A', reason: '1 check-in on record. Nothing named so far could be checked by anyone else, but a date was given.' }], coverage: [], blockers: [], patterns: [] });
     expect(other.find((d: any) => d.key.startsWith('con-')).key).not.toBe(con[0].key);
+  });
+});
+
+/*
+ * REQUEST 109 (f), 2 October 2026: the picture read "On the crop: Amani Wekesa says Amani is growing maize ..."
+ * - a colon, and Amani named twice, because the side's own words already named her.
+ */
+describe('a difference is said in sentences, with each person once (request 109 f)', () => {
+  const lines = draftThePicture({
+    ...base,
+    differences: [{ topic: 'Which crop the cohort grows', sides: [
+      { who: 'Amani Wekesa', says: 'Amani is growing maize this season.' },
+      { who: 'Neema Achieng', says: 'Beans pay better than maize.' },
+    ] }],
+  } as any);
+  const line = lines.find((l) => l.key.startsWith('differs-'))!.text;
+
+  it('reads as full sentences, with no colon and nobody named twice', () => {
+    expect(line).toBe('People said different things about which crop the cohort grows. Amani is growing maize this season. Neema Achieng says beans pay better than maize.');
+    expect(line).not.toMatch(/Amani Wekesa says Amani/);
+    expect(line).not.toMatch(/:/);
+  });
+});
+
+/*
+ * REQUEST 109 (f): "What to settle together" on the MarketView board showed "What did you do this period that
+ * only you could have done?", a question for one person, put to the room.
+ */
+describe('the question to settle together is for the room (request 109 f)', () => {
+  it('a chief executive\'s room is never asked a question addressed to one person', () => {
+    const q = draftTheQuestion({ functions: [{ fn: RoleFunction.CEO, confidence: 0.9 }], blockers: [] });
+    expect(q?.text ?? '').not.toMatch(/\byou\b|\byour\b/i);
+    expect(q?.text ?? '').not.toBe('What did you do this period that only you could have done?');
+  });
+  it('a blocker\'s question has no colon', () => {
+    const q = draftTheQuestion({ functions: [], blockers: [{ what: 'the budget sign-off', kind: 'DECISION' as any }] })!;
+    expect(q.text).toBe(`${WHO_CAN_MOVE_IT.DECISION} Who is that for the budget sign-off, and have they been asked?`);
   });
 });

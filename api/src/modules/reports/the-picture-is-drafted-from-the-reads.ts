@@ -1,6 +1,14 @@
 import type { Drafted } from './the-engine-drafts-it-the-model-words-it';
+import { peopleSaidDifferentThingsAbout, isAWholeSentence } from './what-people-said-differently-about';
+import { someOfThemHave } from './some-of-them-has-or-have';
 import { roleMapFor, MIN_COACHING_CONFIDENCE } from '../board/role-maps';
 import { WHO_CAN_MOVE_IT, WHAT_IT_MEANS, type Kind } from '../board/what-kind-of-thing-is-in-the-way';
+
+/** A topic that is a whole sentence, said as one. */
+const theTopicAsASentence = (topic: string): string => {
+  const t = topic.trim().replace(/[.!?]+$/, '');
+  return `${t.charAt(0).toUpperCase()}${t.slice(1)}.`;
+};
 
 /**
  * THE PICTURE FROM EVERYBODY IS DRAFTED FROM THE READS. THE MODEL WORDS IT.
@@ -145,7 +153,7 @@ export function draftThePicture(i: PictureInput): Drafted[] {
   /* Who this rests on, and how much there is to go on. Both are counts. */
   out.push({
     key: 'basis',
-    text: `${i.answered} of ${i.ofPeople} ${i.ofPeople === 1 ? 'person has' : 'people have'} answered this session. ${i.confidence.saying}`,
+    text: `${someOfThemHave(i.answered, i.ofPeople, 'answered this session.')} ${i.confidence.saying}`,
     mustKeep: [i.confidence.saying],
   });
 
@@ -159,10 +167,22 @@ export function draftThePicture(i: PictureInput): Drafted[] {
   for (const d of i.differences ?? []) {
     const sides = d.sides.filter((x) => x.who && x.says.trim());
     if (sides.length < 2) continue;
-    const said = sides.map((x) => `${x.who} says ${lower(theThing(x.says))}`);
+    /*
+     * EACH SIDE A SENTENCE, AND THE PERSON ONCE (request 109 f). It read "On the crop: Amani Wekesa says Amani is
+     * growing maize ...": a colon, and the person named twice, because the side's own words already name them.
+     * A side that already starts with the person is said as it is; any other side is "<name> says ...".
+     */
+    const startsWithThem = (who: string, says: string) => {
+      const first = who.trim().split(/\s+/)[0];
+      return !!first && new RegExp(`^(?:${who.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}|${first.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})\\b`, 'i').test(says.trim());
+    };
+    const said = sides.map((x) => {
+      const t = theThing(x.says).trim();
+      return startsWithThem(x.who, t) ? `${t.charAt(0).toUpperCase()}${t.slice(1)}.` : `${x.who} says ${lower(t)}.`;
+    });
     out.push({
       key: `differs-${d.topic.slice(0, 24)}`,
-      text: `On ${lower(theThing(d.topic))}: ${andList(said)}.`,
+      text: `${peopleSaidDifferentThingsAbout(d.topic)} ${said.join(' ')}`,
       mustKeep: sides.map((x) => lower(theThing(x.says))),
     });
   }
@@ -232,7 +252,8 @@ export function draftThePicture(i: PictureInput): Drafted[] {
       key: `pattern-${p.who}-${p.signal.slice(0, 16)}`,
       /* Three endings, because there are three kinds of pattern and the middle one is neither
          praise nor a problem with the person. See CARRYING_CODES. */
-      text: `${p.who}: ${p.signal} Seen across ${p.periodsObserved} sessions${
+      /* A sentence, never the person and the signal joined by a colon (request 101 a). */
+      text: `${p.signal} This has come up for ${p.who === 'You' ? 'you' : p.who} across ${p.periodsObserved} sessions${
         p.positive ? ', which is a good sign' : p.carrying ? ', and that is worth somebody looking at' : ''
       }.`,
       mustKeep: [p.signal],
@@ -260,12 +281,17 @@ export function draftThePicture(i: PictureInput): Drafted[] {
       byText.set(text, [...(byText.get(text) ?? []), r.name]);
     }
     for (const [text, names] of byText) {
+      const claim = `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
       const all = names.length === i.ofPeople && i.ofPeople > 1;
       out.push({
         /* The whole text keys the line, so two lines that begin the same way never share one wording. */
         key: `${prefix}-${text.slice(0, 24)}-${[...text].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7).toString(36)}`,
-        text: all ? `For everybody here: ${lower(text)}` : `${andList(names)}: ${lower(text)}`,
-        mustKeep: [lower(text)],
+        /* Two sentences, never the names and the claim joined by a colon (request 101 a). The reader is
+           "you" mid-sentence. */
+        text: all
+          ? `This is true of everybody here. ${claim}`
+          : `This is true of ${andList(names.map((n) => (n === 'You' ? 'you' : n)))}. ${claim}`,
+        mustKeep: [claim],
       });
     }
   };
@@ -321,9 +347,15 @@ export function draftTheQuestion(i: QuestionInput): Drafted | null {
     const settles = (difference.settledBy ?? '').trim().replace(/\s+/g, ' ');
     return {
       key: 'question',
-      text: settles
-        ? `${settles.replace(/[.]+$/, '')}. That is what settles ${lower(difference.topic.trim().replace(/[.]+$/, ''))}.`
-        : `Settle ${lower(difference.topic.trim().replace(/[.]+$/, ''))} between the people who described it differently.`,
+      /* A topic that is a whole sentence is said as one, never after "settles" (item 18): Tunde read "That is what
+         settles the delivery deadline for the analysis is not agreed upon." */
+      text: isAWholeSentence(difference.topic)
+        ? (settles
+          ? `${theTopicAsASentence(difference.topic)} ${settles.replace(/[.]+$/, '')}.`
+          : `${theTopicAsASentence(difference.topic)} Settle it between the people who described it differently.`)
+        : settles
+          ? `${settles.replace(/[.]+$/, '')}. That is what settles ${lower(difference.topic.trim().replace(/[.]+$/, ''))}.`
+          : `Settle ${lower(difference.topic.trim().replace(/[.]+$/, ''))} between the people who described it differently.`,
       mustKeep: [difference.topic.trim(), ...(settles ? [settles] : [])],
     };
   }
@@ -332,7 +364,8 @@ export function draftTheQuestion(i: QuestionInput): Drafted | null {
     const k = kinded.kind as Kind;
     return {
       key: 'question',
-      text: `${WHO_CAN_MOVE_IT[k]} For ${theThing(kinded.what)}: who is that, and have they been asked?`,
+      /* No colon joining two pieces (request 109 f). */
+      text: `${WHO_CAN_MOVE_IT[k]} Who is that for ${theThing(kinded.what)}, and have they been asked?`,
       mustKeep: [WHO_CAN_MOVE_IT[k], theThing(kinded.what)],
     };
   }
@@ -343,7 +376,12 @@ export function draftTheQuestion(i: QuestionInput): Drafted | null {
   }
   const top = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
   const map = top ? roleMapFor(top[0]) : null;
-  const probe = map?.neutralProbes?.[0];
+  /*
+   * A QUESTION FOR THE ROOM, NOT FOR ONE PERSON (request 109 f). The MarketView board showed "What did you do
+   * this period that only you could have done?" under "What to settle together": a question asked of one
+   * person, put to everybody. Only a probe that is not addressed to "you" is something to settle together.
+   */
+  const probe = map?.neutralProbes?.find((q) => !/\b(you|your|yours|yourself)\b/i.test(q));
   if (!probe) return null;
   return { key: 'question', text: probe, mustKeep: [probe] };
 }

@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import { nothingInternalReachesTheBubble } from '@/lib/nothing-internal-reaches-the-bubble'
 import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom'
 import { justTheQuestion } from '@/pages/invite/the-link-opens-on-the-question'
-import { useMutation } from '@tanstack/react-query'
-import { conversationApi, streamMessage, type CheckInBrief } from '@/api/conversation'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { groundsApi } from '@/api/grounds'
+import { conversationApi, streamMessage, type CheckInBrief, type TheEndCard as TheEndCardData } from '@/api/conversation'
 import { documentsApi, type DocumentAssessment } from '@/api/documents'
 import { useAuthStore } from '@/stores/auth'
 import { asTheirWords, isTheEnginesOwnNote } from '@/lib/as-their-words'
@@ -12,16 +13,43 @@ import { TheCheckInYouJustFinished } from '@/components/gw/TheCheckInYouJustFini
 import { WhatYouGaveUs, type WhatYouGave } from '@/components/gw/WhatYouGaveUs'
 import { WhoIsStillOut } from '@/components/gw/WhoIsStillOut'
 import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
+import { useAfterAWhile, GETTING_YOUR_FIRST_QUESTION_READY } from '@/lib/opening-is-slow'
+import { TheCheckInHeader } from '@/components/gw/checkin/TheCheckInHeader'
+import { Bubble } from '@/components/gw/ui/Bubble'
+import { ConversationCard } from '@/components/gw/ui/ConversationCard'
+import { Composer } from '@/components/gw/ui/Composer'
+import { Modal } from '@/components/gw/ui/Modal'
+import { Section } from '@/components/gw/ui/Section'
+import { Tag } from '@/components/gw/ui/Tag'
+import { Button } from '@/components/gw/ui/Button'
+import { SuggestedAnswers } from '@/components/gw/checkin/SuggestedAnswers'
+import { IdeaOffer } from '@/components/gw/checkin/IdeaOffer'
+import { RequestOffer, OpenTheRequest } from '@/components/gw/checkin/RequestOffer'
+import type { TheIdeaOfferInTheCheckIn, TheRequestOfferInTheCheckIn, TheRequestToOpen } from '@/api/anchorShapes'
+import { TheEndCard } from '@/components/gw/checkin/TheEndCard'
+import { TheDonePage, type WhatChanged } from '@/components/gw/checkin/TheDonePage'
+import { whenTheNextOneOpens, whoElseAnswers } from '@/lib/what-the-end-of-a-check-in-can-say'
+import { firstWordOfAName } from '@/lib/the-first-word-of-a-name'
 import { toast } from 'sonner'
+import '@/components/gw/ui/gw-ui.css'
 
 /** ONE LIST. The OS dialog offered 23 extensions, the label's title a third list of 9, and the validator refused everything outside these 10 - so the dialog invited a refusal the product then issued. */
-const ACCEPTED_UPLOADS = ['.pdf', '.doc', '.docx', '.txt', '.csv', '.xlsx', '.png', '.jpg', '.jpeg', '.md']
+/* .webp and .heic too: an iPhone photo is HEIC, and the server has always read both (documents.service ALLOWED_MIME). */
+const ACCEPTED_UPLOADS = ['.pdf', '.doc', '.docx', '.txt', '.csv', '.xlsx', '.png', '.jpg', '.jpeg', '.webp', '.heic', '.md']
 
 interface Msg {
   id: string
   role: 'AI' | 'PERSON'
   content: string
   docAssessment?: { docId: string; docName: string; assessment: DocumentAssessment }
+  /** The engine's suggested answers for this question, when it sends them. See SuggestedAnswers. */
+  suggestedAnswers?: string[]
+  /** Piece 21: the yes to capture a concrete idea, attached to the reply that offers it. See IdeaOffer. */
+  ideaOffer?: TheIdeaOfferInTheCheckIn | null
+  /** Anchor pieces 26/27: a leave or spending request read in the person's own words. See RequestOffer. */
+  requestOffer?: TheRequestOfferInTheCheckIn | null
+  /** Anchor pieces 26/27: what their yes opens, on the reply that follows. See OpenTheRequest. */
+  openTheRequest?: TheRequestToOpen | null
 }
 
 /** Shows a document's "what this suggests / what will be done with it" bullets,
@@ -53,35 +81,35 @@ function AssessmentCard({ groundId, docId, docName, assessment, onCorrected }: {
   }
 
   return (
-    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px', background: 'white', maxWidth: '82%', alignSelf: 'flex-start' }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 8 }}>📎 {docName}</div>
+    <div className="gwui-ci-assessment">
+      <div className="gwui-ci-assessment-title">📎 {docName}</div>
       {!editing ? (
         <>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)', marginBottom: 4 }}>What this suggests</div>
-          <ul style={{ margin: '0 0 10px', paddingLeft: 18, fontSize: 13, lineHeight: 1.6 }}>
+          <div className="gwui-ci-assessment-label">What this suggests</div>
+          <ul className="gwui-ci-assessment-list">
             {assessment.suggests.map((s, i) => <li key={i}>{s}</li>)}
           </ul>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)', marginBottom: 4 }}>What I will do with it</div>
-          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.6 }}>
+          <div className="gwui-ci-assessment-label">What I will do with it</div>
+          <ul className="gwui-ci-assessment-list gwui-ci-assessment-list-last">
             {assessment.willDo.map((s, i) => <li key={i}>{s}</li>)}
           </ul>
-          <button onClick={() => setEditing(true)} style={{ marginTop: 10, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit', padding: 0 }}>
+          <button onClick={() => setEditing(true)} className="gwui-ci-assessment-link">
             Not right? Correct this
           </button>
         </>
       ) : (
         <>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)', marginBottom: 4 }}>What this suggests (one per line)</div>
+          <div className="gwui-ci-assessment-label">What this suggests (one per line)</div>
           <textarea value={suggestsText} onChange={e => setSuggestsText(e.target.value)} rows={3}
-            style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 6, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', resize: 'vertical', marginBottom: 8 }} />
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)', marginBottom: 4 }}>What I will do with it (one per line)</div>
+            className="gwui-ci-assessment-textarea" />
+          <div className="gwui-ci-assessment-label">What I will do with it (one per line)</div>
           <textarea value={willDoText} onChange={e => setWillDoText(e.target.value)} rows={2}
-            style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 6, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', resize: 'vertical', marginBottom: 8 }} />
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={save} disabled={saving} style={{ padding: '7px 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit', opacity: saving ? 0.6 : 1 }}>
+            className="gwui-ci-assessment-textarea" />
+          <div className="gwui-ci-assessment-actions">
+            <button onClick={save} disabled={saving} className="gwui-ci-assessment-save">
               {saving ? 'Saving…' : 'Save correction'}
             </button>
-            <button onClick={() => setEditing(false)} disabled={saving} style={{ padding: '7px 14px', borderRadius: 6, background: 'none', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
+            <button onClick={() => setEditing(false)} disabled={saving} className="gwui-ci-assessment-cancel">
               Cancel
             </button>
           </div>
@@ -90,12 +118,6 @@ function AssessmentCard({ groundId, docId, docName, assessment, onCorrected }: {
     </div>
   )
 }
-
-const QUICK_ACTIONS = [
-  { label: 'What am I missing?',        msg: 'What is missing from what I have said that would make it stronger?' },
-  { label: 'Is there a document?',      msg: 'Is there anything written down that we should look at for this?' },
-  { label: 'What do I carry forward?',  msg: 'What is the one thing I should carry into the next conversation?' },
-]
 
 const RECORD_ENTRY_LABELS: Record<string, string> = {
   SUCCESS_DEFINITION: 'What success looks like',
@@ -131,7 +153,20 @@ export function ChatPage() {
   const [sessionNumber, setSessionNumber] = useState<number>((location.state as any)?.sessionNumber ?? 1)
   const groundLabel: string   = (location.state as any)?.groundLabel ?? ''
   const [groundId, setGroundId] = useState<string | undefined>((location.state as any)?.groundId)
-  const [showAllPrior, setShowAllPrior] = useState(false)
+  /** ROUND 6, ITEM 2: the two cards fold behind one quiet link and this panel. */
+  const [showAboutPanel, setShowAboutPanel] = useState(false)
+  /*
+   * THE CHECK-IN ITSELF, for its name on the way back ("← Sales team, Q3") and, at the end, for who
+   * else answers it. Read from the server rather than from how somebody got here: a check-in opened
+   * from an email carries no navigation state, and the way back said "Back" with no name.
+   */
+  const ground = useQuery({
+    queryKey: ['ground', groundId],
+    queryFn: () => groundsApi.get(groundId!),
+    enabled: !!groundId,
+    retry: false,
+  })
+  const checkInName: string = groundLabel || (ground.data as any)?.label || ''
   const [brief, setBrief] = useState<CheckInBrief | null>(null)
   /*
    * WHEN THE SCREEN MAY OFFER TO FINISH. The server holds a check-in to a turn floor - five answers
@@ -141,6 +176,19 @@ export function ChatPage() {
    * server would honour it: "a few more exchanges are needed" as a pop-up, on the button the page had
    * just shown. The server now says the number with the session, and this page reads it. Five until
    * it does, which is the stricter of the two and cannot offer early.
+   *
+   * U.8 FOURTH REVIEW TRIED REMOVING THIS GATE ENTIRELY (offering from the first answer, always),
+   * because the engine's closing message and its own completion gate can disagree on the SAME
+   * session - the engine wrote "...Your report is ready now" while the gate still refused as too
+   * thin (request 47). But `one-floor-not-two.spec.ts` is the engine's own rule for exactly this: the
+   * engine, the server's refusal, and this page's offer all read ONE floor
+   * (`theFloorFor`/`mayCompleteAfter`), because a live check-in has deadlocked when the screen and
+   * the server disagreed about when finishing was allowed - the engine offers the close, the
+   * composer disables because the session reads as over, the person presses finish, and the server
+   * refuses for being one turn short with no way left to add one. Removing the gate here reintroduced
+   * exactly the two-sources-of-truth shape that rule exists to prevent, in the other direction. So
+   * this reads `mayCompleteAfter` again, as it always has; the dead end above is still real and still
+   * the engine's to close, tracked as request 47 - not something this page's gate can fix by itself.
    */
   const [mayCompleteAfter, setMayCompleteAfter] = useState(5)
   const isInitiator: boolean  = (location.state as any)?.isInitiator ?? false
@@ -203,7 +251,6 @@ export function ChatPage() {
    */
   const [declined, setDeclined]       = useState(false)
   const [confirmingDecline, setConfirmingDecline] = useState(false)
-  const [confirmingFinish, setConfirmingFinish] = useState(false)
   const [openFailed, setOpenFailed]   = useState(false)
   const openedRef = useRef(false)
   /**
@@ -291,7 +338,7 @@ export function ChatPage() {
   const openSession = useMutation({
     mutationFn: () => conversationApi.open(checkInId!),
     onSuccess: res => {
-      setMsgs([{ id: 'ai-open', role: 'AI', content: res.reply }])
+      setMsgs([{ id: 'ai-open', role: 'AI', content: res.reply, suggestedAnswers: res.suggestedAnswers, ideaOffer: res.ideaOffer, requestOffer: res.requestOffer, openTheRequest: res.openTheRequest }])
       if (res.groundId && !groundId) setGroundId(res.groundId)
       if (res.brief) setBrief(res.brief)
       if (res.mayCompleteAfter) setMayCompleteAfter(res.mayCompleteAfter)
@@ -304,6 +351,16 @@ export function ChatPage() {
     },
   })
 
+  /*
+   * OPENING A SESSION RUNS SEVERAL MODEL CALLS (ConversationService.open) BEFORE IT ANSWERS, and
+   * that is 14 to 60 seconds of "Opening your session…" with nothing else said. Measured against
+   * the booted API for the closing wait (SlowStep's own note) and found the same shape here: a
+   * silence long enough to read as a hang unless it explains itself. Four seconds, same threshold
+   * as the reply wait above, is where somebody starts wondering if anything is happening.
+   */
+  const openingNow = openSession.isPending || (!opened && msgs.length === 0 && !completed && !declined)
+  const openingIsSlow = useAfterAWhile(openingNow)
+
 
   const decline = useMutation({
     mutationFn: () => conversationApi.decline(checkInId!),
@@ -314,6 +371,24 @@ export function ChatPage() {
   /* What the product measured about their own answers, told to them rather than kept behind the
      curtain. Comes back on the completion response; see WhatYouGaveUs. */
   const [whatYouGave, setWhatYouGave] = useState<WhatYouGave | null>(null)
+  /* The end card's parts that only the engine can write, sent with the reply that closes the
+     conversation (request 7). Null until it does; the card shows what is there. */
+  const [endCard, setEndCard] = useState<TheEndCardData | null>(null)
+  /*
+   * THE DONE PAGE (done.txt) replaces the conversation the moment somebody finishes here. A check-in
+   * finished earlier and opened again still shows its conversation and its report, as before.
+   */
+  const [justFinished, setJustFinished] = useState(false)
+  /* What moved through stages, sent with the completion when the engine has it (request 7). */
+  const [whatChanged, setWhatChanged] = useState<WhatChanged | null>(null)
+  /* This person's own sessions, for when the next one opens. Only while the end is on screen. */
+  const myStatus = useQuery({
+    queryKey: ['my-checkin-status', groundId, 'end'],
+    queryFn: () => groundsApi.getMyCheckinStatus(groundId!),
+    enabled: !!groundId && (done || completed),
+    retry: 2,
+    retryDelay: 1500,
+  })
 
   const complete = useMutation({
     mutationFn: () => conversationApi.complete(checkInId!),
@@ -325,6 +400,8 @@ export function ChatPage() {
      */
     onSuccess: (res: any) => {
       setCompleted(true)
+      setJustFinished(true)
+      if (res?.whatChanged) setWhatChanged(res.whatChanged as WhatChanged)
       if (res?.whatYouGave) setWhatYouGave(res.whatYouGave as WhatYouGave)
       if (bareFrame && groundId) navigate(`/grounds/${groundId}/board?done=1`, { replace: true })
     },
@@ -348,7 +425,7 @@ export function ChatPage() {
      */
     onError: (err: any) => {
       const message: string = err?.response?.data?.message ?? ''
-      if (/already complete/i.test(message)) { setCompleted(true); return }
+      if (/already complete/i.test(message)) { setCompleted(true); setJustFinished(true); return }
       /**
        * A REFUSAL THAT ASKS FOR MORE HAS TO LET THEM GIVE IT.
        *
@@ -358,14 +435,35 @@ export function ChatPage() {
        * they would answer in is already switched off. The person is told what to do and given no
        * way to do it, which is the dead end behind "I could not complete my check-in".
        *
-       * The server marks those two refusals `canContinue`, so re-open the session rather than
-       * leaving them looking at a disabled box and an instruction. Not matched on the wording:
-       * rewording the sentence would otherwise quietly bring the trap back.
+       * READS `canContinue` FIRST, THE 400 STATUS AS A FALLBACK (U.8 end-of-module suites,
+       * `a-refusal-that-asks-must-be-answerable.spec.ts`). The server marks these two refusals
+       * `canContinue: true` - the explicit signal that this 400 is answerable, not a hard stop like
+       * a closed ground or a hold, which never carry it. A shared filter once rebuilt every error
+       * body between the exception and the client and dropped that field entirely, so the live 400
+       * carried no `canContinue` at all and this branch never ran; the filter has been fixed to
+       * keep the field, and the `=== 400` fallback stays for exactly that history - if the field
+       * were ever dropped again, every completion refusal that is not "already complete" is, by
+       * construction, this same case (the gate has only these two throw branches). The server's own
+       * sentence is still never shown - only ours.
        */
-      if (err?.response?.data?.canContinue) {
+      if (err?.response?.data?.canContinue || err?.response?.status === 400) {
+        /**
+         * SAY IT WHERE THE CONVERSATION IS, NOT IN A POP-UP THAT FADES.
+         *
+         * A toast carrying the server's own gate wording ("the record is still thin") is jargon,
+         * and it disappears in a few seconds while the end card came down with it - so the person
+         * was left looking at a plain, silent composer with no idea why "finish" did not work.
+         * The explanation belongs in the conversation itself, in plain words, as a permanent line
+         * they can still see after the toast would have gone. The composer comes back with focus so
+         * there is somewhere to act on it straight away.
+         */
         setDone(false)
-        setConfirmingFinish(false)
-        toast.error(message || 'A little more is needed before this can close.')
+        setMsgs(v => [...v, {
+          id: `ai-cannot-finish-yet-${Date.now()}`,
+          role: 'AI',
+          content: 'I need a little more from you before this check-in can close. Please answer one or two more questions, then finish again.',
+        }])
+        requestAnimationFrame(() => taRef.current?.focus())
         return
       }
       toast.error(message || 'Could not complete this session.')
@@ -373,19 +471,28 @@ export function ChatPage() {
   })
 
   const uploadDoc = useMutation({
-    mutationFn: ({ file }: { file: File; ctx: string }) => {
+    /*
+     * WHAT THEY SAID IT IS, KEPT. The line typed in the sheet was shown back as "Context you gave"
+     * and then dropped: it never reached the server, so it was gone on the next load and the engine
+     * never read it. It goes up as the uploader's note, which the server keeps in their words and
+     * shows to them alone (what-a-document-is-for).
+     */
+    mutationFn: ({ file, ctx }: { file: File; ctx: string }) => {
       if (!groundId) throw new Error('groundId missing')
-      return documentsApi.upload(groundId, file)
+      return documentsApi.upload(groundId, file, false, ctx)
     },
     onSuccess: async (doc, { ctx }) => {
       /* Now that it has landed, the sheet can go. */
       setDocContextMode(false); setPendingDoc(null); setDocContext('')
       setPasteMode(false); setPasteText(''); setPasteLabel('')
-      const contextLine = ctx.trim() ? ` Context you gave: ${ctx.trim()}.` : ''
+      /* Said as what happened, and who can open it: the server's own answer for this file. What
+         they typed about it is not repeated back; it is kept with the file (see mutationFn). */
+      void ctx
+      const privateToThem = !doc.visibility || doc.visibility === 'OWN'
       const newMsgs: Msg[] = [{
         id: `doc-note-${Date.now()}`,
         role: 'AI',
-        content: `Document received: "${doc.name}".${contextLine}`,
+        content: `You added “${doc.name}”.${privateToThem ? ' Only you can open it.' : ''}`,
       }]
       if (doc.assessment) {
         newMsgs.push({
@@ -475,6 +582,7 @@ export function ChatPage() {
             session with no turns yet still has a subject, and that is the load where it matters most.
           */
           if (t.brief) setBrief(t.brief)
+          if (t.endCard) setEndCard(t.endCard)
           if (t.mayCompleteAfter) setMayCompleteAfter(t.mayCompleteAfter)
           /*
             AND WHICH SESSION THIS IS, FOR THE SAME REASON AS THE BAND ABOVE.
@@ -491,8 +599,22 @@ export function ChatPage() {
           if (typeof t.checkIn?.sessionNumber === 'number') setSessionNumber(t.checkIn.sessionNumber)
           if (t.checkIn?.groundId && !groundId) setGroundId(t.checkIn.groundId)
           if (t.turns && t.turns.length > 0) {
-            setMsgs(t.turns.map(turn => ({ id: turn.id, role: turn.role, content: turn.content })))
-            if (t.checkIn?.status === 'COMPLETED') { setDone(true); setCompleted(true) }
+            setMsgs(t.turns.map(turn => ({ id: turn.id, role: turn.role, content: turn.content, suggestedAnswers: turn.suggestedAnswers, ideaOffer: turn.ideaOffer, requestOffer: turn.requestOffer, openTheRequest: turn.openTheRequest })))
+            /**
+              * ROUND 6, ITEM 4: A SESSION THAT WAS ALREADY FINISHED GETS THE SAME DONE PAGE AS
+              * ONE JUST FINISHED NOW.
+              *
+              * Loading `/checkin/:id` for a session completed earlier used to set `completed`
+              * alone - `justFinished` was only ever set by the two live-finish paths below (the
+              * normal finish, and the "already complete" refusal caught while sending) - so the
+              * early return to `TheDonePage` never fired here, and the OLD inline "already
+              * complete" block further down rendered instead: its own report blocks, a dash-joined
+              * sentence, "Open the team board →", and a "Back to check-ins" link cut off at the
+              * bottom - none of it the prototype's Done page. `justFinished` is what that early
+              * return actually keys on, so this sets it too - the prototype shows the same Done
+              * page whether you just finished or are opening a finished check-in fresh.
+              */
+            if (t.checkIn?.status === 'COMPLETED') { setDone(true); setCompleted(true); setJustFinished(true) }
             /** Reopening a session already declined must show the settled state, not the composer. */
             if (t.checkIn?.status === 'DECLINED') { setDone(true); setDeclined(true) }
             setOpened(true)
@@ -586,9 +708,10 @@ export function ChatPage() {
         },
         onDone: (r) => {
           acknowledge()
-          setMsgs(v => v.map(m => m.id === aiId ? { ...m, content: r.reply } : m))
-          setDisplayedMsgs(v => v.map(m => m.id === aiId ? { ...m, content: r.reply } : m))
+          setMsgs(v => v.map(m => m.id === aiId ? { ...m, content: r.reply, suggestedAnswers: r.suggestedAnswers, ideaOffer: r.ideaOffer, requestOffer: r.requestOffer, openTheRequest: r.openTheRequest } : m))
+          setDisplayedMsgs(v => v.map(m => m.id === aiId ? { ...m, content: r.reply, suggestedAnswers: r.suggestedAnswers, ideaOffer: r.ideaOffer, requestOffer: r.requestOffer, openTheRequest: r.openTheRequest } : m))
           if (r.sessionComplete) setDone(true)
+          if (r.endCard) setEndCard(r.endCard)
         },
         onError: (m) => { throw new Error(m) },
       })
@@ -602,8 +725,9 @@ export function ChatPage() {
         try {
           const res = await conversationApi.send(checkInId, message)
           acknowledge()
-          setMsgs(v => v.concat({ id: `ai-${Date.now()}`, role: 'AI', content: res.reply }))
+          setMsgs(v => v.concat({ id: `ai-${Date.now()}`, role: 'AI', content: res.reply, suggestedAnswers: res.suggestedAnswers, ideaOffer: res.ideaOffer, requestOffer: res.requestOffer, openTheRequest: res.openTheRequest }))
           if (res.sessionComplete) setDone(true)
+          if (res.endCard) setEndCard(res.endCard)
         } catch {
           /**
            * A MESSAGE THAT NEVER LANDED USED TO STAY ON SCREEN.
@@ -643,15 +767,36 @@ export function ChatPage() {
     sendStreaming(msg)
   }
 
+  /**
+   * A SUGGESTED ANSWER CONTAINING "..." IS A SHAPE TO FINISH, NOT A THING TO SEND.
+   *
+   * docs/conversation-standard.md, point 6: the engine's suggestions are "a help, never a limit".
+   * Most of them are a real answer someone might give as it stands - "Sent it. They liked it but
+   * want to wait until after December." - and pressing one sends it, same as typing it and hitting
+   * Enter. But the engine sometimes sends a shape with a gap in it, marked "...", for something it
+   * cannot fill in for the person (a name, a number, a date): sending that literally would put an
+   * ellipsis in their record. So this puts it in the box instead, with the "..." itself selected -
+   * typing immediately replaces it, rather than the person having to find and delete it first.
+   */
+  function pickSuggestion(a: string) {
+    if (loading || completed || declined || !opened) return
+    const gap = a.indexOf('...')
+    if (gap === -1) { quickSend(a); return }
+    setInput(a)
+    requestAnimationFrame(() => {
+      const el = taRef.current
+      if (!el) return
+      el.style.height = '38px'
+      el.style.height = Math.min(el.scrollHeight, 120) + 'px'
+      el.focus()
+      try { el.setSelectionRange(gap, gap + 3) } catch { /* not focusable yet */ }
+    })
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
   }
 
-  function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    setInput(e.target.value)
-    e.target.style.height = '38px'
-    e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
-  }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
@@ -681,11 +826,22 @@ export function ChatPage() {
     uploadDoc.mutate({ file, ctx: '' })
   }
 
+  /** Leave the check-in for its own page. Nothing is sent: every answer is saved as it is given. */
+  function leave() {
+    navigate(groundId ? `/grounds/${groundId}${isInitiator ? '' : '/p'}` : '/grounds')
+  }
+
+  /*
+   * NO LONE "Session 1" AT THE BOTTOM OF AN ORDINARY SESSION (U.8 review). The prototype's own
+   * check-in screens (docs/prototype/screens/B3-the-check-in/*.txt) never print a bare session
+   * number in the bottom bar - only when there is something to say ABOUT the session, closing one
+   * or correcting one, is there a sentence here. An ordinary session says nothing in this spot.
+   */
   const privacyLabel = isFinalSession
     ? `Closing session ${sessionNumber} · This is the last word on the record. Take the time to be thorough - what you document here is what the final report weighs.`
     : correctingSession != null
       ? `Correcting session ${correctingSession} · nothing is overwritten - this is recorded alongside what you said then.`
-      : `Session ${sessionNumber}`
+      : null
 
   /**
    * WHAT HAPPENS TO WHAT YOU WRITE, BEFORE YOU ARE ASKED ANYTHING. (G40)
@@ -749,217 +905,383 @@ export function ChatPage() {
    * the admin's guide - which is where a promise belongs. Not in front of every session.
    */
 
-  /* Fills the screen exactly, so the composer sits at the bottom of the phone and the transcript scrolls inside. It was minHeight, and the composer measured 1,518px down on an 812px screen. */
-  return (
-    /* minHeight 100vh was fighting the height: on a narrow screen it re-added the nav strip the
-       height had just subtracted. See --gw-bottom-nav in AppShell. */
-    <div style={{ height: 'calc(100dvh - var(--gw-bottom-nav, 0px))', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
-      {/* Header */}
-      {/**
-        * THE WAY OUT, MOVED TO THE LEFT, AND POINTED AT THE GROUND.
-        *
-        * There has always been a `← Grounds` button here, on the right of the header. It was
-        * invisible: the feedback pill is `position: fixed` and `AppShell` moves it to `top: 12,
-        * right: 16` on chat pages specifically, which is the same place. Measured on the running
-        * page - back button x 1180 to 1264, pill x 1159 to 1264. Every pixel of it was underneath.
-        *
-        * So the check-in had no way out at all, which is what Hafsah asked about. Two changes:
-        * the exit sits on the left, where the ground page already puts it and where nothing floats
-        * over it, and it goes back to THE GROUND rather than the list of all grounds - leaving a
-        * session should not cost you your place.
-        */}
-      <div className="gw-hdr">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-          {/* Not in the bare frame: somebody answering one question from their mail has no use for
-              a ground page, and the only control on the screen should not lead out of the thing
-              they came to do. See the-link-opens-on-the-question. */}
-          {!bareFrame && (
-            <button
-              className="gw-back"
-              onClick={() => navigate(groundId ? `/grounds/${groundId}${isInitiator ? '' : '/p'}` : '/grounds')}
-              title="Leave this session. Everything you have said is already saved."
-            >
-              ← Back
-            </button>
-          )}
-          <div style={{ minWidth: 0 }}>
-            <div className="gw-logo" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{groundLabel || user?.firstName || 'Your session'}</div>
-            <div style={{ fontSize: 11, color: isFinalSession ? 'var(--gw-amber-t)' : 'var(--gw-muted)', fontWeight: isFinalSession ? 700 : 400 }}>
-              {isFinalSession
-                ? `Closing session ${sessionNumber} · your final account`
-                : correctingSession != null
-                  ? `Correcting session ${correctingSession}`
-                  : `Session ${sessionNumber}`}
-            </div>
-          </div>
-        </div>
+  if (justFinished && groundId && checkInId && !bareFrame) {
+    return (
+      <div className="gwui-ci-done-wrap">
+        <TheDonePage
+          firstName={firstWordOfAName(user?.firstName)}
+          checkInId={checkInId}
+          groundId={groundId}
+          sessionNumber={sessionNumber}
+          myUserId={user?.id}
+          isInitiator={isInitiator || !!(ground.data as any)?.viewerIsInitiator}
+          whatChanged={whatChanged}
+        />
       </div>
+    )
+  }
 
-      {/* Clarification session banner */}
-      {isClarificationSession && (
-        <div style={{ background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)', padding: '10px 16px', fontSize: 12.5, color: 'var(--gw-navy)', lineHeight: 1.55 }}>
-          <strong>Clarification session.</strong> Something in your report was inferred, not quoted directly. Tell us what was actually happening and we'll update the record.
-        </div>
-      )}
+  /**
+   * ROUND 6, ITEM 2: WHAT THE "WHAT THIS CHECK-IN IS ABOUT, AND WHAT YOU SAID LAST TIME" PANEL
+   * HOLDS, COMPUTED ONCE FOR BOTH THE LINK'S OWN "IS THERE ANYTHING TO OPEN" CHECK AND THE PANEL.
+   */
+  const hasAboutContent = !!brief && !!(brief.subject || brief.says || brief.objectives.length > 0)
+  const priorRecordLines = priorRecordEntries
+    .flatMap(s => s.entries.map(e => ({ session: s.sessionNumber, type: e.type, text: asTheirWords(e.text), raw: e.text })))
+    .filter(l => l.text && !isTheEnginesOwnNote(l.raw))
 
-      {/* Session open failure - shown at top of chat area so it's always visible */}
-      {openFailed && (
-        <div style={{ padding: '12px 16px', background: 'var(--gw-amber-bg)', borderBottom: '1px solid var(--gw-amber-b)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexShrink: 0 }}>
-          <span style={{ fontSize: 13, color: 'var(--gw-amber-t)', lineHeight: 1.4 }}>Could not open your session. This is usually a temporary issue.</span>
-          <button
-            onClick={() => { setOpenFailed(false); openedRef.current = false; openSession.mutate() }}
-            disabled={openSession.isPending}
-            style={{ padding: '6px 14px', borderRadius: 6, background: 'var(--gw-amber-t)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, opacity: openSession.isPending ? 0.6 : 1 }}
-          >
-            {openSession.isPending ? 'Opening…' : 'Try again'}
-          </button>
-        </div>
-      )}
+  /* Fills the screen exactly, so the composer sits at the bottom of the phone and the transcript scrolls inside. */
+  return (
+    /*
+      THE PROTOTYPE'S SHAPE: the way back above one card, and the whole check-in inside the card
+      (check-in-start.jpg). On a phone the card fills the screen.
 
-      {/* Chat area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-        <div
-          ref={msgsRef}
-          aria-live="polite"
-          style={{ flex: 1, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}
-        >
+      GROUP 3, PIECE 3: the page's own frame, and everything below it, is built from the shared
+      parts in components/gw/ui - ConversationCard/Composer/Bubble/Modal/Section/Tag/Button - with
+      every size, colour and spacing of this screen's own markup in gw-ui.css's `.gwui-ci-*`
+      classes rather than an inline style.
+    */
+    <div className="gwui-ci-page">
+      <div className="gwui-ci-wrap">
+      {/**
+        * THE WAY OUT, ON THE LEFT, AND POINTED AT THE GROUND.
+        *
+        * It has to sit where nothing floats over it (the feedback pill once covered every pixel of
+        * the old one), and it goes back to THE GROUND rather than the list of all grounds - leaving
+        * a session should not cost you your place. Named after the check-in, as the prototype's
+        * "← Sales team, Q3".
+        */}
+      {/* Not in the bare frame: somebody answering one question from their mail has no use for
+          a ground page, and the only control on the screen should not lead out of the thing
+          they came to do. See the-link-opens-on-the-question. */}
+      <ConversationCard
+        backLabel={!bareFrame ? (checkInName || 'Back') : undefined}
+        onBack={leave}
+        backTitle="Leave this session. Everything you have said is already saved."
+        header={(
+                <TheCheckInHeader
+                  /**
+                    * ROUND 6, ITEM 1: THE CHECK-IN'S OWN NAME, THE PROTOTYPE'S SHAPE.
+                    * check-in-start.txt: "Sales team check-in" (bold), "About two minutes" under
+                    * it, Pause on the right - "Your check-in" named no check-in at all. The
+                    * estimate is honest about what it is measuring (this one conversation, not
+                    * the record it draws on), so it applies the same way to every check-in.
+                    *
+                    * REVIEW ROUND 3, ITEM 7: APPENDING " check-in" READ AS "Sales team, Q3
+                    * check-in" - a name ending in a comma-joined part, with a second noun stuck on
+                    * after the comma reads worse than the fragment it was meant to fix. The
+                    * prototype's own title, "Sales team check-in", IS the check-in's name (a
+                    * check-in's `label` already names it that way in the prototype's data, not
+                    * "Sales team" plus a suffix this screen adds). Simplest: the check-in's own
+                    * name, exactly as it is, with nothing appended.
+                    */
+                  title={checkInName || 'Your check-in'}
+                  underTitle={
+                    done && !completed && !declined
+                      ? 'That’s everything for today'
+                      : correctingSession != null
+                        ? `Correcting session ${correctingSession}`
+                        : isFinalSession
+                          ? `Closing session ${sessionNumber}. This is your final account.`
+                          : 'About two minutes'
+                  }
+                  mayPause={opened && !completed && !declined}
+                  /* Not in the bare frame: the only control on that screen should not lead out of the thing
+                     they came to do. See the-link-opens-on-the-question. Skipping is still offered. */
+                  onStopForNow={bareFrame ? undefined : leave}
+                  onSkip={() => setConfirmingDecline(true)}
+                />
+        )}
+        banners={(
+          <>
+                {/* Clarification session banner */}
+                {isClarificationSession && (
+                  <div className="gwui-ci-banner-info">
+                    <strong>Clarification session.</strong> Something in your report was inferred, not quoted directly. Tell us what was actually happening and we'll update the record.
+                  </div>
+                )}
+
+                {/* Session open failure - shown at top of chat area so it's always visible */}
+                {openFailed && (
+                  <div className="gwui-ci-banner-warn">
+                    <span className="gwui-ci-banner-warn-text">Could not open your session. This is usually a temporary issue.</span>
+                    <button
+                      onClick={() => { setOpenFailed(false); openedRef.current = false; openSession.mutate() }}
+                      disabled={openSession.isPending}
+                      className="gwui-ci-banner-warn-btn"
+                    >
+                      {openSession.isPending ? 'Opening…' : 'Try again'}
+                    </button>
+                  </div>
+                )}
+          </>
+        )}
+        bodyRef={msgsRef}
+        footer={(
+                  <div>
+                    {/**
+                      * ROUND 6, ITEM 3: THE GREY STRIP IS GONE.
+                      *
+                      * `background: 'var(--gw-bg)'` with its own `borderBottom` drew a visibly
+                      * separate grey band between the last message and the composer - the
+                      * prototype has none. The row stays (it still carries a real sentence when
+                      * closing or correcting a session, and "Set the context"/"Add people" for
+                      * whoever runs it - both real fixes for reported complaints, not decoration),
+                      * just on the page's own white now, not banded off from it.
+                      */}
+                    <div className="gwui-ci-footer-strip">
+                      {/* Always the spacer, whether or not there is a sentence to put in it: the buttons after
+                          it are laid out against this flex item, not against whether it has words in it. */}
+                      <span className="gwui-ci-footer-note">{privacyLabel}</span>
+                      {/*
+                        * THE TWO THINGS A PERSON KEEPS ASKING FOR, WHERE THEY ARE ASKING FOR THEM.
+                        *
+                        * Reported twice, the second time with "I told you to fix this": "the chat didn't ask
+                        * me who is involved or tell me i can set context or add people later", and "if someone
+                        * else is checking in and then others check in against it, the place to set context is
+                        * not very good and you are not told you can set context on a tab".
+                        *
+                        * Both exist. The check-in has a Context tab and a Setup tab, and neither is mentioned
+                        * anywhere in the conversation - so somebody sitting in the chat, realising the context
+                        * is thin or that the people who should answer are missing, has no idea either is a
+                        * click away. A tab nobody is told about is a tab nobody uses.
+                        *
+                        * Put in the privacy strip rather than in the model's mouth: an instruction to mention
+                        * it would fire whenever the model felt like it, and this is true on every turn of
+                        * every session. Quiet, always there, and it goes to the tab rather than describing it.
+                        */}
+                      {/*
+                        BOTH OF THESE ARE THE LEAD'S, AND EVERYBODY WAS OFFERED THEM.
+
+                        Walked as a participant: her chat carries "Set the context" and "Add people". The
+                        first goes to a Context page that tells her "you cannot change this here"; the second
+                        goes to Setup, which opens with "Nothing on this page is yours to change". Two
+                        controls offered to somebody, both leading to a page that refuses them - which is
+                        worse than not offering, because she has to go and find out.
+
+                        A participant is not short of things to do here: the one thing that IS hers is her
+                        own record, and it is already a tab.
+                      */}
+                      {groundId && isInitiator && (
+                        <span className="gwui-ci-footer-links">
+                          <button
+                            onClick={() => navigate(`/grounds/${groundId}?tab=context`)}
+                            className="gwui-ci-footer-link"
+                          >
+                            Set the context
+                          </button>
+                          <button
+                            onClick={() => navigate(`/grounds/${groundId}?tab=settings`)}
+                            className="gwui-ci-footer-link"
+                          >
+                            Add people
+                          </button>
+                        </span>
+                      )}
+                    </div>
+                    {/*
+                      THE COMPOSER, THE SHAPE EVERY PERSON ALREADY KNOWS. 18 September 2026, her words: "the
+                      chat box is small and hard to engage, we need to make it look like you are on whatsapp."
+                      Measured on a 375px phone before this: the typing box was 89 pixels wide, because Upload
+                      doc and Paste text sat in the same row and took it. On the card whose whole promise is
+                      two minutes on a phone, that is the thing that breaks it.
+
+                      So: one round attach button holding both ways of adding something, a full-width pill to
+                      type in, and a round send. Nothing was removed - the two controls moved inside the clip.
+                    */}
+                    <div>
+                      <input type="file" id="doc-upload" accept={ACCEPTED_UPLOADS.join(',')} className="gwui-sr-only" onChange={e => {
+                        const f = e.target.files?.[0]
+                        if (f) {
+                          const allowed = ACCEPTED_UPLOADS
+                          const ext = '.' + f.name.split('.').pop()?.toLowerCase()
+                          if (!allowed.includes(ext)) { toast.error(`File type not supported. Accepted: ${allowed.join(', ')}`); e.target.value = ''; return }
+                        }
+                        handleFileChange(e)
+                      }} />
+                      <Composer
+                        inputRef={taRef}
+                        value={input}
+                        onChange={(v) => {
+                          setInput(v)
+                          const el = taRef.current
+                          if (el) { el.style.height = '38px'; el.style.height = Math.min(el.scrollHeight, 120) + 'px' }
+                        }}
+                        onKeyDown={handleKeyDown}
+                        onSend={send}
+                        sendLabel="Send message"
+                        disabled={loading || completed || declined || !opened}
+                        onPlus={groundId ? () => setAttachOpen(o => !o) : undefined}
+                        plusOpen={attachOpen}
+                        plusDisabled={completed || declined}
+                        plusMenu={groundId ? (
+                          <>
+                            {/* A photo first, because that is what the check-in asks for: "A photo of it is
+                                enough." (check-in-end-card.txt). It is a real upload, and the server keeps it
+                                private to whoever added it until they choose otherwise. */}
+                            <label htmlFor="doc-upload"
+                              title={`Accepted: ${ACCEPTED_UPLOADS.map(e => e.slice(1).toUpperCase()).join(', ')}`}
+                              onClick={() => setAttachOpen(false)}
+                              className="gwui-ci-attach-item"
+                            >
+                              Add a photo or a document
+                            </label>
+                            <button
+                              onClick={() => { setAttachOpen(false); if (groundId) setPasteMode(true) }}
+                              disabled={completed || declined}
+                              className="gwui-ci-attach-item"
+                            >
+                              Paste text
+                            </button>
+                            {/* The prototype's own sentence for a new document (U.7, Add a document), and the
+                                server's rule: a document starts private to its uploader (who-can-see-a-document). */}
+                            <div className="gwui-ci-attach-note">
+                              It starts private to you. You choose who can read it.
+                            </div>
+                          </>
+                        ) : undefined}
+                      />
+                    </div>
+                    {/*
+                      AND A WAY BACK, WHICH THE BARE FRAME OTHERWISE HAS NONE OF.
+                      "What a person now needs to login, is there a place to proceed to sign-in?" - there was
+                      not. Accepting the link signed them in, and the page said nothing about it: no name, no
+                      way to return on another device, no sign-in anywhere on screen. One line, under the
+                      thing they are typing into, says all three.
+                    */}
+                    {bareFrame && (
+                      <div className="gwui-ci-signin-note">
+                        {user?.email ? `Signed in as ${user.email}. ` : ''}
+                        Your link reopens this any time, or{' '}
+                        <button
+                          onClick={() => navigate('/auth')}
+                          className="gwui-plain-link"
+                        >
+                          sign in with your email
+                        </button>.
+                      </div>
+                    )}
+                  </div>
+        )}
+      >
           {/* From mount, not from the mutation: the transcript fetch sits behind a deliberate jitter of up to
               two seconds, and openSession.isPending cannot be true until after it, so every arrival opened on
               a blank screen. The jitter stays; the sentence starts earlier. */}
-          {(openSession.isPending || (!opened && msgs.length === 0 && !completed && !declined)) && (
-            <div role="status" style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 16 }}>Opening your session…</div>
-          )}
-
-          {/*
-            WHAT YOU ARE CHECKING IN ON, ON SCREEN WHILE YOU ANSWER.
-            
-            A participant arrives by invite link and was asked "what did you understand your role in
-            this to be" with nothing on screen: not the subject, not the objectives, not who set it
-            up. So people freestyled, and the report was built on that.
-            
-            `an-objective-nobody-has-seen.spec.ts` already states the rule this serves: "reading a
-            person against a target they have never seen is the definition of an unfair review, and
-            the fact that the product would be doing it silently makes it worse rather than better."
-            The objective carries a `seenBySubject` state for exactly this reason. Nothing was
-            showing it, so the state could never honestly become true.
-            
-            It stays visible rather than appearing once, because a target you saw at the top of a
-            ten-minute conversation is a target you are no longer looking at by the time it matters.
-            Only shared facts: the subject and the stated objectives, never another party's words.
-          */}
-          {/* `says` is in the condition because it is rendered below: a check-in whose lead wrote a
-              description but which has no objectives and no label showed nothing at all. */}
-          {/*
-            AND NOT IN THE BARE FRAME. A team update's link opens on the question, and the question
-            is the first message: the band above it would say the same sentence twice before
-            anybody has typed a word. See the-link-opens-on-the-question.
-          */}
-          {!bareFrame && brief && (brief.subject || brief.says || brief.objectives.length > 0) && (
-            <div style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-navy)', borderRadius: 10, padding: '11px 13px', marginBottom: 4, background: 'white' }}>
-              <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gw-muted)', marginBottom: 5 }}>
-                What this check-in is about
-              </div>
-              {brief.subject && (
-                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--gw-text)', lineHeight: 1.45, marginBottom: 4 }}>
-                  {brief.subject}
-                </div>
+          {openingNow && (
+            <div role="status" className="gwui-panel-text-muted">
+              Opening your session…
+              {/* Said only once the wait is long enough to need explaining (U.8 review): opening a
+                  session runs several model calls and can take up to a minute with nothing else on
+                  screen, which read as a hang. */}
+              {openingIsSlow && (
+                <div>{GETTING_YOUR_FIRST_QUESTION_READY}</div>
               )}
-              {/*
-                AND WHAT IT IS ACTUALLY ABOUT.
-
-                The subject is the check-in's label, and on the picker path the label is the
-                scenario - so this band, headed "What this check-in is about", said "New hire" and
-                stopped. Read on a real invitation: the lead had written four sentences describing
-                the situation and the person being asked to account for it never saw a word of them.
-              */}
-              {brief.says && (
-                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: brief.objectives.length ? 7 : 0 }}>
-                  {brief.says}
-                </div>
-              )}
-              {brief.objectives.length > 0 && (
-                <>
-                  <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 4 }}>
-                    {brief.objectives.length === 1 ? 'The objective on record:' : 'The objectives on record:'}
-                  </div>
-                  {brief.objectives.map((o, i) => (
-                    <div key={i} style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.5, display: 'flex', gap: 6 }}>
-                      <span style={{ color: 'var(--gw-navy)', flexShrink: 0 }}>•</span>
-                      <span>{o.name}{o.target != null ? ` (${o.target.toLocaleString('en-US')})` : ''}</span>
-                    </div>
-                  ))}
-                </>
-              )}
-              {/*
-                AND WHY THE LIST IS SHORT, WHICH THE SERVER HAS BEEN SAYING TO NOBODY.
-
-                A check-in that keeps numbers to their owner sends this line with the brief: "Other
-                people on this check-in have numbers of their own, and those are theirs." Without
-                it, somebody reads two objectives on a check-in with four people and has no idea
-                whether the rest are missing, secret, or simply not set. The line was written on 15
-                September and rendered nowhere.
-              */}
-              {brief.alsoSay && (
-                <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 6, lineHeight: 1.5, fontStyle: 'italic' }}>
-                  {brief.alsoSay}
-                </div>
-              )}
-              <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 7, lineHeight: 1.45 }}>
-                Answer in your own words. You are not expected to agree with any of it.
-              </div>
             </div>
           )}
-          {priorRecordEntries.length > 0 && (() => {
-            /*
-             * WHAT YOU SAID LAST TIME, IN YOUR WORDS, THREE LINES UNLESS YOU ASK FOR MORE.
-             *
-             * This was every extracted line from every earlier session, with the engine's own marks
-             * left in, sitting above the first question. On a phone the question was two screens
-             * down. A participant read the machine's notes on her before she was asked anything.
-             * The most recent session's last three lines, cleaned, with the rest behind a tap.
-             */
-            const lines = priorRecordEntries
-              .flatMap(s => s.entries.map(e => ({ session: s.sessionNumber, type: e.type, text: asTheirWords(e.text), raw: e.text })))
-              .filter(l => l.text && !isTheEnginesOwnNote(l.raw))
-            const latest = Math.max(...priorRecordEntries.map(s => s.sessionNumber))
-            const shown = showAllPrior ? lines : lines.filter(l => l.session === latest).slice(-3)
-            const more = lines.length - shown.length
-            return (
-              <div style={{ border: '1px dashed var(--gw-border)', borderRadius: 10, padding: '10px 12px', marginBottom: 4, background: 'var(--gw-bg)' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--gw-muted)', marginBottom: 8 }}>
-                  What you said last time
+
+          {/*
+            ROUND 6, ITEM 2: "WHAT THIS CHECK-IN IS ABOUT" AND "WHAT YOU SAID LAST TIME" FOLD
+            BEHIND ONE QUIET LINK.
+
+            The prototype starts straight with Groundwork's first turn (check-in-start.jpg) - two
+            cards above it, with their own capitalised headings, are not there. Both still carry
+            real things the person may want before answering (an objective they have never seen
+            elsewhere; what they said last time, so they are not asked to repeat it) - dropping
+            them would be the wall an-objective-nobody-has-seen.spec.ts and
+            what-you-said-last-time were written against. So they are reachable, not gone: one
+            plain link above the first turn opens a panel with both, built from the parts
+            (Modal), rather than sitting open on screen before anyone has typed a word.
+
+            NOT IN THE BARE FRAME, same reason as before: a team update's link opens on the
+            question, and a card - or now a link - above it says something before anybody has
+            typed a word. See the-link-opens-on-the-question.
+          */}
+          {!bareFrame && (hasAboutContent || priorRecordLines.length > 0) && (
+            <button
+              type="button"
+              onClick={() => setShowAboutPanel(true)}
+              className="gwui-ci-about-link"
+            >
+              What this check-in is about, and what you said last time
+            </button>
+          )}
+          {showAboutPanel && (
+            <Modal title="What this check-in is about, and what you said last time" onClose={() => setShowAboutPanel(false)}>
+              {/*
+                RE-REVIEW: THE FIRST HEADING REPEATED THE POP-UP'S OWN TITLE. "What this check-in
+                is about" said, word for word, the first half of the title right above it
+                ("What this check-in is about, and what you said last time"). This block is now a
+                plain section with no heading of its own; "What you said last time" below keeps
+                its heading, since that is genuinely the title's other half and there is content
+                between the two.
+              */}
+              {hasAboutContent && (
+                <div className="gwui-ci-about">
+                  {brief!.subject && (
+                    <p className="gwui-ci-subject">{brief!.subject}</p>
+                  )}
+                  {/*
+                    THE ENGINE'S OWN COLON SENTENCE, UNCHANGED. "The goals on this check-in: …; …"
+                    is the engine's own sentence (request 40 already asks it to write it as a plain
+                    sentence) - not reworded here.
+                  */}
+                  {brief!.says && (
+                    <p className="gwui-panel-text">{brief!.says}</p>
+                  )}
+                  {/*
+                    REVIEW ROUND 3, ITEM 7: THE GOALS WERE LISTED TWICE. `brief.says` already names
+                    every shared (and, for its owner, personal) goal in prose whenever it is
+                    present - `whatAParticipantIsToldAboutThis` (api/src/modules/grounds) builds it
+                    from the same objectives this structured list draws from. So this list, which
+                    exists to catch an objective the prose might leave out (it never truncates,
+                    where `says` caps at four), only draws when there is no prose to have already
+                    said them - the one case an objective could otherwise go unseen. Renamed to a
+                    full sentence, not a screen-authored colon label.
+                  */}
+                  {brief!.objectives.length > 0 && !brief!.says && (
+                    <>
+                      <p className="gwui-panel-text-muted">These are the goals on record.</p>
+                      {brief!.objectives.map((o, i) => (
+                        <p key={i} className="gwui-panel-text">
+                          {o.name}{o.target != null ? ` (${o.target.toLocaleString('en-US')})` : ''}
+                        </p>
+                      ))}
+                    </>
+                  )}
+                  {brief!.alsoSay && (
+                    <p className="gwui-panel-text-muted">{brief!.alsoSay}</p>
+                  )}
+                  <p className="gwui-panel-text-muted">Answer in your own words. You are not expected to agree with any of it.</p>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {shown.map((l, i) => (
-                    <div key={i} style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--gw-text)' }}>
-                      {showAllPrior && <span style={{ color: 'var(--gw-muted)', fontSize: 11, marginRight: 6 }}>S{l.session}</span>}
-                      <span style={{ fontWeight: 600 }}>{RECORD_ENTRY_LABELS[l.type] ?? l.type}: </span>
-                      {l.text}
-                    </div>
-                  ))}
-                </div>
-                {more > 0 && (
-                  <button type="button" onClick={() => setShowAllPrior(true)}
-                    style={{ background: 'none', border: 'none', padding: 0, marginTop: 8, fontSize: 11.5, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}>
-                    {more === 1 ? 'One more line' : `${more} more lines`} on record
-                  </button>
-                )}
-              </div>
-            )
-          })()}
+              )}
+              {priorRecordLines.length > 0 && (
+                <Section heading="What you said last time">
+                  <div className="gwui-ci-record-list">
+                    {priorRecordLines.map((l, i) => (
+                      <div key={i} className="gwui-ci-record-line">
+                        <span className="gwui-panel-text">{l.text}</span>
+                        <Tag tone="plain">{RECORD_ENTRY_LABELS[l.type] ?? l.type}</Tag>
+                      </div>
+                    ))}
+                  </div>
+                </Section>
+              )}
+            </Modal>
+          )}
           {priorTurns.length > 0 && (
-            <div style={{ border: '1px dashed var(--gw-border)', borderRadius: 10, padding: '10px 12px', marginBottom: 4, background: 'var(--gw-bg)' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--gw-muted)', marginBottom: 8 }}>
-                From your earlier session{priorSessionNumber != null ? ` ${priorSessionNumber}` : ''} · read-only
+            <div className="gwui-ci-prior">
+              <div className="gwui-ci-prior-label">
+                {/* REVIEW ROUND 3, ITEM 7: A SENTENCE, NOT A DOT-JOINED FRAGMENT. */}
+                From your earlier session{priorSessionNumber != null ? ` ${priorSessionNumber}` : ''}. You can read it, not change it.
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, opacity: 0.72 }}>
+              <div className="gwui-ci-prior-list">
                 {priorTurns.map(m => (
-                  <div key={`prior-${m.id}`} style={{ alignSelf: m.role === 'PERSON' ? 'flex-end' : 'flex-start', maxWidth: '85%', fontSize: 13, lineHeight: 1.5, color: 'var(--gw-text)', background: m.role === 'PERSON' ? 'var(--gw-blue-bg)' : 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '7px 10px' }}>
+                  <div key={`prior-${m.id}`} className={`gwui-ci-prior-bubble ${m.role === 'PERSON' ? 'gwui-ci-prior-bubble-mine' : 'gwui-ci-prior-bubble-theirs'}`}>
                     {nothingInternalReachesTheBubble(m.content)}
                   </div>
                 ))}
               </div>
-              <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 8, lineHeight: 1.5 }}>
+              <div className="gwui-ci-prior-foot">
                 This stays on record as it is. What you add below is recorded as an update, not a replacement.
               </div>
             </div>
@@ -987,22 +1309,10 @@ export function ChatPage() {
                 onCorrected={(a) => setMsgs(v => v.map(msg => msg.id === m.id ? { ...msg, docAssessment: { ...msg.docAssessment!, assessment: a } } : msg))}
               />
             ) : (
-            <div
+            <Bubble
               key={m.id}
-              style={{
-                maxWidth: '80%',
-                alignSelf: m.role === 'PERSON' ? 'flex-end' : 'flex-start',
-                background: m.role === 'PERSON' ? 'var(--gw-navy)' : 'white',
-                color: m.role === 'PERSON' ? 'white' : 'var(--gw-text)',
-                border: m.role === 'AI' ? '1px solid var(--gw-border)' : 'none',
-                borderRadius: m.role === 'PERSON' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                padding: '10px 14px',
-                fontSize: 14,
-                lineHeight: 1.6,
-                whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0,
-                opacity: isWaiting(m) ? 0.5 : 1,
-                boxShadow: m.role === 'AI' ? '0 1px 3px rgba(0,0,0,.05)' : 'none',
-              }}
+              mine={m.role === 'PERSON'}
+              opacity={isWaiting(m) ? 0.5 : 1}
             >
               {isWaiting(m) ? (
                 /*
@@ -1014,85 +1324,92 @@ export function ChatPage() {
                  * to that doubt was people pressing send again — which used to put the same
                  * sentence in the record twice.
                  */
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <span className="gwui-ci-dots">
                   {[0, 1, 2].map(i => (
-                    <span key={i} style={{
-                      display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
-                      background: 'var(--gw-sub)',
-                      animation: 'gwDotBounce 1.2s ease-in-out infinite',
-                      animationDelay: `${i * 0.2}s`,
-                    }} />
+                    <span key={i} className="gwui-ci-dot" style={{ animationDelay: `${i * 0.2}s` }} />
                   ))}
-                  <style>{`@keyframes gwDotBounce { 0%,80%,100%{transform:translateY(0);opacity:.4} 40%{transform:translateY(-5px);opacity:1} }`}</style>
                   {waitedAWhile && (
-                    <span role="status" style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
+                    <span role="status" className="gwui-ci-dot-note">
                       Still reading what you wrote. Nothing was lost, you do not need to send it again.
                     </span>
                   )}
                 </span>
               ) : nothingInternalReachesTheBubble(m.content)}
               {streamingId === m.id && (
-                <span style={{ display: 'inline-block', width: 2, height: '1em', background: 'var(--gw-navy)', marginLeft: 2, verticalAlign: 'text-bottom', animation: 'blink .7s step-end infinite' }} />
+                <span className="gwui-ci-caret" />
               )}
-            </div>
+            </Bubble>
             )
           ))}
-          {/* Explicit end confirmation: finishing never auto-happens. Clicking
-              "Complete session" opens a confirm step so the person can review
-              before the record locks. This is the client half of one coherent
-              close - the engine has already confirmed the timeframe and that
-              they are ready in the conversation itself (TIMEFRAME RULE); this
-              is the deliberate final action, not a second stacked prompt. */}
-          {done && !completed && !confirmingFinish && (
-            <div style={{ textAlign: 'center', padding: '10px 0' }}>
-              <button
-                onClick={() => setConfirmingFinish(true)}
-                style={{ padding: '10px 24px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-              >
-                Complete session ✓
-              </button>
-            </div>
-          )}
-          {!completed && confirmingFinish && (
-            <div style={{ padding: '12px 0', textAlign: 'center' }}>
-              <div style={{ maxWidth: 460, margin: '0 auto', background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px' }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>Ready to finish this session?</div>
-                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>
-                  Take a moment to look back over what you have said. Once you finish, this session's record is locked in and cross-referenced with the others. If a timeframe matters here, make sure you have confirmed it above.
-                </div>
-                {/*
-                  HALF A MINUTE OF "SAVING…" READS AS A HANG. W8-16.
-
-                  Completing runs two model calls before it answers - scoring the
-                  account, then pulling the record entries out of it. The entry
-                  flow already said what was happening during that wait; this
-                  path, which is the one everybody is on from session two, said
-                  one word and then nothing.
-                */}
-                {complete.isPending && (
-                  <div style={{ marginBottom: 12 }}>
-                    <SlowStep steps={CLOSING_STEPS} note="This one takes about half a minute. Nothing is lost if you wait." />
-                  </div>
-                )}
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-                  <button
-                    onClick={() => complete.mutate()}
-                    disabled={complete.isPending}
-                    style={{ padding: '10px 22px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-                  >
-                    {complete.isPending ? 'Saving…' : 'Finish session ✓'}
-                  </button>
-                  <button
-                    /* "Not yet" means not yet: the offer to finish goes away too, and comes back on the next close signal. */
-                    onClick={() => { setConfirmingFinish(false); setDone(false); taRef.current?.focus() }}
-                    disabled={complete.isPending}
-                    style={{ padding: '10px 18px', borderRadius: 8, background: 'none', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
-                  >
-                    Not yet, keep going
-                  </button>
-                </div>
-              </div>
-            </div>
+          {/*
+            THE ENGINE'S SUGGESTED ANSWERS, UNDER THE LATEST QUESTION ONLY (check-in-start.txt). Not
+            while its words are still arriving, and not once the conversation has closed: the end card
+            has its own two buttons. Pressing one sends it as the answer, exactly as if it were typed.
+          */}
+          {(() => {
+            const last = displayedMsgs[displayedMsgs.length - 1]
+            if (!last || last.role !== 'AI' || isWaiting(last) || streamingId !== null) return null
+            if (loading || done || completed || declined || !opened) return null
+            return <SuggestedAnswers answers={last.suggestedAnswers} onPick={pickSuggestion} />
+          })()}
+          {/*
+            PIECE 21: THE YES TO CAPTURE AN IDEA FOR THE TEAM (plan section 5 row 21; decision 96,
+            item 10). The same gate as the suggested answers above: not while its words are still
+            arriving, and not once the conversation has closed. "Yes, capture it" and "Not now" are
+            sent the same way a suggested answer is - typed and sent, in the person's own words.
+          */}
+          {(() => {
+            const last = displayedMsgs[displayedMsgs.length - 1]
+            if (!last || last.role !== 'AI' || isWaiting(last) || streamingId !== null) return null
+            if (loading || done || completed || declined || !opened) return null
+            return <IdeaOffer offer={last.ideaOffer} onPick={pickSuggestion} />
+          })()}
+          {/*
+            ANCHOR PIECES 26/27: A LEAVE OR SPENDING REQUEST OFFERED IN THE CHECK-IN (section 22;
+            docs/answers-from-engine.md, "Anchor pieces 26 and 27"). Same gate as the idea offer
+            above. Only one of `ideaOffer` and `requestOffer` ever rides on the same reply, so at
+            most one of the two blocks here ever draws anything.
+          */}
+          {(() => {
+            const last = displayedMsgs[displayedMsgs.length - 1]
+            if (!last || last.role !== 'AI' || isWaiting(last) || streamingId !== null) return null
+            if (loading || done || completed || declined || !opened) return null
+            return <RequestOffer offer={last.requestOffer} onPick={pickSuggestion} />
+          })()}
+          {/*
+            ANCHOR PIECES 26/27: WHAT THEIR YES OPENS. Served on the reply that follows their yes -
+            the spec's sentence, and, while the suite is on, a button to the suite's own request
+            form (Leave or Payment Requests), filled in from what was read in their own words.
+            Nothing is sent for them; the button only opens the form.
+          */}
+          {(() => {
+            const last = displayedMsgs[displayedMsgs.length - 1]
+            if (!last || last.role !== 'AI' || isWaiting(last) || streamingId !== null) return null
+            if (loading || done || completed || declined || !opened) return null
+            return <OpenTheRequest open={last.openTheRequest} />
+          })()}
+          {/*
+            THE END CARD (check-in-end-card.txt). Finishing never happens on its own: the engine
+            closing the conversation brings up this card, and only "That’s right, finish" finishes.
+            "Change something" goes back to the conversation, where they say what is wrong in their
+            own words; the card comes back on the next close.
+          */}
+          {done && !completed && !declined && (
+            <TheEndCard
+              engine={endCard}
+              leadName={whoElseAnswers(ground.data as any)}
+              nextOpens={whenTheNextOneOpens(myStatus.data?.checkIns, checkInId)}
+              othersCanSeeWhatYouSay={(ground.data as any)?.aTeamReportComes}
+              finishing={complete.isPending}
+              /*
+                HALF A MINUTE OF "SAVING…" READS AS A HANG. W8-16. Completing runs two model calls
+                before it answers - scoring the account, then pulling the record entries out of it -
+                so the wait says what is happening.
+              */
+              whileFinishing={<SlowStep steps={CLOSING_STEPS} note="This one takes about half a minute. Nothing is lost if you wait." />}
+              onFinish={() => complete.mutate()}
+              onChange={() => { setDone(false); taRef.current?.focus() }}
+            />
           )}
           {/* Manual fallback: "done" flips on the AI's close marker, or when the
               person asked to finish and the reply asked nothing (closesInOtherWords
@@ -1107,30 +1424,43 @@ export function ChatPage() {
               more exchanges are needed before this check-in can close". The
               person is invited to finish and immediately turned down.
               Seen four times in one twelve-session run. Only messages the server
-              has acknowledged are counted now, so the offer appears exactly when
-              the server will honour it. */}
-          {!done && !completed && !confirmingFinish && opened && msgs.filter(m => m.role === 'PERSON' && !m.id.startsWith('local-')).length >= mayCompleteAfter && (
-            <div style={{ textAlign: 'center', padding: '6px 0' }}>
+              has acknowledged are counted now, so the offer never appears on the
+              strength of an echo that never landed.
+
+              THE THRESHOLD IS THE SERVER'S OWN FLOOR (`mayCompleteAfter`), NOT A NUMBER OF ITS
+              OWN (restored, U.8 end-of-module suites - `one-floor-not-two.spec.ts`). U.8's fourth
+              review tried offering from the first landed answer always, reasoning that the
+              engine's closing message and its own completion gate can disagree on the same
+              session (request 47) - but that rule exists precisely so the engine, the server's
+              refusal, and this offer never disagree about when finishing is allowed: a live
+              check-in has deadlocked with the composer disabled, the session read as over, and
+              the server refusing to close it, exactly when two sources of truth about the floor
+              drifted apart. Removing the gate here recreated that shape from the other side. The
+              refusal below still hands the composer back in plain words on an early press either
+              way - that part of the fourth review's fix stands - but the offer itself now waits
+              for the one floor everybody reads. */}
+          {!done && !completed && !declined && opened && msgs.filter(m => m.role === 'PERSON' && !m.id.startsWith('local-')).length >= mayCompleteAfter && (
+            <div className="gwui-ci-finish-wrap">
               <button
-                onClick={() => setConfirmingFinish(true)}
-                style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}
+                onClick={() => setDone(true)}
+                className="gwui-ci-finish-link"
               >
-                Not seeing a wrap-up? Complete session
+                Finish my check-in now
               </button>
             </div>
           )}
           {declined && (
-            <div style={{ padding: '4px 0 16px' }}>
-              <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px' }}>
-                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>You declined this session.</div>
-                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>
+            <div className="gwui-stack-10">
+              <div className="gwui-ci-settled-box">
+                <div className="gwui-ci-settled-title">You declined this session.</div>
+                <div className="gwui-ci-settled-body">
                   That is recorded. The report for this session will say you declined and will not guess at
                   what you would have said. Nothing you write here counts towards it now.
                   {' '}If there is another session, you can take part in that one.
                 </div>
               </div>
-              <div style={{ textAlign: 'center', paddingTop: 10 }}>
-                <button onClick={() => navigate('/grounds')} style={{ fontSize: 13, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}>
+              <div className="gwui-ci-back-wrap">
+                <button onClick={() => navigate('/grounds')} className="gwui-ci-back-link">
                   ← Back to check-ins
                 </button>
               </div>
@@ -1138,65 +1468,45 @@ export function ChatPage() {
           )}
 
           {confirmingDecline && !declined && (
-            <div style={{ padding: '4px 0 16px' }}>
-              <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 10, padding: '16px 18px' }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>
+            <div className="gwui-stack-10">
+              <div className="gwui-ci-confirm-box">
+                <div className="gwui-ci-confirm-title">
                   Not taking part in this session?
                 </div>
                 {/*
                   Everything that follows from it, before they do it. A final action whose consequences
                   are discovered afterwards is a trap, however quiet the button was.
                 */}
-                <ul style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.7, margin: '0 0 12px', paddingLeft: 18 }}>
+                <ul className="gwui-ci-confirm-list">
                   <li>This cannot be undone for this session.</li>
                   <li>The session finishes without your answers, so nobody is left waiting on you.</li>
                   <li>The report will say you declined. It will not guess at what you would have said.</li>
                   <li>Nothing you have written here is shown to anyone.</li>
                 </ul>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button
-                    onClick={() => decline.mutate()}
-                    disabled={decline.isPending}
-                    style={{ padding: '9px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }}
-                  >
+                <div className="gwui-ci-confirm-actions">
+                  <Button kind="primary" onClick={() => decline.mutate()} disabled={decline.isPending}>
                     {decline.isPending ? 'Recording…' : 'Yes, I am not taking part'}
-                  </button>
-                  <button
-                    onClick={() => setConfirmingDecline(false)}
-                    style={{ padding: '9px 16px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}
-                  >
+                  </Button>
+                  <Button kind="secondary" onClick={() => setConfirmingDecline(false)}>
                     Keep going
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
           )}
 
-          {/*
-            The way to say no, kept quiet and kept present. Not in the toolbar beside Upload and Paste:
-            those are for contributing and this is the opposite, and a final action does not belong one
-            mis-tap from the things people press often.
-          */}
-          {!done && !completed && !declined && !confirmingDecline && opened && (
-            <div style={{ textAlign: 'center', padding: '2px 0 14px' }}>
-              <button
-                onClick={() => setConfirmingDecline(true)}
-                style={{ fontSize: 12, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}
-              >
-                I do not want to take part in this session
-              </button>
-            </div>
-          )}
+          {/* The way to say no is under Pause now, in the header (check-in-start.txt), where it is
+              present on every turn and still one step from final: the confirm above spells it out. */}
 
           {completed && groundId && checkInId && (
-            <div style={{ padding: '4px 0 16px' }}>
+            <div className="gwui-stack-10">
               <TheCheckInYouJustFinished checkInId={checkInId} groundId={groundId} sessionNumber={sessionNumber} />
               {/* What we measured about their answers, said to them - see WhatYouGaveUs. */}
               <WhatYouGaveUs it={whatYouGave} />
               {/* When the next one opens: the thing people asked after finishing. See YourNextCheckIn. */}
               <YourNextCheckIn groundId={groundId} />
               {/* And, for whoever is running it, the state of the round they are now waiting on. */}
-              {isInitiator && <WhoIsStillOut groundId={groundId} sessionNumber={sessionNumber} />}
+              {isInitiator && <WhoIsStillOut groundId={groundId} sessionNumber={sessionNumber} myUserId={user?.id} />}
               {/*
                 * WHERE THE REPORT LIVES, AND WHERE THE PEOPLE GO.
                 *
@@ -1221,12 +1531,17 @@ export function ChatPage() {
                 * this page renders it for any completed session of yours. What was missing was a
                 * sentence saying which report is which, and that is what replaces the button.
                 */}
-              <div style={{ maxWidth: 460, margin: '12px auto 0', fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, textAlign: 'center' }}>
+              <p className="gwui-ci-finished-note">
                 This report is yours and it stays on this session - the button below opens it on
                 its own, and it is also under Report, in Your sessions. The shared report, where
                 what everybody said sits side by side, appears once the others have checked in.
-              </div>
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', paddingTop: 12 }}>
+              </p>
+              {/*
+                PRIMARY-BUTTONS-NEVER-TOGETHER: "Open the team board" is the one navy action on this
+                panel. "Open my report" and "Open this check-in" only go elsewhere, so they are
+                secondary, same as every other page that keeps one true primary action.
+              */}
+              <div className="gwui-ci-finished-actions">
                 {/* The check-in itself, where the people, the sessions and the setup all live.
                     Deliberately not deep-linked to a tab: the tab keys and their labels differ
                     ("settings" is shown as "Setup"), and a link that lands on the wrong one is
@@ -1238,192 +1553,26 @@ export function ChatPage() {
                 */}
                 {/* The board first: the whole run in one place, and where the Report tab now leads too. */}
                 {groundId && (
-                  <button
-                    onClick={() => navigate(`/grounds/${groundId}/board`)}
-                    style={{ padding: '9px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-                  >
+                  <Button kind="primary" onClick={() => navigate(`/grounds/${groundId}/board`)}>
                     Open the team board →
-                  </button>
+                  </Button>
                 )}
-                <button
-                  onClick={() => navigate(`/checkin/${checkInId}/report`)}
-                  style={{ padding: '9px 16px', borderRadius: 8, background: 'white', color: 'var(--gw-text)', fontSize: 13, fontWeight: 700, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
-                >
+                <Button kind="secondary" onClick={() => navigate(`/checkin/${checkInId}/report`)}>
                   Open my report
-                </button>
-                <button
-                  onClick={() => navigate(`/grounds/${groundId}`)}
-                  style={{ padding: '9px 16px', borderRadius: 8, background: 'white', color: 'var(--gw-text)', fontSize: 13, fontWeight: 700, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
-                >
+                </Button>
+                <Button kind="secondary" onClick={() => navigate(`/grounds/${groundId}`)}>
                   Open this check-in
-                </button>
+                </Button>
               </div>
-              <div style={{ textAlign: 'center', paddingTop: 10 }}>
-                <button onClick={() => navigate('/grounds')} style={{ fontSize: 13, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}>
+              <div className="gwui-ci-back-wrap">
+                <button onClick={() => navigate('/grounds')} className="gwui-ci-back-link">
                   ← Back to check-ins
                 </button>
               </div>
             </div>
           )}
-        </div>
+      </ConversationCard>
 
-        {/* Quick action chips */}
-        <div style={{ padding: '8px 14px', background: 'white', borderTop: '1px solid var(--gw-border)', display: 'flex', gap: 7, flexWrap: 'wrap', flexShrink: 0 }}>
-          {/*
-            * "COMPLETE SESSION" IS AN OFFER, NOT A LOCK.
-            *
-            * `done` is set the moment the engine signals the conversation has reached a close, and
-            * it was disabling the input, the send button and every quick action. So the button
-            * appearing took the keyboard away: "once the complete session button shows up i can't
-            * seem to be able to do anything, i can't keep typing."
-            *
-            * The engine deciding it has enough is a suggestion about the conversation, not a fact
-            * about whether the person is finished - and it fires while somebody is mid-thought more
-            * often than not. What actually locks the record is `completed`, which only happens after
-            * they click the button and confirm. That is the state the input should follow.
-            */}
-          {QUICK_ACTIONS.map(a => (
-            <button key={a.label} onClick={() => quickSend(a.msg)} disabled={loading || completed || declined || !opened}
-              title={!opened ? 'Available once your session is open' : completed ? 'This session is complete' : undefined}
-              style={{ padding: '5px 12px', borderRadius: 20, fontSize: 12, border: '1px solid var(--gw-border)', background: 'var(--gw-bg)', color: 'var(--gw-sub)', cursor: (!opened || completed || declined) ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: (!opened || completed || declined) ? 0.5 : 1 }}
-            >
-              {a.label}
-            </button>
-          ))}
-        </div>
-
-
-        {/* Bottom bar */}
-        <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
-          <div style={{ padding: '4px 14px', borderBottom: '1px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', background: 'var(--gw-bg)', lineHeight: 1.4, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ flex: 1, minWidth: 200 }}>{privacyLabel}</span>
-            {/*
-              * THE TWO THINGS A PERSON KEEPS ASKING FOR, WHERE THEY ARE ASKING FOR THEM.
-              *
-              * Reported twice, the second time with "I told you to fix this": "the chat didn't ask
-              * me who is involved or tell me i can set context or add people later", and "if someone
-              * else is checking in and then others check in against it, the place to set context is
-              * not very good and you are not told you can set context on a tab".
-              *
-              * Both exist. The check-in has a Context tab and a Setup tab, and neither is mentioned
-              * anywhere in the conversation - so somebody sitting in the chat, realising the context
-              * is thin or that the people who should answer are missing, has no idea either is a
-              * click away. A tab nobody is told about is a tab nobody uses.
-              *
-              * Put in the privacy strip rather than in the model's mouth: an instruction to mention
-              * it would fire whenever the model felt like it, and this is true on every turn of
-              * every session. Quiet, always there, and it goes to the tab rather than describing it.
-              */}
-            {/*
-              BOTH OF THESE ARE THE LEAD'S, AND EVERYBODY WAS OFFERED THEM.
-
-              Walked as a participant: her chat carries "Set the context" and "Add people". The
-              first goes to a Context page that tells her "you cannot change this here"; the second
-              goes to Setup, which opens with "Nothing on this page is yours to change". Two
-              controls offered to somebody, both leading to a page that refuses them - which is
-              worse than not offering, because she has to go and find out.
-
-              A participant is not short of things to do here: the one thing that IS hers is her
-              own record, and it is already a tab.
-            */}
-            {groundId && isInitiator && (
-              <span style={{ display: 'flex', gap: 12, flexShrink: 0 }}>
-                <button
-                  onClick={() => navigate(`/grounds/${groundId}?tab=context`)}
-                  style={{ background: 'none', border: 'none', padding: 0, fontSize: 11, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-                >
-                  Set the context
-                </button>
-                <button
-                  onClick={() => navigate(`/grounds/${groundId}?tab=settings`)}
-                  style={{ background: 'none', border: 'none', padding: 0, fontSize: 11, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-                >
-                  Add people
-                </button>
-              </span>
-            )}
-          </div>
-          {/*
-            THE COMPOSER, THE SHAPE EVERY PERSON ALREADY KNOWS. 18 September 2026, her words: "the
-            chat box is small and hard to engage, we need to make it look like you are on whatsapp."
-            Measured on a 375px phone before this: the typing box was 89 pixels wide, because Upload
-            doc and Paste text sat in the same row and took it. On the card whose whole promise is
-            two minutes on a phone, that is the thing that breaks it.
-
-            So: one round attach button holding both ways of adding something, a full-width pill to
-            type in, and a round send. Nothing was removed - the two controls moved inside the clip.
-          */}
-          <div style={{ padding: '10px 12px', display: 'flex', gap: 8, alignItems: 'flex-end', position: 'relative' }}>
-            {groundId && attachOpen && (
-              <div style={{ position: 'absolute', bottom: 58, left: 12, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: 6, zIndex: 20, minWidth: 190 }}>
-                <label htmlFor="doc-upload"
-                  title={`Accepted: ${ACCEPTED_UPLOADS.map(e => e.slice(1).toUpperCase()).join(', ')}`}
-                  onClick={() => setAttachOpen(false)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 14, color: 'var(--gw-text)' }}
-                >
-                  📎 Upload a document
-                </label>
-                <button
-                  onClick={() => { setAttachOpen(false); if (groundId) setPasteMode(true) }}
-                  disabled={completed || declined}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 14, color: 'var(--gw-text)', background: 'none', border: 'none', width: '100%', textAlign: 'left', fontFamily: 'inherit' }}
-                >
-                  📋 Paste text
-                </button>
-              </div>
-            )}
-            {groundId && (
-              <button
-                onClick={() => setAttachOpen(o => !o)}
-                aria-label="Add a document or paste text"
-                aria-expanded={attachOpen}
-                style={{ width: 42, height: 42, borderRadius: '50%', flexShrink: 0, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', cursor: 'pointer', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit' }}
-              >
-                📎
-              </button>
-            )}
-            <input type="file" id="doc-upload" accept={ACCEPTED_UPLOADS.join(',')} style={{ display: 'none' }} onChange={e => {
-              const f = e.target.files?.[0]
-              if (f) {
-                const allowed = ACCEPTED_UPLOADS
-                const ext = '.' + f.name.split('.').pop()?.toLowerCase()
-                if (!allowed.includes(ext)) { toast.error(`File type not supported. Accepted: ${allowed.join(', ')}`); e.target.value = ''; return }
-              }
-              handleFileChange(e)
-            }} />
-
-            <textarea ref={taRef} placeholder="Type your answer"
-              value={input} onChange={autoResize} onKeyDown={handleKeyDown}
-              disabled={loading || completed || declined || !opened}
-              rows={1}
-              style={{ flex: 1, minWidth: 0, resize: 'none', height: 42, maxHeight: 140, padding: '11px 16px', fontSize: 15, lineHeight: 1.35, border: '1px solid var(--gw-border)', borderRadius: 21, background: opened ? 'white' : 'var(--gw-bg)', fontFamily: 'inherit', outline: 'none' }}
-            />
-            <button onClick={send} disabled={loading || completed || declined || !opened} aria-label="Send message"
-              style={{ width: 42, height: 42, borderRadius: '50%', background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 18, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (!opened || completed || declined) ? 0.5 : 1 }}
-            >
-              ↑
-            </button>
-          </div>
-          {/*
-            AND A WAY BACK, WHICH THE BARE FRAME OTHERWISE HAS NONE OF.
-            "What a person now needs to login, is there a place to proceed to sign-in?" - there was
-            not. Accepting the link signed them in, and the page said nothing about it: no name, no
-            way to return on another device, no sign-in anywhere on screen. One line, under the
-            thing they are typing into, says all three.
-          */}
-          {bareFrame && (
-            <div style={{ padding: '0 14px 10px', fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center' }}>
-              {user?.email ? `Signed in as ${user.email}. ` : ''}
-              Your link reopens this any time, or{' '}
-              <button
-                onClick={() => navigate('/auth')}
-                style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }}
-              >
-                sign in with your email
-              </button>.
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Paste text overlay */}
@@ -1434,33 +1583,44 @@ export function ChatPage() {
           time any run drove the participant path at a phone width, which is what
           that was for. */}
       {pasteMode && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 9100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-          <div style={{ background: 'white', borderRadius: '14px 14px 0 0', padding: '20px 20px 32px', width: '100%', maxWidth: 560 }}>
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--gw-border)', margin: '0 auto 16px' }} />
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 4 }}>📋 Paste text</div>
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 12, lineHeight: 1.55 }}>
-              Paste an email, Slack thread, meeting notes, or any text that supports what you are describing. The tool will use it to ask sharper questions.
+        <div className="gwui-ci-sheet-overlay">
+          <div className="gwui-ci-sheet">
+            <div className="gwui-ci-sheet-handle" />
+            <div className="gwui-ci-sheet-title">📋 Paste text</div>
+            {/*
+              U.8 REVIEW: "Slack thread" AND "THE TOOL" ARE WORK JARGON, AND THE PANEL NEVER SAID
+              WHAT THE UPLOAD MODAL RIGHT NEXT TO IT ALREADY SAYS - that this starts private, the
+              same as a photo or a document (see the upload label below "Add a photo or a
+              document"). Pasted text goes up through the same upload endpoint as a file
+              (documentsApi.upload), so it already gets the same OWN-by-default privacy
+              (who-can-see-a-document.ts); this only makes the panel say so.
+            */}
+            <div className="gwui-ci-sheet-note">
+              Paste an email, a message or your notes. It starts private to you.
             </div>
+            <label htmlFor="paste-label" className="gwui-ci-sheet-label">
+              What is it? You can skip this.
+            </label>
             <input
-              placeholder="Label (optional) e.g. Q2 update email, project brief"
+              id="paste-label"
               value={pasteLabel}
               onChange={e => setPasteLabel(e.target.value)}
-              style={{ width: '100%', padding: '8px 12px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
+              className="gwui-ci-sheet-field"
             />
             <textarea autoFocus
               placeholder="Paste your text here…"
               value={pasteText}
               onChange={e => setPasteText(e.target.value)}
-              style={{ width: '100%', resize: 'none', minHeight: 140, padding: '10px 12px', fontSize: 13, lineHeight: 1.55, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 10 }}
+              className="gwui-ci-sheet-textarea"
             />
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div className="gwui-ci-sheet-actions">
               <button onClick={() => { setPasteMode(false); setPasteText(''); setPasteLabel('') }}
-                style={{ padding: '10px 16px', borderRadius: 8, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+                className="gwui-ci-sheet-cancel">
                 Cancel
               </button>
               <button onClick={submitPaste} disabled={!pasteText.trim() || uploadDoc.isPending}
-                style={{ flex: 1, padding: '10px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: pasteText.trim() && !uploadDoc.isPending ? 'pointer' : 'not-allowed', fontFamily: 'inherit', opacity: pasteText.trim() && !uploadDoc.isPending ? 1 : 0.5 }}>
-                {uploadDoc.isPending ? 'Adding…' : 'Add to session'}
+                className="gwui-ci-sheet-submit">
+                {uploadDoc.isPending ? 'Adding…' : 'Add it'}
               </button>
             </div>
           </div>
@@ -1471,26 +1631,26 @@ export function ChatPage() {
       {/* Same z-index correction as the paste sheet above: both were at 50,
           under the fixed help button at 8000. */}
       {docContextMode && pendingDoc && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 9100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-          <div style={{ background: 'white', borderRadius: '14px 14px 0 0', padding: '20px 20px 32px', width: '100%', maxWidth: 560 }}>
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--gw-border)', margin: '0 auto 16px' }} />
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 4 }}>📎 {pendingDoc.name}</div>
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 12, lineHeight: 1.55 }}>
-              What context does this document support from what you have shared so far?
+        <div className="gwui-ci-sheet-overlay">
+          <div className="gwui-ci-sheet">
+            <div className="gwui-ci-sheet-handle" />
+            <div className="gwui-ci-sheet-title">📎 {pendingDoc.name}</div>
+            <div className="gwui-ci-sheet-note">
+              What does it show? One line is enough; you can skip it.
             </div>
             <textarea autoFocus
-              placeholder="e.g. This is the brief I referenced when I mentioned the project scope…"
+              aria-label="What does it show?"
               value={docContext} onChange={e => setDocContext(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitDocWithContext() } }}
-              style={{ width: '100%', resize: 'none', minHeight: 80, padding: '10px 12px', fontSize: 13, lineHeight: 1.55, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 10 }}
+              className="gwui-ci-sheet-textarea gwui-ci-sheet-textarea-short"
             />
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div className="gwui-ci-sheet-actions">
               <button onClick={() => { setDocContextMode(false); setPendingDoc(null) }}
-                style={{ padding: '10px 16px', borderRadius: 8, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+                className="gwui-ci-sheet-cancel">
                 Cancel
               </button>
               <button onClick={submitDocWithContext} disabled={uploadDoc.isPending}
-                style={{ flex: 1, padding: '10px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: uploadDoc.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: uploadDoc.isPending ? 0.6 : 1 }}>
+                className="gwui-ci-sheet-submit">
                 {uploadDoc.isPending ? 'Adding…' : 'Add to session'}
               </button>
             </div>

@@ -8,6 +8,7 @@ import { conversationApi } from '@/api/conversation'
 import { reportsApi } from '@/api/reports'
 import { toast } from 'sonner'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import { useAfterAWhile, GETTING_YOUR_FIRST_QUESTION_READY } from '@/lib/opening-is-slow'
 
 /**
  * A GROUND, READ AS A CONVERSATION.
@@ -67,52 +68,23 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
  * first session too - a ground runs ninety days and "what was this for again" is a
  * question people have in week eight, not just week one.
  */
-function GroundTopic({ brief, parties, peersHidden, notOpenYet, viewerIsParty }: {
-  /**
-   * NOBODY IS LATE FOR A SESSION THAT HAS NOT OPENED. W14-12.
-   *
-   * Watched at rest for the first time: a ground sitting between sessions with a date in the
-   * future, which is where a ground spends most of its life. The composer said the right thing -
-   * "your next check-in opens 18 August" - and two inches above it the roster said
-   * "You - waiting, Abubakar - waiting", which is the word for somebody who has not done a thing
-   * they could have done. Neither of them could have.
-   */
-  notOpenYet?: boolean
+/**
+ * ROUND 4, ITEM A STEP 2: "WHO IS IN THIS" MOVED OUT OF HERE, TO PEOPLE AND SETUP (WhoIsInThis.tsx).
+ *
+ * This card used to hold two different things - the brief ("About this check-in") and the roster
+ * ("Who is in this"), because it inherited its shape from a version where the roster lived here
+ * too. The brief duplicates Context, which already has it, so what is left is only the brief - kept
+ * here, gated on there being one, because that is still the one thing the header above it does not
+ * carry.
+ */
+function GroundTopic({ brief }: {
   brief?: string | null
-  /**
-   * WHO ELSE IS IN THIS, AND WHETHER THEY ARE DOING IT. W13-5.
-   *
-   * A participant saw their own tabs and nothing else. The two things that would settle
-   * somebody's nerves before they write honestly - who is going to read this, and is
-   * anybody else actually doing it - were the two things only the lead could see.
-   *
-   * NO CLIENT-SIDE GATE HERE ON PURPOSE. `grounds.service.ts` decides whether parties see
-   * each other, and when they do not it FILTERS THEM OUT OF THE PAYLOAD - hidden by
-   * default on evaluation and cohort grounds, where a roster tells four people exactly who
-   * they are measured against. So whatever reaches this component is already permitted,
-   * and a second rule here would be a second place to get it wrong.
-   *
-   * It is coverage, not content: that somebody has checked in, never a word of what they
-   * said.
-   */
-  parties?: { name: string; done: boolean; isSelf: boolean }[]
-  peersHidden?: boolean
-  /**
-   * WHETHER THE READER IS ONE OF THE PEOPLE THIS CARD IS TALKING ABOUT.
-   *
-   * The closing line said "What you say stays on your side until everyone has checked in" to
-   * everybody, including an admin of the organisation who is not in the check-in and says nothing
-   * in it. She has no side. Same class of thing as the peer sentence above: party copy shown to a
-   * reader the rule does not describe, and the only reason it reads as harmless is that the rest
-   * of it happens to be true for her too.
-   */
-  viewerIsParty?: boolean
 }) {
   return (
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '14px 16px', marginBottom: 6 }}>
       {/* Gated with the brief it heads: a check-in created without one showed this heading over nothing. */}
       {brief && (
-      <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 6 }}>
+      <div style={{ fontSize: 10.5, letterSpacing: '.5px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 6 }}>
         About this check-in
       </div>
       )}
@@ -133,72 +105,11 @@ function GroundTopic({ brief, parties, peersHidden, notOpenYet, viewerIsParty }:
           {brief}
         </div>
       )}
-      {/*
-        A ROSTER OF ONE MEANS ONE OF TWO THINGS, AND SILENCE PICKS NEITHER. W14-5.
-
-        When the lead has turned peer visibility off, the service filters the other parties out of
-        the payload - so this component receives a roster of one and, until now, rendered nothing.
-        A participant could not tell whether nobody else was here yet or whether they are not
-        allowed to know, and the second is a fact about the ground they are in.
-
-        `peersHidden` is the ground's own rule, passed down, not inferred from the roster's length
-        - a genuinely single-party ground is a different thing and says so.
-      */}
-      {peersHidden && (
-        <div style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 9, marginTop: 9 }}>
-          <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 5 }}>
-            Who is in this
-          </div>
-          <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-            On this check-in people check in without seeing each other. Your lead knows who is here;
-            you will not see the others or what they wrote, and they will not see you.
-          </div>
-        </div>
-      )}
-      {!peersHidden && (parties ?? []).length > 1 && (
-        <div style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 9, marginTop: 9 }}>
-          <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 5 }}>
-            Who is in this
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {(parties ?? []).map((p, i) => (
-              <span
-                key={i}
-                /**
-                 * The full label belongs in the tooltip now that these can be long. W-UX-4.
-                 *
-                 * The chips used to hold email local-parts - "hafsah", "abubakar" - and now hold a
-                 * name, or the ROLE when somebody has no account yet. Roles here are written as
-                 * sentences ("Delivery manager, his line manager"), which is right in a roster and
-                 * far too long for a pill, so a chip that overflows is capped visibly rather than
-                 * wrapping the row into three lines.
-                 */
-                title={`${p.isSelf ? 'You' : p.name} - ${p.done ? 'has checked in for the current session' : notOpenYet ? 'the next session has not opened yet' : 'has not checked in yet'}`}
-                style={{
-                  fontSize: 12, padding: '3px 9px', borderRadius: 20,
-                  background: p.done ? 'var(--gw-green-bg)' : 'var(--gw-bg)',
-                  border: `1px solid ${p.done ? 'var(--gw-green-b)' : 'var(--gw-border)'}`,
-                  color: 'var(--gw-text)',
-                  maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}
-              >
-                {p.isSelf ? 'You' : p.name}
-                <span style={{ color: 'var(--gw-sub)' }}>{p.done ? ' · checked in' : notOpenYet ? '' : ' · waiting'}</span>
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-      <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.6, marginTop: 8 }}>
-        {viewerIsParty === false
-          ? 'When everyone has checked in, the report shows where the team agrees, where it differs, and what to do next.'
-          : 'When everyone has checked in, the report shows where you agree, where you differ, and what to do next.'}
-      </div>
     </div>
   )
 }
 
-function SessionSummary({ checkInId, groundId, sessionNumber }: {
+export function SessionSummary({ checkInId, groundId, sessionNumber }: {
   checkInId: string; groundId: string; sessionNumber: number
 }) {
   const [open, setOpen] = useState(false)
@@ -263,28 +174,35 @@ function SessionSummary({ checkInId, groundId, sessionNumber }: {
   )
 }
 
-function SessionDivider({ sessionNumber, date, isCorrection, correctionOf }: {
+export function SessionDivider({ sessionNumber, date, isCorrection, correctionOf }: {
   sessionNumber: number
   date: string
   isCorrection: boolean
   correctionOf: number | null
 }) {
-  const when = whenItWas(date, 'day')
+  /*
+   * A PLAIN PHRASE, NOT TWO PIECES JOINED WITH A DOT (U.8 re-review).
+   *
+   * "Session 1 · 27 Sept 2026" read as a label and a stamp stuck together, not a sentence anybody
+   * would say. It is one phrase now, with the date said in full ('full', not the abbreviated
+   * 'day') the way a person actually reads a date out loud.
+   */
+  const when = whenItWas(date, 'full')
   const label = isCorrection
-    ? `Added to session ${correctionOf ?? sessionNumber}`
-    : `Session ${sessionNumber}`
+    ? `Added to session ${correctionOf ?? sessionNumber}, on ${when}`
+    : `Session ${sessionNumber}, on ${when}`
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '22px 0 14px' }}>
       <div style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>
-        {label} <span style={{ fontWeight: 500, color: 'var(--gw-muted)' }}>· {when}</span>
+        {label}
       </div>
       <div style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
     </div>
   )
 }
 
-function Message({ role, content }: { role: 'AI' | 'PERSON'; content: string }) {
+export function Message({ role, content }: { role: 'AI' | 'PERSON'; content: string }) {
   /**
    * THE SAME BUBBLE AS THE CHECK-IN, TO THE PIXEL.
    *
@@ -331,7 +249,7 @@ function Message({ role, content }: { role: 'AI' | 'PERSON'; content: string }) 
  * something to be ASKED about, never as part of the record. See
  * api/src/modules/conversation/between-session-notes.ts.
  */
-function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, nextOpensAt,
+export function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, nextOpensAt,
   canChangeTheRhythm, onGoToSetup, onOpenSession, openPending }: {
   groundId: string
   openCheckInId: string | null
@@ -359,6 +277,7 @@ function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, n
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [text, setText] = useState('')
+  const openingIsSlow = useAfterAWhile(!!openPending)
 
   const { data: notes = [] } = useQuery({
     queryKey: ['my-notes', groundId],
@@ -426,6 +345,18 @@ function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, n
               ? `Check in for session ${openSessionNumber}${totalSessions && openSessionNumber <= totalSessions ? ` of ${totalSessions}` : ''} →`
               : 'Check in now →'}
         </button>
+        {/*
+          THE SAME WAIT, THE SAME SENTENCE (U.8 third review). Opening a session runs several
+          model calls and can take up to a minute; only /checkin said so, so a lead's first open
+          FROM THIS PAGE sat on "Opening…" for over 70 seconds with nothing else on screen. One
+          shared piece (`opening-is-slow.ts`), so the two screens cannot say two different things
+          or one of them forget to say anything.
+        */}
+        {openingIsSlow && (
+          <div role="status" style={{ fontSize: 12, color: 'var(--gw-muted)', textAlign: 'center', marginTop: 8 }}>
+            {GETTING_YOUR_FIRST_QUESTION_READY}
+          </div>
+        )}
       </div>
     )
   }
@@ -514,7 +445,7 @@ export function GroundChat({
   groundId, openCheckInId, openSessionNumber, totalSessions, nextOpensAt, canChangeTheRhythm, onGoToSetup,
   onOpenSession, openPending,
   brief, signals,
-  viewerIsParty, history, parties, peersHidden,
+  viewerIsParty, history,
 }: {
   groundId: string
   openCheckInId: string | null
@@ -534,7 +465,8 @@ export function GroundChat({
   onOpenSession?: () => void
   openPending?: boolean
   /**
-   * The topic at the top of the scroll: what this check-in is about, and who is in it.
+   * The topic at the top of the scroll: what this check-in is about. "Who is in it" used to be
+   * part of this too; it moved to People and setup (WhoIsInThis.tsx, round 4, item A step 2).
    *
    * `label`, `scenario`, `alignment` and `sessionsDone` used to arrive here too and are gone. Every
    * one of them is in the page header on both pages, and a card that restates the header is the
@@ -565,10 +497,6 @@ export function GroundChat({
   viewerIsParty?: boolean
   /** The ground's sessions, for the reader who is not a party. Newest last. */
   history?: { sessionNumber: number; date: string; people: string[] }[]
-  /** Who is in the ground, and whether each has checked in for the open session. */
-  parties?: { name: string; done: boolean; isSelf: boolean }[]
-  /** The ground's peer rule, so an empty roster can say which kind of empty it is. W14-5. */
-  peersHidden?: boolean
 }) {
   const navigate = useNavigate()
   const isParty = viewerIsParty !== false
@@ -601,13 +529,7 @@ export function GroundChat({
           </div>
         )}
 
-        <GroundTopic
-          brief={brief}
-          parties={parties}
-          peersHidden={peersHidden}
-          notOpenYet={!openCheckInId && !!nextOpensAt}
-          viewerIsParty={isParty}
-        />
+        <GroundTopic brief={brief} />
 
         {/*
           THE TAB IS CALLED CHECK-IN, SO THE CHECK-IN IS AT THE TOP. When it is this person's turn

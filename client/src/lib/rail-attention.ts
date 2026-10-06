@@ -85,7 +85,7 @@ export function railAttention(g: RailGround, myUserId: string | null | undefined
   // wants and what a party who has finished wants - both are "not your move".
   const parties = (g.participants ?? []).length
   if (parties > 1) {
-    const round = Math.max(0, ...checkIns.map((c) => c.sessionNumber))
+    const round = openRound(checkIns, now)
     if (round > 0) {
       const done = checkIns.filter((c) => c.sessionNumber === round && c.status === 'COMPLETED').length
       if (done < parties) return { kind: 'waiting', done, total: parties }
@@ -101,6 +101,17 @@ export function railAttention(g: RailGround, myUserId: string | null | undefined
  * which is most of why grouping can wait (her call, and the right one - grouping
  * solves a scale nobody has yet).
  */
+/**
+ * THE LATEST SESSION THAT HAS OPENED. A session scheduled for next week already has its rows, so
+ * taking the highest session number counted people as "not checked in" for a session nobody can
+ * start yet: the admin's sidebar said nobody had checked in for session 3 while session 2 had two of
+ * five done and session 3 did not open for another week. A row with no opening date is open.
+ */
+export function openRound(checkIns: RailGround['checkIns'], now: Date = new Date()): number {
+  const open = (checkIns ?? []).filter((c) => !c.availableFrom || new Date(c.availableFrom).getTime() <= now.getTime())
+  return Math.max(0, ...open.map((c) => c.sessionNumber))
+}
+
 export function railRank(a: RailAttention): number {
   switch (a.kind) {
     case 'overdue': return 0

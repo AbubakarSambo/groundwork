@@ -19,6 +19,14 @@ export const reportsApi = {
    * returns the check-in's live working copy - this is one session, and once its round has closed
    * it never changes again.
    */
+  /**
+   * TYPED AS THE FULL SHAPE, THOUGH THE SERVER MAY SEND `WithheldSessionReport` INSTEAD (answers
+   * from the engine, 51) - every existing caller already reads dozens of fields off this
+   * unconditionally (SessionReportPage.tsx, EveryReportSideBySide.tsx), so widening the return type
+   * here would make all of them fail to type-check for a case none of them handle yet. The one
+   * caller that does handle it (`TheSessionsReport.tsx`) checks `(data as any).withheldUntilYouAnswer`
+   * before reading anything else, the same way it already treats this response as loosely typed.
+   */
   sessionReport: (groundId: string, sessionNumber: number) =>
     apiClient.get(`/grounds/${groundId}/report/session/${sessionNumber}`, { skipNotFoundToast: true } as any)
       .then(r => r.data as SessionShapedReport),
@@ -28,16 +36,26 @@ export const reportsApi = {
     apiClient.get(`/grounds/${groundId}/report/against-success`, { skipNotFoundToast: true } as any)
       .then(r => r.data),
 
+  /*
+   * U.9 RE-REVIEW: THE FIELD IS `sessionNumber`, NOT `round`. Walked live against the real
+   * response - `GET /grounds/:id/report/rounds` sends `"sessionNumber": 1` on every row of
+   * `moved[]`, never `round` (`RoundsService.rounds()`, `reports.service.ts`, selects
+   * `sessionNumber` off `ReportRound` and passes it straight through `howThisHasMoved`, which
+   * itself outputs a field named `round` - so the wire shape and the function's own return type
+   * disagree, and the wire shape is what a real request sends). This type now matches the wire.
+   */
   rounds: (groundId: string) =>
     apiClient
-      .get<{ rounds: any[]; moved: { round: number; takenAt: string; says: string; differences: number; amended: string | null }[] }>(
+      .get<{ rounds: any[]; moved: { sessionNumber: number; takenAt: string; says: string; differences: number; amended: string | null }[] }>(
         `/grounds/${groundId}/report/rounds`,
         { skipNotFoundToast: true },
       )
       .then(r => r.data),
 
+  /* The route replies with when it happened, not the whole report (engine answer 43a) - the
+     report itself is refetched separately once the release invalidates its query. */
   release: (groundId: string) =>
-    apiClient.post<Report>(`/grounds/${groundId}/report/release`).then(r => r.data),
+    apiClient.post<{ groundId: string; releasedAt: string }>(`/grounds/${groundId}/report/release`).then(r => r.data),
 
   /** The lead's button: this round's report to everyone who answered and asked for it, once each. */
   /* `as` is the organiser's choice of what the respondents receive, made at the moment of sending.
@@ -61,6 +79,20 @@ export const reportsApi = {
 
   startSelfCorrection: (groundId: string, sessionNumber: number) =>
     apiClient.post<{ checkInId: string }>(`/grounds/${groundId}/correct-session`, { sessionNumber }).then(r => r.data),
+}
+
+/**
+ * ANSWERS FROM THE ENGINE, 51: THE SESSION REPORT BEFORE SOMEONE HAS ANSWERED.
+ *
+ * Before the report is released, a participant who has not answered THAT session gets only this -
+ * not the full `SessionShapedReport` - so reading somebody else's account first cannot happen
+ * before writing your own. `saying` is the same sentence the main (round) report gives; shown the
+ * same way SharedReportForAParty.tsx already shows it there.
+ */
+export interface WithheldSessionReport {
+  sessionNumber: number
+  withheldUntilYouAnswer: true
+  saying: string
 }
 
 /** The promised per-session shape. See api/src/modules/reports/the-session-report.ts. */

@@ -29,9 +29,18 @@ export interface BillingStatus {
    * Set while a free run we gave them is running: what it covers and the day it ends. A free run
    * nobody can see ends as a surprise, which is the one thing it must not do.
    */
-  onTheHouse?: { plan: SubscriptionPlan; until: string } | null
+  onTheHouse?: { plan: SubscriptionPlan; until: string; freeTrial?: boolean } | null
   activeGrounds: GroundBalance[]
   card?: { brand: string; last4: string } | null
+  /**
+   * U.19: false when nothing covers the organisation and the free plan has stopped for it (the free
+   * trial's switch is on and it is new). True, or absent from an older server, means the free plan.
+   */
+  onTheFreePlan?: boolean
+  /** Admin only (U.19): the paid subscription invoices, newest first. */
+  invoices?: { paidOn: string; amountCents: number; currency: string }[]
+  /** Admin only: counts of what the organisation has done. */
+  usage?: { checkIns: number; reportsReleased: number; peopleTakingPart: number }
 }
 
 export interface ContributorCode {
@@ -48,6 +57,8 @@ export interface CanCreateGroundResult {
   freeReason?: string
   codeId?: string
   groundsUsed?: number
+  /** U.19: refused because the organisation has no plan and the free plan has stopped for it. */
+  noPlan?: boolean
 }
 
 /**
@@ -164,6 +175,8 @@ export interface LivePricingRow {
 export interface LivePricing {
   plans: LivePricingRow[]
   free: { groundLimit: number; memberLimit: number }
+  /** The free trial (Hafsah, 26 September). Billing grants it while it is on (U.19); say nothing while off. */
+  trial?: { on: boolean; teamsUnder: number; months: number }
 }
 
 /**
@@ -180,12 +193,60 @@ export function formatMonthlyPrice(cents: number): string {
   return `$${body}/mo`
 }
 
+/** "$400" and "$1,650", for a sentence: "Growth, $400 a month." The prototype's words. */
+export function formatDollars(cents: number): string {
+  const dollars = cents / 100
+  return `$${Number.isInteger(dollars)
+    ? dollars.toLocaleString('en-US')
+    : dollars.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
 export interface CodeShareCard {
   code: string
   expiresAt: string
   daysRemaining: number
   note?: string
   allowCodeCreation: boolean
+}
+
+/**
+ * WHATSAPP, THE PAID ADD-ON (decision 78, 2 October). `GET /billing/whatsapp` serves one of two
+ * shapes, and the server decides which, not the screen: an admin, while `release.planAndBillingNewParts`
+ * is on, reads `WhatsAppBillingAdmin`; everybody else, and an admin while that switch is off, reads
+ * only `WhatsAppBillingMinimal`. Nothing here holds a price, a limit or a number of its own - every
+ * sentence in `says` is built by the server and shown exactly as it comes.
+ */
+export interface WhatsAppBillingMinimal {
+  sending: boolean
+  says: string | null
+}
+
+export interface WhatsAppBillingAdmin {
+  on: boolean
+  plan: SubscriptionPlan | null
+  price: { amountCents: number; currency: 'USD' } | null
+  charged: boolean
+  freeTrial: { months: number; endsOn: string } | null
+  onTheFreePlan: boolean
+  use: { month: string; sent: number; limit: number | null; startsAgainOn: string }
+  sending: boolean
+  heldBecause: 'not turned on' | 'not on a paid plan' | 'at the limit' | null
+  says: {
+    onOrOff: string
+    price: string | null
+    charge: string
+    use: string
+    atTheLimit: string | null
+    reachedTheLimit: string | null
+    held: string | null
+  }
+}
+
+export type WhatsAppBilling = WhatsAppBillingMinimal | WhatsAppBillingAdmin
+
+/** True only for the full admin shape (the `says` field differs in shape, `on` only exists here). */
+export function isWhatsAppBillingAdmin(w: WhatsAppBilling | undefined): w is WhatsAppBillingAdmin {
+  return !!w && typeof (w as WhatsAppBillingAdmin).on === 'boolean'
 }
 
 export const billingApi = {
@@ -260,6 +321,14 @@ export const billingApi = {
 
   getContributorCodeShareCard: (codeId: string) =>
     apiClient.get<CodeShareCard>(`/billing/contributor-codes/${codeId}/share-card`).then(r => r.data),
+
+  /** WhatsApp, the paid add-on (decision 78). The server decides the shape; see `WhatsAppBilling` above. */
+  getWhatsApp: () =>
+    apiClient.get<WhatsAppBilling>('/billing/whatsapp').then(r => r.data),
+
+  /** An admin only; a lead or member is refused by the server. */
+  setWhatsApp: (on: boolean) =>
+    apiClient.patch<WhatsAppBilling>('/billing/whatsapp', { on }).then(r => r.data),
 
   checkCanCreateGround: (accessCode?: string) =>
     apiClient.get<CanCreateGroundResult>('/billing/can-create-ground', {

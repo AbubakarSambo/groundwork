@@ -46,6 +46,10 @@ DO NOT TELL THEM WHAT THEIR ANSWER MEANS BEFORE THEY GIVE IT. "Fine is often cod
  * WHAT IS WORTH FIXING IS THE CASE WHERE THE ROSTER DOES SAY. When somebody was added with a role
  * described - "the new hire", "her manager" - the answer is already on their row, and spending the
  * first message on a question already answered is the same fault as every other re-ask.
+ *
+ * ONLY THEIR OWN WORDS COUNT, 27 September 2026 (request 36). For somebody the lead invited, the role
+ * on the row is the lead's sentence about them, which the model is no longer handed. So the caller
+ * passes `aRoleInTheirOwnWords` here, and an invited person is asked, as somebody with no role is.
  */
 export function theRosterAlreadySaysWhoTheyAre(roleAsDescribed?: string | null): boolean {
   return !!roleAsDescribed && roleAsDescribed.trim().length > 2;

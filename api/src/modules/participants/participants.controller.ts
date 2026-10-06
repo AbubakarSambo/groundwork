@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Param, Query, Body, Req } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Query, Body, Req, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, IsOptional, MaxLength, Length } from 'class-validator';
 import { ParticipantsService } from './participants.service';
@@ -47,6 +47,11 @@ class UpdateMyEmailDto {
 }
 
 
+class FreshLinkDto {
+  @IsString() @IsNotEmpty() @MaxLength(200) token!: string;
+  @IsString() @IsNotEmpty() @MaxLength(254) email!: string;
+}
+
 @ApiTags('Participants')
 @Controller('participants')
 export class ParticipantsController {
@@ -60,6 +65,19 @@ export class ParticipantsController {
   @ApiOperation({ summary: 'Preview a participant invite from its token' })
   async preview(@Query('token') token: string) {
     return this.participants.preview(token);
+  }
+
+  /**
+   * "SEND ME A FRESH LINK", from the expired-invitation page (U.3). Public, because the person has no
+   * account yet; slow, because it sends mail; and it always gives the same reply (see the service).
+   */
+  @Public()
+  @Throttle({ global: { limit: 5, ttl: 60_000 } })
+  @Post('fresh-link')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Send a fresh link for an expired invitation to the address it went to' })
+  async freshLink(@Body() dto: FreshLinkDto) {
+    return this.participants.sendAFreshLink(dto.token, dto.email);
   }
 
   @Public()
@@ -92,6 +110,13 @@ export class ParticipantsController {
     @CurrentUser('id') userId: string,
   ) {
     return this.participants.updateRole(id, userId, dto.roleAsDescribed);
+  }
+
+  @ApiBearerAuth()
+  @Post(':id/confirm-role')
+  @ApiOperation({ summary: 'Confirm a guessed role as-is, with no correction (owner or initiator scoped) - decision 57, item 5' })
+  async confirmRole(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.participants.confirmDetectedFunction(id, userId);
   }
 
   /**

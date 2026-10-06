@@ -11,31 +11,30 @@ import { join } from 'path'
  * reports, and a reader reached "4 agreed, 1 still open" by scrolling past an explanation of what
  * that sentence would mean.
  *
- * The words are good and they stay. They are closed by default now: somebody reading their second
- * report does not need the manual again, and somebody reading their first needs it after they have
- * seen the thing it describes.
- *
- * Measured on the running page: 3683px to 3502px, and the panels are one click away.
- *
- * Comments stripped: the file quotes the copy it protects.
+ * MOVED FROM THE DEAD REPORT BODY. This legend lived in `ReportBody` (`ReportPage.tsx`), not mounted
+ * by any route since the Report tab became a list of sessions. `nothing-was-lost-when-the-body-went`
+ * already locked that "how it is put together" moved to the foot of the board - this file now
+ * asserts the detail that spec only checked for in outline: closed by default, styled as a control,
+ * and responsive. The board's own wording is not a verbatim copy ("Each gap names both sides" in
+ * place of "What matters most, first"), which is expected - see that file's own comment.
  */
 const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ')
-const SRC = strip(readFileSync(join(__dirname, 'ReportPage.tsx'), 'utf8'))
+const SRC = strip(readFileSync(join(__dirname, '..', 'board', 'BoardPage.tsx'), 'utf8'))
 const CSS = readFileSync(join(__dirname, '..', '..', 'index.css'), 'utf8')
 
 describe('the finding comes before the method', () => {
   it('the legend is a disclosure, not a wall', () => {
-    expect(SRC).toContain('<details className="gw-legend">')
-    expect(SRC).toContain('<summary>How this report is put together</summary>')
+    expect(SRC).toContain('<details className="gw-legend gwui-mt-28">')
+    expect(SRC).toContain('>How this board is put together</summary>')
   })
 
   it('and it is closed until asked for', () => {
     /* `<details>` without `open` is closed. If somebody adds it, this is the line that notices. */
-    expect(SRC).not.toMatch(/<details className="gw-legend"\s+open/)
+    expect(SRC).not.toMatch(/<details className="gw-legend[^"]*"\s+open/)
   })
 
   it('the three explanations are kept, not deleted', () => {
-    for (const h of ['What is open, first', 'What matters most, first', 'Honest closes']) {
+    for (const h of ['What is open, first', 'Each gap names both sides', 'Honest closes']) {
       expect(SRC).toContain(h)
     }
   })

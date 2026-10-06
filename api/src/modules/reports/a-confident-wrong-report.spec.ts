@@ -58,7 +58,7 @@ describe('where the record is easiest to be wrong about', () => {
     // click, and every measure of "document backed" counts it.
     const [{ spot, line }] = softSpots({ ...clean, documents: 3, documentsReferredTo: 0 });
     expect(spot).toBe('documents nobody uses');
-    expect(line).toMatch(/treat this as an account without documents/);
+    expect(line).toMatch(/treat this as what people said without documents/);
   });
 
   it('never accuses anybody of anything', () => {

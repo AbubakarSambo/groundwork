@@ -1,3 +1,5 @@
+import { Panel, SubHeading, Tag, Note, Stack } from '@/components/gw/ui'
+
 /**
  * THE COACHING NOTE. THE ONE PLACE ON THIS PAGE SPEAKING DIRECTLY TO THE PERSON READING IT.
  *
@@ -13,6 +15,12 @@
  * anybody else, and never says what another participant should do. With no pattern confirmed yet
  * it gives the role and stage guidance instead of hiding: an empty coaching surface on session 2
  * teaches somebody the product has nothing to say to them.
+ *
+ * GROUP 3 DRIFT LIST, PIECE 1 (Hafsah, 1 October 2026): rebuilt from the shared parts, the same way
+ * as SessionReportPage's own private half - a `Panel` with a real `Tag` reading "Only you" beside
+ * its `SubHeading`, each short block label a `SubHeading` of its own (the part written for exactly
+ * this: "a short label over one fact inside a panel"), body text `gwui-panel-text`, and `Stack` for
+ * the gaps. No inline styles and nothing under the 13px floor.
  */
 export interface CoachingNote {
   /** What is true of this reader and nobody else. Empty is normal. See what-your-own-record-says.ts. */
@@ -48,117 +56,97 @@ export function WhatToWorkOnNext({ note, guide }: {
   ].filter(r => r.text?.trim())
 
   return (
-    <section
-      style={{
-        border: '1px solid var(--gw-navy)', borderRadius: 12, background: 'var(--gw-card)',
-        padding: '16px 18px', marginTop: 18,
-      }}
-    >
-      <h3 style={{ fontSize: 13.5, fontWeight: 800, margin: '0 0 3px', color: 'var(--gw-navy)' }}>
-        What to work on next
-      </h3>
-      <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginBottom: 13 }}>
-        Written for you. It is not part of the shared report.
-      </div>
-
-      {note && (
-        <div style={{ display: 'grid', gap: 12 }}>
-          {/*
-            WHAT IS TRUE OF YOU AND NOBODY ELSE, FIRST.
-
-            The page used to open on the role map, which is about a KIND of person: "this kind of
-            sales and expansion work often faces unfair reading, which you should consider before
-            making assumptions about your current standing." Read off a real report, and true of
-            every salesperson alive.
-
-            These lines carry a figure or a thing off this reader's own record, so none of them
-            could be said to anybody else. First, because a reader who opens on something that is
-            plainly about them reads the rest as being about them too.
-          */}
-          {note.aboutYou && note.aboutYou.length > 0 && (
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 3 }}>Where you stand</div>
-              {note.aboutYou.map((line, i) => (
-                <p key={i} style={{ margin: i ? '4px 0 0' : 0, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.65, maxWidth: '68ch' }}>
-                  {line}
-                </p>
-              ))}
-            </div>
-          )}
-          {note.showingUp && (
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 3 }}>What keeps showing up</div>
-              <p style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.65, maxWidth: '68ch' }}>
-                {note.showingUp}
-              </p>
-            </div>
-          )}
-          {/*
-            WHAT GOING WRONG LOOKS LIKE IN THIS KIND OF WORK, AND WHAT IT LOOKS LIKE WHEN IT DOES
-            NOT. Both halves or neither: the failure signal alone is a label stapled to a person,
-            and the pairing is the whole reason the map is a staircase rather than a stick.
-          */}
-          {note.role?.noticed && note.role.lookingLike && (
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 3 }}>What was noticed, and what it looks like instead</div>
-              <p style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.65, maxWidth: '68ch' }}>
-                {note.role.noticed}.
-              </p>
-              <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.65, maxWidth: '68ch' }}>
-                Done well, that is: {note.role.lookingLike.charAt(0).toLowerCase() + note.role.lookingLike.slice(1)}.
-              </p>
-            </div>
-          )}
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 3 }}>
-              {note.general ? 'Where you are' : 'Why it matters here'}
-            </div>
-            <p style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.65, maxWidth: '68ch' }}>
-              {note.whyItMatters}
-            </p>
-          </div>
-          {/*
-            THE FAIRNESS HALF OF THE MAP, AND IT IS NOT OPTIONAL.
-
-            `protectAgainst` is how this function's people get unfairly read. A coaching note that
-            carries what somebody does wrong and not what they get blamed for wrongly is the stick
-            without the map, and the map exists so this product is not that.
-          */}
-          {note.role?.protectAgainst && (
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 3 }}>Where this kind of work gets misread</div>
-              <p style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.65, maxWidth: '68ch' }}>
-                {note.role.protectAgainst}
-              </p>
-            </div>
-          )}
-          {/* An absence with no reason reads as the product having nothing to say. */}
-          {!note.role && note.whyNoRoleMap && (
-            <p style={{ margin: 0, fontSize: 12.5, color: 'var(--gw-muted)', lineHeight: 1.6, maxWidth: '68ch' }}>
-              {note.whyNoRoleMap}
-            </p>
-          )}
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 3 }}>Before the next session</div>
-            <div style={{ display: 'grid', gap: 7 }}>
-              {(note.beforeNextTime ?? []).map((a, i) => (
-                <p key={i} style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.65, maxWidth: '68ch' }}>{a}</p>
-              ))}
-            </div>
-          </div>
+    <Panel>
+      <Stack gap={12}>
+        <div className="gwui-sentence-row">
+          <SubHeading>What to work on next</SubHeading>
+          <Tag>Only you</Tag>
         </div>
-      )}
+        <Note>Written for you. It is not part of the shared report.</Note>
 
-      {conversation.length > 0 && (
-        <div style={{ marginTop: note ? 14 : 0, paddingTop: note ? 12 : 0, borderTop: note ? '1px solid var(--gw-border)' : undefined, display: 'grid', gap: 11 }}>
-          {conversation.map((r, i) => (
-            <div key={i}>
-              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 3 }}>{r.h}</div>
-              <p style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.65, maxWidth: '68ch' }}>{r.text}</p>
+        {note && (
+          <Stack gap={12}>
+            {/*
+              WHAT IS TRUE OF YOU AND NOBODY ELSE, FIRST.
+
+              The page used to open on the role map, which is about a KIND of person: "this kind of
+              sales and expansion work often faces unfair reading, which you should consider before
+              making assumptions about your current standing." Read off a real report, and true of
+              every salesperson alive.
+
+              These lines carry a figure or a thing off this reader's own record, so none of them
+              could be said to anybody else. First, because a reader who opens on something that is
+              plainly about them reads the rest as being about them too.
+            */}
+            {note.aboutYou && note.aboutYou.length > 0 && (
+              <div>
+                <SubHeading as="h3">Where you stand</SubHeading>
+                <Stack gap={10}>
+                  {note.aboutYou.map((line, i) => <p key={i} className="gwui-panel-text">{line}</p>)}
+                </Stack>
+              </div>
+            )}
+            {note.showingUp && (
+              <div>
+                <SubHeading as="h3">What keeps showing up</SubHeading>
+                <p className="gwui-panel-text">{note.showingUp}</p>
+              </div>
+            )}
+            {/*
+              WHAT GOING WRONG LOOKS LIKE IN THIS KIND OF WORK, AND WHAT IT LOOKS LIKE WHEN IT DOES
+              NOT. Both halves or neither: the failure signal alone is a label stapled to a person,
+              and the pairing is the whole reason the map is a staircase rather than a stick.
+            */}
+            {note.role?.noticed && note.role.lookingLike && (
+              <div>
+                <SubHeading as="h3">What was noticed, and what it looks like instead</SubHeading>
+                <Stack gap={10}>
+                  <p className="gwui-panel-text">{note.role.noticed}.</p>
+                  <p className="gwui-panel-text">
+                    Done well, that is: {note.role.lookingLike.charAt(0).toLowerCase() + note.role.lookingLike.slice(1)}.
+                  </p>
+                </Stack>
+              </div>
+            )}
+            <div>
+              <SubHeading as="h3">{note.general ? 'Where you are' : 'Why it matters here'}</SubHeading>
+              <p className="gwui-panel-text">{note.whyItMatters}</p>
             </div>
-          ))}
-        </div>
-      )}
-    </section>
+            {/*
+              THE FAIRNESS HALF OF THE MAP, AND IT IS NOT OPTIONAL.
+
+              `protectAgainst` is how this function's people get unfairly read. A coaching note that
+              carries what somebody does wrong and not what they get blamed for wrongly is the stick
+              without the map, and the map exists so this product is not that.
+            */}
+            {note.role?.protectAgainst && (
+              <div>
+                <SubHeading as="h3">Where this kind of work gets misread</SubHeading>
+                <p className="gwui-panel-text">{note.role.protectAgainst}</p>
+              </div>
+            )}
+            {/* An absence with no reason reads as the product having nothing to say. */}
+            {!note.role && note.whyNoRoleMap && <Note>{note.whyNoRoleMap}</Note>}
+            <div>
+              <SubHeading as="h3">Before the next session</SubHeading>
+              <Stack gap={10}>
+                {(note.beforeNextTime ?? []).map((a, i) => <p key={i} className="gwui-panel-text">{a}</p>)}
+              </Stack>
+            </div>
+          </Stack>
+        )}
+
+        {conversation.length > 0 && (
+          <Stack gap={10}>
+            {conversation.map((r, i) => (
+              <div key={i}>
+                <SubHeading as="h3">{r.h}</SubHeading>
+                <p className="gwui-panel-text">{r.text}</p>
+              </div>
+            ))}
+          </Stack>
+        )}
+      </Stack>
+    </Panel>
   )
 }

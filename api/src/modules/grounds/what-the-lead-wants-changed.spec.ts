@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { whatTheyMeant, whatWillChange, whichOneDoYouMean, A_CHANGE_PROMPT, A_CHANGE_SCHEMA, type AThingOnRecord } from './what-the-lead-wants-changed';
+import { whatTheyMeant, whatWillChange, whichOneDoYouMean, changeAnswersThisTurn, A_CHANGE_PROMPT, A_CHANGE_SCHEMA, type AThingOnRecord } from './what-the-lead-wants-changed';
 import { theLinesFor, ABOUT_SOMEBODY, mayBeShared, THE_BUCKETS } from './what-this-check-in-knows';
 
 /**
@@ -104,7 +104,8 @@ describe('what the lead wants changed', () => {
     expect(chat).toContain('await this.whatTheyWantChanged(groundId, lastFromLead)');
     expect(chat).not.toContain('makeTheChange');
     const apply = src.slice(src.indexOf('async applyContextProposal('), src.indexOf('private async writeWhatThePasteGave('));
-    expect(apply).toContain('await this.makeTheChange(theirChange.apply)');
+    /* Decision 63: also carries who confirmed it, when it was an admin standing in for the lead. */
+    expect(apply).toContain('await this.makeTheChange(theirChange.apply, confirmedByAdminNote)');
     /* And a yes to what was proposed a turn ago, because that is how a lead answers a question. */
     expect(apply).toContain('const yesToAChange');
   });
@@ -189,5 +190,30 @@ describe('the sentences a change is made with', () => {
     const src = require('fs').readFileSync(require('path').join(__dirname, 'grounds.service.ts'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
     expect(src).toContain("kind: 'none', why: 'Waiting to hear which one they mean.'");
+  });
+});
+
+/*
+ * FIX 2, 30 September 2026. Driven live: "He has missed the last two pipeline updates. I spoke to
+ * him once. I want the update in by every Friday." was answering the open `objectives` question, and
+ * the change reader read it as an attempt to change something called "the update" - found nothing,
+ * and answered "I cannot find 'the update' on this check-in", swallowing the answer entirely.
+ */
+describe('changeAnswersThisTurn: a confident change wins under any open question; an ambiguous one does not swallow an answer', () => {
+  it('a confident match (apply set) wins even while a gap is open - "drop the 30-day rule" under an open question', () => {
+    expect(changeAnswersThisTurn({ apply: { intent: 'drop' } }, 'objectives')).toBe(true);
+  });
+
+  it('an ambiguous match (apply null) does not win while a gap is open - the open gap gets the turn instead', () => {
+    expect(changeAnswersThisTurn({ apply: null }, 'objectives')).toBe(false);
+  });
+
+  it('an ambiguous match still answers when nothing else is open to answer instead', () => {
+    expect(changeAnswersThisTurn({ apply: null }, null)).toBe(true);
+  });
+
+  it('nothing read as a change at all never wins', () => {
+    expect(changeAnswersThisTurn(null, 'objectives')).toBe(false);
+    expect(changeAnswersThisTurn(null, null)).toBe(false);
   });
 });

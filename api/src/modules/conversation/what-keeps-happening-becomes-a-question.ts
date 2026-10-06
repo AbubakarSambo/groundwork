@@ -1,4 +1,5 @@
 import { whatToAskAbout } from '../patterns/pattern-library';
+import { hasBeenSeenInThreePeriods } from '../patterns/who-reads-a-pattern';
 
 /**
  * A PATTERN THAT KEEPS SHOWING UP BECOMES A QUESTION IN THE NEXT CHECK-IN.
@@ -14,10 +15,13 @@ import { whatToAskAbout } from '../patterns/pattern-library';
  * SURFACED, never CANDIDATE: a candidate is the engine's first read, and putting a candidate to
  * somebody as a settled thing about them is the accusation this product refuses to make.
  *
- * The real recurrence floor is THREE consecutive periods, and it is carried by the status rather
- * than by a number here: `patterns.service` flips CANDIDATE to SURFACED only at three. The count
- * below is a second, weaker guard for a direct caller that passes rows it fetched itself - it is
- * redundant under SURFACED, and it is not the rule. The rule is three, and it lives in one place.
+ * THE REAL RECURRENCE FLOOR IS THREE PERIODS, WHETHER OR NOT THEY ARE IN A ROW (decision 8;
+ * decision 57, item 8, 30 September 2026). It is not safe to trust `status: SURFACED` alone for
+ * that: `observePositive` sets a good-news code SURFACED the moment it is seen ONCE, because a
+ * board may say so immediately - but shaping a question in the next check-in is a different use of
+ * the same row, and this decision holds it to the same three-period floor as everything else. So
+ * `theOneWorthAsking` checks the honest count itself, `hasBeenSeenInThreePeriods` from
+ * who-reads-a-pattern.ts, rather than trusting the status column a caller filtered on.
  *
  * The alignment-feed-only codes are excluded by `whatToAskAbout` itself, by construction rather
  * than by anybody remembering - those exist precisely because naming them to the person would do
@@ -32,6 +36,8 @@ import { whatToAskAbout } from '../patterns/pattern-library';
 export interface Recurring {
   code: string;
   periodsObserved: number;
+  /** Every period it was really seen in, gaps included - what `hasBeenSeenInThreePeriods` reads. */
+  seenInSessions?: number[] | null;
   /** The engine's own plain-language observation. Used to pick, never to quote at anybody. */
   observationText?: string | null;
   /**
@@ -44,10 +50,6 @@ export interface Recurring {
   accuracyRating?: boolean | null;
 }
 
-/** A belt-and-braces floor for a caller that did not filter on SURFACED. The real rule is three
- *  consecutive periods and it is enforced by the status, not here. */
-export const A_PATTERN_IS_NOT_A_PATTERN_IN = 1;
-
 /**
  * At most one. Two questions about two recurring things in one check-in is an interrogation, and
  * the check-in is not for this - it is for what the person did. The longest-running one wins,
@@ -55,7 +57,7 @@ export const A_PATTERN_IS_NOT_A_PATTERN_IN = 1;
  */
 export function theOneWorthAsking(rows: Recurring[]): { code: string; probe: string } | null {
   const eligible = rows
-    .filter((r) => r.periodsObserved > A_PATTERN_IS_NOT_A_PATTERN_IN)
+    .filter((r) => hasBeenSeenInThreePeriods(r))
     .filter((r) => r.accuracyRating !== false)
     .map((r) => ({ ...r, probe: whatToAskAbout(r.code) }))
     .filter((r): r is Recurring & { probe: string } => !!r.probe)

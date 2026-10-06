@@ -6,11 +6,11 @@ import { reportsApi } from '@/api/reports'
 import { conversationApi } from '@/api/conversation'
 import { Folded } from './two-accounts-side-by-side'
 import { WhatSuccessLooksLike } from './WhatSuccessLooksLike'
-import { HowSpecificThisSessionWas } from './HowSpecificThisSessionWas'
 import { TheFiveThingsThatMakeItCheckable } from './TheFiveThingsThatMakeItCheckable'
 import { groundsApi } from '@/api/grounds'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { CLOSE_SHEET, Block } from './the-shape-every-close-is-drawn-in'
+import { KIND } from './WhatWasTakenFromWhatYouSaid'
 
 /**
  * THE END OF A SIGNED-IN CHECK-IN, REBUILT AS A · SESSION.
@@ -81,9 +81,17 @@ function Row({ row, onTakeBack, busy }: { row: MyRow; onTakeBack: () => void; bu
       }}>
         “{row.text}”
       </p>
+      {/*
+        U.9 RE-REVIEW, ITEM A: A SENTENCE, NOT A TYPE WORD AND A "·" JOIN.
+        Same shape of fix as WhatWasTakenFromWhatYouSaid.tsx's own rows, and the same shared KIND
+        phrases, so the two files never say the same type two different ways: "ask · from a
+        document" read as a table row. "This is {kind}." is its own sentence, and "A document
+        backs it." follows it as another, rather than a dot stitched onto the end.
+      */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
         <span className="gw-stamp" style={{ color: 'var(--gw-sub-d)' }}>
-          {row.type.replace(/_/g, ' ').toLowerCase()}{row.documented ? ' · from a document' : ''}
+          {KIND[row.type] ?? `This is ${row.type.replace(/_/g, ' ').toLowerCase()}.`}
+          {row.documented ? ' A document backs it.' : ''}
         </span>
         {gone
           ? <span className="gw-mini" style={{ color: 'var(--gw-sub)' }}>You said this is not what you said. It counts toward nothing.</span>
@@ -241,25 +249,36 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
     <div className="gw-close" style={{ margin: '16px 0 8px', background: 'var(--gw-card)', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
       <style>{CLOSE_SHEET}</style>
 
-      {/* ── The masthead. What it is, whose it is, and where in the run it sits. */}
+      {/*
+        ── The masthead. What it is, whose it is, and where in the run it sits.
+        U.9 RE-REVIEW, ITEM A: A SENTENCE, NOT CAPITALS JOINED WITH "·". "CHECK-IN 1 · 27 SEPT ·
+        YOURS · NOBODY ELSE READS THIS HALF" is now "Check-in 1, on 27 September. Only you read
+        this part."
+      */}
       <div className="gw-head">
         <div className="gw-title">
           {closed ? 'Where this ended, in your own words' : 'What you said this time'}
         </div>
         <div className="gw-stamp" style={{ marginTop: 4, color: 'var(--gw-sub)' }}>
-          {[
-            `check-in ${sessionNumber}${d?.plannedSessions ? ` of ${d.plannedSessions}` : ''}`,
-            /* The date this sitting happened. A report with no date on it is a report somebody
-               cannot place against anything else that was going on that week. */
-            thisSitting?.completedAt ? whenItWas(thisSitting.completedAt, 'dayAndMonth') : '',
-            'yours · nobody else reads this half',
-          ].filter(Boolean).join(' · ')}
+          {`Check-in ${sessionNumber}${d?.plannedSessions ? ` of ${d.plannedSessions}` : ''}`}
+          {/* The date this sitting happened. A report with no date on it is a report somebody
+              cannot place against anything else that was going on that week. */}
+          {thisSitting?.completedAt ? `, on ${whenItWas(thisSitting.completedAt, 'dayAndMonth')}` : ''}
+          {'. Only you read this part.'}
         </div>
       </div>
 
-      {/* ── 01 · What this is for. The objective leads, and this person's part of it comes second. */}
+      {/*
+        ── What this is for. The objective leads, and this person's part of it comes second.
+        U.9 END-OF-MODULE API SUITE: THE LABEL IS THE ONE `the-four-reports.ts` DECLARES.
+        `the-order-is-the-order-on-screen.spec.ts` checks the block this workspace draws against
+        `WHAT_THE_BLOCK_IS_CALLED.whatThisIsFor`, which the engine declared as the plain heading
+        "What this is for" - not this screen's own longer phrasing to add. The extra context
+        ("and your part of it") is still true and still on the page; it belongs in the block's
+        body, not appended to the one string the two sides have to agree on byte for byte.
+      */}
       {(d?.againstSuccess?.stated || mySuccess) && (
-        <Block n={next()} label="What this is for" note="the objective, and your part of it">
+        <Block n={next()} label="What this is for">
           {/*
             WHEN NOBODY HAS SET A STANDARD, THIS BLOCK SHOWS WHAT *YOU* SAID, NOT A PROSE
             EXPLANATION OF WHY THERE ISN'T ONE.
@@ -290,17 +309,27 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
             with it, it is a statement about what this person is answerable for - which is the only
             reason their own half opens with it.
           */}
+          {/*
+            U.9 THIRD REVIEW, ITEM 4: A SENTENCE, NOT A LABEL WITH A COLON JOINING A LIST WITH
+            SEMICOLONS. "Your part: {A}; {B}." read as a form field, not something anybody would
+            say. The label is folded into the sentence, and the list is said as a sentence too.
+          */}
           {yours.length > 0 && (
             <p className="gw-p" style={{ margin: '10px 0 0', color: 'var(--gw-text)', maxWidth: '68ch' }}>
-              <b>Your part:</b> {yours.map((c: any) => c.text).join('; ')}.
+              {`Your own part of this is ${yours.map((c: any) => c.text).join(', ')}.`}
             </p>
           )}
         </Block>
       )}
 
-      {/* ── 02 · Where you are against it. Your rows only - see the filter above. */}
+      {/*
+        ── 02 · Where you are against it. Your rows only - see the filter above.
+        U.9 END-OF-MODULE API SUITE: THE PLAIN HEADING `whereYouAre` DECLARES ("Where you are
+        against it"), not this screen's longer phrasing. "From your own rows only" is still true -
+        it is the note under "No score, and no on-track label" a few lines down.
+      */}
       {yours.length > 0 && (
-        <Block n={next()} label="Where you are against it" note="your rows only">
+        <Block n={next()} label="Where you are against it">
           <div style={{ display: 'grid', gap: 8 }}>
             {yours.map((c: any, i: number) => {
               const says = SAYS[c.state as string] ?? SAYS.unspoken
@@ -325,9 +354,14 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
         </Block>
       )}
 
-      {/* ── 03 · What you said. Extracted lines, disputable, and the press sits with them. */}
+      {/*
+        ── 03 · What you said. Extracted lines, disputable, and the press sits with them.
+        U.9 END-OF-MODULE API SUITE: THE PLAIN HEADING `whatYouSaid` DECLARES ("What you said"),
+        not this screen's longer phrasing. "And it is yours to take back" is still true - it is
+        the sentence right underneath ("If one is wrong, say so.") and the press on every row.
+      */}
       {said.length > 0 && (
-        <Block n={next()} label="What you said" note="yours to take back">
+        <Block n={next()} label="What you said">
           <p className="gw-small" style={{ margin: '0 0 10px', color: 'var(--gw-sub)', maxWidth: '68ch' }}>
             These were taken from what you wrote, not typed by you. If one is wrong, say so.
           </p>
@@ -344,9 +378,14 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
         </Block>
       )}
 
-      {/* ── 04 · What is still open for you. See the header for what this cannot say yet. */}
+      {/*
+        ── 04 · What is still open for you. See the header for what this cannot say yet.
+        U.9 END-OF-MODULE API SUITE: THE PLAIN HEADING `stillOpenForYou` DECLARES ("What is still
+        open for you"), not this screen's longer phrasing. "What you asked for, and what you
+        raised" is still true of the block's contents, drawn below.
+      */}
       {(open.length > 0 || couldTry.length > 0) && (
-        <Block n={next()} label="What is still open for you" note="what you asked for, and what you raised">
+        <Block n={next()} label="What is still open for you">
           <div style={{ display: 'grid', gap: 8 }}>
             {open.map(x => (
               <p key={x.id} className="gw-p" style={{ margin: 0, color: 'var(--gw-text)', maxWidth: '68ch' }}>{x.text}</p>
@@ -378,20 +417,25 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
         </Block>
       )}
 
-      {/* ── 05 · What you carry into the next one. One thing, and the private note INSIDE it. */}
+      {/*
+        ── 05 · What you carry into the next one. One thing, and the private note INSIDE it.
+        U.9 END-OF-MODULE API SUITE: THE PLAIN HEADING `whatYouCarry` DECLARES ("What you carry
+        into the next one"), not this screen's "The one thing…" - which is still true, since only
+        one sentence is ever drawn below it.
+      */}
       {(carry || note) && (
-        <Block n={next()} label="What you carry into the next one" note="one thing, named">
+        <Block n={next()} label="What you carry into the next one">
           {/* The session's own sentence, not a row echoed from block 3 - see the note on the
               type lists above. */}
           {carry && <p className="gw-big" style={{ margin: 0, color: 'var(--gw-text)', maxWidth: '68ch' }}>{carry}</p>}
-          {/* NAMED AND DATED, which is the note on this block and half of what it was missing.
-              The date is the one this person gave for the work, not one invented here - so where
-              they never gave one, the block says a thing with no date on it rather than a date. */}
-          {d?.myTimeframe && (
-            <p className="gw-small" style={{ margin: '6px 0 0', color: 'var(--gw-sub)', maxWidth: '68ch' }}>
-              By when, in your words: {d.myTimeframe}
-            </p>
-          )}
+          {/*
+            U.9 RE-REVIEW, ITEM A: NO DATE THAT IS NOT PROVABLY THIS ONE'S.
+            "By when, in your words: by 20 December" attached `d.myTimeframe` - a date said
+            somewhere else in the session - to `carry`, a different sentence the session wrote
+            with no structural link between the two. Walked live, the date belonged to a different
+            thing entirely (her shops deadline, not the item shown here). Nothing here can tell
+            whether the two are about the same thing, so the date is left out rather than guessed.
+          */}
           {/*
             THE PRIVATE NOTE LIVES IN HERE AND NEVER BECOMES A SECTION OF ITS OWN.
             Given its own heading it reads as an assessment filed about somebody. Inside the block
@@ -400,7 +444,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
           {note?.showingUp && (
             <div style={{ marginTop: 12, background: 'var(--gw-blue-bg)', borderRadius: 8, padding: '11px 13px' }}>
               {/* Navy on the blue tint, never a grey ink on a tinted ground. */}
-              <div className="gw-stamp" style={{ color: 'var(--gw-navy)', marginBottom: 6, letterSpacing: '.09em' }}>Written for you · not part of the shared picture</div>
+              <div className="gw-stamp" style={{ color: 'var(--gw-navy)', marginBottom: 6 }}>Written for you. It is not part of the shared picture.</div>
               <p className="gw-p" style={{ margin: 0, color: 'var(--gw-navy)', maxWidth: '68ch' }}>{note.showingUp}</p>
               {note.whyItMatters && <p className="gw-small" style={{ margin: '6px 0 0', color: 'var(--gw-navy)', maxWidth: '68ch' }}>{note.whyItMatters}</p>}
               {(note.beforeNextTime ?? []).length > 0 && (
@@ -413,12 +457,22 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
         </Block>
       )}
 
-      {/* ── 06 · How much you gave it. Folded and last: a caveat above the thing it qualifies reads
-             as a verdict on it. */}
+      {/*
+        ── How much you gave it. Folded and last: a caveat above the thing it qualifies reads as a
+        verdict on it.
+
+        U.9 RE-REVIEW, ITEM A: SHOWN ONCE, NOT TWICE. This block used to draw its own copy of the
+        specificity bar (HowSpecificThisSessionWas), and SessionReportPage draws the same bar again
+        above this whole card - one page, the same reader's own rating, twice. The bar stays where
+        it always sits first, at the top of the page; this fold keeps only what it alone has, the
+        five things it is made of.
+      */}
       {d?.howClearThisWas?.level && (
         <div className="gw-blk" style={{ paddingTop: 0, paddingBottom: 0 }}>
-          <Folded summary="How much you gave this one">
-            <HowSpecificThisSessionWas level={d.howClearThisWas.level} spots={r?.mySoftSpots ?? null} />
+          {/* U.9 THIRD REVIEW, ITEM 4: THE PROTOTYPE'S OWN WORDS, NOT A PARAPHRASE OF THEM.
+              docs/prototype/screens/B3-the-check-in/done.txt: "How checkable today's check-in
+              was". */}
+          <Folded summary="How checkable today’s check-in was">
             {/* The bar says how much; these five say of WHAT, which is the difference between a
                 reading somebody can act on and a mark they cannot. Same read as the one on the
                 run-long page, scoped to this sitting rather than across every one. */}
@@ -495,17 +549,25 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
                 minHeight: 36, display: 'inline-flex', alignItems: 'center', textAlign: 'left',
               }}
             >
-              {correct.isPending ? 'Opening…' : 'Something here is wrong - correct it'}
+              {correct.isPending ? 'Opening…' : 'Something here isn’t right'}
             </button>
             <div className="gw-mini" style={{ color: 'var(--gw-sub)', marginTop: 3, maxWidth: '68ch' }}>
-              This opens a short session to correct or add to what you said. Nothing is overwritten -
-              the change is shown alongside the original.
+              This opens a short session to correct or add to what you said. Nothing is overwritten.
+              The change is shown alongside the original.
             </div>
           </div>
         )}
-        {/* Everyone reads the same report - true at two people and at twelve. */}
+        {/*
+          RELEASE WALKTHROUGH A, FIX 4 (engine request 151, E5): THIS SESSION'S OWN RELEASE, NOT
+          THE GROUND'S LAST ONE. `r?.releasedAt` is the whole ground report's most recent release -
+          true for ever once any round has gone out, including while THIS session's own round is
+          still forming. Walked live: session 2 read "The shared picture is open, and everyone
+          reads the same report" while session 2 was not shared, because session 1's release had
+          already set it. `d?.released` is the per-session shaped read (reportsApi.sessionReport),
+          already scoped to `sessionNumber` above - this session's own state, not the ground's.
+        */}
         <div className="gw-mini" style={{ color: 'var(--gw-sub)', maxWidth: '68ch' }}>
-          {r?.releasedAt
+          {d?.released
             ? 'The shared picture is open, and everyone reads the same report.'
             : 'This half is yours. The shared picture opens to everybody at the same moment.'}
         </div>

@@ -1,9 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService } from '../grounds';
 import { ReportsService } from './reports.service';
+import { TheWeeklyReportService } from './the-weekly-report.service';
 import { EmailService } from '../email/email.service';
 import { GroundworkEvents, CheckInCompletedEvent, GroundActivatedEvent } from '../../common';
 import { GroundStatus, PartyType, ReportActivationStatus, CheckInStatus } from '@prisma/client';
@@ -22,6 +23,7 @@ import { hasEnded, isHeld, hasStalled, isShut } from '../grounds/a-ground-that-h
 @Injectable()
 export class ReportsListener {
   private readonly logger = new Logger(ReportsListener.name);
+  private readonly findingsKeptFrom = new WeakSet<object>();
 
   constructor(
     private prisma: PrismaService,
@@ -29,6 +31,7 @@ export class ReportsListener {
     private reports: ReportsService,
     private email: EmailService,
     private config: ConfigService,
+    @Optional() private weekly?: TheWeeklyReportService,
   ) {}
 
   @OnEvent(GroundworkEvents.CHECK_IN_COMPLETED)
@@ -56,14 +59,25 @@ export class ReportsListener {
       // agreement that isn't there - it just shows what's known so far.
       await this.reports.synthesize(event.groundId);
 
+      /* THE WEEKLY REPORT AGAIN, NOW THAT THE SESSION'S REPORT IS IN, so what it keeps (what only the lead
+         can settle, where people said different things) reads the newest report. Never on opening. */
+      await this.weekly?.build(event.groundId).catch((err: any) =>
+        this.logger.warn(`The weekly report for ${event.groundId} could not be built after the report: ${err?.message}`),
+      );
+
       /*
        * WORD THE READS NOW, NOT WHEN SOMEBODY OPENS THE PAGE. The session report and the shared
        * report hand their drafts to the model for wording, and the worded lines are kept by their
        * hash. Reading them here, for everybody who will read them, means the first open after a
        * check-in costs a lookup rather than ten seconds. Best effort and off the critical path: a
        * warm-up that fails leaves the page exactly as slow as it was, never broken.
+       *
+       * AFTER THE RELEASE, NOT BEFORE IT (decision 44). Warming here and then releasing warmed the
+       * same report twice, once as it stood and once released, both asking the model at once. Now
+       * it is asked for once the release has happened or been ruled out, and a release's own
+       * warm-up and this one are the same run (ReportsService.wordTheReadsFor).
        */
-      this.warmTheReads(event.groundId, sessionNumber).catch((err: any) =>
+      const warm = () => this.warmTheReads(event.groundId, sessionNumber).catch((err: any) =>
         this.logger.warn(`Warming the reads for ${event.groundId} failed: ${err?.message}`),
       );
 
@@ -74,6 +88,7 @@ export class ReportsListener {
        * The report they were promised exists, so it goes to them now. See tellThemTheReportIsReady.
        */
       if (!allDone) {
+        warm();
         const rep = await this.prisma.report.findUnique({ where: { groundId: event.groundId }, select: { releasedAt: true } });
         if (rep?.releasedAt && event.participantId) {
           await this.reports.tellThemTheReportIsReady(event.groundId, sessionNumber, event.participantId).catch((err: any) =>
@@ -89,7 +104,8 @@ export class ReportsListener {
       const g = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { organizationId: true, status: true } });
       if (g) {
         await this.reports.release(event.groundId, g.organizationId);
-        /* release() returns early once releasedAt is stamped, so a later round's mails go from here. Once per person per round. */
+        /* release() now releases this session's picture on its own and tells people itself (decision 76, item 4);
+           this stays as the backstop for anybody it missed. Once per person per round, so nobody is told twice. */
         await this.reports.tellThemTheReportIsReady(event.groundId, sessionNumber).catch((err: any) =>
           this.logger.warn(`Telling the round on ${event.groundId} failed: ${err?.message}`),
         );
@@ -113,23 +129,21 @@ export class ReportsListener {
           await this.prisma.ground.update({ where: { id: event.groundId }, data: { status: GroundStatus.ACTIVE } });
         }
       }
+      warm();
     } catch (err: any) {
       this.logger.error(`Report handling on checkin.completed failed for ground ${event.groundId}: ${err.message}`);
     }
   }
 
   private async warmTheReads(groundId: string, sessionNumber: number) {
-    const ground = await this.prisma.ground.findUnique({
-      where: { id: groundId },
-      select: { organizationId: true, initiatorId: true, participants: { select: { userId: true } } },
-    });
-    if (!ground) return;
-    const readers = [...new Set([ground.initiatorId, ...ground.participants.map((p) => p.userId)].filter(Boolean))] as string[];
+    /* Every reader's report and session report, worded now with the model allowed. Opening them
+       later asks no model (decision 7): see ReportsService.wordTheReadsFor. */
+    const read = await this.reports.wordTheReadsFor(groundId, sessionNumber);
+    /* Several triggers share one warm-up and are handed the same result: its finding is kept once. */
+    if (this.findingsKeptFrom.has(read)) return;
+    this.findingsKeptFrom.add(read);
     let kept = false;
-    for (const userId of readers) {
-      const said = await this.reports.sessionReport(groundId, sessionNumber, userId, ground.organizationId).catch(() => undefined);
-      await this.reports.get(groundId, userId, ground.organizationId).catch(() => undefined);
-
+    for (const { sessionReport: said } of read) {
       /*
        * AND THE ROUND KEEPS WHAT IT FOUND, once, while it is in hand.
        *
@@ -149,7 +163,6 @@ export class ReportsListener {
         }).catch((err: any) => this.logger.warn(`Keeping the finding for ${groundId} failed: ${err?.message}`));
       }
     }
-    this.logger.log(`Reads warmed for ${groundId}, session ${sessionNumber}, ${readers.length} reader(s).`);
   }
 
   @OnEvent(GroundworkEvents.GROUND_ACTIVATED)

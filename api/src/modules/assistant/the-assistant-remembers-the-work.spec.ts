@@ -9,10 +9,10 @@ import { lines, recall, saidOf } from './what-the-last-round-produced';
  * produced. These tests are about the read - which rows are selected, which fields cross, and what
  * happens to a person who was in none of them.
  */
-function svc(opts: { participations?: any[] } = {}) {
+function svc(opts: { participations?: any[]; person?: any } = {}) {
   const queries: any[] = [];
   const prisma: any = {
-    person: { findFirst: jest.fn(async () => ({ id: 'p1', externalId: 'u-1', email: 'ada@northwind.test', active: true })) },
+    person: { findFirst: jest.fn(async () => opts.person ?? { id: 'p1', externalId: 'u-1', email: 'ada@northwind.test', active: true, linkedUserId: 'u-1' }) },
     groundParticipant: {
       findMany: jest.fn(async (args: any) => { queries.push(args); return opts.participations ?? []; }),
     },
@@ -143,5 +143,87 @@ describe('the assistant remembers the work', () => {
     expect(route('my commitments').lane).toBe('what_did_i_commit_to');
     expect(route('what should we talk about').lane).toBe('what_should_we_talk_about');
     expect(route('how do I run a check-in').lane).toBe('how_we_work');
+  });
+});
+
+/**
+ * A COLLEAGUE'S HIDDEN TARGET STAYS OUT OF WHAT IS RECALLED, TOO.
+ *
+ * `whatCameOfIt` reads a report straight off the ground rather than through reports.service.ts's
+ * `get`, which is where `targetsHiddenFrom` / `withoutHiddenTargetsIn` already run for the report
+ * page. On a check-in where each person sees only their own target (`whoSeesTargets: THEIR_OWN`),
+ * this lane had no idea that rule existed, and would recall a colleague's number straight out of the
+ * shared agreements and divergences - the same incident `a-hidden-target-stays-hidden.ts` documents
+ * for the report page and the board, reached by a different door.
+ */
+describe('a colleague\'s hidden target is never recalled here either', () => {
+  const groundBase = {
+    label: 'Sales floor Q3',
+    initiatorId: 'user-amaka',
+    whoSeesTargets: 'THEIR_OWN',
+    objectives: [{ ownerParticipantId: 'participant-kwame', target: 14 }],
+    participants: [
+      { id: 'participant-kwame', nameGiven: 'Kwame Mensah', partyType: 'PARTICIPANT' },
+      { id: 'participant-ngozi', nameGiven: 'Ngozi Eze', partyType: 'PARTICIPANT' },
+      { id: 'participant-amaka', nameGiven: 'Amaka', partyType: 'INITIATOR' },
+    ],
+    report: {
+      releasedAt: new Date(Date.now() - 3 * 86_400_000),
+      centralQuestion: 'Whether the region hits its facilities target this quarter.',
+      agreements: [
+        'Kwame Mensah is working towards a target of 14 approved facilities this quarter.',
+        'Everybody agreed to send a written update every Friday.',
+      ],
+      divergences: [{ text: 'Whether fourteen approved facilities is realistic for Kwame Mensah given the team size.' }],
+    },
+  };
+  const participation = (participantId: string) => [{ id: participantId, ground: groundBase }];
+
+  it('takes a colleague\'s target sentence out for a colleague, in figures and in words, but keeps the rest', async () => {
+    const { service } = svc({
+      participations: participation('participant-ngozi'),
+      person: { id: 'p1', externalId: 'u-ngozi', email: 'ngozi@northwind.test', active: true, linkedUserId: 'user-ngozi' },
+    });
+    const body = text(await service.respond('org-a', 'p1', 'what did we agree?'));
+
+    expect(body).not.toContain('14 approved facilities');
+    expect(body).not.toContain('fourteen approved facilities');
+    expect(body).toContain('Everybody agreed to send a written update every Friday.');
+  });
+
+  it('keeps the target\'s own owner reading their own number', async () => {
+    const { service } = svc({
+      participations: participation('participant-kwame'),
+      person: { id: 'p1', externalId: 'u-kwame', email: 'kwame@northwind.test', active: true, linkedUserId: 'user-kwame' },
+    });
+    const body = text(await service.respond('org-a', 'p1', 'what did we agree?'));
+
+    expect(body).toContain('14 approved facilities');
+  });
+
+  it('keeps everything for the lead who ran the check-in', async () => {
+    const { service } = svc({
+      participations: participation('participant-amaka'),
+      person: { id: 'p1', externalId: 'u-amaka', email: 'amaka@northwind.test', active: true, linkedUserId: 'user-amaka' },
+    });
+    const body = text(await service.respond('org-a', 'p1', 'what did we agree?'));
+
+    expect(body).toContain('14 approved facilities');
+    expect(body).toContain('fourteen approved facilities');
+  });
+
+  it('an admin who only reads, and was never a participant, recalls nothing from this check-in', async () => {
+    /* This lane reaches a report only through the reader's own participant row (see "reaches
+       reports only through the participant row" above) - an admin with no row in this ground gets
+       an empty read, not the report with anything taken out of it. */
+    const { service } = svc({
+      participations: [],
+      person: { id: 'p1', externalId: 'u-admin', email: 'admin@northwind.test', active: true, linkedUserId: 'user-admin' },
+    });
+    const body = text(await service.respond('org-a', 'p1', 'what did we agree?'));
+
+    expect(body).not.toContain('14 approved facilities');
+    expect(body).not.toContain('fourteen approved facilities');
+    expect(body).toContain('no finished check-ins');
   });
 });

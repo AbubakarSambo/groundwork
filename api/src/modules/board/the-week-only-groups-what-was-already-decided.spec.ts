@@ -23,7 +23,7 @@ describe('the manager\'s week groups what was already decided', () => {
   });
 
   it('takes handoffs from the board rather than reading dependencies again', () => {
-    expect(WEEK).toContain('await this.waitingAcrossTheOrg(organizationId)');
+    expect(WEEK).toContain('await this.waitingAcrossTheOrg(organizationId, now, opts)');
   });
 
   it('puts the manager in their own list when they are the thing being waited for', () => {
@@ -34,7 +34,20 @@ describe('the manager\'s week groups what was already decided', () => {
   });
 
   it('only calls something stuck when somebody actually raised it', () => {
-    expect(WEEK).toContain('if (w.escalatedAt)');
+    /*
+     * Raised by Groundwork's own overnight stamp, or by the person in their own words, read by the one
+     * reader of those words. Nothing new is decided here (3 October 2026: this pinned "if (w.escalatedAt)",
+     * the one condition there was before the person's own words were read too).
+     */
+    expect(WEEK).toContain('const groundworkRaisedIt = !!w.escalatedAt;');
+    expect(WEEK).toContain('itWasTakenFurther({ triedSaid: w.triedSaid ?? null })');
+    expect(WEEK).toContain('if (!theySaidSo && !groundworkRaisedIt) continue;');
+  });
+
+  it('says a wait was taken further to anybody who asks, but never as their own wait (decision 93, row 2: this pinned "only to whoever runs the check-in")', () => {
+    expect(WEEK).not.toContain('if (!theReader?.runsIt) continue;');
+    expect(WEEK).toContain('if (w.fromPersonKey === key) continue;');
+    expect(WEEK).toContain('youRunIt: !!theReader?.runsIt');
   });
 
   it('reaches asked-to-be-shown only from what the person said about themselves', () => {

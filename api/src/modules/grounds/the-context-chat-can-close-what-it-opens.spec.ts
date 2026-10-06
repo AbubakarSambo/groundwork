@@ -76,7 +76,7 @@ describe('what it heard', () => {
 describe('what the model can reach', () => {
   it('only the field the question was about', () => {
     // An answer to "how long" must not be able to change the cadence, even if they mention it.
-    expect(Object.keys(extractionToolFor('timeline').input_schema.properties)).toEqual(['timelineDays']);
+    expect(Object.keys(extractionToolFor('timeline').input_schema.properties)).toEqual(['runsUntilEnded', 'timelineDays']); // request 37: "until I end it" is also an answer to how long
     expect(Object.keys(extractionToolFor('cadence').input_schema.properties)).toEqual(['cadence']);
     expect(Object.keys(extractionToolFor('success').input_schema.properties)).toEqual(['success']);
   });
@@ -108,21 +108,34 @@ describe('and the service writes only after a yes', () => {
     /* `history` joined `said` so a pronoun can be resolved - "give her 3,000 units" names nobody on
        its own, and the target was being lost. What the rule is really about is unchanged and is
        what is checked: sentences go in, no id and no value. */
-    expect(apply).toMatch(/dto: \{ said: string; history\?: \{ role: 'user' \| 'assistant'; content: string \}\[\] \}/);
+    /* Week 20: `offerId` (which question was put to the lead, never a value) and `leave` (a flag: the
+       days are read again from `said`) joined them. Still no value from the client, which the next line pins. */
+    expect(apply).toMatch(/dto: \{ said: string; history\?: \{ role: 'user' \| 'assistant'; content: string \}\[\]; offerId\?: string; leave\?: boolean \}/);
     expect(apply).not.toMatch(/dto\.(timelineDays|cadence|participantId|target)\b/);
     expect(apply).toMatch(/extractionToolFor\(openGap\)/);
     /*
-     * The parties are passed as well now, so a name in an answer can be matched to a real person.
-     * The invariant is unchanged and is what this asserts: the proposal is re-derived from the
-     * words, never taken from a payload.
+     * The parties are passed as well now, so a name in an answer can be matched to a real person,
+     * and `dto.said` is passed too - not a value the client asked to be saved, but the lead's own
+     * sentence, so a quoted proposal can be locked to its literal characters rather than to either
+     * extraction call's own paraphrase of them (see `verbatimQuote`, found live: the same sentence
+     * read twice - once to propose, once to confirm - came back with a full stop added on one call
+     * and a capital letter dropped on the other, so what was saved did not match what was shown).
+     * The invariant this asserts is unchanged: the proposal is re-derived from the words, never
+     * taken from a payload.
      */
-    expect(apply).toMatch(/proposalFrom\(openGap, heard \?\? \{\}, parties\)/);
+    expect(apply).toMatch(/proposalFrom\(openGap, heard \?\? \{\}, parties, dto\.said\)/);
     expect(apply).toMatch(/const parties = await this\.partiesForMatching\(groundId\)/);
   });
 
+  /**
+   * DECISION 63, 30 September 2026: still checked again on the write, not only on the read - now
+   * through `mayConfirmSetupOn`, which lets the lead through on `checkIn.initiatorId === requestingUserId`
+   * (the same comparison this used to make directly) and, only once the lead has left the
+   * organisation, an admin standing in for them.
+   */
   it('and it is the lead\'s, checked again on the write and not only on the read', () => {
-    const apply = CODE.slice(CODE.indexOf('async applyContextProposal('), CODE.indexOf('async applyContextProposal(') + 1200);
-    expect(apply).toMatch(/ground\.initiatorId !== requestingUserId/);
+    const apply = CODE.slice(CODE.indexOf('async applyContextProposal('), CODE.indexOf('async applyContextProposal(') + 1400);
+    expect(apply).toMatch(/this\.mayConfirmSetupOn\(ground, requestingUserId\)/);
   });
 
   it('the timeline change goes through updateTimeline, not straight at the column', () => {
@@ -210,11 +223,13 @@ describe('the question this whole feature exists to ask', () => {
 
   it('and both create paths record which it was', () => {
     // `dto.timelineDays != null` is the whole distinction: they said, or we filled it in.
-    const creates = CODE.split('timelineDays: dto.timelineDays ?? DEFAULT_TIMELINE_DAYS');
+    /* U.6 review: the length now goes through howLongItRuns(dto), which still takes what they said
+       first, then the end they chose, then the default; and a chosen end also counts as stated. */
+    const creates = CODE.split('timelineDays: howLongItRuns(dto),');
     expect(creates.length).toBe(3); // two call sites, so two splits
     for (const after of creates.slice(1)) {
-      expect(after.slice(0, 260)).toMatch(/timelineStated: dto\.timelineDays != null/);
-      expect(after.slice(0, 260)).toMatch(/cadenceStated: dto\.cadence != null/);
+      expect(after.slice(0, 420)).toMatch(/timelineStated: dto\.runsUntilEnded === true \|\| dto\.timelineDays != null/); // request 37: until-ended also counts as stated
+      expect(after.slice(0, 420)).toMatch(/cadenceStated: dto\.cadence != null/);
     }
   });
 
@@ -229,7 +244,7 @@ describe('the question this whole feature exists to ask', () => {
 
   it('and stating it through updateTimeline marks it stated', () => {
     // Otherwise the chat would keep offering to set a length the lead had just set.
-    expect(CODE).toMatch(/timelineDays: requestedDays,\s*\n\s*timelineWeeks: Math\.max\(1, Math\.round\(requestedDays \/ 7\)\),\s*\n\s*timelineStated: true/);
+    expect(CODE).toMatch(/timelineDays: requestedDays,\s*\n\s*timelineWeeks: goesOnUntilEnded \? null : Math\.max\(1, Math\.round\(requestedDays \/ 7\)\),\s*\n\s*runsUntilEnded: goesOnUntilEnded,\s*\n\s*timelineStated: true/);
     expect(CODE).toMatch(/cadence: dto\.cadence as Cadence, cadenceStated: true/);
   });
 

@@ -11,10 +11,15 @@ import type { ReactNode } from 'react'
  * note under each saying what the block is for; the other had uppercase headings and coloured
  * cards. Same person, same week, same word "report", two designs.
  *
- * So the CHROME lives here and both draw in it: the stylesheet, the numbered block, the note. The
- * CONTENT stays with each report, because they genuinely do not hold the same things.
+ * So the CHROME lives here and both draw in it: the stylesheet and the block. The CONTENT stays
+ * with each report, because they genuinely do not hold the same things.
+ *
+ * U.9 RE-REVIEW, ITEM A: NO NUMBER, NO SHOUTING, NO SUB-LINE UNDER A HEADING.
+ * A block used to carry a leading "01" and an uppercase name, with a second, lower-case line under
+ * it saying what the block was for - "01 WHAT THIS IS FOR" then "the objective, and your part of
+ * it" underneath. Read as two facts stacked on a heading rather than as one sentence. Each caller
+ * now writes ONE plain sentence as `label`, and that is the whole heading.
  */
-const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace'
 
 /**
  * ONE STYLESHEET, BECAUSE A PHONE NEEDS A DIFFERENT SHAPE AND NOT JUST SMALLER TYPE.
@@ -38,25 +43,11 @@ export const CLOSE_SHEET = `
 .gw-close .gw-foot { padding: 13px var(--pad); border-top: 1px solid var(--gw-border); display: grid; gap: 9px; }
 
 .gw-close .gw-title { font-size: 15px; font-weight: 800; color: var(--gw-text); line-height: 1.3; }
-.gw-close .gw-stamp { font-family: ${MONO}; font-size: 10px; letter-spacing: .07em; text-transform: uppercase; }
+.gw-close .gw-stamp { font-size: 11px; }
+/* One plain sentence, one line - no number, no capitals, no second line under it. */
 .gw-close .gw-lbl {
-  margin-bottom: 9px;
-  display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 9px; font-size: 13px; font-weight: 700; color: var(--gw-sub-d);
 }
-/*
-  THE NUMBER AND THE NAME ARE MONO. THE NOTE IS NOT, AND WAS.
-
-  The note inherited the label's monospace and its uppercase reset, so "yours to take back" came
-  out as spaced-out typewriter text under a heading in the same face - two lines that look like
-  one, and the second one looks like code. It is a sentence about what the block is for, so it is
-  set as a sentence.
-*/
-.gw-close .gw-lbl .gw-name {
-  font-family: ${MONO}; font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--gw-sub-d);
-}
-.gw-close .gw-lbl .gw-note { color: var(--gw-sub); font-size: 11.5px; line-height: 1.45; }
-.gw-close .gw-n { color: var(--gw-muted); margin-right: 7px; }
 
 .gw-close .gw-big   { font-size: 14px;   line-height: 1.5; font-weight: 600; }
 .gw-close .gw-p     { font-size: 13px;   line-height: var(--lead); }
@@ -86,9 +77,7 @@ export const CLOSE_SHEET = `
   .gw-close { --pad: 16px; --gap: 20px; --lead: 1.65; }
   .gw-close .gw-title { font-size: 18px; }
   .gw-close .gw-stamp { font-size: 11px; }
-  .gw-close .gw-lbl   { margin-bottom: 11px; flex-direction: column; gap: 4px; }
-  .gw-close .gw-lbl .gw-name { font-size: 11px; letter-spacing: .09em; }
-  .gw-close .gw-lbl .gw-note { font-size: 13.5px; }
+  .gw-close .gw-lbl   { margin-bottom: 11px; font-size: 15px; }
   .gw-close .gw-big   { font-size: 17px; line-height: 1.45; }
   .gw-close .gw-p     { font-size: 15.5px; }
   .gw-close .gw-said  { font-size: 15.5px; }
@@ -103,24 +92,17 @@ export const CLOSE_SHEET = `
 }
 `
 
-/** One numbered block: its number, its name, and a note saying what the block is FOR. */
-export function Block({ n, label, note, children }: {
-  n: number
+/** One block: one plain sentence as its heading, no number and no second line under it. */
+export function Block({ label, children }: {
+  /** Kept on the interface so call sites that still count what they draw are unchanged; not
+      drawn - see the note above. */
+  n?: number
   label: string
-  note?: string
   children: ReactNode
 }) {
   return (
     <div className="gw-blk">
-      <div className="gw-lbl">
-        <span className="gw-name">
-          {/* The space is real, not a margin: a screen reader announces the number and the name as
-              two things only if there is one between them. */}
-          <span className="gw-n">{String(n).padStart(2, '0')}{' '}</span>
-          {label}
-        </span>
-        {note && <span className="gw-note">{note}</span>}
-      </div>
+      <div className="gw-lbl">{label}</div>
       {children}
     </div>
   )

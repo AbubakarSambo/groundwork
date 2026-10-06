@@ -97,6 +97,13 @@ export const appConfig = registerAs("app", () => ({
    * the arc inferred from session 1 as it is today.
    */
   objectivesEnabled: process.env.OBJECTIVES_ENABLED === "true",
+  /**
+   * THE API'S PUBLIC ADDRESS, WITHOUT /api/v1 (for example https://api.myground.work). Not a
+   * secret. The Connections page builds the WhatsApp callback address from it, the one an
+   * organisation pastes into Meta. Unset locally, where the page says the address is known once
+   * Groundwork is hosted.
+   */
+  publicApiUrl: process.env.PUBLIC_API_URL,
 }));
 
 export const databaseConfig = registerAs("database", () => ({
@@ -159,6 +166,14 @@ export const whatsappConfig = registerAs("whatsapp", () => ({
    * 24-hour window goes as one of these or not at all (whatsapp/a-message-outside-the-window.ts).
    */
   approvedTemplates: (process.env.WHATSAPP_APPROVED_TEMPLATES ?? '').split(',').map((s) => s.trim()).filter(Boolean),
+  /**
+   * Groundwork's own WhatsApp number as people read it, for example +44 7700 900123. Not a secret:
+   * it is the number people reply to. Display only; sending uses phoneNumberId. Unset, the
+   * Connections page says "Groundwork's WhatsApp number" without a number.
+   */
+  displayNumber: process.env.WHATSAPP_DISPLAY_NUMBER,
+  /** Meta's Graph API address. Unset it is Meta's own; only a test sets it, to a recorder on this machine. */
+  graphBaseUrl: process.env.WHATSAPP_GRAPH_BASE_URL,
 }));
 
 // Stripe, USD. Subscription billing: ten free grounds per org with unlimited

@@ -1,8 +1,8 @@
-import { Controller, Get, Post, Patch, Delete, Param, Query, Body } from '@nestjs/common';
-import { IsString, IsInt, IsOptional, IsArray, MaxLength, Min, ArrayMaxSize, ValidateNested } from 'class-validator';
+import { Controller, Get, Post, Patch, Delete, Param, Query, Body, BadRequestException } from '@nestjs/common';
+import { IsString, IsInt, IsOptional, IsArray, IsBoolean, IsIn, MaxLength, Min, ArrayMaxSize, ValidateNested, Matches } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { BoardService } from './board.service';
+import { BoardService, type WorkItemInput } from './board.service';
 import { CurrentUser } from '../../common';
 import { CoverageVariant, DEFAULT_COVERAGE_VARIANT } from './coverage';
 
@@ -26,6 +26,33 @@ class ObjectiveDto {
    */
   @IsOptional() @IsString() @MaxLength(64)
   ownerParticipantId?: string | null;
+
+  /** What the target assumes, one thing per line. The lead's words; an empty list clears it. */
+  @IsOptional() @IsArray() @ArrayMaxSize(12) @IsString({ each: true }) @MaxLength(300, { each: true })
+  assumes?: string[];
+
+  /**
+   * SAID PLAINLY BY THE LEAD, NEVER GUESSED FROM THE WORDING (decision 46, 29 September 2026).
+   * Optional, and false is the ordinary case. A target with this set is shown to the check-in's
+   * lead and nobody else - see whose-number-is-whose-business.ts. This route already checks the
+   * caller is the lead (assertInitiatorOfBoardGround), so nobody else can set it.
+   */
+  @IsOptional() @IsBoolean()
+  isADecisionAboutAPerson?: boolean;
+
+  /**
+   * AN AIM TO REACH ("AIM") OR A LIMIT NOT TO GO OVER ("LIMIT"), AS THE LEAD CHOSE IT (decision 69).
+   * Optional. Absent leaves it as it is; null puts it back to not set, where the board reads the words
+   * of the name as it always has. The board serves `directionSuggested` and `directionQuestion` to the
+   * lead for a screen to ask with. This route is already the lead's alone.
+   */
+  /* Decision 75, item 17: the prototype's five kinds. "AIM" is Up, "LIMIT" is Lower is better, then "RATE"
+     (a share to keep at or above), "DEADLINE" (a date to meet, with `dueOn`) and "ZERO" (a count to keep at zero). */
+  @IsOptional() @IsIn(['AIM', 'LIMIT', 'RATE', 'DEADLINE', 'ZERO'])
+  direction?: 'AIM' | 'LIMIT' | 'RATE' | 'DEADLINE' | 'ZERO' | null;
+  /** For a date to meet: the day it is due, "2026-10-30"; null takes it off (decision 75, item 17). */
+  @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  dueOn?: string | null;
 }
 
 class ProposePersonDto {
@@ -126,6 +153,38 @@ export class BoardController {
     @CurrentUser('id') userId: string,
   ) {
     return this.board.deleteObjective(id, objectiveId, userId);
+  }
+
+  @Post('work-items')
+  @ApiOperation({ summary: 'Lead only: add a record of the kind of work (a deal, a release, a deadline).' })
+  async addWorkItem(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: WorkItemInput) {
+    return this.board.addWorkItem(id, userId, dto ?? {});
+  }
+
+  @Patch('work-items/:itemId')
+  @ApiOperation({ summary: 'Lead only: change a record of the kind of work, or move its stage on.' })
+  async updateWorkItem(@Param('id') id: string, @Param('itemId') itemId: string, @CurrentUser('id') userId: string, @Body() dto: WorkItemInput) {
+    return this.board.updateWorkItem(id, itemId, userId, dto ?? {});
+  }
+
+  @Post('work-items/:itemId/claim')
+  @ApiOperation({ summary: 'Lead only: answer whether a record somebody says is theirs is theirs. Only a yes sets the owner.' })
+  async answerAClaimOnARecord(@Param('id') id: string, @Param('itemId') itemId: string, @CurrentUser('id') userId: string, @Body() dto: { yes?: boolean }) {
+    if (typeof dto?.yes !== 'boolean') throw new BadRequestException('Say yes or no.');
+    return this.board.answerAClaimOnARecord(id, itemId, userId, dto.yes);
+  }
+
+  @Post('decisions/:itemId/answer')
+  @ApiOperation({ summary: 'Lead only: answer yes or no to a question the lead wrote down as still to decide. The answer goes in how we work.' })
+  async answerADecision(@Param('id') id: string, @Param('itemId') itemId: string, @CurrentUser('id') userId: string, @Body() dto: { yes?: boolean }) {
+    if (typeof dto?.yes !== 'boolean') throw new BadRequestException('Say yes or no.');
+    return this.board.answerADecision(id, itemId, userId, dto.yes);
+  }
+
+  @Delete('work-items/:itemId')
+  @ApiOperation({ summary: 'Lead only: remove a record of the kind of work.' })
+  async deleteWorkItem(@Param('id') id: string, @Param('itemId') itemId: string, @CurrentUser('id') userId: string) {
+    return this.board.deleteWorkItem(id, itemId, userId);
   }
 
   @Post('poll')

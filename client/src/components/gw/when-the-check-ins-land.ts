@@ -55,7 +55,11 @@ export function whenTheCheckInsLand(a: {
   howMany?: number
   today?: Date
 }): Date[] {
-  const first = theNextDayTheyWork(a.startsAt ?? a.today ?? new Date(), a.workingDays)
+  /* A DAY, NOT A MOMENT (U.6 review). "Now" is today with the clock's time on it, and every date
+     after it carried that time, so a check-in on the last day fell after that day's midnight and was
+     dropped from the count. Each date is the start of its day. */
+  const from = a.startsAt ?? a.today ?? new Date()
+  const first = theNextDayTheyWork(new Date(from.getFullYear(), from.getMonth(), from.getDate()), a.workingDays)
   if (a.cadence === 'ONE_TIME' || a.cadence === 'SEQUENTIAL') return [first]
 
   const out = [first]

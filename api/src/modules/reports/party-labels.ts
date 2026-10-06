@@ -1,4 +1,14 @@
 import { PartyType } from '@prisma/client';
+import { theNameInAnAddress } from './the-name-in-an-address';
+import { fromTheReadersSide, noInstructionToAskYourself, theirOwnIsTheReaders } from './a-sentence-from-the-readers-side';
+import { aNameInTheirWordsIsTheLabel } from './a-name-in-their-words-is-the-label';
+import { theShortNameOf } from './a-title-is-not-a-first-name';
+import { theQuotesKept } from './a-quote-is-what-they-said';
+import { aPlainerWord } from './a-plainer-word';
+import { aNameSaidTwiceInARow, aNameSaidAgainInOneSentence } from './a-name-said-twice-in-a-row';
+import { aSurnameOrNothing } from './a-title-is-not-a-first-name';
+import { nobodyWaitsOnThemselvesInAStory } from './nobody-waits-on-themselves-in-a-story';
+import { peopleDisagreeInASentence } from './people-disagree-in-a-sentence';
 
 export type LabelParty = {
   id: string;
@@ -110,6 +120,9 @@ function inAStableOrder(parties: LabelParty[]): LabelParty[] {
   return [...parties].sort((a, b) => when(a) - when(b) || String(a.id).localeCompare(String(b.id)));
 }
 
+/** The label every check-in gives the person who set it up. Written once, read in two places. */
+export const THE_LEADS_LABEL = 'the initiator';
+
 export function labelsForParties(unordered: LabelParty[]): Map<string, string> {
   const parties = inAStableOrder(unordered);
   const labelById = new Map<string, string>();
@@ -138,50 +151,47 @@ export function labelsForParties(unordered: LabelParty[]): Map<string, string> {
    * why the invariant at the end of this function checks uniqueness rather than
    * checking for names.
    */
-  const roleCounts = new Map<string, number>();
-  for (const p of parties) {
-    const role = p.roleAsDescribed?.trim();
-    if (role) roleCounts.set(role.toLowerCase(), (roleCounts.get(role.toLowerCase()) ?? 0) + 1);
-  }
-
-  const roleSeen = new Map<string, number>();
+  /*
+   * A ROLE DESCRIPTION IS NOT A NAME, AND THIS USED TO MAKE IT ONE.
+   *
+   * The label was `roleAsDescribed` wherever somebody had one. `roleAsDescribed` is free text a
+   * lead types when adding a person, and leads type a sentence. So the twenty-four-scenario run of
+   * 25 September produced, in the middle of a paragraph:
+   *
+   *   "Apply the checklist from the Relationship officer, Surulere. Target 14 approved facilities
+   *    this quarter. to the work of the other officers."
+   *
+   * The label has two full stops inside it, so it ends the sentence twice and the remainder starts
+   * in lower case. That is problems 4, 6 and 8 of the twelve, all produced by one decision.
+   *
+   * IT ALSO COULD NOT BE SWAPPED FOR A NAME. Every label is substituted at the read, and the
+   * substitution is a string match - a label that IS a sentence matches nothing reliable, so these
+   * people were never named even to readers entitled to their names.
+   *
+   * So the label is now positional and nothing else: "the initiator", "Participant A", "Participant
+   * B". Short, unique by construction, and a clean string to swap for a name. The role is not lost;
+   * it lives on the participant row and is shown where a role belongs, which is not in place of
+   * somebody's name.
+   *
+   * WHAT THIS BREAKS, SAID PLAINLY: a report stored before this change holds role-shaped labels in
+   * its prose, and those no longer resolve to anybody. Every ground in this database is ours and
+   * the corpus is re-run, so the cost is a re-synthesis rather than a migration.
+   */
   for (const p of parties) {
     if (p.partyType === PartyType.INITIATOR) {
-      const role = p.roleAsDescribed?.trim();
-      if (role && (roleCounts.get(role.toLowerCase()) ?? 0) > 1) {
-        /** Shared with somebody else, so it has to be distinguished like any other. */
-        const n = roleSeen.get(role.toLowerCase()) ?? 0;
-        roleSeen.set(role.toLowerCase(), n + 1);
-        labelById.set(p.id, `${role} ${aLetterFor(n)}`);
-      } else {
-        /** Unshared roles keep their exact former label, so stored reports do not drift. */
-        labelById.set(p.id, role || 'the initiator');
-      }
+      labelById.set(p.id, THE_LEADS_LABEL);
     } else {
-      const role = p.roleAsDescribed?.trim();
-      if (role) {
-        if ((roleCounts.get(role.toLowerCase()) ?? 0) > 1) {
-          const n = roleSeen.get(role.toLowerCase()) ?? 0;
-          roleSeen.set(role.toLowerCase(), n + 1);
-          labelById.set(p.id, `${role} ${String.fromCharCode(65 + n)}`);
-        } else {
-          labelById.set(p.id, role);
-        }
-      } else {
-        /*
-         * A PROPER NOUN, BECAUSE IT STANDS WHERE A NAME WOULD.
-         *
-         * Lowercase, this produced three registers in one list: "Hafsah", "participant A",
-         * "Tunde Okafor (you)". Two of them are names and the third reads as a system placeholder
-         * that failed to resolve, which is the wrong reading - it is the permission rule working,
-         * and somebody who may not see a name should still see a person.
-         *
-         * Substitution back into prose is case-insensitive (see withNames), so labels already
-         * written into stored report JSON keep resolving.
-         */
-        const letter = aLetterFor(participantIdx++);
-        labelById.set(p.id, `Participant ${letter}`);
-      }
+      /*
+       * A PROPER NOUN, BECAUSE IT STANDS WHERE A NAME WOULD.
+       *
+       * Lowercase, this produced three registers in one list: "Hafsah", "participant A",
+       * "Tunde Okafor (you)". Two of them are names and the third reads as a system placeholder
+       * that failed to resolve, which is the wrong reading - it is the permission rule working,
+       * and somebody who may not see a name should still see a person.
+       *
+       * Substitution back into prose is case-insensitive (see withNames).
+       */
+      labelById.set(p.id, `Participant ${aLetterFor(participantIdx++)}`);
     }
   }
 
@@ -224,7 +234,7 @@ export function displayName(p: LabelParty, theEmailIsFair = false): string | nul
   const forWhom = (p as any).organisationGiven?.trim();
   const withOrg = (n: string) => (forWhom ? `${n} (${forWhom})` : n);
   const first = p.user?.firstName?.trim();
-  const last = p.user?.lastName?.trim();
+  const last = aSurnameOrNothing(p.user?.lastName);
   if (first) return withOrg(last ? `${first} ${last}` : first);
   /* The name they gave at the end of an open link is theirs to be read by, the same as a sign-in's. */
   if (p.nameGiven?.trim()) return withOrg(p.nameGiven.trim());
@@ -244,15 +254,19 @@ export function displayName(p: LabelParty, theEmailIsFair = false): string | nul
    *
    * Never to a peer, which is what `theEmailIsFair` gates - see namesVisibleTo.
    */
-  if (theEmailIsFair) {
-    /* THE ROW'S ADDRESS TOO, NOT ONLY THE SIGN-IN'S. Hafsah, 22 Sep 2026, reading a session report as the
-       lead: "it still calls people participant A and participant B". Those two had not joined yet, so
-       there was no user to take an address from; the address the lead typed is on the row, and the lead
-       is reading. */
-    const email = p.user?.email?.trim() || p.email?.trim();
-    if (email) return email;
-  }
-  return null;
+  /*
+   * NEVER AN ADDRESS AS A NAME. Hafsah, 28 September 2026 (screens requests 56, 58, 65): "A lead never
+   * sees 'Start with zawadi.u8@example.test'; use the person's name, or a plain sentence when there
+   * isn't one." This used to return the address to a reader entitled to it, so the model and every
+   * sentence built from this wrote the address where a name belongs. Somebody with no name now gets
+   * the plain words every surface uses ("a colleague", "another colleague"; see plainWordsByPerson).
+   * The lead still sees the address where a list shows it beside the person, never as their name.
+   * `theEmailIsFair` is kept so callers need not change; it no longer turns an address into a name.
+   */
+  void theEmailIsFair;
+  /* The name the address holds ("amani.wekesa@" is Amani Wekesa), the same read the Context tab makes. Not the address itself. */
+  const inTheAddress = theNameInAnAddress(p.email ?? p.user?.email);
+  return inTheAddress ? withOrg(inTheAddress) : null;
 }
 
 /**
@@ -391,6 +405,285 @@ export function handleOf(label: string): string {
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const withoutTrailingStop = (s: string) => (s ?? '').trim().replace(/[.!?,;:]+$/, '');
 
+/**
+ * A NAME IS NOT A TITLE, AND IT DOES NOT END A SENTENCE IT IS IN THE MIDDLE OF.
+ *
+ * Run of 25 September 2026, in the lead's own report: "The Daniel Osei. has completed a churn
+ * model", "The Priti Sharma. is managing access requests". 55 of these across 19 scenarios.
+ *
+ * Neither artefact comes from the name. The model wrote "The <label>." - the article because a
+ * label reads like a role, and the stop because the label it had been given ended in one - and the
+ * substitution put a person inside both. Labels are positional now, which makes the second half
+ * rarer, but the model will still write "The Participant A" because that is how you refer to a
+ * label in English.
+ *
+ * So it is cleaned after substitution, where both halves are visible at once: an article
+ * immediately before a name that is a real person's name goes, and a full stop between that name
+ * and a word that carries the same sentence on goes with it.
+ */
+export function aNameIsNotATitle(text: string, names: Iterable<string>): string {
+  let out = text;
+  for (const name of names) {
+    if (!name?.trim()) continue;
+    const n = escapeRe(name.trim());
+    /* "The Daniel Osei." mid-sentence -> "Daniel Osei". The stop only goes when a lower-case word
+       follows it, because a stop that genuinely ends the sentence must stay. */
+    out = out.replace(new RegExp(`\\b[Tt]he ${n}\\.(?=\\s+[a-z])`, 'g'), name);
+    /* "Daniel Osei. has completed" -> "Daniel Osei has completed". */
+    out = out.replace(new RegExp(`\\b${n}\\.(?=\\s+[a-z])`, 'g'), name);
+    /* "The Daniel Osei is" -> "Daniel Osei is". Sentence-initial "The" keeps its capital. */
+    out = out.replace(new RegExp(`(^|[.!?]\\s+)[Tt]he ${n}\\b`, 'g'), (_m, lead: string) => `${lead}${name}`);
+    out = out.replace(new RegExp(`\\b[Tt]he ${n}\\b`, 'g'), name);
+  }
+  return out;
+}
+
+/**
+ * "PARTICIPANTS A, B, AND C" IS THREE LABELS, AND THE SUBSTITUTION SAW NONE OF THEM.
+ *
+ * Read on the lead's own board of the sales check-in, 26 September 2026, about her own team:
+ *
+ *   "You believe the target is collective, while Participants A, B, and C all believe they are
+ *    working towards individual targets."
+ *
+ * Three real people left as placeholders in front of the one reader entitled to all three names.
+ * The labels are "Participant A", "Participant B" and "Participant C"; the model collapsed them
+ * into a plural, and every substitution below matches word-bounded, so "Participants" matches
+ * nothing at all. It is invisible to the scorer for the same reason.
+ *
+ * SO THE PLURAL IS EXPANDED BACK INTO SINGULARS BEFORE ANYTHING ELSE RUNS, and then the ordinary
+ * machinery does the rest: each one is named for the reader who may see it, the reader's own
+ * becomes "you", and one that may not be named stays a label. Nothing here knows about names,
+ * which is why it is a rewrite of the label text rather than a second naming rule.
+ *
+ * ONLY WHERE EVERY LETTER IS A LABEL WE ACTUALLY HANDED OUT, and only for two or more of them.
+ * Same discipline as the bare-label tidy-up further down: where it cannot be certain what it is
+ * looking at, it does nothing. "Participants A and I" is left alone rather than inventing a
+ * "Participant I", and a lone "Participants" with no letters after it is not touched.
+ */
+export function pluralLabelsBecomeSingular(text: string, known: Iterable<string>): string {
+  const labels = new Map<string, string>();
+  for (const l of known) {
+    const m = /^participant\s+([A-Z]+)$/i.exec((l ?? '').trim());
+    if (m) labels.set(m[1].toUpperCase(), (l ?? '').trim());
+  }
+  if (labels.size < 2) return text;
+
+  /*
+   * NO `i` FLAG, AND THAT IS NOT A STYLE CHOICE. With one, `[A-Z]+` matches lower case too, so the
+   * list swallowed the word "and" out of "A, B, and C" and then refused the whole match because
+   * "and" is not a label. The letters are upper case by construction (see aLetterFor), so matching
+   * them strictly is both correct and what keeps "and" out.
+   */
+  return text.replace(
+    /\b[Pp]articipants\s+([A-Z]+(?:\s*,\s*[A-Z]+)*)(?:\s*,)?(?:\s+and\s+([A-Z]+))?/g,
+    (whole: string, list: string, last: string | undefined) => {
+      const letters = [
+        ...list.split(',').map((x) => x.trim()),
+        ...(last ? [last.trim()] : []),
+      ].filter(Boolean);
+      /* Two or more, and every one of them a label this check-in actually handed out. */
+      if (letters.length < 2) return whole;
+      const resolved = letters.map((x) => labels.get(x.toUpperCase()));
+      if (resolved.some((x) => !x)) return whole;
+      const names = resolved as string[];
+      /* "Participant A, Participant B and Participant C" - the last joined with "and", which is
+         how a person writes a list, and how the rest of this file writes one. */
+      return names.length === 2
+        ? `${names[0]} and ${names[1]}`
+        : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+    },
+  );
+}
+
+/**
+ * WHAT SOMEBODY IS CALLED WHEN THIS READER MAY NOT HAVE THEIR NAME.
+ *
+ * Read live on run-1, in the report Amara Diallo opens about her own launch:
+ *
+ *   "Participant B built the front end for the project. Participant B says the hardest part of
+ *    the work was Victor's script."
+ *
+ * and in the one Blessing Okafor opens about the logistics contract:
+ *
+ *   "Participant B says the most frequent issue has been around handover times."
+ *
+ * Nothing is leaking. Both are evaluation check-ins, where `peersAreNamed` is false and a
+ * colleague's name deliberately never reaches the person being reviewed. The rule is right; the
+ * WORD is wrong. "Participant B" is a slot in a template, and reading it about yourself makes the
+ * product look like it has lost track of who is in the room.
+ *
+ * HAFSAH DECIDED THE WORD, 26 September 2026: "in evaluation check-ins (PIP, RECOGNITION,
+ * CONTRACT_RENEWAL), colleagues stay unnamed to the person being reviewed. Use plain words:
+ * 'a colleague' when there is one; 'one colleague', 'another colleague' when there are several,
+ * used the same way through the whole report. Never 'Participant B', and never a job title or
+ * detail that would give them away."
+ *
+ * HER WORDS COVER ONE AND TWO. A cohort can have more, so the same pattern is carried on - "a
+ * third colleague", "a fourth colleague" - and beyond the twelfth everybody left is "another
+ * colleague", which says less rather than more and so cannot give anybody away. That extension is
+ * mine and is flagged to her.
+ *
+ * THE SAME PERSON IS THE SAME PHRASE EVERYWHERE THIS READER LOOKS. The order comes from the
+ * parties themselves - `labelsForParties` hands its labels out in a stable order, and this walks
+ * them in that order - and not from the order sentences happen to mention people in. So whoever is
+ * "a colleague" in the shared picture is "a colleague" in the judgement, in the divergences,
+ * and on the board.
+ *
+ * AND NEVER A JOB TITLE. The branch this replaces printed `handleOf(label)` for a long label,
+ * which is a role description - "Relationship officer" - handed to the very person the check-in is
+ * about. A phrase that carries no detail cannot do that.
+ *
+ * THE LEAD IS NOT A COLLEAGUE. `namesVisibleTo` always offers the lead's name to everybody, so the
+ * lead is unnameable only when the product holds no name for them at all: `User.firstName` is a
+ * required column but `PATCH /auth/profile` trims what it is given and accepts an empty string, so
+ * a lead who blanks their first name has no name to show a peer. That reader still knows who the
+ * lead is, so they read "your lead" rather than a placeholder, and a reader who is not on the
+ * check-in at all reads "the lead".
+ */
+const AFTER_THE_SECOND = [
+  'a third colleague', 'a fourth colleague', 'a fifth colleague', 'a sixth colleague',
+  'a seventh colleague', 'an eighth colleague', 'a ninth colleague', 'a tenth colleague',
+  'an eleventh colleague', 'a twelfth colleague',
+];
+
+/**
+ * THE SECOND AND LATER MENTION OF THE SAME PERSON IN ONE TEXT. Hafsah, 27 September 2026: a later
+ * mention must make clear it is the same person, never a phrase that could read as somebody new.
+ * "Another colleague says the tests were the slow part, and one colleague agrees" read, the second
+ * time round, as if two more people had turned up.
+ *
+ * THE PLAINEST FORM THAT CANNOT BE MISREAD:
+ *  - while only one person without a name has come up in this text so far, "the same colleague";
+ *  - once two or more have, the one the first mention numbered: "one colleague" is "the first
+ *    colleague", "another colleague" is "the second colleague", "a third colleague" is "the third
+ *    colleague", and so on. The numbering is the check-in's own order, the one the first mentions
+ *    already use, so it is the same person on every surface.
+ *  - the lead stays "your lead" or "the lead", which already says who it is.
+ * Past the twelfth, where the first mention is "another colleague" for everybody left, there is no
+ * number to give; they stay "another colleague", which says less and so gives nobody away.
+ */
+const ORDINALS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth', 'eleventh', 'twelfth'];
+
+export function theSameOneAgain(
+  { firstMention, index, introducedSoFar }:
+  { firstMention: string; /** Their place among the colleagues with no name, from 0. */ index: number; introducedSoFar: number },
+): string {
+  const p = (firstMention ?? '').trim().toLowerCase();
+  if (p === 'your lead' || p === 'the lead') return p;
+  if (introducedSoFar <= 1) return 'the same colleague';
+  if (index >= 0 && index < ORDINALS.length) return `the ${ORDINALS[index]} colleague`;
+  return p;
+}
+
+export function plainWordsForTheUnnameable(
+  /** Every label on this check-in, in the order `labelsForParties` handed them out. */
+  known: Iterable<string>,
+  /** The names this reader may see, from `namesVisibleTo`. */
+  visible: Map<string, string>,
+  /** The reader's own label, which is already being turned into "you". */
+  viewerLabel?: string | null,
+): Map<string, string> {
+  const out = new Map<string, string>();
+  const mine = (viewerLabel ?? '').trim().toLowerCase();
+  const unnameable = [...known]
+    .map((l) => (l ?? '').trim())
+    .filter((l) => l && !visible.has(l) && l.toLowerCase() !== mine);
+
+  const lead = unnameable.find((l) => l.toLowerCase() === THE_LEADS_LABEL);
+  if (lead) out.set(lead, viewerLabel ? 'your lead' : 'the lead');
+
+  /*
+   * ONE IS "A COLLEAGUE"; SEVERAL ARE "ONE COLLEAGUE", "ANOTHER COLLEAGUE", "A THIRD COLLEAGUE".
+   * Hafsah's decision, 27 September 2026 (after a day on "a colleague" for the first of several).
+   * These are the words for the FIRST time somebody is mentioned in a text. A later mention in the
+   * same text says it is the same person: see `theSameOneAgain`.
+   */
+  const colleagues = unnameable.filter((l) => l.toLowerCase() !== THE_LEADS_LABEL);
+  if (colleagues.length === 1) {
+    out.set(colleagues[0], 'a colleague');
+  } else {
+    colleagues.forEach((l, i) => {
+      const phrase = i === 0 ? 'one colleague' : i === 1 ? 'another colleague' : AFTER_THE_SECOND[i - 2];
+      out.set(l, phrase ?? 'another colleague');
+    });
+  }
+  return out;
+}
+
+/**
+ * THE SAME PLAIN WORDS FOR SOMEBODY WITH NO NAME, BY PERSON, FOR EVERY SURFACE. Request 36.
+ *
+ * Where a person has no name, the board, the report's list of who answered, the conversation and the
+ * end-state email each used to say "a teammate", which the prototype never says. They now say what
+ * `plainWordsForTheUnnameable` says, from this one place: "a colleague", then "another colleague",
+ * "a third colleague" when there are several, "the lead" (or "your
+ * lead", with a reader) for a lead with no name. The order comes from `labelsForParties`, so the same
+ * person is the same phrase on every surface.
+ *
+ * `visible` is the names this reader may see, from `namesVisibleTo`. Left out, anybody with a name
+ * is named and only somebody with no name at all gets plain words. Keyed by participant id.
+ * Lower case, for inside a sentence: see `atTheStart`.
+ */
+export function plainWordsByPerson(
+  parties: LabelParty[],
+  visible?: Map<string, string> | null,
+  viewerLabel?: string | null,
+): Map<string, string> {
+  const out = new Map<string, string>();
+  let labels: Map<string, string>;
+  try {
+    labels = labelsForParties(parties);
+  } catch {
+    for (const p of parties ?? []) if (p?.id) out.set(p.id, 'a colleague');
+    return out;
+  }
+  const named = visible ?? new Map(
+    parties.map((p) => [labels.get(p.id) ?? '', displayName(p)] as const).filter(([l, n]) => !!l && !!n) as [string, string][],
+  );
+  const phrases = plainWordsForTheUnnameable([...labels.values()], named, viewerLabel ?? null);
+  for (const [id, label] of labels) {
+    const phrase = phrases.get(label);
+    if (phrase) out.set(id, phrase);
+  }
+  return out;
+}
+
+/** The phrase with a capital, for the start of a sentence or a line of its own. */
+export function atTheStart(phrase: string): string {
+  return withACapital(phrase);
+}
+
+/** Whether the text before this point has just ended a sentence, so the phrase needs a capital. */
+function aSentenceIsStarting(whole: string, offset: number): boolean {
+  const before = whole.slice(0, offset);
+  if (!before.trim()) return true;
+  return /(?:[.!?]["')\]]?\s|\n)\s*$/.test(before);
+}
+
+const withACapital = (s: string) => (s ? `${s[0].toUpperCase()}${s.slice(1)}` : s);
+
+/**
+ * "YOU" AS THE OBJECT OF A PREPOSITION IS NOT THE SUBJECT OF THE VERB AFTER IT.
+ *
+ * "A key worry for you is that...", "Grace's own plan for you calls for two agreements", "which for
+ * you means the supplier acknowledging tickets". In all three the verb belongs to the noun before
+ * the preposition, and conjugating it to agree with "you" makes correct English wrong. Every
+ * agreement rule in `withNames` is held off by this.
+ */
+/* The adverbs that may sit between "you" and its verb, one or two of them, captured so they stay. */
+const ADVERBS = '((?:(?:also|still|only|now|already|never|just|really|even|often|always|usually|actually|then|both|all) ){1,2})?';
+
+const NOT_THE_OBJECT_OF =
+  '(?<!\\b(?:for|to|with|on|at|from|of|about|between|against|by|in|than|like|towards|toward|upon|onto|into)\\s)';
+
+/**
+ * AND NEVER INSIDE A QUOTATION. What is between quotation marks is a person's own words, taken from
+ * the record before the report was stored (see a-quote-is-what-they-said). Turning a label or a
+ * role inside it into "you" or a name would change what they said: Zainab's "as requested by Nadia"
+ * would reach Nadia as "as requested by you". So the inside of every quote is held aside, and every
+ * rule below works on the sentence around it.
+ */
 export function withNames(
   text: string,
   visible: Map<string, string>,
@@ -398,6 +691,21 @@ export function withNames(
   opts?: { viewerLabel?: string | null },
 ): string {
   if (!text) return text;
+  /* And a plainer word where the report wrote a harder one, never inside a quotation (request 117, part 10). */
+  return theQuotesKept(text, (outside) => aPlainerWord(withNamesOutsideTheQuotes(outside, visible, allLabels, opts)));
+}
+
+function withNamesOutsideTheQuotes(
+  text: string,
+  visible: Map<string, string>,
+  allLabels?: Iterable<string>,
+  opts?: { viewerLabel?: string | null },
+): string {
+  if (!text) return text;
+
+  /* A COLLAPSED PLURAL IS EXPANDED FIRST, so the reader's own label in it can still become "you"
+     and the rest can still be named. See pluralLabelsBecomeSingular. */
+  text = pluralLabelsBecomeSingular(text, [...(allLabels ?? []), ...visible.keys()]);
 
   /**
    * SECOND PERSON FOR THE READER, BEFORE ANY NAME GOES BACK.
@@ -412,6 +720,25 @@ export function withNames(
    */
   const viewerLabel = opts?.viewerLabel?.trim();
   if (viewerLabel) {
+    /*
+     * THE READER'S OWN NAME IS THE READER TOO (the 1 October review). A model that met the lead's
+     * name in somebody's words wrote it as it found it, so Amina read "Ask Amina for her account of
+     * her role in the meetings" in her own judgement. Her name, outside a quote, becomes her label
+     * here, and everything below then makes it "you", with its verb. A first name that is also an
+     * everyday word ("Sunday", "Will") is left, and so is a first name somebody else here shares.
+     */
+    const ownLabel = [...visible.keys()].find((l) => l.trim().toLowerCase() === viewerLabel.toLowerCase());
+    if (ownLabel && visible.get(ownLabel)) {
+      const people = [...visible.entries()].map(([label, name]) => ({ label, name }));
+      const others = [
+        ...people.filter((x) => x.label !== ownLabel).flatMap((x) => [x.name, theShortNameOf(x.name)]),
+        ...[...(allLabels ?? [])].filter((l) => l !== ownLabel),
+      ];
+      text = text.split(/(?<=[.!?])(\s+)/).map((piece) => {
+        const swapped = aNameInTheirWordsIsTheLabel(piece, people, { only: ownLabel, asTheReadSeesIt: true });
+        return swapped === piece ? piece : theirOwnIsTheReaders(swapped, ownLabel, others);
+      }).join('');
+    }
     /* A LABEL THAT ENDS IN A FULL STOP NEVER MATCHED. The Harvestline sales manager's role read "...some
        on 60-day credit." and `\b` after a full stop needs a word character next, so "credit. said this
        was for" left the whole label standing in her own report (smoke run 7, 21 Sep 2026). Labels are
@@ -433,68 +760,9 @@ export function withNames(
         .replace(new RegExp(`\\bthe ${hesc}'s\\b`, 'gi'), 'your')
         .replace(new RegExp(`\\bthe ${hesc}\\b`, 'gi'), 'you');
     }
-    text = text
-      /**
-       * AND THE PRONOUN THAT FOLLOWS, NARROWLY.
-       *
-       * The model writes about every party in the third person, so a label swapped for "you"
-       * leaves the pronoun behind: the live example was "Hafsah Jumare described their role",
-       * which becomes "you described their role" - fixing the name and keeping the wrongness.
-       *
-       * AN EXPLICIT VERB LIST, and it started as `\w+ed` which was not narrow at all - almost
-       * every past-tense verb ends in -ed, so the rule fired on nearly anything. A bite-check
-       * broadening it to any word changed no test result, which is how the overstatement showed up.
-       *
-       * These are verbs of ACCOUNTING - giving your version of something. After one of them,
-       * "their" can only be the speaker's own. After an ordinary verb it usually is not:
-       * "you emailed their manager" is about somebody else's manager and is already correct.
-       */
-      .replace(
-        /\byou (described|said|stated|gave|reported|characterised|characterized|framed|put|holds|held|has|have) their\b/gi,
-        (_m, verb) => `you ${verb} your`,
-      )
-      /**
-       * AND THE VERB AGREES WITH "YOU".
-       *
-       * The model writes about every party in the third person, so a label swapped for "you" leaves
-       * the conjugation behind. Seen in a live report a moment after this was driven: "You is
-       * concerned this sign-off will drift" and "You referenced an offer letter" sitting in the same
-       * paragraph. The first reads as broken software, on the one screen whose whole claim is that
-       * it holds what people said carefully.
-       *
-       * A CLOSED LIST, not `\w+s`. "You" followed by a bare noun is ungrammatical, so a general
-       * rule would usually be right and would occasionally mangle a real sentence - and there is no
-       * way to tell which from here. The four irregulars carry most of it; the -s verbs are the ones
-       * a report of this kind actually uses.
-       */
-      .replace(/\byou is\b/gi, (m) => (m[0] === 'Y' ? 'You are' : 'you are'))
-      .replace(/\byou was\b/gi, (m) => (m[0] === 'Y' ? 'You were' : 'you were'))
-      .replace(/\byou has\b/gi, (m) => (m[0] === 'Y' ? 'You have' : 'you have'))
-      .replace(/\byou does\b/gi, (m) => (m[0] === 'Y' ? 'You do' : 'you do'))
-      .replace(
-        new RegExp(
-          '\\byou (' +
-            [
-              'describes', 'says', 'states', 'gives', 'reports', 'frames', 'puts', 'holds', 'seems',
-              'wants', 'needs', 'expects', 'feels', 'thinks', 'notes', 'believes', 'plans', 'sees',
-              'knows', 'raises', 'flags', 'treats', 'reads', 'takes', 'makes', 'sets', 'owns',
-              'appears', 'remains', 'intends', 'accepts', 'refers',
-            ].join('|') +
-            ')\\b',
-          'gi',
-        ),
-        (_m, verb) => `you ${String(verb).replace(/s$/, '')}`,
-      );
-
-    /**
-     * AND A SENTENCE STILL STARTS WITH A CAPITAL.
-     *
-     * "The sales lead described..." becomes "you described..." because the label was lowercase
-     * mid-phrase and the replacement inherits nothing about position. Found by a test asserting
-     * the whole sentence rather than just that the name was gone - checking only for the absence
-     * of "Hafsah" would have passed on a sentence beginning with a lowercase letter.
-     */
-    text = text.replace(/(^|[.!?]\s+|\n\s*)(you|your)\b/g, (_m, lead, word) => `${lead}${word[0].toUpperCase()}${word.slice(1)}`);
+    text = theVerbAgreesWithYouIn(text);
+    /* And nobody is told to ask themselves. See noInstructionToAskYourself. */
+    text = noInstructionToAskYourself(text, theVerbAgreesWithYouIn);
 
     /**
      * AND THE NEXT SENTENCE, WHICH IS STILL ABOUT THEM.
@@ -621,8 +889,58 @@ export function withNames(
    * Last, so it can only tidy what the substitutions above chose to leave. It never reveals
    * anything: the text is identical apart from a capital letter.
    */
+  /**
+   * AND A PERSON THIS READER MAY NOT NAME IS STILL CALLED SOMETHING A PERSON WOULD SAY.
+   *
+   * The phrases are worked out once, from the whole party list, so the same person is the same
+   * phrase in every line of this reader's report and board. See plainWordsForTheUnnameable.
+   */
+  const plainly = plainWordsForTheUnnameable(known, visible, opts?.viewerLabel);
+  /*
+   * ONE PASS, IN THE ORDER THE TEXT MENTIONS PEOPLE, so the second mention of somebody can say it is
+   * the same person (theSameOneAgain). It used to be one replace per label, which cannot know
+   * whether a label has come up already in this text.
+   */
+  const colleagueOrder = known.filter((l) => {
+    const ph = plainly.get(l.trim());
+    return !!ph && ph !== 'your lead' && ph !== 'the lead';
+  });
+  const phrased = known.filter((l) => !visible.has(l) && !!plainly.get(l.trim()));
+  if (phrased.length) {
+    const byKey = new Map(phrased.map((l) => [withoutTrailingStop(l).toLowerCase(), l] as const));
+    const alternatives = [...byKey.keys()].sort((a, b) => b.length - a.length).map(escapeRe).join('|');
+    const seen: string[] = [];
+    let colleaguesSeen = 0;
+    /*
+     * THE ARTICLE COMES WITH IT, AND THE CAPITAL STAYS. The model writes "The Participant B
+     * built the front end", so the phrase has to swallow that "The" or the sentence reads "The a
+     * colleague built the front end"; and a phrase that opens a sentence has to open it with a
+     * capital, or every one of these becomes a lower-case sentence start.
+     */
+    /*
+     * THE LABEL'S OWN FULL STOP GOES ONLY WHEN THE SENTENCE CARRIES ON IN LOWER CASE. The lookahead
+     * was `[a-z]` under the `i` flag, which matches a capital too, so "…sided with Participant C.
+     * Wairimu asked" lost the full stop that ended the sentence. It is decided here, case and all.
+     */
+    const withArticle = new RegExp(`(?<![\\w])(?:[Tt]he\\s+)?(${alternatives})(\\.(?=\\s+[a-z]))?(?![\\w])`, 'gi');
+    out = out.replace(withArticle, (m: string, which: string, stop: string | undefined, offset: number, whole: string) => {
+      const keepTheStop = !!stop && /^\s+[A-Z]/.test(whole.slice(offset + m.length));
+      const label = byKey.get(String(which).toLowerCase())!;
+      const first = plainly.get(label.trim())!;
+      const isColleague = first !== 'your lead' && first !== 'the lead';
+      let phrase = first;
+      if (seen.includes(label)) {
+        phrase = theSameOneAgain({ firstMention: first, index: colleagueOrder.indexOf(label), introducedSoFar: colleaguesSeen });
+      } else {
+        seen.push(label);
+        if (isColleague) colleaguesSeen += 1;
+      }
+      return (aSentenceIsStarting(whole, offset) ? withACapital(phrase) : phrase) + (keepTheStop ? '.' : '');
+    });
+  }
   for (const label of known) {
     if (visible.has(label)) continue;
+    if (plainly.get(label.trim())) continue;
     /* Without its trailing stop, the way the finding prints it: "...networks next said this was for" left the
        lead's whole role sentence on a participant's card (run 8, 21 Sep 2026) because the label ended in
        a full stop and the sentence did not. */
@@ -637,9 +955,22 @@ export function withNames(
     /* The label's own full stop comes with it when the sentence carries on ("Director. expects"); a stop
        that ends the sentence stays. */
     const re = new RegExp(`(?<![\\w])${escaped}(\\.(?=\\s+[a-z]))?(?![\\w])`, 'gi');
-    out = out.replace(re, printed);
+    /* The same full stop rule as above: kept before a capital. */
+    out = out.replace(re, (m: string, stop: string | undefined, offset: number, whole: string) =>
+      printed + (stop && /^\s+[A-Z]/.test(whole.slice(offset + m.length)) ? '.' : ''));
   }
-  return out;
+  /* AND A NAME IS NOT A TITLE. "The Daniel Osei. has completed" was 55 lines across 19 scenarios,
+     and neither the article nor the stop came from the name. See aNameIsNotATitle. */
+  /* AND A NAME IS SAID ONCE: "Kwabena Mensah, Kwabena Mensah, and ..." (item 18). See aNameSaidTwiceInARow. */
+  /* And once in a sentence about that person: "..., and Nadia has not reviewed", "for Grace's business" (run-25). */
+  const named = aNameIsNotATitle(aNameSaidAgainInOneSentence(aNameSaidTwiceInARow(out, visible.values()), visible.values()), visible.values());
+  /* AND THE READER IS ONE OF THE PEOPLE IN IT. "Both Caroline Mensah and you have answered. They
+     disagree" puts the reader second in their own report and then leaves them out of a
+     disagreement they are half of. Self-gating: it only acts where a "you" is present, which only
+     happens where the reader's own label was just substituted. */
+  /* AND NOBODY WAITS ON THEMSELVES in a story stored before request 111 (e) (request 118). */
+  /* And "People disagree on 1: ..." from the model's brief is said as a sentence (item 18). */
+  return peopleDisagreeInASentence(nobodyWaitsOnThemselvesInAStory(fromTheReadersSide(named, visible.values())));
 }
 
 /**
@@ -677,4 +1008,262 @@ export function eachSideGetsSomebody<T extends { participantLabel?: string | nul
     const next = spare.shift();
     return next ? { ...side, participantLabel: next } : side;
   });
+}
+
+/**
+ * THE VERB AGREES WITH "YOU", AND A SENTENCE THAT STARTS WITH IT HAS ITS CAPITAL.
+ *
+ * Out of `withNames`, so text the product builds with the reader's "you" already in it gets the same
+ * treatment as text that had a label swapped. Seniorhire, check-3, the lead's report, a probe built
+ * as `${who} is waiting on them for ...` with `who` already "you": "you is waiting on them for the
+ * initiation of commercial discussions." That text never went through `withNames`, so none of the
+ * rules below reached it. Nothing in here knows who anybody is; it only makes "you" read as "you".
+ */
+/**
+ * THE -S TAKEN OFF PROPERLY. Taking the last letter off made "finishes" "finishe", "wishes"
+ * "wishe" and "misses" "misse", and would make "identifies" "identifie". Case is kept.
+ */
+function theVerbForYou(verb: string): string {
+  const lower = verb.toLowerCase();
+  const base = lower === 'focuses' ? 'focus'
+    : /ies$/.test(lower) ? lower.replace(/ies$/, 'y')
+      : /(ss|sh|ch|x|zz)es$/.test(lower) ? lower.replace(/es$/, '')
+        : lower.replace(/s$/, '');
+  return verb === verb.toUpperCase() ? base.toUpperCase() : verb[0] === verb[0].toUpperCase() ? base[0].toUpperCase() + base.slice(1) : base;
+}
+
+export function theVerbAgreesWithYouIn(input: string): string {
+  let text = input;
+  /*
+   * THE AUXILIARY THAT STAYED IN THE THIRD PERSON (run 32: "what specific decisions about the
+   * product does you own?").
+   *
+   * A question written about "Ada" becomes a question about "you", and `does` is left behind.
+   * This is the one case that needs no judgement at all: an auxiliary immediately before "you"
+   * with a bare verb after it has only one correct form, and there is no reading where "does you
+   * own" is right.
+   *
+   * DELIBERATELY ONLY THE AUXILIARY. The same run shows coordinated verbs left behind too - "You
+   * see a lack of forward momentum and attributes it to the team's culture" - and those are NOT
+   * touched here. A regex for them was written on 25 September, fixed three sentences, broke two
+   * ("each person is working on an individual goal and are blocked"), and was removed. They belong
+   * in the automatic check of task 1.6, where the reader is known and the line can be rewritten
+   * whole. A narrow rule that is always right beats a broad one that is usually right.
+   */
+  text = text
+    .replace(/\bdoes you\b(?=\s+[a-z])/g, 'do you')
+    .replace(/\bDoes you\b(?=\s+[a-z])/g, 'Do you')
+    .replace(/\bdoesn['’]t you\b(?=\s+[a-z])/g, "don't you");
+  text = text
+    /**
+     * AND THE PRONOUN THAT FOLLOWS, NARROWLY.
+     *
+     * The model writes about every party in the third person, so a label swapped for "you"
+     * leaves the pronoun behind: the live example was "Hafsah Jumare described their role",
+     * which becomes "you described their role" - fixing the name and keeping the wrongness.
+     *
+     * AN EXPLICIT VERB LIST, and it started as `\w+ed` which was not narrow at all - almost
+     * every past-tense verb ends in -ed, so the rule fired on nearly anything. A bite-check
+     * broadening it to any word changed no test result, which is how the overstatement showed up.
+     *
+     * These are verbs of ACCOUNTING - giving your version of something. After one of them,
+     * "their" can only be the speaker's own. After an ordinary verb it usually is not:
+     * "you emailed their manager" is about somebody else's manager and is already correct.
+     */
+    .replace(
+      /\byou (described|said|stated|gave|reported|characterised|characterized|framed|put|holds|held|has|have) their\b/gi,
+      (_m, verb) => `you ${verb} your`,
+    )
+    /**
+     * AND "THEIR OWN" AFTER WHAT "YOU" DID OR HAS NOT DONE WITH IT (request 107 b). "Wanjiku's progress
+     * depends on you completing their own open actions." and "you have not closed their own commitment"
+     * were the lead's own actions, written about the lead's label. After one of these verbs of doing or
+     * finishing, with nothing between, "their own" is the doer's. Narrow on purpose, as the rule above
+     * is: "you have not given each person their own target" has somebody between, and stays.
+     */
+    .replace(
+      /\byou ((?:have|has) not (?:yet )?(?:closed|completed|finished|done|kept|met|defined|stated|set)|completing|closing|finishing|keeping|meeting|defining|stating|to (?:close|complete|finish|keep|meet|define|state)) their own\b/gi,
+      (_m, verb) => `you ${verb} your own`,
+    )
+    /**
+     * AND THE VERB AGREES WITH "YOU".
+     *
+     * The model writes about every party in the third person, so a label swapped for "you" leaves
+     * the conjugation behind. Seen in a live report a moment after this was driven: "You is
+     * concerned this sign-off will drift" and "You referenced an offer letter" sitting in the same
+     * paragraph. The first reads as broken software, on the one screen whose whole claim is that
+     * it holds what people said carefully.
+     *
+     * A CLOSED LIST, not `\w+s`. "You" followed by a bare noun is ungrammatical, so a general
+     * rule would usually be right and would occasionally mangle a real sentence - and there is no
+     * way to tell which from here. The four irregulars carry most of it; the -s verbs are the ones
+     * a report of this kind actually uses.
+     *
+     * THE LIST GREW BY FOUR, FOUND BY LOOKING RATHER THAN BY GUESSING. Every `you <word>s` across
+     * all twenty-four scenarios' served reports and boards was read, and four were genuine verbs
+     * left in the third person: "you blames the market", "this is work you owes Dele", "while you
+     * points to collecting customer bank statements", "Dr is leading the client meetings while
+     * you observes".
+     *
+     * AND FOUR IN THE SAME SEARCH WERE CORRECT ENGLISH, which is the argument for the closed list
+     * standing up in the open: "Grace's own plan for you calls for two signed distribution
+     * agreements" and "which for you means the supplier acknowledging tickets within four hours".
+     * The subject is the plan and the agreement; "you" is the object of "for". A general rule
+     * would have broken both.
+     */
+    /**
+     * AND NOT WHERE "YOU" IS THE OBJECT OF A PREPOSITION, WHICH THE SAME SEARCH TURNED UP AS A
+     * LIVE BUG IN THE RULES BELOW. On a real lead's report:
+     *
+     *   "A key worry for you is that you didn't see this coming."
+     *
+     * `\byou is\b` would make that "A key worry for you are that...". The subject is "a key
+     * worry"; "for you" is where the worry lands. One signal separates this from every case the
+     * rules are for - a preposition immediately before "you" - and it is checkable rather than
+     * guessed, so it guards all of them rather than only the new verbs.
+     */
+    /*
+     * AND ONE OR TWO ADVERBS MAY SIT BETWEEN THEM. "You also believes the credit committee is the only
+     * delay" reached a lead (check-1, check-2): the rules below looked for the verb straight after
+     * "you". An adverb between them changes nothing about whose verb it is, so these few are allowed.
+     */
+    .replace(new RegExp(`${NOT_THE_OBJECT_OF}(you )${ADVERBS}is\\b`, 'gi'), (_m, you: string, adv = '') => `${you}${adv}are`)
+    .replace(new RegExp(`${NOT_THE_OBJECT_OF}(you )${ADVERBS}was\\b`, 'gi'), (_m, you: string, adv = '') => `${you}${adv}were`)
+    .replace(new RegExp(`${NOT_THE_OBJECT_OF}(you )${ADVERBS}has\\b`, 'gi'), (_m, you: string, adv = '') => `${you}${adv}have`)
+    .replace(new RegExp(`${NOT_THE_OBJECT_OF}(you )${ADVERBS}does\\b`, 'gi'), (_m, you: string, adv = '') => `${you}${adv}do`)
+    /* And the same verbs said short (item 21, the founder's board): "when you doesn't have to think about it". */
+    .replace(new RegExp(`${NOT_THE_OBJECT_OF}(you )${ADVERBS}(doesn|isn|hasn|wasn)(['’])t\\b`, 'gi'), (_m, you: string, adv = '', v: string, q: string) => `${you}${adv}${({ doesn: 'don', isn: 'aren', hasn: 'haven', wasn: 'weren' } as Record<string, string>)[v.toLowerCase()]}${q}t`)
+    .replace(
+      new RegExp(
+        `${NOT_THE_OBJECT_OF}(you )${ADVERBS}(` +
+          [
+            'describes', 'says', 'states', 'gives', 'reports', 'frames', 'puts', 'holds', 'seems',
+            'wants', 'needs', 'expects', 'feels', 'thinks', 'notes', 'believes', 'plans', 'sees',
+            'knows', 'raises', 'flags', 'treats', 'reads', 'takes', 'makes', 'sets', 'owns',
+            'appears', 'remains', 'intends', 'accepts', 'refers',
+            /* The four the twenty-four-scenario search actually produced. */
+            'blames', 'observes', 'owes', 'points',
+            /* And "The initiator agrees" read by the initiator as "You agrees" (27 September 2026,
+               found while fixing the title in a name). Verbs of accounting again, all regular. */
+            'agrees', 'disagrees', 'confirms', 'mentions', 'recalls', 'understands', 'considers',
+            'suggests', 'argues', 'insists', 'admits', 'explains', 'hopes',
+            /* Read live on the session report (screens requests 54 and 65, 28 September 2026). */
+            'sends', 'assumes', 'asks', 'waits', 'works', 'leads', 'wishes', 'finishes', 'misses',
+            /*
+             * AND THE REST OF WHAT THE REPORTS ACTUALLY WRITE AFTER A LABEL (screens request 33, 29
+             * September 2026: "you forecasts that only 3 of them are realistic"). Found the same
+             * way as the four above: every "<label> <word>s" in the stored reports and rounds of
+             * the local corpus, read, and the verbs kept. Left out on purpose, because after "you"
+             * they are as likely to be a noun ("it gives you credits"): credits, questions, names,
+             * leaves, records, quotes, signs, lists, hands, sources, accounts, moves, worries.
+             */
+            'forecasts', 'estimates', 'predicts',
+            'defines', 'views', 'attributes', 'adds', 'acknowledges', 'measures', 'identifies',
+            'requires', 'manages', 'continues', 'finds', 'calls', 'counts', 'maintains', 'lacks',
+            'attends', 'handles', 'earns', 'uses', 'perceives', 'means', 'gets', 'shows', 'includes',
+            'tracks', 'receives', 'follows', 'focuses', 'claims', 'sells', 'suspects', 'retains',
+            'prepares', 'oversees', 'experiences', 'completes', 'clears', 'spends', 'runs', 'relies',
+            'provides', 'performs', 'arranges', 'anticipates', 'aims', 'specifies', 'remembers',
+            'produces', 'keeps', 'joins', 'highlights', 'depends', 'declares', 'buys', 'approves',
+            'warns', 'tells', 'submits', 'shares', 'secures', 'schedules', 'responds', 'regards',
+            'recognizes', 'recognises', 'operates', 'meets', 'hears', 'envisions', 'dismisses',
+            'directs', 'decides', 'contrasts', 'clarifies', 'cites', 'chooses', 'cares', 'begins',
+            'answers', 'acts',
+            /* Read on the 1 October review: "You reviews the individual targets", "you stays blocked". */
+            'reviews', 'stays', 'plays',
+          ].join('|') +
+          ')\\b',
+        'gi',
+      ),
+      (_m, you: string, adv: string | undefined, verb: string) => `${you}${adv ?? ''}${theVerbForYou(String(verb))}`,
+    );
+
+  text = everyVerbThatFollowsYouAgrees(text);
+
+  /**
+   * AND A SENTENCE STILL STARTS WITH A CAPITAL.
+   *
+   * "The sales lead described..." becomes "you described..." because the label was lowercase
+   * mid-phrase and the replacement inherits nothing about position. Found by a test asserting
+   * the whole sentence rather than just that the name was gone - checking only for the absence
+   * of "Hafsah" would have passed on a sentence beginning with a lowercase letter.
+   */
+  text = text.replace(/(^|[.!?]\s+|\n\s*)(you|your)\b/g, (_m, lead, word) => `${lead}${word[0].toUpperCase()}${word.slice(1)}`);
+  return text;
+}
+
+/**
+ * AND EVERY VERB THAT FOLLOWS "YOU" AGREES WITH IT, NOT ONLY THE ONES ON THE LIST (the 1 October review).
+ *
+ * The closed list above is right where "you" might be the object of something before it. Two places
+ * it is not, and the list kept missing verbs there:
+ *
+ *   "You reviews the individual targets."                  "you" opens the sentence
+ *   "the churn model remains unused and you stays blocked."  "you" opens a clause after "and"
+ *
+ * There "you" can only be the subject, so a word ending in -s straight after it is its verb. Words
+ * that end in -s and are not verbs ("always", "perhaps", "status") are left alone.
+ *
+ * And the verbs that share "you" with the first one: "You confirm the date and shares it", "You are
+ * blocked, has been waiting since the 8th, and is unsure". Only in a sentence that opens with "You",
+ * only straight after a comma or "and", and only for "is", "has", "was", "does" and the verbs on the
+ * list, so "You lead sales, operations and logistics" keeps its "logistics".
+ */
+const ENDS_IN_S_AND_IS_NOT_A_VERB = new Set([
+  'always', 'sometimes', 'perhaps', 'thus', 'nevertheless', 'nonetheless', 'afterwards', 'besides',
+  'towards', 'as', 'yes', 'unless', 'plus', 'less', 'us', 'this', 'its', 'his', 'hers', 'theirs',
+  'ours', 'yours', 'across', 'whereas', 'regardless', 'overseas', 'backwards', 'forwards', 'sideways',
+  'nowadays', 'downstairs', 'upstairs', 'indoors', 'outdoors', 'thanks', 'is', 'was', 'has', 'does',
+]);
+const aWordThatIsAVerbAfterYou = (word: string): boolean => {
+  const w = word.toLowerCase();
+  if (w.length < 4 || ENDS_IN_S_AND_IS_NOT_A_VERB.has(w)) return false;
+  if (/(?:ss|us|is|ous|'s|’s)$/.test(w)) return false;
+  return /s$/.test(w);
+};
+const A_CLAUSE_OPENS = '(?:and|but|while|until|unless|because|so|if|when|whereas|since|though|although|once)';
+const SHARED_VERBS = 'is|has|was|does|reviews|stays|shares|confirms|sends|expects|wants|needs|believes|says|thinks|feels|plans|knows|works|leads|waits|asks|agrees|keeps|takes|makes|owns|holds|sees|remains|continues|hopes|intends|accepts|tracks|manages|uses|gets|shows|follows|attends|handles|decides|chooses|answers|aims|relies|depends|builds';
+const SHARES_ITS_YOU = new RegExp(
+  `(,\\s+(?:and\\s+|but\\s+)?|\\s+(?:and|but)\\s+)${ADVERBS}(${SHARED_VERBS})\\b`,
+  'g',
+);
+/* "You have no visibility of these facts, and so has understood..." - but never "and so is the
+   invoice", where "so" turns the sentence round and the verb belongs to what follows it. */
+const AND_SO_SHARES_ITS_YOU = /(,?\s+and\s+so\s+)(is|has|was|does)\b(?!\s+(?:the|a|an|this|that|it|he|she|they|we|you|I|[A-Z]\w*)\b)/g;
+function everyVerbThatFollowsYouAgrees(input: string): string {
+  let text = input.replace(
+    new RegExp(`(^|[.!?]["”’)]?\\s+|\\n\\s*|\\b${A_CLAUSE_OPENS}\\s+)(you\\s+)${ADVERBS}([A-Za-z]+)\\b`, 'gi'),
+    (m: string, lead: string, you: string, adv: string | undefined, word: string) =>
+      aWordThatIsAVerbAfterYou(word) && word === word.toLowerCase() ? `${lead}${you}${adv ?? ''}${theVerbForYou(word)}` : m,
+  );
+  /*
+   * AND IN A CLAUSE THAT OPENS ON "YOU" (request 123 item 7): "until you clarify the role and provides the necessary
+   * authority". Where a clause opens with one of the clause words and then "you", a verb from the list straight after
+   * the next "and", with no comma, full stop or other "you" between, is still the reader's. Only verbs from the list, so
+   * "until you clarify the role and logistics" keeps its noun.
+   */
+  text = text.replace(
+    new RegExp(`(\\b${A_CLAUSE_OPENS}\\s+you\\s+[a-z]+\\b[^,.;!?]*?\\s+and\\s+)${ADVERBS}(provides|gives|clarifies|sets|${SHARED_VERBS})\\b`, 'g'),
+    /* Not where another person could own the verb: a second "you", or "who", "that", "which" or "whose" between
+       ("until you hire someone who knows the market and provides training"). */
+    (m: string, head: string, adv: string | undefined, verb: string) => (/\b(?:you|who|that|which|whose)\b/i.test(head.replace(/^\S+\s+you\s/i, '')) ? m : `${head}${adv ?? ''}${({ is: 'are', was: 'were', has: 'have', does: 'do' } as Record<string, string>)[verb.toLowerCase()] ?? theVerbForYou(verb)}`),
+  );
+  /* The verbs that share it, sentence by sentence. */
+  const pieces = text.split(/(?<=[.!?])(\s+)/);
+  text = pieces.map((piece) => {
+    if (!/^\s*You\s/.test(piece)) return piece;
+    return piece.replace(AND_SO_SHARES_ITS_YOU, (_m: string, join: string, verb: string) =>
+      `${join}${({ is: 'are', has: 'have', was: 'were', does: 'do' } as Record<string, string>)[verb.toLowerCase()]}`,
+    ).replace(SHARES_ITS_YOU, (_m: string, join: string, adv: string | undefined, verb: string) => {
+      const lower = verb.toLowerCase();
+      const said = lower === 'is' ? 'are' : lower === 'was' ? 'were' : lower === 'has' ? 'have' : lower === 'does' ? 'do' : theVerbForYou(verb);
+      return `${join}${adv ?? ''}${said}`;
+    });
+  }).join('');
+  return text;
+}
+
+/** The same, with somebody's own words in quotation marks left exactly as they are. */
+export function theVerbAgreesWithYou(text: string): string {
+  return text ? theQuotesKept(text, theVerbAgreesWithYouIn) : text;
 }

@@ -52,15 +52,37 @@ describe('the rail is legible too', () => {
     expect(SHELL.length).toBeGreaterThan(5000)
   })
 
-  it('finds the whites it is meant to be judging', () => {
+  it('the extractor still finds a white text colour when there is one, so the next check means something', () => {
     /* If the extractor silently matched nothing, the guard below would pass on anything. */
-    expect(railTextAlphas(SHELL).length).toBeGreaterThan(8)
+    expect(railTextAlphas("style={{ color: 'rgba(255,255,255,.55)' }}")).toEqual([0.55])
   })
 
-  it('no rail text sits below the alpha that clears 4.5:1 on its own background', () => {
-    const DISABLED = 0.25 /* the pointerEvents:'none' nav item - exempt, and the only .25 left */
-    const tooFaint = railTextAlphas(SHELL).filter(a => a < 0.46 && a !== DISABLED)
-    expect(tooFaint).toEqual([])
+  it('and the rail is light now, so no text in it is a white laid over navy', () => {
+    /*
+     * THE RAIL IS NO LONGER NAVY (A1, the design system). It sits on the page's own cream, and its
+     * text uses the design tokens that every-colour-a-person-reads-is-legible measures against every
+     * ground. So the white-alpha values this file was written to police are gone, and none may come
+     * back: white text on a cream rail would be invisible.
+     */
+    expect(railTextAlphas(SHELL)).toEqual([])
+  })
+
+  it('every colour the rail\'s stylesheet gives text is a measured token, or white on a filled mark', () => {
+    const CSS = readFileSync(join(__dirname, '../../index.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+    const rules = [...CSS.matchAll(/([^{}]*\.gw-(?:rl|ci|rail)[^{}]*)\{([^}]*)\}/g)]
+    expect(rules.length).toBeGreaterThan(20)
+    const ALLOWED = /^(var\(--gw-(text|sub|navy|green-t|red-t|amber-t|muted)\)|#fff|inherit)$/
+    const bad: string[] = []
+    for (const [, sel, body] of rules) {
+      for (const m of body.matchAll(/(?:^|;|\s)color:\s*([^;]+);/g)) {
+        const v = m[1].trim()
+        if (!ALLOWED.test(v)) bad.push(`${sel.trim()} color: ${v}`)
+        // White text only where the rule also paints a solid dark fill under it. Amber-t (#8A5C1A)
+        // joined in U.5 for Today's count, as the prototype draws it: white on it is about 5.8 to 1.
+        if (v === '#fff' && !/background:\s*var\(--gw-(navy|green-t|amber-t)\)/.test(body)) bad.push(`${sel.trim()} is white on no fill`)
+      }
+    }
+    expect(bad).toEqual([])
   })
 
   it('and the values that were failing are gone by name', () => {

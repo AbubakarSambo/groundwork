@@ -73,9 +73,23 @@ describe('and an empty workspace says so', () => {
   it('as a line rather than a second button', () => {
     /* That screen was deliberately cleared of a third button for one action, and this is not the
        action - see the note above it. */
+    /*
+     * UPDATED, GROUP 2 REBUILD: the page no longer has a class of its own for this - it uses the
+     * SHARED `gwui-plain-link` (components/gw/ui/gw-ui.css), the same quiet text link every other
+     * rebuilt page uses (SettingsPage's "Remove your name and email", and others). So the check now
+     * reads gw-ui.css, not index.css, and `border: 0` (that file's own way of writing no border,
+     * used throughout it) alongside `border: none`. The promise itself is unchanged: no fill, no
+     * border, underlined.
+     */
     const at = LIST.indexOf('Or try it on your own first');
     const open = LIST.lastIndexOf('<button', at);
-    expect(LIST.slice(open, at)).toContain("background: 'none'");
-    expect(LIST.slice(open, at)).toContain('textDecoration');
+    const tag = LIST.slice(open, at);
+    const cls = (tag.match(/className="([^"]+)"/) ?? [])[1];
+    expect(cls).toBeTruthy();
+    const CSS = readFileSync(join(__dirname, '..', '..', '..', '..', 'client', 'src', 'components', 'gw', 'ui', 'gw-ui.css'), 'utf8');
+    const rule = (CSS.match(new RegExp(`\\.${cls}\\s*\\{([^}]*)\\}`)) ?? [])[1] ?? '';
+    expect(rule).toMatch(/background:\s*none/);
+    expect(rule).toMatch(/border:\s*(none|0)\b/);
+    expect(rule).toMatch(/text-decoration:\s*underline/);
   });
 });

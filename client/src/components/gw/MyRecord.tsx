@@ -200,8 +200,9 @@ export function MyRecord({
 
           {myRecord && !myRecord.insightsLocked && (!myRecord.patterns || myRecord.patterns.length === 0) && (
             <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, padding: '0 2px' }}>
+              {/* REVIEW ROUND 3, ITEM 5: TWO SENTENCES, NOT A DASH-JOINED FRAGMENT. */}
               No patterns have surfaced yet. They appear once the same thing has been seen across
-              several sessions, which is deliberate - one session is not a pattern.
+              several sessions. That is deliberate. One session is not a pattern.
             </div>
           )}
         </div>

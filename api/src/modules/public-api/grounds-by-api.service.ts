@@ -1,4 +1,5 @@
 import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { theGuestsHere, isAGuestHere, isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { howForecastsHaveGone, NEVER_CONCLUDE_FROM_FORECASTS } from '../detectors/what-a-forecast-turned-out-to-be';
 import { whereItStands, mayMarkMet, NEVER_CONCLUDE_FROM_CRITERIA } from './what-would-have-to-be-true';
 import { theReadFor, NOTHING_ON_RECORD } from '../detectors/what-a-lead-should-read-first';
@@ -121,6 +122,8 @@ export class GroundsByApiService {
       moment: string;
       mode?: string;
       timelineDays?: number;
+      /** True when it runs until the lead ends it, as the product's own create takes it. */
+      runsUntilEnded?: boolean;
       cadence?: string;
       participants?: { personExternalId: string; roleAsDescribed?: string }[];
       leadRemit?: string;
@@ -210,6 +213,7 @@ export class GroundsByApiService {
       moment: moment as any,
       ...(dto.mode ? { mode: dto.mode as any } : {}),
       ...(dto.timelineDays ? { timelineDays: dto.timelineDays } : {}),
+      ...(dto.runsUntilEnded === true ? { runsUntilEnded: true } : {}),
       ...(dto.cadence ? { cadence: dto.cadence as any } : {}),
       ...(dto.leadRemit ? { leadRemit: dto.leadRemit } : {}),
       ...(startsAt ? { startsAt: startsAt.toISOString() } : {}),
@@ -273,7 +277,8 @@ export class GroundsByApiService {
       moment: ground.moment,
       mode: ground.mode,
       status: ground.status,
-      timelineDays: ground.timelineDays,
+      timelineDays: (ground as any).runsUntilEnded ? null : ground.timelineDays,
+      runsUntilEnded: !!(ground as any).runsUntilEnded,
       cadence: ground.cadence,
       startsAt: ground.startsAt,
       endsAt: ground.endsAt,
@@ -309,7 +314,7 @@ export class GroundsByApiService {
     const user = await this.actingUser(organizationId, asPersonExternalId, fence);
     const ground = await this.prisma.ground.findFirst({
       where: { id: groundId, organizationId },
-      select: { id: true, participants: { select: { email: true } } },
+      select: { id: true, participants: { select: { email: true, userId: true } } },
     });
     /* Scoped, so a guessed id from another tenant resolves to nothing rather than to their ground. */
     if (!ground) throw new NotFoundException('No such check-in.');
@@ -320,8 +325,11 @@ export class GroundsByApiService {
      * through a credential that was never allowed near them.
      */
     if (isFenced(fence)) {
-      const emails = ground.participants.map((p) => p.email).filter(Boolean) as string[];
-      const ids = await Promise.all(emails.map(async (email) => {
+      /* A guest is nobody on this list, so a check-in with a guest on it is outside every fence. See a-guest-is-never-somebody-on-the-hosts-list. */
+      const guests = await theGuestsHere(this.prisma, organizationId);
+      const ids = await Promise.all(ground.participants.filter((p) => p.email).map(async (p) => {
+        if (isAGuestHere(guests, p)) return null;
+        const email = p.email;
         const row = await this.prisma.person.findFirst({
           where: { organizationId, email }, select: { externalId: true },
         });
@@ -454,10 +462,12 @@ export class GroundsByApiService {
       select: { email: true },
     });
     if (!person?.email) throw new NotFoundException(`No person with externalId "${personExternalId}".`);
-    const participant = await this.prisma.groundParticipant.findFirst({
+    const found = await this.prisma.groundParticipant.findFirst({
       where: { groundId, email: person.email },
-      select: { id: true },
+      select: { id: true, userId: true, email: true },
     });
+    /* A guest who shares this entry's address is not this entry, so nothing is written onto them in its name. See a-guest-is-never-somebody-on-the-hosts-list. */
+    const participant = found && !(await isAGuestIn(this.prisma, organizationId, found)) ? { id: found.id } : null;
     if (!participant) {
       throw new BadRequestException(
         `"${personExternalId}" is not on this check-in. Add them when you open it, or open one that includes them.`,
@@ -851,7 +861,14 @@ export class GroundsByApiService {
     const label = person.displayName?.trim()
       || [person.givenName, person.familyName].filter(Boolean).join(' ').trim()
       || personExternalId;
-    const key = person.email?.toLowerCase() ?? null;
+    /*
+     * An address that is a guest's here is not this entry's: a guest is from another organisation
+     * and on nobody's row, so their check-ins and handoffs are never read as this person's. See
+     * a-guest-is-never-somebody-on-the-hosts-list.
+     */
+    const key = person.email && !(await isAGuestIn(this.prisma, organizationId, { email: person.email }))
+      ? person.email.toLowerCase()
+      : null;
 
     const unseenObjectives = new Set<string>();
 
@@ -866,7 +883,10 @@ export class GroundsByApiService {
         },
       }),
       this.prisma.detectorResult.findMany({
-        where: { organizationId, personExternalId, resolvedAt: null },
+        /* Never a pattern mirrored from a check-in, served or not: this read is about one named person,
+           it printed the code as "A B5 finding", and it is mirrored after one session, before the person
+           has read it. People read patterns only through patterns/who-reads-a-pattern. */
+        where: { organizationId, personExternalId, resolvedAt: null, sourcePatternDetectionId: null },
         select: { key: true, evidence: true, subjectExternalId: true, firstSeenAt: true },
       }),
       this.prisma.contribution.findMany({
@@ -886,13 +906,15 @@ export class GroundsByApiService {
     /* Both sides of every handoff. One side alone is a charge sheet - see the module. */
     const { waiting } = await this.board.waitingAcrossTheOrg(organizationId);
     const side = (which: 'from' | 'on') => waiting
-      .filter((w: any) => (which === 'from' ? w.fromPersonKey : w.onPersonKey) === key)
+      .filter((w: any) => !!key && (which === 'from' ? w.fromPersonKey : w.onPersonKey) === key)
       .map((w: any) => ({
         what: w.what,
         status: String(w.status),
         waitingDays: w.waitingDays,
         onLabel: w.onLabel ?? null,
         escalatedAt: w.escalatedAt ?? null,
+        /* The day it began, so the read says a date and not a count that changes on opening. */
+        since: w.createdAt ?? null,
         /* Whether the claim names who and what - the board already decides this, and a read that
            decided it again would be a second opinion on the same question. */
         hasSubstance: w.hasSubstance ?? true,
@@ -1099,7 +1121,7 @@ export class GroundsByApiService {
 
     const rows = await this.prisma.personObjective.findMany({
       where: { groundId },
-      include: { participant: { select: { email: true } } },
+      include: { participant: { select: { email: true, userId: true } } },
     });
     if (!rows.length) {
       return {
@@ -1110,8 +1132,11 @@ export class GroundsByApiService {
 
     /* Participants resolve to directory ids so the questions come back in the caller's vocabulary,
        and so a fenced credential can be told which ones are not its business. */
-    const idFor = async (email: string | null | undefined) => {
-      if (!email) return null;
+    /* A guest's aims are theirs, never an entry's on this list. See a-guest-is-never-somebody-on-the-hosts-list. */
+    const guests = await theGuestsHere(this.prisma, organizationId);
+    const idFor = async (participant: { email: string; userId?: string | null } | null | undefined) => {
+      const email = participant?.email;
+      if (!email || isAGuestHere(guests, participant!)) return null;
       const row = await this.prisma.person.findFirst({
         where: { organizationId, email }, select: { externalId: true },
       });
@@ -1120,7 +1145,7 @@ export class GroundsByApiService {
 
     const objectives: Objective[] = [];
     for (const r of rows) {
-      const personExternalId = await idFor(r.participant?.email);
+      const personExternalId = await idFor(r.participant);
       if (!personExternalId) continue;
       objectives.push({
         externalId: r.externalId,
@@ -1134,8 +1159,8 @@ export class GroundsByApiService {
            column is a participant id, not an email. */
         owedToPersonExternalId: r.owedToParticipantId
           ? await idFor((await this.prisma.groundParticipant.findUnique({
-            where: { id: r.owedToParticipantId }, select: { email: true },
-          }))?.email)
+            where: { id: r.owedToParticipantId }, select: { email: true, userId: true },
+          })))
           : null,
         seenBySubject: r.seenBySubject,
         /* Who set it, so the question goes to them rather than to the person it is about. */
@@ -1147,9 +1172,9 @@ export class GroundsByApiService {
 
     /* The lead is the last resort for a question nobody else can be asked - never the first. */
     const leadRow = await this.prisma.groundParticipant.findFirst({
-      where: { groundId, partyType: 'INITIATOR' }, select: { email: true },
+      where: { groundId, partyType: 'INITIATOR' }, select: { email: true, userId: true },
     });
-    const leadExternalId = await idFor(leadRow?.email);
+    const leadExternalId = await idFor(leadRow);
 
     const questions = senseCheck(objectives, leadExternalId)
       /* A question about one person is theirs; a question about the plan belongs to nobody and is

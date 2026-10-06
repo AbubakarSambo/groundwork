@@ -1,3 +1,4 @@
+import { withoutCommitmentsFromGoalsNotToldYet } from '../grounds/a-commitment-from-a-goal-not-told-is-not-read-by-its-person';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { forTheirOwnEyes, whyWithheld } from './what-i-can-see-about-myself';
@@ -55,9 +56,9 @@ export class MyOwnRecordService {
     const [commitments, contributions, findings, onboarding, suggestions, prefs] = await Promise.all([
       this.prisma.commitment.findMany({
         where: { organizationId, personExternalId: externalId },
-        select: { text: true, state: true, dueSaid: true, dueAt: true, statedAt: true, resolvedAt: true },
+        select: { text: true, state: true, dueSaid: true, dueAt: true, statedAt: true, resolvedAt: true, sourcePersonObjectiveId: true },
         orderBy: { statedAt: 'asc' },
-      }),
+      }).then(async (rows) => (await withoutCommitmentsFromGoalsNotToldYet(this.prisma, rows)).map(({ sourcePersonObjectiveId: _source, ...shown }) => shown)),
       this.prisma.contribution.findMany({
         where: { organizationId, personExternalId: externalId },
         /*

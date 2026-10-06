@@ -1,7 +1,10 @@
 import { runsTheirOwnBusiness } from '../board/function-detection';
-import { BAD_FAITH_CODES, POSITIVE_CODES, ALIGNMENT_FEED_ONLY_CODES } from '../patterns/pattern-library';
+import { eachWaitUnderWhoeverHoldsIt, waitingOnEachHolder } from './each-wait-under-whoever-holds-it';
+import { BAD_FAITH_CODES, POSITIVE_CODES, CARRYING_CODES, ALIGNMENT_FEED_ONLY_CODES } from '../patterns/pattern-library';
+import { plainNameOf } from '../patterns/plain-pattern-names';
 import { roleMapFor, MIN_COACHING_CONFIDENCE, type RoleMap } from '../board/role-maps';
 import { WHAT_IT_MEANS, WHO_CAN_MOVE_IT, type Kind } from '../board/what-kind-of-thing-is-in-the-way';
+import { aThingInTheirOwnWords, aThingWithoutItsHolder } from '../board/a-holder-in-their-own-words';
 
 /**
  * THE COACHING NOTE. THE ONE PART OF A REPORT THAT SPEAKS TO THE PERSON READING IT.
@@ -75,8 +78,10 @@ export interface Dependency {
   what: string;
   /** The other person, named or labelled by the caller. Null when nobody was named. */
   who: string | null;
-  /** Whole days since it was first recorded. */
+  /** Whole days since it was first recorded, measured to the record's own clock. */
   daysOld: number;
+  /** The day it began, in words ("27 September"), said in place of a count of days (request 117, part 9). */
+  since?: string | null;
   escalated: boolean;
   /** What kind of thing is in the way, where the person waiting said. Decides who can move it. */
   kind?: Kind | null;
@@ -87,6 +92,15 @@ export interface CoachingInputs {
   patterns: { code: string; periodsObserved: number }[];
   /** How this person's part is described, when anybody has said. Not the detected function. */
   role: string | null;
+  /**
+   * THE ROLE AS IT MAY BE SAID TO THIS PERSON, in "your work as …". Request 36, 27 September 2026.
+   *
+   * `role` above may be the lead's sentence about them ("Daniel - Your sales manager, who you said is
+   * not meeting his agreed targets" gave "your work as daniel"), which is fine for deciding what kind
+   * of work this is and never fine to say to them. When the caller passes this, it is the only thing
+   * said; null means say "this work". Left out, `role` is said, as before.
+   */
+  roleToSay?: string | null;
   /**
    * WHAT KIND OF WORK THIS PERSON'S RECORD IS ACTUALLY MADE OF, and how sure the engine is.
    *
@@ -133,7 +147,13 @@ export interface CoachingInputs {
   documentsExpected?: boolean;
 }
 
-const LIBRARY = new Map([...BAD_FAITH_CODES, ...POSITIVE_CODES].map((c) => [c.code, c]));
+/*
+ * Hafsah, 29 September 2026: this left CARRYING_CODES (A1, A2, A3) out, so a carrying pattern that
+ * was genuinely served to this reader on the board (patterns/who-reads-a-pattern.ts's plain-name
+ * check, which does cover them) found no `recurring` entry here, and the coaching note said
+ * "Nothing has recurred often enough to call it a pattern" beside a pattern that had.
+ */
+const LIBRARY = new Map([...BAD_FAITH_CODES, ...POSITIVE_CODES, ...CARRYING_CODES].map((c) => [c.code, c]));
 
 /**
  * WHICH ROLE MAP APPLIES, AND WHY THERE IS NOT ONE.
@@ -158,13 +178,13 @@ export function whichRoleMap(
   if (!map) {
     return {
       map: null,
-      why: 'What kind of work this is has not been read from the record yet, so this is about where you are rather than about the role.',
+      why: 'Nothing here says what kind of work this is, because it has not been read from the record yet. This is about where you are, not about the role.',
     };
   }
   if ((confidence ?? 0) < MIN_COACHING_CONFIDENCE) {
     return {
       map: null,
-      why: `Your record looks like ${map.label.toLowerCase()}, but not clearly enough to coach against. Nothing below reads you against that; a few more sessions will settle it.`,
+      why: `What you have said so far fits ${map.label.toLowerCase()}, but it is not clear enough yet to coach you on that kind of work. Nothing below reads you against it, and a few more check-ins will settle it.`,
     };
   }
   return { map, why: null };
@@ -198,7 +218,8 @@ export function thePair(map: RoleMap, noticed: string | null): { noticed: string
 const howLong = (n: number) => (n <= 0 ? '' : n === 1 ? ' since yesterday' : ` for ${n} days`);
 
 /** `what` is text somebody said, so nothing is concatenated onto the front of it. */
-const theThing = (what: string) => what.replace(/[.\s]+$/, '');
+const theThing = (what: string, theirOwn?: boolean) =>
+  (theirOwn === undefined ? what : aThingInTheirOwnWords(what, theirOwn) ?? what).replace(/[.\s]+$/, '');
 
 /**
  * WHAT KIND OF THING IS IN THE WAY, SAID ONCE FOR THE GROUP.
@@ -228,14 +249,16 @@ export const andList = (xs: string[]): string =>
  */
 function aboutWaiting(d: Dependency): string {
   const from = d.who ? ` from ${d.who}` : '';
-  const it = theThing(d.what);
+  const it = theThing(aThingWithoutItsHolder(d.what, d.who), true);
   if (d.escalated) {
-    return `You have escalated this already: ${it}. Put a date on when you need it by, and say what you will do if it does not arrive.`;
+    return `You have already taken ${it} to somebody above them. Put a date on when you need it by, and say what you will do if it does not arrive.`;
   }
   if (d.daysOld >= 14) {
-    return `You have been waiting ${howLong(d.daysOld)}${from} for this, without escalating: ${it}. Put the request in writing with a date, or take it to whoever is above them.`;
+    return d.since
+      ? `You have been waiting${from} for ${it} since ${d.since}, and you have not taken it any further. Put the request in writing with a date, or take it to whoever is above them.`
+      : `You have been waiting ${howLong(d.daysOld)}${from} for ${it}, and you have not taken it any further. Put the request in writing with a date, or take it to whoever is above them.`;
   }
-  return `Put this in writing${from}, with the date you need it by: ${it}.`;
+  return `Put ${it} in writing${from}, with the date you need it by.`;
 }
 
 /**
@@ -255,16 +278,44 @@ function roleBlock(map: RoleMap | null, pair: { noticed: string; lookingLike: st
   };
 }
 
+/**
+ * THE ROLE BLOCK FOR SOMEBODY WHO GAVE NO ROLE.
+ *
+ * It is read from what the person said, as the universal floor is (a-role-nobody-mapped-is-still-a-person.ts), so it
+ * never names a kind of job, and it still carries the fairness half. Run-26: a borrower was coached as a founder or
+ * CEO; the cure for that is a block that names no job, not no block (decision 55).
+ */
+const GENERAL_ROLE_BLOCK = {
+  label: 'What you said',
+  onTrack: 'What you said can be checked later, because it has a date, a number or a name on it. You also say what you did about anything that stalled.',
+  goingWrong: 'What you said is hard to check later: it has no dates, numbers or names, or things were named and not carried through.',
+  protectAgainst: 'A short account is not a weak one. If you said little, little may have happened yet, or nobody may have asked the right question. Nothing here is read against a kind of job.',
+  noticed: null,
+  lookingLike: null,
+};
+
 export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
   /* First on the page and first here: the part that could only have been written for this reader. */
   const aboutYou = i.aboutYou ?? [];
   /* Somebody who runs their own business has no office map to be read against, and does not need to be told
      that "what kind of work this is has not been read yet": the note is about where they are. */
+  /*
+   * NOBODY SAID WHAT THEIR ROLE IS, SO NO ROLE IS NAMED (run-26, asset loans). A borrower with no role of their own was
+   * read as a founder or CEO from the words in the account, and was told "you are in session 1 of 1 of your founder or CEO
+   * work". What the engine detects is unchanged. Where the person's own role is empty, the note is about where they are,
+   * and says so, instead of naming a role nobody gave.
+   */
+  const theyGaveNoRole = !(i.roleToSay ?? i.role ?? '').toString().trim();
   const { map, why: whyNoRoleMap } = runsTheirOwnBusiness(i.role)
     ? { map: null, why: null }
-    : whichRoleMap(i.detectedFunction, i.functionConfidence);
+    : theyGaveNoRole
+      ? { map: null, why: 'No role was given, so this is about where you are in the check-in rather than about a kind of work.' }
+      : whichRoleMap(i.detectedFunction, i.functionConfidence);
   const pair = map ? thePair(map, i.noticedBehaviour) : null;
-  const where = i.totalSessions ? `session ${i.sessionNumber} of ${i.totalSessions}` : `session ${i.sessionNumber}`;
+  /* Coaching is never switched off (decision 55): a person with no role still gets the role block, read from what they said and not from a job. */
+  const roleOf = (m: RoleMap | null, p: typeof pair) => (m ? roleBlock(m, p) : !runsTheirOwnBusiness(i.role) && theyGaveNoRole ? GENERAL_ROLE_BLOCK : null);
+  /* "Session 6 of 3" is never said: past the planned count, the session is said alone (item 21). */
+  const where = i.totalSessions && i.totalSessions >= i.sessionNumber ? `session ${i.sessionNumber} of ${i.totalSessions}` : `session ${i.sessionNumber}`;
   /*
    * WHAT THIS IS ABOUT, FROM THE MAP WHERE THERE IS ONE. The map's label is what kind of work this
    * person's record is made of, which is a stronger fact than the scenario the check-in was opened
@@ -276,10 +327,25 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
    */
   /* The role as a handle, not the whole sentence: "your work as poultry farmer in kaduna, battery cages on a
      tijara loan." was a sentence nobody would write. The first clause, up to five words. */
-  const roleHandle = (i.role ?? '').split(/[.,;:(]|\s+-\s+/)[0].trim().split(/\s+/).slice(0, 5).join(' ').toLowerCase();
+  const roleHandle = ((i.roleToSay !== undefined ? i.roleToSay : i.role) ?? '').split(/[.,;:(]|\s+-\s+/)[0].trim().split(/\s+/).slice(0, 5).join(' ').toLowerCase();
+  /* Lower the first letter only, mid-sentence ("founder or CEO work"), never the whole label: a
+     map label can hold an acronym ("Founder or CEO"), and lower-casing the lot turned it into
+     "founder or ceo work", which is not how anybody writes a role. */
+  const midSentence = (s: string) => (s ? s.charAt(0).toLowerCase() + s.slice(1) : s);
   const about = map
-    ? `${map.label.toLowerCase()} work`
+    ? `${midSentence(map.label)} work`
     : roleHandle ? `your work as ${roleHandle.replace(/^(a|an|the)\s+/, '')}` : 'this work';
+  /*
+   * A KIND OF WORK NOBODY SET IS SAID AS WHAT IT IS: A READING (request 127 item 6).
+   *
+   * "This is session 1 of 4 of founder or CEO work." was read on a board whose kind of work says it
+   * is not set. Both are true: the kind of work on the check-in was never set, and this label is the
+   * engine's reading of what the person said. So the sentence says where the label comes from, and
+   * the session count stands on its own. A role the person gave, or none, is said as before.
+   */
+  const whereYouAre = map
+    ? `This is ${where}. What you have said so far reads as ${about}.`
+    : `This is ${where} of ${about}.`;
 
   const early = i.sessionNumber <= 2;
   const last = i.isFinalSession === true || (i.totalSessions != null && i.sessionNumber >= i.totalSessions);
@@ -299,10 +365,17 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
   if (i.holdingUp.length) {
     const named = [...new Set(i.holdingUp.map((d) => d.who).filter(Boolean))] as string[];
     const who = named.length === 1 ? named[0] : named.length ? `${named.slice(0, -1).join(', ')} and ${named[named.length - 1]}` : 'Somebody';
-    const items = i.holdingUp.map((d) => theThing(d.what));
+    const items = i.holdingUp.map((d) => theThing(d.what, false));
     const oldest = Math.max(...i.holdingUp.map((d) => d.daysOld));
+    const since = [...i.holdingUp].sort((a, b) => b.daysOld - a.daysOld)[0]?.since ?? null;
+    const doIt = `Either do ${items.length > 1 ? 'them' : 'it'}, or give a date you can do ${items.length > 1 ? 'them' : 'it'} by.`;
+    /* The day it began, never a count of days from the reading (request 117, part 9). */
     actions.push(
-      `${who} ${named.length > 1 ? 'are' : 'is'} waiting on you${howLong(oldest)} for ${andList(items)}. Either do ${items.length > 1 ? 'them' : 'it'}, or give a date you can do ${items.length > 1 ? 'them' : 'it'} by.`,
+      !since
+        ? `${who} ${named.length > 1 ? 'are' : 'is'} waiting on you${howLong(oldest)} for ${andList(items)}. ${doIt}`
+        : items.length === 1 && named.length <= 1
+          ? `${who} has been waiting on you for ${andList(items)} since ${since}. ${doIt}`
+          : `${who} ${named.length > 1 ? 'are' : 'is'} waiting on you for ${andList(items)}. The first of these waits began on ${since}. ${doIt}`,
     );
     const kind = whatKindOfThing(i.holdingUp);
     if (kind) actions.push(kind);
@@ -312,20 +385,25 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
     const escalated = i.waitingOn.filter((d) => d.escalated);
     const notYet = i.waitingOn.filter((d) => !d.escalated);
     if (notYet.length) {
-      const from = [...new Set(notYet.map((d) => d.who).filter(Boolean))] as string[];
       const oldest = Math.max(...notYet.map((d) => d.daysOld));
-      const items = andList(notYet.map((d) => theThing(d.what)));
+      const since = [...notYet].sort((a, b) => b.daysOld - a.daysOld)[0]?.since ?? null;
+      /* Each wait under whoever holds it, and each thing once (item 18). See each-wait-under-whoever-holds-it.ts. */
+      const groups = eachWaitUnderWhoeverHoldsIt(notYet);
+      const onEach = waitingOnEachHolder(groups);
+      const many = groups.length > 1;
       actions.push(
         oldest >= 14
-          ? `You have been waiting${howLong(oldest)}${from.length ? ` on ${andList(from)}` : ''} for ${items}, without escalating. Put the request in writing with a date, or take it to whoever is above them.`
-          : `Put ${items} in writing${from.length ? ` to ${andList(from)}` : ''}, with the date you need ${notYet.length > 1 ? 'them' : 'it'} by.`,
+          ? (since
+            ? `You have been waiting ${onEach}${many ? ',' : ''} since ${since}, and you have not taken it any further. Put the request in writing with a date, or take it to whoever is above them.`
+            : `You have been waiting${howLong(oldest)} ${onEach}, and you have not taken it any further. Put the request in writing with a date, or take it to whoever is above them.`)
+          : groups.map((g) => `Put ${andList(g.items)} in writing${g.who ? ` to ${g.who}` : ''}, with the date you need ${g.items.length > 1 ? 'them' : 'it'} by.`).join(' '),
       );
       const kind = whatKindOfThing(notYet);
       if (kind) actions.push(kind);
     }
     if (escalated.length) {
       actions.push(
-        `You have escalated ${andList(escalated.map((d) => theThing(d.what)))} already. Put a date on when you need ${escalated.length > 1 ? 'them' : 'it'} by, and say what you will do if nothing arrives.`,
+        `You have already taken ${andList(escalated.map((d) => theThing(d.what, true)))} to somebody above them. Put a date on when you need ${escalated.length > 1 ? 'them' : 'it'} by, and say what you will do if nothing arrives.`,
       );
     }
   }
@@ -335,26 +413,29 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
    * three-period rule and is not put to somebody as a thing they keep doing.
    */
   const recurring = i.patterns
-    .filter((p) => p.periodsObserved >= 2 && !ALIGNMENT_FEED_ONLY_CODES.has(p.code) && LIBRARY.has(p.code))
+    .filter((p) => p.periodsObserved >= 2 && !ALIGNMENT_FEED_ONLY_CODES.has(p.code) && LIBRARY.has(p.code) && plainNameOf(p.code))
     .sort((a, b) => b.periodsObserved - a.periodsObserved)[0];
   const entry = recurring ? LIBRARY.get(recurring.code)! : null;
+  /* The plain name (decision 52), never `entry.signal`, which is the detector's own terse
+     description written for whoever reads the library, not for the person it is about. */
+  const plain = recurring ? plainNameOf(recurring.code) : null;
 
-  if (entry && recurring) {
+  if (entry && recurring && plain) {
     if (entry.probe?.trim()) actions.push(entry.probe.trim());
     return {
       aboutYou,
       /* Says where it comes from: the same shape came up in N of their own sessions. "Read across 3 sessions"
          read as a verdict handed down rather than a count of their own record (20 Sep 2026). */
-      showingUp: `${entry.signal} This came up in ${recurring.periodsObserved} of your sessions, not once.`,
+      showingUp: `${plain.name}. This came up in ${recurring.periodsObserved} of your check-ins, not just once.`,
       /* The map is CONTEXT for how this is said, not a sentence in it. See the service, which hands
          the map to the wording pass as context; the engine's claim is the stage and the recurrence. */
-      whyItMatters: `This is ${where} of ${about}. Something read once is an incident. Read across sessions it becomes what people expect of you, and it is far easier to change now than to argue with later.`,
+      whyItMatters: `${whereYouAre} Something read once is an incident. Read across sessions it becomes what people expect of you, and it is far easier to change now than to argue with later.`,
       /* All of them. The list can hold six and the pattern probe is pushed last, so a cap at three
          made the probe the first thing cut - the one line that was about the recurrence itself. The
          page shows the first three and the rest under "also"; nothing is dropped here. */
       beforeNextTime: actions,
       general: false,
-      role: roleBlock(map, pair),
+      role: roleOf(map, pair),
       whyNoRoleMap,
     };
   }
@@ -375,11 +456,11 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
     aboutYou,
     showingUp: null,
     whyItMatters: early
-      ? `This is ${where} of ${about}. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.`
-      : `This is ${where} of ${about}. Nothing has recurred often enough to call it a pattern, which is worth keeping that way.`,
+      ? `${whereYouAre} Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.`
+      : `${whereYouAre} Nothing has come up often enough yet to be called a pattern.`,
     beforeNextTime: actions,
     general: true,
-    role: roleBlock(map, pair),
+    role: roleOf(map, pair),
     whyNoRoleMap,
   };
 }

@@ -145,11 +145,22 @@ describe('the one door', () => {
     expect(undeclared).toEqual([]);
   });
 
+  /*
+   * CHANGED 26 SEPTEMBER 2026, AND ONLY THE STRING CHANGED. This looked for the literal
+   * `this.resend.emails.send`. The client is no longer built when the API starts - with the email
+   * key empty, as `.env.example` tells people to leave it, Resend refused the empty key and the
+   * whole API died before anything ran - so the call now reads `this.theResendClient().emails.send`
+   * and this went red on the rename while the thing it guards was untouched.
+   *
+   * Matched on `.emails.send` instead, which is the send itself and survives whatever holds the
+   * client. What is being checked is unchanged: the permission question comes first.
+   */
   it('and the door asks before it sends, not after', () => {
     const fn = service.slice(service.indexOf('private async sendEmail('));
     const asks = fn.indexOf('wouldTheyRatherNot');
-    const sends = fn.indexOf('this.resend.emails.send');
+    const sends = fn.indexOf('.emails.send');
     expect(asks).toBeGreaterThan(-1);
+    expect(sends).toBeGreaterThan(-1);
     expect(asks).toBeLessThan(sends);
   });
 

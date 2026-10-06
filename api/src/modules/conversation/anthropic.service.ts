@@ -502,7 +502,13 @@ export class AnthropicService implements OnApplicationBootstrap {
     return { conversation: this.conversationModel, reports: this.model };
   }
 
-  async respond(systemPrompt: string, history: ChatTurn[]): Promise<string> {
+  /**
+   * `options` is for callers that need a steadier answer than the default sampling gives, such as
+   * the pattern detector's confirming call (see the-detector-read-twice.ts and the long comment
+   * above `temperature` in extract() for why this is opt-in, not a change to what anybody already
+   * gets). Every existing caller passes nothing and keeps the model's own default behaviour.
+   */
+  async respond(systemPrompt: string, history: ChatTurn[], options: { temperature?: number; seed?: number } = {}): Promise<string> {
     const contents = history.map((t) => ({
       role: t.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: t.content }],
@@ -518,7 +524,13 @@ export class AnthropicService implements OnApplicationBootstrap {
           this.client.models.generateContent({
             model: this.conversationModel,
             contents,
-            config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens, thinkingConfig: { thinkingBudget: this.conversationThinkingBudget() } },
+            config: {
+              systemInstruction: systemPrompt,
+              maxOutputTokens: this.maxTokens,
+              thinkingConfig: { thinkingBudget: this.conversationThinkingBudget() },
+              ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
+              ...(options.seed !== undefined ? { seed: options.seed } : {}),
+            },
           }),
           A_CALL_WAITS,
           'Gemini respond() timed out',
@@ -586,7 +598,7 @@ export class AnthropicService implements OnApplicationBootstrap {
     systemPrompt: string,
     history: ChatTurn[],
     tool: { name: string; description: string; input_schema: any },
-    options: { thinkingBudget?: number; fast?: boolean; patient?: boolean } = {},
+    options: { thinkingBudget?: number; fast?: boolean; patient?: boolean; temperature?: number; seed?: number } = {},
   ): Promise<T | null> {
     const contents = history.map((t) => ({
       role: t.role === 'assistant' ? 'model' : 'user',
@@ -612,6 +624,33 @@ export class AnthropicService implements OnApplicationBootstrap {
           /* A patient read is a big one: eight thousand tokens is not a hundred organisations laid
              out in ten sections, and a truncated tool call comes back as an empty object. */
           maxOutputTokens: options.patient ? 32768 : 8192,
+          /*
+           * TEMPERATURE, WHICH NO CALLER SETS, AND THE MEASUREMENT THAT SAYS SO.
+           *
+           * Added to answer a fair question: a lead should get the same judgement twice from the
+           * same record, so would a lower temperature make the judgement steadier? Measured the
+           * only way that settles it - the same material, five samples, at the model's default
+           * and at zero, on five scenarios, scoring both how alike the answers were AND whether
+           * they still reached the right answer:
+           *
+           *   scenario         default: alike / right      temperature 0: alike / right
+           *   loans                38% / 5 of 5                35% / 5 of 5
+           *   pip                  45% / 3 of 5                57% / 0 of 5
+           *   contractreview       49% / 5 of 5                47% / 5 of 5
+           *   workplan             41% / 1 of 5                56% / 0 of 5
+           *   renewal              31% / 5 of 5                43% / 5 of 5
+           *
+           * Consistency rose about seven points. Correctness fell from 19 of 25 to 15 of 25, and
+           * on the performance-plan scenario the five answers became MORE alike and all five
+           * wrong: at zero it converged on "they are working to two different targets" every
+           * time, and stopped saying the target was never written down, which is the finding.
+           *
+           * A steadier wrong answer is worse than a varying right one, so nothing sets this. The
+           * option stays because it is what made the measurement possible; anybody switching it
+           * on owes the same two columns, not just the first.
+           */
+          ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
+          ...(options.seed !== undefined ? { seed: options.seed } : {}),
           ...(options.thinkingBudget !== undefined ? { thinkingConfig: { thinkingBudget: options.thinkingBudget } } : {}),
           tools: [{ functionDeclarations: [this.convertTool(tool)] }],
           toolConfig: {

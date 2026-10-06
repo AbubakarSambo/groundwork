@@ -30,6 +30,10 @@ export interface Target {
   name: string;
   target: number | null;
   ownerParticipantId?: string | null;
+  /** THE LEAD SAYS PLAINLY (decision 46, 29 September 2026), set when the target is made, never
+   * guessed from its wording - see GroundObjective.isADecisionAboutAPerson in schema.prisma. A
+   * target with this set is shown to the check-in's lead and nobody else. */
+  isADecisionAboutAPerson?: boolean;
 }
 
 /**
@@ -43,9 +47,16 @@ export function targetsFor(
   targets: Target[],
   readerParticipantId: string | null,
   whoSees: WhoSees,
-  opts: { isLead?: boolean } = {},
+  opts: { isLead?: boolean; seesEveryShare?: boolean } = {},
 ): { shown: Target[]; alsoSay: string | null } {
-  if (whoSees === 'everybody' || opts.isLead) return { shown: targets, alsoSay: null };
+  if (opts.isLead) return { shown: targets, alsoSay: null };
+  /* A decision the lead has to make about somebody is the lead's alone, whoever else reads (request
+     42, decision 46). Read off the field the lead set when the target was made, never guessed from
+     its wording - see Target.isADecisionAboutAPerson above. */
+  targets = targets.filter((t) => !t.isADecisionAboutAPerson);
+  /* An admin, the chief executive included, sees the figures: every person's share (decision 86,
+     which reverses that part of decision 73). Never the lead's decision about a person, above. */
+  if (whoSees === 'everybody' || opts.seesEveryShare) return { shown: targets, alsoSay: null };
 
   const unowned = targets.filter((t) => !t.ownerParticipantId);
   const mine = targets.filter((t) => t.ownerParticipantId && t.ownerParticipantId === readerParticipantId);

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { conversationApi } from '@/api/conversation'
+import './ui/gw-ui.css'
 
 /**
  * THE LINES TAKEN FROM WHAT YOU SAID, AS ROWS, WITH ONE PRESS TO SAY ONE IS WRONG.
@@ -28,12 +29,18 @@ export interface MyRow {
   documentSays?: string | null
 }
 
-const KIND: Record<string, string> = {
-  INTENT: 'what you are working on', COMMITMENT: 'a commitment', ASK: 'something you asked for',
+/**
+ * WHAT KIND OF LINE THIS IS, AS A SENTENCE. Was a bare noun phrase ("something you asked for")
+ * stitched to the quote and to "backed by a document" with a "·" and no space before it - "by 9
+ * October.· something you asked for· backed by a document" (U.9 re-review, item A). Each is now
+ * "This is {phrase}.", its own sentence.
+ */
+export const KIND: Record<string, string> = {
+  INTENT: 'This is what you are working on.', COMMITMENT: 'This is a commitment.', ASK: 'This is something you asked for.',
   /* A thing that happened. Without it this row read as the raw enum. */
-  PROGRESS: 'something you got done',
-  WORRY: 'a worry', TENSION: 'a tension', SUCCESS_DEFINITION: 'what good looks like',
-  TIMEFRAME: 'a timeframe', TOLERANCE: 'what you can live with', OPERATING_DIFFERENCE: 'how this is actually done',
+  PROGRESS: 'This is something you got done.',
+  WORRY: 'This is a worry.', TENSION: 'This is a tension.', SUCCESS_DEFINITION: 'This is what good looks like.',
+  TIMEFRAME: 'This is a timeframe.', TOLERANCE: 'This is what you can live with.', OPERATING_DIFFERENCE: 'This is how this is actually done.',
 }
 
 export function WhatWasTakenFromWhatYouSaid({ rows, groundId, sessionNumber }: {
@@ -58,14 +65,21 @@ export function WhatWasTakenFromWhatYouSaid({ rows, groundId, sessionNumber }: {
 
   return (
     <section style={{ marginTop: 16 }}>
-      <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 4 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-sub-d)', marginBottom: 4 }}>
         Lines taken from what you said
       </div>
       {/* Eleven identical 'Not what I said' buttons made the one that mattered invisible. One control opens them. */}
       <p style={{ margin: '0 0 8px', fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, maxWidth: '68ch' }}>
         Not what you typed. What the product took from it, and what every count on this page is built from.{' '}
         {!disputing ? (
-          <button type="button" onClick={() => setDisputing(true)} style={{ background: 'none', border: 'none', padding: 0, fontSize: 11.5, color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>
+          /*
+           * HAFSAH'S BUTTON-COUNT REVIEW (1 October 2026): THIS ONLY OPENS THE "NOT WHAT I SAID"
+           * LINKS BESIDE EACH ROW BELOW - IT NEVER NAVIGATES AND NEVER SENDS ANYTHING ITSELF. A
+           * boxed button here read as a second real action beside the page's own "Correct it", so
+           * it is now the shared quiet-text-link style (`.gwui-plain-link`), the same look it
+           * already had, just no longer counted as a second button.
+           */
+          <button type="button" onClick={() => setDisputing(true)} className="gwui-plain-link">
             Something here is not what I said
           </button>
         ) : 'Pick the line, and it stops counting.'}
@@ -82,10 +96,17 @@ export function WhatWasTakenFromWhatYouSaid({ rows, groundId, sessionNumber }: {
           <div key={r.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', fontSize: 12.5, lineHeight: 1.55 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <span style={{ color: r.disputedAt ? 'var(--gw-muted)' : 'var(--gw-text)', textDecoration: r.disputedAt ? 'line-through' : 'none' }}>{r.text}</span>
-              {/* A visible separator, not only a margin: read back off the page as "refers into.what you are working on". */}
-              <span style={{ color: 'var(--gw-muted)', fontSize: 11, marginLeft: 8 }}>· {KIND[r.type] ?? r.type.toLowerCase()}</span>
-              {r.disputedAt && <span style={{ color: 'var(--gw-muted)', fontSize: 11, marginLeft: 8 }}>· you said this is not what you said</span>}
-              {!r.disputedAt && r.documented && <span style={{ color: 'var(--gw-green-t)', fontSize: 11, marginLeft: 8 }}>· backed by a document</span>}
+              {/*
+                U.9 RE-REVIEW, ITEM A: A SENTENCE, NOT A ROW OF "·" JOINS.
+                "by 9 October.· something you asked for· backed by a document" read as a table row
+                with a missing space. Each fact is now its own sentence, in its own block below the
+                quote.
+              */}
+              <div style={{ color: 'var(--gw-muted)', fontSize: 11, marginTop: 2 }}>
+                {KIND[r.type] ?? `This is ${r.type.toLowerCase().replace(/_/g, ' ')}.`}
+                {!r.disputedAt && r.documented && ' A document backs it.'}
+                {r.disputedAt && ' You said this is not what you said.'}
+              </div>
               {!r.disputedAt && r.documentSays && !saidBefore && (
                 <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', marginTop: 3, lineHeight: 1.5 }}>
                   A document you can see reads differently: “{r.documentSays}”. Yours stands as you said it; your next check-in will ask which is current.

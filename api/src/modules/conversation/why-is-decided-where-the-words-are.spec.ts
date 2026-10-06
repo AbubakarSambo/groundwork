@@ -1,3 +1,4 @@
+import { theStreamedRouteRunsThePlainRoute } from './__fixtures__/the-streamed-route-is-the-plain-route';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -29,8 +30,10 @@ describe('the words never leave the conversation they were said in', () => {
   });
 
   it('both paths that persist a person\'s turn call it, so neither can drift', () => {
+    /* Changed 28 Sep 2026: the streamed route now runs sendMessage itself (the-streamed-route-is-the-plain-route), so a rule held on both paths is in sendMessage once, and the stream runs it. */
     const calls = CONVERSATION.match(/await this\.noteIfTheySaidWhy\(/g) ?? [];
-    expect(calls.length).toBe(2);
+    expect(calls.length).toBe(1);
+    expect(theStreamedRouteRunsThePlainRoute(CONVERSATION)).toBe(true);
     /* And every place a PERSON turn is written is one of them. */
     const writes = CONVERSATION.match(/role: TurnRole\.PERSON, content: message/g) ?? [];
     expect(writes.length).toBe(calls.length);

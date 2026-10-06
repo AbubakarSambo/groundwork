@@ -64,7 +64,10 @@ apiClient.interceptors.response.use(
       const isAuthEndpoint = authEndpoints.some(ep => url.includes(ep))
       // /enter and /pin were the org-code model's pages and are deleted - somebody
       // belonging to more than one organisation now picks one from the rail instead.
-      const onAuthPage = ['/auth'].some(p => window.location.pathname.startsWith(p))
+      /* "You're signed out" too: it has just ended the session itself, so a request still in flight
+         that comes back 401 there is not somebody timing out, and must not replace the page with
+         "you were signed out because you had been away". U.2. */
+      const onAuthPage = ['/auth', '/signout'].some(p => window.location.pathname.startsWith(p))
       if (!onAuthPage && !isAuthEndpoint) {
         /*
          * TO SIGN-IN, WITH WHERE THEY WERE — NOT OFF THE PRODUCT.

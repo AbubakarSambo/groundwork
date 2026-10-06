@@ -9,7 +9,11 @@ import { join } from 'path'
  * check-ins somebody is in; the nav item below it said the same word and went to a page of the same
  * thing. The page is not redundant - it holds what the rail does not show - but the name was.
  */
-const SHELL = readFileSync(join(__dirname, 'AppShell.tsx'), 'utf8')
+/* NAV_ITEMS moved out of AppShell.tsx into nav-items.tsx (group 1 rebuild), so a rebuilt page
+   (MorePage.tsx) can read `navItemsFor` without pulling in the rest of AppShell's own rendering -
+   see the-rebuilt-pages-use-only-the-new-parts.spec.ts. Behaviour is unchanged; only where the nav
+   item list itself is written moved, so this reads it there now. */
+const SHELL = readFileSync(join(__dirname, 'nav-items.tsx'), 'utf8')
 
 describe('two things are not both called check-ins', () => {
   it('the nav item says which check-ins it means', () => {
@@ -47,8 +51,19 @@ describe('one word per object, on the screens', () => {
     expect(read(rel)).not.toContain(gone)
   })
   it('and says the right thing instead', () => {
-    expect(read('chat/ChatPage.tsx')).toContain('Ready to finish this session?')
-    expect(read('report/SessionReportPage.tsx')).toContain('Start a new check-in')
+    /* Since U.8 the confirm panel is the prototype's end card (check-in-end-card.txt), and the one
+       press that finishes says "That’s right, finish". */
+    expect(read('chat/ChatPage.tsx')).toContain('<TheEndCard')
+    expect(readFileSync(join(__dirname, 'checkin', 'TheEndCard.tsx'), 'utf8')).toContain('That’s right, finish')
+    /*
+     * RELEASE WALKTHROUGH A, FIX 4: "START A NEW CHECK-IN" IS GONE FROM THIS PAGE, NOT RENAMED.
+     * This assertion used to pin the button's wording; the button itself opened `/grounds/new`, a
+     * brand-new, unrelated check-in, which most readers of their own report (a participant, almost
+     * always) have no way to start at all - and which neither of the prototype's own report screens
+     * (own-report.txt, one-session.txt) offers at the foot of a report. It is removed, not reworded,
+     * so there is no wording left here to pin.
+     */
+    expect(read('report/SessionReportPage.tsx')).not.toContain('Start a new check-in')
     expect(read('join/JoinPage.tsx')).toContain('Email me my link')
   })
 })

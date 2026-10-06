@@ -33,7 +33,10 @@ describe('waiting for the others', () => {
     const CHAT = read('..', 'chat', 'ChatPage.tsx')
     expect(CHAT).toContain('<WhoIsStillOut')
     const WHO = read('..', '..', 'components', 'gw', 'WhoIsStillOut.tsx')
-    expect(WHO).toContain('still to answer session')
+    /* U.8 REVIEW: "n people still to answer session N" (a count next to the word "session") became
+       a sentence naming who ("Baraka and Neema still have to answer."). What this test guards - that
+       the lead can see who is still out - is unweakened: it still names whoever has not answered. */
+    expect(WHO).toMatch(/still (has|have) to answer/)
     expect(WHO).toContain('Remind')
   })
 })
@@ -46,10 +49,13 @@ describe('the things that were said too often, or too loudly', () => {
 
   it('codes and billing are not setup questions', () => {
     /* Billing is the organisation's and has its own door; an access code is how somebody gets in,
-       so it sits with the control that adds people. */
+       so it sits with the control that adds people. Repointed (People and setup rebuild, 29 Sept):
+       "Who's in it" is now WhosInItRoster.tsx, rendered inside CheckInPeopleAndSetup.tsx's own
+       "Who's in it" heading - not a `<Fold title="Who is in it">` band on GroundAdminPage.tsx. */
     expect(ADMIN).not.toContain('Billing and seats')
-    const band = ADMIN.slice(ADMIN.indexOf('title="Who is in it"'), ADMIN.indexOf('</Fold>', ADMIN.indexOf('title="Who is in it"')))
-    expect(band).toContain('Or share an access code instead')
+    const ROSTER = read('..', '..', 'components', 'gw', 'WhosInItRoster.tsx')
+    expect(ROSTER).not.toContain('Billing and seats')
+    expect(ROSTER).toContain('Or share an access code instead')
   })
 
   it('the context read is gone entirely, which is the end of that thread', () => {

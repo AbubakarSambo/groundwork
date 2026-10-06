@@ -39,20 +39,56 @@ describe('waits are statuses', () => {
   const ALLOWED_BARE = ['pages/enter/EntryChatPage.tsx', 'pages/ops/', 'pages/admin/', 'pages/prompts/', 'components/gw/AppShell.tsx', 'pages/join/JoinPage.tsx', 'pages/join/JoinConfirmPage.tsx', 'pages/grounds/', 'pages/report/ReportPage.tsx', 'pages/settings/', 'pages/org/', 'pages/billing/', 'pages/auth/', 'components/']
   it('the loading lines this batch names sit on status elements', () => {
     const pins: [string, RegExp][] = [
-      ['pages/invite/InvitePage.tsx', /<div role="status"[^>]*>Loading invite…<\/div>/],
-      ['pages/report/SessionReportPage.tsx', /<div role="status" aria-live="polite"[^>]*>Getting your report\.\.\.<\/div>/],
-      ['pages/board/BoardPage.tsx', /<div role="status"[^>]*>Loading the board…<\/div>/],
-      ['pages/chat/ChatPage.tsx', /<div role="status"[^>]*>Opening your session…<\/div>/],
-      ['pages/report/ReportPage.tsx', /<div role="status" aria-live="polite" style=\{\{ background: 'var\(--gw-amber-bg\)'/],
+      /* U.20 (the invitation's rebuild): rebuilt from components/gw/ui, the loading line is now a
+         <p>, not a <div>, and says "Loading your invitation…" rather than the clipped "Loading
+         invite…" (CLAUDE.md: plain, full sentences) - still role="status", still the only thing on
+         the screen while the preview loads. */
+      ['pages/invite/InvitePage.tsx', /<p role="status"[^>]*>Loading your invitation…<\/p>/],
+      /* Group 3 drift list, piece 1 (1 October 2026): rebuilt from the shared `Note`, which renders a
+         <p>, not a <div>, and carries only `role="status"` - `aria-live="polite"` is implicit on that
+         role, so the explicit attribute was redundant and is not reproduced. Still the only thing on
+         the screen while the report loads. */
+      ['pages/report/SessionReportPage.tsx', /<Note role="status">Getting your report\.\.\.<\/Note>/],
+      /* U.20: the prototype's own word for this wait (F4-small-states/states.txt, "Getting the
+         board"), in place of the page's earlier "Loading the board…". */
+      ['pages/board/BoardPage.tsx', /<div role="status"[^>]*>Getting the board<\/div>/],
+      /* U.8 review: opening a session can take up to a minute, and after four seconds of silence
+         the status now also says so ("Getting your first question ready. This can take up to a
+         minute."), nested inside the same status element rather than a second live region - so
+         the pin no longer requires the div's only child to be the opening sentence. */
+      ['pages/chat/ChatPage.tsx', /<div role="status"[^>]*>\s*Opening your session…/],
     ]
+    /*
+     * ONE PIN RETIRED RATHER THAN TRANSLATED (1 October 2026).
+     *
+     * `ReportBody`'s "Picture forming - X of Y checked in for session N" status banner is deleted
+     * with the rest of `ReportBody` (`ReportPage.tsx`, not mounted by any route since the Report
+     * tab became a list of sessions - see the comment at the top of that file). The same fact (who
+     * has checked in, and for which session) is said on the live Report tab and on
+     * `TheSessionsReport.tsx`, but as plain rendered sentences rather than inside a status region,
+     * because the page loads it rather than polling it live. Whether a "picture forming" status
+     * region is still needed on the rebuilt surfaces is a product question, not a mechanical move,
+     * so it is left as a note for Hafsah rather than invented here.
+     */
     for (const [rel, re] of pins) expect(strip(readFileSync(path.join(SRC, rel), 'utf8'))).toMatch(re)
     void BUSY; void ALLOWED_BARE
   })
   it('the two message lists are live regions and the long report wait is a status', () => {
     const entry = strip(readFileSync(path.join(SRC, 'pages/enter/EntryChatPage.tsx'), 'utf8'))
     expect(entry.match(/ref=\{msgsRef\}\s*aria-live="polite"/g)?.length).toBe(2)
-    expect(entry).toMatch(/<div style=\{\{ marginBottom: 18 \}\} role="status" aria-live="polite">/)
-    expect(strip(readFileSync(path.join(SRC, 'pages/chat/ChatPage.tsx'), 'utf8'))).toMatch(/ref=\{msgsRef\}\s*aria-live="polite"/)
+    /* 4d-3: the generating-report wait moved from an inline `style={{ marginBottom: 18 }}` to the
+       named class `gwui-ec-savecard-status` (CLAUDE.md: no inline style props on a rebuilt range) -
+       the guarantee this checks, `role="status" aria-live="polite"`, is unchanged. */
+    expect(entry).toMatch(/<div className="gwui-ec-savecard-status" role="status" aria-live="polite">/)
+    /**
+     * ROUND 5, ITEM B: ChatPage.tsx's message list moved into ConversationCard.tsx's own scrolling
+     * body (components/gw/ui/ConversationCard.tsx), which sets `aria-live="polite"` unconditionally
+     * on that div - so the guarantee lives in the one shared part now, not per page. ChatPage.tsx
+     * itself just passes `bodyRef={msgsRef}`; the live-region attribute is no longer literally
+     * beside it in that file's own source.
+     */
+    expect(strip(readFileSync(path.join(SRC, 'pages/chat/ChatPage.tsx'), 'utf8'))).toMatch(/bodyRef=\{msgsRef\}/)
+    expect(strip(readFileSync(path.join(SRC, 'components/gw/ui/ConversationCard.tsx'), 'utf8'))).toMatch(/ref=\{bodyRef\}\s*aria-live="polite"/)
   })
   it('the one-time secret panels are alerts that take focus', () => {
     const integrations = strip(readFileSync(path.join(SRC, 'pages/org/IntegrationsPage.tsx'), 'utf8'))

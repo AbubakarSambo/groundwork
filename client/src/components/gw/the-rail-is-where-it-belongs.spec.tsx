@@ -47,10 +47,18 @@ describe('which pages stand alone', () => {
     expect(CODE).toMatch(/const showSidebar =[\s\S]*?!CHROMELESS\.includes\(location\.pathname\)/)
   })
 
-  it('and the entry flow is the one page that gets it without an account', () => {
-    // Named, so it reads as the deliberate exception it is rather than a loosened gate.
-    expect(CODE).toMatch(/const isEntryFlow = location\.pathname === '\/start'/)
-    expect(CODE).toMatch(/\(isAuthenticated \|\| isEntryFlow\)/)
+  it('and the entry flow no longer gets the rail without an account', () => {
+    /*
+     * GROUP 3 REVIEW, BATCH B (1 October): REVERSED. start.jpg, the prototype's own signed-out
+     * #/start, draws no sidebar at all - the `isEntryFlow` exception this test used to require
+     * (`(isAuthenticated || isEntryFlow)`) put a rail there that the prototype never draws: an
+     * "entry ground" with a navy "+ Start a check-in", a "Not saved yet" card and "Sign in" at the
+     * foot, none of which start.jpg shows. `showSidebar` is `isAuthenticated` again, and a
+     * signed-out /start keeps its own way to sign in on the page itself (EntryChatPage.tsx's
+     * `Mark` + "Sign in" row), not in a rail that should not be there.
+     */
+    expect(CODE).toMatch(/const showSidebar =\s*isAuthenticated && !CHROMELESS\.includes/)
+    expect(CODE).not.toMatch(/isAuthenticated \|\| isEntryFlow/)
   })
 
   it('every page reached from an email or the marketing site is on it', () => {

@@ -152,7 +152,15 @@ function serviceFor(scenario: GroundScenario, peopleWorkTogether: boolean | null
     groundParticipant: { findMany: jest.fn(async () => []) },
     patternDetection: { findMany: jest.fn(async () => []) },
   };
-  return new BoardService(prisma, /* wording pass: null ships the engine\'s own words */ { respond: async () => null } as any, { getSessionProgress: async () => null } as any) as any;
+  return new BoardService(prisma, /* wording pass: null ships the engine\'s own words */ { respond: async () => null } as any, { getSessionProgress: async () => null } as any,
+    /*
+     * The report's name pass, stubbed to hand the row back as it is. These cases are about
+     * SHAPING, not about names, and their fixtures are written in plain words with no party
+     * labels in them - so the real pass and this one produce the same text. The argument is
+     * required rather than defaulted in the service on purpose: a board that quietly skipped it
+     * would serve "the initiator" to the lead again, which is the defect it exists to stop.
+     */
+    { theReportAsItWasShared: (g: any) => g?.report ?? null } as any) as any;
 }
 
 describe('the service passes the lead\'s answer through', () => {
@@ -183,7 +191,7 @@ describe('the service passes the lead\'s answer through', () => {
     const svc = serviceFor(GroundScenario.COHORT_CHECK, false);
     const board = await svc.get('g1', 'u1');
     const read = board.contribution.find((r: any) => r.participantId === 'quiet');
-    expect(read.reason).toMatch(/no second account to check any of this against/i);
+    expect(read.reason).toMatch(/nobody else has said anything to check this against/i);
   });
 
   it('does not add that caveat when people can in fact corroborate each other', async () => {

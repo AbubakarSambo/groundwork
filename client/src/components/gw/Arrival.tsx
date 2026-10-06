@@ -1,4 +1,5 @@
 import { GroundworkLogo } from '@/components/gw/GroundworkLogo'
+import { AuthBrand } from '@/pages/auth/auth-kit'
 
 /**
  * ONE ARRIVAL. Stage 4, and the reachable part of W8-49.
@@ -21,15 +22,32 @@ import { GroundworkLogo } from '@/components/gw/GroundworkLogo'
  * all through one set of branches to save some markup. The consistency somebody actually sees is
  * here; the mechanics stay where they are tested.
  */
-export function Arrival({ title, sub, children, wide }: {
+export function Arrival({ title, sub, children, wide, plain }: {
   title?: string
   sub?: string
   children: React.ReactNode
   /** Forms need the room; a one-line "signing you in" does not. */
   wide?: boolean
+  /**
+   * THE PROTOTYPE'S OWN LOOK FOR THE INVITATION (A3, join-invite.jpg; U.3 review): the cream page, the
+   * small Groundwork mark at the top of one narrow column, and no header band.
+   */
+  plain?: boolean
 }) {
+  if (plain) {
+    return (
+      <div className="gw-arrival-plain">
+        <div className="gw-arrival-plain-col">
+          <AuthBrand />
+          {title && <h1 className="gw-ttl">{title}</h1>}
+          {sub && <div className="gw-sub-t">{sub}</div>}
+          {children}
+        </div>
+      </div>
+    )
+  }
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-page)' }}>
       <div className="gw-hdr">
         <GroundworkLogo />
       </div>

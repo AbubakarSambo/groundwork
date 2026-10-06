@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
 import { toast } from 'sonner'
-import { Sec } from '@/components/gw/kit'
+import { Section } from '@/components/gw/ui'
 
 /**
  * WHAT YOU SAY YOU DELIVERED. The half of the record that did not exist.
@@ -70,7 +70,10 @@ export function DeliveredPanel({
         uppercase grey section labels had a single shouting exception in the middle of it. Nothing
         about this band is more important than the expectations above it - it is the answer to them.
       */}
-      <Sec title="What you delivered" src="yours, against each expectation" />
+      {/* REVIEW ROUND 3, "YOUR WORK": THE PROTOTYPE'S OWN WORDS (my-record.txt) - "say" matters
+          here (see the comment at the top of this file: this is a claim waiting to be asked
+          about, never the record itself), which "What you delivered" alone dropped. */}
+      <Section heading="What you say you delivered" note="Your list, with what shows each one" />
 
       {/*
         THE CONTENT COMES FIRST AND THE FORM FOLDS AWAY.
@@ -96,7 +99,7 @@ export function DeliveredPanel({
           >
             {/* Work nobody asked for belongs here too. It is exactly the contribution a report
                 built only from stated expectations cannot see. */}
-            <option value="">Something nobody asked for</option>
+            <option value="">Something you did that nobody asked for</option>
             {expectations.map(e => (
               <option key={e.id} value={e.id}>{e.text}</option>
             ))}
@@ -112,7 +115,7 @@ export function DeliveredPanel({
         <input
           value={evidence}
           onChange={e => setEvidence(e.target.value)}
-          placeholder="Where anyone can see it - a link, a document, a date"
+          placeholder="Where someone can see it, for example a link, a document or a date"
           style={{ padding: '9px 11px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none' }}
         />
         <div>
@@ -172,8 +175,8 @@ export function DeliveredPanel({
         thing it is about, in one line.
       */}
       <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, marginTop: 9 }}>
-        This is not yours. It reaches your next session as something to ask about, and what
-        you say under questioning is what becomes the record.
+        This goes to your next check-in, which will ask you about it. What you say when it does
+        is what becomes the record.
       </div>
     </div>
   )

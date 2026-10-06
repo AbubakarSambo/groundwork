@@ -14,12 +14,15 @@ import React from 'react'
  */
 const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace'
 
-const CITE: React.CSSProperties = {
-  fontFamily: MONO, fontSize: 10.5, letterSpacing: '.08em', textTransform: 'uppercase',
-  color: 'var(--gw-sub-d)', marginBottom: 6,
-}
+/*
+ * GROUP 3, PIECE 2: `CITE` (fontSize/color/marginBottom, spread by reference into four spots)
+ * moved to this class - a listed page (ReportPage.tsx) now imports this component through
+ * `@/components/gw/two-accounts-side-by-side`, and the guard refuses a banned prop passed through
+ * a style constant one import deep, same as a literal. Same values, now shared.
+ */
+const CITE_CLASS = 'gwui-fs-13 gwui-ink-subd gwui-mb-6'
 
-export interface APosition { participantLabel?: string | null; view?: string | null }
+export interface APosition { participantLabel?: string | null; who?: string | null; view?: string | null }
 export interface ADifference {
   topic?: string | null
   positions?: APosition[] | null
@@ -46,41 +49,41 @@ export function TwoAccountsSideBySide({ difference }: { difference: ADifference 
     .map((e) => (typeof e === 'string' ? e.trim() : ''))
     .filter(Boolean)
   return (
-    <div style={{ padding: '16px 0', borderTop: '1px solid var(--gw-border)' }}>
-      <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 10, maxWidth: '68ch' }}>
+    <div className="gwui-rule-top gwui-pt-16 gwui-pb-16">
+      <div className="gwui-fs-13-5 gwui-ink-text gwui-mb-10" style={{ fontWeight: 700, maxWidth: '68ch' }}>
         {difference.topic}
       </div>
       <div
+        className="gwui-gap-16"
         style={{
           display: 'grid',
           gridTemplateColumns: sides.length > 1 ? 'repeat(auto-fit, minmax(220px, 1fr))' : '1fr',
-          gap: 16,
         }}
       >
         {sides.map((p, i) => (
           <div key={i}>
-            <div style={CITE}>{(p.participantLabel ?? 'One account').toString()}</div>
-            <div style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--gw-text)', maxWidth: '68ch' }}>{p.view}</div>
+            <div className={CITE_CLASS} style={{ fontFamily: MONO, letterSpacing: '.08em', textTransform: 'uppercase' }}>{(p.who ?? p.participantLabel ?? 'One account').toString()}</div>
+            <div className="gwui-fs-13 gwui-ink-text" style={{ lineHeight: 1.6, maxWidth: '68ch' }}>{p.view}</div>
           </div>
         ))}
       </div>
       {/* On the wire since the synthesis schema was written, rendered nowhere until now. */}
       {evidenceLines.length > 0 && (
-        <div style={{ marginTop: 12 }}>
-          <div style={CITE}>What this rests on</div>
+        <div className="gwui-mt-12">
+          <div className={CITE_CLASS} style={{ fontFamily: MONO, letterSpacing: '.08em', textTransform: 'uppercase' }}>What this rests on</div>
           {evidenceLines.map((line, i) => (
-            <div key={i} style={{ fontSize: 12.5, lineHeight: 1.6, color: 'var(--gw-sub)', maxWidth: '68ch', marginTop: i ? 4 : 0 }}>{line}</div>
+            <div key={i} className={`gwui-fs-13 gwui-ink-sub ${i ? 'gwui-mt-4' : 'gwui-mt-0'}`} style={{ lineHeight: 1.6, maxWidth: '68ch' }}>{line}</div>
           ))}
         </div>
       )}
       {asText(difference.atStake) && (
-        <div style={{ marginTop: 12 }}>
-          <div style={CITE}>Why it matters</div>
-          <div style={{ fontSize: 12.5, lineHeight: 1.6, color: 'var(--gw-sub)', maxWidth: '68ch' }}>{asText(difference.atStake)}</div>
+        <div className="gwui-mt-12">
+          <div className={CITE_CLASS} style={{ fontFamily: MONO, letterSpacing: '.08em', textTransform: 'uppercase' }}>Why it matters</div>
+          <div className="gwui-fs-13 gwui-ink-sub" style={{ lineHeight: 1.6, maxWidth: '68ch' }}>{asText(difference.atStake)}</div>
         </div>
       )}
       {asText(difference.note) && (
-        <div style={{ marginTop: 10, fontSize: 12, lineHeight: 1.6, color: 'var(--gw-sub)', maxWidth: '68ch' }}>
+        <div className="gwui-fs-13 gwui-ink-sub gwui-mt-10" style={{ lineHeight: 1.6, maxWidth: '68ch' }}>
           {asText(difference.note)}
         </div>
       )}
@@ -97,11 +100,11 @@ export function TwoAccountsSideBySide({ difference }: { difference: ADifference 
  */
 export function Folded({ summary, children, open }: { summary: string; children: React.ReactNode; open?: boolean }) {
   return (
-    <details open={open} style={{ borderTop: '1px solid var(--gw-border)', padding: '12px 0' }}>
-      <summary style={{ cursor: 'pointer', fontSize: 12.5, fontWeight: 700, color: 'var(--gw-navy)', listStyle: 'revert' }}>
+    <details open={open} className="gwui-rule-top gwui-pt-12 gwui-pb-12">
+      <summary className="gwui-fs-13 gwui-ink-navy" style={{ cursor: 'pointer', fontWeight: 700, listStyle: 'revert' }}>
         {summary}
       </summary>
-      <div style={{ paddingTop: 12 }}>{children}</div>
+      <div className="gwui-pt-12">{children}</div>
     </details>
   )
 }

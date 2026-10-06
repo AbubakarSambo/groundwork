@@ -183,6 +183,7 @@ export type BoardSection =
    */
   | 'whatTheRoomIsAbout'
   | 'startingState'
+  | 'changeSinceLast'
   | 'divergence'
   | 'whoOwnsWhat'
   | 'dependencies'
@@ -251,7 +252,9 @@ export const FAMILY_SECTIONS: Record<BoardFamily, BoardSection[]> = {
     // decision their manager owes them. A live run recorded two real handoffs on
     // a new-hire ground and the board had nowhere to put them, so the manager's
     // own slippage was the one thing invisible on a page about the new person.
-    'phaseSpine', 'objectives', 'dependencies', 'checkInGrid', 'divergence', 'contribution',
+    'phaseSpine', 'objectives', 'startingState', 'changeSinceLast', 'dependencies', 'checkInGrid', 'divergence', 'contribution',
+    /* What keeps coming up, on the pattern's own timing (decision 86, item 1): the person first, then the lead (request 123). */
+    'patterns',
   ],
   [BoardFamily.EVALUATION]: [
     'objectives', 'checkInGrid', 'divergence',
@@ -511,6 +514,8 @@ export function defaultModeFor(scenario: GroundScenario): GroundMode {
 export const BOARD_WHITELIST = [
   'sharedPicture',
   'agreements',
+  /* How each agreement is known (week 6b), beside the agreements themselves. A mark, never a rating. */
+  'agreementMarks',
   'divergences',
   'centralQuestion',
   'engagement',

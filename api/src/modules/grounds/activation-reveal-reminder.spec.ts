@@ -56,4 +56,29 @@ describe('#4 reveal reminder: nudges a participant sitting on PENDING activation
     expect(sentTo).toEqual([]);
     expect(updated).toHaveLength(0);
   });
+
+  /*
+   * U.10 REVIEW: "Your report for 'Sales team, Q3' is ready to view" told Faraji this before he
+   * had checked in at all - the query only asked whether the ground's report had been released,
+   * never whether this participant had answered anything. A reveal reminder is about a party's
+   * OWN report being ready, and a party who has never checked in has no report of their own yet.
+   */
+  it('only queries participants who have completed at least one check-in', async () => {
+    const calls: any[] = [];
+    const prisma: any = {
+      withAdvisoryLock: async (_k: number, fn: () => Promise<void>) => { await fn(); return true; },
+      groundParticipant: {
+        findMany: jest.fn(async (args: any) => { calls.push(args); return []; }),
+        update: jest.fn(async () => ({})),
+      },
+      ground: { findMany: jest.fn(async () => []) },
+    };
+    const email: any = { sendActivationRevealReminder: jest.fn(async () => {}) };
+    const config: any = { get: () => 'http://localhost:5173' };
+    const events: any = { emit: jest.fn() };
+    const service = new GroundsCron(prisma, email, config, events, {} as any, {} as any, {} as any);
+    await service.sendReminders();
+    const revealCall = calls.find((c) => c.where.reportActivations);
+    expect(revealCall.where.checkIns).toEqual({ some: { status: 'COMPLETED' } });
+  });
 });

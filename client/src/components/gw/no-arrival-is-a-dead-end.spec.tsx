@@ -46,7 +46,9 @@ describe('the shared failed-link state', () => {
      * names who can actually help.
      */
     renderProblem('invite')
-    expect(screen.getByText(/Ask whoever invited you to send a new one/)).toBeTruthy()
+    /* U.20 eighth round (Hafsah's re-review): "Ask whoever invited you…" is now two full
+       sentences, "Ask the person who invited you to send a new one. They can do that…" */
+    expect(screen.getByText(/Ask the person who invited you to send a new one/)).toBeTruthy()
     expect(screen.getByRole('button', { name: /Sign in instead/ })).toBeTruthy()
   })
 
@@ -71,7 +73,9 @@ describe('none of the arrival pages rolls its own', () => {
   for (const rel of ARRIVALS) {
     it(`${rel.split('/').pop()} uses the shared state`, () => {
       const src = readFileSync(join(SRC, rel), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
-      expect(src).toContain('LinkProblem')
+      /* U.2 review: the sign-in link's dead state is the account card's "That link didn’t work"
+         (LinkDidNotWork), which has its way out on it too: a box to ask for a new link. */
+      expect(src).toMatch(/LinkProblem|LinkDidNotWork/)
     })
   }
 

@@ -36,12 +36,29 @@ import { whichSessionIsThisCheckInOn } from '@/lib/which-session-are-we-on'
 
 const SRC = readFileSync(join(__dirname, '../board/BoardPage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
-/** The overview tab's resolution panel, with the condition in front of it. */
-const BLOCK = (() => {
-  const at = SRC.indexOf('<ResolutionPanel')
-  if (at === -1) throw new Error('ResolutionPanel is no longer rendered anywhere.')
-  return SRC.slice(Math.max(0, at - 1400), at + 200)
+/**
+ * WHERE THE RUN IS, AND EVERY PANEL THAT READS IT (U.11).
+ *
+ * The arithmetic used to sit inline in front of the one `<ResolutionPanel` on the board, so this
+ * read the 1400 characters before it. U.11 put a second panel at the top of the board (how it ended,
+ * and "It’s yours to decide how this ends." for the lead), so the arithmetic moved into
+ * `whereTheRunIs()`, read once, and both panels are handed its answer. Every check below still holds;
+ * each is now made where the code lives, and against every panel rather than the first one.
+ */
+const HELPER = (() => {
+  const at = SRC.indexOf('function whereTheRunIs(')
+  if (at === -1) throw new Error('whereTheRunIs is gone from BoardPage.tsx.')
+  const end = SRC.indexOf('\n}\n', at)
+  return SRC.slice(at, end + 2)
 })()
+
+/** Every `<ResolutionPanel ... />` on the board, whole. */
+const PANELS_ON_THE_BOARD = [...SRC.matchAll(/<ResolutionPanel[\s\S]*?\/>/g)].map((m) => m[0])
+
+/** The one line that reads where the run is, which every panel's `nearTheEnd` comes from. */
+const READ_ONCE = SRC.match(/const \{[^}]*\bnearTheEnd\b[^}]*\} = whereTheRunIs\(data, groundForSignals\)/)?.[0] ?? ''
+
+const BLOCK = HELPER + '\n' + READ_ONCE
 
 const PANEL = readFileSync(join(__dirname, '../../components/gw/ResolutionPanel.tsx'), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
@@ -49,7 +66,9 @@ const PANEL = readFileSync(join(__dirname, '../../components/gw/ResolutionPanel.
 describe('the resolution panel', () => {
   it('is gated, not unconditional', () => {
     // THE FIX. Without a condition it renders on day one of every ground.
-    expect(BLOCK).toMatch(/nearTheEnd=\{nearTheEnd\}/)
+    expect(READ_ONCE).not.toBe('')
+    expect(PANELS_ON_THE_BOARD.length).toBeGreaterThanOrEqual(2)
+    for (const panel of PANELS_ON_THE_BOARD) expect(panel).toMatch(/nearTheEnd=\{nearTheEnd\}/)
     expect(PANEL).toMatch(/nearTheEnd === false/)
   })
 

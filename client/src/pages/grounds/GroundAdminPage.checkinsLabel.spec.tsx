@@ -62,7 +62,11 @@ describe('BUG7: admin check-ins list labels each row by participant', () => {
     // role. It was "Sessions" here and "My record" there, which is the same tab named twice.
     // Originally: the conversation tab is the one called Check-in,
     // because that is the word the emails and buttons use. W13-8.
-    fireEvent.click(screen.getByRole('button', { name: 'Sessions' }))
+    //
+    // REVIEW ROUND 3, "YOUR WORK" REBUILD: "Sessions" is a quiet link inside My work now
+    // ("Who has answered" - see `onSeeRoster` in YourWork.tsx), not a sub-tab.
+    fireEvent.click(screen.getByRole('tab', { name: 'My work' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Who has answered' }))
     await waitFor(() => {
       /**
        * BUG7 IN ITS NEW FORM. The bug was that every row showed the same person, so a lead could not

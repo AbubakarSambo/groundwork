@@ -1,12 +1,17 @@
-import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, Optional, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { readsAsAnAdmin, WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS } from '../grounds/who-may-read-this-check-in';
 import { PrismaService } from '../prisma/prisma.service';
 import { IntelligenceService } from '../intelligence';
 import { ReportsService } from '../reports';
 import { EmailService } from '../email/email.service';
 import { endStatesFor, isValidEndState, closingNeedsEveryone } from './end-states';
 import { GroundStatus, PartyType } from '@prisma/client';
-import { labelsForParties, namesVisibleTo, displayName } from '../reports/party-labels';
+import { SuggestionsService } from '../suggestions/suggestions.service';
+import { ReviewsProposedService } from '../suites/the-reviews-proposed.service';
+import { theEndingPageFor } from './what-the-ending-page-reads';
+import { whoTheEndingIsAbout } from './who-the-ending-is-about';
+import { labelsForParties, namesVisibleTo, displayName, plainWordsByPerson, atTheStart } from '../reports/party-labels';
 
 /**
  * Resolution. A ground closes only when every ACTIVE party confirms the SAME
@@ -30,6 +35,8 @@ export class ResolutionService {
     private reports: ReportsService,
     private email: EmailService,
     private config: ConfigService,
+    @Optional() private suggestions?: SuggestionsService,
+    @Optional() private reviewsProposed?: ReviewsProposedService,
   ) {}
 
   /**
@@ -40,17 +47,23 @@ export class ResolutionService {
    * over a check-in that had ended.
    */
   async get(groundId: string, userId: string) {
-    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { id: true, organizationId: true, initiatorId: true } });
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { id: true, organizationId: true, initiatorId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
+    });
     if (!ground) throw new NotFoundException('Check-in not found');
     const isParty = !!(await this.prisma.groundParticipant.findFirst({ where: { groundId, userId }, select: { id: true } }));
     if (!isParty) {
       const admin = await this.prisma.user.findFirst({
         where: { id: userId, organizationId: ground.organizationId, role: 'ADMIN' },
-        select: { id: true },
+        select: { role: true, organizationId: true },
       });
-      if (!admin) throw new ForbiddenException('You are not part of this check-in.');
+      /* An admin reads the outcome of a performance plan, a promotion or a renewal only when given access
+         (decision 5, request 78), or when asked to approve it (decision 75, item 2); otherwise it is as if
+         there were no such check-in. Reading only: proposing and confirming below are unchanged. */
+      if (!admin || !readsAsAnAdmin({ ...admin, userId }, ground)) throw new ForbiddenException('You are not part of this check-in.');
     }
-    return this.buildState(groundId, userId);
+    return { ...(await this.buildState(groundId, userId)), theEndingPage: await theEndingPageFor({ prisma: this.prisma, suggestions: this.suggestions }, groundId, userId) };
   }
 
   /**
@@ -59,7 +72,7 @@ export class ResolutionService {
    * they all chose the same end state. If they diverge, the divergence is
    * surfaced (in the returned state) and the ground stays open.
    */
-  async propose(groundId: string, userId: string, endState: string) {
+  async propose(groundId: string, userId: string, endState: string, reason?: string) {
     const { ground, participant } = await this.assertParty(groundId, userId);
 
     if (ground.status === GroundStatus.CLOSED || ground.status === GroundStatus.RESOLVED) {
@@ -90,6 +103,21 @@ export class ResolutionService {
       );
     }
 
+    /**
+     * A PERSON DECIDES, GIVING A REASON (decisions rule 6, U.11).
+     *
+     * The lead's answer closes the check-in, so it is the decision, and a decision is never recorded
+     * without why. The people in the check-in read the reason with the outcome ("Kwame reads this
+     * with the outcome."). Checked here, not only on the screen, so no other way in can close a
+     * check-in on a bare outcome.
+     */
+    const why = (reason ?? '').trim();
+    if (!why) {
+      throw new BadRequestException(
+        'Say why, in a sentence or two. The people in this check-in read it with the outcome.',
+      );
+    }
+
     // GW-16: detect a proposal change BEFORE upserting so we can clear stale
     // confirmations. Silent stale confirmations on a superseded end state would
     // produce a false consensus - any party that already confirmed must re-confirm
@@ -104,8 +132,8 @@ export class ResolutionService {
     // live in ResolutionConfirmation.
     const resolution = await this.prisma.resolution.upsert({
       where: { groundId },
-      create: { groundId, endState },
-      update: { endState },
+      create: { groundId, endState, reason: why },
+      update: { endState, reason: why },
     });
 
     if (endStateIsChanging) {
@@ -164,7 +192,7 @@ export class ResolutionService {
       this.logger.warn(`Resolution on ${groundId} did not close: ${chosenStates.size} state(s) from ${confirmations.length} answer(s).`);
     }
 
-    return this.buildState(groundId);
+    return this.buildState(groundId, userId);
   }
 
   /**
@@ -228,13 +256,21 @@ export class ResolutionService {
     // Notify the other active parties.
     const active = await this.prisma.groundParticipant.findMany({
       where: { groundId, userId: { not: null } },
-      select: { id: true, email: true, roleAsDescribed: true },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, email: true, partyType: true, createdAt: true, nameGiven: true, user: { select: { firstName: true, lastName: true, email: true } } },
     });
     /**
      * The eighth hand-written name chain. Same shape as the others: the role, else a raw address,
      * with the person's actual NAME never consulted - and this one goes out in an email.
+     *
+     * AND WITH NO NAME, NEITHER THE ROLE NOR THE ADDRESS. Request 36, 27 September 2026. The role on
+     * the row is the lead's own description of the person, which can hold the lead's private words,
+     * and this email goes to everybody else in the check-in. The address is not theirs to be shown to
+     * a peer either (see `displayName`). With no name, they are what every surface calls them
+     * (plainWordsByPerson): the one who proposes is the lead, so "The lead suggested how to wrap this up".
      */
-    const proposerLabel = displayName(participant as any) ?? participant.roleAsDescribed?.trim() ?? participant.email;
+    const proposerLabel = displayName(participant as any)
+      ?? atTheStart(plainWordsByPerson([participant as any]).get(participant.id) ?? 'a colleague');
     const frontend = this.config.get<string>('resend.frontendUrl') || '';
     /* The ground page: `/grounds/:id/resolution` has never been a client route, so both of
        these invitations to settle an end state landed on the not-found page. The panel that
@@ -244,7 +280,8 @@ export class ResolutionService {
     const others = active.filter((p) => p.id !== participant.id);
     for (const p of others) {
       await this.email
-        .sendResolutionProposal(p.email, proposerLabel, proposedEndState, groundUrl)
+        .sendResolutionProposal(p.email, proposerLabel, proposedEndState, groundUrl, ground.scenario,
+          whoTheEndingIsAbout(active as any, namesVisibleTo(p.id, active as any), p.id))
         .catch((err: any) =>
           this.logger.error(`Counter-proposal email failed for participant ${p.id}: ${err.message}`),
         );
@@ -288,7 +325,10 @@ export class ResolutionService {
     // GW-50: close-confirmation email to all parties simultaneously.
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { label: true, participants: { select: { email: true } } },
+      select: {
+        label: true, scenario: true,
+        participants: { orderBy: { createdAt: 'asc' }, select: { id: true, email: true, partyType: true, createdAt: true, nameGiven: true, user: { select: { firstName: true, lastName: true, email: true } } } },
+      },
     });
     if (ground) {
       const frontend = this.config.get<string>('resend.frontendUrl') || '';
@@ -296,11 +336,20 @@ export class ResolutionService {
       await Promise.all(
         ground.participants.map((p) =>
           this.email
-            .sendGroundClosed(p.email, ground.label, endState, groundUrl)
+            /* Each person reads the ending as it is said to them: the person leaving reads "Your role", the
+               lead reads their name, and nobody reads a name the check-in does not show them (request 123 item 8). */
+            .sendGroundClosed(p.email, ground.label, endState, groundUrl, ground.scenario,
+              whoTheEndingIsAbout(ground.participants as any, namesVisibleTo(p.id, ground.participants as any), p.id))
             .catch((err: any) => this.logger.error(`Close email failed for ground ${groundId}: ${err.message}`)),
         ),
       );
     }
+
+    /* When the check-in was about one person and they carry on, a review is PROPOSED to whoever runs
+       reviews. Only their yes starts it, and nothing goes to the person. Best-effort, like the rest. */
+    await this.reviewsProposed?.whenACheckInEnds(groundId).catch((err: any) =>
+      this.logger.error(`Proposing a review after ground ${groundId} closed failed: ${err?.message}`),
+    );
 
     this.logger.log(`Ground ${groundId} closed with end state ${endState}. Billing stopped.`);
   }
@@ -327,7 +376,6 @@ export class ResolutionService {
         userId: true,
         partyType: true,
         createdAt: true,
-        roleAsDescribed: true,
         /** For `labelsForParties`, which reads the name before anything else. */
         user: { select: { firstName: true, lastName: true, email: true } },
       },
@@ -373,13 +421,26 @@ export class ResolutionService {
     });
 
     return {
+      /**
+       * The outcome, and why, once it is decided (U.11). `reason` is the lead's own words, written
+       * for the people in the check-in to read with the outcome (decisions rule 6). This read is
+       * served only to a party or an admin of the organisation - see `get` - so nobody else reads it.
+       * The label and the name are the screen's: this carries the stored value and the reason only.
+       */
       resolution: resolution
-        ? { id: resolution.id, groundId, endState: resolution.endState, closedAt: resolution.closedAt }
+        ? {
+            id: resolution.id,
+            groundId,
+            endState: resolution.endState,
+            closedAt: resolution.closedAt,
+            reason: resolution.closedAt ? (resolution.reason ?? null) : null,
+          }
         : null,
       confirmations,
       confirmedCount: confirmations.filter((c) => c.confirmed).length,
       totalActive: active.length,
-      options: endStatesFor(ground.scenario),
+      /* The ending about a person leaving names them, through the same names this panel reads (request 123 item 8). */
+      options: endStatesFor(ground.scenario, whoTheEndingIsAbout(active as any, names, viewer?.id ?? null)),
       groundStatus: ground.status,
       /**
        * Who closes this ground, so the screen can stop asking the wrong person.
@@ -392,6 +453,11 @@ export class ResolutionService {
        */
       leadDecides: !closingNeedsEveryone(ground.scenario),
       viewerIsLead: viewerUserId ? ground.initiatorId === viewerUserId : false,
+      /**
+       * Whether the reader is in the check-in at all. An admin who only reads it has no account of
+       * their own on it, so the screen must not tell them "your account is kept".
+       */
+      viewerIsParty: !!viewer,
     };
   }
 

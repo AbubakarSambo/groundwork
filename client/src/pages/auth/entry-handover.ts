@@ -21,6 +21,23 @@
 const COMMIT_KEY = 'gw_commit_payload'
 const SESSION_KEY = 'gw_entry_session'
 const GOOGLE_KEY = 'gw_entry_pending_commit'
+/**
+ * WHICH SETUP THIS IS (U.6 review). One key per setup, kept while it is being set up and saved, so a
+ * retried save is known as the same setup; gone once its check-in exists, so the next setup has its
+ * own. The server tells a replay from a second check-in by this, never by the name.
+ */
+export const SETUP_KEY = 'gw_setup_key'
+export function theSetupKey(): string {
+  try {
+    const had = localStorage.getItem(SETUP_KEY)
+    if (had) return had
+    const made = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+    localStorage.setItem(SETUP_KEY, made)
+    return made
+  } catch {
+    return `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  }
+}
 
 export function loadEntryHandover(): any | null {
   try {
@@ -58,7 +75,7 @@ export function loadEntryHandover(): any | null {
 
 /** Called only once a ground exists. Before that, every one of these is the only copy. */
 export function clearEntryHandover() {
-  for (const k of [COMMIT_KEY, SESSION_KEY, GOOGLE_KEY, 'gw_draft_token']) {
+  for (const k of [COMMIT_KEY, SESSION_KEY, GOOGLE_KEY, 'gw_draft_token', SETUP_KEY]) {
     localStorage.removeItem(k)
   }
 }

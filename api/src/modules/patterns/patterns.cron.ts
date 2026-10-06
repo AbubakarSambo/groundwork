@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { onceAcrossCopies, theDay } from '../prisma/once-across-copies';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { PatternsService } from './patterns.service';
@@ -27,6 +28,11 @@ export class PatternsCron {
   // pattern-detection system, so it gets the same explicit pin.
   @Cron(CronExpression.EVERY_DAY_AT_2AM, { timeZone: 'UTC' })
   async sweep() {
+    /* Once for its time across every copy of the API (decision 74, item 7). */
+    await onceAcrossCopies(this.prisma, 'pattern-backstop-sweep', theDay(), () => this.sweepHere());
+  }
+
+  private async sweepHere() {
     const pending = await this.prisma.checkIn.findMany({
       where: {
         status: CheckInStatus.COMPLETED,

@@ -8,7 +8,7 @@ import { EntryService } from './entry.service';
 import { TheOpenLinkService } from './the-open-link.service';
 import { A_ROOM_MAY_START_PER_MINUTE, A_PERSON_MAY_SAY_PER_MINUTE } from '../../common/guards/a-room-of-people-is-not-one-person';
 import { HOW_MANY_PEOPLE_ONE_CHECK_IN_HOLDS } from './how-many-people-one-check-in-holds';
-import { IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, ValidateNested, ArrayMaxSize, IsObject, Min, Max } from 'class-validator';
+import { IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, ValidateNested, ArrayMaxSize, IsObject, Min, Max, ValidateIf } from 'class-validator';
 import { Type } from 'class-transformer';
 
 /**
@@ -146,6 +146,16 @@ class EntryClassifyDto {
   @IsString()
   @MaxLength(120)
   mode?: string;
+
+  /**
+   * The situation the lead chose from the list, as its key (for example "PIP"). When it is one, the
+   * classifier keeps it: only the lead switches a situation she chose, with "It's something else"
+   * (request 35).
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  picked?: string;
 }
 
 /**
@@ -205,7 +215,9 @@ class EntryReportDto {
 }
 
 class ContributorDto {
-  @IsString() email: string;
+  /* Blank when a colleague was picked by id (U.4); the server looks the address up before anything else. */
+  @ValidateIf((o: ContributorDto) => !o.colleagueId) @IsString() email: string;
+  @IsOptional() @IsString() @MaxLength(64) colleagueId?: string;
   @IsOptional() @IsString() context?: string;
   @IsOptional() @IsString() inviteToken?: string;
   @IsOptional() @IsString() note?: string;
@@ -314,6 +326,10 @@ class EntryReportSummaryDto {
   @IsOptional() @IsString() @MaxLength(2000)
   alsoCameUpNote?: string | null;
 
+  /* The anchor scenario's reveal, as the screen read it at the end of the conversation (request 149). Kept with the report the lead read; it is built from her own turns. */
+  @IsOptional() @IsObject()
+  leadsReveal?: Record<string, any> | null;
+
   @IsOptional() @IsArray() @ArrayMaxSize(50)
   @ValidateNested({ each: true }) @Type(() => SuggestedPartyDto)
   suggestedParties?: SuggestedPartyDto[];
@@ -328,6 +344,12 @@ export class EntryDocumentDto {
 
 export class EntryCommitDto {
   @IsString() groundLabel: string;
+  /**
+   * WHICH SETUP THIS IS (U.6 review). A fresh key for every new setup, the same one when the same save
+   * is retried. A replay is recognised by this, never by the check-in's name: topic names ("Help
+   * someone get back on track") are the same for many check-ins. See a-second-setup-is-a-second-check-in.
+   */
+  @IsOptional() @IsString() @MaxLength(100) setupKey?: string;
   @IsOptional() @IsString() orgName?: string;
   @IsOptional() @IsString() scenario?: string;
   @IsOptional() @IsString() cadence?: string;
@@ -337,6 +359,8 @@ export class EntryCommitDto {
    * made. This says which, and the ground's `cadenceStated` follows it (fix plan B15).
    */
   @IsOptional() @IsBoolean() cadenceChosen?: boolean;
+  /** "When I end it": no planned length and no planned last session (request 37). Send true instead of a length. */
+  @IsOptional() @IsBoolean() runsUntilEnded?: boolean;
   @IsOptional() @IsInt() cadenceAnchorDay?: number;
   /** Which days this team works, 0=Sun..6=Sat. Absent means nobody said; never defaulted. */
   @IsOptional() @IsArray() @IsInt({ each: true }) @Min(0, { each: true }) @Max(6, { each: true })
@@ -375,6 +399,18 @@ export class EntryCommitDto {
   @Type(() => TurnDto)
   history: TurnDto[];
 
+  /**
+   * WHAT THEY TYPED IN SETUP, THEIR OWN MESSAGES ONLY (U.7 re-check). The brief is put together
+   * from the answers setup drew out, so it is not what they wrote. These are kept so the Context
+   * page can show the lead her own words, and nobody else (LeadSetupWords).
+   */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(A_HISTORY_MAX_TURNS)
+  @IsString({ each: true })
+  @MaxLength(A_MESSAGE_MAX, { each: true })
+  leadsOwnWords?: string[];
+
   @IsOptional()
   report?: any;
 
@@ -410,6 +446,30 @@ export class EntryCommitDto {
 export class EntryController {
   private readonly logger = new Logger(EntryController.name);
   constructor(private service: EntryService) {}
+
+  /**
+   * WHETHER THE ANCHOR SCENARIO'S FRONT DOOR IS OPEN, for a visitor who is not signed in (request 144).
+   * It answers `{ available }` and nothing else, and is kept for a short time so a busy landing page
+   * does not read the setting for every visitor.
+   */
+  @Public()
+  @Throttle({ global: { limit: 60, ttl: 60_000 } })
+  @Get('anchor-available')
+  async anchorAvailable() {
+    return this.service.anchorAvailable();
+  }
+
+  /**
+   * THE ANCHOR ENTRY ROUTE (request 144). Tells the screen how to start a draft for the lead who arrived
+   * from the shared link (for example /start/team?source=founders-whatsapp). Creates nothing. With the
+   * anchor switch off it answers 404 and the screen sends the visitor to the ordinary door.
+   */
+  @Public()
+  @Throttle({ global: { limit: 30, ttl: 60_000 } })
+  @Get('anchor-start')
+  async anchorStart(@Query('source') source?: string) {
+    return this.service.anchorStart(source);
+  }
 
   /** Pre-auth update of the server-side entry draft, authorized by the bearer
    * draftToken issued at entry-save. Carries post-email edits (org name,
@@ -469,8 +529,9 @@ export class EntryController {
     this.openStream(res);
     const write = (data: unknown) => res.write(`data: ${JSON.stringify(data)}\n\n`);
     try {
-      const { reply, closed } = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel, (text) => write({ type: 'delta', text }), dto.peopleNamed, dto.alreadySaid);
-      write({ type: 'done', reply, sessionComplete: this.sessionCompleteFrom(reply, closed) });
+      const { reply, closed, promptVersionId } = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel, (text) => write({ type: 'delta', text }), dto.peopleNamed, dto.alreadySaid);
+      /* promptVersionId is there only for the anchor conversation: which stored version of its words ran. */
+      write({ type: 'done', reply, sessionComplete: this.sessionCompleteFrom(reply, closed), ...(promptVersionId !== undefined ? { promptVersionId } : {}) });
     } catch (err: any) {
       this.logger.warn(`Entry stream failed: ${err?.message}`);
       write({ type: 'error', code: 'stream_failed', message: A_STREAM_FAILED });
@@ -520,7 +581,7 @@ export class EntryController {
   @Post('chat')
   @Throttle({ global: { limit: 30, ttl: 60000 } })
   async chat(@Body() dto: EntryChatDto) {
-    const { reply, closed } = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel, undefined, dto.peopleNamed, dto.alreadySaid);
+    const { reply, closed, promptVersionId } = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel, undefined, dto.peopleNamed, dto.alreadySaid);
     /**
      * THE MARKER FIRST, THE PHRASES ONLY AS A BACKSTOP.
      *
@@ -529,14 +590,14 @@ export class EntryController {
      * signal was never consulted, and whether a session closed depended on the assistant happening
      * to use one of six wordings.
      */
-    return this.chatResponse(reply, closed);
+    return { ...this.chatResponse(reply, closed), ...(promptVersionId !== undefined ? { promptVersionId } : {}) };
   }
 
   @Public()
   @Post('classify-intent')
   @Throttle({ global: { limit: 30, ttl: 60000 } })
   async classifyIntent(@Body() dto: EntryClassifyDto) {
-    return this.service.classifyIntent(dto.description, dto.mode);
+    return this.service.classifyIntent(dto.description, dto.mode, dto.picked);
   }
 
   @Public()
@@ -582,6 +643,20 @@ class OpenFinishDto {
   @IsOptional() @IsString() @MaxLength(160) organisation?: string;
 }
 
+class ASetUpPersonDto {
+  @IsOptional() @IsString() @MaxLength(120) name?: string | null;
+  @IsEmail() @MaxLength(254) email: string;
+}
+class ASetUpDto {
+  @IsString() @MaxLength(60) kind: string;
+  @IsString() @IsNotEmpty() @MaxLength(2000) about: string;
+  @IsOptional() @IsString() @MaxLength(500) aim?: string | null;
+  @IsArray() @ArrayMaxSize(19) @ValidateNested({ each: true }) @Type(() => ASetUpPersonDto) people: ASetUpPersonDto[];
+}
+class EntryDraftFromSetUpDto {
+  @ValidateNested() @Type(() => ASetUpDto) setUp: ASetUpDto;
+}
+
 @Controller('entry')
 export class EntryCommitController {
   constructor(
@@ -593,6 +668,18 @@ export class EntryCommitController {
   async commit(@CurrentUser() user: CurrentUserData, @Body() dto: EntryCommitDto) {
     if (!user?.organizationId) throw new UnauthorizedException('Account not linked to an organisation');
     return this.service.commit(user.organizationId, user.id, dto);
+  }
+
+  /**
+   * A NEW CHECK-IN STARTED FROM A RECOMMENDATION (request 148). The lead said yes to "Groundwork
+   * recommends" and the screen hands back the `setUp` it was given. Answers the draft the set-up screen
+   * opens with, its people checked against the lead's own organisation. Creates nothing, invites nobody.
+   */
+  @Post('draft-from-set-up')
+  @Throttle({ global: { limit: 20, ttl: 60_000 } })
+  async draftFromSetUp(@CurrentUser() user: CurrentUserData, @Body() dto: EntryDraftFromSetUpDto) {
+    if (!user?.organizationId) throw new UnauthorizedException('Account not linked to an organisation');
+    return this.service.draftFromSetUp(user.organizationId, user.id, dto.setUp as any);
   }
 
   @Public()

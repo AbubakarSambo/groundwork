@@ -2,9 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { cleanText } from '../reports/what-the-record-actually-holds';
-import { aNameOrNothing } from './a-name-is-short';
 import { AnthropicService } from '../conversation/anthropic.service';
-import { GroundworkEvents, type RoundCompletedEvent } from '../../common/events';
+import { GroundworkEvents, type RoundCompletedEvent, type CheckInCompletedEvent } from '../../common/events';
+import { oneOfTheKinds, theRecordsPrompt, THE_RECORDS_SCHEMA, onlyRecordsTheLinesSay, theSameName, type AnOfferedRecord, type APersonALineMayName , KINDS_THAT_ARE_NOT_WORK } from './the-kind-of-work';
+import { withAClaim } from './a-claim-on-a-record-is-checked-first';
 import {
   WHAT_THE_RECORD_SAYS_PROMPT,
   WHAT_THE_RECORD_SAYS_SCHEMA,
@@ -42,6 +43,91 @@ export class BoardListener {
     private readonly anthropic: AnthropicService,
   ) {}
 
+  /**
+   * THE RECORDS THE KIND OF WORK NEEDS, READ FROM WHAT SOMEBODY JUST SAID (request 76).
+   *
+   * Once per check-in, when it completes, over that check-in's own lines only: a sales rep's deals,
+   * an engineer's releases, a lawyer's deadlines. The model offers records; `onlyRecordsTheLinesSay`
+   * keeps a record only when its name is in the words of the line it points at, so nothing is
+   * invented. A record already on the board under the same name is moved on (its stage, date and
+   * details), never written twice. Best effort: if this fails the check-in is still complete.
+   */
+  @OnEvent(GroundworkEvents.CHECK_IN_COMPLETED)
+  async onCheckInCompleted(e: CheckInCompletedEvent) {
+    try {
+      const ground = await this.prisma.ground.findUnique({
+        where: { id: e.groundId },
+        select: {
+          kindOfWork: true, workStages: true,
+          /* Who is in the check-in, so a record the speaker says is somebody else's is theirs (item 21). */
+          participants: { select: { id: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
+        },
+      }) as any;
+      const kind = oneOfTheKinds(ground?.kindOfWork);
+      if (!kind) return;
+      const said = await this.prisma.recordEntry.findMany({
+        where: { checkInId: e.checkInId, disputedAt: null },
+        select: { id: true, text: true, participantId: true },
+      });
+      const lines = said.map((l: any) => ({ id: l.id, text: cleanText(l.text), participantId: l.participantId })).filter((l: any) => l.text);
+      if (!lines.length) return;
+      const people: APersonALineMayName[] = ((ground?.participants ?? []) as any[]).map((p) => ({
+        id: p.id, firstName: p.user?.firstName ?? null, lastName: p.user?.lastName ?? null, nameGiven: p.nameGiven ?? null,
+      }));
+      const nameOf = (pid: string) => {
+        const p = people.find((x) => x.id === pid);
+        return (p ? [p.firstName, p.lastName].filter(Boolean).join(' ').trim() || (p.nameGiven ?? '').trim() : '') || 'Somebody';
+      };
+      const everybody = people.map((p) => nameOf(p.id)).filter((n) => n !== 'Somebody');
+      const answer = await this.anthropic.extract<{ records?: AnOfferedRecord[] }>(
+        theRecordsPrompt(kind),
+        [{
+          role: 'user',
+          content: [
+            ...(everybody.length ? [`People in this check-in: ${everybody.join(', ')}.`, ''] : []),
+            ...lines.map((l: any) => `[${l.id}] ${nameOf(l.participantId)} said: ${l.text}`),
+          ].join('\n'),
+        }],
+        THE_RECORDS_SCHEMA,
+      );
+      const kept = onlyRecordsTheLinesSay(kind, answer?.records ?? [], lines, ground?.workStages, people);
+      const speakerOf = new Map(lines.map((l: any) => [l.id, l.participantId]));
+      if (!kept.length) return;
+      const already = await (this.prisma as any).workItem.findMany({ where: { groundId: e.groundId, kind: { notIn: KINDS_THAT_ARE_NOT_WORK } }, select: { id: true, kind: true, name: true, fields: true, ownerParticipantId: true } });
+      for (const r of kept) {
+        /* "a four-hour acknowledgement" and "the four-hour acknowledgement" are one record (item 21). */
+        const same = (already as any[]).find((a) => a.kind === r.kind && (a.name.trim().toLowerCase() === r.name.trim().toLowerCase()
+          || (theSameName(a.name) === theSameName(r.name) && (a.ownerParticipantId ?? null) === (r.ownerParticipantId ?? null))));
+        if (same) {
+          await (this.prisma as any).workItem.update({
+            where: { id: same.id },
+            data: {
+              ...(r.stage ? { stage: r.stage } : {}),
+              ...(r.dueAt ? { dueAt: r.dueAt } : {}),
+              /*
+               * A record added on the board with nobody's name on it does not become the deal of whoever then
+               * says it is theirs ("I have signed Tuskys Westgate already"). That is a claim, and a claim is
+               * checked first: it is put to the lead, and only her yes sets the owner (decision 76, item 3,
+               * a-claim-on-a-record-is-checked-first). One with a name keeps it.
+               */
+              /* Only the speaker's own claim. A record somebody says is a colleague's is not that colleague's claim. */
+              fields: !same.ownerParticipantId && r.ownerParticipantId && r.ownerParticipantId === speakerOf.get(r.sourceEntryId)
+                ? withAClaim({ ...((same.fields as any) ?? {}), ...r.fields }, r.ownerParticipantId, r.sourceEntryId ?? null, new Date())
+                : { ...((same.fields as any) ?? {}), ...r.fields },
+              sourceEntryId: r.sourceEntryId,
+            },
+          });
+        } else {
+          const made = await (this.prisma as any).workItem.create({ data: { groundId: e.groundId, ...r } });
+          (already as any[]).push({ id: made?.id, kind: r.kind, name: r.name, fields: r.fields, ownerParticipantId: r.ownerParticipantId ?? null });
+        }
+      }
+      this.logger.log(`Kept ${kept.length} record(s) of ${kind} from check-in ${e.checkInId}.`);
+    } catch (err: any) {
+      this.logger.warn(`Reading the records for check-in ${e.checkInId} failed: ${err?.message}`);
+    }
+  }
+
   @OnEvent(GroundworkEvents.ROUND_COMPLETED)
   async onRoundCompleted(e: RoundCompletedEvent) {
     await this.readWhatTheRoomIsAbout(e);
@@ -68,7 +154,7 @@ export class BoardListener {
              only where a line reports the value - is what keeps a worry with no figure out. */
           type: { in: ['PROGRESS', 'COMMITMENT', 'SUCCESS_DEFINITION', 'WORRY', 'TENSION'] as any },
         },
-        select: { text: true, participantId: true, participant: { select: { partyType: true } } },
+        select: { text: true, type: true, participantId: true, participant: { select: { partyType: true } } },
       });
       if (!said.length) return;
 
@@ -82,7 +168,8 @@ export class BoardListener {
        * the fifth time this session that something internal has reached a page by riding inside a
        * text column. `cleanText` is the one that knows how to take it off.
        */
-      const lines = said.map((s: any) => ({ text: cleanText(s.text), who: s.participantId ?? null, saidByTheLead: s.participant?.partyType === 'INITIATOR' }));
+      /* With the kind of line, so a line saying what success looks like is never read as where things stand (request 109 a). */
+      const lines = said.map((s: any) => ({ text: cleanText(s.text), who: s.participantId ?? null, saidByTheLead: s.participant?.partyType === 'INITIATOR', kind: s.type ?? null }));
       const answer = await this.anthropic.extract<{ numbers: AReadNumber[] }>(
         WHAT_THE_RECORD_SAYS_PROMPT,
         [{ role: 'user', content: theQuestion(targets, lines) }],
@@ -99,6 +186,16 @@ export class BoardListener {
             where: { id: n.objectiveId },
             data: { count: n.count, suggestedCount: null, suggestedSaid: cleanText(n.said), suggestedAtSession: e.sessionNumber },
           }).catch(() => undefined);
+          /*
+           * AND THE ROUND'S OWN SNAPSHOT, which was taken when the round closed, before this number was
+           * read off it. Left as it was, session 2 of re-d (sales) had a snapshot of 0 beside a count of
+           * 31 million naira, and the Movement tile said "No target moved this session." while Since the
+           * last round said it had. The number said in this round is where this round closed.
+           */
+          await (this.prisma as any).groundObjectiveSnapshot?.updateMany?.({
+            where: { groundId: e.groundId, objectiveId: n.objectiveId, sessionNumber: e.sessionNumber },
+            data: { count: n.count },
+          })?.catch?.(() => undefined);
         } else {
           await this.prisma.groundObjective.update({
             where: { id: n.objectiveId },
@@ -135,16 +232,18 @@ export class BoardListener {
         },
         select: {
           text: true,
-          participant: { select: { roleAsDescribed: true, user: { select: { firstName: true, lastName: true } } } },
+          participant: { select: { nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
         },
       });
       const lines = said
         .map((s: any) => ({
           text: cleanText(s.text),
           /* THE SAME NAME THE BOARD PRINTS. A model answer keyed on anything else cannot be matched
-             back to a person, and `onlyWhatHolds` drops every row it cannot match. */
+             back to a person, and `onlyWhatHolds` drops every row it cannot match. A name only, never
+             the lead's description of them (request 36): somebody with no name is left out here, as
+             the board has no name to match them by either. */
           who: [s.participant?.user?.firstName, s.participant?.user?.lastName].filter(Boolean).join(' ').trim()
-            || aNameOrNothing(s.participant?.roleAsDescribed ?? null) || '',
+            || (s.participant?.nameGiven ?? '').trim() || '',
         }))
         .filter((s: { text: string; who: string }) => s.text && s.who);
       if (lines.length < 2) return;

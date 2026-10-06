@@ -15,6 +15,9 @@ export interface PatternCode {
   probe?: string;
 }
 
+import { WHAT_COUNTS_BY_CODE } from './what-counts-for-each-pattern';
+export { WHAT_COUNTS_BY_CODE };
+
 // Positive patterns. R3 is a positive signal - surfaced separately, never mixed
 // with bad-faith codes and never subject to the three-period rule.
 export const POSITIVE_CODES: PatternCode[] = [
@@ -357,16 +360,17 @@ Hard rules:
   Not:   "The record shows work was marked finished without downstream confirmation."
   The observation is already about the record; saying so adds nothing but distance.
 - Do not infer intent. A pattern is a reason to have a specific conversation, not a conclusion.
+- Some lines below say what counts and what does not. Follow them. Where a line speaks of the earlier record, use the section headed "WHAT THIS PERSON THEMSELVES RECORDED IN THE LAST TWO PERIODS" if there is one, to tell a repeat from a first time. Their own words in this check-in about something being raised before count too.
 - One data point is not a pattern. You are emitting a per-period observation; the system applies the three-period rule across periods. Do not claim a pattern is established.
 
 The pattern codes and their signals:
-${BAD_FAITH_CODES.map((c) => `- ${c.code} (${c.name}): ${c.signal}`).join('\n')}
+${BAD_FAITH_CODES.map((c) => `- ${c.code} (${c.name}): ${c.signal}${WHAT_COUNTS_BY_CODE[c.code] ? ` ${WHAT_COUNTS_BY_CODE[c.code]}` : ''}`).join('\n')}
 
 AND THE ONES THAT ARE GOOD NEWS. Look for these with the same care, and emit them on the same
 terms: only where the signal is genuinely present in this period's evidence. These are not
 consolation prizes for a period with nothing wrong in it, and a person who did steady ordinary
 work gets no code at all, which is a perfectly good period.
-${POSITIVE_CODES.map((c) => `- ${c.code} (${c.name}): ${c.signal}`).join('\n')}
+${POSITIVE_CODES.map((c) => `- ${c.code} (${c.name}): ${c.signal}${WHAT_COUNTS_BY_CODE[c.code] ? ` ${WHAT_COUNTS_BY_CODE[c.code]}` : ''}`).join('\n')}
 
 M4 is the one most often missed, because nothing visibly breaks while somebody is doing it. Work
 that is only noticed when it stops is still work.
@@ -374,7 +378,7 @@ that is only noticed when it stops is still work.
 AND THE ONES THAT ARE NEITHER. These say somebody is holding something together that should not
 have needed holding. They are never a fault in the person - they are usually a fault around them -
 so write the observation about the situation and never about their choices.
-${CARRYING_CODES.map((c) => `- ${c.code} (${c.name}): ${c.signal}`).join('\n')}
+${CARRYING_CODES.map((c) => `- ${c.code} (${c.name}): ${c.signal}${WHAT_COUNTS_BY_CODE[c.code] ? ` ${WHAT_COUNTS_BY_CODE[c.code]}` : ''}`).join('\n')}
 
 Return the codes whose signal is present this period, each with a one-sentence plain-language
 observation. Say what happened, plainly, without prefacing it. A good one is written the same way
@@ -925,4 +929,26 @@ export const PATTERN_DETECTORS: Record<string, (input: DetectionInput) => boolea
 export function detectPattern(code: string, input: DetectionInput): boolean {
   const fn = PATTERN_DETECTORS[code];
   return fn ? fn(input) : false;
+}
+
+/**
+ * WHAT BACKED A DETECTION (decision 57, item 4): the model's own reading, the matching number-based
+ * rule, or both. 'rule' is for the handful of codes that are never read by the model at all (R3,
+ * COLLUSION_RISK) - a rule-only finding, not a lesser one. Read by the lead only; never shown to the
+ * person or a colleague, and a rule never surfaces a bad-faith code by itself (see patterns.service.ts).
+ */
+export type AnEvidenceSource = 'model' | 'rule' | 'both';
+
+/**
+ * Combines what a detection was already backed by with what this period adds. Once two separate
+ * reads have agreed even once, that stays true forever - a later period where the rule happens not
+ * to fire does not erase that earlier agreement, any more than a pattern once SURFACED becomes
+ * unsurfaced. Anything else simply takes the newest read, falling back to what was already stored.
+ */
+export function mergedEvidenceSource(
+  existing: AnEvidenceSource | null | undefined,
+  incoming: AnEvidenceSource | null | undefined,
+): AnEvidenceSource | null {
+  if (existing === 'both' || incoming === 'both') return 'both';
+  return incoming ?? existing ?? null;
 }

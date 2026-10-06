@@ -92,6 +92,17 @@ export class DocumentsController {
     return this.docs.setVisibility(groundId, docId, userId, dto.visibility);
   }
 
+  @Patch(':docId/note')
+  @ApiOperation({ summary: 'Say what your own document should be used for. Blank clears it.' })
+  setNote(
+    @Param('groundId') groundId: string,
+    @Param('docId') docId: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: { note?: string | null },
+  ) {
+    return this.docs.setNote(groundId, docId, userId, dto?.note);
+  }
+
   @Delete(':docId')
   @ApiOperation({ summary: 'Delete a document' })
   remove(

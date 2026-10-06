@@ -41,12 +41,22 @@ describe('what to ask about a pattern', () => {
   });
 });
 
+/*
+ * The board no longer builds its pattern rows itself: every served pattern is built by
+ * patterns/who-reads-a-pattern, which the board calls, so the question is attached there, for
+ * whoever runs the check-in (the person themselves is asked what is behind it instead).
+ */
 describe('and the board sends it', () => {
-  const SRC = readFileSync(join(__dirname, 'board.service.ts'), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const SRC = strip(readFileSync(join(__dirname, 'board.service.ts'), 'utf8'));
+  const RULES = strip(readFileSync(join(__dirname, '../patterns/who-reads-a-pattern.ts'), 'utf8'));
 
-  it('attaches it to every pattern row', () => {
-    expect(SRC).toMatch(/askThem: whatToAskAbout\(d\.code\)/);
+  it('attaches it to every pattern row a lead reads', () => {
+    /* 29 September 2026: out.patterns now carries wordPatternEvidence's result, which wraps the
+       same servedPatterns(...) call rather than replacing it - askThem is unchanged either way. */
+    expect(SRC).toMatch(/out\.patterns = await wordPatternEvidence\(/);
+    expect(SRC).toMatch(/servedPatterns\(detections as any, patternReader, namesForPatterns\)/);
+    expect(RULES).toMatch(/askThem: yours \? null : whatToAskAbout\(row\.code\)/);
   });
 });
 

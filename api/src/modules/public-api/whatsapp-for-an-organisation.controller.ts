@@ -4,7 +4,7 @@ import { MachineTokenGuard, RequiresScope, type MachineCaller } from './machine-
 import { A_MESSAGE_MAX } from '../../common/dto';
 import { ConfigService } from '@nestjs/config';
 import { LANGUAGES_WE_CONVERSE_IN } from './a-whatsapp-message-is-routed';
-import { TEMPLATES } from '../whatsapp/a-message-outside-the-window';
+import { THE_NAMES_TO_SUBMIT } from '../whatsapp/a-message-outside-the-window';
 import { ApiExcludeEndpoint, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
@@ -13,6 +13,7 @@ import { Public, CurrentUser, Roles, Role } from '../../common';
 import { PrismaService } from '../prisma/prisma.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { WhatsAppForAnOrganisationService } from './whatsapp-for-an-organisation.service';
+import { whatsAppAsTheAdminReadsIt, peopleOnWhatsAppIn, failedThisWeekIn, CALLBACK_PATH } from './whatsapp-as-the-admin-reads-it';
 
 /**
  * AN ORGANISATION'S WHATSAPP, IN TWO HALVES.
@@ -61,8 +62,8 @@ export class WhatsAppForAnOrganisationController {
     private readonly config: ConfigService,
   ) {}
 
-  /* The three the product starts. Every other send is a reply, which needs no template. */
-  private static readonly THE_ONES_WE_START = [TEMPLATES['session-ready'].name, TEMPLATES.opening.name, TEMPLATES.report.name];
+  /* Every template the product starts (THE_NAMES_TO_SUBMIT). Every other send is a reply, which needs no template. */
+  private static readonly THE_ONES_WE_START = THE_NAMES_TO_SUBMIT;
 
   /* ---------------- the admin half ---------------- */
 
@@ -93,18 +94,70 @@ export class WhatsAppForAnOrganisationController {
       to ours for the case that is our number. It read the env var either way, which told a customer
       who had done everything right that they still could not start a conversation.
     */
-    const connection = await this.whatsapp.connectionFor(organizationId);
+    /*
+      NO SECRET, AND NO PART OF ONE. This used to hand back the connection as WhatsAppService builds
+      it, which carries the verify token itself and the access token's last four characters, and both
+      are a credential or a piece of one. The row is read here with the secrets left out of what is
+      served; whether the verify token is set is a yes or a no. The setup page's "Verify token, Copy"
+      step read the token from here, and now needs its own way to it (docs/answers-from-engine.md).
+    */
+    const now = new Date();
+    const [row, org, toggle, peopleOnWhatsApp, failedThisWeek] = await Promise.all([
+      this.prisma.whatsAppConnection.findUnique({
+        where: { organizationId },
+        select: {
+          phoneNumberId: true, businessAccountId: true, displayNumber: true, approvedTemplates: true, enabled: true,
+          connectedAt: true, lastInboundAt: true, lastOutboundAt: true, webhookVerifiedAt: true,
+          verifyToken: true,
+        },
+      }),
+      this.prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true } }),
+      this.whatsapp.getToggleState(),
+      peopleOnWhatsAppIn(this.prisma, organizationId),
+      failedThisWeekIn(this.prisma, organizationId, now),
+    ]);
+    const connection = row
+      ? {
+          phoneNumberId: row.phoneNumberId,
+          businessAccountId: row.businessAccountId,
+          displayNumber: row.displayNumber,
+          approvedTemplates: row.approvedTemplates,
+          enabled: row.enabled,
+          connectedAt: row.connectedAt,
+          lastInboundAt: row.lastInboundAt,
+          lastOutboundAt: row.lastOutboundAt,
+          /* U.18: the callback address is proven once Meta's handshake answered, or a message came in through it. */
+          webhookProvenAt: row.webhookVerifiedAt ?? row.lastInboundAt ?? null,
+        }
+      : null;
     const ours = this.config.get<string[]>('whatsapp.approvedTemplates') ?? [];
-    const approved = connection ? connection.approvedTemplates : ours;
+    const approved = row ? row.approvedTemplates : ours;
+    const canStartAConversation = WhatsAppForAnOrganisationController.THE_ONES_WE_START.every((t) => approved.includes(t));
     return {
       connection,
-      webhookPath: `/api/v1/webhooks/whatsapp/${organizationId}`,
+      webhookPath: CALLBACK_PATH(organizationId),
       languages: Object.values(LANGUAGES_WE_CONVERSE_IN),
-      canStartAConversation: WhatsAppForAnOrganisationController.THE_ONES_WE_START.every((t) => approved.includes(t)),
+      canStartAConversation,
       /* The exact names to submit to Meta, from the one place that defines them. A page that typed
          them out would be a fourth copy of a name Meta matches byte for byte. */
       theNamesToSubmit: WhatsAppForAnOrganisationController.THE_ONES_WE_START,
       approvedHere: approved,
+      /* The Connections page's card, in sentences (F1). See whatsapp-as-the-admin-reads-it. */
+      ...whatsAppAsTheAdminReadsIt({
+        organizationId,
+        organisationName: org?.name ?? '',
+        own: row ? { enabled: row.enabled, displayNumber: row.displayNumber, verifyTokenSet: !!row.verifyToken } : null,
+        groundwork: {
+          credentialsConfigured: toggle.credentialsConfigured,
+          switchedOn: toggle.adminEnabled,
+          /* Saved in the back office first, then WHATSAPP_DISPLAY_NUMBER (groundworks-own-number.ts). */
+          displayNumber: toggle.displayNumber ?? this.config.get<string>('whatsapp.displayNumber') ?? null,
+        },
+        publicApiUrl: this.config.get<string>('app.publicApiUrl') ?? null,
+        peopleOnWhatsApp,
+        failedThisWeek,
+        remindersApproved: canStartAConversation,
+      }),
     };
   }
 
@@ -189,7 +242,13 @@ export class WhatsAppForAnOrganisationController {
     @Res() res: Response,
   ): Promise<void> {
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId }, select: { verifyToken: true } });
-    if (mode === 'subscribe' && own && token === own.verifyToken) { res.status(200).type('text/plain').send(challenge); return; }
+    if (mode === 'subscribe' && own && token === own.verifyToken) {
+      /* U.18: remembered, so step 3 of the setup page can say the address is proven. A failed write
+         must not fail the handshake, which is what actually connects the number. */
+      await this.prisma.whatsAppConnection.update({ where: { organizationId }, data: { webhookVerifiedAt: new Date() } }).catch(() => undefined);
+      res.status(200).type('text/plain').send(challenge);
+      return;
+    }
     /* The same answer for a wrong token and an unknown organisation, so this cannot be used to find out which exist. */
     res.status(403).type('text/plain').send('Verification failed');
   }

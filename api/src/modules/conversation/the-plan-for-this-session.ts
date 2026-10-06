@@ -24,6 +24,7 @@
  * where they go; the plan says what matters for this person before it starts. Nothing in the plan
  * is a fact the record does not hold: the planner is told what it has and told to invent nothing.
  */
+import { THE_BRIEF_IS_CONTEXT_ONLY } from './the-leads-brief-is-never-quoted-to-them';
 import type { RoleMap } from '../board/role-maps';
 import { sayWhatHasBeenCovered, whatThisSessionHasCovered, type ATurnInSession } from './what-this-session-has-covered';
 
@@ -120,7 +121,7 @@ export function theBriefForThePlanner(w: WhatThePlannerGets): string {
         (m.neutralProbes?.length ? ` Neutral questions for this role: ${m.neutralProbes.slice(0, 4).join(' | ')}` : ''),
     );
   }
-  if (w.leadBrief) parts.push(`THE LEAD'S BRIEF TO THE PRODUCT (an instruction to you, not this person's words): ${clip(w.leadBrief, 900)}`);
+  if (w.leadBrief) parts.push(`THE LEAD'S BRIEF TO THE PRODUCT (an instruction to you, not this person's words): ${clip(w.leadBrief, 900)}${w.person.isLead ? '' : ` ${THE_BRIEF_IS_CONTEXT_ONLY} Never put its sentences in the plan as words to say.`}`);
   if (w.recordAlreadyHolds) parts.push(w.recordAlreadyHolds);
   if (w.doesNotAddUp) parts.push(w.doesNotAddUp);
   if (w.earlier.length) {

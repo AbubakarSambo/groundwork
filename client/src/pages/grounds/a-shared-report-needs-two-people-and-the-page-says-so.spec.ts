@@ -16,8 +16,17 @@ const read = (f: string) => strip(readFileSync(join(__dirname, f), 'utf8'))
 describe('a check-in with one person on it', () => {
   it('is told on the party page that the shared report compares two accounts', () => {
     const page = read('GroundParticipantPage.tsx')
-    /* Counted the way the server counts a round: a managing-only lead is in session 1 (see who-is-in-this-round). */
-    expect(page).toMatch(/whoIsInRound\(\(ground\.participants \?\? \[\]\) as any\[\],[\s\S]{0,140}?\)\.length < 2 && \(/)
+    /*
+     * READ FROM `ground.atLeastTwoInThisRound`, NOT A CLIENT-SIDE COUNT OF `ground.participants`
+     * (U.8 fifth review). `ground.participants` is reduced to the reader's own row alone on a
+     * check-in that hides peers from each other, so counting it here always read as one - a real
+     * team of four saw "It will build once somebody is added" for ever. The server now sends the
+     * same rule's answer (`atLeastTwoInThisRound`, computed off the raw participants before that
+     * filter runs, with the identical managing-only-in-session-one rule `who-is-in-this-round.ts`
+     * used to apply here), so this pins that the page reads the server's field, not its own count.
+     */
+    expect(page).toMatch(/!\(ground as any\)\.atLeastTwoInThisRound && \(/)
+    expect(page).not.toMatch(/whoIsInRound\(/)
     expect(page).toContain('The shared report compares two accounts.')
   })
 
@@ -25,13 +34,22 @@ describe('a check-in with one person on it', () => {
     const page = read('GroundAdminPage.tsx')
     const report = page.slice(page.indexOf("{tab === 'report' && ("), page.indexOf('<TheReportIsAListOfSessions'))
     expect(report).toContain('The shared report compares two accounts. Add somebody and this will build.')
-    expect(report).toMatch(/<TextAction onClick=\{\(\) => setTab\('checkins'\)\}/)
+    /*
+     * UPDATED (group 3, piece 5, the Report tab rebuild): `TextAction` was `kit.tsx`'s own old
+     * quiet-link component, one of several raw styles this tab drew its own copy of. The link now
+     * uses the shared part's own class for this exact shape, `.gwui-plain-link` (CLAUDE.md: "a
+     * quiet text link is .gwui-plain-link") - same click handler, same place, no `kit.tsx` import
+     * left anywhere in this tab.
+     */
+    expect(report).toMatch(/className="gwui-plain-link" onClick=\{\(\) => setTab\('checkins'\)\}/)
+    expect(report).not.toMatch(/<TextAction/)
   })
 
   it('and on the list row, without opening it', () => {
-    const list = read('GroundsListPage.tsx')
-    expect(list).toContain('Needs a second person for a shared report')
-    expect(list).toMatch(/filter\(\(p: any\) => !p\.managingOnly\)\.length < 2 && <span/)
+    /* U.5: the row reads it as a sentence under "Where it stands", from how-a-row-reads.ts. */
+    const list = read('how-a-row-reads.ts')
+    expect(list).toContain("'It needs a second person for a shared report.'")
+    expect(list).toMatch(/filter\(p => !p\.managingOnly\)\.length < 2\) also = /)
   })
 
   it('which matches the rule the server releases by', () => {

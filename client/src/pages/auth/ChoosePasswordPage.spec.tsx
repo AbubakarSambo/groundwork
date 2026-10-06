@@ -18,7 +18,7 @@ import { authApi } from '@/api/auth'
  * email to people who are about to type a password.
  */
 
-vi.mock('@/api/auth', () => ({ authApi: { setPassword: vi.fn(), resetPassword: vi.fn() } }))
+vi.mock('@/api/auth', () => ({ authApi: { setPassword: vi.fn(), resetPassword: vi.fn(), validateToken: vi.fn().mockResolvedValue({ valid: true }) } }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ setAuth: vi.fn() }) }))
 
 const mockedNavigate = vi.fn()
@@ -38,10 +38,10 @@ async function setPasswordWith(next: string) {
     </MemoryRouter>
     </QueryClientProvider>,
   )
-  const [pw, confirm] = screen.getAllByPlaceholderText(/characters|Same as above/i)
-  fireEvent.change(pw, { target: { value: 'Passw0rdish' } })
-  fireEvent.change(confirm, { target: { value: 'Passw0rdish' } })
-  fireEvent.click(screen.getByRole('button', { name: /Set password/i }))
+  /* U.2: the field is found by the label a person reads, and the button reads "Save password".
+     Choosing a first password has one box now, as in the prototype, with Show. */
+  fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'Passw0rdish' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Save password' }))
   await waitFor(() => expect(mockedNavigate).toHaveBeenCalled())
   return mockedNavigate.mock.calls[0][0]
 }
@@ -96,9 +96,10 @@ describe('resetting a password', () => {
   }
 
   async function submitReset() {
-    fireEvent.change(screen.getByLabelText(/New password/i), { target: { value: 'Passw0rdish' } })
-    fireEvent.change(screen.getByLabelText(/Confirm password/i), { target: { value: 'Passw0rdish' } })
-    fireEvent.click(screen.getByRole('button', { name: /Reset password/i }))
+    /* U.2: "Confirm password" reads "Type it again" and "Reset password" reads "Save password", the prototype's words. */
+    fireEvent.change(screen.getByLabelText('New password'), { target: { value: 'Passw0rdish' } })
+    fireEvent.change(screen.getByLabelText('Type it again'), { target: { value: 'Passw0rdish' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save password' }))
   }
 
   it('calls the reset endpoint, not the set-a-first-password one', async () => {
@@ -132,19 +133,25 @@ describe('resetting a password', () => {
      * email while the real error rendered on a screen they had left. The same shape
      * as the sign-up flow's `onError: () => setLinkSent(true)`.
      */
-    ;(authApi.resetPassword as any).mockRejectedValue({ response: { data: { message: 'This link has expired.' } } })
+    /* U.2: an EXPIRED link now becomes the "That link has expired" page (see
+       a-link-that-has-expired.spec.tsx), so this uses the other failure a reset link can meet. */
+    /* U.2 review: a used link now opens "That link didn’t work" too, so this uses a password the
+       server refuses, which is the failure left for this screen to show where it is. */
+    const refused = 'Password must contain at least 1 uppercase and 1 lowercase letter'
+    ;(authApi.resetPassword as any).mockRejectedValue({ response: { data: { message: [refused] } } })
     await renderReset()
     await submitReset()
-    await waitFor(() => expect(screen.getByText('This link has expired.')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(refused)).toBeTruthy())
     expect(screen.queryByText(/Check your inbox/i)).toBeNull()
     // And they can try again from here, rather than being stranded.
-    expect(screen.getByRole('button', { name: /Reset password/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Save password' })).toBeTruthy()
   })
 
   it('with no token it says so instead of offering a form that cannot work', async () => {
     // BUG 3. `/set-password` had already learned this; the reset copy had not.
     await renderReset('')
-    expect(screen.getByText(/missing its token/i)).toBeTruthy()
+    /* U.2 review: the account card's "That link didn’t work", with a way to ask for a new link. */
+    expect(screen.getByText('That link didn’t work')).toBeTruthy()
     expect(screen.queryByLabelText(/New password/i)).toBeNull()
   })
 })

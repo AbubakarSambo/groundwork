@@ -27,8 +27,8 @@ export function howMuchRoomIsLeft(answersSoFar: number): string | null {
 /** The refusal itself, for somebody who has reached it. */
 export function theCeilingIsReached(): string {
   return (
-    'This session has as much as it can hold - twenty answers, and everything you have said is on ' +
-    'the record. Finish the check-in and it will be written up. If there is more to add, you can ' +
-    'open another session afterwards; nothing you have written is lost.'
+    'This session is full. It holds twenty answers, and everything you have said is on the record. ' +
+    'Finish the check-in, and it will be written up. You can open another session afterwards to add more. ' +
+    'Nothing you have written is lost.'
   );
 }

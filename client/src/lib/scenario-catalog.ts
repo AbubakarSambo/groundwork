@@ -59,12 +59,12 @@ import type { SubscriptionPlan } from '@/api/billing'
  * for.
  */
 export const SCENARIO_LABELS = {
-  NEW_HIRE: 'Help a New Hire Get Started',
-  ROLE_HANDOVER: 'Hand Over a Role Smoothly',
-  NEW_PROJECT: 'Get a New Project Off to a Good Start',
-  NEW_COFOUNDER: 'Start a New Partnership Well',
-  NEW_MANAGER: 'Help a New Manager Take Over',
-  NEW_ADVISOR: 'Start a New Advisor or Board Relationship',
+  NEW_HIRE: 'Help a new hire get started',
+  ROLE_HANDOVER: 'Hand over a role smoothly',
+  NEW_PROJECT: 'Get a new project off to a good start',
+  NEW_COFOUNDER: 'Start a new partnership well',
+  NEW_MANAGER: 'Help a new manager take over',
+  NEW_ADVISOR: 'Start an advisor or board relationship',
   /**
    * NAMED FOR THE JOB, NOT THE MECHANISM.
    *
@@ -74,13 +74,13 @@ export const SCENARIO_LABELS = {
    * this same scenario, because a cascade is detected from what people say rather than declared at
    * setup. See SITUATION_CARDS.
    */
-  OKR_ALIGNMENT: 'Set Goals and Keep the Team on Track',
-  WORKPLAN_BUDGET: 'Build a Workplan and Budget That Makes Sense',
-  BOARD_STRATEGY: 'Align on Strategy',
-  CRISIS_ALIGNMENT: 'Work Through a Big Decision',
-  PULSE_CHECK: 'Keep a Read on Live Work',
-  COHORT_CHECK: 'Check How the Same Role Is Going Across People',
-  CONTRACT_RENEWAL: 'Check In Before a Contract or Renewal',
+  OKR_ALIGNMENT: 'Set goals and keep the team on track',
+  WORKPLAN_BUDGET: 'Build a workplan and budget',
+  BOARD_STRATEGY: 'Align on strategy',
+  CRISIS_ALIGNMENT: 'Work through a big decision',
+  PULSE_CHECK: 'Keep a read on live work',
+  COHORT_CHECK: 'Check how the same role is going',
+  CONTRACT_RENEWAL: 'Check in before a contract ends or renews',
   /**
    * TWO CARDS, BECAUSE THESE ARE TWO MOMENTS — and neither is CONTRACT_RENEWAL above, which is one
    * person's engagement ending and sits beside a new hire and a performance plan.
@@ -88,14 +88,14 @@ export const SCENARIO_LABELS = {
    * The labels say when, because when is the only thing somebody needs to tell them apart:
    * before you sign, and after.
    */
-  CONTRACT_REVIEW: 'Check an Agreement Before Signing',
-  IMPLEMENTATION_TRACKING: 'Check How an Agreement Is Going',
-  RECOGNITION: 'Support a Raise, Promotion, or Recognition',
-  PIP: 'Help Someone Get Back on Track',
-  DRIFT: 'Get a Project Back on Track',
-  REALIGN_TEAM: 'Understand Where People See Things Differently',
-  ACUTE_SHOCK: 'Make Sense of Something Serious That Happened',
-  OPEN_READ: 'Work Through Something Else',
+  CONTRACT_REVIEW: 'Check an agreement before signing',
+  IMPLEMENTATION_TRACKING: 'Check how an agreement is going',
+  RECOGNITION: 'Support a raise, promotion or recognition',
+  PIP: 'Help someone get back on track',
+  DRIFT: 'Get a project back on track',
+  REALIGN_TEAM: 'See where people see things differently',
+  ACUTE_SHOCK: 'Make sense of something serious',
+  OPEN_READ: 'Work through something else',
   /**
    * THE ONE-OFF, AND IT DOES RUN - the note here used to say it was "the only one that does not",
    * which stopped being true when it got a card, a group, a cadence and a place in both pickers.
@@ -106,14 +106,14 @@ export const SCENARIO_LABELS = {
    * today, no target and no second session. They were the same card once, which is why neither could
    * be found - the label described the recurring one and the interview behind it did the snapshot.
    */
-  SNAPSHOT: 'Take the Pulse of the Team',
+  SNAPSHOT: 'Take the pulse of the team',
   /**
    * ONE LINE, ONE LINK, ONE REPORT. Hafsah's words, 18 September 2026, and the word doing the work
    * is "one": the pitch is ask your team one thing and get one answer back. Cadence, links and
    * reports are how it works rather than what it is, so none of them is in the name.
    */
-  TEAM_UPDATES: 'Get Updates from Your Team',
-  DISCOVERY: 'Work Out Where to Focus',
+  TEAM_UPDATES: 'Get updates from your team',
+  DISCOVERY: 'Work out where to focus',
 } as const
 
 export type ScenarioKey = keyof typeof SCENARIO_LABELS
@@ -392,6 +392,25 @@ export const SCENARIO_FACTS: Record<ScenarioKey, ScenarioFacts> = {
   ACUTE_SHOCK:      { group: 'off',      cadence: 'Daily',         timelineDays: 14 },
 
   OPEN_READ:        { group: 'open',     cadence: 'Every 2 weeks', timelineDays: 30 },
+}
+
+/**
+ * WHETHER A SITUATION IS ONE OF THE THREE THE ENGINE REACHES A VERDICT ON: a performance plan
+ * (`PIP`), a promotion or raise (`RECOGNITION`), or a renewal (`CONTRACT_RENEWAL`). Decision 17
+ * names exactly these three, and the API's own `isEvaluationCheckIn` (`is-this-an-evaluation-check-
+ * in.ts`) already tests this same equality against `BoardFamily.EVALUATION` - which is exactly the
+ * `'person'` group here, no more and no less.
+ *
+ * A COPY, LIKE THE CADENCE ABOVE, because the client cannot import from `api/`. It stands in for a
+ * field the engine does not send yet: the invitation ("The people in this check-in...") needs to
+ * know, for its own scenario, whether admins can read it, and the server has no per-check-in flag
+ * for that (engine request 78, still open). Once request 78 lands, the invitation should read the
+ * server's own field instead of this guess, and this function can be retired for that path.
+ */
+export function isEvaluationScenario(scenario: string | null | undefined): boolean {
+  if (!scenario) return false
+  const facts = (SCENARIO_FACTS as Record<string, ScenarioFacts>)[scenario]
+  return facts?.group === 'person'
 }
 
 /**

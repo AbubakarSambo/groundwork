@@ -45,10 +45,23 @@ const SRC = join(__dirname);
 const NOT_WIRED_ON_PURPOSE: Record<string, string> = {
   // Nest finds these by convention or by decorator rather than by import.
   'main.ts': 'the entrypoint - nothing imports it, it imports everything',
+  // Screens request 93: shared set-up for the request 92 specs, in assistant/ and grounds/, used by tests only.
+  // Request 70: shared set-up for the board's seven new section specs, used by tests only.
+  'an-organisation-to-set-up-for-specs.ts': 'test-only stand-in organisation shared by the assistant specs; nothing in the product should import it',
+  'a-leave-organisation-for-specs.ts': 'test-only stand-in organisation shared by the leave specs; nothing in the product should import it',
+  'a-spending-organisation-for-specs.ts': 'test-only stand-in organisation shared by the spending specs; nothing in the product should import it',
+  'a-time-sheets-organisation-for-specs.ts': 'test-only stand-in organisation shared by the time sheet specs; nothing in the product should import it',
+  'a-whatsapp-inbound-harness.ts': 'test-only set-up shared by the WhatsApp inbound specs; nothing in the product should import it',
+  // Week 26: the wording rules every product sentence is held to, run by the board and report specs.
+  'a-product-sentence-is-plain.ts': 'the wording check the board and report specs run over every product sentence; a rule read by tests, not served',
+  'request-92-harness.ts': 'test-only set-up shared by the request 92 specs in assistant/ and grounds/; nothing in the product should import it',
   // Duplicated deliberately into the client, and documented there.
   'what-this-ground-can-tell-you.ts': 'shares its rules with client/src/lib/contextStrength.ts by deliberate duplication - see the header in both',
   // Rule modules that exist to be READ by a person and asserted by a spec: they
   // state a boundary the product must not cross, and the enforcement is the test.
+  /* Request 36, 27 September 2026: a label never uses the lead's description of a person, so nothing
+     calls this any more. Kept with its spec, rather than deleted, until Hafsah says it can go. */
+  'a-name-is-short.ts': 'unwired on purpose since request 36: it shortens the lead\'s description into a name, which no label may use now',
   'a-worry-steers-questions-not-findings.ts': "G39's reachability rules, enforced by its spec - the product has no branch that could import a rule saying 'never'",
   /**
    * Was exempt as "awaiting the objectives UI". It has one now: `PersonObjective` has three writes and

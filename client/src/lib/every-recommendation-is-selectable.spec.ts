@@ -66,8 +66,16 @@ describe('every recommendation the picker makes', () => {
     /**
      * The ratchet. Both screens that set a cadence must render SELECTABLE_CADENCES; reverting either to
      * TIMED_CADENCES reintroduces exactly this bug while every other test still passes.
+     *
+     * REPOINTED (People and setup rebuild, 29 Sept): the check-in's own cadence Select (in "How it
+     * runs") moved out of GroundAdminPage.tsx's `tab === 'settings'` branch into
+     * CheckInPeopleAndSetup.tsx. While fixing that, found the second entry here had always named
+     * GroundAdminPage.tsx twice rather than the other real screen with a cadence Select,
+     * `components/gw/WhatThisCheckInStillNeeds.tsx` - a pre-existing duplicate this repoint also
+     * corrects, since checking the same file twice was never proving the "both screens" this test's
+     * own name and comment claim.
      */
-    for (const file of ['../pages/grounds/GroundAdminPage.tsx', '../pages/grounds/GroundAdminPage.tsx']) {
+    for (const file of ['../pages/grounds/CheckInPeopleAndSetup.tsx', '../components/gw/WhatThisCheckInStillNeeds.tsx']) {
       const src = readFileSync(resolve(__dirname, file), 'utf8')
         .replace(/\/\*[\s\S]*?\*\//g, '')
         .replace(/^\s*\/\/.*$/gm, '')

@@ -36,7 +36,14 @@ export interface CoverageFacts {
   iHaveCheckedIn: boolean
   /** How many of the people on this round have answered, and how many there are. */
   answered: number
-  parties: number
+  /**
+   * NULL WHEN THE EXACT COUNT ISN'T KNOWN (U.8 fifth review, second pass). A check-in that hides
+   * peers from each other cannot tell a hidden participant its own true size once the round's
+   * report has released - that read is what supplied this number, and it stops being computed at
+   * exactly that point. Null here means "more than one party, but not how many" - never a guessed
+   * or fabricated total. See `GroundParticipantPage.tsx`'s `coverage.parties`.
+   */
+  parties: number | null
   /**
    * KEPT ON THE SHAPE AND DELIBERATELY UNUSED BY THE COPY.
    *
@@ -86,11 +93,23 @@ interface Row {
  * rather than a row of bars is a real thing to want. Nothing on this page wants it.
  */
 export function whatItCanSay(f: CoverageFacts): { rows: Row[]; headline: string } {
-  const others = Math.max(0, f.parties - 1)
-  const outstanding = Math.max(0, f.parties - f.answered)
+  const partiesKnown = f.parties !== null
+  const others = partiesKnown ? Math.max(0, f.parties! - 1) : null
+  const outstanding = partiesKnown ? Math.max(0, f.parties! - f.answered) : null
   /* A count, never a name. "One more person" is the same fact and points at nobody. */
-  const stillToAnswer = outstanding === 1 ? 'one more person' : `${outstanding} more people`
-  const haveAnswered = `${f.answered} of ${f.parties} have answered`
+  const stillToAnswer = outstanding === 1 ? 'one more person' : outstanding !== null ? `${outstanding} more people` : 'more people'
+  /*
+   * WHEN THE EXACT COUNT ISN'T KNOWN, SAY SOMETHING TRUE INSTEAD OF A GUESSED TOTAL (U.8 fifth
+   * review, second pass). `parties` is null only once `GroundParticipantPage` cannot learn the true
+   * count - a check-in that hides peers from each other, once its report has released. A report only
+   * ever releases once every expected party has answered (the check-in tab's own rule: "The report
+   * generates once all parties have checked in"), so on exactly this path more than one person HAS
+   * answered. Saying that plainly is true; a fabricated "X of 2 have answered" was not, the moment a
+   * real team had three or more people in it.
+   */
+  const haveAnswered = partiesKnown
+    ? `${f.answered} of ${f.parties} have answered`
+    : 'The team’s report is already out.'
 
   const rows: Row[] = [
     {
@@ -100,7 +119,7 @@ export function whatItCanSay(f: CoverageFacts): { rows: Row[]; headline: string 
       because: 'Not until you have checked in',
     },
     {
-      can: others > 0 && f.answered > 1,
+      can: partiesKnown ? (others! > 0 && f.answered > 1) : true,
       short: 'differences',
       says: others === 1 ? 'Where the two of you see it differently' : 'Where people see it differently',
       because: others === 0
@@ -134,7 +153,7 @@ export function whatItCanSay(f: CoverageFacts): { rows: Row[]; headline: string 
     ? 'Nothing yet. It starts with your first check-in.'
     : canCount === rows.length
       ? 'Everything a report needs is here.'
-      : f.answered <= 1 && others > 0
+      : f.answered <= 1 && others !== null && others > 0
         ? `It can say what you said. It cannot compare anything until ${stillToAnswer} answers.`
         : `It can say ${canCount} of the ${rows.length} things a full report says.`
 
@@ -156,7 +175,8 @@ export function WhatTheReportCanSayYet({ facts }: { facts: CoverageFacts }) {
         labels say, which is the only difference there should be.
       */}
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginBottom: 6 }}>
-        <div style={{ fontSize: 10.5, letterSpacing: '.09em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)' }}>
+        {/* REVIEW ROUND 3, ITEM 5: NOT SHOUTED IN CAPITALS. */}
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)' }}>
           How much the report has to go on
         </div>
         <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
@@ -179,7 +199,28 @@ export function WhatTheReportCanSayYet({ facts }: { facts: CoverageFacts }) {
                 <div style={{ position: 'absolute', inset: 0, background: 'var(--gw-navy)' }} />
               )}
             </div>
-            <div style={{ fontSize: 9, color: 'var(--gw-muted)', textAlign: 'center', lineHeight: 1.25 }}>{r.short}</div>
+            {/*
+              RE-REVIEW: A CAPTION, NOT A CLIPPED FRAGMENT. `r.short` is still the field the tests
+              (and the code above) key rows by - "differences", "what lines up" - but a lower-case
+              fragment with no punctuation is exactly what plain-wording rejects. Capitalised here,
+              on render only, so it reads as a short caption under its bar rather than a piece of a
+              sentence that got cut off.
+            */}
+            <div style={{ fontSize: 9, color: 'var(--gw-muted)', textAlign: 'center', lineHeight: 1.25 }}>
+              {r.short.charAt(0).toUpperCase() + r.short.slice(1)}
+            </div>
+            {/*
+              GROUP 3'S REVIEW, BATCH A FAULT 6: "HOVER ONE TO SEE WHAT IT IS WAITING FOR" ASKED FOR
+              AN INTERACTION A PHONE DOES NOT HAVE. The reason a dashed bar cannot say yet now reads
+              on the page itself, under its own label, for everyone - not only somebody with a mouse.
+              `title` stays too, so a reader with a pointer still sees it on hover, but the words no
+              longer depend on it.
+            */}
+            {!r.can && r.because && (
+              <div style={{ fontSize: 9, color: 'var(--gw-muted)', textAlign: 'center', lineHeight: 1.25 }}>
+                {r.because}
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -193,7 +234,7 @@ export function WhatTheReportCanSayYet({ facts }: { facts: CoverageFacts }) {
         say yet, not a thing it failed at.
       */}
       <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 8, lineHeight: 1.5 }}>
-        Dashed ones it cannot say yet. Hover one to see what it is waiting for.
+        Dashed ones it cannot say yet. What each one is waiting for is written under it.
       </div>
     </div>
   )

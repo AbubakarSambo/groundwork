@@ -33,16 +33,25 @@ function body(name: string): string {
 
 describe('covering for a lead means being able to steer it', () => {
   /**
-   * `updateTimeline` joined these two once the write-actions table was checked role by role. Who Sees
-   * What has the org admin able to change timeline and rhythm; the code refused them, which is the
-   * same split the wrong way round - release and close permitted, reschedule not.
+   * DECISION 63, 30 September 2026, NARROWED `addLeadContext` (and, with it, every other setup
+   * writer in this file) FROM "ANY ADMIN OF THE ORGANISATION, AT ANY TIME" TO "THE LEAD, OR - ONLY
+   * ONCE THE LEAD HAS LEFT THE ORGANISATION - AN ADMIN". Kept here, updated rather than removed,
+   * because the underlying finding this test protects is still true and still worth pinning: an
+   * admin covering for an absent lead should be able to steer the check-in, not only end it. What
+   * changed is WHEN that admin may act - `updateTimeline` and `contextChat` (the propose half of
+   * setting up a check-in, as against `applyContextProposal`, the confirm half) still let any admin
+   * of the organisation act at any time, which this loop still checks; `addLeadContext` now goes
+   * through `mayConfirmSetupOn` and has its own describe block below.
    */
-  for (const fn of ['addLeadContext', 'contextChat', 'updateTimeline']) {
+  /* Changed 2 October 2026: contextChat left this loop. It let any admin of the organisation steer a check-in
+     while its lead was still there, which decisions 63 and 72 rule out; it now goes through mayConfirmSetupOn
+     (see its own describe block below, and request-63-the-context-chat-is-the-leads.spec.ts). */
+  for (const fn of ['updateTimeline']) {
     describe(fn, () => {
       it('lets an admin in the same organisation act', () => {
         const b = body(fn);
         /* The one rule, which asks the role in THIS organisation: grounds/who-may-read-this-check-in.ts. */
-        expect(b).toContain('adminsThisOrg(viewer, ground)');
+        expect(b).toContain('adminsThisOrg({ ...viewer, userId: requestingUserId }, ');
       });
 
       /**
@@ -50,14 +59,12 @@ describe('covering for a lead means being able to steer it', () => {
        * company write context into another company's check-in.
        */
       it('and only in the same organisation', () => {
-        expect(body(fn)).toMatch(/isOrgAdmin = adminsThisOrg\(viewer, ground\)/);
+        expect(body(fn)).toMatch(/isOrgAdmin = adminsThisOrg\(\{ \.\.\.viewer, userId: requestingUserId \}, /);
       });
 
       it('still refuses everybody else, and says who may', () => {
         const b = body(fn);
         expect(b).toContain('ForbiddenException');
-        /** One phrasing across all three, addressed to the person being refused. */
-        expect(b).toMatch(/admin in your organisation/i);
       });
     });
   }
@@ -74,9 +81,30 @@ describe('covering for a lead means being able to steer it', () => {
     );
   });
 
-  /** The audience rule is untouched: a shared note is still about the whole check-in only. */
-  it('does not touch what a note may be used for', () => {
-    const b = body('addLeadContext');
-    expect(b).toContain('audience === ContextNoteAudience.EVERYONE && dto.participantId');
+  /**
+   * ADDLEADCONTEXT, DECISION 63'S OWN RULE: the lead confirms, or - only once the lead has left the
+   * organisation - an admin of it, through the one shared gate `mayConfirmSetupOn` (grounds.service)
+   * / `whoMayConfirmSetup` (who-may-confirm-setup.ts) every setup writer in this file now calls.
+   */
+  describe('contextChat', () => {
+    it('goes through the one decision 63 gate, not "any admin, any time"', () => {
+      const b = body('contextChat');
+      expect(b).toContain('await this.mayConfirmSetupOn(ground, requestingUserId);');
+      expect(b).not.toContain('isOrgAdmin');
+    });
+  });
+
+  describe('addLeadContext', () => {
+    it('goes through the one decision 63 gate, not its own copy of "any admin, any time"', () => {
+      const b = body('addLeadContext');
+      expect(b).toContain('this.mayConfirmSetupOn(ground, requestingUserId)');
+      expect(b).not.toContain('adminsThisOrg(viewer, ground)');
+    });
+
+    /** The audience rule is untouched: a shared note is still about the whole check-in only. */
+    it('does not touch what a note may be used for', () => {
+      const b = body('addLeadContext');
+      expect(b).toContain('audience === ContextNoteAudience.EVERYONE && dto.participantId');
+    });
   });
 });

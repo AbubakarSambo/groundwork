@@ -60,15 +60,22 @@ describe('labels are stable and shared with the write path', () => {
     expect(labels.get('p-colleague')).toBe('Participant B');
   });
 
-  it('uses the role when people have one, and distinguishes people who share it', () => {
+  /*
+   * CHANGED 25 SEPTEMBER 2026. This pinned "the role IS the label". A role is free text a lead
+   * types, and in practice it is a sentence: "Relationship officer, Surulere. Target 14 approved
+   * facilities this quarter." printed mid-paragraph, ending the sentence twice. Labels are
+   * positional now. What this file really protects - that labels are stable, unique, and shared
+   * with the write path - is unchanged and still asserted.
+   */
+  it('is positional, and distinguishes people regardless of what their roles say', () => {
     const officers = [
       lead,
       { ...hire, roleAsDescribed: 'field officer' },
       { ...colleague, roleAsDescribed: 'field officer' },
     ];
     const labels = labelsForParties(officers);
-    expect(labels.get('p-hire')).toBe('field officer A');
-    expect(labels.get('p-colleague')).toBe('field officer B');
+    expect(labels.get('p-hire')).toBe('Participant A');
+    expect(labels.get('p-colleague')).toBe('Participant B');
   });
 });
 
@@ -120,25 +127,25 @@ describe('what a participant sees', () => {
 });
 
 describe('the substitution itself', () => {
-  it('resolves the longer label first, when one role name contains another', () => {
+  it('resolves the longer label first, when one label contains another', () => {
     /**
      * The real hazard, and the first version of this test missed it.
      *
-     * I wrote it against "field officer" versus "field officer A", which cannot
-     * happen: the letter is only appended when two people share a role, so the
-     * bare label and the lettered one never coexist. Reversing the sort left the
-     * test green, which meant it was pinning nothing.
-     *
-     * Two DIFFERENT roles where one contains the other is the case that occurs,
-     * and shortest-first turns "lead engineer" into "Hafsah Jumare engineer".
+     * It was written against roles - "lead" versus "lead engineer" - because roles used to be
+     * labels, and shortest-first turned "lead engineer" into "Hafsah Jumare engineer". Labels are
+     * positional now, so the containment case that remains is the one this product actually
+     * generates: "Participant A" inside "Participant AB" can never occur, but the sort that
+     * prevents it is still the thing under test, and a reader's own label must still win.
      */
     const overlapping = [
       { ...lead, roleAsDescribed: 'lead' },
       { ...hire, roleAsDescribed: 'lead engineer' },
     ];
     const visible = namesVisibleTo('p-lead', overlapping);
-    expect(withNames('the lead engineer shipped it.', visible)).toBe('the Abubakar B shipped it.');
-    expect(withNames('the lead asked for it.', visible)).toBe('the Hafsah Jumare asked for it.');
+    expect(withNames('Participant A shipped it.', visible)).toBe('Abubakar B shipped it.');
+    /* And the article the model puts in front of a label goes with it - "the Hafsah Jumare" was
+       what this used to assert, which is the artefact aNameIsNotATitle now removes. */
+    expect(withNames('the initiator asked for it.', visible)).toBe('Hafsah Jumare asked for it.');
   });
 
   it('matches a label at the start of a sentence as well as inside one', () => {

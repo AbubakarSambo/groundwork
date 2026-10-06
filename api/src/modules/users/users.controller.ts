@@ -1,5 +1,6 @@
 import { Inject, forwardRef, Controller, BadRequestException, Get, Post, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
 import { HowCheckInsWorkDto } from './dto/how-check-ins-work.dto';
+import { aRoleToInviteAs } from './the-role-an-invitation-gives';
 import { GroundsService } from '../grounds/grounds.service';
 import { isASubject } from './what-a-call-is-about';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
@@ -7,7 +8,10 @@ import { UsersService } from './users.service';
 import { MyOwnRecordService } from '../people/my-own-record.service';
 import { WhoIsWaitingAtTheDoorService } from '../participants/who-is-waiting-at-the-door.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
-import { IsString, IsNotEmpty, MaxLength, MinLength } from 'class-validator';
+import { IsString, IsNotEmpty, MaxLength, MinLength, IsOptional, IsEmail, ValidateNested, IsEnum, IsBoolean } from 'class-validator';
+import { CompanyStage } from '@prisma/client';
+import { Type } from 'class-transformer';
+import { TeamSizeSaidDto } from '../auth/dto/create-organisation.dto';
 import { CurrentUser, CurrentUserData, Roles, Role, PaginationDto } from '../../common';
 
 class RenameOrganizationDto {
@@ -16,6 +20,27 @@ class RenameOrganizationDto {
   @MinLength(2)
   @MaxLength(120)
   name: string;
+
+  /**
+   * THE REST OF "Create an organisation", for the organisation a first Google sign-in has just made
+   * (U.3). Both optional: the Settings rename sends only the name.
+   */
+  @IsOptional() @IsEmail() @MaxLength(255) billingEmail?: string;
+  @IsOptional() @ValidateNested() @Type(() => TeamSizeSaidDto) teamSize?: TeamSizeSaidDto;
+
+  /** Moved here from PATCH /auth/me, which let anybody set it (U.3). No screen sets it today. */
+  @IsOptional() @IsEnum(CompanyStage) companyStage?: CompanyStage;
+}
+
+/** Where somebody sits here (U.4). Each field optional: only what is sent changes, and a blank clears it. */
+class WhereTheySitDto {
+  @IsOptional() @IsString() @MaxLength(120) level?: string | null;
+  @IsOptional() @IsString() @MaxLength(120) team?: string | null;
+  @IsOptional() @IsString() @MaxLength(64) reportsToUserId?: string | null;
+}
+
+class JoiningByDomainDto {
+  @IsBoolean() on!: boolean;
 }
 
 @ApiTags('Users')
@@ -68,6 +93,24 @@ export class UsersController {
     return this.grounds.releaseAnyoneWaitingForASeat(organizationId);
   }
 
+  /**
+   * THE PERSON WAITING TO BE LET IN, ABOUT THEIR OWN REQUEST (U.3, "Almost in"). Any signed-in
+   * person, because the person waiting is not an admin; each reads and reminds about their own only.
+   * Before `waiting/:id/...` so the path is not read as an id.
+   */
+  @Get('me/waiting')
+  @ApiOperation({ summary: 'My own request to be let into an organisation, if I am waiting' })
+  async myWaiting(@CurrentUser('id') userId: string) {
+    return this.door.myOwnRequest(userId);
+  }
+
+  @Post('me/waiting/remind')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Remind the admin who was asked. Once a day.' })
+  async remindAboutMyWaiting(@CurrentUser('id') userId: string) {
+    return this.door.remind(userId);
+  }
+
   @Post('waiting/:id/approve')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Let somebody into the organisation. They can check in, and they hold a seat.' })
@@ -98,7 +141,7 @@ export class UsersController {
     @CurrentUser('organizationId') organizationId: string,
     @Body() dto: RenameOrganizationDto,
   ) {
-    return this.usersService.renameOrganization(organizationId, dto.name);
+    return this.usersService.renameOrganization(organizationId, dto.name, { billingEmail: dto.billingEmail, teamSize: dto.teamSize, companyStage: dto.companyStage });
   }
 
   /**
@@ -107,6 +150,38 @@ export class UsersController {
    * On the organisation rather than on a settings module of its own, next to the rename, because
    * that is what they are: facts about this organisation that only an admin may change.
    */
+  /** "Who can join": anyone with this organisation's email domain (U.3). */
+  @Get('organization/joining')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Says whether anyone with the organisation\'s email domain can join, and which domain' })
+  async joining(@CurrentUser('organizationId') organizationId: string) {
+    return this.usersService.joiningByDomain(organizationId);
+  }
+
+  @Patch('organization/joining')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Let anyone with the organisation\'s email domain join, or stop it' })
+  async setJoining(
+    @CurrentUser('organizationId') organizationId: string,
+    @Body() dto: JoiningByDomainDto,
+  ) {
+    return this.usersService.setJoiningByDomain(organizationId, dto.on);
+  }
+
+  /**
+   * AN ADMIN NAMES OR CHANGES THE DOMAIN (Hafsah, 30 September, item 3). The new domain is always
+   * the requesting admin's own confirmed address's domain - see `UsersService.changeJoinDomain`.
+   */
+  @Patch('organization/joining/domain')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Name or change the domain people can join this organisation by, using your own confirmed address' })
+  async changeJoiningDomain(
+    @CurrentUser('organizationId') organizationId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.usersService.changeJoinDomain(organizationId, userId);
+  }
+
   @Get('organization/check-ins')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Who may open a check-in here, and whether one waits for approval' })
@@ -131,9 +206,12 @@ export class UsersController {
    *
    * A lead inviting colleagues to a check-in had to type every address in full, for people the
    * organisation already knows: "it recognises the people mentioned and suggests them, but then you
-   * need to type every email out". Any signed-in member may read this - these are their own
-   * colleagues, and the addresses are the ones invitations already go to. Name and address only,
-   * never role or standing, and never the caller.
+   * need to type every email out".
+   *
+   * U.4 (Hafsah, 26 September): name, role and team only, never an address, a load or a note, and
+   * never the caller. A member sees the organisation's own people; a guest, or somebody still
+   * waiting to be let in, sees only the people on their own check-ins here. See common/colleagues.ts.
+   * A colleague is added to a check-in by id, and the server looks the address up.
    */
   @Get('colleagues')
   @ApiOperation({ summary: 'The people in your organisation, for adding to a check-in without typing their address' })
@@ -269,8 +347,16 @@ export class UsersController {
   @Get('rollout')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'What an admin has actually done so far, as counts' })
-  async rollout(@CurrentUser('organizationId') organizationId: string) {
-    return this.usersService.rolloutFacts(organizationId);
+  async rollout(@CurrentUser('organizationId') organizationId: string, @CurrentUser('id') userId: string) {
+    return this.usersService.rolloutFacts(organizationId, userId);
+  }
+
+  /** "Got it" on the new admin's welcome card (U.3). Saved on the server so it stays gone. */
+  @Post('me/welcome-card/seen')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'I have read the welcome card' })
+  async welcomeCardSeen(@CurrentUser('id') userId: string) {
+    return this.usersService.welcomeCardSeen(userId);
   }
 
   @Post('invitations')
@@ -279,10 +365,10 @@ export class UsersController {
   @ApiOperation({ summary: 'Invite many people at once, or preview what would happen' })
   async inviteMany(
     @CurrentUser() user: CurrentUserData,
-    @Body() body: { pasted?: string; preview?: boolean },
+    @Body() body: { pasted?: string; preview?: boolean; role?: string },
   ) {
     const org = await this.usersService.organisationName(user.organizationId);
-    return this.usersService.inviteMany(user.organizationId, org, body?.pasted ?? '', body?.preview === true);
+    return this.usersService.inviteMany(user.organizationId, org, body?.pasted ?? '', body?.preview === true, aRoleToInviteAs(body?.role));
   }
 
   @Get(':id')
@@ -305,6 +391,18 @@ export class UsersController {
   @ApiOperation({ summary: 'Update a user' })
   async update(@Param('id') id: string, @Body() dto: UpdateUserDto, @CurrentUser() user: CurrentUserData) {
     return this.usersService.update(id, user.organizationId, dto, user.id);
+  }
+
+  /**
+   * WHERE SOMEBODY SITS: their level, team, and who they report to (U.4). Admin only. It describes
+   * the organisation and grants nothing; what they can do still comes from their role and their
+   * access to each check-in.
+   */
+  @Patch(':id/where-they-sit')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: "Set a person's level, team and who they report to" })
+  async setWhereTheySit(@Param('id') id: string, @Body() dto: WhereTheySitDto, @CurrentUser('organizationId') organizationId: string) {
+    return this.usersService.setWhereTheySit(organizationId, id, dto);
   }
 
   @Post(':id/resend-invite')

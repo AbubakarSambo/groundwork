@@ -15,8 +15,16 @@ describe('one note, shared on purpose', () => {
   /* To the next method, which is now changeContextLine: a line of a bucket, changed by id. */
   const body = SRC.slice(SRC.indexOf('async shareLeadContext('), SRC.indexOf('async changeContextLine('));
 
-  it('is the lead\'s, or an admin of their organisation', () => {
-    expect(body).toContain('ground.initiatorId !== requestingUserId && !adminsThisOrg(viewer, ground)');
+  /**
+   * DECISION 63, 30 September 2026: narrowed from "the lead, or any admin of the organisation, at
+   * any time" to "the lead, or - only once the lead has left the organisation - an admin of it",
+   * through the one shared gate `mayConfirmSetupOn` every setup writer in grounds.service.ts now
+   * calls. Updated rather than removed: the finding this test protects (an org admin can share a
+   * note in the lead's place at all) is still true, only narrower now.
+   */
+  it('is the lead\'s, or - once the lead has left the organisation - an admin of theirs', () => {
+    expect(body).toContain('this.mayConfirmSetupOn(ground, requestingUserId)');
+    expect(body).not.toContain('adminsThisOrg(viewer, ground)');
   });
 
   it('refuses a note about one person, rather than publishing a judgement of them', () => {
@@ -24,8 +32,12 @@ describe('one note, shared on purpose', () => {
     expect(body).toContain('A note everyone reads is about the whole check-in, not about one person');
   });
 
-  it('sets the audience and nothing else', () => {
-    expect(body).toContain('data: { audience: ContextNoteAudience.EVERYONE }');
+  /**
+   * Sets the audience, and - decision 63 - who confirmed it in the lead's place, if anybody did;
+   * never the note's text itself, which stays the lead's own words, unedited.
+   */
+  it('sets the audience and who confirmed it, and nothing else', () => {
+    expect(body).toContain('data: { audience: ContextNoteAudience.EVERYONE, confirmedByAdminNote }');
     expect(body).not.toMatch(/data: \{[^}]*text:/);
   });
 

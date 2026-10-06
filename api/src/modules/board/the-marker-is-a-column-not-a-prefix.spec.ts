@@ -24,9 +24,10 @@ const read = (p: string) => strip(readFileSync(join(SRC, p), 'utf8'));
 describe('the marker is a column, not a prefix', () => {
   it('the write stores the column and leaves the text alone', () => {
     const SERVICE = read('conversation/conversation.service.ts');
-    const at = SERVICE.indexOf('await this.prisma.recordEntry.createMany');
+    /* The rows are built in readTheRecord since the end card (task 2.7), and written as built. */
+    const at = SERVICE.indexOf('return valid.map((e) =>');
     expect(at).toBeGreaterThan(-1);
-    const block = SERVICE.slice(at, at + 900);
+    const block = SERVICE.slice(at, at + 1400);
     expect(block).toContain('verifiability: v');
     /*
      * The text goes in as the person said it, with no marker built onto the front of it - which is
@@ -35,7 +36,12 @@ describe('the marker is a column, not a prefix', () => {
      * sentence that kept it and changes nothing else. Pinning the rule rather than the call, so a
      * tidy-up that leaves her words alone does not read as a marker coming back.
      */
-    expect(block).toMatch(/text: theLineWithoutItsDanglingJoin\(e\.text\)|text: e\.text\.trim\(\)/);
+    /* Since 6331337b the line is also given back the quotation marks the person typed, and stored
+       as `line` - still only their own words, with no marker on the front. The rule is the same. */
+    expect(block).toMatch(/text: theLineWithoutItsDanglingJoin\(e\.text\)|text: e\.text\.trim\(\)|text: line\b/);
+    if (/text: line\b/.test(block)) {
+      expect(SERVICE).toMatch(/const line = theirQuotationMarksBack\(theLineWithoutItsDanglingJoin\(e\.text\), whatTheyTyped\)/);
+    }
     expect(block).not.toMatch(/text: `/);
     /* The prefix is not built any more. This is the line that ends the class. */
     expect(block).not.toMatch(/\[VERIFIABILITY:\$\{/);

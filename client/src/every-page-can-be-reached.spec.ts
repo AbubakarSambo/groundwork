@@ -25,6 +25,10 @@ import { describe, it, expect } from 'vitest'
 
 /** Routes nothing links to on purpose, each with the thing that opens it. */
 const REACHED_FROM_OUTSIDE_THE_APP: Record<string, string> = {
+  /* The anchor scenario's front door (docs/anchor-scenario-plan.md, piece 2). It is opened from the
+     anchor link Hafsah shares outside the app, never from inside it, and it shows only while
+     release.anchorScenario is on; otherwise it sends the visitor to /start. */
+  '/start/team': 'the anchor link, shared outside the app',
   /*
    * THE REPORT REBUILD'S REVIEW PAGE, and it has no door on purpose.
    *
@@ -38,6 +42,9 @@ const REACHED_FROM_OUTSIDE_THE_APP: Record<string, string> = {
    * of its own, so it adds no route to any data - every surface on it calls the endpoint it always
    * calls, with the reader's own token.
    */
+  /* U.18: the old address of the Connect page. The API-access and failed-delivery emails, and the
+     rollout checklist, still carry it; it opens "Connect your own tools", the page it always was. */
+  '/org/integrations': 'the links in the API-access and failed-delivery emails',
   '/verify-email': 'the link in the sign-up email',
   '/set-password': 'the link in the invite and add-a-password emails',
   '/reset-password': 'the link in the password-reset email',
@@ -57,10 +64,10 @@ const REACHED_FROM_OUTSIDE_THE_APP: Record<string, string> = {
   '/join': 'the broadcast link an admin copies off the check-in page and sends',
   '/join/confirm': 'the link emailed to the address somebody typed on /join — the only place the join flow creates anything',
   /**
-   * The marketing site's header links here when its shared signed-in flag is set. Nothing inside
-   * the app links to it and nothing should: in here, signing out is a button in the shell that
-   * calls the store directly. This address exists because a static page cannot call a store, only
-   * follow a link. See client/src/lib/signed-in-flag.ts.
+   * The marketing site's header links here when its shared signed-in flag is set: a static page
+   * cannot call a store, only follow a link. See client/src/lib/signed-in-flag.ts. Since U.2 every
+   * Sign out inside the app lands here too, on "You're signed out", so it is also linked; the entry
+   * stays because the marketing door is the one no scan of this codebase can see.
    */
   '/signout': 'the Sign out link in the marketing site header, when it sees the signed-in flag',
   /**

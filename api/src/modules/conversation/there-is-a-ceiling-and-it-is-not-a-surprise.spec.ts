@@ -1,3 +1,4 @@
+import { theStreamedRouteRunsThePlainRoute } from './__fixtures__/the-streamed-route-is-the-plain-route';
 /**
  * The twenty-first answer was refused with "Session turn limit reached. Please complete your
  * session." — a limit nobody had mentioned, arriving in the middle of somebody's account of their
@@ -41,7 +42,7 @@ describe('how much room is left', () => {
 describe('the refusal when it comes', () => {
   it('says their record is safe', () => {
     expect(theCeilingIsReached()).toMatch(/on the record/);
-    expect(theCeilingIsReached()).toMatch(/nothing you have written is lost/);
+    expect(theCeilingIsReached()).toMatch(/nothing you have written is lost/i);
   });
 
   it('says what to do', () => {
@@ -62,12 +63,14 @@ describe('and the service uses both', () => {
 
   it('has no bare turn-limit sentence left, on either path', () => {
     expect(src).not.toContain('Session turn limit reached');
-    expect((src.match(/theCeilingIsReached\(\)/g) ?? []).length).toBe(2);
+    /* Changed 28 Sep 2026: the streamed route now runs sendMessage itself (the-streamed-route-is-the-plain-route), so a rule held on both paths is in sendMessage once, and the stream runs it. */
+    expect((src.match(/theCeilingIsReached\(\)/g) ?? []).length).toBe(1);
+    expect(theStreamedRouteRunsThePlainRoute(src)).toBe(true);
   });
 
   it('reads the ceiling from one place rather than a literal 20', () => {
     expect(src).not.toMatch(/personTurnCount >= 20/);
-    expect((src.match(/personTurnCount >= A_CHECK_IN_TAKES_ANSWERS/g) ?? []).length).toBe(2);
+    expect((src.match(/personTurnCount >= A_CHECK_IN_TAKES_ANSWERS/g) ?? []).length).toBe(1);
   });
 
   it('and the warning rides on a reply, so it reaches somebody without a new screen', () => {

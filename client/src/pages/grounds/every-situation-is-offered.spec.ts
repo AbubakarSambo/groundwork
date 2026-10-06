@@ -185,11 +185,24 @@ describe('every card describes a run against an objective', () => {
 
 /** 21 Sep 2026: the Setup card's scenario select listed nine situations, so a discovery check-in read "New hire". */
 describe('the Setup card offers every situation', () => {
-  it('reads the select from the catalogue, not a list of its own', () => {
-    const src = require('fs').readFileSync(require('path').join(__dirname, 'GroundAdminPage.tsx'), 'utf8');
-    const i = src.indexOf('Save scenario');
-    const before = src.slice(Math.max(0, i - 1500), i);
-    expect(before).toMatch(/SCENARIO_KEYS\.map/);
-    expect(before).not.toMatch(/\['NEW_HIRE', 'New hire'\]/);
+  /*
+   * REPOINTED (People and setup rebuild, 29 Sept), THEN UPDATED (U.4 review, item 10, 30 Sept):
+   * "What it is" (name and situation) moved from GroundAdminPage.tsx's settings tab to
+   * CheckInPeopleAndSetup.tsx, unchanged at first - still not in the prototype, kept as its own row.
+   *
+   * The review then found the "Change" control on Situation never actually saved: the update route
+   * takes no `scenario` field, so pressing it and saving said "Updated" and changed nothing. There
+   * is no select to read from the catalogue any more - Situation is a plain row until the server
+   * can take the change (docs/requests-to-engine.md) - so this now checks the row still reads its
+   * label from the one catalogue instead of a list of its own, which is the drift this file exists
+   * to catch.
+   */
+  it('reads its label from the catalogue, not a list of its own', () => {
+    const src = require('fs').readFileSync(require('path').join(__dirname, 'CheckInPeopleAndSetup.tsx'), 'utf8');
+    const i = src.indexOf('label="Situation"');
+    const around = src.slice(Math.max(0, i - 200), i + 400);
+    expect(around).toMatch(/SCENARIO_LABELS\[ground\.scenario/);
+    expect(around).not.toMatch(/\['NEW_HIRE', 'New hire'\]/);
+    expect(src).not.toMatch(/Save situation/);
   });
 });

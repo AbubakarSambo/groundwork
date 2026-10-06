@@ -1,3 +1,4 @@
+import { aboutTheNoteBeforeTheYes } from './the-note-about-where-numbers-came-from';
 /**
  * WHAT A DOCUMENT HOLDS, READ ONCE, AND SAID BACK IN THE PRODUCT'S OWN WORDS.
  *
@@ -68,6 +69,9 @@ NUMBERS FOR ONE PERSON. A row counts when three things are there: a person's nam
 - Take every column that is a number that person is working to. Leave the columns that are the same for everybody to the group list below.
 - A row whose name cell says TOTAL, SUM, TEAM or ALL is not a person. Leave it out.
 - A column of progress so far, a percentage complete, or last year's actual is not a target. Leave it out.
+- Where a plan gives each priority or workstream an owner, the numbers in it are that owner's: give them under that person, and never also as a number for everyone.
+- A number inside the description of a job ("tell the top 30 customers", "count 4,200 items") belongs to that job and is not a target. A reserve, allowance or contingency is not a target either.
+- A figure the document says is not agreed, not decided or only a choice between two numbers is not a target. Leave it out.
 - A month or a quarter column is not a target of its own: where a row is split across months and also has a total, take the total only. Where it has no total, add nothing up - take nothing.
 
 NUMBERS FOR EVERYBODY. A total for the group, or a limit every person carries.
@@ -76,17 +80,17 @@ NUMBERS FOR EVERYBODY. A total for the group, or a limit every person carries.
 
 DATES. Where the document says something is due, give it in the document's own words: "by December", "end of Q3", "3 October". Never work out a date that is not written.
 
-WHAT IT IS. One plain line naming what kind of document this is, for somebody choosing between files in a list.
+WHAT IT IS. One full plain sentence, starting "It is" or "This is", saying what kind of document this is, for somebody choosing between files in a list. Never a label or a noun phrase on its own, such as "A Q4 sales target sheet" - write "It is a Q4 sales target sheet."
 
 TWO RULES OVER EVERYTHING. Give names and wording exactly as the document writes them - do not correct, expand, translate or match them to anybody. And an empty answer is a correct answer: a document with no numbers in it is an ordinary document, and a wrong number is worse than none.`;
 
 export const WHAT_A_DOCUMENT_HOLDS_SCHEMA = {
   name: 'emit_what_the_document_holds',
-  description: 'Emit the numbers and dates this document sets, and one line saying what it is.',
+  description: 'Emit the numbers and dates this document sets, and one plain, full sentence saying what it is.',
   input_schema: {
     type: 'object',
     properties: {
-      whatItIs: { type: 'string', description: 'One plain line: what kind of document this is.' },
+      whatItIs: { type: 'string', description: 'One full plain sentence, starting "It is" or "This is", saying what kind of document this is. Never a bare noun phrase.' },
       forOnePerson: {
         type: 'array',
         items: {
@@ -133,9 +137,13 @@ export interface WhatLanded {
   fileName: string;
   whatItIs?: string | null;
   /** Per-person rows that reached the record, with the person named as this reader may see them. */
-  forOnePerson: { who: string; what: string; target: number; by?: string | null }[];
-  forEverybody: { what: string; target: number; kind?: string | null; by?: string | null }[];
-  dates: { what: string; when: string }[];
+  forOnePerson: { who: string; what: string; target: number; by?: string | null; page?: number; ownerParticipantId?: string | null }[];
+  forEverybody: { what: string; target: number; kind?: string | null; by?: string | null; page?: number }[];
+  dates: { what: string; when: string; page?: number }[];
+  /** How many pages the file has, when its text carries them (a PDF with a text layer). */
+  pages?: number;
+  /** A PDF read from a picture of its pages: it has pages, and we cannot say which item is on which. */
+  pagesNotKnown?: boolean;
   /** Names the document has that this check-in does not. */
   unmatched: string[];
   /**
@@ -147,7 +155,12 @@ export interface WhatLanded {
    */
   waiting?: { name: string; target: number; ownerParticipantId: string | null }[];
   takenAt?: string | null;
+  /** What the read found and did not keep, and why: bank details, and numbers this person may not set. */
+  leftOut?: { what: string; why: string; page?: number }[];
 }
+
+/** The prototype's words, on its upload screen, under "What it left out". */
+export const BANK_DETAILS_LEFT_OUT = { what: 'Bank account details', why: 'Never kept, in any document.' } as const;
 
 /**
  * THE CONTEXT WE HAVE, IN ONE BLOCK, THE SAME WORDS EVERYWHERE.
@@ -155,33 +168,103 @@ export interface WhatLanded {
  * `asking` adds the question at the end, which the chat wants and a page does not: a page is a
  * statement of what is on record, and a question on a page is a question nobody can answer.
  */
-export function theContextWeHave(held: WhatLanded, opts: { asking?: boolean } = {}): string | null {
+/**
+ * WHO IS READING IT. The reader is "you" in a sentence the product writes, so a number that is the
+ * reader's own reads "Your target for cookers delivered is 3." and never "Amani Wekesa's target" to
+ * Amani herself. Matched on the participant the number was kept against, and, for a read that
+ * predates that, on the reader's own name.
+ */
+export interface WhoIsReading { participantId?: string | null; name?: string | null }
+
+const sameName = (a?: string | null, b?: string | null): boolean =>
+  !!a && !!b && a.trim().toLowerCase().replace(/\s+/g, ' ') === b.trim().toLowerCase().replace(/\s+/g, ' ');
+
+export const isTheReader = (row: { who: string; ownerParticipantId?: string | null }, reader?: WhoIsReading | null): boolean =>
+  !!reader && ((!!reader.participantId && row.ownerParticipantId === reader.participantId) || sameName(row.who, reader.name));
+
+export function theContextWeHave(held: WhatLanded, opts: { asking?: boolean; willNoteIt?: { visibility?: string | null }; reader?: WhoIsReading | null } = {}): string | null {
   const something = held.forOnePerson.length || held.forEverybody.length || held.dates.length || held.unmatched.length;
   if (!something) return null;
-  const lines: string[] = [`Here is the context we have from ${held.fileName}${held.whatItIs ? ` - ${held.whatItIs.replace(/\.$/, '')}` : ''}.`];
+  /*
+   * EACH LINE A SENTENCE, NOT A HEADING, A COLON AND A DASH (request 40). This read "For the whole
+   * check-in:", "- Lowest price for the 600L: 76,000" and "Dates it sets:", and a record line read
+   * "cookers delivered, 3, by by 9 October" because the document's own "by 9 October" was given a
+   * second "by". The document's words for what a number is of stay exactly as it wrote them.
+   */
+  const whatItIs = aSentence(held.whatItIs);
+  const lines: string[] = [`Here is the context we have from ${held.fileName}.${whatItIs ? ` ${whatItIs}` : ''}`];
   if (held.forEverybody.length) {
-    lines.push('', 'For the whole check-in:');
+    lines.push('');
     for (const t of held.forEverybody) {
-      lines.push(`- ${t.what}: ${fmt(t.target)}${t.kind === 'not to exceed' ? ', not to be passed' : ''}${t.by ? `, by ${t.by}` : ''}`);
+      lines.push(t.kind === 'not to exceed'
+        ? `For everyone in this check-in, ${t.what} must stay at or under ${fmt(t.target)}${byWhen(t.by)}.`
+        : `For everyone in this check-in, the target for ${t.what} is ${fmt(t.target)}${byWhen(t.by)}.`);
     }
   }
   if (held.forOnePerson.length) {
-    lines.push('', 'Against the person who holds it:');
-    for (const t of held.forOnePerson) lines.push(`- ${t.who}: ${t.what}, ${fmt(t.target)}${t.by ? `, by ${t.by}` : ''}`);
+    lines.push('');
+    for (const t of held.forOnePerson) lines.push(`${isTheReader(t, opts.reader) ? 'Your' : `${t.who}'s`} target for ${t.what} is ${fmt(t.target)}${byWhen(t.by)}.`);
   }
   if (held.dates.length) {
-    lines.push('', 'Dates it sets:');
-    for (const d of held.dates) lines.push(`- ${d.what}: ${d.when}`);
+    lines.push('');
+    for (const d of held.dates) lines.push(`The date it sets for ${d.what} is ${d.when.trim().replace(/\.$/, '')}.`);
   }
   if (held.unmatched.length) {
     lines.push(
       '',
-      `${held.unmatched.length === 1 ? 'One name in it is' : `${held.unmatched.length} names in it are`} not on this check-in: ${held.unmatched.join(', ')}. Add them and their numbers go on too.`,
+      held.unmatched.length === 1
+        ? `One name in it, ${held.unmatched[0]}, is not on this check-in. Add them, and their numbers will go on too.`
+        : `${held.unmatched.length} names in it are not on this check-in. They are ${andList(held.unmatched)}. Add them, and their numbers will go on too.`,
     );
+  }
+  if (held.leftOut?.some((l) => l.what === BANK_DETAILS_LEFT_OUT.what)) {
+    lines.push('', 'It also held bank account details. Those are never kept, in any document.');
+  }
+  /* The yes also writes a note everyone reads. Said here, before the yes, where it will be written. */
+  if (opts.willNoteIt && held.forEverybody.length + held.forOnePerson.length) {
+    lines.push('', aboutTheNoteBeforeTheYes(held.fileName, opts.willNoteIt.visibility));
   }
   if (opts.asking) lines.push('', 'Is that right?');
   return lines.join('\n');
 }
+
+/** " by 9 October", said once, whether or not the document wrote its own "by". */
+export function byWhen(by?: string | null): string {
+  const when = (by ?? '').trim().replace(/\.$/, '').replace(/^by\s+/i, '');
+  return when ? ` by ${when}` : '';
+}
+
+/**
+ * ONE FULL SENTENCE, NEVER THE MODEL'S FRAGMENT ON ITS OWN.
+ *
+ * `whatItIs` is asked of the model as a full sentence (see WHAT_A_DOCUMENT_HOLDS_PROMPT), but a read
+ * from before that wording, or a PromptVersion override that has not caught up, can still hand back a
+ * bare noun phrase - "A Q4 sales target sheet". Put straight after "Here is the context we have from
+ * Q4 targets.xlsx.", that fragment read as two sentences that did not join up. So it is turned into a
+ * sentence here, in code, which is the one guarantee that does not depend on the model getting it
+ * right: a phrase with no verb of its own is given one, in the product's own voice ("It looks like a
+ * Q4 sales target sheet."); a phrase that already has a verb - "This sheet sets the Q4 targets for
+ * each dealer." - is kept exactly as it is, with its full stop made certain. An empty answer stays
+ * empty: no sentence is better than an invented one.
+ */
+/*
+ * ONLY WORDS THAT ARE RARELY ANYTHING BUT A VERB HERE. "list", "record", "report", "detail", "cover"
+ * and "hold" were tried and dropped: a document description says "a price list" and "sales record"
+ * often enough, as an ordinary noun, that treating them as a verb wrapped the wrong half of a real
+ * fragment - "A price list for the 600L cookers" was kept as if "list" made it a sentence.
+ */
+const HAS_A_VERB =
+  /\b(is|are|was|were|has|have|had|sets|shows|show|tracks|track|outlines|outline|describes|describe|summarizes|summarize|summarises|summarise|contains|contain|confirms|confirm|explains|explain|asks|ask|requests|request|provides|provide|captures|capture|gives|give|lays out|lay out|breaks down|break down|tallies|tally)\b/i;
+
+export const aSentence = (t: string | null | undefined): string | null => {
+  const s = (t ?? '').trim().replace(/[.;:,\s]+$/, '').trim();
+  if (!s) return null;
+  if (HAS_A_VERB.test(s)) return `${s}.`;
+  const lower = `${s.charAt(0).toLowerCase()}${s.slice(1)}`;
+  return `It looks like ${lower}.`;
+};
+
+const andList = (xs: string[]): string => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
 
 /* ------------------------------------------------------------------------------------------------ */
 
@@ -215,7 +298,14 @@ export function whoThisNameIs(name: string, people: SomebodyOnTheCheckIn[]): Som
     [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').toLowerCase().trim(),
     (p.nameGiven ?? '').toLowerCase().trim(),
     (p.user?.firstName ?? '').toLowerCase().trim(),
+    /* The first name of the name they gave, for somebody added by a colleague pick who has not opened the invitation:
+       "Amani, have you sent the proposal?" is Amani Wekesa. Found walking the user journeys, where the lead's plan named
+       "Amani" and the check-in said she was not on it. Two people sharing a first name still match neither. */
+    (p.nameGiven ?? '').toLowerCase().trim().split(/\s+/)[0],
     (p.email ?? '').split('@')[0].toLowerCase().replace(/[._]/g, ' '),
+    /* And the first name in the address, for somebody invited by address alone ("amani.wekesa@..." is "Amani"). Found in the browser
+       journeys: the lead's plan said "Amani" and the check-in said she was not on it. Two people with one first name still match neither. */
+    ((p.email ?? '').split('@')[0].toLowerCase().split(/[._]+/).length >= 2 ? (p.email ?? '').split('@')[0].toLowerCase().split(/[._]+/)[0] : ''),
     (p.roleAsDescribed ?? '').toLowerCase().trim(),
   ].filter(Boolean);
   const hits = people.filter((p) => ways(p).includes(n));

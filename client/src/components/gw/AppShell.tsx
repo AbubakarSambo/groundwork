@@ -1,218 +1,45 @@
+import { useNoRailStore } from '@/stores/no-rail'
 import { toast } from 'sonner'
 import { mayRenameACheckIn } from '@/lib/who-may-rename-a-check-in'
 import { MARKETING_URL } from '@/lib/marketing'
-import { authApi } from '@/api/auth'
-import { railAttention, railRank, stillInRail } from '@/lib/rail-attention'
+import { railAttention, railRank, stillInRail, openRound } from '@/lib/rail-attention'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useState, useRef, useEffect } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth'
 import { justTheQuestion } from '@/pages/invite/the-link-opens-on-the-question'
 import { groundsApi } from '@/api/grounds'
+import { todayApi } from '@/api/today'
 import { useEntryStore } from '@/stores/entry'
 import { useFeedbackStore } from '@/stores/feedback'
+import { useHelpStore } from '@/stores/help'
+import { useAskStore } from '@/stores/ask'
+import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
+import { AskGroundwork } from './AskGroundwork'
+import { askNameFor } from '@/lib/ask-name'
+import { hasEnded } from '@/lib/a-ground-that-has-ended'
+import { Button } from './kit'
+import { sidebarWasFolded, rememberSidebarFolded } from './where-the-sidebar-was-left'
+import { pinnedFor, togglePin } from './pinned-check-ins'
+import { recentlyOpenedFor } from './recently-opened-check-ins'
+import { whatTheRowSays } from './what-a-sidebar-row-says'
+import { OrganisationChoices } from './OrganisationChoices'
+import { initialsOf, roleWord } from './your-organisations'
+import { JumpTo } from './JumpTo'
+import { whatYouCanJumpTo } from './what-you-can-jump-to'
+import { whatTellsItApart } from '@/lib/tell-apart-the-same-name'
+import { useJumpStore } from '@/stores/jump'
 import { feedbackApi } from '@/api/feedback'
 import type { Ground } from '@/types'
-import { alignmentShort } from '@/lib/alignment'
 import {
   asStyle, keepItOnScreen, rememberIt, theyMeantToMoveIt, whereItLands, whereTheyLeftIt,
   type Resting, type Where,
 } from './a-button-that-gets-out-of-the-way'
 
-const NAV_ITEMS = [
-  {
-    /*
-     * "ALL CHECK-INS", BECAUSE THE RAIL ABOVE IT IS ALREADY A LIST OF CHECK-INS.
-     *
-     * The top of this rail is a live list of the check-ins somebody is in, and this item said
-     * "Check-ins" and went to a page of the same thing - so a person looking at their check-ins was
-     * offered a link called check-ins, and reasonably asked which one they were meant to use.
-     *
-     * The page is not redundant: it holds the ones the rail does not show and the ways in to them.
-     * What was redundant was the name.
-     */
-    /* WHAT THE BOTTOM BAR CALLS IT (`short`, below). Measured at 320px: this label is 64px wide in
-       a 64px cell on a customer's five-item bar and a 53px cell on our six-item one, so it
-       overflows and - because the cell centres it - loses its START rather than its end.
-       "ll check-ins" is not a truncated label, it reads as a different one. Type size cannot fix
-       it: 8.5px still overflows, and that is not a size to ask a thumb to read. So the bar gets the
-       short name and the rail keeps the full one, which is the only place "All" was ever doing work.
-       The note sits ABOVE the label deliberately: `two-things-called-check-ins.spec.ts` reads a
-       fixed window after `label:` to check this item still points at /grounds, and a comment
-       wedged between the two pushed the route out of its view. */
-    label: 'All check-ins',
-    short: 'Check-ins',
-    to: '/grounds',
-    icon: (active: boolean) => (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <rect x="2" y="2" width="7" height="7" rx="1.5" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" />
-        <rect x="11" y="2" width="7" height="7" rx="1.5" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" />
-        <rect x="2" y="11" width="7" height="7" rx="1.5" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" />
-        <rect x="11" y="11" width="7" height="7" rx="1.5" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" />
-      </svg>
-    ),
-  },
-  {
-    /*
-      THE BOARDS, WHICH HAD NO ADDRESS OF THEIR OWN.
-      A board lived inside one check-in: to read three you opened three check-ins. Asked for
-      plainly - "where do I go to see the archive and all team boards" - and there was nowhere to
-      send anybody. It sits beside People because it is the same kind of thing: a view across the
-      organisation rather than into one piece of work.
-      WHO GETS THE DOOR. Anybody overseeing more than one check-in: an admin, who sees the
-      organisation's, and a LEAD, who sees their department's. A participant reads the board of the
-      check-in they are on and reaches it from that check-in, so a second address across several
-      would be a page holding one row - and the member's rail is deliberately two items.
-    */
-    label: 'Boards',
-    to: '/boards',
-    oversightOnly: true,
-    icon: (active: boolean) => (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <rect x="2" y="3" width="16" height="14" rx="2" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0} />
-        <path d="M2 7.5h16" stroke="currentColor" strokeWidth="1.5" />
-        <path d="M6 11h3M6 14h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    // "Team" and "Teams" sat side by side, one letter apart, pointing at
-    // different pages - a coin-flip for anyone looking for the list of people in
-    // their org. Named for what each one actually is. GW-011.
-    label: 'People',
-    to: '/org/members',
-    adminOnly: true,
-    icon: (active: boolean) => (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <circle cx="7" cy="7" r="3" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0} />
-        <circle cx="14" cy="7" r="2.5" stroke="currentColor" strokeWidth="1.3" fill="none" />
-        <path d="M1 16c0-2.21 2.686-4 6-4s6 1.79 6 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        <path d="M14 12c1.657 0 3 1.12 3 2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  /**
-   * "All grounds" is gone. W9-5.
-   *
-   * `grounds.list` already returns every ground in the organisation when the caller
-   * is an admin, so the roster was the same data at a second address - one page with
-   * two levels of detail, not two audiences. The one column it added that mattered,
-   * who leads each ground, is on the grounds card now.
-   */
-  {
-    /* A route with no door is a page nobody finds. This one is admin-only because every endpoint
-       behind it is, and a nav item that leads to a refusal is worse than no nav item. */
-    label: 'Connect',
-    to: '/org/integrations',
-    adminOnly: true,
-    icon: (active: boolean) => (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <path d="M7.5 12.5l5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        <path d="M11 4.5l1.5-1.5a3.5 3.5 0 015 5L16 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.12 : 0} />
-        <path d="M9 15.5L7.5 17a3.5 3.5 0 01-5-5L4 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Billing',
-    to: '/billing',
-    adminOnly: true,
-    icon: (active: boolean) => (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <rect x="2" y="5" width="16" height="11" rx="2" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.12 : 0} />
-        <path d="M2 8.5h16" stroke="currentColor" strokeWidth="1.5" />
-        <rect x="4" y="11" width="3" height="2" rx="0.5" fill="currentColor" />
-      </svg>
-    ),
-  },
-  {
-    /**
-     * "ADMIN" MEANT TWO THINGS AND THIS WAS THE OTHER ONE. W-UX-3.
-     *
-     * The list page's header carries a pill saying what YOU are in this organisation - "Admin" or
-     * "Team member" - and this rail item, pointing at Groundwork's own back office, wore the
-     * identical word one inch away. Renaming the page's link and leaving this one would have moved
-     * the collision rather than removed it.
-     */
-    /* Same measurement, same reason as All check-ins. Only platform admins see this one, so it is
-       our own bar that breaks worst - which is no reason to leave it broken. */
-    label: 'Platform ops',
-    short: 'Ops',
-    to: '/admin',
-    // Groundwork's own back-office, NOT the org admin's area. The route is
-    // wrapped in RequirePlatformAdmin, so gating this on `adminOnly` showed
-    // every org admin a door that bounced her straight back to /grounds.
-    platformAdminOnly: true,
-    icon: (active: boolean) => (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <path d="M10 2.5L12.5 7.5H17.5L13.5 10.5L15 15.5L10 12.5L5 15.5L6.5 10.5L2.5 7.5H7.5L10 2.5Z"
-          stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"
-          fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0} />
-      </svg>
-    ),
-  },
-  {
-    /**
-     * SETTINGS WAS NOT IN THE RAIL AT ALL. It lived only in the user block at the bottom of the
-     * grounds list, so the org's own settings - its name, the thing every page shows the team - were
-     * reachable from one page and nowhere else.
-     *
-     * Not `adminOnly`: everybody has settings of their own here (notifications, WhatsApp number, what
-     * we hold about them). The org section of that page is already gated inside it.
-     */
-    label: 'Settings',
-    to: '/settings',
-    icon: (active: boolean) => (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <circle cx="10" cy="10" r="2.6" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0} />
-        <path d="M10 2.2v2.2M10 15.6v2.2M4.5 4.5l1.6 1.6M13.9 13.9l1.6 1.6M2.2 10h2.2M15.6 10h2.2M4.5 15.5l1.6-1.6M13.9 6.1l1.6-1.6"
-          stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  /**
-   * PROFILE IS NOT IN THE RAIL, because the page says it does not exist yet:
-   * "A profile that gathers them in one place is not built yet." A permanent menu
-   * item that admits it does nothing teaches people the menu is unreliable, and
-   * this rail is about to become the main way around the product.
-   *
-   * The route stays - but I justified that with "links to a person's profile keep
-   * working", and there are no such links. Not one, anywhere in the app. Measured
-   * after the same mistake was found on the marketing site, where four pages were
-   * written, deployed and reachable by nobody. So /profile/:id? is a page that can
-   * only be opened by typing its URL, kept for callers that do not exist.
-   *
-   * Left in place rather than deleted because that is Hafsah's call and the page is
-   * three sentences of true copy, worth linking the moment a person's name becomes
-   * clickable. `every-page-can-be-reached.spec.ts` lists it as the one real gap so
-   * it cannot be forgotten again.
-   */
-]
+import { navItemsFor } from './nav-items'
+export { navItemsFor } from './nav-items'
 
-/**
- * WHO SEES WHICH NAV ITEM, DECIDED ONCE.
- *
- * There were three renderers - the collapsed rail, the expanded rail, the mobile bar - and three
- * different answers:
- *
- *   collapsed   `!item.adminOnly || user?.role === 'ADMIN'`   correct
- *   expanded    `!item.adminOnly`                             an ADMIN saw no People and no Billing
- *   mobile      no filter at all                              everybody saw both
- *
- * So an admin on a desktop had no way to reach billing from the rail, and a team member on a phone had
- * two doors that would bounce them. Her words: "billing and settings for the org should have its own
- * accessibility at the very top for the admin."
- */
-export function navItemsFor(user: { role?: string; isPlatformAdmin?: boolean } | null | undefined) {
-  return NAV_ITEMS.filter(item => {
-    if ((item as any).platformAdminOnly) return !!user?.isPlatformAdmin
-    if ((item as any).adminOnly) return user?.role === 'ADMIN'
-    /* Whoever oversees more than one check-in: the org's, or a department's. */
-    if ((item as any).oversightOnly) return user?.role === 'ADMIN' || user?.role === 'LEAD'
-    return true
-  })
-}
 
 /**
  * The organisation's own pages, as opposed to the grounds inside it.
@@ -221,7 +48,13 @@ export function navItemsFor(user: { role?: string; isPlatformAdmin?: boolean } |
  * - every check-in's shared picture - not a setting of the organisation. Listing it here would put
  * the company's name as a heading over a lead's two items, one of which is their own settings.
  */
-export const ORG_ROUTES = ['/org/members', '/org/integrations', '/billing', '/settings']
+/** Pages that sit under one door in the sidebar, so the door stays lit on them (U.18). */
+const ALSO_UNDER: Record<string, string[]> = { '/settings/connections': ['/settings/whatsapp', '/settings/tools'] }
+function under(to: string): boolean {
+  return (ALSO_UNDER[to] ?? []).some(p => window.location.pathname.startsWith(p))
+}
+
+export const ORG_ROUTES = ['/org/members', '/settings/connections', '/settings/whatsapp', '/settings/tools', '/billing', '/settings']
 
 type FbTab = 'reaction' | 'build' | 'wrong'
 
@@ -230,11 +63,70 @@ const BUILD_OPTIONS    = ['Reminder / email nudge', 'Mobile app', 'Slack integra
 
 function FeedbackWidget() {
   const location = useLocation()
-  const isChatPage = location.pathname.startsWith('/chat/') || location.pathname.startsWith('/checkin/') || location.pathname === '/start'
-  // `/feed` used to draw its own feedback button in its header, so the floating one was
-  // hidden there to avoid two. The page is gone (W13-13), so the floating trigger is
-  // simply always on.
-  const hideTrigger = false
+  /**
+   * RELEASE WALKTHROUGH, 5 OCTOBER: THE GROUND PAGE'S OWN CHECK-IN TAB IS THE SAME CONVERSATION,
+   * AT A DIFFERENT ADDRESS. At 375px the trigger's default top-right rest position is already
+   * moved clear of a chat page's own header row and composer (see the mobile-safe classes below) -
+   * but that only applied to `/chat/:id`, `/checkin/:id` and `/start`. `/grounds/<id>` with no
+   * `tab=` (or `tab=chat`, the Check-in tab's own query key - `FROM_TAB_KEY`'s default in both
+   * GroundAdminPage.tsx and GroundParticipantPage.tsx) renders the identical suggestion-chip
+   * conversation, and the trigger still sat at its plain bottom-right rest position there, on top
+   * of the chips and the composer's own send arrow. It is the same chat shell reached through a
+   * different route, so it gets the same treatment, not a fresh rule of its own.
+   */
+  const onGroundCheckInTab = /^\/grounds\/[^/]+$/.test(location.pathname)
+    && (!location.search || new URLSearchParams(location.search).get('tab') === 'chat')
+  const isChatPage = location.pathname.startsWith('/chat/') || location.pathname.startsWith('/checkin/') || location.pathname === '/start' || onGroundCheckInTab
+  /**
+   * RELEASE WALKTHROUGH, 5 OCTOBER: AND THE BOARD'S OWN "ASK ABOUT THIS BOARD" BAR.
+   *
+   * `AskTheBoard` (BoardPage.tsx) sits at the very foot of the board's content, its own "Ask"
+   * button at the same bottom-right corner this trigger rests in by default. On a board short
+   * enough to fit the screen with nothing to scroll, the two sit on top of each other at 1440px.
+   * Raised clear of it here, the same way the mobile classes below raise this trigger clear of the
+   * bottom nav bar and a chat composer - a few more pixels of headroom, not a new position.
+   */
+  const isGroundsBoard = /^\/grounds\/[^/]+\/board$/.test(location.pathname)
+  /**
+   * HIDDEN ON "MORE" - that page has "Send feedback" in its own list, and on a phone the floating
+   * button sat over the ticked organisation row there - AND ON THE CONVERSATION.
+   *
+   * REVIEW ROUND 3, ITEM 7: at 375px the trigger (`gw-fb-trigger-chat-mobile-safe`, `bottom:
+   * 148px`) sat on the composer - measured then at 691-752 with the trigger at 704-736, on top of
+   * Send. That offset assumed the app's own bottom bar (60px) sat below the composer; the
+   * conversation no longer shows that bar at all (see AppSidebar's `onConversationPage`), so
+   * fixing the number would only be right until the next thing above it changed again. Hidden
+   * here instead - a floating trigger is not worth reserving room for on the one screen that is
+   * entirely its own composer and nothing else. The panel still opens from "Send feedback" on
+   * More, same as it does for every other page this hides it on.
+   */
+  /*
+   * ITEM 4: THE FLOATING BUTTON SAT OVER THE ASK PANEL'S OWN SEND BUTTON. The panel is a fixed
+   * drawer along the whole right edge (`.gw-ask-drawer`, AppShell's own render below), 400px wide;
+   * this button's own default rest position - bottom:20, right:20 - sits inside that same 400px
+   * strip, on top of whatever the drawer draws there. Measured at 1440px wide: a click meant for
+   * Send landed on Feedback instead. Hidden outright while the panel is open, the same way it is
+   * already hidden on /more and on the check-in's own conversation - a floating trigger is not
+   * worth defending a moving 400px-wide target for.
+   */
+  const askOpen = useAskStore((s) => s.open)
+  /*
+   * WALKTHROUGH PASS 2, ITEM 2: "/chat" IS THE SAME COMPOSER AS "/chat/:id", AND THE SAME TWO
+   * CONTROL-COVERING PROBLEMS ELSEWHERE.
+   *
+   * "/chat" (Ask Groundwork's own page, AskPage.tsx) sat on top of the composer's own Send arrow,
+   * the same overlap already fixed for "/checkin/" by hiding the trigger outright rather than
+   * chasing a moving target.
+   *
+   * "/settings/suites" and "/org/members" sit the trigger's default bottom-right corner on top of
+   * a real control: the Equipment card's own switch on Suites, and a row's "Open" link on People -
+   * both of which can be anywhere down a long page, so no single reposition clears every row.
+   * Hidden here for the same reason as the two above: "Send feedback" on the person's own menu (and
+   * on "More" on a phone) still opens the same panel.
+   */
+  const hideTrigger = location.pathname === '/more' || location.pathname.startsWith('/checkin/')
+    || location.pathname === '/chat' || location.pathname === '/settings/suites' || location.pathname === '/org/members'
+    || askOpen
   const open = useFeedbackStore(s => s.open)
   const showPanel = useFeedbackStore(s => s.show)
   const hidePanel = useFeedbackStore(s => s.hide)
@@ -442,7 +334,13 @@ function FeedbackWidget() {
           }
           style={{
             position: 'fixed',
-            ...(moved ? asStyle(resting) : isChatPage ? { top: 12, right: 16 } : { bottom: 20, right: 20 }),
+            ...(moved
+              ? asStyle(resting)
+              : isChatPage
+                ? { top: 12, right: 16 }
+                : isGroundsBoard
+                  ? { bottom: 84, right: 20 }
+                  : { bottom: 20, right: 20 }),
             zIndex: 100,
             touchAction: 'none',
             cursor: dragging ? 'grabbing' : 'grab',
@@ -577,61 +475,6 @@ function FeedbackWidget() {
   )
 }
 
-function NavItem({ item, compact }: { item: typeof NAV_ITEMS[0]; compact?: boolean }) {
-  const location = useLocation()
-  const active = location.pathname.startsWith(item.to)
-  const user = useAuthStore(s => s.user)
-  if (item.adminOnly && user?.role !== 'ADMIN') return null
-  if ((item as any).platformAdminOnly && !user?.isPlatformAdmin) return null
-
-  if (compact) {
-    return (
-      <NavLink
-        to={item.to}
-        style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-          padding: '6px 4px', borderRadius: 10, color: active ? '#93C5FD' : 'rgba(255,255,255,.55)',
-          textDecoration: 'none', fontSize: 10, fontWeight: active ? 700 : 500,
-          background: active ? 'rgba(147,197,253,.1)' : 'transparent', flex: 1, minWidth: 0,
-          /**
-           * BROKEN LABELS IN THE BOTTOM BAR. W-UX-A.
-           *
-           * Five items across 375px with 12px of side padding each left too little room, so the two
-           * longest snapped mid-word: "Check-" over "ins", "Platform" over "ops". The bar is 60px
-           * tall, so the second line was clipped as well as wrong.
-           *
-           * The padding was the slack. Trimmed to 4px and the label held on one line; `nowrap` with
-           * ellipsis is the backstop, so a longer name in future degrades to "Platform o..." rather
-           * than to a broken word.
-           */
-          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        }}
-      >
-        {item.icon(active)}
-        {/* The short name where there is one. See the note on the item itself. */}
-        {(item as { short?: string }).short ?? item.label}
-      </NavLink>
-    )
-  }
-
-  return (
-    <NavLink
-      to={item.to}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        padding: '9px 14px', borderRadius: 10, color: active ? 'var(--gw-green-t)' : '#374151',
-        textDecoration: 'none', fontSize: 14, fontWeight: active ? 700 : 500,
-        background: active ? 'rgba(8,80,65,0.09)' : 'transparent', transition: 'background 0.15s, color 0.15s',
-      }}
-      onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'rgba(8,80,65,0.05)' }}
-      onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
-    >
-      {item.icon(active)}
-      {item.label}
-    </NavLink>
-  )
-}
-
 /**
  * A BADGE ONLY EARNS ITS ROW IF IT CHANGES WHETHER YOU CLICK.
  *
@@ -650,29 +493,75 @@ function NavItem({ item, compact }: { item: typeof NAV_ITEMS[0]; compact?: boole
  */
 const SILENT_STATUSES = ['ACTIVE', 'AWAITING_PARTIES', 'OPEN']
 
+/**
+ * The check-in's own state, in the rail's small badge, and only when it changes whether you click.
+ * "Report ready" is good news; paused or waiting for someone to accept needs a look; anything else
+ * (closed, resolved, stalled) is said plainly with no colour of judgement on it.
+ */
 function GroundStatusBadge({ status }: { status: string }) {
   if (SILENT_STATUSES.includes(status)) return null
   const isReady = status === 'REPORT_READY'
-  /** Amber for "somebody has to act before this can move", grey for a finished record. */
+  /** Amber for "somebody has to act before this can move", plain for a finished record. */
   const isWaiting = status === 'AWAITING_APPROVAL' || status === 'PAUSED'
-  const color = isReady ? '#065f46' : isWaiting ? 'var(--gw-amber-t)' : '#6B7280'
-  const bg = isReady ? 'rgba(6,95,70,.1)' : isWaiting ? 'var(--gw-amber-bg)' : 'rgba(107,114,128,.08)'
-  const label = isReady ? 'Report ready' : status.charAt(0) + status.slice(1).toLowerCase().replace(/_/g, ' ')
-  return (
-    <span style={{ fontSize: 10, fontWeight: 600, color, background: bg, borderRadius: 4, padding: '2px 6px' }}>
-      {label}
-    </span>
-  )
+  const tone = isReady ? 'proven' : isWaiting ? 'attention' : 'plain'
+  /*
+   * "STALLED" READ AS THE DATABASE'S WORD FOR IT, NOT THE PROTOTYPE'S (join-outoftime.txt: "Out of
+   * time"). It is what happens when a check-in's time runs out, not a judgement on the people in
+   * it, and the raw enum, titlecased, said neither - `a-ground-that-has-ended.ts`'s own `howItEnded`
+   * already gives this badge's words everywhere else a check-in says how it ended; this is the one
+   * place that still built its own label from the enum instead of asking it.
+   */
+  const label = isReady ? 'Report ready' : status === 'STALLED' ? 'Out of time' : status.charAt(0) + status.slice(1).toLowerCase().replace(/_/g, ' ')
+  return <span className={`gw-rail-bdg gw-rail-bdg-${tone}`}>{label}</span>
 }
 
-export function AppSidebar() {
-  const [collapsed, setCollapsed] = useState(false)
-
-  // .gw-main-content and .cg-fixed-bar live outside this component and need
-  // to offset by the sidebar's actual width, not just its expanded default,
-  // or content/fixed bars leave a gap when the sidebar is collapsed to 60px.
+/** A small menu that closes on Escape or a click anywhere outside it. */
+function useClosesOnItsOwn(open: boolean, close: () => void) {
+  const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    document.documentElement.style.setProperty('--gw-sidebar-w', collapsed ? '60px' : '240px')
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
+    const onDown = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) close() }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('mousedown', onDown)
+    return () => { document.removeEventListener('keydown', onKey); document.removeEventListener('mousedown', onDown) }
+  }, [open, close])
+  return ref
+}
+
+/**
+ * THE SIDEBAR, AS THE DESIGN SYSTEM DRAWS IT (A1, layout-computer).
+ *
+ * Light, on the page's own paper, top to bottom:
+ *
+ *   the Groundwork mark, and the button that folds the sidebar away
+ *   the organisation card: its initials, its name and what you are in it. It opens the
+ *     organisation menu, where you switch organisation
+ *   "Start a check-in", only for people who may start one
+ *   "Check-ins", each with its dot and badge, the ones that need you first, and the closed ones
+ *     folded under "Closed (n)"
+ *   the pages across check-ins (Boards, for whoever oversees more than one)
+ *   the organisation's own pages under its name, for an admin only
+ *   you, with "Settings, help, sign out", which opens your own menu
+ *
+ * WHERE THE OLD RAIL'S DOORS WENT, so nothing anybody could reach before is lost:
+ *   All check-ins         the "Check-ins" heading is the link to the whole list
+ *   Boards                the pages part, for the same people as before
+ *   People, Connect, Billing   the admin part, as the design system names them: People,
+ *                         Connections, Plan and billing
+ *   Settings              "Your settings", in your own menu
+ *   Platform ops          your own menu, for Groundwork staff only
+ *
+ * The dots and badges come from `railAttention`, which reads only this reader's own check-ins and
+ * whether each round is complete. Nothing on a row is about how a person is doing.
+ */
+export function AppSidebar() {
+  /* Folded or open, remembered on this device between visits. See `where-the-sidebar-was-left`. */
+  const [collapsed, setCollapsed] = useState(sidebarWasFolded)
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--gw-sidebar-w', collapsed ? '64px' : '256px')
+    rememberSidebarFolded(collapsed)
   }, [collapsed])
 
   const [renamingId, setRenamingId] = useState<string | null>(null)
@@ -682,56 +571,69 @@ export function AppSidebar() {
   const qc = useQueryClient()
   const user = useAuthStore(s => s.user)
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
-  const logout = useAuthStore(s => s.logout)
+  const showHelp = useHelpStore(s => s.show)
+  const showFeedback = useFeedbackStore(s => s.show)
+  const askOpen = useAskStore(s => s.open)
+  const toggleAsk = useAskStore(s => s.toggle)
 
+  const [orgOpen, setOrgOpen] = useState(false)
+  const [meOpen, setMeOpen] = useState(false)
+  const [closedOpen, setClosedOpen] = useState(false)
   /**
-   * The organisations this person belongs to. Only asked when signed in: before that
-   * it is a guaranteed 401 and a toast nobody caused.
+   * REVIEW ROUND 3, ITEM 7: NO APP BOTTOM BAR ON THE CONVERSATION, AT 375 WIDE.
+   * The prototype's own rule (`body.focus .tabbar{display:none}`, app.css): the check-in's own
+   * card is the whole screen once you are inside it, and the app's bottom bar (Today, Check-ins,
+   * Start, Chat, More) sat under the composer, on top of it, and behind it - a second navigation
+   * fighting the one thing on screen that already has its own way out (Pause). `/checkin/:id` is
+   * the one route this whole shell renders as a focused conversation.
    */
-  const { data: myOrgs = [] } = useQuery({
-    queryKey: ['my-organizations'],
-    queryFn: authApi.myOrganizations,
-    enabled: isAuthenticated,
-    retry: false,
-  })
-  const setAuth = useAuthStore(s => s.setAuth)
-  /* The door out, for somebody whose only membership is one they were listed into. */
-  const startOwn = useMutation({
-    mutationFn: () => authApi.startMyOwnWorkspace(),
-    onSuccess: (res: any) => {
-      setAuth(res.accessToken, res.user)
-      window.location.assign('/grounds')
-    },
-    /* A failure is never a success: the one refusal this has is "you already have one", and the
-       person needs to be told which, not left looking at a button that did nothing. */
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not start. Try again.'),
-  })
-  const switchOrg = useMutation({
-    mutationFn: (organizationId: string) => authApi.switchOrganization(organizationId),
-    onSuccess: (res) => {
-      setAuth(res.user, res.accessToken)
-      // A full reload rather than invalidating queries: a half-switched app still
-      // showing the previous organisation's grounds is worse than a second of waiting.
-      window.location.assign('/grounds')
-    },
-    onError: () => toast.error('Could not switch organisation. Try again.'),
-  })
-  const { data: grounds = [] } = useQuery<Ground[]>({
+  const onConversationPage = /^\/checkin\//.test(useLocation().pathname)
+  /* The check-ins this person pinned to the top, in the order they pinned them. See pinned-check-ins. */
+  const [pinState, setPinState] = useState(() => ({ of: user?.id, ids: pinnedFor(user?.id) }))
+  /* Read again when a different person signs in on this browser, never someone else's. */
+  const pins = pinState.of === user?.id ? pinState.ids : pinnedFor(user?.id)
+  const flipPin = (groundId: string) => setPinState({ of: user?.id, ids: togglePin(user?.id, groundId, pins) })
+  const orgRef = useClosesOnItsOwn(orgOpen, () => setOrgOpen(false))
+  const meRef = useClosesOnItsOwn(meOpen, () => setMeOpen(false))
+
+  const { data: grounds = [], isSuccess: listLoaded, isError: listFailed } = useQuery<Ground[]>({
     queryKey: ['grounds'],
     queryFn: groundsApi.list,
     staleTime: 30_000,
     enabled: isAuthenticated,
   })
 
+  /* Today's count beside "Today": the same read as the page, so the two cannot disagree. */
+  const { data: today } = useQuery({ queryKey: ['today'], queryFn: todayApi.get, staleTime: 30_000, enabled: isAuthenticated, retry: false })
+  const todayCount = today?.count ?? 0
+
   const location = useLocation()
+  /*
+   * GROUP 3 REVIEW, BATCH B: unreachable again, deliberately this time. `AppShell`'s own
+   * `showSidebar` no longer mounts this component at all for a signed-out reader on /start
+   * (start.jpg draws no rail there), so this branch below never runs while signed out. Left in
+   * place, not deleted: `isEntryPage` still matches a signed-out `/start` by its own definition,
+   * and deleting the branch would be a second, separate change to make in the same file as the
+   * one this review actually asked for (AppShell's `showSidebar`).
+   */
   const isEntryPage = !isAuthenticated && location.pathname === '/start'
   const { groundName, setGroundName } = useEntryStore()
   const [renamingEntry, setRenamingEntry] = useState(false)
   const [entryRenameVal, setEntryRenameVal] = useState('')
   const entryRenameRef = useRef<HTMLInputElement>(null)
 
-
-  const initials = user ? (user.firstName?.[0] ?? user.email?.[0] ?? 'U').toUpperCase() : 'U'
+  const fullName = user?.firstName ? `${user.firstName} ${user.lastName ?? ''}`.trim() : user?.email ?? ''
+  const initials = user ? (((user.firstName?.[0] ?? '') + (user.lastName?.[0] ?? '')) || user.email?.[0] || 'U').toUpperCase() : 'U'
+  /*
+   * NEVER A NAME THAT ISN'T THE ORGANISATION'S OWN (U.8 review, Hafsah's instruction of 27
+   * September). "Your organisation" read as if it were the name, on a placeholder profile a join
+   * link can leave standing (see JoinConfirmPage.tsx).
+   * `organizationName` is sent by every real profile read (theUserShape), so its absence means the
+   * real one has not arrived yet, never that there is none - and showing nothing is honest where
+   * showing a made-up name is not. `roleWord` reads the same signal: the placeholder's role is
+   * indistinguishable from a genuine MEMBER, but the organisation's name always arrives with it.
+   */
+  const orgName = user?.organizationName ?? ''
 
   function startRename(g: Ground) {
     setRenamingId(g.id)
@@ -739,18 +641,6 @@ export function AppSidebar() {
     setTimeout(() => renameRef.current?.select(), 50)
   }
 
-  /*
-   * A REFUSAL LEFT THE FIELD OPEN AND SAID NOTHING.
-   *
-   * There was no catch here. The server now answers 403 when somebody who is not the lead tries to
-   * rename a check-in, so the await rejected, `setRenamingId(null)` never ran, and the input sat
-   * there in edit mode with no error and no change - the same "pressed it and nothing happened"
-   * the audit found, just arriving by a different route.
-   *
-   * The pencil is hidden from people who cannot rename (see `mayRename` below), so this path is
-   * now only reached by somebody who may rename and whose request failed anyway - a dropped
-   * connection, a check-in closed in another tab. That still has to be said out loud.
-   */
   async function commitRename(id: string) {
     const val = renameValue.trim()
     setRenamingId(null)
@@ -763,108 +653,277 @@ export function AppSidebar() {
     }
   }
 
-  /* Renaming is the lead's call or an admin's, and the server enforces it. Showing the pencil to
-     anybody else offers something that will be refused. The rule is shared with the server's, in
+  /* The rename pencil appears only for whoever the server lets rename: the lead, or an admin. Anybody
+     else offers something that will be refused. The rule is shared with the server's, in
      `who-may-rename-a-check-in`, so the two cannot drift apart again. */
   const mayRename = (g: Ground) => mayRenameACheckIn(g, user)
 
-  /*
-   * THE ONES THAT NEED THIS PERSON, for the collapsed rail. Same read as the expanded list uses,
-   * so the two cannot disagree about whose turn it is, and capped because a column of coloured
-   * squares stops being scannable somewhere around eight.
-   */
   const needsYou = grounds
     .map((g: any) => ({ g, attention: railAttention(g as any, user?.id) }))
     .filter(({ attention }) => attention.kind === 'overdue' || attention.kind === 'yours')
     .sort((a, b) => railRank(a.attention) - railRank(b.attention))
     .slice(0, 8)
 
-  const sidebarWidth = collapsed ? 60 : 240
+  /* A closed check-in stays in the rail for about three months, folded away under "Closed (n)" so the
+     ones that are still running are the list. */
+  const isClosed = (g: any) => hasEnded(g.status) || !!g.closedAt || !!g.resolvedAt
+  const inRail = grounds.filter(g => stillInRail(g as any))
+  const running = inRail
+    .filter(g => !isClosed(g))
+    .slice()
+    .sort((a, b) => railRank(railAttention(a as any, user?.id)) - railRank(railAttention(b as any, user?.id)))
+  const closed = inRail.filter(g => isClosed(g))
+  /* Pinned ones sit above the rest under "Pinned", newest pin first; the rest keep their order. A closed
+     check-in is not offered a pin: it lives under "Closed". */
+  const pinned = pins.map(id => running.find(g => g.id === id)).filter((g): g is Ground => !!g)
+  const unpinned = running.filter(g => !pins.includes(g.id))
+
+  /*
+   * HAFSAH'S FAULT 4: THE SIDEBAR LISTED EVERY CHECK-IN, UNUSABLE AT A HUNDRED.
+   *
+   * Below the pins, as long as there are few enough unpinned check-ins to read at a glance, the
+   * sidebar still shows all of them, in the rail's own order - nothing changes for the common case.
+   * Past `SIDEBAR_CAP`, it shows only: the ones that need this person now (the same `railAttention`
+   * signal as the folded rail's own needsYou, so the two cannot disagree), then whichever of the
+   * rest were opened most recently on this device (recently-opened-check-ins), capped at
+   * `SIDEBAR_CAP` rows in all. "All check-ins" is always the way to the whole list; it carries a
+   * count only when the sidebar is hiding some.
+   */
+  const SIDEBAR_CAP = 8
+  const SIDEBAR_CLOSED_CAP = 8
+  const needsYouUnpinned = unpinned.filter(g => {
+    const a = railAttention(g as any, user?.id)
+    return a.kind === 'overdue' || a.kind === 'yours'
+  })
+  const needsYouUnpinnedIds = new Set(needsYouUnpinned.map(g => g.id))
+  /* Most-recent-first ids kept on this device. A blocked or empty store just returns [], and the
+     sidebar falls back to showing only what needs this person now. */
+  const recentUnpinned = recentlyOpenedFor(user?.id)
+    .map(id => unpinned.find(g => g.id === id))
+    .filter((g): g is Ground => !!g && !needsYouUnpinnedIds.has(g.id))
+  /* The ones that need this person are capped too: a lead with twenty waiting on them would
+     otherwise get twenty rows, which is the list Hafsah found unusable. The rest are one click
+     away under "All check-ins (n)". */
+  const needsYouShown = needsYouUnpinned.slice(0, SIDEBAR_CAP)
+  const roomForRecent = Math.max(0, SIDEBAR_CAP - needsYouShown.length)
+  const shownUnpinned = unpinned.length <= SIDEBAR_CAP
+    ? unpinned
+    : [...needsYouShown, ...recentUnpinned.slice(0, roomForRecent)]
+  const shownClosed = closed.slice(0, SIDEBAR_CLOSED_CAP)
+  /* How many more exist than the sidebar is showing, for "All check-ins (n)" - never shown when
+     everything the reader can see already has a row on screen. */
+  const hiddenCount = Math.max(0, grounds.length - (pinned.length + shownUnpinned.length + shownClosed.length))
+
+  /* ONE GATE. Every door below comes out of `navItemsFor`, and is only sorted into its part here. */
+  const items = navItemsFor(user)
+  const pages = items.filter(i => !(i as any).adminOnly && !(i as any).platformAdminOnly && i.to !== '/grounds' && i.to !== '/settings')
+  const adminItems = items.filter(i => (i as any).adminOnly)
+  const staffItems = items.filter(i => (i as any).platformAdminOnly)
+  /* "Jump to" offers only what this reader already sees: these check-ins and these doors. */
+  const jumpItems = whatYouCanJumpTo(grounds as any, user?.id, items)
+  const openJump = useJumpStore(s => s.show)
+
+  const sidebarWidth = collapsed ? 64 : 256
+
+  function rowFor(g: Ground) {
+    const attention = railAttention(g as any, user?.id)
+    /* Walkthrough pass 2, item 1: more than one check-in on this rail can share a label ("Help a
+       new hire get started, from 27 September" listed three times), with nothing to tell a reader
+       which row is which. When that happens, the one thing the list already carries for each one -
+       when it started - is said after the name; a label that is already unique is left alone. */
+    const apart = whatTellsItApart(inRail, g)
+    const nameRead = apart ? `${g.label}, ${apart}` : g.label
+    const planned = plannedSessionsFor(g.timelineDays, (g as any).cadence, (g as any).maxSessions ?? (g as any).totalSessions)
+    const mine = attention.kind === 'yours' || attention.kind === 'overdue'
+    /* The room the row's buttons need when they show over its right, and whether the row must keep it
+       (a badge is wider than the buttons and hides while they show, so a row with one already has it). */
+    const actsWidth = 32 * ((isClosed(g) ? 0 : 1) + (mayRename(g) ? 1 : 0))
+    const hasBadge = mine || !SILENT_STATUSES.includes(g.status)
+    const keepsRoom = actsWidth > 0 && !hasBadge
+    const dot = attention.kind === 'overdue' ? 'late' : attention.kind === 'yours' ? 'turn' : 'quiet'
+    const why = attention.kind === 'overdue'
+      ? `Session ${attention.sessionNumber} is ${attention.daysLate} days past its date`
+      : attention.kind === 'yours'
+        ? `Session ${attention.sessionNumber} is ready for you`
+        : null
+    /* The whole row in sentences, for the pointer and for a screen reader. See what-a-sidebar-row-says. */
+    const says = whatTheRowSays({
+      label: nameRead,
+      attention,
+      round: openRound((g as any).checkIns),
+      planned,
+      roundsDone: (g as any).roundsDone,
+      alignment: (g as any).alignment,
+      closed: isClosed(g),
+    })
+    return (
+      <li key={g.id}>
+        {renamingId === g.id ? (
+          <input
+            ref={renameRef}
+            value={renameValue}
+            onChange={e => setRenameValue(e.target.value)}
+            onBlur={() => commitRename(g.id)}
+            onKeyDown={e => { if (e.key === 'Enter') commitRename(g.id); if (e.key === 'Escape') setRenamingId(null) }}
+            aria-label={`New name for ${g.label}`}
+            className="gw-rl-rename-input"
+          />
+        ) : (
+          <div className="gw-rail-row">
+            <NavLink
+              to={`/grounds/${g.id}`}
+              className={({ isActive }) => `gw-ci-row${isActive ? ' on' : ''}${isClosed(g) ? ' closed' : ''}${keepsRoom ? ' keeps-room' : ''}`}
+              style={keepsRoom ? { ['--gw-acts-w' as string]: `${actsWidth}px` } : undefined}
+              title={says}
+              aria-label={says}
+            >
+              <span className={`gw-ci-dot gw-ci-dot-${dot}`} aria-hidden />
+              <span className="gw-ci-nm">{nameRead}</span>
+              {mine && <span className={`gw-rail-bdg gw-rail-bdg-${attention.kind === 'overdue' ? 'late' : 'turn'}`} title={why ?? undefined}>Your turn</span>}
+              {/* One badge a row: your turn comes first, and the check-in's own state only otherwise. */}
+              {!SILENT_STATUSES.includes(g.status) && !mine && <GroundStatusBadge status={g.status} />}
+            </NavLink>
+            {/* The row's two buttons take no width until the row is pointed at or focused, so the name
+                keeps its room and breaks only between words. On a touch screen they sit in the row. */}
+            {(!isClosed(g) || mayRename(g)) && <span className="gw-row-acts">
+            {!isClosed(g) && <button
+              type="button"
+              className={`gw-pin${pins.includes(g.id) ? ' on' : ''}`}
+              onClick={e => { e.preventDefault(); e.stopPropagation(); flipPin(g.id) }}
+              aria-pressed={pins.includes(g.id)}
+              aria-label={pins.includes(g.id) ? `Unpin ${g.label}` : `Pin ${g.label} to the top`}
+              title={pins.includes(g.id) ? 'Unpin it' : 'Pin it to the top'}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden>
+                <path d="M6 1.5h4l-.6 4.2 2.6 2.3v1.5H4V8l2.6-2.3L6 1.5zM8 9.5v5" fill={pins.includes(g.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" strokeLinecap="round" />
+              </svg>
+            </button>}
+            {mayRename(g) && <button
+              type="button"
+              className="gw-rename"
+              onClick={e => { e.preventDefault(); e.stopPropagation(); startRename(g) }}
+              title={`Rename ${g.label}`}
+              aria-label={`Rename ${g.label}`}
+            >✎</button>}
+            </span>}
+          </div>
+        )}
+      </li>
+    )
+  }
 
   return (
     <>
       <aside
-        className="gw-sidebar-desktop"
+        className="gw-sidebar-desktop gw-rl"
+        aria-label="Groundwork"
         style={{
           position: 'fixed', top: 0, left: 0, width: sidebarWidth, height: '100vh',
-          background: '#0D1A2B', borderRight: '1px solid rgba(255,255,255,.07)',
           display: 'flex', flexDirection: 'column', zIndex: 40,
           transition: 'width .2s ease', overflow: 'hidden',
         }}
       >
-        {/* Logo + collapse */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 14px 12px', flexShrink: 0 }}>
-          {/**
-            * THE WAY BACK TO THE SITE, IN BOTH STATES.
-            *
-            * Expanded, the wordmark links out, as it always did. Collapsed, there was nothing at all -
-            * just the chevron - so the rail somebody works in all day had no way home. A single G,
-            * same destination.
-            */}
+        {/* The mark, which always goes back to the marketing site, and the fold button. */}
+        <div className={`gw-rl-top${collapsed ? ' folded' : ''}`}>
           {!collapsed ? (
-            <a href={MARKETING_URL} style={{ fontSize: 15, fontWeight: 800, color: 'rgba(255,255,255,.92)', letterSpacing: '-0.3px', textDecoration: 'none', whiteSpace: 'nowrap' }}>
-              Groundwork
+            <a href={MARKETING_URL} className="gw-rl-brand">
+              <GroundworkBars />
+              <span>Groundwork</span>
             </a>
           ) : (
-            <a
-              href={MARKETING_URL}
-              title="Groundwork"
-              style={{ fontSize: 15, fontWeight: 800, color: 'rgba(255,255,255,.92)', textDecoration: 'none', lineHeight: 1 }}
-            >
-              G
+            <a href={MARKETING_URL} className="gw-rl-brand" title="Groundwork" aria-label="Groundwork">
+              <GroundworkBars />
             </a>
+          )}
+          {/*
+            * ASK, NAMED FOR THE ORGANISATION (decision 100): the speech bubble beside the mark
+            * opens the panel beside the page. `askNameFor` is the same small rule `GET /ask`
+            * itself runs (api/src/modules/assistant/ask-name.ts) - reading it from the signed-in
+            * person's own organisation name, already in hand here, means this button never shows
+            * "Ask Groundwork" for a moment before the panel's own fetch lands with the real name.
+            */}
+          {isAuthenticated && (
+            <button
+              type="button"
+              className="gw-rl-ic gw-ask-open"
+              onClick={toggleAsk}
+              title={askNameFor(orgName)}
+              aria-label={askNameFor(orgName)}
+              aria-expanded={askOpen}
+              style={collapsed ? undefined : { marginLeft: 'auto' }}
+            >
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden>
+                <path d="M10 3.2c-3.9 0-7 2.6-7 5.9 0 1.7.8 3.2 2.2 4.3L4.6 16.8l3.6-1.9c.6.1 1.2.2 1.8.2 3.9 0 7-2.6 7-5.9S13.9 3.2 10 3.2Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+              </svg>
+            </button>
           )}
           <button
             className="gw-tap44"
             onClick={() => setCollapsed(v => !v)}
-            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.55)', cursor: 'pointer', fontSize: 14, padding: '2px 4px', fontFamily: 'inherit', marginLeft: collapsed ? 'auto' : 0, marginRight: collapsed ? 'auto' : 0 }}
-            title={collapsed ? 'Expand menu' : 'Collapse menu'}
-            aria-label={collapsed ? 'Expand menu' : 'Collapse menu'}
+            title={collapsed ? 'Open the sidebar' : 'Fold the sidebar away'}
+            aria-label={collapsed ? 'Open the sidebar' : 'Fold the sidebar away'}
+            aria-expanded={!collapsed}
           >
-            {collapsed ? '»' : '«'}
+            {collapsed ? '›' : '‹'}
           </button>
         </div>
 
-        {/*
-          The Chat / More switch was here for one day. More was the card view of a
-          ground, and Hafsah retired it once the conversation carried the history:
-          "we have now made the more obsolete which is fine." A switch with one side
-          left is a control that teaches people to look for something that is not
-          there.
-        */}
-        {/* New ground button */}
-        <div style={{ padding: collapsed ? '0 8px 10px' : '0 10px 10px', flexShrink: 0 }}>
-          {/*
-            * NOT SHOWN TO SOMEBODY IT WOULD REFUSE.
-            *
-            * A member used to see this, fill in eight steps, and be told on submit that opening a
-            * check-in is limited to people their admin has named. The refusal was right and the
-            * journey was a waste of their afternoon.
-            *
-            * They lose nothing by not seeing it: taking part in a check-in happens by being added
-            * to one, and everything they are in is on the list below.
-            */}
-          {user?.mayOpenCheckIns !== false && <button
-            onClick={() => navigate('/start?new=1')}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: 7,
-              padding: collapsed ? '8px' : '8px 12px', borderRadius: 8,
-              background: 'rgba(26,86,219,.18)', border: '1px solid rgba(26,86,219,.3)',
-              color: '#93C5FD', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-              fontFamily: 'inherit', justifyContent: collapsed ? 'center' : 'flex-start',
-            }}
-          >
-            <span style={{ fontSize: 16, lineHeight: 1 }}>+</span>
+        {/* The organisation card, and the organisation menu it opens. */}
+        {isAuthenticated && (
+          <div ref={orgRef} style={{ position: 'relative', flexShrink: 0 }}>
+            <button
+              type="button"
+              className="gw-rl-org"
+              onClick={() => { setOrgOpen(v => !v); setMeOpen(false) }}
+              aria-haspopup="true"
+              aria-expanded={orgOpen}
+              title={orgName}
+            >
+              <span className="gw-rl-sq" aria-hidden>{initialsOf(orgName)}</span>
+              {!collapsed && (
+                <>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <b className="gw-rl-org-name">{orgName}</b>
+                    {orgName && <span className="gw-rl-org-role">{roleWord(user?.role)}</span>}
+                  </span>
+                  <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden style={{ flex: 'none', color: 'var(--gw-sub)' }}>
+                    <path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </>
+              )}
+              {collapsed && orgName && <span className="gw-sr-only">{orgName}, {roleWord(user?.role)}</span>}
+            </button>
+            {orgOpen && (
+              <div className="gw-rl-menu gw-rl-menu-org" style={{ left: collapsed ? 70 : 10 }}>
+                <div className="gw-rl-menu-h">Organisations</div>
+                <OrganisationChoices />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Start a check-in. Offered only to somebody the server will let start one. */}
+        <div className="gw-rl-start">
+          {/* `!== false`, not `=== true`: an older session that does not carry the answer still sees it. */}
+          {user?.mayOpenCheckIns !== false && <Button wide onClick={() => navigate('/start?new=1')} aria-label={collapsed ? 'Start a check-in' : undefined}>
+            <span aria-hidden style={{ fontSize: 18, lineHeight: 1 }}>+</span>
             {!collapsed && <span>Start a check-in</span>}
-          </button>}
+          </Button>}
         </div>
 
-        {/* Grounds list */}
+        {/* "Jump to…  Ctrl K": find a check-in, a person or a page. */}
+        {isAuthenticated && (
+          <button type="button" className="gw-rl-jump" onClick={openJump} aria-label={collapsed ? 'Jump to' : undefined} title={collapsed ? 'Jump to' : undefined} aria-keyshortcuts="Control+K Meta+K">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden><circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.6" /><path d="M12.2 12.2 16 16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+            {!collapsed && <><span>Jump to…</span><kbd>Ctrl K</kbd></>}
+          </button>
+        )}
+
+        {/* Expanded: the check-ins, the pages across them, and the admin part. */}
         {!collapsed && (
-          <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px' }}>
-            {/* Entry ground shown when unauthenticated on /start */}
+          <nav className="gw-rl-scroll" aria-label="Check-ins and pages">
             {isEntryPage && (
-              <div style={{ padding: '9px 10px', borderRadius: 8, background: 'rgba(255,255,255,.09)', marginBottom: 6 }}>
+              <div className="gw-rl-entry">
                 {renamingEntry ? (
                   <input
                     ref={entryRenameRef}
@@ -876,196 +935,126 @@ export function AppSidebar() {
                       if (e.key === 'Escape') setRenamingEntry(false)
                     }}
                     autoFocus
-                    style={{ width: '100%', background: 'rgba(255,255,255,.1)', border: '1px solid rgba(255,255,255,.2)', borderRadius: 4, color: 'rgba(255,255,255,.92)', fontSize: 13, fontWeight: 600, padding: '3px 7px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                    aria-label="New name for this check-in"
+                    className="gw-rl-rename-input"
                   />
                 ) : (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,.92)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{groundName}</span>
+                    <b style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>{groundName}</b>
                     <button
+                      type="button"
                       onClick={() => { setEntryRenameVal(groundName); setRenamingEntry(true); setTimeout(() => entryRenameRef.current?.select(), 40) }}
-                      style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.55)', cursor: 'pointer', fontSize: 11, padding: '0 2px', fontFamily: 'inherit' }}
+                      className="gw-rl-ic"
                       title="Rename"
                       aria-label={`Rename ${groundName}`}
                     >✎</button>
                   </div>
                 )}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,.55)' }}>Not saved yet</span>
-                  
-                </div>
+                <div className="gw-rl-org-role">Not saved yet.</div>
               </div>
             )}
-            {!isEntryPage && grounds.length === 0 && (
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,.55)', padding: '8px 6px' }}>Nothing in progress yet</div>
-            )}
-            {/*
-              THE RAIL IS A CHANNEL LIST, so it is ordered by what needs you and it
-              drops grounds that closed long ago.
 
-              Attention first (overdue, then your turn, then waiting on others), and
-              a closed ground stays about three months before leaving - long enough
-              that the report and the resolution are still where people expect them.
-              Sorting by attention is most of why a flat rail can stay flat: the rows
-              that need you are always at the top, whatever the count.
-            */}
-            {grounds
-              .filter(g => stillInRail(g as any))
-              .slice()
-              .sort((a, b) => railRank(railAttention(a as any, user?.id)) - railRank(railAttention(b as any, user?.id)))
-              .map(g => {
-              // DISTINCT session numbers, not the number of check-in rows: with 5
-              // people over 13 sessions this counted 65 "sessions".
-              //
-              // AND ONLY THE COMPLETED ONES, so this agrees with the ground page.
-              // It counted every check-in row including NOT_STARTED, so the rail
-              // said "1/6" for a ground whose header said "Session 2 of 6" - two
-              // readings of the same ground, one counting what exists and the
-              // other what is done. The label below now says which it is.
-              const sessions = new Set(
-                (g.checkIns ?? []).filter((c: any) => c.status === 'COMPLETED').map((c: any) => c.sessionNumber),
-              ).size
-              // Respect the ground's real cadence. Hardcoding /14 said "7 sessions"
-              // for a 90-day WEEKLY ground that actually runs ~13.
-              const planned = plannedSessionsFor(g.timelineDays, (g as any).cadence, (g as any).maxSessions)
-              // Never show fewer planned than have already happened.
-              const maxSessions = planned != null ? Math.max(planned, sessions) : null
-              // What this ground needs from you, if anything. See lib/rail-attention.
-              const attention = railAttention(g as any, user?.id)
-              return (
-                <div key={g.id} style={{ marginBottom: 2, borderRadius: 8, overflow: 'hidden' }}>
-                  <NavLink
-                    to={`/grounds/${g.id}`}
-                    title={[
-                      g.label,
-                      `${sessions}${maxSessions ? ` of ${maxSessions}` : ''} sessions done`,
-                      alignmentShort((g as any).alignment) || null,
-                      attention.kind === 'overdue'
-                        ? `Session ${attention.sessionNumber} is ${attention.daysLate} days past its date`
-                        : attention.kind === 'yours'
-                          ? `Session ${attention.sessionNumber} is ready for you`
-                          : attention.kind === 'waiting'
-                            ? `${attention.done} of ${attention.total} have checked in`
-                            : null,
-                    ].filter(Boolean).join(' · ')}
-                    style={({ isActive }) => ({
-                      display: 'block', padding: renamingId === g.id ? '6px 10px 4px' : '9px 10px 6px', borderRadius: 8,
-                      textDecoration: 'none',
-                      background: isActive ? 'rgba(255,255,255,.09)' : 'transparent',
-                    })}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.07)')}
-                    onMouseLeave={e => {
-                      const loc = window.location.pathname
-                      if (!loc.includes(g.id)) e.currentTarget.style.background = 'transparent'
-                    }}
-                  >
-                    {/* Label row with rename */}
-                    {renamingId === g.id ? (
-                      <input
-                        ref={renameRef}
-                        value={renameValue}
-                        onChange={e => setRenameValue(e.target.value)}
-                        onBlur={() => commitRename(g.id)}
-                        onKeyDown={e => { if (e.key === 'Enter') commitRename(g.id); if (e.key === 'Escape') setRenamingId(null) }}
-                        onClick={e => e.preventDefault()}
-                        style={{ width: '100%', background: 'rgba(255,255,255,.1)', border: '1px solid rgba(255,255,255,.2)', borderRadius: 4, color: 'rgba(255,255,255,.92)', fontSize: 13, fontWeight: 600, padding: '3px 7px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
-                      />
-                    ) : (
-                      <div className="gw-rail-row" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        {/*
-                          BOLD AND A DOT WHEN IT IS YOUR TURN, RED ONLY WHEN LATE.
-                          Hafsah asked for the name to turn red when it is time to
-                          check in; this splits that in two deliberately. A ground
-                          going red the moment it is your turn puts a red mark
-                          against somebody for being on time, and the engine's own
-                          rules forbid surveillance signals of exactly that shape.
-                        */}
-                        {(attention.kind === 'yours' || attention.kind === 'overdue') && (
-                          <span
-                            title={attention.kind === 'overdue' ? `Session ${attention.sessionNumber} is ${attention.daysLate} days past its date` : `Session ${attention.sessionNumber} is ready for you`}
-                            style={{
-                              width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
-                              background: attention.kind === 'overdue' ? 'var(--gw-red-b-soft)' : 'var(--gw-green-b)',
-                            }}
-                          />
-                        )}
-                        <span style={{
-                          fontSize: 13,
-                          fontWeight: attention.kind === 'yours' || attention.kind === 'overdue' ? 800 : 600,
-                          color: attention.kind === 'overdue' ? 'var(--gw-red-b)' : attention.kind === 'yours' ? 'white' : 'rgba(255,255,255,.88)',
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
-                        }}>
-                          {g.label}
-                        </span>
-                        {/**
-                          * OFFERED ONLY TO SOMEBODY WHO CAN ACTUALLY RENAME IT.
-                          *
-                          * This pencil rendered for every user beside every check-in, with no role
-                          * condition at all. For most of its life that was harmless in the worst
-                          * way - renaming did nothing for anybody, so nobody found out.
-                          *
-                          * It works now, and it is the lead's call or an admin's, the same gate as
-                          * changing how long a check-in runs. So a participant clicking this got a
-                          * refusal from the server for a control the rail had offered them.
-                          *
-                          * The same question the server asks, asked before the button is drawn.
-                          *
-                          * MERGE NOTE. Two branches fixed this independently and the conflict was
-                          * real: staging asked the question inline here, this branch had moved it
-                          * into `who-may-rename-a-check-in` so the rail and the server share one
-                          * rule rather than two copies of it. The shared rule is kept - it is what
-                          * stops them drifting apart again, which is how the pencil came to be
-                          * offered to everybody in the first place - and staging's account of the
-                          * history is kept with it, because it is the better explanation.
-                          */}
-                        {mayRename(g) && <button
-                          className="gw-rename"
-                          onClick={e => { e.preventDefault(); e.stopPropagation(); startRename(g) }}
-                          title={`Rename ${g.label}`}
-                          aria-label={`Rename ${g.label}`}
-                          style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '0 2px', fontSize: 11, lineHeight: 1, flexShrink: 0, fontFamily: 'inherit' }}
-                        >✎</button>}
-                      </div>
-                    )}
-
-                    {/*
-                      ONE LINE PER GROUND, WHICH IS WHAT MAKES IT A CHANNEL LIST.
-
-                      This row carried a second line - "no read yet · 1/6 done" and
-                      a status pill - under every name. Three facts about a ground
-                      you are not looking at, on every row, in a rail whose job is
-                      to tell you which one needs you. A channel list is names; the
-                      state belongs on the ground, and the ground page now opens
-                      with it (sessions done, who has checked in, the report).
-
-                      NOTHING IS LOST, IT MOVED. The count and the read are on the
-                      row's tooltip for anyone who wants them without navigating,
-                      and a ground that is not ACTIVE still says so, because "this
-                      one is closed" changes whether you click at all.
-                    */}
-                    {!SILENT_STATUSES.includes(g.status) && (
-                      <div style={{ marginTop: 3 }}>
-                        <GroundStatusBadge status={g.status} />
-                      </div>
-                    )}
-                  </NavLink>
+            {isAuthenticated && (
+              <>
+                {/* "Check-ins": the heading is the way to the whole list. */}
+                {pinned.length > 0 && (
+                  <>
+                    <div className="gw-rl-h"><span>Pinned</span></div>
+                    <ul className="gw-rl-list" aria-label="Pinned">{pinned.map(rowFor)}</ul>
+                  </>
+                )}
+                <div className="gw-rl-h">
+                  <NavLink to="/grounds" className="gw-rl-h-link" title="See all your check-ins">Check-ins</NavLink>
                 </div>
-              )
-            })}
-          </div>
+                {/* "Nothing in progress yet" only once the list has arrived and really is empty. While it
+                    is on its way the sidebar says nothing, rather than telling somebody with check-ins
+                    that they have none. */}
+                {listLoaded && running.length === 0 && closed.length === 0 && (
+                  <p className="gw-rl-empty">Nothing in progress yet.</p>
+                )}
+                {listFailed && !listLoaded && (
+                  <p className="gw-rl-empty" role="alert">Your check-ins did not load. Reload the page to try again.</p>
+                )}
+                {/* The heading stays, because it is the way to the whole list, and says why it is empty. */}
+                {unpinned.length === 0 && pinned.length > 0 && (
+                  <p className="gw-rl-empty">{running.length === 1 ? 'Your only check-in is pinned above.' : 'All your check-ins are pinned above.'}</p>
+                )}
+                <ul className="gw-rl-list">{shownUnpinned.map(rowFor)}</ul>
+                {/* HAFSAH'S FAULT 4: the way to the whole list, whether or not the rows above left
+                    anything out - with how many there are only when they did. ALWAYS shown (Hafsah,
+                    6 October): an admin with nothing waiting and nothing opened has no rows, and
+                    this is then her way to every check-in. */}
+                <NavLink to="/grounds" className="gw-rl-nav">
+                  {hiddenCount > 0 ? `All check-ins (${grounds.length})` : 'All check-ins'}
+                </NavLink>
+                {closed.length > 0 && (
+                  <>
+                    <button
+                      type="button"
+                      className="gw-rl-fold"
+                      aria-expanded={closedOpen}
+                      onClick={() => setClosedOpen(v => !v)}
+                    >
+                      <span aria-hidden>{closedOpen ? '▾' : '▸'}</span> Closed ({closed.length})
+                    </button>
+                    {closedOpen && <ul className="gw-rl-list">{shownClosed.map(rowFor)}</ul>}
+                    {closedOpen && closed.length > shownClosed.length && (
+                      <p className="gw-rl-empty">{`And ${closed.length - shownClosed.length} more. See all of them on the check-ins list.`}</p>
+                    )}
+                  </>
+                )}
+
+                {pages.length > 0 && (
+                  <ul className="gw-rl-list gw-rl-pages">
+                    {pages.map(item => (
+                      <li key={item.to}>
+                        <NavLink to={item.to} className={({ isActive }) => `gw-rl-nav${isActive ? ' on' : ''}`}>
+                          {item.icon(location.pathname.startsWith(item.to))}
+                          <span>{item.label}</span>
+                          {/* How many things need you, from the server's one read. Nothing when none. */}
+                          {item.to === '/today' && todayCount > 0 && (
+                            <span className="gw-rl-count">
+                              <span aria-hidden>{todayCount}</span>
+                              <span className="gw-sr-only">{todayCount === 1 ? '1 thing needs you' : `${todayCount} things need you`}</span>
+                            </span>
+                          )}
+                        </NavLink>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {/* The organisation's own pages, under its name. Admins only, because every page
+                    behind them is admin-only on the server too. */}
+                {adminItems.length > 0 && (
+                  <>
+                    <div className="gw-rl-h"><span>{orgName}</span></div>
+                    <ul className="gw-rl-list">
+                      {adminItems.map(item => (
+                        <li key={item.to}>
+                          <NavLink to={item.to} className={({ isActive }) => `gw-rl-nav${isActive || under(item.to) ? ' on' : ''}`}>
+                            {item.icon(location.pathname.startsWith(item.to) || under(item.to))}
+                            <span>{item.label}</span>
+                          </NavLink>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </>
+            )}
+          </nav>
         )}
 
-        {/* Collapsed: nav icons */}
+        {/* Folded: the doors as icons, and the check-ins that need you as their first letter. */}
         {collapsed && (
-          <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '4px 0' }}>
-            {/* Same two gates the expanded nav applies. This list rendered
-                NavLinks directly rather than going through NavItem, so it skipped
-                the adminOnly check entirely and showed People / Roster / Billing
-                to every member whose sidebar happened to be collapsed. */}
+          <nav className="gw-rl-scroll folded" aria-label="Check-ins and pages">
+            {/* Same gate as everywhere else: navItemsFor, never a filter of its own. */}
             {navItemsFor(user).map(item => {
               const active = window.location.pathname.startsWith(item.to)
               return (
-                <NavLink key={item.to} to={item.to} title={item.label}
-                  style={{ color: active ? '#93C5FD' : 'rgba(255,255,255,.55)', padding: '8px', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                <NavLink key={item.to} to={item.to} title={item.label} aria-label={item.label}
+                  className={`gw-rl-nav icon${active ? ' on' : ''}`}
                 >
                   {item.icon(active)}
                 </NavLink>
@@ -1073,35 +1062,23 @@ export function AppSidebar() {
             })}
 
             {/*
-              AND THE CHECK-INS THAT NEED YOU, WHICH COLLAPSING USED TO THROW AWAY.
-              
-              The rail's whole job is to say which check-in needs you - it is ordered by exactly
-              that, and the note on the expanded list says so. Collapsing it left seven nav icons
-              and nothing about the work, so the one thing the rail is for was the one thing that
-              did not survive being made narrow.
-              
-              Narrow enough to fit: the first letter, coloured by whether it is yours to answer and
-              how late it is, with the name and the reason on the tooltip. Only the ones that need
-              somebody - a collapsed rail has no room for a list, and a list nobody has to act on is
-              what the expanded one is for.
+              AND THE CHECK-INS THAT NEED YOU, WHICH FOLDING USED TO THROW AWAY.
+              The first letter, coloured by whether it is yours to answer and how late it is, with the
+              name and the reason on the tooltip. Only the ones that need somebody.
             */}
             {needsYou.length > 0 && (
-              <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.07)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+              <div className="gw-rl-needs">
                 {needsYou.map(({ g, attention }) => (
                   <NavLink
                     key={g.id}
                     to={`/grounds/${g.id}`}
                     title={attention.kind === 'overdue'
-                      ? `${g.label} - session ${attention.sessionNumber} is ${attention.daysLate} days past its date`
+                      ? `${g.label}. Session ${attention.sessionNumber} is ${attention.daysLate} days past its date`
                       : attention.kind === 'yours'
-                        ? `${g.label} - session ${attention.sessionNumber} is ready for you`
+                        ? `${g.label}. Session ${attention.sessionNumber} is ready for you`
                         : g.label}
-                    style={{
-                      width: 28, height: 28, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 12, fontWeight: 800, textDecoration: 'none', flexShrink: 0,
-                      background: attention.kind === 'overdue' ? 'var(--gw-red-b-soft)' : 'var(--gw-green-b)',
-                      color: attention.kind === 'overdue' ? 'var(--gw-red-b)' : 'white',
-                    }}
+                    aria-label={g.label}
+                    className={`gw-rl-ini ${attention.kind === 'overdue' ? 'late' : 'turn'}`}
                   >
                     {(g.label ?? '?').trim().charAt(0).toUpperCase()}
                   </NavLink>
@@ -1111,264 +1088,148 @@ export function AppSidebar() {
           </nav>
         )}
 
-        {/* Nav items - always visible in expanded sidebar */}
-        {!collapsed && (
-          <nav style={{ padding: '6px 8px', borderTop: '1px solid rgba(255,255,255,.07)', flexShrink: 0 }}>
-            {/**
-              * ONE GATE. This used to filter on `!item.adminOnly`, which meant an ADMIN - the only
-              * person People and Billing are for - could not see either of them in the expanded rail.
-              * They appeared in the collapsed icon strip, which used the right test.
-              */}
-            {navItemsFor(user).map((item, i, all) => {
-              const active = location.pathname.startsWith(item.to)
-              const canNav = isAuthenticated
-              /**
-               * THE ORGANISATION'S OWN PAGES, GROUPED AND NAMED. Her words: "billing and settings for
-               * the org should have its own accessibility at the very top for the admin or somewhere
-               * else. What if the admin is also a participant or lead."
-               *
-               * That last question is the reason this is a heading rather than a separate bar: what
-               * somebody can do for the ORGANISATION does not change with the part they hold on any
-               * ground. An admin who is also a lead and a party sees this section unchanged, and their
-               * part in a ground decides only what the ground's own tabs contain.
-               *
-               * The name is the organisation's, so it reads as a place rather than a category.
-               */
-              const isOrg = ORG_ROUTES.includes(item.to)
-              /**
-               * The heading appears only when there is a group to head. A team member sees Settings
-               * and nothing else from this list, and their settings are their own - notifications,
-               * their WhatsApp number, what we hold about them - so putting the company's name above
-               * it would be wrong about whose page it is.
-               */
-              const orgCount = all.filter(x => ORG_ROUTES.includes(x.to)).length
-              /**
-               * THE ORG NAME WAS PRINTED TWICE. W15-4.
-               *
-               * "Is the item before me an org route?" is not the same question as "am I the first
-               * org route?", and the difference is `/admin`, which sits between `/billing` and
-               * `/settings` and is not an org route. So `/settings` looked like the start of a
-               * second org group and printed the heading again: People, Billing, ADMIN, then the
-               * company name a second time above Settings.
-               *
-               * Only ever visible to a platform admin, because they are the only ones with
-               * `/admin` in the middle of the group - which is why it survived. Found by looking
-               * at a screenshot of the sidebar.
-               *
-               * Asked properly now: am I the first org route in the list.
-               */
-              const firstOrg = isOrg && orgCount > 1
-                && all.findIndex(x => ORG_ROUTES.includes(x.to)) === i
-              return (
-                <div key={item.to}>
-                  {firstOrg && (
-                    <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.5px', color: 'rgba(255,255,255,.55)', fontWeight: 700, padding: '10px 10px 4px' }}>
-                      {user?.organizationName ?? 'Your organisation'}
-                    </div>
-                  )}
-                  <NavLink
-                    to={canNav ? item.to : '/auth'}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '8px 10px', borderRadius: 8, textDecoration: 'none',
-                      color: active ? '#93C5FD' : canNav ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.25)',
-                      background: active ? 'rgba(147,197,253,.08)' : 'transparent',
-                      fontSize: 13, fontWeight: active ? 600 : 400,
-                      pointerEvents: canNav ? 'auto' : 'none',
-                    }}
-                  >
-                    {item.icon(active)}
-                    <span>{item.label}</span>
-                  </NavLink>
-                </div>
-              )
-            })}
-          </nav>
-        )}
-
-        {/*
-          SWITCHING ORGANISATION, AT THE BOTTOM WITH THE PERSON. W9-4.
-
-          Her call that the bottom is fine, and it belongs next to who you are because
-          that is what it changes: not a filter on one page, but whose organisation
-          every page is about. It appears only when there is somewhere to switch TO - a
-          switcher listing one thing is a control that does nothing.
-
-          The role shown is per organisation. Somebody can run their own company and be
-          an ordinary member of a client's, and the token carries the membership's role,
-          not the person's.
-        */}
-        {/*
-          AND THE PERSON WITH ONE MEMBERSHIP THEY DID NOT CHOOSE.
-          
-          Hafsah, 23 September 2026: "someone is my account and created their own account and keep
-          showing up to my account. And they cannot switch to their."
-          
-          They could not, and this line is why: the whole block renders only at more than one
-          organisation. Somebody joined to a company because their address was on its roster has
-          exactly one, so there was no switcher, no list, and no way out - see
-          a-roster-row-is-not-a-life-sentence on the API for why the joining rule itself stands.
-          
-          The block now also shows for somebody whose single membership is not one they administer,
-          and offers the door.
-        */}
-        {isAuthenticated && !collapsed && (myOrgs.length > 1 || (myOrgs.length === 1 && myOrgs[0].role?.toUpperCase() !== 'ADMIN')) && (
-          <div style={{ padding: '10px 12px', borderTop: '1px solid rgba(255,255,255,.07)', flexShrink: 0 }}>
-            <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.5px', color: 'rgba(255,255,255,.55)', fontWeight: 700, marginBottom: 6 }}>
-              Organisation
-            </div>
-            {myOrgs.length === 1 && myOrgs[0].role?.toUpperCase() !== 'ADMIN' && (
-              <div style={{ marginBottom: 8 }}>
-                <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,.62)', lineHeight: 1.5, marginBottom: 6 }}>
-                  You are in {myOrgs[0].name} because your address was on their list.
-                </div>
-                <button
-                  onClick={() => {
-                    if (startOwn.isPending) return
-                    if (!window.confirm('Start your own workspace? You stay in ' + myOrgs[0].name + ' and can switch back at any time.')) return
-                    startOwn.mutate()
-                  }}
-                  disabled={startOwn.isPending}
-                  style={{
-                    width: '100%', textAlign: 'left', padding: '7px 9px', borderRadius: 7,
-                    background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.16)',
-                    color: 'white', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                  }}
-                >
-                  {startOwn.isPending ? 'Starting…' : 'Start my own workspace'}
-                </button>
-              </div>
-            )}
-            {myOrgs.map(o => (
-              <button
-                key={o.id}
-                /**
-                 * ONE CLICK USED TO BE ENOUGH. W8-71.
-                 *
-                 * Switching organisation changes which data you can see, changes your role
-                 * (a person can administer their own company and be an ordinary member of
-                 * a client's), and reloads the whole app onto a different grounds list.
-                 * These rows sit in the rail directly above the profile block, so a
-                 * mis-aimed click did all of that silently - and then the grounds you were
-                 * looking at were gone and your role said Member, which reads exactly like
-                 * the product losing your data. That happened to me while testing, and I
-                 * could not tell afterwards whether I had clicked it or something had done
-                 * it for me.
-                 *
-                 * A native confirm rather than a designed modal: this is a rail control on
-                 * every page, the question is one line, and a modal here would be a bigger
-                 * change than the problem warrants. It names the organisation and the role
-                 * they will have in it, since the role change is the part nobody expects.
-                 */
-                onClick={() => {
-                  if (o.active || switchOrg.isPending) return
-                  const asRole = o.role.toLowerCase()
-                  if (!window.confirm(`Switch to ${o.name}? You will see ${o.name}'s check-ins instead of this organisation's, as a ${asRole}.`)) return
-                  switchOrg.mutate(o.id)
-                }}
-                disabled={switchOrg.isPending}
-                title={o.active ? 'You are in this organisation' : `Switch to ${o.name}`}
-                style={{
-                  width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 7,
-                  padding: '6px 8px', marginBottom: 2, borderRadius: 6, border: 'none',
-                  background: o.active ? 'rgba(255,255,255,.09)' : 'transparent',
-                  color: o.active ? 'white' : 'rgba(255,255,255,.6)',
-                  cursor: o.active ? 'default' : 'pointer', fontFamily: 'inherit',
-                  fontSize: 12.5, fontWeight: o.active ? 700 : 500,
-                }}
-              >
-                <span style={{ width: 5, height: 5, borderRadius: '50%', flexShrink: 0, background: o.active ? 'var(--gw-green-live)' : 'transparent' }} />
-                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.name}</span>
-                <span style={{ fontSize: 10, color: 'rgba(255,255,255,.55)', textTransform: 'capitalize', flexShrink: 0 }}>
-                  {o.role.toLowerCase()}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* User profile / sign in */}
-        <div style={{ padding: collapsed ? '10px 8px' : '10px 12px', borderTop: '1px solid rgba(255,255,255,.07)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+        {/* You: "Settings, help, sign out", and the menu it opens. */}
+        <div ref={meRef} className="gw-rl-foot" style={{ position: 'relative' }}>
           {isAuthenticated ? (
             <>
-              <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#1A56DB', color: 'white', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                {initials}
-              </div>
-              {!collapsed && (
-                <div style={{ overflow: 'hidden', flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,.88)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {user?.firstName ? `${user.firstName} ${user.lastName ?? ''}`.trim() : user?.email ?? ''}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                    {/**
-                      * WHICH ORGANISATION YOU ARE IN, BESIDE WHAT YOU ARE IN IT.
-                      *
-                      * An ordinary member could not see the company's name anywhere in the chrome.
-                      * People and Billing are admin-only, so the org heading above them - which is
-                      * the only place the name appeared - never rendered for them. They knew they
-                      * were a "Member" of something unnamed.
-                      *
-                      * NOT FIXED BY PUTTING THE NAME ABOVE SETTINGS, which was the obvious move and
-                      * is wrong: a member's Settings is their OWN - notifications, their number,
-                      * what we hold about them - and the company's name over it mislabels whose page
-                      * it is. `the-org-is-not-a-ground` guards that, correctly.
-                      *
-                      * It belongs here because this block is about the person's MEMBERSHIP, which is
-                      * exactly the thing in question, and because switching organisation happens two
-                      * lines above. Role and org are one fact: you are a member OF something.
-                      */}
-                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,.55)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      <span style={{ textTransform: 'capitalize' }}>{(user?.role ?? '').toLowerCase()}</span>
-                      {user?.organizationName ? ` at ${user.organizationName}` : ''}
-                    </span>
-                    {/**
-                      * SIGNING OUT EXISTED ON ONE PAGE, AS A SPAN.
-                      *
-                      * It was on the grounds list and nowhere else, so from a ground, a check-in,
-                      * billing or settings there was no way to leave - you either navigated back to
-                      * the list to find it or cleared the browser.
-                      *
-                      * It belongs here because this is the block that says who you are, on every
-                      * page. The session itself lasts seven days and is persisted, which is the
-                      * other half of what she asked for: you stay signed in on the device, and
-                      * leaving is something you choose rather than something that happens to you.
-                      */}
-                    <button
-                      onClick={() => { logout(); navigate('/') }}
-                      style={{ fontSize: 11, color: 'rgba(255,255,255,.55)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-                      title="Sign out of Groundwork on this device"
-                    >
-                      Sign out
-                    </button>
-                  </div>
+              <button
+                type="button"
+                className="gw-rl-me"
+                onClick={() => { setMeOpen(v => !v); setOrgOpen(false) }}
+                aria-haspopup="true"
+                aria-expanded={meOpen}
+                title={collapsed ? `${fullName}. Settings, help, sign out` : undefined}
+              >
+                <span className="gw-rl-av" aria-hidden>{initials}</span>
+                {!collapsed && (
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <b className="gw-rl-org-name">{fullName}</b>
+                    <span className="gw-rl-org-role">Settings, help, sign out</span>
+                  </span>
+                )}
+                {collapsed && <span className="gw-sr-only">{fullName}. Settings, help, sign out</span>}
+              </button>
+              {meOpen && (
+                <div className="gw-rl-menu gw-rl-menu-me" style={{ left: collapsed ? 70 : 10 }}>
+                  <NavLink to="/settings" className="gw-rl-menu-item" onClick={() => setMeOpen(false)}>Your settings</NavLink>
+                  <button type="button" className="gw-rl-menu-item" onClick={() => { setMeOpen(false); showHelp(0) }}>Help</button>
+                  <NavLink to="/talk-to-us" className="gw-rl-menu-item" onClick={() => setMeOpen(false)}>Talk to us</NavLink>
+                  <button type="button" className="gw-rl-menu-item" onClick={() => { setMeOpen(false); showFeedback() }}>Send feedback</button>
+                  {/* Groundwork's own back office. Staff only, as the route itself is. */}
+                  {staffItems.map(item => (
+                    <NavLink key={item.to} to={item.to} className="gw-rl-menu-item" onClick={() => setMeOpen(false)}>{item.label}</NavLink>
+                  ))}
+                  <hr />
+                  <button
+                    type="button"
+                    className="gw-rl-menu-item"
+                    onClick={() => navigate('/signout', { replace: true })}
+                    title="Sign out of Groundwork on this device"
+                  >
+                    Sign out
+                  </button>
                 </div>
               )}
             </>
           ) : (
             !collapsed && (
-              <button
-                onClick={() => navigate('/auth')}
-                style={{ width: '100%', padding: '9px 12px', borderRadius: 8, background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.12)', color: 'rgba(255,255,255,.7)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
-              >
-                Sign in →
-              </button>
+              <Button kind="secondary" wide onClick={() => navigate('/auth')}>Sign in</Button>
             )
           )}
         </div>
       </aside>
 
-      <nav style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0, height: 60,
-        background: '#0D1A2B', borderTop: '1px solid rgba(255,255,255,.07)',
-        display: 'flex', alignItems: 'center', zIndex: 40,
-        paddingBottom: 'env(safe-area-inset-bottom)',
-      }}
+      {isAuthenticated && <JumpTo items={jumpItems} />}
+
+      {/*
+        THE BOTTOM BAR ON A PHONE (A1, layout-phone): Today, Check-ins, Start, Chat, More in the
+        prototype. Chat is Ask Groundwork's own page (D1, #/chat).
+        Everything else a phone used to show in this bar is on "More", through the same gate.
+
+        REVIEW ROUND 3, ITEM 7: NOT ON THE CONVERSATION. The prototype's own rule
+        (`body.focus .tabbar{display:none}`, app.css): a check-in's own card is the whole screen
+        once you are inside it, and this bar sat under the composer, on top of it, and behind it -
+        a second navigation fighting the one thing on screen that already has its own way out
+        (Pause).
+      */}
+      {!onConversationPage && (
+      <nav
+        aria-label="Main"
+        style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0, height: 60,
+          background: 'var(--gw-card)', borderTop: '1px solid var(--gw-border)',
+          display: 'flex', alignItems: 'center', zIndex: 40,
+          paddingBottom: 'env(safe-area-inset-bottom)',
+        }}
         className="gw-sidebar-mobile"
       >
-        {/* Was unfiltered, so a team member on a phone saw People and Billing and got bounced. */}
-        {navItemsFor(user).map(item => <NavItem key={item.to} item={item} compact />)}
+        {isAuthenticated ? (
+          <>
+            <NavLink to="/today" className={({ isActive }) => `gw-phone-bar-item${isActive ? ' on' : ''}`}>
+              <PhoneIcon d="today" />Today
+            </NavLink>
+            <NavLink to="/grounds" className={({ isActive }) => `gw-phone-bar-item${isActive ? ' on' : ''}`}>
+              <PhoneIcon d="checkins" />Check-ins
+            </NavLink>
+            {/* Somebody who may not start a check-in has Company in its place, as ask-on-a-phone.txt shows. */}
+            {user?.mayOpenCheckIns !== false ? (
+              <NavLink to="/start?new=1" className="gw-phone-bar-item start">
+                <PhoneIcon d="start" />Start
+              </NavLink>
+            ) : user?.role !== 'GUEST' ? (
+              <NavLink to="/company" className={({ isActive }) => `gw-phone-bar-item${isActive ? ' on' : ''}`}>
+                <PhoneIcon d="company" />Company
+              </NavLink>
+            ) : null}
+            <NavLink to="/chat" className={({ isActive }) => `gw-phone-bar-item${isActive ? ' on' : ''}`}>
+              <PhoneIcon d="chat" />Chat
+            </NavLink>
+            <NavLink to="/more" className={({ isActive }) => `gw-phone-bar-item${isActive ? ' on' : ''}`}>
+              <PhoneIcon d="more" />More
+            </NavLink>
+          </>
+        ) : (
+          <NavLink to="/auth" className="gw-phone-bar-item">Sign in</NavLink>
+        )}
       </nav>
+      )}
     </>
+  )
+}
+
+/** The bottom bar's icons, drawn in the text colour. */
+function PhoneIcon({ d }: { d: 'today' | 'checkins' | 'start' | 'company' | 'chat' | 'more' }) {
+  if (d === 'today') {
+    return <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden><rect x="3" y="4" width="16" height="15" rx="2" stroke="currentColor" strokeWidth="1.6" /><path d="M3 8.5h16M7.5 2.5v3M14.5 2.5v3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+  }
+  if (d === 'start') {
+    return <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden><path d="M13 5v16M5 13h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+  }
+  if (d === 'company') {
+    return <svg width="22" height="22" viewBox="0 0 20 20" fill="none" aria-hidden><path d="M3 17.5V8l7-4.5L17 8v9.5" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /><path d="M2 17.5h16M8 17.5v-5h4v5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+  }
+  if (d === 'chat') {
+    return <svg width="22" height="22" viewBox="0 0 20 20" fill="none" aria-hidden><path d="M10 3.2c-3.9 0-7 2.6-7 5.9 0 1.7.8 3.2 2.2 4.3L4.6 16.8l3.6-1.9c.6.1 1.2.2 1.8.2 3.9 0 7-2.6 7-5.9S13.9 3.2 10 3.2Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /></svg>
+  }
+  if (d === 'more') {
+    return <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden><circle cx="5" cy="11" r="1.8" fill="currentColor" /><circle cx="11" cy="11" r="1.8" fill="currentColor" /><circle cx="17" cy="11" r="1.8" fill="currentColor" /></svg>
+  }
+  return (
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden>
+      <path d="M3.5 6h10M3.5 11h10M3.5 16h7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M15 14.5l1.8 1.8 3.2-3.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+/** The Groundwork mark: three bars widening downward, in navy. */
+function GroundworkBars() {
+  return (
+    <svg width="22" height="17" viewBox="0 0 22 17" aria-hidden>
+      <rect x="5" y="0" width="12" height="3" rx="1.5" fill="currentColor" opacity="0.45" />
+      <rect x="2" y="6" width="18" height="3" rx="1.5" fill="currentColor" opacity="0.72" />
+      <rect x="0" y="12" width="22" height="3" rx="1.5" fill="currentColor" />
+    </svg>
   )
 }
 
@@ -1390,7 +1251,56 @@ export function AppShell({ children }: { children: React.ReactNode }) {
    * the source is correct. Only a mount could tell.
    */
   const location = useLocation()
+  const navigate = useNavigate()
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
+  const askOpen = useAskStore(s => s.open)
+  const hideAsk = useAskStore(s => s.hide)
+  /* U.10 item 8: a question typed in the board's own Ask bar, handed to the panel once it opens. */
+  const pendingAskMessage = useAskStore(s => s.pendingMessage)
+  const isAPhone = useIsAPhone()
+  /**
+   * PHONE CHECK, ITEM 1: "ASK" DID NOTHING ON A PHONE.
+   *
+   * The side drawer (`.gw-ask-drawer`) is hidden outright below 641px (next style block), because
+   * on a phone Ask Groundwork is its own page - #/chat, already built (AskPage.tsx) and already in
+   * the bottom bar. But every button that opens the panel (the header's "Ask", the board's Ask bar,
+   * the Company page's "Ask about...") only ever set `askOpen` true in the store; on a phone that
+   * state had nowhere to render, so the button did nothing and a typed question (`pendingMessage`)
+   * was silently dropped.
+   *
+   * Routing here, once, is cheaper than teaching every caller about phone width: whenever the store
+   * opens on a phone, send the person to the real page instead and clear the drawer's own flag.
+   * `pendingAskMessage` stays in the store - AskPage reads and consumes it itself, the same way the
+   * drawer already does below.
+   */
+  useEffect(() => {
+    if (isAPhone && askOpen) {
+      hideAsk()
+      if (location.pathname !== '/chat') navigate('/chat')
+    }
+  }, [isAPhone, askOpen, hideAsk, navigate, location.pathname])
+  /*
+   * WIDTH CHECK, ITEM 8: THE 400px ASK PANEL CUT THE PAGE'S OWN TEXT, RATHER THAN COVERING IT.
+   * The drawer below is `position: fixed`, so it draws on top of whatever is already there - at
+   * 1024px wide (768px of content once the 256px rail is out) that left only 368px for the page,
+   * but the page itself never learned the drawer was open, so its own buttons and headings still
+   * laid out for the FULL width and then sat half hidden behind the drawer's own edge (measured
+   * live: "Ask about the strategy" read as "Ask about the st"). The same technique `OutOfTime.tsx`
+   * already uses for its own full-page cover: `<body>` carries a class for exactly as long as the
+   * panel is open, and `gw-ui.css`'s own rule (scoped to the same 641px floor the drawer itself
+   * only renders above) reserves its 400px as padding on the content side instead, so the page
+   * reflows into the room it actually has rather than being drawn underneath the drawer.
+   */
+  useEffect(() => {
+    const open = isAuthenticated && askOpen
+    document.body.classList.toggle('gwui-ask-open', open)
+    return () => { document.body.classList.remove('gwui-ask-open') }
+  }, [isAuthenticated, askOpen])
+  /* REVIEW ROUND 3, ITEM 7: SEE AppSidebar's OWN COPY OF THIS - the app's bottom bar does not
+     render at all on the conversation, and the room it used to reserve (`--gw-bottom-nav`) is
+     given back to the card so nothing leaves a blank strip where the bar used to sit. */
+  const onConversationPage = /^\/checkin\//.test(location.pathname)
+  const consumePendingAskMessage = useAskStore(s => s.consumePendingMessage)
   /**
    * Signed-out visitors do not get the signed-in navigation.
    *
@@ -1426,27 +1336,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const bare = justTheQuestion(location.search)
 
   const CHROMELESS = [
-    '/auth', '/auth/sent', '/auth/google/callback',
+    '/auth', '/auth/sent', '/auth/google/callback', '/google-failed', '/signout',
     '/set-password', '/reset-password', '/verify-email',
-    '/invite', '/join', '/answer', '/login', '/org/setup',
+    '/invite', '/join', '/answer', '/login', '/org/setup', '/org-new', '/orgs', '/join/waiting', '/welcome',
   ]
 
   /**
-   * THE RAIL ON /start FOR SOMEBODY WITHOUT AN ACCOUNT YET.
+   * THERE IS NO RAIL ON /start FOR SOMEBODY WITHOUT AN ACCOUNT YET.
    *
-   * `AppSidebar` has a branch for exactly this, and its own comment says so: "Entry ground shown when
-   * unauthenticated on /start". It draws the ground being built - its name, renameable, and how many
-   * sessions - for a person who has no grounds because they are making their first one.
+   * GROUP 3 REVIEW, BATCH B (1 October): start.jpg, the prototype's own signed-out #/start, draws
+   * no sidebar at all - just the mark, the one question, and (on the account-card screens beside
+   * it) a plain way to sign in. A previous round restored a rail here (`isEntryFlow`, below,
+   * OR'd into `showSidebar`) on the strength of a different memory - a signed-out window that once
+   * showed an "entry ground" rail (name, renameable, session count, a navy "+ Start a check-in",
+   * "Not saved yet", "Sign in") - but that rail is not what the prototype draws, and it is also
+   * where w375-out-_start.png found the floating Feedback button covering "See every situation".
    *
-   * It could never run. `showSidebar` required `isAuthenticated`, so the sidebar was not mounted at
-   * all for a stranger, which made `isEntryPage = !isAuthenticated && pathname === '/start'` a
-   * condition that is false whenever it is evaluated. The rail Hafsah remembered on a signed-out
-   * window was real, and an auth gate added later killed it without removing the branch.
-   *
-   * Same shape as the G37 defect: a check that cannot be true, no failure, just a thing that quietly
-   * stopped happening. The API sweep for this class did not cover the client.
+   * The rail stays for an AUTHENTICATED reader on /start (building a second or further check-in),
+   * since `isAuthenticated` alone already covers that case. Only the signed-out exception is
+   * removed. `EntryChatPage.tsx` keeps a way to sign in on its own, with the shared `Mark` and a
+   * plain "Sign in" link, so a stranger on /start is not left with no way back to an account -
+   * see `the-door-has-no-rail-when-signed-out.spec.ts`.
    */
-  const isEntryFlow = location.pathname === '/start'
   /**
    * TWO PRODUCTS ON ONE SCREEN. W-UX-8.
    *
@@ -1470,8 +1381,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isBackOffice = CHROMELESS_PREFIXES.some(
     p => location.pathname === p || location.pathname.startsWith(`${p}/`),
   )
+  /* The pages a link in an email opens, with a token in the address (U.3). They are a card of their
+     own, as the prototype draws them, whoever happens to be signed in on this browser. */
+  const fromAnEmail = ['/stop-reminders/', '/unsubscribe/', '/j/'].some(p => location.pathname.startsWith(p))
+  /* A page with no address of its own that the prototype draws with no sidebar: the not-found page. */
+  const aPageAskedForNoRail = useNoRailStore(s => s.asked)
   const showSidebar =
-    (isAuthenticated || isEntryFlow) && !CHROMELESS.includes(location.pathname) && !isBackOffice && !bare
+    isAuthenticated && !CHROMELESS.includes(location.pathname) && !isBackOffice && !bare && !fromAnEmail && !aPageAskedForNoRail
 
   if (!showSidebar) return <main id="main">{children}</main>
 
@@ -1488,9 +1404,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         * The link is visually hidden until it takes focus, which is the one case it exists for.
         */}
       <AppSidebar />
-      <main id="main" className="gw-main-content">
+      <main id="main" className={onConversationPage ? 'gw-main-content gw-focus' : 'gw-main-content'}>
         {children}
       </main>
+      {isAuthenticated && askOpen && (
+        <div className="gw-ask-drawer" style={{
+          position: 'fixed', top: 0, right: 0, bottom: 0, width: 400, maxWidth: '100vw', zIndex: 45,
+          boxShadow: '-8px 0 24px rgba(26, 25, 22, 0.08)',
+        }}>
+          <AskGroundwork onClose={hideAsk} initialMessage={pendingAskMessage} onSentInitialMessage={consumePendingAskMessage} />
+        </div>
+      )}
       <FeedbackWidget />
 
       <style>{`
@@ -1528,11 +1452,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
              speak of. It was being drawn that way on every screen, which is the bug. */
           .gw-fb-overlay      { align-items: flex-end !important; padding: 0 !important; }
           .gw-fb-panel        { border-radius: 12px 12px 0 0 !important; max-height: 90vh !important; }
+          /* On a phone Ask Groundwork is its own page, "Chat" in the bottom bar. */
+          .gw-ask-drawer      { display: none !important; }
+          /*
+            REVIEW ROUND 3, ITEM 7: NO APP BOTTOM BAR ON THE CONVERSATION.
+            AppSidebar does not render the bottom bar at all on the conversation route (its own
+            onConversationPage check); this gives the room it used to reserve back to the card,
+            so the conversation fills the screen down to its own composer rather than stopping 60px
+            short of it and leaving a strip of plain page behind.
+          */
+          .gw-main-content.gw-focus { padding-bottom: 0 !important; --gw-bottom-nav: 0px; }
         }
         @media (min-width: 641px) {
           .gw-sidebar-desktop { display: flex !important; }
           .gw-sidebar-mobile  { display: none !important; }
-          .gw-main-content    { margin-left: var(--gw-sidebar-w, 240px); min-height: 100vh; }
+          .gw-main-content    { margin-left: var(--gw-sidebar-w, 256px); min-height: 100vh; }
         }
       `}</style>
     </>

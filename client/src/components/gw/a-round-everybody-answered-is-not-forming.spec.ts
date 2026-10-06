@@ -11,14 +11,17 @@ import { join } from 'path'
  */
 const SRC = readFileSync(join(__dirname, 'TheReportIsAListOfSessions.tsx'), 'utf8')
 
+/*
+ * U.9: THE ROW NOW SAYS WHAT THE PROTOTYPE SAYS (sessions.txt): "Shared" or "Not shared". The rule
+ * this file guarded still holds, and more simply: a round everybody answered no longer reads
+ * "Forming", because no row says "Forming" at all. What is not out yet says "Not shared".
+ */
 describe('a round everybody answered is not forming', () => {
-  it('says it is ready to release once everybody has answered', () => {
-    expect(SRC).toContain("r.answered >= r.total && r.total > 0 ? 'Ready to release' : 'Forming'")
-  })
-
-  it('and still says Released once it is out, and Forming while people are missing', () => {
-    expect(SRC).toContain("r.closed ? 'Released'")
-    expect(SRC).toContain("'Forming'")
+  it('says Shared once it is out, and Not shared otherwise, whoever it is waiting for', () => {
+    expect(SRC).toContain('r.closed ? EVERY_SESSION.shared : EVERY_SESSION.notShared')
+    expect(SRC).toContain("shared: 'Shared'")
+    expect(SRC).toContain("notShared: 'Not shared'")
+    expect(SRC).not.toContain("'Forming'")
   })
 
   it('and the longer label does not wrap in its pill', () => {

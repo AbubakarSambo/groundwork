@@ -1,3 +1,4 @@
+import { PLAIN_WORDS, WRITTEN_ONCE_FOR_SEVERAL_READERS, EVERY_VERB_KEEPS_ITS_SUBJECT } from '../conversation/plain-words';
 /**
  * A HUNDRED ACCOUNTS ARE NOT TWO.
  *
@@ -235,5 +236,11 @@ export function theNetworkInstruction(howManyAnswered: number, theQuestionAsked:
     'WHAT MAKES THIS USEFUL.',
     'A person reading this should be able to say afterwards: I know where these organisations are going, what they need when they get there, what they already have that I could use, how they decide who to trust, what burned them last year, and where the different kinds of organisation want different things. If your picture does not let them say that, it is a summary and you have not done the work.',
     'Prefer the specific to the general every single time. "Aggregators default after prepayment, and three accounts now refuse to prepay without a guarantor" is worth more than "trust is a challenge in the value chain".',
+    '',
+    PLAIN_WORDS,
+    '',
+    WRITTEN_ONCE_FOR_SEVERAL_READERS,
+    '',
+    EVERY_VERB_KEEPS_ITS_SUBJECT,
   ].join('\n');
 }
