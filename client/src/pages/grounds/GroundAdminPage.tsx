@@ -2020,11 +2020,16 @@ export function GroundAdminPage() {
                       pending", which is a lie in the direction that matters: the lead waits for a
                       reply to a mail that was never sent, and chases the person instead of the
                       admin.
+
+                      PHONE WALK, SCREEN FAULT 1: SAID PLAINLY, WITH THEIR NAME - the same sentence
+                      WhosInItRoster.tsx (People and setup's own roster) now says about the same
+                      state, so the two cannot disagree. No Resend is offered here either (the
+                      Resend button below is already gated on `!p.awaitingSeat`).
                     */
                     help = {
                       tone: 'look',
                       action: <Button kind="quiet" size="small" onClick={() => navigate('/org/members')}>Go to People</Button>,
-                      text: 'Your plan has no seat for them yet. An admin has to make room before their invitation goes out.',
+                      text: `${name} is waiting for a seat on your plan. They will get their invitation as soon as there is one.`,
                     }
                   } else if (!p.userId) {
                     statusTag = <Tag tone="plain">{p.inviteDeliveryStatus === 'DELIVERED' ? 'Invite delivered' : 'Invite pending'}</Tag>
