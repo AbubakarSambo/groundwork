@@ -291,7 +291,7 @@ export class RemindService {
        target. */
     const forTheLead = new Map<string, {
       to: string; leadName: string | null; label: string; chasedOn: number[];
-      who: string[]; whoEmails: string[]; checkInIds: string[];
+      who: string[]; whoEmails: string[]; whoNudgedAt: (Date | null)[]; checkInIds: string[];
       /* For the channel notice: `tell` is scoped to an organisation, not to a ground. */
       organizationId: string;
     }>();
@@ -340,6 +340,7 @@ export class RemindService {
             chasedOn: policy.days,
             who: [],
             whoEmails: [],
+            whoNudgedAt: [],
             checkInIds: [],
             organizationId: checkIn.ground.organizationId,
           };
@@ -348,7 +349,7 @@ export class RemindService {
              who any faster than they could before the email arrived. */
           /* The lead is never written about in the third person to herself: she is "you" (decision 109 review). */
           const named = participant.userId && participant.userId === (checkIn.ground as any).initiatorId ? 'you' : (participant.user?.firstName ?? participant.email);
-          if (!entry.who.includes(named)) { entry.who.push(named); entry.whoEmails.push(participant.email); }
+          if (!entry.who.includes(named)) { entry.who.push(named); entry.whoEmails.push(participant.email); entry.whoNudgedAt.push(participant.lastNudgedAt ?? null); }
           entry.checkInIds.push(checkIn.id);
           forTheLead.set(key, entry);
         }
@@ -452,22 +453,19 @@ export class RemindService {
      * nothing would ever say so.
      */
     for (const [, entry] of forTheLead) {
-      /* What was really sent, from the record of it: only people who were sent a reminder are said to have been reminded. */
-      const sentTo: { toAddress: string; createdAt: Date }[] = await Promise.resolve((this.prisma as any).notification?.findMany?.({
-        where: { channel: 'email', sender: { in: ['sendNudge', 'sendNudgeFromAPress'] }, outcome: 'sent', toAddress: { in: entry.whoEmails.map((e) => e.trim().toLowerCase()) } },
-        select: { toAddress: true, createdAt: true },
-        orderBy: { createdAt: 'desc' },
-      })).catch(() => null) ?? [];
-      const knownSends = Array.isArray(sentTo) ? sentTo : [];
-      const remindedNames = entry.who.filter((_, i) => knownSends.some((n) => n.toAddress === entry.whoEmails[i].trim().toLowerCase()));
-      const lastRemindedOn = knownSends[0]?.createdAt ? whenItWas(new Date(knownSends[0].createdAt), 'day') : null;
+      /* WHAT WAS REALLY SENT, ABOUT THIS CHECK-IN TO THIS PERSON. The participant row is one person in one check-in, and its `lastNudgedAt` is set only
+         when a reminder went (decision 109 review): the notification record has an address but no check-in, so it could say "reminded" about another one. */
+      const remindedNames = entry.who.filter((_, i) => !!entry.whoNudgedAt[i]);
+      const stamps = entry.whoNudgedAt.filter((d): d is Date => !!d).map((d) => new Date(d).getTime());
+      const lastRemindedOn = stamps.length ? whenItWas(new Date(Math.max(...stamps)), 'day') : null;
       const composed = theEmailForTheLead({
         leadName: entry.leadName,
         groundLabel: entry.label,
         whoHasNotStarted: entry.who,
         chasedOn: entry.chasedOn,
         link: `${frontendUrl}/grounds`,
-        ...(knownSends.length || (this.prisma as any).notification?.findMany ? { remindedNames, lastRemindedOn } : {}),
+        remindedNames,
+        lastRemindedOn,
       });
       if (!composed) continue;
 

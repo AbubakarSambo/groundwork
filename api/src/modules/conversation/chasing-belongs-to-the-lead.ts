@@ -144,9 +144,10 @@ export function theEmailForTheLead(input: {
    */
   const reminded = input.remindedNames ?? names;
   const remindedList = reminded.length < 2 ? reminded.join('') : `${reminded.slice(0, -1).join(', ')} and ${reminded[reminded.length - 1]}`;
+  const all = reminded.length === names.length;
   const did = reminded.length === 0
     ? 'Groundwork has stopped sending them reminders.'
-    : `Groundwork reminded ${reminded.length === names.length ? 'them' : remindedList}${input.lastRemindedOn ? `, the last time on ${input.lastRemindedOn}` : days ? `, on ${days}` : ''}, and has now stopped reminding ${reminded.length === names.length ? 'them' : 'those people'}.`;
+    : `Groundwork reminded ${all ? 'them' : remindedList}${input.lastRemindedOn ? `, the last time on ${input.lastRemindedOn}` : days ? `, on ${days}` : ''}, and has now stopped reminding ${all ? 'them' : reminded.length === 1 ? 'that person' : 'those people'}.`;
 
   const lines = [
     input.leadName ? `${input.leadName},` : 'Hello,',
@@ -155,9 +156,9 @@ export function theEmailForTheLead(input: {
     '',
     did,
     '',
-    'You do not need to do anything. If you would like to write to them yourself, this message is ready for you to send:',
+    'Groundwork will not remind them again. If you still want their view, a short note from you is the next step.',
     '',
-    `"I would value your view on ${input.groundLabel}. It takes about five minutes, and the link in the email Groundwork sent you opens it."`,
+    `You could write, "I would value your view on ${input.groundLabel}. It takes about five minutes, and I will send you a fresh link if you reply."`,
     '',
     input.link,
   ];
