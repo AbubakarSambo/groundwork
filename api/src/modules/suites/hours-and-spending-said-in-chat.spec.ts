@@ -149,6 +149,13 @@ describe('a weekday with "next week" after it is next week\'s day (6 October)', 
     ['Can I take this Friday off? I will be back next week.', '2026-10-09', '2026-10-09'],
     ['I need leave this Thursday and Friday, then next week I am in the office.', '2026-10-08', '2026-10-09'],
     ['Can I take leave on Thursday? My exams are next week.', '2026-10-08', '2026-10-08'],
+    ['I need a day off on Friday because next week is the audit.', '2026-10-09', '2026-10-09'],
+    ['Can I take Friday off as I travel next week?', '2026-10-09', '2026-10-09'],
+    ['Can I take Friday off, and next week too?', '2026-10-09', '2026-10-09'],
+    ['I need Friday of next week off.', '2026-10-16', '2026-10-16'],
+    ['I need Friday next week off.', '2026-10-16', '2026-10-16'],
+    ['I need this coming Friday off.', '2026-10-09', '2026-10-09'],
+    ['I need Monday to Wednesday off next week.', '2026-10-12', '2026-10-14'],
   ])('%s is read as %s to %s', async (said, startsOn, endsOn) => {
     const { readLeaveDates } = await import('./leave-said-in-chat');
     expect(readLeaveDates(said, TODAY)).toEqual({ startsOn, endsOn });
