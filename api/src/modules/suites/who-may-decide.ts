@@ -2,6 +2,7 @@ import type { PrismaService } from '../prisma/prisma.service';
 import { theirSignIn, theirRosterEntry } from './a-roster-entry-and-its-sign-in';
 import { readDuties, whoHolds, type Duties } from './who-holds-each-duty';
 import type { AWorkflow } from './the-approval-steps';
+import { coverToday, type Lookups } from './the-lookups';
 import { theThresholdCrossed, type AThreshold } from './the-spending-rules';
 
 /**
@@ -64,17 +65,36 @@ export interface ARequest {
 /** Who may decide: one person by rule, or any admin. */
 export type WhoDecides =
   | { kind: 'manager'; rule: 'manager'; userId: string; firstName: string | null }
-  | { kind: 'person'; rule: Exclude<Rule, 'manager' | 'admin'> | 'named'; userId: string }
+  /**
+   * `standingInFor` is set when the person named by the rule is on approved leave today and somebody stands in for them
+   * (their leave's stand-in): then the stand-in decides, for exactly the days of that leave, and it is the away person's id.
+   */
+  | { kind: 'person'; rule: Exclude<Rule, 'manager' | 'admin'> | 'named'; userId: string; standingInFor?: string }
   | { kind: 'admin'; rule: 'admin' };
 
 /** What one reading of a request may share between its steps, so the duties are read once. */
-export interface Known { duties?: Duties; team?: string | null }
+export interface Known {
+  duties?: Duties; team?: string | null;
+  /**
+   * What a read of many requests has already loaded (the-lookups.ts), so each request is decided in memory and the
+   * read costs the same number of queries for ten requests as for a thousand. Left out, every answer is asked of the
+   * database, as before.
+   */
+  lookups?: Lookups;
+  /** The day it is decided for, for who stands in for somebody away. Left out: now. */
+  on?: Date;
+  /** Who is away today and who stands in, read once for this resolution when no lookups were given. */
+  cover?: Map<string, string>;
+  /** Never hand a step to a stand-in: for a review, which is written by whoever the rule names and is not a request waiting for an answer. */
+  noCover?: boolean;
+}
 
 const DUTY_OF = {
   budgetOwner: 'budgetOwners', departmentHead: 'departmentHeads', finance: 'finance', hr: 'hr', chiefExecutive: 'chiefExecutive',
 } as const;
 
-async function roleIn(prisma: PrismaService, organizationId: string, userId: string): Promise<string | null> {
+async function roleIn(prisma: PrismaService, organizationId: string, userId: string, known: Known = {}): Promise<string | null> {
+  if (known.lookups) return known.lookups.roles.get(userId) ?? null;
   const m = await prisma.organizationMembership.findUnique({
     where: { userId_organizationId: { userId, organizationId } },
     select: { role: true },
@@ -83,47 +103,62 @@ async function roleIn(prisma: PrismaService, organizationId: string, userId: str
 }
 
 /** Somebody who may be named for a step: in this organisation, not a guest, and not the requester. */
-async function aPersonWhoMay(prisma: PrismaService, request: ARequest, userId: string | null | undefined): Promise<boolean> {
+async function aPersonWhoMay(prisma: PrismaService, request: ARequest, userId: string | null | undefined, known: Known = {}): Promise<boolean> {
   if (!userId || userId === request.requesterUserId) return false;
-  const role = await roleIn(prisma, request.organizationId, userId);
+  const role = await roleIn(prisma, request.organizationId, userId, known);
   return !!role && role !== 'GUEST';
 }
 
 /** The person one rule names for this request, or null when it names nobody. */
 export async function whoMayDecide(prisma: PrismaService, rule: ARule, request: ARequest, known: Known = {}): Promise<WhoDecides | null> {
   if (rule === 'admin') return { kind: 'admin', rule: 'admin' };
-  if (typeof rule === 'object') return (await aPersonWhoMay(prisma, request, rule.named)) ? { kind: 'person', rule: 'named', userId: rule.named } : null;
-  if (rule === 'manager') return theManager(prisma, request);
+  if (typeof rule === 'object') return (await aPersonWhoMay(prisma, request, rule.named, known)) ? { kind: 'person', rule: 'named', userId: rule.named } : null;
+  if (rule === 'manager') return theManager(prisma, request, known);
 
   const duty = DUTY_OF[rule];
   let holder: string | null;
   if (duty === 'budgetOwners' || duty === 'departmentHeads') {
-    if (known.team === undefined) known.team = await theTeamOf(prisma, request);
+    if (known.team === undefined) known.team = await theTeamOf(prisma, request, known);
     if (!known.team) return null;
-    known.duties ??= await readDuties(prisma, request.organizationId);
+    known.duties ??= known.lookups?.duties ?? await readDuties(prisma, request.organizationId);
     holder = whoHolds(known.duties, duty, known.team);
   } else {
-    known.duties ??= await readDuties(prisma, request.organizationId);
+    known.duties ??= known.lookups?.duties ?? await readDuties(prisma, request.organizationId);
     holder = whoHolds(known.duties, duty);
   }
-  return (await aPersonWhoMay(prisma, request, holder)) ? { kind: 'person', rule, userId: holder! } : null;
+  return (await aPersonWhoMay(prisma, request, holder, known)) ? { kind: 'person', rule, userId: holder! } : null;
 }
 
 /** The first rule of one step that names somebody. When none does, an admin, so somebody always may. */
-export async function theOneWhoDecides(prisma: PrismaService, rules: ARule[], request: ARequest): Promise<WhoDecides> {
-  return (await whoDecidesFrom(prisma, rules, request, 0)).who;
+export async function theOneWhoDecides(prisma: PrismaService, rules: ARule[], request: ARequest, known: Known = {}): Promise<WhoDecides> {
+  return (await whoDecidesFrom(prisma, rules, request, 0, known)).who;
 }
 
 /**
  * The first rule from `from` on that names somebody, and its place in the list. When none does, an
  * admin, at the place just after the last rule.
+ *
+ * WHEN THE PERSON NAMED IS AWAY (the stand-in). Somebody on approved leave today, whose leave names a
+ * stand-in, hands the step to that stand-in for exactly the days of the leave: `who` is the stand-in,
+ * with `standingInFor` the person who is away. It is worked out from the dates each time and written
+ * nowhere, so it ends by itself the day the leave does, and the step is the away person's again. A
+ * stand-in who is not in the organisation, is a guest, is the person who asked, or is away too, is
+ * passed over, and the step stays with the person named, as it always did.
  */
 export async function whoDecidesFrom(prisma: PrismaService, rules: ARule[], request: ARequest, from = 0, known: Known = {}): Promise<{ who: WhoDecides; at: number }> {
   for (let i = Math.max(0, from); i < rules.length; i++) {
     const who = await whoMayDecide(prisma, rules[i], request, known);
-    if (who) return { who, at: i };
+    if (who) return { who: await withWhoStandsIn(prisma, who, request, known), at: i };
   }
   return { who: { kind: 'admin', rule: 'admin' }, at: rules.length };
+}
+
+async function withWhoStandsIn(prisma: PrismaService, who: WhoDecides, request: ARequest, known: Known): Promise<WhoDecides> {
+  if (who.kind === 'admin' || known.noCover) return who;
+  const cover = known.lookups ? known.lookups.cover : (known.cover ??= await coverToday(prisma, request.organizationId, known.on ?? new Date()));
+  const standIn = cover.get(who.userId);
+  if (!standIn || standIn === who.userId || !(await aPersonWhoMay(prisma, request, standIn, known))) return who;
+  return { kind: 'person', rule: 'named', userId: standIn, standingInFor: who.userId };
 }
 
 /** Where a request is: the step it is on, and how far down that step's list it has been passed on. */
@@ -133,12 +168,12 @@ export interface WhereItIs { step?: number | null; escalatedTo?: number | null }
 export interface DecidesNow { who: WhoDecides; step: number; at: number; last: boolean; team: string | null }
 
 /** Who decides this request now, from where it is. A step past the end reads as the last step. */
-export async function whoDecidesNow(prisma: PrismaService, steps: Step[], request: ARequest, where: WhereItIs = {}): Promise<DecidesNow> {
+export async function whoDecidesNow(prisma: PrismaService, steps: Step[], request: ARequest, where: WhereItIs = {}, shared: Pick<Known, 'lookups' | 'on'> = {}): Promise<DecidesNow> {
   const all = steps.length ? steps : [['admin'] as Step];
   const step = Math.min(Math.max(0, where.step ?? 0), all.length - 1);
-  const known: Known = {};
+  const known: Known = { ...shared };
   const { who, at } = await whoDecidesFrom(prisma, all[step], request, where.escalatedTo ?? 0, known);
-  const team = known.team !== undefined ? known.team : request.team?.trim() || (await theTeamOf(prisma, request).catch(() => null));
+  const team = known.team !== undefined ? known.team : request.team?.trim() || (await theTeamOf(prisma, request, known).catch(() => null));
   return { who, step, at, last: step >= all.length - 1, team };
 }
 
@@ -153,20 +188,20 @@ export async function whoDecidesNow(prisma: PrismaService, steps: Step[], reques
  */
 export interface APassedStep { step: number; userId: string }
 export async function passWhatTheyAlreadyApproved(
-  prisma: PrismaService, steps: Step[], request: ARequest, from: WhereItIs, approvedByIds: string[] | null | undefined,
+  prisma: PrismaService, steps: Step[], request: ARequest, from: WhereItIs, approvedByIds: string[] | null | undefined, shared: Pick<Known, 'lookups' | 'on'> = {},
 ): Promise<{ now: DecidesNow; where: { step: number; escalatedTo: number }; passed: APassedStep[]; done: boolean }> {
   const already = new Set(approvedByIds ?? []);
   let where = { step: Math.max(0, from.step ?? 0), escalatedTo: Math.max(0, from.escalatedTo ?? 0) };
   const passed: APassedStep[] = [];
   for (let i = 0; i <= (steps.length || 1); i++) {
-    const now = await whoDecidesNow(prisma, steps, request, where);
+    const now = await whoDecidesNow(prisma, steps, request, where, shared);
     const id = now.who.kind === 'admin' ? null : now.who.userId;
     if (!id || !already.has(id)) return { now, where: { step: now.step, escalatedTo: where.escalatedTo }, passed, done: false };
     passed.push({ step: now.step, userId: id });
     if (now.last) return { now, where: { step: now.step, escalatedTo: where.escalatedTo }, passed, done: true };
     where = { step: now.step + 1, escalatedTo: 0 };
   }
-  const now = await whoDecidesNow(prisma, steps, request, where);
+  const now = await whoDecidesNow(prisma, steps, request, where, shared);
   return { now, where, passed, done: false };
 }
 
@@ -180,12 +215,12 @@ export function samePeople(a: WhoDecides, b: WhoDecides): boolean {
  * Who a request would be passed to if it is passed on now: the next rule on the same step's list that
  * names somebody else. Null when nobody else is left on that list.
  */
-export async function whoComesNext(prisma: PrismaService, steps: Step[], request: ARequest, where: WhereItIs = {}): Promise<{ now: DecidesNow; next: { who: WhoDecides; at: number } } | null> {
-  const now = await whoDecidesNow(prisma, steps, request, where);
+export async function whoComesNext(prisma: PrismaService, steps: Step[], request: ARequest, where: WhereItIs = {}, shared: Pick<Known, 'lookups' | 'on'> = {}): Promise<{ now: DecidesNow; next: { who: WhoDecides; at: number } } | null> {
+  const now = await whoDecidesNow(prisma, steps, request, where, shared);
   const rules = (steps.length ? steps : [['admin'] as Step])[now.step];
   let from = now.at + 1;
   while (from <= rules.length) {
-    const next = await whoDecidesFrom(prisma, rules, request, from);
+    const next = await whoDecidesFrom(prisma, rules, request, from, { ...shared });
     if (!samePeople(next.who, now.who)) return { now, next };
     if (next.at >= rules.length) return null;
     from = next.at + 1;
@@ -261,15 +296,24 @@ export function everyStepFor(suite: 'spend', answers: { limit: number | null; ab
 // -------------------------------------------------------------------------------------------------
 
 /** The requester's line manager, when they sign in here as a lead or an admin and are not the requester. */
-async function theManager(prisma: PrismaService, request: ARequest): Promise<WhoDecides | null> {
+async function theManager(prisma: PrismaService, request: ARequest, known: Known = {}): Promise<WhoDecides | null> {
+  const L = known.lookups;
   let managerExternalId = request.managerExternalId;
   if (managerExternalId === undefined) {
     const me = request.requesterUserId
-      ? await theirRosterEntry(prisma, request.organizationId, request.requesterUserId, { managerExternalId: true })
+      ? (L ? L.entryOf.get(request.requesterUserId) ?? null : await theirRosterEntry(prisma, request.organizationId, request.requesterUserId, { managerExternalId: true }))
       : null;
     managerExternalId = me?.managerExternalId ?? null;
   }
   if (!managerExternalId) return null;
+  if (L) {
+    /* The same answer from what was read once: the manager's entry, the sign-in it matches, and their role here. */
+    const m = L.byExternalId.get(managerExternalId);
+    if (!m?.userId || m.userId === request.requesterUserId) return null;
+    const role = L.roles.get(m.userId) ?? null;
+    if (role !== 'LEAD' && role !== 'ADMIN') return null;
+    return { kind: 'manager', rule: 'manager', userId: m.userId, firstName: m.givenName?.trim() || m.displayName?.trim().split(/\s+/)[0] || null };
+  }
   const m = await prisma.person.findFirst({
     where: { organizationId: request.organizationId, externalId: managerExternalId, active: true },
     select: { linkedUserId: true, email: true, givenName: true, displayName: true },
@@ -284,9 +328,10 @@ async function theManager(prisma: PrismaService, request: ARequest): Promise<Who
 }
 
 /** The request's team, or else the requester's department in the staff directory. */
-async function theTeamOf(prisma: PrismaService, request: ARequest): Promise<string | null> {
+async function theTeamOf(prisma: PrismaService, request: ARequest, known: Known = {}): Promise<string | null> {
   if (request.team?.trim()) return request.team.trim();
   if (!request.requesterUserId) return null;
+  if (known.lookups) return known.lookups.entryOf.get(request.requesterUserId)?.department?.trim() || null;
   const me = await theirRosterEntry(prisma, request.organizationId, request.requesterUserId, { department: true });
   return me?.department?.trim() || null;
 }

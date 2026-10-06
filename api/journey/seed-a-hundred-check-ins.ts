@@ -70,7 +70,7 @@ export async function loadAHundred(url: string) {
     const people: { k: string; first: string; last: string; role: 'ADMIN' | 'LEAD' | 'MEMBER' }[] = [];
     for (let i = 0; i < 30; i++) {
       const k = i === 0 ? ADMIN : i === 1 ? BUSY_LEAD : i === 2 ? QUIET_PARTICIPANT : key(i);
-      people.push({ k, first: FIRST[i], last: LAST[i], role: i === 0 ? 'ADMIN' : i < 6 ? 'LEAD' : 'MEMBER' });
+      people.push({ k, first: FIRST[i], last: LAST[i], role: i === 0 ? 'ADMIN' : i === 2 ? 'MEMBER' : i < 6 ? 'LEAD' : 'MEMBER' });
     }
     const users: Record<string, string> = {};
     for (const p of people) {
@@ -107,7 +107,8 @@ export async function loadAHundred(url: string) {
       const isClosed = i % 4 === 3;
       const kofiIsIn = i % 5 !== 4;
       const kofiRunsIt = kofiIsIn && i % 3 !== 2;
-      const lead = kofiRunsIt ? BUSY_LEAD : people[2 + (i % 4)].k;
+      /* Imani (people[2]) is a plain member: she never runs one (request 160). The other leads are 3, 4 and 5. */
+      const lead = kofiRunsIt ? BUSY_LEAD : people[3 + (i % 3)].k;
       if (!kofiIsIn) withoutKofi += 1;
       if (isClosed) closed += 1;
 
@@ -115,7 +116,8 @@ export async function loadAHundred(url: string) {
         data: {
           organizationId: org.id, initiatorId: users[lead],
           scenario: scenario as any, moment: 'STARTING' as any,
-          status: (isClosed ? 'CLOSED' : i % 3 === 0 ? 'REPORT_READY' : 'ACTIVE') as any,
+          /* REPORT_READY only where somebody answered and there is a report; where nobody has answered the check-in is ACTIVE (request 160). */
+          status: (isClosed ? 'CLOSED' : i % 3 === 0 ? 'ACTIVE' : i % 2 === 0 ? 'REPORT_READY' : 'ACTIVE') as any,
           label: `${SUBJECTS[i % SUBJECTS.length]}, round ${Math.floor(i / SUBJECTS.length) + 1}`,
           timelineDays: 90, createdAt: at(120 - i),
         },

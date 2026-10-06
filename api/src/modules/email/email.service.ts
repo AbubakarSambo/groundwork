@@ -749,6 +749,22 @@ export class EmailService implements OnModuleInit {
     }, undefined, 'sendRequestDecided');
   }
 
+  /**
+   * WHAT WAITS FOR AN APPROVER, SAID ONCE (suites at scale). The same paragraph WhatsApp would have carried, sent only when it could
+   * not go there: the person said STOP, has no number, or WhatsApp is off for them. One email, however many are waiting.
+   */
+  async sendApprovalsSummary(email: string, subject: string, greetingLine: string, paragraph: string, url: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject,
+      html: this.layout(
+        `<p>${escapeHtml(greetingLine)}</p>
+         <p>${escapeHtml(paragraph)}</p>
+         <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open Groundwork to read and answer</a></p>`,
+      ),
+    }, undefined, 'sendApprovalsSummary');
+  }
+
   async sendGroundApproved(email: string, firstName: string, groundLabel: string, url: string): Promise<void> {
     await this.sendEmail({
       to: email,

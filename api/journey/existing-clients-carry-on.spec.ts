@@ -315,8 +315,9 @@ describe('release night, for a check-in that already exists', () => {
     /* 82 since 4 October: the anchor scenario's empty started_from column (docs/deploy.md row 82).
        83 since 5 October: every free run is one month, a column default only (docs/deploy.md row 83).
        84 since 6 October: a WhatsApp send keeps the id Meta gave it, a nullable column and its index (docs/deploy.md row 84).
-       85 since 6 October: the anchor's situation is an allowed value, so the check-in keeps it (docs/deploy.md row 85). */
-    expect(names).toHaveLength(85);
+       85 since 6 October: the anchor's situation is an allowed value, so the check-in keeps it (docs/deploy.md row 85).
+       86: "Use simpler words" adds one column, grounds.simpler_words, false for every check-in (row 86). */
+    expect(names).toHaveLength(86);
     // The six statements deploy.md lists, plus the WhatsApp prices (five updates and one insert).
     expect(o.dataChangesRun).toBeGreaterThanOrEqual(8);
   }));

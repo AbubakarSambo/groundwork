@@ -131,6 +131,8 @@ describe('Grace, an admin', () => {
     expect(b.waiting.map((w) => w.name)).toEqual(['Kamau Njenga', 'Lina Mutua', 'Miriam Wanjiku', 'Wairimu Kamau']);
     expect(byName(b, 'Kamau Njenga')).toEqual({
       id: 's-1', name: 'Kamau Njenga', firstName: 'Kamau', amount: 18000, what: 'fuel for Kisumu deliveries', team: 'Operations',
+      /* Added by request 162, item 3: the line as the prototype reads it, with the currency. */
+      says: 'Kamau: KES 18,000 for fuel for Kisumu deliveries',
       left: 38000, over: false, approver: { kind: 'manager' }, mayDecide: false,
       /* Where it is, in a full sentence (decision 85, build step 4): one step, waiting for his lead. */
       where: 'It is waiting for Fatuma.',

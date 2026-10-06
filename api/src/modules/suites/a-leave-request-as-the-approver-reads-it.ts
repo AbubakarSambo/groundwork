@@ -42,6 +42,34 @@ export interface TheApproversView {
   more?: string[];
 }
 
+/**
+ * The people off, each once, by their first name, and by their full name where two of them share a first name, so "Amara and Amara
+ * are also off" is never what an approver reads. `people` may name somebody twice (two stretches of leave); they are counted once.
+ */
+export function whoIsOffNamed(people: { id: string; first: string; full: string }[]): { count: number; names: string[] } {
+  /* In the order of their names, so the board and the queue say the same sentence whichever read comes first. */
+  const once = [...new Map(people.filter((p) => p.first).map((p) => [p.id, p])).values()].sort((a, b) => a.first.localeCompare(b.first) || a.full.localeCompare(b.full) || a.id.localeCompare(b.id));
+  const firsts = new Map<string, number>();
+  for (const p of once) firsts.set(p.first, (firsts.get(p.first) ?? 0) + 1);
+  return { count: once.length, names: once.map((p) => ((firsts.get(p.first) ?? 0) > 1 ? p.full || p.first : p.first)) };
+}
+
+/** How many names are said before the rest are counted: "Brian, Joy, Neema, Aisha, Kofi and 7 others". */
+export const NAMES_SAID_BEFORE_COUNTING = 5;
+
+/**
+ * WHO ELSE IN THE TEAM IS OFF THOSE DAYS, SAID PLAINLY (the clash). Names the people, up to five, then counts the rest, and says how
+ * short the team would be with this request too. "Nobody else in Sales is off those days." when nobody is.
+ * Only names the board already shows to whoever reads it: this says nothing about who is off to anybody else.
+ */
+export function theClashSaid(team: string, alsoOff: string[], oneDay: boolean): string {
+  if (!alsoOff.length) return `Nobody else in ${team} is off ${oneDay ? 'that day' : 'those days'}.`;
+  const when = oneDay ? 'that day' : 'on some of those days';
+  const rest = alsoOff.length - NAMES_SAID_BEFORE_COUNTING;
+  const who = rest > 1 ? listed([...alsoOff.slice(0, NAMES_SAID_BEFORE_COUNTING), `${rest} others`]) : listed(alsoOff);
+  return `${who} ${alsoOff.length === 1 ? 'is' : 'are'} also off ${when}, so ${team} would be ${inWords(alsoOff.length + 1)} short.`;
+}
+
 export function aLeaveRequestAsTheApproverReadsIt(v: TheApproversView): string[] {
   const name = v.firstName.trim() || 'This person';
   const oneDay = v.startsOn === v.endsOn;
@@ -49,13 +77,7 @@ export function aLeaveRequestAsTheApproverReadsIt(v: TheApproversView): string[]
   const asked = v.kindName ? `${v.kindName}${what.slice('leave'.length)}` : what;
   const out = [`${name} asked for ${asked}, which is ${v.days} working ${v.days === 1 ? 'day' : 'days'}.`];
   if (v.daysLeft != null) out.push(`${name} has ${v.daysLeft} ${v.daysLeft === 1 ? 'day' : 'days'}${v.kindName ? ` of ${v.kindName}` : ''} left.`);
-  if (v.team) {
-    if (!v.alsoOff.length) out.push(`Nobody else in ${v.team} is off ${oneDay ? 'that day' : 'those days'}.`);
-    else {
-      const when = oneDay ? 'that day' : 'on some of those days';
-      out.push(`${listed(v.alsoOff)} ${v.alsoOff.length === 1 ? 'is' : 'are'} also off ${when}, so ${v.team} would be ${inWords(v.alsoOff.length + 1)} short.`);
-    }
-  }
+  if (v.team) out.push(theClashSaid(v.team, v.alsoOff, oneDay));
   if (v.standIn) out.push(`${v.standIn} will stand in for ${name}.`);
   out.push(...v.owns, ...(v.more ?? []));
   return out;

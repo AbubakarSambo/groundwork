@@ -101,7 +101,11 @@ export function theSuiteRefusal(err: unknown): string | null {
   return typeof e.message === 'string' && /^[A-Z].*[.?!]$/.test(e.message) ? e.message : null;
 }
 
-export function daysOfLeaveLeftSaid(mine: { perYear: number | null; daysLeft: number | null; kinds: { name: string; perYear: number | null; daysLeft: number | null }[] }): string {
+/**
+ * `speaker` is who says it: Ask Groundwork speaks as "I", and the leave page, which nobody speaks on, says "Groundwork"
+ * (request 162, item 4: "so Groundwork cannot say how many you have left").
+ */
+export function daysOfLeaveLeftSaid(mine: { perYear: number | null; daysLeft: number | null; kinds: { name: string; perYear: number | null; daysLeft: number | null }[] }, speaker: 'I' | 'Groundwork' = 'I'): string {
   const withDays = mine.kinds.filter((k) => k.daysLeft != null);
   if (withDays.length > 1) {
     const parts = withDays.map((k) => `${days(Math.max(0, k.daysLeft as number))} of ${lowerFirst(k.name)}`);
@@ -109,7 +113,7 @@ export function daysOfLeaveLeftSaid(mine: { perYear: number | null; daysLeft: nu
   }
   const one = withDays[0];
   if (one) return `You have ${days(Math.max(0, one.daysLeft as number))} of ${lowerFirst(one.name)} left this year${one.perYear != null ? `, out of ${one.perYear}` : ''}.`;
-  if (mine.daysLeft == null) return 'Your organisation has not set how many days of leave each person has in a year, so I cannot say how many you have left.';
+  if (mine.daysLeft == null) return `Your organisation has not set how many days of leave each person has in a year, so ${speaker} cannot say how many you have left.`;
   return `You have ${days(Math.max(0, mine.daysLeft))} of leave left this year${mine.perYear != null ? `, out of ${mine.perYear}` : ''}.`;
 }
 

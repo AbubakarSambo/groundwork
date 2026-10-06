@@ -169,6 +169,8 @@ describe('one review, as each reader reads it', () => {
       record: null,
       theirView: 'I want to lead the supermarket accounts, but I need faster stock.',
       managersWords: 'Aisha is our strongest closer with butcheries. I want her to lead supermarkets next.',
+      /* Added by request 162, item 6: who wrote the words. This review's words were set without an author, so none is named. */
+      managersWordsById: null,
       managersWordsHeading: 'What Wairimu writes',
       whereYouDiffer: {
         says: 'Wairimu and you have each written your own view of your work. Here they are side by side, so you can see where they differ before you meet.',
