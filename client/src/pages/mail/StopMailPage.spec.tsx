@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { StopMailPage } from './StopMailPage'
 
@@ -42,5 +42,53 @@ describe('the unsubscribe page', () => {
     open({ success: true, data: { known: false, stopped: true, says: ['That link is not one we recognise, which usually means these emails have already stopped.'] } })
     expect(await screen.findByText(/That link is not one we recognise/)).toBeTruthy()
     expect(document.body.textContent).not.toMatch(/broken/i)
+  })
+
+  it('pressing "Turn off" posts to the unsubscribe link and then shows the served answer', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      status: 200,
+      json: async () => ({ success: true, data: {
+        title: 'Are you sure you want to stop Groundwork insight emails?',
+        says: ['You may miss timely insights.'],
+        keepLabel: 'Keep email insights', stopLabel: 'Turn off email insights', turnBackOnLabel: 'Turn email insights back on', stopped: false,
+      } }),
+    } as any)
+    render(
+      <MemoryRouter initialEntries={['/unsubscribe/t1']}>
+        <Routes><Route path="/unsubscribe/:token" element={<StopMailPage which="unsubscribe" />} /></Routes>
+      </MemoryRouter>,
+    )
+    const stopButton = await screen.findByRole('button', { name: 'Turn off email insights' })
+    fetchSpy.mockResolvedValueOnce({
+      status: 200,
+      json: async () => ({ success: true, data: { says: 'No more insight emails are going to you.' } }),
+    } as any)
+    fireEvent.click(stopButton)
+    expect(await screen.findByText('No more insight emails are going to you.')).toBeTruthy()
+    expect(fetchSpy).toHaveBeenLastCalledWith(expect.stringContaining('/unsubscribe/t1'), { method: 'POST' })
+  })
+
+  it('turning back on posts to /undo and shows the served answer', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      status: 200,
+      json: async () => ({ success: true, data: {
+        title: 'Are you sure you want to stop Groundwork insight emails?',
+        says: ['You already turned these off.'],
+        keepLabel: 'Keep email insights', stopLabel: 'Turn off email insights', turnBackOnLabel: 'Turn email insights back on', stopped: true,
+      } }),
+    } as any)
+    render(
+      <MemoryRouter initialEntries={['/unsubscribe/t1']}>
+        <Routes><Route path="/unsubscribe/:token" element={<StopMailPage which="unsubscribe" />} /></Routes>
+      </MemoryRouter>,
+    )
+    const onButton = await screen.findByRole('button', { name: 'Turn email insights back on' })
+    fetchSpy.mockResolvedValueOnce({
+      status: 200,
+      json: async () => ({ success: true, data: { says: 'Insight emails are back on.' } }),
+    } as any)
+    fireEvent.click(onButton)
+    expect(await screen.findByText('Insight emails are back on.')).toBeTruthy()
+    expect(fetchSpy).toHaveBeenLastCalledWith(expect.stringContaining('/unsubscribe/t1/undo'), { method: 'POST' })
   })
 })

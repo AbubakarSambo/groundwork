@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { API_ORIGIN } from '@/lib/where-the-api-lives'
+import { AuthCard } from '@/pages/auth/auth-kit'
+import { Button, Stack } from '@/components/gw/ui'
 
 /**
  * THE PAGE THE LINK ON A MAIL LANDS ON, AND UNTIL NOW THERE WAS NONE.
@@ -18,11 +20,11 @@ import { API_ORIGIN } from '@/lib/where-the-api-lives'
  * me. What differs is scope, and the API says which in its own words rather than this page
  * guessing at it.
  *
- * NO HEX FALLBACKS IN THE var() CALLS. This page is reached from a mail client and renders with no
- * app chrome around it, which is the situation that tempts a `var(--gw-text, #1A1916)` "just in
- * case". `one-vocabulary.spec.ts` refuses it, and it is right: a fallback is a second definition of
- * a colour that the palette already owns, and it goes stale silently the moment the token moves.
- * The tokens are defined on :root in index.css, which this page loads like every other.
+ * BUILT FROM THE SHARED PARTS ONLY (`AuthCard`, `Button`, `Stack`), as its sibling
+ * `StopRemindersPage.tsx` already is - no inline styles, no one-off classes. The page is reached
+ * from a mail client with no app chrome around it, which used to tempt a hand-rolled `<div style=
+ * {{...}}>` card; `AuthCard` already draws exactly that narrow cream-page card (Mark, PageTitle,
+ * a panel), so this page no longer needs its own copy of it.
  */
 type Which = 'unsubscribe' | 'stop-reminders'
 
@@ -88,51 +90,38 @@ export function StopMailPage({ which }: { which: Which }) {
     }
   }, [token, which])
 
-  return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--gw-page)' }}>
-      <div style={{ maxWidth: 460, textAlign: 'left' }}>
-        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 1.4, color: 'var(--gw-navy)', marginBottom: 10 }}>
-          GROUNDWORK
-        </div>
-        {state === 'working' && (
-          <p style={{ fontSize: 15, color: 'var(--gw-sub)', margin: 0 }}>One moment.</p>
-        )}
-        {state === 'asking' && question && (
-          <>
-            <h1 style={{ fontSize: 21, fontWeight: 800, color: 'var(--gw-text)', margin: '0 0 10px' }}>{question.title}</h1>
-            {question.says.map((line, i) => (
-              <p key={i} style={{ fontSize: 14.5, color: 'var(--gw-sub)', lineHeight: 1.7, margin: '0 0 10px' }}>{line}</p>
-            ))}
-            {question.stopped ? (
-              <button type="button" disabled={busy} onClick={() => void answer('/undo')}>{question.turnBackOnLabel}</button>
-            ) : (
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                <a href="/" style={{ fontWeight: 700 }}>{question.keepLabel}</a>
-                <button type="button" disabled={busy} onClick={() => void answer('')}>{question.stopLabel}</button>
-              </div>
-            )}
-          </>
-        )}
-        {state === 'done' && (
-          <>
-            <h1 style={{ fontSize: 21, fontWeight: 800, color: 'var(--gw-text)', margin: '0 0 10px' }}>Done.</h1>
-            <p style={{ fontSize: 14.5, color: 'var(--gw-sub)', lineHeight: 1.7, margin: 0 }}>{says}</p>
-          </>
-        )}
-        {state === 'failed' && (
-          <>
-            <h1 style={{ fontSize: 21, fontWeight: 800, color: 'var(--gw-text)', margin: '0 0 10px' }}>
-              That did not go through
-            </h1>
-            {/* Never "try again later" and nothing else. Somebody at this point wants the mail to
-                stop, and the honest fallback is a person who can do it by hand. */}
-            <p style={{ fontSize: 14.5, color: 'var(--gw-sub)', lineHeight: 1.7, margin: 0 }}>
-              We could not reach our own system just now, so nothing changed. Reload this page, or
-              reply to any of our mail with the word stop and a person will do it by hand.
-            </p>
-          </>
-        )}
-      </div>
-    </div>
-  )
+  if (state === 'working') return <AuthCard title="One moment." />
+
+  if (state === 'failed') {
+    /* Never "try again later" and nothing else. Somebody at this point wants the mail to stop,
+       and the honest fallback is a person who can do it by hand. */
+    return (
+      <AuthCard
+        title="That did not go through"
+        sub="We could not reach our own system just now, so nothing changed. Reload this page, or reply to any of our mail with the word stop and a person will do it by hand."
+      />
+    )
+  }
+
+  if (state === 'asking' && question) {
+    /* The prototype pre-selects keeping the mail, so only the stop control may read as the one
+       navy primary button there is on the page - which here is none: `keepLabel` is a quiet link
+       and `stopLabel` a plain secondary button, never filled navy. */
+    return (
+      <AuthCard title={question.title} sub={question.says.join(' ')}>
+        <Stack gap={12}>
+          {question.stopped ? (
+            <Button kind="secondary" wide disabled={busy} onClick={() => void answer('/undo')}>{question.turnBackOnLabel}</Button>
+          ) : (
+            <>
+              <Button kind="quiet" to="/">{question.keepLabel}</Button>
+              <Button kind="secondary" disabled={busy} onClick={() => void answer('')}>{question.stopLabel}</Button>
+            </>
+          )}
+        </Stack>
+      </AuthCard>
+    )
+  }
+
+  return <AuthCard title="Done." sub={says} />
 }

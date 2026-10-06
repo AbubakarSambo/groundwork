@@ -150,9 +150,14 @@ describe('every page is painted with the page colour, not the card fill', () => 
      *
      * U.20: `NotFoundPage.tsx` moved its own one onto the shared `Page narrow` component too (the
      * small-states rebuild, F4-small-states), so the floor drops again, by that one file, to 13.
+     *
+     * DECISION 109, TASK 1: `StopMailPage.tsx`'s own hand-rolled cream wrapper (`<div style=
+     * {{ minHeight: '100vh', ..., background: 'var(--gw-page)' }}>`) is gone too, replaced by
+     * `AuthCard`, the same shared card its sibling `StopRemindersPage.tsx` already draws from. The
+     * floor drops again, by that one file, to 12.
      */
     const onThePage = files.filter(f => /background: 'var\(--gw-page\)'/.test(readFileSync(f, 'utf8')))
-    expect(onThePage.length).toBeGreaterThan(13)
+    expect(onThePage.length).toBeGreaterThan(12)
   })
 })
 
