@@ -1,4 +1,5 @@
 import { useNoRailStore } from '@/stores/no-rail'
+import { useCheckInFocusStore } from '@/stores/check-in-focus'
 import { toast } from 'sonner'
 import { mayRenameACheckIn } from '@/lib/who-may-rename-a-check-in'
 import { MARKETING_URL } from '@/lib/marketing'
@@ -587,8 +588,18 @@ export function AppSidebar() {
    * Start, Chat, More) sat under the composer, on top of it, and behind it - a second navigation
    * fighting the one thing on screen that already has its own way out (Pause). `/checkin/:id` is
    * the one route this whole shell renders as a focused conversation.
+   *
+   * SCREEN FAULT 2: NOT THE WHOLE `/checkin/` SUBTREE, AND NOT ONCE THE SESSION HAS SETTLED.
+   * This used to match `/checkin/:id/report` too - never the conversation at all - and kept
+   * matching `/checkin/:id` itself once that session's own Done, completed or declined state had
+   * replaced the composer, when there is no Pause button left to protect and no other way back to
+   * Today on screen. Narrowed to the bare conversation route, and to ChatPage's own
+   * `checkInFocused` (false once it has settled - see stores/check-in-focus.ts), so the bar comes
+   * back exactly where this page no longer needs the full screen to itself.
    */
-  const onConversationPage = /^\/checkin\//.test(useLocation().pathname)
+  const isBareCheckInRoute = /^\/checkin\/[^/]+$/.test(useLocation().pathname)
+  const checkInFocused = useCheckInFocusStore(s => s.focused)
+  const onConversationPage = isBareCheckInRoute && checkInFocused
   /* The check-ins this person pinned to the top, in the order they pinned them. See pinned-check-ins. */
   const [pinState, setPinState] = useState(() => ({ of: user?.id, ids: pinnedFor(user?.id) }))
   /* Read again when a different person signs in on this browser, never someone else's. */
@@ -1313,8 +1324,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [isAuthenticated, askOpen])
   /* REVIEW ROUND 3, ITEM 7: SEE AppSidebar's OWN COPY OF THIS - the app's bottom bar does not
      render at all on the conversation, and the room it used to reserve (`--gw-bottom-nav`) is
-     given back to the card so nothing leaves a blank strip where the bar used to sit. */
-  const onConversationPage = /^\/checkin\//.test(location.pathname)
+     given back to the card so nothing leaves a blank strip where the bar used to sit.
+
+     SCREEN FAULT 2: NOT THE WHOLE `/checkin/` SUBTREE, AND NOT ONCE THE SESSION HAS SETTLED.
+     This used to match `/checkin/:id/report` too - a page that was never the conversation at all
+     - and kept matching `/checkin/:id` itself once that session's own Done, completed or declined
+     state replaced the composer, when there is no longer a Pause button to protect and no other
+     way back to Today on screen. Narrowed to the bare conversation route, and to ChatPage's own
+     `checkInFocused` (false once it has settled into Done/completed/declined - see
+     stores/check-in-focus.ts), so the bar - and the "Today" link inside it - comes back exactly
+     where this page no longer needs the full screen to itself. */
+  const isBareCheckInRoute = /^\/checkin\/[^/]+$/.test(location.pathname)
+  const checkInFocused = useCheckInFocusStore(s => s.focused)
+  const onConversationPage = isBareCheckInRoute && checkInFocused
   const consumePendingAskMessage = useAskStore(s => s.consumePendingMessage)
   /* Decision 65: a check-in's own Context and resources page tells Ask which one it was opened from. */
   const pendingAskOpenedFromGroundId = useAskStore(s => s.openedFromCheckInSetupGroundId)

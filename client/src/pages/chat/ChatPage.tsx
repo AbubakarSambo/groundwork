@@ -33,6 +33,7 @@ import { TheDonePage, type WhatChanged } from '@/components/gw/checkin/TheDonePa
 import { whenTheNextOneOpens, whoElseAnswers } from '@/lib/what-the-end-of-a-check-in-can-say'
 import { firstWordOfAName } from '@/lib/the-first-word-of-a-name'
 import { toast } from 'sonner'
+import { useCheckInFocusStore } from '@/stores/check-in-focus'
 import '@/components/gw/ui/gw-ui.css'
 
 /** ONE LIST. The OS dialog offered 23 extensions, the label's title a third list of 9, and the validator refused everything outside these 10 - so the dialog invited a refusal the product then issued. */
@@ -258,6 +259,23 @@ export function ChatPage() {
    * rather than a button in the toolbar, where it would be one mis-tap from irreversible.
    */
   const [declined, setDeclined]       = useState(false)
+  /**
+   * SCREEN FAULT 2: THE DONE PAGE HAD NO BOTTOM BAR AND NO WAY BACK TO TODAY.
+   *
+   * AppShell hides the phone's bottom bar for the whole `/checkin/:id` route, because a live
+   * session is a full-screen card with its own way out (Pause) and the bar used to sit under the
+   * composer fighting it (review round 3, item 7). But `/checkin/:id` is also where this page's
+   * own Done state renders, once `completed` or `declined` - no Pause left to fight, and no other
+   * way back to Today. `useCheckInFocusStore` tells AppShell which of the two this route is
+   * showing right now: "in focus" (hide the bar) while there is still a live session to leave, and
+   * not once it has settled. Reset to "in focus" on the way out, so the next session visited here
+   * starts hidden-until-known rather than carrying this one's settled state along.
+   */
+  const setCheckInFocused = useCheckInFocusStore(s => s.setFocused)
+  useEffect(() => {
+    setCheckInFocused(!(completed || declined))
+    return () => setCheckInFocused(true)
+  }, [completed, declined, setCheckInFocused])
   const [confirmingDecline, setConfirmingDecline] = useState(false)
   const [openFailed, setOpenFailed]   = useState(false)
   /** The served sentence for why opening failed, read once and shown where the person can keep

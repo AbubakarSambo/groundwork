@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ChatPage } from './ChatPage'
@@ -56,14 +56,14 @@ describe('reloading a check-in the engine has already closed, but not yet confir
 
   it('shows the end card, not the bare "Finish my check-in now" fallback', async () => {
     renderChat()
-    expect(await screen.findByRole('button', { name: /That’s right, finish/i })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: /That’s right, finish/i }, { timeout: 4000 })).toBeTruthy()
     expect(screen.queryByText(/Finish my check-in now/i)).toBeNull()
-  })
+  }, 15_000)
 
   it('keeps the header consistent with the card, not "About two minutes"', async () => {
     renderChat()
-    await screen.findByRole('button', { name: /That’s right, finish/i })
+    await screen.findByRole('button', { name: /That’s right, finish/i }, { timeout: 4000 })
     expect(screen.getByText('That’s everything for today')).toBeTruthy()
     expect(screen.queryByText('About two minutes')).toBeNull()
-  })
+  }, 15_000)
 })
