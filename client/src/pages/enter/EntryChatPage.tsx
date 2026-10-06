@@ -3003,6 +3003,18 @@ export function EntryChatPage() {
      * wording here is unchanged.
      */
     const isAnchor = isAnchorDraft()
+    /**
+     * FAULT 8 (live walk, 6 October 2026): A PASSING TOAST WAS THE ONLY SIGN THE LIMIT WAS
+     * REACHED, AND "ADD PERSON" COULD THEN SILENTLY DO NOTHING.
+     *
+     * A pasted 20th email was dropped with only a toast (gone in a few seconds), and once that
+     * left a 21st, already-typed email sitting in the context step, pressing "Add person" there
+     * called `submitInviteContext`, which checks the same limit and simply returns - no toast, no
+     * disabled control, nothing on screen to say why. `thePeopleStepRules.mayAdd` is the served
+     * limit (decision 96 item 3); this is the same check `mayAddOneMorePerson` already makes,
+     * read here too so the add row itself can show a lasting Note and disable its own buttons.
+     */
+    const peopleLimitReached = isAnchor && inviteAdded.length >= thePeopleStepRules.mayAdd
     const inviteHeading = isAnchor ? thePeopleStepRules.heading : isSensitive ? 'Let them share their side' : 'Invite people'
     const inviteSubtext = isAnchor
       ? thePeopleStepRules.intro
@@ -3121,8 +3133,18 @@ export function EntryChatPage() {
               const [next, ...rest] = bulkQueue
               if (next) { setBulkQueue(rest); setInviteContextFor(next) } else { setInviteContextFor(null) }
             }}>Skip</Button>
-            <Button kind="secondary" size="small" onClick={submitInviteContext}>Add person</Button>
+            <Button
+              kind="secondary" size="small" onClick={submitInviteContext}
+              disabled={peopleLimitReached && !inviteAdded.includes(inviteContextFor)}
+            >
+              Add person
+            </Button>
           </div>
+          {/* FAULT 8: a lasting Note, not a toast that is gone in a few seconds, and "Add person"
+              above is disabled rather than silently doing nothing once the limit is reached. */}
+          {peopleLimitReached && !inviteAdded.includes(inviteContextFor) && (
+            <Note tone="muted">{thePeopleStepRules.limitSentence}</Note>
+          )}
         </div>
       ) : bulkInviteMode ? (
         <div>
@@ -3159,6 +3181,9 @@ export function EntryChatPage() {
               Add all
             </Button>
           </div>
+          {/* FAULT 8: the toast above still says so the moment a paste goes over - this is the
+              lasting version, here whenever the limit was already reached before pasting at all. */}
+          {peopleLimitReached && <Note tone="muted">{thePeopleStepRules.limitSentence}</Note>}
         </div>
       ) : (
         <>
@@ -3179,6 +3204,17 @@ export function EntryChatPage() {
             />
             <Button kind="secondary" size="small" onClick={addInviteEmail}>Add</Button>
           </div>
+          {/*
+           * FAULT 8 (live walk, 6 October 2026): A LASTING NOTE UNDER THE ADD ROW, NOT A PASSING
+           * TOAST, ONCE THE LIMIT IS REACHED.
+           *
+           * The row itself still opens the context step either way (asking what somebody does is
+           * not itself adding them, the same design the limit test above already pins) - it is
+           * "Add person" there that actually adds somebody, and that is where it is now disabled.
+           * This Note means the lead already knows why, instead of finding out only once they
+           * reach that further step.
+           */}
+          {peopleLimitReached && <Note tone="muted">{thePeopleStepRules.limitSentence}</Note>}
           <button type="button" className="gwui-plain-link" onClick={() => setBulkInviteMode(true)}>
             Paste multiple emails
           </button>
