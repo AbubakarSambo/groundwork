@@ -95,6 +95,31 @@ describe('Omar, who looks after finance', () => {
     expect(await screen.findByText('Nobody asked to spend anything in September 2026.')).toBeInTheDocument()
   })
 
+  /*
+   * FAULT 3 OF THE LIVE WALK: the heading stayed "This month's spending" after a different month was
+   * chosen. It now follows the month that is actually shown, and reads the new month at once, not
+   * after the server's own answer for it has arrived (the server's words are used once they do).
+   */
+  it('the heading follows the month that is actually chosen, not a fixed "this month"', async () => {
+    open(OMAR, EMPTY)
+    expect(await screen.findByRole('heading', { name: 'Spending in October 2026' })).toBeInTheDocument()
+    ;(financeApi.totals as any).mockResolvedValue(SEPTEMBER)
+    fireEvent.change(screen.getByLabelText('Month'), { target: { value: '2026-09' } })
+    expect(await screen.findByRole('heading', { name: 'Spending in September 2026' })).toBeInTheDocument()
+    expect(screen.queryByText('This month’s spending')).toBeNull()
+  })
+
+  /* Fault 3 of the live walk: the totals used to sit under the whole list of payment cards. The
+     summary now comes first. */
+  it('the totals are the first thing on the page, before the list of payment cards', async () => {
+    open(OMAR, EMPTY)
+    await screen.findByRole('region', { name: 'By team' })
+    const headings = screen.getAllByRole('heading', { level: 2 }).map(h => h.textContent)
+    expect(headings[0]).toBe('Spending in October 2026')
+    expect(headings).toContain('Waiting to be paid')
+    expect(headings.indexOf('Spending in October 2026')).toBeLessThan(headings.indexOf('Waiting to be paid'))
+  })
+
   it('writes no price, limit or count of its own: the top line is the server’s whole `says`, word for word', async () => {
     open(OMAR, EMPTY)
     await screen.findByRole('region', { name: 'By team' })

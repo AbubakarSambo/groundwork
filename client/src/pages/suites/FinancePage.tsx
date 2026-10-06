@@ -68,6 +68,10 @@ export function FinancePage() {
     enabled: !!data,
     retry: false,
   })
+  /* The month the heading follows: the server's own words for it once they arrive (`monthSays`,
+     "October 2026"), the month choice's own label while they are still loading, so the heading never
+     lags a tick behind the month this reader just picked. */
+  const headingMonth = (totals.data?.month === month ? totals.data?.monthSays : null) ?? monthChoices().find(m => m.value === month)?.label ?? null
   const download = useMutation({
     mutationFn: async (format: 'csv' | 'xlsx') => {
       const { blob, fileName } = await financeApi.file(format)
@@ -104,6 +108,22 @@ export function FinancePage() {
 
       {data && (
         <>
+          {/*
+           * THE SUMMARY FIRST (live walk at a hundred people, fault 3): the totals used to sit under
+           * the whole list of payment cards, so finance scrolled past every one of them to find the
+           * month's own numbers. The heading now follows the month that is actually chosen, instead
+           * of reading "This month's spending" after a different month had been picked.
+           */}
+          <Section
+            heading={headingMonth ? `Spending in ${headingMonth}` : 'Spending'}
+            action={<Select aria-label="Month" value={month} onChange={e => setMonth(e.target.value)}>
+              {monthChoices().map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+            </Select>}
+          >
+            {totals.isLoading && <Note>Loading…</Note>}
+            {totals.data && <TheTotals t={totals.data} />}
+          </Section>
+
           <Section
             heading="Waiting to be paid"
             action={data.toPay.length > 0 ? (
@@ -139,16 +159,6 @@ export function FinancePage() {
                   ))}
                 </RowList>
               )}
-          </Section>
-
-          <Section
-            heading="This month’s spending"
-            action={<Select aria-label="Month" value={month} onChange={e => setMonth(e.target.value)}>
-              {monthChoices().map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-            </Select>}
-          >
-            {totals.isLoading && <Note>Loading…</Note>}
-            {totals.data && <TheTotals t={totals.data} />}
           </Section>
         </>
       )}
