@@ -2363,7 +2363,8 @@ export class GroundsService {
              * session, and the gap being visible is the point rather than a side effect.
              */
             awareness: (row as any)?.awareness ?? null,
-            awarenessDetail: (row as any)?.awarenessDetail ?? null,
+            /* The lead's own note on whether it was told: hers alone, and so only to whoever runs the check-in (it was served to the person and, on a check-in where everybody reads everybody's goals, to colleagues). */
+            awarenessDetail: viewerRunsIt ? ((row as any)?.awarenessDetail ?? null) : null,
             /**
              * DECISION 56, ITEM 1. The prototype's own flag ("Not told yet", Context page): true only
              * for a goal the lead wrote and has not told this person about. Served here whatever the
@@ -2415,7 +2416,7 @@ export class GroundsService {
               dueSaid: (o as any).dueSaid ?? null,
               owedToParticipantId: (o as any).owedToParticipantId ?? null,
               awareness: (o as any).awareness ?? null,
-              awarenessDetail: (o as any).awarenessDetail ?? null,
+              awarenessDetail: viewerRunsIt ? ((o as any).awarenessDetail ?? null) : null,
               alignment: (o as any).alignment ?? null,
               alignmentNote: (o as any).alignmentNote ?? null,
               objection: (o as any).objection ?? null,
