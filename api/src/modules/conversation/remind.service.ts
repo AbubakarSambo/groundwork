@@ -251,6 +251,8 @@ export class RemindService {
             label: true,
             /* Whether it is an anchor check-in, for the anchor's nudge (piece 30). */
             startedFrom: true,
+            /* The lead set the check-in to use simpler words: the reminder email says it in the plainer form. */
+            simplerWords: true,
             /* For the channel notice: `tell` is scoped to an organisation. */
             organizationId: true,
             chaseAfterDays: true,
@@ -374,6 +376,7 @@ export class RemindService {
           await theAnchorNudgeFor(this.prisma, { id: checkIn.groundId, startedFrom: (checkIn.ground as any).startedFrom }, participant.id),
           /* So the reminder carries its own way out. */
           participant.id,
+          (checkIn.ground as any).simplerWords,
         );
 
         await this.prisma.groundParticipant.update({

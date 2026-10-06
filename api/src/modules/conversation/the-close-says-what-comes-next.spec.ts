@@ -56,7 +56,7 @@ describe('the close, as a person reads it', () => {
   it('is put on the turn that closed, after it is known to be closed', () => {
     const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
     const decided = src.indexOf("const sessionComplete = close.ready && !stillAsking(aiTurn.content ?? '');");
-    const closed = src.indexOf("const closed = endingOnTheClose(aiTurn.content ?? '', how.door ?? 'web');");
+    const closed = src.indexOf("const closed = endingOnTheClose(aiTurn.content ?? '', how.door ?? 'web', await this.usesSimplerWords(checkIn.groundId));");
     expect(decided).toBeGreaterThan(0);
     expect(closed).toBeGreaterThan(decided);
     expect(src.slice(closed - 200, closed)).toContain('if (sessionComplete) {');

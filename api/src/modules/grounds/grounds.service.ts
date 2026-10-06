@@ -5201,7 +5201,7 @@ export class GroundsService {
    *
    * Same permission as its neighbours: the lead of this check-in, or an admin in this organisation.
    */
-  private async aSettingOnlyTheLeadMayChange(groundId: string, requestingUserId: string) {
+  private async aSettingOnlyTheLeadMayChange(groundId: string, requestingUserId: string, verb: 'change' | 'read' = 'change') {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
@@ -5213,7 +5213,7 @@ export class GroundsService {
     });
     if (ground.initiatorId !== requestingUserId && !adminsThisOrg({ ...viewer, userId: requestingUserId }, ground)) {
       throw new ForbiddenException(
-        'Only the lead of this check-in, or an admin in this organisation, can change this.',
+        `Only the lead of this check-in, or an admin in this organisation, can ${verb} this.`,
       );
     }
   }
@@ -5297,6 +5297,26 @@ export class GroundsService {
       where: { id: groundId },
       data: { whoSeesTargets: everybody ? 'EVERYBODY' : 'THEIR_OWN' },
       select: { id: true, whoSeesTargets: true },
+    });
+  }
+
+  /**
+   * USE SIMPLER WORDS. Off for every check-in that existed before. When it is on, everybody in the
+   * check-in is spoken to in short sentences and everyday words, and everything sent afterwards uses
+   * the plainer form of its fixed sentences. Same permission as its neighbours.
+   */
+  async getSimplerWords(groundId: string, requestingUserId: string) {
+    await this.aSettingOnlyTheLeadMayChange(groundId, requestingUserId, 'read');
+    return this.prisma.ground.findUnique({ where: { id: groundId }, select: { id: true, simplerWords: true } });
+  }
+
+  async setSimplerWords(groundId: string, requestingUserId: string, on: unknown) {
+    await this.aSettingOnlyTheLeadMayChange(groundId, requestingUserId);
+    if (typeof on !== 'boolean') throw new BadRequestException('Say whether to use simpler words, with true or false.');
+    return this.prisma.ground.update({
+      where: { id: groundId },
+      data: { simplerWords: on },
+      select: { id: true, simplerWords: true },
     });
   }
 

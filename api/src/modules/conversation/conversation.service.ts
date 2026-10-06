@@ -115,7 +115,7 @@ import {
 import { buildDeliveriesBlock } from './what-they-say-they-delivered';
 import { buildNotesBlock } from './between-session-notes';
 import { closeReadiness, askedToFinish } from './close-readiness';
-import { observeStyle, mergeStyle, styleGuidance } from './person-style';
+import { observeStyle, mergeStyle, styleGuidance, simplerWordsGuidance } from './person-style';
 import { readOutcome, isGenericStep } from './coaching-step';
 import { theBehavioursAnybodyCanBeRead, universalSignalRead } from '../board/a-role-nobody-mapped-is-still-a-person';
 import { WHAT_KIND_OF_WORK_PROMPT, WHAT_KIND_OF_WORK_SCHEMA, theJobTheyDescribed } from '../board/a-job-is-read-from-what-they-do';
@@ -593,6 +593,12 @@ export class ConversationService {
    * otherwise. Only the wording: who may read which target is decided before this is called.
    */
   /** Who runs the check-in, and a colleague's first name where this reader may be told it, for the goals they are told about. */
+  /** Whether the lead has switched on "Use simpler words" for this check-in. Off when it cannot be read. */
+  private async usesSimplerWords(groundId: string): Promise<boolean> {
+    const g = await (this.prisma as any).ground?.findUnique?.({ where: { id: groundId }, select: { simplerWords: true } })?.catch?.(() => null);
+    return !!g?.simplerWords;
+  }
+
   private whoSetWhatForThisReader(ground: { participants?: any[]; scenario?: any; peersVisibleToEachOther?: boolean | null } | null, readerParticipantId: string | null) {
     const people = (ground?.participants ?? []) as any[];
     const lead = people.find((p) => p.partyType === PartyType.INITIATOR);
@@ -2915,7 +2921,7 @@ export class ConversationService {
     /* AND THE CLOSE ENDS AS THE PROTOTYPE'S DOES, with the card below it. See the-close-says-what-comes-next. */
     if (sessionComplete) {
       /* WhatsApp and the API show no card, so they end on their own next step, never on "Below is". */
-      const closed = endingOnTheClose(aiTurn.content ?? '', how.door ?? 'web');
+      const closed = endingOnTheClose(aiTurn.content ?? '', how.door ?? 'web', await this.usesSimplerWords(checkIn.groundId));
       if (closed !== (aiTurn.content ?? '')) aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: closed } });
     }
     /* The product has already said it was written down; the model's own telling of it is taken out, so it is not said twice. */
@@ -3824,13 +3830,15 @@ export class ConversationService {
     let styleBlock = '';
     try {
       const uid = checkIn.participant?.userId;
-      const g = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { organizationId: true } });
+      const g = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { organizationId: true, simplerWords: true } });
       if (uid && g) {
         const prof = await this.prisma.personStyleProfile.findUnique({
           where: { userId_organizationId: { userId: uid, organizationId: g.organizationId } },
         });
         if (prof) styleBlock = styleGuidance(prof, prof.groundsSeen);
       }
+      /* "Use simpler words": for everybody in the check-in, whether or not they have a profile. Empty when off. */
+      styleBlock += simplerWordsGuidance(g?.simplerWords);
     } catch { /* never block a check-in over a nicety */ }
 
     /*
@@ -8240,7 +8248,7 @@ ${told}` : '';
         backedByAPhoto: !!(r as any).anchoredDocumentId && draft.photos.has((r as any).anchoredDocumentId),
         ...((r as any).anchoredDocumentId ? { documentIsTheirOwn: draft.theirs.has((r as any).anchoredDocumentId) } : {}),
       }));
-      const card = theEndCard(lines);
+      const card = theEndCard(lines, await this.usesSimplerWords(checkIn.groundId));
       await this.prisma.conversationTurn.update({
         where: { id: closingTurnId },
         data: { recordDraft: draft.rows as any, ...(card ? { endCard: card as any } : {}) },
@@ -8257,7 +8265,7 @@ ${told}` : '';
    * WHAT FINISHING WRITES. The lines the end card showed, when nothing was said after it; otherwise
    * the record is read again, as it always was.
    */
-  private async writeTheRecordAtTheEnd(checkIn: { id: string; participantId: string }): Promise<EndCard | null> {
+  private async writeTheRecordAtTheEnd(checkIn: { id: string; participantId: string; groundId?: string }): Promise<EndCard | null> {
     const closing = await this.prisma.conversationTurn.findFirst({
       where: { checkInId: checkIn.id, role: TurnRole.AI },
       orderBy: { createdAt: 'desc' },
@@ -8288,7 +8296,7 @@ ${told}` : '';
         type: String(r.type), text: String(r.text ?? ''), recallBased: (r as any).recallBased ?? true, anchoredDocumentId: doc, anchoredOrigin: (r as any).anchoredOrigin ?? null,
         ...(doc && whoAdded.has(doc) ? { documentIsTheirOwn: whoAdded.get(doc) === checkIn.participantId } : {}),
       };
-    }));
+    }), checkIn.groundId ? await this.usesSimplerWords(checkIn.groundId) : false);
     if (closing?.id) {
       await this.prisma.conversationTurn.update({ where: { id: closing.id }, data: { endCard: (card ?? Prisma.DbNull) as any, recordDraft: rows as any } })
         .catch((err: any) => this.logger.warn(`Check-in ${checkIn.id}: could not replace the end card with what was written (${err?.message})`));

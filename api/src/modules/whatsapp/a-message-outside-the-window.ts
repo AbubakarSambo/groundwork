@@ -68,6 +68,13 @@ export const FIRST_MESSAGES: ReadonlySet<string> = new Set([
  * of the day either. Only "Not now" and "stop" still hold it: those are the person's own word.
  */
 export const APPROVALS: ReadonlySet<string> = new Set(['request-waiting']);
+/**
+ * THE CLOCK CLOSING A SESSION (decision 107). It is not one of the day's first messages, so it never uses up the
+ * count (it is told with what the person said kept, and the report follows). But it is still Groundwork writing
+ * first, so the person's own "Not now" today holds it, as it holds the others; STOP and the 24 hours hold it
+ * anyway, through the gates before this one.
+ */
+export const ONLY_HELD_BY_NOT_NOW: ReadonlySet<string> = new Set(['closed-by-the-clock']);
 /** The messages that mark a day a check-in opens or closes, when two may go. */
 export const OPENING_OR_CLOSING: ReadonlySet<string> = new Set(['checkin-open', 'opens-soon', 'closes-soon', 'closes-in-half-an-hour']);
 /**

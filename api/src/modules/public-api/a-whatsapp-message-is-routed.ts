@@ -7,6 +7,7 @@
  */
 
 import { askName } from '../assistant/ask-name';
+import { theConversationWorthHavingSaying } from '../grounds/what-is-sent-in-simpler-words';
 
 export interface AnOpenCheckIn {
   id: string;
@@ -15,6 +16,8 @@ export interface AnOpenCheckIn {
   label: string;
   /** The lead keeps this check-in in the app (`overWhatsApp = false`). It is never answered from the phone. */
   keptOffThePhone?: boolean;
+  /** The lead set this check-in to use simpler words: what is sent about it afterwards has its plainer form. */
+  simplerWords?: boolean;
   /** When it is due, for "the one closing soonest first" (decision 106 item 1). */
   dueAt?: Date | null;
 }
@@ -88,7 +91,7 @@ export function whatArrived(message: any): { kind: 'text'; text: string } | { ki
  * A SESSION REPORT AS ONE MESSAGE. Where things stand, the reads at a glance, the conversation worth
  * having. The same card the panel shows at the end, said rather than drawn.
  */
-export function reportAsText(report: any, label: string): string {
+export function reportAsText(report: any, label: string, simplerWords?: boolean | null): string {
   const lines: string[] = [`Your report for ${label} is ready.`];
   if (report?.whereThingsStand?.saying) lines.push(report.whereThingsStand.saying);
   const glance = (report?.atAGlance ?? []) as { label: string; value: string; sub?: string }[];
@@ -97,7 +100,7 @@ export function reportAsText(report: any, label: string): string {
   const lower = (t: string) => `${t.charAt(0).toLowerCase()}${t.slice(1)}`;
   const reads = glance.map((g) => (g.sub?.trim() ? sentence(g.sub) : g.value?.trim() ? sentence(`${g.label} is ${lower(g.value.trim())}`) : '')).filter(Boolean);
   if (reads.length) lines.push(reads.join(' '));
-  if (report?.theConversationWorthHaving) lines.push(`Here is a conversation worth having. ${report.theConversationWorthHaving}`);
+  if (report?.theConversationWorthHaving) lines.push(`${theConversationWorthHavingSaying(simplerWords)} ${report.theConversationWorthHaving}`);
   const whole = lines.join('\n\n');
   /* Where the whole report would not fit in one WhatsApp message, one short line, and the app for the rest. */
   return whole.length <= A_TEXT_MESSAGE_LIMIT ? whole : `${reportAsOneLine(report, label)} Open Groundwork to read it.`;

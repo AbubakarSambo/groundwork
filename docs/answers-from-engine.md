@@ -19,6 +19,24 @@ Read this one from their side with:
 
 *Read at 26 September against `920f67f8`.*
 
+## 6 October: "Use simpler words" is built, for the screens to show
+
+**The label and its one sentence, to copy exactly.**
+
+- Label: **Use simpler words**
+- Description: **Everybody in this check-in is spoken to in short sentences and everyday words, and what is sent to them afterwards is written the same way.**
+
+**The field and the routes.**
+
+- The field is `simplerWords`, a boolean on the check-in. It is `false` for every check-in that exists, and for a new one. It comes back on the check-in when it is read (`GET /grounds/:id`), and on its own at `GET /grounds/:id/simpler-words`, which answers `{ "id": "...", "simplerWords": false }`.
+- `PATCH /grounds/:id/simpler-words` with `{ "on": true }` (or `false`) changes it and answers `{ "id": "...", "simplerWords": true }`. Anything that is not true or false is refused with "Say whether to use simpler words, with true or false."
+- Who may read or change it: the lead of that check-in, or an admin in that organisation who runs it. It is the same guard as the other check-in settings. Anybody else is refused ("Only the lead of this check-in, or an admin in this organisation, can read this." or "...can change this."), and nothing changes. The switch belongs on the check-in's setup or settings page, next to "Over WhatsApp".
+
+**What it does when it is on, today.** The conversation is given the plain-words rule for every person in the check-in, whether or not they have used Groundwork before. The closing turn ends on a plainer close (web, WhatsApp, API). The end card says what each line rests on in a plainer sentence. The report is written under the same rule.
+
+**What does not change yet, so do not promise it on the screen.** The WhatsApp reply to "finish", the report sent on the phone, the reminders and the emails still send their usual sentences until the WhatsApp builder passes the switch to them. The report's own fixed sentences (for example "Not everyone has answered yet, so there is nothing to agree or differ with.") have no plain form yet.
+
+
 ## 5 October, evening: Plan and billing at release (the free trial and the WhatsApp add-on switched on)
 
 Both are switched on in this release by a release step, not a migration (`docs/deploy.md`, step 13a and

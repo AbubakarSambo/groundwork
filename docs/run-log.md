@@ -237,9 +237,31 @@ What the lead received, "(nothing)", is about WhatsApp only. Emails could not be
 ### kept in the app
 - Not recorded in run 6. The script asked for the check-in with `overWhatsApp` in the request, which the API refuses, so this kind was never made. That is fixed in the script, not yet run. What is proved for a check-in kept in the app is in journey 10: nothing about it reaches the phone, and a message to it is answered "Your check-in "Private notes" is kept in the Groundwork app, so I cannot take your answers to it here. Please open Groundwork and answer it there."
 
-### With the lead's simpler-language setting on
+### With the lead's "Use simpler words" setting on (6 October, commits `4914e1d3` to `28c57edc`)
 
-To be added when that setting is built and this run is repeated with it on.
+**How it was run.** A new worktree of `wip/release` in the scratchpad (the committed branch, with `node_modules` linked, `.env` copied and `credentials` linked), `nest build`, a new local database `gw_simpler_words` copied from `gw_wa_oct5f` and migrated (the new migration only adds `grounds.simpler_words`, false). The API ran on port 3047 with a recorder for Meta on 127.0.0.1:3996 and `EMAIL_SENDS_FOR_REAL=false`, so nothing left the computer. The model was the real one. The script is journey 16 from the committed branch, cut down to the "done, then finish" ending for two kinds, each made twice by the same lead (Wairimu) with the same twelve answers: once with the setting off, and once after she switched it on with `PATCH /grounds/:id/simpler-words`. In the scratch copy only, the three places in `whatsapp-for-an-organisation.service.ts` that say these sentences were made to pass the switch on, because that file belongs to another builder. That change is not committed here; it is written out in the morning report.
+
+Everything is quoted, word for word.
+
+#### sales
+
+| | Setting off | Setting on |
+| --- | --- | --- |
+| Groundwork's closing turn (to the person) | "You said you will call the Quickmart buyer on Monday and ask for a date in writing. / That’s all for today. Reply "finish" to close this check-in, and your report will come here." | "You have said all you have for this week. / That is all for today. Write "finish" to end this check-in. Your report will come to this chat." |
+| After "finish" | "Your check-in is complete and on record. Your report follows in a moment." | "Your check-in is finished, and your answers are saved. Your report will come in a moment." |
+| The report on the phone, first line and the last | "Your report for Ending: sales (switch off) is ready." and "Here is a conversation worth having. Which of those conversations was with someone who can actually decide, with the budget and the authority?" | "Your report for Ending: sales (switch on) is ready." and "Here is one thing worth talking about. Which of those conversations was with someone who can actually decide, with the budget and the authority?" |
+| The lead, Wairimu, on WhatsApp | (nothing) | (nothing) |
+| Emails to the person | (nothing) | (nothing) |
+
+#### onboarding
+
+| | Setting off | Setting on |
+| --- | --- | --- |
+| Groundwork's closing turn | "You will call the Quickmart buyer on Monday to ask for a date in writing, and you want to visit the three stores in Kilimani next week. / That’s all for today. Reply "finish" to close this check-in, and your report will come here." | "You have said you will call the Quickmart buyer on Monday to ask for a date in writing. / That is all for today. Write "finish" to end this check-in. Your report will come to this chat." |
+| After "finish" | "Your check-in is complete and on record. Your report follows in a moment." | "Your check-in is finished, and your answers are saved. Your report will come in a moment." |
+| The report on the phone, last line | "Here is a conversation worth having. Which of those conversations ..." | "Here is one thing worth talking about. Which of those conversations ..." |
+
+**What is plainer, and what is not yet.** The closing turn (the model's own sentence before the close, and the close), the reply to "finish", and the line that introduces the report's one question are plainer with the setting on. The report's own middle sentences are the same with it on and off, because they are fixed sentences in the report builder: "Not everyone has answered yet, so there is nothing to agree or differ with." and "Somebody named a number, and nothing is tracking it." and "There are 2 more worries on record, and nobody is waiting on anybody." They have no plain form yet. The report's model-written parts do get the plain-words rule, but a report was not written afresh in this run, so that is proved only in the prompt (a test), not in a live report. The reminders and the emails have their plain forms and tests, and are not sent from this run: the code that sends them is another builder's, and a reminder outside the 24 hours is sent as a template Meta has approved, so a plainer reminder there needs a plainer template approved first.
 
 ## WhatsApp end to end, from the settings saved in the back office (5 October, night)
 
@@ -834,3 +856,30 @@ it stripped the subject from ordinary sentences — "Baraka Otieno is blocked" b
 and for Baraka himself "You are blocked" became "are blocked". The verb is required now.
 
 My own Ask welcome broke the no-colons rule and the client's ratchet caught it at 61 against 60.
+
+## The halfway messages, run 7 (6 October)
+
+Built from `1eb91691` with `release.whatsappHalfwayMessages` absent from the database (`gw_wa_oct6b`, a new copy). The API and the script ran on the local build in a scratch worktree, with the signed local webhook, the local recorder, and the number and secrets saved on /admin/whatsapp by the script. **42 of 42 checks passed** for sales, onboarding, project, a performance plan, a cohort, the anchor, and a check-in kept in the app. For each of the six kinds the person read the reminder, the half-hour warning and the close, and what they said was kept.
+
+**The two faults from run 6.** (1) The warning job did skip with "held elsewhere", and that is fixed in `ca89aa5c` (the lock is now held on one connection); the warning reached the phone for all six kinds. (2) The reminder "not reaching the phone for project and cohort" was the script: it moved every turn of the session to one instant, so "the last turn" was left to chance, and the reminder is only for somebody whose last turn is Groundwork's question. The product was right. The script now keeps the turns in order (`ec510ae6`); cohort failed before the fix and passed after it, and every kind passed in run 7.
+
+**What each person read, the same for all six kinds** (the label is the check-in's name):
+- Three hours quiet: "Hi Nuru, your check-in for "Ending: sales" is still open, and everything you have said so far is kept. Reply here to carry on whenever you are ready."
+- Eleven hours quiet: "Your check-in for "Ending: sales" closes in 30 minutes if nothing else is said. Add anything you still want on the record now."
+- Twelve hours, the clock closes it: "Your check-in for "Ending: sales" has closed, because nothing was said for twelve hours. Everything you said is kept on the record, and your report follows in a moment." and then the report.
+- The lead receives nothing on WhatsApp and no email at any of these moments.
+- A check-in kept in the app: nothing about it reaches the phone. Pendo, writing to it, reads "Your check-in "Ending: kept in the app" is kept in the Groundwork app, so I cannot take your answers to it here. Please open Groundwork and answer it there."
+
+**Fixed on the way.** The close was not held by "Not now" (it skipped that check); it is now (`b019d8eb`). A session that began before 5 October 2026 is never written to (`9e433c20`; decision 90 says nobody used WhatsApp before, so none could have qualified anyway; `release.time_running_out_warnings_from` is the same idea for the emails).
+
+**Rules proved in specs, through the real sender** (`the-halfway-messages-keep-the-senders-rules.spec.ts`): STOP, "Not now" (the close too), one first message a day (the reminder counts, the warning is a closing and may be the day's second, the close counts for nothing), the organisation's add-on, and the 24 hours (these three have no template, so outside the window nothing is sent and the record says why; each is inside the window by construction, because the person wrote within the last twelve hours or so). Approved leave: the reminder and the warning go only for a session already open, and there is no leave check on the clock's close, because it answers their own session.
+
+**Known limit.** The reminder is held by the one-message-a-day rule on a day Groundwork has already written first. A session opened by that day's opening notice and left halfway gets no reminder that day, and the quiet window is later, so it never comes. It reaches people whose session opened on an earlier day. This is decision 107 as written; Hafsah decides whether it should change.
+
+**"Use simpler words" with it on** (sales and onboarding, `WHATSAPP_SIMPLER_WORDS=1`, same recorder). Off and on side by side:
+- Finish: "Your check-in is complete and on record. Your report follows in a moment." / "Your check-in is finished, and your answers are saved. Your report will come in a moment."
+- The report's line: "Here is a conversation worth having." / "Here is one thing worth talking about."
+- Reminder: "...is still open, and everything you have said so far is kept. Reply here to carry on whenever you are ready." / "Hi Nuru, your check-in for "Ending: sales" is still open. Everything you have said is saved. Write here to carry on when you are ready."
+- Warning: "...closes in 30 minutes if nothing else is said. Add anything you still want on the record now." / "Your check-in for "Ending: sales" will close in 30 minutes if you say nothing more. Add anything you still want saved now."
+- Not yet read end to end with it on: the clock's close (the run lost its database connections to other runs on the same machine; the sentence is checked in a spec: "...has closed, because nothing was said for twelve hours. Everything you said is saved. Your report will come in a moment."), the opening and chasing reminders and the two emails (specs read each with the switch off, byte for byte, and on).
+- Not changed: the sentence a person reads when they write "finish" too early still has one form: "I need a little more from you before this check-in can close. Please answer one or two more questions, then write "finish" again."
