@@ -284,7 +284,10 @@ describe('a goal not told for a week (decision 56, item 4), on the Context page'
     expect(got).toContain('Wanjiru has set a goal about the scheduling and the stock counts, and will talk it through with you.');
     expect(got).not.toContain(AN_OLD_GOAL);
     expect(got).not.toContain(LEADS_NOTE);
-    expect(got).not.toMatch(/\b40\b/);
+    /* The number must not reach the reader in anything served. The served JSON also carries timestamps, whose minutes
+       can be 40 whenever the suite runs in minute :40, so those are taken out first; every other place a 40 could be stays checked. */
+    const withoutTimestamps = got.replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z/g, '');
+    expect(withoutTimestamps).not.toMatch(/\b40\b/);
     expect(got).not.toMatch(/\bhit\b/i);
   });
 

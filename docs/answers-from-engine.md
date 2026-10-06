@@ -6188,3 +6188,42 @@ With the suite off, both answer with the sentence the board uses ("The leave sui
 **Request 162.** (1) A review's "who decides" now agrees with `mayWrite`: it names whoever the organisation's rule lets write it, or "an admin". (2) `standsSays` says what is written in that review. (3) Spending lines read "KES 120,000 for two tablets for the field team"; the board's waiting spending carries `says` ("Grace: KES 120,000 for two tablets for the field team"). (4) The leave page says "so Groundwork cannot say how many you have left"; the seed uses the questions' ids. (5) The seed has a stand-in and leave this week. (6) `managersWordsById` is served beside `managersWords`.
 
 **New for the screens.** `GET /suites/queue?page=&pageSize=&suite=` (`counts`, `says`, `items` with `says`, `where`, `waitedSays`, `clash`, `standingIn`); `clash` on each waiting leave request on the leave board; `GET /suites/spend/finance/totals?month=2026-10` for finance and admins. A stand-in can decide on the leave, spending and hours boards and opens them as an "approver".
+
+## 6 October, late: requests 159 to 166, each against what the code does now
+
+There is no request 164 in the file on `mine/wip/prototype-ui` (the numbers go 163, 165). If you meant one, send it again.
+
+| # | Answer |
+| --- | --- |
+| 159 | **Not built. Needs Hafsah, because it opens a new way in.** `POST /grounds/:id/participant-requests` runs `assertIsParty` on purpose (a pinned authz spec), and it is a person in the check-in asking for somebody else. What is left, exactly: a separate route, `POST /grounds/:id/ask-to-join`, for a person `maySee` already lets read the check-in, who asks only for themselves (their own email and name from the sign-in, never a typed one), so the lead reads it in the same list; and `leadName` (the lead's full name) served beside `leadFirstName`. It is small, but it changes who may write to a check-in they are not in, which is a privacy rule, so I have not built it. Say yes and it is one commit. |
+| 160 | **Built** (`78dff681`, `api/journey/seed-a-hundred-check-ins.ts`): `ACTIVE` where nobody answered, and Imani is a MEMBER who runs nothing and is in 15. |
+| 161 | **Item 4 built** (`grounds/the-company-page.ts`): "8 people work here, and there were no check-ins this week." **Items 1 to 3 are the review seed's and are not built:** `journey/seed-a-company-for-review.ts` needs (1) `subject_external_id` on the check-ins that feed a priority and an owner on each priority, (2) a team on each person, (3) one run of the company picture build at the end, and (4) completed check-ins inside this week. It is a seed change only and is next; I held it because the other builder is in the files the picture build reads. |
+| 162 | **Built**, all six (`33e7ea18`, `ff3be0de`, `a6b5cfb3`, `88868ee0`): who decides a review agrees with `mayWrite`; `standsSays` is true of each review ("Started on 2 October 2026. You have written the review, and Sara has added a view of their own. It now waits for your decision."); spending lines carry the currency and a lower-case word after "for" (a name keeps its capital); "so Groundwork cannot say how many you have left"; the seed has the leave settings, a stand-in and leave this week; `managersWordsById` is served. |
+| 163 | **Item 1 built earlier** (the action lens has a sentence for none). **Item 2 not changed, and needs Hafsah:** "18/20 active · Groundwork has nudged the remaining 2." is her own wording from decision 98, and the request asks to replace it with plain sentences ("Four of five have checked in. You have not had your own check-in yet."). I will not change her words without her yes. If she says yes, it is `board/the-anchor-active-line.ts`, with "you" for the reader when she is one of those who have not. **Items 3 to 9 not built:** the anchor seed's kinds, the idea record, the end-of-month read, recognition, and the first question on `/entry/anchor-start`; each is its own piece of the anchor work and I have not checked them against the code today. |
+| 165 | **Built** earlier: `POST /suites/leave/requests` and `POST /suites/spend/requests` (the person's own only), and `prefill` on `openTheRequest`. See the 6 October anchor section above. |
+| 166 | **Built** earlier: the saved check-in keeps `HELP_TEAM_UNDERSTAND`, the seven items are filled, the invitation is `TheAnchorInvitation`'s words, and the people step takes a name. See the 6 October anchor section above. |
+
+### For the screens: the batch decision, ready
+
+`POST /suites/decisions`, for the signed-in approver. Request:
+
+    { "decisions": [ { "suite": "leave" | "spend" | "hours", "id": "…", "answer": "approve" | "decline", "reason": "…" } ] }
+
+Between 1 and 50. `reason` is optional and only for a decline. For hours the `id` is the person's sign-in and the week's Monday joined by `|` (`<personId>|2026-10-05`), and hours can only be approved. Response:
+
+    { "results": [ { "id": "…", "suite": "leave", "ok": true, "says": "You approved Amani's leave from Monday 20 October to Wednesday 22 October." } ],
+      "answered": 1, "says": "All four answers were kept." }
+
+`results` is in the order given. Every request is answered by the route that answers it alone, so the rules are the same: who may decide it now (the manager, a stand-in who is a lead or an admin, finance, an admin), its state, and one answer kept when two approvers answer at once. One that fails never stops the others, and says why in a sentence you can show as it is:
+
+- "You approved Peter's request to spend KES 8,500 for two tablets for the field team. It now waits for Omar in finance."
+- "You declined Sara's leave on Monday 26 October."
+- "You approved Aisha's hours for the week of Monday 5 October."
+- "Amina approved this request a moment ago, so your answer was not kept."
+- "Only the person who approves this request can decide it." (for hours: "Only the person who approves these hours can approve them.")
+- "Hours cannot be declined here, only approved. Say what is wrong with them to the person who sent them."
+- "This request was already answered in this call, so the second answer was left out."
+- "That request was not found.", "The suite was not understood. Give leave, spend or hours." (its `suite` is `null`) and "This answer was not understood. Give a suite (leave, spend or hours), an id, and approve or decline."
+- "Your answer was kept, but the request could not be read back to say more. Check it on the board." (`ok` is true) and "This one could not be answered. Check it on the board before you try again."
+
+The top `says` is "All four answers were kept.", "One of the six answers was kept. Five could not be kept, and each says why." or "None of the two answers could be kept, and each says why." (numbers up to ten in words, digits above) The whole call is refused (400, 403 or 404) for none or more than 50 answers ("Send up to 50 answers at once."), for somebody outside the organisation, and when neither leave, spending nor hours is switched on. Whoever decides the next step of what was approved is told once for all of it; the person who asked is told of each decision, as before.

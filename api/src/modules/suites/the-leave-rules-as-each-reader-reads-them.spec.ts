@@ -154,7 +154,7 @@ describe('with no leave rules set, every reader reads exactly what they read bef
       expect(w.said.slice(0, 3)).toEqual([
         'Aisha asked for leave from Thursday 8 October to Friday 9 October, which is 2 working days.',
         'Aisha has 21 days left.',
-        'Miriam is also off on some of those days, so Sales would be two short.',
+        'Miriam is also off on some of those days. On the busiest of them, Sales would be two short.',
       ]);
       expect(board.toldToHr).toEqual([]);
       expect(board.off).toEqual([{ id: 'r-miriam-oct', name: 'Miriam Wanjiku', startsOn: '2026-10-09', endsOn: '2026-10-09', kind: 'annual' }]);
@@ -288,7 +288,7 @@ describe('Wairimu, who decides, reads the kind, the days left of that kind, and 
     expect(w.said.slice(0, 4)).toEqual([
       'Aisha asked for annual leave from Thursday 8 October to Friday 9 October, which is 2 working days.',
       'Aisha has 21 days of annual leave left.',
-      'Miriam is also off on some of those days, so Sales would be two short.',
+      'Miriam is also off on some of those days. On the busiest of them, Sales would be two short.',
       'Groundwork found nothing Aisha owns that is due on those days.',
     ]);
     expect(w.said).toContain('Annual leave needs two weeks’ notice, and Aisha asked three days before it starts.');

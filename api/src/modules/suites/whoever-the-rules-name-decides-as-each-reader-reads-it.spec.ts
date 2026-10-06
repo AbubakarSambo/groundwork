@@ -144,7 +144,7 @@ describe('Omar, a member who heads Sales, where the department head decides', ()
     expect(b.waiting).toEqual([{
       id: 'l-aisha', name: 'Aisha Otieno', startsOn: '2026-10-01', endsOn: '2026-10-02', days: 2, daysLeft: 21, team: 'Sales', alsoOff: ['Miriam'],
       /* Added by item 5 of the suites at scale: how many and who, in the sentence the queue says too. */
-      clash: { count: 1, names: ['Miriam'], says: 'Miriam is also off on some of those days, so Sales would be two short.' },
+      clash: { count: 1, names: ['Miriam'], says: 'Miriam is also off on some of those days. On the busiest of them, Sales would be two short.' },
       standIn: null, mayDecide: true,
       /* Where it is, in a full sentence (decision 85, build step 4). */
       where: 'It is waiting for you.',
@@ -157,7 +157,7 @@ describe('Omar, a member who heads Sales, where the department head decides', ()
       said: [
         'Aisha asked for leave from Thursday 1 October to Friday 2 October, which is 2 working days.',
         'Aisha has 21 days left.',
-        'Miriam is also off on some of those days, so Sales would be two short.',
+        'Miriam is also off on some of those days. On the busiest of them, Sales would be two short.',
         'Groundwork found nothing Aisha owns that is due on those days.',
       ],
     }]);

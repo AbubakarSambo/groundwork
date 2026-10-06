@@ -149,7 +149,8 @@ export function countsLine(counts: { teams: number; people: number; checkInsThis
   if (counts.checkInsThisWeek !== null) {
     const checkIns = plural(counts.checkInsThisWeek, 'check-in', 'check-ins');
     const was = counts.checkInsThisWeek === 1 ? 'was' : 'were';
-    parts.push(`there ${was} ${checkIns} this week`);
+    /* "there were no check-ins this week", not "there were 0 check-ins" (request 161, item 4). */
+    parts.push(counts.checkInsThisWeek === 0 ? 'there were no check-ins this week' : `there ${was} ${checkIns} this week`);
   }
   if (!parts.length) return null;
   const s = parts.join(', and ');

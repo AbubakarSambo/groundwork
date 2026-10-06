@@ -154,10 +154,19 @@ export async function whoDecidesFrom(prisma: PrismaService, rules: ARule[], requ
 }
 
 async function withWhoStandsIn(prisma: PrismaService, who: WhoDecides, request: ARequest, known: Known): Promise<WhoDecides> {
-  if (who.kind === 'admin' || known.noCover) return who;
+  /*
+   * ONLY THE MANAGER'S STEP, AND ONLY TO A LEAD OR AN ADMIN. Approvers are named by rule and never by person (decision 85), so a
+   * stand-in decides only a step the "manager" rule names, because "the person's manager" is who is on leave and the stand-in is
+   * whoever the manager chose to cover. Every other step (finance, HR, the head, the budget holder, above a threshold) is not
+   * handed over: it passes on by rule when it waits too long or the person is away, as it always did. A plain member who stands in
+   * gets no right to decide, and so reads no leave balance, budget or anybody's request through it.
+   */
+  if (who.kind !== 'manager' || known.noCover) return who;
   const cover = known.lookups ? known.lookups.cover : (known.cover ??= await coverToday(prisma, request.organizationId, known.on ?? new Date()));
   const standIn = cover.get(who.userId);
-  if (!standIn || standIn === who.userId || !(await aPersonWhoMay(prisma, request, standIn, known))) return who;
+  if (!standIn || standIn === who.userId) return who;
+  const role = await roleIn(prisma, request.organizationId, standIn, known);
+  if ((role !== 'LEAD' && role !== 'ADMIN') || !(await aPersonWhoMay(prisma, request, standIn, known))) return who;
   return { kind: 'person', rule: 'named', userId: standIn, standingInFor: who.userId };
 }
 

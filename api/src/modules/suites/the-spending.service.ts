@@ -4,13 +4,13 @@ import { PrismaService } from '../prisma/prisma.service';
 import { askNameOf } from '../assistant/ask-name';
 import { theirRosterEntry, withTheirSignIns } from './a-roster-entry-and-its-sign-in';
 import { inTheLeadsTeam } from './a-leads-team';
-import { loadLookups, whoTheyStandInFor, type Lookups } from './the-lookups';
+import { loadLookups, type Lookups } from './the-lookups';
 import { couldBeNamed, decidesIt, everyStepFor, passWhatTheyAlreadyApproved, theStepsFor, whoComesNext, whoDecidesNow, type DecidesNow } from './who-may-decide';
 import { whyPassOn } from './a-request-waits-too-long';
 import { aRequestsHistory, recordIt, saidAsADate } from './a-request-is-recorded';
 import { claimIt, theyGotThereFirst, whereItIsNow } from './a-request-is-answered-once';
 import { readDuties } from './who-holds-each-duty';
-import type { PassedOn } from './the-leave-board.service';
+import type { ADecisionHow, PassedOn } from './the-leave-board.service';
 import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
 import { LEAVE_QUESTION_KIND, QUESTION_REFUSED, aQuestionSaid, aReasonSaid, wordsGiven, type AQuestion } from './a-question-about-a-request';
 import { aSpendRequest, spendInWords, type AWaitingRequest, whereItIsOnTheBoard, whereYourRequestIs, type WhereItStands } from './a-request-in-words';
@@ -38,7 +38,8 @@ export const SPEND_REFUSED = {
 export interface Reader { userId: string; organizationId: string }
 
 /** Who approves one request: the person's lead, a named person (or the holder of the team's budget or finance) because it is over the limit, or an admin. */
-export type Approver = { kind: 'manager' } | { kind: 'person'; firstName: string } | { kind: 'admin' };
+/** `standingInFor` is the first name of the manager who is on leave, when this person decides only because they stand in for them. */
+export type Approver = { kind: 'manager' } | { kind: 'person'; firstName: string; standingInFor?: string } | { kind: 'admin' };
 
 export interface Waiting {
   id: string;
@@ -170,8 +171,7 @@ export class SpendingService {
      * or a lead is refused, as before.
      */
     const asApprover = role !== 'ADMIN' && role !== 'LEAD';
-    /* A member who stands in today for somebody on leave decides what waits for that person, and opens the board as an approver to do it. */
-    if (asApprover && !(role === 'MEMBER' && ((await this.approvesOverTheLimit(reader.organizationId, reader.userId, answers)) || (await whoTheyStandInFor(this.prisma, reader.organizationId, reader.userId, today)).length > 0))) throw new ForbiddenException(SPEND_REFUSED.onlyAdminsAndLeads);
+    if (asApprover && !(role === 'MEMBER' && (await this.approvesOverTheLimit(reader.organizationId, reader.userId, answers)))) throw new ForbiddenException(SPEND_REFUSED.onlyAdminsAndLeads);
     const org = reader.organizationId;
     const month = monthOf(today);
 
@@ -215,7 +215,13 @@ export class SpendingService {
         id: r.id, name: nm.full, firstName: nm.first, amount: n(r.amount), what: r.what, says: `${nm.first}: ${spendInWords(n(r.amount), answers.currency, r.what, shared.lookups?.knownNames)}`, team: r.team,
         left: leftOf(r.team),
         over: answers.limit != null && n(r.amount) > answers.limit,
-        approver: who.kind === 'person' ? { kind: 'person', firstName: (await firstNamesOf(this.prisma, [who.userId], undefined, shared.lookups?.names))[0] ?? '' } : { kind: who.kind },
+        approver: who.kind === 'person'
+          ? {
+            kind: 'person', firstName: (await firstNamesOf(this.prisma, [who.userId], undefined, shared.lookups?.names))[0] ?? '',
+            /* Standing in while the manager is on leave: served here, and not only in the sentence under it. */
+            ...(now.who.kind === 'person' && now.who.standingInFor ? { standingInFor: (await firstNamesOf(this.prisma, [now.who.standingInFor], undefined, shared.lookups?.names))[0] ?? '' } : {}),
+          }
+          : { kind: who.kind },
         mayDecide: decides,
         where: whereItIsOnTheBoard(await this.whereItStands(r, now, decides, reader.userId, shared.lookups?.names)),
         category: r.category ?? null,
@@ -240,7 +246,7 @@ export class SpendingService {
    * that is not the last moves it to the next step, and whoever decides that one is told; only the last
    * step's yes, or a no at any step, ends it, and then the person who asked is told.
    */
-  async decide(reader: Reader, id: string, outcome: 'approved' | 'declined', today = new Date(), reasonGiven?: unknown) {
+  async decide(reader: Reader, id: string, outcome: 'approved' | 'declined', today = new Date(), reasonGiven?: unknown, how: ADecisionHow = {}) {
     /* A reason may go with a decline (build step 9, as leave has), and is told to the person. */
     const reason = outcome === 'declined' ? wordsGiven(reasonGiven) : null;
     if (reason === 'too long') throw new BadRequestException(QUESTION_REFUSED.tooLong);
@@ -268,8 +274,8 @@ export class SpendingService {
         }
         await decided();
         await this.recordPassed(r, moved.passed);
-        await this.tellWhoDecides(next, answers);
-        return this.board(reader, today);
+        await this.tellWhoDecides(next, answers, {}, how.collect);
+        return (how.lean ? undefined : await this.board(reader, today)) as Awaited<ReturnType<SpendingService['board']>>;
       }
       passed = moved.passed;
     }
@@ -277,7 +283,7 @@ export class SpendingService {
     await decided();
     await this.recordPassed(r, passed);
     await this.afterTheEnd(r, outcome, reader.userId, answers, reason);
-    return this.board(reader, today);
+    return (how.lean ? undefined : await this.board(reader, today)) as Awaited<ReturnType<SpendingService['board']>>;
   }
 
   /** It ends: approved at the last step, or declined at any. False when somebody answered it first. */

@@ -21,7 +21,7 @@ describe('who reads that four are already off', () => {
     const id = askedOct14(w, 'ops.m5').id;
     const board = (await w.leaveBoard.board(w.as('ops.manager'), TODAY)).waiting.find((x) => x.id === id)!;
     const queue = (await w.queue.queue(w.as('ops.manager'), { suite: 'leave', pageSize: 100 }, TODAY)).items.find((x) => x.id === id)!;
-    expect(board.clash).toEqual({ count: 4, names: expect.arrayContaining(off), says: expect.stringMatching(/ are also off on some of those days, so Operations would be five short\.$/) });
+    expect(board.clash).toEqual({ count: 3, names: expect.arrayContaining(off), says: expect.stringMatching(/ are also off on some of those days\. On the busiest of them, Operations would be four short\.$/) });
     expect(queue.clash).toEqual(board.clash);
     expect(board.said).toContain(board.clash!.says);
   });
@@ -29,7 +29,7 @@ describe('who reads that four are already off', () => {
   it('the head of Operations, an admin, reads it on the board; a lead of another team reads nothing of Operations at all', async () => {
     const w = aHundredPeople();
     const id = askedOct14(w, 'ops.m5').id;
-    expect((await w.leaveBoard.board(w.as('ops.head'), TODAY)).waiting.find((x) => x.id === id)!.clash!.count).toBe(4);
+    expect((await w.leaveBoard.board(w.as('ops.head'), TODAY)).waiting.find((x) => x.id === id)!.clash!.names).toHaveLength(4);
     const other = await w.leaveBoard.board(w.as('eng.manager'), TODAY);
     expect(other.waiting.map((x) => x.team)).not.toContain('Operations');
     expect(JSON.stringify(other)).not.toMatch(new RegExp(w.people.find((p) => p.key === 'ops.m1')!.first + ' [A-Z]'));
@@ -55,7 +55,8 @@ describe('what counts as being off', () => {
     /* A second stretch of leave for one of the four, on the same days. */
     w.leave.push({ ...w.leave[0], id: 'x-twice', userId: idOf('ops.m1'), startsOn: new Date('2026-10-15T00:00:00Z'), endsOn: new Date('2026-10-15T00:00:00Z'), status: 'approved', standInUserId: null });
     const clash = (await w.queue.queue(w.as('ops.manager'), { suite: 'leave', pageSize: 100 }, TODAY)).items.find((x) => x.id === id)!.clash!;
-    expect(clash.count).toBe(4);
+    expect(clash.names).toHaveLength(4);
+    expect(clash.count).toBe(3);
   });
 
   it('two people who share a first name are told apart by their full names, and counted as two', async () => {
@@ -65,9 +66,9 @@ describe('what counts as being off', () => {
     two.firstName = one.firstName;
     const id = askedOct14(w, 'ops.m5').id;
     const clash = (await w.queue.queue(w.as('ops.manager'), { suite: 'leave', pageSize: 100 }, TODAY)).items.find((x) => x.id === id)!.clash!;
-    expect(clash.count).toBe(4);
+    expect(clash.names).toHaveLength(4);
     expect(clash.names).toEqual(expect.arrayContaining([`${one.firstName} ${one.lastName}`, `${two.firstName} ${two.lastName}`]));
-    expect((await w.leaveBoard.board(w.as('ops.manager'), TODAY)).waiting.find((x) => x.id === id)!.clash!.count).toBe(4);
+    expect((await w.leaveBoard.board(w.as('ops.manager'), TODAY)).waiting.find((x) => x.id === id)!.clash!.names).toHaveLength(4);
   });
 
   it('when many are off it names five and counts the rest, and still says how short the team would be', async () => {
@@ -77,9 +78,10 @@ describe('what counts as being off', () => {
       w.leave.push({ ...w.leave[0], id: `many-${k}`, userId: idOf(k), startsOn: new Date('2026-10-14T00:00:00Z'), endsOn: new Date('2026-10-14T00:00:00Z'), status: 'approved', standInUserId: null });
     }
     const clash = (await w.queue.queue(w.as('ops.manager'), { suite: 'leave', pageSize: 100 }, TODAY)).items.find((x) => x.id === id)!.clash!;
-    expect(clash.count).toBe(9);
+    expect(clash.names).toHaveLength(9);
+    expect(clash.count).toBe(8);
     expect(clash.says).toMatch(/^([A-Z][a-z]+, ){5}and 4 others are also off|^([A-Z][a-z]+, ){4}[A-Z][a-z]+ and 4 others are also off/);
-    expect(clash.says).toMatch(/so Operations would be ten short\.$/);
+    expect(clash.says).toMatch(/On the busiest of them, Operations would be nine short\.$/);
   });
 
   it('a request in a team where nobody is off says so on the board and leaves the queue’s clash empty', async () => {
@@ -89,6 +91,37 @@ describe('what counts as being off', () => {
     expect(board.clash).toBeNull();
     expect(board.said).toContain('Nobody else in Engineering is off those days.');
     expect((await w.queue.queue(w.as('eng.manager'), { suite: 'leave', pageSize: 100 }, TODAY)).items.find((x) => x.id === id)!.clash).toBeNull();
+  });
+
+  it('four people off on four different days are four names and a team two short, never five short; one day keeps its own form', async () => {
+    const w = aHundredPeople();
+    const day = (k: string, d: string) => w.leave.push({ ...w.leave[0], id: `d-${k}`, userId: idOf(k), startsOn: new Date(`${d}T00:00:00Z`), endsOn: new Date(`${d}T00:00:00Z`), status: 'approved', standInUserId: null });
+    day('eng.m2', '2026-10-21'); day('eng.m3', '2026-10-22'); day('eng.m4', '2026-10-23'); day('eng.m5', '2026-10-26');
+    const items = (await w.queue.queue(w.as('eng.manager'), { suite: 'leave', pageSize: 100 }, TODAY)).items;
+    const week = items.find((x) => x.startsOn === '2026-10-21')!.clash!;
+    expect(week.names).toHaveLength(3);
+    expect(week.count).toBe(1);
+    expect(week.says).toMatch(/ are also off on some of those days\. On the busiest of them, Engineering would be two short\.$/);
+    const one = items.find((x) => x.startsOn === '2026-10-26')!.clash!;
+    expect(one.says).toMatch(/^\w+ is also off that day, so Engineering would be two short\.$/);
+  });
+
+  it('somebody off only on a weekend inside the request is no clash: nobody is named, and the board says nobody else is off', async () => {
+    const w = aHundredPeople();
+    /* Engineering's m1 asks for Wednesday 21 to Friday 23 October; make it Friday 23 to Monday 26, and a colleague is off only on the Saturday and Sunday. */
+    const r = w.leave.find((x) => x.userId === idOf('eng.m1') && x.status === 'waiting')!;
+    r.startsOn = new Date('2026-10-23T00:00:00Z'); r.endsOn = new Date('2026-10-26T00:00:00Z');
+    w.leave.push({ ...w.leave[0], id: 'weekend', userId: idOf('eng.m2'), startsOn: new Date('2026-10-24T00:00:00Z'), endsOn: new Date('2026-10-25T00:00:00Z'), status: 'approved', standInUserId: null });
+    const q = (await w.queue.queue(w.as('eng.manager'), { suite: 'leave', pageSize: 100 }, TODAY)).items.find((x) => x.id === r.id)!;
+    expect(q.clash).toBeNull();
+    const board = (await w.leaveBoard.board(w.as('eng.manager'), TODAY)).waiting.find((x) => x.id === r.id)!;
+    expect(board.clash).toBeNull();
+    expect(board.alsoOff).toEqual([]);
+    expect(board.said).toContain('Nobody else in Engineering is off those days.');
+    /* The same colleague off on the Friday too is a clash, one short. */
+    w.leave.push({ ...w.leave[0], id: 'friday', userId: idOf('eng.m2'), startsOn: new Date('2026-10-23T00:00:00Z'), endsOn: new Date('2026-10-23T00:00:00Z'), status: 'approved', standInUserId: null });
+    const again = (await w.queue.queue(w.as('eng.manager'), { suite: 'leave', pageSize: 100 }, TODAY)).items.find((x) => x.id === r.id)!;
+    expect(again.clash!.says).toMatch(/^\w+ is also off on some of those days\. On the busiest of them, Engineering would be two short\.$/);
   });
 
   it('keeps ORG in use', () => { expect(ORG).toBe('org-baobab'); });

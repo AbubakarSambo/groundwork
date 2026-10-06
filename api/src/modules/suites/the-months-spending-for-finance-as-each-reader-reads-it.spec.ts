@@ -83,10 +83,23 @@ describe('in the organisation’s currency, in full sentences', () => {
     expect(ops.says).toMatch(/^Operations has KES [\d,]+ approved in October 2026, and KES [\d,]+ still waiting for an answer\.$/);
     /* Paid money is said where there is some: the 31,000 each team was paid was asked for in September. */
     expect((await finance(w).totals(w.as('finance.m1'), '2026-09', TODAY)).byTeam.find((x) => x.name === 'Operations')!.says).toBe('Operations has KES 31,000 approved in September 2026, KES 31,000 of it paid, and KES 22,300 still waiting for an answer.');
-    expect(t.says).toMatch(/^In October 2026, \d+ requests were asked for, adding up to KES [\d,]+\. All teams have KES [\d,]+ approved in October 2026/);
+    expect(t.says).toMatch(/^In October 2026, \d+ requests were asked for, adding up to KES [\d,]+\. Across all teams, KES [\d,]+ was approved in October 2026/);
     const text = JSON.stringify(t);
     for (const p of w.people.slice(0, 30)) expect(text).not.toContain(`${p.first} ${p.last}`);
     expect(text).not.toMatch(/userId|what"|"id"/);
+  });
+
+  it('reads the whole, and the requests with no team or category, as sentences about requests and not as a team', async () => {
+    const w = aHundredPeople();
+    const t = await finance(w).totals(w.as('finance.m1'), '2026-10', TODAY);
+    expect(t.all.says).toMatch(/^Across all teams, KES [\d,]+ was approved in October 2026, and KES [\d,]+ is still waiting for an answer\.$/);
+    const r = inOctober(w).find((x) => x.status === 'waiting' && x.team === 'Sales')!;
+    r.team = null; r.category = null;
+    w.directory.find((p) => p.externalId === 'sales.m1')!.department = null;
+    r.userId = idOf('sales.m1');
+    const u = await finance(w).totals(w.as('finance.m1'), '2026-10', TODAY);
+    expect(u.byTeam.find((x) => x.name === 'Without a team')!.says).toMatch(/^Requests without a team have nothing approved in October 2026, and KES [\d,]+ still waiting for an answer\.$/);
+    expect(u.byCategory.find((x) => x.name === 'Without a category')!.says).toMatch(/^Requests without a category have nothing approved in October 2026, and KES [\d,]+ still waiting for an answer\.$/);
   });
 
   it('says it without a currency when the organisation has not set one, and does not make one up', async () => {

@@ -124,13 +124,20 @@ const n = (x: unknown) => Number(x ?? 0);
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const money = (currency: string | null, amount: number) => `${currency ? `${currency} ` : ''}${amount.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
 
-/** "Operations has KES 120,000 approved in October 2026, KES 31,000 of it paid, and KES 60,000 still waiting for an answer." */
+/**
+ * "Operations has KES 120,000 approved in October 2026, KES 31,000 of it paid, and KES 60,000 still waiting for an answer."
+ * "Requests without a team have KES 9,800 approved in October 2026, ..." (and "without a category").
+ * "Across all teams, KES 139,600 was approved in October 2026, and KES 3,909,500 is still waiting for an answer."
+ */
 function aTotalSaid(t: Omit<ATotal, 'says'>, currency: string | null, monthSays: string): string {
-  const who = t.name === 'All teams' ? 'All teams have' : `${t.name} has`;
-  const approved = t.approved.amount > 0 ? `${money(currency, t.approved.amount)} approved in ${monthSays}` : `nothing approved in ${monthSays}`;
+  const all = t.name === 'All teams';
+  const who = all ? 'Across all teams,' : t.name === 'Without a team' ? 'Requests without a team have' : t.name === 'Without a category' ? 'Requests without a category have' : `${t.name} has`;
+  const approved = all
+    ? (t.approved.amount > 0 ? `${money(currency, t.approved.amount)} was approved in ${monthSays}` : `nothing was approved in ${monthSays}`)
+    : (t.approved.amount > 0 ? `${money(currency, t.approved.amount)} approved in ${monthSays}` : `nothing approved in ${monthSays}`);
   const parts = [approved];
-  if (t.paid.amount > 0) parts.push(`${money(currency, t.paid.amount)} of it paid`);
-  if (t.waiting.amount > 0) parts.push(`${money(currency, t.waiting.amount)} still waiting for an answer`);
+  if (t.paid.amount > 0) parts.push(`${money(currency, t.paid.amount)} of it ${all ? 'was paid' : 'paid'}`);
+  if (t.waiting.amount > 0) parts.push(`${money(currency, t.waiting.amount)} ${all ? 'is still waiting' : 'still waiting'} for an answer`);
   const joined = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')}, and ${parts[parts.length - 1]}`;
   return `${who} ${joined}.`;
 }

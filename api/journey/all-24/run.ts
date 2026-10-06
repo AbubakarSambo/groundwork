@@ -14,7 +14,7 @@ const THE_SCENARIOS: AScenario[] = [...SUITE, ...THE_REST, ...(THE_ADVERSARIAL a
 import * as bcrypt from 'bcrypt';
 import * as fs from 'fs';
 
-const API = 'http://localhost:3000/api/v1';
+const API = process.env.API ?? 'http://localhost:3000/api/v1';
 const PW = 'SuiteRun123!';
 const OUT = process.env.OUT ?? 'journey/all-24/out';
 const ONLY = process.env.ONLY ? process.env.ONLY.split(',') : null;

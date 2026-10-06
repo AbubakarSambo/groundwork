@@ -4,7 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { askNameOf } from '../assistant/ask-name';
 import { theirRosterEntries, theirRosterEntry } from './a-roster-entry-and-its-sign-in';
 import { inTheLeadsTeam } from './a-leads-team';
-import { loadLookups, whoTheyStandInFor, type Lookups } from './the-lookups';
+import { loadLookups, type Lookups } from './the-lookups';
 import { couldBeNamed, decidesIt, everyRuleIn, passWhatTheyAlreadyApproved, theStepsFor, whoComesNext, whoDecidesNow, type APassedStep, type DecidesNow, type WhoDecides } from './who-may-decide';
 import { whyPassOn, type WhyPassedOn } from './a-request-waits-too-long';
 import { aRequestsHistory, recordIt } from './a-request-is-recorded';
@@ -34,6 +34,13 @@ export const LEAVE_REFUSED = {
 
 export interface Reader { userId: string; organizationId: string }
 
+/**
+ * HOW A DECISION IS ANSWERED, FOR MANY IN A ROW (the-decisions-in-a-batch.service.ts). `lean`: give nothing back, because the caller
+ * says what happened for each; `collect`: whoever decides the next step is not told now but gathered, and told once for all that
+ * arrive together.
+ */
+export interface ADecisionHow { lean?: boolean; collect?: { approverUserIds: string[]; request: AWaitingRequest }[] }
+
 /** One request passed on because it waited too long, or its approver was away. */
 export interface PassedOn { ref: string; step: number; from: WhoDecides; to: WhoDecides; why: WhyPassedOn }
 
@@ -60,7 +67,7 @@ export interface Waiting {
   team: string | null;
   /** The first names of others in the same team already off on any of those days (full names where two share a first name). */
   alsoOff: string[];
-  /** How many, who, and the sentence, the same as the approver's queue says it; null when the person has no team or nobody is off. */
+  /** The most off on any one day, who, and the sentence, the same as the approver's queue says it; null when the person has no team or nobody is off. */
   clash: { count: number; names: string[]; says: string } | null;
   standIn: string | null;
   /** Whether this reader is the one who approves it. */
@@ -213,9 +220,7 @@ export class LeaveBoardService {
      */
     const asApprover = role !== 'ADMIN' && role !== 'LEAD';
     const mayBeNamed = asApprover && role === 'MEMBER' && (await couldBeNamed(this.prisma, [...everyRuleIn(theStepsFor('leave', answers)), ...(answers.rules.thresholds ?? []).flatMap((t) => everyRuleIn(t.steps))], reader.organizationId, { userId: reader.userId, role }));
-    /* A member who stands in today for somebody on leave decides what waits for that person, and opens the board as an approver to do it. */
-    const standsIn = asApprover && !mayBeNamed && !holdsHr && role === 'MEMBER' && (await whoTheyStandInFor(this.prisma, reader.organizationId, reader.userId, today)).length > 0;
-    if (asApprover && !mayBeNamed && !holdsHr && !standsIn) {
+    if (asApprover && !mayBeNamed && !holdsHr) {
       throw new ForbiddenException(LEAVE_REFUSED.onlyAdminsAndLeads);
     }
 
@@ -244,9 +249,11 @@ export class LeaveBoardService {
       const team = people.get(r.userId)?.department?.trim() || null;
       /* Each person once, by first name, and by full name where two share a first name; the approver reads how many and who. */
       const off = team
-        ? whoIsOffNamed(approved.filter((a) => a.userId !== r.userId && people.get(a.userId)?.department?.trim() === team && overlaps(a, r))
-            .map((a) => ({ id: a.userId, first: names.get(a.userId)?.first ?? '', full: names.get(a.userId)?.full ?? '' })))
-        : { count: 0, names: [] as string[] };
+        ? whoIsOffNamed(
+          approved.filter((a) => a.userId !== r.userId && people.get(a.userId)?.department?.trim() === team && overlaps(a, r))
+            .map((a) => ({ id: a.userId, first: names.get(a.userId)?.first ?? '', full: names.get(a.userId)?.full ?? '', startsOn: a.startsOn, endsOn: a.endsOn })),
+          r)
+        : { count: 0, names: [] as string[], busiest: 0 };
       const alsoOff = off.names;
       const first = names.get(r.userId)?.first ?? '';
       const days = workingDays(r.startsOn, r.endsOn);
@@ -270,7 +277,7 @@ export class LeaveBoardService {
         team,
         alsoOff,
         /* The same sentence and the same count the approver's queue reads (the-approvals-queue.service.ts). Null with no team, or nobody off. */
-        clash: team && off.count ? { count: off.count, names: alsoOff, says: theClashSaid(team, alsoOff, r.startsOn.getTime() === r.endsOn.getTime()) } : null,
+        clash: team && off.count ? { count: off.busiest, names: alsoOff, says: theClashSaid(team, alsoOff, r.startsOn.getTime() === r.endsOn.getTime(), off.busiest) } : null,
         standIn,
         mayDecide: decides,
         where: whereItIsOnTheBoard(await this.whereItStands(r, now, decides ? reader.userId : undefined, reader.userId, shared.lookups?.names)),
@@ -279,7 +286,7 @@ export class LeaveBoardService {
         said: aLeaveRequestAsTheApproverReadsIt({
           firstName: first, startsOn: dayOf(r.startsOn), endsOn: dayOf(r.endsOn), days, daysLeft, team,
           kindName: kind ? inASentence(kind) : null,
-          alsoOff, standIn, owns, more: [...rules, ...asked],
+          alsoOff, busiest: off.busiest, standIn, owns, more: [...rules, ...asked],
         }),
       });
     }
@@ -321,7 +328,7 @@ export class LeaveBoardService {
     }
 
     return {
-      reader: role === 'ADMIN' ? 'admin' : role === 'LEAD' ? 'lead' : mayBeNamed || standsIn ? 'approver' : 'hr',
+      reader: role === 'ADMIN' ? 'admin' : role === 'LEAD' ? 'lead' : mayBeNamed ? 'approver' : 'hr',
       waiting: waiting.filter((w) => w.name), off: off.filter((o) => o.name), toldToHr,
     };
   }
@@ -410,7 +417,7 @@ export class LeaveBoardService {
    * not the last moves it to the next step, and whoever decides that one is told; only the last step's
    * approval, or a decline at any step, ends it, and then the person who asked is told.
    */
-  async decide(reader: Reader, id: string, outcome: 'approved' | 'declined', reasonGiven?: unknown) {
+  async decide(reader: Reader, id: string, outcome: 'approved' | 'declined', reasonGiven?: unknown, how: ADecisionHow = {}) {
     /* A reason may go with a decline (decision 85, build step 7), and is told to the person. */
     const reason = outcome === 'declined' ? wordsGiven(reasonGiven) : null;
     if (reason === 'too long') throw new BadRequestException(QUESTION_REFUSED.tooLong);
@@ -440,8 +447,8 @@ export class LeaveBoardService {
         }
         await decided();
         await this.recordPassed(row, moved.passed);
-        await this.tellWhoDecides(next, people, answers);
-        return this.board(reader);
+        await this.tellWhoDecides(next, people, answers, {}, how.collect);
+        return (how.lean ? undefined : await this.board(reader)) as Awaited<ReturnType<LeaveBoardService['board']>>;
       }
       passed = moved.passed;
     }
@@ -449,7 +456,7 @@ export class LeaveBoardService {
     await decided();
     await this.recordPassed(row, passed);
     await this.afterTheEnd(row, outcome, reader.userId, answers, reason);
-    return this.board(reader);
+    return (how.lean ? undefined : await this.board(reader)) as Awaited<ReturnType<LeaveBoardService['board']>>;
   }
 
   /** It ends: approved at the last step, or declined at any. False when somebody answered it first. */

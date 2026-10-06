@@ -53,12 +53,6 @@ export const FIRST_MESSAGES: ReadonlySet<string> = new Set([
    */
   'review-started', 'review-decided',
   /*
-   * WHAT WAITS FOR AN APPROVER, SAID ONCE FOR ALL OF IT. An approver with many requests waiting is told in one message, not one for
-   * each (a request on its own still goes straight away, decision 92). It is Groundwork writing first, so it counts towards the
-   * person's one message of the day like the lead's summary, and is held when that has gone.
-   */
-  'requests-waiting',
-  /*
    * THE ANCHOR'S WEEKLY INSIGHT (piece 28; decision 105 item 2). It is the lead's one message of that day: it goes on
    * Friday before the daily summary, so the summary that day is held back by the same count. That is the whole of
    * "it replaces that day's daily summary".
@@ -75,7 +69,8 @@ export const FIRST_MESSAGES: ReadonlySet<string> = new Set([
  * the morning summary, whatever else the person has had today, and it does not use up the one message
  * of the day either. Only "Not now" and "stop" still hold it: those are the person's own word.
  */
-export const APPROVALS: ReadonlySet<string> = new Set(['request-waiting']);
+/* `requests-waiting` is the same kind of message said once for several that arrived together (the-approvals-summary.ts): it goes straight away too, and is not the person's one message of the day. */
+export const APPROVALS: ReadonlySet<string> = new Set(['request-waiting', 'requests-waiting']);
 /**
  * THE CLOCK CLOSING A SESSION (decision 107). It is not one of the day's first messages, so it never uses up the
  * count (it is told with what the person said kept, and the report follows). But it is still Groundwork writing

@@ -54,15 +54,13 @@ export class ARequestToldOnWhatsApp {
   }
 
   /**
-   * Tell each approver that this request waits for them, straight away (decision 92), when it is the only thing waiting for them.
-   * When something else already waits for them, nothing goes for this one: they are written to once for all of it, in the
-   * morning, or at once when many were passed on to them together (`waitingMany`). Thirty requests are one message, not thirty.
+   * Tell each approver that this request waits for them, straight away (decision 92). It is never held for a summary, and is not the
+   * person's one message of the day. Requests that arrive together are said once instead (`waitingMany`).
    */
   async waiting(organizationId: string, approverUserIds: string[], request: AWaitingRequest): Promise<void> {
     if (!this.whatsapp) return;
     for (const userId of approverUserIds) {
       try {
-        if (await this.somethingElseWaitsFor(organizationId, userId)) continue;
         const to = await this.reach(organizationId, userId);
         if (!to.phone) continue;
         const said = aRequestIsWaiting(to.firstName, request.firstName, request.what);
@@ -75,15 +73,10 @@ export class ARequestToldOnWhatsApp {
     }
   }
 
-  /** Whether more than this one request waits for this person. Never held back when that cannot be read: a request is not lost for it. */
-  private async somethingElseWaitsFor(organizationId: string, userId: string): Promise<boolean> {
-    if (!this.queue) return false;
-    try { return (await this.queue.queue({ userId, organizationId }, { pageSize: 1 })).counts.all >= 2; } catch { return false; }
-  }
-
   /**
-   * Several requests were passed on at once (the clock, once a day). An approver whom one of them waits for is told as before; an
-   * approver whom two or more wait for is written to once for all of it, now, and not once for each.
+   * Several requests arrived together (the clock passing them on, once a day). An approver whom one of them waits for is told as
+   * before, at once; an approver whom two or more wait for is told once for all of it, at once, and not once for each. Hours are not
+   * in this: they are told straight away by the time sheets.
    */
   async waitingMany(organizationId: string, batch: { approverUserIds: string[]; request: AWaitingRequest }[], now: Date = new Date()): Promise<void> {
     const byApprover = new Map<string, AWaitingRequest[]>();
@@ -106,8 +99,8 @@ export class ARequestToldOnWhatsApp {
 
   /**
    * WHAT WAITS FOR ONE APPROVER, SAID ONCE. On WhatsApp when it can go (STOP, the 24 hours, the approved template and how often
-   * Groundwork writes first are the sender's), otherwise by email, never both. Held, with nothing sent and nothing recorded, in
-   * the quiet hours, on leave, when the person has had their message of the day, or said "Not now": the next morning tries again.
+   * Groundwork writes first are the sender's; this is not counted as the person's message of the day), otherwise by email, never both. Held, with nothing sent and nothing recorded, in
+   * the person's quiet hours, on leave, or when they said "Not now": the next morning tries again.
    * Each request it covers is recorded as told, so the next summary is only of what has not been said yet.
    */
   async summarise(
@@ -115,10 +108,13 @@ export class ARequestToldOnWhatsApp {
     mine: { counts: { all: number; leave: number; spend: number; pastTheDeadline: number }; refs: { suite: 'leave' | 'spend'; id: string }[]; oldestWorkingDays: number },
     now: Date = new Date(),
   ): Promise<'whatsapp' | 'email' | 'held' | 'nothing'> {
-    if (!mine.counts.all || itIsQuietNow(now)) return 'held';
+    if (!mine.counts.all) return 'held';
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, firstName: true, deletedAt: true } }).catch(() => null);
     if (!user || user.deletedAt) return 'nothing';
     if (fallsInLeave(now, await theirApprovedLeave(this.prisma, userId, organizationId))) return 'held';
+    /* Quiet hours are where the person is: their own time zone when the directory has one, Lagos otherwise (decision 83). */
+    const reach = await this.reach(organizationId, userId);
+    if (itIsQuietNow(now, reach.timezone)) return 'held';
     /* Only what has not been said to this person yet. */
     const told = await this.prisma.suiteEvent.findMany({ where: { organizationId, kind: 'told', toUserId: userId, ref: { in: mine.refs.map((r) => r.id) } }, select: { ref: true } }).catch(() => []);
     const said = new Set((told ?? []).map((t) => t.ref));
@@ -127,7 +123,6 @@ export class ARequestToldOnWhatsApp {
     const paragraph = theSummaryParagraph(mine.counts, mine.oldestWorkingDays);
     const base = (this.config?.get<string>('resend.frontendUrl') || '').replace(/\/$/, '');
     const link = `${base}/today`;
-    const reach = await this.reach(organizationId, userId);
     let how: 'whatsapp' | 'email' | null = null;
     if (this.whatsapp && reach.phone) {
       const m = theSummaryOnWhatsApp(user.firstName, paragraph, link);
@@ -150,7 +145,7 @@ export class ARequestToldOnWhatsApp {
   /** The morning sweep: every approver something waits for whom nothing has been said about yet, each once. */
   async theMorningSweep(now: Date = new Date()): Promise<{ whatsapp: number; email: number; held: number }> {
     const out = { whatsapp: 0, email: 0, held: 0 };
-    if (!this.queue || itIsQuietNow(now)) return out;
+    if (!this.queue) return out;
     const orgs = await this.prisma.organizationSuite.findMany({ where: { suite: { in: ['leave', 'spend'] }, isOn: true }, select: { organizationId: true } }).catch(() => []);
     for (const organizationId of [...new Set((orgs ?? []).map((o) => o.organizationId))]) {
       try {
@@ -283,10 +278,10 @@ export class ARequestToldOnWhatsApp {
   }
 
   /** Their WhatsApp number and first name: the roster's number first, then the one they typed into Settings. */
-  async reach(organizationId: string, userId: string): Promise<{ phone: string | null; firstName: string | null }> {
-    const entry = await theirRosterEntry(this.prisma, organizationId, userId, { phone: true, givenName: true }).catch(() => null);
+  async reach(organizationId: string, userId: string): Promise<{ phone: string | null; firstName: string | null; timezone?: string | null }> {
+    const entry = await theirRosterEntry(this.prisma, organizationId, userId, { phone: true, givenName: true, timezone: true }).catch(() => null);
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { firstName: true, phoneNumber: true, deletedAt: true } }).catch(() => null);
     if (user?.deletedAt) return { phone: null, firstName: null };
-    return { phone: entry?.phone ?? user?.phoneNumber ?? null, firstName: user?.firstName?.trim() || entry?.givenName?.trim() || null };
+    return { phone: entry?.phone ?? user?.phoneNumber ?? null, firstName: user?.firstName?.trim() || entry?.givenName?.trim() || null, timezone: entry?.timezone ?? null };
   }
 }

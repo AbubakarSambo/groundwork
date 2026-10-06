@@ -47,18 +47,22 @@ describe('what each reader reads of the queue', () => {
     expect(q).toMatchObject({ counts: { all: 0, leave: 0, spend: 0, pastTheDeadline: 0 }, items: [], says: 'Nothing is waiting for you to approve or decline.' });
   });
 
+  it('Operations’ manager reads her queue in full sentences with no colon', async () => {
+    const w = aHundredPeople();
+    expect((await w.queue.queue(w.as('ops.manager'), {}, TODAY)).says).toBe('Eight requests are waiting for you to approve or decline. Five are for leave and three are to spend money. Two of them have waited longer than your organisation allows before a request is passed on.');
+    expect((await w.queue.queue(w.as('finance.m1'), {}, TODAY)).says).toBe('27 requests are waiting for you to approve or decline. Of them, 18 have waited longer than your organisation allows before a request is passed on.');
+  });
+
   it('Operations’ manager, whose stand-in is away too, still reads her team’s five leave requests and three to spend', async () => {
     const w = aHundredPeople();
     expect((await w.queue.queue(w.as('ops.manager'), {}, TODAY)).counts).toMatchObject({ all: 8, leave: 5, spend: 3 });
     expect((await w.queue.queue(w.as('support.manager'), {}, TODAY)).counts).toMatchObject({ all: 6, leave: 3, spend: 3 });
   });
 
-  it('a plain member who stands in for Procurement’s manager reads the team’s requests but never his own', async () => {
+  it('a plain member who stands in for Procurement’s manager has no right to decide, so reads nothing of the team’s, which stays with the manager until it is passed on by rule', async () => {
     const w = aHundredPeople();
-    const q = await w.queue.queue(w.as('procurement.m1'), { pageSize: 100 }, TODAY);
-    expect(q.counts).toMatchObject({ all: 4, leave: 2, spend: 2 });
-    expect(q.items.map((i) => i.firstName)).not.toContain(w.people.find((p) => p.key === 'procurement.m1')!.first);
-    expect(q.items.every((i) => i.team === 'Procurement' && i.standingIn)).toBe(true);
+    expect(await w.queue.queue(w.as('procurement.m1'), { pageSize: 100 }, TODAY)).toMatchObject({ counts: { all: 0 }, items: [] });
+    expect((await w.queue.queue(w.as('procurement.manager'), { pageSize: 100 }, TODAY)).counts.all).toBeGreaterThanOrEqual(6);
   });
 
   it('nobody who has nothing to decide reads anybody else’s: the person who asked, HR, an admin whom nothing has reached, another member', async () => {
@@ -156,7 +160,7 @@ describe('what the clash says, to the people who read it', () => {
     expect(asked).toHaveLength(2);
     const off = w.people.filter((p) => ['ops.m1', 'ops.m2', 'ops.m4', 'ops.m3'].includes(p.key)).map((p) => p.first);
     for (const i of asked) {
-      expect(i.clash).toEqual({ count: 4, names: expect.arrayContaining(off), says: expect.stringMatching(/ are also off on some of those days, so Operations would be five short\.$/) });
+      expect(i.clash).toEqual({ count: 3, names: expect.arrayContaining(off), says: expect.stringMatching(/ are also off on some of those days\. On the busiest of them, Operations would be four short\.$/) });
     }
     /* A request in a team where nobody is off has no clash. */
     expect(q.items.find((i) => i.team === 'Operations' && i.startsOn === '2026-10-21')!.clash).toBeNull();

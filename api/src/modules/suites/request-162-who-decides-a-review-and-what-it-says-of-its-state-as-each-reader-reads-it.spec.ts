@@ -93,15 +93,18 @@ describe('2. where a review stands is true of this review', () => {
     expect(await stands('u-wairimu')).toBe('Started on 1 October 2026. Aisha can read it and add a view of their own.');
   });
   it('the words are written: Wairimu reads "You have written", Grace reads her name, and the person is still to add a view', async () => {
-    expect(await stands('u-wairimu', wrote)).toBe('Started on 1 October 2026. You have written, and Aisha can read it and add a view of their own.');
-    expect(await stands('u-grace', wrote)).toBe('Started on 1 October 2026. Wairimu has written, and Aisha can read it and add a view of their own.');
+    expect(await stands('u-wairimu', wrote)).toBe('Started on 1 October 2026. You have written the review, and Aisha can read it and add a view of their own.');
+    expect(await stands('u-grace', wrote)).toBe('Started on 1 October 2026. Wairimu has written the review, and Aisha can read it and add a view of their own.');
   });
   it('only her view is in: it says so, and that the words are still to be written', async () => {
-    expect(await stands('u-grace', theirView)).toBe('Started on 1 October 2026. Aisha has added a view of their own, and the words that go with it have not been written yet.');
+    expect(await stands('u-grace', theirView)).toBe('Started on 1 October 2026. Aisha has added a view of their own. Wairimu has not written the review yet.');
+  });
+  it('only her view is in, and the one who writes is the reader: "You have not written the review yet."', async () => {
+    expect(await stands('u-wairimu', theirView)).toBe('Started on 1 October 2026. Aisha has added a view of their own. You have not written the review yet.');
   });
   it('both are in: it waits for a decision', async () => {
-    expect(await stands('u-wairimu', (r) => { wrote(r); theirView(r); })).toBe('Started on 1 October 2026. You have written and Aisha has added a view of their own. It now waits for a decision.');
-    expect(await stands('u-grace', (r) => { wrote(r); theirView(r); })).toBe('Started on 1 October 2026. Wairimu has written and Aisha has added a view of their own. It now waits for a decision.');
+    expect(await stands('u-wairimu', (r) => { wrote(r); theirView(r); })).toBe('Started on 1 October 2026. You have written the review, and Aisha has added a view of their own. It now waits for your decision.');
+    expect(await stands('u-grace', (r) => { wrote(r); theirView(r); })).toBe('Started on 1 October 2026. Wairimu has written the review, and Aisha has added a view of their own. It now waits for Wairimu to decide.');
   });
 });
 

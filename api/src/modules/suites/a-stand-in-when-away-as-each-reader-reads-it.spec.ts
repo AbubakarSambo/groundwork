@@ -109,22 +109,37 @@ describe('when the hand-over does not happen', () => {
   });
 });
 
-describe('a plain member who stands in', () => {
-  it('opens the leave and spending boards as an approver while she stands in, reads only the requests that wait for her there, and not before or after', async () => {
+describe('only the manager’s step, and only to a lead or an admin (decision 85: approvers are named by rule)', () => {
+  it('a plain member who stands in gets no right to decide: no board, no queue, and the request stays with the manager', async () => {
     const w = aHundredPeople();
-    const board = await w.leaveBoard.board(w.as('procurement.m1'), TODAY);
-    expect(board.reader).toBe('approver');
-    expect(board.waiting.length).toBeGreaterThan(0);
-    expect(board.waiting.every((x) => x.mayDecide)).toBe(true);
-    expect(board.waiting.map((x) => x.id)).not.toContain(w.leave.find((r) => r.userId === idOf('procurement.m1') && r.status === 'waiting')!.id);
-    expect((await w.spending.board(w.as('procurement.m1'), TODAY)).reader).toBe('approver');
-    for (const day of ['2026-10-05', '2026-10-12']) {
-      await expect(w.leaveBoard.board(w.as('procurement.m1'), new Date(`${day}T09:00:00Z`))).rejects.toThrow(ForbiddenException);
-    }
+    await expect(w.leaveBoard.board(w.as('procurement.m1'), TODAY)).rejects.toThrow('Only an admin or a lead can open this board.');
+    await expect(w.spending.board(w.as('procurement.m1'), TODAY)).rejects.toThrow(ForbiddenException);
+    expect(await w.queue.queue(w.as('procurement.m1'), {}, TODAY)).toMatchObject({ counts: { all: 0 }, items: [] });
+    const request = w.leave.find((r) => r.userId === idOf('procurement.m2') && r.status === 'waiting')!;
+    await expect(w.leaveBoard.decide(w.as('procurement.m1'), request.id, 'approved')).rejects.toThrow(ForbiddenException);
   });
 
-  it('another plain member, who stands in for nobody, is refused the board as before', async () => {
+  it('a step the head, finance, HR or the budget holder decides is never handed over, even when that person is away with a stand-in', async () => {
     const w = aHundredPeople();
-    await expect(w.leaveBoard.board(w.as('procurement.m2'), TODAY)).rejects.toThrow('Only an admin or a lead can open this board.');
+    /* Finance is on leave this week, and her leave names a lead as the stand-in. */
+    w.leave.push({ ...w.leave[0], id: 'finance-away', userId: idOf('finance.m1'), startsOn: new Date('2026-10-06T00:00:00Z'), endsOn: new Date('2026-10-09T00:00:00Z'), status: 'approved', standInUserId: idOf('eng.manager') });
+    expect((await w.queue.queue(w.as('finance.m1'), { pageSize: 100 }, TODAY)).counts.all).toBe(27);
+    expect((await w.queue.queue(w.as('eng.manager'), { suite: 'spend', pageSize: 100 }, TODAY)).items.filter((i) => i.standingIn)).toEqual([]);
+    /* The head of Operations (the budget and head rules) with a stand-in: her one request above the limit stays hers. */
+    w.leave.push({ ...w.leave[0], id: 'head-away', userId: idOf('ops.head'), startsOn: new Date('2026-10-06T00:00:00Z'), endsOn: new Date('2026-10-09T00:00:00Z'), status: 'approved', standInUserId: idOf('eng.manager') });
+    expect((await w.queue.queue(w.as('ops.head'), {}, TODAY)).counts.all).toBe(1);
+  });
+
+  it('a lead stands in, and the spending board serves who the approver is standing in for, and not only a sentence', async () => {
+    const w = aHundredPeople();
+    const board = await w.spending.board(w.as('sales.head'), TODAY);
+    const manager = w.people.find((p) => p.key === 'sales.manager')!.first;
+    const head = w.people.find((p) => p.key === 'sales.head')!.first;
+    const mine = board.waiting.find((x) => x.mayDecide && x.approver.kind === 'person' && (x.approver as any).standingInFor)!;
+    expect(mine.approver).toEqual({ kind: 'person', firstName: head, standingInFor: manager });
+    expect(mine.where).toBe('It is waiting for you.');
+    const other = (await w.spending.board(w.as('ceo'), TODAY)).waiting.find((x) => x.id === mine.id)!;
+    expect(other.approver).toEqual({ kind: 'person', firstName: head, standingInFor: manager });
+    expect(other.where).toBe(`It is waiting for ${head}, who is standing in for ${manager}.`);
   });
 });
