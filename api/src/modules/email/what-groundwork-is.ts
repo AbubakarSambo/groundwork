@@ -18,6 +18,7 @@
  * everything else is about the work.
  */
 import { whatThisMailIs } from './nothing-goes-out-that-was-turned-off';
+import { whoSeesWhatYouSayIn } from './who-sees-what-you-say';
 
 /** True where this footer belongs. */
 export function shouldSayWhatGroundworkIs(sender: string | undefined): boolean {
@@ -27,21 +28,24 @@ export function shouldSayWhatGroundworkIs(sender: string | undefined): boolean {
 }
 
 /**
- * One short paragraph, in the same words the product uses on screen. The privacy sentence is the
- * load-bearing one and it is TRUE as written: accounts are private until the record is released to
- * everybody at once, and the record does not quote anybody.
+ * One short paragraph, in the same words the product uses on screen. The sentence about who sees what a person writes is the
+ * invitation's own (whoSeesWhatYouSay): what people say in a check-in can be read by the people in it, or only by whoever runs it
+ * where the people taking part do not see each other (a cohort, a review). It used to say "What you write is not shown to anybody
+ * until the record is released to everybody at the same time, and the record does not quote you", which is not true (decision 4).
  */
-export const WHAT_GROUNDWORK_IS =
-  '<p style="font-size:12px;color:#9B9590;line-height:1.6;margin-top:20px;border-top:1px solid #E8E5DE;padding-top:12px;">' +
-  'Groundwork is where the people involved in a piece of work each give their own account of it, ' +
-  'privately, and get one shared record back. What you write is not shown to anybody until the ' +
-  'record is released to everybody at the same time, and the record does not quote you.' +
-  '</p>';
+export function whatGroundworkIs(whoSees: string): string {
+  return '<p style="font-size:12px;color:#9B9590;line-height:1.6;margin-top:20px;border-top:1px solid #E8E5DE;padding-top:12px;">' +
+    'Groundwork is where the people involved in a piece of work each give their own account of it, and get one shared record back. ' +
+    `${whoSees.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</p>`;
+}
 
-export function withWhatGroundworkIs(html: string, sender: string | undefined): string {
+/** With the wording for a team check-in, for a mail that knows nothing about which check-in it is. */
+export const WHAT_GROUNDWORK_IS = whatGroundworkIs(whoSeesWhatYouSayIn(null));
+
+export function withWhatGroundworkIs(html: string, sender: string | undefined, whoSees?: string): string {
   if (!shouldSayWhatGroundworkIs(sender)) return html;
   /* Not twice. Three mails say it in their own words already, and a second copy underneath reads
      as a template that does not know what it has said. */
   if (/Groundwork is where the people involved/.test(html)) return html;
-  return html + WHAT_GROUNDWORK_IS;
+  return html + (whoSees ? whatGroundworkIs(whoSees) : WHAT_GROUNDWORK_IS);
 }

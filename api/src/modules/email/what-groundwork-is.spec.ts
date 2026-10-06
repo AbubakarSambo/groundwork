@@ -33,8 +33,10 @@ describe('where it belongs', () => {
 describe('what it says', () => {
   it('says what the product is and who sees what somebody writes', () => {
     expect(WHAT_GROUNDWORK_IS).toMatch(/each give their own account/);
-    expect(WHAT_GROUNDWORK_IS).toMatch(/not shown to anybody until the record is released/);
-    expect(WHAT_GROUNDWORK_IS).toMatch(/does not quote you/);
+    /* Changed on 7 October: it said "not shown to anybody until the record is released ... does not quote you", which is not true (decision 4).
+       It now says what the invitation says: who can read what a person says. */
+    expect(WHAT_GROUNDWORK_IS).toMatch(/The people in this check-in, including your manager, can see what you say in it\./);
+    expect(WHAT_GROUNDWORK_IS).not.toMatch(/not shown to anybody|does not quote you|privately/);
   });
 
   it('claims nothing the product does not do', () => {
@@ -66,7 +68,7 @@ describe('and the sender applies it once, for every mail', () => {
     .replace(/^\s*\/\/.*$/gm, '');
 
   it('is applied in sendEmail rather than in the templates', () => {
-    expect(src).toContain('withWhatGroundworkIs(options.html, sender)');
+    expect(src).toContain('withWhatGroundworkIs(options.html, sender,');
   });
 
   it('before the send and before the dev log, so what is logged is what goes out', () => {

@@ -369,7 +369,7 @@ The prototype has 7 people you can switch between at the top. The modules name t
 
 **Rules:** a person’s load is theirs. Admins only see how many check-ins someone is in.
 
-**Backend:** Partly. The board notices when a check-in waits on another team, from the text. **Missing:** check-ins linked to each other as records.
+**Backend:** Built (request 18, 1 October). A handoff records which other check-in it waits on (`waitingOnGroundId`), only when the words said name exactly one; `GET /grounds/:id/links` serves what each reader may open of the links; `GET /grounds/:id/blocker-trace` follows a blocker back; the You board carries what is asked of the reader. A reader sees only what they may already open.
 
 ## E. The suites
 
@@ -588,7 +588,7 @@ The engine is what runs through every module. It must do all of the following, i
 | 8 | Contextual suggestions | Without being asked, it brings up things from your history that may matter now | “This may be relevant”, from the company’s memory | Partly. **Missing:** suggestions from your own history (“Last time Green Mart said yes, the deposit took three weeks. You may want to ask for it now.”) |
 | 9 | Social and context awareness | It understands how an action or decision affects other people and the situation around it | Waiting on other teams, where a blocker started, help nobody mentioned | Partly. **Missing:** telling someone who their delay affects (“If this slips, Kevin cannot finish the reply”) |
 | 10 | Cross-person intelligence | It compares patterns across people, roles, teams and time | The same problem in five teams, what new people keep asking, counties compared without ranking | Shown |
-| 11 | Cross-reference | It connects conversations, documents, goals, decisions, tasks, people and events | Proof from documents and payments, links between check-ins, the blocker trace | Partly. **Missing in the backend:** check-ins, goals and decisions linked as records |
+| 11 | Cross-reference | It connects conversations, documents, goals, decisions, tasks, people and events | Proof from documents and payments, links between check-ins, the blocker trace | Partly. Check-ins are linked as records (request 18); goals and decisions are not |
 | 12 | Pattern detection | It finds patterns that only show across weeks, months, people or conversations | 49 kinds of pattern, shown after three periods | Shown |
 | 13 | Synthesis | It turns scattered information into one clear picture, and explains what it means | Reports, “In short”, “Where the matter stands” | Shown |
 | 14 | Institutional memory | It keeps the organisation’s context: decisions and why they were made, relationships, promises and lessons | Learnings, commitments, “tried before”, the handbook, decisions with reasons | Shown |

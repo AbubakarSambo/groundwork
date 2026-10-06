@@ -18,7 +18,7 @@ import { aDateSaid } from './a-dump-is-many-things';
  * A name nobody on the check-in has is kept, and said out loud, never guessed onto somebody else.
  */
 
-export type PlanProposalKind = 'goal' | 'role' | 'commitment' | 'rule' | 'question' | 'decision' | 'date';
+export type PlanProposalKind = 'goal' | 'role' | 'commitment' | 'rule' | 'question' | 'decision' | 'date' | 'person';
 
 /** What the model returns for one thing in the plan, before any of it is believed. */
 export interface PlanRead {
@@ -44,6 +44,8 @@ export interface PlanProposalFields {
   number?: number;
   /** The date, exactly as the plan wrote it. */
   date?: string;
+  /** A person card only: the email address the plan itself wrote beside the name, if it did. Never guessed. */
+  email?: string;
 }
 
 export interface PlanProposal {
@@ -81,6 +83,7 @@ export interface SomebodyNamed {
   name: string;
 }
 
+/* What the model may emit. A person to add is never the model's: the code finds the names no proposal could be pinned to. */
 const KINDS: PlanProposalKind[] = ['goal', 'role', 'commitment', 'rule', 'question', 'decision', 'date'];
 
 const LANDS_IN: Record<PlanProposalKind, string> = {
@@ -91,6 +94,7 @@ const LANDS_IN: Record<PlanProposalKind, string> = {
   question: 'Questions you want asked',
   decision: 'Still to decide',
   date: 'Notes',
+  person: 'People',
 };
 
 const A_KIND: Record<PlanProposalKind, string> = {
@@ -101,6 +105,7 @@ const A_KIND: Record<PlanProposalKind, string> = {
   question: 'A question',
   decision: 'A decision',
   date: 'A date',
+  person: 'A person',
 };
 
 /** Lower case, one space, straight quotes and dashes, so a quote copied with curly quotes still matches. */
@@ -177,12 +182,39 @@ export function sentenceFor(kind: PlanProposalKind, f: PlanProposalFields): stri
     }
     case 'date':
       return aDateSaid(what, (f.date ?? '').replace(/^by\s+/i, 'by '));
+    case 'person':
+      return `Add ${f.personName ?? f.what} to this check-in?`;
     case 'rule':
     default: {
       const s = what.charAt(0).toUpperCase() + what.slice(1);
       return `${s}.`;
     }
   }
+}
+
+export const NO_EMAIL_IN_THE_PLAN = (name: string) =>
+  `The plan gives no email address for ${name}, so you will be asked for one. Nobody is invited until you say yes.`;
+export const WILL_BE_INVITED = (name: string, email: string) =>
+  `${name} will be added to this check-in and invited at ${email}, but only when you say yes.`;
+
+/** The first email address written in these words, if exactly one is. Never taken from anywhere else. */
+function anEmailIn(words: string): string | null {
+  const found = [...new Set(words.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g) ?? [])];
+  return found.length === 1 ? found[0] : null;
+}
+
+/** The card that offers to add one person the plan names. The words are the plan's own, and so is the name. */
+export function aPersonToAdd(name: string, quote: string, from: string, id: string): PlanProposal {
+  const email = anEmailIn(quote);
+  const fields: PlanProposalFields = { what: name, personName: name, ...(email ? { email } : {}) };
+  const says = sentenceFor('person', fields);
+  return {
+    id, kind: 'person', says, fields, fromThePlan: quote,
+    heading: `${A_KIND.person}, from ${from}. They would be added to this check-in and invited.`,
+    landsIn: LANDS_IN.person, from,
+    note: email ? WILL_BE_INVITED(name, email) : NO_EMAIL_IN_THE_PLAN(name),
+    line: says, saidAs: quote,
+  };
 }
 
 /**
@@ -282,6 +314,17 @@ export function proposalsFromAPlan(
         ? { whichWay: theQuestionAboutWhichWay(fields.number) as string, directionSuggested: whatTheWordsSuggest(`${what} ${quote}`, fields.number) }
         : {}),
     });
+  }
+  /* A NAME THE PLAN USES THAT IS NOT ON THIS CHECK-IN: one card to add them, with the first words that name them. Only for a name
+     the plan really holds, and only where no proposal could be pinned to the person; added and invited only on the lead's yes. */
+  const offered = new Set<string>();
+  for (const pr of [...out]) {
+    const nm = pr.fields.personName;
+    if (!nm || pr.fields.participantId || pr.kind === 'person') continue;
+    const key = flatten(nm);
+    if (offered.has(key) || whoIs(nm)) continue;
+    offered.add(key);
+    out.push(aPersonToAdd(nm, pr.fromThePlan, from, `person-${out.length + 1}`));
   }
   return out;
 }

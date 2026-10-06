@@ -5190,7 +5190,7 @@ happened, and what is in the way.`;
       } catch { continue; }
       try {
         if (aStandingUpdate && theOneLine) await this.email.sendTeamUpdateAllIn(p.email, theOneLine, ground.participants.length, linkFor(p), sharedByAnAdminSentence);
-        else await this.email.sendReportReady(p.email, ground.label, linkFor(p), sharedByAnAdminSentence);
+        else await this.email.sendReportReady(p.email, ground.label, linkFor(p), sharedByAnAdminSentence, ground.id);
       } catch (err: any) {
         failed += 1;
         this.logger.error(`Report-ready mail failed for ${p.email} on ${groundId} round ${sessionNumber}: ${err?.message}`);

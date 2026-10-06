@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService } from './grounds.service';
 import { companyPage, type CompanyPage, type OwnerDetail } from './the-company-page';
 import type { StoredPicture } from './the-company-picture';
+import { theStrategyAsRead } from '../subjects/the-strategy-over-time';
 import { keptForTheOrganisation, mayReadWhatIsKept } from '../knowledge/organisation-memory';
 
 /** Said on the page, so the people who read it can see who does. */
@@ -107,6 +108,9 @@ export class CompanyService {
       readerUserId: reader.userId,
       readsThePicture,
     });
+
+    /* The strategy's versions, read as they were kept. Never built here. Left null when none has been kept, and when the read fails. */
+    try { page.strategy = await theStrategyAsRead(this.prisma, org, now); } catch { page.strategy = null; }
 
     /* What was kept for the organisation, for the readers who may read it. Read, never built, on opening. */
     try {

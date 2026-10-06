@@ -1,5 +1,6 @@
 import * as crypto from 'crypto';
-import { Injectable, Logger, UnauthorizedException, BadRequestException, Optional } from '@nestjs/common';
+import { sealTheirKey, theirKey, theServerCanKeepSecrets, THE_SERVER_HAS_NO_KEY, isSealed, THEIR_KEYS_CANNOT_BE_OPENED, KEYS_NEED_TYPING_AGAIN, theKeysCannotBeOpened, whyItCannot } from './an-organisations-own-keys';
+import { OnModuleInit, Injectable, Logger, UnauthorizedException, BadRequestException, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 /** Did it go. One shape from both numbers; see sendMessage. */
@@ -61,7 +62,7 @@ import { ATemplate, insideTheServiceWindow, isBusinessInitiated, WENT_BEFORE_THI
  * moment credentials land, with no code change.
  */
 @Injectable()
-export class WhatsAppService {
+export class WhatsAppService implements OnModuleInit {
   private readonly logger = new Logger(WhatsAppService.name);
 
   constructor(
@@ -170,7 +171,7 @@ export class WhatsAppService {
     const text = WhatsAppService.heldSaying(saying);
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
     let result: SendResult;
-    if (own?.enabled) result = await this.deliver(own.phoneNumberId, own.accessToken, to, text);
+    if (own?.enabled) result = theirKey(own, 'accessToken') ? await this.deliver(own.phoneNumberId, theirKey(own, 'accessToken'), to, text) : { sent: false, error: THEIR_KEYS_CANNOT_BE_OPENED };
     else if (await this.isEnabled()) { const ours = await this.ours(); result = await this.post(ours.phoneNumberId ?? '', ours.accessToken ?? '', to, text); }
     else result = { sent: false, error: 'WhatsApp is not configured on this deployment' };
     /* Written down, never counted: this one is free. */
@@ -480,15 +481,21 @@ export class WhatsAppService {
     if (held) return held;
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
     if (!own || !own.enabled) return this.sendOnOurNumber(organizationId, to, text, context);
+    if (!theirKey(own, 'accessToken')) {
+      /* The token is sealed and this server cannot open it (the key was changed or removed). Nothing is sent, and the reason is kept. */
+      const result: SendResult = { sent: false, error: THEIR_KEYS_CANNOT_BE_OPENED };
+      await this.writeItDown(organizationId, to, result, context);
+      return result;
+    }
     const gate = await this.mayInitiate(organizationId, to, context, 'theirs', text);
     if (!gate.free) {
       if (gate.quiet) return { sent: false, error: gate.because };
-      if (gate.template) return this.sendTemplate(own.phoneNumberId, own.accessToken, organizationId, to, text, gate.template, gate.params ? { ...context, params: gate.params } : context);
+      if (gate.template) return this.sendTemplate(own.phoneNumberId, theirKey(own, 'accessToken'), organizationId, to, text, gate.template, gate.params ? { ...context, params: gate.params } : context);
       const result: SendResult = { sent: false, error: gate.because };
       await this.writeItDown(organizationId, to, result, context);
       return result;
     }
-    const result = await this.deliver(own.phoneNumberId, own.accessToken, to, text);
+    const result = await this.deliver(own.phoneNumberId, theirKey(own, 'accessToken'), to, text);
     if (result.sent) await this.prisma.whatsAppConnection.update({ where: { id: own.id }, data: { lastOutboundAt: new Date() } }).catch(() => undefined);
     await this.writeItDown(organizationId, to, result, context);
     return this.counted(organizationId, result);
@@ -554,11 +561,12 @@ export class WhatsAppService {
     if (await this.heldFor(organizationId, WhatsAppService.normalize(phoneNumber), { kind: 'which-one' })) return false;
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
     if (!own || !own.enabled) return (await this.sendOnOurNumber(organizationId, WhatsAppService.normalize(phoneNumber), fallbackText, { kind: 'which-one' })).sent;
+    if (!theirKey(own, 'accessToken')) { this.logger.warn(`WhatsApp list not sent for org ${organizationId}: ${THEIR_KEYS_CANNOT_BE_OPENED}`); return false; }
     const to = WhatsAppService.normalize(phoneNumber).replace('+', '');
     try {
       const res = await fetch(`${this.graphBase()}/${own.phoneNumberId}/messages`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${own.accessToken}`, 'Content-Type': 'application/json' },
+        headers: { Authorization: `Bearer ${theirKey(own, 'accessToken')}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messaging_product: 'whatsapp', to, type: 'interactive',
           interactive: { type: 'list', body: { text: body.slice(0, 1024) }, action: { button: 'Choose', sections: [{ title: 'Your check-ins', rows: rows.slice(0, 10) }] } },
@@ -569,7 +577,7 @@ export class WhatsAppService {
     } catch (err: any) {
       this.logger.warn(`WhatsApp list failed for ${to}: ${err?.message}; sending the numbered text instead.`);
     }
-    return (await this.counted(organizationId, await this.deliver(own.phoneNumberId, own.accessToken, `+${to}`, fallbackText))).sent;
+    return (await this.counted(organizationId, await this.deliver(own.phoneNumberId, theirKey(own, 'accessToken'), `+${to}`, fallbackText))).sent;
   }
 
   /**
@@ -579,7 +587,7 @@ export class WhatsAppService {
    */
   async fetchMediaFor(organizationId: string | null, mediaId: string): Promise<{ buffer: Buffer; mimeType: string } | null> {
     const own = organizationId ? await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null) : null;
-    const token = own?.accessToken ?? (await this.ours()).accessToken;
+    const token = (own ? theirKey(own, 'accessToken') : undefined) ?? (await this.ours()).accessToken;
     if (!token) return null;
     try {
       const meta = await fetch(`${this.graphBase()}/${mediaId}`, { headers: { Authorization: `Bearer ${token}` } });
@@ -824,6 +832,33 @@ export class WhatsAppService {
     return { personId: byEmail?.id ?? null, userId: user.id, externalId: byEmail?.externalId ?? null };
   }
 
+  /** When the server starts with a key, any organisation's keys that were saved as typed are sealed. Nothing already connected stops working. */
+  async onModuleInit(): Promise<void> {
+    try { await this.sealWhatWasKeptPlain(); } catch (err: any) { this.logger.warn(`Could not seal the organisations' WhatsApp keys: ${err?.message}`); }
+  }
+
+  /** Seals every organisation's access token and app secret that is still kept as typed. Returns how many rows it sealed. */
+  async sealWhatWasKeptPlain(): Promise<number> {
+    const rows = await this.prisma.whatsAppConnection.findMany({ select: { id: true, organizationId: true, accessToken: true, appSecret: true } });
+    /* Sealed keys this server cannot open (the key was changed or removed) are counted and named by organisation, never by key, so somebody
+       finds out before a customer does. Their admin is told on the Connections page. */
+    const cannotOpen = (rows ?? []).filter((r) => (['accessToken', 'appSecret'] as const).some((f) => isSealed(r[f]) && !theirKey(r, f))).map((r) => r.organizationId);
+    if (cannotOpen.length) this.logger.error(`${cannotOpen.length} organisation(s) have WhatsApp keys that this server cannot open, so nothing is sent from their numbers and their messages are refused until the keys are typed in again: ${cannotOpen.join(', ')}`);
+    if (!theServerCanKeepSecrets()) return 0;
+    let sealed = 0;
+    for (const r of rows ?? []) {
+      let did = false;
+      /* One field at a time, and only where the value is still the one that was read: a key typed in since is left alone. */
+      for (const f of ['accessToken', 'appSecret'] as const) {
+        if (!r[f] || isSealed(r[f])) continue;
+        const done = await this.prisma.whatsAppConnection.updateMany({ where: { id: r.id, [f]: r[f] }, data: { [f]: sealTheirKey(r.organizationId, f, r[f]) } });
+        if (done?.count) did = true;
+      }
+      if (did) sealed += 1;
+    }
+    return sealed;
+  }
+
   /** The organisation's connection, with the secrets left out, for its admin to read. */
   async connectionFor(organizationId: string) {
     const c = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } });
@@ -840,7 +875,10 @@ export class WhatsAppService {
       lastOutboundAt: c.lastOutboundAt,
       /* U.18: the callback address is proven once Meta's handshake answered, or a message came in through it. */
       webhookProvenAt: c.webhookVerifiedAt ?? c.lastInboundAt ?? null,
-      tokenEndsWith: c.accessToken.slice(-4),
+      tokenEndsWith: theirKey(c, 'accessToken').slice(-4),
+      /* A sealed key this server cannot open. The admin reads what to do; nothing is sent from the number until then. */
+      keysNeedTypingAgain: theKeysCannotBeOpened(c),
+      ...(theKeysCannotBeOpened(c) ? { keysNeedTypingAgainSays: KEYS_NEED_TYPING_AGAIN } : {}),
     };
   }
 
@@ -850,6 +888,11 @@ export class WhatsAppService {
     const appSecret = dto.appSecret?.trim();
     if (!phoneNumberId) throw new BadRequestException('phoneNumberId is required: the id Meta gives the number, not the number itself.');
     if (!/^\d{6,}$/.test(phoneNumberId)) throw new BadRequestException('phoneNumberId is digits only. It is on the WhatsApp > API Setup page in Meta Business.');
+    /* Secrets are never written in the clear: a NEW secret with no key on the server is not saved, and the admin is told, in words that are about us and not about a setting. The setting's name goes to the log only. A save with no new secret (the display number, say) needs no key. */
+    if ((accessToken || appSecret) && !theServerCanKeepSecrets()) {
+      this.logger.error(`An organisation (${organizationId}) tried to save WhatsApp keys, and they were not saved: ${whyItCannot()} (SETTINGS_ENCRYPTION_KEY).`);
+      throw new BadRequestException(THE_SERVER_HAS_NO_KEY);
+    }
     const existing = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } });
     if (!accessToken && !existing) throw new BadRequestException('accessToken is required the first time: the permanent system-user token from Meta.');
     if (!appSecret && !existing) throw new BadRequestException("appSecret is required the first time: the App Secret from your Meta app, used to check that inbound messages are Meta's.");
@@ -858,11 +901,12 @@ export class WhatsAppService {
       where: { organizationId },
       create: {
         organizationId, phoneNumberId, businessAccountId: dto.businessAccountId?.trim() || null, displayNumber: dto.displayNumber?.trim() || null,
-        accessToken: accessToken!, appSecret: appSecret!, verifyToken, enabled: true,
+        /* Only built when they were typed: an existing connection saved again without them keeps its sealed ones (the update below). */
+        accessToken: accessToken ? sealTheirKey(organizationId, 'accessToken', accessToken) : '', appSecret: appSecret ? sealTheirKey(organizationId, 'appSecret', appSecret) : '', verifyToken, enabled: true,
       },
       update: {
         phoneNumberId, businessAccountId: dto.businessAccountId?.trim() || null, displayNumber: dto.displayNumber?.trim() || null,
-        ...(accessToken ? { accessToken } : {}), ...(appSecret ? { appSecret } : {}),
+        ...(accessToken ? { accessToken: sealTheirKey(organizationId, 'accessToken', accessToken) } : {}), ...(appSecret ? { appSecret: sealTheirKey(organizationId, 'appSecret', appSecret) } : {}),
       },
     });
     this.logger.log(`WhatsApp connected for org ${organizationId} on number id ${row.phoneNumberId}`);
@@ -884,7 +928,8 @@ export class WhatsAppService {
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } });
     if (!own) throw new BadRequestException('Connect a number first.');
     if (!toNumber?.trim()) throw new BadRequestException('Say which number to send the test to.');
-    const ok = (await this.deliver(own.phoneNumberId, own.accessToken, await this.tidyFor(organizationId, toNumber), 'Groundwork is connected to this number. Reply here when a check-in is open and it goes into the record.')).sent;
+    if (!theirKey(own, 'accessToken')) throw new BadRequestException(KEYS_NEED_TYPING_AGAIN);
+    const ok = (await this.deliver(own.phoneNumberId, theirKey(own, 'accessToken'), await this.tidyFor(organizationId, toNumber), 'Groundwork is connected to this number. Reply here when a check-in is open and it goes into the record.')).sent;
     if (!ok) throw new BadRequestException('Meta refused the message. Check the token, the number id, and that this number may receive messages from your Meta app.');
     await this.prisma.whatsAppConnection.update({ where: { id: own.id }, data: { lastOutboundAt: new Date() } });
     return { sent: true };
@@ -892,6 +937,9 @@ export class WhatsAppService {
 
   /** Verify an inbound POST against the organisation's own app secret. Same rule as the platform route. */
   verifySignatureWith(appSecret: string, headers: Record<string, string | string[] | undefined>, raw: Buffer): void {
+    /* No secret to check against (a sealed one this server cannot open) is never a reason to accept: an HMAC made with an empty key is
+       something anybody can make. */
+    if (!appSecret) throw new UnauthorizedException('WhatsApp webhook signature cannot be verified');
     const header = headers['x-hub-signature-256'];
     const provided = Array.isArray(header) ? header[0] : header;
     if (!provided || !provided.startsWith('sha256=')) throw new UnauthorizedException('Missing or malformed WhatsApp signature');

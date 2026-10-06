@@ -125,6 +125,8 @@ export function theProposalInstruction(key: string, current: string, faults: AFa
     '',
     'Do not write rules about privacy, patterns, who may read what, or how people\'s own words are quoted. Another part of the product owns those and a rule here is refused.',
     '',
+    'Some of the listed sentences may not be faults at all. If a sentence is fine as it stands, leave it out of your thinking.',
+    '',
     'THE FAULTS',
     ...faults.map((f, i) => `${i + 1}. "${f.quote}"\n   What is wrong: ${f.whatIsWrong}`),
     '',

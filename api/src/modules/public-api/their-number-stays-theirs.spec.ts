@@ -133,3 +133,19 @@ describe('the first message into a check-in that has not started', () => {
     expect(route).toMatch(/if \(A_GREETING_ALONE\.test\(text\)( \|\| beginning)?\) \{ await say\(reply\); return; \}/);
   });
 });
+
+/**
+ * THE RELAY CAN BE CALLED WITH THE CREDENTIAL IT IS FOR (piece 5, A). The global session guard refused a machine token on this route
+ * ("User not found or inactive"), so a customer's own system could never pass a message to us. The route takes the session guard off
+ * and puts the machine-token guard, with its scope, in its place; a route that only did the first would be open.
+ */
+import 'reflect-metadata';
+import { WhatsAppForAnOrganisationController } from './whatsapp-for-an-organisation.controller';
+import { MachineTokenGuard } from './machine-token.guard';
+describe('the relay route', () => {
+  const handler = WhatsAppForAnOrganisationController.prototype.relay;
+  it('is not behind the session guard, and is behind the machine-token guard with the scope it needs', () => {
+    expect(Reflect.getMetadata('isPublic', handler)).toBe(true);
+    expect((Reflect.getMetadata('__guards__', handler) as unknown[]).includes(MachineTokenGuard)).toBe(true);
+  });
+});

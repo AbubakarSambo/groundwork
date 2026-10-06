@@ -4,14 +4,8 @@ import { connectWhatsAppFor, youCanAlsoAnswerOnWhatsApp } from '../whatsapp/conn
 import { askName } from '../assistant/ask-name';
 import { peersAreNamedByDefaultOn } from '../reports/peers-are-named';
 
-/** The sentence about who sees what you say, for a check-in (whoSeesWhatYouSay). */
-export function whoSeesWhatYouSayIn(g: { scenario?: any; peersVisibleToEachOther?: boolean | null; organization?: { name?: string | null } | null } | null | undefined): string {
-  const ask = askName(g?.organization?.name ?? null);
-  const together = g ? (g.peersVisibleToEachOther ?? peersAreNamedByDefaultOn(g)) : true;
-  return together
-    ? `The people in this check-in, including your manager, can see what you say in it. Your questions to ${ask} stay private.`
-    : `Whoever runs this check-in can see what you say in it. The other people taking part do not see what you say. Your questions to ${ask} stay private.`;
-}
+export { whoSeesWhatYouSayIn } from './who-sees-what-you-say';
+import { whoSeesWhatYouSayIn } from './who-sees-what-you-say';
 import { keptOffThePhone } from '../whatsapp/a-check-in-kept-off-the-phone';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -27,7 +21,8 @@ import { Resend } from 'resend';
 import * as nodemailer from 'nodemailer';
 import { greeting } from './a-greeting-with-no-name';
 import { howLongInWords } from '../auth/how-long-a-link-lasts';
-import { withWhatGroundworkIs } from './what-groundwork-is';
+import { shouldSayWhatGroundworkIs, withWhatGroundworkIs } from './what-groundwork-is';
+import { haveNotCheckedInSaid, type WhoIsLeft } from './who-has-not-checked-in-yet';
 import { whatTheTeamGets, whatTheLeadGets, THE_TEAM_BUTTON, THE_LEAD_BUTTON } from './one-line-one-link-one-report';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { theAnchorInvitation } from '../entry/the-anchor-people-step';
@@ -480,7 +475,7 @@ export class EmailService implements OnModuleInit {
      * forgot were the ones nobody had read recently. See what-groundwork-is.ts for why the way-back-in
      * mails are excluded.
      */
-    options = { ...options, html: withWhatGroundworkIs(options.html, sender) };
+    options = { ...options, html: withWhatGroundworkIs(options.html, sender, shouldSayWhatGroundworkIs(sender) && !/Groundwork is where the people involved/.test(options.html) ? await this.whoSeesWhatYouSay(context) : undefined) };
 
     /*
      * EVERY MESSAGE CARRIES A WAY OUT, A TEXT PART, AND ITS OWN HEADERS - HERE, ONCE, FOR ALL
@@ -1141,7 +1136,9 @@ export class EmailService implements OnModuleInit {
    * reports/who-shared-it-because-the-lead-left.ts, which builds the sentence. Null in the
    * ordinary case, where the lead released it themselves and nothing extra is said.
    */
-  async sendReportReady(email: string, groundLabel: string, reportUrl: string, sharedByAnAdminSentence?: string): Promise<void> {
+  async sendReportReady(email: string, groundLabel: string, reportUrl: string, sharedByAnAdminSentence?: string, groundId?: string): Promise<void> {
+    /* Who can see what people said, as the invitation says it (whoSeesWhatYouSay): not "it does not quote anybody", which is not true. */
+    const whoSees = await this.whoSeesWhatYouSay(groundId ? { groundId } as DeliveryContext : undefined);
     await this.sendEmail({
       to: email,
       subject: `The shared picture for ${groundLabel} is ready`,
@@ -1155,10 +1152,11 @@ export class EmailService implements OnModuleInit {
        */
       html: this.layout(
         `<p>Everybody on <strong>${escapeHtml(groundLabel)}</strong> has now checked in, so the shared picture is open to all of you at the same moment.</p>` +
-        `<p>It shows where what you each said lines up, where it does not, and the one question worth answering together. It does not quote anybody: the words you wrote stay yours, and the record draws on them without showing them.</p>` +
+        `<p>It shows where what you each said lines up, where it does not, and the one question worth answering together.</p>` +
+        `<p>${escapeHtml(whoSees)}</p>` +
         (sharedByAnAdminSentence ? `<p>${escapeHtml(sharedByAnAdminSentence)}</p>` : '') +
         `<p><a href="${reportUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Read the shared picture →</a></p>` +
-        `<p style="font-size:12px;color:#9B9590;">Groundwork is where the people involved in a piece of work each say how it is going, privately, and get one shared picture back.</p>`,
+        `<p style="font-size:12px;color:#9B9590;">Groundwork is where the people involved in a piece of work each say how it is going, and get one shared picture back.</p>`,
       ),
     }, undefined, 'sendReportReady');
   }
@@ -1270,15 +1268,16 @@ export class EmailService implements OnModuleInit {
   }
 
   /** Participant checked in. The lead is told by the person's name, with how many are still to come. */
-  async sendParticipantCheckedIn(adminEmail: string, participantName: string, groundLabel: string, groundUrl: string, stillPending?: number): Promise<void> {
-    const pendingNote = stillPending && stillPending > 0
-      ? `<p>${stillPending} ${stillPending === 1 ? 'party has' : 'parties have'} not yet checked in. The report generates once everyone is in.</p>`
+  async sendParticipantCheckedIn(adminEmail: string, participantName: string, groundLabel: string, groundUrl: string, stillPending?: number | WhoIsLeft): Promise<void> {
+    const left: WhoIsLeft | undefined = typeof stillPending === 'number' ? { names: [], count: stillPending } : stillPending;
+    const pendingNote = left && left.count > 0
+      ? `<p>${escapeHtml(haveNotCheckedInSaid(left))} The report is made once everyone is in.</p>`
       : `<p>Everyone has now checked in. The shared report is ready to go out.</p>`;
     await this.sendEmail({
       to: adminEmail,
       subject: `${participantName} has checked in on ${groundLabel}`,
       html: this.layout(
-        `<p><strong>${escapeHtml(participantName)}</strong> has checked in on <strong>${escapeHtml(groundLabel)}</strong>. That is theirs done.</p>
+        `<p><strong>${escapeHtml(participantName)}</strong> has checked in on <strong>${escapeHtml(groundLabel)}</strong>.</p>
          ${pendingNote}
          <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View check-in →</a></p>
          <p style="font-size:12px;color:#9B9590;">You can see who has checked in and read what they said in the check-in, and the shared picture once it is ready. Everybody in it is told the moment the picture is ready.</p>`,

@@ -2,6 +2,91 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## A plan names somebody who is not on the check-in, and the old chat takes a short question for a person (6 October, piece 5, parts F and G follow-ups)
+
+**How it was run.** Build `991e5168`, local database `gw_wa_own`, port 3059, with the model. No email is really sent (`EMAIL_SENDS_FOR_REAL=false`).
+
+| Part | Reader | What they read or what happened | Result |
+| --- | --- | --- | --- |
+| F, the plan is read | Wanjiru, the lead | The plan names Amina Yusuf, who is not on the check-in. Among the cards: "Add Amina Yusuf to this check-in?", from "Amina Yusuf will take over the Kisumu accounts", with "The plan gives no email address for Amina Yusuf, so you will be asked for one. Nobody is invited until you say yes." Reading adds nobody. Her commitment cannot be confirmed yet: "Amina Yusuf is not on this check-in yet. Add them first, then confirm this." | 14 of 14 |
+| F, who may | Miriam (in the check-in); Grace (admin) | Both are refused with 403 and nobody is added. | proved |
+| F, the yes | Wanjiru | With no address: "Type Amina Yusuf's email address, so Groundwork can invite them. Nobody is invited until you say yes." Before anything has been said about the check-in, the ordinary rule holds: "Nobody can be invited yet: nothing has been said about what this check-in is for..." and the card stays waiting. After she writes what the check-in is for, a yes with an address adds Amina as a person to take part (not yet signed in) and invites her through the ordinary way. A second yes does nothing more. The card is gone from the waiting list, and now her commitment can be confirmed. | proved |
+| G follow-up, the old chat | Wanjiru | "Ask Miriam which accounts actually have a buying process" through the old chat is now said back first: "Groundwork will ask Miriam Test, word for word, "Which accounts have a buying process?" in Miriam's next check-in. Shall I send it?" and a yes keeps exactly that, about Miriam, for the lead alone, the same row as through Ask. The old chat used to ask what kind of thing it was, and a blind yes made it an expectation of Miriam. | proved |
+| G follow-up, nothing else moved | Wanjiru | "Miriam should sign 12 shops" is answered as before ("Shall I keep "sign 12 shops" as a private note about Miriam that only you can see? ..."). The paste, the line, the note, the document and who-may parts of the side-by-side run are unchanged. | proved |
+
+See `api/journey/a-plan-names-somebody-who-is-not-on-the-check-in.ts` and the side-by-side journey above.
+
+## Context and resources through Ask Groundwork, side by side with the old context chat (6 October, piece 5, part G)
+
+**How it was run.** The build at `cd6ddac9`, local database `gw_wa_own`, port 3059, with model access (the local `api/credentials` linked into the worktree). `release.contextInAskGroundwork` was written as `{"on": true}` in this local database only. The old chat was not switched off or changed. In each part the same words were said twice, on two check-ins that start identical, once through the old routes and once through Ask, and the rows each wrote were then read out of the database. The model reads a paste afresh each time, so one paste was also read through the old chat a second time as a control.
+
+| Part | Reader | What was said, and what each wrote | Result |
+| --- | --- | --- | --- |
+| Switch off | Wanjiru, the lead | "decision: we will drop the pilot" through Ask got "I cannot answer that one yet. Here is what I can do with "decision: we will drop the pilot"." The old chat answered as before. | as it was |
+| Opening the conversation (the setup door) | Wanjiru | Old chat and Ask from inside the check-in both open on "How long should this run? You can give an end date or a number of weeks. I need it to work out how many check-ins there will be." Neither writes anything. | same |
+| A line of context | Wanjiru | Typed in: `DECISION, EVERYONE, "we will drop the pilot"`. Through Ask ("Shall I add "we will drop the pilot" to this check-in's context as a decision?", then yes, "I have added the line to this check-in."): the same row. | identical |
+| A private note about a person | Wanjiru; Miriam | Old route: `NOTE, LEAD_ONLY, "keeps missing the Friday call", about Miriam`. Ask ("Shall I keep "keeps missing the Friday call" as a private note about Miriam that only you can see?", yes, "I have saved the note, and only you can read it."): the same row. Miriam, who is in the check-in, reads none of it. | identical |
+| A paste of plan and notes | Wanjiru | Each yes writes the same kinds, for the same people, read by the same readers: a goal (12 qualified enterprise deals), a commitment (Miriam, send the price list), a decision, a note with the quarter's end date, a strategy line, a way of working, and a question for Miriam kept for the lead and not yet confirmed. The wording of a line varies a little, because the model reads it afresh each time ("Which of your accounts have a buying process?" against "Which accounts actually have a buying process?"). Across the two old runs, one kind (the baseline) came in one run and not the other, and Ask differed from the old chat in no kind but that one. | same kinds |
+| A question for a person | Wanjiru | Said as one short sentence, "Ask Miriam which accounts actually have a buying process", Ask says "Groundwork will ask Miriam Test, word for word, "Which accounts actually have a buying process?" in Miriam's next check-in. Shall I send it?" and, after yes, writes the question about Miriam with its exact words. The old chat does not take a short sentence like that as a question: it asked "For example, is it a goal or a target?", and a blind yes made it an expectation of Miriam. The old chat takes questions only inside a longer paste (the row above). | Ask does more |
+| A document | Wanjiru | The same file added to both check-ins. Through Ask ("I have just added the document"): "Here is the context we have from q3-plan.txt. It is a Q3 sales plan." and its numbers, then a yes writes the goals and a note everybody on the check-in can read. | works |
+| Who may | Grace, an admin; Miriam | On a check-in whose lead is still here, Grace is refused by the old chat (403, "Only Wanjiru Test, who runs this check-in, can change how it is set up...") and Ask writes nothing for her. Once the lead has left, Grace may set it up in both. Miriam is refused by the old chat and Ask writes nothing for her. | same |
+
+12 of 12 checks pass. See `api/journey/context-through-ask-side-by-side-with-the-old-chat.ts`. The existing specs pin the same thing at the code level: Ask's lane calls `GroundsService.contextChat` and `applyContextProposal`, the old chat's own two methods (99 tests in the four related suites pass).
+
+**What would be needed to switch the old chat off.** Nothing in the engine reads or writes differently: the lanes call the old chat's own methods, so a switch changes only where a person types. (1) The screens: the Context and resources page's chat panel, and the buttons that open it, would open Ask with `openedFrom: "check_in_setup"` (supported now) and stop showing the old panel; that is the screens workspace's. (2) Hafsah turns `release.contextInAskGroundwork` on in the live database. (3) Request 92's five live checks run again against the live line, as the screens workspace asked before the old chat goes. (4) The old routes (`POST /grounds/:id/context-chat` and its confirm and decline) can stay in place, so an existing integration or an open page keeps working; switching the chat off means not showing it. Nothing was done to any of these.
+
+## The role interview, and setting up from a plan (6 October, piece 5, parts E and F)
+
+**How it was run.** The same build as above (`cd6ddac9`), local database `gw_wa_own`, port 3059. No model keys are on this computer. The role interview needs none (no model words it). Reading a pasted plan into proposals does need one, so the proposals a plan would give were written as the stored rows that reading leaves; the specs run the reading with a model double and check every quote. Everything after that is the real route.
+
+| Part | Reader | What they read or what happened | Result |
+| --- | --- | --- | --- |
+| E Sending | Wanjiru (a lead, not an admin); Piet (a colleague) | Both are refused with 403. | proved |
+| E | Grace, an admin | Sends it to Miriam for Sales rep. Sending again says "Miriam Test already has the role interview waiting for Sales rep." | proved |
+| E Answering | Miriam, in Ask Groundwork | "What do you own in your job as Sales rep? Tell me in your own words, for example "the sales target and the sales team"." Then "What do you decide yourself, without asking anybody first?", "Who do you depend on to do your job?" and "And who depends on you to do theirs?" Then: You said you own "my own customers and their deals", you decide "what discount I give up to 10 percent", you depend on "the Sales lead and Operations for stock", and "the customers I sign, for their first delivery" depend on you. Shall I save this for the role map? Nothing is written before her yes. | proved |
+| E | Miriam, after yes | "I have saved this for the role map. It shows what the Sales rep job owns. It is about the job and not about you." One row, her words as typed. | proved |
+| E The map | Grace; Wanjiru and Piet; Miriam | Grace reads Sales rep owns "My own customers and their deals", held by Miriam Test and Piet Test. A lead who is not an admin and a colleague are refused (403). Miriam reads her own answers and Piet none. | proved |
+| F Reading | Wanjiru, the lead | Six cards, each with the exact words of the plan: "The goal for qualified enterprise deals is 12 by 30 September.", "Miriam is responsible for the Westgate account.", "Miriam will send the price list by Friday.", "We review every quote over 1 million with finance.", "Groundwork will ask Miriam: which accounts have a buying process?" and "It is not decided yet whether to open Kisumu." Miriam, Grace and Piet are each refused (403) and cannot confirm. | proved |
+| F Saying yes | Wanjiru | Each yes writes exactly one thing where it belongs: a target, a role on the check-in, a commitment, a rule, a question kept for the lead and not asked yet, a decision. A second yes is refused. A stored proposal whose number is not in its own quote is refused with "That is not in the plan as written, so nothing was added." Nothing is written before the yes. | 24 of 24 |
+
+See `api/journey/the-role-interview-and-a-plan-as-each-reader-reads-them.ts`.
+
+## Links between check-ins, and the strategy's history (6 October, piece 5, parts C and D)
+
+**How it was run.** A worktree at `12d83677` built with `nest build`, the local database `gw_wa_own` with the new migration applied, the API on port 3059. For D, Tana's planning tool signs in with its own credential and pushes priorities. For C the rows a finished conversation leaves (a handoff that names the other check-in) are written directly, because there are no model keys here. The WhatsApp journey was rerun at `e05a8e2a` first: 32 of 32.
+
+| Part | Reader | What they read or what happened | Result |
+| --- | --- | --- | --- |
+| C Waiting on another team | Wanjiru, leads Sales | Sales is waiting on Finance for "the Westgate credit terms", due "by Friday" (a Friday, `dueWord` "Fri"), and "The Westgate credit terms are due by Friday." | built before, proved |
+| C Asked of this check-in | Fatuma, leads Finance, who cannot open Sales | Nothing of Sales: no team, no person, no words. This is the rule from request 18 (you read only what you may already open). | as designed |
+| C | Grace, an admin who may open both | Finance's page reads that Sales team, Q3 asked for the Westgate credit terms, asked by Miriam, with a way to open Sales. | proved |
+| C | Miriam (in Sales); Piet (a third check-in); Kofi (a guest from another company) | Miriam reads the Sales links and is refused Finance (404). Piet is refused Sales (404). Kofi reads nothing of Sales. | proved |
+| D Before any change | Grace | The Company page carries `strategy: null`, as it read before. | proved |
+| D After their system adds a third priority | Grace, Wanjiru, Miriam | All three read "Strategy v2, since 6 October." and, newest first, "This version added “Build a stronger organisation”." and "Strategy v1, since 1 September." (the earliest priority was set on 1 September). Only priority titles, no person, measure or target. | 3 of 3 |
+| D | Kofi, a guest | The Company page is refused with 403. | proved |
+| D | Everyone | Pushing the same priority again makes no new version, and opening the page again and again writes none. | proved |
+
+18 of 18 checks pass. See `api/journey/links-between-check-ins-and-the-strategy-history.ts`.
+
+## An organisation's own WhatsApp number, and a guest's Ask Groundwork (6 October, piece 5, parts A and B)
+
+**How it was run.** A worktree of `wip/release` built with `nest build`, a local database `gw_wa_own`, the API on port 3059. For A, Meta's Graph API was a recorder on a loopback port, and every message in was signed here with the secret of the number it was for. For B there is no recorder: the guest's answers are written by rules, so no model is needed. Both journeys refuse anything that is not a local API and a local `gw_` database.
+
+| Part | What was checked | What a person read or what happened | Result |
+| --- | --- | --- | --- |
+| A 1 Saving the number | Kofi, admin of Kito, on the Connections page | The page comes back with the last four letters of the token and nothing else. In the database both keys are sealed and cannot be read. A member who tries to save a number is refused with 403. | 5 of 5 |
+| A 2 Meta's handshake | Both addresses | The wrong token is refused. The organisation's own token answers the challenge. A message signed with Groundwork's secret, or not signed, is refused at the organisation's address, and one signed with the organisation's secret is refused at Groundwork's. | 9 of 9 |
+| A 3 Two numbers, one person | Ada (on Kito's list) and Bola (on Plain's) | Each reply leaves from the number the person wrote to, with that number's token. Bola writing to Kito's number is told Groundwork does not know the number, and nothing of Plain is said. Ada writing to Groundwork's number is never answered with Kito's token. | all |
+| A 4 The 24 hours and the templates | Ada | The window and the templates are kept per business number and per organisation, so a template approved for one is not used on the other. STOP and START apply to the person on both numbers. | all |
+| A 5 The relay for their own number | A machine token | The relay was refused with "User not found or inactive" even with its own credential. It had no public marker. Fixed in `e0e18942`, and it answers now. | defect fixed |
+| B 1 The panel | Kofi, a guest from Kito, in Harbor's Sales team only | It lists "Sales team" and nothing else, and names nobody at Harbor. | 2 of 2 |
+| B 2 What a curious guest asks | Kofi | "Who works here?", "What are the other check-ins about?", "Show me the list of people" and "What is the company working on?" are each answered with: "You are a guest here from another organisation, so Ask Harbor can only answer questions about your own check-in, such as what you said, what you said you would do, what the check-in is for, who reads what you say, and when your next check-in is." Naming a check-in he is not in is refused with 403 "You are not part of this check-in." Asking what the check-in is for answers from what he was told. A to-do leaves no request waiting for a yes. | 10 of 10 |
+| B 3 The other doors | Kofi | `/company` 403 "Only people in this organisation can read its company page." `/suites` 403 "Only an admin or a lead can open the suites." `/org/retention` 403. A report or board of a check-in he is not in, 404. His list of check-ins holds Sales team and not Leadership. | 8 of 8 |
+| B 4 His questions stay his | Wairimu (lead), Grace (admin), Miriam (member), Kofi | Everything he asked is kept under his own guest key, and no entry on Harbor's list was made for him. None of the three reads a word of it in their own panel, and asking for his questions is refused with 403 for each. He is refused theirs too. | 8 of 8 |
+| B 5 The others | Miriam, Grace, Wairimu, Kofi | A member and the lead can ask about their own check-ins. Grace, the admin, is refused a review check-in she is not in, and so is Kofi, and nothing of it is said. | 5 of 5 |
+
+34 of 34 checks pass for B and 32 of 32 for A. Nothing leaked, so part B changed no source: the guest scoping built in week 24 (`3fe8d5c0`) holds at every door tried. A guest who writes to WhatsApp is told Ask needs an entry on the list, so a guest cannot ask on WhatsApp at all. That is the safe way round and is left as it is.
+
 ## The suites at a hundred people, rerun after the review's send-backs (6 October)
 
 Same way as above: a new worktree at `7911334d`, a new database `gw_suites_e2e2`, the API on port 3057, the same seeds. Item 7's order is now tested: the clock passes requests on and tells the people they were passed to at once, then the morning sweep says nothing more of those (specs "clock, then the morning sweep" and "the morning sweep, then the clock", through the real sender). Specs: suites, grounds, WhatsApp, email, assistant, 4,479 passed.

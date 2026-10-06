@@ -1,3 +1,4 @@
+import { whoIsLeftToCheckIn } from '../email/who-has-not-checked-in-yet';
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
@@ -205,7 +206,7 @@ export class ReportsListener {
         participants: {
           select: {
             id: true, managingOnly: true,
-            user: { select: { email: true, firstName: true, lastName: true } },
+            user: { select: { email: true, firstName: true, lastName: true, isActive: true, deletedAt: true, awaitingOrgApproval: true } },
             checkIns: { where: { sessionNumber: event.sessionNumber, status: CheckInStatus.COMPLETED }, select: { id: true } },
           },
         },
@@ -217,7 +218,8 @@ export class ReportsListener {
     const participantEmail = who?.user?.email;
     if (!participantEmail || participantEmail === ground.initiator.email) return;
     const participantName = [who?.user?.firstName, who?.user?.lastName].filter((x) => x?.trim()).join(' ').trim() || participantEmail;
-    const stillPending = ground.participants.filter((p) => !p.managingOnly && p.checkIns.length === 0).length;
+    /* Counted now, and without the person who just checked in, the lead reading this, and anybody not expected (who-has-not-checked-in-yet.ts). */
+    const stillPending = whoIsLeftToCheckIn(ground.participants as any, { justCheckedIn: event.participantId, readerEmail: ground.initiator.email });
 
     const frontendUrl = this.config.get<string>('resend.frontendUrl') || 'http://localhost:5173';
     const groundUrl = `${frontendUrl}/grounds/${event.groundId}`;

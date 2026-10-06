@@ -6228,6 +6228,56 @@ Between 1 and 50. `reason` is optional and only for a decline. For hours the `id
 
 The top `says` is "All four answers were kept.", "One of the six answers was kept. Five could not be kept, and each says why." or "None of the two answers could be kept, and each says why." (numbers up to ten in words, digits above) The whole call is refused (400, 403 or 404) for none or more than 50 answers ("Send up to 50 answers at once."), for somebody outside the organisation, and when neither leave, spending nor hours is switched on. Whoever decides the next step of what was approved is told once for all of it; the person who asked is told of each decision, as before.
 
+### For the screens: one sentence left in the preview page (7 October)
+
+The engine's emails no longer say "It does not quote anybody" or "What you write is not shown to anybody", because what people say in a check-in can be read by the people in it (decision 4). One copy is still in `client/src/pages/preview/EveryReportSideBySide.tsx`, line 300: "It shows where what you each said lines up, where it does not, and the one question worth answering together. It does not quote anybody: ...". Please replace the last sentence with the check-in's own: "The people in this check-in, including your manager, can see what you say in it. Your questions to Ask <organisation> stay private." (where people do not see each other: "Whoever runs this check-in can see what you say in it. The other people taking part do not see what you say. Your questions to Ask <organisation> stay private.").
+
+## 6 October: an organisation's own WhatsApp number, when its keys cannot be opened, for the screens to show
+
+An organisation's own access token and app secret are now kept sealed. If the server's key is changed or removed, they cannot be opened.
+
+**What the Connections page reads from `GET /integrations/whatsapp` (the `connection` object).** Two new fields. `keysNeedTypingAgain` is `true` when a sealed key cannot be opened, otherwise `false`. When it is `true`, `keysNeedTypingAgainSays` holds the sentence to show, to copy exactly:
+
+> Your number's keys need to be typed in again. Nothing is sent from your number until they are.
+
+The admin types the token and the app secret again on the same page and saves. Until then nothing is sent from the number, and messages arriving for it are refused.
+
+**What the admin reads when the server has no key and a new token or app secret is typed (the save is refused with 400), to copy exactly:**
+
+> We cannot save your number's keys safely yet. This is on our side, not yours. Contact Groundwork and we will put it right.
+
+Saving anything else (the display number, the business account) still works with no key, when no new token or secret is typed. The setting's name is never shown to the customer.
+
+## 6 October: the strategy's history on the Company page, for the screens to show
+
+`GET /company` now carries `strategy`, next to `line`, for every reader who may open the page (a guest is still refused). It is `null` until the organisation's priorities have changed once, so draw nothing in its place.
+
+    strategy: {
+      says: "Strategy v2, since 6 October.",       // the line to show; v1's date is the day its earliest priority was set
+      number: 2,
+      history: [                                    // newest first, for the History tab
+        { number: 2, says: "Strategy v2, since 6 October.", priorities: ["Grow revenue 50%, enterprise first", "Improve delivery", "Build a stronger organisation"],
+          whatChanged: "This version added “Build a stronger organisation”." },
+        { number: 1, says: "Strategy v1, since 1 September.", priorities: [...], whatChanged: null }
+      ]
+    }
+
+`whatChanged` reads "This version added “X” and removed “Y”.", or "This version changed the wording of a priority." It holds only priority titles. It never holds a person, a measure, a target or anything anybody said. Not built: "One sales goal still points to last quarter's strategy".
+
+## 6 October: a plan can offer to add the people it names, for the screens to show
+
+A plan's cards (`POST` and `GET /grounds/:id/plan/proposals`) can now include `kind: "person"`. Its `says` reads "Add Amina Yusuf to this check-in?", its `saidAs` and `fromThePlan` hold the plan's own words, and its `note` says either "The plan gives no email address for Amina Yusuf, so you will be asked for one. Nobody is invited until you say yes." or "Amina Yusuf will be added to this check-in and invited at amina@example.com, but only when you say yes." (only when the plan itself wrote that one address). It lands in "People".
+
+To say yes, `POST /grounds/:id/plan/proposals/:pid/confirm` takes `{ email }` for this kind (the plan's own address is used if there is one). With no address the lead reads "Type Amina Yusuf's email address, so Groundwork can invite them. Nobody is invited until you say yes." If the ordinary rules refuse (for example nothing has been said about what the check-in is for, or the plan's limit), the lead reads that sentence and the card stays waiting. Only the lead may confirm. Once the person is on the check-in the card leaves the waiting list, and the cards that named them can be confirmed.
+
+## 6 October: one list of known issues, and what we ask of you
+
+`docs/known-issues.md` is now one list of every problem found and not fixed, on both sides and on the live line, grouped as Privacy, Broken, Wrong and Untidy, with where each shows up, who it affects, why it was left and what we recommend. Fixed items are left out.
+
+**Please add anything on your side that is missing**, in the same shape, under the right seriousness, marked "(screens workspace)", and tell us here if anything listed is already fixed on your side so it can come out.
+
+What we merged from your lists: requests 159, 161, 163, 167, 168, 169, 170, 172, 173 and 174 from `docs/requests-to-engine.md`, and from `docs/morning-report-ui.md` the admin's To-dos board, the screenshots still in the git history, the one-off style classes, the pages nobody can reach, pinned check-ins kept in the browser, the logo, the Feedback button, the extra buttons on five boards, `#/system`, the developer page's two sections, the prototype fragments made into sentences, and the preview page's last old privacy sentence. Two of your items are privacy faults we have not fixed yet and list first: the lead's description of a person (`roleAsDescribed`) served on that person's own transcript (request 167 item 1, which is on the live line too), and the anchor ground read serving the lead's set-up to a member (request 168 item 1).
+
 # From the screens workspace, 7 October: every known problem not fixed yet, for docs/known-issues.md
 
 Every problem the screens workspace found and did not fix. It comes from the walks (anchor, suites at a hundred people, Kijani, the existing clients' use cases), from the requests, and from the morning report and the handover. Each is marked SCREENS, ENGINE, SEED or HAFSAH, most serious first. Please fold it into `docs/known-issues.md` (request 175). The table in `docs/requests-to-engine.md` never had its status column kept up, so for requests 100 to 157, your own answers in this file are the record of what is closed.

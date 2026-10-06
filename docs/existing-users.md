@@ -263,7 +263,7 @@ and in the lead's own session, after a pasted update of 400 characters or more:
 
 **Open, for Hafsah.**
 - A document the lead adds is read into notes everyone on the check-in can read, after the lead's yes, the same as a paste. The file itself stays as private as it was set. If a private document's contents should never become shared notes, say so and it will be restricted.
-- The plan page ("From a plan") still takes only goals, roles, commitments and rules, and the page promises exactly that. Questions for people, decisions and dates come from a paste, or from a document through Ask Groundwork. Say if the plan page should take them too.
+- The plan page ("From a plan") reads seven kinds: goals, roles, commitments, rules, questions for people, decisions and dates. (This line said four until 6 October; the other three were added later, and each is kept only when its words are really in the plan.) The page's own promise still names goals, roles and commitments. Say if its wording should name the rest.
 - A question the lead writes to themselves in a dump ("Amina - which accounts actually have a buying process?" when Amina is the lead) is kept as a question for the lead in their own check-in. It is not asked of anyone until the lead confirms it.
 - Ask Groundwork's setup lane is off at release, so at release the way in for a dump is the setup chat on the check-in page, and a document the lead adds is read for its numbers there. Everything above through Ask Groundwork needs `release.contextInAskGroundwork` on.
 

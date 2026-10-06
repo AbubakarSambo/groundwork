@@ -1,3 +1,5 @@
+import { withoutTheLeadsSetUpForAMember } from './the-leads-set-up-is-the-leads-in-the-anchor';
+import { aShortQuestionForAPerson, askedBackToTheLead, theQuestionTheyWereShown } from './a-short-question-for-a-person-in-the-old-chat';
 import { aFindingThatReadsRight } from './a-finding-reads-right';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
 import { refuseSomeoneHeldForASeat, refuseSomeoneAwaitingTheOrganisation, theCheckInsHeldForASeat } from '../participants/held-for-a-seat';
@@ -23,7 +25,7 @@ import { isNotLetInYet, whoIsNotLetInYet, theWaitingToBeLetInLine } from './who-
 import { waitsOnAManagingOnlyLead } from './the-lead-who-only-asks';
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException, Optional } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
-import { seatsIn } from '../../common/seats';
+import { seatsIn, alreadyHere } from '../../common/seats';
 import { whetherThereIsRoomForOneMore, type SeatAnswer } from './added-but-waiting-for-a-seat';
 import { whatTheDocumentsSay, stillNeedsSomethingInWriting } from './what-the-documents-say';
 import { whatFitsInTheRoom, tellThemWhatIsMissing } from '../conversation/a-prompt-that-ran-out-of-room-says-so';
@@ -2908,8 +2910,10 @@ export class GroundsService {
         .filter((t) => !objectiveRowsAsStored.some((o: any) => aWeekHasPassedSinceNotTold(o) && (o.text ?? '') === t)),
     ]);
     /* A goal whose whole sentence carried a number this reader may not read is not left as a goal with no words (it is not served, and what the person's own row says is said plainly). */
-    if (!Array.isArray((thePage as any).participants)) return thePage;
-    return {
+    /* In an anchor check-in the lead's own set-up (her aim, what it will cover, what a complete answer holds) is hers alone (decision 96, item 8). */
+    const asAMemberReadsIt = <P extends Record<string, any>>(page: P): P => withoutTheLeadsSetUpForAMember(page, { startedFrom: (ground as any).startedFrom ?? null, runsIt: viewerRunsThisGround });
+    if (!Array.isArray((thePage as any).participants)) return asAMemberReadsIt(thePage);
+    return asAMemberReadsIt({
       ...thePage,
       participants: ((thePage as any).participants as any[]).map((p: any) => {
         const o = p?.objective;
@@ -2918,7 +2922,7 @@ export class GroundsService {
         const blank = typeof o.text === 'string' && !o.text.trim();
         return { ...p, objective: { ...o, all, ...(blank ? { text: null, described: 'What this person is aiming for is set, and it carries a number you are not given on this page.' } : {}) } };
       }),
-    } as typeof thePage;
+    } as typeof thePage);
   }
 
   /**
@@ -2989,6 +2993,24 @@ export class GroundsService {
           done: false,
           proposal: said.ok ? { gap: 'leave_request', say: said.say } : null,
         };
+      }
+    }
+
+    /*
+     * A SHORT SENTENCE THAT ASKS A NAMED PERSON SOMETHING is a question for that person, said back as the exact sentence and kept
+     * only on a yes, as Ask Groundwork does it (a-short-question-for-a-person-in-the-old-chat.ts). It was read as a goal.
+     */
+    {
+      const lastLeadTurn = [...history].reverse().find((h) => h.role === 'user')?.content?.trim() ?? '';
+      const asked = aShortQuestionForAPerson(lastLeadTurn);
+      if (asked) {
+        try {
+          const q = await this.theQuestionForAPerson(groundId, requestingUserId, asked);
+          return { reply: '', gaps: [] as string[], openQuestion: null, done: false, proposal: { gap: 'question_for_person', say: askedBackToTheLead(q.who, q.exactQuestion) } };
+        } catch (err: any) {
+          if (err instanceof BadRequestException) return { reply: err.message, gaps: [] as string[], openQuestion: null, done: false, proposal: null };
+          throw err;
+        }
       }
     }
 
@@ -4128,6 +4150,14 @@ export class GroundsService {
     if (dto.offerId) {
       const kept = await keepWhatWasOffered(this.prisma, { organizationId: ground.organizationId, groundId, offerId: dto.offerId, userId: requestingUserId });
       return { changed: kept.kept ? 'organisation memory' : 'nothing new', say: kept.say };
+    }
+    /* And a yes to a short question for a named person keeps that question, in the words the lead was shown. */
+    const askedOfOne = dto.leave ? null : aShortQuestionForAPerson(dto.said);
+    if (askedOfOne) {
+      const q = await this.theQuestionForAPerson(groundId, requestingUserId, askedOfOne);
+      const shown = theQuestionTheyWereShown(dto.history, q.who);
+      const kept = await this.keepAQuestionForAPerson(groundId, requestingUserId, { participantId: q.participantId, leadWords: askedOfOne.leadWords, exactQuestion: shown ?? q.exactQuestion });
+      return { changed: `a question for ${q.who}`, say: (kept as any).say };
     }
     /* And a yes to a leave request is sent through the leave suite, from the days in the lead's own words. */
     if (dto.leave) {
@@ -5780,7 +5810,7 @@ export class GroundsService {
      * already holds one, and adding them to a second check-in costs nothing.
      */
     const alreadyHereWithASeat = await this.prisma.user.count({
-      where: { email: dto.email.toLowerCase(), ...seatsIn(organizationId) },
+      where: { email: dto.email.toLowerCase(), ...alreadyHere(organizationId) },
     });
     let waitingForASeat: SeatAnswer = { room: true };
     if (!alreadyHereWithASeat) {

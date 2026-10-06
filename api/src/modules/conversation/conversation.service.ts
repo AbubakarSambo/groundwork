@@ -1,3 +1,4 @@
+import { theParticipantAsServed, theFitAsServed } from './a-transcript-serves-only-what-is-theirs';
 import { theNumberInTheNameIsKept } from './an-aim-said-twice-is-one-aim';
 import { theDayKeptApart } from '../board/an-aim-is-a-sentence-about-somebody';
 import { suggestAnswers } from './suggested-answers';
@@ -795,9 +796,13 @@ export class ConversationService {
       return (t.role === TurnRole.AI ? { ...turn, content: forHumans(t.content) } : turn) as T;
     };
 
+    /* The person reads their own transcript. What the lead typed about them is the lead's: only the person who runs it is served the whole row. */
+    const runsIt = (checkIn as any).participant?.partyType === 'INITIATOR';
     return {
       checkIn: {
         ...checkIn,
+        participant: theParticipantAsServed((checkIn as any).participant, runsIt),
+        theirAnswerFitted: theFitAsServed((checkIn as any).theirAnswerFitted, runsIt),
         groundLabel: ground?.label ?? null,
         scenario: ground?.scenario ?? null,
       },
