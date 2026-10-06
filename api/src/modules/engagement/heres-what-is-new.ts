@@ -20,7 +20,17 @@ export const WHATS_NEW_SENDER = 'sendHeresWhatIsNew';
 
 const TERMINAL: GroundStatus[] = [...A_GROUND_THE_JOBS_LEAVE_ALONE, ...A_GROUND_IS_HELD];
 
-export interface AnExistingCheckIn { label: string; ofHowMany: number; answered: number; notYet: string[] }
+export interface AnExistingCheckIn { label: string; ofHowMany: number; answered: number; notYet: string[]; /** Whether it has a session still to come, which is what the follow-up is for. */ moreToCome?: boolean }
+
+/**
+ * WHETHER THIS CHECK-IN HAS A SESSION STILL TO COME. The follow-up (a person's own promise, said back to them) is sent for a session that begins after
+ * the release, so it is only true of an existing check-in that will have one: it runs until it is ended, or its planned end is still ahead.
+ */
+export function thereIsASessionToCome(g: { runsUntilEnded?: boolean | null; endsAt?: Date | null; timelineDays?: number | null; createdAt?: Date | null }, now: Date): boolean {
+  if (g.runsUntilEnded) return true;
+  const end = g.endsAt ?? (g.createdAt && g.timelineDays ? new Date(g.createdAt.getTime() + g.timelineDays * 86_400_000) : null);
+  return !!end && end.getTime() > now.getTime();
+}
 
 const people = (n: number) => `${n} ${n === 1 ? 'person' : 'people'}`;
 const listed = (names: string[]) => (names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
@@ -35,6 +45,14 @@ export function whereOneStands(c: AnExistingCheckIn): string {
   return `In "${c.label}", ${c.answered} of ${c.ofHowMany} people have checked in${who}.`;
 }
 
+/** True only for the check-ins that have a session to come; said for all, for some by name, or not at all. */
+function theFollowUpSentence(checkIns: AnExistingCheckIn[]): string | null {
+  const some = checkIns.filter((c) => c.moreToCome !== false);
+  if (!some.length) return null;
+  const where = some.length === checkIns.length ? '' : ` in ${listed(some.map((c) => `"${c.label}"`))}`;
+  return `What is new is that Groundwork now follows up${where} with each person about the thing they said they would do, in their own words and only to them.`;
+}
+
 export function theWhatIsNewWords(firstName: string | null | undefined, checkIns: AnExistingCheckIn[]) {
   const subject = checkIns.length === 1
     ? `${checkIns[0].answered} of ${checkIns[0].ofHowMany} people have checked in on "${checkIns[0].label}", and here is what is new`
@@ -42,7 +60,7 @@ export function theWhatIsNewWords(firstName: string | null | undefined, checkIns
   const lines = [
     `Hello ${firstName?.trim() || 'there'}. Here is where your check-ins stand today.`,
     ...checkIns.map(whereOneStands),
-    'What is new is that Groundwork now follows up with each person about the thing they said they would do, in their own words and only to them.',
+    ...(theFollowUpSentence(checkIns) ? [theFollowUpSentence(checkIns)!] : []),
     'You can also stop the emails we decide to send from the link at the bottom of any of them, or in Settings, and turn them back on in Settings. Emails you ask for, such as sign-in links and reports, always reach you.',
   ];
   return { subject, lines, linkLabel: 'See your check-ins' };
@@ -76,10 +94,10 @@ export async function sendHeresWhatIsNew(
   const grounds: any[] = await everyRowAPageAtATime((page: any) => prisma.ground.findMany({
     /* Made before the release, and still going: stalled, ended and held ones are never mentioned. */
     where: { status: { notIn: TERMINAL }, createdAt: { lt: release } },
-    select: { id: true, label: true, initiatorId: true },
+    select: { id: true, label: true, initiatorId: true, runsUntilEnded: true, endsAt: true, timelineDays: true, createdAt: true },
     ...page,
   }), 1000);
-  const byLead = new Map<string, { id: string; label: string }[]>();
+  const byLead = new Map<string, any[]>();
   for (const g of grounds) byLead.set(g.initiatorId, [...(byLead.get(g.initiatorId) ?? []), g]);
   const link = `${(deps.frontendUrl || '').replace(/\/$/, '')}/grounds`;
   let tried = 0;
@@ -92,7 +110,7 @@ export async function sendHeresWhatIsNew(
       const stands: AnExistingCheckIn[] = [];
       for (const g of theirs) {
         const s = await theOpenSession(prisma, g.id, leadId);
-        if (s) stands.push({ ...s, label: g.label });
+        if (s) stands.push({ ...s, label: g.label, moreToCome: thereIsASessionToCome(g, now) });
       }
       if (!stands.length) continue;
       const w = theWhatIsNewWords(user.firstName, stands);

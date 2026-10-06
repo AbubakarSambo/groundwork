@@ -1,4 +1,4 @@
-import { sendHeresWhatIsNew, theWhatIsNewWords, whereOneStands } from './heres-what-is-new';
+import { sendHeresWhatIsNew, theWhatIsNewWords, whereOneStands, thereIsASessionToCome } from './heres-what-is-new';
 import { ROUTINE_EMAILS } from './one-routine-message-a-day';
 import { whatThisMailIs, whetherToSend } from '../email/nothing-goes-out-that-was-turned-off';
 import { RELEASE_MOMENT_KEY } from '../grounds/the-release-moment';
@@ -19,7 +19,7 @@ function world(opts: { grounds?: any[]; had?: boolean; inactive?: boolean } = {}
   const sent: any[] = [];
   const prisma: any = {
     platformSetting: { findUnique: async () => ({ value: { at: RELEASE.toISOString() } }) },
-    ground: { findMany: async ({ where }: any) => { asked.push(where); return opts.grounds ?? [{ id: 'g1', label: 'Sales team, Q4', initiatorId: 'u-w' }]; } },
+    ground: { findMany: async ({ where }: any) => { asked.push(where); return opts.grounds ?? [{ id: 'g1', label: 'Sales team, Q4', initiatorId: 'u-w', runsUntilEnded: true }]; } },
     checkIn: { findMany: async () => [...['Miriam', 'Bisi', 'Femi', 'Kofi', 'Amina'].map((n) => row(n, 'COMPLETED')), row('Omar', 'NOT_STARTED')] },
     user: { findUnique: async () => ({ email: 'wairimu@baridi.test', firstName: 'Wairimu', deletedAt: null, isActive: opts.inactive === false ? false : true }) },
     notification: { findFirst: async () => (opts.had ? { id: 'n' } : null) },
@@ -61,6 +61,27 @@ describe('what Wairimu reads', () => {
 
   it('says nothing about anybody beyond first names of those who have not yet checked in', () => {
     expect(whereOneStands({ label: 'X', ofHowMany: 9, answered: 3, notYet: ['Omar', 'Bisi', 'Femi'] })).toBe('In "X", 3 of 9 people have checked in, and Omar, Bisi, Femi and 3 others have not yet.');
+  });
+});
+
+describe('the follow-up line is only said where it is true', () => {
+  const a = { label: 'A', ofHowMany: 4, answered: 4, notYet: [] };
+  it('said for a check-in with a session still to come', () => {
+    expect(theWhatIsNewWords('W', [{ ...a, moreToCome: true }]).lines).toContain('What is new is that Groundwork now follows up with each person about the thing they said they would do, in their own words and only to them.');
+  });
+  it('not said at all where no check-in has one', () => {
+    expect(theWhatIsNewWords('W', [{ ...a, moreToCome: false }]).lines.join(' ')).not.toMatch(/follows up/);
+  });
+  it('said for the one that has one, by name, when only some do', () => {
+    const l = theWhatIsNewWords('W', [{ ...a, moreToCome: true }, { ...a, label: 'B', moreToCome: false }]).lines.join(' ');
+    expect(l).toContain('follows up in "A" with each person');
+    expect(l).not.toContain('"B" with');
+  });
+  it('a session is still to come when it runs until ended or its planned end is ahead, and not when that has passed', () => {
+    expect(thereIsASessionToCome({ runsUntilEnded: true }, NOW)).toBe(true);
+    expect(thereIsASessionToCome({ createdAt: new Date('2026-09-01T00:00:00Z'), timelineDays: 90 }, NOW)).toBe(true);
+    expect(thereIsASessionToCome({ createdAt: new Date('2026-06-01T00:00:00Z'), timelineDays: 30 }, NOW)).toBe(false);
+    expect(thereIsASessionToCome({ endsAt: new Date('2026-09-30T00:00:00Z') }, NOW)).toBe(false);
   });
 });
 
