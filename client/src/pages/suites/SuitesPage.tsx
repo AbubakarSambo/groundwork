@@ -209,8 +209,17 @@ function ASuite({ s, people, forYou }: { s: AdminSuite; people: SuitesForAnAdmin
    * save them without touching the switch, so this opens the same form, filled in, and saves
    * through the same call `pressed` already uses to switch on - it just never sends `on: false`.
    */
+  /*
+   * NEVER SAVE OVER SETTINGS THIS FORM CANNOT READ (recheck, 7 October). Some suites' stored
+   * answers were written under other names than the suite's questions (leave stored `daysAYear`
+   * and a person's id where the questions ask `days` and a choice). Opened, the form showed them
+   * empty, and Save would have replaced the real settings. Until the engine serves them under the
+   * questions' own names (request 180), such a suite says so instead of opening the form.
+   */
+  const [cannotChangeHere, setCannotChangeHere] = useState(false)
   function openSettings() {
     setProblem(null)
+    if (storedUnderOtherNames(s)) { setCannotChangeHere(true); return }
     setAnswers(startFrom(s))
     setAsking(true)
   }
@@ -223,8 +232,11 @@ function ASuite({ s, people, forYou }: { s: AdminSuite; people: SuitesForAnAdmin
           <h3 className="gwui-panel-heading">{s.name}</h3>
           <p className="gwui-panel-text">{s.line}</p>
           {s.on && BOARDS[s.key] && <Link className="gwui-plain-link" to={forYou && s.key === 'spend' ? '/suite/spend/finance' : BOARDS[s.key].to}>{forYou && s.key === 'spend' ? 'Open the requests for finance' : 'Open its board'}</Link>}
-          {s.on && s.questions.length > 0 && !asking && (
+          {s.on && s.questions.length > 0 && !asking && !cannotChangeHere && (
             <Button kind="quiet" size="small" onClick={openSettings}>See or change its settings</Button>
+          )}
+          {cannotChangeHere && (
+            <Note tone="muted">These settings were set up another way, so they cannot be changed here yet. Nothing has been changed.</Note>
           )}
         </div>
         <div className="gwui-suite-switch">
@@ -281,6 +293,14 @@ function AQuestion({ suite, q, value, people, onChange }: {
       )}
     </div>
   )
+}
+
+/** True when the suite has stored answers, but not under the names its questions use, so the form
+ *  would show them empty and a save would replace them. */
+export function storedUnderOtherNames(s: AdminSuite): boolean {
+  const stored = s.answers ? Object.keys(s.answers) : []
+  if (stored.length === 0) return false
+  return s.questions.some(q => !(q.id in (s.answers as Record<string, unknown>)))
 }
 
 /** What the admin answered last time, so switching on again starts from it. */

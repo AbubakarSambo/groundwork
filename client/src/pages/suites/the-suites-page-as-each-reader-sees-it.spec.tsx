@@ -189,6 +189,19 @@ describe('Grace, an admin, reads the Suites page', () => {
     await waitFor(() => expect(within(card('Leave requests')).getByRole('switch')).toHaveAttribute('aria-checked', 'true'))
   })
 
+  /* Recheck, 7 October: settings stored under other names (leave's `daysAYear`, a person's id for
+     `approver`) showed empty in the form, and Save would have replaced them. Such a suite says so
+     instead of opening the form, and nothing is sent. */
+  it('never opens the form over settings stored under other names, and says why', async () => {
+    open(GRACE, withOn('leave', { daysAYear: 21, approver: 'u-g', workflow: 'manager' } as any))
+    await screen.findByRole('heading', { level: 2, name: 'People' })
+    const c = card('Leave requests')
+    fireEvent.click(within(c).getByRole('button', { name: 'See or change its settings' }))
+    expect(within(c).getByText('These settings were set up another way, so they cannot be changed here yet. Nothing has been changed.')).toBeInTheDocument()
+    expect(within(c).queryByRole('button', { name: 'Save' })).toBeNull()
+    expect(suitesApi.switch).not.toHaveBeenCalled()
+  })
+
   it('"Cancel" leaves its answers exactly as they were, and sends nothing', async () => {
     open(GRACE, withOn('leave', { days: 21, approver: 'Their manager' }))
     await screen.findByRole('heading', { level: 2, name: 'People' })

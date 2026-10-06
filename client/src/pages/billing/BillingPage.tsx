@@ -183,7 +183,7 @@ export function BillingPage() {
       qc.invalidateQueries({ queryKey: ['billing-status'] })
       toast.success(`Switched to ${PLAN_LABELS[plan]}. The difference is prorated on your next invoice.`)
     },
-    onError: () => toast.error('Your plan did not change. You have not been charged - try again.'),
+    onError: () => toast.error('Your plan did not change, and you have not been charged. Try again.'),
   })
   const portalMut = useMutation({
     mutationFn: () => billingApi.portal(),

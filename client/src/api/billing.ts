@@ -285,8 +285,11 @@ export const billingApi = {
   claimFreeExtension: (groundId: string) =>
     apiClient.post('/billing/free-extension', { groundId }).then(r => r.data),
 
+  /* Quiet on a server error: the billing page says what happened in one sentence of its own
+     ("Paying is not set up yet. Nothing was charged."), and the shared pop-up said the opposite
+     beside it (recheck, 7 October). */
   createSubscription: (plan: SubscriptionPlan) =>
-    apiClient.post<{ checkoutUrl: string }>('/billing/subscription', { plan }).then(r => r.data),
+    apiClient.post<{ checkoutUrl: string }>('/billing/subscription', { plan }, { skipServerErrorToast: true } as any).then(r => r.data),
 
   changeSubscriptionPlan: (plan: SubscriptionPlan) =>
     apiClient.patch<{ plan: SubscriptionPlan; periodEnd: string | null }>('/billing/subscription/plan', { plan }).then(r => r.data),
@@ -342,7 +345,7 @@ export const billingApi = {
 
   /** An admin only; a lead or member is refused by the server. */
   setWhatsApp: (on: boolean) =>
-    apiClient.patch<WhatsAppBilling>('/billing/whatsapp', { on }).then(r => r.data),
+    apiClient.patch<WhatsAppBilling>('/billing/whatsapp', { on }, { skipServerErrorToast: true } as any).then(r => r.data),
 
   /**
    * "Remind them", on a check-in paused until the team subscribes (upgrade.txt). An admin, a lead
