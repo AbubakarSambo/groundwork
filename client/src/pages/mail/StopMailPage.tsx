@@ -61,9 +61,17 @@ export function StopMailPage({ which }: { which: Which }) {
         }
         if (which === 'unsubscribe') {
           const q = body?.data ?? body
-          setQuestion(q)
+          /* An API from before decision 109 answers `says` as one sentence and no question; the page
+             must still read it (the client and the API are not always released at the same moment). */
+          const lines: string[] = Array.isArray(q?.says) ? q.says : (typeof q?.says === 'string' ? [q.says] : [])
+          if (!q?.title) {
+            setSays(lines.join(' ') || 'No more of this mail is going to you.')
+            setState('done')
+            return
+          }
+          setQuestion({ ...q, says: lines })
           setState(q?.known === false ? 'done' : 'asking')
-          setSays((q?.says ?? []).join(' '))
+          setSays(lines.join(' '))
           return
         }
         /* THE ENVELOPE. Every API response here is wrapped as `{ success, data }`, so reading
