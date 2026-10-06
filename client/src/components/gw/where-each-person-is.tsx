@@ -245,11 +245,21 @@ export function WhereEachPersonIs({ rows, squaresFor }: { rows: Row[]; squaresFo
               )}
               <Stack gap={4}>
                 <div className="gwui-fs-15 gwui-ink-sub">{r.says}</div>
-                {/* `ask` and `finding`, kept as one quiet line rather than dropped - not in the
-                    prototype's table, but the whole point of a row for a lead who can act on it. */}
-                {(r.ask || r.finding) && (
+                {/*
+                  `ask` AND `finding` ARE NOT THE SAME VOICE (real-user walk, Kijani Foods, fault 3).
+                  `ask` is the coaching line, in the product's own words; `finding` is what the record
+                  holds against that, which can be the person's own words carried over verbatim (see
+                  the-facts-about-a-person.ts). Joined with a bare space, "Ask Fatou Diallo for a
+                  number or a date for what moved this round. The month-end reconciliation runs off a
+                  spreadsheet on my own drive." ran Fatou's own words on from the coaching sentence as
+                  if the product had said them, with no quote marks and no name to say whose they are.
+                  Now the coaching line stands as its own line, and the finding follows attributed to
+                  the person it is about, on its own line, in quotes.
+                */}
+                {r.ask && <Note tone={r.hasGap ? 'amber' : 'muted'}>{r.ask}</Note>}
+                {r.finding && (
                   <Note tone={r.hasGap ? 'amber' : 'muted'}>
-                    {[r.ask, r.finding].filter(Boolean).join(' ')}
+                    {r.who} said, &ldquo;{r.finding}&rdquo;
                   </Note>
                 )}
                 {r.keepsComingUp && <Note tone="muted">{r.keepsComingUp}</Note>}
