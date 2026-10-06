@@ -694,7 +694,24 @@ export function ChatPage() {
      * fallback below.
      */
     const localId = `local-${Date.now()}`
-    setMsgs(v => [...v, { id: localId, role: 'PERSON', content: message }, { id: aiId, role: 'AI', content: '…' }])
+    const optimisticTurn: Msg[] = [{ id: localId, role: 'PERSON', content: message }, { id: aiId, role: 'AI', content: '…' }]
+    setMsgs(v => [...v, ...optimisticTurn])
+    /**
+     * `displayedMsgs` is synced here too, not left to the typewriter effect below.
+     *
+     * That effect only resyncs `displayedMsgs` from `msgs` while `streamingRef.current`
+     * is false, and `streamingRef.current` is set true a line below, synchronously, in
+     * the same tick as this echo - before React can ever flush a render with it still
+     * false. A stream whose mock (or a very fast real one) calls `onDelta`/`onDone` with
+     * no genuine async yield then has `onDelta`/`onDone` below run their own `v.map`
+     * updates against a `displayedMsgs` that never got these two messages added to it, so
+     * the map finds nothing to update and both bubbles never appear - though `msgs` is
+     * correct the whole time. Setting it explicitly here means the person's echoed
+     * message and the waiting AI bubble are already in `displayedMsgs` before anything
+     * else runs, so the `onDelta`/`onDone` maps below always have something to find,
+     * whatever the timing of the stream.
+     */
+    setDisplayedMsgs(v => [...v, ...optimisticTurn])
     /**
      * Promote the echo once the server has actually answered.
      *
@@ -731,6 +748,7 @@ export function ChatPage() {
       // If nothing streamed yet, fall back cleanly to the non-streaming path.
       if (!started) {
         setMsgs(v => v.filter(m => m.id !== aiId)) // drop the empty AI bubble; keep the person's message
+        setDisplayedMsgs(v => v.filter(m => m.id !== aiId))
         try {
           const res = await conversationApi.send(checkInId, message)
           acknowledge()
@@ -750,6 +768,7 @@ export function ChatPage() {
            * is false here, which is what tells us the server took nothing.
            */
           setMsgs(v => v.filter(m => m.id !== localId))
+          setDisplayedMsgs(v => v.filter(m => m.id !== localId))
           setInput(message)
           toast.error('That did not send. Your message is back in the box, try again.')
         }
