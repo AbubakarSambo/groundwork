@@ -21,12 +21,6 @@ It was drawn from `docs/morning-report.md`, `docs/weekly-plan.md`, `docs/run-log
 - Why it was left: the fix is on this branch (`94d736d6`, `6742915a`, `213b7743`, `76e303ee`). It seals both keys, but it needs the server setting `SETTINGS_ENCRYPTION_KEY` on each hosted environment before it ships. Without that setting, nobody can save a new token or secret, and Groundwork's own WhatsApp secrets cannot be saved on `/admin/whatsapp` either.
 - Recommendation: Abubakar adds `SETTINGS_ENCRYPTION_KEY` (made with `openssl rand -base64 32`, one per environment, never changed later) before the release. The keys already saved are sealed on the next start. Because old backups still hold plain copies, ask each connected organisation to make a new token in Meta once the release is live.
 
-**P2. A person can read the lead's private description of them, on their own transcript.**
-- Where: `GET /check-ins/:id/transcript` returns the whole check-in row, including `participant.roleAsDescribed` (what the lead typed under "What do they do, and why are they part of this?"), and it also reaches `theirAnswerFitted.kind`. The code is `getTranscript` in `api/src/modules/conversation/conversation.service.ts`, which spreads `...checkIn` with the participant included. No screen draws it, but it is on the wire.
-- Who: everyone who takes part in a check-in. The live line has the same code, so existing users are affected today.
-- Why it was left: the screens workspace found it on 7 October (requests 167 item 1 and 168 item 2), and it has not been taken up yet. Decision 30 says the role a lead described is never served to anyone else.
-- Recommendation: in `getTranscript`, select only the participant fields the screen needs and leave out `roleAsDescribed` unless the reader is the lead. Add a spec that reads the transcript as the person and checks the field is absent.
-
 **P3. A total can give a colleague's number away.**
 - Where: the sentence about a person's share of a target on the board and in the check-in, for example "Yours is 21, of 270 across ten people".
 - Who: everyone on a check-in where each person sees only their own target, when only two people have a number (the total minus your own is your colleague's).
@@ -87,12 +81,6 @@ It was drawn from `docs/morning-report.md`, `docs/weekly-plan.md`, `docs/run-log
 - Why it was left: the code needs the words to act on the yes. They are cleared on the answer or by the next WhatsApp message anyone sends, not by a clock.
 - Recommendation: add a small nightly clean-up so nothing stays past ten minutes even when nobody writes.
 
-**P13. The anchor check-in serves the lead's set-up to a member.**
-- Where: `GET /grounds/:id` on an anchor check-in serves the lead's aim as `objectives[0].name` ("Rehema is aiming for the sales and production teams to coordinate on timelines…"), with `subjectsToCover` and `whatACompleteAnswerHolds`. The member's board draws the aim under "What we are aiming for" (request 168 item 1).
-- Who: nobody today, because `release.anchorScenario` is off. Members of anchor check-ins once it is on.
-- Why it was left: found by the screens workspace on 7 October, not yet taken up. The engine's note that `brief.says` is null and `objectives` is empty for members is true of the brief read, but not of the ground read.
-- Recommendation: apply the same rule on the ground read before the anchor is switched on, with a spec as a member.
-
 **P14. Screenshots with Hafsah's name, Coamana's CRM and real-looking check-in numbers are still in the git history (screens workspace).**
 - Where: the three images that were in `client/public/connect/`, now deleted from the tree.
 - Who: anyone with access to the repository history.
@@ -120,24 +108,6 @@ It was drawn from `docs/morning-report.md`, `docs/weekly-plan.md`, `docs/run-log
 - Who: existing users. On the local copy, 41 people on 20 check-ins. The live count is not known.
 - Why it was left: it is privacy row 5, which Hafsah kept in decision 93, so the question is hers.
 - Recommendation: before release, count them on a copy of the live data with the read-only query in `docs/morning-report.md`. If there are any, either let a person who has already answered keep reading, or clear their hold on release night.
-
-**B4. Saving a check-in that waits for an admin's approval can hang, and the lead's set-up answers are lost (screens workspace, request 174 item 2).**
-- Where: saving a new check-in as a lead who is not an admin. It sat on "Saving…" for over 45 seconds, "Opening your check-in…" then hung, the session showed three opening questions about three seconds apart, and the saved check-in had none of her set-up answers, her ended session or her private report. `POST /check-ins/:id/open` answered one 400.
-- Who: existing users and the paid client: every lead who is not an admin.
-- Why it was left: found on 7 October, not yet investigated.
-- Recommendation: reproduce it on a local API as a lead who is not an admin. Check the five-second transaction limit for adding people (release question 9) and the screen's own open-on-load at the same time.
-
-**B5. After an admin approves a check-in, its note still says it is waiting, and the invitation is dropped (screens workspace, request 174 item 3).**
-- Where: `grounds.service.ts`, about line 5605. The note reads "nandi.manager@kilima.test, This check-in is waiting for an admin in your organisation to accept it. Nobody can be invited until then." after approval.
-- Who: existing users and the paid client.
-- Why it was left: found on 7 October, not yet taken up.
-- Recommendation: clear the note on approval, send any invitation that was held, and never start a sentence with an email address.
-
-**B6. The seat count includes guests, so a plan reads as full when it is not (screens workspace, request 174 item 10).**
-- Where: `api/src/common/seats.ts`, and the sentence "Your plan covers 5 people… all 5 are taken" with one person in the check-in and four guests.
-- Who: existing users and the paid client: a lead can be refused people she is entitled to add.
-- Why it was left: found on 7 October. `docs/existing-users.md` says the count leaves guests out, so the code and the document disagree.
-- Recommendation: leave guests out of the count, as decided, and add a test with guests on the check-in.
 
 **B7. The release-night steps that only Hafsah or Abubakar can take have not been taken.**
 - Where: `docs/deploy.md`: our migrations on a copy of the real data after the backup; the two existing-client checks on a copy of the live data (`existing-clients-compare.ts` and `existing-clients-check.ts`); the four one-off scripts (`stamp-said-word-for-word.ts`, `bring-the-checkability-read-up-to-date.ts`, `give-each-check-in-its-kind-of-work.ts`, `bring-a-check-in-up-to-date.ts`); and step 13a, switching billing on.
@@ -169,10 +139,10 @@ It was drawn from `docs/morning-report.md`, `docs/weekly-plan.md`, `docs/run-log
 - Why it was left: found on 7 October, not yet taken up.
 - Recommendation: create no lead check-in for an anchor check-in, set its cadence to weekly, plan only what fits in the month, and walk it again end to end before switching the anchor on.
 
-**B12. An anchor member's check-in mishandles the offers inside it.**
-- Where: "Yes, capture it" is stored as her answer to the open baseline question; the payment offer's Yes closes the check-in ("Okay. That's all for today."); leave is offered while the leave suite is off and its Yes repeats "Your organisation also has the option…" twice; with leave on, the reply says "I can't directly help with time off requests"; and with the request offer hidden, a reply promised "I'll pass that leave request to Halima." and nothing was passed on (requests 167 item 4, 168 items 5 to 7).
-- Who: nobody today. Every anchor member once it is on (`release.requestOfferInTheCheckIn` is on, but the offer is made only in anchor check-ins).
-- Why it was left: found on 7 October.
+**B12. An anchor member's check-in still mishandles two of the offers inside it.**
+- Where: "Yes, capture it" (an idea) is stored as her answer to the open baseline question, and the next turn asks "What did you understand you were meant to do?"; and with leave on, a reply can still say "I can't directly help with time off requests" when its wording slips past the filter that takes such sentences off (requests 167 item 4, 168 items 5 and 7). The payment offer's Yes closing the check-in, leave and spending being offered while that suite is off, and a reply promising to "pass that leave request to Halima" are fixed (`d2ad4ba7`).
+- Who: nobody today. Every anchor member once it is on.
+- Why it was left: the idea's Yes goes through the idea reading and the baseline question's own state, which is the anchor walk's (B7), and the filter is a list of sentences, so a new wording needs a new line.
 - Recommendation: fix each with a test that reads the reply as the member, then walk it again.
 
 ---
@@ -495,14 +465,27 @@ It was drawn from `docs/morning-report.md`, `docs/weekly-plan.md`, `docs/run-log
 
 | Seriousness | Entries |
 | --- | --- |
-| Privacy | 14 |
-| Broken | 12 |
+| Privacy | 12 |
+| Broken | 9 |
 | Wrong | 39 |
 | Untidy | 12 |
-| **All** | **77** |
+| **All** | **72** |
 
 ---
 
 ## Asked of the screens workspace
 
 Please add anything on your side that is missing from this file, in the same shape (what, where, who, why it was left, recommendation), under the right seriousness, marked "(screens workspace)". Merged from your lists so far: requests 159, 161, 163, 167, 168, 169, 170, 172, 173 and 174 from `docs/requests-to-engine.md`, and from `docs/morning-report-ui.md` the admin's To-dos board, the screenshots in the git history, the one-off style classes, the unreachable old pages, the pinned check-ins, the logo, the Feedback button, the extra buttons on five boards, `#/system`, the developer page's two sections, the prototype fragments made into sentences, and the preview page's last old privacy sentence. Requests 1 to 158, 160, 162, 165, 166 and 171 are answered or built in `docs/answers-from-engine.md`, so they are not listed, except their open parts in W32. If anything listed here is already fixed on your side, say so and it will be taken out.
+
+---
+
+## Fixed on 6 and 7 October
+
+Moved out of the list above. Each has a spec read as each person who reads it, and where it could be driven, a run on a local API (`docs/run-log.md`).
+
+- **P2.** A person's own transcript no longer carries what the lead typed about them, their invitation token or the lead's expectation of them (`d68ce7dc`). The lead reads her own row whole; a colleague and an admin are refused.
+- **P13.** In an anchor check-in the lead's own set-up (her aim, what it will cover, what a complete answer holds) is not served to a member on the check-in page, whether or not the anchor is on (`db145b50`).
+- **B4.** A slow reading of the lead's set-up no longer holds the save of a check-in: the save waits for it for up to twenty seconds and answers either way (`990a6640`). The screens' own open-on-load is theirs to check.
+- **B5.** People a lead names while her check-in waits for an admin are held, not dropped, and invited once when an admin accepts it (`6c918a75`).
+- **B6.** A guest holds no seat in the organisation that has them as a guest, so a plan no longer reads as full when it is not (`172aa319`). This reverses the 27 September count that took guests in, as `docs/existing-users.md` always said.
+- **B12 (part).** A yes to an offered request never closes an anchor check-in, leave and spending are not offered while that suite is off, and no reply promises to pass a request on (`d2ad4ba7`).
