@@ -354,8 +354,11 @@ export interface TheQueue {
 }
 
 export const queueApi = {
+  /* Quiet on 404 and 403: an organisation with the suites off answers 404 here, and the sidebar and
+     Today read this for everybody, so a pop-up would greet almost every existing client on every page
+     (walk of the existing clients' use cases, 7 October). The pages that show the queue say it in words. */
   get: async (params?: { page?: number; pageSize?: number; suite?: 'leave' | 'spend' }): Promise<TheQueue> =>
-    (await apiClient.get('/suites/queue', { params })).data,
+    (await apiClient.get('/suites/queue', { params, skipNotFoundToast: true, skipForbiddenToast: true } as any)).data,
 }
 
 /**
@@ -495,8 +498,9 @@ export interface YourLeave { daysLeftSaid: string; requests: YourRequest[] }
 export interface YourSpending { requests: YourRequest[] }
 
 export const yourRequestsApi = {
-  leave: async (): Promise<YourLeave> => (await apiClient.get('/suites/leave/mine')).data,
-  spending: async (): Promise<YourSpending> => (await apiClient.get('/suites/spend/mine')).data,
+  /* Quiet on 404 and 403, for the same reason as the queue: the page says the suite is off in words. */
+  leave: async (): Promise<YourLeave> => (await apiClient.get('/suites/leave/mine', { skipNotFoundToast: true, skipForbiddenToast: true } as any)).data,
+  spending: async (): Promise<YourSpending> => (await apiClient.get('/suites/spend/mine', { skipNotFoundToast: true, skipForbiddenToast: true } as any)).data,
   answerLeave: async (id: string, answer: string): Promise<YourLeave> =>
     (await apiClient.post(`/suites/leave/requests/${id}/answer`, { answer })).data,
   answerSpending: async (id: string, answer: string): Promise<YourSpending> =>

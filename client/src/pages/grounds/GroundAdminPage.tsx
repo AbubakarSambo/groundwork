@@ -1791,7 +1791,7 @@ export function GroundAdminPage() {
           <div className="gwui-button-row">
             {isInitiator && tab !== 'report' && <button type="button" className="gwui-plain-link" onClick={() => goTab('report')}>Every session</button>}
             {isInitiator && tab !== 'checkins' && <button type="button" className="gwui-plain-link" onClick={() => goTab('checkins')}>Who has answered</button>}
-            {viewerIsAParty && <button type="button" className="gwui-plain-link" onClick={() => goTab('myrecord')}>What I shared</button>}
+            {viewerIsAParty && <button type="button" className="gwui-plain-link" onClick={() => goTab('myrecord')}>Your own record</button>}
           </div>
         )}
 

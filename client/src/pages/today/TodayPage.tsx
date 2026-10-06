@@ -11,6 +11,7 @@ import { groundsApi } from '@/api/grounds'
 import { YouAreIn } from './YouAreIn'
 import { firstWordOfAName } from '@/lib/the-first-word-of-a-name'
 import { QueueLink } from '@/pages/suites/QueuePage'
+import { yourRequestsApi } from '@/api/suites'
 
 /**
  * TODAY (C1, #/today). The wording is copied from docs/prototype/screens/C1-today-and-check-ins/
@@ -50,6 +51,12 @@ export function TodayPage() {
   })
 
   /* Only read after joining, for "You are in." (the same list the sidebar reads, so no extra request). */
+  /* "Your own leave and spending requests" only where a suite is on for this person: with both off
+     (almost every existing client), the link opened a page that only says the suite is off. The same
+     queries as the page itself, so opening it costs nothing more. */
+  const yourLeave = useQuery({ queryKey: ['your-leave'], queryFn: yourRequestsApi.leave, enabled: !!user, retry: false, staleTime: 60_000 })
+  const yourSpending = useQuery({ queryKey: ['your-spending'], queryFn: yourRequestsApi.spending, enabled: !!user, retry: false, staleTime: 60_000 })
+  const aSuiteIsOnForYou = yourLeave.isSuccess || yourSpending.isSuccess
   const grounds = useQuery({ queryKey: ['grounds'], queryFn: groundsApi.list, enabled: !!user && params.get('welcome') === '1', staleTime: 30_000 })
 
   const now = new Date()
@@ -111,7 +118,7 @@ export function TodayPage() {
                 ))}
               </EdgeList>
             )}
-            <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/mine">Your own leave and spending requests</Link></p>
+            {aSuiteIsOnForYou && <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/mine">Your own leave and spending requests</Link></p>}
             <QueueLink userId={user?.id} />
           </Section>
         </Stack>

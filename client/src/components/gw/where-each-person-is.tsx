@@ -257,11 +257,12 @@ export function WhereEachPersonIs({ rows, squaresFor }: { rows: Row[]; squaresFo
                   the person it is about, on its own line, in quotes.
                 */}
                 {r.ask && <Note tone={r.hasGap ? 'amber' : 'muted'}>{r.ask}</Note>}
-                {r.finding && (
-                  <Note tone={r.hasGap ? 'amber' : 'muted'}>
-                    {r.who} said, &ldquo;{r.finding}&rdquo;
-                  </Note>
-                )}
+                {/* The finding is the product's own sentence, written from the record ("Neema Achieng has
+                    signed one shop."), which can carry a person's words inside it. Drawing it as
+                    `<name> said, "…"` put Groundwork's words in their mouth (walk of the existing
+                    clients' use cases, 7 October), so it stands on its own line, in the product's voice,
+                    until the engine marks which findings are the person's own words (request 174). */}
+                {r.finding && <Note tone={r.hasGap ? 'amber' : 'muted'}>{r.finding}</Note>}
                 {r.keepsComingUp && <Note tone="muted">{r.keepsComingUp}</Note>}
               </Stack>
             </Stack>
