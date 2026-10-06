@@ -111,6 +111,7 @@ api/journey/*
 !api/journey/seed-a-hundred-people-for-the-suites.ts
 !api/journey/seed-a-hundred-people-for-the-suites.spec.ts
 !api/journey/whatsapp-an-organisations-own-number.ts
+!api/journey/a-guest-asks-only-about-their-own-check-in.ts
 
 # THE ANCHOR JOURNEY (anchor piece 35). Its reader rules live in api/src/modules/board/the-anchor-readers.ts, because
 # nothing in api/src may import from outside api/src. Read-only, and it refuses anything that is not this computer.
