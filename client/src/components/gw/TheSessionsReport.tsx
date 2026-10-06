@@ -29,7 +29,8 @@ import { Panel, SubHeading, Note, Callout, EdgeList, EdgeRow } from '@/component
  * `gwui-p*`) and the inline styles sitting beside them are gone. The outer card is now `Panel`
  * (`pad={false}`, since the card needs full-bleed colour bands the finding and the conversation
  * worth having both use); `withheldUntilYouAnswer` and "the conversation worth having now" - the
- * two blue boxes, including the one literally named `gwui-rule-blue` - are now `Callout`; the
+ * two blue boxes, including the one that once carried its own one-off blue-rule class - are now
+ * `Callout`; the
  * loading line is `Note`; and each "still open" topic under "Where things stand" is now an
  * `EdgeList`/`EdgeRow`, its amber accent spur standing in for the hand-drawn dot this file used to
  * paint itself. The local `Row` component keeps its name and its `label`/`n` props exactly -
@@ -194,8 +195,8 @@ function Quotes({ items, yourName }: { items: { text: string; who?: string | nul
  * GROUP 3's DRIFT-LIST REVIEW (1 October 2026): keeps its name and its `label`/`n` props exactly -
  * `the-order-comes-from-one-place.spec.ts` reads this file's own source for `<Row ... label=...>` -
  * but draws the label with `SubHeading` now, not the bespoke bold-and-muted span this file used to
- * build by hand, and the row itself with the local `.gwui-sr-row` class in place of the one-off
- * `gwui-rule-top gwui-pt-16 gwui-pr-20 gwui-pb-16 gwui-pl-20` combination.
+ * build by hand, and the row itself with the local `.gwui-sr-row` class in place of the five
+ * one-off top-rule and padding utilities it used to carry.
  */
 function Row({ label, children, style }: {
   /** Kept on the interface so call sites (and the-order-comes-from-one-place test) are unchanged;
