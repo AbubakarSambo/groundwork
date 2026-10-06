@@ -125,9 +125,9 @@ describe('what arrives one at a time is told one at a time, and the morning only
     jest.setSystemTime(lagos('07:30'));
     const done = await cron.tellNow(lagos('07:30'));
     const everyone = await w.queue.whatWaitsForEveryone('org-baobab', lagos('07:30'));
-    /* Three of the nineteen are on leave this Wednesday (Operations', Customer Support's and Procurement's managers): held, not written to. */
-    expect(everyone.size).toBe(19);
-    expect(done).toEqual({ whatsapp: 16, email: 0, held: 3 });
+    /* Three of the eighteen are on leave this Wednesday (Operations', Customer Support's and Procurement's managers): held, not written to. */
+    expect(everyone.size).toBe(18);
+    expect(done).toEqual({ whatsapp: 15, email: 0, held: 3 });
     const to = x.wentOnWhatsApp().map((m) => m.to);
     expect(new Set(to).size).toBe(to.length);
     expect(to.length).toBeLessThan(40);
@@ -174,7 +174,7 @@ describe('what the summary says, and where it goes when WhatsApp cannot', () => 
     const done = await cron.tellNow(lagos('07:30'));
     expect(done.whatsapp).toBe(0);
     expect(x.wentOnWhatsApp()).toEqual([]);
-    expect(done.email).toBe(16);
+    expect(done.email).toBe(15);
     expect(x.emails).toHaveLength(done.email);
     expect(new Set(x.emails.map((e) => e.to)).size).toBe(x.emails.length);
   });
@@ -204,11 +204,11 @@ describe('"Not now", the quiet hours and leave hold the catch-up, and nothing is
     for (const at of ['20:00', '23:30', '03:00', '06:59']) {
       const when = lagos(at);
       jest.setSystemTime(when);
-      expect(await cron.tellNow(when)).toEqual({ whatsapp: 0, email: 0, held: 19 });
+      expect(await cron.tellNow(when)).toEqual({ whatsapp: 0, email: 0, held: 18 });
     }
     expect(x.wentOnWhatsApp()).toEqual([]);
     jest.setSystemTime(lagos('07:00'));
-    expect((await cron.tellNow(lagos('07:00'))).whatsapp).toBe(16);
+    expect((await cron.tellNow(lagos('07:00'))).whatsapp).toBe(15);
   });
 
   it('the quiet hours are where the person is: a person in Nairobi is quiet at 21:30 their time, and a person in Lagos is not', async () => {
@@ -241,10 +241,10 @@ describe('"Not now", the quiet hours and leave hold the catch-up, and nothing is
 describe('what the clock passes on together is said once, at once, and the summary after it says nothing more', () => {
   const clockOf = (x: ReturnType<typeof aWorldThatMessages>) => new ARequestWaitsTooLongCron(x.w.prisma, x.w.leaveBoard, x.w.spending, { passOnWhatWaitsTooLong: async () => [] } as any, x.told);
 
-  it('57 requests passed on are one message to each person they were passed on to, straight away, and not once for each request', async () => {
+  it('59 requests passed on are one message to each person they were passed on to, straight away, and not once for each request', async () => {
     const x = aWorldThatMessages();
     const done = await clockOf(x).passOnNow(TODAY);
-    expect(done.passedOn).toBe(57);
+    expect(done.passedOn).toBe(59);
     const to = x.wentOnWhatsApp().map((m) => m.to);
     expect(new Set(to).size).toBe(to.length);
     expect(to.length).toBeLessThan(15);

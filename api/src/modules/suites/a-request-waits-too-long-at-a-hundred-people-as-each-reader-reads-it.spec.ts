@@ -60,12 +60,12 @@ describe('it is passed on once', () => {
   it('the same day again passes nothing; the next day passes only what has newly waited long enough, never what was passed on the day before', async () => {
     const { w, cron, on } = world();
     const wednesday = await cron.passOnNow(TODAY);
-    expect(wednesday.passedOn).toBe(57);
+    expect(wednesday.passedOn).toBe(59);
     const passedOnWednesday = new Set(w.events.filter((e) => e.kind === 'escalated').map((e) => `${e.suite}|${e.ref}`));
     expect((await cron.passOnNow(TODAY)).passedOn).toBe(0);
     const thursday = await cron.passOnNow(on('2026-10-08'));
     const nowPassed = w.events.filter((e) => e.kind === 'escalated').map((e) => `${e.suite}|${e.ref}`);
-    expect(nowPassed.length).toBe(57 + thursday.passedOn);
+    expect(nowPassed.length).toBe(59 + thursday.passedOn);
     /* The requests asked for on Tuesday have now waited two working days; nobody is passed on twice in two days. */
     expect(new Set(nowPassed).size).toBe(nowPassed.length);
     expect(thursday.passedOn).toBeGreaterThan(0);
@@ -85,11 +85,11 @@ describe('it is passed on once', () => {
   it('two runs of the clock at the same moment pass each request once, record it once and tell once', async () => {
     const { w, cron } = world();
     const [a, b] = await Promise.all([cron.passOnNow(TODAY), cron.passOnNow(TODAY)]);
-    expect(a.passedOn + b.passedOn).toBe(57);
+    expect(a.passedOn + b.passedOn).toBe(59);
     const escalated = w.events.filter((e) => e.kind === 'escalated');
-    expect(escalated).toHaveLength(57);
-    expect(new Set(escalated.map((e) => `${e.suite}|${e.ref}`)).size).toBe(57);
-    expect(w.told).toHaveLength(57);
+    expect(escalated).toHaveLength(59);
+    expect(new Set(escalated.map((e) => `${e.suite}|${e.ref}`)).size).toBe(59);
+    expect(w.told).toHaveLength(59);
   });
 
   it('an answer given as the clock reaches the request wins: it is approved or passed on, never both', async () => {

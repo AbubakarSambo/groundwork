@@ -4,7 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { askNameOf } from '../assistant/ask-name';
 import { theirRosterEntries, theirRosterEntry } from './a-roster-entry-and-its-sign-in';
 import { inTheLeadsTeam } from './a-leads-team';
-import { loadLookups, whoTheyStandInFor, type Lookups } from './the-lookups';
+import { loadLookups, type Lookups } from './the-lookups';
 import { couldBeNamed, decidesIt, everyRuleIn, passWhatTheyAlreadyApproved, theStepsFor, whoComesNext, whoDecidesNow, type APassedStep, type DecidesNow, type WhoDecides } from './who-may-decide';
 import { whyPassOn, type WhyPassedOn } from './a-request-waits-too-long';
 import { aRequestsHistory, recordIt } from './a-request-is-recorded';
@@ -213,9 +213,7 @@ export class LeaveBoardService {
      */
     const asApprover = role !== 'ADMIN' && role !== 'LEAD';
     const mayBeNamed = asApprover && role === 'MEMBER' && (await couldBeNamed(this.prisma, [...everyRuleIn(theStepsFor('leave', answers)), ...(answers.rules.thresholds ?? []).flatMap((t) => everyRuleIn(t.steps))], reader.organizationId, { userId: reader.userId, role }));
-    /* A member who stands in today for somebody on leave decides what waits for that person, and opens the board as an approver to do it. */
-    const standsIn = asApprover && !mayBeNamed && !holdsHr && role === 'MEMBER' && (await whoTheyStandInFor(this.prisma, reader.organizationId, reader.userId, today)).length > 0;
-    if (asApprover && !mayBeNamed && !holdsHr && !standsIn) {
+    if (asApprover && !mayBeNamed && !holdsHr) {
       throw new ForbiddenException(LEAVE_REFUSED.onlyAdminsAndLeads);
     }
 
@@ -321,7 +319,7 @@ export class LeaveBoardService {
     }
 
     return {
-      reader: role === 'ADMIN' ? 'admin' : role === 'LEAD' ? 'lead' : mayBeNamed || standsIn ? 'approver' : 'hr',
+      reader: role === 'ADMIN' ? 'admin' : role === 'LEAD' ? 'lead' : mayBeNamed ? 'approver' : 'hr',
       waiting: waiting.filter((w) => w.name), off: off.filter((o) => o.name), toldToHr,
     };
   }

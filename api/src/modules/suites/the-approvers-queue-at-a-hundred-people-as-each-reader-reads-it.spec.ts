@@ -53,12 +53,10 @@ describe('what each reader reads of the queue', () => {
     expect((await w.queue.queue(w.as('support.manager'), {}, TODAY)).counts).toMatchObject({ all: 6, leave: 3, spend: 3 });
   });
 
-  it('a plain member who stands in for Procurement’s manager reads the team’s requests but never his own', async () => {
+  it('a plain member who stands in for Procurement’s manager has no right to decide, so reads nothing of the team’s, which stays with the manager until it is passed on by rule', async () => {
     const w = aHundredPeople();
-    const q = await w.queue.queue(w.as('procurement.m1'), { pageSize: 100 }, TODAY);
-    expect(q.counts).toMatchObject({ all: 4, leave: 2, spend: 2 });
-    expect(q.items.map((i) => i.firstName)).not.toContain(w.people.find((p) => p.key === 'procurement.m1')!.first);
-    expect(q.items.every((i) => i.team === 'Procurement' && i.standingIn)).toBe(true);
+    expect(await w.queue.queue(w.as('procurement.m1'), { pageSize: 100 }, TODAY)).toMatchObject({ counts: { all: 0 }, items: [] });
+    expect((await w.queue.queue(w.as('procurement.manager'), { pageSize: 100 }, TODAY)).counts.all).toBeGreaterThanOrEqual(6);
   });
 
   it('nobody who has nothing to decide reads anybody else’s: the person who asked, HR, an admin whom nothing has reached, another member', async () => {
