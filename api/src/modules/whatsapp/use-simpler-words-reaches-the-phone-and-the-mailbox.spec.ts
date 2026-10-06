@@ -30,7 +30,7 @@ describe('the reminders on WhatsApp', () => {
       `Hi Amani, your check-in for Sales team, Q4 is due tomorrow, ${off[1].params[2]}. You can answer here at any time before then.`,
       `Hi Amani, your check-in for Sales team, Q4 opens in one hour, at ${off[2].params[2]}. Write here when it opens, and we will start.`,
       'Hi Amani, your check-in for Sales team, Q4 is late. It is still open. You can answer here now.',
-      'Hi Amani, 3 of 5 people have answered the check-in for Sales team, Q4. Your answers are not there yet. Add them, and they will be part of the picture.',
+      'Hi Amani, 3 of 5 people have answered the check-in for Sales team, Q4. You have not answered yet. When you answer, your answers go into the report.',
       'Hi Amani, your check-in for Sales team, Q4 is still waiting. Your answers help Wairimu see what is in your way and where they can help. It takes about five minutes. You can answer here.',
       'Hi Amani, last time you said you would call the Quickmart buyer. How did it go? Your check-in for Sales team, Q4 is open. You can answer here.',
     ]);
@@ -54,9 +54,12 @@ describe('the three messages for somebody who stopped halfway', () => {
       const sent: string[] = [];
       const began = new Date('2026-10-06T06:00:00Z');
       const prisma: any = {
+        platformSetting: { findUnique: async () => ({ value: { at: '2026-10-05T12:00:00Z' } }) },
+        conversationTurn: {},
         checkIn: { findUnique: async () => ({ startedAt: began, createdAt: began, ground: { organizationId: 'o', label: 'X', overWhatsApp: null, simplerWords }, participant: { email: 'a@k.test', user: { firstName: 'Amani', phoneNumber: null, deletedAt: null } } }) },
-        person: { findFirst: async () => ({ phone: '+254700000001', whatsappLastInboundAt: new Date('2026-10-06T07:00:00Z') }) },
-        whatsAppSend: { findFirst: async () => null },
+        person: { findFirst: async () => ({ phone: '+254700000001' }) },
+        whatsAppSend: { findFirst: async (q: any) => (q.where.kind === 'answered-here' ? { id: 'w' } : null) },
+        groundParticipant: { findMany: async () => [] },
       };
       await remindThemToCarryOn(prisma, { sendFor: async (_o: string, _p: string, t: string) => { sent.push(t); return { sent: true }; } }, { id: 'c' }, { role: 'AI', createdAt: new Date('2026-10-06T07:30:00Z') }, new Date('2026-10-06T11:00:00Z'));
       expect(sent).toEqual([carryOnSaying('Amani', 'X', simplerWords)]);
@@ -72,16 +75,16 @@ describe('the emails', () => {
     e.layout = (h: string) => h;
     e.theWayToStopBeingChased = async () => null;
     await call(e);
-    return sent[0].html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    return sent[0].html.replace(/<\/p>/g, ' ').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
   }
   it('the reminder: off is the old sentence, on is the plainer one', async () => {
     const nudge = (s?: boolean) => (e: any) => e.sendNudge('a@k.test', 'Sales team, Q4', 'https://x/y', undefined, true, null, 'p1', s);
     expect(await render(nudge())).toBe('Your check-in for Sales team, Q4 is still open. They have already shared their side. Yours is the last one we are waiting for. Check in');
-    expect(await render(nudge(true))).toBe('Your check-in for Sales team, Q4 is still open. It takes about five minutes. The other person has already answered. We are waiting for you. Check in');
+    expect(await render(nudge(true))).toBe('Your check-in for Sales team, Q4 is still open. It takes about five minutes. The other person has already answered. Yours is the last answer we need. Check in');
   });
   it('the next check-in: off is the old sentence, on is the plainer one', async () => {
     const ready = (s?: boolean) => (e: any) => e.sendSessionReady('a@k.test', 'Sales team, Q4', 'https://x/y', s);
-    expect(await render(ready())).toBe('A new check-in is ready for Sales team, Q4 . Check in');
+    expect(await render(ready())).toBe('A new check-in is ready for Sales team, Q4. Check in');
     expect(await render(ready(true))).toBe('Your next check-in for Sales team, Q4 is open. It takes about five minutes. Check in');
   });
 });

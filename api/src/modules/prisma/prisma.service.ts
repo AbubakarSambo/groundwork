@@ -118,6 +118,8 @@ export const CronLock = {
   INVITE_EXPIRY: 920_011,
   /** The daily sweep of unredeemed Google sign-in codes. See auth/auth.cron.ts. */
   OAUTH_CODES: 920_012,
+  /** The reminder to carry on, for somebody who stopped halfway on WhatsApp. See grounds.cron.ts remindThoseWhoStoppedHalfway. */
+  HALFWAY_REMINDERS: 920_013,
 } as const;
 
 /**

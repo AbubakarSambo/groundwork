@@ -14,8 +14,9 @@ describe('a session that began before this was decided is never written to', () 
     const before = new Date('2026-10-01T09:00:00Z');
     const prisma: any = {
       checkIn: { findUnique: jest.fn(async () => ({ startedAt: before, createdAt: before, ground: { organizationId: 'org-1', label: 'Sales team, Q4', overWhatsApp: null }, participant: { email: 'amani@kito.test', user: { firstName: 'Amani', phoneNumber: null, deletedAt: null } } })) },
-      person: { findFirst: jest.fn(async () => ({ phone: '+254700000001', whatsappLastInboundAt: new Date(before.getTime() + HOUR) })) },
-      whatsAppSend: { findFirst: jest.fn(async () => null) },
+      platformSetting: { findUnique: jest.fn(async () => ({ value: { at: '2026-09-01T00:00:00Z' } })) },
+      person: { findFirst: jest.fn(async () => ({ phone: '+254700000001' })) },
+      whatsAppSend: { findFirst: jest.fn(async () => ({ id: 'w' })) },
     };
     const whatsapp = { sendFor: jest.fn(async (_o: string, to: string, text: string) => { sent.push({ to, text }); return { sent: true }; }) };
     expect(await remindThemToCarryOn(prisma, whatsapp, { id: 'ci-1' }, lastAsked(4), NOON_LAGOS)).toBe(false);
