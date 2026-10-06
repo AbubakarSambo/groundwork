@@ -1327,8 +1327,17 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * The same fact still exists, the same place the check-in page reads it for this very button
    * (`myOpenCheckInId`/`myNextOpensAt`, GroundAdminPage.tsx and GroundParticipantPage.tsx): the
    * reader's own open-or-next check-in row, off `GET /grounds/:id` (`groundForSignals`, already
-   * fetched above). Used only as a fallback, when no phase spine was sent - the spine's own read
-   * stays the one truth wherever it exists.
+   * fetched above).
+   *
+   * FAULT 8 (LIVE RE-WALK): NOT ONLY A FALLBACK FOR WHEN THERE IS NO PHASE SPINE. Amina finished
+   * her own part of the team's current round early - her next check-in exists, `NOT_STARTED`,
+   * `availableFrom` in the future - while the phase spine still called that same round `current`
+   * (it stays open, team-wide, until everybody else finishes it too). This reader's own next
+   * session not yet being open and the team's round still being open are two different facts, and
+   * the button only asked the second one: gated behind `!b.phaseSpine`, this reader's own read
+   * never ran at all on a board that does send a spine, so "Start my check-in" stayed up for a
+   * session that had not opened for her. It runs always now, alongside the spine's own read, not
+   * only in its absence.
    */
   const myParticipantIdForOpenCheck = ((groundForSignals as any)?.participants ?? []).find((p: any) => p.userId === user?.id)?.id ?? null
   const myOpenOrNextCheckIn = myParticipantIdForOpenCheck
@@ -1339,7 +1348,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const myOpenOrNextOpensLater = !!myOpenOrNextCheckIn?.availableFrom
     && new Date(myOpenOrNextCheckIn.availableFrom).getTime() > Date.now()
     && myOpenOrNextCheckIn?.status !== 'IN_PROGRESS'
-  const noSessionOpenForReaderFallback = !b.phaseSpine && myOpenOrNextOpensLater
+  const noSessionOpenForReaderFallback = myOpenOrNextOpensLater
   const whenTheNextSessionOpensFallback = myOpenOrNextOpensLater
     ? `Session ${myOpenOrNextCheckIn.sessionNumber} opens on ${whenItWas(myOpenOrNextCheckIn.availableFrom, 'dayAndMonthLong')}.`
     : null
