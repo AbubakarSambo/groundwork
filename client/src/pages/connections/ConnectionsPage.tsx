@@ -5,6 +5,7 @@ import { integrationsApi, type Credential } from '@/api/integrations'
 import { useAuthStore } from '@/stores/auth'
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
+import { WhatsAppKeysNeedTypingAgainNote, WhatsAppKeysRetypeForm } from './WhatsAppKeysNeedTypingAgain'
 import {
   Page, PageTitle, Section, Panel, Stack, SubHeading, FieldRows, FieldRow, Button, Tag, TextField, Note, OpsConsoleExample, WhatsAppConversationExample,
 } from '@/components/gw/ui'
@@ -234,6 +235,8 @@ function WhatsAppSection({ orgName, glance }: { orgName: string; glance: { peopl
       <Panel>
         {connection ? (
           <Stack gap={12}>
+            <WhatsAppKeysNeedTypingAgainNote connection={connection} />
+            {connection.keysNeedTypingAgain && <WhatsAppKeysRetypeForm connection={connection} />}
             <p className="gwui-panel-text-muted">
               {connection.displayNumber
                 ? <>Your people check in by replying to <b>{connection.displayNumber}</b>, {whose}. A reply is their check-in, exactly as if typed here.</>

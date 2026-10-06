@@ -135,6 +135,36 @@ describe('Grace, an admin, reads Connections', () => {
     await waitFor(() => expect(api.disconnectWhatsapp).toHaveBeenCalledTimes(1))
   })
 
+  /*
+   * A SEALED KEY THAT CANNOT BE OPENED (6 October, answers-from-engine.md: "an organisation's own
+   * WhatsApp number, when its keys cannot be opened"). `keysNeedTypingAgain` and its sentence are
+   * served on `connection`; the sentence is shown word for word, as a Note, at the top of the
+   * WhatsApp section, with the token and app secret fields to retype it right there.
+   */
+  it('with her own keys sealed and unreadable: the served sentence, and the fields to type them again', async () => {
+    serve({ connection: { ...CONNECTED, keysNeedTypingAgain: true, keysNeedTypingAgainSays: "Your number's keys need to be typed in again. Nothing is sent from your number until they are." } })
+    api.connectWhatsapp.mockResolvedValue({ connection: CONNECTED, webhookPath: '/x' })
+    open(GRACE)
+    const wa = await screen.findByRole('region', { name: 'WhatsApp' })
+    const note = await within(wa).findByRole('alert')
+    expect(note.textContent).toBe("Your number's keys need to be typed in again. Nothing is sent from your number until they are.")
+    fireEvent.change(within(wa).getByLabelText('Access token'), { target: { value: 'EAA-new-token' } })
+    fireEvent.change(within(wa).getByLabelText('App secret'), { target: { value: 'new-secret' } })
+    fireEvent.click(within(wa).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(api.connectWhatsapp).toHaveBeenCalledWith(expect.objectContaining({
+      phoneNumberId: CONNECTED.phoneNumberId, accessToken: 'EAA-new-token', appSecret: 'new-secret',
+    })))
+  })
+
+  it('with keys sealed and readable, says nothing about retyping them', async () => {
+    serve({ connection: CONNECTED })
+    open(GRACE)
+    const wa = await screen.findByRole('region', { name: 'WhatsApp' })
+    expect(within(wa).queryByRole('alert')).toBeNull()
+    expect(within(wa).queryByLabelText('Access token')).toBeNull()
+    expect(within(wa).queryByLabelText('App secret')).toBeNull()
+  })
+
   it('with WhatsApp on and no number of her own: "Not set up", and the way to set it up', async () => {
     serve()
     open(GRACE)
@@ -377,6 +407,21 @@ describe('Grace, an admin, connects WhatsApp step by step', () => {
     await screen.findByText('Whoever sets up a check-in chooses whether people answer it here or on WhatsApp.')
     expect((screen.getByLabelText('Access token') as HTMLInputElement).value).toBe('')
     expect((screen.getByLabelText('App secret') as HTMLInputElement).value).toBe('')
+  })
+
+  it('with a sealed key that cannot be opened, the sentence shows at the top and step 2 reopens with the fields to retype it, even with everything else done', async () => {
+    serve({
+      connection: { ...CONNECTED, keysNeedTypingAgain: true, keysNeedTypingAgainSays: "Your number's keys need to be typed in again. Nothing is sent from your number until they are." },
+      wa: { canStartAConversation: true, approvedHere: ['gw_session_ready', 'gw_opening', 'gw_report'] },
+    })
+    open(GRACE, 'whatsapp')
+    const note = await screen.findByRole('alert')
+    expect(note.textContent).toBe("Your number's keys need to be typed in again. Nothing is sent from your number until they are.")
+    expect(screen.getByLabelText('Access token')).toBeTruthy()
+    expect(screen.getByLabelText('App secret')).toBeTruthy()
+    /* Every step, including step 2, is still marked done - a sealed key does not undo that - and
+       step 2's own content keeps rendering regardless, which is what shows the fields. */
+    await waitFor(() => expect(screen.getAllByText('Done')).toHaveLength(6))
   })
 
   it('with everything done, steps 5 and 6 carry today’s words and the switch', async () => {

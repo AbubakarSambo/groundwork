@@ -108,6 +108,16 @@ export interface WhatsAppConnection {
   /** When Meta's handshake answered, or else when the first message came in through the address (U.18). */
   webhookProvenAt?: string | null
   tokenEndsWith: string
+  /**
+   * THE ORGANISATION'S OWN KEYS, SEALED, AND SOMETIMES UNREADABLE (6 October, answers-from-engine.md,
+   * "an organisation's own WhatsApp number, when its keys cannot be opened"). The access token and
+   * app secret are kept sealed; if the server's own key that seals them is changed or removed, they
+   * cannot be opened any more. `keysNeedTypingAgain` is true in that case, and nothing is sent from
+   * the number until the admin types the token and the app secret in again. `keysNeedTypingAgainSays`
+   * is the served sentence, to show word for word.
+   */
+  keysNeedTypingAgain?: boolean
+  keysNeedTypingAgainSays?: string | null
 }
 
 /** The counts on the Connections page (U.18). Counts only, and admins only, on the server. */

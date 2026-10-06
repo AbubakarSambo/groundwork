@@ -6,6 +6,7 @@ import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { useAuthStore } from '@/stores/auth'
 import { copy } from '@/components/gw/copying-can-fail'
 import { OnlyAnAdmin } from './ConnectionsPage'
+import { WhatsAppKeysNeedTypingAgainNote } from './WhatsAppKeysNeedTypingAgain'
 import {
   Page, PageTitle, Section, Panel, Stack, Button, Tag, TextField, FieldLabel, Note,
 } from '@/components/gw/ui'
@@ -66,7 +67,14 @@ export function WhatsAppSetupPage() {
   }) | undefined
   const c = data?.connection ?? null
   const steps = stepsFor(c, data?.canStartAConversation === true)
-  /* Step 1 has nothing to press, so before anything is saved the step to do is 2, and 1 stays open above it. */
+  /*
+   * Step 1 has nothing to press, so before anything is saved the step to do is 2, and 1 stays open
+   * above it. STEP 2 ITSELF IS "DONE" AS SOON AS A CONNECTION EXISTS (`stepsFor` above), SO IT STAYS
+   * OPEN EVEN ONCE EVERYTHING ELSE IS DONE TOO - a done step's own content keeps rendering (`open`
+   * below), which is exactly what a sealed key that cannot be opened needs (6 October,
+   * answers-from-engine.md): the fields to retype the token and the app secret must stay visible,
+   * not behind a step the connection's own age could otherwise close.
+   */
   const current = c ? steps.find(s => !s.done)?.n ?? 0 : 2
   const refresh = () => { qc.invalidateQueries({ queryKey: ['integrations'] }); qc.invalidateQueries({ queryKey: ['whatsapp-is-on'] }) }
 
@@ -228,6 +236,7 @@ export function WhatsAppSetupPage() {
       />
 
       {whatsapp.isError && <Note tone="error">Connections did not load.</Note>}
+      <WhatsAppKeysNeedTypingAgainNote connection={c} />
 
       {/*
        * THE STEPS SIT FLAT ON THE PAGE (whatsapp.jpg; group 1 review), not inside a white `Panel` -
