@@ -562,7 +562,10 @@ export class GroundsService {
    */
   async tellParticipantsAboutThis(groundId: string, brief: string | null | undefined, scenario?: string | null): Promise<void> {
     /* The anchor lead's conversation is hers alone, so nothing is written from it for the team to read (decision 96, item 8). */
-    if (scenario === GroundScenario.HELP_TEAM_UNDERSTAND) {
+    /* At create the row has no mark yet, so the situation says it; on a later edit of the brief the row's own mark does. */
+    const marked = scenario === GroundScenario.HELP_TEAM_UNDERSTAND
+      || (await Promise.resolve((this.prisma.ground as any)?.findUnique?.({ where: { id: groundId }, select: { startedFrom: true } })).catch(() => null))?.startedFrom === 'anchor';
+    if (marked) {
       this.logger.log(`Ground ${groundId}: the anchor's team is told nothing from the lead's own conversation.`);
       return;
     }
