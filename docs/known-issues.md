@@ -403,12 +403,6 @@ It was drawn from `docs/morning-report.md`, `docs/weekly-plan.md`, `docs/run-log
 - Why it was left: drawing them as the prototype has them would promise things the product does not do.
 - Recommendation: an offline queue and crash reporting first, then the prototype's words.
 
-**U16. Placement and small things the walks noticed (screens workspace).**
-- Where: Plan and billing shows a WhatsApp allowance while WhatsApp is off (served wording, harmless). (The board's central question was moved under the headline on 7 October, `3e137f3a`.)
-- Who: admins.
-- Why it was left: it stops nobody.
-- Recommendation: hide the allowance while WhatsApp is off, when the billing page is next touched.
-
 **U17. The one-off style clean-up stopped where no exact shared class exists (screens workspace).**
 - Where: BoardPage.tsx (584 uses) and about a dozen components (15 to 70 uses each), listed in `client/src/components/gw/ui/one-off-uses-per-file.ts`.
 - Who: nobody sees it; it is code tidiness.
