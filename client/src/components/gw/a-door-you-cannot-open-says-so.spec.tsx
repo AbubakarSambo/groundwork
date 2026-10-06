@@ -43,3 +43,24 @@ describe('every refusal names the thing the person was actually trying to do', (
     expect(screen.getByRole('heading', { name: 'Only an admin can open People.' })).toBeTruthy()
   })
 })
+
+/**
+ * SCREEN FAULT 6: /settings/whatsapp READ "You cannot connect your systems here... This is a
+ * setting, not anything about you." - vague on both ends, and it never said what a member could
+ * still do. Its own plain sentence now, the same shape as "open People" above: who can do it, and
+ * what is still open to the reader.
+ */
+describe('the WhatsApp page, to somebody who is not an admin', () => {
+  it('says plainly who can connect it, and that answering still works', () => {
+    render(<MemoryRouter><ADoorYouCannotOpen may={false} what="connect your organisation’s WhatsApp number"><p>hidden</p></ADoorYouCannotOpen></MemoryRouter>)
+    expect(screen.getByRole('heading', { name: 'Only an admin can connect your organisation’s WhatsApp number.' })).toBeTruthy()
+    expect(screen.getByText('You can still answer your check-ins here.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Back to your check-ins' })).toBeTruthy()
+    expect(screen.queryByText('hidden')).toBeNull()
+    expect(screen.queryByText(/This is a setting, not anything about you/)).toBeNull()
+  })
+  it('an admin goes straight through', () => {
+    render(<MemoryRouter><ADoorYouCannotOpen may what="connect your organisation’s WhatsApp number"><p>the real page</p></ADoorYouCannotOpen></MemoryRouter>)
+    expect(screen.getByText('the real page')).toBeTruthy()
+  })
+})

@@ -27,7 +27,7 @@ export function ADoorYouCannotOpen({
   /** Whether this person may use what is behind the door. */
   may: boolean
   /** What they were trying to do, in their words rather than the route's. */
-  what: 'open a check-in' | 'add people to your organisation' | 'connect your systems' | 'open People'
+  what: 'open a check-in' | 'add people to your organisation' | 'connect your systems' | 'connect your organisation’s WhatsApp number' | 'open People'
   children: ReactNode
 }) {
   const navigate = useNavigate()
@@ -45,6 +45,30 @@ export function ADoorYouCannotOpen({
         </h1>
         <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.65, margin: '0 0 20px' }}>
           Your role here is not an admin’s. An admin can change it.
+        </p>
+        <button type="button" className="gw-btn" style={{ margin: 0 }} onClick={() => navigate('/grounds')}>
+          Back to your check-ins
+        </button>
+      </div>
+    )
+  }
+
+  /*
+   * SCREEN FAULT 6: "YOU CANNOT CONNECT YOUR SYSTEMS HERE... THIS IS A SETTING, NOT ANYTHING
+   * ABOUT YOU" DID NOT SAY WHAT A MEMBER COULD ACTUALLY DO. Vague on both ends: "your systems"
+   * named nothing a member reading /settings/whatsapp would recognise as theirs, and "this is a
+   * setting" answered a question nobody asked instead of saying what is still open to them. Said
+   * plainly instead, the same shape as "open People" just above: who can do it, and what the
+   * reader can still do themselves.
+   */
+  if (what === 'connect your organisation’s WhatsApp number') {
+    return (
+      <div className="gw-bd" style={{ maxWidth: 540, margin: '0 auto', padding: '48px 20px' }}>
+        <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--gw-navy)', margin: '0 0 10px' }}>
+          Only an admin can connect your organisation’s WhatsApp number.
+        </h1>
+        <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.65, margin: '0 0 20px' }}>
+          You can still answer your check-ins here.
         </p>
         <button type="button" className="gw-btn" style={{ margin: 0 }} onClick={() => navigate('/grounds')}>
           Back to your check-ins
