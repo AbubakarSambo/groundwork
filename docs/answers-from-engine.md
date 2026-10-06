@@ -6237,11 +6237,12 @@ Every problem the screens workspace found and did not fix. It comes from the wal
 2. **A member is served the lead's note about them.** `GET /check-ins/:id/transcript` serves `participant.roleAsDescribed` and `theirAnswerFitted.kind` ("Lead installer. He finishes most of the jobs…"), against decision 30 (requests 167 item 1 and 168 item 2).
 
 ## Worse or wrong for existing clients
-3. **SCREENS, being fixed now.**
-   - The session can be opened more than once on load. "Opening your check-in…" can hang, and a lead saw three opening questions.
-   - The report tab's "Send to 1" button stays after "Everybody who asked for it already has it.".
-   - Other report-tab sentences: "0 of 1 people have checked in", "A colleague has not checked in for this round yet", and a header reading "Session 1 of 12" while session 2 is answered.
-   - The session report joins "<name> said" to an engine phrase ("Amani Wekesa said describes the start date…").
+3. **SCREENS, fixed on 7 October** (commits 413ed10c, ad7a5092, ae1c4f08, 0c8a0db6).
+   - A session opens once per page load, and a 400 shows the conversation or the served sentence, never a hang.
+   - "<name> said" is no longer joined to an engine phrase.
+   - The report tab's send button goes once there is nobody new to send to.
+   - "Nobody has checked in yet." is said for zero.
+   - The header's session number is right.
 4. **ENGINE.**
    - A check-in waiting for approval took over 45 seconds to save. The lead's set-up answers, ended session and private report were not on the saved check-in, and `POST /check-ins/:id/open` answered 400 (request 174, item 2).
    - After approval, the note still says the check-in is waiting, and the invite was dropped (174.3).
