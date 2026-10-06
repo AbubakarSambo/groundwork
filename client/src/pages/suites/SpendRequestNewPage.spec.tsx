@@ -56,6 +56,18 @@ describe('Create a payment request', () => {
     expect(screen.getByLabelText('What it is for')).toHaveValue('the workshop')
   })
 
+  /*
+   * SCREEN FAULT 6(e) (live walk, 6 October 2026): NO EMPTY DIVIDER AT THE TOP. This form is the
+   * only thing in its panel - `.gwui-suite-ask`'s own top rule, meant for a form that follows a
+   * suite's heading and switch inside the same panel, drew here as a line with nothing above it.
+   */
+  it('draws no top rule: the form is the only thing in its panel', async () => {
+    open()
+    await screen.findByRole('heading', { level: 1, name: 'Create a payment request' })
+    expect(document.querySelector('form.gwui-suite-ask')).toBeNull()
+    expect(document.querySelector('form.gwui-suite-ask-alone')).toBeTruthy()
+  })
+
   it('draws the served currency beside the amount, and writes none of its own', async () => {
     ;(fileARequestApi.spendForm as any).mockResolvedValue({ currency: 'KES', categoryCalled: 'category', categories: [] })
     open()

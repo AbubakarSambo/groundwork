@@ -205,6 +205,7 @@ Rebuilding `SuitesPage.tsx` and all ten boards (`OnboardingBoardPage`, `LeaveBoa
 | --- | --- | --- | --- |
 | **`.gwui-suite-head`/`.gwui-suite-switch`** (a suite card's own two-column layout, title and body left, On/Off tag and its `Toggle` right) | layout | `gw-suite-head`/`gw-suite-switch` | unchanged |
 | **`.gwui-suite-ask`/`.gwui-suite-q`** (the small form a suite's own questions open into) | layout | `gw-suite-ask`/`gw-suite-q` | unchanged |
+| **`.gwui-suite-ask-alone`** (screen fault 6e, live walk 6 October 2026: the same form, for the two pages - `LeaveRequestNewPage.tsx`, `SpendRequestNewPage.tsx` - where it is the only thing in its panel, so `.gwui-suite-ask`'s own top rule drew as an empty line with nothing above it to divide from) | layout | `.gwui-suite-ask`, with the top rule and its spacing left off | same gap, no line |
 | **`.gwui-record-table`** (a record table: time sheets, equipment, spending, customers, the role map) | sizes | `gw-suite-table`, `gw-time-table` | unchanged, merged into one name since both were the same shape |
 | **`.gwui-time-bar`** (a progress bar against an agreed amount, time sheets' own "Hours against what each client agreed") | sizes/colour | `gw-time-bar` | unchanged |
 | **`.gwui-quoted-text`** (a review's own quoted words) | font/size | `gw-review-said` | unchanged |

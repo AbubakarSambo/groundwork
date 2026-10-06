@@ -179,6 +179,29 @@ describe('the board, as each reader reads it', () => {
     expect(screen.queryByText('Start my check-in')).toBeNull()
   })
 
+  /**
+   * SCREEN FAULT 6(d) (live walk, 6 October 2026), EVERY SITUATION: NO "START MY CHECK-IN" ONCE
+   * SHE HAS FINISHED HER OWN OPEN SESSION.
+   *
+   * `base` carries no phase spine (a sales-board-shaped ground, which never sends one), so the
+   * header fell back to asking only whether Miriam's NEXT check-in is still in the future
+   * (`myOpenOrNextOpensLater`) - true only when one exists. With nothing non-completed left for
+   * her at all (she has answered everything there is so far), that read was never true either way,
+   * so the button stayed up with nothing behind it. `groundsApi.get`'s own `checkIns` is the real
+   * per-reader source: her one check-in here is COMPLETED, so there is nothing of hers left open.
+   */
+  it('Miriam gets no "Start my check-in" once she has finished the one check-in open for her', async () => {
+    me = { id: 'u-miriam', firstName: 'Miriam', role: 'MEMBER' }
+    ;(groundsApi.get as any).mockResolvedValue({
+      initiatorId: 'u-wairimu',
+      participants: [{ id: 'p-miriam2', userId: 'u-miriam' }],
+      checkIns: [{ participantId: 'p-miriam2', status: 'COMPLETED', sessionNumber: 1 }],
+    })
+    renderBoard(AS_MIRIAM)
+    await screen.findByRole('tab', { name: 'Check-in' })
+    expect(screen.queryByText('Start my check-in')).toBeNull()
+  })
+
   it('Wairimu, who runs an ended check-in, still gets "Your check-in"', async () => {
     me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
     renderBoard({ ...AS_THE_LEAD, groundStatus: 'CLOSED' })

@@ -168,7 +168,21 @@ export function MagicVerifyPage() {
        * why, and never as invited.
        */
       const failed = new Set(result.failedInvites ?? [])
-      const invitedEmails = (result.contributors ?? []).filter(c => !failed.has(c.email) && !c.waiting).map(c => c.email)
+      /*
+       * SCREEN FAULT 6(c): "NAME (EMAIL)" WHEN A NAME WAS GIVEN. The server's own answer carries
+       * only each contributor's email; the name typed for them at the people step travelled in the
+       * COMMIT PAYLOAD instead (`asSomeoneToInvite`'s `displayName`, request 166) - read back here by
+       * email, the same lookup `shownAs` does on the entry page itself.
+       */
+      const namedAs = new Map<string, string>(
+        (payload?.contributors ?? [])
+          .filter((c: { email?: string; displayName?: string }) => c.email && c.displayName)
+          .map((c: { email: string; displayName: string }) => [c.email.trim().toLowerCase(), c.displayName]),
+      )
+      const invitedEmails = (result.contributors ?? []).filter(c => !failed.has(c.email) && !c.waiting).map(c => {
+        const name = namedAs.get(c.email.trim().toLowerCase())
+        return name ? `${name} (${c.email})` : c.email
+      })
       const waitingInvites = (result.contributors ?? []).filter(c => !failed.has(c.email) && c.waiting).map(c => ({
         email: c.email,
         because: c.waitingBecause === 'no_seat'
@@ -589,10 +603,18 @@ export function MagicVerifyPage() {
                 <SubHeading>Their answers come in</SubHeading>
                 <p className="gwui-panel-text">Once they submit, Groundwork builds a picture from what everyone said. The report shows where people agree and where they differ.</p>
               </div>
+              {/*
+                SCREEN FAULT 1: NO RELEASE STEP FOR AN ANCHOR DRAFT. There is no shared report
+                nobody but the lead has ever held back - each person in `HELP_TEAM_UNDERSTAND` reads
+                their own account (see the reveal on the setup screen, and docs/anchor-scenario.md).
+                "You release it" describes a step this situation does not have.
+              */}
+              {!isAnchorCheckIn && (
               <div>
                 <SubHeading>You release the report</SubHeading>
                 <p className="gwui-panel-text">When you are ready, you release the report to everybody in it.</p>
               </div>
+              )}
             </div>
           </Panel>
 

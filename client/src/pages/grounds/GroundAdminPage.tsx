@@ -479,6 +479,21 @@ export function GroundAdminPage() {
     if (tab !== 'chat' || !viewerIsAParty) return
     if (myOpenSessionAutoOpenFired.current) return
     if (!myOpenCheckIn || myOpenOpensLater) return
+    /*
+     * SCREEN FAULT 4: THE ANCHOR'S LEAD NEVER GETS AN ORDINARY FIRST CHECK-IN HERE.
+     *
+     * In `HELP_TEAM_UNDERSTAND` the lead's own account of the situation is the entry conversation
+     * she already had and committed - there is no second, ordinary check-in for her to answer, and
+     * auto-opening one sent her straight into a conversation the anchor was never meant to ask of
+     * her (request 168 asks the engine to stop creating that check-in at all; until it does, the
+     * screen must not walk her into it). She lands on the board instead, same as anyone arriving
+     * at a ground with nothing of their own left to open.
+     */
+    if ((ground as any)?.scenario === 'HELP_TEAM_UNDERSTAND') {
+      myOpenSessionAutoOpenFired.current = true
+      navigate(`/grounds/${id}/board`, { replace: true })
+      return
+    }
     myOpenSessionAutoOpenFired.current = true
     openMySession(myOpenCheckIn, {
       isFreeGround: (ground as any)?.isFreeGround,

@@ -1139,15 +1139,17 @@ export function whatOpeningTheLinkDoes(people: number, startsOnLater: string | n
   return `Opening it saves your check-in. Then you see who was invited and who has to wait.${later}`
 }
 
-/* U.6 review: a sentence, not pieces joined with dashes: "daniel@x.test (Daniel). Your note: He is
-   the subject of this check-in." Shown on the lead's own page only; nothing of it reaches the person. */
+/* U.6 review: a sentence, not pieces joined with dashes: "daniel@x.test (Daniel). You wrote “He is
+   the subject of this check-in." Shown on the lead's own page only; nothing of it reaches the person.
+   SCREEN FAULT 6(b): "Your note" was a label naming the thing that follows ("note:"), not a sentence
+   - "You wrote" says who said it, the way the rest of this function already reads as plain speech. */
 export function anEntryAsASentence(entry: string, shownAs: (head: string) => string = (h) => h): string {
   const [who, ...rest] = entry.split(' - ')
   const address = shownAs(who)
   if (!rest.length) return `${address}.`
   const [name, ...note] = rest.length > 1 ? rest : ['', ...rest]
   const said = note.join(' - ').trim()
-  return `${address}${name ? ` (${name.trim()})` : ''}.${said ? ` Your note: ${said.replace(/([^.?!])$/, '$1.')}` : ''}`
+  return `${address}${name ? ` (${name.trim()})` : ''}.${said ? ` You wrote “${said.replace(/[.?!]+$/, '')}”.` : ''}`
 }
 
 /* "daniel@x.test is waiting to be invited." or "a@x.test and b@x.test are waiting to be invited." */
@@ -1630,7 +1632,17 @@ export function EntryChatPage() {
      * the saved check-in carried `ends_at: null`. The lead can still change either.
      */
     if (isAnchorDraft()) {
-      if (!cadenceChosen) setCadence('WEEKLY')
+      /*
+       * SCREEN FAULT 3: WEEKLY HAS TO BE SENT AS A CHOICE, OR THE SERVER NEVER HEARS IT.
+       *
+       * `cadenceChosen` is what `buildCommitPayload` sends and what the service reads
+       * (`entry.service.ts`: `dto.cadenceChosen === true && dto.cadence ...`) - an unmarked cadence
+       * is read as nobody having picked one, so the server fell back to its own default
+       * (FORTNIGHTLY) regardless of what this screen showed. The anchor's weekly rhythm is not the
+       * page's bare default here, the same way its one-month end date just below is not left to
+       * `endChosen` either - both are this situation's own settled answer, so both are marked chosen.
+       */
+      if (!cadenceChosen) { setCadence('WEEKLY'); setCadenceChosen(true) }
       if (!endChosen) {
         const from = checkInBy ? new Date(`${checkInBy}T00:00:00`) : new Date()
         const end = new Date(from.getFullYear(), from.getMonth() + 1, from.getDate())
@@ -2447,7 +2459,19 @@ export function EntryChatPage() {
     return {
         /* Which setup this is, so a retried save is the same check-in and a new setup is a new one (U.6 review). */
         setupKey: theSetupKey(),
-        groundLabel: groundName.trim() || fallbackGroundName(theSituationTheLeadPicked() ?? onboardingSelections.classifiedScenario, orgName.trim() || user?.organization?.name || undefined),
+        /*
+         * SCREEN FAULT 2: THE NAME, FOR AN ANCHOR DRAFT, IS THE SERVED `groundLabel` ITSELF.
+         *
+         * Everywhere else, `groundName` (what the lead typed, or the aim the conversation drew out)
+         * is the ground's name, and a blank one falls back to "A check-in at <organisation>". An
+         * anchor draft never reaches that fallback and never shows the aim here either: the title,
+         * sidebar, invitation and Today all read the one served sentence ("Help my team
+         * understand") - `anchorGroundLabel`, carried from `/entry/anchor-start` the same way the
+         * people step and the first question are (see `takeTheServedGroundLabel` in TheSetup.tsx).
+         */
+        groundLabel: isAnchorDraft()
+          ? anchorGroundLabel
+          : (groundName.trim() || fallbackGroundName(theSituationTheLeadPicked() ?? onboardingSelections.classifiedScenario, orgName.trim() || user?.organization?.name || undefined)),
         orgName: orgName.trim() || undefined,
         /*
          * FAULT 1(b): AN ANCHOR DRAFT'S SITUATION NEVER LOSES TO `onboardingSelections.mode`.
@@ -2746,7 +2770,10 @@ export function EntryChatPage() {
     if (!emailSent || !draftToken) return
     const t = setTimeout(() => {
       const patch = {
-        groundLabel: groundName.trim() || fallbackGroundName(theSituationTheLeadPicked() ?? onboardingSelections.classifiedScenario, orgName.trim() || user?.organization?.name || undefined),
+        /* SCREEN FAULT 2: same rule as `buildCommitPayload` above - the served label, not the aim. */
+        groundLabel: isAnchorDraft()
+          ? anchorGroundLabel
+          : (groundName.trim() || fallbackGroundName(theSituationTheLeadPicked() ?? onboardingSelections.classifiedScenario, orgName.trim() || user?.organization?.name || undefined)),
         orgName: orgName.trim() || undefined,
         cadence,
         /* The page's default is not a choice; the server records only a confirmed pick as one. */
@@ -3123,7 +3150,10 @@ export function EntryChatPage() {
       {inviteContextFor ? (
         <div className="gwui-ec-savecard-invite-context">
           <div className="gwui-ec-savecard-invite-context-head">
-            <div className="gwui-ec-savecard-invite-context-name">{inviteContextFor}</div>
+            {/* SCREEN FAULT 6(a): THE NAME GIVEN, NOT THE EMAIL, WHEN ONE WAS GIVEN.
+                `pendingDisplayName` is this one person's name, typed beside their email a step
+                earlier and not yet kept to `displayNames` (that happens on Add/Skip, below). */}
+            <div className="gwui-ec-savecard-invite-context-name">{pendingDisplayName.trim() || inviteContextFor}</div>
             {bulkQueue.length > 0 && (
               <div className="gwui-ec-savecard-invite-context-more">{bulkQueue.length} more after this</div>
             )}
@@ -4094,7 +4124,17 @@ export function EntryChatPage() {
             readers on step 1, before anything is on record. */}
         <div className="gwui-ec-savecard">
 
-          {/* Report header */}
+          {/*
+            * SCREEN FAULT 1: NO ORDINARY SESSION-1 HEADER FOR AN ANCHOR DRAFT.
+            *
+            * This header ("This is session 1. It is your private report." and the venn sentence
+            * about a later shared report) describes the ordinary multi-party check-in, where other
+            * people answer their own session 1 and a shared report follows. The anchor has neither:
+            * one conversation, no fork, straight to the reveal (see `isAnchorDraft()`'s own
+            * commentary above). For an anchor draft the reveal below is the whole header - nothing
+            * from the ordinary path announces it first.
+            */}
+          {!isAnchorDraft() && (
           <div className="gwui-ec-savecard-header">
             {/* Full sentence, no dot, no capitals label (U.8 review): CLAUDE.md's wording rule
                 applies here the same as everywhere else a person reads. */}
@@ -4137,6 +4177,7 @@ export function EntryChatPage() {
               )
             })()}
           </div>
+          )}
 
           <div className="gwui-ec-savecard-body">
 
@@ -4373,12 +4414,15 @@ export function EntryChatPage() {
                   {(user
                     ? [
                       startsLater ? `Save this. Nobody is invited before ${theDay(new Date(`${checkInBy}T00:00:00`))}.` : 'Save this. You then see who was invited and who has to wait.',
-                      'Once they check in, everyone gets the shared report. It shows where you agree and where the conversation still needs to happen.',
+                      /* SCREEN FAULT 1: no shared report, no round, for an anchor draft - each
+                         person reads their own account, not a report that releases once everyone
+                         has checked in (docs/anchor-scenario.md). */
+                      ...(isAnchorDraft() ? [] : ['Once they check in, everyone gets the shared report. It shows where you agree and where the conversation still needs to happen.']),
                     ]
                     : [
                       'Save your email below to keep access to this report.',
                       'Open the confirmation link we email you. That saves it, then shows who was invited and who has to wait.',
-                      'Once they check in, everyone gets the shared report. It shows where you agree and where the conversation still needs to happen.',
+                      ...(isAnchorDraft() ? [] : ['Once they check in, everyone gets the shared report. It shows where you agree and where the conversation still needs to happen.']),
                     ]).map((step, i) => (
                     <div key={i} className="gwui-ec-savecard-whatnext-row">
                       <div className="gwui-ec-savecard-whatnext-num">{i + 1}</div>
@@ -4553,7 +4597,16 @@ export function EntryChatPage() {
             <div>
             <div className="gwui-ec-savecard-divider" />
 
-            {/* Ground + org naming */}
+            {/*
+              * SCREEN FAULT 2: NOTHING LEFT TO NAME, FOR AN ANCHOR DRAFT.
+              *
+              * Its name is already set - the served `groundLabel` ("Help my team understand"), sent
+              * on commit above - so "Name this situation" asks for something already answered, and
+              * "Still to set: a name and a rhythm" (whatIsSetAndWhatIsNot, below) says a name is
+              * still missing when it never was. Both describe the ordinary path, where the lead
+              * picks her own name and rhythm; the anchor picks neither.
+              */}
+            {!isAnchorDraft() && (
             <div className="gwui-ec-savecard-name-block">
               <div className="gwui-ec-savecard-name-label">Name this situation</div>
               <TextField
@@ -4576,6 +4629,7 @@ export function EntryChatPage() {
                 })}
               </div>
             </div>
+            )}
 
             {/*
               * FAULT 3: FOR AN ANCHOR DRAFT, THE PEOPLE STEP RENDERS EARLIER (see the call to

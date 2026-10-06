@@ -105,6 +105,15 @@ describe('an anchor draft at ready', () => {
     expect(screen.queryByText('I set this up and check in myself')).toBeNull()
     expect(screen.queryByText('I check in once to set the context, then only they check in')).toBeNull()
 
+    /*
+     * SCREEN FAULT 1 (live walk, 6 October 2026): NO ORDINARY SESSION-1 HEADER EITHER. This header
+     * describes a shared report that releases once every party has answered their own session 1 -
+     * neither of which the anchor has (one conversation, no fork, no shared report; see
+     * docs/anchor-scenario.md). The reveal just confirmed above is the whole header for this draft.
+     */
+    expect(screen.queryByText('This is session 1. It is your private report.')).toBeNull()
+    expect(screen.queryByText(/Once they check in, everyone gets the shared report/)).toBeNull()
+
     // And then the people step, on the same screen.
     await screen.findByText('Who needs to be part of this?')
 

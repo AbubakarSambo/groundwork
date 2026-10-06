@@ -1344,6 +1344,18 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     ? `Session ${myOpenOrNextCheckIn.sessionNumber} opens on ${whenItWas(myOpenOrNextCheckIn.availableFrom, 'dayAndMonthLong')}.`
     : null
   /*
+   * SCREEN FAULT 6(d) (live walk, 6 October 2026), EVERY SITUATION: "START MY CHECK-IN" AFTER
+   * FINISHING THE OPEN ONE. Both reads above ask whether a ROUND is open - the phase spine's own
+   * "current" session, or, lacking a spine, whether this reader's next check-in is still in the
+   * future. Neither asks whether THIS READER still has anything unfinished in it: a phase-spine
+   * round can stay "current" (others still answering) after this one person has already completed
+   * theirs, and a spine-less ground with nothing non-completed left for this reader has no "next"
+   * row to be later than. `myOpenOrNextCheckIn` is already the one true source for that - a
+   * participant's own open-or-pending check-in, off the same read the button's destination uses -
+   * so its plain absence (nothing of mine left to open, whether a round is open for anyone else or
+   * not) hides the button regardless of which of the two reads above was used to show it. */
+  const iHaveNothingOpenOrPending = !!myParticipantIdForOpenCheck && !myOpenOrNextCheckIn
+  /*
    * U.10 (a): THE SAME FIVE TABS, READ-ONLY FILTERED THE SAME WAY (an-admin-who-only-reads-has-no-
    * check-in-tab.spec.tsx pinned this against the old TheCheckInHeader; the-board-as-each-reader-
    * reads-it.spec.tsx now pins the same rule here). An admin who neither runs this check-in nor
@@ -2360,7 +2372,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 either way, since she has other reasons to open it (reading past sessions).
               */}
               {(viewerRunsThisCheckIn || (isAParty && !groundEnded)) && (
-                !viewerRunsThisCheckIn && (noSessionOpenForReader || noSessionOpenForReaderFallback) ? (
+                !viewerRunsThisCheckIn && (noSessionOpenForReader || noSessionOpenForReaderFallback || iHaveNothingOpenOrPending) ? (
                   (whenTheNextSessionOpens ?? whenTheNextSessionOpensFallback) && <Note tone="muted">{whenTheNextSessionOpens ?? whenTheNextSessionOpensFallback}</Note>
                 ) : (
                   <Link

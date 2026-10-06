@@ -64,7 +64,7 @@ export function LeaveRequestNewPage() {
         {offSentence ? (
           <Note tone="error">{offSentence}</Note>
         ) : (
-          <form className="gwui-suite-ask" onSubmit={e => { e.preventDefault(); if (canSend) send.mutate() }}>
+          <form className="gwui-suite-ask-alone" onSubmit={e => { e.preventDefault(); if (canSend) send.mutate() }}>
             <div className="gwui-suite-q">
               <FieldLabel htmlFor="leave-starts">Start date</FieldLabel>
               <TextField id="leave-starts" type="date" value={startsOn} onChange={e => setStartsOn(e.target.value)} />

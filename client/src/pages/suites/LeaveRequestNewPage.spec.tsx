@@ -60,6 +60,18 @@ describe('Request leave', () => {
     expect(screen.getByLabelText('End date')).toHaveValue('2026-10-12')
   })
 
+  /*
+   * SCREEN FAULT 6(e) (live walk, 6 October 2026): NO EMPTY DIVIDER AT THE TOP. This form is the
+   * only thing in its panel - `.gwui-suite-ask`'s own top rule, meant for a form that follows a
+   * suite's heading and switch inside the same panel, drew here as a line with nothing above it.
+   */
+  it('draws no top rule: the form is the only thing in its panel', async () => {
+    open()
+    await screen.findByRole('heading', { level: 1, name: 'Request leave' })
+    expect(document.querySelector('form.gwui-suite-ask')).toBeNull()
+    expect(document.querySelector('form.gwui-suite-ask-alone')).toBeTruthy()
+  })
+
   it('shows the kind of leave only when the form serves any', async () => {
     ;(fileARequestApi.leaveForm as any).mockResolvedValue({
       kinds: [{ key: 'annual', name: 'Annual leave' }, { key: 'sick', name: 'Sick leave' }],

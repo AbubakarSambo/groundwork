@@ -50,6 +50,25 @@ function renderPage() {
 describe('the added list and the waiting sentence keep the name given', () => {
   beforeEach(() => { localStorage.clear(); vi.clearAllMocks() })
 
+  /*
+   * SCREEN FAULT 6(a) (live walk, 6 October 2026): THE CONTEXT BOX'S OWN HEADING, TOO. It is
+   * headed by `inviteContextFor` (the address, this step's own key) rather than the name just
+   * typed beside it - the one place on this whole step a lead could read "musa@anchor.test" where
+   * every other place already reads "Musa Bello".
+   */
+  it('heads the context box with the name given, not the email', async () => {
+    seedClosedAnchorSession()
+    renderPage()
+    await screen.findByText('Who needs to be part of this?')
+
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Musa Bello' } })
+    fireEvent.change(screen.getByPlaceholderText('name@company.com'), { target: { value: 'musa@anchor.test' } })
+    fireEvent.click(screen.getByText('Add'))
+    await screen.findByText('What do they do / why are they part of this?')
+    expect(screen.getByText('Musa Bello')).toBeTruthy()
+    expect(screen.queryByText('musa@anchor.test')).toBeNull()
+  })
+
   it('shows "Name (email)" on the added chip, not the email alone', async () => {
     seedClosedAnchorSession()
     renderPage()

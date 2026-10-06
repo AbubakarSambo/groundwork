@@ -1409,11 +1409,19 @@ export function ChatPage() {
             the spec's sentence, and, while the suite is on, a button to the suite's own request
             form (Leave or Payment Requests), filled in from what was read in their own words.
             Nothing is sent for them; the button only opens the form.
+
+            STAYS ON THE DONE STATE (screen fault 5). The reply that closes the check-in can be the
+            very same reply that carries `openTheRequest` - the form is the person's only way to
+            reach the request, so hiding it once `done` stranded them with no way to ask for leave or
+            spending after the conversation that offered it. `RequestOffer` just above (the yes/no
+            question itself) is a different thing and stays hidden once done: answering it is a
+            question, not a path to a form, and the conversation that could hear "yes" or "no" has
+            already closed.
           */}
           {(() => {
             const last = displayedMsgs[displayedMsgs.length - 1]
             if (!last || last.role !== 'AI' || isWaiting(last) || streamingId !== null) return null
-            if (loading || done || completed || declined || !opened) return null
+            if (loading || completed || declined || !opened) return null
             return <OpenTheRequest open={last.openTheRequest} />
           })()}
           {/*

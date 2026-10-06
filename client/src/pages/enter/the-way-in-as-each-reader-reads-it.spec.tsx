@@ -158,11 +158,18 @@ describe('a name, the topic in plain words, never the lead\'s words (U.6 review)
     expect(fallbackGroundName(undefined, 'U6 Review Co')).toBe('A check-in at U6 Review Co')
     expect(fallbackGroundName()).toBe('A check-in')
   })
+  /*
+   * SCREEN FAULT 2 (live walk, 6 October 2026): BOTH SITES NOW BRANCH ON THE ANCHOR FIRST. An
+   * anchor draft's name is the served `groundLabel` itself ("Help my team understand"), never the
+   * aim or the organisation fallback - so both call sites read `isAnchorDraft() ? anchorGroundLabel
+   * : (...)`, with the ordering this test already pinned (the lead's pick first, then the settled
+   * situation, never her words) unchanged inside that `(...)`.
+   */
   it('is handed the lead\'s pick first, then the settled situation, and never her words', async () => {
     const { readFileSync } = await import('fs')
     const { join } = await import('path')
     const src = readFileSync(join(__dirname, 'EntryChatPage.tsx'), 'utf8')
-    expect(src.match(/groundLabel: groundName\.trim\(\) \|\| fallbackGroundName\(theSituationTheLeadPicked\(\) \?\? onboardingSelections\.classifiedScenario, /g)).toHaveLength(2)
+    expect(src.match(/groundLabel: isAnchorDraft\(\)\s*\n\s*\? anchorGroundLabel\s*\n\s*: \(groundName\.trim\(\) \|\| fallbackGroundName\(theSituationTheLeadPicked\(\) \?\? onboardingSelections\.classifiedScenario, /g)).toHaveLength(2)
     expect(src).not.toMatch(/fallbackGroundName\([^)]*onboardingSelections\.initial/)
   })
 })
@@ -202,11 +209,13 @@ describe('who is on the list, in sentences (U.6 review)', () => {
     expect(whoIsWaitingSentence(['u6f-daniel@example.test'])).toBe('u6f-daniel@example.test is waiting to be invited.')
     expect(whoIsWaitingSentence(['a@x.test', 'b@x.test', 'c@x.test'])).toBe('a@x.test, b@x.test and c@x.test are waiting to be invited.')
   })
+  /* Screen fault 6(b), live walk 6 October 2026: "Your note:" was a label on a colon ("note:"),
+     which CLAUDE.md's wording rule forbids - "You wrote" and the words in quotation marks say who said it, with no colon. */
   it('says each person added without dashes', async () => {
     const { anEntryAsASentence } = await import('./EntryChatPage')
     expect(anEntryAsASentence('u6f-daniel@example.test - Daniel - He is the subject of this check-in'))
-      .toBe('u6f-daniel@example.test (Daniel). Your note: He is the subject of this check-in.')
-    expect(anEntryAsASentence('a@x.test - Runs the pipeline.')).toBe('a@x.test. Your note: Runs the pipeline.')
+      .toBe('u6f-daniel@example.test (Daniel). You wrote “He is the subject of this check-in”.')
+    expect(anEntryAsASentence('a@x.test - Runs the pipeline.')).toBe('a@x.test. You wrote “Runs the pipeline”.')
     expect(anEntryAsASentence('a@x.test')).toBe('a@x.test.')
   })
 })

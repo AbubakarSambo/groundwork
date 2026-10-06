@@ -63,7 +63,7 @@ export function SpendRequestNewPage() {
         {offSentence ? (
           <Note tone="error">{offSentence}</Note>
         ) : (
-          <form className="gwui-suite-ask" onSubmit={e => { e.preventDefault(); if (canSend) send.mutate() }}>
+          <form className="gwui-suite-ask-alone" onSubmit={e => { e.preventDefault(); if (canSend) send.mutate() }}>
             <div className="gwui-suite-q">
               <FieldLabel htmlFor="spend-amount">{form.data?.currency ? `Amount (${form.data.currency})` : 'Amount'}</FieldLabel>
               <TextField id="spend-amount" type="number" min={0} step="any" value={amount} onChange={e => setAmount(e.target.value)} />
