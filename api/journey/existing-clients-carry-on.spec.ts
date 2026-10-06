@@ -317,8 +317,9 @@ describe('release night, for a check-in that already exists', () => {
        84 since 6 October: a WhatsApp send keeps the id Meta gave it, a nullable column and its index (docs/deploy.md row 84).
        85 since 6 October: the anchor's situation is an allowed value, so the check-in keeps it (docs/deploy.md row 85).
        86: "Use simpler words" adds one column, grounds.simpler_words, false for every check-in (row 86).
-       87 since 6 October: the strategy keeps its versions, one new empty table, strategy_versions (row 87). */
-    expect(names).toHaveLength(87);
+       87 since 6 October: the strategy keeps its versions, one new empty table, strategy_versions (row 87).
+       88 since 6 October: an address can always stop the mail, one new empty table, email_address_preferences (row 88). */
+    expect(names).toHaveLength(88);
     // The six statements deploy.md lists, plus the WhatsApp prices (five updates and one insert).
     expect(o.dataChangesRun).toBeGreaterThanOrEqual(8);
   }));
