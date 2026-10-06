@@ -223,7 +223,10 @@ export class ReportsListener {
 
     const frontendUrl = this.config.get<string>('resend.frontendUrl') || 'http://localhost:5173';
     const groundUrl = `${frontendUrl}/grounds/${event.groundId}`;
-    await this.email.sendParticipantCheckedIn(ground.initiator.email, participantName, ground.label, groundUrl, stillPending);
+    /* WHO IS IN, for the lead's honest read of a partial picture (decision 109, journey 4): first names of the people who can answer and have, and how many can. */
+    const counted = ground.participants.filter((p) => !p.managingOnly && !p.user?.awaitingOrgApproval && p.user?.isActive !== false && !p.user?.deletedAt);
+    const answered = counted.filter((p) => p.checkIns.length > 0).map((p) => (p.user?.firstName ?? '').trim() || p.user?.email || '').filter((x) => !!x);
+    await this.email.sendParticipantCheckedIn(ground.initiator.email, participantName, ground.label, groundUrl, stillPending, { answered, ofHowMany: counted.length });
   }
 
   /**
