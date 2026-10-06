@@ -509,6 +509,12 @@ export class SuitesController {
     return this.finance.view({ userId: user.id, organizationId: user.organizationId });
   }
 
+  @Get('spend/finance/totals')
+  @ApiOperation({ summary: 'The month\'s spending added up from the requests, by team and by category, in the organisation\'s currency (month=2026-10; the current month when left out). For whoever looks after finance or an admin only.' })
+  financeTotals(@CurrentUser() user: CurrentUserData, @Query('month') month?: string) {
+    return this.finance.totals({ userId: user.id, organizationId: user.organizationId }, month);
+  }
+
   @Get('spend/finance/export')
   @ApiOperation({ summary: 'Approved requests to spend not yet paid, as a CSV or Excel file (format=csv or format=xlsx). For whoever looks after finance or an admin.' })
   async financeExport(@CurrentUser() user: CurrentUserData, @Query('format') format: string, @Res() res: Response) {
