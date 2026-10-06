@@ -58,7 +58,7 @@ describe('who can join', () => {
     open({ on: true, domain: 'baridi.co.ke', whyNot: null })
     const patch = vi.spyOn(apiClient, 'patch').mockResolvedValue({ data: { success: true, data: { on: true, domain: 'baridi.co.ke', whyNot: null } } } as any)
     fireEvent.click(await screen.findByRole('button', { name: 'Change' }))
-    expect(await screen.findByText('Change the domain people can join Baridi Appliances by to baridi.co.ke, your own email address\'s domain?')).toBeTruthy()
+    expect(await screen.findByText('People will join Baridi Appliances with an email address at baridi.co.ke, the same as yours. Use this domain?')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Change it' }))
     await waitFor(() => expect(patch).toHaveBeenCalledWith('/users/organization/joining/domain', {}))
     expect(await screen.findByText('Anyone with an @baridi.co.ke email')).toBeTruthy()

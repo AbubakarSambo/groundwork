@@ -114,7 +114,7 @@ export function WhoCanJoin({ orgName }: { orgName: string }) {
               {myDomain
                 ? (willTurnOn
                     ? `Anyone with an email address at ${myDomain} will be able to join ${orgName}. Turn this on?`
-                    : `Change the domain people can join ${orgName} by to ${myDomain}, your own email address's domain?`)
+                    : `People will join ${orgName} with an email address at ${myDomain}, the same as yours. Use this domain?`)
                 : 'Your own email address has no domain to use here.'}
             </Note>
             <Stack gap={10}>
