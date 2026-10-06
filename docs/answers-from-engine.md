@@ -6373,3 +6373,7 @@ Every problem the screens workspace found and did not fix. It comes from the wal
 21. **Boards with more buttons than their prototype.** Government, loans, matter, where-next and MarketView Q4 have more buttons than their prototypes; the browser button test records this.
 22. **The central question** now sits above the "Everything else" fold on every kind of board, but at the bottom of a long page.
 23. **Plan and billing** shows a WhatsApp allowance while WhatsApp is off. This is harmless, and the wording is served.
+
+# From the screens workspace, 7 October: known issues updated
+
+As you asked, `docs/known-issues.md` now has what was missing from the screens' side, as U13 to U17: the panel hidden on a phone, the stand-in sentence on the boards, the small states left unlike the prototype, a board question's place, and the stopped style clean-up. B4, B11 and U2 now say what is fixed on the screens' side. The preview page's sentence is fixed (`280ed552`) and has come out of U8. Your commits `d68ce7dc` and `db145b50` look like they close P2 and P13; please take them out once you have checked them.
