@@ -1,3 +1,4 @@
+import { waitNoLongerThan, HOW_LONG_THE_SAVE_WAITS_FOR_THE_READING_MS } from './a-slow-reading-does-not-hold-the-save';
 import { tooManyPeopleFor } from './how-many-people-one-check-in-holds';
 import { tooManyForTheAnchor } from './the-anchor-people-step';
 import { theAddressOfAColleague, NOT_SOMEONE_HERE } from '../../common/colleagues';
@@ -2648,12 +2649,17 @@ from finishing at all.`;
      * after it is a target the lead does not see where she would look for it.
      */
     if (dto.history.length > 0) {
-      await this.conversation
-        /* From the setup conversation, which is no longer copied onto her session. See
-           extractExpectations: the targets are what she said the check-in is FOR, not her account
-           of the work, so setup is still the right place to read them from. */
-        .extractExpectations(checkIn.id, participant.id, ground.id, dto.history)
-        .catch((err) => this.logger.error(`commit: aims and targets failed for initiator: ${err.message}`));
+      /* Started now, and waited for as before, but for a while only: a slow model must not hold the save (a-slow-reading-does-not-hold-the-save). */
+      const reading = (async () => {
+        await this.conversation
+          /* From the setup conversation, which is no longer copied onto her session. See
+             extractExpectations: the targets are what she said the check-in is FOR, not her account
+             of the work, so setup is still the right place to read them from. */
+          .extractExpectations(checkIn.id, participant.id, ground.id, dto.history)
+          .catch((err) => this.logger.error(`commit: aims and targets failed for initiator: ${err.message}`));
+      })();
+      const waited = await waitNoLongerThan(reading, HOW_LONG_THE_SAVE_WAITS_FOR_THE_READING_MS);
+      if (!waited.finished) this.logger.warn(`Ground ${ground.id}: the aims were still being read after ${HOW_LONG_THE_SAVE_WAITS_FOR_THE_READING_MS / 1000} seconds, so the save answered and the reading finishes on its own.`);
     }
 
     const joinToken = (await this.prisma.ground.findUnique({ where: { id: ground.id }, select: { joinToken: true } }))?.joinToken ?? null;
