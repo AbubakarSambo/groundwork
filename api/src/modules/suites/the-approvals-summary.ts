@@ -30,13 +30,9 @@ export function itIsQuietNow(now: Date = new Date(), timeZone?: string | null): 
   return h >= QUIET_FROM_HOUR || h < QUIET_UNTIL_HOUR;
 }
 
-/** One paragraph, in full sentences: "Seven requests are waiting for you to approve or decline: three for leave and four to spend. The oldest has waited 7 working days." */
+/** One paragraph, in full sentences and no colon (theQueueSaid): how many, how many of each, how long the oldest has waited, how many too long. */
 export function theSummaryParagraph(counts: TheQueue['counts'], oldestWorkingDays: number): string {
-  const oldest = oldestWorkingDays >= 1 ? ` The oldest has waited ${oldestWorkingDays} working ${oldestWorkingDays === 1 ? 'day' : 'days'}.` : '';
-  /* theQueueSaid ends with the sentence about the deadline when some are past it; the oldest goes before that sentence's end, after the first. */
-  const said = theQueueSaid(counts);
-  const [first, ...rest] = said.split(/(?<=\.)\s+/);
-  return [first + oldest, ...rest].join(' ').replace(/\s+/g, ' ').trim();
+  return theQueueSaid(counts, oldestWorkingDays);
 }
 
 /** The WhatsApp message: the template's body with its three blanks filled, so it reads the same inside and outside the 24 hours. */

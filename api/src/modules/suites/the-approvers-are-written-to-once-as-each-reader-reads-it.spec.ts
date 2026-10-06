@@ -144,7 +144,7 @@ describe('what the summary says, and where it goes when WhatsApp cannot', () => 
     jest.setSystemTime(lagos('07:30'));
     await cron.tellNow(lagos('07:30'));
     const eng = x.wentOnWhatsApp().find((m) => m.to === x.phoneOf(idOf('eng.manager')).replace('+', ''))!;
-    expect(eng.text).toBe(`Hi ${x.user('eng.manager').firstName}. Six requests are waiting for you to approve or decline: three for leave and three to spend. The oldest has waited 7 working days. Two of them have waited longer than your organisation allows before a request is passed on. Open Groundwork to read and answer: https://app.groundwork.test/today`);
+    expect(eng.text).toBe(`Hi ${x.user('eng.manager').firstName}. Six requests are waiting for you to approve or decline. Three are for leave and three are to spend money. The oldest has waited 7 working days. Two of them have waited longer than your organisation allows before a request is passed on. Open Groundwork to read and answer: https://app.groundwork.test/today`);
   });
 
   it('somebody who said STOP, or has no number, is emailed the same paragraph once, and gets no WhatsApp', async () => {
@@ -160,7 +160,8 @@ describe('what the summary says, and where it goes when WhatsApp cannot', () => 
     expect(f.greeting).toBe(`Hi ${x.user('finance.m1').firstName},`);
     expect(f.paragraph).toMatch(/^27 requests are waiting for you to approve or decline[.:]/);
     expect(f.subject).toBe('27 requests are waiting for you to approve or decline');
-    expect(x.emails.find((e) => e.to === 'eng.manager@baobab.test')!.paragraph).toMatch(/^Six requests are waiting for you to approve or decline: three for leave and three to spend\./);
+    expect(x.emails.find((e) => e.to === 'eng.manager@baobab.test')!.subject).toBe('Six requests are waiting for you to approve or decline');
+    expect(x.emails.find((e) => e.to === 'eng.manager@baobab.test')!.paragraph).toMatch(/^Six requests are waiting for you to approve or decline\. Three are for leave and three are to spend money\./);
     expect(f.url).toBe('https://app.groundwork.test/today');
     /* Once: a second morning of the same day adds nothing. */
     await cron.tellNow(lagos('07:50'));

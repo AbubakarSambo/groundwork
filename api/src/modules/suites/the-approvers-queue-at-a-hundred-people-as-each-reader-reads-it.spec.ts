@@ -47,6 +47,12 @@ describe('what each reader reads of the queue', () => {
     expect(q).toMatchObject({ counts: { all: 0, leave: 0, spend: 0, pastTheDeadline: 0 }, items: [], says: 'Nothing is waiting for you to approve or decline.' });
   });
 
+  it('Operations’ manager reads her queue in full sentences with no colon', async () => {
+    const w = aHundredPeople();
+    expect((await w.queue.queue(w.as('ops.manager'), {}, TODAY)).says).toBe('Eight requests are waiting for you to approve or decline. Five are for leave and three are to spend money. Two of them have waited longer than your organisation allows before a request is passed on.');
+    expect((await w.queue.queue(w.as('finance.m1'), {}, TODAY)).says).toBe('27 requests are waiting for you to approve or decline. Of them, 18 have waited longer than your organisation allows before a request is passed on.');
+  });
+
   it('Operations’ manager, whose stand-in is away too, still reads her team’s five leave requests and three to spend', async () => {
     const w = aHundredPeople();
     expect((await w.queue.queue(w.as('ops.manager'), {}, TODAY)).counts).toMatchObject({ all: 8, leave: 5, spend: 3 });

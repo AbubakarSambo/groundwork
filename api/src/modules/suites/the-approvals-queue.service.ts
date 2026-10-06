@@ -95,16 +95,23 @@ const num = (x: unknown) => Number(x ?? 0);
 const standingInForOf = (now: DecidesNow): string | null => (now.who.kind === 'person' && now.who.standingInFor ? now.who.standingInFor : null);
 const overlaps = (a: { startsOn: Date; endsOn: Date }, b: { startsOn: Date; endsOn: Date }) => a.startsOn <= b.endsOn && b.startsOn <= a.endsOn;
 
-/** The sentence at the top of the queue. */
-export function theQueueSaid(counts: TheQueue['counts']): string {
+/**
+ * The words at the top of the queue, and the summary a person is sent: full sentences, no colon.
+ * "Eight requests are waiting for you to approve or decline. Five are for leave and three are to spend money. The oldest has waited 7 working days. Two of them have waited longer than your organisation allows before a request is passed on."
+ * The kinds are said only when there are both, and the oldest only when `oldestWorkingDays` is given and is at least one.
+ */
+export function theQueueSaid(counts: TheQueue['counts'], oldestWorkingDays = 0): string {
   if (!counts.all) return 'Nothing is waiting for you to approve or decline.';
-  const parts = [counts.leave ? `${inWords(counts.leave)} for leave` : null, counts.spend ? `${inWords(counts.spend)} to spend` : null].filter(Boolean);
-  const head = `${capital(inWords(counts.all))} ${counts.all === 1 ? 'request is' : 'requests are'} waiting for you to approve or decline${parts.length === 2 ? `: ${parts.join(' and ')}` : ''}.`;
+  const out = [`${capital(inWords(counts.all))} ${counts.all === 1 ? 'request is' : 'requests are'} waiting for you to approve or decline.`];
+  if (counts.leave && counts.spend) out.push(`${capital(inWords(counts.leave))} ${counts.leave === 1 ? 'is' : 'are'} for leave and ${inWords(counts.spend)} ${counts.spend === 1 ? 'is' : 'are'} to spend money.`);
+  if (oldestWorkingDays >= 1) out.push(`The oldest has waited ${oldestWorkingDays} working ${oldestWorkingDays === 1 ? 'day' : 'days'}.`);
   const late = counts.pastTheDeadline;
-  if (!late) return head;
-  const allowed = 'longer than your organisation allows before a request is passed on';
-  if (late === counts.all) return `${head} ${counts.all === 1 ? 'It has' : 'All of them have'} waited ${allowed}.`;
-  return `${head} ${late > 10 ? `Of them, ${late} have` : `${capital(inWords(late))} of them ${late === 1 ? 'has' : 'have'}`} waited ${allowed}.`;
+  if (late) {
+    const allowed = 'longer than your organisation allows before a request is passed on';
+    if (late === counts.all) out.push(`${counts.all === 1 ? 'It has' : 'All of them have'} waited ${allowed}.`);
+    else out.push(`${late > 10 ? `Of them, ${late} have` : `${capital(inWords(late))} of them ${late === 1 ? 'has' : 'have'}`} waited ${allowed}.`);
+  }
+  return out.join(' ');
 }
 
 type Row = {
