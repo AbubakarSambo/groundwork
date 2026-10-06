@@ -7,6 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CheckInStatus } from '@prisma/client';
 import { worthNudging, whatToSendThem } from './who-is-worth-nudging';
+import { nobodyElseIsIn, theLeadsFirstWords } from '../engagement/the-leads-own-first-check-in';
 import { theNudgeLineFor } from '../engagement/a-follow-up-from-their-own-record';
 import { WorkspaceNotifierService } from '../workspace/workspace-notifier.service';
 import {
@@ -261,6 +262,8 @@ export class RemindService {
             simplerWords: true,
             /* For the channel notice: `tell` is scoped to an organisation. */
             organizationId: true,
+            initiatorId: true,
+            brief: true,
             chaseAfterDays: true,
             chasingStopped: true,
             tellTheLead: true,
@@ -271,6 +274,7 @@ export class RemindService {
           select: {
             id: true,
             email: true,
+            userId: true,
             lastNudgedAt: true,
             user: { select: { firstName: true, emailNotifications: true, isActive: true, deletedAt: true } },
           },
@@ -361,11 +365,24 @@ export class RemindService {
       /* "Yours is the last one we are waiting for" only when it is true of this person (the-last-one-we-are-waiting-for.ts). */
       const theRound = await this.prisma.groundParticipant.findMany({
         where: { groundId: checkIn.groundId },
-        select: { id: true, managingOnly: true, user: { select: { isActive: true, deletedAt: true, awaitingOrgApproval: true } }, checkIns: { where: { sessionNumber: checkIn.sessionNumber }, select: { status: true, createdAt: true } } },
+        select: { id: true, userId: true, managingOnly: true, user: { select: { isActive: true, deletedAt: true, awaitingOrgApproval: true } }, checkIns: { where: { sessionNumber: checkIn.sessionNumber }, select: { status: true, createdAt: true } } },
       });
       const otherPartyCompleted = everyoneElseHasAnswered(participant.id, theRound as any);
 
       const checkInUrl = this.email.buildCheckInUrl(checkIn.id);
+
+      /* THE LEAD WHO MADE IT AND ADDED NOBODY is not chased as if somebody had invited her (decision 109, journey 1). */
+      const isTheLead = !!participant.userId && participant.userId === (checkIn.ground as any).initiatorId;
+      if (isTheLead && nobodyElseIsIn(theRound as any, participant.userId)) {
+        try {
+          const w = theLeadsFirstWords(participant.user?.firstName, checkIn.ground.label, (checkIn.ground as any).brief);
+          await this.email.sendLeadFirstCheckIn(participant.email, w.subject, w.lines, w.linkLabel, `${frontendUrl}/grounds/${checkIn.groundId}`, participant.id);
+          await this.prisma.groundParticipant.update({ where: { id: participant.id }, data: { lastNudgedAt: now } });
+        } catch (err: any) {
+          this.logger.error(`The lead's first-check-in message failed for check-in ${checkIn.id}: ${err.message}`);
+        }
+        continue;
+      }
 
       try {
         await this.email.sendNudge(

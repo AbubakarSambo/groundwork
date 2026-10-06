@@ -1288,6 +1288,15 @@ export class EmailService implements OnModuleInit {
     };
   }
 
+  /** THE LEAD WHO ADDED NOBODY (decision 109, journey 1). Words: engagement/the-leads-own-first-check-in.ts. */
+  async sendLeadFirstCheckIn(email: string, subject: string, lines: string[], linkLabel: string, linkUrl: string, participantId: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject,
+      html: this.layout(lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('') + `<p><a href="${linkUrl}">${escapeHtml(linkLabel)}</a></p>`),
+    }, { kind: 'REMINDER', participantId }, 'sendLeadFirstCheckIn');
+  }
+
   /**
    * Your next check-in just opened. Distinct from sendNudge (which reminds
    * someone sitting on an ALREADY-open check-in) - this fires once, the

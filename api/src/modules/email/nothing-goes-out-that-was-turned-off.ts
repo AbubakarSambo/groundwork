@@ -260,6 +260,8 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendHeresWhatIsNew: 'we decided to send it',
   /* A person's own week, from their own board. Nobody asked for it this morning. */
   sendYourWeek: 'we decided to send it',
+  /* The lead who set a check-in up and added nobody. */
+  sendLeadFirstCheckIn: 'we decided to send it',
 };
 
 export function whatThisMailIs(sender: string): WhatKindOfMail {
