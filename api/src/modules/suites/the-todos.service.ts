@@ -15,11 +15,22 @@ export const TODOS_REFUSED = {
 
 export interface Reader { userId: string; organizationId: string }
 
+/**
+ * ONE LIST FOR EACH CHECK-IN, AND INSIDE IT EACH PERSON'S LINES (decision 110, P8; decision 4).
+ *
+ * This used to be one list for each PERSON across every check-in they are in, which is that person's load across check-ins, and that is
+ * private unless they share it. It is served inside each check-in now, where the reader may already read it, and never joined across
+ * check-ins: the same person in two check-ins is in two lists, and nothing on the board says they are the same person's load.
+ */
 export interface TodoList {
-  people: {
-    name: string;
-    firstName: string;
-    todos: { id: string; text: string; source: 'check-in'; on: string; checkIn: string }[];
+  checkIns: {
+    id: string;
+    label: string;
+    people: {
+      name: string;
+      firstName: string;
+      todos: { id: string; text: string; source: 'check-in'; on: string; checkIn: string }[];
+    }[];
   }[];
 }
 
@@ -43,8 +54,8 @@ type Dir = { externalId: string; linkedUserId: string | null; department: string
  *     which never includes another person's exact words; and where they only take part, only if people
  *     in that check-in see each other;
  *   - a lead also reads only the people in their own team (a-leads-team.ts), and their own.
- * Whether one list for each person across check-ins is "each person's load across check-ins", which is
- * private unless they share it (decisions rule 4), is a question for Hafsah (item 28).
+ * One list for each person across check-ins is "each person's load across check-ins", private unless they share it (decision 4), so
+ * it is not served: Hafsah's answer (decision 110, P8) is one list for each check-in.
  *
  * WHAT IS NOT HERE, AND WHY:
  *   - A person's own to-dos from chat (`Todo`) are a note to themselves that nobody else reads, by the
@@ -86,7 +97,7 @@ export class TodosService {
        open at all (grounds/who-may-read-this-check-in.ts), so a line from one never reaches `grounds`
        in the first place, and cannot reach `readable` either. */
     const readable = grounds.filter((g) => role === 'ADMIN' || g.initiatorId === reader.userId || g.createdByUserId === reader.userId || peersAreNamedOn(g, theReaderBySignIn(g, reader.userId)));
-    if (!readable.length) return { people: [] };
+    if (!readable.length) return { checkIns: [] };
     const labelOf = new Map(readable.map((g) => [g.id, g.label]));
 
     const groundIds = readable.map((g) => g.id);
@@ -129,19 +140,26 @@ export class TodosService {
        line wants ("From Rukia's check-in..."), never the whole field. */
     const firstNameOf = new Map(users.map((u) => [u.id, (u.firstName ?? '').trim().split(/\s+/)[0] ?? '']));
 
-    const lists = new Map<string, TodoList['people'][number]>();
+    /* Grouped by check-in first, and a person only inside the check-in a line came from: never one list for a person across check-ins. */
+    const byCheckIn = new Map<string, Map<string, TodoList['checkIns'][number]['people'][number]>>();
     for (const r of deduped) {
       const userId = r.participant!.userId as string;
       const name = nameOf.get(userId);
       const firstName = firstNameOf.get(userId);
       if (!name || !firstName) continue;
-      if (!lists.has(userId)) lists.set(userId, { name, firstName, todos: [] });
-      lists.get(userId)!.todos.push({
+      if (!byCheckIn.has(r.groundId)) byCheckIn.set(r.groundId, new Map());
+      const here = byCheckIn.get(r.groundId)!;
+      if (!here.has(userId)) here.set(userId, { name, firstName, todos: [] });
+      here.get(userId)!.todos.push({
         id: r.id, text: asAnAction(r.text), source: 'check-in', on: r.createdAt.toISOString().slice(0, 10),
         checkIn: labelOf.get(r.groundId) ?? '',
       });
     }
-    return { people: [...lists.values()].sort((a, b) => a.name.localeCompare(b.name)) };
+    return {
+      checkIns: [...byCheckIn.entries()]
+        .map(([id, people]) => ({ id, label: labelOf.get(id) ?? '', people: [...people.values()].sort((a, b) => a.name.localeCompare(b.name)) }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    };
   }
 
   // ---------------------------------------------------------------------------------------------
