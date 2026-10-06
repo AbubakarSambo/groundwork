@@ -38,7 +38,7 @@ describe('what a person reads, word for word as Hafsah wrote it', () => {
     expect(yourViewMatters(MIRIAM, 'Wairimu').text).toBe("Hi Miriam, your check-in for the sales team is still waiting. Your answers help Wairimu understand what's in your way, and where they can help. It takes about five minutes, and you can answer here.");
   });
   it('lead_daily_summary and checkin_closes_soon are registered word for word', () => {
-    expect(TEMPLATES['lead-summary'].body).toBe("Good morning {{1}}. Here's today's summary of your check-ins: {{2}} Open the board for the full picture: {{3}}");
+    expect(TEMPLATES['lead-summary'].body).toBe("Good morning {{1}}. Here's today's summary of your check-ins: {{2}} Open the board for the full picture: {{3}} Reply not now and we will leave you alone for the day.");
     expect(TEMPLATES['closes-soon'].body).toBe('Hi {{1}}, your check-in for {{2}} closes in an hour, at {{3}}. Five minutes now means your view is part of this round.');
   });
   it('a person whose first name nobody knows is still greeted', () => {
