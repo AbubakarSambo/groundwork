@@ -170,8 +170,8 @@ export async function howItEnds(c: any): Promise<string[]> {
   heading('16. HOW A CHECK-IN ENDS ON WHATSAPP, FOR EVERY KIND');
   await signIn(wairimu); await signIn(grace);
   await prisma.platformSetting.upsert({ where: { key: 'release.anchorScenario' }, create: { key: 'release.anchorScenario', value: { on: true } as any, updatedBy: 'whatsapp-journeys' }, update: { value: { on: true } as any } });
-  /* The halfway messages are off at release; this run switches them on in the copy to read them. */
-  await prisma.platformSetting.upsert({ where: { key: 'release.whatsappHalfwayMessages' }, create: { key: 'release.whatsappHalfwayMessages', value: { on: true } as any, updatedBy: 'whatsapp-journeys' }, update: { value: { on: true } as any } });
+  /* Until they are on by default, this run switches the halfway messages on in the copy to read them. WHATSAPP_HALFWAY_ROW=none leaves the row alone, to prove a missing row reads as on. */
+  if (process.env.WHATSAPP_HALFWAY_ROW !== 'none') await prisma.platformSetting.upsert({ where: { key: 'release.whatsappHalfwayMessages' }, create: { key: 'release.whatsappHalfwayMessages', value: { on: true } as any, updatedBy: 'whatsapp-journeys' }, update: { value: { on: true } as any } });
   const conversation: any = c.app.get(require('../src/modules/conversation/conversation.service').ConversationService, { strict: false });
   const whatsapp: any = c.app.get(require('../src/modules/whatsapp/whatsapp.service').WhatsAppService, { strict: false });
   const emailsTo = async (address: string, after: Date) => (await prisma.notification.findMany({ where: { channel: 'email', toAddress: address, createdAt: { gt: after } }, orderBy: { createdAt: 'asc' }, select: { subject: true, sender: true } })).map((n: any) => `${n.subject} (${n.sender})`);
@@ -180,7 +180,8 @@ export async function howItEnds(c: any): Promise<string[]> {
   /* Writes in the app, for a check-in kept there. */
   const inTheApp = async (who: any, ci: any, text: string) => api(`/check-ins/${ci.id}/messages`, { token: who.token, body: { message: text } });
 
-  for (const k of KINDS) {
+  const only = (process.env.WHATSAPP_KINDS ?? '').split(',').map((x) => x.trim()).filter(Boolean);
+  for (const k of KINDS.filter((x) => !only.length || only.includes(x.kind))) {
     keep(`\n### ${k.kind}`);
     const names = NAMES.splice(0, 3);
     const people = names.map((n) => make(n, 'Mwangi', 'MEMBER', orgs.on, 'kito', { department: 'Sales', manager: wairimu.externalId }));
@@ -251,20 +252,25 @@ export async function howItEnds(c: any): Promise<string[]> {
       await says(halfway, ANSWERS[1]);
       /* Eleven in the morning UTC, noon in Lagos, tomorrow: within the day, and never in the past, so no sweep closes it meanwhile. */
       const noon = new Date(); noon.setUTCDate(noon.getUTCDate() + 1); noon.setUTCHours(11, 0, 0, 0);
-      await prisma.conversationTurn.updateMany({ where: { checkInId: ci.id }, data: { createdAt: new Date(noon.getTime() - 3.5 * 3600_000) } });
+      /* Every turn keeps its order a second apart. Moving them all to one instant left "the last turn" to chance: a reminder is only for somebody whose last turn is Groundwork's question, and the person's own turn could be read as the last. */
+      const placeTurns = async (lastAt: number) => {
+        const turns = await prisma.conversationTurn.findMany({ where: { checkInId: ci.id }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], select: { id: true, role: true } });
+        for (let i = 0; i < turns.length; i++) await prisma.conversationTurn.update({ where: { id: turns[i].id }, data: { createdAt: new Date(lastAt - (turns.length - 1 - i) * 1000) } });
+      };
+      await placeTurns(noon.getTime() - 3.5 * 3600_000);
       await prisma.$executeRawUnsafe(`UPDATE whatsapp_sends SET created_at = created_at - interval '1 day', sent_at = sent_at - interval '1 day' WHERE phone = '${halfway.phone}'`);
       const r0 = outbox.length;
       await cron.remindThoseWhoStoppedHalfwayInner(noon);
       await waitQuiet(800);
       keep(`- Three hours quiet: ${halfway.first} reads ${quote(toPhone(halfway, r0))}`);
       check(`${k.kind}: one reminder to carry on reaches the phone`, toPhone(halfway, r0).length === 1 && /is still open, and everything you have said so far is kept/.test(toPhone(halfway, r0)[0] ?? ''), JSON.stringify(toPhone(halfway, r0)));
-      await prisma.conversationTurn.updateMany({ where: { checkInId: ci.id }, data: { createdAt: new Date(Date.now() - 11.1 * 3600_000) } });
+      await placeTurns(Date.now() - 11.1 * 3600_000);
       const r1 = outbox.length;
       await cron.fireSessionClosingWarnings();
       await waitQuiet(800);
       keep(`- Eleven hours quiet: ${halfway.first} reads ${quote(toPhone(halfway, r1))}`);
       check(`${k.kind}: the half-hour warning reaches the phone`, toPhone(halfway, r1).some((t: string) => /closes in 30 minutes if nothing else is said/.test(t)), JSON.stringify(toPhone(halfway, r1)));
-      await prisma.conversationTurn.updateMany({ where: { checkInId: ci.id }, data: { createdAt: new Date(Date.now() - 12.1 * 3600_000) } });
+      await placeTurns(Date.now() - 12.1 * 3600_000);
       const r2 = outbox.length; const at2 = new Date();
       await tellThemTheClockClosedIt(prisma, whatsapp, ci.id);
       await conversation.closeByTheClock(ci.id);

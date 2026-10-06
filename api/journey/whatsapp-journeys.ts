@@ -343,13 +343,17 @@ export async function runWhatsAppJourneys(opts: { quiet?: boolean } = {}): Promi
 
   const ctx = { verifyToken: VERIFY_TOKEN, sentWith, TEST, FROM_THE_BACK_OFFICE, slowest, app, make, signIn, prisma, api, outbox, since, writes, says, received, check, log, heading, post, message, files, cron, stamp, PW, orgs, grace, wairimu, amani, chidi, baraka, nia, otto, waitQuiet, DAY };
   try {
-    const { journeys } = await import('./whatsapp-journeys-steps');
-    await journeys(ctx as any);
-    const { moreJourneys } = await import('./whatsapp-journeys-more');
-    await moreJourneys(ctx as any);
+    /* WHATSAPP_ONLY_ENDINGS=1 runs only journey 16, how a check-in ends (and stops halfway), on a copy that already has the world set up here. */
+    const onlyTheEndings = process.env.WHATSAPP_ONLY_ENDINGS === '1';
+    if (!onlyTheEndings) {
+      const { journeys } = await import('./whatsapp-journeys-steps');
+      await journeys(ctx as any);
+      const { moreJourneys } = await import('./whatsapp-journeys-more');
+      await moreJourneys(ctx as any);
+    }
     if (process.env.WHATSAPP_JOURNEYS_106 !== '0') {
       const { decision106, howItEnds } = await import('./whatsapp-journeys-106');
-      await decision106(ctx as any);
+      if (!onlyTheEndings) await decision106(ctx as any);
       const endings = await howItEnds(ctx as any);
       require('fs').writeFileSync(process.env.WHATSAPP_ENDINGS_OUT ?? '/dev/null', endings.join('\n'));
     }
