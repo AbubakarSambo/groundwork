@@ -1,4 +1,3 @@
-import type { Prisma } from '@prisma/client';
 /**
  * WHAT COUNTS AS A PERSON ON AN ACCOUNT. ONE DEFINITION, USED EVERYWHERE.
  *
@@ -45,12 +44,12 @@ export const SEAT_RELATION_COUNT = { users: { where: SEAT_WHERE } } as const;
  * already reads the memberships (U.4), and it lists guests, so the two numbers parted.
  *
  * A seat here is a person with a Groundwork account who can use the product (SEAT_WHERE) and
- * belongs here, as an admin, a lead or somebody who takes part. A GUEST HOLDS NO SEAT IN THE ORGANISATION THAT HAS
- * THEM AS A GUEST (6 October 2026, as docs/existing-users.md has always said: "a seat count that leaves guests out").
- * On 27 September this counted guests in, the prototype's way ("Every person with a Groundwork account at Baridi
- * Appliances", F2); the screens then found a plan reading "all 5 are taken" with one person on the check-in and four
- * guests (request 174 item 10), so a lead was refused people she was entitled to add. A guest still holds a seat
- * where they belong. Somebody answering by link with no account holds none, because they have no row here at all.
+ * belongs here, as an admin, a lead, somebody who takes part, or a guest. The prototype is the rule:
+ * "They take a seat; you have 73 free." of somebody from outside waiting to be let in (A4
+ * people.txt), and "Every person with a Groundwork account at Baridi Appliances. Guests with no
+ * account don't." (F2). So a guest with an account holds a seat (decided the prototype's way on
+ * 27 September; U.19 had counted guests out without a decision), and only somebody answering by
+ * link with no account holds none, because they have no row here at all.
  *
  * Except a guest HELD FOR A SEAT: added when there was no seat for them, so they hold none, are not
  * offered the check-in, and read "No seat on your plan" until a seat is freed and their invitation
@@ -64,18 +63,10 @@ export function seatsIn(organizationId: string) {
   return {
     ...SEAT_WHERE,
     OR: [
-      { memberships: { some: { organizationId, heldForASeat: false, role: { not: 'GUEST' as const } } } },
+      { memberships: { some: { organizationId, heldForASeat: false } } },
       { organizationId, memberships: { none: { organizationId } } },
     ],
   };
-}
-
-/**
- * SOMEBODY ADDED TO A CHECK-IN HERE WHO IS ALREADY HERE: holds a seat, or is a guest here. Adding either to another check-in costs
- * no seat, which is the question `addParticipant` asks before it decides whether there is room for one more.
- */
-export function alreadyHere(organizationId: string): { OR: Prisma.UserWhereInput[] } {
-  return { OR: [seatsIn(organizationId), { ...SEAT_WHERE, memberships: { some: { organizationId, role: 'GUEST' as const, heldForASeat: false } } }] };
 }
 
 /**
@@ -88,12 +79,11 @@ export function alreadyHere(organizationId: string): { OR: Prisma.UserWhereInput
 export async function seatsByOrganisation(prisma: { user: { findMany: (args: any) => Promise<unknown> } }): Promise<Map<string, number>> {
   const people = (await prisma.user.findMany({
     where: SEAT_WHERE,
-    select: { organizationId: true, memberships: { select: { organizationId: true, heldForASeat: true, role: true } } },
-  })) as { organizationId: string | null; memberships: { organizationId: string; heldForASeat: boolean; role?: string }[] }[];
+    select: { organizationId: true, memberships: { select: { organizationId: true, heldForASeat: true } } },
+  })) as { organizationId: string | null; memberships: { organizationId: string; heldForASeat: boolean }[] }[];
   const seats = new Map<string, number>();
   for (const p of people) {
-    /* A guest holds no seat in the organisation that has them as a guest; they hold one where they belong. */
-    const here = new Set(p.memberships.filter((m) => !m.heldForASeat && m.role !== 'GUEST').map((m) => m.organizationId));
+    const here = new Set(p.memberships.filter((m) => !m.heldForASeat).map((m) => m.organizationId));
     /* The older shape: their organisation, with no membership row there at all. */
     if (p.organizationId && !p.memberships.some((m) => m.organizationId === p.organizationId)) here.add(p.organizationId);
     for (const org of here) seats.set(org, (seats.get(org) ?? 0) + 1);
