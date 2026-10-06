@@ -1,3 +1,4 @@
+import { HELD_FOR_A_SEAT } from '../participants/held-for-a-seat';
 import { theParticipantAsServed, theFitAsServed, theCheckInRowAsServed } from './a-transcript-serves-only-what-is-theirs';
 import { theNumberInTheNameIsKept } from './an-aim-said-twice-is-one-aim';
 import { theDayKeptApart } from '../board/an-aim-is-a-sentence-about-somebody';
@@ -11151,6 +11152,8 @@ ${told}` : '';
    */
   private async loadOwnedOpenCheckIn(checkInId: string, who: WhoIsAsking) {
     const checkIn = await this.loadOwnedCheckIn(checkInId, who);
+    /* NEW PARTICIPATION STOPS FOR SOMEBODY HELD FOR A SEAT (decision 110, B3): no new session, and no answer to one. What they have already said and their own report stay theirs to read, through the readers above. */
+    if ((checkIn as any).participant?.awaitingSeat === true) throw new ForbiddenException(HELD_FOR_A_SEAT);
     if (checkIn.status === CheckInStatus.COMPLETED) {
       throw new BadRequestException('This check-in is already complete');
     }
