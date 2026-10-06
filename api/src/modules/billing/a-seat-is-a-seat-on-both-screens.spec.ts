@@ -162,15 +162,29 @@ describe('the gate and the billing page count the same people', () => {
  * an account holds one; only a guest held for a seat, added when there was none, does not yet.
  */
 describe('who holds a seat, read from the memberships', () => {
-  it('a guest with an account holds a seat, on either screen, as the prototype says', async () => {
+  /* CHANGED 6 October 2026: this case said a guest with an account holds a seat here, as the prototype's F2 page reads. docs/existing-users.md
+     has always promised a seat count that leaves guests out, and the screens found a plan reading "all 5 are taken" with one person on the
+     check-in and four guests (request 174 item 10). A guest holds a seat where they belong, not in the organisation that has them as a guest. */
+  it('a guest holds no seat in the organisation that has them as a guest, on either screen', async () => {
     const svc = svcFor([
       { isActive: true, deletedAt: null, here: 'ADMIN' },
       { isActive: true, deletedAt: null, here: 'LEAD' },
       { isActive: true, deletedAt: null, here: 'MEMBER' },
       { isActive: true, deletedAt: null, here: 'GUEST', lookingAt: 'org2' },
     ], 'STARTER');
-    expect((await svc.getStatus('org1')).people.count).toBe(4);
-    expect(await svc.seatsLeft('org1')).toBe(1);
+    expect((await svc.getStatus('org1')).people.count).toBe(3);
+    expect(await svc.seatsLeft('org1')).toBe(2);
+  });
+
+  it('four guests and one person is one seat taken, never a plan that reads as full', async () => {
+    const svc = svcFor([
+      { isActive: true, deletedAt: null, here: 'LEAD' },
+      ...Array.from({ length: 4 }, () => ({ isActive: true, deletedAt: null, here: 'GUEST', lookingAt: 'org2' } as Row)),
+    ], 'STARTER');
+    const status = await svc.getStatus('org1');
+    expect(status.people.count).toBe(1);
+    expect(await svc.seatsLeft('org1')).toBe(4);
+    expect((await svc.canInviteMember('org1')).allowed).toBe(true);
   });
 
   it('a guest held for a seat does not hold one until it is freed and their invitation goes', async () => {
@@ -255,5 +269,16 @@ describe('there is one definition of a seat, not a copy per call site', () => {
 
     const sweep = readFileSync(join(__dirname, '../entry/unverified-sweep.ts'), 'utf8');
     expect(sweep).toMatch(/prisma\.user\.count\(\{ where: \{ organizationId: user\.organizationId, id: \{ not: user\.id \} \} \}\)/);
+  });
+});
+
+describe('somebody already here, for the check-in invitation', () => {
+  it('a guest here is already here: adding them to another check-in costs no seat, though they hold none', () => {
+    const { alreadyHere, seatsIn } = require('../../common/seats');
+    const where = alreadyHere('org1');
+    expect(where.OR).toHaveLength(2);
+    expect(where.OR[0]).toEqual(seatsIn('org1'));
+    expect(JSON.stringify(where.OR[1])).toContain('"role":"GUEST"');
+    expect(JSON.stringify(seatsIn('org1'))).toContain('"role":{"not":"GUEST"}');
   });
 });

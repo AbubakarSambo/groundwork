@@ -25,7 +25,7 @@ import { isNotLetInYet, whoIsNotLetInYet, theWaitingToBeLetInLine } from './who-
 import { waitsOnAManagingOnlyLead } from './the-lead-who-only-asks';
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException, Optional } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
-import { seatsIn } from '../../common/seats';
+import { seatsIn, alreadyHere } from '../../common/seats';
 import { whetherThereIsRoomForOneMore, type SeatAnswer } from './added-but-waiting-for-a-seat';
 import { whatTheDocumentsSay, stillNeedsSomethingInWriting } from './what-the-documents-say';
 import { whatFitsInTheRoom, tellThemWhatIsMissing } from '../conversation/a-prompt-that-ran-out-of-room-says-so';
@@ -5810,7 +5810,7 @@ export class GroundsService {
      * already holds one, and adding them to a second check-in costs nothing.
      */
     const alreadyHereWithASeat = await this.prisma.user.count({
-      where: { email: dto.email.toLowerCase(), ...seatsIn(organizationId) },
+      where: { email: dto.email.toLowerCase(), ...alreadyHere(organizationId) },
     });
     let waitingForASeat: SeatAnswer = { room: true };
     if (!alreadyHereWithASeat) {
