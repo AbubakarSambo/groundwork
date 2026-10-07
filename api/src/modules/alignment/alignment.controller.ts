@@ -8,6 +8,7 @@ import { AgreementsService } from './agreements.service';
 import { AssertionsService } from './assertions.service';
 import { PartiesService } from './parties.service';
 import { ObligationsService } from './obligations.service';
+import { OnlySomebodyInTheCheckInReadsIt } from './only-somebody-in-the-check-in-reads-it.guard';
 import { Side } from './a-party-is-an-organisation';
 import { WhatFor } from './a-term-is-not-true-because-a-model-read-it';
 
@@ -28,6 +29,7 @@ export class AlignmentController {
     private readonly obligations: ObligationsService,
   ) {}
 
+  @UseGuards(OnlySomebodyInTheCheckInReadsIt)
   @Get('figures')
   @ApiOperation({ summary: 'The figures on this check-in, each with where it came from and whether a person has checked it' })
   figures(@CurrentUser('organizationId') organizationId: string, @Param('groundId') groundId: string) {
@@ -90,6 +92,7 @@ export class AlignmentController {
     return this.agreements.amend(organizationId, groundId, agreementId, new Date(dto?.inForceFrom));
   }
 
+  @UseGuards(OnlySomebodyInTheCheckInReadsIt)
   @Get('agreements/:agreementId/in-force')
   @ApiOperation({ summary: 'What governed a given day, or why nothing did' })
   inForce(
@@ -174,6 +177,7 @@ export class AlignmentController {
     return this.agreements.readsItDifferently(organizationId, groundId, termId, dto?.who, dto?.reads, { userId, role });
   }
 
+  @UseGuards(OnlySomebodyInTheCheckInReadsIt)
   @Get('terms/:termId/may-be-used-to')
   @ApiOperation({ summary: 'Whether a term may be shown, used to ask, or used to judge - and why not, where not' })
   mayBeUsed(
@@ -198,6 +202,7 @@ export class AlignmentController {
     return this.agreements.signed(organizationId, groundId, versionId, dto?.said, { userId, role }, dto?.on ? new Date(dto.on) : undefined);
   }
 
+  @UseGuards(OnlySomebodyInTheCheckInReadsIt)
   @Get('versions/:versionId/standing')
   @ApiOperation({ summary: 'Where a version stands today - discussed, agreed, signed, in force - and whether anything may be settled against it' })
   standing(
@@ -209,6 +214,7 @@ export class AlignmentController {
     return this.agreements.standing(organizationId, groundId, versionId, on ? new Date(on) : undefined);
   }
 
+  @UseGuards(OnlySomebodyInTheCheckInReadsIt)
   @Get('obligations')
   @ApiOperation({ summary: 'Every obligation on this check-in, each carrying what it is evidence of' })
   obligationsHere(@CurrentUser('organizationId') organizationId: string, @Param('groundId') groundId: string) {
@@ -261,6 +267,7 @@ export class AlignmentController {
     return this.obligations.nothingShown(organizationId, groundId, obligationId);
   }
 
+  @UseGuards(OnlySomebodyInTheCheckInReadsIt)
   @Get('parties')
   @ApiOperation({ summary: 'The two sides, what each may do, and what happens to the record afterwards' })
   sides(@CurrentUser('organizationId') organizationId: string, @Param('groundId') groundId: string) {
@@ -300,12 +307,14 @@ export class AlignmentController {
     return this.assertions.said(organizationId, groundId, dto);
   }
 
+  @UseGuards(OnlySomebodyInTheCheckInReadsIt)
   @Get('assertions')
   @ApiOperation({ summary: 'Where every claim on this check-in stands, and since when' })
   assertionsHere(@CurrentUser('organizationId') organizationId: string, @Param('groundId') groundId: string) {
     return this.assertions.whereEverythingStands(organizationId, groundId);
   }
 
+  @UseGuards(OnlySomebodyInTheCheckInReadsIt)
   @Get('assertions/waiting-on/:who')
   @ApiOperation({ summary: 'What to ask somebody, with the claim not in it - this read cannot return a claim at all' })
   waitingOn(
@@ -338,6 +347,7 @@ export class AlignmentController {
     return this.assertions.answered(organizationId, groundId, assertionId, dto);
   }
 
+  @UseGuards(OnlySomebodyInTheCheckInReadsIt)
   @Get('differences')
   @ApiOperation({ summary: 'What is unexplained on this check-in, since when, and what has not been asked yet' })
   open(@CurrentUser('organizationId') organizationId: string, @Param('groundId') groundId: string) {
