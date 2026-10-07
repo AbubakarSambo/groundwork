@@ -1771,7 +1771,16 @@ export function GroundAdminPage() {
         {tab === 'chat' && (
           <div>
             {viewerIsAParty ? (
-              myOpenCheckIn && !myOpenOpensLater ? (
+              /*
+               * B-19: AN ENDED CHECK-IN STILL PROMISED A NEXT ONE, here on the lead's own Check-in
+               * tab too ("Bring this to your next check-in" never applied once it had ended). The
+               * board is where the full ending (who decided, when, and why) is read.
+               */
+              howItEnded(ground as any) ? (
+                <Callout tone="info" title={howItEnded(ground as any)!}>
+                  This check-in has ended. <Link to={`/grounds/${id}/board`}>Go to the board</Link> to read how it ended and why.
+                </Callout>
+              ) : myOpenCheckIn && !myOpenOpensLater ? (
                 /* A FAILED OPEN SAYS SO, WITH A WAY BACK IN - the probe above
                    (myOpenSessionAutoOpenFired) only ever fires once per mount, so
                    without this a failed attempt left this note standing with nothing

@@ -3,7 +3,7 @@ import { OutOfTime } from './OutOfTime'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useEffect, useRef, useState } from 'react'
 import { GroundGone } from '@/components/gw/GroundGone'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { whichSessionIsThisCheckInOn, whichSessionAreWeOn, hasDoneThisSession } from '@/lib/which-session-are-we-on'
 import { groundsApi } from '@/api/grounds'
@@ -703,7 +703,19 @@ export function GroundParticipantPage() {
         */}
       {tab === 'checkin' && (
         <>
-          {dueNow ? (
+          {/*
+           * B-19: AN ENDED CHECK-IN STILL PROMISED A NEXT ONE.
+           *
+           * `BetweenCheckIns` is written for a check-in still running - "Your next check-in opens
+           * on Tuesday" - and said that, unchanged, once the ground had ended, with no outcome
+           * shown anywhere on this tab. The board is where the full ending (who decided, when, and
+           * why) is read, once it has one; this stops the false promise of a next session here.
+           */}
+          {howItEnded(ground as any) ? (
+            <Callout tone="info" title={howItEnded(ground as any)!}>
+              This check-in has ended. <Link to={`/grounds/${id}/board`}>Go to the board</Link> to read how it ended and why.
+            </Callout>
+          ) : dueNow ? (
             /* A FAILED OPEN SAYS SO, WITH A WAY BACK IN - not the same "Opening…" line left
                standing after the attempt it describes is already over. See
                attemptCheckinTabOpen above. */
