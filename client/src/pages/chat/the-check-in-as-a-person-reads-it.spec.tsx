@@ -340,6 +340,16 @@ describe('the + button', () => {
 
 describe('the end card, once Groundwork has closed the conversation', () => {
   const CLOSING = 'That’s all for today. Below is what I wrote down from your answers. Is anything wrong?'
+  /*
+   * SCREEN FAULT 2 (FINAL WALK): the closing message claimed "Below is what I wrote down from your
+   * answers." even on a close with no record lines for the card to show (request 182) - untrue of
+   * what was actually on screen. The screen now drops that one claim when nothing backs it
+   * (a-closing-message-claims-nothing-it-does-not-keep.ts), leaving the two true sentences either
+   * side of it. `answerTheLastQuestion` used to assert the full `CLOSING` text unconditionally,
+   * which is exactly the claim this fixes - every no-record-lines test below now waits for the
+   * corrected, shorter message instead.
+   */
+  const SHORTENED = 'That’s all for today. Is anything wrong?'
   function closesOnTheNextAnswer(endCard?: unknown) {
     ;(conversationApi.transcript as any).mockResolvedValue({
       checkIn: { status: 'IN_PROGRESS', sessionNumber: 38, groundId: 'g1' },
@@ -347,11 +357,18 @@ describe('the end card, once Groundwork has closed the conversation', () => {
     })
     ;(conversationApi.send as any).mockResolvedValue({ reply: CLOSING, sessionComplete: true, endCard })
   }
-  async function answerTheLastQuestion() {
+  async function answerTheLastQuestion(expectToRead: string = SHORTENED) {
     renderChat()
     fireEvent.click(await findByRole('button', { name: 'I’ll visit Westgate Deli on Friday' }, { timeout: 6000 }))
-    await findByText(CLOSING, {}, { timeout: 6000 })
+    await findByText(expectToRead, {}, { timeout: 6000 })
   }
+
+  it('never claims "Below is what I wrote down from your answers." when the end card has no record lines', async () => {
+    closesOnTheNextAnswer()
+    await answerTheLastQuestion()
+    expect(screen.queryByText(CLOSING)).toBeNull()
+    expect(screen.getByText(SHORTENED)).toBeTruthy()
+  })
 
   it('Miriam reads the header change, why answering matters, what happens next, and the two buttons', async () => {
     closesOnTheNextAnswer()
@@ -385,7 +402,8 @@ describe('the end card, once Groundwork has closed the conversation', () => {
       ],
       next: ['If Green Mart sends a written order, add a photo of it. Then the sale counts as proven.'],
     })
-    await answerTheLastQuestion()
+    // Record lines are sent, so the claim is true, and the full closing message stays.
+    await answerTheLastQuestion(CLOSING)
     expect(screen.getByRole('heading', { name: '1. What is now in your record' })).toBeTruthy()
     expect(screen.getByText('Green Mart will buy in January')).toBeTruthy()
     expect(screen.getByText('You said this. It will count next quarter, from October.')).toBeTruthy()

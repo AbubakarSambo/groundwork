@@ -5,6 +5,7 @@ import { justTheQuestion } from '@/pages/invite/the-link-opens-on-the-question'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
 import { conversationApi, streamMessage, type CheckInBrief, type TheEndCard as TheEndCardData } from '@/api/conversation'
+import { closingMessageText } from '@/lib/a-closing-message-claims-nothing-it-does-not-keep'
 import type { ConnectWhatsApp } from '@/types'
 import { documentsApi, type DocumentAssessment } from '@/api/documents'
 import { useAuthStore } from '@/stores/auth'
@@ -688,7 +689,16 @@ export function ChatPage() {
           if (typeof t.checkIn?.sessionNumber === 'number') setSessionNumber(t.checkIn.sessionNumber)
           if (t.checkIn?.groundId && !groundId) setGroundId(t.checkIn.groundId)
           if (t.turns && t.turns.length > 0) {
-            setMsgs(t.turns.map(turn => ({ id: turn.id, role: turn.role, content: turn.content, suggestedAnswers: turn.suggestedAnswers, ideaOffer: turn.ideaOffer, requestOffer: turn.requestOffer, openTheRequest: turn.openTheRequest })))
+            const lastTurnId = t.turns[t.turns.length - 1]?.id
+            setMsgs(t.turns.map(turn => ({
+              id: turn.id,
+              role: turn.role,
+              /* Screen fault 2: a reload replays the closing turn's own stored text, which can
+                 still claim a record the end card does not have (see
+                 a-closing-message-claims-nothing-it-does-not-keep.ts). */
+              content: turn.id === lastTurnId ? closingMessageText(turn.content, t.endCard) : turn.content,
+              suggestedAnswers: turn.suggestedAnswers, ideaOffer: turn.ideaOffer, requestOffer: turn.requestOffer, openTheRequest: turn.openTheRequest,
+            })))
             /**
               * ROUND 6, ITEM 4: A SESSION THAT WAS ALREADY FINISHED GETS THE SAME DONE PAGE AS
               * ONE JUST FINISHED NOW.
@@ -819,8 +829,11 @@ export function ChatPage() {
         },
         onDone: (r) => {
           acknowledge()
-          setMsgs(v => v.map(m => m.id === aiId ? { ...m, content: r.reply, suggestedAnswers: r.suggestedAnswers, ideaOffer: r.ideaOffer, requestOffer: r.requestOffer, openTheRequest: r.openTheRequest } : m))
-          setDisplayedMsgs(v => v.map(m => m.id === aiId ? { ...m, content: r.reply, suggestedAnswers: r.suggestedAnswers, ideaOffer: r.ideaOffer, requestOffer: r.requestOffer, openTheRequest: r.openTheRequest } : m))
+          /* Screen fault 2: do not repeat "Below is what I wrote down from your answers." when
+             this close sent no record lines - see a-closing-message-claims-nothing-it-does-not-keep.ts. */
+          const replyText = closingMessageText(r.reply, r.endCard)
+          setMsgs(v => v.map(m => m.id === aiId ? { ...m, content: replyText, suggestedAnswers: r.suggestedAnswers, ideaOffer: r.ideaOffer, requestOffer: r.requestOffer, openTheRequest: r.openTheRequest } : m))
+          setDisplayedMsgs(v => v.map(m => m.id === aiId ? { ...m, content: replyText, suggestedAnswers: r.suggestedAnswers, ideaOffer: r.ideaOffer, requestOffer: r.requestOffer, openTheRequest: r.openTheRequest } : m))
           if (r.sessionComplete) setDone(true)
           if (r.endCard) setEndCard(r.endCard)
         },
@@ -837,7 +850,7 @@ export function ChatPage() {
         try {
           const res = await conversationApi.send(checkInId, message)
           acknowledge()
-          setMsgs(v => v.concat({ id: `ai-${Date.now()}`, role: 'AI', content: res.reply, suggestedAnswers: res.suggestedAnswers, ideaOffer: res.ideaOffer, requestOffer: res.requestOffer, openTheRequest: res.openTheRequest }))
+          setMsgs(v => v.concat({ id: `ai-${Date.now()}`, role: 'AI', content: closingMessageText(res.reply, res.endCard), suggestedAnswers: res.suggestedAnswers, ideaOffer: res.ideaOffer, requestOffer: res.requestOffer, openTheRequest: res.openTheRequest }))
           if (res.sessionComplete) setDone(true)
           if (res.endCard) setEndCard(res.endCard)
         } catch {
