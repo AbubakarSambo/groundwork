@@ -109,7 +109,8 @@ describe('everything else Prisma throws', () => {
     const answer = whatToSayAboutADatabaseError(
       prismaError('PrismaClientInitializationError', 'Cannot reach database at 10.0.0.4:5432'),
     )!;
-    expect(answer.status).toBe(HttpStatus.INTERNAL_SERVER_ERROR);
+    /* B-151: an unreachable database is a temporary 503, said as a moment to wait. */
+    expect(answer.status).toBe(HttpStatus.SERVICE_UNAVAILABLE);
     expect(answer.message).not.toMatch(/10\.0\.0\.4/);
     expect(answer.message).toMatch(/Nothing was changed/);
   });

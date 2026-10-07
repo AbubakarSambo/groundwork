@@ -30,6 +30,12 @@ export function whatToSayAboutADatabaseError(
   const isPrisma = name.startsWith('PrismaClient');
   if (!isPrisma) return null;
 
+  /* The database cannot be reached, or took too long (B-151): ours, not the caller's, and temporary. Said as that, not as "the database refused that request". */
+  const code0 = (error as { code?: string }).code;
+  if (name === 'PrismaClientInitializationError' || (name === 'PrismaClientKnownRequestError' && ['P1001', 'P1002', 'P1008', 'P1017', 'P2024'].includes(code0 ?? ''))) {
+    return { status: HttpStatus.SERVICE_UNAVAILABLE, message: 'Groundwork cannot reach its records for a moment. Nothing was changed. Please try again in a minute.' };
+  }
+
   if (name === 'PrismaClientValidationError') {
     /*
      * The one useful fact in the whole message is which argument was missing,
