@@ -11,10 +11,17 @@ import { describe, it, expect } from 'vitest'
  *
  * WHAT WAS ACTUALLY WRONG.
  *
- * The mark. `GroundworkLogo` was a bare `<svg>`, so on `Arrival` - the invite, the join, the sign-in
- * link, the first Groundwork screen a stranger ever sees - the logo did nothing when clicked. The
- * rail's wordmark did link out, but only when expanded: collapsed, there was no mark at all, in the
- * state somebody works in all day.
+ * The mark. `GroundworkLogo` was a bare `<svg>`, so on the arrival pages - the invite, the join, the
+ * sign-in link, the first Groundwork screen a stranger ever sees - the logo did nothing when
+ * clicked. The rail's wordmark did link out, but only when expanded: collapsed, there was no mark
+ * at all, in the state somebody works in all day.
+ *
+ * B-047 UPDATE: those arrival pages drew their own chrome through a shared component, `Arrival`,
+ * whose `<GroundworkLogo />` this file used to read straight off its file. The last page still
+ * using it (`JoinConfirmPage.tsx`) was moved onto `Page`/`Mark` (`components/gw/ui`), the
+ * prototype-accurate shell every other arrival had already been rebuilt onto, so `Arrival.tsx` is
+ * deleted rather than left as a component nothing imports. `Mark` carries the same job - the way
+ * home - with its own `<a href={MARKETING_URL}>`, checked directly below instead.
  *
  * The URL. Four files each declared `VITE_MARKETING_URL ?? 'https://myground.work'`, and two more had
  * the production URL typed in with no env var - so on a staging build the rail's logo went to staging
@@ -32,16 +39,16 @@ const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\
 const read = (p: string) => strip(readFileSync(join(SRC, p), 'utf8'))
 
 describe('the mark is the way home', () => {
-  it('the logo component links to the marketing site by default', () => {
-    const logo = read('components/gw/GroundworkLogo.tsx')
-    expect(logo).toMatch(/linkToMarketing = true/)
-    expect(logo).toMatch(/<a href=\{MARKETING_URL\}/)
-  })
-
   it('so the first screen a stranger sees has a way back to the site', () => {
-    // `Arrival` is the invite, the join and the sign-in link. It renders the mark with no props, so
-    // it gets the link from the default rather than having to remember.
-    expect(read('components/gw/Arrival.tsx')).toMatch(/<GroundworkLogo \/>/)
+    // The invite, the join and the sign-in link all render inside `Page narrow` with `Mark` at the
+    // top (B-047: the last holdout, `JoinConfirmPage.tsx`, moved on to it too, and `Arrival.tsx` /
+    // `GroundworkLogo.tsx` - the full wordmark in a header band, the one inconsistent template
+    // B-047 found - are deleted rather than left as components nothing imports). `Mark` links to
+    // the marketing site itself, rather than taking a link as a prop somebody has to remember to
+    // pass.
+    const mark = read('components/gw/ui/Mark.tsx')
+    expect(mark).toMatch(/import \{ MARKETING_URL \} from '@\/lib\/marketing'/)
+    expect(mark).toMatch(/<a href=\{MARKETING_URL\}/)
   })
 
   it('and the rail has a mark in both states', () => {
