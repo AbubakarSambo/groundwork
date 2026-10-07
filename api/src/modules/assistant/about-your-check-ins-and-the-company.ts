@@ -1,7 +1,7 @@
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { A_GROUND_IS_OVER } from '../grounds/a-ground-that-has-ended';
 import { theCheckInsHeldForASeat } from '../participants/held-for-a-seat';
-import { theBriefAsTheLeadReadsIt } from '../grounds/what-a-participant-is-told-about-this';
+import { theBriefAsTheLeadReadsIt, theirOwnFirstNameAsYour } from '../grounds/what-a-participant-is-told-about-this';
 import { askName } from './ask-name';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { peersAreNamedByDefaultOn } from '../reports/peers-are-named';
@@ -73,12 +73,14 @@ export async function whatMyCheckInIsFor(prisma: any, organizationId: string, us
   if (!userId) return none;
   const mine = await theirCheckIns(prisma, organizationId, userId);
   if (!mine.length) return none;
+  /* "Zawadi's first weeks" is "your first weeks" to Zawadi here too, as on her check-in page (6ae83da4): only the possessive of her own first name. */
+  const myFirstName: string | null = (await prisma.user?.findUnique?.({ where: { id: userId }, select: { firstName: true } })?.catch?.(() => null))?.firstName ?? null;
   const lines = mine.slice(0, 3).map((g: any) => {
     if (g.noSeatYet) return noSeatYetSays(g.label);
     const runsIt = g.initiatorId === userId;
     const leads = (g.initiator?.firstName ?? '').trim();
     /* What the lead wrote is the lead's; a person taking part is told what the product wrote for them. */
-    const forWhat = ((runsIt ? theBriefAsTheLeadReadsIt(g.brief) : g.toldToParticipants) ?? '').trim();
+    const forWhat = ((runsIt ? theBriefAsTheLeadReadsIt(g.brief) : theirOwnFirstNameAsYour(g.toldToParticipants as string | null, myFirstName)) ?? '').trim();
     const what = forWhat ? `This is what "${g.label}" is for. ${forWhat.replace(/[.!?]*$/, '.')}` : `"${g.label}" has no description of what it is for yet.`;
     const reads = runsIt
       ? 'You run it, so you read its report.'

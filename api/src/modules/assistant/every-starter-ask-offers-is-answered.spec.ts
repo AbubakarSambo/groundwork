@@ -88,6 +88,18 @@ describe('what each reader reads in answer', () => {
     expect(textOf(reply)).toBe('This is what "Sales team, Q4" is for. Get the Q4 target back on track. You run it, so you read its report.');
   });
 
+  it('the person a check-in is about reads "your first weeks", not her own name, and nobody else is changed (read on the server, 7 October)', async () => {
+    const hire = { ...ground, label: 'Zawadi joins Sales', scenario: 'NEW_HIRE', toldToParticipants: "This check-in is about Zawadi's first weeks in Sales." };
+    const asZawadi = (userId: string, firstName: string) => {
+      const h = as(userId);
+      h.prisma.ground.findMany = jest.fn(async () => [hire]);
+      h.prisma.user = { ...(h.prisma.user ?? {}), findUnique: jest.fn(async () => ({ firstName })) };
+      return h;
+    };
+    expect(textOf(await asZawadi('u-zawadi', 'Zawadi').service.respond('org-a', 'p1', 'What is my check-in for, and who reads it?'))).toContain('This check-in is about your first weeks in Sales.');
+    expect(textOf(await asZawadi('u-amina', 'Amina').service.respond('org-a', 'p1', 'What is my check-in for, and who reads it?'))).toContain("This check-in is about Zawadi's first weeks in Sales.");
+  });
+
   it('somebody in no check-in is told so plainly', async () => {
     const h = as('u-nia');
     h.prisma.ground.findMany = jest.fn(async () => []);
