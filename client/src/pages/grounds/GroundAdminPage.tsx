@@ -483,6 +483,17 @@ export function GroundAdminPage() {
     if (myOpenSessionAutoOpenFired.current) return
     if (!myOpenCheckIn || myOpenOpensLater) return
     /*
+     * B-009: NOTHING CAN OPEN WHILE AN ADMIN HAS NOT YET ACCEPTED THIS CHECK-IN.
+     *
+     * The "Waiting for an admin to accept this check-in" callout above already says "You can keep
+     * editing it, and nobody can be invited until it is accepted" - but this effect tried to open
+     * the lead's own session anyway, the server refused with its own "This check-in is closed.
+     * Nothing further can be added." (the sentence written for a check-in that has actually ended),
+     * and that refusal banner then sat directly under the waiting callout, flatly contradicting it.
+     * Nothing here can open until it is accepted, so this waits until then.
+     */
+    if ((ground as any)?.status === 'AWAITING_APPROVAL') return
+    /*
      * SCREEN FAULT 4: THE ANCHOR'S LEAD NEVER GETS AN ORDINARY FIRST CHECK-IN HERE.
      *
      * In `HELP_TEAM_UNDERSTAND` the lead's own account of the situation is the entry conversation
