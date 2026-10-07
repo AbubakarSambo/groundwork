@@ -130,7 +130,7 @@ describe('"What did I say I would do?"', () => {
 
   it('Baraka reads both promises, in plain words, and never "open actions"', async () => {
     const reply: any = await asBaraka('u-baraka').service.respond('org-a', 'p1', 'What did I say I would do?');
-    expect(textOf(reply)).toContain('You said you would do 2 things that are still waiting.\n- Send the Kisumu price list (you said by Friday, in "Sales team, Q3")\n- Ask Juma about the discount (in "Sales team, Q3")');
+    expect(textOf(reply)).toContain('You said you would do 2 things that are still waiting.\n- In "Sales team, Q3", you said you would send the Kisumu price list by Friday.\n- In "Sales team, Q3", you said you would ask Juma about the discount.');
     expect(textOf(reply)).not.toMatch(/open actions|You have no/i);
   });
 
@@ -182,9 +182,10 @@ describe('"What did I say I would do?" says each promise whole, once', () => {
       { text: 'I will send the Kisumu list.', whenSaid: 'by Friday', ground: { label: 'Sales team, Q3' } },
     ]) };
     const t = textOf(await h.service.respond('org-a', 'p1', 'What did I say I would do?'));
-    expect(t).toContain('- I will send it by Friday now that I have the new name (in "Sales team, Q3")');
-    expect(t).toContain('- I will send the Kisumu list (you said by Friday, in "Sales team, Q3")');
-    expect(t).not.toMatch(/by Friday[^\n]*you said by Friday/);
+    /* Each promise once, in the second person, as a full sentence (privacy sweep, 7 October, item 4). */
+    expect(t).toContain('- In "Sales team, Q3", you said you would send it by Friday now that you have the new name.');
+    expect(t).toContain('- In "Sales team, Q3", you said you would send the Kisumu list by Friday.');
+    expect(t).not.toMatch(/\(you said|\bI will\b/);
   });
 });
 
@@ -237,5 +238,21 @@ describe('when the read of which suites are on fails', () => {
     const h = askGroundwork({ userId: 'u-amina' });
     h.prisma.organizationSuite = { findMany: jest.fn(async () => { throw new Error('database down'); }) };
     expect(textOf(await h.service.respond('org-a', 'p1', 'Ask for leave, or to spend money.'))).toBe('Leave and spending requests are not switched on for your organisation yet. An admin can switch them on.');
+  });
+});
+
+
+describe('"What did I say I would do?" for somebody with no seat yet (decision 110, B3)', () => {
+  it('keeps her own promises, and says plainly she is in the check-in with no seat for her yet', async () => {
+    const h = askGroundwork({ userId: 'u-tobi' });
+    h.prisma.person.findFirst = jest.fn(async () => ({ id: 'p1', externalId: 'ext-t', displayName: 'X', active: true, linkedUserId: 'u-tobi' }));
+    h.prisma.commitment.findMany = jest.fn(async () => []);
+    h.prisma.groundCommitment = { findMany: jest.fn(async ({ where }: any) => (where.participant.awaitingSeat === undefined && where.participant.userId === 'u-tobi'
+      ? [{ text: 'I will send the Kisumu list.', whenSaid: 'by Friday', ground: { label: 'Sales team, Q3' } }] : [])) };
+    h.prisma.groundParticipant.findMany = jest.fn(async () => [{ id: 'pp-t', awaitingSeat: true, ground: { label: 'Sales team, Q3' } }]);
+    h.prisma.personObjective = { findMany: jest.fn(async () => []) };
+    const t = textOf(await h.service.respond('org-a', 'p1', 'What did I say I would do?'));
+    expect(t).toContain('In "Sales team, Q3", you said you would send the Kisumu list by Friday.');
+    expect(t).toContain('You are in "Sales team, Q3", but there is no seat for you on the plan yet, so you cannot answer a new session.');
   });
 });

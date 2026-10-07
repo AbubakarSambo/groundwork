@@ -8,7 +8,8 @@ import { DependencyStatus } from '@prisma/client';
 import { aQuestionAskedAboutARequest, aQuestionSaidBack, aQuestionSent, aQuestionNotSent, WHICH_REQUEST_TO_ASK_ABOUT, NOTHING_TO_ASK_ABOUT, HOURS_TAKE_NO_QUESTION } from '../suites/an-approver-asks-by-saying-so';
 import { whatYouCanAskSaid } from './what-you-can-ask-here';
 import { route, whatICanDoWith, Lane } from './the-router-is-deterministic';
-import { whenIsMyNextCheckIn, whatMyCheckInIsFor, theCompanysPriorities, isTheStrategyMoving, THE_REQUEST_STARTERS, howToAskForLeaveOrSpending } from './about-your-check-ins-and-the-company';
+import { aPromiseAsASentence } from './a-promise-as-a-sentence';
+import { noSeatYetSays, whenIsMyNextCheckIn, whatMyCheckInIsFor, theCompanysPriorities, isTheStrategyMoving, THE_REQUEST_STARTERS, howToAskForLeaveOrSpending } from './about-your-check-ins-and-the-company';
 import { Reply, rules, text, picker, SourceBlock } from './a-reply-is-a-payload-not-a-string';
 import { ReportsService } from '../reports/reports.service';
 import { howManyAnsweredInWords } from '../reports/the-picture-in-plain-sentences';
@@ -4952,7 +4953,8 @@ export class AssistantService {
       ? await (this.prisma as any).groundCommitment?.findMany?.({
         where: {
           status: 'UNKNOWN',
-          participant: { userId: me.linkedUserId, awaitingSeat: false },
+          /* Held for a seat keeps their own promises (decision 110, B3): only the seat limit stops, and only new participation. */
+          participant: { userId: me.linkedUserId },
           ground: { organizationId, ...notAKeptCheckIn(kept) },
         },
         select: { text: true, whenSaid: true, ground: { select: { label: true } } },
@@ -4968,8 +4970,8 @@ export class AssistantService {
      */
     const myPlaces: any[] = me.linkedUserId
       ? await (this.prisma as any).groundParticipant?.findMany?.({
-        where: { userId: me.linkedUserId, awaitingSeat: false, ground: { organizationId, ...notAKeptCheckIn(kept) } },
-        select: { id: true, ground: { select: { label: true } } },
+        where: { userId: me.linkedUserId, ground: { organizationId, ...notAKeptCheckIn(kept) } },
+        select: { id: true, awaitingSeat: true, ground: { select: { label: true } } },
       })?.catch?.(() => []) ?? []
       : [];
     const ownToDos: any[] = myPlaces.length
@@ -4988,26 +4990,26 @@ export class AssistantService {
       inCheckIns.push({ text, whenSaid: o.dueSaid ?? null, ground: myPlaces.find((x) => x.id === o.participantId)?.ground ?? null });
     }
 
-    const alreadySaysIt = (text: string, said: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').includes(said.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim());
     const now = new Date();
     const lines: string[] = [];
     const late: string[] = [];
     for (const c of open) {
-      /* What they said the day was is added only where the promise does not already say it: "I will send it by Friday" is not "(you said by Friday)" again (F-15). */
-      const when = c.dueSaid && !alreadySaysIt(String(c.text), c.dueSaid) ? ` (you said ${c.dueSaid})` : '';
       const slipped = hasSlipped(c as any, now);
-      lines.push(`- ${String(c.text).replace(/[.]+$/, '')}${when}${slipped ? ', and the date you gave has passed' : ''}`);
+      const said = aPromiseAsASentence(String(c.text), c.dueSaid);
+      lines.push(`- ${slipped ? `${said.replace(/\.$/, '')}, and the date you gave has passed.` : said}`);
       if (slipped) late.push(c.text);
     }
     for (const c of inCheckIns) {
-      const when = c.whenSaid && !alreadySaysIt(String(c.text), c.whenSaid) ? `you said ${c.whenSaid}, ` : '';
-      lines.push(`- ${String(c.text).replace(/[.]+$/, '')} (${when}in "${c.ground?.label ?? 'your check-in'}")`);
+      lines.push(`- ${aPromiseAsASentence(String(c.text), c.whenSaid, c.ground?.label ?? 'your check-in')}`);
     }
+    /* In a check-in with no seat for them yet, said plainly, so a person is not left to wonder why nothing new is asked of them. */
+    const noSeat = myPlaces.filter((x) => x.awaitingSeat);
     if (!lines.length) {
-      return rules('what_did_i_commit_to', text('You have not said you will do anything that is still waiting. When you say you will do something in a check-in, it shows up here.'));
+      return rules('what_did_i_commit_to', text(`You have not said you will do anything that is still waiting. When you say you will do something in a check-in, it shows up here.${noSeat.length ? `\n\n${noSeat.map((x) => noSeatYetSays(String(x.ground?.label ?? 'your check-in'))).join('\n')}` : ''}`));
     }
     const heading = `You said you would do ${lines.length === 1 ? 'one thing' : `${lines.length} things`} that ${lines.length === 1 ? 'is' : 'are'} still waiting.`;
     const parts = [heading, ...lines];
+    for (const x of noSeat) parts.push(`\n${noSeatYetSays(String(x.ground?.label ?? 'your check-in'))}`);
     if (late.length) {
       parts.push(`\n${late.length === 1 ? 'One of them is' : `${late.length} of them are`} past the date you gave. That is worth saying out loud in your next check-in rather than letting it sit.`);
     }

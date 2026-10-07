@@ -27,14 +27,26 @@ async function theirCheckIns(prisma: any, organizationId: string, userId: string
     orderBy: { createdAt: 'asc' },
   }).catch(() => []);
   const held = await theCheckInsHeldForASeat(prisma, grounds.map((g) => g.id), userId).catch(() => new Set<string>());
-  return grounds.filter((g) => !held.has(g.id));
+  /* Held for a seat keeps their place and their own words (decision 110, B3), so they are named, as being in it with no seat yet. Held for the organisation's approval is left out whole, as before. */
+  const noSeat: Set<string> = new Set(
+    held.size
+      ? ((await prisma.groundParticipant?.findMany?.({ where: { userId, awaitingSeat: true, groundId: { in: [...held] } }, select: { groundId: true } })?.catch?.(() => [])) ?? []).map((r: any) => r.groundId)
+      : [],
+  );
+  return grounds.filter((g) => !held.has(g.id) || noSeat.has(g.id)).map((g) => ({ ...g, noSeatYet: noSeat.has(g.id) }));
 }
+
+/** Said of a check-in the person is in but holds no seat for yet. No part of the check-in itself is told. */
+export const noSeatYetSays = (label: string) =>
+  `You are in "${label}", but there is no seat for you on the plan yet, so you cannot answer a new session. What you have already said is still yours, and you will get your invitation as soon as there is a seat.`;
 
 export async function whenIsMyNextCheckIn(prisma: any, organizationId: string, userId: string | null, now = new Date()): Promise<string> {
   const none = 'You have no check-in waiting for you right now. When one is coming up for you, I will tell you when it opens.';
   if (!userId) return none;
-  const mine = await theirCheckIns(prisma, organizationId, userId);
-  if (!mine.length) return none;
+  const everyOne = await theirCheckIns(prisma, organizationId, userId);
+  const noSeat = everyOne.filter((g: any) => g.noSeatYet);
+  const mine = everyOne.filter((g: any) => !g.noSeatYet);
+  if (!mine.length) return noSeat.length ? noSeat.slice(0, 3).map((g: any) => noSeatYetSays(g.label)).join('\n') : none;
   const rows: any[] = await prisma.checkIn.findMany({
     where: {
       groundId: { in: mine.map((g) => g.id) }, status: { in: ['NOT_STARTED', 'IN_PROGRESS'] }, isSetup: false,
@@ -43,7 +55,7 @@ export async function whenIsMyNextCheckIn(prisma: any, organizationId: string, u
     select: { groundId: true, status: true, availableFrom: true, sessionNumber: true },
     orderBy: [{ availableFrom: 'asc' }, { sessionNumber: 'asc' }],
   }).catch(() => []);
-  if (!rows.length) return none;
+  if (!rows.length) return noSeat.length ? noSeat.slice(0, 3).map((g: any) => noSeatYetSays(g.label)).join('\n') : none;
   const label = (id: string) => mine.find((g) => g.id === id)?.label ?? 'your check-in';
   const lines = rows.slice(0, 3).map((r) => {
     if (r.status === 'IN_PROGRESS') return `You have started your check-in in "${label(r.groundId)}", and you can carry on with it now.`;
@@ -52,6 +64,7 @@ export async function whenIsMyNextCheckIn(prisma: any, organizationId: string, u
     return `Your next check-in in "${label(r.groundId)}" opens on ${whenItWas(opens, 'full')}.`;
   });
   if (rows.length > 3) lines.push(`There ${rows.length - 3 === 1 ? 'is 1 more' : `are ${rows.length - 3} more`} after those.`);
+  for (const g of noSeat.slice(0, 3)) lines.push(noSeatYetSays((g as any).label));
   return lines.join('\n');
 }
 
@@ -60,7 +73,8 @@ export async function whatMyCheckInIsFor(prisma: any, organizationId: string, us
   if (!userId) return none;
   const mine = await theirCheckIns(prisma, organizationId, userId);
   if (!mine.length) return none;
-  const lines = mine.slice(0, 3).map((g) => {
+  const lines = mine.slice(0, 3).map((g: any) => {
+    if (g.noSeatYet) return noSeatYetSays(g.label);
     const runsIt = g.initiatorId === userId;
     const leads = (g.initiator?.firstName ?? '').trim();
     /* What the lead wrote is the lead's; a person taking part is told what the product wrote for them. */
