@@ -366,6 +366,14 @@ export function CheckInPeopleAndSetup(props: {
               const left = daysLeft != null ? ` ${daysLeft} day${daysLeft === 1 ? '' : 's'} left.` : ''
               return `${startText} to ${whenItWas(end, 'dayAndMonthLong')}.${left}`
             })()}
+            /*
+             * B-018: THE PROTOTYPE'S OWN "GIVE IT MORE TIME" BUTTON (check-in-people-and-setup.txt:
+             * "How long … Give it more time"), MISSING HERE. The only way in was the warning that
+             * appears in the last week of a check-in - so extending it early, before that warning
+             * ever shows, had no button anywhere. Opens the same timeframe editor "How often"'s own
+             * "Change" button does (it holds the "Ends on" field this actually extends).
+             */
+            action={canEditRunOrAdmin ? <Button kind="quiet" size="small" onClick={() => setEditingWhen(true)}>Give it more time</Button> : undefined}
           />
           {props.whatsAppIsOn && (ground as any)?.orgHasWhatsApp && (
             <FieldRow
