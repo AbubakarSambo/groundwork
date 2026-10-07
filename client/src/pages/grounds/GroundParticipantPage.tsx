@@ -252,8 +252,16 @@ export function GroundParticipantPage() {
     if (!myOpenForAutoOpen) return
     if (sessionOpening) return
     if (checkinTabOpenAttempted.current === myOpenForAutoOpen.id) return
+    /*
+     * B-019: THE SAME FALSE "CLOSED" REFUSAL, ONE MORE WAY IN. A ground that ended early (the lead
+     * stopped it with a session still IN_PROGRESS or not started) still had a row here that is not
+     * COMPLETED, so this still tried to open it - the server's own "This check-in is closed."
+     * error toasted on top of the "This check-in has ended" message this tab now shows instead.
+     * Nothing can open once the ground itself has ended, whatever any one row still says.
+     */
+    if (howItEnded(ground as any)) return
     attemptCheckinTabOpen(myOpenForAutoOpen)
-  }, [tab, myOpenForAutoOpen, sessionOpening])
+  }, [tab, myOpenForAutoOpen, sessionOpening, ground])
 
   if (isLoading) return <Page narrow><Note>Loading…</Note></Page>
   /*

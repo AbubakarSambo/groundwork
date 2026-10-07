@@ -28,9 +28,10 @@ vi.mock('@/api/documents', () => ({ documentsApi: { list: vi.fn() } }))
 vi.mock('@/api/resolution', () => ({ resolutionApi: { get: vi.fn().mockResolvedValue(null), propose: vi.fn() } }))
 vi.mock('@/api/conversation', () => ({ conversationApi: { remind: vi.fn() } }))
 vi.mock('@/api/billing', () => ({ billingApi: { status: vi.fn().mockResolvedValue(null), getContributorCodeShareCard: vi.fn() } }))
+const openSpy = vi.fn()
 vi.mock('@/hooks/useOpenSession', () => ({
   useOpenSession: () => ({
-    open: vi.fn(), opening: false, openFailed: false, openError: null, retryOpen: vi.fn(),
+    open: openSpy, opening: false, openFailed: false, openError: null, retryOpen: vi.fn(),
     paywall: { show: false, close: vi.fn(), freeExtensionAvailable: false, code: '', setCode: vi.fn(), codeMsg: null, setCodeMsg: vi.fn(), redeem: vi.fn(), claimFreeExtension: vi.fn(), createSubscription: vi.fn() },
   }),
 }))
@@ -55,6 +56,7 @@ function endedGround(over: Record<string, any> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  openSpy.mockClear()
   ;(reportsApi.get as any).mockResolvedValue(null)
 })
 
@@ -101,5 +103,56 @@ describe('a party reads the same on her own Check-in tab (GroundAdminPage), not 
     )
     await screen.findByText(/This check-in has ended/)
     expect(screen.queryByText(/next check-in/)).toBeNull()
+  })
+})
+
+/**
+ * B-019, THE SAME FALSE "CLOSED" REFUSAL ONE MORE WAY IN: a ground ended EARLY (the lead stopped
+ * it with a session still open) still has a check-in row that is not COMPLETED, so the auto-open
+ * effect tried to open it anyway and the server's "This check-in is closed." toasted on top of
+ * "This check-in has ended." Both auto-open effects now skip ended grounds outright.
+ */
+describe('an ended check-in does not also try, and fail, to auto-open a session still in progress', () => {
+  it('the participant page does not call open() once the ground has ended', async () => {
+    ;(groundsApi.get as any).mockResolvedValue(endedGround({
+      checkIns: [
+        { id: 'c1', participantId: 'p-amani', sessionNumber: 1, status: 'IN_PROGRESS', completedAt: null },
+      ],
+    }))
+    ;(groundsApi.getMySpecificity as any).mockResolvedValue(null)
+    ;(groundsApi.myTranscript as any).mockResolvedValue({ sessions: [] })
+    ;(groundsApi.myNotes as any).mockResolvedValue([])
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={['/grounds/g1/p?tab=checkin']}>
+          <Routes><Route path="/grounds/:id/p" element={<GroundParticipantPage />} /></Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    await screen.findByText(/This check-in has ended/)
+    expect(openSpy).not.toHaveBeenCalled()
+  })
+
+  it('the lead\'s own Check-in tab (GroundAdminPage) does not call open() once the ground has ended', async () => {
+    ;(groundsApi.get as any).mockResolvedValue(endedGround({
+      participants: [
+        { id: 'p-lead', userId: 'u-amani', email: 'amani@x.test', partyType: 'INITIATOR', user: { firstName: 'Amani', lastName: 'Wekesa' } },
+      ],
+      checkIns: [
+        { id: 'c1', participantId: 'p-lead', sessionNumber: 1, status: 'IN_PROGRESS', completedAt: null },
+      ],
+      initiatorId: 'u-amani',
+    }))
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={['/grounds/g1?tab=chat']}>
+          <Routes><Route path="/grounds/:id" element={<GroundAdminPage />} /></Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    await screen.findByText(/This check-in has ended/)
+    expect(openSpy).not.toHaveBeenCalled()
   })
 })

@@ -494,6 +494,15 @@ export function GroundAdminPage() {
      */
     if ((ground as any)?.status === 'AWAITING_APPROVAL') return
     /*
+     * B-019: THE SAME FALSE "CLOSED" REFUSAL, FOR A GROUND THAT HAS ALREADY ENDED.
+     *
+     * A ground ended early (the lead stopped it) can still have a row here that is not COMPLETED,
+     * so this still tried to open it even though the tab now reads "This check-in has ended" -
+     * the server's own "This check-in is closed." toasted on top of that message. Nothing can
+     * open once the ground itself has ended.
+     */
+    if (howItEnded(ground as any)) return
+    /*
      * SCREEN FAULT 4: THE ANCHOR'S LEAD NEVER GETS AN ORDINARY FIRST CHECK-IN HERE.
      *
      * In `HELP_TEAM_UNDERSTAND` the lead's own account of the situation is the entry conversation
