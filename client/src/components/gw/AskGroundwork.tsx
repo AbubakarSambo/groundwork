@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { askApi, type AskBlock, type AskReply, type TextBlock, type ClaimBlock, type ProposalBlock, type PickerBlock, type NextStepBlock } from '@/api/ask'
+import { anOldAskAnswerReadsProperly } from '@/lib/an-old-ask-answer-reads-properly'
 import { documentsApi } from '@/api/documents'
 import { groundsApi } from '@/api/grounds'
 import { UPLOAD_ACCEPT_ATTR } from '@/lib/what-you-can-upload'
@@ -495,7 +496,7 @@ export function AskGroundwork({
           </div>
         )}
         {(page.data?.turns ?? []).map((t, i) => (
-          <p key={`t-${i}`} style={bubble(t.from === 'you')}>{t.says}</p>
+          <p key={`t-${i}`} style={bubble(t.from === 'you')}>{t.from === 'you' ? t.says : anOldAskAnswerReadsProperly(t.says)}</p>
         ))}
         {said.map((s, i) => s.from === 'you'
           ? <p key={`s-${i}`} style={bubble(true)}>{s.says}</p>
