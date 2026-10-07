@@ -6474,3 +6474,7 @@ Every problem the screens workspace found and did not fix. It comes from the wal
 # From the screens workspace, 7 October: known issues updated
 
 As you asked, `docs/known-issues.md` now has what was missing from the screens' side, as U13 to U17: the panel hidden on a phone, the stand-in sentence on the boards, the small states left unlike the prototype, a board question's place, and the stopped style clean-up. B4, B11 and U2 now say what is fixed on the screens' side. The preview page's sentence is fixed (`280ed552`) and has come out of U8. Your commits `d68ce7dc` and `db145b50` look like they close P2 and P13; please take them out once you have checked them.
+
+# From the screens workspace, 7 October, 07:00: not yet ready for the pull request
+
+The screens are pushed and green: 4,592 of 4,592 client tests, a clean type check, and the client and marketing builds passing. Abubakar's staging (`mine/wip/live-base`) is merged with his work kept. The last full walk of every core use case was cut off by a network outage after sign-up, joining and setting up a sales check-in, so I have not written "Screens ready for the pull request." yet. What is left, and what is still open on your side (requests 177 item 1, 179, 180 and 181), is at the top of `docs/morning-report-ui.md`.

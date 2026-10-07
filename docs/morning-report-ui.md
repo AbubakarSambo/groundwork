@@ -4,6 +4,58 @@ This is the report from the screens workspace, on the branch `wip/prototype-ui`.
 workspace writes its own report in `docs/morning-report.md`, so the two computers never edit the
 same file.
 
+## Morning, 7 October, 07:00: where the screens stand for the pull request
+
+**Not yet "ready for the pull request".** The last full walk of the core use cases was cut off by a network outage (the model service could not be reached, twice) after it had covered sign-up, joining and setting up a sales check-in. Everything below is pushed to `wip/prototype-ui` at the commit carrying this report. No pull request was opened.
+
+**Finished overnight (your seven steps)**
+1. **The last four phone faults:** done.
+   - A person waiting for a seat is named plainly, with no "Resend".
+   - "Open today's team picture" opens it.
+   - The admin board's session lists agree.
+   - Tap targets are 40 pixels on a phone.
+2. **WhatsApp:** Groundwork's own number is the main one everywhere (decision 112).
+   - Connections leads with it, and an organisation's own number is folded under "Advanced".
+   - The set-up page is titled and introduced as optional.
+   - Today's first steps no longer push towards it.
+3. **Engagement:** the opt-out page and Settings draw the engine's words. The page keeps its shared-parts look and reads either answer shape. The Settings detail is the engine's latest.
+4. **Brand and marketing.**
+   - The WhatsApp profile images are in `docs/brand/whatsapp/`, navy and cream at 640 x 640, with the original mark.
+   - The three marketing sections are on the home page, with your words and a "Talk to our team" button to the existing contact page. They are picture-checked at 1440, 1280, 1024 and 375.
+5. **Abubakar's staging** (`mine/wip/live-base`, seven commits after #322) is merged.
+   - 207 of his 211 added lines are kept word for word.
+   - The other four were empty-state lines this branch had already rewritten; his null-safety is carried into them.
+   - The client builds with staging's own build script.
+6. **The walks and their fixes, since the last report.**
+   - Admin pages and Ask: "Who can join" asks before switching joining on, billing never names WhatsApp while it is off, a payment error is one plain sentence, and suite settings can be seen again but are never saved over settings stored under other names.
+   - The rest of the suites: a member sees her own hours, time-sheet approvers are shown, table cells are labelled on a phone, the empty states are true, and switching a suite off asks first.
+   - The phone walk.
+   - The stop-mail page.
+   - To-dos are inside each check-in (P8).
+7. **Not done:** the full walk of every core use case at every width (see below).
+
+**Results**
+- Client: 4,592 of 4,592 tests pass, the type check is clean, and `npm run build` passes.
+- Marketing: `npm run build` passes with all its checks.
+- Browser tests: 57 of 57 at the last run, before the WhatsApp and marketing changes.
+
+**What is left**
+- **The full walk:** leave, finance requests and reviews end to end, the boards and reports, checking in, Ask, the Company page, billing and the back office WhatsApp page, all at every width, then any fixes. It needs about two hours once the network holds.
+- **Engine requests still open:**
+  - 177, item 1: the lead's note on a member's transcript, a privacy fault;
+  - 179 and 180: Ask's suggested questions and the resend to someone waiting for a seat;
+  - 181: the suites' served wording.
+
+**Needs Hafsah**
+- "Ask to join" (request 159).
+- The anchor's active line wording (request 163).
+- Whether a phone gets the "fills in as you talk" panel (known issue U13).
+
+**Decided for Hafsah to confirm**
+- **Straight apostrophes on the marketing sections.** The site's own build check refuses curly ones, so your words use straight apostrophes.
+- **The marketing button** links to the existing "Talk to our team" page (`/talk-to-us?about=setup`), not an email link.
+- **"Sahar Jamal"** is left on billing, because she is a real Groundwork team member from the public About page.
+
 ## Morning, 7 October: the night's work, in short
 
 Abubakar has pull request #322 going to production. No pull request was opened from here. Pushes went only to `wip/prototype-ui` on Hafsah's copy, and the engine's `mine/wip/release` was merged regularly.
