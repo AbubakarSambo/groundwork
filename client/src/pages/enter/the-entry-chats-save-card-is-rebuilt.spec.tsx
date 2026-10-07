@@ -201,6 +201,36 @@ describe('the save card, already signed in', () => {
   })
 
   /*
+   * B-011 (bug log, screens sweep): "PASTE MULTIPLE EMAILS" THEN "ADD ALL" QUEUES EACH PERSON
+   * THROUGH ITS OWN FOCUS-NOTE STEP, ONE AT A TIME. Priya and Tomas were pasted and "Add all" was
+   * pressed; while Priya's focus note was still on screen, unanswered, the save finished and the
+   * page moved on - the check-in held only the person who set it up, neither Priya nor Tomas, with
+   * no error shown. Both are named the moment "Add all" is pressed, so saving before either focus
+   * note is answered must still invite both.
+   */
+  it('saving while the per-person focus step is still open does not drop the people just "Add all"-ed', async () => {
+    authedUser = { id: 'u1', email: 'amina@suites.test' }
+    const { entryApi } = await import('@/api/entry')
+    seedClosedSession()
+    renderPage()
+    fireEvent.click(await screen.findByText(/Invite and finish/))
+    fireEvent.click(await screen.findByText('Paste multiple emails'))
+    fireEvent.change(screen.getByPlaceholderText(/Paste emails separated by commas/), {
+      target: { value: 'priya@suites.test, tomas@suites.test' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Add all' }))
+
+    /* Priya's own focus-note step is now open, unanswered, and Tomas is still queued behind it. */
+    await screen.findByText('What do you want them to focus on or cover?')
+    fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
+
+    await waitFor(() => expect(entryApi.commit).toHaveBeenCalled())
+    const payload = vi.mocked(entryApi.commit).mock.calls[0][0]
+    expect(payload.contributors).toContainEqual(expect.objectContaining({ email: 'priya@suites.test' }))
+    expect(payload.contributors).toContainEqual(expect.objectContaining({ email: 'tomas@suites.test' }))
+  })
+
+  /*
    * FAULT 1 (live walk, 6 October 2026): A SIGNED-IN READER WAS TOLD TO SIGN IN.
    *
    * Changing the number of sessions to more than one used to show "6 sessions means signing in,

@@ -1533,6 +1533,26 @@ export function EntryChatPage() {
   }
   function shownEntry(entry: string): string { return anEntryAsASentence(entry, shownAs) }
   function whoIsWaiting(): string { return whoIsWaitingSentence(inviteAdded.map((e) => shownAs(e.split(' - ')[0]))) }
+  /**
+   * B-011: "PASTE MULTIPLE EMAILS" AND "ADD ALL" QUEUE EVERY PERSON THROUGH THE PER-PERSON FOCUS
+   * STEP ONE AT A TIME, AND ONLY `inviteAdded` IS EVER SAVED.
+   *
+   * Two people were pasted and "Add all" was pressed; while the first person's focus note was still
+   * being answered, the check-in was saved and the page moved on to the new check-in's own page.
+   * Neither person had been added yet - the one being asked about is only in `inviteContextFor`, and
+   * the other is still waiting, untouched, in `bulkQueue` - so both were silently dropped, with no
+   * error or warning shown.
+   *
+   * Everyone already named through "Add" or "Add all" belongs on the check-in regardless of whether
+   * their own focus note was ever filled in, so a save includes `inviteAdded` plus whoever is still
+   * mid-step or still queued behind them, the same as if each had been "Skip"ped through in turn.
+   */
+  function everyoneNamedSoFar(): string[] {
+    const already = (e: string) => inviteAdded.some((x) => x === e || x.startsWith(`${e} - `))
+    const stillPending = inviteContextFor && !already(inviteContextFor) ? [inviteContextFor] : []
+    const stillQueued = bulkQueue.filter((e) => !already(e) && e !== inviteContextFor)
+    return [...inviteAdded, ...stillPending, ...stillQueued]
+  }
   function colleagueNamed(label: string): { id: string; name: string; team: string | null } | null {
     const name = label.split(' - ')[0].trim().toLowerCase()
     if (name.length < 2) return null
@@ -2653,7 +2673,7 @@ export function EntryChatPage() {
         // Each contributor gets its own token - the server generates one per participant.
         // Do NOT pass a shared inviteToken here; it would cause unique constraint failures
         // on the second contributor and silently drop them.
-        contributors: inviteAdded.map(e => asSomeoneToInvite(e, displayNames)),
+        contributors: everyoneNamedSoFar().map(e => asSomeoneToInvite(e, displayNames)),
         /**
          * THE DOCUMENT SURVIVES AS A DOCUMENT, not just as words in the chat.
          *
@@ -2937,7 +2957,7 @@ export function EntryChatPage() {
         checkInBy: checkInBy.trim() || undefined,
         lastCheckInBy: lastCheckInBy.trim() || undefined,
         inviteNote: inviteNote.trim() || undefined,
-        contributors: inviteAdded.map(e => asSomeoneToInvite(e, displayNames)),
+        contributors: everyoneNamedSoFar().map(e => asSomeoneToInvite(e, displayNames)),
       }
       entryApi.patchDraft(draftToken, patch).catch(() => { /* best-effort: localStorage still mirrors this */ })
       // Keep the local commit body (gw_commit_payload) in sync with these
@@ -2960,7 +2980,7 @@ export function EntryChatPage() {
       } catch { /* */ }
     }, 800)
     return () => clearTimeout(t)
-  }, [emailSent, draftToken, groundName, orgName, cadence, cadenceAnchorDay, workingDays, checkInBy, lastCheckInBy, inviteNote, inviteAdded, displayNames])
+  }, [emailSent, draftToken, groundName, orgName, cadence, cadenceAnchorDay, workingDays, checkInBy, lastCheckInBy, inviteNote, inviteAdded, inviteContextFor, bulkQueue, displayNames])
 
   async function copyInviteLink() {
     const link = `${window.location.origin}/invite?token=${inviteToken}`
