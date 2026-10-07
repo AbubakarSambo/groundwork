@@ -32,7 +32,7 @@ describe('the only admin asks for leave', () => {
     await expect(new LeaveBoardService(prisma).ask(ORG, 'u-grace', { startsOn: '2026-12-14', endsOn: '2026-12-16' })).resolves.toEqual({ id: 'r1' });
   });
   it('says it in plain full sentences', () => {
-    expect(NOBODY_ELSE_CAN_DECIDE).toBe('You are the only admin and nobody is named to approve your requests, so nobody else could decide this one. Add another admin, or name someone to approve it in the suite’s settings, and then ask again.');
+    expect(NOBODY_ELSE_CAN_DECIDE).toBe('Nobody else can decide this one, because you are the only admin and nobody is named to approve your requests. Add another admin, or name someone to approve it in the suite’s settings, and then ask again.');
   });
 });
 

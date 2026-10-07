@@ -366,7 +366,7 @@ async function theTeamOf(prisma: PrismaService, request: ARequest, known: Known 
  * and nobody else is an admin, so it would be "sent to an admin" and wait for ever, with nobody told. This is the
  * sentence they are given instead, at the moment they ask, when nothing has been kept.
  */
-export const NOBODY_ELSE_CAN_DECIDE = 'You are the only admin and nobody is named to approve your requests, so nobody else could decide this one. Add another admin, or name someone to approve it in the suite\u2019s settings, and then ask again.';
+export const NOBODY_ELSE_CAN_DECIDE = 'Nobody else can decide this one, because you are the only admin and nobody is named to approve your requests. Add another admin, or name someone to approve it in the suite\u2019s settings, and then ask again.';
 
 /** True when the first step names "an admin" for this request, the requester is that organisation's only admin, and so nobody could ever decide it. */
 export async function nobodyElseCanDecide(
