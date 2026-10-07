@@ -53,8 +53,8 @@ describe('two check-ins with the same name are told apart in words the lead alre
     const w = lead([g('g1', 'Sales team, Q4', 3), g('g2', 'Kenya launch', 4), g('g3', 'Sales team, Q4', 12)]);
     await w.run();
     const lines: string[] = w.sent[0].lines;
-    expect(lines).toContain('In "Sales team, Q4", which you started on 12 September, one of two people has checked in, and Omar has not yet.');
-    expect(lines).toContain('In "Sales team, Q4", which you started on 3 September, one of two people has checked in, and Omar has not yet.');
+    expect(lines).toContain('In "Sales team, Q4", which you started on 12 September, one of two people has checked in for the first check-in, and Omar has not yet.');
+    expect(lines).toContain('In "Sales team, Q4", which you started on 3 September, one of two people has checked in for the first check-in, and Omar has not yet.');
     expect(lines.find((l) => l.startsWith('In "Kenya launch"'))).toMatch(/^In "Kenya launch", one of two/);
   });
 });

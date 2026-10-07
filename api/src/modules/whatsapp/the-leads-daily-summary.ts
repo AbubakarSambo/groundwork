@@ -9,6 +9,8 @@ import { keptOffThePhone } from './a-check-in-kept-off-the-phone';
 import { everyRowAPageAtATime } from './every-row-a-page-at-a-time';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { organisationsThatTurnedWhatsAppOn } from './only-where-whatsapp-is-turned-on';
+import { theRoundACountIsAbout } from '../board/which-round-is-open';
+import { theCheckIn } from '../grounds/which-check-in-it-is';
 import { namesTheyCanTellApart } from '../../common/check-ins-you-can-tell-apart';
 import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
 import { theirApprovedLeave, fallsInLeave } from '../suites/who-is-away';
@@ -44,6 +46,8 @@ export interface ACheckInToday {
   notYet: string[];
   /** When somebody who can answer last checked in, for this session. Null when nobody has. */
   lastAnswerAt?: Date | null;
+  /** Which round it is about, so the count says so and agrees with Today and the board. */
+  round?: number;
 }
 
 /**
@@ -61,10 +65,12 @@ export function somethingUsefulHappened(checkIns: ACheckInToday[], waiting: AWai
 export function aCheckInInASentence(c: ACheckInToday): string | null {
   if (c.ofHowMany < 1) return null;
   const where = `In "${c.label}"`;
+  /* Which round the count is about, said the way Today and the board say it ("for the second check-in"). */
+  const forIt = c.round ? ` for ${theCheckIn(c.round)}` : '';
   if (c.answered >= c.ofHowMany) {
-    return c.ofHowMany === 1 ? `${where}, the one person who can answer has checked in.` : `${where}, all ${c.ofHowMany} people have checked in.`;
+    return c.ofHowMany === 1 ? `${where}, the one person who can answer has checked in${forIt}.` : `${where}, all ${c.ofHowMany} people have checked in${forIt}.`;
   }
-  if (c.answered === 0) return `${where}, nobody has checked in yet, out of ${c.ofHowMany} ${c.ofHowMany === 1 ? 'person' : 'people'}.`;
+  if (c.answered === 0) return `${where}, nobody has checked in${forIt} yet, out of ${c.ofHowMany} ${c.ofHowMany === 1 ? 'person' : 'people'}.`;
   /* Up to three by name; anybody else, and anybody with no name known, is counted, so the names never read as everyone. */
   const missing = c.ofHowMany - c.answered;
   const named = c.notYet.slice(0, c.notYet.length > 3 ? 2 : 3);
@@ -73,7 +79,7 @@ export function aCheckInInASentence(c: ACheckInToday): string | null {
   const waitingOn = named.length
     ? `, and ${listed(others > 0 ? [...named, others === 1 ? 'one other person' : `${others} others`] : named)} ${missing === 1 && !named.includes('you') ? 'has' : 'have'} not yet`
     : '';
-  return `${where}, ${c.answered} of ${c.ofHowMany} people ${c.answered === 1 ? 'has' : 'have'} checked in${waitingOn}.`;
+  return `${where}, ${c.answered} of ${c.ofHowMany} people ${c.answered === 1 ? 'has' : 'have'} checked in${forIt}${waitingOn}.`;
 }
 
 /** What waits for the lead to decide, in one sentence. Null when nothing does. */
@@ -196,7 +202,8 @@ async function theOpenSession(prisma: PrismaService, groundId: string, now: Date
     },
   });
   if (!rows.length) return null;
-  const latest = Math.max(...rows.map((r) => r.sessionNumber ?? 0));
+  /* The round the board and Today call open, not whichever is newest: rows for the next round are written ahead. */
+  const latest = theRoundACountIsAbout(rows.map((r) => ({ sessionNumber: r.sessionNumber ?? 0, status: r.status })));
   const session = rows.filter((r) => (r.sessionNumber ?? 0) === latest);
   if (!session.some((r) => r.status === CheckInStatus.NOT_STARTED || r.status === CheckInStatus.IN_PROGRESS)) return null;
   const counted = session.filter((r) => !r.participant?.managingOnly && !isNotLetInYet(r.participant));
@@ -210,5 +217,5 @@ async function theOpenSession(prisma: PrismaService, groundId: string, now: Date
   const times = done.map((r) => r.completedAt).filter((t: unknown): t is Date => t instanceof Date);
   /* An answer with no time recorded is not evidence that anything happened since the last summary. */
   const lastAnswerAt = times.length ? new Date(Math.max(...times.map((t) => t.getTime()))) : null;
-  return { ofHowMany: counted.length, answered: done.length, notYet, lastAnswerAt };
+  return { ofHowMany: counted.length, answered: done.length, notYet, lastAnswerAt, round: latest };
 }
