@@ -1,7 +1,7 @@
 import { useState } from 'react'
+import { TheLeadsNote } from '@/components/gw/TheLeadsNote'
 import { PeopleTable, PeopleTableHead, PersonRow, Tag, Button, TextField, type TagTone } from '@/components/gw/ui'
 import { personLabel as onePersonsLabel, atTheStart, hasARealName } from '@/lib/utils'
-import { theLeadsNote } from '@/lib/the-leads-note'
 import { initialsOf } from '@/pages/org/people-here'
 
 /**
@@ -92,7 +92,7 @@ export function RolesInThisCheckIn({
                   </span>
                 ) : (
                   <span>
-                    {p.roleAsDescribed ? theLeadsNote(p.roleAsDescribed) : 'Nobody has described it yet.'}
+                    {p.roleAsDescribed ? <TheLeadsNote role={p.roleAsDescribed} /> : 'Nobody has described it yet.'}
                     <Button kind="quiet" size="small" onClick={() => { setEditingId(p.id); setValue(p.roleAsDescribed ?? '') }}>
                       Edit
                     </Button>

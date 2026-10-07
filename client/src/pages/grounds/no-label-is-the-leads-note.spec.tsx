@@ -77,7 +77,8 @@ function renderAt(path: string, route: string, el: ReactElement) {
 function noNoteAsAName(reader: string) {
   const { elsewhere, asTheirNote } = whereTheNoteIs()
   expect({ reader, elsewhere }).toEqual({ reader, elsewhere: [] })
-  for (const n of asTheirNote) expect(n).toContain('Your note: PRIVATE-DESCRIPTION-9k2 is not meeting targets.')
+  for (const n of asTheirNote) expect(n).toContain('Your note on Daniel9k2')
+  for (const n of asTheirNote) expect(n).toContain('PRIVATE-DESCRIPTION-9k2 is not meeting targets.')
   expect(document.body.textContent).not.toMatch(/teammate/i)
   return asTheirNote
 }

@@ -19,7 +19,7 @@
  * including the lead, who cannot mark somebody else's work done. A lead changes what is EXPECTED,
  * and does it in the conversation, because a change has a reason and a form does not take one.
  */
-import { theLeadsNote } from '@/lib/the-leads-note'
+import { TheLeadsNote } from '@/components/gw/TheLeadsNote'
 import { useState } from 'react'
 import { peopleLabels, atTheStart } from '@/lib/utils'
 import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
@@ -183,7 +183,7 @@ export function EachPerson({
                     WORD. These sat as two inline spans with nothing between them, so the lead's
                     note ran straight into the summary with no space - "I sell fridges in
                     KilimaniNothing on record yet." A column, not a row, puts each on its own line. */}
-                {isTheLead && p.roleAsDescribed && <span data-leads-note>{theLeadsNote(p.roleAsDescribed)}</span>}
+                {isTheLead && p.roleAsDescribed && <TheLeadsNote role={p.roleAsDescribed} />}
                 <span>{summary}</span>
               </div>
             )}
