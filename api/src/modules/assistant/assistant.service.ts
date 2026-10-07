@@ -1,4 +1,5 @@
 import { WAITING_TO_BE_LET_IN } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
+import { A_LINK_IS_NOT_READ } from './a-link-is-not-read';
 import { namesTheyCanTellApart } from '../../common/check-ins-you-can-tell-apart';
 import { whatWasSaid } from './what-was-said-is-what-is-kept';
 import { Injectable, Logger, Optional } from '@nestjs/common';
@@ -477,6 +478,12 @@ export class AssistantService {
      * to add one on a check-in where an earlier upload is still waiting on a yes.
      */
     if (who && (routed.lane === 'add_a_document' || JUST_ADDED_A_DOCUMENT.test(message))) {
+      /*
+       * A LINK IS NOT A FILE (B-027). Wairimu wrote "Here is a document https://docs.google.com/... for Sales team, Q4" and was
+       * shown the numbers of a different file she had uploaded earlier, and asked whether to record them. A link to a document
+       * is not read, so this says so, and never offers another file in its place.
+       */
+      if (/https?:\/\/\S+/i.test(message) && message.length < 600) return rules('add_a_document', text(A_LINK_IS_NOT_READ));
       /*
        * A DOCUMENT THE LEAD ADDED TO A CHECK-IN THEY RUN IS READ THE WAY A PASTE IS (4 October 2026).
        * The numbers in it were said back, and nothing else in it was: not its dates, decisions,
