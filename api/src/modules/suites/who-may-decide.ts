@@ -344,3 +344,29 @@ async function theTeamOf(prisma: PrismaService, request: ARequest, known: Known 
   const me = await theirRosterEntry(prisma, request.organizationId, request.requesterUserId, { department: true });
   return me?.department?.trim() || null;
 }
+
+
+/**
+ * AN ADMIN WHO IS THE ONLY ADMIN, ASKING FOR SOMETHING AN ADMIN DECIDES (B-005). Nobody decides their own request
+ * and nobody else is an admin, so it would be "sent to an admin" and wait for ever, with nobody told. This is the
+ * sentence they are given instead, at the moment they ask, when nothing has been kept.
+ */
+export const NOBODY_ELSE_CAN_DECIDE = 'You are the only admin and nobody is named to approve your requests, so nobody else could decide this one. Add another admin, or name someone to approve it in the suite\u2019s settings, and then ask again.';
+
+/** True when the first step names "an admin" for this request, the requester is that organisation's only admin, and so nobody could ever decide it. */
+export async function nobodyElseCanDecide(
+  prisma: PrismaService, steps: Step[], request: ARequest, requesterRole: string | null | undefined,
+): Promise<boolean> {
+  if (requesterRole !== 'ADMIN' || !request.requesterUserId) return false;
+  try {
+    const now = await whoDecidesNow(prisma, steps, request);
+    if (now.who.kind !== 'admin') return false;
+    const others = await (prisma as any).user.count({
+      where: { organizationId: request.organizationId, role: 'ADMIN', isActive: true, deletedAt: null, id: { not: request.requesterUserId } },
+    });
+    return others === 0;
+  } catch {
+    /* A read that cannot be made never refuses a request. */
+    return false;
+  }
+}

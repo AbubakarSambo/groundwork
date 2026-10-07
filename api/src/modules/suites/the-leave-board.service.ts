@@ -5,7 +5,7 @@ import { askNameOf } from '../assistant/ask-name';
 import { theirRosterEntries, theirRosterEntry } from './a-roster-entry-and-its-sign-in';
 import { inTheLeadsTeam } from './a-leads-team';
 import { loadLookups, type Lookups } from './the-lookups';
-import { couldBeNamed, decidesIt, everyRuleIn, passWhatTheyAlreadyApproved, theStepsFor, whoComesNext, whoDecidesNow, type APassedStep, type DecidesNow, type WhoDecides } from './who-may-decide';
+import { NOBODY_ELSE_CAN_DECIDE, nobodyElseCanDecide, couldBeNamed, decidesIt, everyRuleIn, passWhatTheyAlreadyApproved, theStepsFor, whoComesNext, whoDecidesNow, type APassedStep, type DecidesNow, type WhoDecides } from './who-may-decide';
 import { whyPassOn, type WhyPassedOn } from './a-request-waits-too-long';
 import { aRequestsHistory, recordIt } from './a-request-is-recorded';
 import { claimIt, theyGotThereFirst, whereItIsNow } from './a-request-is-answered-once';
@@ -714,6 +714,11 @@ export class LeaveBoardService {
     if (standIn) {
       const theirs = await this.roleOf({ userId: standIn, organizationId });
       if (standIn === userId || !theirs || theirs === 'GUEST') throw new BadRequestException(LEAVE_REFUSED.badStandIn);
+    }
+    /* The only admin cannot decide their own leave, and nobody else could: said now, not after it has waited for ever. */
+    const me = await theirRosterEntry(this.prisma, organizationId, userId, { managerExternalId: true, department: true }).catch(() => null);
+    if (await nobodyElseCanDecide(this.prisma, theStepsFor('leave', answers, workingDays(startsOn, endsOn)), { organizationId, requesterUserId: userId, managerExternalId: (me as any)?.managerExternalId ?? null, team: (me as any)?.department ?? null }, role)) {
+      throw new BadRequestException(NOBODY_ELSE_CAN_DECIDE);
     }
     const created = await this.prisma.leaveRequest.create({
       data: { organizationId, userId, startsOn, endsOn, standInUserId: standIn, ...(kind ? { kind } : {}) },

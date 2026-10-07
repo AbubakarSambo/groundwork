@@ -5,7 +5,7 @@ import { askNameOf } from '../assistant/ask-name';
 import { theirRosterEntry, withTheirSignIns } from './a-roster-entry-and-its-sign-in';
 import { inTheLeadsTeam } from './a-leads-team';
 import { loadLookups, type Lookups } from './the-lookups';
-import { couldBeNamed, decidesIt, everyStepFor, passWhatTheyAlreadyApproved, theStepsFor, whoComesNext, whoDecidesNow, type DecidesNow } from './who-may-decide';
+import { NOBODY_ELSE_CAN_DECIDE, nobodyElseCanDecide, couldBeNamed, decidesIt, everyStepFor, passWhatTheyAlreadyApproved, theStepsFor, whoComesNext, whoDecidesNow, type DecidesNow } from './who-may-decide';
 import { whyPassOn } from './a-request-waits-too-long';
 import { aRequestsHistory, recordIt, saidAsADate } from './a-request-is-recorded';
 import { claimIt, theyGotThereFirst, whereItIsNow } from './a-request-is-answered-once';
@@ -656,8 +656,12 @@ export class SpendingService {
       if (!category) throw new BadRequestException(SPEND_REFUSED.badCategory);
     }
     const evidenceNeeded = [...new Set(theEvidenceNeeded(rules, input.amount, category).map((e) => e.what))];
-    const person = await theirRosterEntry(this.prisma, organizationId, userId, { department: true });
+    const person = await theirRosterEntry(this.prisma, organizationId, userId, { department: true, managerExternalId: true });
     const team = person?.department?.trim() || null;
+    /* The only admin cannot decide their own request, and nobody else could: said now, not after it has waited for ever. */
+    if (await nobodyElseCanDecide(this.prisma, theStepsFor('spend', answers, input.amount), { organizationId, requesterUserId: userId, managerExternalId: (person as any)?.managerExternalId ?? null, team }, role)) {
+      throw new BadRequestException(NOBODY_ELSE_CAN_DECIDE);
+    }
     const created = await this.prisma.spendRequest.create({
       data: { organizationId, userId, amount: input.amount, what, team, ...(category ? { category: category.name } : {}), ...(evidenceNeeded.length ? { evidenceNeeded } : {}) },
       select: { id: true },
