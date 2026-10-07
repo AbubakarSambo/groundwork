@@ -111,4 +111,17 @@ describe('the platform back office stands alone', () => {
   it('and the rail is gated on it', () => {
     expect(CODE).toMatch(/const showSidebar =[\s\S]*?!isBackOffice/)
   })
+
+  /*
+   * B-048: the identical "This part is for Groundwork staff" refusal (same heading, same two
+   * sentences, same "Go to my check-ins" button - `RequirePlatformAdmin` in App.tsx) rendered
+   * bare on every `/admin/*` page but with the full customer sidebar on `/preview/reports`,
+   * because that address was missing from this list though it sits behind the very same gate
+   * (App.tsx: "it sits behind the same gate as the rest of the platform back office"). One
+   * sentence should not wear two different templates depending only on which of our own
+   * addresses happens to show it.
+   */
+  it('and /preview is covered too, so the same refusal does not wear two different templates (B-048)', () => {
+    expect(CODE).toMatch(/CHROMELESS_PREFIXES = \[[^\]]*'\/preview'/)
+  })
 })

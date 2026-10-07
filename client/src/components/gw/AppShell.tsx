@@ -1443,7 +1443,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
    * it inside the customer's rail would put "New check-in" next to the funding
    * pipeline — two different companies' navigation on one screen.
    */
-  const CHROMELESS_PREFIXES = ['/admin', '/ops']
+  /**
+   * B-048: `/preview/reports` is the same kind of page - "a Groundwork tool", behind the same
+   * `RequirePlatformAdmin` gate as `/admin/*` (App.tsx's own comment on that route) - but it was
+   * missing from this list, so the identical "This part is for Groundwork staff" refusal rendered
+   * with the customer's sidebar there and without it on every `/admin/*` page: one sentence, two
+   * different templates, depending only on which of our own addresses happened to show it.
+   */
+  const CHROMELESS_PREFIXES = ['/admin', '/ops', '/preview']
   const isBackOffice = CHROMELESS_PREFIXES.some(
     p => location.pathname === p || location.pathname.startsWith(`${p}/`),
   )
