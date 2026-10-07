@@ -73,7 +73,7 @@ describe('each person holds everything about them', () => {
   it('the lead reads her own note beside the name, and an admin reading the page does not', () => {
     const withNote = [{ id: 'pb', userId: null, nameGiven: 'Baraka', roleAsDescribed: 'Baraka - slow to follow up', objective: { all: [] } }]
     const { unmount } = render(<EachPerson groundId="g1" people={withNote as any} targets={[]} toDos={[]} files={[]} asks={{}} viewerUserId="u-wanjiru" isLead isTheLead />)
-    expect(document.body.textContent).toContain('Baraka. Your note: slow to follow up.')
+    expect(document.body.textContent).toContain('Baraka. You wrote “slow to follow up”.')
     unmount()
     render(<EachPerson groundId="g1" people={withNote as any} targets={[]} toDos={[]} files={[]} asks={{}} viewerUserId="u-otieno" isLead />)
     expect(document.body.textContent).not.toContain('Your note')

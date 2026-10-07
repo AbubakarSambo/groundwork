@@ -8,9 +8,9 @@ import { participantLabel } from './utils'
    joined with dashes, and "Resend invite" was offered for an invitation still waiting for its day. */
 describe('the lead’s note about a person', () => {
   it('reads as sentences', () => {
-    expect(theLeadsNote('Daniel - Daniel is expected to generate 20 leads a week')).toBe('Daniel. Your note: Daniel is expected to generate 20 leads a week.')
+    expect(theLeadsNote('Daniel - Daniel is expected to generate 20 leads a week')).toBe('Daniel. You wrote “Daniel is expected to generate 20 leads a week”.')
     /* Changed (7 Oct, request 177 item 1): a note typed with no name in front read as a line about the person, as if she had said it. */
-    expect(theLeadsNote('Runs the pipeline')).toBe('Your note: Runs the pipeline.')
+    expect(theLeadsNote('Runs the pipeline')).toBe('You wrote “Runs the pipeline”.')
     expect(theLeadsNote('')).toBeNull()
   })
   /* Request 36 (Hafsah, 27 September): no label is made from the lead's note at all, not even its

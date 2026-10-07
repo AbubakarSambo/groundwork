@@ -9,10 +9,13 @@ export function theLeadsNote(role: string | null | undefined): string | null {
   if (!said) return null
   const [name, ...rest] = said.split(' - ')
   /* A note with no name in front of it is still the lead's own note, never a line about what the person said. */
-  if (!rest.length) return `Your note: ${said.replace(/([^.?!])$/, '$1.')}`
+  /* "You wrote “…”." - who said it and the words, with no label joined by a colon (the wording
+     rule; the same form as the set-up's people step). */
+  const quoted = (t: string) => `You wrote “${t.replace(/[.?!]+$/, '')}”.`
+  if (!rest.length) return quoted(said)
   const note = rest.join(' - ').trim()
   const sentence = (t: string) => t.replace(/([^.?!])$/, '$1.')
-  return note ? `${sentence(name.trim())} Your note: ${sentence(note)}` : sentence(name.trim())
+  return note ? `${sentence(name.trim())} ${quoted(note)}` : sentence(name.trim())
 }
 
 /** Whether an invitation is still waiting for its start day, so no "Resend invite" is offered for it. */

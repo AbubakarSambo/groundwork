@@ -32,7 +32,7 @@ describe('the each-person card, as the lead reads it', () => {
     )
     expect(screen.queryByText(/KilimaniNothing on record yet/)).toBeNull()
     /* Changed (request 177 item 1): the lead's note says it is hers. */
-    expect(screen.getByText('Your note: I sell fridges in Kilimani.')).toBeTruthy()
+    expect(screen.getByText('You wrote “I sell fridges in Kilimani”.')).toBeTruthy()
     expect(screen.getByText('Nothing on record yet')).toBeTruthy()
   })
 })
