@@ -196,6 +196,41 @@ test('B-019: an ended check-in stops promising a next one, 1440 and 390', async 
   await browser.close();
 });
 
+test('B-023: a colleague refused a review reads only its own sentence, 1440 and 390', async () => {
+  test.setTimeout(120_000);
+  /* Grace's own review, written by Daniel, in the seeded Suites Test Company - a colleague
+     (Peter) is refused it. */
+  for (const width of [1440, 390] as const) {
+    const { chromium } = await import('@playwright/test');
+    const browser = await chromium.launch();
+    const page = await browser.newPage();
+    await page.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
+    await signIn(page, 'grace@suites.test');
+    const token = await tokenOf(page);
+    const mineRes = await page.request.get(`${APP.replace('5173', '3000')}/api/v1/suites/reviews/mine`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const mineJson = await mineRes.json();
+    const mine = mineJson.data ?? mineJson;
+    const reviewId = mine?.[0]?.id;
+    expect(reviewId, 'Grace needs at least one started review for this screenshot').toBeTruthy();
+
+    await browser.close();
+    const browser2 = await chromium.launch();
+    const page2 = await browser2.newPage();
+    await page2.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
+    await signIn(page2, 'peter@suites.test');
+    await page2.goto(`${APP}/suite/reviews/${reviewId}`);
+    await page2.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+    await page2.waitForTimeout(600);
+    await screenshotTo(page2, `docs/bug-log-screens/B-023-fixed-${width}.png`);
+    const text = (await page2.locator('body').innerText()).replace(/\s+/g, ' ');
+    expect(text).toContain('You cannot open this review.');
+    expect(text, 'the check-in-access toast must not fire').not.toContain('That one is not yours to open');
+    await browser2.close();
+  }
+});
+
 test('B-005: a suite board refusal shows only its own sentence, 1440 and 390', async () => {
   test.setTimeout(120_000);
   for (const width of [1440, 390] as const) {

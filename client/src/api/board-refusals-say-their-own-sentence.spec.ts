@@ -31,3 +31,15 @@ describe('a suite board refusal shows only the board’s own sentence', () => {
     })
   }
 })
+
+/**
+ * B-023: Peter, refused a colleague's review ("You cannot open this review."), also read the
+ * check-in-access toast on top of it, the same class of defect as B-005 one level down - a single
+ * review, not a board.
+ */
+describe('a single review’s own refusal shows only its own sentence', () => {
+  it('GET /suites/reviews/:id skips the check-in-access toast', () => {
+    const line = src.split('\n').find(l => l.includes("apiClient.get(`/suites/reviews/${id}`")) ?? ''
+    expect(line).toContain('skipForbiddenToast: true')
+  })
+})
