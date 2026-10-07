@@ -747,6 +747,11 @@ export class EmailService implements OnModuleInit {
      * makes that true.
      */
     const stopLine = await this.theWayToStopBeingChased(context?.participantId);
+    /* THE NAME THE LEAD TYPED, OR THE ONE ON THEIR SIGN-IN (B-002). The mail said "Hi," to a person the lead had named. */
+    const them = context?.participantId
+      ? await this.prisma.groundParticipant.findUnique({ where: { id: context.participantId }, select: { nameGiven: true, user: { select: { firstName: true } } } }).catch(() => null)
+      : null;
+    const theirFirstName = (them?.user?.firstName?.trim() || them?.nameGiven?.trim().split(/\s+/)[0] || '') || null;
     /* Free text from the inviter, inside a styled block, in a mail from noreply@: escaped, so a note
        with an ampersand or an angle bracket renders as written rather than as half a sentence. */
     const noteHtml = note ? `<p style="border-left:3px solid #5DCAA5;padding:8px 14px;margin:20px 0;color:#4A4540;font-style:italic;">${escapeHtml(note)}</p>` : '';
@@ -754,7 +759,7 @@ export class EmailService implements OnModuleInit {
       to: email,
       subject: `${founderName} would like your take on ${groundLabel}`,
       html: this.layout(
-        `<p>Hi,</p>
+        `<p>${escapeHtml(greeting(theirFirstName))}</p>
          <p><strong>${escapeHtml(founderName)}</strong> would like to know what you are seeing in <strong>${escapeHtml(groundLabel)}</strong>.</p>
          <p>It is a short check-in, about ten minutes, where you say what is actually going on from where you sit.</p>
          <p>${escapeHtml(await this.whoSeesWhatYouSay(context))}</p>
