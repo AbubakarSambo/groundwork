@@ -1,0 +1,38 @@
+B-033: M1/A2, Invite people box, /org/members, admin Tester M One at "M1 Sweep Co 1791387231"
+(a fresh organisation made for this sweep), browser, 1440 width.
+
+The invite box's own placeholder reads:
+  "Faith Kerubo, faith@yourcompany.com
+   Joseph Kiprono, joseph@yourcompany.com"
+i.e. it documents "Name, email" on one line as the way to invite someone with their name.
+
+Typing exactly that format for one person:
+  "M1 Member Test, m1member.1791387231@sweeptest.test"
+produced a live preview reading:
+
+  "1 person will be invited. 1 line is not an email address."
+  m1 member test            Not an email address
+  m1member.1791387231@sweeptest.test   Will be invited
+
+So the single "Name, email" line was split on the comma into two separate invitee rows: the name
+half ("m1 member test", already lower-cased) was rejected as "Not an email address" and silently
+dropped, and only the email half was queued to be invited, as an invite with no name attached.
+
+Pressing "Send 1 invitation" confirmed this: the person now appears in the People table as
+  "M1member"   m1member.1791387231@sweeptest.test   Invited, not opened
+with "M1member" (not "M1 Member Test") as their display name, clearly derived from the email's
+local part rather than typed by anyone. The invitation email itself opens "Hi M1member," -
+the garbled, nobody-typed name is what the invited person actually reads.
+
+This directly touches M1's requirement that nothing forces confusion about who is being invited
+or how: the one documented way to give an invited person's name does not work, and what reaches
+them is an invented-looking name built from their email address, not the words the admin wrote
+and not blank either (B-004 is a visually similar but different defect: there, email shows where
+a name belongs in a confirmation list; here, the system fabricates a name from the email rather
+than showing the raw email or the typed name).
+
+Network: no 4xx/5xx on the invite submission itself (POST returned 200); the defect is in the
+one-line parser, not a failed request.
+
+Severity: Wrong information (the product writes a name nobody wrote, including in an email a
+real person reads), bordering on Confusing (the documented input format silently fails).

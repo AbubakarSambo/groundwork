@@ -1,0 +1,43 @@
+B-035: M4, mentioning leave in a check-in's "No check-in open right now" chat (which calls
+POST /api/v1/ask, the same Ask Groundwork endpoint used from the sidebar), Grace Mwangi
+(grace@suites.test), Suites Test Company, browser, 1440 width.
+
+Steps and full transcript:
+
+1. On /grounds/f35ec5b5-8d28-4049-92c3-e0809687c9f8 (Get a new project off to a good start),
+   with no session currently open, Grace typed in the "Ask, or add a note" box:
+     "I am planning to take some leave next week, from 13 to 17 October, for a family trip."
+
+2. Groundwork replied (correctly, and the dates/working-day count were right):
+     "You asked for leave from Tuesday 13 October to Saturday 17 October, which is 4 working
+     days. You have 8 days of leave left this year. Shall I send it to Daniel to approve?"
+   This same bot message then rendered a second, identical time directly underneath it (a
+   duplicate bubble, not a duplicate send - see B-036).
+
+3. Grace replied "Yes, please send it to Daniel." expecting this to confirm the leave request.
+
+4. Groundwork did NOT create a leave request or acknowledge the leave request at all. Instead
+   it replied:
+     "I will email you what I said about "Laptop 67 is now with Grace", to grace@suites.test.
+     Nobody else is copied. Send it?"
+   This sentence, and the exchange around a laptop, is not something Grace said in this
+   conversation. Opening "Ask Suites Test Company" from the sidebar shows this exact
+   "Laptop 67 is now with Grace" exchange as EARLIER, pre-existing history in Grace's Ask
+   conversation (from before this test began). So Grace's "Yes, please send it to Daniel" was
+   appended to that old, unrelated Ask thread instead of being read as the answer to the leave
+   offer two turns above it - the leave offer and the general Ask conversation are not reliably
+   the same thread, but a person typing in this box cannot tell the difference, and a plain
+   "yes" can silently land in the wrong one.
+
+5. Confirmed by checking Grace's own requests page (/suite/mine, "Your requests"): no leave
+   request for 13-17 October exists. Only three pre-existing ones are listed (6-13 Nov,
+   6-9 Oct, 17-21 Sep, all already decided). The leave Grace "confirmed" sending to Daniel was
+   never created, and Daniel's queue was never asked to approve it.
+
+Console: no 4xx/5xx on the /api/v1/ask calls themselves (both returned 200); the pre-existing
+400 (entry/commit) and 404s (suites/queue) noted under B-002 also recur on this page load.
+
+Severity: Stops someone using it (the one thing M4 asks for - "mention leave ... accept the
+offer ... the request reaches the right approver" - does not happen), and the invented
+"Laptop 67" content is also a case of the product inventing/carrying over something the person
+did not say in this conversation, which the project rules say should never happen. (engine)
