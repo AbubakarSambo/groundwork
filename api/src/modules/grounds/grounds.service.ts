@@ -14,7 +14,7 @@ import { thePrivateSummaryAsRead } from '../conversation/the-private-summary-ope
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
 import { theirHome } from '../participants/where-somebody-is-from';
 import { aGuestHereIfTheyAreFromElsewhere } from '../participants/a-guest-is-a-guest-from-the-moment-they-are-added';
-import { theColleaguePickedById, NOT_SOMEONE_HERE } from '../../common/colleagues';
+import { theColleaguePickedById, NOT_SOMEONE_HERE, theMemberWithThisAddress, withTheirNamesFromTheOrganisation } from '../../common/colleagues';
 import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
 import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, runsItForAPattern, type APatternReader, type AServedPattern } from '../patterns/who-reads-a-pattern';
 import { askTheReportsDoor } from '../reports/one-persons-circumstances-stay-their-own';
@@ -1844,6 +1844,8 @@ export class GroundsService {
     }
 
     if (!ground) throw new NotFoundException('Check-in not found');
+    /* Somebody already here, added by their address, is named by their membership (user journeys, F-7). */
+    await withTheirNamesFromTheOrganisation(this.prisma as any, (ground as any).organizationId, (ground.participants ?? []) as any);
 
     /* How checkable each check-in was is a read of that person's answers, so each reader keeps
        their own and nobody else's. See how-checkable-is-yours-alone. */
@@ -5614,6 +5616,10 @@ export class GroundsService {
       if (!found) throw new BadRequestException(NOT_SOMEONE_HERE);
       dto = { ...dto, email: found.email };
       colleagueName = found.name;
+    }
+    /* Added by address, but already working here: their own name from their membership, not the address (user journeys, F-7). */
+    if (!colleagueName && !dto.displayName?.trim() && dto.email) {
+      colleagueName = (await theMemberWithThisAddress(this.prisma as any, organizationId, dto.email))?.name ?? null;
     }
     /**
      * A start date in the future means the work has not begun. Today or the past means it has, so the

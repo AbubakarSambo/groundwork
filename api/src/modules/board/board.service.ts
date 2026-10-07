@@ -146,6 +146,7 @@ import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { isFromOutside, leaveOfThePeopleOn, theAwayLinesFor } from '../suites/who-is-away';
 import { adminsThisOrg, askedToApproveIt } from '../grounds/who-may-read-this-check-in';
 import { refuseSomeoneHeldForASeat } from '../participants/held-for-a-seat';
+import { withTheirNamesFromTheOrganisation } from '../../common/colleagues';
 import { CANNOT_OPEN_THE_BOARD_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { theLeadsWordsAbout, withoutTheLeadsDescriptionOfAnyone, theShareableTextFor } from '../grounds/the-leads-words-about-someone';
 import { whereEachPersonIs, hasANumberADateOrADocument, notNothingWhereThePageSaysSomething } from './where-each-person-is-against-their-number';
@@ -364,6 +365,8 @@ export class BoardService {
       },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
+    /* Somebody already here, added by their address, is named by their membership (user journeys, F-7). */
+    await withTheirNamesFromTheOrganisation(this.prisma as any, (ground as any).organizationId, (ground.participants ?? []) as any);
     /* A wait on oneself is not a wait, a wait on "the lead" is a wait on the lead, and one wait said four ways is one (request 111 e, request 123 items 4 and 5). */
     (ground as any).dependencies = theWaitsAsABoardReadsThem((ground as any).dependencies ?? [], ground.participants.find((p) => !!ground.initiatorId && p.userId === ground.initiatorId)?.id);
 
