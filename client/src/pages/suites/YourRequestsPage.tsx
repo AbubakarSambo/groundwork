@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { yourRequestsApi, type YourRequest, type YourHours } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { Page, PageTitle, Section, Button, Note, Callout, Empty, RowList, Row, Tag, FieldLabel, TextArea } from '@/components/gw/ui'
-import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
+import { maySeeSuites, maySwitchSuitesOn, SuiteOffMessage } from '@/lib/suite-is-off'
 
 /**
  * YOUR OWN REQUESTS (#/suite/mine). The person's own leave and requests to spend, where each one
@@ -51,28 +51,22 @@ export function YourRequestsPage() {
 
       {sentMessage && <Callout tone="success" role="status">{sentMessage}</Callout>}
 
-      <Section heading="Your leave">
-        <Loaded q={leave} off="Leave is not switched on in your organisation." role={user?.role}>
-          {data => (
-            <>
-              <p className="gwui-panel-text">{data.daysLeftSaid}</p>
-              <Requests rows={data.requests} none="You have not asked for any leave." answer={yourRequestsApi.answerLeave} queryKey={['your-leave']} />
-            </>
-          )}
-        </Loaded>
-      </Section>
+      <SuiteSection heading="Your leave" q={leave} off="Leave is not switched on in your organisation." role={user?.role}>
+        {data => (
+          <>
+            <p className="gwui-panel-text">{data.daysLeftSaid}</p>
+            <Requests rows={data.requests} none="You have not asked for any leave." answer={yourRequestsApi.answerLeave} queryKey={['your-leave']} />
+          </>
+        )}
+      </SuiteSection>
 
-      <Section heading="Your requests to spend">
-        <Loaded q={spending} off="Spending requests are not switched on in your organisation." role={user?.role}>
-          {data => <Requests rows={data.requests} none="You have not asked to spend anything." answer={yourRequestsApi.answerSpending} queryKey={['your-spending']} />}
-        </Loaded>
-      </Section>
+      <SuiteSection heading="Your requests to spend" q={spending} off="Spending requests are not switched on in your organisation." role={user?.role}>
+        {data => <Requests rows={data.requests} none="You have not asked to spend anything." answer={yourRequestsApi.answerSpending} queryKey={['your-spending']} />}
+      </SuiteSection>
 
-      <Section heading="Your hours">
-        <Loaded q={hours} off="Time sheets are not switched on in your organisation." role={user?.role}>
-          {data => <YourHoursSection data={data} />}
-        </Loaded>
-      </Section>
+      <SuiteSection heading="Your hours" q={hours} off="Time sheets are not switched on in your organisation." role={user?.role}>
+        {data => <YourHoursSection data={data} />}
+      </SuiteSection>
     </Page>
   )
 }
@@ -93,19 +87,40 @@ function YourHoursSection({ data }: { data: YourHours }) {
   )
 }
 
-function Loaded<T>({ q, off, role, children }: { q: { data?: T; isLoading: boolean; isError: boolean; error: unknown; refetch: () => unknown; isFetching: boolean }; off: string; role?: string; children: (data: T) => React.ReactNode }) {
-  if (q.isLoading) return <Note>Loading…</Note>
+/**
+ * A SUITE'S WHOLE SECTION, LEFT OUT FOR A MEMBER WHEN IT IS OFF (screen fault 8, final walk).
+ *
+ * "The time sheets suite is not switched on. An admin switches it on under Suites." used to show to
+ * anybody - a member included, who cannot switch anything on and has no reason to be told to go and
+ * look at a settings page refused to them. Only whoever can actually act on it (an admin -
+ * `maySwitchSuitesOn`) still reads the sentence; for everybody else the section - heading included -
+ * is left out entirely, the same way a suite nobody has switched on leaves no trace elsewhere on the
+ * product.
+ */
+function SuiteSection<T>({ heading, q, off, role, children }: {
+  heading: string
+  q: { data?: T; isLoading: boolean; isError: boolean; error: unknown; refetch: () => unknown; isFetching: boolean }
+  off: string
+  role?: string
+  children: (data: T) => React.ReactNode
+}) {
+  if (q.isLoading) return <Section heading={heading}><Note>Loading…</Note></Section>
   if (q.isError) {
     const refused = refusalOf(q.error)
-    if (refused?.status === 403 || refused?.status === 404) return <Empty><SuiteOffMessage message={refused.message ?? off} role={role} /></Empty>
+    if (refused?.status === 403 || refused?.status === 404) {
+      if (!maySwitchSuitesOn(role)) return null
+      return <Section heading={heading}><Empty><SuiteOffMessage message={refused.message ?? off} role={role} /></Empty></Section>
+    }
     return (
-      <div>
-        <Note tone="error">Your requests did not load.</Note>
-        <Button kind="secondary" size="small" onClick={() => q.refetch()} disabled={q.isFetching}>Try again</Button>
-      </div>
+      <Section heading={heading}>
+        <div>
+          <Note tone="error">Your requests did not load.</Note>
+          <Button kind="secondary" size="small" onClick={() => q.refetch()} disabled={q.isFetching}>Try again</Button>
+        </div>
+      </Section>
     )
   }
-  return q.data ? <>{children(q.data)}</> : null
+  return q.data ? <Section heading={heading}>{children(q.data)}</Section> : null
 }
 
 function Requests<L extends { requests: YourRequest[] }>({ rows, none, answer, queryKey }: {
