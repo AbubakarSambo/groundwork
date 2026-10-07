@@ -61,6 +61,15 @@ describe('how is the team doing', () => {
     expect(s.board.get).toHaveBeenCalledWith('g-sales', 'u-wairimu');
   });
 
+  it('where the report already says "All three people have answered.", it is said once, not twice (F-14)', async () => {
+    const s = svc({ linkedUserId: 'u-wairimu', role: 'LEAD' });
+    (s.board.get as jest.Mock).mockResolvedValueOnce({ renders: true, howItIsGoing: { latestSummary: 'All three people have answered. Their accounts suggest they are working on different things.', glance: { progress: { answeredThisRound: 3, ofPeople: 3 }, inTheWay: { count: 4, oldest: 'the 21 day rule agreement with finance', sinceSays: 'since 7 October' } } } });
+    const r = await said(s, 'Where are we on the quarter?');
+    expect(r.text.split('All three people have answered.').length - 1).toBe(1);
+    expect(r.text).toContain('Their accounts suggest they are working on different things.');
+    expect(r.text).toContain('4 things are in the way.');
+  });
+
   it('Amani, who takes part and runs nothing, is told plainly that there is no team to tell her about, and the board is never read for her', async () => {
     const s = svc({ linkedUserId: 'u-amani', role: 'MEMBER' });
     const r = await said(s, 'How is the team doing?');

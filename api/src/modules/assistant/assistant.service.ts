@@ -581,7 +581,7 @@ export class AssistantService {
       case 'what_did_they_say':
         return this.whatTheySaid(organizationId, userId ?? null, routed.subject, message);
       case 'what_did_i_say':
-        return this.compose(await this.whatDidISay(organizationId, who, routed.subject ?? message));
+        return this.compose(await this.whatDidISay(organizationId, who, routed.subject ?? message, userId ?? null));
       case 'how_we_work':
         /*
          * NOT COMPOSED, AND THIS WAS A REAL MISTAKE FOR ONE LIVE REPLY.
@@ -938,7 +938,10 @@ export class AssistantService {
         if (oldest) lines.push(`The one that has waited longest is "${oldest}"${way.sinceSays ? `, ${way.sinceSays}` : ''}.`);
       }
       if (!lines.length) continue;
-      parts.push(`${run.length > 1 ? `This is about ${String(g.label).replace(/[.\s]+$/, '')}. ` : ''}${lines.join(' ')}`);
+      /* Each sentence once: the report's own opening often says "All three people have answered." and so does the count (user journeys, F-14). */
+      const said = new Set<string>();
+      const once = lines.join(' ').match(/[^.!?]+[.!?]+["”']?\s*/g)?.filter((x) => { const k = x.trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim(); if (!k || said.has(k)) return false; said.add(k); return true; }).join('').trim() ?? lines.join(' ');
+      parts.push(`${run.length > 1 ? `This is about ${String(g.label).replace(/[.\s]+$/, '')}. ` : ''}${once}`);
     }
     if (!parts.length) {
       return rules(lane, text('Nobody has answered in the check-ins you run yet, so there is nothing to tell you about the team so far. I will have more once people have finished.'));
@@ -1164,7 +1167,7 @@ export class AssistantService {
    * Their own words come back verbatim with a plain "you said". Summarising somebody's own sentence
    * back at them is both worse and riskier than quoting it.
    */
-  private async whatDidISay(organizationId: string, who: string | null, topic: string): Promise<Reply> {
+  private async whatDidISay(organizationId: string, who: string | null, topic: string, userId: string | null = null): Promise<Reply> {
     if (!who) return rules('what_did_i_say', text('I cannot look back without knowing who you are.'));
     const q = topic.trim().replace(/[?.!]+$/, '');
     if (q.length < 3) return rules('what_did_i_say', text('About what?'));
@@ -1210,7 +1213,14 @@ export class AssistantService {
      * itself a question to the assistant is dropped, and the check is the router: if it routes to a
      * lane, it was a question rather than an account of somebody's work.
      */
-    const said = hits.filter((h) => route(h.content).lane === 'unplaced');
+    const saidToMe = hits.filter((h) => route(h.content).lane === 'unplaced');
+    /*
+     * AND WHAT THEY SAID IN THEIR OWN CHECK-INS (user journeys, F-13). "What did I say about the Green Mart proposal?" was answered "You have not
+     * mentioned the Green Mart proposal before" with her own check-in holding it, because only what was typed to Ask was searched. Her own words
+     * in her own place in each check-in, found through her own sign-in and nobody else's, and never a check-in kept in the app.
+     */
+    const inCheckIns = await this.whatTheySaidInTheirOwnCheckIns(organizationId, userId, needles);
+    const said = [...saidToMe, ...inCheckIns].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, 4);
 
     if (!said.length) {
       return rules('what_did_i_say', text(`You have not mentioned ${q} to me before. That may just mean it was said somewhere I cannot see.`));
@@ -1219,9 +1229,46 @@ export class AssistantService {
     const now = new Date();
     const { current, earlier } = splitBySession(said, now);
     const lines: string[] = [];
-    for (const h of current) lines.push(`- Earlier just now: "${h.content}"`);
-    for (const h of earlier) lines.push(`- ${howLongAgo(h.createdAt, now)}: "${h.content}"`);
+    const where = (h: any) => (h.label ? `, in "${h.label}"` : '');
+    for (const h of current) lines.push(`- Earlier just now${where(h)}: "${h.content}"`);
+    for (const h of earlier) lines.push(`- ${howLongAgo(h.createdAt, now)}${where(h)}: "${h.content}"`);
     return rules('what_did_i_say', text(`You have mentioned ${q}:\n${lines.join('\n')}`));
+  }
+
+  /** The asker's own words in their own check-ins, matching what they asked about. See whatDidISay. */
+  private async whatTheySaidInTheirOwnCheckIns(organizationId: string, userId: string | null, needles: string[]): Promise<{ content: string; createdAt: Date; role: string; label?: string }[]> {
+    if (!userId || !needles.length) return [];
+    try {
+      const kept = await keptInTheApp(this.prisma as any, organizationId);
+      const places: { id: string; ground?: { label?: string } }[] = await (this.prisma as any).groundParticipant?.findMany?.({
+        where: { userId, ground: { organizationId, ...notAKeptCheckIn(kept) } },
+        select: { id: true, ground: { select: { label: true } } },
+      })?.catch?.(() => []) ?? [];
+      if (!places.length || typeof (this.prisma as any).$queryRaw !== 'function') return [];
+      const labelOf = new Map(places.map((p) => [p.id, p.ground?.label ?? undefined]));
+      /* Most of what they asked about has to be in the sentence, so one common word is not a match. */
+      const need = Math.max(1, Math.ceil(needles.length * 0.6));
+      const rows = await (this.prisma as any).$queryRaw(
+        Prisma.sql`
+          SELECT t.content AS "content", t.created_at AS "createdAt", c.participant_id AS "participantId"
+          FROM conversation_turns t
+          JOIN check_ins c ON c.id = t.check_in_id
+          WHERE c.participant_id = ANY(${places.map((p) => p.id)}::text[])
+            AND t.role = 'PERSON'
+            AND (
+              SELECT count(*) FROM unnest(${needles}::text[]) AS w
+              WHERE regexp_replace(lower(t.content), '[^a-z0-9]', '', 'g') LIKE '%' || w || '%'
+            ) >= ${need}
+          ORDER BY t.created_at DESC
+          LIMIT 4
+        `,
+      ) as { content: string; createdAt: Date; participantId: string }[];
+      /* Nothing here is a question to Ask: these are answers in a check-in, so the router's test of "was this a question" is not applied. */
+      return (rows ?? [])
+        .map((r) => ({ content: r.content, createdAt: new Date(r.createdAt), role: 'person', label: labelOf.get(r.participantId) }));
+    } catch {
+      return [];
+    }
   }
 
   /**

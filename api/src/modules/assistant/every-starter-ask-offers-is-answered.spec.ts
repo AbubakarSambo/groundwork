@@ -185,3 +185,33 @@ describe('"What did I say I would do?" says each promise whole, once', () => {
     expect(t).not.toMatch(/by Friday[^\n]*you said by Friday/);
   });
 });
+
+/** F-13 OF THE USER JOURNEYS. Amani said it in her own check-in; Ask told her she had never mentioned it. */
+describe('"What did I say about ...?" finds what she said in her own check-ins', () => {
+  const asAmani = (userId: string) => {
+    const h = askGroundwork({ userId });
+    h.prisma.person.findFirst = jest.fn(async () => ({ id: 'p1', externalId: `ext-${userId}`, displayName: 'X', active: true, linkedUserId: userId }));
+    h.prisma.groundParticipant.findMany = jest.fn(async ({ where }: any) => (where.userId === 'u-amani' ? [{ id: 'pp-a', ground: { label: 'Sales team, Q3' } }] : []));
+    h.prisma.$queryRaw = jest.fn(async (q: any) => {
+      const sql = String(q?.sql ?? q?.strings?.join('?') ?? '');
+      if (sql.includes('assistant_turns')) return [];
+      return q.values.flat().includes('pp-a')
+        ? [{ content: 'The Green Mart proposal is ready and I will send it on Wednesday.', createdAt: new Date(Date.now() - 3 * 86_400_000), participantId: 'pp-a' }]
+        : [];
+    });
+    return h;
+  };
+
+  it('Amani is told what she said, with the check-in it was said in, and not that she never mentioned it', async () => {
+    const t = textOf(await asAmani('u-amani').service.respond('org-a', 'p1', 'What did I say about the Green Mart proposal?'));
+    expect(t).toContain('The Green Mart proposal is ready and I will send it on Wednesday.');
+    expect(t).toContain('in "Sales team, Q3"');
+    expect(t).not.toContain('You have not mentioned');
+  });
+
+  it('somebody else in the organisation is told she has not mentioned it, and reads none of Amani\'s words', async () => {
+    const t = textOf(await asAmani('u-other').service.respond('org-a', 'p1', 'What did I say about the Green Mart proposal?'));
+    expect(t).toContain('You have not mentioned');
+    expect(t).not.toContain('ready and I will send it');
+  });
+});
