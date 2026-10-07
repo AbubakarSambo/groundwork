@@ -1242,18 +1242,57 @@ export function newHireGroundNameFallback(peopleNamed: string[] | undefined, day
 }
 
 /**
- * THE NAME A CHECK-IN GETS WHEN THE LEAD LEAVES THE FIELD BLANK, SITUATION-AWARE. Every situation
- * but the new hire keeps `fallbackGroundName`'s own situation label; the new hire's default is the
- * person it is about, when the conversation has already named them (faults 4 and 6).
+ * THE KIND OF CHECK-IN A SITUATION IS, FOR A PLAIN DEFAULT NAME (fault 15, coordinator, second
+ * round). Not every situation needs its own word here - "Daniel's check-in" is already plain and
+ * clear - but a project one is worth naming as a project, the way "Get a new project off to a
+ * good start" and "Get a project back on track" both already say what they are about.
+ */
+function kindOfCheckIn(situation: string | undefined): string {
+  switch (situation) {
+    case 'NEW_PROJECT':
+    case 'DRIFT':
+    case 'WORKPLAN_BUDGET':
+      return 'project check-in'
+    default:
+      return 'check-in'
+  }
+}
+
+/**
+ * THE LEAD'S OWN NAME, NOT THE SITUATION'S LABEL (fault 15, coordinator, second round).
+ *
+ * Read live: with no name typed, a check-in that was not for a new hire took the situation's own
+ * label as its name ("Get a new project off to a good start"), repeated as though it were a
+ * title - the same defect the new-hire default (above) already exists to avoid for that one
+ * situation. Every check-in a lead runs would otherwise read the same handful of situation labels
+ * back at her rather than anything that tells them apart as HERS. `undefined` when there is no
+ * lead name to use yet (nobody signed in, nothing typed) - a guess is worse than the plain label.
+ */
+export function leadNameGroundNameFallback(leadFirstName: string | undefined, situation: string | undefined): string | undefined {
+  const name = (leadFirstName ?? '').trim()
+  if (!name) return undefined
+  return `${name}'s ${kindOfCheckIn(situation)}`
+}
+
+/**
+ * THE NAME A CHECK-IN GETS WHEN THE LEAD LEAVES THE FIELD BLANK, SITUATION-AWARE. The new hire's
+ * default is the person it is about, when the conversation has already named them (faults 4 and
+ * 6). Every other situation defaults to the lead's own name and the kind of check-in, when one is
+ * available (fault 15); `fallbackGroundName`'s own situation label is the last resort, for
+ * whichever of the two above has nothing to work with yet.
  */
 export function effectiveFallbackGroundName(
   situation: string | undefined,
   peopleNamed: string[] | undefined,
   saidSoFar: string,
   where?: string,
+  leadFirstName?: string,
 ): string {
   if (situation === 'NEW_HIRE') {
     const named = newHireGroundNameFallback(peopleNamed, newHireDays(saidSoFar))
+    if (named) return named
+  } else if (situation) {
+    const named = leadNameGroundNameFallback(leadFirstName, situation)
     if (named) return named
   }
   return fallbackGroundName(situation, where)
@@ -3048,6 +3087,10 @@ export function EntryChatPage() {
       onboardingSelections.peopleNamed,
       `${onboardingSelections.initial ?? ''} ${onboardingSelections.brief ?? ''}`,
       orgName.trim() || user?.organization?.name || undefined,
+      /* FAULT 15 (coordinator, second round): only available once she is signed in - nothing
+         typed before then names her, and a guess at her name would be worse than the situation's
+         own label. */
+      user?.firstName,
     )
   }
   /* Whether the start is after today, which is the one case where nobody is invited on saving, for certain. */
@@ -3709,11 +3752,20 @@ export function EntryChatPage() {
             own words for a signed-in reader ("Save this", `saveAsSignedInUser`, line 4623) are
             used here too, so the two lines on screen at once agree with each other.
           */}
+          {/*
+            FAULT (b) (coordinator, second round): "SAVE THIS BELOW" FOLLOWED BY A "SAVE THIS"
+            BUTTON READ ODDLY - one short sentence, then a button repeating almost the same two
+            words, saying nothing about what pressing it actually does. One plain sentence instead,
+            naming the two things saving does here (opens the check-in, invites the people named so
+            far) - no prototype screen covers a signed-in lead at this exact moment (the closest,
+            setup.txt, has her press "Start it and invite N people" directly, with no separate save
+            step at all), so this follows the coordinator's own wording rather than guessing.
+          */}
           {user ? (
             <>
-              Save this below.{' '}
+              Save this to set up the check-in and invite the people you named.{' '}
               <button type="button" className="gwui-plain-link" onClick={() => { setShowSessionsUpgrade(false); setShowSave(true) }}>
-                Save this
+                Save and set up
               </button>
             </>
           ) : (

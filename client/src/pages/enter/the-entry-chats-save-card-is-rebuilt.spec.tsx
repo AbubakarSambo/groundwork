@@ -187,11 +187,13 @@ describe('the save card, already signed in', () => {
     const input = screen.getAllByLabelText('How many sessions')[0]
     fireEvent.change(input, { target: { value: '3' } })
     fireEvent.blur(input)
-    /* FAULT 4 (live review): this still read "Save your session below to get set up", the same
-       words told to a stranger who still has to sign in - read right beside "you are already
-       signed in" it contradicted itself. A signed-in lead now reads "Save this below", the same
-       words the save card itself uses for them. */
-    expect(await screen.findByText(/Save this below/)).toBeTruthy()
+    /* FAULT 4, then FAULT (b) (coordinator, second round): this first read "Save your session
+       below to get set up", the same words told to a stranger who still has to sign in - read
+       right beside "you are already signed in" it contradicted itself. Then "Save this below"
+       next to a "Save this" button read oddly, repeating itself and saying nothing about what
+       saving does. One plain sentence now, naming what saving does. */
+    expect(await screen.findByText(/Save this to set up the check-in and invite the people you named/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Save and set up' })).toBeTruthy()
     expect(screen.queryByText(/Save your session below to get set up/)).toBeNull()
     expect(screen.queryByText(/means signing in/)).toBeNull()
     expect(screen.getByText(/No confirmation needed, you are already signed in\./)).toBeTruthy()
