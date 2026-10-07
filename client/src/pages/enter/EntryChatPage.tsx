@@ -2247,6 +2247,16 @@ export function EntryChatPage() {
     setOnboardingHistory(newHistory)
     setInput('')
     setOnboardingLoading(true)
+    /*
+     * B-041: REFRESHING WHILE GROUNDWORK WAS STILL COMPOSING ITS REPLY RETURNED TO THE VERY FIRST
+     * BLANK "SET UP A CHECK-IN" SCREEN, WITH WHAT WAS TYPED GONE AND NO HISTORY.
+     *
+     * `persistOnboarding` only ever ran after `entryApi.onboardStream` resolved, so the message
+     * just sent - for a first message, the only thing said so far - existed only in React state
+     * until the reply came back. Saved here too, the moment it is sent, the same fix as `send()`'s
+     * own `persistCheckin` a little further down this file.
+     */
+    persistOnboarding([], onboardingSelections, onboardingStep, newHistory, onboardingReady)
     try {
       /*
        * THE SITUATION GOES WITH THE MESSAGES NOW.
@@ -2573,6 +2583,16 @@ export function EntryChatPage() {
     setLoading(true)
     setUploadedDoc(null)
     setHistory(prev => [...prev, userTurn, { role: 'assistant', content: '…' }])
+    /*
+     * B-041: REFRESHING WHILE GROUNDWORK WAS STILL "THINKING…" LOST WHAT WAS JUST TYPED.
+     *
+     * `persistCheckin` only ever ran in `sendMut`'s `onSuccess`, so the message just sent (and,
+     * for a first message, the WHOLE conversation so far) existed only in React state until a
+     * reply came back - a refresh mid-reply returned to the blank "Set up a check-in" screen with
+     * nothing to restore. Saved here too, the moment it is sent, so only the still-composing
+     * reply itself is ever lost to a refresh, never what the lead already said.
+     */
+    persistCheckin([...history, userTurn])
     sendMut.mutate([...history, userTurn])
   }
 
@@ -2616,6 +2636,8 @@ export function EntryChatPage() {
     setLoading(true)
     const userTurn: Turn = { role: 'user', content }
     setHistory(prev => [...prev, userTurn, { role: 'assistant', content: '…' }])
+    /* B-041, same fix as send() above: saved the moment it is sent, not only once the reply arrives. */
+    persistCheckin([...history, userTurn])
     sendMut.mutate([...history, userTurn])
   }
 
