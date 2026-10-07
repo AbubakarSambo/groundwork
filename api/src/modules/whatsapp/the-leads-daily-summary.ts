@@ -9,7 +9,7 @@ import { keptOffThePhone } from './a-check-in-kept-off-the-phone';
 import { everyRowAPageAtATime } from './every-row-a-page-at-a-time';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { organisationsThatTurnedWhatsAppOn } from './only-where-whatsapp-is-turned-on';
-import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
+import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
 import { theirApprovedLeave, fallsInLeave } from '../suites/who-is-away';
 import { theirRosterEntry } from '../suites/a-roster-entry-and-its-sign-in';
 import { whatWaitsForYouToDecide, type TheBoards } from '../suites/what-waits-for-you-to-decide';
@@ -110,7 +110,7 @@ async function nowSaid(prisma: any, leadId: string, hash: string): Promise<void>
   catch { try { await prisma.platformSetting.update({ where: { key: SAID_KEY(leadId) }, data: { value, updatedBy: 'engagement' } }); } catch { /* not remembered: the next morning may repeat once */ } }
 }
 
-const TERMINAL: GroundStatus[] = [...A_GROUND_THE_JOBS_LEAVE_ALONE, ...A_GROUND_IS_HELD];
+const TERMINAL: GroundStatus[] = A_GROUND_NO_MESSAGE_IS_ABOUT;
 
 /**
  * THE MORNING SWEEP. Every lead with a check-in open, in every organisation, one message each. A lead

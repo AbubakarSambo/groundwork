@@ -6,6 +6,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CheckInStatus } from '@prisma/client';
+import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
 import { worthNudging, whatToSendThem } from './who-is-worth-nudging';
 import { nameToCall } from '../engagement/a-name-to-call-them';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
@@ -248,7 +249,8 @@ export class RemindService {
 
     // Load all NOT_STARTED check-ins with participant and ground context.
     const notStarted = await this.prisma.checkIn.findMany({
-      where: { status: CheckInStatus.NOT_STARTED },
+      /* Never about a check-in that stalled, ended, is held or is waiting to be let in. */
+      where: { status: CheckInStatus.NOT_STARTED, ground: { status: { notIn: A_GROUND_NO_MESSAGE_IS_ABOUT } } },
       select: {
         id: true,
         createdAt: true,

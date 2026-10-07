@@ -12,7 +12,7 @@ import { onceAcrossCopies, theDay, theWeek } from '../prisma/once-across-copies'
 import { theReleaseMoment, reachedTheWarningPointBefore } from './the-release-moment';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { deadlineOf } from './when-the-clock-starts';
-import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD, A_GROUND_HAS_STOPPED } from './a-ground-that-has-ended';
+import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD, A_GROUND_HAS_STOPPED, A_GROUND_NO_MESSAGE_IS_ABOUT } from './a-ground-that-has-ended';
 import { AN_ANSWER } from './an-answer-includes-a-refusal';
 import { recordRoundCompletion } from './round-completion';
 import { awayUntilOn, leaveOfThePeopleOn, whoOnACheckInIsAway } from '../suites/who-is-away';
@@ -721,7 +721,7 @@ export class GroundsCron implements OnApplicationBootstrap {
         status: CheckInStatus.NOT_STARTED,
         sessionReadyNotifiedAt: null,
         availableFrom: { lte: now },
-        participant: { userId: { not: null }, ...NOT_HELD_FOR_A_SEAT, ground: { status: { notIn: TERMINAL } } },
+        participant: { userId: { not: null }, ...NOT_HELD_FOR_A_SEAT, ground: { status: { notIn: A_GROUND_NO_MESSAGE_IS_ABOUT } } },
       },
       select: {
         id: true,
@@ -1101,7 +1101,7 @@ export class GroundsCron implements OnApplicationBootstrap {
         status: CheckInStatus.NOT_STARTED,
         openedAnnouncedAt: null,
         OR: [{ availableFrom: null }, { availableFrom: { lte: now } }],
-        participant: { userId: { not: null }, ...NOT_HELD_FOR_A_SEAT, ground: { status: { notIn: TERMINAL } } },
+        participant: { userId: { not: null }, ...NOT_HELD_FOR_A_SEAT, ground: { status: { notIn: A_GROUND_NO_MESSAGE_IS_ABOUT } } },
       },
       select: {
         id: true,
@@ -1172,7 +1172,7 @@ export class GroundsCron implements OnApplicationBootstrap {
         userId: { not: null },
         ...NOT_HELD_FOR_A_SEAT,
         partyType: PartyType.PARTICIPANT,
-        ground: { status: { notIn: TERMINAL }, report: { releasedAt: { not: null } } },
+        ground: { status: { notIn: A_GROUND_NO_MESSAGE_IS_ABOUT }, report: { releasedAt: { not: null } } },
         OR: [{ lastNudgedAt: null }, { lastNudgedAt: { lt: throttleBefore } }],
         reportActivations: { none: { status: ReportActivationStatus.ACTIVATED } },
         /*
