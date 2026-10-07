@@ -35,7 +35,7 @@ export interface OwnReadsInput {
   viewerLabel: string | null;
   /** The reader's participant id, for the fields keyed that way. */
   viewerParticipantId: string | null;
-  /** A lead or org admin. They keep concernFlags and leadershipGaps; like everyone, only their own rating. */
+  /** A lead or org admin. They keep leadershipGaps; like everyone, only their own rating, and no concernFlags. */
   viewerIsLead: boolean;
 }
 
@@ -149,6 +149,14 @@ export function withoutOtherPeoplesReads<T extends Record<string, any>>(
   if (finalSynthesis && 'tiers' in finalSynthesis) {
     finalSynthesis.tiers = keepOwnById(finalSynthesis.tiers, viewerParticipantId);
   }
+
+  /*
+   * B-110: `concernFlags` says, per named person, how thin or generic their answers were ("significantly
+   * fewer and less specific entries than others on the same ground"). That is a rating of how a person's
+   * answers were rated, so it goes for every reader, the lead and an org admin included (CLAUDE.md, and
+   * the Hafsah decision that a lead reads only the plain forms). The engine still builds it and may use it inside.
+   */
+  if (engagement) delete engagement.concernFlags;
 
   const withoutRatings: Record<string, any> = {
     ...withoutGuides,
