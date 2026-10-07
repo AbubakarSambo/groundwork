@@ -39,6 +39,7 @@ import { theirPromiseToFollowUp } from '../engagement/a-follow-up-from-their-own
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { isNotLetInYet } from './who-an-admin-did-not-let-in';
 import { theNamesOfReadersCheckIns } from './the-names-of-a-readers-check-ins';
+import { isAWorkingDay } from './which-days-this-team-works';
 
 /* Every kind a morning message is recorded under, sent, held or as a template. */
 const MORNING_KINDS = ['overdue', 'due-tomorrow', 'team-almost-in', 'your-view-matters', 'anchor-follow-up'].flatMap((k) => [k, `${k}:template`, `${k}:held`]);
@@ -798,7 +799,7 @@ export class GroundsCron implements OnApplicationBootstrap {
       },
       select: {
         id: true, groundId: true, sessionNumber: true, createdAt: true, availableFrom: true, participantId: true,
-        ground: { select: { label: true, scenario: true, organizationId: true, overWhatsApp: true, cadence: true, chaseAfterDays: true, chasingStopped: true, tellTheLead: true, startedFrom: true, simplerWords: true, initiator: { select: { firstName: true } } } },
+        ground: { select: { label: true, scenario: true, organizationId: true, overWhatsApp: true, cadence: true, chaseAfterDays: true, chasingStopped: true, tellTheLead: true, workingDays: true, startedFrom: true, simplerWords: true, initiator: { select: { firstName: true } } } },
         participant: { select: { id: true, email: true, userId: true, user: { select: { firstName: true, email: true, phoneNumber: true, isActive: true, deletedAt: true } } } },
       },
       ...page,
@@ -836,6 +837,8 @@ export class GroundsCron implements OnApplicationBootstrap {
           dueAt, now, alreadyHad: had, hoursSinceLastChase: hoursSince(lastChase?.createdAt),
         });
         if (!what) continue;
+        /* A team that said which days it works is not chased on the others (B-020). Nothing said: as before. */
+        if (!isAWorkingDay(now, (ci.ground as any).workingDays)) continue;
         if (await isAGuestIn(this.prisma, ci.ground.organizationId, { userId: ci.participant.userId, email: ci.participant.email, userEmail: user?.email })) continue;
         const person = ci.participant.email
           ? await this.prisma.person.findFirst({ where: { organizationId: ci.ground.organizationId, email: ci.participant.email, active: true }, select: { phone: true } })

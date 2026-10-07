@@ -7,6 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CheckInStatus } from '@prisma/client';
 import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
+import { isAWorkingDay } from '../grounds/which-days-this-team-works';
 import { theNamesOfReadersCheckIns } from '../grounds/the-names-of-a-readers-check-ins';
 import { worthNudging, whatToSendThem } from './who-is-worth-nudging';
 import { nameToCall } from '../engagement/a-name-to-call-them';
@@ -277,6 +278,7 @@ export class RemindService {
             chaseAfterDays: true,
             chasingStopped: true,
             tellTheLead: true,
+            workingDays: true,
             initiator: { select: { email: true, firstName: true } },
           },
         },
@@ -309,6 +311,8 @@ export class RemindService {
     for (const checkIn of notStarted) {
       // Skip if not yet available.
       if (checkIn.availableFrom && checkIn.availableFrom > now) continue;
+      /* A team that said which days it works is not chased on the others (B-020). A team that said nothing is chased as before. */
+      if (!isAWorkingDay(now, (checkIn.ground as any).workingDays)) continue;
       /* Nobody on approved leave today is nudged, or counted among the people the lead is told have
          not started. The round does not wait for them. */
       if (checkIn.participantId && awayUntilOn(leave.get(checkIn.participantId), now)) continue;

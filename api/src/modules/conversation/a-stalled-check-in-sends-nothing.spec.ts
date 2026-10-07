@@ -57,3 +57,32 @@ describe('the morning reminder and a check-in that is not live', () => {
     expect(mailed.join(' ')).toContain('part 2');
   });
 });
+
+describe('the morning reminder and the days a team works (B-020)', () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+  const withDays = (workingDays: number[]) => {
+    const w = theMorning(['ACTIVE']);
+    const find = (w.service as any).prisma.checkIn.findMany;
+    (w.service as any).prisma.checkIn.findMany = jest.fn(async (a: any) => (await find(a)).map((r: any) => ({ ...r, ground: { ...r.ground, workingDays } })));
+    return w;
+  };
+  it('sends nothing on a Sunday to a team that works Monday to Friday', async () => {
+    jest.setSystemTime(new Date('2026-10-11T08:00:00.000Z'));
+    const { service, mailed } = withDays([1, 2, 3, 4, 5]);
+    await service.sendScheduledNudges();
+    expect(mailed).toEqual([]);
+  });
+  it('reminds on a Thursday', async () => {
+    jest.setSystemTime(new Date('2026-10-08T08:00:00.000Z'));
+    const { service, mailed } = withDays([1, 2, 3, 4, 5]);
+    await service.sendScheduledNudges();
+    expect(mailed.length).toBeGreaterThan(0);
+  });
+  it('still reminds on a Sunday when the team never said which days it works', async () => {
+    jest.setSystemTime(new Date('2026-10-11T08:00:00.000Z'));
+    const { service, mailed } = withDays([]);
+    await service.sendScheduledNudges();
+    expect(mailed.length).toBeGreaterThan(0);
+  });
+});
