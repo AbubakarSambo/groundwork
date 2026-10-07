@@ -36,3 +36,9 @@ one-line parser, not a failed request.
 
 Severity: Wrong information (the product writes a name nobody wrote, including in an email a
 real person reads), bordering on Confusing (the documented input format silently fails).
+
+Also reproduced at 390 width (Playwright, e2e/sweep/m1-join-390.spec.ts) with a fresh
+organisation and "M1 Three Ninety Member" as the invited name: the same split happened, and the
+garbled first name then reaches the invited member's own Today page greeting after they join -
+"Evening, M1" - not "Evening, M1 Three Ninety Member" or anything the admin typed. Screenshot:
+_m1-390-after-join.png (working file, not a numbered bug screenshot, kept alongside this log).
