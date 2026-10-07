@@ -64,6 +64,22 @@ export function theNameAsked(subject: string | undefined): string {
     .trim();
 }
 
+/**
+ * THE SUBJECT THE READER ASKED ABOUT, when they named one: "What did Amani say about pricing approvals?" is about
+ * pricing approvals (B-125). Nothing is returned when no subject was named, or when what follows "about" is only a
+ * word about when ("last week"), so the question that names nobody's subject is answered as before.
+ */
+const NOT_A_SUBJECT = new Set(['the', 'a', 'an', 'my', 'our', 'their', 'his', 'her', 'its', 'this', 'that', 'those', 'these', 'and', 'or', 'of', 'in', 'on', 'for', 'to', 'with', 'last', 'week', 'today', 'yesterday', 'recently', 'lately', 'earlier', 'check', 'checkin', 'session', 'time', 'it', 'them', 'things', 'thing']);
+const stemOf = (w: string) => (w.length > 5 ? w.replace(/(ing|ed|es|s)$/, '') : w.replace(/s$/, ''));
+export function theSubjectAsked(message: string): { said: string; stems: string[] } | null {
+  const m = /\babout\s+(.+?)\s*[?.!]*\s*$/i.exec(message ?? '');
+  if (!m) return null;
+  const said = m[1].replace(/\b(?:last|this)\s+week\b|\byesterday\b|\btoday\b/gi, '').replace(/\s+/g, ' ').trim();
+  const stems = said.toLowerCase().replace(/[^\p{L}\p{N}\s'-]/gu, ' ').split(/\s+/).filter((w) => w.length >= 3 && !NOT_A_SUBJECT.has(w)).map(stemOf);
+  return stems.length ? { said, stems } : null;
+}
+const aboutIt = (line: string, stems: string[]) => { const l = line.toLowerCase(); return stems.some((s) => l.includes(s)); };
+
 const lower = (s: string) => s.toLowerCase().replace(/[’]/g, "'");
 
 /** A served name matches what was typed when every word typed starts a word of the name. "Femi" finds "Femi Adeyemi". */
@@ -160,6 +176,7 @@ export async function whatSomeoneSaid(
   if (!asked || !reader.userId || !deps.reports) return nothing;
 
   const asker = { ...reader, userId: reader.userId };
+  const subjectAsked = theSubjectAsked(message);
   const found: Found[] = [];
   for (const g of await checkInsTheyMayRead(deps.db, asker)) {
     for (const round of await latestRounds(deps.db, g.id)) {
@@ -172,7 +189,10 @@ export async function whatSomeoneSaid(
       }
       for (const row of Array.isArray(served?.whatEachPersonSaid) ? served.whatEachPersonSaid : []) {
         if (!row || typeof row.who !== 'string' || !nameMatches(row.who, asked)) continue;
-        const lines = Array.isArray(row.lines) ? row.lines.filter((l: unknown) => typeof l === 'string' && l.trim()) : [];
+        const allLines = Array.isArray(row.lines) ? row.lines.filter((l: unknown) => typeof l === 'string' && l.trim()) : [];
+        /* Only what was said about the subject asked about, where one was named (B-125); a round with nothing on it is left out. */
+        const lines = subjectAsked ? allLines.filter((l: string) => aboutIt(l, subjectAsked.stems)) : allLines;
+        if (subjectAsked && allLines.length && !lines.length) continue;
         const saying = typeof row.saying === 'string' && row.saying.trim() ? row.saying.trim() : undefined;
         const finding = typeof row.finding === 'string' && row.finding.trim() ? row.finding.trim() : undefined;
         if (!lines.length && !saying && !finding) continue;
@@ -180,7 +200,10 @@ export async function whatSomeoneSaid(
       }
     }
   }
-  if (!found.length) return nothing;
+  if (!found.length) {
+    /* Said as the same refusal whether nothing was said about it or it is not theirs to read (the answer never shows a check-in they cannot read exists). */
+    return subjectAsked ? rules(lane, text(`${I_CANNOT_SHOW_YOU_THAT} I have nothing from ${asked} about ${subjectAsked.said} in the check-ins you can read.`)) : nothing;
+  }
 
   const people = [...new Set(found.map((f) => f.row.who))];
   if (people.length > 1) {
