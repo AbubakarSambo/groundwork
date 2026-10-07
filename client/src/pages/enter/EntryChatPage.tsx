@@ -1670,6 +1670,17 @@ export function EntryChatPage() {
   const [cadence, setCadence] = useState<'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ONE_TIME' | 'SEQUENTIAL'>('FORTNIGHTLY')
   /* Where the planned session count came from, so the chip can say so instead of presenting it as fact. */
   const [plannedFrom, setPlannedFrom] = useState<{ timelineDays: number; cadence: string } | null>(null)
+  /*
+   * FAULT B (reviewer, third round): TYPING 5 DID NOT STICK WHEN AN END DATE WAS ALSO SET.
+   * `plannedNow` (below) checked `lastCheckInBy` before `sessions`, so a lead who typed 5 into the
+   * open control still read "12 sessions planned" and saved "Session 1 of 12" if an end date
+   * happened to derive 12 from the rhythm. Clearing `plannedFrom` (already done on a manual edit)
+   * only beat the TIMELINE-DERIVED branch, never the END-DATE-DERIVED one - this flag beats both,
+   * and every other branch besides, the moment she types a number. Reset whenever the conversation
+   * itself hands over a fresh plan (`setPlannedFrom` below), so a later extraction is not blocked
+   * by an earlier, now-stale manual edit.
+   */
+  const [sessionsTypedByLead, setSessionsTypedByLead] = useState(false)
   /**
    * Did anyone actually choose this rhythm?
    *
@@ -2336,7 +2347,7 @@ export function EntryChatPage() {
            * was contradict the number the person had just agreed to.
            */
           const planned = plannedSessionsFor(res.extracted.timelineDays, res.extracted.cadence ?? cadence)
-          if (planned != null) { setSessions(planned); setPlannedFrom({ timelineDays: res.extracted.timelineDays, cadence: res.extracted.cadence ?? cadence }) }
+          if (planned != null) { setSessions(planned); setPlannedFrom({ timelineDays: res.extracted.timelineDays, cadence: res.extracted.cadence ?? cadence }); setSessionsTypedByLead(false) }
         }
         // Background classify intent when we have initial
         if (res.extracted.initial && !isAnchorDraft()) {
@@ -3051,6 +3062,7 @@ export function EntryChatPage() {
    * later choice. It follows the rhythm and the chosen end now, the way the server will count them.
    */
   const plannedNow = (() => {
+    if (sessionsTypedByLead) return sessions
     if (cadence === 'ONE_TIME') return 1
     if (cadence === 'SEQUENTIAL') return sessions
     if (lastCheckInBy) {
@@ -3559,13 +3571,36 @@ export function EntryChatPage() {
                     setEditingSessions(false)
                     if (n > 1) setShowSessionsUpgrade(true)
                     /*
-                     * FAULT 3 (live review): typing 5 and pressing Enter still left "8 sessions
-                     * planned", because `plannedNow` recomputed the count from `plannedFrom`'s
-                     * timeline and cadence and never looked at the number just typed. Once the
-                     * lead has typed a number here, that is the plan, and the derived estimate
-                     * from the conversation no longer applies.
+                     * FAULT 3, then FAULT B (reviewer, third round): typing 5 and pressing Enter
+                     * still left "8 sessions planned", then "12 sessions planned" once an end date
+                     * was also set - `plannedNow` recomputed the count from `plannedFrom` or from
+                     * `lastCheckInBy`'s own schedule and never looked at the number just typed.
+                     * Once the lead has typed a number here, that is the plan, everywhere: the
+                     * label, and what gets saved.
                      */
                     setPlannedFrom(null)
+                    setSessionsTypedByLead(true)
+                    /*
+                     * FAULT B, PART 2: THE LABEL AGREEING IS NOT ENOUGH - THE SAVED CHECK-IN STILL
+                     * SAID "Session 1 of 12". `buildCommitPayload` never sends a session count at
+                     * all for a date-driven cadence (not ONE_TIME or SEQUENTIAL, which already use
+                     * `sessions` as the literal count): the server works the real schedule out from
+                     * `checkInBy`..`lastCheckInBy`, so the end date has to move to the one that
+                     * actually produces N sessions, or the date range still disagrees with what she
+                     * just typed.
+                     */
+                    if (cadence !== 'ONE_TIME' && cadence !== 'SEQUENTIAL') {
+                      const landings = whenTheCheckInsLand({
+                        cadence, anchorDay: null,
+                        startsAt: checkInBy ? new Date(`${checkInBy}T00:00:00`) : null,
+                        workingDays, howMany: n,
+                      })
+                      const last = landings[n - 1]
+                      if (last) {
+                        setLastCheckInBy(`${last.getFullYear()}-${String(last.getMonth() + 1).padStart(2, '0')}-${String(last.getDate()).padStart(2, '0')}`)
+                        setEndChosen(true)
+                      }
+                    }
                   }}
                   onKeyDown={e => {
                     if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
@@ -4392,12 +4427,25 @@ export function EntryChatPage() {
             * commentary above). For an anchor draft the reveal below is the whole header - nothing
             * from the ordinary path announces it first.
             */}
-          {!isAnchorDraft() && (
+          {!isAnchorDraft() && (() => {
+            /*
+             * FAULT E, PART 2 (reviewer, third round): "THIS IS SESSION 1. IT IS YOUR PRIVATE
+             * REPORT. WHAT YOU SAID IS ON RECORD." BEFORE SHE HAD SAID ANYTHING. Opening the save
+             * card with no answer given yet (set up, then straight to Save, with nothing in the
+             * conversation) still claimed a report and a record that do not exist yet - both
+             * written for after the first session, not before it has started.
+             */
+            const hasAnswered = history.some(m => m.role === 'user')
+            return (
           <div className="gwui-ec-savecard-header">
             {/* Full sentence, no dot, no capitals label (U.8 review): CLAUDE.md's wording rule
                 applies here the same as everywhere else a person reads. */}
-            <div className="gwui-ec-savecard-eyebrow">{skippedCheckin ? 'This is session 1. You set the context here.' : 'This is session 1. It is your private report.'}</div>
-            <div className="gwui-ec-savecard-title">{groundName || 'What you said is on record.'}</div>
+            <div className="gwui-ec-savecard-eyebrow">
+              {skippedCheckin
+                ? 'This is session 1. You set the context here.'
+                : hasAnswered ? 'This is session 1. It is your private report.' : 'This will be session 1. It will be your private report.'}
+            </div>
+            <div className="gwui-ec-savecard-title">{groundName || (hasAnswered ? 'What you said is on record.' : 'Nothing is on record yet.')}</div>
             <div className="gwui-ec-savecard-venn-row">
               <div className="gwui-ec-savecard-venn-icon"><VennIcon size={22} /></div>
               <div className="gwui-ec-savecard-venn-text">
@@ -4435,7 +4483,8 @@ export function EntryChatPage() {
               )
             })()}
           </div>
-          )}
+            )
+          })()}
 
           <div className="gwui-ec-savecard-body">
 
@@ -4718,7 +4767,11 @@ export function EntryChatPage() {
                   {savingAsUser ? 'Saving…' : 'Save this'}
                 </Button>
                 <div className="gwui-ec-savecard-helper">
-                  Saving to {user.email}. No confirmation needed, you are already signed in.
+                  {/* FAULT E (reviewer, third round): "Saving to amina@suites.test. No confirmation
+                      needed, you are already signed in." read like a log line, not a sentence a
+                      person would read - "saving to" an address is what a form does, not what a
+                      person says. Said as what it actually is: the account this goes to. */}
+                  We save this to your account, {user.email}.
                 </div>
                 {/* A WAY OUT OF THE CARD. It covers the whole page, including the page's own Start over,
                     so a card that cannot save (an old empty lead session) was a screen with one button
@@ -4861,8 +4914,19 @@ export function EntryChatPage() {
               </div>
             )}
 
-            {/* Admin setup - only shown after email sent */}
-            {emailSent && (
+            {/*
+              * FAULT A (reviewer, third round): THE FIRST SAVE INVITED NOBODY. This whole block -
+              * naming the check-in and, inside `renderPeopleStep()`, the colleague picker and the
+              * "Name + email" add row - was gated on `emailSent`, a flag only the ANONYMOUS path
+              * (`handleSaveInner`, above) ever sets. A signed-in lead's save
+              * (`saveAsSignedInUser`) never touches `emailSent`, so this never rendered for her at
+              * all: she had no colleague picker and no add-by-address row, only the report's own
+              * suggestions (renderAdd) - and anyone she meant to queue through the section built
+              * for exactly that was silently never on the list `buildCommitPayload` sent. Shown
+              * now whenever either path has reached this point: the email is sent, or she is
+              * already signed in.
+              */}
+            {(emailSent || !!user) && (
             <div>
             <div className="gwui-ec-savecard-divider" />
 

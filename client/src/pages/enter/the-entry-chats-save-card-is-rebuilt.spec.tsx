@@ -56,6 +56,7 @@ vi.mock('@/api/entry', () => ({
     onboard: vi.fn(),
     classifyIntent: vi.fn(),
     patchDraft: vi.fn().mockResolvedValue({ ok: true }),
+    commit: vi.fn().mockResolvedValue({ groundId: 'g-created' }),
   },
 }))
 vi.mock('@/api/auth', () => ({ authApi: { entrySave: vi.fn(), colleagues: vi.fn().mockResolvedValue([]) } }))
@@ -157,10 +158,46 @@ describe('the save card, already signed in', () => {
     const { container } = renderPage()
     fireEvent.click(await screen.findByText(/Invite and finish/))
     expect(screen.getByRole('button', { name: 'Save this' })).toBeTruthy()
-    expect(screen.getByText('Saving to rukia@example.test. No confirmation needed, you are already signed in.')).toBeTruthy()
+    /* FAULT E (reviewer, third round): "Saving to rukia@example.test. No confirmation needed,
+       you are already signed in." read like a log line. One plain sentence instead. */
+    expect(screen.getByText('We save this to your account, rukia@example.test.')).toBeTruthy()
     expect(screen.queryByPlaceholderText('your@email.com')).toBeNull()
     expectAtMostOnePrimaryButton(container)
     expect(authApi.entrySave).not.toHaveBeenCalled()
+  })
+
+  /*
+   * FAULT A (reviewer, third round): THE FIRST SAVE INVITED NOBODY. Daniel and Grace, queued from
+   * the colleague picker before pressing Save, never reached the commit - the check-in held only
+   * the signed-in lead. Proven here against the real save path (saveAsSignedInUser ->
+   * entryApi.commit), with two colleagues queued exactly the way the save card's own PeoplePicker
+   * queues them (queueColleague), so a regression in either the queueing or the commit payload
+   * shows up here.
+   */
+  it('sends the people queued from the colleague picker when a signed-in lead saves', async () => {
+    authedUser = { id: 'u1', email: 'amina@suites.test' }
+    const { authApi } = await import('@/api/auth')
+    const { entryApi } = await import('@/api/entry')
+    vi.mocked(authApi.colleagues).mockResolvedValue([
+      { id: 'c-daniel', name: 'Daniel Park', role: 'Engineer', team: null },
+      { id: 'c-grace', name: 'Grace Achieng', role: 'Designer', team: null },
+    ] as any)
+    seedClosedSession()
+    renderPage()
+    fireEvent.click(await screen.findByText(/Invite and finish/))
+    const danielCheckbox = await screen.findByRole('checkbox', { name: 'Daniel Park' })
+    fireEvent.click(danielCheckbox)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Grace Achieng' }))
+    const picker = screen.getByRole('listbox').closest('div')!.parentElement as HTMLElement
+    fireEvent.click(within(picker).getByRole('button', { name: /^Add/ }))
+
+    await waitFor(() => expect(screen.getByText(/Daniel Park/)).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
+
+    await waitFor(() => expect(entryApi.commit).toHaveBeenCalled())
+    const payload = vi.mocked(entryApi.commit).mock.calls[0][0]
+    expect(payload.contributors).toContainEqual(expect.objectContaining({ colleagueId: 'c-daniel' }))
+    expect(payload.contributors).toContainEqual(expect.objectContaining({ colleagueId: 'c-grace' }))
   })
 
   /*
@@ -196,7 +233,9 @@ describe('the save card, already signed in', () => {
     expect(screen.getByRole('button', { name: 'Save and set up' })).toBeTruthy()
     expect(screen.queryByText(/Save your session below to get set up/)).toBeNull()
     expect(screen.queryByText(/means signing in/)).toBeNull()
-    expect(screen.getByText(/No confirmation needed, you are already signed in\./)).toBeTruthy()
+    /* FAULT E (reviewer, third round): this line is reworded too, from "Saving to ... No
+       confirmation needed, you are already signed in." */
+    expect(screen.getByText(/We save this to your account, rukia@example\.test\./)).toBeTruthy()
   })
 
   /** And the same prompt still says it to a stranger, for whom it remains true. */
@@ -242,6 +281,80 @@ describe('changing how many sessions a check-in runs (fault 2, live walk, 6 Octo
     expect(screen.getAllByText('How many sessions').length).toBeGreaterThan(0)
     expect(screen.getAllByText('This is your plan for how many check-ins to run. You can change it at any time.').length).toBeGreaterThan(0)
     expect(document.body.textContent).not.toContain('sessions:')
+  })
+
+  /*
+   * FAULT B (reviewer, third round): TYPING 5 DID NOT STICK. `plannedNow` checked `lastCheckInBy`
+   * before the typed `sessions`, so with an end date already on the session (from which the
+   * weekly rhythm derives 12 occurrences), typing 5 and pressing Enter still read "12 sessions
+   * planned" - and the saved check-in agreed with the label, not with her, because
+   * `buildCommitPayload` sends no session count at all for a date-driven cadence; the server works
+   * the real schedule out from `checkInBy`..`lastCheckInBy`. Proven end to end: typing, the label,
+   * and the date range the signed-in save actually sends.
+   */
+  it('typing 5 sessions wins over an end date that would otherwise derive 12, everywhere', async () => {
+    authedUser = { id: 'u1', email: 'amina@suites.test' }
+    const { entryApi } = await import('@/api/entry')
+    const farEnough = new Date()
+    farEnough.setDate(farEnough.getDate() + 90)
+    const lastCheckInBy = `${farEnough.getFullYear()}-${String(farEnough.getMonth() + 1).padStart(2, '0')}-${String(farEnough.getDate()).padStart(2, '0')}`
+    localStorage.setItem('gw_entry_session', JSON.stringify({
+      scenario: 'PIP', closed: false, flowPath: 'self', onboardingStep: 7,
+      history: [{ role: 'assistant', content: 'How is it going?' }],
+      sessions: 1, cadence: 'WEEKLY', cadenceChosen: true, lastCheckInBy,
+      onboardingSelections: { mode: 'new', initial: 'x', classifiedScenario: 'PIP' },
+    }))
+    renderPage()
+    /* Confirms the fixture actually derives more than 5 (around 12, 90 days weekly) before the
+       fix is even exercised - otherwise this test would pass by accident. */
+    await screen.findByText(/^(?!5 session)\d+ sessions? planned/)
+
+    const sessionsButton = screen.getAllByText(/\d+ sessions? planned/)[0]
+    fireEvent.click(sessionsButton)
+    const input = screen.getAllByLabelText('How many sessions')[0]
+    fireEvent.change(input, { target: { value: '5' } })
+    fireEvent.blur(input)
+
+    await screen.findByText('5 sessions planned')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save and set up' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Save this' }))
+    await waitFor(() => expect(entryApi.commit).toHaveBeenCalled())
+    const payload = vi.mocked(entryApi.commit).mock.calls[0][0]
+    const { whenTheCheckInsLand } = await import('@/components/gw/when-the-check-ins-land')
+    const fifth = whenTheCheckInsLand({ cadence: 'WEEKLY', anchorDay: null, startsAt: null, workingDays: [], howMany: 5 })[4]
+    const expected = `${fifth.getFullYear()}-${String(fifth.getMonth() + 1).padStart(2, '0')}-${String(fifth.getDate()).padStart(2, '0')}`
+    /* `lastCheckInBy` is sent (buildCommitPayload, EntryChatPage.tsx) but not in entryApi.commit's
+       declared parameter type - cast to read what was actually sent. */
+    expect((payload as any).lastCheckInBy).toBe(expected)
+  })
+
+  /*
+   * FAULT E, PART 2 (reviewer, third round): THE SAVE CARD'S OWN HEADING CLAIMED A REPORT AND A
+   * RECORD THAT DID NOT EXIST YET. Opened with no answer given (history holds only the assistant's
+   * opening line), it still read "This is session 1. It is your private report." and "What you
+   * said is on record." - both written for after the first session, not before it has started.
+   */
+  it('the save card heading does not claim a report or a record before any answer is given', async () => {
+    authedUser = { id: 'u1', email: 'amina@suites.test' }
+    localStorage.setItem('gw_entry_session', JSON.stringify({
+      scenario: 'PIP', closed: false, flowPath: 'self', onboardingStep: 7,
+      history: [{ role: 'assistant', content: 'How is it going?' }],
+      sessions: 1, cadence: 'WEEKLY', cadenceChosen: true,
+      onboardingSelections: { mode: 'new', initial: 'x', classifiedScenario: 'PIP' },
+    }))
+    renderPage()
+    const sessionsButton = (await screen.findAllByRole('button', { name: /Edit number of sessions/ }))[0]
+    fireEvent.click(sessionsButton)
+    const input = screen.getAllByLabelText('How many sessions')[0]
+    fireEvent.change(input, { target: { value: '2' } })
+    fireEvent.blur(input)
+    fireEvent.click(await screen.findByRole('button', { name: 'Save and set up' }))
+
+    expect(await screen.findByText('This will be session 1. It will be your private report.')).toBeTruthy()
+    expect(screen.getByText('Nothing is on record yet.')).toBeTruthy()
+    expect(screen.queryByText('This is session 1. It is your private report.')).toBeNull()
+    expect(screen.queryByText('What you said is on record.')).toBeNull()
   })
 })
 
