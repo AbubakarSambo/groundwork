@@ -1,4 +1,5 @@
 import { AnAdminDecidesWhetherItStarts } from './an-admin-decides-whether-it-starts'
+import { howManyCheckedInSentence } from '@/lib/how-many-checked-in'
 import { howItEnded, hasStalled, itRanOutOfTime } from '@/lib/a-ground-that-has-ended'
 import { scrollToId } from '@/lib/scroll-to'
 import { whenItRunsOut, sayHowLongIsLeft } from '@/lib/when-it-runs-out'
@@ -1624,9 +1625,7 @@ export function GroundAdminPage() {
                * not a one-member "people".
                */
               parts.push(
-                roundDone === 0
-                  ? 'Nobody has checked in yet.'
-                  : `${roundDone} of ${total} ${roundDone === 1 ? 'person has' : 'people have'} checked in for session ${openRound}.`,
+                howManyCheckedInSentence(roundDone, total, openRound),
               )
             }
             if (roundWentBack) parts.push(`It went back to session ${openRound}, because somebody new was added. Nothing anybody wrote is lost.`)
