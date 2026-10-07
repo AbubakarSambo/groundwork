@@ -217,7 +217,9 @@ describe('the morning sweep', () => {
     const opensAt = new Date(Date.now() + 50 * 60_000);
     const { cron, sendFor } = aCron([aRow({ availableFrom: opensAt })]);
     await cron.sendWhatsAppOpensSoonInner();
-    expect(sendFor.mock.calls[0][2]).toBe(itOpensSoon(MIRIAM, opensAt).text);
+    /* The hour is the person's own, with the zone named (B-140): Miriam's number is Kenyan, so it is East Africa Time. */
+    expect(sendFor.mock.calls[0][2]).toBe(itOpensSoon(MIRIAM, opensAt, undefined, 'Africa/Nairobi').text);
+    expect(sendFor.mock.calls[0][2]).toContain('East Africa Time');
   });
 });
 

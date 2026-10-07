@@ -25,6 +25,7 @@ import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { keptOffThePhone } from '../whatsapp/a-check-in-kept-off-the-phone';
 import { whatToSendThisMorning, whichChase, whenItIsDue, itIsOverdue, itIsDueTomorrow, theTeamIsAlmostIn, yourViewMatters, itOpensSoon, MORNING_ORDER, itFollowsUpTheirPromise } from '../whatsapp/what-goes-to-a-phone';
+import { theirTimeZone } from '../whatsapp/the-persons-own-time-zone';
 import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
 import { sendWhoHasGoneQuiet as sendWhoHasGoneQuietToLeads } from '../engagement/who-has-gone-quiet';
 import { sendTheReportFollowUps } from '../engagement/the-report-follow-up';
@@ -1081,11 +1082,12 @@ export class GroundsCron implements OnApplicationBootstrap {
         if (before) continue;
         if (await isAGuestIn(this.prisma, ci.ground.organizationId, { userId: ci.participant.userId, email: ci.participant.email, userEmail: user?.email })) continue;
         const person = ci.participant.email
-          ? await this.prisma.person.findFirst({ where: { organizationId: ci.ground.organizationId, email: ci.participant.email, active: true }, select: { phone: true } })
+          ? await this.prisma.person.findFirst({ where: { organizationId: ci.ground.organizationId, email: ci.participant.email, active: true }, select: { phone: true, timezone: true } })
           : null;
         const phone = person?.phone ?? user?.phoneNumber ?? null;
         if (!phone) continue;
-        const said = itOpensSoon({ firstName: user?.firstName, label: await nameFor({ userId: ci.participant.userId, email: ci.participant.email }, ci.groundId, ci.ground.label) }, new Date(ci.availableFrom), ci.ground.simplerWords);
+        /* The hour in the person's own zone, with the zone named (B-140). */
+        const said = itOpensSoon({ firstName: user?.firstName, label: await nameFor({ userId: ci.participant.userId, email: ci.participant.email }, ci.groundId, ci.ground.label) }, new Date(ci.availableFrom), ci.ground.simplerWords, theirTimeZone(person?.timezone, phone));
         await this.whatsapp.sendFor(ci.ground.organizationId, phone, said.text, { checkInId: ci.id, kind: said.kind, params: said.params });
         sent++;
       } catch (err: any) {
