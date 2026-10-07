@@ -40,6 +40,7 @@ import { areaOfGoalOrFallback } from '../grounds/the-area-of-a-goal-is-worded-on
 import { withoutWhatTheLeadHasNotToldThemAbout, theWordsOfWhatTheLeadHasNotToldThemAbout, whatThePersonReadsOfTheirOwnUntoldGoals, theyRunThisCheckIn } from './an-untold-goal-is-not-a-board-objective';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-internal-label-reaches-anyone';
 import { contributionAsThisReaderMayRead } from './a-rating-goes-only-to-the-person';
+import { contributionWithoutTheLeadsAdvice, coverageWithoutTheLeadsAdvice } from './the-leads-advice-stays-with-the-lead';
 import { coverageAsThisReaderMayRead, withNoRatingNumber } from './no-rating-is-served';
 import { theBoardKindsOffered, theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { theAnchorBoardParts } from './the-anchor-board-parts';
@@ -2420,8 +2421,8 @@ export class BoardService {
      */
     if (!runsItForAPattern(ground as any, requestingUserId) && !adminHere) {
       const onlyMine = (rows: any) => (Array.isArray(rows) ? rows.filter((r: any) => !!r.participantId && r.participantId === (me?.id ?? null)) : []);
-      if (out.contribution) out.contribution = onlyMine(out.contribution);
-      if (out.coverage) out.coverage = { ...(out.coverage as any), reads: onlyMine((out.coverage as any).reads) };
+      if (out.contribution) out.contribution = contributionWithoutTheLeadsAdvice(onlyMine(out.contribution));
+      if (out.coverage) out.coverage = coverageWithoutTheLeadsAdvice({ ...(out.coverage as any), reads: onlyMine((out.coverage as any).reads) });
     }
     if (whoMaySee.peersHidden) {
       /*
