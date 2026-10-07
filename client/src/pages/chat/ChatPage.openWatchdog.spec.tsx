@@ -61,7 +61,8 @@ describe('a check-in that never opens', () => {
     ;(conversationApi.open as any).mockImplementation(neverSettles)
 
     renderChat()
-    await vi.advanceTimersByTimeAsync(50_000)
+    /* A request still in flight is given until 150 seconds (see the next test for why), then the way forward. */
+    await vi.advanceTimersByTimeAsync(160_000)
 
     // THE REGRESSION: this screen used to stay blank and silent forever.
     expect(await screen.findByText(/Could not open your session/i)).toBeTruthy()
@@ -78,6 +79,32 @@ describe('a check-in that never opens', () => {
     // The open request genuinely never fired - this is the harder half of the
     // failure, and the one no error handler could ever have caught.
     expect((conversationApi.open as any)).not.toHaveBeenCalled()
+  })
+
+  /*
+   * A SLOW FIRST OPEN IS NOT A FAILED ONE (release check, 8 October). The first person on a new
+   * check-in waited 65 and 88 seconds for the first question on the test bed, against the real
+   * model. At 45 seconds the screen said "Could not open your session" over a request that was about
+   * to succeed, and "Try again" sent a second open beside it, so the person was asked two different
+   * first questions.
+   */
+  it('does not call a slow first open a failure while the request is still working', async () => {
+    ;(conversationApi.transcript as any).mockResolvedValue({
+      checkIn: { status: 'NOT_STARTED', sessionNumber: 1, groundId: 'g1' },
+      turns: [],
+    })
+    ;(conversationApi.open as any).mockImplementation(
+      () => new Promise((resolve) => setTimeout(() => resolve({ reply: 'What are you aiming for this quarter?', groundId: 'g1' }), 88_000)),
+    )
+
+    renderChat()
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(screen.queryByText(/Could not open your session/i)).toBeNull()
+
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(await screen.findByText(/What are you aiming for this quarter\?/i)).toBeTruthy()
+    expect(screen.queryByText(/Could not open your session/i)).toBeNull()
+    expect((conversationApi.open as any)).toHaveBeenCalledTimes(1)
   })
 
   it('stays quiet when the session opens normally', async () => {

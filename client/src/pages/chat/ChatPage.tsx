@@ -135,6 +135,13 @@ const RECORD_ENTRY_LABELS: Record<string, string> = {
   TENSION: 'Tension',
 }
 
+/**
+ * How long an open request that is still working is waited for before the screen says it could not
+ * open. See the watchdog in ChatPage: the first open of a new check-in was measured at 65 and 88
+ * seconds against the real model.
+ */
+const AN_OPEN_MAY_TAKE = 150_000
+
 export function ChatPage() {
   const { checkInId } = useParams<{ checkInId: string }>()
   const navigate = useNavigate()
@@ -304,6 +311,13 @@ export function ChatPage() {
    * session ever open?
    */
   const hasOpenedRef = useRef(false)
+  /**
+   * WHEN THE OPEN REQUEST NOW IN FLIGHT WAS SENT, so the watchdog below can tell a request that is
+   * still working from one that never went. Null when no open request is in flight. Each request
+   * carries its own number, so an older one landing late never clears a newer one's time.
+   */
+  const openInFlightRef = useRef<{ n: number; at: number } | null>(null)
+  const openCountRef = useRef(0)
 
   // Doc context
   const [pendingDoc, setPendingDoc]   = useState<File | null>(null)
@@ -379,7 +393,13 @@ export function ChatPage() {
   }, [loading])
 
   const openSession = useMutation({
-    mutationFn: () => conversationApi.open(checkInId!),
+    mutationFn: () => {
+      const n = ++openCountRef.current
+      openInFlightRef.current = { n, at: Date.now() }
+      return conversationApi.open(checkInId!).finally(() => {
+        if (openInFlightRef.current?.n === n) openInFlightRef.current = null
+      })
+    },
     onSuccess: res => {
       setMsgs([{ id: 'ai-open', role: 'AI', content: res.reply, suggestedAnswers: res.suggestedAnswers, ideaOffer: res.ideaOffer, requestOffer: res.requestOffer, openTheRequest: res.openTheRequest }])
       if (res.groundId && !groundId) setGroundId(res.groundId)
@@ -782,9 +802,21 @@ export function ChatPage() {
        * Forty-five seconds is deliberately generous - the opening question is a
        * real model call and twenty seconds is normal - but past that, saying so
        * and offering the retry beats waiting in silence.
+       *
+       * EXCEPT WHILE THE OPEN REQUEST IS STILL WORKING (release check, 8 October). The first person
+       * to open a new check-in waits while the brief is read three times before the first question
+       * is written: measured on the test bed against the real model at 65 and 88 seconds. At 45 the
+       * screen said "Could not open your session" over a request that was about to succeed, and
+       * "Try again" sent a second open beside it, so the person was asked two different first
+       * questions. A request in flight is now given until AN_OPEN_MAY_TAKE before the banner; one
+       * that never went (the transcript fetch ahead of it hung) still gets the banner at 45.
        */
-      const watchdog = setTimeout(() => {
+      let watchdog: ReturnType<typeof setTimeout>
+      const fire = () => {
         if (cancelled || hasOpenedRef.current) return
+        const inFlight = openInFlightRef.current
+        const left = inFlight ? AN_OPEN_MAY_TAKE - (Date.now() - inFlight.at) : 0
+        if (left > 0) { watchdog = setTimeout(fire, left); return }
         setOpenFailed(true)
         /**
          * Reset the mutation too, or the retry is offered and unusable.
@@ -800,7 +832,8 @@ export function ChatPage() {
          * onSuccess still opens the session, which is the outcome they wanted.
          */
         openSession.reset()
-      }, 45_000)
+      }
+      watchdog = setTimeout(fire, 45_000)
 
       /* The pending timeout and watchdog are always cancelled on cleanup - a genuine unmount must
          not leave either one running against a component that is gone. `openedRef` itself is not
