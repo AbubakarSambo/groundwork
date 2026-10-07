@@ -704,6 +704,14 @@ export class AssistantService {
    * `composedBy` stamp differ, and the stamp is why that is honest rather than hidden.
    */
   private async compose(reply: Reply, mustKeep: string[] = []): Promise<Reply> {
+    /*
+     * NEVER THE "I CANNOT ANSWER THAT" SENTENCE (release check, 7 October 2026). Lanes such as "who is" fall back to it, and the
+     * composer turned 'I cannot answer that one yet. Here is what I can do with "behind on Sales team, Q4".' into "You are behind on
+     * the Sales team's Q4 work." for the lead, a member, somebody held for a seat and a lead the board refuses: a verdict about the
+     * reader that nothing on record says. It passed every check, because every word was in the draft. The default lane already leaves
+     * this sentence alone for the same reason.
+     */
+    if (reply.lane === 'unplaced') return reply;
     const first = reply.blocks[0];
     if (!first || first.type !== 'text') return reply;
     const draft = first.body;
