@@ -1,4 +1,5 @@
 import { theDayInWords } from '../board/the-day-in-words';
+import { namesTheyCanTellApart } from '../../common/check-ins-you-can-tell-apart';
 import { theAwayLine } from '../suites/who-is-away';
 import { isNotLetInYet } from './who-an-admin-did-not-let-in';
 import { theCheckIn, yourCheckIn } from './which-check-in-it-is';
@@ -67,6 +68,9 @@ export interface ListedCheckIn {
   status?: string | null;
   organizationId: string;
   initiatorId?: string | null;
+  /* For telling two check-ins of the same name apart: when it started, and who runs it. */
+  createdAt?: string | Date | null;
+  initiator?: { firstName?: string | null } | null;
   closedAt?: string | Date | null;
   resolvedAt?: string | Date | null;
   endsAt?: string | Date | null;
@@ -171,13 +175,18 @@ function whoHasNotYet(missing: { name: string | null; isMe: boolean }[]): string
 const theSession = theCheckIn;
 
 export function whatNeedsYou(
-  list: ListedCheckIn[],
+  listAsGiven: ListedCheckIn[],
   reader: Reader,
   waiting: WaitingForApproval[] = [],
   now: Date = new Date(),
   /** What is waiting for this reader to approve, already said (waiting-for-you-to-approve.ts). Only ever the approver's. */
   toApprove: Need[] = [],
 ): WhatNeedsYou {
+  /* Two check-ins of the same name read as two: "Sales team, Q4, started 2 September". A unique name reads as it is. */
+  const toldApart = namesTheyCanTellApart(listAsGiven
+    .filter((g) => (g.status ?? '') !== 'AWAITING_APPROVAL' && (g.status ?? '') !== 'DECLINED')
+    .map((g) => ({ id: g.id, label: g.label ?? '', startedAt: g.createdAt, leadName: g.initiator?.firstName })));
+  const list = listAsGiven.map((g) => (toldApart.has(g.id) ? { ...g, label: toldApart.get(g.id)! } : g));
   const at = now.getTime();
   const isAdmin = reader.role === 'ADMIN';
   const firstTurns: Need[] = [];

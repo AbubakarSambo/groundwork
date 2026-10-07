@@ -1,4 +1,5 @@
 import { WAITING_TO_BE_LET_IN } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
+import { namesTheyCanTellApart } from '../../common/check-ins-you-can-tell-apart';
 import { whatWasSaid } from './what-was-said-is-what-is-kept';
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { NOTHING_FLAGGED } from '../detectors/who-needs-you-this-week';
@@ -2926,7 +2927,7 @@ export class AssistantService {
 
     const grounds = await this.prisma.ground.findMany({
       where: { organizationId, status: { notIn: A_GROUND_IS_OVER } },
-      select: { id: true, label: true, initiatorId: true, organizationId: true, scenario: true, createdByUserId: true, participants: { select: { userId: true } } },
+      select: { id: true, label: true, createdAt: true, initiator: { select: { firstName: true } }, initiatorId: true, organizationId: true, scenario: true, createdByUserId: true, participants: { select: { userId: true } } },
     });
     const viewer = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, organizationId: true } });
     /*
@@ -2968,8 +2969,8 @@ export class AssistantService {
           organizationId,
           personExternalId: who,
           kind: 'which_context_check_in',
-          summary: `Which check-in do you mean? ${candidates.map((g) => g.label).join(', ')}.`,
-          payload: { candidates: candidates.map((g) => ({ groundId: g.id, label: g.label })), said: message, purpose: 'setup' } as never,
+          summary: `Which check-in do you mean? ${toldApart(candidates).map((g) => g.label).join(', ')}.`,
+          payload: { candidates: toldApart(candidates).map((g) => ({ groundId: g.id, label: g.label })), said: message, purpose: 'setup' } as never,
         },
       });
       return {
@@ -4137,7 +4138,7 @@ export class AssistantService {
   ): Promise<{ id: string; label: string } | Reply> {
     const grounds = await this.prisma.ground.findMany({
       where: { organizationId, status: { notIn: A_GROUND_IS_OVER } },
-      select: { id: true, label: true, initiatorId: true, organizationId: true, scenario: true, createdByUserId: true, participants: { select: { userId: true } } },
+      select: { id: true, label: true, createdAt: true, initiator: { select: { firstName: true } }, initiatorId: true, organizationId: true, scenario: true, createdByUserId: true, participants: { select: { userId: true } } },
     });
     const viewer = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, organizationId: true } });
     /* Only the check-ins this person may set up (decisions 63 and 72), the same as the setup conversation:
@@ -4171,8 +4172,8 @@ export class AssistantService {
         organizationId,
         personExternalId: who,
         kind: 'which_context_check_in',
-        summary: `Which check-in do you mean? ${candidates.map((g) => g.label).join(', ')}.`,
-        payload: { candidates: candidates.map((g) => ({ groundId: g.id, label: g.label })), said: message, purpose } as never,
+        summary: `Which check-in do you mean? ${toldApart(candidates).map((g) => g.label).join(', ')}.`,
+        payload: { candidates: toldApart(candidates).map((g) => ({ groundId: g.id, label: g.label })), said: message, purpose } as never,
       },
     });
     return {
@@ -5188,4 +5189,11 @@ export class AssistantService {
     return rules('who_is', text(bits.join(' ')));
   }
 
+}
+
+
+/** Two check-ins of the same name are offered with when each started, so the person can pick one. */
+function toldApart<T extends { id: string; label: string; createdAt?: Date | null; initiator?: { firstName?: string | null } | null }>(candidates: T[]): T[] {
+  const said = namesTheyCanTellApart(candidates.map((g) => ({ id: g.id, label: g.label, startedAt: g.createdAt, leadName: g.initiator?.firstName })));
+  return candidates.map((g) => ({ ...g, label: said.get(g.id) ?? g.label }));
 }

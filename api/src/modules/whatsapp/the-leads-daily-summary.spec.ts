@@ -15,13 +15,15 @@ import { TEMPLATES, NOT_TODAY, OUTSIDE_THE_WINDOW } from './a-message-outside-th
 const NOW = new Date('2026-10-05T06:00:00Z');
 const answered = (first: string, completedAt?: Date) => ({ completedAt, status: 'COMPLETED', sessionNumber: 3, participant: { managingOnly: false, nameGiven: null, user: { firstName: first, awaitingOrgApproval: false } } });
 
-function aMorning(opts: { onLeave?: boolean; onlyThePlan?: boolean; waiting?: boolean; lastSummary?: Date; answeredAt?: Date; nobodyIn?: boolean } = {}) {
+function aMorning(opts: { onLeave?: boolean; onlyThePlan?: boolean; waiting?: boolean; lastSummary?: Date; answeredAt?: Date; nobodyIn?: boolean; twins?: boolean } = {}) {
   const sent: { org: string; to: string; text: string; context: any }[] = [];
   const grounds = [
-    ...(opts.onlyThePlan ? [] : [{ id: 'g-sales', label: 'Sales team, Q3', organizationId: 'org-1', overWhatsApp: null, initiatorId: 'u-wairimu' }]),
+    ...(opts.onlyThePlan ? [] : [{ id: 'g-sales', label: 'Sales team, Q3', createdAt: new Date('2026-09-02T09:00:00Z'), organizationId: 'org-1', overWhatsApp: null, initiatorId: 'u-wairimu' }]),
+    ...(opts.twins ? [{ id: 'g-sales-2', label: 'Sales team, Q3', createdAt: new Date('2026-09-20T09:00:00Z'), organizationId: 'org-1', overWhatsApp: null, initiatorId: 'u-wairimu' }] : []),
     { id: 'g-pip', label: 'Performance plan, Femi', organizationId: 'org-1', overWhatsApp: false, initiatorId: 'u-wairimu' },
   ];
   const sessions: Record<string, any[]> = {
+    'g-sales-2': [{ status: 'COMPLETED', sessionNumber: 1, completedAt: opts.answeredAt, participant: { managingOnly: false, nameGiven: null, user: { firstName: 'Zawadi', awaitingOrgApproval: false } } }, { status: 'NOT_STARTED', sessionNumber: 1, participant: { managingOnly: false, nameGiven: null, user: { firstName: 'Chidi', awaitingOrgApproval: false } } }],
     'g-sales': [
       ...(opts.nobodyIn ? [] : ['Miriam', 'Bisi', 'Femi', 'Kofi', 'Amina'].map((n) => answered(n, opts.answeredAt))),
       { status: 'NOT_STARTED', sessionNumber: 3, participant: { managingOnly: false, nameGiven: null, user: { firstName: 'Omar', awaitingOrgApproval: false } } },
@@ -78,6 +80,13 @@ describe("what Wairimu reads on her phone", () => {
     const m = aMorning({ waiting: false });
     await m.run();
     expect(m.sent[0].context.params[1]).toBe('In "Sales team, Q3", 5 of 6 people have checked in, and Omar has not yet.');
+  });
+
+  it('two of her check-ins with the same name are told apart by when each started', async () => {
+    const m = aMorning({ twins: true, waiting: false });
+    await m.run();
+    expect(m.sent[0].context.params[1]).toContain('In "Sales team, Q3, started 2 September"');
+    expect(m.sent[0].context.params[1]).toContain('In "Sales team, Q3, started 20 September"');
   });
 
   it('nothing on a day she is on leave', async () => {

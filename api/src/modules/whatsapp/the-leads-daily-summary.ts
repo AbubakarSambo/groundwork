@@ -9,6 +9,7 @@ import { keptOffThePhone } from './a-check-in-kept-off-the-phone';
 import { everyRowAPageAtATime } from './every-row-a-page-at-a-time';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { organisationsThatTurnedWhatsAppOn } from './only-where-whatsapp-is-turned-on';
+import { namesTheyCanTellApart } from '../../common/check-ins-you-can-tell-apart';
 import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
 import { theirApprovedLeave, fallsInLeave } from '../suites/who-is-away';
 import { theirRosterEntry } from '../suites/a-roster-entry-and-its-sign-in';
@@ -124,12 +125,13 @@ export async function sendTheLeadsDailySummaries(
   const { prisma } = deps;
   const grounds: any[] = await everyRowAPageAtATime((page) => prisma.ground.findMany({
     where: { status: { notIn: TERMINAL } },
-    select: { id: true, label: true, organizationId: true, overWhatsApp: true, initiatorId: true },
+    select: { id: true, label: true, createdAt: true, organizationId: true, overWhatsApp: true, initiatorId: true },
     ...page,
   }), 1000);
 
   /* Each lead's open check-ins that may go to a phone, per organisation. */
   const turnedOn = await organisationsThatTurnedWhatsAppOn(prisma, deps.whatsapp, grounds.map((g) => g.organizationId));
+  const startedOn = new Map<string, Date | null>();
   const byLead = new Map<string, { organizationId: string; leadId: string; checkIns: (ACheckInToday & { groundId: string })[] }>();
   for (const g of grounds) {
     if (keptOffThePhone(g)) continue;
@@ -140,7 +142,13 @@ export async function sendTheLeadsDailySummaries(
     const key = `${g.organizationId}|${g.initiatorId}`;
     const lead = byLead.get(key) ?? { organizationId: g.organizationId as string, leadId: g.initiatorId as string, checkIns: [] as (ACheckInToday & { groundId: string })[] };
     lead.checkIns.push({ ...today, groundId: g.id, label: g.label });
+    startedOn.set(g.id, g.createdAt);
     byLead.set(key, lead);
+  }
+  /* Two of her check-ins with the same name are told apart by when each started. */
+  for (const lead of byLead.values()) {
+    const said = namesTheyCanTellApart(lead.checkIns.map((c) => ({ id: c.groundId, label: c.label, startedAt: startedOn.get(c.groundId) })));
+    lead.checkIns = lead.checkIns.map((c) => ({ ...c, label: said.get(c.groundId) ?? c.label }));
   }
 
   let tried = 0;

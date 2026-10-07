@@ -38,6 +38,7 @@ import { sendTheTestCheckInMessages } from '../engagement/a-test-check-in-moves-
 import { theirPromiseToFollowUp } from '../engagement/a-follow-up-from-their-own-record';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { isNotLetInYet } from './who-an-admin-did-not-let-in';
+import { theNamesOfReadersCheckIns } from './the-names-of-a-readers-check-ins';
 
 /* Every kind a morning message is recorded under, sent, held or as a template. */
 const MORNING_KINDS = ['overdue', 'due-tomorrow', 'team-almost-in', 'your-view-matters', 'anchor-follow-up'].flatMap((k) => [k, `${k}:template`, `${k}:held`]);
@@ -712,6 +713,7 @@ export class GroundsCron implements OnApplicationBootstrap {
 
   private async sendSessionReadyNotificationsInner() {
     const now = new Date();
+    const nameFor = theNamesOfReadersCheckIns(this.prisma);
     await this.announceOpenedSessions(now);
     const frontend = this.config.get<string>('resend.frontendUrl') || '';
 
@@ -730,6 +732,7 @@ export class GroundsCron implements OnApplicationBootstrap {
           select: {
             id: true,
             email: true,
+            userId: true,
             ground: { select: { label: true, simplerWords: true } },
             /* No recordEntries here, structurally (NL-007): this sweep used to put the person's last
                private record line into the mail and the WhatsApp body as "Last time: ...". The product's
@@ -757,7 +760,7 @@ export class GroundsCron implements OnApplicationBootstrap {
          * every session on whichever number the organisation uses. This sweep used to send its own
          * WhatsApp message as well, so a person got two for one session (survey items 7 and 8).
          */
-        await this.email.sendSessionReady(p.email, p.ground.label, checkInUrl, p.ground.simplerWords);
+        await this.email.sendSessionReady(p.email, await nameFor({ userId: p.userId, email: p.email }, ci.groundId, p.ground.label), checkInUrl, p.ground.simplerWords);
 
         await this.prisma.checkIn.update({ where: { id: ci.id }, data: { sessionReadyNotifiedAt: now } });
       } catch (err: any) {
@@ -786,6 +789,7 @@ export class GroundsCron implements OnApplicationBootstrap {
   }
 
   async sendWhatsAppRemindersInner(now: Date = new Date()): Promise<{ sent: number }> {
+    const nameFor = theNamesOfReadersCheckIns(this.prisma);
     const waiting: any[] = await everyRowAPageAtATime((page) => this.prisma.checkIn.findMany({
       where: {
         status: CheckInStatus.NOT_STARTED,
@@ -838,7 +842,7 @@ export class GroundsCron implements OnApplicationBootstrap {
           : null;
         const phone = person?.phone ?? user?.phoneNumber ?? null;
         if (!phone) continue;
-        const who = { firstName: user?.firstName, label: ci.ground.label };
+        const who = { firstName: user?.firstName, label: await nameFor({ userId: ci.participant.userId, email: ci.participant.email }, ci.groundId, ci.ground.label) };
         let said;
         if (what === 'overdue') said = itIsOverdue(who, ci.ground.simplerWords);
         else if (what === 'due-tomorrow') said = itIsDueTomorrow(who, dueAt!, ci.ground.simplerWords);
@@ -1046,6 +1050,7 @@ export class GroundsCron implements OnApplicationBootstrap {
   }
 
   async sendWhatsAppOpensSoonInner(now: Date = new Date()): Promise<{ sent: number }> {
+    const nameFor = theNamesOfReadersCheckIns(this.prisma);
     const soon: any[] = await everyRowAPageAtATime((page) => this.prisma.checkIn.findMany({
       where: {
         status: CheckInStatus.NOT_STARTED,
@@ -1077,7 +1082,7 @@ export class GroundsCron implements OnApplicationBootstrap {
           : null;
         const phone = person?.phone ?? user?.phoneNumber ?? null;
         if (!phone) continue;
-        const said = itOpensSoon({ firstName: user?.firstName, label: ci.ground.label }, new Date(ci.availableFrom), ci.ground.simplerWords);
+        const said = itOpensSoon({ firstName: user?.firstName, label: await nameFor({ userId: ci.participant.userId, email: ci.participant.email }, ci.groundId, ci.ground.label) }, new Date(ci.availableFrom), ci.ground.simplerWords);
         await this.whatsapp.sendFor(ci.ground.organizationId, phone, said.text, { checkInId: ci.id, kind: said.kind, params: said.params });
         sent++;
       } catch (err: any) {

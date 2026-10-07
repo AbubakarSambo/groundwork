@@ -7,6 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CheckInStatus } from '@prisma/client';
 import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
+import { theNamesOfReadersCheckIns } from '../grounds/the-names-of-a-readers-check-ins';
 import { worthNudging, whatToSendThem } from './who-is-worth-nudging';
 import { nameToCall } from '../engagement/a-name-to-call-them';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
@@ -246,6 +247,8 @@ export class RemindService {
   private async sendScheduledNudgesHere(): Promise<void> {
     const now = new Date();
     const frontendUrl = (this.email as any).frontendUrl ?? 'http://localhost:5173';
+    /* Two check-ins of the same name are told apart in what each person reads. */
+    const nameFor = theNamesOfReadersCheckIns(this.prisma);
 
     // Load all NOT_STARTED check-ins with participant and ground context.
     const notStarted = await this.prisma.checkIn.findMany({
@@ -340,7 +343,7 @@ export class RemindService {
           const entry = forTheLead.get(key) ?? {
             to: lead.email,
             leadName: lead.firstName ?? null,
-            label: checkIn.ground.label,
+            label: await nameFor({ userId: (checkIn.ground as any).initiatorId, email: lead.email }, checkIn.groundId, checkIn.ground.label),
             chasedOn: policy.days,
             who: [],
             whoEmails: [],
@@ -401,9 +404,10 @@ export class RemindService {
       }
 
       try {
+        const theName = await nameFor({ userId: participant.userId, email: participant.email }, checkIn.groundId, checkIn.ground.label);
         const went = await this.email.sendNudge(
           participant.email,
-          checkIn.ground.label,
+          theName,
           checkInUrl,
           undefined,
           otherPartyCompleted,
