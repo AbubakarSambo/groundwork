@@ -154,7 +154,9 @@ export function leadsTheSameDepartment(viewer: Viewer | null | undefined, checkI
     && viewer.organizationId === checkIn.organizationId
     && !!viewer.department
     && !!checkIn.leadDepartment
-    && viewer.department === checkIn.leadDepartment;
+    && viewer.department === checkIn.leadDepartment
+    /* NEVER AN EVALUATION CHECK-IN (decision 75, item 25): a new hire, a performance plan, a promotion, a renewal or a probation is read by the people in it, who runs it and the admin who was given it, as the board and the report already say. A lead in the same department is none of them. */
+    && !(checkIn.scenario !== undefined && isEvaluationCheckIn(checkIn.scenario));
 }
 
 export function whatTheyMayRead(userId: string, viewer: Viewer | null | undefined, checkIn: CheckInInView): ReadLevel | null {
@@ -209,7 +211,7 @@ export function groundsAViewerMayList(
       { initiatorId: userId },
       { createdByUserId: userId },
       { participants: { some: { userId } } },
-      ...(viewer?.role === 'LEAD' && leadsOfTheirDepartment.length ? [{ initiatorId: { in: leadsOfTheirDepartment } }] : []),
+      ...(viewer?.role === 'LEAD' && leadsOfTheirDepartment.length ? [{ initiatorId: { in: leadsOfTheirDepartment }, scenario: { notIn: EVALUATION_SCENARIOS } }] : []),
     ],
   };
 }

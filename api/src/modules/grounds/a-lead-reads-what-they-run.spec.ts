@@ -27,7 +27,8 @@ describe('a lead', () => {
   });
   it('and the list carries the department\'s leads for a LEAD only', () => {
     const asLead = groundsAViewerMayList('me', { role: 'LEAD', organizationId: 'org' }, 'org', ['l1', 'l2']) as any;
-    expect(asLead.OR).toContainEqual({ initiatorId: { in: ['l1', 'l2'] } });
+    /* Updated in the privacy sweep: the department's leads, except for the evaluation check-ins they run (decision 75, item 25). */
+    expect(asLead.OR).toContainEqual({ initiatorId: { in: ['l1', 'l2'] }, scenario: { notIn: expect.arrayContaining(['PIP', 'NEW_HIRE']) } });
     const asMember = groundsAViewerMayList('me', { role: 'MEMBER', organizationId: 'org' }, 'org', ['l1']) as any;
     expect(JSON.stringify(asMember)).not.toContain('l1');
   });
