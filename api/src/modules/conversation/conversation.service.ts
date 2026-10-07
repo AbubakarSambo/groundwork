@@ -2985,8 +2985,14 @@ export class ConversationService {
      * challenge about accumulated claims, not a comment on the word just typed. See
      * what-we-have-so-far and reading-what-they-just-said.
      */
-    /* The idea offer's own yes or no is not something they said about the work (known issue B12). */
-    if (!((checkIn as any).ground?.startedFrom === STARTED_FROM_THE_ANCHOR && anAnswerToTheIdeaOffer(message))) {
+    /*
+     * The idea offer's own yes or no is not something they said about the work (known issue B12). Only while an offer is waiting for them: the check-in row
+     * carries no ground here, so the test read nothing and every "Yes, capture it" was noted; and a "Not now." typed to any other question is their answer
+     * and is kept (review of fd583ba5, where it was noted as a plan and read as contradicting the plan before it).
+     */
+    const answersAWaitingIdeaOffer = anAnswerToTheIdeaOffer(message)
+      && ((await (this.prisma as any).workItem?.count?.({ where: { groundId: checkIn.groundId, kind: 'idea-offered', ownerParticipantId: (checkIn as any).participantId ?? '' } })?.catch?.(() => 0)) ?? 0) > 0;
+    if (!answersAWaitingIdeaOffer) {
       this.noteWhatTheySaid(checkIn.id, message).catch((err: any) =>
         this.logger?.warn?.(`Notes not updated for ${checkIn.id}: ${err?.message}`));
     }
