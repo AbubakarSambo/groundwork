@@ -65,7 +65,7 @@ export interface NewPerson {
 }
 
 export const onboardingBoardApi = {
-  get: async (): Promise<{ people: NewPerson[] }> => (await apiClient.get('/suites/onboard/board')).data,
+  get: async (): Promise<{ people: NewPerson[] }> => (await apiClient.get('/suites/onboard/board', { skipForbiddenToast: true } as any)).data,
 }
 
 /** The leave board (GET /suites/leave/board): what is waiting, and who is off in the next two weeks. */
@@ -105,7 +105,7 @@ export interface LeaveToldToHr { id: string; name: string; startsOn: string; end
 export interface LeaveBoard { reader?: 'admin' | 'lead' | 'approver' | 'hr'; waiting: LeaveWaiting[]; off: LeaveOff[]; toldToHr?: LeaveToldToHr[] }
 
 export const leaveBoardApi = {
-  get: async (): Promise<LeaveBoard> => (await apiClient.get('/suites/leave/board')).data,
+  get: async (): Promise<LeaveBoard> => (await apiClient.get('/suites/leave/board', { skipForbiddenToast: true } as any)).data,
   /** `reason` is only ever sent with a decline (the controller's `DeclineDto`); the person is told it. */
   decide: async (id: string, outcome: 'approve' | 'decline', reason?: string): Promise<LeaveBoard> =>
     (await apiClient.post(`/suites/leave/requests/${id}/${outcome}`, outcome === 'decline' ? { reason } : undefined)).data,
@@ -127,7 +127,7 @@ export interface TimeAgreement { client: string; work: string; hours: number; sp
 export interface TimeBoard { thisWeek: string; weeks: TimeWeek[]; agreements: TimeAgreement[] | null }
 
 export const timeSheetsApi = {
-  get: async (): Promise<TimeBoard> => (await apiClient.get('/suites/time/board')).data,
+  get: async (): Promise<TimeBoard> => (await apiClient.get('/suites/time/board', { skipForbiddenToast: true } as any)).data,
   approve: async (weekOf: string, personId: string): Promise<TimeBoard> =>
     (await apiClient.post(`/suites/time/weeks/${weekOf}/people/${personId}/approve`)).data,
 }
@@ -223,7 +223,7 @@ export interface ReviewForThePerson {
 export type AReview = ReviewForTheWriter | ReviewForThePerson
 
 export const reviewsApi = {
-  board: async (): Promise<ReviewsBoard> => (await apiClient.get('/suites/reviews/board')).data,
+  board: async (): Promise<ReviewsBoard> => (await apiClient.get('/suites/reviews/board', { skipForbiddenToast: true } as any)).data,
   mine: async (): Promise<YourReview[]> => (await apiClient.get('/suites/reviews/mine')).data,
   start: async (dueId: string): Promise<{ id: string }> => (await apiClient.post(`/suites/reviews/due/${dueId}/start`)).data,
   one: async (id: string): Promise<AReview> => (await apiClient.get(`/suites/reviews/${id}`)).data,
@@ -307,7 +307,7 @@ export interface SpendBoard {
 }
 
 export const spendApi = {
-  get: async (): Promise<SpendBoard> => (await apiClient.get('/suites/spend/board')).data,
+  get: async (): Promise<SpendBoard> => (await apiClient.get('/suites/spend/board', { skipForbiddenToast: true } as any)).data,
   /** `reason` is only ever sent with a decline (the controller's `DeclineDto`); the person is told it, word for word. */
   decide: async (id: string, outcome: 'approve' | 'decline', reason?: string): Promise<SpendBoard> =>
     (await apiClient.post(`/suites/spend/requests/${id}/${outcome}`, outcome === 'decline' ? { reason } : undefined)).data,
@@ -400,7 +400,7 @@ export interface TodoList {
 }
 
 export const todosApi = {
-  get: async (): Promise<TodoList> => (await apiClient.get('/suites/todos/board')).data,
+  get: async (): Promise<TodoList> => (await apiClient.get('/suites/todos/board', { skipForbiddenToast: true } as any)).data,
 }
 
 /** Customers and deals (GET /suites/customers/board). */
@@ -409,7 +409,7 @@ export interface CustomerList {
 }
 
 export const customersApi = {
-  get: async (): Promise<CustomerList> => (await apiClient.get('/suites/customers/board')).data,
+  get: async (): Promise<CustomerList> => (await apiClient.get('/suites/customers/board', { skipForbiddenToast: true } as any)).data,
 }
 
 /** Equipment (GET /suites/equipment/board). Admins only. */
@@ -419,7 +419,7 @@ export interface EquipmentBoard {
 }
 
 export const equipmentApi = {
-  get: async (): Promise<EquipmentBoard> => (await apiClient.get('/suites/equipment/board')).data,
+  get: async (): Promise<EquipmentBoard> => (await apiClient.get('/suites/equipment/board', { skipForbiddenToast: true } as any)).data,
   add: async (item: { name: string; holderId: string | null; condition: string | null }): Promise<EquipmentBoard> =>
     (await apiClient.post('/suites/equipment/items', item)).data,
   change: async (id: string, change: { holderId: string | null; condition: string | null }): Promise<EquipmentBoard> =>
