@@ -61,9 +61,11 @@ import { recordRoundCompletion } from '../grounds/round-completion';
 import { screen, ASK_AGAIN, SentenceGate } from '../conversation/nothing-invented-reaches-them';
 import { SESSION_CLOSE_MARKER } from '../conversation/prompt-library';
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
-import { whyItRefuses } from '../grounds/a-ground-that-has-ended';
+import { whyAJoinLinkRefuses } from '../grounds/a-ground-that-has-ended';
 import { theThingsThatCannotBeMissed } from '../conversation/the-last-thing-it-reads-is-the-thing-it-must-not-miss';
 import { whatIsSettledAndWhatIsNot, type WhatSetupHasSoFar } from './what-setup-already-knows-travels-with-it';
+import { whatTheyAskedFor } from './what-they-asked-for-in-so-many-words';
+import { theAddressesTheyGave, withoutThePersonSettingItUp } from './the-people-the-lead-named-are-other-people';
 import { whatTheyAlreadyHave, ENOUGH_TO_RECOGNISE_THEM } from './setup-is-not-a-stranger-to-somebody-who-is-signed-in';
 import { theSetupHasStoppedAsking } from './a-gate-that-can-never-open-is-shut';
 import { onboardingIsReady as theGate, whatSetupNeverGot, anAimIsOwedHere } from './a-check-in-with-no-aim-has-nothing-to-read-against';
@@ -790,6 +792,10 @@ export class EntryService {
       goals?: string[];
       brief?: string;
       yourRole?: string;
+      /** The name the lead gave in so many words ("Call it ..."). Absent when they did not. */
+      name?: string;
+      /** An address the lead typed beside a name, kept with that name. */
+      peopleEmails?: Record<string, string>;
     } & TheSevenItems;
     ready: boolean;
     /** Party path only: setup can finish, but nobody has been named yet and they are told so. */
@@ -1103,7 +1109,7 @@ Rules:
     - A PARTY is done once you have mode, initial and decision, and you have ASKED how long and how
       often. WHO IS INVOLVED IS NOT A CONDITION: they are allowed to finish without naming anybody
       and the screen tells them so. Ask for the names once; do not hold the setup hostage to them.
-  Once you are done gathering, On that turn your reply MUST be a warm closer that contains NO question mark anywhere. A closer and a question are mutually exclusive: if you have what you need, you close and you do NOT ask one more thing; if you still genuinely need one of those four items, you ask for it and you do NOT wrap up yet. Never do both in the same reply. Do not close with "does that sound right?", "shall we begin?", "anything else?", or any other trailing question. Do NOT claim to have what you need, and do not summarise what you took down: the screen prints what is actually on the record directly underneath your reply, including anything still missing, so a claim from you can only contradict it. Say what happens next (the next screen asks who gives the accounts, then the check-in itself) and stop.
+  Once you are done gathering, On that turn your reply MUST be a warm closer that contains NO question mark anywhere. A closer and a question are mutually exclusive: if you have what you need, you close and you do NOT ask one more thing; if you still genuinely need one of those four items, you ask for it and you do NOT wrap up yet. Never do both in the same reply. Do not close with "does that sound right?", "shall we begin?", "anything else?", or any other trailing question. Do NOT claim to have what you need, and do not summarise what you took down: the screen prints what is actually on the record directly underneath your reply, including anything still missing, so a claim from you can only contradict it. Say what happens next (the next screen asks whether you will check in too, then the check-in itself) and stop.
 - AND SAY WHERE THE REST OF THE CONTEXT GOES, ONCE, IN THE CLOSER. A lead finishes setup believing
   this conversation was their only chance to explain the situation. It is not: the Context and
   resources tab takes documents, notes and anything else the check-ins should be held against, and
@@ -1114,7 +1120,7 @@ Rules:
 - THE CLOSER MUST NOT READ AS THE END OF EVERYTHING. "Thank you, that gives me what I need to set
   this up for you." is a full stop, and the screen then asks another question, so the product looks
   like it changed its mind. It is a HANDOVER, not a finish: say what you have, then say plainly that
-  the next screen asks who gives the accounts, and that the check-in itself comes after that. Two
+  the next screen asks whether they will check in too, and that the check-in itself comes after that. Two
   sentences. Somebody who knows what is coming does not experience the next question as an
   interruption.`.trim();
 
@@ -1335,6 +1341,26 @@ from finishing at all.`;
      * See a-gate-that-can-never-open-is-shut.ts. It is not a lowered bar; it is the only reading of
      * the gate that a person can actually get past.
      */
+    /*
+     * WHAT THE LEAD SAID IN SO MANY WORDS BEATS WHAT THE MODEL MADE OF IT (user journeys, F-2 and F-3). A rhythm said beside "check in", a length
+     * said as "for twelve weeks" and "Call it ..." are read from the lead's own messages, so the check-in is not set up on the situation's default
+     * (every month, 360 days, the card's title) when they said otherwise. Nothing is added that they did not say.
+     */
+    {
+      const said = whatTheyAskedFor(messages.filter((m) => m.role === 'user').map((m) => m.content));
+      if (said.cadence) extracted.cadence = said.cadence;
+      if (said.timelineDays && extracted.runsUntilEnded !== true) extracted.timelineDays = said.timelineDays;
+      if (said.name) (extracted as any).name = said.name;
+      /* The people they named are other people (never the one setting it up), and an address typed beside a name stays with it (F-6). */
+      if (extracted.peopleNamed?.length) {
+        const me = askedBy?.userId
+          ? await this.prisma.user.findUnique({ where: { id: askedBy.userId }, select: { firstName: true, lastName: true } }).catch(() => null)
+          : null;
+        extracted.peopleNamed = withoutThePersonSettingItUp(extracted.peopleNamed, me);
+        const theirAddresses = theAddressesTheyGave(extracted.peopleNamed, messages.filter((m) => m.role === 'user').map((m) => m.content));
+        if (Object.keys(theirAddresses).length) (extracted as any).peopleEmails = theirAddresses;
+      }
+    }
     const stoppedAsking = theSetupHasStoppedAsking(messages, reply);
     /*
      * THE AIM IS NOT IN THIS GATE, AND a-check-in-with-no-aim-has-nothing-to-read-against HOLDS THE
@@ -1391,6 +1417,10 @@ from finishing at all.`;
       if (out !== reply) this.logger.log('Setup: they had just pasted it, so the ask to paste it came out of the reply.');
     }
 
+    /* Nobody reads the word "account" for what somebody says (user journeys, F-6): where the reply still says it, it says who checks in. */
+    out = out
+      .replace(/\bwho (?:gives|should give|will give) (?:the |their |your )?accounts?\b/gi, 'whether you will check in too')
+      .replace(/\bwho (?:gives|should give|will give) (?:an? )?account\b/gi, 'whether you will check in too');
     return { reply: out, extracted, ready, needsPeople };
   }
 
@@ -2211,8 +2241,15 @@ from finishing at all.`;
     };
     /* Fix plan B15: the client's cadence state starts at FORTNIGHTLY and is sent whether or not
        anybody picked it, so every ground set up here recorded a choice nobody made. */
+    /* What they said in so many words fills only what nobody picked on the screen (user journeys, F-2). */
+    const theyAsked = whatTheyAskedFor([
+      ...((dto.history ?? []).filter((t) => t.role === 'user').map((t) => t.content)),
+      ...(dto.leadsOwnWords ?? []).filter((t) => typeof t === 'string'),
+    ]);
     const chosenCadence: Cadence | undefined =
-      dto.cadenceChosen === true && dto.cadence && cadenceMap[dto.cadence] ? cadenceMap[dto.cadence] : undefined;
+      dto.cadenceChosen === true && dto.cadence && cadenceMap[dto.cadence] ? cadenceMap[dto.cadence]
+        : theyAsked.cadence ? cadenceMap[theyAsked.cadence] : undefined;
+    const howLongTheyAsked = !dto.lastCheckInBy && dto.runsUntilEnded !== true && theyAsked.timelineDays ? theyAsked.timelineDays : undefined;
 
     // --- Coordinator/lead path ---------------------------------------------
     // The committer is setting this ground up for someone ELSE to run: route
@@ -2245,6 +2282,7 @@ from finishing at all.`;
         /* A default the page sent is not a choice. Only a confirmed pick is handed on; the ground
            service records an absent cadence as unstated and takes the scenario's recommendation. */
         cadence: chosenCadence,
+        ...(howLongTheyAsked ? { timelineDays: howLongTheyAsked } : {}),
         runsUntilEnded: dto.runsUntilEnded === true ? true : undefined,
         cadenceAnchorDay: dto.cadenceAnchorDay ?? undefined,
         workingDays: dto.workingDays ?? undefined,
@@ -2341,7 +2379,7 @@ from finishing at all.`;
       endsAt: theAnchorIsOn ? theMonthEnds : dto.lastCheckInBy || undefined,
       /* Thirty days, which is four weekly sessions. Without it the length was read from the end date, which counts the weeks that start inside it, five, and
          the members read "Session 1 of 5" (review of fd583ba5). */
-      ...(theAnchorIsOn ? { timelineDays: DEFAULT_TIMELINE_DAYS.HELP_TEAM_UNDERSTAND } : {}),
+      ...(theAnchorIsOn ? { timelineDays: DEFAULT_TIMELINE_DAYS.HELP_TEAM_UNDERSTAND } : howLongTheyAsked ? { timelineDays: howLongTheyAsked } : {}),
       brief,
       freeParticipantCap: isBroadcast ? 100 : DEFAULT_FREE_MEMBER_LIMIT,
       /*
@@ -2644,7 +2682,13 @@ from finishing at all.`;
     // A TOTAL invite failure is NOT intent - the ground stays OPEN ("parties
     // may not all be added") and failedInvites tells the client to surface it
     // with a resend path, instead of silently rebranding it a solo ground.
-    if (dto.contributors.length === 0) {
+    /*
+     * BUT NOT WHILE IT WAITS FOR AN ADMIN. A check-in the organisation holds for approval stays held, whether or
+     * not anybody is named on it: this line moved a held check-in to ACTIVE, so the lead could then add people
+     * from its settings page and invitations went out before any admin had said yes (user journeys, F-8).
+     * `grounds.create` already decided whether it waits, by the same rule as POST /grounds.
+     */
+    if (dto.contributors.length === 0 && !answer.waits) {
       await this.prisma.ground.update({ where: { id: ground.id }, data: { status: 'ACTIVE' as any } });
     }
 
@@ -2795,7 +2839,7 @@ from finishing at all.`;
     });
     if (!ground) throw new NotFoundException(whyThisDidNotWork('that link is not one we know'));
     /* Nobody is mailed a way into a check-in that is over or on hold. See grounds.service#getJoinPreview. */
-    const refused = whyItRefuses(ground.status, ground.endState, 'anybody else', ground.scenario);
+    const refused = whyAJoinLinkRefuses(ground.status, ground.endState, ground.scenario);
     if (refused) throw new BadRequestException(refused);
 
     const email = dto.email.trim().toLowerCase();
@@ -2860,7 +2904,7 @@ from finishing at all.`;
     });
     if (!ground) throw new NotFoundException(whyThisDidNotWork('that link is not one we know'));
     /* Asked before anything is made: no account, no participant row and no session on a ground that has ended or is held. */
-    const refusedNow = whyItRefuses(ground.status, ground.endState, 'anybody else', ground.scenario);
+    const refusedNow = whyAJoinLinkRefuses(ground.status, ground.endState, ground.scenario);
     if (refusedNow) throw new BadRequestException(refusedNow);
 
     const email = pending.email;

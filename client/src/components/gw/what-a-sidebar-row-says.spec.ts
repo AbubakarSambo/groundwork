@@ -28,6 +28,11 @@ describe('what a sidebar row says', () => {
       .toBe('Coamana growth, Q3 paying customers. Nobody has checked in yet for session 2 of 12, and one thing is still open.')
   })
 
+  it('when one of several has, it is one person who has, among several people (F-18)', () => {
+    expect(whatTheRowSays({ ...base, attention: { kind: 'waiting', done: 1, total: 3 } }))
+      .toBe('Coamana growth, Q3 paying customers. 1 of 3 people has checked in for session 2 of 12, and one thing is still open.')
+  })
+
   it('when some have', () => {
     expect(whatTheRowSays({ ...base, attention: { kind: 'waiting', done: 2, total: 5 }, alignment: { agreed: 3, open: 2 } }))
       .toBe('Coamana growth, Q3 paying customers. 2 of 5 people have checked in for session 2 of 12, and 2 things are still open.')

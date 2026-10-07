@@ -83,7 +83,7 @@ describe('the board never names somebody with the lead’s note', () => {
     const { asTheirNote, elsewhere } = whereTheNoteIs()
     expect(elsewhere).toEqual([])
     expect(asTheirNote.length).toBeGreaterThan(0)
-    for (const n of asTheirNote) expect(n).toBe('Daniel9k2. You wrote “PRIVATE-DESCRIPTION-9k2 is not meeting targets”.')
+    for (const n of asTheirNote) expect(n).toBe('Your note on Daniel9k2PRIVATE-DESCRIPTION-9k2 is not meeting targets.') /* heading, then the note beneath it; textContent joins them */
     expect(document.body.textContent).not.toMatch(/teammate/i)
   })
 

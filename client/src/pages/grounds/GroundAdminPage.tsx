@@ -1,5 +1,6 @@
-import { numberUpToTenInWords } from '@/lib/a-number-up-to-ten-in-words'
 import { AnAdminDecidesWhetherItStarts } from './an-admin-decides-whether-it-starts'
+import { TheLeadsNote } from '@/components/gw/TheLeadsNote'
+import { howManyCheckedInSentence } from '@/lib/how-many-checked-in'
 import { howItEnded, hasStalled, itRanOutOfTime } from '@/lib/a-ground-that-has-ended'
 import { scrollToId } from '@/lib/scroll-to'
 import { whenItRunsOut, sayHowLongIsLeft } from '@/lib/when-it-runs-out'
@@ -30,7 +31,7 @@ import type { ParticipantRequest } from '@/api/participantRequests'
 import { toast } from 'sonner'
 import { CodeShareCard } from '@/components/CodeShareCard'
 import { PostSessionPanel } from '@/components/PostSessionPanel'
-import { theLeadsNote, waitsForItsStart } from '@/lib/the-leads-note'
+import { waitsForItsStart } from '@/lib/the-leads-note'
 import { useOpenSession } from '@/hooks/useOpenSession'
 import { SessionPaywallModal } from '@/components/gw/checkin/SessionPaywallModal'
 import { BetweenCheckIns } from '@/components/gw/BetweenCheckIns'
@@ -1628,9 +1629,7 @@ export function GroundAdminPage() {
                * not a one-member "people".
                */
               parts.push(
-                roundDone === 0
-                  ? 'Nobody has checked in yet.'
-                  : `${capitalFirst(numberUpToTenInWords(roundDone))} of the ${numberUpToTenInWords(total)} ${total === 1 ? 'person' : 'people'} ${roundDone === 1 ? 'has' : 'have'} checked in for session ${openRound}.`,
+                howManyCheckedInSentence(roundDone, total, openRound),
               )
             }
             if (roundWentBack) parts.push(`It went back to session ${openRound}, because somebody new was added. Nothing anybody wrote is lost.`)
@@ -2105,7 +2104,7 @@ export function GroundAdminPage() {
                           ) : (
                             <div className="gwui-button-row">
                               {/* "Your note" to the lead who wrote it, never to an admin (U.7 review). */}
-                              {isInitiator && p.roleAsDescribed && <span data-leads-note className="gwui-note">{theLeadsNote(p.roleAsDescribed)}</span>}
+                              {isInitiator && p.roleAsDescribed && <TheLeadsNote role={p.roleAsDescribed} className="gwui-note" />}
                               {/* What someone is answerable for is the lead's to set, or their own.
                                   Every party could edit every other party's remit, on a ground
                                   that may be deciding whether they keep their job.
@@ -2738,5 +2737,3 @@ function Shell({ children }: { children: React.ReactNode }) {
   return <div className="gwui-page-shell">{children}</div>
 }
 
-/** The first letter in capitals, for a number said in words at the start of a sentence. */
-function capitalFirst(t: string): string { return t ? t[0].toUpperCase() + t.slice(1) : t }

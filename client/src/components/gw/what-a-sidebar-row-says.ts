@@ -42,7 +42,7 @@ export function whatTheRowSays(f: RowFacts): string {
     case 'waiting':
       state = f.attention.done === 0
         ? `nobody has checked in yet for session ${of(f.round)}`
-        : `${f.attention.done} of ${f.attention.total} people have checked in for session ${of(f.round)}`
+        : `${f.attention.done} of ${f.attention.total} ${f.attention.total === 1 ? 'person' : 'people'} ${f.attention.done === 1 ? 'has' : 'have'} checked in for session ${of(f.round)}`
       break
     default:
       if (f.closed) state = 'this check-in has ended'

@@ -96,6 +96,8 @@ interface OnboardingSelections {
   whoInvolved?: string
   /** One entry per individual. "My team" is zero entries, not one. Empty is what drives the warning. */
   peopleNamed?: string[]
+  /** An address the lead typed beside a name, kept with that name. */
+  peopleEmails?: Record<string, string>
   goals?: string[]
   checkinTiming?: string
   timeframe?: string
@@ -2278,6 +2280,7 @@ export function EntryChatPage() {
           ...(res.extracted.initial ? { initial: res.extracted.initial! } : {}),
           ...(res.extracted.whoInvolved ? { whoInvolved: res.extracted.whoInvolved! } : {}),
           ...(res.extracted.peopleNamed?.length ? { peopleNamed: res.extracted.peopleNamed! } : {}),
+          ...(res.extracted.peopleEmails ? { peopleEmails: res.extracted.peopleEmails } : {}),
           ...(res.extracted.decision ? { decision: res.extracted.decision! } : {}),
           ...(res.extracted.goals ? { goals: res.extracted.goals! } : {}),
           ...(res.extracted.brief !== undefined ? { brief: res.extracted.brief! } : {}),
@@ -2344,6 +2347,8 @@ export function EntryChatPage() {
            * they said and the click starts it.
            */
         }
+        /* The name they gave in so many words ("Call it ..."), unless they have already typed one in the header (user journeys, F-3). */
+        if (res.extracted.name && (!groundName.trim() || groundName === 'Entry session')) setGroundName(res.extracted.name)
         if (res.extracted.cadence) { setCadence(res.extracted.cadence); setCadenceChosen(true) }
         if (res.extracted.timelineDays && res.extracted.timelineDays > 0) {
           /**
@@ -4568,7 +4573,7 @@ export function EntryChatPage() {
                   ) : (
                     <button
                       type="button" className="gwui-plain-link"
-                      onClick={() => { setAddingContributorFor(key); setAddingContributorEmail(''); setAddingContributorLabel(label); setAddingContributorError('') }}
+                      onClick={() => { setAddingContributorFor(key); setAddingContributorEmail(onboardingSelections.peopleEmails?.[label.split(' - ')[0].trim()] ?? ''); setAddingContributorLabel(label); setAddingContributorError('') }}
                     >
                       Add them
                     </button>

@@ -719,7 +719,7 @@ export class EmailService implements OnModuleInit {
     await this.sendEmail({
       to: email,
       subject: `You've been added to ${orgName} on Groundwork`,
-      html: this.layout(`<p>${greeting(firstName)}</p><p>${escapeHtml(orgName)} added you to their Groundwork workspace. Groundwork runs structured check-ins across a team and surfaces alignment and gaps in a shared report. The people in each check-in you join can see what you say in it. Your questions to ${escapeHtml(askName(orgName))} stay private.</p><p><a href="${url}">Accept invite</a></p><p style="color:#888;font-size:12px;">If you were not expecting this, you can ignore this email. Nothing is active until you click the link.</p>`),
+      html: this.layout(`<p>${greeting(firstName)}</p><p>${escapeHtml(orgName)} has added you to Groundwork. Groundwork runs structured check-ins across a team and surfaces alignment and gaps in a shared report. The people in each check-in you join can see what you say in it. Your questions to ${escapeHtml(askName(orgName))} stay private.</p><p><a href="${url}">Accept invite</a></p><p style="color:#888;font-size:12px;">If you were not expecting this, you can ignore this email. Nothing is active until you click the link.</p>`),
     }, undefined, 'sendUserInvite');
   }
 

@@ -3,6 +3,7 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 import { isSessionShared } from '@/lib/session-rows'
 import { numberUpToTenInWords } from '@/lib/a-number-up-to-ten-in-words'
+import { howManyCheckedInSentence } from '@/lib/how-many-checked-in'
 
 /**
  * THE CONFIRM WALK OF 7 OCTOBER: three sentences that were wrong on screen.
@@ -23,8 +24,11 @@ describe('the confirm walk’s three sentences', () => {
   it('the count of who has checked in is said in words', () => {
     expect(numberUpToTenInWords(1)).toBe('one')
     expect(numberUpToTenInWords(2)).toBe('two')
+    /* The engine's F-18 made this one shared sentence (lib/how-many-checked-in.ts), and the page
+       calls it; the words now live there, so this reads the sentence it gives. */
     const src = read('GroundAdminPage.tsx')
-    expect(src).toContain('numberUpToTenInWords(roundDone)')
+    expect(src).toContain('howManyCheckedInSentence(roundDone, total, openRound)')
+    expect(howManyCheckedInSentence(2, 3, 1)).toBe('Two of the three people have checked in for session 1.')
     expect(src).not.toMatch(/\$\{roundDone\} of \$\{total\} \$\{roundDone === 1 \? 'person has'/)
   })
 

@@ -629,7 +629,7 @@ export class UsersService {
       })).catch(() => []);
       for (const r of rows ?? []) mayOpen.add(r.id);
     }
-    const namedFor = <T extends { id: string }>(all: T[]) => ({ checkIns: all.filter((c) => mayOpen.has(c.id)), checkInsYouCannotOpen: all.filter((c) => !mayOpen.has(c.id)).length });
+    const namedFor = <T extends { id: string }>(all: T[]) => ({ checkIns: all.filter((c) => mayOpen.has(c.id)) });
 
     return {
       data: [...users.map((u) => ({

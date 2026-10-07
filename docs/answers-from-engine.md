@@ -19,6 +19,10 @@ Read this one from their side with:
 
 *Read at 26 September against `920f67f8`.*
 
+## 7 October: `checkInsYouCannotOpen` is gone from the People list (privacy sweep)
+
+`GET /users` no longer sends `checkInsYouCannotOpen`. The only check-ins an admin cannot open are evaluation ones, so the count told an admin that a person was under one. `checkIns` still names only the check-ins the reader may open, and nothing is said of the rest. If a screen showed "and N more you cannot open", it should show nothing there.
+
 ## 6 October: "Use simpler words" is built, for the screens to show
 
 **The label and its one sentence, to copy exactly.**

@@ -1,14 +1,14 @@
-# The release, for Hafsah
+# The release, for Abubakar
 
 ## Before you merge
 
 Tick each one before merging. The full steps are in `docs/deploy.md`, "The release night, in order".
 
 - [ ] **Take a backup of the database first**, and write down the time. Nothing else happens before it.
-- [ ] **How many proxies sit in front of the live API** (for example a load balancer, plus a content network like Cloudflare)? If more than one, set `TRUST_PROXY_HOPS` to that number (the default assumes 1).
+- [ ] **How many proxies sit in front of the live API** (for example a load balancer, plus a content network like Cloudflare)? If more than one, set `TRUST_PROXY_HOPS` to that number (the default assumes 1). The API writes one warning in its log at start while this is unset, and starts anyway.
 - [ ] **`SETTINGS_ENCRYPTION_KEY` is set** on each hosted environment, made with `openssl rand -base64 32`, a different one for each environment, and never changed later.
 - [ ] **`NODE_ENV=production`** is set on production.
-- [ ] **The API runs on Node 20**, as the hosting builds it.
+- [ ] **Which Node runs the API and the client.** Your commit "fix: node" asks for Node 24. Our notes said Node 20. The build and the production start check pass on both (Node 20.20.2 and Node 24.21.0), so either is fine; please say which the hosts run.
 - [ ] **The migrations apply in order.** The API applies them itself when it starts (`prisma migrate deploy`). If one fails, the API does not start.
 - [ ] **The four one-off scripts run in this order**, each as a dry run first and then with `--hosted-database --write`:
   1. `stamp-said-word-for-word.ts`
@@ -17,81 +17,80 @@ Tick each one before merging. The full steps are in `docs/deploy.md`, "The relea
   4. `bring-a-check-in-up-to-date.ts`
 - [ ] **The rollback rule is understood:** restore the database backup and the old code together, never the code alone. One migration dropped a column, so the old code cannot read the new database.
 
-Hafsah opens the pull request herself. Nothing here has been pushed anywhere except Hafsah's own `wip/` branches, and nothing has been deployed.
+## What is in it
 
-The branch to open it from is `wip/release` on Hafsah's own copy. It is `wip/plain-reports` (the engine work), joined with `wip/prototype-ui` (the screens work) and with `wip/live-base` (Hafsah's exact copy of the live line, at `5197f22d`).
+This is the whole build: the engine work, the screens work, and everything you changed on the shared line, joined on the branch `wip/release`.
 
-## What the release does
+1. **Plain reports and boards.** Every report, board and check-in list is written in plain, full sentences, with people's names, and the reader is "you".
+2. **The prototype's screens**: the check-in pages, the boards for each kind of work, the You board, Today, Ask Groundwork, the Company page and the suites.
+3. **WhatsApp on Groundwork's own number** (decisions 82, 83, 106 and 112): check-ins, reminders, approvals and the lead's morning summary. At most one routine message a day for each person, across email and WhatsApp together. An organisation's own number is an advanced option kept out of the way.
+4. **The suites** (decision 85): leave, hours, spending and finance, reviews, leaving, the role map, customers, equipment and to-dos. Each is off for every organisation until an admin turns it on.
+5. **Staying in touch** (decision 109): "here is what is new" made from the person's own data, one-click opt-out with a confirmation, and a daily lead summary that is skipped when nothing changed.
+6. **Privacy, enforced on the server**, each with a test. What a lead writes about a person never reaches that person. A lead in the same department does not read evaluation check-ins she is not in. A person held for a seat keeps their own answers and own report and nothing else. An email address is never shown in place of a name.
+7. **Safety fixes**: only the person who runs a check-in, or an organisation admin, can resend an invitation; the scheduled jobs' lock is held on one connection; each visitor is counted by their own address in the rate limits; the WhatsApp webhook answers at once and never does a message twice.
+8. **The anchor scenario**, built and switched off (`release.anchorScenario`).
 
-1. **Plain reports and boards.** Every report, board and check-in list is written in plain, full sentences, with people's names, and the reader is "you". The 24 scenarios and their right answers (`theDecision`) are the measure, and `tools/score_run.py` checks nothing the engine did well before was lost.
-2. **The prototype's screens.** The check-in pages, the boards for each kind of work, the You board, Today, Ask Groundwork and the suites look and read as the prototype does.
-3. **WhatsApp for the first client** (decisions 82 and 83): check-ins, reminders, approvals and the lead's morning summary on WhatsApp, at most one message a day from Groundwork, and only where the organisation and the platform have turned it on.
-4. **The suites** (decision 85): leave, hours, spending and finance, reviews, leaving, the role map, customers and equipment. Each is off for every organisation until an admin turns it on.
-5. **Privacy, enforced on the server.** The second privacy review's leaks are closed, each with a test. Somebody held for a seat, or waiting for the organisation to let them in, is shown no check-in and sent no reminder.
-6. **The anchor scenario**, built and switched off (`release.anchorScenario`).
+Existing clients get the whole build (decision 90). Their check-ins move to the new boards through the one-off scripts above.
 
-Existing clients get the whole build (decision 90). Their check-ins move to the new boards through the release scripts below.
+## Your changes since #322
 
-## Does it join the live line cleanly
+All seven of your commits from 6 October are in, and nothing of yours was dropped. The details are in `docs/staging-compatibility.md`, section 9.
 
-Yes. The full check is in `docs/staging-compatibility.md`. In short:
+| Your commit | What it did | Where it is now |
+| --- | --- | --- |
+| `9771bbcd` "fix: node" | The Node version in both `package.json` files, 20 to 24 | Kept as it is. |
+| `9a84afb7` | Three lines on the Today page | Already in the merged file. |
+| `18bb53e4`, `6a4d67a1`, `8a73ee23`, `ba198931`, `59533562` "fix: map" | 50 client files guard against a list coming back empty | Carried in line by line. Four lines sat in three pages the screens later rewrote with the same guards, so they are covered. |
 
-- All 20 of the live line's commits since our work began are in our branch, including Abubakar's three client fixes.
-- The join has no conflicts.
-- All migrations apply on an empty database. Our 68 new ones all come after the live line's last.
-- The API starts with every new setting missing, and each new feature then reads as off.
-- A clean install and build pass for the API and the client.
-
-**Not tested:**
-- Our migrations on top of a copy of the live data. The safety check refused the command that would have built it. This needs one run on a copy of the real data, after the backup.
-- A build on Node 20, which the hosting uses. Only Node 26 is on this computer.
+The join had one conflict, in `docs/known-issues.md`, and it was resolved by keeping both sides.
 
 ## Every result
 
-From the final round on `wip/release`, 5 October 2026, between 02:30 and 05:30.
+All from 7 October, on the merged code.
 
 | Check | Result |
 | --- | --- |
-| API tests | All 16,518 pass, in 1,692 suites. Two are skipped on purpose: the live WhatsApp journeys (run separately, below) and one that needs a saved run on disk. |
-| Client tests | All 4,138 pass. Six timed out once while the API tests ran at the same time, and all six pass when run on their own. |
-| Typechecks (API and client) | Both pass. |
-| Clean install and build (API and client) | Both pass, from a fresh checkout with `npm ci` and `npm run build`. |
-| The 24-scenario run, against the baseline (run-32) | Every problem count is 0. Every engine number holds or rises except "proof asked for" (36 against 42), which is the open question about how the scorer counts "picture". Commitments recorded: 60 (33 before). All 32 reports ran on the active stored prompt (`report_synthesis` version 7). |
-| The 24-scenario run, read sentence by sentence | 16 of 24 reach the right answer, 7 partly, 1 not. The two judgements that go against the right answer are in sales and discovery, and both are the model's own reading. It found no privacy leak, no label on a person, and no person reading the lead's judgement. Three wording faults it found are fixed: the line about meetings where nobody met, names written in small letters, and the dash in the report's note. 59 smaller wording faults are listed for after the release. |
-| The adversarial scenarios (8) | 7 of 8 pass every check. In the eighth (a lead asks Groundwork to build a case against Tunde), Groundwork now says plainly that it will not. What is still open is a privacy question for you, below. |
-| Browser journeys (4) | All 4 pass, in 3.6 minutes, against a fresh database. |
-| WhatsApp journeys | 107 of 107 checks pass, against a fresh database, with test values only. The slowest reply took 45 seconds. |
-| Existing clients carry on | The local test passes. The two checks on a copy of the live data need the data from you. |
-| Privacy sweep | Passes. 7,075 reads as 13 kinds of reader, no leak, 0 writes. One wording fault it found was fixed: the model had put "you say that" into a line the person never said. |
+| API tests | All 18,029 pass, in 1,838 suites. Two are skipped on purpose (live journeys run separately). |
+| Client tests | All 4,602 pass. |
+| Typechecks | The API (`tsc --noEmit`) and the client (`tsc -b`) are clean. |
+| Clean install and build | Both pass, from a fresh checkout with `npm ci`, using the build commands in `api/railway.toml` and `client/vercel.json`. |
+| Production start | `npm run check:production-start` passes on Node 20.20.2 and on Node 24.21.0: it starts, `/health` says ok, `/embed.js` answers. |
+| Migrations, empty database | All 365 apply, and a second run finds nothing to apply. |
+| Migrations, on the shared line's own schema | A database built with the shared line's 361 migrations, with rows like an existing client, takes our 4 new ones. None fails and every row reads the same afterwards. |
+| The 24-scenario run (run-oct7c), against the baseline | Every problem count is 0. Every engine number holds or rises except "proof asked for": 34 against 42. About three quarters of that count is the word "picture" ("a clearer picture"); two runs of the same code moved it by 7. Commitments recorded 59 (33 before), agreements 75 (56), jargon in Groundwork's turns 20 (42). Every report and judgement ran on the active stored prompts. |
+| Judgements against the right answer | 13 right, 9 partly, 2 missed (loans and openread). |
+| Adversarial set | 32 of 35 checks pass. The three are explained under "Needs Hafsah"; none is a leak by the rules. |
+| User journeys (admin, lead, team member) | Browser and WhatsApp, from a clean install, with the model. Every fault found was fixed, then the journeys were run again: 129 of 130 pass. The one left is the model's own wording in one report sentence. |
+| WhatsApp journeys | 230 of 232 at the first run; both faults fixed. Groundwork's own number and an organisation's own number never cross (32 of 32). A guest asks only about their own check-in (34 of 34). |
+| Privacy sweep | 168 routes read on the server as 12 kinds of reader, then a final re-check of 2,016 calls after the last fixes. No reader can open anything they should not. The faults it found are fixed: a same-department lead reading evaluation check-ins, a join link working on a check-in still waiting for an admin, and a promise listed twice in Ask. |
+| Existing clients | Old against new on a copy of the existing-clients data: 0 leaks, wording worse in nothing. 12 lines say a person held for a seat no longer reads the team's board or report; that is decision 110 (B3), on purpose. The carry-on test passes 10 of 10. |
 
-## Switches
+## What is switched off
 
-Each is one row in `platform_settings`. A missing row reads as the safe default. The full table is in `docs/deploy.md`, "Hidden at release" and section 4.
+Each is one row in `platform_settings`, and a missing row reads as the safe default. The full table is `docs/deploy.md`, section 4.
 
 | Switch | At release |
 | --- | --- |
-| `release.boardKindsOffered` | Sales org and engineering release only |
+| `release.anchorScenario` | Off |
 | `release.contextInAskGroundwork` | Off |
 | `release.planAndBillingNewParts` | Off |
-| `release.anchorScenario` | Off |
-| `pricing.freeTrial` | Off, until Stripe is wired and tested |
-| `whatsapp_enabled` | Off, until Meta approves the templates |
+| `release.boardKindsOffered` | Sales and engineering release only |
+| `pricing.freeTrial` (the trial and the WhatsApp add-on) | Off until switched on by step 13a in `docs/deploy.md` |
+| `whatsapp_enabled` | Off until Meta approves the templates (`docs/whatsapp-templates.md`) |
 | Each organisation's WhatsApp add-on | Off |
 | Each organisation's suites | Off |
+| "Use simpler words" | Off for every check-in |
+| Learned weights, prompt self-learning | Off |
 
 ## Release steps
 
-The full list, in order, is `docs/deploy.md`, "The release night, in order". The short form:
+The full list is `docs/deploy.md`, "The release night, in order". In short:
 
-1. **Take a backup first**, and write down the time.
-2. Set the hosted settings, including the WhatsApp ones in `docs/whatsapp-settings.md`. Leave every switch above at its default.
-3. Release the API. On start it applies the new migrations and adds the prompts.
-4. Check `/health`, the migrations and the active prompts.
-5. Run the four one-off scripts in this order, each as a dry run first and then with `--hosted-database --write`. Each asks for the database's host name to be typed back, and writes nothing without it:
-   1. `stamp-said-word-for-word.ts`
-   2. `bring-the-checkability-read-up-to-date.ts`
-   3. `give-each-check-in-its-kind-of-work.ts` (it calls the model)
-   4. `bring-a-check-in-up-to-date.ts`
+1. **Take the backup first**, and write down the time.
+2. Set the hosted settings: `SETTINGS_ENCRYPTION_KEY`, `TRUST_PROXY_HOPS` if more than one proxy, `NODE_ENV=production`, and the WhatsApp ones in `docs/whatsapp-settings.md`. Leave every switch above at its default.
+3. Release the API. On start it applies the 4 new migrations and adds the prompts.
+4. Check `/health`, that the migrations finished, and the active prompts.
+5. Run the four one-off scripts in order, each as a dry run first and then with `--hosted-database --write`. Each asks for the database's host name to be typed back.
 6. Read what each person reads on a test organisation.
 7. Turn things on one at a time, never on the day of the migrations.
 
@@ -99,21 +98,16 @@ The full list, in order, is `docs/deploy.md`, "The release night, in order". The
 
 Restore the database backup and the old code together, never the code alone. One migration dropped a column, so the old code cannot read the new database.
 
+## Not in this release, and known
+
+- **Prompt changes waiting for a full run.** The anchor's member questions still borrow the project's, suggested replies can carry "..." placeholders, some prompt lines read back to front, and judgements sometimes call one named person "they". Each needs a full 24-scenario run to prove nothing is lost, so none is in this release. The anchor is switched off.
+- **The rest of `docs/known-issues.md`**: 4 Broken entries that need you or Hafsah (the templates, the release-night steps, the hosting questions), and the Wrong and Untidy entries, none of which reaches a private word.
+
 ## Needs Hafsah
 
-1. ~~Run our migrations once on a copy of the live data.~~ **Done on this computer, 5 October, and it passes.** A local database was built from the live line's 290 migrations, existing-client rows were put in it first so "fails on existing data" was exercised rather than argued, and our 69 were applied on top: **359 applied, 0 failed**, every pre-existing row unchanged, the WhatsApp add-on prices landed on the plan rows that were already there, and the only drift against the model is the cosmetic index-name shortening. Details in `docs/staging-compatibility.md`. **You should still run it once on a copy of the real data after the backup**, because real data has shapes a seed does not, but it is no longer an unknown.
-2. **Build once on Node 20**, which the hosting uses. Only Node 26 is on this computer.
-3. **The two existing-client checks** (`docs/existing-users.md`) need a copy of the live data.
-4. **A privacy question on evaluation check-ins.** In the adversarial scenario, Tunde says in his own check-in "I'm actually looking for another job." His lead, Dayo, reads that in the report and on the board. Tunde reads "Dayo Ogunleye has concluded the only path forward is an exit." Both follow the rule that what people say in a check-in can be shown to the people in it. His father's dialysis stays private, as the circumstances rule says. Should a job search, and a lead's wish to let somebody go, stay private on an evaluation check-in? Nothing was changed.
-5. **Two judgements that go against the right answer** (sales and discovery, in `docs/run-32-review.md`). **Both were addressed in the instruction on 5 October and a fresh run is measuring whether it worked.** They turned out to be one fault, not two: the judgement invented a reason and invented a move, and both passed every rule it had, because every rule asked for a PERSON to be named and both of them named one. "Kwame Mensah is also blocked by the credit committee" when Kwame had said he had not contacted Credit at all; "Make the decision about hiring more analysts" when that was the customer's problem, not the lead's. Two rules now say a reason is only a reason if somebody said it, and a move has to come from a line in a block. **Whether the model obeys them is for the run to say, not for me — check the new run before treating this as closed.**
-6. **"Proof asked for" is 36 against 42 — and the counter is measuring the wrong thing. Measured, 5 October.** The scorer counts a turn as asking for proof if it contains any of `photo|picture|document|screenshot|receipt|statement|proof|a copy|send me|attach|upload`. **"Picture" is Groundwork's own word for shared understanding**, and it is doing most of the counting:
+1. **What a lead in the same department reads.** Today any lead in the department can open the department's ordinary check-ins (evaluation check-ins are now left out for her), and on them she reads the members' promises word for word, for example "I will call the electrician on Monday". Your rule of 5 September says a manager sees the report, not people's sentences. Should the department read be only the manager's, and should it leave out the promises' exact words? This is how the live line works today; nothing was changed.
+2. **Health and family said in a person's own check-in.** Tunde mentions his father's dialysis himself, and it reaches his lead's report. The rules allow it (what people say in a check-in can be shown to the people in it); the adversarial test treats it as private. No decision covers health or family. Nothing was changed.
+3. **"Proof asked for"** counts the word "picture". Dropping it from the scorer would make the number mean what it says. The scorer was not changed.
+4. **The decided-for-you items** in `docs/morning-report.md`: the footer on the lead's first message, "one colleague" for a person with no name in reports, removing the People list's count of check-ins an admin cannot open, and setup not counting as the lead's first check-in.
 
-   | Run | "proof asked for" | of which matched on "picture" | of those, Groundwork's own sense |
-   | --- | --- | --- | --- |
-   | run-1 | 54 | 31 | 20 |
-   | run-29 | 37 | 22 | 18 |
-
-   Not one of the "picture" hits I read is asking for a photograph. They are "a clear picture of the resources needed", "to make sure we have a clear picture, what is the budget", "that helps to build a picture of your business". **So both numbers being compared are inflated, and by different amounts** — the real count is roughly 34 against 19, which is a much larger fall than 42 against 36 suggests, not a smaller one.
-
-   I have not changed `tools/score_run.py`, which is on the never-edit list. **This is yours to decide:** dropping `picture` from that word list, or requiring "a picture of" with a concrete object, would make the number mean what it says. Until then I would not read this row either way.
-7. **The pattern name "Does the coordinating other people skipped"** reads as a broken sentence inside a line. You approved it (decision 52), so it is unchanged. A suggestion: "Picks up the coordinating that others left undone."
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

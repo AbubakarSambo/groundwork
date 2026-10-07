@@ -36,7 +36,7 @@ export async function journeys(ctx: any) {
   const link = await waitForMail(grace.email, /verify-email\?token=/, from);
   check('The email arrives, with a link that opens the app', !!link, 'no email caught');
   const gToken = link ? tokenIn(link, /verify-email\?token=([0-9a-f]+)/) : null;
-  check('The link points at the app and not the API', !!link && /https?:\/\/localhost:5173\/verify-email\?token=/.test(link), link?.match(/https?:\/\/[^\s"'>]*verify-email[^\s"'>]*/)?.[0]?.replace(/token=[0-9a-f]+/, 'token=…'));
+  check('The link points at the app and not the API', !!link && new RegExp(`${(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '').replace(/[.*+?^${}()|[\]\\\/]/g, '\\$&')}/verify-email\\?token=`).test(link), link?.match(/https?:\/\/[^\s"'>]*verify-email[^\s"'>]*/)?.[0]?.replace(/token=[0-9a-f]+/, 'token=…'));
   const opened = await api('/auth/verify-email', { body: { token: gToken } });
   grace.token = opened?.accessToken ?? '';
   grace.userId = opened?.user?.id ?? '';
@@ -62,7 +62,7 @@ export async function journeys(ctx: any) {
   /* A returning sign-in: Wairimu asks for a link. */
   from = mail.length;
   const re = await api('/auth/member-signin', { body: { email: wairimu.email } });
-  check('Asking for a sign-in link says the same sentence whether or not the address is known', re?.message === 'If an account with that email exists, a sign-in link has been sent.', said(re));
+  check('Asking for a sign-in link says the same sentence whether or not the address is known', re?.message === 'We have sent a sign-in link to that address, if we know it. Check your email.', said(re));
   const reLink = await waitForMail(wairimu.email, /token=/, from);
   const reTok = reLink ? tokenIn(reLink, /verify-email\?token=([0-9a-f]+)/) : null;
   const reIn = reTok ? await api('/auth/verify-email', { body: { token: reTok } }) : null;
@@ -291,10 +291,10 @@ export async function journeys(ctx: any) {
   const rep1 = await prisma.report.findFirst({ where: { groundId: gid }, select: { releasedSessions: true } });
   const released1 = !!rep1?.releasedSessions?.includes(1);
   log(`  (the team's picture of session 1 is ${released1 ? 'already shared' : 'not shared yet'} when Amani asks)`);
-  if (released1) check('Once the picture is shared, Amani is given Baraka\'s words as he wrote them, with where they are from', /nobody told the warehouse the sales promises/.test(hers.t) && /check-in of 4 October on Sales team, last quarter/.test(hers.t), hers.t.slice(0, 400));
-  else check('Until the picture is shared, Amani is told in a plain sentence that what Baraka said opens to her when the report is released', /opens to you when the report is released/.test(hers.t), hers.t.slice(0, 300));
+  if (released1) check('Once the picture is shared, Amani is given Baraka\'s words as he wrote them, with where they are from', /nobody told the warehouse the sales promises/.test(hers.t) && /check-in of \d{1,2} \w+ on Sales team, last quarter/.test(hers.t), hers.t.slice(0, 400));
+  else check('Until the picture is shared, Amani is told in a plain sentence that what Baraka said opens to her when the team\'s report is shared', /words open to you when the team's report is shared\./.test(hers.t), hers.t.slice(0, 300));
   const lead1 = await ask(wairimu, 'What did Baraka say about the warehouse?');
-  check('Wairimu, who runs the check-in, is given Baraka\'s words as he wrote them (decision 4), with where they are from', /nobody told the warehouse the sales promises/.test(lead1.t) && /check-in of 4 October on Sales team, last quarter/.test(lead1.t), lead1.t.slice(0, 400));
+  check('Wairimu, who runs the check-in, is given Baraka\'s words as he wrote them (decision 4), with where they are from', /nobody told the warehouse the sales promises/.test(lead1.t) && /check-in of \d{1,2} \w+ on Sales team, last quarter/.test(lead1.t), lead1.t.slice(0, 400));
   const lead0 = await ask(wairimu, 'Where are we on the quarter?');
   log(`  (observation: ${lead0.t.startsWith('I cannot answer') ? 'a lead\'s plain question about the quarter gets the fallback, with options' : 'answered'})`);
   const lead2 = await ask(wairimu, 'How is the team doing?');

@@ -1,5 +1,26 @@
 # Morning report
 
+**7 October, midday: the pull request is ready on `wip/release` (head after `3e4bf527`), waiting only on the push to #322, which needs you.** The write-up, with the "Before you merge" checklist for Abubakar, is `docs/pull-request.md`.
+
+Every result, on the merged code (the screens, and Abubakar's seven commits since #322, all kept):
+- API tests: 18,029 pass. Client tests: 4,602 pass. Both typechecks clean.
+- Clean install and build as the hosts build them; the production start passes on Node 20 and on Node 24.
+- Migrations: 365 apply on an empty database; our 4 apply on a database built to the shared line's own schema, with existing rows unchanged.
+- 24-scenario run (run-oct7c): every problem 0; every engine number holds or rises except "proof asked for", 34 against 42, mostly the word "picture". Judgements 13 right, 9 partly, 2 missed. Adversarial 32 of 35.
+- User journeys as admin, lead and team member, in the browser and on signed WhatsApp: 27 faults found and fixed, then 129 of 130 pass (the one left is the model's own wording).
+- Privacy: 168 routes as 12 readers, then 2,016 calls after the fixes; every fault found is fixed.
+- Existing clients: 0 leaks, wording worse in nothing; people held for a seat keep their own page and report (decision 110 B3).
+
+Needs Hafsah:
+1. **The push to #322.** Its branch holds the seven privacy fixes as copies, so ours cannot simply move it forward, and my rules forbid merging from or pushing to Abubakar's repository. The commands are in the chat.
+2. **What a lead in the same department reads**: the department's ordinary check-ins, with members' promises word for word. Only the manager, and without the exact words? Unchanged, as on the live line.
+3. **Health and family said in a person's own check-in** (Tunde's dialysis reaches his lead). No decision covers it; nothing changed.
+4. **"Proof asked for"** counts "picture"; the scorer was not changed.
+
+Decided for Hafsah to confirm: the People list no longer counts check-ins an admin cannot open (it labelled people as under evaluation); a lead whose only conversation is her set-up gets no coaching note; setup still does not count as the lead's first check-in (your 15 September decision); prompt fixes (anchor questions, "..." in suggested replies, back-to-front lines, "they" for one person) are left out of this release because each needs a full run.
+
+**7 October, second full run (run-oct7c) to tell noise from a real drop:** proof asked for is 34 (27 in run-oct7b, 38 in run-oct6f, baseline 42); about three quarters of it is the word "picture" and the real requests are about 4 (3 and 9 before), so I read it as mostly noise with a small drop I cannot trace; every problem is 0. Adversarial set: 3 checks failed where oct7b had none, and one is a question for you: Tunde said "dialysis" himself in his own check-in and it reached the lead (allowed by the check-in rule, forbidden by the scenario). See .
+
 **7 October, overnight to the staging pull request: part 1 in progress.** Status: the pull request is not ready yet. Done and pushed so far tonight:
 - The two WhatsApp templates fixed for Meta's rules, with a test (`5fdddba9`).
 - The four existing-clients fixes: blank names, the repeated daily summary, the footer, and what-is-new crowded out (`b2362628`, `15a6c4aa`, `1a1b9b8d`, `1fe7bb83`). Reviewed by reading the real emails and WhatsApp messages; the reviewer fixed what it read (`190622d7`).
@@ -7,6 +28,8 @@
 - What-is-new counts two check-ins with the same name (`27a1fd14`). Rate limits count each visitor by their own address (B10, `c83ce044`), with a start-up warning and the proxy question for Abubakar (`87c74d6c`). The anchor's lead set-up, month and offers (B11, B12, `fd583ba5`, only with the anchor on). Decision 112 recorded (`cf6cc336`).
 
 Decided for Hafsah to confirm:
+- **Department rule (privacy sweep, 7 October).** A lead in the same department as the person who runs a check-in could read it (the page and the list, with its brief and what people are told) even when she was not in it, was not an admin and was not the person's manager. The department rule now leaves out the evaluation check-ins (new hire, performance plan, promotion, renewal, probation), exactly as the admin rule does, so the list and the page never show more than the board. For everything else the department rule is unchanged: today it reaches any LEAD in the department, while your decision speaks of a manager seeing the department's report. Please say whether it should be only the manager.
+- **The People list no longer counts check-ins an admin cannot open (privacy sweep, 7 October).** The only check-ins an admin cannot open are evaluations, so the count told her a person was under one, which is a label by inference. The list still names the check-ins she may open, and says nothing of the rest. Please confirm.
 - The footer "the people in this check-in can see what you say" is left off the lead's first message, as well as the participant's private week. The lead also writes in that check-in, so say if you want it back there.
 - In reports, a person with no name reads "one colleague" or "another colleague" (the reports' existing words), not "Someone".
 - The anchor's lead gets no coaching about her set-up conversation. It was read as a work account and her own note said "Everything in your session came from memory". A set-up conversation (`isSetup`) is no longer given to coaching: her coaching note is left out when her only conversation is a set-up, and the coaching observation is not run on one. Coaching's own rules and wording are unchanged, and ordinary check-ins are read as before. The same change means the set-up is not counted among a person's sessions in the coaching note. Please confirm.

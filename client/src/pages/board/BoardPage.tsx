@@ -1,4 +1,5 @@
 import { hasEnded, howItEnded, hasStalled } from '@/lib/a-ground-that-has-ended'
+import { TheLeadsNote } from '@/components/gw/TheLeadsNote'
 import { useState, type ReactNode } from 'react'
 import { WhatSuccessLooksLikeFor } from '@/components/gw/WhatSuccessLooksLike'
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
@@ -32,7 +33,6 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
 import { NineColumnsIsNotAPhoneScreen } from '@/components/gw/nine-columns-is-not-a-phone-screen'
 import { plainWordsByPerson, atTheStart, midSentence } from '@/lib/a-colleague'
-import { theLeadsNote } from '@/lib/the-leads-note'
 import { whatTheSwitchboardAllows } from './what-the-switchboard-allows'
 import { tileSentence } from '@/components/gw/TheSessionsReport'
 import { PatternPanel } from '@/components/gw/ui'
@@ -2184,7 +2184,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         initials: initialsOf(displayName),
                         name: displayName,
                         level: anyRoleToShow && (r.role && r.role !== r.name)
-                          ? <span data-leads-note>{theLeadsNote(r.role)}</span>
+                          ? <TheLeadsNote role={r.role} />
                           : undefined,
                       }}
                     >
@@ -4135,7 +4135,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     <div className="gwui-fs-15 gwui-ink-dark" style={{fontWeight: 700}}>
                       {p.participantId === b.myParticipantId ? 'You' : nameOnTheBoard(b, p.participantId, p.name)}
                     </div>
-                    {p.role && p.role !== p.name && <div data-leads-note className="gwui-fs-13-5 gwui-ink-sub gwui-mt-1">{theLeadsNote(p.role)}</div>}
+                    {p.role && p.role !== p.name && <TheLeadsNote role={p.role} className="gwui-fs-13-5 gwui-ink-sub gwui-mt-1" />}
                   </div>
                   <div className="gwui-pt-2 gwui-pr-15 gwui-pb-10 gwui-pl-15">
                     {(() => { const said = p.items.filter((it) => theWordsOfALine(it.text)); return said.length === 0 ? (
@@ -4339,7 +4339,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     <span className="gwui-ink-dark gwui-fs-14" style={{fontWeight: 700}}>{displayName}</span>
                     {/* "Your note" to the lead who wrote it, never to an admin (U.7 review). */}
                     {c.remitDefined
-                      ? (b.canEditFrame && c.remit ? <span data-leads-note className="gwui-fs-13-5 gwui-ink-sub">{theLeadsNote(c.remit)}</span> : null)
+                      ? (b.canEditFrame && c.remit ? <TheLeadsNote role={c.remit} className="gwui-fs-13-5 gwui-ink-sub" /> : null)
                       /* Board review, 30 September, item 7: "role not clearly defined" beside a
                          name is a tag, not a sentence about that person. */
                       : <span className="gwui-fs-13-5 gwui-ink-amber" style={{fontWeight: 600}}>{isReader ? 'Nobody has said what your role covers yet.' : `Nobody has said what ${nameFirstWord || 'their'}'s role covers yet.`}</span>}

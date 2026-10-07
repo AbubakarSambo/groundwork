@@ -1,3 +1,4 @@
+import { answerFirst } from './answer-the-webhook-then-do-the-work';
 import * as crypto from 'crypto';
 import { Controller, Get, Post, Query, Body, Logger, ForbiddenException, Req, Res } from '@nestjs/common';
 import type { RawBodyRequest } from '@nestjs/common';
@@ -85,6 +86,7 @@ export class WhatsAppController {
     if (!(await this.whatsapp.isEnabled())) return { received: true };
 
     const body = req.body as any;
+    await answerFirst(async () => {
     try {
       /*
        * ONE INBOUND HANDLER, NOT TWO. This route had its own routing body: an organisation-unscoped
@@ -112,6 +114,7 @@ export class WhatsAppController {
       const told = to ? await this.whatsapp.sendMessage(to, Array.isArray(said) ? said.join(' ') : String(said), { kind: 'refusal' }).catch(() => ({ sent: false })) : { sent: false };
       if (!told.sent) this.logger.error(`WhatsApp inbound handling failed and the person could not be told: ${err?.message}`);
     }
+    }, (err) => this.logger.error(`WhatsApp inbound handling stopped: ${err?.message}`));
     return { received: true };
   }
 

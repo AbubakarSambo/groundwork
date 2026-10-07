@@ -140,3 +140,50 @@ export async function theColleaguePickedById(
 }
 
 export const NOT_SOMEONE_HERE = 'That person is not in this organisation. Add them by their email address instead.';
+
+/**
+ * THE NAME OF SOMEBODY ALREADY IN THE ORGANISATION, WHO WAS ADDED BY THEIR ADDRESS (user journeys, F-7).
+ *
+ * Added by email, a person who already works here had no name on their row until they opened the invitation, so the roster, the board and the setup page
+ * called them by their address, "Somebody invited by email" or "A colleague". Their name is on their membership. Only members of this organisation, and only
+ * ever the name: nothing else about them travels with it.
+ */
+export async function theMemberWithThisAddress(
+  db: { organizationMembership?: { findFirst?: (a: any) => Promise<any> } },
+  organizationId: string,
+  email: string,
+): Promise<{ name: string | null } | null> {
+  const find = db.organizationMembership?.findFirst;
+  if (!find || !email) return null;
+  const m = await find.call(db.organizationMembership, {
+    where: { organizationId, user: { email: email.toLowerCase(), deletedAt: null, isActive: true } },
+    select: { user: { select: { firstName: true, lastName: true } } },
+  }).catch(() => null);
+  const name = [m?.user?.firstName, m?.user?.lastName].filter(Boolean).join(' ').trim();
+  return m?.user ? { name: name || null } : null;
+}
+
+/** Rows with no name and no account yet are given their member's name, once, for the read. Nothing is written. */
+export async function withTheirNamesFromTheOrganisation<P extends { email?: string | null; nameGiven?: string | null; user?: unknown }>(
+  db: { organizationMembership?: { findMany?: (a: any) => Promise<any> } },
+  organizationId: string,
+  participants: P[],
+): Promise<P[]> {
+  const bare = participants.filter((p) => !p.user && !(p.nameGiven ?? '').trim() && !!p.email);
+  const find = db.organizationMembership?.findMany;
+  if (!bare.length || !find) return participants;
+  const rows: any[] = await find.call(db.organizationMembership, {
+    where: { organizationId, user: { email: { in: [...new Set(bare.map((p) => String(p.email).toLowerCase()))] }, deletedAt: null, isActive: true } },
+    select: { user: { select: { email: true, firstName: true, lastName: true } } },
+  }).then((r: any) => (Array.isArray(r) ? r : [])).catch(() => []);
+  const nameOf = new Map<string, string>();
+  for (const r of rows) {
+    const name = [r?.user?.firstName, r?.user?.lastName].filter(Boolean).join(' ').trim();
+    if (r?.user?.email && name) nameOf.set(String(r.user.email).toLowerCase(), name);
+  }
+  for (const p of bare) {
+    const name = nameOf.get(String(p.email).toLowerCase());
+    if (name) (p as any).nameGiven = name;
+  }
+  return participants;
+}

@@ -28,22 +28,23 @@ function theList(mayOpen: string[]) {
 const page = { page: 1, limit: 20 } as any;
 
 describe('the People list, read as each admin', () => {
-  it('Grace reads the check-in she may open by name, and the other as a count', async () => {
+  it('Grace reads the check-in she may open by name, and nothing of the other, not even that it is there', async () => {
     const arjun = (await theList(['g-sales']).findAll('kijani', page, 'grace')).data[0] as any;
     expect(arjun.checkIns).toEqual([{ id: 'g-sales', label: 'Sales team, Q4', runsIt: false }]);
-    expect(arjun.checkInsYouCannotOpen).toBe(1);
+    /* PRIVACY SWEEP: the count is gone. The only check-ins an admin cannot open are evaluations, so a count told her a person was under one. */
+    expect(arjun).not.toHaveProperty('checkInsYouCannotOpen');
     expect(JSON.stringify(arjun)).not.toContain('first ninety days');
   });
 
   it('an admin given access to the plan reads both by name', async () => {
     const arjun = (await theList(['g-sales', 'g-plan']).findAll('kijani', page, 'juma')).data[0] as any;
     expect(arjun.checkIns).toHaveLength(2);
-    expect(arjun.checkInsYouCannotOpen).toBe(0);
+    expect(arjun).not.toHaveProperty('checkInsYouCannotOpen');
   });
 
   it('with no reader named, no check-in is named', async () => {
     const arjun = (await theList(['g-sales', 'g-plan']).findAll('kijani', page)).data[0] as any;
     expect(arjun.checkIns).toEqual([]);
-    expect(arjun.checkInsYouCannotOpen).toBe(2);
+    expect(arjun).not.toHaveProperty('checkInsYouCannotOpen');
   });
 });

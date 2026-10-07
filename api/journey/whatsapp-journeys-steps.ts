@@ -205,7 +205,7 @@ export async function journeys(c: any): Promise<void> {
   for (const m of toLead) log(`    Wairimu reads [template ${m.template}]:\n${lines(m.text)}`);
   check('Wairimu gets exactly one message, the summary, as the lead_daily_summary template (she has not written in 24 hours)', toLead.length === 1 && toLead[0].template === 'lead_daily_summary', JSON.stringify(toLead.map(bodyOf)));
   const summary = toLead[0]?.text ?? '';
-  check('It opens with her name and says how many have checked in, and who has not, in a full sentence', /^Good morning Wairimu\. Here's today's summary of your check-ins: /.test(summary) && /In "Sales team, Q4", 1 of 4 people have checked in, and you, Amani and Baraka have not yet\./.test(summary), summary);
+  check('It opens with her name and says how many have checked in, and who has not, in a full sentence', /^Good morning Wairimu\. Here is today's summary of your check-ins\. /.test(summary) && /In "Sales team, Q4", 1 of 4 people has checked in, and you, Amani and Baraka have not yet\./.test(summary), summary);
   check('It carries the leave that is waiting for her, which she was also told about straight away', /Amani's leave from Tuesday 20 October to Thursday 22 October is waiting for you to approve or decline\./.test(summary), summary);
   check('It carries a link to the board', summary.includes(`${base}/grounds/${salesId}/board`), summary);
   check('Nothing anybody said is in it', !/Harbor|Green Mart|Fresh Basket|4\.2|1\.8|discount|referral|meetings/i.test(summary), summary);

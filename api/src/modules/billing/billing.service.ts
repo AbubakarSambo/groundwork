@@ -407,7 +407,7 @@ export class BillingService {
       return { allowed: true };
     }
 
-    const cap = await this.pricing.memberCapFor(org.subscriptionPlan!);
+    const cap = await this.pricing.memberCapFor((covered.plan ?? org.subscriptionPlan) as any);
     if (cap === null) return { allowed: true };
     if (count >= cap) {
       /**

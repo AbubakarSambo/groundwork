@@ -62,6 +62,24 @@ const THE_SETUP_ANSWERS_BEGIN = new RegExp(
   ].join('|'),
 );
 
+/**
+ * THE BRIEF AS THE LEAD READS IT (user journeys, F-1). Setup stores each answer after the question it answered, in a sentence saying what follows is a
+ * reading of the answer: "When asked who is part of this, the answer was taken to mean this. The sales team." That is how the answers are told apart
+ * from the situation, and every rule that keeps them from the people in the check-in looks for those words, so the stored brief keeps them. The lead
+ * reads the same facts as the question and the answer: "Who is part of this? The sales team." Only for the person who runs the check-in; nobody else
+ * is ever served the brief in this form, and nothing is stored in it.
+ */
+const THE_QUESTION_AND_ITS_READING: [RegExp, string][] = [
+  [/When asked who is part of this, the answer was taken to mean this\.\s*/g, 'Who is part of this? '],
+  [/When asked why this matters now, the answer was taken to mean this\.\s*/g, 'Why does this matter now? '],
+  [/When asked what this is aiming at, the answer was taken to mean (?:this|these \d+ things)\.\s*/g, 'What is this aiming at? '],
+  [/When asked what the questions should focus on, the answer was taken to mean this\.\s*/g, 'What should the questions focus on? '],
+];
+export function theBriefAsTheLeadReadsIt<T extends string | null | undefined>(brief: T): T {
+  if (typeof brief !== 'string') return brief;
+  return THE_QUESTION_AND_ITS_READING.reduce((t, [rx, to]) => t.replace(rx, to), brief) as T;
+}
+
 /** The brief with the answers setup put together cut off, leaving what it says about the situation. */
 export function withoutTheSetupAnswers(brief: string | null | undefined): string {
   const text = (brief ?? '').trim();
@@ -376,4 +394,16 @@ export function whatAParticipantIsToldAboutThis(
   }
   const said = parts.filter(Boolean);
   return said.length ? said.join(' ') : null;
+}
+
+
+/**
+ * "ZAWADI'S FIRST WEEKS", TO ZAWADI HERSELF, IS "YOUR FIRST WEEKS" (privacy sweep, 7 October, item 6). Only the possessive of the reader's own first name, only
+ * in what is served to them, and nothing about anybody else. Never a pronoun after it: only "Zawadi's" and its curly form are touched, so no verb has to agree.
+ */
+export function theirOwnFirstNameAsYour<T extends string | null | undefined>(text: T, firstName: string | null | undefined): T {
+  const first = (firstName ?? '').trim();
+  if (typeof text !== 'string' || first.length < 2) return text;
+  const rx = new RegExp(`(^|[.!?]\\s+|\\n)${first.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['\u2019]s\\b|(?<![\\p{L}])${first.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['\u2019]s\\b`, 'gu');
+  return text.replace(rx, (_m, lead) => (lead !== undefined ? `${lead}Your` : 'your')) as T;
 }

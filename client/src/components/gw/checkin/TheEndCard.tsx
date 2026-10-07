@@ -38,6 +38,7 @@ import type { TheEndCard as EngineEndCard } from '@/api/conversation'
  */
 export function TheEndCard({
   engine,
+  beingWritten,
   leadName,
   nextOpens,
   othersCanSeeWhatYouSay,
@@ -47,6 +48,8 @@ export function TheEndCard({
   onChange,
 }: {
   engine: EngineEndCard | null | undefined
+  /** True while the card is still being written, so the empty space is said to be that and not a card with nothing in it. */
+  beingWritten?: boolean
   /** The lead's first name, when the lead also answers this check-in. See whoElseAnswers. */
   leadName: string | null
   /** "Your next check-in opens tomorrow at 4pm.", when it is known. */
@@ -76,6 +79,15 @@ export function TheEndCard({
 
   return (
     <section aria-label="What I wrote down" className="gwui-ci-endcard">
+      {record.length === 0 && (
+        <p className="gwui-ci-endcard-body">
+          {beingWritten
+            ? 'I am still writing down what you said. It takes a few seconds.'
+            : engine
+              ? 'I did not find anything in your answers to write down yet. If something is missing, choose “Change something” and tell me.'
+              : 'I could not show you what I wrote down just now. It is written from your answers when you finish.'}
+        </p>
+      )}
       {record.length > 0 && (
         <div className="gwui-ci-endcard-box">
           <h2 className="gwui-ci-endcard-heading">{part()}. What is now in your record</h2>

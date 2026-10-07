@@ -4,7 +4,7 @@ import { withoutTheLeadsSetUpForAMember } from './the-leads-set-up-is-the-leads-
 import { aShortQuestionForAPerson, askedBackToTheLead, theQuestionTheyWereShown } from './a-short-question-for-a-person-in-the-old-chat';
 import { aFindingThatReadsRight } from './a-finding-reads-right';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
-import { refuseSomeoneHeldForASeat, refuseSomeoneAwaitingTheOrganisation, theCheckInsHeldForASeat } from '../participants/held-for-a-seat';
+import { refuseSomeoneAwaitingTheOrganisation, theCheckInsHeldForASeat, theHeldPersonWhoHasAnswered, whatSomeoneHeldForASeatReads } from '../participants/held-for-a-seat';
 import { CANNOT_CHECK_IN_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { theRoomForThisReader } from '../board/the-room-for-this-reader';
 import { goalsThisReaderMaySee, notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead, aWeekHasPassedSinceNotTold, whatThePersonReadsAfterAWeek } from './a-goal-not-told-stays-with-the-lead';
@@ -14,14 +14,14 @@ import { thePrivateSummaryAsRead } from '../conversation/the-private-summary-ope
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
 import { theirHome } from '../participants/where-somebody-is-from';
 import { aGuestHereIfTheyAreFromElsewhere } from '../participants/a-guest-is-a-guest-from-the-moment-they-are-added';
-import { theColleaguePickedById, NOT_SOMEONE_HERE } from '../../common/colleagues';
+import { theColleaguePickedById, NOT_SOMEONE_HERE, theMemberWithThisAddress, withTheirNamesFromTheOrganisation } from '../../common/colleagues';
 import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
 import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, runsItForAPattern, type APatternReader, type AServedPattern } from '../patterns/who-reads-a-pattern';
 import { askTheReportsDoor } from '../reports/one-persons-circumstances-stay-their-own';
 import { rememberedCompose } from '../reports/a-line-worded-once-is-kept';
 import { wordPatternEvidence } from '../reports/pattern-evidence-in-plain-words';
 import { withoutBankDetails, withoutBankDetailsInEachTurn } from '../documents/bank-details-are-never-kept';
-import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD, hasEnded, hasStalled, isHeld, isShut, mayChangeOnItsOwn, whyItRefuses, WHILE_IT_IS_HELD, IT_RAN_OUT_OF_TIME } from './a-ground-that-has-ended';
+import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD, hasEnded, hasStalled, isHeld, isShut, mayChangeOnItsOwn, whyItRefuses, whyAJoinLinkRefuses, WHILE_IT_IS_HELD, IT_RAN_OUT_OF_TIME } from './a-ground-that-has-ended';
 import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT } from './an-answer-includes-a-refusal';
 import { isNotLetInYet, whoIsNotLetInYet, theWaitingToBeLetInLine } from './who-an-admin-did-not-let-in';
 import { waitsOnAManagingOnlyLead } from './the-lead-who-only-asks';
@@ -84,7 +84,7 @@ import { truncationsOfTheirWords } from '../conversation/the-record-holds-what-w
 import { screen, ASK_AGAIN } from '../conversation/nothing-invented-reaches-them';
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from './who-may-open-a-check-in';
 import { notTheWordParty } from '../reports/not-the-word-party';
-import { theSituationIn, theTellingHolds, THE_TELLING_PROMPT, withoutTheSetupAnswers } from './what-a-participant-is-told-about-this';
+import { theSituationIn, theTellingHolds, THE_TELLING_PROMPT, withoutTheSetupAnswers, theBriefAsTheLeadReadsIt, theirOwnFirstNameAsYour } from './what-a-participant-is-told-about-this';
 import { whatSomeoneWhoDoesNotRunItReads } from './what-someone-who-does-not-run-it-reads';
 import { ABOUT_SOMEBODY, mayBeShared, theLinesFor, WHY_A_LINE_ABOUT_SOMEBODY_STAYS_YOURS } from './what-this-check-in-knows';
 import { saidUntilIEndIt, nothingToTakeFrom, traceableToWhatTheySaid, aLengthTheyCouldHaveMeant, whatTheModelsReplyShows, withoutTheWordGround, aLengthAndNothingElse } from './nothing-proposed-that-nobody-said';
@@ -1217,7 +1217,7 @@ export class GroundsService {
      * month four, onto a ground that was CLOSED, and gave them a session on it. The reason it
      * refuses is the real one - ended, or held - not an expiry the link never had.
      */
-    const refused = whyItRefuses(ground.status, ground.endState, 'anybody else', ground.scenario);
+    const refused = whyAJoinLinkRefuses(ground.status, ground.endState, ground.scenario);
     if (refused) throw new BadRequestException(refused);
     return {
       groundId: ground.id,
@@ -1737,7 +1737,8 @@ export class GroundsService {
      * list, asked here too; and the same answer as assertMaySeeGround gives every other read.
      */
     /* Nobody held for a seat reads the check-in page: the invitation page's own refusal, asked first (privacy sweep finding 3). */
-    await refuseSomeoneHeldForASeat(this.prisma as any, id, requestingUserId);
+    /* Unless they already answered: then the page is theirs, narrowed to their own answers (decision 110, B3). */
+    const heldButAnswered = await theHeldPersonWhoHasAnswered(this.prisma as any, id, requestingUserId);
     /* Nor anyone waiting for the organisation's approval (row 5). */
     await refuseSomeoneAwaitingTheOrganisation(this.prisma as any, requestingUserId, CANNOT_CHECK_IN_YET);
     const mayRead = requestingUserId ? await this.assertMaySeeGround(id, requestingUserId) : null;
@@ -1843,6 +1844,8 @@ export class GroundsService {
     }
 
     if (!ground) throw new NotFoundException('Check-in not found');
+    /* Somebody already here, added by their address, is named by their membership (user journeys, F-7). */
+    await withTheirNamesFromTheOrganisation(this.prisma as any, (ground as any).organizationId, (ground.participants ?? []) as any);
 
     /* How checkable each check-in was is a read of that person's answers, so each reader keeps
        their own and nobody else's. See how-checkable-is-yours-alone. */
@@ -1910,7 +1913,7 @@ export class GroundsService {
      * check-in, after three periods, in plain words, built by patterns/who-reads-a-pattern. Nothing
      * at all while patterns are not served, and then not even the reader lookup is made.
      */
-    const signals = PATTERNS_ARE_SERVED
+    const signals = PATTERNS_ARE_SERVED && !heldButAnswered
       ? await (async () => {
           const namesForPatterns = whoIsWhoIn(ground.participants as any, ground.initiatorId, (ground as any).cadence);
           const served = servedPatterns(
@@ -2812,7 +2815,7 @@ export class GroundsService {
       /* The lead and the organisation's admins read the brief they wrote. A participant reads the
          situation and nothing that tells the product how to interview them. See
          what-a-participant-is-told-about-this. Goals are on the payload already, under objectives. */
-      brief: viewerRunsThisGround ? brief : briefAsEveryoneReadsIt,
+      brief: viewerRunsThisGround ? theBriefAsTheLeadReadsIt(brief) : briefAsEveryoneReadsIt,
       /*
        * AND WHAT THE PEOPLE IN IT READ, TO WHOEVER RUNS IT (U.7 review). The Context page told the
        * lead "Your words, from setup. Everyone reads this before they answer." over her own words,
@@ -2917,7 +2920,14 @@ export class GroundsService {
     ]);
     /* A goal whose whole sentence carried a number this reader may not read is not left as a goal with no words (it is not served, and what the person's own row says is said plainly). */
     /* In an anchor check-in the lead's own set-up (her aim, what it will cover, what a complete answer holds) is hers alone (decision 96, item 8). */
-    const asAMemberReadsIt = <P extends Record<string, any>>(page: P): P => withoutTheLeadsSetUpForAMember(page, { startedFrom: (ground as any).startedFrom ?? null, runsIt: viewerRunsThisGround });
+    /* The reader's own first name, as a possessive, is "your": "Zawadi's first weeks" is "Your first weeks" to Zawadi (privacy sweep, 7 October). */
+    const myFirstName = ((ground.participants ?? []) as any[]).find((p: any) => !!requestingUserId && p.userId === requestingUserId)?.user?.firstName ?? null;
+    const asAMemberReadsIt = <P extends Record<string, any>>(page: P): P => {
+      const out: any = withoutTheLeadsSetUpForAMember(page, { startedFrom: (ground as any).startedFrom ?? null, runsIt: viewerRunsThisGround });
+      if (viewerRunsThisGround || !myFirstName) return out;
+      return { ...out, label: theirOwnFirstNameAsYour(out.label, myFirstName), brief: theirOwnFirstNameAsYour(out.brief, myFirstName), ...(out.briefAsEveryoneReadsIt !== undefined ? { briefAsEveryoneReadsIt: theirOwnFirstNameAsYour(out.briefAsEveryoneReadsIt, myFirstName) } : {}) };
+    };
+    if (heldButAnswered && requestingUserId) return whatSomeoneHeldForASeatReads(asAMemberReadsIt(thePage), requestingUserId) as any;
     if (!Array.isArray((thePage as any).participants)) return asAMemberReadsIt(thePage);
     return asAMemberReadsIt({
       ...thePage,
@@ -5612,6 +5622,10 @@ export class GroundsService {
       if (!found) throw new BadRequestException(NOT_SOMEONE_HERE);
       dto = { ...dto, email: found.email };
       colleagueName = found.name;
+    }
+    /* Added by address, but already working here: their own name from their membership, not the address (user journeys, F-7). */
+    if (!colleagueName && !dto.displayName?.trim() && dto.email) {
+      colleagueName = (await theMemberWithThisAddress(this.prisma as any, organizationId, dto.email))?.name ?? null;
     }
     /**
      * A start date in the future means the work has not begun. Today or the past means it has, so the

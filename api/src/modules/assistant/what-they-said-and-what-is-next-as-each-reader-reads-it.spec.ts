@@ -52,7 +52,7 @@ const FEMI_LINES = ['Shipped the price list to Harbor Foods.', 'Still waiting on
 const MIRIAM_LINES = ['Called Westgate Deli and they want January.'];
 const PIP_LINES = ['PIP-FEMI-LINE: I missed the July target.'];
 const YEMI_LINES = ['YEMI-OPEN-LINE: the Kilimani shop is not ready.'];
-const WALL = 'This person has answered, and what they said opens to you when the report is released.';
+const WALL = 'This person has answered, and what they said opens to you when the team\'s report is shared.';
 
 /** Who each reader is called for, so a test can say the report was only ever read AS the asker. */
 const readsMadeFor: { groundId: string; sessionNumber: number; userId: string }[] = [];
@@ -109,6 +109,9 @@ function harness(as: Who, opts: { commitments?: any[]; toDos?: any[]; waiting?: 
     commitment: { findMany: jest.fn(async ({ where }: any) => (where.personExternalId === me.externalId ? opts.commitments ?? [] : [{ text: 'SOMEBODY-ELSES-COMMITMENT', state: 'OPEN', dueAt: null, dueSaid: null, statedAt: new Date(0), lastFollowedUpAt: null }])) },
     /* Added (request 180 item 2): "what did I say I would do" also reads the asker's own promises written down in a check-in, found only through the asker's own sign-in. */
     groundCommitment: { findMany: jest.fn(async ({ where }: any) => (where.participant?.userId === me.linkedUserId ? [] : [{ text: 'SOMEBODY-ELSES-PROMISE', whenSaid: null, ground: { label: 'x' } }])) },
+    /* Added (F-5 of the user journeys): the asker's own to-dos written down while setting up or answering, the same rows the You page lists. Found only through the asker's own place in a check-in; anybody else's are in the fake so a leak would show. */
+    groundParticipant: { findMany: jest.fn(async ({ where }: any) => (where.userId === me.linkedUserId ? [] : [{ id: 'SOMEBODY-ELSES-PLACE', ground: { label: 'x' } }])) },
+    personObjective: { findMany: jest.fn(async () => [{ text: 'SOMEBODY-ELSES-OBJECTIVE', dueSaid: null, participantId: 'SOMEBODY-ELSES-PLACE' }]) },
     todo: { findMany: jest.fn(async ({ where }: any) => (where.personExternalId === me.externalId ? opts.toDos ?? [] : [{ text: 'SOMEBODY-ELSES-TODO', dueAt: null, dueSaid: null, createdAt: new Date(0) }])) },
   }, {
     get(target: any, name: string) {
@@ -203,8 +206,11 @@ describe('as a participant asking about a colleague (Miriam)', () => {
     const { ask } = harness('miriam');
     const r = await ask('What did Yemi say?');
     expect(bodyOf(r)).not.toContain('YEMI-OPEN-LINE');
-    expect(bodyOf(r)).toContain(WALL);
-    expect(bodyOf(r)).toContain("I cannot show you Yemi's words from their check-in of 30 September on Kilimani launch.");
+    /* Said once, by first name, as the thing it is: the words open when the team's report is shared (user journeys, F-12). Never "nothing specific enough to record", and never the check-in named twice. */
+    expect(bodyOf(r)).toContain("Yemi's words open to you when the team's report is shared.");
+    expect(bodyOf(r)).not.toContain('nothing specific enough to record');
+    expect(bodyOf(r).split("words open to you").length - 1).toBe(1);
+    expect(bodyOf(r).split('Kilimani launch').length - 1).toBe(1);
     expect(sourceOf(r).href).toBe('/grounds/g-open/session/1');
   });
 

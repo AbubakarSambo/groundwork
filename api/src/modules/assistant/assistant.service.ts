@@ -8,7 +8,8 @@ import { DependencyStatus } from '@prisma/client';
 import { aQuestionAskedAboutARequest, aQuestionSaidBack, aQuestionSent, aQuestionNotSent, WHICH_REQUEST_TO_ASK_ABOUT, NOTHING_TO_ASK_ABOUT, HOURS_TAKE_NO_QUESTION } from '../suites/an-approver-asks-by-saying-so';
 import { whatYouCanAskSaid } from './what-you-can-ask-here';
 import { route, whatICanDoWith, Lane } from './the-router-is-deterministic';
-import { whenIsMyNextCheckIn, whatMyCheckInIsFor, theCompanysPriorities, isTheStrategyMoving, THE_REQUEST_STARTERS, howToAskForLeaveOrSpending } from './about-your-check-ins-and-the-company';
+import { aPromiseAsASentence } from './a-promise-as-a-sentence';
+import { noSeatYetSays, whenIsMyNextCheckIn, whatMyCheckInIsFor, theCompanysPriorities, isTheStrategyMoving, THE_REQUEST_STARTERS, howToAskForLeaveOrSpending } from './about-your-check-ins-and-the-company';
 import { Reply, rules, text, picker, SourceBlock } from './a-reply-is-a-payload-not-a-string';
 import { ReportsService } from '../reports/reports.service';
 import { howManyAnsweredInWords } from '../reports/the-picture-in-plain-sentences';
@@ -454,7 +455,8 @@ export class AssistantService {
     /* "Ask for leave, or to spend money." with nothing said yet: told how, for what is switched on here (request 180 item 1). */
     if (THE_REQUEST_STARTERS.test(message)) {
       const on = await this.prisma.organizationSuite?.findMany?.({ where: { organizationId, suite: { in: ['leave', 'spend'] }, isOn: true }, select: { suite: true } }).catch(() => null);
-      const suites = new Set<string>((on ?? [{ suite: 'leave' }, { suite: 'spend' }]).map((r: any) => r.suite));
+      /* A read that failed says nothing is switched on, never that both are: the sentence must be true or say less (privacy sweep, 7 October). */
+      const suites = new Set<string>((on ?? []).map((r: any) => r.suite));
       return rules('how_to_ask_for_leave_or_spending', text(howToAskForLeaveOrSpending({ leave: suites.has('leave'), spend: suites.has('spend') })));
     }
 
@@ -581,7 +583,7 @@ export class AssistantService {
       case 'what_did_they_say':
         return this.whatTheySaid(organizationId, userId ?? null, routed.subject, message);
       case 'what_did_i_say':
-        return this.compose(await this.whatDidISay(organizationId, who, routed.subject ?? message));
+        return this.compose(await this.whatDidISay(organizationId, who, routed.subject ?? message, userId ?? null));
       case 'how_we_work':
         /*
          * NOT COMPOSED, AND THIS WAS A REAL MISTAKE FOR ONE LIVE REPLY.
@@ -938,7 +940,10 @@ export class AssistantService {
         if (oldest) lines.push(`The one that has waited longest is "${oldest}"${way.sinceSays ? `, ${way.sinceSays}` : ''}.`);
       }
       if (!lines.length) continue;
-      parts.push(`${run.length > 1 ? `This is about ${String(g.label).replace(/[.\s]+$/, '')}. ` : ''}${lines.join(' ')}`);
+      /* Each sentence once: the report's own opening often says "All three people have answered." and so does the count (user journeys, F-14). */
+      const said = new Set<string>();
+      const once = lines.join(' ').match(/[^.!?]+[.!?]+["”']?\s*/g)?.filter((x) => { const k = x.trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim(); if (!k || said.has(k)) return false; said.add(k); return true; }).join('').trim() ?? lines.join(' ');
+      parts.push(`${run.length > 1 ? `This is about ${String(g.label).replace(/[.\s]+$/, '')}. ` : ''}${once}`);
     }
     if (!parts.length) {
       return rules(lane, text('Nobody has answered in the check-ins you run yet, so there is nothing to tell you about the team so far. I will have more once people have finished.'));
@@ -1164,7 +1169,7 @@ export class AssistantService {
    * Their own words come back verbatim with a plain "you said". Summarising somebody's own sentence
    * back at them is both worse and riskier than quoting it.
    */
-  private async whatDidISay(organizationId: string, who: string | null, topic: string): Promise<Reply> {
+  private async whatDidISay(organizationId: string, who: string | null, topic: string, userId: string | null = null): Promise<Reply> {
     if (!who) return rules('what_did_i_say', text('I cannot look back without knowing who you are.'));
     const q = topic.trim().replace(/[?.!]+$/, '');
     if (q.length < 3) return rules('what_did_i_say', text('About what?'));
@@ -1210,7 +1215,14 @@ export class AssistantService {
      * itself a question to the assistant is dropped, and the check is the router: if it routes to a
      * lane, it was a question rather than an account of somebody's work.
      */
-    const said = hits.filter((h) => route(h.content).lane === 'unplaced');
+    const saidToMe = hits.filter((h) => route(h.content).lane === 'unplaced');
+    /*
+     * AND WHAT THEY SAID IN THEIR OWN CHECK-INS (user journeys, F-13). "What did I say about the Green Mart proposal?" was answered "You have not
+     * mentioned the Green Mart proposal before" with her own check-in holding it, because only what was typed to Ask was searched. Her own words
+     * in her own place in each check-in, found through her own sign-in and nobody else's, and never a check-in kept in the app.
+     */
+    const inCheckIns = await this.whatTheySaidInTheirOwnCheckIns(organizationId, userId, needles);
+    const said = [...saidToMe, ...inCheckIns].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, 4);
 
     if (!said.length) {
       return rules('what_did_i_say', text(`You have not mentioned ${q} to me before. That may just mean it was said somewhere I cannot see.`));
@@ -1219,9 +1231,46 @@ export class AssistantService {
     const now = new Date();
     const { current, earlier } = splitBySession(said, now);
     const lines: string[] = [];
-    for (const h of current) lines.push(`- Earlier just now: "${h.content}"`);
-    for (const h of earlier) lines.push(`- ${howLongAgo(h.createdAt, now)}: "${h.content}"`);
+    const where = (h: any) => (h.label ? `, in "${h.label}"` : '');
+    for (const h of current) lines.push(`- Earlier just now${where(h)}: "${h.content}"`);
+    for (const h of earlier) lines.push(`- ${howLongAgo(h.createdAt, now)}${where(h)}: "${h.content}"`);
     return rules('what_did_i_say', text(`You have mentioned ${q}:\n${lines.join('\n')}`));
+  }
+
+  /** The asker's own words in their own check-ins, matching what they asked about. See whatDidISay. */
+  private async whatTheySaidInTheirOwnCheckIns(organizationId: string, userId: string | null, needles: string[]): Promise<{ content: string; createdAt: Date; role: string; label?: string }[]> {
+    if (!userId || !needles.length) return [];
+    try {
+      const kept = await keptInTheApp(this.prisma as any, organizationId);
+      const places: { id: string; ground?: { label?: string } }[] = await (this.prisma as any).groundParticipant?.findMany?.({
+        where: { userId, ground: { organizationId, ...notAKeptCheckIn(kept) } },
+        select: { id: true, ground: { select: { label: true } } },
+      })?.catch?.(() => []) ?? [];
+      if (!places.length || typeof (this.prisma as any).$queryRaw !== 'function') return [];
+      const labelOf = new Map(places.map((p) => [p.id, p.ground?.label ?? undefined]));
+      /* Most of what they asked about has to be in the sentence, so one common word is not a match. */
+      const need = Math.max(1, Math.ceil(needles.length * 0.6));
+      const rows = await (this.prisma as any).$queryRaw(
+        Prisma.sql`
+          SELECT t.content AS "content", t.created_at AS "createdAt", c.participant_id AS "participantId"
+          FROM conversation_turns t
+          JOIN check_ins c ON c.id = t.check_in_id
+          WHERE c.participant_id = ANY(${places.map((p) => p.id)}::text[])
+            AND t.role = 'PERSON'
+            AND (
+              SELECT count(*) FROM unnest(${needles}::text[]) AS w
+              WHERE regexp_replace(lower(t.content), '[^a-z0-9]', '', 'g') LIKE '%' || w || '%'
+            ) >= ${need}
+          ORDER BY t.created_at DESC
+          LIMIT 4
+        `,
+      ) as { content: string; createdAt: Date; participantId: string }[];
+      /* Nothing here is a question to Ask: these are answers in a check-in, so the router's test of "was this a question" is not applied. */
+      return (rows ?? [])
+        .map((r) => ({ content: r.content, createdAt: new Date(r.createdAt), role: 'person', label: labelOf.get(r.participantId) }));
+    } catch {
+      return [];
+    }
   }
 
   /**
@@ -4904,7 +4953,8 @@ export class AssistantService {
       ? await (this.prisma as any).groundCommitment?.findMany?.({
         where: {
           status: 'UNKNOWN',
-          participant: { userId: me.linkedUserId, awaitingSeat: false },
+          /* Held for a seat keeps their own promises (decision 110, B3): only the seat limit stops, and only new participation. */
+          participant: { userId: me.linkedUserId },
           ground: { organizationId, ...notAKeptCheckIn(kept) },
         },
         select: { text: true, whenSaid: true, ground: { select: { label: true } } },
@@ -4912,24 +4962,57 @@ export class AssistantService {
       })?.catch?.(() => []) ?? []
       : [];
 
+    /*
+     * WHAT THEY SAID THEY WOULD DO, WRITTEN DOWN WHILE SETTING A CHECK-IN UP OR ANSWERING, AS THE YOU PAGE READS IT (user journeys, F-5).
+     * The You page lists the person's own to-dos and commitments from their goals ("person_objectives", said by themselves, still open), and
+     * Ask read neither, so a lead whose You page held "Settle the 21 day credit rule with finance by the end of October." was told she had
+     * said she would do nothing. The same rows, the same rule, and only the asker's own place in each check-in.
+     */
+    const myPlaces: any[] = me.linkedUserId
+      ? await (this.prisma as any).groundParticipant?.findMany?.({
+        where: { userId: me.linkedUserId, ground: { organizationId, ...notAKeptCheckIn(kept) } },
+        select: { id: true, awaitingSeat: true, ground: { select: { label: true } } },
+      })?.catch?.(() => []) ?? []
+      : [];
+    const ownToDos: any[] = myPlaces.length
+      ? await (this.prisma as any).personObjective?.findMany?.({
+        where: { participantId: { in: myPlaces.map((x) => x.id) }, kind: { in: ['COMMITMENT', 'TODO'] }, authoredBy: 'self', status: 'OPEN' },
+        select: { text: true, dueSaid: true, participantId: true },
+        orderBy: { createdAt: 'asc' },
+      })?.catch?.(() => []) ?? []
+      : [];
+    const sameWords = (t: string) => t.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+    const alreadyListed = new Set(inCheckIns.map((c) => sameWords(String(c.text))));
+    for (const o of ownToDos) {
+      const text = String(o.text ?? '').trim();
+      if (!text || alreadyListed.has(sameWords(text))) continue;
+      alreadyListed.add(sameWords(text));
+      inCheckIns.push({ text, whenSaid: o.dueSaid ?? null, ground: myPlaces.find((x) => x.id === o.participantId)?.ground ?? null });
+    }
+
     const now = new Date();
     const lines: string[] = [];
     const late: string[] = [];
     for (const c of open) {
-      const when = c.dueSaid ? ` (you said ${c.dueSaid})` : '';
       const slipped = hasSlipped(c as any, now);
-      lines.push(`- ${c.text}${when}${slipped ? ', and the date you gave has passed' : ''}`);
+      const said = aPromiseAsASentence(String(c.text), c.dueSaid);
+      lines.push(`- ${slipped ? `${said.replace(/\.$/, '')}, and the date you gave has passed.` : said}`);
       if (slipped) late.push(c.text);
     }
+    /* ONCE EACH, AS THE PERSON READS IT. A promise written down in a check-in ("I will call him", said "on the 15th") and the same promise kept as
+       her own to-do ("I will call him on the 15th.") differ in their stored words but read as one sentence, and were listed twice. */
     for (const c of inCheckIns) {
-      const when = c.whenSaid ? `you said ${c.whenSaid}, ` : '';
-      lines.push(`- ${String(c.text).replace(/[.]+$/, '')} (${when}in "${c.ground?.label ?? 'your check-in'}")`);
+      const line = `- ${aPromiseAsASentence(String(c.text), c.whenSaid, c.ground?.label ?? 'your check-in')}`;
+      if (!lines.includes(line)) lines.push(line);
     }
+    /* In a check-in with no seat for them yet, said plainly, so a person is not left to wonder why nothing new is asked of them. */
+    const noSeat = myPlaces.filter((x) => x.awaitingSeat);
     if (!lines.length) {
-      return rules('what_did_i_commit_to', text('You have not said you will do anything that is still waiting. When you say you will do something in a check-in, it shows up here.'));
+      return rules('what_did_i_commit_to', text(`You have not said you will do anything that is still waiting. When you say you will do something in a check-in, it shows up here.${noSeat.length ? `\n\n${noSeat.map((x) => noSeatYetSays(String(x.ground?.label ?? 'your check-in'))).join('\n')}` : ''}`));
     }
     const heading = `You said you would do ${lines.length === 1 ? 'one thing' : `${lines.length} things`} that ${lines.length === 1 ? 'is' : 'are'} still waiting.`;
     const parts = [heading, ...lines];
+    for (const x of noSeat) parts.push(`\n${noSeatYetSays(String(x.ground?.label ?? 'your check-in'))}`);
     if (late.length) {
       parts.push(`\n${late.length === 1 ? 'One of them is' : `${late.length} of them are`} past the date you gave. That is worth saying out loud in your next check-in rather than letting it sit.`);
     }

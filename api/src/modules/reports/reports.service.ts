@@ -3342,6 +3342,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
         return step && days ? Math.max(1, Math.floor(days / step)) : null;
       })(),
       closed: !!snapshot,
+      /* The wall is the release, not whether the round has closed (user journeys, F-12). */
+      othersWordsAreNotYetOpen: !(released || viewerIsLead),
       agreements: (snapshot?.agreements ?? ground.report?.agreements ?? []) as unknown[],
       /* The marks the build stored, only for the live report: a closed round's lines were kept as they were. */
       marksOnItsLines: snapshot ? null : ((ground.report as any)?.engagement?.marksOnItsLines ?? null),
