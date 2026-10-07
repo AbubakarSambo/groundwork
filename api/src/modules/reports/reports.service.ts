@@ -1,4 +1,5 @@
 import { theOpenSession } from '../engagement/heres-what-is-new';
+import { aNumberInWords } from '../engagement/a-number-in-words';
 import { theSharedPictureSubject } from '../engagement/the-leads-subjects-carry-the-facts';
 import { theFactsOfTheWeek, theWeekOf } from '../email/the-leads-weekly-letter';
 import { theRecordsClock, theDayItBegan, wholeDaysTo } from '../board/a-wait-is-dated-not-counted';
@@ -2483,6 +2484,14 @@ Close the report by framing - neutrally, without recommending one - the choice n
     if (productHalf) {
       const modelHalf = heldToTheNumbers(String((result as any).sharedPicture ?? '').trim(), null);
       (result as any).sharedPicture = modelHalf ? `${productHalf}\n\n${modelHalf}` : productHalf;
+    }
+    /*
+     * NOBODY HAS ANSWERED YET, SO THE PRODUCT SAYS SO, WITH THE COUNT IT KNOWS (B-009). With no answer on record the model wrote
+     * "You are the only person invited to this ground and you have not checked in yet" for a lead who had invited three people,
+     * and said "ground". The count of people in the round is the product's, and so are these words.
+     */
+    if (answered === 0 && expected > 0) {
+      (result as any).sharedPicture = `Nobody has checked in yet, out of ${aNumberInWords(expected)} ${expected === 1 ? 'person' : 'people'}. The shared picture is made once people have answered.`;
     }
     if (praiseHeldBack.length) {
       this.logger.warn(`Report for ground ${groundId}: held back ${praiseHeldBack.length} sentence(s) of the picture that call a figure a success the record does not support: ${praiseHeldBack.map((x) => `"${x}"`).join(', ')}`);
