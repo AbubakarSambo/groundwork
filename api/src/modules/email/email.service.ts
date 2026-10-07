@@ -558,6 +558,8 @@ export class EmailService implements OnModuleInit {
       } catch (_) { /* mailcatcher not running - console log is still available */ }
       const devId = `dev-${crypto.randomUUID()}`;
       await this.delivery.recordSend(devId, options.to, context);
+      /* A mail that is only logged is still written down as sent, the way a real one is: the once-only and one-a-day rules read this record, so without it a local run sends the same routine mail every morning, which production never does. */
+      if (sender && ROUTINE_EMAILS.has(sender)) await this.writeItDown(options, sender, 'sent', null); else void this.writeItDown(options, sender, 'sent', null);
       // DEV BOUNCE CONVENTION: a recipient containing '+bounce' emits a
       // synthetic email.bounced event through the SAME webhook handler, so
       // the full bounced-state UI is provable at the real local UI. The
