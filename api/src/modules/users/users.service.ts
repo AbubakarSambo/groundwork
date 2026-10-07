@@ -21,7 +21,7 @@ import { theDomainOf, mayBeJoinedBy, effectiveJoinDomain } from '../../common/an
 import { isCovered } from '../../common/subscription';
 import { HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
 import { mayChange, mayHandOver } from './the-person-who-set-this-up';
-import { colleaguesOf } from '../../common/colleagues';
+import { colleaguesOf, A_COLLEAGUE_WITH_NO_NAME } from '../../common/colleagues';
 import { aLineOrNothing, wouldMakeALoop, CANNOT_REPORT_TO_THEMSELVES, THAT_WOULD_MAKE_A_LOOP, NOT_IN_THIS_ORGANISATION } from './where-they-sit';
 import { groundsAViewerMayList } from '../grounds/who-may-read-this-check-in';
 import { fullNameToCall } from '../engagement/a-name-to-call-them';
@@ -591,6 +591,7 @@ export class UsersService {
     const heldRows = [...heldByEmail.values()].map((h) => ({
       id: `held:${h.id}`,
       email: h.email,
+      displayName: 'Somebody invited by email',
       firstName: null,
       lastName: null,
       role: null as string | null,
@@ -634,6 +635,8 @@ export class UsersService {
     return {
       data: [...users.map((u) => ({
         ...u,
+        /* The name to put in the list (B-030): theirs, else a plain stand-in, so no screen has to put the address where a name goes (decision 115). */
+        displayName: [u.firstName, u.lastName].filter(Boolean).join(' ').trim() || A_COLLEAGUE_WITH_NO_NAME,
         /*
          * Named for what is true, not for what is missing. "Never checked in" on somebody who
          * joined yesterday is a fact about the calendar; the page decides how to say it.
