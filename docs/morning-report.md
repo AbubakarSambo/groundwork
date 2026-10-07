@@ -1,5 +1,7 @@
 # Morning report
 
+**7 October, second full run (run-oct7c) to tell noise from a real drop:** proof asked for is 34 (27 in run-oct7b, 38 in run-oct6f, baseline 42); about three quarters of it is the word "picture" and the real requests are about 4 (3 and 9 before), so I read it as mostly noise with a small drop I cannot trace; every problem is 0. Adversarial set: 3 checks failed where oct7b had none, and one is a question for you: Tunde said "dialysis" himself in his own check-in and it reached the lead (allowed by the check-in rule, forbidden by the scenario). See .
+
 **7 October, overnight to the staging pull request: part 1 in progress.** Status: the pull request is not ready yet. Done and pushed so far tonight:
 - The two WhatsApp templates fixed for Meta's rules, with a test (`5fdddba9`).
 - The four existing-clients fixes: blank names, the repeated daily summary, the footer, and what-is-new crowded out (`b2362628`, `15a6c4aa`, `1a1b9b8d`, `1fe7bb83`). Reviewed by reading the real emails and WhatsApp messages; the reviewer fixed what it read (`190622d7`).
