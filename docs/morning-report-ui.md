@@ -4,6 +4,36 @@ This is the report from the screens workspace, on the branch `wip/prototype-ui`.
 workspace writes its own report in `docs/morning-report.md`, so the two computers never edit the
 same file.
 
+## The user journey sweep, in progress (7 October, afternoon)
+
+The sweep follows Hafsah's `docs/user-journey-tests.md`. The bug log is `docs/bug-log-screens.md`, the screenshots are in `docs/bug-log-screens/`, and the journeys that can be run again are in `e2e/sweep/`.
+
+**Journeys passed and failed so far:**
+- **Passed:** A3, M1 and A6 (what could be checked), and in "Situations to repeat": two check-ins open, a used sign-in link, a double-clicked invitation, and two tabs on one check-in.
+- **Failed:** A1, A2, A4, L1, L4, L6, L7, L8, M2, M4 and M6. Each failing line is a row in the bug log.
+- **Passed in part:** L5 (the approval worked, but the email has no link) and M5 (it may be too early for her to have commitments or patterns).
+- **Not yet run:**
+  - A5's payment step and A7's staff steps, for the two set-up gaps below;
+  - L2 in full;
+  - in "Situations to repeat", someone in two organisations, a slow connection and phone numbers typed different ways.
+
+**Bugs found:** 41.
+- **Privacy:** 1 (B-013). It is the engine's, sent as request 188.
+- **Stops someone using it:** 6.
+- **Wrong information:** 17.
+- **Confusing:** 20.
+- **Cosmetic:** 1.
+
+**Bugs fixed on the screens:** 16. A few more were checked and are not bugs. The rest are the engine's, sent as requests 188 to 191.
+
+**Pages audited:** none yet. The page audit comes after the remaining faults.
+
+**What needs Hafsah:**
+- **A5, payment in test mode.** On this computer `api/.env` has no `STRIPE_SECRET_KEY`, no `STRIPE_PUBLISHABLE_KEY` and no `STRIPE_WEBHOOK_SECRET`. `STRIPE_CALLBACK_URL` is set. Please add the three as Stripe TEST values (they start `sk_test_`, `pk_test_` and `whsec_`) and restart the API. The screens will never use a live key or print a key.
+- **A7, a staff account.** The only way to become staff is `PLATFORM_ADMIN_BOOTSTRAP_EMAIL` in `api/.env`. I have asked the engine for a local seed instead (request 192).
+- **B-003, decided for Hafsah to confirm.** Your document says someone from the same company domain is offered to join. The product does this only once an admin switches joining on, and it is off for a new organisation. I kept it off, because switching it on by default would let anyone with a company address in.
+- **B-001, the trial.** The trial is switched off in this computer's platform settings, so the page rightly shows no trial. It needs checking where the trial is on.
+
 ## 13:30 update: the set-up screens, read on screen a third time
 
 **The most important fix.** A lead who was already signed in had no way to add people when saving a new check-in. The people step only appeared after an emailed link, so "Save and set up" made a check-in with only the lead in it. This was in the release before today's work. It is fixed, with a test proving that the people she adds are sent on save.
