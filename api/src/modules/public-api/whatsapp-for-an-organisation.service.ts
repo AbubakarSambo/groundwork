@@ -48,6 +48,15 @@ import {
  * language is read from their first message and the conversation happens in it; the record stays in
  * English.
  */
+/** What a person reads when a file they sent could not be read (B-104): a sentence of ours, never the library's ("Invalid PDF structure."). */
+export const THAT_FILE_COULD_NOT_BE_READ = 'I could not read that file. It may be damaged, or not the kind of file its name says. Send it again, or upload it in Groundwork. A PDF, an image or a text document works.';
+export function aFileProblemInWords(err: any): string {
+  const said = typeof err?.message === 'string' ? err.message.trim() : '';
+  /* One of our own refusals is already a sentence a person can use: a capital, a full stop, several words, and no library words. */
+  const ours = !!err?.getStatus && /^[A-Z][^]{25,}[.!?]$/.test(said) && !/\b(pdf structure|invalid|parse|unexpected|stack|undefined|null|ENOENT)\b/i.test(said);
+  return ours ? said : THAT_FILE_COULD_NOT_BE_READ;
+}
+
 export function isHeldByTheAddOn(error?: string | null): boolean {
   return /this check-in stays in the app/i.test(error ?? '');
 }
@@ -363,7 +372,7 @@ export class WhatsAppForAnOrganisationService {
         const doc: any = await this.documents.upload(ground!.groundId, userId!, { originalname: arrived.fileName, mimetype: fetched.mimeType, buffer: fetched.buffer, size: fetched.buffer.length } as any, false, arrived.caption || undefined);
         await say(`${whatTheFileIsCalled(arrived)} is on your check-in${arrived.caption ? ` with your note: ${arrived.caption}` : ''}. ${doc?.whoCanSeeIt ?? 'Only you can see it until you say otherwise.'} Anything it backs up is read against what you said.`);
       } catch (err: any) {
-        await say(err?.message ?? 'That file could not be read. A PDF, an image, or a text document works.');
+        await say(aFileProblemInWords(err));
       }
       return;
     }
