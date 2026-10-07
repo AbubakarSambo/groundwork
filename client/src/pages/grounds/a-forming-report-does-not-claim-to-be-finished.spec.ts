@@ -48,8 +48,12 @@ describe('what the lead is told before everyone has answered', () => {
     expect(LIST).toContain('checkedIn(r.answered, r.total)')
     /* 'Final' read as 'the last session' on every released row. It means the report is out. */
     /* A round everybody has answered is not forming, it is waiting for the lead - see
-       a-round-everybody-answered-is-not-forming. The three states are still the three states. */
-    expect(LIST).toContain('r.closed ? EVERY_SESSION.shared : EVERY_SESSION.notShared')
+       a-round-everybody-answered-is-not-forming. The three states are still the three states.
+       SCREEN FAULT 1 (FINAL WALK): the tag now reads `r.shared` (actually released), not
+       `r.closed` (everybody answered) - a lead can release a session before the round closes, or
+       the round can close before the lead releases it, so the two can disagree. See
+       session-rows.ts's `isSessionShared` and TheReportIsAListOfSessions.tsx's own note. */
+    expect(LIST).toContain('r.shared ? EVERY_SESSION.shared : EVERY_SESSION.notShared')
   })
 
   it('and names who is still being waited on, rather than a number alone', () => {

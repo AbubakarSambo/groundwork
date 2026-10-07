@@ -12,6 +12,7 @@ import { YouAreIn } from './YouAreIn'
 import { firstWordOfAName } from '@/lib/the-first-word-of-a-name'
 import { QueueLink } from '@/pages/suites/QueuePage'
 import { yourRequestsApi } from '@/api/suites'
+import { todayGreetingLine } from '@/lib/the-greeting-line-does-not-claim-what-needs-you-does-not'
 
 /**
  * TODAY (C1, #/today). The wording is copied from docs/prototype/screens/C1-today-and-check-ins/
@@ -71,6 +72,9 @@ export function TodayPage() {
   const name = firstWordOfAName(user?.firstName)
   const greeting = name ? `${partOfTheDay(now)}, ${name}` : partOfTheDay(now)
   const needs = data?.needs ?? []
+  /* Screen fault 4 (final walk): never claim "You have not checked in yet." beside "Nothing needs
+     you right now." - see the-greeting-line-does-not-claim-what-needs-you-does-not.ts. */
+  const greetingLine = todayGreetingLine(data?.line, needs.length)
   /* A SUITE ITEM GOES TO THE QUEUE, NOT STRAIGHT TO THE BOARD (live walk at a hundred people, fault
      2): with a hundred people waiting on one approver, the board behind "/suite/leave" or
      "/suite/spend" is the whole organisation's, not filtered to this one thing. The queue
@@ -92,7 +96,7 @@ export function TodayPage() {
 
           <Greeting
             title={greeting}
-            subtitle={`${whenItWas(now, 'weekdayAndDay')}.${data?.line ? ` ${data.line}` : ''}`}
+            subtitle={`${whenItWas(now, 'weekdayAndDay')}.${greetingLine ? ` ${greetingLine}` : ''}`}
           />
 
           {/* Appeals to decide (C3, U.13): an admin's only. The server refuses anybody else. */}

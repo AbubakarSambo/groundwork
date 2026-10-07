@@ -46,6 +46,7 @@ import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-
 import { copy } from '@/components/gw/copying-can-fail'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { SendTheReportToEveryone } from '@/components/gw/SendTheReportToEveryone'
+import { howManyHaveNotAnsweredYet } from '@/lib/a-number-up-to-ten-in-words'
 
 /**
  * THE THIRD COPY OF THE SITUATION NAMES, DELETED.
@@ -1518,8 +1519,10 @@ export function GroundAdminPage() {
           const say: { t: string; tone?: 'amber' | 'navy' } | null =
             a.kind === 'overdue' ? { t: a.daysLate === 1 ? 'Your turn. It is 1 day late.' : `Your turn. It is ${a.daysLate} days late.`, tone: 'amber' }
             : a.kind === 'yours' ? { t: 'Your turn.', tone: 'navy' }
-            /* U.9 re-review, item B: a sentence, not a label and a fraction. */
-            : a.kind === 'waiting' ? { t: `${a.total - a.done} of the ${a.total} have not answered yet.` }
+            /* U.9 re-review, item B: a sentence, not a label and a fraction. Screen fault 4
+               (final walk): "1 of the 3 have not answered yet." is now said in words, with the
+               right verb for one person left over - "One of the three has not answered yet." */
+            : a.kind === 'waiting' ? { t: howManyHaveNotAnsweredYet(a.total - a.done, a.total) }
             : null
           return say ? <Note tone={say.tone}>{say.t}</Note> : null
         })()}
