@@ -187,6 +187,19 @@ describe('"What did I say I would do?" says each promise whole, once', () => {
     expect(t).toContain('- In "Sales team, Q3", you said you would send the Kisumu list by Friday.');
     expect(t).not.toMatch(/\(you said|\bI will\b/);
   });
+
+  it('a promise written down in the check-in and kept as her own to-do, in other words that read the same, is listed once', async () => {
+    /* Read on the server, 7 October: Chidi was told 'You said you would do 2 things' and read 'call him on the 15th' twice. */
+    const h = askGroundwork({ userId: 'u-chidi' });
+    h.prisma.person.findFirst = jest.fn(async () => ({ id: 'p1', externalId: 'ext-c', displayName: 'X', active: true, linkedUserId: 'u-chidi' }));
+    h.prisma.commitment.findMany = jest.fn(async () => []);
+    h.prisma.groundCommitment = { findMany: jest.fn(async () => [{ text: 'I will call him', whenSaid: 'on the 15th', ground: { label: 'Sales team, Q4' } }]) };
+    h.prisma.groundParticipant.findMany = jest.fn(async () => [{ id: 'pp-c', ground: { label: 'Sales team, Q4' } }]);
+    h.prisma.personObjective = { findMany: jest.fn(async () => [{ text: 'I will call him on the 15th.', dueSaid: 'on the 15th', participantId: 'pp-c' }]) };
+    const t = textOf(await h.service.respond('org-a', 'p1', 'What did I say I would do?'));
+    expect(t).toContain('You said you would do one thing that is still waiting.');
+    expect(t.split('you said you would call him on the 15th').length - 1).toBe(1);
+  });
 });
 
 /** F-13 OF THE USER JOURNEYS. Amani said it in her own check-in; Ask told her she had never mentioned it. */

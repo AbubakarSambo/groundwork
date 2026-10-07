@@ -4999,8 +4999,11 @@ export class AssistantService {
       lines.push(`- ${slipped ? `${said.replace(/\.$/, '')}, and the date you gave has passed.` : said}`);
       if (slipped) late.push(c.text);
     }
+    /* ONCE EACH, AS THE PERSON READS IT. A promise written down in a check-in ("I will call him", said "on the 15th") and the same promise kept as
+       her own to-do ("I will call him on the 15th.") differ in their stored words but read as one sentence, and were listed twice. */
     for (const c of inCheckIns) {
-      lines.push(`- ${aPromiseAsASentence(String(c.text), c.whenSaid, c.ground?.label ?? 'your check-in')}`);
+      const line = `- ${aPromiseAsASentence(String(c.text), c.whenSaid, c.ground?.label ?? 'your check-in')}`;
+      if (!lines.includes(line)) lines.push(line);
     }
     /* In a check-in with no seat for them yet, said plainly, so a person is not left to wonder why nothing new is asked of them. */
     const noSeat = myPlaces.filter((x) => x.awaitingSeat);
