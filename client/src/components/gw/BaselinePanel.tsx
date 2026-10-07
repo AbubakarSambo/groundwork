@@ -112,7 +112,7 @@ export function BaselinePanel({ groundId, canState }: { groundId: string; canSta
               * report will and will not be able to answer, which is the same framing
               * `what-this-ground-can-tell-you.ts` uses and the reason it works.
               */}
-            Nothing stated yet. The report can show where accounts differ without it. It cannot say
+            Nothing stated yet. The report can show where people's answers differ without it. It cannot say
             whether things went well, because nothing has said what well would look like.
           </div>
         )}
@@ -180,8 +180,8 @@ export function BaselinePanel({ groundId, canState }: { groundId: string; canSta
                   style={{ width: '100%', padding: '9px 11px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
                 />
                 <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, marginTop: 6 }}>
-                  The version above stays on the record either way. A yardstick that moved with no account
-                  of why reads worse than either version does on its own.
+                  The version above stays on the record either way. A yardstick that moved with no reason
+                  given reads worse than either version does on its own.
                 </div>
               </>
             )}

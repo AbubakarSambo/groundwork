@@ -52,6 +52,9 @@ const WHAT_A_PARTICIPANT_READS = [
   '../../pages/chat/ChatPage.tsx',
   '../../pages/board/BoardPage.tsx',
   'HelpModal.tsx',
+  /* User journeys F-16: the check-in's settings and the shared picture a participant reads. */
+  'BaselinePanel.tsx',
+  'the-shared-picture-a-party-reads.tsx',
   'ExpectationsPanel.tsx',
   'TheReportYouSawAtTheEnd.tsx',
   '../../pages/invite/InvitePage.tsx',
@@ -94,6 +97,7 @@ const THE_WRONG_SENSE = [
   'the accounts agree',
   'accounts agree',
   'accounts differed',
+  'where accounts differ',
   'built from the accounts',
   'across the accounts',
   'across their accounts',
