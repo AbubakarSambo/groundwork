@@ -1192,6 +1192,54 @@ export function fallbackGroundName(situation?: string, where?: string): string {
 }
 
 /**
+ * THE LENGTH OF TIME A NEW HIRE'S CHECK-IN IS NAMED AFTER (fault 6, live walk, 6 October 2026).
+ * 90 days unless the lead said a different number of days somewhere in the conversation
+ * ("first 60 days", "a 60-day start" and the like) - never guessed beyond what was actually said.
+ */
+export function newHireDays(saidSoFar: string): number {
+  const m = saidSoFar.match(/(\d{1,3})\s*-?\s*day/i)
+  const n = m ? parseInt(m[1], 10) : NaN
+  return Number.isFinite(n) && n > 0 ? n : 90
+}
+
+/**
+ * THE NEW-HIRE DEFAULT NAMES THE PERSON, NOT THE SITUATION (faults 4 and 6, live walk, 6 October
+ * 2026).
+ *
+ * Read live: a lead who set up a new hire's first 90 days, and never typed a name of her own,
+ * saved a check-in called "Help a new hire get started" - the situation's own label, repeated as
+ * though it were a title. The prototype's own check-ins read a person's name instead ("Faith,
+ * first 90 days", B1-starting-a-check-in/new.txt's sidebar). This is the one situation where the
+ * conversation already knows a person's name before anybody has typed a name for the check-in
+ * itself, so the fallback uses it; every other situation keeps naming itself after the situation,
+ * because there is no one person it is about.
+ */
+export function newHireGroundNameFallback(peopleNamed: string[] | undefined, days: number): string | undefined {
+  const first = (peopleNamed ?? []).map((p) => p.trim()).filter(Boolean)[0]
+  if (!first) return undefined
+  const firstName = first.split(/\s+/)[0]
+  return `${firstName}, first ${days} days`
+}
+
+/**
+ * THE NAME A CHECK-IN GETS WHEN THE LEAD LEAVES THE FIELD BLANK, SITUATION-AWARE. Every situation
+ * but the new hire keeps `fallbackGroundName`'s own situation label; the new hire's default is the
+ * person it is about, when the conversation has already named them (faults 4 and 6).
+ */
+export function effectiveFallbackGroundName(
+  situation: string | undefined,
+  peopleNamed: string[] | undefined,
+  saidSoFar: string,
+  where?: string,
+): string {
+  if (situation === 'NEW_HIRE') {
+    const named = newHireGroundNameFallback(peopleNamed, newHireDays(saidSoFar))
+    if (named) return named
+  }
+  return fallbackGroundName(situation, where)
+}
+
+/**
  * What the closing report is doing, while it does it.
  *
  * No percentage and no estimate: the work is a model call whose length nobody can
@@ -2491,7 +2539,8 @@ export function EntryChatPage() {
          */
         groundLabel: isAnchorDraft()
           ? anchorGroundLabel
-          : (groundName.trim() || fallbackGroundName(theSituationTheLeadPicked() ?? onboardingSelections.classifiedScenario, orgName.trim() || user?.organization?.name || undefined)),
+          /* FAULTS 4 AND 6: THE NEW HIRE'S DEFAULT NAMES THE PERSON, NOT THE SITUATION. */
+          : (groundName.trim() || theDefaultGroundName()),
         orgName: orgName.trim() || undefined,
         /*
          * FAULT 1(b): AN ANCHOR DRAFT'S SITUATION NEVER LOSES TO `onboardingSelections.mode`.
@@ -2793,7 +2842,8 @@ export function EntryChatPage() {
         /* SCREEN FAULT 2: same rule as `buildCommitPayload` above - the served label, not the aim. */
         groundLabel: isAnchorDraft()
           ? anchorGroundLabel
-          : (groundName.trim() || fallbackGroundName(theSituationTheLeadPicked() ?? onboardingSelections.classifiedScenario, orgName.trim() || user?.organization?.name || undefined)),
+          /* FAULTS 4 AND 6: THE NEW HIRE'S DEFAULT NAMES THE PERSON, NOT THE SITUATION. */
+          : (groundName.trim() || theDefaultGroundName()),
         orgName: orgName.trim() || undefined,
         cadence,
         /* The page's default is not a choice; the server records only a confirmed pick as one. */
@@ -2951,6 +3001,20 @@ export function EntryChatPage() {
     const card = SITUATION_CARDS.find((c) => onboardingHistory.some((m) => m.role === 'user' && m.content === c.message))
     if (card) return card.label
     return scenario && (SCENARIO_LABELS as Record<string, string>)[scenario] ? scenario : undefined
+  }
+  /**
+   * THE NAME A CHECK-IN GETS WHEN THE LEAD LEAVES THE FIELD BLANK (faults 4 and 6, live walk,
+   * 6 October 2026). One place, used both when the ground is actually committed and to preview
+   * the same name in the side panel before then, so the two can never disagree about what a blank
+   * field will become.
+   */
+  function theDefaultGroundName(): string {
+    return effectiveFallbackGroundName(
+      theSituationTheLeadPicked() ?? onboardingSelections.classifiedScenario,
+      onboardingSelections.peopleNamed,
+      `${onboardingSelections.initial ?? ''} ${onboardingSelections.brief ?? ''}`,
+      orgName.trim() || user?.organization?.name || undefined,
+    )
   }
   /* Whether the start is after today, which is the one case where nobody is invited on saving, for certain. */
   const startsLater = (() => {
@@ -3935,7 +3999,24 @@ export function EntryChatPage() {
           {!atTheDoor && (
             <div className="gw-fills-in gwui-ec-fills-in">
               <FillsInAsYouTalk
-                name={groundName}
+                /*
+                 * FAULT 4 (live walk, 6 October 2026): "A NAME" STAYED UNTICKED THOUGH THE PERSON
+                 * HAD ALREADY BEEN NAMED. For a new hire, the conversation knows a name before the
+                 * lead has typed anything into "Name this situation" - the same name faults 4 and
+                 * 6 use to default the saved check-in's own name. Offered here too, so the row
+                 * ticks the moment Groundwork has a name to offer, not only once the lead has
+                 * retyped it herself. Every other situation is unaffected: with no new-hire name to
+                 * offer, this is simply `groundName` as before, and the row stays unset until the
+                 * lead gives one.
+                 */
+                name={groundName.trim() || (
+                  (theSituationTheLeadPicked() ?? onboardingSelections.classifiedScenario) === 'NEW_HIRE'
+                    ? newHireGroundNameFallback(
+                        onboardingSelections.peopleNamed,
+                        newHireDays(`${onboardingSelections.initial ?? ''} ${onboardingSelections.brief ?? ''}`),
+                      ) ?? ''
+                    : ''
+                )}
                 situation={(() => {
                   /*
                    * FAULT 2: THE PANEL'S SITUATION LINE, FOR AN ANCHOR DRAFT, IS THE ENGINE'S OWN

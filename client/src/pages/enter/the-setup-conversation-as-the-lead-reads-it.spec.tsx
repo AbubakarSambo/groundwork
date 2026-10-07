@@ -76,6 +76,29 @@ describe('the setup conversation', () => {
     expect(page).not.toContain('Learn our bread recipes; Run the morning bake')
   })
 
+  /*
+   * FAULT 4 (live walk, 6 October 2026): "A NAME" STAYED UNTICKED THOUGH THE PERSON (IMANI) WAS
+   * ALREADY NAMED. The side panel's "0 of 4 set" never ticked "A name" while `groundName` itself
+   * was still blank, even though the new hire's own name had already come up in conversation and
+   * the check-in would be named after her the moment it saved (fault 6). Offering that same name
+   * here ticks the row the moment Groundwork has a name to offer.
+   */
+  it('ticks "A name" for a new hire once the person has been named, before the lead types anything', async () => {
+    openWith({
+      scenario: 'NEW_HIRE', closed: false, history: [], onboardingStep: 3,
+      onboardingHistory: [
+        { role: 'assistant', content: 'Tell me about it.' },
+        { role: 'user', content: 'Imani is starting as our new baker next week.' },
+      ],
+      onboardingSelections: {
+        mode: 'new', initial: 'Imani is starting as our new baker.', classifiedScenario: 'NEW_HIRE',
+        peopleNamed: ['Imani'],
+      },
+    })
+    await waitFor(() => expect(screen.getAllByText('Imani, first 90 days').length).toBeGreaterThan(0))
+    expect(document.body.textContent).not.toContain('0 of 4 set')
+  })
+
   it('once in the check-in, the planned number follows how often it runs', async () => {
     openWith({
       scenario: 'PIP', closed: false, flowPath: 'self', onboardingStep: 7,
