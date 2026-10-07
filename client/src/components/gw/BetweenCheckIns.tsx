@@ -39,14 +39,24 @@ import { Button } from './ui/Button'
  * same private note endpoint GroundChat's own composer used, rather than to Ask Groundwork.
  */
 
-/** The reply's blocks, reduced to plain lines. Nothing this card cannot show (a proposal's yes/no,
-    a picker's options) is dropped silently - it prints as a line of text instead, same as it would
-    read aloud, since this card has no room for buttons of its own. */
+/**
+ * The reply's blocks, reduced to plain lines. Nothing this card cannot show (a proposal's yes/no,
+ * a picker's options) is dropped silently - it prints as a line of text instead, same as it would
+ * read aloud, since this card has no room for buttons of its own.
+ *
+ * B-036: A REPLY SAYING THE SAME SENTENCE TWICE - as both its own `text` block and a `claim` or
+ * `proposal` block repeating it - rendered as two identical bubbles, one directly under the other
+ * (Grace's leave dates, and the next reply in the same conversation). `AskGroundwork.tsx`'s own
+ * `drawBlocks` already guards exactly this case for the sidebar panel (`!texts.has(b.summary)`);
+ * this card had no such guard, so a `claim`'s or `proposal`'s own text is dropped here too when a
+ * `text` block already said the same words.
+ */
 function linesOf(reply: AskReply): string[] {
+  const texts = new Set(reply.blocks.filter((b): b is AskBlock & { type: 'text'; body: string } => b.type === 'text' && typeof b.body === 'string').map((b) => b.body))
   return reply.blocks.map((b: AskBlock) => {
     if (b.type === 'text' && typeof b.body === 'string') return b.body
-    if (b.type === 'claim' && typeof b.says === 'string') return b.says
-    if (b.type === 'proposal' && typeof b.summary === 'string') return b.summary
+    if (b.type === 'claim' && typeof b.says === 'string') return texts.has(b.says) ? null : b.says
+    if (b.type === 'proposal' && typeof b.summary === 'string') return texts.has(b.summary) ? null : b.summary
     if (b.type === 'picker' && Array.isArray(b.options)) {
       return (b.options as { label: string }[]).map(o => o.label).join(' / ')
     }
