@@ -38,7 +38,7 @@ test('Grace signs up, invites her people, switches on leave and spending, and op
 
   await test.step('3. She invites the lead, and two people to take part, from People', async () => {
     await page.goto(`${APP}/org/members`);
-    const list = page.getByLabel(/One per line: a name and an email/);
+    const list = page.getByLabel(/Write one person on each line, with their name and email/);
     await list.fill(`Wairimu Njoroge, ${w.wairimu}`);
     await page.getByRole('combobox', { name: 'Role' }).selectOption({ label: 'Can open check-ins' });
     await page.getByRole('button', { name: 'Send their invitations' }).click();
