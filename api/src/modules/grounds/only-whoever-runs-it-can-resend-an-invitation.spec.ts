@@ -40,3 +40,30 @@ describe('who may send an invitation again', () => {
     expect(w.prisma.groundParticipant.update).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * REQUEST 180 ITEMS 5 AND 6, AS THE LEAD READS THEM. Somebody waiting for a seat is sent nothing, and told why; somebody who has joined is
+ * told so by name, in a full sentence.
+ */
+describe('what the lead is told when there is nothing to send', () => {
+  function withParticipant(row: any) {
+    const w = service();
+    w.prisma.groundParticipant.findFirst = jest.fn(async () => ({ id: 'p-femi', groundId: 'g1', email: 'femi@x.test', userId: null, inviteToken: 't', ...row }));
+    return w;
+  }
+
+  it('Kwesi, waiting for a seat, is sent nothing and the lead reads why', async () => {
+    const w = withParticipant({ awaitingSeat: true, nameGiven: 'Kwesi' });
+    const err: any = await w.s.resendParticipantInvite('g1', 'p-femi', 'org1', 'u-wairimu', 'MEMBER').catch((e) => e);
+    expect(err.message).toBe('Kwesi is waiting for a seat on the plan, so an invitation would not let them in yet. They will get their invitation as soon as there is a seat for them.');
+    expect(w.sent).toEqual([]);
+    expect(w.prisma.groundParticipant.update).not.toHaveBeenCalled();
+  });
+
+  it('Kwesi, who has joined, is named in the refusal', async () => {
+    const w = withParticipant({ userId: 'u-kwesi', user: { firstName: 'Kwesi' } });
+    const err: any = await w.s.resendParticipantInvite('g1', 'p-femi', 'org1', 'u-wairimu', 'MEMBER').catch((e) => e);
+    expect(err.message).toBe('Kwesi has already joined this check-in, so there is no invitation to send again.');
+    expect(w.sent).toEqual([]);
+  });
+});
