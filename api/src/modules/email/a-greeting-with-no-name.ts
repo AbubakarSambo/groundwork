@@ -11,6 +11,7 @@
 export function greeting(name?: string | null): string {
   const said = (name ?? '').trim();
   /* Not a name: a whole address in the name slot reads worse than no name at all. */
-  const usable = said && !said.includes('@') ? said : '';
+  /* Nor "Someone", the word a list uses for a person with no name: a person is never greeted "Hi Someone," in a mail to themselves (review of 1678157c). */
+  const usable = said && !said.includes('@') && said.toLowerCase() !== 'someone' ? said : '';
   return usable ? `Hi ${usable},` : 'Hi,';
 }

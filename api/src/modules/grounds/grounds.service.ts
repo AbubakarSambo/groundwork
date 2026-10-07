@@ -1,3 +1,4 @@
+import { fullNameToCall } from '../engagement/a-name-to-call-them';
 import { theInvitedRowAsServed } from './the-invited-row-as-served';
 import { withoutTheLeadsSetUpForAMember } from './the-leads-set-up-is-the-leads-in-the-anchor';
 import { aShortQuestionForAPerson, askedBackToTheLead, theQuestionTheyWereShown } from './a-short-question-for-a-person-in-the-old-chat';
@@ -121,7 +122,8 @@ export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
   NEW_COFOUNDER: 90,
   NEW_ADVISOR: 365,
   NEW_PROJECT: 90,
-  HELP_TEAM_UNDERSTAND: 90, // the anchor behaves as NEW_PROJECT did
+  /** One month, and nothing longer: the anchor is a month of weekly check-ins (requests 167 and 168, known issue B11). */
+  HELP_TEAM_UNDERSTAND: 30,
   NEW_MANAGER: 90,
   CONTRACT_RENEWAL: 60,
   /** Short, and it has an end: it finishes when the contract is signed. A review that runs for a
@@ -269,7 +271,8 @@ export const RECOMMENDED_CADENCE: Record<GroundScenario, Cadence> = {
   /** Weekly, because the window is 30 days and the leaver is walking out of it. */
   ROLE_HANDOVER: Cadence.WEEKLY,
   NEW_PROJECT: Cadence.FORTNIGHTLY,
-  HELP_TEAM_UNDERSTAND: Cadence.FORTNIGHTLY,
+  /** Weekly, for the one month the anchor lasts (anchor plan, section 20). */
+  HELP_TEAM_UNDERSTAND: Cadence.WEEKLY,
   NEW_COFOUNDER: Cadence.FORTNIGHTLY,
   NEW_MANAGER: Cadence.FORTNIGHTLY,
   /** Monthly, not fortnightly: 26 check-ins a year is a job, not an advisory relationship. */
@@ -4088,12 +4091,13 @@ export class GroundsService {
   private async partiesForMatching(groundId: string) {
     const rows = await this.prisma.groundParticipant.findMany({
       where: { groundId },
-      select: { id: true, email: true, user: { select: { firstName: true, lastName: true } } },
+      select: { id: true, email: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } },
     }).catch(() => [] as any[]);
+    /* The name they were given when invited counts too, so a person invited as "Amina" is matched and said back as Amina (review of 1678157c). */
     return rows.map((p: any) => ({
       id: p.id,
       email: p.email,
-      name: [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || null,
+      name: [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || (p.nameGiven ?? '').trim() || null,
     }));
   }
 
@@ -7164,7 +7168,7 @@ export class GroundsService {
       /* Whether a person chose these or the product suggested them, so the card can say which (B13, P6-002). */
       cadenceStated: g.cadenceStated,
       timelineStated: g.timelineStated,
-      createdBy: [g.initiator.firstName, g.initiator.lastName].filter(Boolean).join(' ') || g.initiator.email,
+      createdBy: fullNameToCall({ user: g.initiator }),
     }));
   }
 

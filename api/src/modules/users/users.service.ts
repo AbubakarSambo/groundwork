@@ -23,6 +23,7 @@ import { HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
 import { mayChange, mayHandOver } from './the-person-who-set-this-up';
 import { colleaguesOf } from '../../common/colleagues';
 import { aLineOrNothing, wouldMakeALoop, CANNOT_REPORT_TO_THEMSELVES, THAT_WOULD_MAKE_A_LOOP, NOT_IN_THIS_ORGANISATION } from './where-they-sit';
+import { fullNameToCall } from '../engagement/a-name-to-call-them';
 
 @Injectable()
 export class UsersService {
@@ -661,7 +662,7 @@ export class UsersService {
         select: { id: true, firstName: true, lastName: true, email: true },
       })
       : [];
-    const nameOf = new Map(managers.map((m) => [m.id, [m.firstName, m.lastName].filter(Boolean).join(' ').trim() || m.email]));
+    const nameOf = new Map(managers.map((m) => [m.id, fullNameToCall({ user: m })]));
     for (const r of rows) {
       const name = r.reportsToUserId ? nameOf.get(r.reportsToUserId) : undefined;
       out.set(r.userId, {

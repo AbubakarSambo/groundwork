@@ -1,5 +1,18 @@
 # Morning report
 
+**7 October, overnight to the staging pull request: part 1 in progress.** Status: the pull request is not ready yet. Done and pushed so far tonight:
+- The two WhatsApp templates fixed for Meta's rules, with a test (`5fdddba9`).
+- The four existing-clients fixes: blank names, the repeated daily summary, the footer, and what-is-new crowded out (`b2362628`, `15a6c4aa`, `1a1b9b8d`, `1fe7bb83`). Reviewed by reading the real emails and WhatsApp messages; the reviewer fixed what it read (`190622d7`).
+- Hafsah's rule that an email address is never shown as a name: messages (`190622d7`), every other name position (`1678157c`), and reports and boards, where a person with no name reads "one colleague" (`3c59318a`).
+- What-is-new counts two check-ins with the same name (`27a1fd14`). Rate limits count each visitor by their own address (B10, `c83ce044`), with a start-up warning and the proxy question for Abubakar (`87c74d6c`). The anchor's lead set-up, month and offers (B11, B12, `fd583ba5`, only with the anchor on). Decision 112 recorded (`cf6cc336`).
+
+Decided for Hafsah to confirm:
+- The footer "the people in this check-in can see what you say" is left off the lead's first message, as well as the participant's private week. The lead also writes in that check-in, so say if you want it back there.
+- In reports, a person with no name reads "one colleague" or "another colleague" (the reports' existing words), not "Someone".
+- The anchor's lead gets no coaching about her set-up conversation. It was read as a work account and her own note said "Everything in your session came from memory". A set-up conversation (`isSetup`) is no longer given to coaching: her coaching note is left out when her only conversation is a set-up, and the coaching observation is not run on one. Coaching's own rules and wording are unchanged, and ordinary check-ins are read as before. The same change means the set-up is not counted among a person's sessions in the coaching note. Please confirm.
+
+Still open: the anchor's prompt text (B11 rest; a member's anchor check-in can still ask the project's questions), held until the second scenario run ends because it uses the prompts.
+
 **Existing clients, checked at `c6c7db99` (6 October, late evening).** Section 7 was finished after a network drop: nothing private newly served, worse in nothing, carry-on 10 of 10, specs pass (one suite failed to compile once in a long run, passed alone and on rerun). The eight-day hand run found the one-a-day rule never broken (0 against 80 person-days in the old code) and "here is what is new" sent once to 1,439 leads about live check-ins only; but a blank name opens 26 "has not started" subjects, the daily WhatsApp summary repeated unchanged for eight days, and 459 "report is ready" reminders about stalled check-ins stopped (Hafsah to say if that matters). See `docs/existing-users.md` section 15.
 
 **The full run, run-oct7b at `859c199e` (7 October).** Every problem 0; adversarial set 35 of 35; every report and judgement on the right prompt versions. The first pass was damaged by an hour of model-service errors, so nine scenarios were rerun. The scorer says worse on one number, proof asked for, 27 against 42 (20 of the 27 count only the word "picture"; I read it as noise but cannot prove it). Judgements: 14 right, 7 partly, 3 missed (contractreview, openread, snapshot); singular "they" and shock's missing timeline are still there, crisis's rota is fixed. Details in `docs/run-log.md`.

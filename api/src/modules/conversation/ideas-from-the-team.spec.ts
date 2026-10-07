@@ -177,3 +177,13 @@ describe('only a sentence that is nothing but the feeling is cut', () => {
     expect(withoutAskingWhatToCapture("I'm glad you found this helpful, Grace.\n\nWhat else?").text).toBe('What else?');
   });
 });
+
+describe('what marks a turn as the answer to a showing offer', () => {
+  it('is a stamp on the turn, and the words are the same words whether or not it is stamped', () => {
+    const { ANSWERED_THE_IDEA_OFFER, anAnswerToTheIdeaOffer } = require('./ideas-from-the-team');
+    expect(ANSWERED_THE_IDEA_OFFER).toBe('answered-the-idea-offer');
+    /* The words alone cannot tell the button from a typed answer: that is why the stamp, and not the words, decides what is left out. */
+    expect(anAnswerToTheIdeaOffer('Not now.')).toBe(true);
+    expect(anAnswerToTheIdeaOffer('Yes, I sent the deck to Naivas')).toBe(false);
+  });
+});

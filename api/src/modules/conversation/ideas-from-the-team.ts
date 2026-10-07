@@ -49,6 +49,8 @@ export const THE_IDEA_QUESTION = 'That sounds like a concrete idea. Want me to c
 export const WHO_WILL_SEE_IT = 'If you say yes, everyone in this check-in will see it, with your name.';
 export const YES_CAPTURE_IT = 'Yes, capture it';
 export const NOT_NOW = 'Not now';
+/** Stamped on a person's turn (its `stage`) when it answered an idea offer that was showing. The words themselves are never changed. */
+export const ANSWERED_THE_IDEA_OFFER = 'answered-the-idea-offer';
 export const IT_IS_CAPTURED = 'I have captured it for the team. Everyone in this check-in will see it, with your name.';
 export const NO_IDEA_CAPTURED_YET = 'No idea from your team has been captured yet.';
 
@@ -60,6 +62,12 @@ const squash = (t: string) => t.replace(/\s+/g, ' ').trim().toLowerCase();
  */
 const isTheYes = (m: string) => squash(m).replace(/[.!]+$/, '') === squash(YES_CAPTURE_IT);
 const isTheNo = (m: string) => /^\s*(not now|no\b|nope)/i.test(m);
+
+/**
+ * THE BUTTON'S ANSWER IS NOT AN ANSWER TO THE CHECK-IN (known issue B12). "Yes, capture it" and "Not now" answer the offer, not the question the check-in
+ * had open, so they are never read as what the person said: not as the baseline's answer, not as a note of what they said, not as progress.
+ */
+export const anAnswerToTheIdeaOffer = (m: string): boolean => isTheYes(String(m ?? '')) || squash(String(m ?? '')).replace(/[.!]+$/, '') === squash(NOT_NOW);
 
 /** The idea, only if it is the person's own words, found in what they wrote. */
 export function theirOwnIdea(message: string, idea: string | null | undefined): string | null {

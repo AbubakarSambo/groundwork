@@ -66,6 +66,7 @@ export function nameForAccount(account: {
   firstName?: string | null;
   lastName?: string | null;
 }): string {
-  const named = [account.firstName, account.lastName].filter(Boolean).join(' ').trim();
-  return named || account.email;
+  const named = [account.firstName, account.lastName].filter((t) => t && !t.includes('@')).join(' ').trim();
+  /* Never the address in place of a name (Hafsah, 6 October). */
+  return named || 'Someone';
 }

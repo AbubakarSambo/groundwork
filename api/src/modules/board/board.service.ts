@@ -79,7 +79,6 @@ import {
 } from './board-families';
 import { totalSessionsFor } from '../grounds/session-count';
 import { labelsForParties, namesVisibleTo, readsWithNamesOf, eachSideGetsSomebody, plainWordsByPerson, atTheStart, withNames } from '../reports/party-labels';
-import { theNameInAnAddress } from '../reports/the-name-in-an-address';
 import { anAimAsASentence, yourOwnWhereYouAreTheSubject, anAimTheHolderSet, aPromiseNotAnAim } from './an-aim-is-a-sentence-about-somebody';
 import {
   CoverageKind,
@@ -593,6 +592,9 @@ export class BoardService {
         completedAt: true, specificityLevel: true, specificityDimensions: true,
         /* When each session opened, for the session lines (request 107 e). */
         availableFrom: true, startedAt: true,
+        /* Whether it was a set-up conversation, which the timeline leaves out: the anchor lead's set-up is saved done, and read as "the first answers for
+           session 1 came in" before anybody had answered (review of fd583ba5). */
+        isSetup: true,
       },
       orderBy: { sessionNumber: 'asc' },
     });
@@ -687,7 +689,7 @@ export class BoardService {
       const p = ground.participants.find((x) => x.id === pid);
       if (!p) return null;
       if (hiddenFromThisReader(pid)) return aColleague(pid);
-      const n = [p.user?.firstName, aSurnameOrNothing(p.user?.lastName)].filter(Boolean).join(' ').trim() || ((p as any).nameGiven ?? '').trim() || (theNameInAnAddress((p as any).email) ?? '');
+      const n = [p.user?.firstName, aSurnameOrNothing(p.user?.lastName)].filter(Boolean).join(' ').trim() || ((p as any).nameGiven ?? '').trim();
       /*
        * AND WHO THEY ANSWERED FOR, THE SAME WAY THE REPORT DOES IT.
        *
@@ -942,7 +944,8 @@ export class BoardService {
         id: p.id,
         name: nameOf(p.id),
         /* U.6 review: the lead's words about a person are for whoever runs the check-in only. */
-        role: theLeadsWordsAbout(p, isInitiator) ?? (p.managingOnly ? 'Managing only' : null),
+        /* Managing only is an internal flag, never said as a role: the real role is the lead's own words, or nothing. */
+        role: theLeadsWordsAbout(p, isInitiator) ?? null,
         managingOnly: p.managingOnly,
         signedOffAt: p.signedOffAt,
         /*
@@ -1680,7 +1683,8 @@ export class BoardService {
         rows: ground.participants.map((p) => ({
           participantId: p.id,
           name: nameOf(p.id),
-          role: theLeadsWordsAbout(p, isInitiator) ?? (p.managingOnly ? 'Managing only' : null),
+          /* Managing only is an internal flag, never said as a role: the real role is the lead's own words, or nothing. */
+        role: theLeadsWordsAbout(p, isInitiator) ?? null,
           // A managing-only lead has no account of their own and is not counted
           // in readiness, so their row is dashes, not "overdue".
           managingOnly: p.managingOnly,

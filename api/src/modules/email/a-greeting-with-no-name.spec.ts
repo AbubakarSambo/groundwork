@@ -20,6 +20,10 @@ describe('a greeting with no name', () => {
     expect(greeting('someone@example.com')).toBe('Hi,');
   });
 
+  it('does not greet a person "Hi Someone," when the name chain had nothing for them (the absence reminder, review of 1678157c)', () => {
+    expect(greeting('Someone')).toBe('Hi,');
+  });
+
   it('trims, because a trailing space is how the hole appeared in the first place', () => {
     expect(greeting('  Ada  ')).toBe('Hi Ada,');
   });

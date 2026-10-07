@@ -28,23 +28,34 @@ function lead(grounds: any[]) {
 const g = (id: string, label: string, day: number) => ({ id, label, initiatorId: 'u-w', runsUntilEnded: true, createdAt: new Date(Date.UTC(2026, 8, day)) });
 
 describe('a lead with many check-ins', () => {
-  it('reads each once, the most recent five by name, and a count of the rest', async () => {
+  it('reads each once by its own id, the most recent five by name, and a count of the rest, with check-ins that share a name counted separately', async () => {
     const grounds = [g('g1', 'Sales team, Q4', 1), g('g2', 'Kenya launch', 2), g('g3', 'Product', 3), g('g4', 'Operations', 4), g('g5', 'Finance', 5), g('g6', 'Hiring', 6), g('g7', 'Sales team, Q4', 7), g('g8', 'Sales team, q4', 8)];
     const w = lead(grounds);
     expect(await w.run()).toEqual({ tried: 1 });
     const lines: string[] = w.sent[0].lines;
     const named = lines.filter((l) => l.startsWith('In "'));
     expect(named).toHaveLength(MOST_LISTED);
-    expect(new Set(named.map((l) => l.split('"')[1].toLowerCase())).size).toBe(MOST_LISTED);
-    expect(lines).toContain('One more is still going.');
-    expect(w.sent[0].subject).toBe('Here is where your six check-ins stand, and what is new');
-    expect(lines.join(' ')).not.toMatch(/Sales team, Q4.*Sales team, Q4/i);
+    /* Each check-in by its own id: two that share a name are two, and both count (7 and 8 here are both named "Sales team, Q4"). */
+    expect(named.filter((l) => /Sales team, q4/i.test(l))).toHaveLength(2);
+    expect(lines).toContain('Three more are still going.');
+    expect(w.sent[0].subject).toBe('Here is where your eight check-ins stand, and what is new');
   });
   it('and a lead with a few reads them all, with no count of the rest', async () => {
     const w = lead([g('g1', 'Sales team, Q4', 1), g('g2', 'Kenya launch', 2)]);
     await w.run();
     expect(w.sent[0].lines.filter((l: string) => l.startsWith('In "'))).toHaveLength(2);
     expect(w.sent[0].lines.join(' ')).not.toMatch(/more (is|are) still going/);
+  });
+});
+
+describe('two check-ins with the same name are told apart in words the lead already knows', () => {
+  it('says when each was started, for those two only, and nothing extra for the others', async () => {
+    const w = lead([g('g1', 'Sales team, Q4', 3), g('g2', 'Kenya launch', 4), g('g3', 'Sales team, Q4', 12)]);
+    await w.run();
+    const lines: string[] = w.sent[0].lines;
+    expect(lines).toContain('In "Sales team, Q4", which you started on 12 September, one of two people has checked in, and Omar has not yet.');
+    expect(lines).toContain('In "Sales team, Q4", which you started on 3 September, one of two people has checked in, and Omar has not yet.');
+    expect(lines.find((l) => l.startsWith('In "Kenya launch"'))).toMatch(/^In "Kenya launch", one of two/);
   });
 });
 

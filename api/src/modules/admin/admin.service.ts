@@ -22,6 +22,7 @@ import {
   SUGGESTION_THRESHOLDS_KEY, SUGGESTION_THRESHOLD_LABELS, isValidSuggestionThresholds,
   thresholdsInForce, type SuggestionThresholds,
 } from '../suggestions/thresholds';
+import { fullNameToCall } from '../engagement/a-name-to-call-them';
 
 @Injectable()
 export class AdminService implements OnApplicationBootstrap {
@@ -96,7 +97,7 @@ export class AdminService implements OnApplicationBootstrap {
         include: {
           participant: {
             select: {
-              id: true, roleAsDescribed: true, detectedFunction: true, detectedFunctionConfidence: true,
+              id: true, roleAsDescribed: true, detectedFunction: true, detectedFunctionConfidence: true, nameGiven: true,
               user: { select: { firstName: true, lastName: true, email: true } },
               ground: { select: { id: true, label: true, scenario: true, organization: { select: { name: true } } } },
             },
@@ -109,7 +110,8 @@ export class AdminService implements OnApplicationBootstrap {
       count: rows.length,
       rows: rows.map((r) => ({
         participantId: r.participantId,
-        who: [r.participant.user?.firstName, r.participant.user?.lastName].filter(Boolean).join(' ') || r.participant.user?.email || r.participantId,
+        /* The name they were given when invited, before "Someone" (review of 1678157c). */
+        who: fullNameToCall({ user: r.participant.user, nameGiven: (r.participant as any).nameGiven }),
         organisation: r.participant.ground?.organization?.name ?? null,
         ground: r.participant.ground?.label ?? null,
         scenario: r.participant.ground?.scenario ?? null,

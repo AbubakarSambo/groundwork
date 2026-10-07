@@ -161,7 +161,7 @@ export class OpsPeopleService implements OnModuleInit {
     return {
       personId: NOT_YET_ON_THE_ROSTER,
       key,
-      displayName: [account.firstName, account.lastName].filter(Boolean).join(' ') || account.email || key,
+      displayName: nameForAccount({ email: account.email ?? '', firstName: account.firstName, lastName: account.lastName }),
       functionalRole: ROLE_FOR_A_PLATFORM_ADMIN,
       capabilities: [...GRANTS_FOR_A_PLATFORM_ADMIN],
     };

@@ -1,5 +1,5 @@
 import { HELD_FOR_A_SEAT } from '../participants/held-for-a-seat';
-import { theParticipantAsServed, theFitAsServed, theCheckInRowAsServed } from './a-transcript-serves-only-what-is-theirs';
+import { theParticipantAsServed, theFitAsServed, theCheckInRowAsServed, theyAreTheirOwnWords } from './a-transcript-serves-only-what-is-theirs';
 import { theNumberInTheNameIsKept } from './an-aim-said-twice-is-one-aim';
 import { theDayKeptApart } from '../board/an-aim-is-a-sentence-about-somebody';
 import { suggestAnswers } from './suggested-answers';
@@ -126,7 +126,7 @@ import { familyFor, BoardFamily } from '../board/board-families';
 import { theOneWorthAsking, askAboutItBlockFor } from './what-keeps-happening-becomes-a-question';
 import { mayCoach } from './participation-timeline';
 import { theirApprovedLeave } from '../suites/who-is-away';
-import { aNewIdeaIn, afterTheirTurn, anIdeaReadBackAsAPromise, withoutAskingWhatToCapture } from './ideas-from-the-team';
+import { aNewIdeaIn, afterTheirTurn, anIdeaReadBackAsAPromise, withoutAskingWhatToCapture, anAnswerToTheIdeaOffer, ANSWERED_THE_IDEA_OFFER } from './ideas-from-the-team';
 import { aRequestAfterTheirTurn, theyAreAnsweringAnOffer, withoutACannotApprove, withoutAPromiseToPassItOn } from './a-request-offered-in-the-check-in';
 import { stillAsking } from './one-question-per-turn';
 import { oneThingAsked, wouldLeaveAQuestionOut, asksMoreThanOneThing, withTheOneMoreLine, ASK_ONE_THING } from './a-turn-asks-one-thing';
@@ -803,7 +803,10 @@ export class ConversationService {
       checkIn: {
         ...theCheckInRowAsServed(checkIn as any, runsIt),
         participant: theParticipantAsServed((checkIn as any).participant, runsIt),
-        theirAnswerFitted: theFitAsServed((checkIn as any).theirAnswerFitted, runsIt),
+        theirAnswerFitted: theFitAsServed((checkIn as any).theirAnswerFitted, runsIt, {
+          said: (turns as any[]).filter((t) => t.role === TurnRole.PERSON).map((t) => String(t.content ?? '')),
+          organisationGiven: (checkIn as any).participant?.organisationGiven ?? null,
+        }),
         groundLabel: ground?.label ?? null,
         scenario: ground?.scenario ?? null,
       },
@@ -1872,8 +1875,11 @@ export class ConversationService {
     this.setThePromptForThisTurn(checkIn.id, fullSystem);
 
     // Persist the person's turn.
+    /* Mark the turn when it answers an idea offer that is showing (the turn's own `stage`, which no person's turn used), so no later read has to guess from the words alone. The words are stored as typed. */
+    const answersTheOfferShowing = anAnswerToTheIdeaOffer(message)
+      && ((await (this.prisma as any).workItem?.count?.({ where: { groundId: checkIn.groundId, kind: 'idea-offered', ownerParticipantId: (checkIn as any).participantId ?? '' } })?.catch?.(() => 0)) ?? 0) > 0;
     const personTurn = await this.prisma.conversationTurn.create({
-      data: { checkInId: checkIn.id, role: TurnRole.PERSON, content: message },
+      data: { checkInId: checkIn.id, role: TurnRole.PERSON, content: message, ...(answersTheOfferShowing ? { stage: ANSWERED_THE_IDEA_OFFER } : {}) },
     });
     await this.keepTheDocumentDescription(checkIn.id, personTurn.id, message).catch((err) =>
       this.logger.warn(`Could not keep a document description on ${checkIn.id}: ${err?.message}`),
@@ -2985,8 +2991,17 @@ export class ConversationService {
      * challenge about accumulated claims, not a comment on the word just typed. See
      * what-we-have-so-far and reading-what-they-just-said.
      */
-    this.noteWhatTheySaid(checkIn.id, message).catch((err: any) =>
-      this.logger?.warn?.(`Notes not updated for ${checkIn.id}: ${err?.message}`));
+    /*
+     * The idea offer's own yes or no is not something they said about the work (known issue B12). Only while an offer is waiting for them: the check-in row
+     * carries no ground here, so the test read nothing and every "Yes, capture it" was noted; and a "Not now." typed to any other question is their answer
+     * and is kept (review of fd583ba5, where it was noted as a plan and read as contradicting the plan before it).
+     */
+    const answersAWaitingIdeaOffer = anAnswerToTheIdeaOffer(message)
+      && ((await (this.prisma as any).workItem?.count?.({ where: { groundId: checkIn.groundId, kind: 'idea-offered', ownerParticipantId: (checkIn as any).participantId ?? '' } })?.catch?.(() => 0)) ?? 0) > 0;
+    if (!answersAWaitingIdeaOffer) {
+      this.noteWhatTheySaid(checkIn.id, message).catch((err: any) =>
+        this.logger?.warn?.(`Notes not updated for ${checkIn.id}: ${err?.message}`));
+    }
     /* Suggested answers under the question: task 2.6, screens request 7a. See suggested-answers. */
     const suggestedAnswers = sessionComplete ? [] : await this.suggestedAnswersFor(aiTurn.id, aiTurn.content ?? '', message, checkIn.id);
     /*
@@ -4007,15 +4022,23 @@ export class ConversationService {
      * nothing about this session, and every "still to cover" list read the same on turn nine as on
      * turn one. See what-this-session-has-covered.
      */
-    const turnsThisSession: { role: 'AI' | 'PERSON'; content: string }[] = await (this.prisma.conversationTurn?.findMany?.({
+    const turnsThisSession: { role: 'AI' | 'PERSON'; content: string; answeredTheOffer?: boolean }[] = await (this.prisma.conversationTurn?.findMany?.({
       where: { checkInId: checkIn.id },
       orderBy: { createdAt: 'asc' },
-      select: { role: true, content: true },
+      select: { role: true, content: true, stage: true },
     }) ?? Promise.resolve([]))
-      .then((rows: any[]) => rows.map((r) => ({ role: r.role === TurnRole.AI ? 'AI' as const : 'PERSON' as const, content: r.content ?? '' })))
-      .catch(() => [] as { role: 'AI' | 'PERSON'; content: string }[]);
+      .then((rows: any[]) => rows.map((r) => ({ role: r.role === TurnRole.AI ? 'AI' as const : 'PERSON' as const, content: r.content ?? '', answeredTheOffer: r.stage === ANSWERED_THE_IDEA_OFFER })))
+      .catch(() => [] as { role: 'AI' | 'PERSON'; content: string; answeredTheOffer?: boolean }[]);
     if (latestMessage && (turnsThisSession.length === 0 || turnsThisSession[turnsThisSession.length - 1].content !== latestMessage)) {
-      turnsThisSession.push({ role: 'PERSON', content: latestMessage });
+      /* Not stored yet, so the offer showing is read again here: the same test the turn is marked by when it is stored. */
+      const answersTheOfferNow = anAnswerToTheIdeaOffer(latestMessage)
+        && ((await (this.prisma as any).workItem?.count?.({ where: { groundId: checkIn.groundId, kind: 'idea-offered', ownerParticipantId: (checkIn as any).participantId ?? '' } })?.catch?.(() => 0)) ?? 0) > 0;
+      turnsThisSession.push({ role: 'PERSON', content: latestMessage, answeredTheOffer: answersTheOfferNow });
+    }
+    /* In the anchor, a click on the idea offer answers the offer and not the question that was open, so no read of what they have told us counts it (known issue B12).
+       Only a turn marked as answering an offer that was showing is left out; a "Not now." typed to an ordinary question is their answer and stays. */
+    if (aCheckInStartedFromTheAnchor(ground)) {
+      for (let i = turnsThisSession.length - 1; i >= 0; i--) if (turnsThisSession[i].role === 'PERSON' && turnsThisSession[i].answeredTheOffer) turnsThisSession.splice(i, 1);
     }
 
     /*
@@ -5935,6 +5958,10 @@ ${told}` : '';
   private async observeForCoaching(checkInId: string, participantId: string, sessionNumber: number): Promise<void> {
     if (!this.coachingEnabled()) return;
 
+    /* A set-up conversation is not a check-in, so it is never read for coaching. */
+    const thisOne = await (this.prisma.checkIn?.findUnique?.({ where: { id: checkInId }, select: { isSetup: true } }) ?? Promise.resolve(null)).catch(() => null);
+    if ((thisOne as any)?.isSetup) return;
+
     const participant = await this.prisma.groundParticipant.findUnique({
       where: { id: participantId },
       select: {
@@ -7741,7 +7768,8 @@ ${told}` : '';
       data: {
         theirAnswerFitted: {
           participantId: row.participant?.id ?? null,
-          organisation: String(read.organisation ?? '').trim() || row.participant?.organisationGiven || null,
+          /* Only the person's own words: the model is told what the lead wrote about them and can hand it back as "the organisation". */
+          organisation: (theyAreTheirOwnWords(String(read.organisation ?? ''), said, row.participant?.organisationGiven) ? String(read.organisation).trim() : null) || row.participant?.organisationGiven || null,
           kind,
           values,
           completeness: howCompletely(values, frame, kind),

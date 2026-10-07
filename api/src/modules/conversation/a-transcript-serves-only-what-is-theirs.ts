@@ -21,10 +21,30 @@ export function theParticipantAsServed<T extends Record<string, any> | null | un
   return out as T;
 }
 
-/** The fitted answer, without the kind when it could be the lead's words about the person, for anybody who does not run the check-in. */
-export function theFitAsServed<T extends Record<string, any> | null | undefined>(fit: T, runsIt: boolean): T {
+/**
+ * WHETHER SOME WORDS ARE THE PERSON'S OWN: they are theirs only when they appear in what the person typed (or are the organisation they
+ * gave), ignoring case and spacing. The model that fits an answer is told what the lead wrote about the person, so it can hand the lead's
+ * sentence back as "the organisation" ("Amina drives the morning hotel route."). Words the person did not say are not theirs to be served.
+ */
+export function theyAreTheirOwnWords(words: unknown, whatTheySaid: string[], organisationTheyGave?: string | null): boolean {
+  const flat = (x: string) => x.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  const w = flat(String(words ?? ''));
+  if (!w) return false;
+  if (organisationTheyGave && flat(organisationTheyGave) === w) return true;
+  return whatTheySaid.some((t) => ` ${flat(t)} `.includes(` ${w} `));
+}
+
+/**
+ * The fitted answer for anybody who does not run the check-in: without the kind (it can be the lead's words about the person), and with
+ * the organisation only when it is the person's own words. The lead, who wrote them, reads the row whole.
+ */
+export function theFitAsServed<T extends Record<string, any> | null | undefined>(fit: T, runsIt: boolean, theirOwnWords?: { said: string[]; organisationGiven?: string | null }): T {
   if (!fit || runsIt || typeof fit !== 'object') return fit;
   const { kind: _theLeadsWords, ...rest } = fit as Record<string, any>;
+  if ('organisation' in rest && rest.organisation != null) {
+    const mine = theirOwnWords ?? { said: [] };
+    if (!theyAreTheirOwnWords(rest.organisation, mine.said, mine.organisationGiven)) rest.organisation = null;
+  }
   return rest as T;
 }
 
