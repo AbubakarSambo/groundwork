@@ -1,4 +1,5 @@
 import { HELD_FOR_A_SEAT } from '../participants/held-for-a-seat';
+import { theAimsNameKeepsItsShare } from './the-aims-name-keeps-its-share';
 import { theParticipantAsServed, theFitAsServed, theCheckInRowAsServed, theyAreTheirOwnWords } from './a-transcript-serves-only-what-is-theirs';
 import { theNumberInTheNameIsKept } from './an-aim-said-twice-is-one-aim';
 import { theDayKeptApart } from '../board/an-aim-is-a-sentence-about-somebody';
@@ -9794,7 +9795,7 @@ ${told}` : '';
      * it alone. The board already has the honest shape for that case - "the record shows 40 for
      * this, not 0, press to accept" - and `suggestedCount` is where a conflict belongs, not here.
      */
-    const aims = (result.groundAims ?? [])
+    const aimsAsRead = (result.groundAims ?? [])
       .map((a) => ({
         name: (a?.name ?? '').trim(),
         /* A target is a whole count of something. A wrong number is worse than none. */
@@ -9808,6 +9809,11 @@ ${told}` : '';
        * and the aim keeps its name and loses the number.
        */
       .map((a) => (a.target != null && !numbersInTheirWords.has(a.target) ? { ...a, target: null } : a));
+    /* An aim the lead said as a share keeps its percent sign and its word, so a limit is not read as a count (user journeys, F-4). */
+    const aims = theAimsNameKeepsItsShare(
+      aimsAsRead,
+      [...turns.filter((t) => t.role === TurnRole.PERSON).map((t) => t.content ?? ''), ...theirDocuments.map((d) => d.content ?? '')].join('\n'),
+    );
     /*
      * AND A NUMBER IN THE AIM'S OWN NAME IS ITS NUMBER, WHERE THEY SAID IT (request 117, part 2). "Sign 12 shops for
      * kitchen appliances in Nairobi." was kept with no number, so the board's headline had no answer and no bar.

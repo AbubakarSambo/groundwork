@@ -1,5 +1,6 @@
 import type { AServedRecord, AServedSection, KindOfWork } from './the-kind-of-work';
 import { theDayInWords, aDateOnly } from './the-day-in-words';
+import { theWordsSayItIsALimit } from './a-measure-that-goes-down-is-still-going-well';
 
 /**
  * TO CLOSE THE GAP (request 115 c; the prototype's B5 board-as-lead.txt, "To close the gap, two of these
@@ -31,12 +32,14 @@ const OPEN_GROUPS = new Set(['likely', 'possible']);
 export function toCloseTheGap(
   kind: KindOfWork | null,
   sections: AServedSection[] | null | undefined,
-  teamAims: { name: string; target: number | null; count: number; ownerParticipantId?: string | null; dueOn?: Date | string | null }[],
+  teamAims: { name: string; target: number | null; count: number; ownerParticipantId?: string | null; dueOn?: Date | string | null; direction?: string | null }[],
   end: Date | null,
   now: Date,
 ): ToCloseTheGap | null {
   if (kind !== 'sales org' || !Array.isArray(sections)) return null;
-  const aim = teamAims.find((a) => !a.ownerParticipantId && typeof a.target === 'number' && a.target > a.count);
+  /* A limit not to go over, a share, a date or a zero is not an aim with a gap to close: "35 more are needed" of a credit limit of 35 per cent counted deals toward it (user journeys, F-4). */
+  const aim = teamAims.find((a) => !a.ownerParticipantId && typeof a.target === 'number' && a.target > a.count
+    && (!a.direction || a.direction === 'AIM') && !theWordsSayItIsALimit(a.name));
   if (!aim || typeof aim.target !== 'number') return null;
   const gap = aim.target - aim.count;
   /* The day the aim itself is due, when it has one, is the day the headline and "Where each target stands" say; the check-in's end is only the fallback. */
