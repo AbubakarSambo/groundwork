@@ -173,14 +173,22 @@ export function onlyTheDecision(message: string): boolean {
 
 const NUMBERS = ['no', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
 
+/** The most requests named in one message. WhatsApp refuses a text over 4,096 characters, and 229 names never fit (B-144). */
+export const MOST_NAMED_AT_ONCE = 5;
+
 /** More than one waiting, and the reply did not say which. */
 export function whichDecision(rs: AWaitingRequest[]): string {
   const count = rs.length <= 10 ? NUMBERS[rs.length] : String(rs.length);
+  const example = `${whose(rs[0].firstName)} ${rs[0].kind === 'spend' ? 'spending' : rs[0].kind}`;
+  if (rs.length > MOST_NAMED_AT_ONCE) {
+    const first = rs.slice(0, MOST_NAMED_AT_ONCE).map((r) => r.thing);
+    const more = rs.length - MOST_NAMED_AT_ONCE;
+    return `${count} requests are waiting for you. The first ${NUMBERS[MOST_NAMED_AT_ONCE].toLowerCase()} are ${first.slice(0, -1).join(', ')} and ${first[first.length - 1]}, and ${more} more ${more === 1 ? 'is' : 'are'} waiting in Groundwork. Which one do you mean? You can write, for example, "approve ${example}", or open Groundwork to see them all.`;
+  }
   const things = rs.map((r) => r.thing);
   const them = rs.length === 2
     ? `One is ${things[0]}, and the other is ${things[1]}.`
     : `They are ${things.slice(0, -1).join(', ')} and ${things[things.length - 1]}.`;
-  const example = `${whose(rs[0].firstName)} ${rs[0].kind === 'spend' ? 'spending' : rs[0].kind}`;
   return `${count} requests are waiting for you. ${them} Which one do you mean? You can write, for example, "approve ${example}".`;
 }
 

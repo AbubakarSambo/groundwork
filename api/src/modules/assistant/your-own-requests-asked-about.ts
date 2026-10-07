@@ -33,6 +33,8 @@ export const YOUR_REQUESTS_PATTERNS: RegExp[] = [
   /\bwaiting\s+(?:for\s+me\s+)?to\s+(?:approve|be\s+approved|sign\s*off)\b/i,
   /\bwhat\s+(?:do\s+i|should\s+i|must\s+i|have\s+i\s+got\s+to)\s+(?:need\s+to\s+)?(?:approve|sign\s*off)\b/i,
   /\bwhat\s+needs\s+my\s+(?:approval|sign[-\s]?off)\b/i,
+  /* A bare "What is waiting?" (B-144). */
+  /^\s*what(?:'s|\s+is|\s+are)\s+(?:waiting|pending)(?:\s+for\s+me)?\s*[?.!]*\s*$/i,
   /\b(?:anything|any\s+requests?)\s+(?:waiting\s+)?(?:for\s+me\s+)?to\s+approve\b/i,
   /\bwhat\s+(?:requests?|leave|spending|expenses?)\s+(?:is|are)\s+waiting\s+for\s+me\b/i,
 ];

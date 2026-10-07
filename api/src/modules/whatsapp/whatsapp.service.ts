@@ -12,6 +12,17 @@ async function readTheBody(res: any): Promise<string> {
 }
 
 /** Meta's id for a message it accepted, from the body it answered with. Undefined when there is none. */
+/** WhatsApp refuses a text over 4,096 characters (B-144). Anything longer is cut at a sentence and says where the rest is. */
+export const WHATSAPP_TEXT_LIMIT = 4096;
+const THE_REST_IS_IN_THE_APP = ' The rest is in Groundwork.';
+export function withinWhatsAppsLimit(text: string): string {
+  if (text.length <= WHATSAPP_TEXT_LIMIT) return text;
+  const room = WHATSAPP_TEXT_LIMIT - THE_REST_IS_IN_THE_APP.length - 1;
+  const cut = text.slice(0, room);
+  const at = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('.\n'), cut.lastIndexOf('\n'));
+  return `${(at > room / 2 ? cut.slice(0, at + 1) : cut.replace(/\s+\S*$/, '')).trimEnd()}${THE_REST_IS_IN_THE_APP}`;
+}
+
 export function theMessageIdIn(body: string): string | undefined {
   try { const id = JSON.parse(body)?.messages?.[0]?.id; return typeof id === 'string' && id ? id : undefined; } catch { return undefined; }
 }
@@ -427,7 +438,7 @@ export class WhatsAppService implements OnModuleInit {
       const res = await fetch(`${this.graphBase()}/${phoneNumberId}/messages`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messaging_product: 'whatsapp', to: to.replace('+', ''), type: 'text', text: { body: text } }),
+        body: JSON.stringify({ messaging_product: 'whatsapp', to: to.replace('+', ''), type: 'text', text: { body: withinWhatsAppsLimit(text) } }),
       });
       if (!res.ok) {
         const body = await res.text().catch(() => '');
