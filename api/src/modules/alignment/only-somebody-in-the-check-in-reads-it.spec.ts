@@ -44,7 +44,8 @@ describe('a read on a check-in asks who is reading first', () => {
   });
 
   it('every route in the alignment controller, reads and writes, is behind the guard (changed from GET only: the writes checked the organisation and not the check-in)', () => {
-    const src = readFileSync(join(__dirname, 'alignment.controller.ts'), 'utf8');
+    /* Comments stripped first, so a sentence in a comment can never satisfy the guard (a-guard-that-a-comment-satisfies-is-not-a-guard). */
+    const src = readFileSync(join(__dirname, 'alignment.controller.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(src).toMatch(/@UseGuards\(JwtAuthGuard, OnlySomebodyInTheCheckInReadsIt\)\s+export class AlignmentController/);
     const routes = src.match(/@(Get|Post|Put|Patch|Delete)\('[^']*'\)/g) ?? [];
     expect(routes.filter((r) => r.startsWith('@Post')).length).toBeGreaterThanOrEqual(15);
