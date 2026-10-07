@@ -23,6 +23,7 @@ import { HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
 import { mayChange, mayHandOver } from './the-person-who-set-this-up';
 import { colleaguesOf } from '../../common/colleagues';
 import { aLineOrNothing, wouldMakeALoop, CANNOT_REPORT_TO_THEMSELVES, THAT_WOULD_MAKE_A_LOOP, NOT_IN_THIS_ORGANISATION } from './where-they-sit';
+import { groundsAViewerMayList } from '../grounds/who-may-read-this-check-in';
 import { fullNameToCall } from '../engagement/a-name-to-call-them';
 
 @Injectable()
@@ -146,6 +147,15 @@ export class UsersService {
    * the organisation's founding address was.
    */
   async changeJoinDomain(organizationId: string, adminId: string) {
+    /*
+     * CHANGING THE DOMAIN NEVER SWITCHES JOINING ON (request 179). "Joining by email is on" is stored as the domain itself, so writing a domain while
+     * it was off turned it on, with no say and no confirmation. While it is off, nothing is written: the admin is told to switch it on, which is
+     * a choice of its own, and then to change the domain.
+     */
+    const now = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { joinDomain: true } });
+    if (!now?.joinDomain) {
+      throw new BadRequestException('Joining by email is switched off, so there is no domain to change. Switch it on first, and then you can change the domain.');
+    }
     const admin = await this.prisma.user.findUnique({ where: { id: adminId }, select: { email: true, isEmailVerified: true } });
     const domain = theDomainOf(admin?.email);
     if (!domain || !admin?.isEmailVerified) {
@@ -377,7 +387,7 @@ export class UsersService {
     return colleaguesOf(this.prisma as any, organizationId, callerId);
   }
 
-  async findAll(organizationId: string, pagination: PaginationDto) {
+  async findAll(organizationId: string, pagination: PaginationDto, readerId?: string) {
     const page = pagination.page ?? 1;
     const limit = pagination.limit ?? 20;
     const skip = (page - 1) * limit;
@@ -605,6 +615,22 @@ export class UsersService {
       checkIns: h.checkIns,
     }));
 
+    /*
+     * ONLY THE CHECK-INS THE READER MAY OPEN ARE NAMED (request 179). This named every check-in a person is on, including a performance plan or a
+     * contract the admin was never given access to ("Arjun Shah, first ninety days"). Those are served as a count, so the screen can say "1
+     * check-in you have no access to". The rule is the one the check-in list uses (who-may-read-this-check-in.ts). With no reader named, or a
+     * lookup that fails, nothing may be opened: the more private answer.
+     */
+    const mayOpen = new Set<string>();
+    if (readerId) {
+      const rows: any[] = await Promise.resolve().then(() => this.prisma.ground.findMany({
+        where: groundsAViewerMayList(readerId, { userId: readerId, role: 'ADMIN', organizationId }, organizationId) as any,
+        select: { id: true },
+      })).catch(() => []);
+      for (const r of rows ?? []) mayOpen.add(r.id);
+    }
+    const namedFor = <T extends { id: string }>(all: T[]) => ({ checkIns: all.filter((c) => mayOpen.has(c.id)), checkInsYouCannotOpen: all.filter((c) => !mayOpen.has(c.id)).length });
+
     return {
       data: [...users.map((u) => ({
         ...u,
@@ -629,8 +655,8 @@ export class UsersService {
         /* Where they sit here (U.4). Describes the organisation; grants nothing. */
         ...(sits.get(u.id) ?? { level: null, team: null, reportsTo: null }),
         /* Which of this organisation's check-ins they are on, and whether they run it. */
-        checkIns: theirCheckIns.get(u.id) ?? [],
-      })), ...heldRows],
+        ...namedFor(theirCheckIns.get(u.id) ?? []),
+      })), ...heldRows.map(({ checkIns, ...h }) => ({ ...h, ...namedFor(checkIns) }))],
       meta: { page, limit, total: total + heldRows.length, totalPages: Math.ceil((total + heldRows.length) / limit) },
     };
   }

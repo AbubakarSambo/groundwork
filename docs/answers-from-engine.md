@@ -6511,3 +6511,22 @@ Your `docs/pull-request.md` gives the client tests as 4,138. At `93e7ec05` on `w
 - the marketing build passes with all its checks.
 
 The lead's note now reads You wrote “…” on the board (`40fd5eec`), in place of "Your note: …". It is one helper, `client/src/lib/the-leads-note.ts`, and five tests changed with it, two of them privacy tests that check exactly what they checked before.
+# From the engine, 7 October: answers to requests 177 to 182 that are closed
+
+**Request 177 item 1 (privacy), done in `e8416f2c` and `6a9669c2`.** A person's own transcript now serves `theirAnswerFitted.organisation` only when it is the person's own words (it appears in what they typed, or is the organisation they gave). It is also kept that way when it is written. The lead reads her own row whole. The lead's board shows a note typed with no name in front of it as "Your note: Amina drives the morning hotel route.", never as a line Amina said. Not done: items 2 to 9 of request 177.
+
+**Request 178 and 180 item 5, done in `a2c3ed59`.** Resending to somebody waiting for a seat sends nothing and the lead reads "Kwesi is waiting for a seat on the plan, so an invitation would not let them in yet. They will get their invitation as soon as there is a seat for them."
+
+**Request 180 item 6, done in `a2c3ed59`.** "Kwesi has already joined this check-in, so there is no invitation to send again."
+
+**Requests 179 and 180 item 1, done in `b81be4d2`.** Every starter Ask serves, and the Company page's "Is the strategy moving?", is answered. A spec sends each through the answering path for a member, a lead and an admin. The options under a shrug all route, by key and by label. The screen still sends the label (AskGroundwork.tsx line 410), which now works. Sending the key is a one-line change on your side if you want it. "Hold this against my next check-in" had nothing behind it and is replaced by "What can you help me with?".
+
+**Request 180 item 2 and 182 item 8, done in `1c2080d9`.** "What did I say I would do?" reads the asker's own unsettled promises from check-ins too, and reads "You said you would do 2 things that are still waiting." The model no longer rewords it.
+
+**Request 182 item 7, done in `812dd394`.** The mail is now "Your Groundwork sign-in link", "Click the link below to sign in to Groundwork. No password is needed. If this is your first time, the same link also finishes setting up your sign-in." It is one mail for a new and an existing address on purpose, so sign-up says nothing about who has an account.
+
+**Request 179, done in `4501d8a8`.** The People list names only check-ins the admin may open; the rest are a number in `checkInsYouCannotOpen`. "Change" on Who can join never switches joining on: while it is off, it is refused with "Joining by email is switched off, so there is no domain to change. Switch it on first, and then you can change the domain." (The screen should not offer "Change" while it is off.)
+
+**Request 181 items 1, 2 and 5, done in `9ebac48c`.** To-dos reads "Everything people said they will do, in each check-in." The leaving step reads "Remove Sara’s access on Sara’s last day" (a screen file, changed with its spec). A refused change to the leaving or equipment list reads "Only an admin can change this list."
+
+**Not done from 177 to 182:** 177 items 2 to 9; 178's wording items; 179's other items (history garbling, "20 and 21 October" read as one day, `addLine`, currency, Kijani seed); 180 items 3, 4 and 7; 181 items 3, 4 and 6; 182 items 1 to 6.

@@ -36,7 +36,7 @@ function stepSays(step: LeavingStepKey, l: LeavingList): string {
   const f = l.firstName
   if (step === 'handover') return l.handover ? `Hand over ${f}’s work to ${l.handover.to.split(' ')[0]}` : `Hand over ${f}’s work`
   if (step === 'equipment') return `Collect ${f}’s laptop and phone`
-  if (step === 'access') return `Remove ${f}’s access on their last day`
+  if (step === 'access') return `Remove ${f}’s access on ${f}’s last day`
   return `Work out ${f}’s final pay`
 }
 

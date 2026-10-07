@@ -68,7 +68,7 @@ describe('Grace, an admin', () => {
     expect(within(region).getByText('0 of 4 done')).toBeInTheDocument()
     const rows = [...region.querySelectorAll('li')]
     expect(rows.map(r => r.querySelector('b')?.textContent)).toEqual([
-      'Hand over Tom’s work', 'Collect Tom’s laptop and phone', 'Remove Tom’s access on their last day', 'Work out Tom’s final pay',
+      'Hand over Tom’s work', 'Collect Tom’s laptop and phone', 'Remove Tom’s access on Tom’s last day' /* Changed (request 181 item 2): "their" pointed at nobody. */, 'Work out Tom’s final pay',
     ])
     expect(rows.map(r => (r.querySelector('select') as HTMLSelectElement).selectedOptions[0].textContent)).toEqual([
       'Wairimu Kamau', 'Kamau Njenga', 'Grace Achieng', 'Grace Achieng',
