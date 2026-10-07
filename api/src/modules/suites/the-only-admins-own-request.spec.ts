@@ -84,3 +84,13 @@ describe('three identical requests at the same moment (B-147)', () => {
     expect(new Set(out.map((o) => o.id)).size).toBe(1);
   });
 });
+
+describe('leave for days long gone (B-148)', () => {
+  it('is refused in a sentence, and yesterday is still taken', async () => {
+    const prisma = bed(1, 'leave');
+    const svc = new LeaveBoardService(prisma);
+    await expect(svc.ask(ORG, 'u-grace', { startsOn: '2025-01-01', endsOn: '2025-01-02' })).rejects.toThrow('Those days ended more than a month ago, so they cannot be asked for now. Give days from the last month onwards.');
+    const y = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+    await expect(svc.ask(ORG, 'u-grace', { startsOn: y, endsOn: y })).resolves.toEqual({ id: 'r1' });
+  });
+});

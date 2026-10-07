@@ -29,6 +29,7 @@ export const LEAVE_REFUSED = {
   notYours: 'Only the person who approves this request can decide it.',
   alreadyDecided: 'This request has already been decided.',
   badDates: 'Give a first and a last day, with the last day on or after the first.',
+  tooLongAgo: 'Those days ended more than a month ago, so they cannot be asked for now. Give days from the last month onwards.',
   badStandIn: 'The stand-in has to be somebody else in this organisation.',
   badKind: 'That kind of leave is not one your organisation has set.',
 };
@@ -715,6 +716,8 @@ export class LeaveBoardService {
     const startsOn = atMidnight(input.startsOn);
     const endsOn = atMidnight(input.endsOn);
     if (Number.isNaN(startsOn.getTime()) || Number.isNaN(endsOn.getTime()) || endsOn < startsOn) throw new BadRequestException(LEAVE_REFUSED.badDates);
+    /* Leave asked for after the fact (sick leave yesterday) is still taken; leave for days gone a month ago is not (B-148). */
+    if (endsOn.getTime() < Date.now() - 31 * 86_400_000) throw new BadRequestException(LEAVE_REFUSED.tooLongAgo);
     const standIn = input.standInUserId ?? null;
     if (standIn) {
       const theirs = await this.roleOf({ userId: standIn, organizationId });
