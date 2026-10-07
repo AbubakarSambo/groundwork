@@ -658,12 +658,24 @@ export class WhatsAppService implements OnModuleInit {
      * groundwork_first_contact, carrying the message's own words; until Meta approves that template, a first
      * message is recorded as not sent, rather than sent without the protection.
      */
-    if (!lastWrote && (await this.neverInTouchWith(to))) {
+    if (!lastWrote && !this.somebodyIsAlreadyWritingFirstTo(to) && (await this.neverInTouchWith(to)) && !this.somebodyIsAlreadyWritingFirstTo(to)) {
+      /* Claimed at once, so a second check-in opening for the same number in the same moment is the ordinary notice and not a second introduction (user journeys, F-19). */
       const first = templateFor(FIRST_CONTACT, approved);
       if (!first) return { free: false, template: null, because: FIRST_CONTACT_NOT_APPROVED };
+      this.firstContactsBeingSent.set(WhatsAppService.normalize(to), Date.now());
       return { free: false, template: first, because: OUTSIDE_THE_WINDOW, params: [await this.nameOfTheOrganisation(organizationId), theFirstContactLine(context.kind, context.params, text)] };
     }
     return { free: false, template: templateFor(context.kind, approved), because: OUTSIDE_THE_WINDOW };
+  }
+
+  /** Numbers the first message is on its way to, by when it was claimed. Only one introduction goes to a number: the very first message. */
+  private readonly firstContactsBeingSent = new Map<string, number>();
+  private somebodyIsAlreadyWritingFirstTo(to: string): boolean {
+    const key = WhatsAppService.normalize(to);
+    const at = this.firstContactsBeingSent.get(key);
+    if (at === undefined) return false;
+    if (Date.now() - at > 10 * 60_000) { this.firstContactsBeingSent.delete(key); return false; }
+    return true;
   }
 
   /**
