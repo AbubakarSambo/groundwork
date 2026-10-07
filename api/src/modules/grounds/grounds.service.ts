@@ -7059,7 +7059,7 @@ export class GroundsService {
       select: { id: true, status: true },
     });
     /* The people the lead named while it waited are invited now, once each (known issue B5). */
-    await this.sendTheInvitationsHeldForApproval(groundId, organizationId).catch((err: any) => this.logger.error(`Held invitations for ground ${groundId} failed: ${err?.message}`));
+    const invitedNow = await this.sendTheInvitationsHeldForApproval(groundId, organizationId).catch((err: any) => { this.logger.error(`Held invitations for ground ${groundId} failed: ${err?.message}`); return 0; });
 
     // The person who set it up is waiting on this, and nothing else would tell them.
     const creator = await this.prisma.user.findUnique({
@@ -7069,7 +7069,7 @@ export class GroundsService {
     const url = `${this.config.get<string>('resend.frontendUrl') ?? ''}/grounds/${ground.id}`;
     if (creator?.email) {
       await this.email
-        .sendGroundApproved(creator.email, creator.firstName ?? 'there', ground.label, url)
+        .sendGroundApproved(creator.email, creator.firstName ?? 'there', ground.label, url, invitedNow)
         .catch((err: any) => this.logger.error(`Approval email failed for ground ${ground.id}: ${err.message}`));
     }
     return { ...updated, alreadyDecided: false };

@@ -820,13 +820,13 @@ export class EmailService implements OnModuleInit {
     }, undefined, 'sendApprovalsSummary');
   }
 
-  async sendGroundApproved(email: string, firstName: string, groundLabel: string, url: string): Promise<void> {
+  async sendGroundApproved(email: string, firstName: string, groundLabel: string, url: string, invitedNow = 0): Promise<void> {
     await this.sendEmail({
       to: email,
       subject: `Your check-in is approved: ${groundLabel}`,
       html: this.layout(
         `<p>${greeting(firstName)}</p>
-         <p>An admin in your organisation has approved <strong>${escapeHtml(groundLabel)}</strong>. You can invite the people involved now, and their check-ins can begin.</p>
+         <p>An admin in your organisation has approved <strong>${escapeHtml(groundLabel)}</strong>. ${invitedNow > 0 ? `${invitedNow === 1 ? 'The person' : 'The people'} you named ${invitedNow === 1 ? 'has' : 'have'} now been invited, so you do not need to invite them again.` : 'You can invite the people involved now, and their check-ins can begin.'}</p>
          <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open the check-in →</a></p>`,
       ),
     }, undefined, 'sendGroundApproved');
