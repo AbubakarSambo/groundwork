@@ -162,6 +162,80 @@ describe('the save card, already signed in', () => {
     expectAtMostOnePrimaryButton(container)
     expect(authApi.entrySave).not.toHaveBeenCalled()
   })
+
+  /*
+   * FAULT 1 (live walk, 6 October 2026): A SIGNED-IN READER WAS TOLD TO SIGN IN.
+   *
+   * Changing the number of sessions to more than one used to show "6 sessions means signing in,
+   * and it is free" to everyone, signed in or not - on the same screen as, two inches below, "No
+   * confirmation needed, you are already signed in." The two sentences disagreed about whether
+   * signing in was still ahead of her. The "means signing in" clause is said only to a stranger,
+   * for whom it is still true.
+   */
+  it('setting more than one session never tells an already signed-in lead to sign in', async () => {
+    authedUser = { id: 'u1', email: 'rukia@example.test' }
+    localStorage.setItem('gw_entry_session', JSON.stringify({
+      scenario: 'PIP', closed: false, flowPath: 'self', onboardingStep: 7,
+      history: [{ role: 'assistant', content: 'How is it going?' }],
+      sessions: 1, cadence: 'WEEKLY', cadenceChosen: true, plannedFrom: { timelineDays: 42, cadence: 'WEEKLY' },
+      onboardingSelections: { mode: 'new', initial: 'x', classifiedScenario: 'PIP' },
+    }))
+    renderPage()
+    await screen.findByText(/sessions? planned/)
+    const sessionsButton = screen.getAllByRole('button', { name: /session,? planned from/i })[0]
+    fireEvent.click(sessionsButton)
+    const input = screen.getAllByLabelText('How many sessions')[0]
+    fireEvent.change(input, { target: { value: '3' } })
+    fireEvent.blur(input)
+    expect(await screen.findByText(/Save your session below to get set up/)).toBeTruthy()
+    expect(screen.queryByText(/means signing in/)).toBeNull()
+    expect(screen.getByText(/No confirmation needed, you are already signed in\./)).toBeTruthy()
+  })
+
+  /** And the same prompt still says it to a stranger, for whom it remains true. */
+  it('still tells a signed-out visitor that more than one session means signing in', async () => {
+    authedUser = null
+    localStorage.setItem('gw_entry_session', JSON.stringify({
+      scenario: 'PIP', closed: false, flowPath: 'self', onboardingStep: 7,
+      history: [{ role: 'assistant', content: 'How is it going?' }],
+      sessions: 1, cadence: 'WEEKLY', cadenceChosen: true, plannedFrom: { timelineDays: 42, cadence: 'WEEKLY' },
+      onboardingSelections: { mode: 'new', initial: 'x', classifiedScenario: 'PIP' },
+    }))
+    renderPage()
+    await screen.findByText(/sessions? planned/)
+    const sessionsButton = screen.getAllByRole('button', { name: /session,? planned from/i })[0]
+    fireEvent.click(sessionsButton)
+    const input = screen.getAllByLabelText('How many sessions')[0]
+    fireEvent.change(input, { target: { value: '3' } })
+    fireEvent.blur(input)
+    await screen.findByText(/means signing in/)
+    expect(document.body.textContent).toMatch(/3 sessions means signing in/)
+  })
+})
+
+describe('changing how many sessions a check-in runs (fault 2, live walk, 6 October 2026)', () => {
+  /*
+   * ONCE OPENED, THE ONLY CONTROL FOR HOW MANY SESSIONS A CHECK-IN RUNS WAS A BARE "sessions:" -
+   * no sentence, nothing said about what the number was for. A plain label, found by a screen
+   * reader the same way every other field on this page already is, and one sentence of help.
+   */
+  it('opens with a plain label and a sentence of help, not a bare "sessions:"', async () => {
+    authedUser = { id: 'u1', email: 'rukia@example.test' }
+    localStorage.setItem('gw_entry_session', JSON.stringify({
+      scenario: 'PIP', closed: false, flowPath: 'self', onboardingStep: 7,
+      history: [{ role: 'assistant', content: 'How is it going?' }],
+      sessions: 1, cadence: 'WEEKLY', cadenceChosen: true, plannedFrom: { timelineDays: 42, cadence: 'WEEKLY' },
+      onboardingSelections: { mode: 'new', initial: 'x', classifiedScenario: 'PIP' },
+    }))
+    renderPage()
+    await screen.findByText(/sessions? planned/)
+    const sessionsButton = screen.getAllByRole('button', { name: /session,? planned from/i })[0]
+    fireEvent.click(sessionsButton)
+    expect(screen.getAllByLabelText('How many sessions')[0]).toBeTruthy()
+    expect(screen.getAllByText('How many sessions').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('This is your plan for how many check-ins to run. You can change it at any time.').length).toBeGreaterThan(0)
+    expect(document.body.textContent).not.toContain('sessions:')
+  })
 })
 
 describe('the new-scenario-conflict dialog', () => {

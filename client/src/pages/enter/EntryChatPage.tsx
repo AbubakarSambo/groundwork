@@ -3361,26 +3361,37 @@ export function EntryChatPage() {
         {/* Sessions counter */}
         <div className="gwui-ec-sessions-count">
           {editingSessions ? (
-            <span className="gwui-invite-link-row">
-              <span className="gwui-fine">sessions:</span>
-              <TextField
-                type="number" min={1}
-                value={sessionsInput}
-                onChange={e => setSessionsInput(e.target.value)}
-                onBlur={() => {
-                  const n = Math.max(1, parseInt(sessionsInput) || 1)
-                  setSessions(n)
-                  setSessionsInput(String(n))
-                  setEditingSessions(false)
-                  if (n > 1) setShowSessionsUpgrade(true)
-                }}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
-                  if (e.key === 'Escape') setEditingSessions(false)
-                }}
-                autoFocus
-              />
-            </span>
+            <>
+              {/*
+                FAULT 2 (live walk, 6 October 2026): A BARE "sessions:" WAS THE ONLY LABEL. Once
+                opened, the only way to change how many sessions a check-in runs read as a label
+                for a filing field, not a sentence a person could read - and nothing said what the
+                number was for. A plain label and a sentence of help, the same shape every other
+                field on this page already uses.
+              */}
+              <span className="gwui-invite-link-row">
+                <label htmlFor="gwui-ec-sessions-input" className="gwui-fine">How many sessions</label>
+                <TextField
+                  id="gwui-ec-sessions-input"
+                  type="number" min={1}
+                  value={sessionsInput}
+                  onChange={e => setSessionsInput(e.target.value)}
+                  onBlur={() => {
+                    const n = Math.max(1, parseInt(sessionsInput) || 1)
+                    setSessions(n)
+                    setSessionsInput(String(n))
+                    setEditingSessions(false)
+                    if (n > 1) setShowSessionsUpgrade(true)
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+                    if (e.key === 'Escape') setEditingSessions(false)
+                  }}
+                  autoFocus
+                />
+              </span>
+              <Note>This is your plan for how many check-ins to run. You can change it at any time.</Note>
+            </>
           ) : (
             <Button
               kind="secondary"
@@ -3542,7 +3553,16 @@ export function EntryChatPage() {
               person "additional sessions are $5 each" at the moment they were
               deciding whether to start - and it was not even true: their
               first ground is free with unlimited sessions. */}
-          <b>{sessions} sessions</b> means signing in, and it is free. Save your session below to get set up.{' '}
+          {/*
+            FAULT 1 (live walk, 6 October 2026): "MEANS SIGNING IN" WAS SAID TO SOMEBODY ALREADY
+            SIGNED IN. An admin who was already signed in read "6 sessions means signing in, and
+            it is free", then, on the save card below it, "Saving to her@company.com. No
+            confirmation needed, you are already signed in." - two sentences on the same screen
+            disagreeing about whether signing in was still ahead of her. Said only to a stranger,
+            for whom it is true; a signed-in reader is told only what is still true for them.
+          */}
+          {!user && <><b>{sessions} sessions</b> means signing in, and it is free. </>}
+          Save your session below to get set up.{' '}
           <button type="button" className="gwui-plain-link" onClick={() => { setShowSessionsUpgrade(false); setShowSave(true) }}>
             Save and set up
           </button>

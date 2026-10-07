@@ -130,6 +130,20 @@ function FeedbackWidget() {
   const hideTrigger = location.pathname === '/more' || location.pathname.startsWith('/checkin/')
     || location.pathname === '/chat' || location.pathname === '/settings/suites' || location.pathname === '/org/members'
     || askOpen
+  /**
+   * FAULT 2, PHONE WALK (6 October 2026): "/start" HAS ITS OWN HEADER, AND THE TRIGGER'S PLAIN
+   * TOP POSITION SAT ON TOP OF IT.
+   *
+   * Once a setup conversation has a situation, EntryChatPage.tsx draws its own session header
+   * (the name, and "N sessions planned", the only way to change how many sessions the check-in
+   * runs) - the one real control that header's right edge carries, at the same top-right corner
+   * this trigger's plain `top: 12` rests in on every other chat page. At 1440px a click meant for
+   * "sessions planned" landed on Feedback instead, and the button underneath it could not be
+   * opened any other way. There is no header at all before a situation is picked, so clearing it
+   * here never gives up anything this page needs: the top-right corner is empty either way, except
+   * on the one screen this exists to clear.
+   */
+  const isEntryStartPage = location.pathname === '/start'
   const open = useFeedbackStore(s => s.open)
   const showPanel = useFeedbackStore(s => s.show)
   const hidePanel = useFeedbackStore(s => s.hide)
@@ -340,7 +354,7 @@ function FeedbackWidget() {
             ...(moved
               ? asStyle(resting)
               : isChatPage
-                ? { top: 12, right: 16 }
+                ? (isEntryStartPage ? { top: 64, right: 16 } : { top: 12, right: 16 })
                 : isGroundsBoard
                   ? { bottom: 84, right: 20 }
                   : { bottom: 20, right: 20 }),
