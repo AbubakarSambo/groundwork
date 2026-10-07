@@ -1,0 +1,4166 @@
+[
+  {
+    "num": "01",
+    "page": "root",
+    "role": "signedout",
+    "width": 1440,
+    "url": "/",
+    "finalUrl": "http://localhost:5173/",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "01",
+    "page": "root",
+    "role": "signedout",
+    "width": 390,
+    "url": "/",
+    "finalUrl": "http://localhost:5173/",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "02",
+    "page": "sign-in",
+    "role": "signedout",
+    "width": 1440,
+    "url": "/auth",
+    "finalUrl": "http://localhost:5173/auth",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "02",
+    "page": "sign-in",
+    "role": "signedout",
+    "width": 390,
+    "url": "/auth",
+    "finalUrl": "http://localhost:5173/auth",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "03",
+    "page": "start",
+    "role": "signedout",
+    "width": 1440,
+    "url": "/start",
+    "finalUrl": "http://localhost:5173/start",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "03",
+    "page": "start",
+    "role": "signedout",
+    "width": 390,
+    "url": "/start",
+    "finalUrl": "http://localhost:5173/start",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "03",
+    "page": "start",
+    "role": "admin",
+    "width": 1440,
+    "url": "/start",
+    "finalUrl": "http://localhost:5173/start",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "03",
+    "page": "start",
+    "role": "admin",
+    "width": 390,
+    "url": "/start",
+    "finalUrl": "http://localhost:5173/start",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "04",
+    "page": "invite",
+    "role": "signedout",
+    "width": 1440,
+    "url": "/invite",
+    "finalUrl": "http://localhost:5173/invite",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "04",
+    "page": "invite",
+    "role": "signedout",
+    "width": 390,
+    "url": "/invite",
+    "finalUrl": "http://localhost:5173/invite",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "05",
+    "page": "join",
+    "role": "signedout",
+    "width": 1440,
+    "url": "/join",
+    "finalUrl": "http://localhost:5173/join",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "05",
+    "page": "join",
+    "role": "signedout",
+    "width": 390,
+    "url": "/join",
+    "finalUrl": "http://localhost:5173/join",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "06",
+    "page": "answer",
+    "role": "signedout",
+    "width": 1440,
+    "url": "/answer",
+    "finalUrl": "http://localhost:5173/answer",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "06",
+    "page": "answer",
+    "role": "signedout",
+    "width": 390,
+    "url": "/answer",
+    "finalUrl": "http://localhost:5173/answer",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "07",
+    "page": "talk-to-us",
+    "role": "signedout",
+    "width": 1440,
+    "url": "/talk-to-us",
+    "finalUrl": "http://localhost:5173/talk-to-us",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "07",
+    "page": "talk-to-us",
+    "role": "signedout",
+    "width": 390,
+    "url": "/talk-to-us",
+    "finalUrl": "http://localhost:5173/talk-to-us",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "08",
+    "page": "pricing",
+    "role": "signedout",
+    "width": 1440,
+    "url": "/pricing",
+    "finalUrl": "http://localhost:5173/pricing",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "08",
+    "page": "pricing",
+    "role": "signedout",
+    "width": 390,
+    "url": "/pricing",
+    "finalUrl": "http://localhost:5173/pricing",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "08",
+    "page": "pricing",
+    "role": "admin",
+    "width": 1440,
+    "url": "/pricing",
+    "finalUrl": "http://localhost:5173/pricing",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "08",
+    "page": "pricing",
+    "role": "admin",
+    "width": 390,
+    "url": "/pricing",
+    "finalUrl": "http://localhost:5173/pricing",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "09",
+    "page": "grounds-list",
+    "role": "admin",
+    "width": 1440,
+    "url": "/grounds",
+    "finalUrl": "http://localhost:5173/grounds",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "09",
+    "page": "grounds-list",
+    "role": "admin",
+    "width": 390,
+    "url": "/grounds",
+    "finalUrl": "http://localhost:5173/grounds",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "09",
+    "page": "grounds-list",
+    "role": "lead",
+    "width": 1440,
+    "url": "/grounds",
+    "finalUrl": "http://localhost:5173/grounds",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "09",
+    "page": "grounds-list",
+    "role": "lead",
+    "width": 390,
+    "url": "/grounds",
+    "finalUrl": "http://localhost:5173/grounds",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "09",
+    "page": "grounds-list",
+    "role": "member",
+    "width": 1440,
+    "url": "/grounds",
+    "finalUrl": "http://localhost:5173/grounds",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "09",
+    "page": "grounds-list",
+    "role": "member",
+    "width": 390,
+    "url": "/grounds",
+    "finalUrl": "http://localhost:5173/grounds",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "09",
+    "page": "grounds-list",
+    "role": "guest",
+    "width": 1440,
+    "url": "/grounds",
+    "finalUrl": "http://localhost:5173/grounds",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "09",
+    "page": "grounds-list",
+    "role": "guest",
+    "width": 390,
+    "url": "/grounds",
+    "finalUrl": "http://localhost:5173/grounds",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "09",
+    "page": "grounds-list",
+    "role": "signedout",
+    "width": 1440,
+    "url": "/grounds",
+    "finalUrl": "http://localhost:5173/auth?next=%2Fgrounds",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "09",
+    "page": "grounds-list",
+    "role": "signedout",
+    "width": 390,
+    "url": "/grounds",
+    "finalUrl": "http://localhost:5173/auth?next=%2Fgrounds",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "10",
+    "page": "today",
+    "role": "admin",
+    "width": 1440,
+    "url": "/today",
+    "finalUrl": "http://localhost:5173/today",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/time/mine"
+    ]
+  },
+  {
+    "num": "10",
+    "page": "today",
+    "role": "admin",
+    "width": 390,
+    "url": "/today",
+    "finalUrl": "http://localhost:5173/today",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/time/mine"
+    ]
+  },
+  {
+    "num": "10",
+    "page": "today",
+    "role": "lead",
+    "width": 1440,
+    "url": "/today",
+    "finalUrl": "http://localhost:5173/today",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/time/mine"
+    ]
+  },
+  {
+    "num": "10",
+    "page": "today",
+    "role": "lead",
+    "width": 390,
+    "url": "/today",
+    "finalUrl": "http://localhost:5173/today",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/time/mine"
+    ]
+  },
+  {
+    "num": "10",
+    "page": "today",
+    "role": "member",
+    "width": 1440,
+    "url": "/today",
+    "finalUrl": "http://localhost:5173/today",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/time/mine"
+    ]
+  },
+  {
+    "num": "10",
+    "page": "today",
+    "role": "member",
+    "width": 390,
+    "url": "/today",
+    "finalUrl": "http://localhost:5173/today",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/time/mine"
+    ]
+  },
+  {
+    "num": "10",
+    "page": "today",
+    "role": "guest",
+    "width": 1440,
+    "url": "/today",
+    "finalUrl": "http://localhost:5173/today",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/time/mine"
+    ]
+  },
+  {
+    "num": "10",
+    "page": "today",
+    "role": "guest",
+    "width": 390,
+    "url": "/today",
+    "finalUrl": "http://localhost:5173/today",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/time/mine"
+    ]
+  },
+  {
+    "num": "10",
+    "page": "today",
+    "role": "signedout",
+    "width": 1440,
+    "url": "/today",
+    "finalUrl": "http://localhost:5173/auth?next=%2Ftoday",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "10",
+    "page": "today",
+    "role": "signedout",
+    "width": 390,
+    "url": "/today",
+    "finalUrl": "http://localhost:5173/auth?next=%2Ftoday",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "11",
+    "page": "you",
+    "role": "admin",
+    "width": 1440,
+    "url": "/you",
+    "finalUrl": "http://localhost:5173/you",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "11",
+    "page": "you",
+    "role": "admin",
+    "width": 390,
+    "url": "/you",
+    "finalUrl": "http://localhost:5173/you",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "11",
+    "page": "you",
+    "role": "lead",
+    "width": 1440,
+    "url": "/you",
+    "finalUrl": "http://localhost:5173/you",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "11",
+    "page": "you",
+    "role": "lead",
+    "width": 390,
+    "url": "/you",
+    "finalUrl": "http://localhost:5173/you",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "11",
+    "page": "you",
+    "role": "member",
+    "width": 1440,
+    "url": "/you",
+    "finalUrl": "http://localhost:5173/you",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "11",
+    "page": "you",
+    "role": "member",
+    "width": 390,
+    "url": "/you",
+    "finalUrl": "http://localhost:5173/you",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "11",
+    "page": "you",
+    "role": "guest",
+    "width": 1440,
+    "url": "/you",
+    "finalUrl": "http://localhost:5173/you",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "11",
+    "page": "you",
+    "role": "guest",
+    "width": 390,
+    "url": "/you",
+    "finalUrl": "http://localhost:5173/you",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "11",
+    "page": "you",
+    "role": "signedout",
+    "width": 1440,
+    "url": "/you",
+    "finalUrl": "http://localhost:5173/auth?next=%2Fyou",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "11",
+    "page": "you",
+    "role": "signedout",
+    "width": 390,
+    "url": "/you",
+    "finalUrl": "http://localhost:5173/auth?next=%2Fyou",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "12",
+    "page": "company",
+    "role": "admin",
+    "width": 1440,
+    "url": "/company",
+    "finalUrl": "http://localhost:5173/company",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "12",
+    "page": "company",
+    "role": "admin",
+    "width": 390,
+    "url": "/company",
+    "finalUrl": "http://localhost:5173/company",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "12",
+    "page": "company",
+    "role": "lead",
+    "width": 1440,
+    "url": "/company",
+    "finalUrl": "http://localhost:5173/company",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "12",
+    "page": "company",
+    "role": "lead",
+    "width": 390,
+    "url": "/company",
+    "finalUrl": "http://localhost:5173/company",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "12",
+    "page": "company",
+    "role": "member",
+    "width": 1440,
+    "url": "/company",
+    "finalUrl": "http://localhost:5173/company",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "12",
+    "page": "company",
+    "role": "member",
+    "width": 390,
+    "url": "/company",
+    "finalUrl": "http://localhost:5173/company",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "12",
+    "page": "company",
+    "role": "guest",
+    "width": 1440,
+    "url": "/company",
+    "finalUrl": "http://localhost:5173/company",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "12",
+    "page": "company",
+    "role": "guest",
+    "width": 390,
+    "url": "/company",
+    "finalUrl": "http://localhost:5173/company",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "12",
+    "page": "company",
+    "role": "signedout",
+    "width": 1440,
+    "url": "/company",
+    "finalUrl": "http://localhost:5173/auth?next=%2Fcompany",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "12",
+    "page": "company",
+    "role": "signedout",
+    "width": 390,
+    "url": "/company",
+    "finalUrl": "http://localhost:5173/auth?next=%2Fcompany",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "13",
+    "page": "company-context",
+    "role": "admin",
+    "width": 1440,
+    "url": "/company/context",
+    "finalUrl": "http://localhost:5173/company/context",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "13",
+    "page": "company-context",
+    "role": "admin",
+    "width": 390,
+    "url": "/company/context",
+    "finalUrl": "http://localhost:5173/company/context",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "13",
+    "page": "company-context",
+    "role": "guest",
+    "width": 1440,
+    "url": "/company/context",
+    "finalUrl": "http://localhost:5173/company/context",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "13",
+    "page": "company-context",
+    "role": "guest",
+    "width": 390,
+    "url": "/company/context",
+    "finalUrl": "http://localhost:5173/company/context",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "13",
+    "page": "company-context",
+    "role": "signedout",
+    "width": 1440,
+    "url": "/company/context",
+    "finalUrl": "http://localhost:5173/auth?next=%2Fcompany%2Fcontext",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "13",
+    "page": "company-context",
+    "role": "signedout",
+    "width": 390,
+    "url": "/company/context",
+    "finalUrl": "http://localhost:5173/auth?next=%2Fcompany%2Fcontext",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "14",
+    "page": "boards",
+    "role": "admin",
+    "width": 1440,
+    "url": "/boards",
+    "finalUrl": "http://localhost:5173/boards?ground=bb076fe3-94ae-4898-bb95-ced5bb5d77f4",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "14",
+    "page": "boards",
+    "role": "admin",
+    "width": 390,
+    "url": "/boards",
+    "finalUrl": "http://localhost:5173/boards?ground=bb076fe3-94ae-4898-bb95-ced5bb5d77f4",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "14",
+    "page": "boards",
+    "role": "lead",
+    "width": 1440,
+    "url": "/boards",
+    "finalUrl": "http://localhost:5173/boards?ground=bb076fe3-94ae-4898-bb95-ced5bb5d77f4",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "14",
+    "page": "boards",
+    "role": "lead",
+    "width": 390,
+    "url": "/boards",
+    "finalUrl": "http://localhost:5173/boards?ground=bb076fe3-94ae-4898-bb95-ced5bb5d77f4",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "14",
+    "page": "boards",
+    "role": "member",
+    "width": 1440,
+    "url": "/boards",
+    "finalUrl": "http://localhost:5173/boards?ground=f9ad5070-c16d-4aa8-b56a-2cb2ae646871",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "14",
+    "page": "boards",
+    "role": "member",
+    "width": 390,
+    "url": "/boards",
+    "finalUrl": "http://localhost:5173/boards?ground=f9ad5070-c16d-4aa8-b56a-2cb2ae646871",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "14",
+    "page": "boards",
+    "role": "guest",
+    "width": 1440,
+    "url": "/boards",
+    "finalUrl": "http://localhost:5173/boards?ground=ef199e88-a1be-4bba-837b-f14200609690",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "14",
+    "page": "boards",
+    "role": "guest",
+    "width": 390,
+    "url": "/boards",
+    "finalUrl": "http://localhost:5173/boards?ground=ef199e88-a1be-4bba-837b-f14200609690",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "14",
+    "page": "boards",
+    "role": "signedout",
+    "width": 1440,
+    "url": "/boards",
+    "finalUrl": "http://localhost:5173/auth?next=%2Fboards",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "14",
+    "page": "boards",
+    "role": "signedout",
+    "width": 390,
+    "url": "/boards",
+    "finalUrl": "http://localhost:5173/auth?next=%2Fboards",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "15",
+    "page": "ask",
+    "role": "admin",
+    "width": 1440,
+    "url": "/chat",
+    "finalUrl": "http://localhost:5173/chat",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "15",
+    "page": "ask",
+    "role": "admin",
+    "width": 390,
+    "url": "/chat",
+    "finalUrl": "http://localhost:5173/chat",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "15",
+    "page": "ask",
+    "role": "lead",
+    "width": 1440,
+    "url": "/chat",
+    "finalUrl": "http://localhost:5173/chat",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "15",
+    "page": "ask",
+    "role": "lead",
+    "width": 390,
+    "url": "/chat",
+    "finalUrl": "http://localhost:5173/chat",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "15",
+    "page": "ask",
+    "role": "member",
+    "width": 1440,
+    "url": "/chat",
+    "finalUrl": "http://localhost:5173/chat",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "15",
+    "page": "ask",
+    "role": "member",
+    "width": 390,
+    "url": "/chat",
+    "finalUrl": "http://localhost:5173/chat",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "15",
+    "page": "ask",
+    "role": "guest",
+    "width": 1440,
+    "url": "/chat",
+    "finalUrl": "http://localhost:5173/chat",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "15",
+    "page": "ask",
+    "role": "guest",
+    "width": 390,
+    "url": "/chat",
+    "finalUrl": "http://localhost:5173/chat",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "15",
+    "page": "ask",
+    "role": "signedout",
+    "width": 1440,
+    "url": "/chat",
+    "finalUrl": "http://localhost:5173/auth?next=%2Fchat",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "15",
+    "page": "ask",
+    "role": "signedout",
+    "width": 390,
+    "url": "/chat",
+    "finalUrl": "http://localhost:5173/auth?next=%2Fchat",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "16",
+    "page": "suites-settings",
+    "role": "admin",
+    "width": 1440,
+    "url": "/settings/suites",
+    "finalUrl": "http://localhost:5173/settings/suites",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/time/mine"
+    ]
+  },
+  {
+    "num": "16",
+    "page": "suites-settings",
+    "role": "admin",
+    "width": 390,
+    "url": "/settings/suites",
+    "finalUrl": "http://localhost:5173/settings/suites",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/time/mine"
+    ]
+  },
+  {
+    "num": "16",
+    "page": "suites-settings",
+    "role": "member",
+    "width": 1440,
+    "url": "/settings/suites",
+    "finalUrl": "http://localhost:5173/settings/suites",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "403 GET http://localhost:5173/api/v1/suites",
+      "404 GET http://localhost:5173/api/v1/suites/time/mine"
+    ]
+  },
+  {
+    "num": "16",
+    "page": "suites-settings",
+    "role": "member",
+    "width": 390,
+    "url": "/settings/suites",
+    "finalUrl": "http://localhost:5173/settings/suites",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "403 GET http://localhost:5173/api/v1/suites",
+      "404 GET http://localhost:5173/api/v1/suites/time/mine"
+    ]
+  },
+  {
+    "num": "16",
+    "page": "suites-settings",
+    "role": "guest",
+    "width": 1440,
+    "url": "/settings/suites",
+    "finalUrl": "http://localhost:5173/settings/suites",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/time/mine"
+    ]
+  },
+  {
+    "num": "16",
+    "page": "suites-settings",
+    "role": "guest",
+    "width": 390,
+    "url": "/settings/suites",
+    "finalUrl": "http://localhost:5173/settings/suites",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/time/mine"
+    ]
+  },
+  {
+    "num": "17",
+    "page": "suite-onboard",
+    "role": "admin",
+    "width": 1440,
+    "url": "/suite/onboard",
+    "finalUrl": "http://localhost:5173/suite/onboard",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/onboard/board"
+    ]
+  },
+  {
+    "num": "17",
+    "page": "suite-onboard",
+    "role": "admin",
+    "width": 390,
+    "url": "/suite/onboard",
+    "finalUrl": "http://localhost:5173/suite/onboard",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/onboard/board"
+    ]
+  },
+  {
+    "num": "17",
+    "page": "suite-onboard",
+    "role": "guest",
+    "width": 1440,
+    "url": "/suite/onboard",
+    "finalUrl": "http://localhost:5173/suite/onboard",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/onboard/board"
+    ]
+  },
+  {
+    "num": "17",
+    "page": "suite-onboard",
+    "role": "guest",
+    "width": 390,
+    "url": "/suite/onboard",
+    "finalUrl": "http://localhost:5173/suite/onboard",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/onboard/board"
+    ]
+  },
+  {
+    "num": "18",
+    "page": "suite-mine",
+    "role": "admin",
+    "width": 1440,
+    "url": "/suite/mine",
+    "finalUrl": "http://localhost:5173/suite/mine",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/time/mine"
+    ]
+  },
+  {
+    "num": "18",
+    "page": "suite-mine",
+    "role": "admin",
+    "width": 390,
+    "url": "/suite/mine",
+    "finalUrl": "http://localhost:5173/suite/mine",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/time/mine"
+    ]
+  },
+  {
+    "num": "18",
+    "page": "suite-mine",
+    "role": "lead",
+    "width": 1440,
+    "url": "/suite/mine",
+    "finalUrl": "http://localhost:5173/suite/mine",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/time/mine"
+    ]
+  },
+  {
+    "num": "18",
+    "page": "suite-mine",
+    "role": "lead",
+    "width": 390,
+    "url": "/suite/mine",
+    "finalUrl": "http://localhost:5173/suite/mine",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/time/mine"
+    ]
+  },
+  {
+    "num": "18",
+    "page": "suite-mine",
+    "role": "member",
+    "width": 1440,
+    "url": "/suite/mine",
+    "finalUrl": "http://localhost:5173/suite/mine",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/time/mine"
+    ]
+  },
+  {
+    "num": "18",
+    "page": "suite-mine",
+    "role": "member",
+    "width": 390,
+    "url": "/suite/mine",
+    "finalUrl": "http://localhost:5173/suite/mine",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/time/mine"
+    ]
+  },
+  {
+    "num": "18",
+    "page": "suite-mine",
+    "role": "guest",
+    "width": 1440,
+    "url": "/suite/mine",
+    "finalUrl": "http://localhost:5173/suite/mine",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/time/mine"
+    ]
+  },
+  {
+    "num": "18",
+    "page": "suite-mine",
+    "role": "guest",
+    "width": 390,
+    "url": "/suite/mine",
+    "finalUrl": "http://localhost:5173/suite/mine",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/time/mine"
+    ]
+  },
+  {
+    "num": "19",
+    "page": "suite-leave-new",
+    "role": "member",
+    "width": 1440,
+    "url": "/suite/leave/new",
+    "finalUrl": "http://localhost:5173/suite/leave/new",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "19",
+    "page": "suite-leave-new",
+    "role": "member",
+    "width": 390,
+    "url": "/suite/leave/new",
+    "finalUrl": "http://localhost:5173/suite/leave/new",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "19",
+    "page": "suite-leave-new",
+    "role": "guest",
+    "width": 1440,
+    "url": "/suite/leave/new",
+    "finalUrl": "http://localhost:5173/suite/leave/new",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "19",
+    "page": "suite-leave-new",
+    "role": "guest",
+    "width": 390,
+    "url": "/suite/leave/new",
+    "finalUrl": "http://localhost:5173/suite/leave/new",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "20",
+    "page": "suite-spend-new",
+    "role": "member",
+    "width": 1440,
+    "url": "/suite/spend/new",
+    "finalUrl": "http://localhost:5173/suite/spend/new",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "20",
+    "page": "suite-spend-new",
+    "role": "member",
+    "width": 390,
+    "url": "/suite/spend/new",
+    "finalUrl": "http://localhost:5173/suite/spend/new",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "20",
+    "page": "suite-spend-new",
+    "role": "guest",
+    "width": 1440,
+    "url": "/suite/spend/new",
+    "finalUrl": "http://localhost:5173/suite/spend/new",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "20",
+    "page": "suite-spend-new",
+    "role": "guest",
+    "width": 390,
+    "url": "/suite/spend/new",
+    "finalUrl": "http://localhost:5173/suite/spend/new",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "21",
+    "page": "suite-leave",
+    "role": "admin",
+    "width": 1440,
+    "url": "/suite/leave",
+    "finalUrl": "http://localhost:5173/suite/leave",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "21",
+    "page": "suite-leave",
+    "role": "admin",
+    "width": 390,
+    "url": "/suite/leave",
+    "finalUrl": "http://localhost:5173/suite/leave",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "21",
+    "page": "suite-leave",
+    "role": "lead",
+    "width": 1440,
+    "url": "/suite/leave",
+    "finalUrl": "http://localhost:5173/suite/leave",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "21",
+    "page": "suite-leave",
+    "role": "lead",
+    "width": 390,
+    "url": "/suite/leave",
+    "finalUrl": "http://localhost:5173/suite/leave",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "21",
+    "page": "suite-leave",
+    "role": "member",
+    "width": 1440,
+    "url": "/suite/leave",
+    "finalUrl": "http://localhost:5173/suite/leave",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ],
+    "failedRequests": [
+      "403 GET http://localhost:5173/api/v1/suites/leave/board"
+    ]
+  },
+  {
+    "num": "21",
+    "page": "suite-leave",
+    "role": "member",
+    "width": 390,
+    "url": "/suite/leave",
+    "finalUrl": "http://localhost:5173/suite/leave",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ],
+    "failedRequests": [
+      "403 GET http://localhost:5173/api/v1/suites/leave/board"
+    ]
+  },
+  {
+    "num": "21",
+    "page": "suite-leave",
+    "role": "guest",
+    "width": 1440,
+    "url": "/suite/leave",
+    "finalUrl": "http://localhost:5173/suite/leave",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "21",
+    "page": "suite-leave",
+    "role": "guest",
+    "width": 390,
+    "url": "/suite/leave",
+    "finalUrl": "http://localhost:5173/suite/leave",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "22",
+    "page": "suite-queue",
+    "role": "admin",
+    "width": 1440,
+    "url": "/suite/queue",
+    "finalUrl": "http://localhost:5173/suite/queue",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "22",
+    "page": "suite-queue",
+    "role": "admin",
+    "width": 390,
+    "url": "/suite/queue",
+    "finalUrl": "http://localhost:5173/suite/queue",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "22",
+    "page": "suite-queue",
+    "role": "lead",
+    "width": 1440,
+    "url": "/suite/queue",
+    "finalUrl": "http://localhost:5173/suite/queue",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "22",
+    "page": "suite-queue",
+    "role": "lead",
+    "width": 390,
+    "url": "/suite/queue",
+    "finalUrl": "http://localhost:5173/suite/queue",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "22",
+    "page": "suite-queue",
+    "role": "guest",
+    "width": 1440,
+    "url": "/suite/queue",
+    "finalUrl": "http://localhost:5173/suite/queue",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "22",
+    "page": "suite-queue",
+    "role": "guest",
+    "width": 390,
+    "url": "/suite/queue",
+    "finalUrl": "http://localhost:5173/suite/queue",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "23",
+    "page": "suite-time",
+    "role": "admin",
+    "width": 1440,
+    "url": "/suite/time",
+    "finalUrl": "http://localhost:5173/suite/time",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/time/board"
+    ]
+  },
+  {
+    "num": "23",
+    "page": "suite-time",
+    "role": "admin",
+    "width": 390,
+    "url": "/suite/time",
+    "finalUrl": "http://localhost:5173/suite/time",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/time/board"
+    ]
+  },
+  {
+    "num": "23",
+    "page": "suite-time",
+    "role": "member",
+    "width": 1440,
+    "url": "/suite/time",
+    "finalUrl": "http://localhost:5173/suite/time",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/time/board"
+    ]
+  },
+  {
+    "num": "23",
+    "page": "suite-time",
+    "role": "member",
+    "width": 390,
+    "url": "/suite/time",
+    "finalUrl": "http://localhost:5173/suite/time",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/time/board"
+    ]
+  },
+  {
+    "num": "23",
+    "page": "suite-time",
+    "role": "guest",
+    "width": 1440,
+    "url": "/suite/time",
+    "finalUrl": "http://localhost:5173/suite/time",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/time/board"
+    ]
+  },
+  {
+    "num": "23",
+    "page": "suite-time",
+    "role": "guest",
+    "width": 390,
+    "url": "/suite/time",
+    "finalUrl": "http://localhost:5173/suite/time",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/time/board"
+    ]
+  },
+  {
+    "num": "24",
+    "page": "suite-reviews",
+    "role": "admin",
+    "width": 1440,
+    "url": "/suite/reviews",
+    "finalUrl": "http://localhost:5173/suite/reviews",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "24",
+    "page": "suite-reviews",
+    "role": "admin",
+    "width": 390,
+    "url": "/suite/reviews",
+    "finalUrl": "http://localhost:5173/suite/reviews",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "24",
+    "page": "suite-reviews",
+    "role": "lead",
+    "width": 1440,
+    "url": "/suite/reviews",
+    "finalUrl": "http://localhost:5173/suite/reviews",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "24",
+    "page": "suite-reviews",
+    "role": "lead",
+    "width": 390,
+    "url": "/suite/reviews",
+    "finalUrl": "http://localhost:5173/suite/reviews",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "24",
+    "page": "suite-reviews",
+    "role": "member",
+    "width": 1440,
+    "url": "/suite/reviews",
+    "finalUrl": "http://localhost:5173/suite/reviews",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ],
+    "failedRequests": [
+      "403 GET http://localhost:5173/api/v1/suites/reviews/board"
+    ]
+  },
+  {
+    "num": "24",
+    "page": "suite-reviews",
+    "role": "member",
+    "width": 390,
+    "url": "/suite/reviews",
+    "finalUrl": "http://localhost:5173/suite/reviews",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ],
+    "failedRequests": [
+      "403 GET http://localhost:5173/api/v1/suites/reviews/board"
+    ]
+  },
+  {
+    "num": "24",
+    "page": "suite-reviews",
+    "role": "guest",
+    "width": 1440,
+    "url": "/suite/reviews",
+    "finalUrl": "http://localhost:5173/suite/reviews",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "24",
+    "page": "suite-reviews",
+    "role": "guest",
+    "width": 390,
+    "url": "/suite/reviews",
+    "finalUrl": "http://localhost:5173/suite/reviews",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "25",
+    "page": "suite-leaving",
+    "role": "admin",
+    "width": 1440,
+    "url": "/suite/leaving",
+    "finalUrl": "http://localhost:5173/suite/leaving",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/leaving/board"
+    ]
+  },
+  {
+    "num": "25",
+    "page": "suite-leaving",
+    "role": "admin",
+    "width": 390,
+    "url": "/suite/leaving",
+    "finalUrl": "http://localhost:5173/suite/leaving",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/leaving/board"
+    ]
+  },
+  {
+    "num": "25",
+    "page": "suite-leaving",
+    "role": "guest",
+    "width": 1440,
+    "url": "/suite/leaving",
+    "finalUrl": "http://localhost:5173/suite/leaving",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/leaving/board"
+    ]
+  },
+  {
+    "num": "25",
+    "page": "suite-leaving",
+    "role": "guest",
+    "width": 390,
+    "url": "/suite/leaving",
+    "finalUrl": "http://localhost:5173/suite/leaving",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/leaving/board"
+    ]
+  },
+  {
+    "num": "26",
+    "page": "suite-roles",
+    "role": "admin",
+    "width": 1440,
+    "url": "/suite/roles",
+    "finalUrl": "http://localhost:5173/suite/roles",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/roles/board"
+    ]
+  },
+  {
+    "num": "26",
+    "page": "suite-roles",
+    "role": "admin",
+    "width": 390,
+    "url": "/suite/roles",
+    "finalUrl": "http://localhost:5173/suite/roles",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/roles/board"
+    ]
+  },
+  {
+    "num": "26",
+    "page": "suite-roles",
+    "role": "guest",
+    "width": 1440,
+    "url": "/suite/roles",
+    "finalUrl": "http://localhost:5173/suite/roles",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/roles/board"
+    ]
+  },
+  {
+    "num": "26",
+    "page": "suite-roles",
+    "role": "guest",
+    "width": 390,
+    "url": "/suite/roles",
+    "finalUrl": "http://localhost:5173/suite/roles",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/roles/board"
+    ]
+  },
+  {
+    "num": "27",
+    "page": "suite-spend",
+    "role": "admin",
+    "width": 1440,
+    "url": "/suite/spend",
+    "finalUrl": "http://localhost:5173/suite/spend",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "27",
+    "page": "suite-spend",
+    "role": "admin",
+    "width": 390,
+    "url": "/suite/spend",
+    "finalUrl": "http://localhost:5173/suite/spend",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "27",
+    "page": "suite-spend",
+    "role": "guest",
+    "width": 1440,
+    "url": "/suite/spend",
+    "finalUrl": "http://localhost:5173/suite/spend",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "27",
+    "page": "suite-spend",
+    "role": "guest",
+    "width": 390,
+    "url": "/suite/spend",
+    "finalUrl": "http://localhost:5173/suite/spend",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "28",
+    "page": "suite-spend-finance",
+    "role": "admin",
+    "width": 1440,
+    "url": "/suite/spend/finance",
+    "finalUrl": "http://localhost:5173/suite/spend/finance",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "28",
+    "page": "suite-spend-finance",
+    "role": "admin",
+    "width": 390,
+    "url": "/suite/spend/finance",
+    "finalUrl": "http://localhost:5173/suite/spend/finance",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "28",
+    "page": "suite-spend-finance",
+    "role": "guest",
+    "width": 1440,
+    "url": "/suite/spend/finance",
+    "finalUrl": "http://localhost:5173/suite/spend/finance",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "28",
+    "page": "suite-spend-finance",
+    "role": "guest",
+    "width": 390,
+    "url": "/suite/spend/finance",
+    "finalUrl": "http://localhost:5173/suite/spend/finance",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "29",
+    "page": "suite-todos",
+    "role": "admin",
+    "width": 1440,
+    "url": "/suite/todos",
+    "finalUrl": "http://localhost:5173/suite/todos",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/todos/board"
+    ]
+  },
+  {
+    "num": "29",
+    "page": "suite-todos",
+    "role": "admin",
+    "width": 390,
+    "url": "/suite/todos",
+    "finalUrl": "http://localhost:5173/suite/todos",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/todos/board"
+    ]
+  },
+  {
+    "num": "29",
+    "page": "suite-todos",
+    "role": "member",
+    "width": 1440,
+    "url": "/suite/todos",
+    "finalUrl": "http://localhost:5173/suite/todos",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/todos/board"
+    ]
+  },
+  {
+    "num": "29",
+    "page": "suite-todos",
+    "role": "member",
+    "width": 390,
+    "url": "/suite/todos",
+    "finalUrl": "http://localhost:5173/suite/todos",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/todos/board"
+    ]
+  },
+  {
+    "num": "29",
+    "page": "suite-todos",
+    "role": "guest",
+    "width": 1440,
+    "url": "/suite/todos",
+    "finalUrl": "http://localhost:5173/suite/todos",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/todos/board"
+    ]
+  },
+  {
+    "num": "29",
+    "page": "suite-todos",
+    "role": "guest",
+    "width": 390,
+    "url": "/suite/todos",
+    "finalUrl": "http://localhost:5173/suite/todos",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/todos/board"
+    ]
+  },
+  {
+    "num": "30",
+    "page": "suite-customers",
+    "role": "admin",
+    "width": 1440,
+    "url": "/suite/customers",
+    "finalUrl": "http://localhost:5173/suite/customers",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/customers/board"
+    ]
+  },
+  {
+    "num": "30",
+    "page": "suite-customers",
+    "role": "admin",
+    "width": 390,
+    "url": "/suite/customers",
+    "finalUrl": "http://localhost:5173/suite/customers",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/customers/board"
+    ]
+  },
+  {
+    "num": "30",
+    "page": "suite-customers",
+    "role": "member",
+    "width": 1440,
+    "url": "/suite/customers",
+    "finalUrl": "http://localhost:5173/suite/customers",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/customers/board"
+    ]
+  },
+  {
+    "num": "30",
+    "page": "suite-customers",
+    "role": "member",
+    "width": 390,
+    "url": "/suite/customers",
+    "finalUrl": "http://localhost:5173/suite/customers",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/customers/board"
+    ]
+  },
+  {
+    "num": "30",
+    "page": "suite-customers",
+    "role": "guest",
+    "width": 1440,
+    "url": "/suite/customers",
+    "finalUrl": "http://localhost:5173/suite/customers",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/customers/board"
+    ]
+  },
+  {
+    "num": "30",
+    "page": "suite-customers",
+    "role": "guest",
+    "width": 390,
+    "url": "/suite/customers",
+    "finalUrl": "http://localhost:5173/suite/customers",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/customers/board"
+    ]
+  },
+  {
+    "num": "31",
+    "page": "suite-equipment",
+    "role": "admin",
+    "width": 1440,
+    "url": "/suite/equipment",
+    "finalUrl": "http://localhost:5173/suite/equipment",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/equipment/board"
+    ]
+  },
+  {
+    "num": "31",
+    "page": "suite-equipment",
+    "role": "admin",
+    "width": 390,
+    "url": "/suite/equipment",
+    "finalUrl": "http://localhost:5173/suite/equipment",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/equipment/board"
+    ]
+  },
+  {
+    "num": "31",
+    "page": "suite-equipment",
+    "role": "member",
+    "width": 1440,
+    "url": "/suite/equipment",
+    "finalUrl": "http://localhost:5173/suite/equipment",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/equipment/board"
+    ]
+  },
+  {
+    "num": "31",
+    "page": "suite-equipment",
+    "role": "member",
+    "width": 390,
+    "url": "/suite/equipment",
+    "finalUrl": "http://localhost:5173/suite/equipment",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/equipment/board"
+    ]
+  },
+  {
+    "num": "31",
+    "page": "suite-equipment",
+    "role": "guest",
+    "width": 1440,
+    "url": "/suite/equipment",
+    "finalUrl": "http://localhost:5173/suite/equipment",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/equipment/board"
+    ]
+  },
+  {
+    "num": "31",
+    "page": "suite-equipment",
+    "role": "guest",
+    "width": 390,
+    "url": "/suite/equipment",
+    "finalUrl": "http://localhost:5173/suite/equipment",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/equipment/board"
+    ]
+  },
+  {
+    "num": "32",
+    "page": "ground-page",
+    "role": "admin",
+    "width": 1440,
+    "url": "/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871",
+    "finalUrl": "http://localhost:5173/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871?tab=context",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "32",
+    "page": "ground-page",
+    "role": "admin",
+    "width": 390,
+    "url": "/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871",
+    "finalUrl": "http://localhost:5173/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871?tab=context",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "32",
+    "page": "ground-page",
+    "role": "lead",
+    "width": 1440,
+    "url": "/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871",
+    "finalUrl": "http://localhost:5173/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "32",
+    "page": "ground-page",
+    "role": "lead",
+    "width": 390,
+    "url": "/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871",
+    "finalUrl": "http://localhost:5173/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "32",
+    "page": "ground-page",
+    "role": "member",
+    "width": 1440,
+    "url": "/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871",
+    "finalUrl": "http://localhost:5173/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "32",
+    "page": "ground-page",
+    "role": "member",
+    "width": 390,
+    "url": "/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871",
+    "finalUrl": "http://localhost:5173/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "32",
+    "page": "ground-page",
+    "role": "guest",
+    "width": 1440,
+    "url": "/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871",
+    "finalUrl": "http://localhost:5173/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871",
+      "404 GET http://localhost:5173/api/v1/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871"
+    ]
+  },
+  {
+    "num": "32",
+    "page": "ground-page",
+    "role": "guest",
+    "width": 390,
+    "url": "/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871",
+    "finalUrl": "http://localhost:5173/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871",
+      "404 GET http://localhost:5173/api/v1/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871"
+    ]
+  },
+  {
+    "num": "33",
+    "page": "ground-participant",
+    "role": "member",
+    "width": 1440,
+    "url": "/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/p",
+    "finalUrl": "http://localhost:5173/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/p",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "33",
+    "page": "ground-participant",
+    "role": "member",
+    "width": 390,
+    "url": "/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/p",
+    "finalUrl": "http://localhost:5173/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/p",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "33",
+    "page": "ground-participant",
+    "role": "guest",
+    "width": 1440,
+    "url": "/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/p",
+    "finalUrl": "http://localhost:5173/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/p",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "403 GET http://localhost:5173/api/v1/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/my-specificity",
+      "404 GET http://localhost:5173/api/v1/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871",
+      "404 GET http://localhost:5173/api/v1/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871"
+    ]
+  },
+  {
+    "num": "33",
+    "page": "ground-participant",
+    "role": "guest",
+    "width": 390,
+    "url": "/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/p",
+    "finalUrl": "http://localhost:5173/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/p",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "403 GET http://localhost:5173/api/v1/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/my-specificity",
+      "404 GET http://localhost:5173/api/v1/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871",
+      "404 GET http://localhost:5173/api/v1/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871"
+    ]
+  },
+  {
+    "num": "34",
+    "page": "ground-report",
+    "role": "admin",
+    "width": 1440,
+    "url": "/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/report",
+    "finalUrl": "http://localhost:5173/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/board",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "34",
+    "page": "ground-report",
+    "role": "admin",
+    "width": 390,
+    "url": "/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/report",
+    "finalUrl": "http://localhost:5173/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/board",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "34",
+    "page": "ground-report",
+    "role": "lead",
+    "width": 1440,
+    "url": "/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/report",
+    "finalUrl": "http://localhost:5173/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871?tab=report",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "34",
+    "page": "ground-report",
+    "role": "lead",
+    "width": 390,
+    "url": "/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/report",
+    "finalUrl": "http://localhost:5173/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871?tab=report",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "34",
+    "page": "ground-report",
+    "role": "guest",
+    "width": 1440,
+    "url": "/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/report",
+    "finalUrl": "http://localhost:5173/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871?tab=report",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871",
+      "404 GET http://localhost:5173/api/v1/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871"
+    ]
+  },
+  {
+    "num": "34",
+    "page": "ground-report",
+    "role": "guest",
+    "width": 390,
+    "url": "/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/report",
+    "finalUrl": "http://localhost:5173/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871?tab=report",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871",
+      "404 GET http://localhost:5173/api/v1/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871"
+    ]
+  },
+  {
+    "num": "35",
+    "page": "ground-board",
+    "role": "admin",
+    "width": 1440,
+    "url": "/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/board",
+    "finalUrl": "http://localhost:5173/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/board",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "35",
+    "page": "ground-board",
+    "role": "admin",
+    "width": 390,
+    "url": "/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/board",
+    "finalUrl": "http://localhost:5173/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/board",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "35",
+    "page": "ground-board",
+    "role": "lead",
+    "width": 1440,
+    "url": "/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/board",
+    "finalUrl": "http://localhost:5173/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/board",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "35",
+    "page": "ground-board",
+    "role": "lead",
+    "width": 390,
+    "url": "/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/board",
+    "finalUrl": "http://localhost:5173/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/board",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "35",
+    "page": "ground-board",
+    "role": "member",
+    "width": 1440,
+    "url": "/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/board",
+    "finalUrl": "http://localhost:5173/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/board",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "35",
+    "page": "ground-board",
+    "role": "member",
+    "width": 390,
+    "url": "/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/board",
+    "finalUrl": "http://localhost:5173/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/board",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "35",
+    "page": "ground-board",
+    "role": "guest",
+    "width": 1440,
+    "url": "/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/board",
+    "finalUrl": "http://localhost:5173/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/board",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871",
+      "404 GET http://localhost:5173/api/v1/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/board",
+      "404 GET http://localhost:5173/api/v1/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871"
+    ]
+  },
+  {
+    "num": "35",
+    "page": "ground-board",
+    "role": "guest",
+    "width": 390,
+    "url": "/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/board",
+    "finalUrl": "http://localhost:5173/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/board",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871",
+      "404 GET http://localhost:5173/api/v1/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/board",
+      "404 GET http://localhost:5173/api/v1/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871"
+    ]
+  },
+  {
+    "num": "36",
+    "page": "ground-end",
+    "role": "lead",
+    "width": 1440,
+    "url": "/grounds/bb076fe3-94ae-4898-bb95-ced5bb5d77f4/end",
+    "finalUrl": "http://localhost:5173/grounds/bb076fe3-94ae-4898-bb95-ced5bb5d77f4/end",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "36",
+    "page": "ground-end",
+    "role": "lead",
+    "width": 390,
+    "url": "/grounds/bb076fe3-94ae-4898-bb95-ced5bb5d77f4/end",
+    "finalUrl": "http://localhost:5173/grounds/bb076fe3-94ae-4898-bb95-ced5bb5d77f4/end",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "36",
+    "page": "ground-end",
+    "role": "member",
+    "width": 1440,
+    "url": "/grounds/bb076fe3-94ae-4898-bb95-ced5bb5d77f4/end",
+    "finalUrl": "http://localhost:5173/grounds/bb076fe3-94ae-4898-bb95-ced5bb5d77f4/end",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "403 GET http://localhost:5173/api/v1/grounds/bb076fe3-94ae-4898-bb95-ced5bb5d77f4/suggestions",
+      "403 GET http://localhost:5173/api/v1/grounds/bb076fe3-94ae-4898-bb95-ced5bb5d77f4/resolution",
+      "404 GET http://localhost:5173/api/v1/grounds/bb076fe3-94ae-4898-bb95-ced5bb5d77f4",
+      "404 GET http://localhost:5173/api/v1/grounds/bb076fe3-94ae-4898-bb95-ced5bb5d77f4/board"
+    ]
+  },
+  {
+    "num": "36",
+    "page": "ground-end",
+    "role": "member",
+    "width": 390,
+    "url": "/grounds/bb076fe3-94ae-4898-bb95-ced5bb5d77f4/end",
+    "finalUrl": "http://localhost:5173/grounds/bb076fe3-94ae-4898-bb95-ced5bb5d77f4/end",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "403 GET http://localhost:5173/api/v1/grounds/bb076fe3-94ae-4898-bb95-ced5bb5d77f4/suggestions",
+      "403 GET http://localhost:5173/api/v1/grounds/bb076fe3-94ae-4898-bb95-ced5bb5d77f4/resolution",
+      "404 GET http://localhost:5173/api/v1/grounds/bb076fe3-94ae-4898-bb95-ced5bb5d77f4",
+      "404 GET http://localhost:5173/api/v1/grounds/bb076fe3-94ae-4898-bb95-ced5bb5d77f4/board"
+    ]
+  },
+  {
+    "num": "36",
+    "page": "ground-end",
+    "role": "guest",
+    "width": 1440,
+    "url": "/grounds/bb076fe3-94ae-4898-bb95-ced5bb5d77f4/end",
+    "finalUrl": "http://localhost:5173/grounds/bb076fe3-94ae-4898-bb95-ced5bb5d77f4/end",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "403 GET http://localhost:5173/api/v1/grounds/bb076fe3-94ae-4898-bb95-ced5bb5d77f4/suggestions",
+      "403 GET http://localhost:5173/api/v1/grounds/bb076fe3-94ae-4898-bb95-ced5bb5d77f4/resolution",
+      "404 GET http://localhost:5173/api/v1/grounds/bb076fe3-94ae-4898-bb95-ced5bb5d77f4",
+      "404 GET http://localhost:5173/api/v1/grounds/bb076fe3-94ae-4898-bb95-ced5bb5d77f4/board"
+    ]
+  },
+  {
+    "num": "36",
+    "page": "ground-end",
+    "role": "guest",
+    "width": 390,
+    "url": "/grounds/bb076fe3-94ae-4898-bb95-ced5bb5d77f4/end",
+    "finalUrl": "http://localhost:5173/grounds/bb076fe3-94ae-4898-bb95-ced5bb5d77f4/end",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "403 GET http://localhost:5173/api/v1/grounds/bb076fe3-94ae-4898-bb95-ced5bb5d77f4/suggestions",
+      "403 GET http://localhost:5173/api/v1/grounds/bb076fe3-94ae-4898-bb95-ced5bb5d77f4/resolution",
+      "404 GET http://localhost:5173/api/v1/grounds/bb076fe3-94ae-4898-bb95-ced5bb5d77f4",
+      "404 GET http://localhost:5173/api/v1/grounds/bb076fe3-94ae-4898-bb95-ced5bb5d77f4/board"
+    ]
+  },
+  {
+    "num": "37",
+    "page": "checkin-chat",
+    "role": "admin",
+    "width": 1440,
+    "url": "/checkin/1788aa85-5543-47f7-8143-616dd19e3ba3",
+    "finalUrl": "http://localhost:5173/checkin/1788aa85-5543-47f7-8143-616dd19e3ba3",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ],
+    "failedRequests": [
+      "403 GET http://localhost:5173/api/v1/check-ins/1788aa85-5543-47f7-8143-616dd19e3ba3/transcript",
+      "403 POST http://localhost:5173/api/v1/check-ins/1788aa85-5543-47f7-8143-616dd19e3ba3/open",
+      "403 GET http://localhost:5173/api/v1/check-ins/1788aa85-5543-47f7-8143-616dd19e3ba3/transcript"
+    ]
+  },
+  {
+    "num": "37",
+    "page": "checkin-chat",
+    "role": "admin",
+    "width": 390,
+    "url": "/checkin/1788aa85-5543-47f7-8143-616dd19e3ba3",
+    "finalUrl": "http://localhost:5173/checkin/1788aa85-5543-47f7-8143-616dd19e3ba3",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ],
+    "failedRequests": [
+      "403 GET http://localhost:5173/api/v1/check-ins/1788aa85-5543-47f7-8143-616dd19e3ba3/transcript",
+      "403 POST http://localhost:5173/api/v1/check-ins/1788aa85-5543-47f7-8143-616dd19e3ba3/open",
+      "403 GET http://localhost:5173/api/v1/check-ins/1788aa85-5543-47f7-8143-616dd19e3ba3/transcript"
+    ]
+  },
+  {
+    "num": "37",
+    "page": "checkin-chat",
+    "role": "lead",
+    "width": 1440,
+    "url": "/checkin/1788aa85-5543-47f7-8143-616dd19e3ba3",
+    "finalUrl": "http://localhost:5173/checkin/1788aa85-5543-47f7-8143-616dd19e3ba3",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "37",
+    "page": "checkin-chat",
+    "role": "lead",
+    "width": 390,
+    "url": "/checkin/1788aa85-5543-47f7-8143-616dd19e3ba3",
+    "finalUrl": "http://localhost:5173/checkin/1788aa85-5543-47f7-8143-616dd19e3ba3",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "37",
+    "page": "checkin-chat",
+    "role": "member",
+    "width": 1440,
+    "url": "/checkin/0d072a57-82e8-4a10-b2ab-f65bd9e586d6",
+    "finalUrl": "http://localhost:5173/checkin/0d072a57-82e8-4a10-b2ab-f65bd9e586d6",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 400 (Bad Request)"
+    ],
+    "failedRequests": [
+      "400 POST http://localhost:5173/api/v1/check-ins/0d072a57-82e8-4a10-b2ab-f65bd9e586d6/open"
+    ]
+  },
+  {
+    "num": "37",
+    "page": "checkin-chat",
+    "role": "member",
+    "width": 390,
+    "url": "/checkin/0d072a57-82e8-4a10-b2ab-f65bd9e586d6",
+    "finalUrl": "http://localhost:5173/checkin/0d072a57-82e8-4a10-b2ab-f65bd9e586d6",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 400 (Bad Request)"
+    ],
+    "failedRequests": [
+      "400 POST http://localhost:5173/api/v1/check-ins/0d072a57-82e8-4a10-b2ab-f65bd9e586d6/open"
+    ]
+  },
+  {
+    "num": "37",
+    "page": "checkin-chat",
+    "role": "guest",
+    "width": 1440,
+    "url": "/checkin/1788aa85-5543-47f7-8143-616dd19e3ba3",
+    "finalUrl": "http://localhost:5173/checkin/1788aa85-5543-47f7-8143-616dd19e3ba3",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ],
+    "failedRequests": [
+      "403 GET http://localhost:5173/api/v1/check-ins/1788aa85-5543-47f7-8143-616dd19e3ba3/transcript",
+      "403 POST http://localhost:5173/api/v1/check-ins/1788aa85-5543-47f7-8143-616dd19e3ba3/open",
+      "403 GET http://localhost:5173/api/v1/check-ins/1788aa85-5543-47f7-8143-616dd19e3ba3/transcript"
+    ]
+  },
+  {
+    "num": "37",
+    "page": "checkin-chat",
+    "role": "guest",
+    "width": 390,
+    "url": "/checkin/1788aa85-5543-47f7-8143-616dd19e3ba3",
+    "finalUrl": "http://localhost:5173/checkin/1788aa85-5543-47f7-8143-616dd19e3ba3",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ],
+    "failedRequests": [
+      "403 GET http://localhost:5173/api/v1/check-ins/1788aa85-5543-47f7-8143-616dd19e3ba3/transcript",
+      "403 POST http://localhost:5173/api/v1/check-ins/1788aa85-5543-47f7-8143-616dd19e3ba3/open",
+      "403 GET http://localhost:5173/api/v1/check-ins/1788aa85-5543-47f7-8143-616dd19e3ba3/transcript"
+    ]
+  },
+  {
+    "num": "38",
+    "page": "checkin-report",
+    "role": "admin",
+    "width": 1440,
+    "url": "/checkin/fa2ccea2-065e-4e49-a5b3-03a5a057d62b/report",
+    "finalUrl": "http://localhost:5173/checkin/fa2ccea2-065e-4e49-a5b3-03a5a057d62b/report",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ],
+    "failedRequests": [
+      "403 GET http://localhost:5173/api/v1/check-ins/fa2ccea2-065e-4e49-a5b3-03a5a057d62b/session-report",
+      "403 GET http://localhost:5173/api/v1/check-ins/fa2ccea2-065e-4e49-a5b3-03a5a057d62b/session-report"
+    ]
+  },
+  {
+    "num": "38",
+    "page": "checkin-report",
+    "role": "admin",
+    "width": 390,
+    "url": "/checkin/fa2ccea2-065e-4e49-a5b3-03a5a057d62b/report",
+    "finalUrl": "http://localhost:5173/checkin/fa2ccea2-065e-4e49-a5b3-03a5a057d62b/report",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ],
+    "failedRequests": [
+      "403 GET http://localhost:5173/api/v1/check-ins/fa2ccea2-065e-4e49-a5b3-03a5a057d62b/session-report",
+      "403 GET http://localhost:5173/api/v1/check-ins/fa2ccea2-065e-4e49-a5b3-03a5a057d62b/session-report"
+    ]
+  },
+  {
+    "num": "38",
+    "page": "checkin-report",
+    "role": "lead",
+    "width": 1440,
+    "url": "/checkin/fa2ccea2-065e-4e49-a5b3-03a5a057d62b/report",
+    "finalUrl": "http://localhost:5173/checkin/fa2ccea2-065e-4e49-a5b3-03a5a057d62b/report",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "38",
+    "page": "checkin-report",
+    "role": "lead",
+    "width": 390,
+    "url": "/checkin/fa2ccea2-065e-4e49-a5b3-03a5a057d62b/report",
+    "finalUrl": "http://localhost:5173/checkin/fa2ccea2-065e-4e49-a5b3-03a5a057d62b/report",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "38",
+    "page": "checkin-report",
+    "role": "member",
+    "width": 1440,
+    "url": "/checkin/0d072a57-82e8-4a10-b2ab-f65bd9e586d6/report",
+    "finalUrl": "http://localhost:5173/checkin/0d072a57-82e8-4a10-b2ab-f65bd9e586d6/report",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "38",
+    "page": "checkin-report",
+    "role": "member",
+    "width": 390,
+    "url": "/checkin/0d072a57-82e8-4a10-b2ab-f65bd9e586d6/report",
+    "finalUrl": "http://localhost:5173/checkin/0d072a57-82e8-4a10-b2ab-f65bd9e586d6/report",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "38",
+    "page": "checkin-report",
+    "role": "guest",
+    "width": 1440,
+    "url": "/checkin/fa2ccea2-065e-4e49-a5b3-03a5a057d62b/report",
+    "finalUrl": "http://localhost:5173/checkin/fa2ccea2-065e-4e49-a5b3-03a5a057d62b/report",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ],
+    "failedRequests": [
+      "403 GET http://localhost:5173/api/v1/check-ins/fa2ccea2-065e-4e49-a5b3-03a5a057d62b/session-report",
+      "403 GET http://localhost:5173/api/v1/check-ins/fa2ccea2-065e-4e49-a5b3-03a5a057d62b/session-report"
+    ]
+  },
+  {
+    "num": "38",
+    "page": "checkin-report",
+    "role": "guest",
+    "width": 390,
+    "url": "/checkin/fa2ccea2-065e-4e49-a5b3-03a5a057d62b/report",
+    "finalUrl": "http://localhost:5173/checkin/fa2ccea2-065e-4e49-a5b3-03a5a057d62b/report",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ],
+    "failedRequests": [
+      "403 GET http://localhost:5173/api/v1/check-ins/fa2ccea2-065e-4e49-a5b3-03a5a057d62b/session-report",
+      "403 GET http://localhost:5173/api/v1/check-ins/fa2ccea2-065e-4e49-a5b3-03a5a057d62b/session-report"
+    ]
+  },
+  {
+    "num": "39",
+    "page": "billing",
+    "role": "admin",
+    "width": 1440,
+    "url": "/billing",
+    "finalUrl": "http://localhost:5173/billing",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "39",
+    "page": "billing",
+    "role": "admin",
+    "width": 390,
+    "url": "/billing",
+    "finalUrl": "http://localhost:5173/billing",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "39",
+    "page": "billing",
+    "role": "lead",
+    "width": 1440,
+    "url": "/billing",
+    "finalUrl": "http://localhost:5173/billing",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "39",
+    "page": "billing",
+    "role": "lead",
+    "width": 390,
+    "url": "/billing",
+    "finalUrl": "http://localhost:5173/billing",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "39",
+    "page": "billing",
+    "role": "member",
+    "width": 1440,
+    "url": "/billing",
+    "finalUrl": "http://localhost:5173/billing",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "39",
+    "page": "billing",
+    "role": "member",
+    "width": 390,
+    "url": "/billing",
+    "finalUrl": "http://localhost:5173/billing",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "39",
+    "page": "billing",
+    "role": "guest",
+    "width": 1440,
+    "url": "/billing",
+    "finalUrl": "http://localhost:5173/billing",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "39",
+    "page": "billing",
+    "role": "guest",
+    "width": 390,
+    "url": "/billing",
+    "finalUrl": "http://localhost:5173/billing",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "39",
+    "page": "billing",
+    "role": "signedout",
+    "width": 1440,
+    "url": "/billing",
+    "finalUrl": "http://localhost:5173/auth?next=%2Fbilling",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "39",
+    "page": "billing",
+    "role": "signedout",
+    "width": 390,
+    "url": "/billing",
+    "finalUrl": "http://localhost:5173/auth?next=%2Fbilling",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "40",
+    "page": "billing-checkout",
+    "role": "admin",
+    "width": 1440,
+    "url": "/billing/checkout",
+    "finalUrl": "http://localhost:5173/billing/checkout",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "40",
+    "page": "billing-checkout",
+    "role": "admin",
+    "width": 390,
+    "url": "/billing/checkout",
+    "finalUrl": "http://localhost:5173/billing/checkout",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "40",
+    "page": "billing-checkout",
+    "role": "member",
+    "width": 1440,
+    "url": "/billing/checkout",
+    "finalUrl": "http://localhost:5173/billing/checkout",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "40",
+    "page": "billing-checkout",
+    "role": "member",
+    "width": 390,
+    "url": "/billing/checkout",
+    "finalUrl": "http://localhost:5173/billing/checkout",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "41",
+    "page": "settings",
+    "role": "admin",
+    "width": 1440,
+    "url": "/settings",
+    "finalUrl": "http://localhost:5173/settings",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "41",
+    "page": "settings",
+    "role": "admin",
+    "width": 390,
+    "url": "/settings",
+    "finalUrl": "http://localhost:5173/settings",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "41",
+    "page": "settings",
+    "role": "lead",
+    "width": 1440,
+    "url": "/settings",
+    "finalUrl": "http://localhost:5173/settings",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "41",
+    "page": "settings",
+    "role": "lead",
+    "width": 390,
+    "url": "/settings",
+    "finalUrl": "http://localhost:5173/settings",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "41",
+    "page": "settings",
+    "role": "member",
+    "width": 1440,
+    "url": "/settings",
+    "finalUrl": "http://localhost:5173/settings",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "41",
+    "page": "settings",
+    "role": "member",
+    "width": 390,
+    "url": "/settings",
+    "finalUrl": "http://localhost:5173/settings",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "41",
+    "page": "settings",
+    "role": "guest",
+    "width": 1440,
+    "url": "/settings",
+    "finalUrl": "http://localhost:5173/settings",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "41",
+    "page": "settings",
+    "role": "guest",
+    "width": 390,
+    "url": "/settings",
+    "finalUrl": "http://localhost:5173/settings",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "41",
+    "page": "settings",
+    "role": "signedout",
+    "width": 1440,
+    "url": "/settings",
+    "finalUrl": "http://localhost:5173/auth?next=%2Fsettings",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "41",
+    "page": "settings",
+    "role": "signedout",
+    "width": 390,
+    "url": "/settings",
+    "finalUrl": "http://localhost:5173/auth?next=%2Fsettings",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "42",
+    "page": "more",
+    "role": "member",
+    "width": 1440,
+    "url": "/more",
+    "finalUrl": "http://localhost:5173/more",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "42",
+    "page": "more",
+    "role": "member",
+    "width": 390,
+    "url": "/more",
+    "finalUrl": "http://localhost:5173/more",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "43",
+    "page": "org-members",
+    "role": "admin",
+    "width": 1440,
+    "url": "/org/members",
+    "finalUrl": "http://localhost:5173/org/members",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "43",
+    "page": "org-members",
+    "role": "admin",
+    "width": 390,
+    "url": "/org/members",
+    "finalUrl": "http://localhost:5173/org/members",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "43",
+    "page": "org-members",
+    "role": "lead",
+    "width": 1440,
+    "url": "/org/members",
+    "finalUrl": "http://localhost:5173/org/members",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "43",
+    "page": "org-members",
+    "role": "lead",
+    "width": 390,
+    "url": "/org/members",
+    "finalUrl": "http://localhost:5173/org/members",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "43",
+    "page": "org-members",
+    "role": "member",
+    "width": 1440,
+    "url": "/org/members",
+    "finalUrl": "http://localhost:5173/org/members",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "43",
+    "page": "org-members",
+    "role": "member",
+    "width": 390,
+    "url": "/org/members",
+    "finalUrl": "http://localhost:5173/org/members",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "43",
+    "page": "org-members",
+    "role": "guest",
+    "width": 1440,
+    "url": "/org/members",
+    "finalUrl": "http://localhost:5173/org/members",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "43",
+    "page": "org-members",
+    "role": "guest",
+    "width": 390,
+    "url": "/org/members",
+    "finalUrl": "http://localhost:5173/org/members",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "45",
+    "page": "org-guide",
+    "role": "admin",
+    "width": 1440,
+    "url": "/org/guide",
+    "finalUrl": "http://localhost:5173/org/guide",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "45",
+    "page": "org-guide",
+    "role": "admin",
+    "width": 390,
+    "url": "/org/guide",
+    "finalUrl": "http://localhost:5173/org/guide",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "45",
+    "page": "org-guide",
+    "role": "lead",
+    "width": 1440,
+    "url": "/org/guide",
+    "finalUrl": "http://localhost:5173/org/guide",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "45",
+    "page": "org-guide",
+    "role": "lead",
+    "width": 390,
+    "url": "/org/guide",
+    "finalUrl": "http://localhost:5173/org/guide",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "45",
+    "page": "org-guide",
+    "role": "member",
+    "width": 1440,
+    "url": "/org/guide",
+    "finalUrl": "http://localhost:5173/org/guide",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "45",
+    "page": "org-guide",
+    "role": "member",
+    "width": 390,
+    "url": "/org/guide",
+    "finalUrl": "http://localhost:5173/org/guide",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "45",
+    "page": "org-guide",
+    "role": "guest",
+    "width": 1440,
+    "url": "/org/guide",
+    "finalUrl": "http://localhost:5173/org/guide",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "45",
+    "page": "org-guide",
+    "role": "guest",
+    "width": 390,
+    "url": "/org/guide",
+    "finalUrl": "http://localhost:5173/org/guide",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "45",
+    "page": "org-guide",
+    "role": "signedout",
+    "width": 1440,
+    "url": "/org/guide",
+    "finalUrl": "http://localhost:5173/org/guide",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "45",
+    "page": "org-guide",
+    "role": "signedout",
+    "width": 390,
+    "url": "/org/guide",
+    "finalUrl": "http://localhost:5173/org/guide",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "46",
+    "page": "settings-connections",
+    "role": "admin",
+    "width": 1440,
+    "url": "/settings/connections",
+    "finalUrl": "http://localhost:5173/settings/connections",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "46",
+    "page": "settings-connections",
+    "role": "admin",
+    "width": 390,
+    "url": "/settings/connections",
+    "finalUrl": "http://localhost:5173/settings/connections",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "46",
+    "page": "settings-connections",
+    "role": "member",
+    "width": 1440,
+    "url": "/settings/connections",
+    "finalUrl": "http://localhost:5173/settings/connections",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "46",
+    "page": "settings-connections",
+    "role": "member",
+    "width": 390,
+    "url": "/settings/connections",
+    "finalUrl": "http://localhost:5173/settings/connections",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "46",
+    "page": "settings-connections",
+    "role": "guest",
+    "width": 1440,
+    "url": "/settings/connections",
+    "finalUrl": "http://localhost:5173/settings/connections",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "46",
+    "page": "settings-connections",
+    "role": "guest",
+    "width": 390,
+    "url": "/settings/connections",
+    "finalUrl": "http://localhost:5173/settings/connections",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "47",
+    "page": "settings-whatsapp",
+    "role": "admin",
+    "width": 1440,
+    "url": "/settings/whatsapp",
+    "finalUrl": "http://localhost:5173/settings/whatsapp",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "47",
+    "page": "settings-whatsapp",
+    "role": "admin",
+    "width": 390,
+    "url": "/settings/whatsapp",
+    "finalUrl": "http://localhost:5173/settings/whatsapp",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "47",
+    "page": "settings-whatsapp",
+    "role": "member",
+    "width": 1440,
+    "url": "/settings/whatsapp",
+    "finalUrl": "http://localhost:5173/settings/whatsapp",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "47",
+    "page": "settings-whatsapp",
+    "role": "member",
+    "width": 390,
+    "url": "/settings/whatsapp",
+    "finalUrl": "http://localhost:5173/settings/whatsapp",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "48",
+    "page": "settings-tools",
+    "role": "admin",
+    "width": 1440,
+    "url": "/settings/tools",
+    "finalUrl": "http://localhost:5173/settings/tools",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "48",
+    "page": "settings-tools",
+    "role": "admin",
+    "width": 390,
+    "url": "/settings/tools",
+    "finalUrl": "http://localhost:5173/settings/tools",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "48",
+    "page": "settings-tools",
+    "role": "member",
+    "width": 1440,
+    "url": "/settings/tools",
+    "finalUrl": "http://localhost:5173/settings/tools",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "48",
+    "page": "settings-tools",
+    "role": "member",
+    "width": 390,
+    "url": "/settings/tools",
+    "finalUrl": "http://localhost:5173/settings/tools",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "49",
+    "page": "admin-home",
+    "role": "admin",
+    "width": 1440,
+    "url": "/admin",
+    "finalUrl": "http://localhost:5173/admin",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "49",
+    "page": "admin-home",
+    "role": "admin",
+    "width": 390,
+    "url": "/admin",
+    "finalUrl": "http://localhost:5173/admin",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "49",
+    "page": "admin-home",
+    "role": "signedout",
+    "width": 1440,
+    "url": "/admin",
+    "finalUrl": "http://localhost:5173/auth?next=%2Fadmin",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "49",
+    "page": "admin-home",
+    "role": "signedout",
+    "width": 390,
+    "url": "/admin",
+    "finalUrl": "http://localhost:5173/auth?next=%2Fadmin",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "50",
+    "page": "admin-api-access",
+    "role": "admin",
+    "width": 1440,
+    "url": "/admin/api-access",
+    "finalUrl": "http://localhost:5173/admin/api-access",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "50",
+    "page": "admin-api-access",
+    "role": "admin",
+    "width": 390,
+    "url": "/admin/api-access",
+    "finalUrl": "http://localhost:5173/admin/api-access",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "51",
+    "page": "admin-whatsapp",
+    "role": "admin",
+    "width": 1440,
+    "url": "/admin/whatsapp",
+    "finalUrl": "http://localhost:5173/admin/whatsapp",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "51",
+    "page": "admin-whatsapp",
+    "role": "admin",
+    "width": 390,
+    "url": "/admin/whatsapp",
+    "finalUrl": "http://localhost:5173/admin/whatsapp",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "52",
+    "page": "admin-dashboard",
+    "role": "admin",
+    "width": 1440,
+    "url": "/admin/dashboard",
+    "finalUrl": "http://localhost:5173/admin/dashboard",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "52",
+    "page": "admin-dashboard",
+    "role": "admin",
+    "width": 390,
+    "url": "/admin/dashboard",
+    "finalUrl": "http://localhost:5173/admin/dashboard",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "53",
+    "page": "admin-prompts",
+    "role": "admin",
+    "width": 1440,
+    "url": "/admin/prompts",
+    "finalUrl": "http://localhost:5173/admin/prompts",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "53",
+    "page": "admin-prompts",
+    "role": "admin",
+    "width": 390,
+    "url": "/admin/prompts",
+    "finalUrl": "http://localhost:5173/admin/prompts",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "54",
+    "page": "unsubscribe",
+    "role": "signedout",
+    "width": 1440,
+    "url": "/unsubscribe/no-token-found",
+    "finalUrl": "http://localhost:5173/unsubscribe/no-token-found",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "54",
+    "page": "unsubscribe",
+    "role": "signedout",
+    "width": 390,
+    "url": "/unsubscribe/no-token-found",
+    "finalUrl": "http://localhost:5173/unsubscribe/no-token-found",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "55",
+    "page": "stop-reminders",
+    "role": "signedout",
+    "width": 1440,
+    "url": "/stop-reminders/no-token-found",
+    "finalUrl": "http://localhost:5173/stop-reminders/no-token-found",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "55",
+    "page": "stop-reminders",
+    "role": "signedout",
+    "width": 390,
+    "url": "/stop-reminders/no-token-found",
+    "finalUrl": "http://localhost:5173/stop-reminders/no-token-found",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "57",
+    "page": "auth-sent",
+    "role": "signedout",
+    "width": 1440,
+    "url": "/auth/sent",
+    "finalUrl": "http://localhost:5173/auth/sent",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "57",
+    "page": "auth-sent",
+    "role": "signedout",
+    "width": 390,
+    "url": "/auth/sent",
+    "finalUrl": "http://localhost:5173/auth/sent",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "58",
+    "page": "signout",
+    "role": "signedout",
+    "width": 1440,
+    "url": "/signout",
+    "finalUrl": "http://localhost:5173/signout",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "58",
+    "page": "signout",
+    "role": "signedout",
+    "width": 390,
+    "url": "/signout",
+    "finalUrl": "http://localhost:5173/signout",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "58",
+    "page": "signout",
+    "role": "admin",
+    "width": 1440,
+    "url": "/signout",
+    "finalUrl": "http://localhost:5173/signout",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    ],
+    "failedRequests": [
+      "401 GET http://localhost:5173/api/v1/auth/me"
+    ]
+  },
+  {
+    "num": "58",
+    "page": "signout",
+    "role": "admin",
+    "width": 390,
+    "url": "/signout",
+    "finalUrl": "http://localhost:5173/signout",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    ],
+    "failedRequests": [
+      "401 GET http://localhost:5173/api/v1/auth/me"
+    ]
+  },
+  {
+    "num": "59",
+    "page": "verify-email",
+    "role": "signedout",
+    "width": 1440,
+    "url": "/verify-email",
+    "finalUrl": "http://localhost:5173/verify-email",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "59",
+    "page": "verify-email",
+    "role": "signedout",
+    "width": 390,
+    "url": "/verify-email",
+    "finalUrl": "http://localhost:5173/verify-email",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "60",
+    "page": "google-failed",
+    "role": "signedout",
+    "width": 1440,
+    "url": "/google-failed",
+    "finalUrl": "http://localhost:5173/google-failed",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "60",
+    "page": "google-failed",
+    "role": "signedout",
+    "width": 390,
+    "url": "/google-failed",
+    "finalUrl": "http://localhost:5173/google-failed",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "61",
+    "page": "set-password",
+    "role": "signedout",
+    "width": 1440,
+    "url": "/set-password",
+    "finalUrl": "http://localhost:5173/set-password",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "61",
+    "page": "set-password",
+    "role": "signedout",
+    "width": 390,
+    "url": "/set-password",
+    "finalUrl": "http://localhost:5173/set-password",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "62",
+    "page": "reset-password",
+    "role": "signedout",
+    "width": 1440,
+    "url": "/reset-password",
+    "finalUrl": "http://localhost:5173/reset-password",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "62",
+    "page": "reset-password",
+    "role": "signedout",
+    "width": 390,
+    "url": "/reset-password",
+    "finalUrl": "http://localhost:5173/reset-password",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "63",
+    "page": "start-team",
+    "role": "signedout",
+    "width": 1440,
+    "url": "/start/team",
+    "finalUrl": "http://localhost:5173/start/team",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "63",
+    "page": "start-team",
+    "role": "signedout",
+    "width": 390,
+    "url": "/start/team",
+    "finalUrl": "http://localhost:5173/start/team",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "64",
+    "page": "join-confirm",
+    "role": "signedout",
+    "width": 1440,
+    "url": "/join/confirm",
+    "finalUrl": "http://localhost:5173/join/confirm",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "64",
+    "page": "join-confirm",
+    "role": "signedout",
+    "width": 390,
+    "url": "/join/confirm",
+    "finalUrl": "http://localhost:5173/join/confirm",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "65",
+    "page": "join-waiting",
+    "role": "admin",
+    "width": 1440,
+    "url": "/join/waiting",
+    "finalUrl": "http://localhost:5173/today",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/time/mine"
+    ]
+  },
+  {
+    "num": "65",
+    "page": "join-waiting",
+    "role": "admin",
+    "width": 390,
+    "url": "/join/waiting",
+    "finalUrl": "http://localhost:5173/today",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": [
+      "404 GET http://localhost:5173/api/v1/suites/time/mine"
+    ]
+  },
+  {
+    "num": "66",
+    "page": "org-new",
+    "role": "admin",
+    "width": 1440,
+    "url": "/org-new",
+    "finalUrl": "http://localhost:5173/org-new",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "66",
+    "page": "org-new",
+    "role": "admin",
+    "width": 390,
+    "url": "/org-new",
+    "finalUrl": "http://localhost:5173/org-new",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "67",
+    "page": "orgs",
+    "role": "admin",
+    "width": 1440,
+    "url": "/orgs",
+    "finalUrl": "http://localhost:5173/orgs",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "67",
+    "page": "orgs",
+    "role": "admin",
+    "width": 390,
+    "url": "/orgs",
+    "finalUrl": "http://localhost:5173/orgs",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "68",
+    "page": "welcome",
+    "role": "admin",
+    "width": 1440,
+    "url": "/welcome",
+    "finalUrl": "http://localhost:5173/welcome",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "68",
+    "page": "welcome",
+    "role": "admin",
+    "width": 390,
+    "url": "/welcome",
+    "finalUrl": "http://localhost:5173/welcome",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "69",
+    "page": "join-by-link",
+    "role": "signedout",
+    "width": 1440,
+    "url": "/j/no-such-code",
+    "finalUrl": "http://localhost:5173/j/no-such-code",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "69",
+    "page": "join-by-link",
+    "role": "signedout",
+    "width": 390,
+    "url": "/j/no-such-code",
+    "finalUrl": "http://localhost:5173/j/no-such-code",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "70",
+    "page": "preview-reports",
+    "role": "admin",
+    "width": 1440,
+    "url": "/preview/reports",
+    "finalUrl": "http://localhost:5173/preview/reports",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "70",
+    "page": "preview-reports",
+    "role": "admin",
+    "width": 390,
+    "url": "/preview/reports",
+    "finalUrl": "http://localhost:5173/preview/reports",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "71",
+    "page": "ground-session",
+    "role": "admin",
+    "width": 1440,
+    "url": "/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/session/1",
+    "finalUrl": "http://localhost:5173/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/session/1",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "71",
+    "page": "ground-session",
+    "role": "admin",
+    "width": 390,
+    "url": "/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/session/1",
+    "finalUrl": "http://localhost:5173/grounds/f9ad5070-c16d-4aa8-b56a-2cb2ae646871/session/1",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "72",
+    "page": "billing-callback",
+    "role": "admin",
+    "width": 1440,
+    "url": "/billing/callback",
+    "finalUrl": "http://localhost:5173/billing/callback",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "72",
+    "page": "billing-callback",
+    "role": "admin",
+    "width": 390,
+    "url": "/billing/callback",
+    "finalUrl": "http://localhost:5173/billing/callback",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "73",
+    "page": "admin-prompts-test",
+    "role": "admin",
+    "width": 1440,
+    "url": "/admin/prompts/test",
+    "finalUrl": "http://localhost:5173/admin/prompts/test",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "73",
+    "page": "admin-prompts-test",
+    "role": "admin",
+    "width": 390,
+    "url": "/admin/prompts/test",
+    "finalUrl": "http://localhost:5173/admin/prompts/test",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "56",
+    "page": "not-found",
+    "role": "signedout",
+    "width": 1440,
+    "url": "/this-page-does-not-exist-xyz",
+    "finalUrl": "http://localhost:5173/this-page-does-not-exist-xyz",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "56",
+    "page": "not-found",
+    "role": "signedout",
+    "width": 390,
+    "url": "/this-page-does-not-exist-xyz",
+    "finalUrl": "http://localhost:5173/this-page-does-not-exist-xyz",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "56",
+    "page": "not-found",
+    "role": "admin",
+    "width": 1440,
+    "url": "/this-page-does-not-exist-xyz",
+    "finalUrl": "http://localhost:5173/this-page-does-not-exist-xyz",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "56",
+    "page": "not-found",
+    "role": "admin",
+    "width": 390,
+    "url": "/this-page-does-not-exist-xyz",
+    "finalUrl": "http://localhost:5173/this-page-does-not-exist-xyz",
+    "title": "Groundwork · Workplace alignment records",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "44",
+    "page": "org-member-one",
+    "role": "admin",
+    "width": 1440,
+    "url": "/org/members/e32ca13d-cb84-44a9-ba64-6615b0212271",
+    "finalUrl": "http://localhost:5173/org/members/e32ca13d-cb84-44a9-ba64-6615b0212271",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "44",
+    "page": "org-member-one",
+    "role": "admin",
+    "width": 390,
+    "url": "/org/members/e32ca13d-cb84-44a9-ba64-6615b0212271",
+    "finalUrl": "http://localhost:5173/org/members/e32ca13d-cb84-44a9-ba64-6615b0212271",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "44",
+    "page": "org-member-one",
+    "role": "member",
+    "width": 1440,
+    "url": "/org/members/e32ca13d-cb84-44a9-ba64-6615b0212271",
+    "finalUrl": "http://localhost:5173/org/members/e32ca13d-cb84-44a9-ba64-6615b0212271",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "num": "44",
+    "page": "org-member-one",
+    "role": "member",
+    "width": 390,
+    "url": "/org/members/e32ca13d-cb84-44a9-ba64-6615b0212271",
+    "finalUrl": "http://localhost:5173/org/members/e32ca13d-cb84-44a9-ba64-6615b0212271",
+    "consoleErrors": [],
+    "failedRequests": []
+  }
+]

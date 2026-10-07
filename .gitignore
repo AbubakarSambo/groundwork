@@ -160,3 +160,6 @@ docs/prototype/
 
 # The made-up people the browser user journeys share while they run (e2e/user-journeys-world.ts).
 e2e/.user-journeys-world.json
+
+# The page audit screenshots stay on this computer for Hafsah, never in the repo.
+docs/page-audit/*.png
