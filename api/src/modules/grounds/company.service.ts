@@ -5,6 +5,7 @@ import { companyPage, type CompanyPage, type OwnerDetail } from './the-company-p
 import type { StoredPicture } from './the-company-picture';
 import { theStrategyAsRead } from '../subjects/the-strategy-over-time';
 import { keptForTheOrganisation, mayReadWhatIsKept } from '../knowledge/organisation-memory';
+import { refuseSomeoneAwaitingTheOrganisation } from '../participants/held-for-a-seat';
 
 /** Said on the page, so the people who read it can see who does. */
 export const WHO_READS_WHAT_IS_KEPT = 'Admins, leads and anyone who runs a check-in can read this. Everyone else cannot.';
@@ -41,6 +42,8 @@ export class CompanyService {
  */
 export async function readTheCompanyPage(prisma: PrismaService, grounds: GroundsService, reader: { userId: string; email: string; organizationId: string; role: string }): Promise<CompanyPage> {
   if (reader.role === 'GUEST') throw new ForbiddenException(NOT_YOUR_COMPANY);
+  /* Nor somebody still waiting for an admin to let them into the organisation: they are not in it yet (row 5, release check of 7 October). */
+  await refuseSomeoneAwaitingTheOrganisation(prisma as any, reader.userId, NOT_YOUR_COMPANY);
   const org = reader.organizationId;
   const readsEverything = reader.role === 'ADMIN';
   const now = new Date();
