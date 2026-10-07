@@ -65,6 +65,7 @@ import { whyItRefuses } from '../grounds/a-ground-that-has-ended';
 import { theThingsThatCannotBeMissed } from '../conversation/the-last-thing-it-reads-is-the-thing-it-must-not-miss';
 import { whatIsSettledAndWhatIsNot, type WhatSetupHasSoFar } from './what-setup-already-knows-travels-with-it';
 import { whatTheyAskedFor } from './what-they-asked-for-in-so-many-words';
+import { theAddressesTheyGave, withoutThePersonSettingItUp } from './the-people-the-lead-named-are-other-people';
 import { whatTheyAlreadyHave, ENOUGH_TO_RECOGNISE_THEM } from './setup-is-not-a-stranger-to-somebody-who-is-signed-in';
 import { theSetupHasStoppedAsking } from './a-gate-that-can-never-open-is-shut';
 import { onboardingIsReady as theGate, whatSetupNeverGot, anAimIsOwedHere } from './a-check-in-with-no-aim-has-nothing-to-read-against';
@@ -793,6 +794,8 @@ export class EntryService {
       yourRole?: string;
       /** The name the lead gave in so many words ("Call it ..."). Absent when they did not. */
       name?: string;
+      /** An address the lead typed beside a name, kept with that name. */
+      peopleEmails?: Record<string, string>;
     } & TheSevenItems;
     ready: boolean;
     /** Party path only: setup can finish, but nobody has been named yet and they are told so. */
@@ -1106,7 +1109,7 @@ Rules:
     - A PARTY is done once you have mode, initial and decision, and you have ASKED how long and how
       often. WHO IS INVOLVED IS NOT A CONDITION: they are allowed to finish without naming anybody
       and the screen tells them so. Ask for the names once; do not hold the setup hostage to them.
-  Once you are done gathering, On that turn your reply MUST be a warm closer that contains NO question mark anywhere. A closer and a question are mutually exclusive: if you have what you need, you close and you do NOT ask one more thing; if you still genuinely need one of those four items, you ask for it and you do NOT wrap up yet. Never do both in the same reply. Do not close with "does that sound right?", "shall we begin?", "anything else?", or any other trailing question. Do NOT claim to have what you need, and do not summarise what you took down: the screen prints what is actually on the record directly underneath your reply, including anything still missing, so a claim from you can only contradict it. Say what happens next (the next screen asks who gives the accounts, then the check-in itself) and stop.
+  Once you are done gathering, On that turn your reply MUST be a warm closer that contains NO question mark anywhere. A closer and a question are mutually exclusive: if you have what you need, you close and you do NOT ask one more thing; if you still genuinely need one of those four items, you ask for it and you do NOT wrap up yet. Never do both in the same reply. Do not close with "does that sound right?", "shall we begin?", "anything else?", or any other trailing question. Do NOT claim to have what you need, and do not summarise what you took down: the screen prints what is actually on the record directly underneath your reply, including anything still missing, so a claim from you can only contradict it. Say what happens next (the next screen asks whether you will check in too, then the check-in itself) and stop.
 - AND SAY WHERE THE REST OF THE CONTEXT GOES, ONCE, IN THE CLOSER. A lead finishes setup believing
   this conversation was their only chance to explain the situation. It is not: the Context and
   resources tab takes documents, notes and anything else the check-ins should be held against, and
@@ -1117,7 +1120,7 @@ Rules:
 - THE CLOSER MUST NOT READ AS THE END OF EVERYTHING. "Thank you, that gives me what I need to set
   this up for you." is a full stop, and the screen then asks another question, so the product looks
   like it changed its mind. It is a HANDOVER, not a finish: say what you have, then say plainly that
-  the next screen asks who gives the accounts, and that the check-in itself comes after that. Two
+  the next screen asks whether they will check in too, and that the check-in itself comes after that. Two
   sentences. Somebody who knows what is coming does not experience the next question as an
   interruption.`.trim();
 
@@ -1348,6 +1351,15 @@ from finishing at all.`;
       if (said.cadence) extracted.cadence = said.cadence;
       if (said.timelineDays && extracted.runsUntilEnded !== true) extracted.timelineDays = said.timelineDays;
       if (said.name) (extracted as any).name = said.name;
+      /* The people they named are other people (never the one setting it up), and an address typed beside a name stays with it (F-6). */
+      if (extracted.peopleNamed?.length) {
+        const me = askedBy?.userId
+          ? await this.prisma.user.findUnique({ where: { id: askedBy.userId }, select: { firstName: true, lastName: true } }).catch(() => null)
+          : null;
+        extracted.peopleNamed = withoutThePersonSettingItUp(extracted.peopleNamed, me);
+        const theirAddresses = theAddressesTheyGave(extracted.peopleNamed, messages.filter((m) => m.role === 'user').map((m) => m.content));
+        if (Object.keys(theirAddresses).length) (extracted as any).peopleEmails = theirAddresses;
+      }
     }
     const stoppedAsking = theSetupHasStoppedAsking(messages, reply);
     /*
@@ -1405,6 +1417,10 @@ from finishing at all.`;
       if (out !== reply) this.logger.log('Setup: they had just pasted it, so the ask to paste it came out of the reply.');
     }
 
+    /* Nobody reads the word "account" for what somebody says (user journeys, F-6): where the reply still says it, it says who checks in. */
+    out = out
+      .replace(/\bwho (?:gives|should give|will give) (?:the |their |your )?accounts?\b/gi, 'whether you will check in too')
+      .replace(/\bwho (?:gives|should give|will give) (?:an? )?account\b/gi, 'whether you will check in too');
     return { reply: out, extracted, ready, needsPeople };
   }
 
