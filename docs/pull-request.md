@@ -62,7 +62,7 @@ All from 7 October, on the merged code.
 | Adversarial set | 32 of 35 checks pass. The three are explained under "Needs Hafsah"; none is a leak by the rules. |
 | User journeys (admin, lead, team member) | Browser and WhatsApp, from a clean install, with the model. Every fault found was fixed, then the journeys were run again: 129 of 130 pass. The one left is the model's own wording in one report sentence. |
 | WhatsApp journeys | 230 of 232 at the first run; both faults fixed. Groundwork's own number and an organisation's own number never cross (32 of 32). A guest asks only about their own check-in (34 of 34). |
-| Privacy sweep | 168 routes read on the server as 12 kinds of reader. The one leak it found (a same-department lead reading evaluation check-ins) is fixed. |
+| Privacy sweep | 168 routes read on the server as 12 kinds of reader, then a final re-check of 2,016 calls after the last fixes. No reader can open anything they should not. The faults it found are fixed: a same-department lead reading evaluation check-ins, a join link working on a check-in still waiting for an admin, and a promise listed twice in Ask. |
 | Existing clients | Old against new on a copy of the existing-clients data: 0 leaks, wording worse in nothing. 12 lines say a person held for a seat no longer reads the team's board or report; that is decision 110 (B3), on purpose. The carry-on test passes 10 of 10. |
 
 ## What is switched off
@@ -105,7 +105,7 @@ Restore the database backup and the old code together, never the code alone. One
 
 ## Needs Hafsah
 
-1. **Should a lead in the same department read the department's ordinary check-ins, or only the manager?** Today any lead in the department can. Evaluation check-ins are now left out for her.
+1. **What a lead in the same department reads.** Today any lead in the department can open the department's ordinary check-ins (evaluation check-ins are now left out for her), and on them she reads the members' promises word for word, for example "I will call the electrician on Monday". Your rule of 5 September says a manager sees the report, not people's sentences. Should the department read be only the manager's, and should it leave out the promises' exact words? This is how the live line works today; nothing was changed.
 2. **Health and family said in a person's own check-in.** Tunde mentions his father's dialysis himself, and it reaches his lead's report. The rules allow it (what people say in a check-in can be shown to the people in it); the adversarial test treats it as private. No decision covers health or family. Nothing was changed.
 3. **"Proof asked for"** counts the word "picture". Dropping it from the scorer would make the number mean what it says. The scorer was not changed.
 4. **The decided-for-you items** in `docs/morning-report.md`: the footer on the lead's first message, "one colleague" for a person with no name in reports, removing the People list's count of check-ins an admin cannot open, and setup not counting as the lead's first check-in.

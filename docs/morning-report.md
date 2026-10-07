@@ -1,5 +1,24 @@
 # Morning report
 
+**7 October, midday: the pull request is ready on `wip/release` (head after `3e4bf527`), waiting only on the push to #322, which needs you.** The write-up, with the "Before you merge" checklist for Abubakar, is `docs/pull-request.md`.
+
+Every result, on the merged code (the screens, and Abubakar's seven commits since #322, all kept):
+- API tests: 18,029 pass. Client tests: 4,602 pass. Both typechecks clean.
+- Clean install and build as the hosts build them; the production start passes on Node 20 and on Node 24.
+- Migrations: 365 apply on an empty database; our 4 apply on a database built to the shared line's own schema, with existing rows unchanged.
+- 24-scenario run (run-oct7c): every problem 0; every engine number holds or rises except "proof asked for", 34 against 42, mostly the word "picture". Judgements 13 right, 9 partly, 2 missed. Adversarial 32 of 35.
+- User journeys as admin, lead and team member, in the browser and on signed WhatsApp: 27 faults found and fixed, then 129 of 130 pass (the one left is the model's own wording).
+- Privacy: 168 routes as 12 readers, then 2,016 calls after the fixes; every fault found is fixed.
+- Existing clients: 0 leaks, wording worse in nothing; people held for a seat keep their own page and report (decision 110 B3).
+
+Needs Hafsah:
+1. **The push to #322.** Its branch holds the seven privacy fixes as copies, so ours cannot simply move it forward, and my rules forbid merging from or pushing to Abubakar's repository. The commands are in the chat.
+2. **What a lead in the same department reads**: the department's ordinary check-ins, with members' promises word for word. Only the manager, and without the exact words? Unchanged, as on the live line.
+3. **Health and family said in a person's own check-in** (Tunde's dialysis reaches his lead). No decision covers it; nothing changed.
+4. **"Proof asked for"** counts "picture"; the scorer was not changed.
+
+Decided for Hafsah to confirm: the People list no longer counts check-ins an admin cannot open (it labelled people as under evaluation); a lead whose only conversation is her set-up gets no coaching note; setup still does not count as the lead's first check-in (your 15 September decision); prompt fixes (anchor questions, "..." in suggested replies, back-to-front lines, "they" for one person) are left out of this release because each needs a full run.
+
 **7 October, second full run (run-oct7c) to tell noise from a real drop:** proof asked for is 34 (27 in run-oct7b, 38 in run-oct6f, baseline 42); about three quarters of it is the word "picture" and the real requests are about 4 (3 and 9 before), so I read it as mostly noise with a small drop I cannot trace; every problem is 0. Adversarial set: 3 checks failed where oct7b had none, and one is a question for you: Tunde said "dialysis" himself in his own check-in and it reached the lead (allowed by the check-in rule, forbidden by the scenario). See .
 
 **7 October, overnight to the staging pull request: part 1 in progress.** Status: the pull request is not ready yet. Done and pushed so far tonight:
