@@ -713,7 +713,18 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-btn-secondary.gwui-btn-red-text { color: var(--gw-red-t); }
 .gwui-btn-big { min-height: 54px; font-size: 17px; padding: 0 22px; }
 .gwui-btn-small { min-height: 36px; font-size: 14.5px; padding: 0 12px; }
-.gwui-btn-wide { width: 100%; }
+/*
+ * FAULT D1 (reviewer, third round): THE FORK BUTTON'S TEXT WAS CLIPPED ON THE LEFT AT 1024px
+ * ("heck in once…"). `.gwui-btn`'s own `white-space: nowrap` already had a mobile-only exception
+ * (`@media (max-width: 640px)`, below) for exactly this - a long sentence on a button narrower
+ * than its own one-line width - but a wide button's fork sits in a column only 346px wide even on
+ * a 1024px screen (it is 82% of the messages column, not of the viewport), so the same overflow
+ * happened above 640px with nothing to catch it. `wide` already means "a full sentence is likely
+ * long enough to need its own line or three", at any width, so it gets this directly rather than
+ * only below the phone breakpoint; a short wide button (most of them) still reads as one line,
+ * since nothing here forces a break where the text does not already need one.
+ */
+.gwui-btn-wide { width: 100%; white-space: normal; }
 @media (max-width: 640px) {
   .gwui-btn { white-space: normal; }
   .gwui-btn-small { min-height: 40px; }
@@ -1886,6 +1897,19 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ec-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gw-green-live); display: inline-block; flex-shrink: 0; }
 .gwui-ec-sessions-count { flex-shrink: 0; text-align: right; }
 /*
+ * FAULT C1 (reviewer, third round): THE HELP LINE RAN TO x=483 AND WAS CLIPPED BY `.gwui-ec-frame`.
+ * `.gwui-ec-sessions-count`'s own `flex-shrink: 0` is right for its one-line rest state (a short
+ * button that must never be crushed), but the open control adds a full sentence of help text
+ * ("This is your plan for how many check-ins to run…") inside the same box - `flex-shrink: 0` kept
+ * that at its one-line width (463px) regardless of the 375px it had to fit in, so the frame's own
+ * `overflow: hidden` cut the sentence off rather than letting it wrap. Below 640px (where the
+ * header already wraps this box onto its own line, `.gwui-ec-session-header`'s own `flex-wrap`),
+ * it takes the full row and its text wraps inside that width instead of past it.
+ */
+@media (max-width: 640px) {
+  .gwui-ec-sessions-count { flex: 1 1 100%; min-width: 0; }
+}
+/*
  * FAULT 2 (live review, 390px walk): THE OPEN CONTROL MADE A 463px-WIDE NUMBER BOX. `TextField`'s
  * shared `.gwui-input` is `width: 100%`, right for a name or an email, wrong for a count of
  * sessions - inside this header it stretched to fill whatever space the name row had given up, and
@@ -1898,7 +1922,16 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ec-bar-onboarding { padding: 12px 20px; justify-content: space-between; }
 .gwui-ec-confirm-clear { font-size: 13px; color: var(--gw-sub); display: flex; align-items: center; gap: 10px; }
 .gwui-ec-picked-row { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.gwui-ec-which-row { display: flex; align-items: center; gap: 14px; }
+/*
+ * FAULT C4 (reviewer, third round): "START OVER" WRAPPED ONTO TWO LINES AT 390px - or, once this
+ * row holds "It's something else" beside it too (the "sounds like X" fork, rather than the plain
+ * heading bar), ran 5px past the frame's own edge and was clipped instead, each link having been
+ * squeezed to less than its own single-line width by ordinary flex-shrink. `nowrap` keeps each
+ * link's own text on one line; `flex-wrap` lets the second link drop to a line of its own, intact,
+ * the moment both no longer fit side by side, rather than shrinking either below what its words
+ * need or running past the frame.
+ */
+.gwui-ec-which-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; white-space: nowrap; }
 .gwui-ec-onboarding-title { font-family: var(--gw-font-name); font-size: 22px; font-weight: 500; color: var(--gw-text); margin: 0; }
 
 .gwui-ec-messages {
@@ -1932,15 +1965,19 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ec-thinking { margin-right: 6px; font-style: normal; color: var(--gw-muted); font-size: 13px; }
 .gwui-ec-fork { display: flex; flex-direction: column; gap: 8px; max-width: 82%; align-self: flex-start; margin-top: 4px; }
 /*
- * FAULT 7 (live review, 390px walk): THE FLOATING FEEDBACK TRIGGER COVERED "MYSELF" IN "I SET THIS
- * UP AND CHECK IN MYSELF". The fork's two wide choice buttons are the last thing in the message
- * list, and on a short conversation that list ends right where the trigger rests
- * (`.gw-fb-trigger-chat-mobile-safe`, `bottom: 148px`) - the same corner `.gwui-ec-door-slot`
- * already gives this trigger room from, for the same reason. Same clearance here, not a moved
- * button: a floating trigger is not worth chasing across every place a conversation can end.
+ * FAULT 7 (live review, 390px walk), THEN FAULT C3 (reviewer, third round): THE FLOATING
+ * FEEDBACK TRIGGER STILL COVERED THE END OF "I CHECK IN ONCE TO SET THE CONTEXT, THEN ONLY THEY
+ * CHECK IN" AFTER 64px. Measured live at 375px: the trigger
+ * (`.gw-fb-trigger-chat-mobile-safe`, `bottom: 148px`) sits with its own top edge at about 633px
+ * down an 812px viewport, but the fork's second button - a real conversation's worth of messages
+ * above it, scrolled to the foot - still bottomed out at 670px, 38px into the trigger. 64px was
+ * measured against a shorter, hand-typed conversation; this page's messages can run longer than
+ * that. The trigger's own reserved zone is 148px (the nav's 60, the composer's 60, a gap) - the
+ * same number this container now reserves, so the fork can never end inside it, however long the
+ * conversation above it runs.
  */
 @media (max-width: 640px) {
-  .gwui-ec-fork { padding-bottom: 64px; }
+  .gwui-ec-fork { padding-bottom: 148px; }
 }
 .gwui-ec-fork-note { font-weight: 700; margin-top: 8px; }
 .gwui-ec-sofar-heading { font-size: 13px; font-weight: 700; letter-spacing: .3px; color: var(--gw-sub); margin-bottom: 5px; }
@@ -1954,7 +1991,30 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
  * gone - the point of the card is to show what is on the record, not to hide part of it.
  */
 .gwui-ec-sofar-label { color: var(--gw-sub); font-weight: 700; flex: 0 0 160px; }
-.gwui-ec-sofar-value { color: var(--gw-text); }
+/*
+ * FAULT D2 (reviewer, third round): THE VALUE COLUMN HELD ONLY 2 OR 3 WORDS A LINE AT 1024px.
+ * The card sits in a chat bubble with no width of its own (`Bubble.tsx`'s `maxWidth: '82%'`, no
+ * `width`) - right for an ordinary message, which just wraps at that width, but a flex row with a
+ * fixed 160px label column has no such width to shrink-to-fit against, so the browser sized the
+ * whole row (and the bubble around it) down near its narrowest possible content width, wrapping
+ * "New project launching with Daniel and Grace" into several lines of two or three words each
+ * where more than four times the width was sitting unused beside it. A flex-basis gives the value
+ * column a real preferred width to claim from that remaining space, the same way the label column
+ * already claims its own 160px, rather than leaving it to guess.
+ */
+.gwui-ec-sofar-value { color: var(--gw-text); flex: 1 1 320px; min-width: 0; }
+/*
+ * AND THE CARD ITSELF: a flex-basis on the value column alone could not widen it, because the
+ * bubble around this card (`Bubble.tsx`) has no width of its own - only `max-width: 82%` - so
+ * every box in the chain (the bubble, the card, the row) was sized to the narrowest width its
+ * content could still occupy, each 82% of an already-shrunk parent, compounding down to the
+ * 84px actually measured live. A `min-width` on the card itself is a floor the shrink-to-fit
+ * calculation has to honour going back up that chain - still capped by the bubble's own 82% and
+ * the viewport beneath it, so it never forces the card wider than the screen actually allows.
+ */
+@media (min-width: 900px) {
+  .gwui-ec-sofar { min-width: 480px; }
+}
 @media (max-width: 480px) {
   .gwui-ec-sofar-row { flex-direction: column; gap: 1px; }
   .gwui-ec-sofar-label { flex-basis: auto; }
@@ -1972,6 +2032,18 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ec-quick-action:disabled { opacity: .5; cursor: default; }
 .gwui-ec-quick-action-attach { display: inline-flex; align-items: center; }
 .gwui-ec-quick-actions-end { margin-left: auto; }
+/*
+ * FAULT C2 (reviewer, third round): "END SESSION" SAT FULLY UNDER THE FEEDBACK BUTTON. Pushed
+ * flush right by `margin-left: auto`, this chip wraps to a line of its own at 390px and lands at
+ * almost the exact rectangle the floating trigger already rests in (`.gw-fb-trigger-chat-mobile-safe`,
+ * bottom-right) - measured live, the two rectangles were within a few pixels of each other on every
+ * side. The trigger's own corner is reserved for it everywhere else on this page (the fork, the
+ * sessions help line); the plain fix here is to stop this one chip claiming the same corner; at
+ * this width it reads fine first in the row's own left-to-right order, same as every other chip.
+ */
+@media (max-width: 640px) {
+  .gwui-ec-quick-actions-end { margin-left: 0; }
+}
 .gwui-ec-quick-action-navy { color: var(--gw-navy); font-weight: 600; }
 .gwui-ec-doc-pill { padding: 6px 16px; background: var(--gw-blue-bg); border-top: 1px solid var(--gw-blue-b); display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .gwui-ec-doc-pill-name { font-size: 13px; color: var(--gw-navy); flex: 1; }

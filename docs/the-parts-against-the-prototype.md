@@ -773,3 +773,25 @@ follow; the nearest the product already has is the inline `width: 70` number box
 `AdminPage.tsx` ("Days to correct a record", "Free months"). `.gwui-ec-sessions-input` is that
 same idea as a shared class rather than a fourth inline copy: `width: 64px`, centred text, fixed
 rather than growing, which is all a 1-2 digit count ever needs.
+
+## Reviewer, third round (D1 and D2, 1024px): one new rule, no new class
+
+**`.gwui-ec-sofar`** (EntryChatPage.tsx's "What Groundwork has so far" card) already existed as a
+class name with no CSS rule of its own - every value it drew came from its child selectors
+(`.gwui-ec-sofar-row`, `-label`, `-value`). At 1024px the card sat in a chat bubble with no width
+of its own (`Bubble.tsx`'s `maxWidth: '82%'`, never a `width`), so the browser sized the whole
+bubble, card and row chain down to the narrowest width their wrappable text could still occupy -
+measured live, the value column held only 84px of a 468px-wide messages area, wrapping "New
+project launching with Daniel and Grace" across four lines of two or three words. A `min-width`
+on the card itself (`min-width: 480px`, 900px and up only) is a floor the shrink-to-fit
+calculation has to honour going back up that chain, still capped by the bubble's own 82% and the
+viewport beneath it. No prototype screen draws this card at exactly this width to follow a value
+from; the number is the smallest that kept every value on one line against the fixtures read live.
+
+Also fixed in the same pass, no new classes: `.gwui-ec-sofar-value` gained a `flex: 1 1 320px` (a
+real preferred width for the value column to claim from the row, alongside the label's own fixed
+160px); `.gwui-btn-wide` gained `white-space: normal` (a long-sentence wide button, like the
+fork's two choices, could overflow and be clipped above the 640px breakpoint that already fixed
+it below); `.gwui-ec-sessions-count`, `.gwui-ec-which-row` and `.gwui-ec-quick-actions-end` each
+gained a narrow-width rule fixing clipped or overlapping text and controls at 390px (the sessions
+help line, "Start over", and "End session" against the floating Feedback trigger).
