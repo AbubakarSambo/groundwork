@@ -1787,7 +1787,7 @@ export function GroundAdminPage() {
                */
               howItEnded(ground as any) ? (
                 <Callout tone="info" title={howItEnded(ground as any)!}>
-                  This check-in has ended. <Link to={`/grounds/${id}/board`}>Go to the board</Link> to read how it ended and why.
+                  <Link to={`/grounds/${id}/board`}>Go to the board</Link> to read how it ended and why.
                 </Callout>
               ) : myOpenCheckIn && !myOpenOpensLater ? (
                 /* A FAILED OPEN SAYS SO, WITH A WAY BACK IN - the probe above

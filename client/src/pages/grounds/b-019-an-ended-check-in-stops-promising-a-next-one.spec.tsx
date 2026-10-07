@@ -74,7 +74,7 @@ describe('a team member reads that an ended check-in has ended, not a next sessi
         </MemoryRouter>
       </QueryClientProvider>,
     )
-    await screen.findByText(/This check-in has ended/)
+    await screen.findAllByText(/This check-in has ended/)
     expect(screen.queryByText(/opens on/)).toBeNull()
   })
 })
@@ -101,7 +101,7 @@ describe('a party reads the same on her own Check-in tab (GroundAdminPage), not 
         </MemoryRouter>
       </QueryClientProvider>,
     )
-    await screen.findByText(/This check-in has ended/)
+    await screen.findAllByText(/This check-in has ended/)
     expect(screen.queryByText(/next check-in/)).toBeNull()
   })
 })
@@ -130,7 +130,7 @@ describe('an ended check-in does not also try, and fail, to auto-open a session 
         </MemoryRouter>
       </QueryClientProvider>,
     )
-    await screen.findByText(/This check-in has ended/)
+    await screen.findAllByText(/This check-in has ended/)
     expect(openSpy).not.toHaveBeenCalled()
   })
 
@@ -152,7 +152,7 @@ describe('an ended check-in does not also try, and fail, to auto-open a session 
         </MemoryRouter>
       </QueryClientProvider>,
     )
-    await screen.findByText(/This check-in has ended/)
+    await screen.findAllByText(/This check-in has ended/)
     expect(openSpy).not.toHaveBeenCalled()
   })
 })
