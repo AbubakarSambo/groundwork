@@ -648,8 +648,13 @@ export class EmailService implements OnModuleInit {
     const url = `${this.frontendUrl}/verify-email?token=${token}${next ? `&next=${encodeURIComponent(next)}` : ''}`;
     await this.sendEmail({
       to: email,
-      subject: 'Activate your Groundwork sign-in',
-      html: this.layout(`<p>${greeting(firstName)}</p><p>You or someone on your team just signed up for Groundwork using this email. Click the link below to activate your sign-in and get started.</p><p><a href="${url}">Activate sign-in</a></p><p>This link lasts ${howLongInWords('verify an address')}.</p><p style="color:#888;font-size:12px;">If you did not request this, you can ignore this email. Nothing is created without clicking the link.</p>`),
+      subject: 'Your Groundwork sign-in link',
+      /*
+       * ONE EMAIL FOR SOMEBODY NEW AND SOMEBODY WHO ALREADY HAS A SIGN-IN, ON PURPOSE: sign-up says nothing about who has an account
+       * (sign-up-says-nothing-about-who-has-an-account.spec.ts). So it reads as a sign-in link first, which is true for both, and says in one
+       * sentence that it also sets things up the first time (request 182 item 7). It no longer says somebody "just signed up".
+       */
+      html: this.layout(`<p>${greeting(firstName)}</p><p>Click the link below to sign in to Groundwork. No password is needed. If this is your first time, the same link also finishes setting up your sign-in.</p><p><a href="${url}">Sign in</a></p><p>This link lasts ${howLongInWords('verify an address')}.</p><p style="color:#888;font-size:12px;">If you did not ask for this, you can ignore this email. Nothing happens unless you click the link.</p>`),
     }, { kind: 'MAGIC_LINK' }, 'sendMagicLinkEmail');
   }
 
