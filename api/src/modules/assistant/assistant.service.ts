@@ -1219,7 +1219,10 @@ export class AssistantService {
     const keep = first && first.type === 'text'
       ? first.body.split('\n').filter((l) => l.startsWith('- "')).map((l) => l.slice(2))
       : [];
-    return this.compose(reply, keep);
+    /* NOTHING QUOTED, NOTHING REWORDED (B-125). "I have nothing from Amani about pricing approvals in the check-ins you can read" went to the composer and
+       came back "You did not mention pricing approvals from Amani in your check-ins": a different claim, about a different person. A refusal, or a
+       wall's sentence, goes out as the lane wrote it; only an answer that quotes people is worded, and its quotes are kept. */
+    return keep.length ? this.compose(reply, keep) : reply;
   }
 
   /** The answer, then where it came from, in a sentence and as a block. Used by every lane that reads a record. */

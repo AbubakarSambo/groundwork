@@ -394,6 +394,12 @@ describe('the wording may change, but the record may not', () => {
     expect(bodyOf(r)).toBe(reworded);
     expect(sourceOf(r)).toBeDefined();
   });
+  it('never rewords a refusal: nothing was said about the subject, and a model that turns it into another claim is not heard (B-125)', async () => {
+    const claim = 'You did not mention holiday cover from Femi in your check-ins.';
+    const r = await harness('miriam', { model: claim }).ask('What did Femi say about holiday cover?');
+    expect(r.composedBy).toBe('rules');
+    expect(bodyOf(r)).toBe('I cannot show you that. I have nothing from Femi about holiday cover in the check-ins you can read.');
+  });
   it('ships the record\'s own words when a model has changed a quote', async () => {
     const changed = 'Femi said:\n- "Shipped the pricing sheet to Harbor Foods."\n- "Still waiting on finance for the Green Mart terms."\nThis is from Femi\'s check-in of 24 September on Sales team, Q3.';
     const r = await harness('miriam', { model: changed }).ask('What did Femi say last week?');
