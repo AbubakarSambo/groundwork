@@ -326,7 +326,10 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
    .orgmenu/.usermenu a:hover{background:var(--paper)}), which is var(--gw-page) here. */
 a.gwui-person-row:hover { background: var(--gw-page); }
 .gwui-person-cell { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.gwui-person-name { font-size: 16px; font-weight: 700; color: var(--gw-text); }
+/* B-039: an 80-character name (no spaces long enough to wrap on their own, e.g. "AAAA...A
+   BBBB...B") overflowed its column and clipped over the row's other text instead of wrapping,
+   the same overflow `.gwui-person-email` already guards against below. */
+.gwui-person-name { font-size: 16px; font-weight: 700; color: var(--gw-text); overflow-wrap: anywhere; }
 .gwui-person-level { font-size: 13px; color: var(--gw-sub); margin-top: 2px; }
 .gwui-person-email { font-size: 14.5px; color: var(--gw-sub); margin-top: 2px; overflow-wrap: anywhere; }
 .gwui-person-help {
