@@ -178,10 +178,57 @@ The log also had the warning from section 7 about the old style of the route `ap
 
 **Left behind on this computer:** the databases `gw_final_a` and `gw_final_existing`, because `dropdb` is not allowed. The worktrees were removed.
 
+## 9. The join with the screens and with staging's newest commits, 7 October, at `5ee402a3`
+
+Run on this computer only. Nothing was deployed, and neither a hosted database nor the scenario run's database was touched. `wip/release` was at `2653ef48`. I merged `mine/wip/prototype-ui` into it (`5ee402a3`). Then I merged `mine/wip/live-base`, which said "Already up to date", because the screens' branch had already merged it.
+
+**The merge.** There was one conflict, in `docs/known-issues.md`, and nothing else. The screens' copy still listed items B10, B11 and B12 as open. On this branch they are already fixed and listed as fixed further down, so I kept this branch's version. I carried the screens' own note about the anchor lead (the lead goes straight from her conversation to the reveal and the people step, is never opened into a check-in, and the commit sends the served label, a weekly cadence and an end one month out) into the one entry that is still open, B11 (rest). The screens' branch changed no API code except `api/package.json`; every other change is in `client/`, `docs/` and tests.
+
+**What Abubakar changed since pull request 322.** Staging has seven commits after `b9886fa5` (our branch for the pull request), all on 6 October. All seven are small, and only one line touches the API.
+
+| Commit | What it did | Fate |
+| --- | --- | --- |
+| `9771bbcd` "fix: node" | Changed `engines.node` in `api/package.json` and `client/package.json` from 20.x to 24.x | Kept as is. It came in through the merge. Staging now asks for Node 24. See the builds below. |
+| `9a84afb7` "fix" | `TodayPage.tsx`: three lines changed | Already covered. His lines are in the merged file. |
+| `18bb53e4`, `6a4d67a1`, `8a73ee23`, `ba198931`, `59533562` (all "fix: map") | 50 client files: a list that came back from the server as nothing no longer stops the screen. `.map` is run on `(x ?? [])`, and `authApi.colleagues`, `whoIsWaiting` and `waitingForASeat` return an empty list when the answer is not a list | Carried into our code. I compared every line he added with the merged files. All are present except four lines in three suite pages (`CustomersPage.tsx`, `OnboardingBoardPage.tsx`, `TodosPage.tsx`). The screens rewrote those pages afterwards, with the same guards (`data.customers ?? []`, `data.people ?? []`) and with an empty message that has a next step. Those are covered, not lost. |
+
+The earlier commits on staging (up to `5197f22d`) are covered in section 1, and nothing in them has changed.
+
+**Migrations.** The merge adds none. Staging's folder has 361 migrations and ours has 365. The four extra are `20261006030000_a_check_in_keeps_the_anchor_situation`, `20261006120000_use_simpler_words`, `20261006150000_the_strategy_keeps_its_versions` and `20261006160000_an_address_can_always_stop_the_mail`.
+
+| Check | Result |
+| --- | --- |
+| A fresh, empty database (`gw_merge_fresh_1007`) | All 365 applied, none failed or rolled back. A second run said there was nothing to apply. The last is `20261006160000_an_address_can_always_stop_the_mail`. |
+| A database first built to staging's schema (`gw_merge_oldschema_1007`) | Staging's 361 migrations were applied alone, from a copy of `mine/wip/live-base`'s `api/prisma`. Then an organisation, two users, a check-in with two people, one check-in record, a released report ("An existing released report.") and a surfaced pattern were put in. Our four migrations were then applied on top: all applied, 365 recorded, none failed. Every row is still there and reads the same. A second run said there was nothing to apply. |
+| Drift against `schema.prisma`, on both databases | Only the known one: Postgres shortens the `leaving_checklists` index name to 63 characters. No data, no behaviour. |
+
+**Builds, from a clean install in a fresh worktree of `5ee402a3`** (`npm ci`, no linked `node_modules`), as staging builds them. The API: `npm run build && npx prisma generate` (`api/railway.toml`). The client: `npm run build` (`client/vercel.json`). Neither deploy file changed. Both builds passed on Node 20.20.2 with npm 10.9.9, which I installed into the scratchpad with `npm i node@20 npm@10`, and again on Node 24.21.0, because staging now asks for 24.x. The client warns, as before, that its main script is 1.9 MB.
+
+**The production start check** (`npm run check:production-start`, with a test `JWT_SECRET`, against the fresh local database) passed on Node 20.20.2 and on Node 24.21.0. Both times it said that `node dist/main` started, `/health` answered "ok", `/embed.js` answered 200, and the server was stopped.
+
+**Typechecks.** The API (`tsc --noEmit`) and the client (`tsc -b`) both pass with no errors.
+
+**Tests, at `5ee402a3`, with two workers.**
+
+- Client: 692 files and 4,587 tests passed, 6 skipped, none failed.
+- API: 1,814 files passed, 1 skipped and 8 failed, which is 17,843 tests passed, 13 skipped and 6 failed. Three of the eight are not real failures. `the-whole-app-resolves` fails only because a fresh worktree has no `JWT_SECRET`, and passes with one. `the-free-plan-goes-with-the-switch` was killed once by the operating system (SIGSEGV) while the machine was busy and passes when run again. `journey/whatsapp-journeys.spec.ts` fails to compile only when it is compiled in the same run as `journey/user-journeys.spec.ts`, because both declare a constant named `on`; it passes on its own.
+- The other five are real, and **none was caused by the merge**: the merge changes one line in the API (`engines`), and the API files that fail are exactly as they were at `2653ef48`. They come from the engine's last commits on this branch, which were not run against the whole suite.
+
+| Failing test | Cause |
+| --- | --- |
+| `nothing-in-here-is-wired-to-nothing` | `modules/learning/the-faults-in-a-judgement.ts` (commit `c4ebadba`) is imported by nothing, so it has to be listed in `NOT_WIRED_ON_PURPOSE` with a reason. |
+| `every-way-a-check-in-completes-closes-its-round` | `modules/entry/entry.service.ts` (commit `bde8452a`) now sets a check-in to completed and is not in the list of completion sites, so nobody has checked that it closes the round. |
+| `one-date-format-everywhere` | `modules/engagement/heres-what-is-new.ts` line 152 (commit `2653ef48`, the newest) calls `toLocaleDateString` instead of the shared date formatter. |
+| `a-guard-that-a-comment-satisfies-is-not-a-guard` | Four new specs do not strip comments before they match: `board/a-managing-only-flag-is-not-a-role`, `entry/a-slow-reading-does-not-hold-the-save`, `public-api/a-held-request-does-not-outlive-its-ten-minutes` and `whatsapp/every-template-follows-the-rules-meta-checks`. |
+| `the-engines-copy-does-not-sound-like-yoda` | Lines that read like Yoda went up from 35 to 41. The new lines are in `assistant/what-the-assistant-can-do.ts` (three), two board fixtures, and several prompt files. |
+
+I left these five alone, because they are the engine's own files and not the merge. Each is small.
+
+**Left behind on this computer:** the databases `gw_merge_fresh_1007` and `gw_merge_oldschema_1007` (`dropdb` is not allowed), and the worktree and the two Node installs under the session's scratchpad.
+
 ## What I could not do
 
-1. Run our migrations on top of a database built at staging's schema with sample rows. The guard refused the command and I stopped, as told.
-2. Build on Node 20. Only Node 26 is installed here.
+Nothing is left over from the first checks. The migrations on top of the live line's schema with sample rows, and the Node 20 build, were both done on 7 October (section 9).
 
 ## Databases left behind
 
