@@ -210,7 +210,8 @@ export function groundsAViewerMayList(
     OR: [
       { initiatorId: userId },
       { createdByUserId: userId },
-      { participants: { some: { userId } } },
+      /* Not one still waiting for an admin to accept it: opening it answers "not found", so the list never offers it (B-126). */
+      { participants: { some: { userId } }, status: { not: 'AWAITING_APPROVAL' } },
       ...(viewer?.role === 'LEAD' && leadsOfTheirDepartment.length ? [{ initiatorId: { in: leadsOfTheirDepartment }, scenario: { notIn: EVALUATION_SCENARIOS } }] : []),
     ],
   };
