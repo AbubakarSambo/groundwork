@@ -1,6 +1,7 @@
 import { CanActivate, ExecutionContext, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS, readsAsAnAdmin, runsOrSetItUp } from '../grounds/who-may-read-this-check-in';
+import { refuseSomeoneHeldForASeat } from '../participants/held-for-a-seat';
 
 /**
  * A READ ON A CHECK-IN ASKS WHO IS READING BEFORE IT READS ANYTHING (B-149).
@@ -41,6 +42,8 @@ export class OnlySomebodyInTheCheckInReadsIt implements CanActivate {
       runsOrSetItUp(userId, ground as any) ||
       readsAsAnAdmin(asViewer, ground as any);
     if (!here) throw new NotFoundException('Check-in not found');
+    /* Nobody held for a seat reads anything of the check-in (privacy row 5): the figures, claims and sides are the whole check-in's, not their own answers. */
+    if (!runsOrSetItUp(userId, ground as any)) await refuseSomeoneHeldForASeat(this.prisma as any, groundId, userId);
     return true;
   }
 }

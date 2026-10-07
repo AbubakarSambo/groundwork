@@ -4,7 +4,7 @@ import { withoutTheLeadsSetUpForAMember } from './the-leads-set-up-is-the-leads-
 import { aShortQuestionForAPerson, askedBackToTheLead, theQuestionTheyWereShown } from './a-short-question-for-a-person-in-the-old-chat';
 import { aFindingThatReadsRight } from './a-finding-reads-right';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
-import { refuseSomeoneAwaitingTheOrganisation, theCheckInsHeldForASeat, theHeldPersonWhoHasAnswered, whatSomeoneHeldForASeatReads } from '../participants/held-for-a-seat';
+import { refuseSomeoneAwaitingTheOrganisation, refuseSomeoneHeldForASeat, theCheckInsHeldForASeat, theHeldPersonWhoHasAnswered, whatSomeoneHeldForASeatReads } from '../participants/held-for-a-seat';
 import { CANNOT_CHECK_IN_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { theRoomForThisReader } from '../board/the-room-for-this-reader';
 import { goalsThisReaderMaySee, notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead, aWeekHasPassedSinceNotTold, whatThePersonReadsAfterAWeek } from './a-goal-not-told-stays-with-the-lead';
@@ -6363,7 +6363,7 @@ export class GroundsService {
   async getMediatorBrief(groundId: string, requestingUserId: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      include: { report: { select: { centralQuestion: true } } },
+      include: { report: { select: { centralQuestion: true, releasedAt: true } } },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
 
@@ -6374,10 +6374,23 @@ export class GroundsService {
     if (!isInitiator && !requesterLink) {
       throw new ForbiddenException('Only the lead, or somebody taking part in this check-in, can request a mediator brief');
     }
+    /* Nobody held for a seat or waiting for the organisation reads anything of the check-in (privacy row 5). */
+    if (!isInitiator) {
+      await refuseSomeoneHeldForASeat(this.prisma as any, groundId, requestingUserId);
+      await refuseSomeoneAwaitingTheOrganisation(this.prisma as any, requestingUserId, CANNOT_CHECK_IN_YET);
+    }
 
     const daysOpen = Math.floor((Date.now() - ground.createdAt.getTime()) / (1000 * 60 * 60 * 24));
     const endStateOptions = endStatesFor(ground.scenario).map((s) => s.label);
-    const gapSummary = ground.report?.centralQuestion ?? 'Not yet synthesised';
+    /*
+     * THE REPORT'S QUESTION IS THE TEAM'S PICTURE, AND IT WAITS FOR THE RELEASE (decision 76, item 4). The report withholds its central
+     * question from everybody but the lead until the lead releases it; this brief served it to every participant the moment the report was
+     * written. Only the lead reads it before then.
+     */
+    const released = !!ground.report?.releasedAt;
+    const gapSummary = ground.report?.centralQuestion && (isInitiator || released)
+      ? ground.report.centralQuestion
+      : 'The team\u2019s picture is not shared yet.';
 
     return {
       groundLabel: ground.label,
@@ -7543,6 +7556,11 @@ export class GroundsService {
     if (!link && ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException('You are not a participant in this check-in');
     }
+    /* Nobody held for a seat or waiting for the organisation reads the check-in's starting point (privacy row 5). */
+    if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
+      await refuseSomeoneHeldForASeat(this.prisma as any, groundId, requestingUserId);
+      await refuseSomeoneAwaitingTheOrganisation(this.prisma as any, requestingUserId, CANNOT_CHECK_IN_YET);
+    }
     const [entries, done] = await Promise.all([
       this.prisma.groundBaselineEntry.findMany({
         where: { groundId },
@@ -7670,6 +7688,11 @@ export class GroundsService {
     const isOrgAdmin = readsAsAnAdmin({ ...asker, userId: requestingUserId }, ground);
     if (!link && ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException('You are not a participant in this check-in');
+    }
+    /* Nobody held for a seat or waiting for the organisation reads the check-in's starting point (privacy row 5). */
+    if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
+      await refuseSomeoneHeldForASeat(this.prisma as any, groundId, requestingUserId);
+      await refuseSomeoneAwaitingTheOrganisation(this.prisma as any, requestingUserId, CANNOT_CHECK_IN_YET);
     }
     const rows = await this.prisma.groundBaseline.findMany({
       where: { groundId },
