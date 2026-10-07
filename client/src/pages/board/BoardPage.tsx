@@ -2059,7 +2059,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const whoCheckedIn = () => {
     if (!shown.checkInGrid || !b.checkInGrid) return null
           /** Does any row have a role worth a column of its own? */
-          const anyRoleToShow = b.checkInGrid.rows.some((r) => (r.role && r.role !== r.name) || r.managingOnly)
+          const anyRoleToShow = b.checkInGrid.rows.some((r) => (r.role && r.role !== r.name))
           /*
            * ITEM E: A SESSION THAT HAS NOT OPENED IS NOT THE SAME "-" AS ONE SOMEBODY WAS SIMPLY
            * NOT ON. A bare dash read the same for both, and for a session with nothing to say about
@@ -2115,7 +2115,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 /*
                   U.10 (c2): FROM THE SHARED PARTS. A PeopleTable of PersonRows, the same shape
                   "The team today" uses - name (and, where a role is worth its own column, the
-                  lead's note or "Managing only" as the level line), then the same ten squares
+                  lead's note as the level line), then the same ten squares
                   "The team today" draws, from the same `squaresFor` helper, in their own
                   fixed-width column so they line up across every row.
                 */
@@ -2133,8 +2133,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       person={{
                         initials: initialsOf(displayName),
                         name: displayName,
-                        level: anyRoleToShow && (r.role && r.role !== r.name || r.managingOnly)
-                          ? (r.role && r.role !== r.name ? <span data-leads-note>{theLeadsNote(r.role)}</span> : 'Managing only')
+                        level: anyRoleToShow && (r.role && r.role !== r.name)
+                          ? <span data-leads-note>{theLeadsNote(r.role)}</span>
                           : undefined,
                       }}
                     >

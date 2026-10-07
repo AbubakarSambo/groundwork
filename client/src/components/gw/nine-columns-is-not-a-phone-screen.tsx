@@ -199,7 +199,6 @@ export function NineColumnsIsNotAPhoneScreen({ rows, sessions, openSessions, myP
               {r.role && r.role !== r.name && (
                 <span data-leads-note style={{ fontSize: 13, color: 'var(--gw-sub)' }}>{theLeadsNote(r.role)}</span>
               )}
-              {!r.role && r.managingOnly && <span style={{ fontSize: 13, color: 'var(--gw-sub)' }}>Managing only</span>}
             </div>
 
             {sentence && (
