@@ -1,10 +1,11 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { TodayPage } from './TodayPage'
 import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
+import { useSuitesKnownOffStore } from '@/stores/suites-known-off'
 
 /**
  * WALK OF THE EXISTING CLIENTS' USE CASES (7 October). Today always offered "Your own leave and
@@ -30,6 +31,14 @@ function open() {
 }
 
 const off = () => Promise.reject(Object.assign(new Error('off'), { response: { status: 404, data: { message: 'The leave suite is not switched on.' } } }))
+
+/*
+ * B-002: TodayPage's three "your requests" reads now share `useSuitesKnownOffStore` with the
+ * sidebar's own queue read (see b-002-your-requests-reads-stop-once-off-is-known.spec.tsx), so a
+ * 404 in one test here would otherwise silence the queries in the next one. Reset between tests,
+ * the same way suites-known-off.spec.tsx already resets it for AppShell.
+ */
+beforeEach(() => { useSuitesKnownOffStore.setState({ off: false }) })
 
 describe('"Your own leave and spending requests" on Today', () => {
   it('is not offered when all three are off', async () => {
