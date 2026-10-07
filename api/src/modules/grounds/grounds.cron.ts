@@ -799,7 +799,7 @@ export class GroundsCron implements OnApplicationBootstrap {
       },
       select: {
         id: true, groundId: true, sessionNumber: true, createdAt: true, availableFrom: true, participantId: true,
-        ground: { select: { label: true, scenario: true, organizationId: true, overWhatsApp: true, cadence: true, chaseAfterDays: true, chasingStopped: true, tellTheLead: true, workingDays: true, startedFrom: true, simplerWords: true, initiator: { select: { firstName: true } } } },
+        ground: { select: { label: true, scenario: true, organizationId: true, overWhatsApp: true, cadence: true, chaseAfterDays: true, chasingStopped: true, tellTheLead: true, workingDays: true, startedFrom: true, simplerWords: true, initiatorId: true, initiator: { select: { firstName: true } } } },
         participant: { select: { id: true, email: true, userId: true, user: { select: { firstName: true, email: true, phoneNumber: true, isActive: true, deletedAt: true } } } },
       },
       ...page,
@@ -859,7 +859,7 @@ export class GroundsCron implements OnApplicationBootstrap {
           else {
             const counts = await this.whoHasAnswered(ci.groundId, ci.sessionNumber);
             const chase = whichChase({ ...counts, aboutOnePerson: isEvaluationCheckIn(ci.ground.scenario) });
-            said = chase === 'team-almost-in' ? theTeamIsAlmostIn(who, counts.answered, counts.ofHowMany, ci.ground.simplerWords) : yourViewMatters(who, ci.ground.initiator?.firstName, ci.ground.simplerWords);
+            said = chase === 'team-almost-in' ? theTeamIsAlmostIn(who, counts.answered, counts.ofHowMany, ci.ground.simplerWords) : yourViewMatters(who, ci.participant.userId && ci.participant.userId === (ci.ground as any).initiatorId ? 'you' : ci.ground.initiator?.firstName, ci.ground.simplerWords);
           }
         }
         const rank = MORNING_ORDER.indexOf(what);

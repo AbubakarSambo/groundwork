@@ -171,6 +171,12 @@ describe('the morning sweep', () => {
     await cron.sendWhatsAppRemindersInner();
     expect(sendFor).toHaveBeenCalledWith('org-1', '+254712345678', yourViewMatters(MIRIAM, 'Wairimu').text, expect.objectContaining({ checkInId: 'ci-1', kind: 'your-view-matters' }));
   });
+  it('a lead who is also answering is told her answers help her, and her own name is not said in the third person (B-023)', async () => {
+    const lead = aRow({ ground: { ...aRow().ground, initiatorId: 'u-1', initiator: { firstName: 'Miriam' } } });
+    const { cron, sendFor } = aCron([lead], { session: [{ status: 'NOT_STARTED' }, { status: 'COMPLETED' }, { status: 'NOT_STARTED' }, { status: 'NOT_STARTED' }] });
+    await cron.sendWhatsAppRemindersInner();
+    expect(sendFor.mock.calls[0][2]).toBe("Hi Miriam, your check-in for the sales team is still waiting. Your answers help you understand what's in your way, and where they can help. It takes about five minutes, and you can answer here.");
+  });
   it('with half or more in, the person reads the count, which leaves out anybody not yet let in', async () => {
     const { cron, sendFor } = aCron([aRow()], { session: [{ status: 'NOT_STARTED' }, { status: 'COMPLETED' }, { status: 'COMPLETED' }, { status: 'NOT_STARTED' }, { status: 'NOT_STARTED', awaiting: true }] });
     await cron.sendWhatsAppRemindersInner();
