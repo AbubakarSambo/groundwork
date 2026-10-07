@@ -322,7 +322,7 @@ const RULES = [
      * "how am I doing" stays with the coaching lane. Above `what_should_we_talk_about`, whose "how am I doing" is the
      * first person.
      */
-    /\bhow(?:'s|\s+is|\s+are)\s+(?:the|my|our)\s+(?:[\w'-]+\s+){0,2}team(?:\s+(?:doing|going|getting\s+on|looking))?\b/i,
+    /\bhow(?:'s|\s+is|\s+are)\s+(?:the|my|our)\s+(?:([\w'-]+(?:\s+[\w'-]+)?)\s+)?team(?:\s+(?:doing|going|getting\s+on|looking))?\b/i,
     /\bhow(?:'s|\s+is|\s+are)\s+(?:everyone|everybody)\s+(?:doing|going|getting\s+on)\b/i,
     /\bhow\s+are\s+(?:the\s+|my\s+|our\s+)?people\s+(?:doing|going)\b/i,
     /\bwhere\s+(?:are|do)\s+we\s+(?:stand\s+)?on\s+the\s+quarter\b/i,

@@ -588,7 +588,7 @@ export class AssistantService {
       case 'what_is_stuck':
         return this.compose(await this.whatIsStuck(organizationId, who, message, userId ?? null));
       case 'how_is_the_team':
-        return this.howIsTheTeam(organizationId, who, userId ?? null);
+        return this.howIsTheTeam(organizationId, who, userId ?? null, routed.subject);
       case 'who_has_not_checked_in':
         return this.whoHasNotCheckedIn(organizationId, userId ?? null, routed.subject);
       case 'how_am_i_doing':
@@ -994,18 +994,31 @@ export class AssistantService {
    * hidden by this lane alone. A check-in somebody only takes part in is not the team they lead. Nothing is rebuilt:
    * the board is read, never opened for writing (decision 7).
    */
-  private async howIsTheTeam(organizationId: string, who: string | null, userId: string | null): Promise<Reply> {
+  private async howIsTheTeam(organizationId: string, who: string | null, userId: string | null, subject?: string): Promise<Reply> {
     const lane = 'how_is_the_team';
     if (!userId) return rules(lane, text('I cannot look that up without knowing who you are.'));
     const kept = await keptInTheApp(this.prisma as any, organizationId);
-    const run = (await this.prisma.ground.findMany({
-      where: { organizationId, initiatorId: userId },
+    /* An admin reads every board in the organisation (decision 5), except a performance plan, a promotion or a renewal she was not given; a lead is told about the check-ins she runs. */
+    const membership = await this.prisma.organizationMembership.findUnique({ where: { userId_organizationId: { userId, organizationId } }, select: { role: true } }).catch(() => null);
+    const anAdmin = membership?.role === 'ADMIN';
+    let run = (await this.prisma.ground.findMany({
+      where: anAdmin
+        ? { AND: [groundsAViewerMayList(userId, { role: 'ADMIN', organizationId }, organizationId) as any, { status: { notIn: [...A_GROUND_NO_MESSAGE_IS_ABOUT] } }] }
+        : { organizationId, initiatorId: userId },
       select: { id: true, label: true },
       orderBy: { createdAt: 'desc' },
-      take: 5,
+      take: anAdmin ? 40 : 5,
     })).filter((g) => mayBeRead(kept, g.id));
+    /* "How is the sales team doing?" is about the check-ins with "sales" in their name, where there are any. */
+    const word = (subject ?? '').trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+    if (word) {
+      const named = run.filter((g) => String(g.label).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').includes(word));
+      if (named.length) run = named;
+    }
     if (!run.length) {
-      return rules(lane, text('You do not run a check-in yet, so there is no team for me to tell you about. You can ask me how you are doing, or what you are waiting on.'));
+      return rules(lane, text(anAdmin
+        ? 'There is no check-in going in the organisation that you can read, so there is no team for me to tell you about.'
+        : 'You do not run a check-in yet, so there is no team for me to tell you about. You can ask me how you are doing, or what you are waiting on.'));
     }
 
     const parts: string[] = [];
@@ -1033,7 +1046,7 @@ export class AssistantService {
     if (!parts.length) {
       return rules(lane, text('Nobody has answered in the check-ins you run yet, so there is nothing to tell you about the team so far. I will have more once people have finished.'));
     }
-    return rules(lane, text(`${parts.join('\n\n')}\n\nThis is what your board and your latest report say, and only you can read it here.`));
+    return rules(lane, text(`${parts.join('\n\n')}\n\nThis is what ${anAdmin ? 'the' : 'your'} board${anAdmin ? 's' : ''} and ${anAdmin ? 'the' : 'your'} latest report${anAdmin ? 's' : ''} say, and only you can read it here.`));
   }
 
   /**
