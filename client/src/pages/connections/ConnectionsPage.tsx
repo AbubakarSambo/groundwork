@@ -310,10 +310,24 @@ function WhatsAppSection({ orgName, glance }: { orgName: string; glance: { peopl
 function NoticesSection({ notifiers }: { notifiers: { kind: 'SLACK' | 'TEAMS'; channelSaid: string | null; enabled: boolean; lastPostedAt: string | null; lastError: string | null }[] }) {
   const qc = useQueryClient()
   const [url, setUrl] = useState('')
+  /*
+   * RESTORED (nothing-removed-screens.md item 3): live let an admin name the channel when
+   * connecting it (IntegrationsPage.tsx line 930, "Channel, as you call it (optional)", sent as
+   * `channelSaid`), and the connections list already shows that name once one is saved
+   * ("Slack, #sales-leads" above) - but ours had no way to set it on a new connection. The API
+   * already accepts a third argument (`integrationsApi.connectWorkspace`); only sent when
+   * something was typed, so the call a reconnecting admin already relies on is unchanged.
+   */
+  const [channel, setChannel] = useState('')
   const refresh = () => qc.invalidateQueries({ queryKey: ['integrations', 'workspace'] })
   const add = useMutation({
-    mutationFn: () => integrationsApi.connectWorkspace(kindOf(url), url.trim()),
-    onSuccess: () => { setUrl(''); refresh(); toast.success('Connected, and switched off until you test it and turn it on.') },
+    mutationFn: () => {
+      const named = channel.trim()
+      return named
+        ? integrationsApi.connectWorkspace(kindOf(url), url.trim(), named)
+        : integrationsApi.connectWorkspace(kindOf(url), url.trim())
+    },
+    onSuccess: () => { setUrl(''); setChannel(''); refresh(); toast.success('Connected, and switched off until you test it and turn it on.') },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not connect that address.'),
   })
   const test = useMutation({
@@ -367,6 +381,7 @@ function NoticesSection({ notifiers }: { notifiers: { kind: 'SLACK' | 'TEAMS'; c
           <form onSubmit={e => { e.preventDefault(); if (url.trim().startsWith('https://')) add.mutate() }}>
             <div className="gwui-invite-actions">
               <TextField placeholder="Paste the channel’s address from Slack or Teams" value={url} onChange={e => setUrl(e.target.value)} aria-label="The channel’s address from Slack or Teams" />
+              <TextField placeholder="The channel’s name, if you want it shown (optional)" value={channel} onChange={e => setChannel(e.target.value)} aria-label="The channel’s name (optional)" />
               <Button kind="secondary" size="small" type="submit" disabled={!url.trim().startsWith('https://') || add.isPending}>Add it, switched off</Button>
             </div>
           </form>

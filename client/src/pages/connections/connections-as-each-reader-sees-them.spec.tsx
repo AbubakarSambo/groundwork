@@ -258,6 +258,32 @@ describe('Grace, an admin, reads Connections', () => {
     await waitFor(() => expect(api.connectWorkspace).toHaveBeenCalledWith('slack', 'https://hooks.slack.com/services/T0/B0/x'))
   })
 
+  /*
+   * RESTORED (nothing-removed-screens.md item 3): live let an admin name the channel when
+   * connecting it ("Channel, as you call it (optional)", sent as `channelSaid`); the connected
+   * list already shows that name once saved, but there was no way to set one on a new connection.
+   */
+  it('naming the channel sends it alongside the address, and the list later shows it', async () => {
+    serve()
+    api.connectWorkspace.mockResolvedValue({ kind: 'SLACK', channelSaid: '#sales-leads', enabled: false })
+    open(GRACE)
+    const n = await screen.findByRole('region', { name: 'Notices in Slack or Teams' })
+    fireEvent.change(within(n).getByRole('textbox', { name: 'The channel’s address from Slack or Teams' }), { target: { value: 'https://hooks.slack.com/services/T0/B0/x' } })
+    fireEvent.change(within(n).getByRole('textbox', { name: 'The channel’s name (optional)' }), { target: { value: '#sales-leads' } })
+    fireEvent.click(within(n).getByRole('button', { name: 'Add it, switched off' }))
+    await waitFor(() => expect(api.connectWorkspace).toHaveBeenCalledWith('slack', 'https://hooks.slack.com/services/T0/B0/x', '#sales-leads'))
+  })
+
+  it('leaving the channel name blank connects with the address alone, same as before', async () => {
+    serve()
+    api.connectWorkspace.mockResolvedValue({ kind: 'SLACK', channelSaid: null, enabled: false })
+    open(GRACE)
+    const n = await screen.findByRole('region', { name: 'Notices in Slack or Teams' })
+    fireEvent.change(within(n).getByRole('textbox', { name: 'The channel’s address from Slack or Teams' }), { target: { value: 'https://hooks.slack.com/services/T0/B0/x' } })
+    fireEvent.click(within(n).getByRole('button', { name: 'Add it, switched off' }))
+    await waitFor(() => expect(api.connectWorkspace).toHaveBeenCalledWith('slack', 'https://hooks.slack.com/services/T0/B0/x'))
+  })
+
   it('a Teams address is added as Teams, and a connected channel can be tested, switched and removed', async () => {
     serve({ notifiers: [{ kind: 'TEAMS', channelSaid: null, enabled: false, lastPostedAt: null, lastError: null }] })
     api.connectWorkspace.mockResolvedValue({ kind: 'TEAMS', channelSaid: null, enabled: false })
@@ -267,7 +293,7 @@ describe('Grace, an admin, reads Connections', () => {
     expect(within(n).getByRole('button', { name: 'Post a test' })).toBeTruthy()
     expect(within(n).getByRole('button', { name: 'Switch on' })).toBeTruthy()
     expect(within(n).getByRole('button', { name: 'Remove' })).toBeTruthy()
-    fireEvent.change(within(n).getByRole('textbox'), { target: { value: 'https://example.webhook.office.com/x' } })
+    fireEvent.change(within(n).getByRole('textbox', { name: 'The channel’s address from Slack or Teams' }), { target: { value: 'https://example.webhook.office.com/x' } })
     fireEvent.click(within(n).getByRole('button', { name: 'Add it, switched off' }))
     await waitFor(() => expect(api.connectWorkspace).toHaveBeenCalledWith('teams', 'https://example.webhook.office.com/x'))
   })
