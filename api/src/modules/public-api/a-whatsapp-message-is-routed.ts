@@ -216,7 +216,7 @@ export const A_BACK_WORD = /^\s*(back|go\s+back|back\s+to\s+(my\s+)?check-?in)\s
 export const A_WISH_TO_CARRY_ON_THE_CHECK_IN = /^\s*(?:(?:hi|hello|hey)[\s,!.]*|(?:start|begin|continue|resume)\s*[.!]?\s*|(?!(?:when|what|how|who|why|is|are|can|could|do|does|where)\b)[^?]*\b(?:(?:do|start|begin|continue|resume|finish|answer)\b[^?]*\bcheck-?in|check-?in\b[^?]*\b(?:now|please))[^?]*)$/i;
 /** "switch": the list of check-ins again, or, on Groundwork's number, the list of organisations. */
 export const A_SWITCH_WORD = /^\s*switch\s*[.!]?\s*$/i;
-export const A_YES = /^\s*(yes|yeah|yep|y|ok|okay|sure|please do)\s*[.!]?\s*$/i;
+export const A_YES = /^\s*(?:(?:yes|yeah|yep|ok|okay|sure)(?:\s+(?:please|thanks|thank\s+you|do))?|y|please\s+do|go\s+ahead|yes,?\s+please)\s*[.!]?\s*$/i;
 export const A_NO = /^\s*(no|nope|n|no thanks|keep it|keep it in the check-?in)\s*[.!]?\s*$/i;
 
 /** The one sentence that says the words, said when a check-in starts on WhatsApp. */

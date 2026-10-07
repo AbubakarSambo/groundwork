@@ -43,3 +43,16 @@ describe('the only admin asks to spend', () => {
     expect(prisma.spendRequest.create).not.toHaveBeenCalled();
   });
 });
+
+import { sayBackLeave } from './leave-said-in-chat';
+
+describe('the only admin asking for leave in a chat (B-137)', () => {
+  it('is told at the say-back, not offered "send it to an admin"', async () => {
+    const prisma = bed(0, 'leave');
+    prisma.organizationSuite.findUnique = jest.fn(async () => ({ isOn: true, answers: { approver: 'An admin' } }));
+    const leave: any = { mine: async () => ({ daysLeft: 21 }), ask: jest.fn() };
+    const out = await sayBackLeave(prisma, leave, { userId: 'u-grace', organizationId: ORG }, { startsOn: '2026-11-02', endsOn: '2026-11-04' }, new Date('2026-10-07T09:00:00Z'));
+    expect(out).toEqual({ ok: false, say: NOBODY_ELSE_CAN_DECIDE });
+    expect(leave.ask).not.toHaveBeenCalled();
+  });
+});
