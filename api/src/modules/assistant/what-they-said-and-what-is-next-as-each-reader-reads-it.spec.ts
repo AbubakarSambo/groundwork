@@ -52,7 +52,7 @@ const FEMI_LINES = ['Shipped the price list to Harbor Foods.', 'Still waiting on
 const MIRIAM_LINES = ['Called Westgate Deli and they want January.'];
 const PIP_LINES = ['PIP-FEMI-LINE: I missed the July target.'];
 const YEMI_LINES = ['YEMI-OPEN-LINE: the Kilimani shop is not ready.'];
-const WALL = 'This person has answered, and what they said opens to you when the report is released.';
+const WALL = 'This person has answered, and what they said opens to you when the team\'s report is shared.';
 
 /** Who each reader is called for, so a test can say the report was only ever read AS the asker. */
 const readsMadeFor: { groundId: string; sessionNumber: number; userId: string }[] = [];
@@ -206,8 +206,11 @@ describe('as a participant asking about a colleague (Miriam)', () => {
     const { ask } = harness('miriam');
     const r = await ask('What did Yemi say?');
     expect(bodyOf(r)).not.toContain('YEMI-OPEN-LINE');
-    expect(bodyOf(r)).toContain(WALL);
-    expect(bodyOf(r)).toContain("I cannot show you Yemi's words from their check-in of 30 September on Kilimani launch.");
+    /* Said once, by first name, as the thing it is: the words open when the team's report is shared (user journeys, F-12). Never "nothing specific enough to record", and never the check-in named twice. */
+    expect(bodyOf(r)).toContain("Yemi's words open to you when the team's report is shared.");
+    expect(bodyOf(r)).not.toContain('nothing specific enough to record');
+    expect(bodyOf(r).split("words open to you").length - 1).toBe(1);
+    expect(bodyOf(r).split('Kilimani launch').length - 1).toBe(1);
     expect(sourceOf(r).href).toBe('/grounds/g-open/session/1');
   });
 

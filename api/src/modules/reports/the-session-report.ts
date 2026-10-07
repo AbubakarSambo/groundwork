@@ -186,6 +186,11 @@ export interface SessionReportInputs {
   /** Whether the round closed and was snapshotted. */
   closed: boolean;
   /**
+   * Whether other people's words are not yet open to this reader: the team's report has not been shared with them. Read from the release, which is what the wall
+   * is. Where it is not given, it is read from `closed` as it always was, which was wrong once a round had closed and still not been shared (user journeys, F-12).
+   */
+  othersWordsAreNotYetOpen?: boolean;
+  /**
    * From the report: what the records agree on and what is still open between them.
    *
    * The counts were all this took, and the section printed "1 area the accounts agree on, 1 still
@@ -274,6 +279,9 @@ const ofTypes = (
   entries: SessionReportInputs['entries'],
   types: RecordEntryType[],
 ): SaidThing[] => entries.filter((e) => types.includes(e.type)).map(said);
+
+/** What a person reads on another person's row, before the team's report is shared with them. The words are walled, and nobody is said to have said nothing. */
+export const WHAT_THEY_SAID_OPENS_WHEN_SHARED = 'This person has answered, and what they said opens to you when the team\'s report is shared.';
 
 export function theSessionReport(input: SessionReportInputs): SessionReportShape {
   /* FILTER FIRST, THEN COUNT. These were the raw array lengths while the lists under them went
@@ -599,7 +607,7 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
          specific enough to record came out of it" beside twenty-three names whose lines he was not yet entitled
          to (run 10, 21 Sep 2026). The wall says so; it does not claim the person said nothing. */
       ...(lines.length === 0
-        ? { saying: !input.closed && !p.isYou ? 'This person has answered, and what they said opens to you when the report is released.' : 'This person has answered, and nothing specific enough to record came out of it.' }
+        ? { saying: (input.othersWordsAreNotYetOpen ?? !input.closed) && !p.isYou ? WHAT_THEY_SAID_OPENS_WHEN_SHARED : 'This person has answered, and nothing specific enough to record came out of it.' }
         : {}),
     };
   });

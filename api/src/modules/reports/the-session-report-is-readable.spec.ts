@@ -145,7 +145,17 @@ describe('what each person said they did', () => {
       closed: false,
       answeredThisSession: [{ who: 'Ellie', isYou: false }],
     });
-    expect(out.whatEachPersonSaid[0].saying).toContain('opens to you when the report is released');
+    expect(out.whatEachPersonSaid[0].saying).toContain('opens to you when the team\'s report is shared');
+  });
+
+  it('and so it is once the round has closed, for as long as the team\'s report is not shared with this reader (F-12)', () => {
+    const out = theSessionReport({ ...base, closed: true, othersWordsAreNotYetOpen: true, answeredThisSession: [{ who: 'Ellie', isYou: false }] });
+    expect(out.whatEachPersonSaid[0].saying).toBe('This person has answered, and what they said opens to you when the team\'s report is shared.');
+  });
+
+  it('after it is shared, a person with nothing specific on record is told that, and only then', () => {
+    const out = theSessionReport({ ...base, closed: true, othersWordsAreNotYetOpen: false, answeredThisSession: [{ who: 'Ellie', isYou: false }] });
+    expect(out.whatEachPersonSaid[0].saying).toBe('This person has answered, and nothing specific enough to record came out of it.');
   });
 });
 

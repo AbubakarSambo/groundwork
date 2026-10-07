@@ -27,6 +27,7 @@ import { whatTheyMayRead } from '../grounds/who-may-read-this-check-in';
 import { quotedThenEnding } from './a-quote-takes-no-second-mark';
 import { aCheckInSource } from './a-source-says-where-it-came-from';
 import { Reply, SourceBlock, rules, text } from './a-reply-is-a-payload-not-a-string';
+import { WHAT_THEY_SAID_OPENS_WHEN_SHARED } from '../reports/the-session-report';
 
 export const I_CANNOT_SHOW_YOU_THAT = 'I cannot show you that.';
 
@@ -219,8 +220,14 @@ export async function whatSomeoneSaid(
       entry.push(f.row.lines.map((l) => `- ${quotedThenEnding(l)}`).join('\n'));
     } else {
       /* Not served as words to this reader: the report's own sentence, or the wall's, and never a guess at what was said. */
-      entry.push(`I cannot show you ${f.row.who}'s words from ${inIt}.`);
-      if (f.row.saying) entry.push(f.row.saying);
+      if (f.row.saying === WHAT_THEY_SAID_OPENS_WHEN_SHARED) {
+        /* The wall before the team's report is shared: said once, by name, as it is (user journeys, F-12). Not "nothing specific enough to record", which is untrue, and not twice. */
+        const named = /^\p{Lu}\p{Ll}+(?:\s+\p{Lu}\p{Ll}+)+$/u.test(f.row.who) && !/^(?:Participant|The)\b/.test(f.row.who) ? f.row.who.split(/\s+/)[0] : f.row.who;
+        entry.push(`${named}'s words open to you when the team's report is shared.`);
+      } else {
+        entry.push(`I cannot show you ${f.row.who}'s words from ${inIt}.`);
+        if (f.row.saying) entry.push(f.row.saying);
+      }
       if (f.row.finding) entry.push(`What the report says: ${f.row.finding}`);
     }
     entry.push(source.says);
