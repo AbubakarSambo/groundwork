@@ -27,7 +27,7 @@ import { whenItIsDue } from '../whatsapp/what-goes-to-a-phone';
 import { formsOfTheSameNumber } from '../whatsapp/a-number-whatsapp-can-reach';
 import { theCheckInIsCompleteSaying, enoughToCloseSaying } from '../grounds/what-is-sent-in-simpler-words';
 import { AnOpenCheckIn, whatTheFileIsCalled, sessionHeader, whichOneRows, whichOneAsText, pickedOne, pickedFromText, whatArrived, reportAsText, nothingToReadYet, THANKS_YOUR_ANSWER_IS_IN, reportAsTemplateBlanks, LANGUAGES_WE_CONVERSE_IN, A_FINISH_WORD, A_GREETING_ALONE, A_NOT_NOW, NOT_NOW_SAYING,
-  NOT_ENOUGH_YET_TO_FINISH, isAnAskWord, A_BACK_WORD, A_SWITCH_WORD, A_YES, A_NO, THE_WORDS, NOW_ASKING, ASKING_NEEDS_A_ROSTER_ENTRY, ASK_READS_WORDS,
+  NOT_ENOUGH_YET_TO_FINISH, isAnAskWord, A_BACK_WORD, A_WISH_TO_CARRY_ON_THE_CHECK_IN, A_SWITCH_WORD, A_YES, A_NO, THE_WORDS, NOW_ASKING, ASKING_NEEDS_A_ROSTER_ENTRY, ASK_READS_WORDS,
   ONLY_ONE_OPEN, NONE_OPEN, BACK_IN, BACK_TO_NOTHING, ASKING, isAsking, wasIn, namedCheckIn, looksLikeARequest, shallITreatThisAs, YES_OR_NO, HELD_WORDS_PUT_IN, heldWordsNotPut, type ARequest,
 } from './a-whatsapp-message-is-routed';
 import { A_STOP_WORD, A_START_WORD, STOPPED_SAYING, RESUMED_SAYING, UNKNOWN_NUMBER_SAYING } from '../whatsapp/a-message-outside-the-window';
@@ -259,7 +259,7 @@ export class WhatsAppForAnOrganisationService {
     }
     if (isAsking(thread?.checkInId) && who.personId) {
       const named = arrived.kind === 'pick' ? pickedOne(arrived.id, open) : arrived.kind === 'text' ? namedCheckIn(said, open) : null;
-      if (named || (arrived.kind === 'text' && A_BACK_WORD.test(said))) {
+      if (named || (arrived.kind === 'text' && (A_BACK_WORD.test(said) || A_WISH_TO_CARRY_ON_THE_CHECK_IN.test(said)))) {
         const target = named ?? open.find((c) => c.id === wasIn(thread?.checkInId)) ?? (open.length === 1 ? open[0] : null);
         if (target) {
           await this.remember(organizationId, from, target.id);

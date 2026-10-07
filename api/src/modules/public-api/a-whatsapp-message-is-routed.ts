@@ -208,6 +208,12 @@ export const isAnAskWord = (text: string, ask: string): boolean =>
   AN_ASK_WORD.test(text) || text.trim().replace(/[.!]$/, '').replace(/\s+/g, ' ').toLowerCase() === ask.toLowerCase();
 /** "back": from Ask Groundwork to the check-in. */
 export const A_BACK_WORD = /^\s*(back|go\s+back|back\s+to\s+(my\s+)?check-?in)\s*[.!]?\s*$/i;
+/**
+ * SOMEBODY WHO IS IN ASK AND WRITES AS IF TO THEIR CHECK-IN (B-143). After she approved a request on WhatsApp, Wairimu's thread stayed in
+ * Ask, her reminders said "you can answer here now", and "Hi", "I want to do my check-in" and "START" were each answered "I cannot answer
+ * that one yet". Those words are a return to the check-in, as "back" is. A question ("when is my next check-in?") stays with Ask.
+ */
+export const A_WISH_TO_CARRY_ON_THE_CHECK_IN = /^\s*(?:(?:hi|hello|hey)[\s,!.]*|(?:start|begin|continue|resume)\s*[.!]?\s*|(?!(?:when|what|how|who|why|is|are|can|could|do|does|where)\b)[^?]*\b(?:(?:do|start|begin|continue|resume|finish|answer)\b[^?]*\bcheck-?in|check-?in\b[^?]*\b(?:now|please))[^?]*)$/i;
 /** "switch": the list of check-ins again, or, on Groundwork's number, the list of organisations. */
 export const A_SWITCH_WORD = /^\s*switch\s*[.!]?\s*$/i;
 export const A_YES = /^\s*(yes|yeah|yep|y|ok|okay|sure|please do)\s*[.!]?\s*$/i;
