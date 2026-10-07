@@ -172,4 +172,56 @@ describe('between check-ins', () => {
     /* The card is still there, still usable - no thrown error reaches the screen. */
     expect(screen.getByText('No check-in open right now')).toBeTruthy()
   })
+
+  /*
+   * RESTORED (nothing-removed-screens.md, item 1): live's GroundChat.tsx listed every note waiting
+   * for the person's next check-in, under "Waiting for your next check-in", and let them delete
+   * one. This card only ever added a note before - it never showed or removed one.
+   */
+  describe('the notes waiting for your next check-in', () => {
+    it('lists the viewer\'s own waiting notes, and does not list one already carried into a check-in', async () => {
+      const { groundsApi } = await import('@/api/grounds')
+      ;(groundsApi.myNotes as any).mockResolvedValue([
+        { id: 'n1', text: 'Ask about the Westgate visit', createdAt: '2026-10-01', carriedIntoCheckInId: null },
+        { id: 'n2', text: 'Already asked about this', createdAt: '2026-09-01', carriedIntoCheckInId: 'session-1' },
+      ])
+      mount()
+      expect(await screen.findByText('Waiting for your next check-in')).toBeTruthy()
+      expect(screen.getByText('Ask about the Westgate visit')).toBeTruthy()
+      expect(screen.queryByText('Already asked about this')).toBeNull()
+    })
+
+    it('shows nothing when there are no waiting notes', () => {
+      mount()
+      expect(screen.queryByText('Waiting for your next check-in')).toBeNull()
+    })
+
+    it('deleting a note asks first, and only deletes once confirmed', async () => {
+      const { groundsApi } = await import('@/api/grounds')
+      ;(groundsApi.myNotes as any).mockResolvedValue([
+        { id: 'n1', text: 'Ask about the Westgate visit', createdAt: '2026-10-01', carriedIntoCheckInId: null },
+      ])
+      ;(groundsApi.deleteMyNote as any).mockResolvedValue({ deleted: true })
+      mount()
+      await screen.findByText('Ask about the Westgate visit')
+      await userEvent.click(screen.getByRole('button', { name: 'Delete this note' }))
+      expect(groundsApi.deleteMyNote).not.toHaveBeenCalled()
+      expect(await screen.findByText('Delete this note?')).toBeTruthy()
+      await userEvent.click(screen.getByRole('button', { name: 'Yes, delete it' }))
+      expect(groundsApi.deleteMyNote).toHaveBeenCalledWith('g1', 'n1')
+    })
+
+    it('"Keep it" cancels the delete without calling the server', async () => {
+      const { groundsApi } = await import('@/api/grounds')
+      ;(groundsApi.myNotes as any).mockResolvedValue([
+        { id: 'n1', text: 'Ask about the Westgate visit', createdAt: '2026-10-01', carriedIntoCheckInId: null },
+      ])
+      mount()
+      await screen.findByText('Ask about the Westgate visit')
+      await userEvent.click(screen.getByRole('button', { name: 'Delete this note' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Keep it' }))
+      expect(groundsApi.deleteMyNote).not.toHaveBeenCalled()
+      expect(screen.getByText('Ask about the Westgate visit')).toBeTruthy()
+    })
+  })
 })
