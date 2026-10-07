@@ -282,7 +282,16 @@ export const ONBOARD_READY_CLOSER =
    * Said now the way the rest of the product speaks of itself: "you" for the reader, "Groundwork"
    * for the product, never "I" or "us" standing in for it.
    */
-  'That is everything Groundwork needs to set it up. Here is what you said.'
+  /*
+   * FAULT F (reviewer, third round): "EVERYTHING GROUNDWORK NEEDS" SAT BESIDE "1 of 4 set".
+   * `FillsInAsYouTalk`'s side panel counts a name, a confirmed rhythm, a confirmed start, and
+   * everybody mentioned actually added - none of which this closer is talking about, and none of
+   * which a conversation alone can finish: picking a rhythm, confirming a date and adding people
+   * are the lead's own next actions, not something to say in words. "Everything... needs" read as
+   * a claim that nothing else was left, flatly contradicted two inches away. Said instead as what
+   * is actually true: there is enough from the conversation itself to move on.
+   */
+  'Groundwork has enough from the conversation to set this up. Here is what you said.'
 // The reply to actually display: when the endpoint signals ready but the reply
 // still asks a question, show the clean closer instead so no question is
 // stranded. Otherwise show the reply verbatim.
