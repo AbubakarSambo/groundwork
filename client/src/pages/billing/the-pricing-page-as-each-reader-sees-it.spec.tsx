@@ -55,8 +55,10 @@ beforeEach(() => {
 describe('a visitor who is not signed in', () => {
   it('is never told the free plan is theirs', async () => {
     renderIt()
-    /* $410, not the shipped $400: the page reads the table, not a number of its own. */
-    await waitFor(() => expect(text()).toContain('$410/mo'))
+    /* $410, not the shipped $400: the page reads the table, not a number of its own.
+       Screen fault 11 (final walk): "$410/mo" drawn as plain text became "$410 a month" -
+       the currency symbol and the number are kept, "/mo" becomes the plain words. */
+    await waitFor(() => expect(text()).toContain('$410 a month'))
     expect(text()).not.toContain('Your current plan')
     expect(text()).toContain('Start free with 10 check-ins, for teams of 5 or fewer, including you. Subscribe as your team grows. Unlimited sessions and reports on every plan.')
     expect(text()).toContain('For small teams getting each person’s own account written down.')
@@ -64,14 +66,14 @@ describe('a visitor who is not signed in', () => {
 
   it('reads nothing about a free trial while it is off, and none of the lines that were not true', async () => {
     renderIt()
-    await waitFor(() => expect(text()).toContain('$410/mo'))
+    await waitFor(() => expect(text()).toContain('$410 a month'))
     expect(text()).not.toMatch(/months free|Teams of fewer than/)
     expect(text()).not.toMatch(/no trial that expires|No proration surprises/)
   })
 
   it('while the switch is off, reads the free plan as today, but never as theirs', async () => {
     renderIt()
-    await waitFor(() => expect(text()).toContain('$410/mo'))
+    await waitFor(() => expect(text()).toContain('$410 a month'))
     expect(text()).toContain('forever')
     expect(text()).not.toContain('Your current plan')
   })
@@ -113,7 +115,7 @@ describe('somebody signed in', () => {
     m.user = { id: 'u4', role: 'GUEST', organization: { subscriptionPlan: null } }
     m.status = {}
     renderIt()
-    await waitFor(() => expect(text()).toContain('$410/mo'))
+    await waitFor(() => expect(text()).toContain('$410 a month'))
     expect(text()).not.toContain('Your current plan')
   })
 })
