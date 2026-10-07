@@ -84,7 +84,7 @@ import { truncationsOfTheirWords } from '../conversation/the-record-holds-what-w
 import { screen, ASK_AGAIN } from '../conversation/nothing-invented-reaches-them';
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from './who-may-open-a-check-in';
 import { notTheWordParty } from '../reports/not-the-word-party';
-import { theSituationIn, theTellingHolds, THE_TELLING_PROMPT, withoutTheSetupAnswers } from './what-a-participant-is-told-about-this';
+import { theSituationIn, theTellingHolds, THE_TELLING_PROMPT, withoutTheSetupAnswers, theBriefAsTheLeadReadsIt } from './what-a-participant-is-told-about-this';
 import { whatSomeoneWhoDoesNotRunItReads } from './what-someone-who-does-not-run-it-reads';
 import { ABOUT_SOMEBODY, mayBeShared, theLinesFor, WHY_A_LINE_ABOUT_SOMEBODY_STAYS_YOURS } from './what-this-check-in-knows';
 import { saidUntilIEndIt, nothingToTakeFrom, traceableToWhatTheySaid, aLengthTheyCouldHaveMeant, whatTheModelsReplyShows, withoutTheWordGround, aLengthAndNothingElse } from './nothing-proposed-that-nobody-said';
@@ -2813,7 +2813,7 @@ export class GroundsService {
       /* The lead and the organisation's admins read the brief they wrote. A participant reads the
          situation and nothing that tells the product how to interview them. See
          what-a-participant-is-told-about-this. Goals are on the payload already, under objectives. */
-      brief: viewerRunsThisGround ? brief : briefAsEveryoneReadsIt,
+      brief: viewerRunsThisGround ? theBriefAsTheLeadReadsIt(brief) : briefAsEveryoneReadsIt,
       /*
        * AND WHAT THE PEOPLE IN IT READ, TO WHOEVER RUNS IT (U.7 review). The Context page told the
        * lead "Your words, from setup. Everyone reads this before they answer." over her own words,

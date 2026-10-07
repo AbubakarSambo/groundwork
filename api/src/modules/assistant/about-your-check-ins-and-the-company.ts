@@ -1,6 +1,7 @@
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { A_GROUND_IS_OVER } from '../grounds/a-ground-that-has-ended';
 import { theCheckInsHeldForASeat } from '../participants/held-for-a-seat';
+import { theBriefAsTheLeadReadsIt } from '../grounds/what-a-participant-is-told-about-this';
 import { readTheCompanyPage, NOT_YOUR_COMPANY } from '../grounds/company.service';
 
 /**
@@ -60,7 +61,7 @@ export async function whatMyCheckInIsFor(prisma: any, organizationId: string, us
     const runsIt = g.initiatorId === userId;
     const leads = (g.initiator?.firstName ?? '').trim();
     /* What the lead wrote is the lead's; a person taking part is told what the product wrote for them. */
-    const forWhat = ((runsIt ? g.brief : g.toldToParticipants) ?? '').trim();
+    const forWhat = ((runsIt ? theBriefAsTheLeadReadsIt(g.brief) : g.toldToParticipants) ?? '').trim();
     const what = forWhat ? `This is what "${g.label}" is for. ${forWhat.replace(/[.!?]*$/, '.')}` : `"${g.label}" has no description of what it is for yet.`;
     const reads = runsIt
       ? 'You run it, so you read its report.'
