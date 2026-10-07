@@ -48,6 +48,10 @@ import {
  * language is read from their first message and the conversation happens in it; the record stays in
  * English.
  */
+export function isHeldByTheAddOn(error?: string | null): boolean {
+  return /this check-in stays in the app/i.test(error ?? '');
+}
+
 @Injectable()
 export class WhatsAppForAnOrganisationService {
   private readonly logger = new Logger(WhatsAppForAnOrganisationService.name);
@@ -578,6 +582,8 @@ export class WhatsAppForAnOrganisationService {
     /* On the number the person last wrote to, so the report arrives in the same conversation (survey item 8). */
     const via = (await this.whatsapp.lastWroteTo(organizationId, phone).catch(() => null)) ?? 'theirs';
     const first = await this.whatsapp.sendOn(via, organizationId, phone, text, { checkInId: c.id, kind: 'report', params });
+    /* A message the organisation's own WhatsApp settings hold back is not a failure to log twice and retry (B-119): the report is in the app. */
+    if (!first.sent && isHeldByTheAddOn(first.error)) return;
     if (!first.sent) {
       await new Promise((r) => setTimeout(r, 3000));
       const second = await this.whatsapp.sendOn(via, organizationId, phone, text, { checkInId: c.id, kind: 'report-retry', params });
