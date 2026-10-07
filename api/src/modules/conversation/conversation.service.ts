@@ -5948,6 +5948,10 @@ ${told}` : '';
   private async observeForCoaching(checkInId: string, participantId: string, sessionNumber: number): Promise<void> {
     if (!this.coachingEnabled()) return;
 
+    /* A set-up conversation is not a check-in, so it is never read for coaching. */
+    const thisOne = await (this.prisma.checkIn?.findUnique?.({ where: { id: checkInId }, select: { isSetup: true } }) ?? Promise.resolve(null)).catch(() => null);
+    if ((thisOne as any)?.isSetup) return;
+
     const participant = await this.prisma.groundParticipant.findUnique({
       where: { id: participantId },
       select: {

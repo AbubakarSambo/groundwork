@@ -9,6 +9,7 @@
 Decided for Hafsah to confirm:
 - The footer "the people in this check-in can see what you say" is left off the lead's first message, as well as the participant's private week. The lead also writes in that check-in, so say if you want it back there.
 - In reports, a person with no name reads "one colleague" or "another colleague" (the reports' existing words), not "Someone".
+- The anchor's lead gets no coaching about her set-up conversation. It was read as a work account and her own note said "Everything in your session came from memory". A set-up conversation (`isSetup`) is no longer given to coaching: her coaching note is left out when her only conversation is a set-up, and the coaching observation is not run on one. Coaching's own rules and wording are unchanged, and ordinary check-ins are read as before. The same change means the set-up is not counted among a person's sessions in the coaching note. Please confirm.
 
 Still open: the anchor's prompt text (B11 rest; a member's anchor check-in can still ask the project's questions), held until the second scenario run ends because it uses the prompts.
 

@@ -5955,7 +5955,7 @@ happened, and what is in the way.`;
       this.prisma.groundDocument.findMany({ where: { groundId }, select: { participantId: true, ...(asOf ? { createdAt: true } : {}) } }),
       this.prisma.checkIn.findMany({
         where: { groundId, status: CheckInStatus.COMPLETED },
-        select: { participantId: true, sessionNumber: true, completedAt: true },
+        select: { participantId: true, sessionNumber: true, completedAt: true, isSetup: true },
       }),
     ]);
     /*
@@ -6106,7 +6106,11 @@ happened, and what is in the way.`;
     if (ground.scenario === 'DISCOVERY') return null;
     const held = await this.whatTheRecordHoldsFor(groundId, ground, asOf);
     const mine = held.entries.filter((e) => e.participantId === participant.id);
-    const mySessions = held.sessions.filter((c) => c.participantId === participant.id);
+    const allMine = held.sessions.filter((c) => c.participantId === participant.id);
+    /* A set-up conversation is not a check-in: a person whose only conversation is one gets no coaching about it,
+       and where there are real check-ins, the set-up is not counted among them. */
+    if (allMine.length > 0 && allMine.every((c: any) => c.isSetup)) return null;
+    const mySessions = allMine.filter((c: any) => !c.isSetup);
     /* Office work has documents; a tractor, a cold store and a rice mill do not. See TheirOwnRecord.documentsExpected. */
     const documentsExpected = !['COHORT_CHECK', 'DISCOVERY', 'SNAPSHOT'].includes(String(ground.scenario));
     /* The product's finding about this person, from the report: the first thing the note says. */
