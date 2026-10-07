@@ -83,6 +83,12 @@ api/journey/*
 !api/journey/the-real-gate/
 !api/journey/two-scenarios/
 
+# THE USER JOURNEY TEST BED (7 October 2026): the seed, the harness and the how-to are product tooling the testers share.
+# What a run writes (logs, pid files, the copies' own fixture files with database ids) stays out.
+!api/journey/sweep/
+api/journey/sweep/logs/
+api/journey/sweep/the-five-orgs.?.json
+
 # HOW STEADY PATTERNS ARE ACROSS RUNS (decision 57, item 4). Read-only: reads existing run folders
 # under api/journey/all-24/ (which stay out, as always - see below) and writes nothing back.
 !api/journey/pattern-steadiness.ts

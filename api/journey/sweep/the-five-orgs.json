@@ -1,0 +1,2286 @@
+{
+  "about": "The five test organisations and Groundwork staff, made by journey/sweep/seed.ts. Test values only. Dates in the data are counted from the day it was made.",
+  "madeAt": "2026-10-07T13:40:44.961Z",
+  "passwordForEveryone": "Sweep-local-only-1",
+  "whatsapp": {
+    "note": "Test values. The API is started with these by bed.ts start-api, and signed messages are signed with the app secret.",
+    "groundworksNumber": "+44 7700 900123",
+    "phoneNumberId": "100000000000009",
+    "appSecret": "sweep-test-app-secret-not-a-real-secret",
+    "verifyToken": "sweep-test-verify-token",
+    "accessToken": "TEST-sweep-access-token-not-real",
+    "platformSwitchOn": true,
+    "webhookPath": "/api/v1/webhooks/whatsapp"
+  },
+  "freeTrial": {
+    "on": true,
+    "teamsUnder": 20,
+    "months": 1
+  },
+  "organisations": {
+    "staff": {
+      "name": "Groundwork staff",
+      "slug": "sweep-groundwork-staff",
+      "what": "Groundwork staff: the back office.",
+      "plan": "none",
+      "trial": null,
+      "whatsappAddOn": false,
+      "people": [
+        {
+          "key": "ama.staff",
+          "name": "Ama Staff",
+          "email": "ama.staff@groundwork.test",
+          "role": "ADMIN (platform admin)",
+          "title": null,
+          "team": null,
+          "managerEmail": null,
+          "whatsappNumber": null,
+          "password": "Sweep-local-only-1",
+          "notes": "Groundwork staff. Has a back-office pass for 30 days. Use for the back office WhatsApp page (A7)."
+        },
+        {
+          "key": "ops.admin",
+          "name": "Ops Admin",
+          "email": "ops.admin@groundwork.test",
+          "role": "ADMIN (not staff)",
+          "title": null,
+          "team": null,
+          "managerEmail": null,
+          "whatsappNumber": null,
+          "password": "Sweep-local-only-1",
+          "notes": "An admin of the same organisation who is NOT Groundwork staff: must be refused at the back office."
+        }
+      ],
+      "checkIns": [],
+      "notes": [
+        "The only organisation with a platform admin."
+      ]
+    },
+    "newOrg": {
+      "name": "Fieldnote Studio",
+      "slug": "sweep-new-org",
+      "what": "New org: brand new, on the one-month trial, nothing set up, one admin.",
+      "plan": "free trial (Small Team) for one month",
+      "trial": "until 2026-11-06",
+      "whatsappAddOn": false,
+      "people": [
+        {
+          "key": "admin",
+          "name": "Ruth Kamara",
+          "email": "admin@fieldnote.test",
+          "role": "ADMIN",
+          "title": null,
+          "team": null,
+          "managerEmail": null,
+          "whatsappNumber": null,
+          "password": "Sweep-local-only-1",
+          "notes": "The only person. Sign-in domain fieldnote.test, so anyone else at that domain is offered to join."
+        }
+      ],
+      "checkIns": [],
+      "notes": [
+        "No check-ins, no people, no suites, no WhatsApp number."
+      ]
+    },
+    "clientOrg": {
+      "name": "Msingi Foods",
+      "slug": "sweep-client-org",
+      "what": "Client org: like the paid client. Sales, onboarding and project check-ins; leave, spending, timesheets and reviews on; WhatsApp on; fifteen people.",
+      "plan": "Growth, paid (no Stripe customer: nothing can be charged)",
+      "trial": null,
+      "whatsappAddOn": true,
+      "people": [
+        {
+          "key": "grace",
+          "name": "Grace Achieng",
+          "email": "grace@msingi.test",
+          "role": "ADMIN",
+          "title": "Managing director",
+          "team": "Management",
+          "managerEmail": null,
+          "whatsappNumber": "+254700100001",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "wairimu",
+          "name": "Wairimu Njoroge",
+          "email": "wairimu@msingi.test",
+          "role": "LEAD",
+          "title": "Head of sales",
+          "team": "Sales",
+          "managerEmail": "grace@msingi.test",
+          "whatsappNumber": "+254700100002",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "baraka",
+          "name": "Baraka Mutua",
+          "email": "baraka@msingi.test",
+          "role": "LEAD",
+          "title": "Head of operations",
+          "team": "Operations",
+          "managerEmail": "grace@msingi.test",
+          "whatsappNumber": "+254700100003",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "amani",
+          "name": "Amani Wekesa",
+          "email": "amani@msingi.test",
+          "role": "MEMBER",
+          "title": "Account manager",
+          "team": "Sales",
+          "managerEmail": "wairimu@msingi.test",
+          "whatsappNumber": "+254700100004",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "chidi",
+          "name": "Chidi Okeke",
+          "email": "chidi@msingi.test",
+          "role": "MEMBER",
+          "title": "Account manager",
+          "team": "Sales",
+          "managerEmail": "wairimu@msingi.test",
+          "whatsappNumber": "+254700100005",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "zawadi",
+          "name": "Zawadi Mwangi",
+          "email": "zawadi@msingi.test",
+          "role": "MEMBER",
+          "title": "Sales executive",
+          "team": "Sales",
+          "managerEmail": "wairimu@msingi.test",
+          "whatsappNumber": "+254700100006",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "juma",
+          "name": "Juma Otieno",
+          "email": "juma@msingi.test",
+          "role": "MEMBER",
+          "title": "Sales executive",
+          "team": "Sales",
+          "managerEmail": "wairimu@msingi.test",
+          "whatsappNumber": null,
+          "password": "Sweep-local-only-1",
+          "notes": "No WhatsApp number."
+        },
+        {
+          "key": "neema",
+          "name": "Neema Kamau",
+          "email": "neema@msingi.test",
+          "role": "MEMBER",
+          "title": "Account manager",
+          "team": "Sales",
+          "managerEmail": "wairimu@msingi.test",
+          "whatsappNumber": "+254700100008",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "kito",
+          "name": "Kito Dube",
+          "email": "kito@msingi.test",
+          "role": "MEMBER",
+          "title": "Depot supervisor",
+          "team": "Operations",
+          "managerEmail": "baraka@msingi.test",
+          "whatsappNumber": "+254700100009",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "lerato",
+          "name": "Lerato Nkosi",
+          "email": "lerato@msingi.test",
+          "role": "MEMBER",
+          "title": "Logistics officer",
+          "team": "Operations",
+          "managerEmail": "baraka@msingi.test",
+          "whatsappNumber": "+254700100010",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "tobi",
+          "name": "Tobi Adeyemi",
+          "email": "tobi@msingi.test",
+          "role": "MEMBER",
+          "title": "Engineer",
+          "team": "Operations",
+          "managerEmail": "baraka@msingi.test",
+          "whatsappNumber": null,
+          "password": "Sweep-local-only-1",
+          "notes": "No WhatsApp number."
+        },
+        {
+          "key": "imani",
+          "name": "Imani Hassan",
+          "email": "imani@msingi.test",
+          "role": "MEMBER",
+          "title": "Operations analyst (new)",
+          "team": "Operations",
+          "managerEmail": "baraka@msingi.test",
+          "whatsappNumber": "+254700100012",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "fatuma",
+          "name": "Fatuma Bello",
+          "email": "fatuma@msingi.test",
+          "role": "MEMBER",
+          "title": "Finance officer",
+          "team": "Finance",
+          "managerEmail": "grace@msingi.test",
+          "whatsappNumber": "+254700100013",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "peter",
+          "name": "Peter Mwangi",
+          "email": "peter@msingi.test",
+          "role": "MEMBER",
+          "title": "HR officer",
+          "team": "People",
+          "managerEmail": "grace@msingi.test",
+          "whatsappNumber": "+254700100014",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "sade",
+          "name": "Sade Balogun",
+          "email": "sade@msingi.test",
+          "role": "MEMBER",
+          "title": "Customer support",
+          "team": "Operations",
+          "managerEmail": "baraka@msingi.test",
+          "whatsappNumber": null,
+          "password": "Sweep-local-only-1",
+          "notes": "No WhatsApp number."
+        }
+      ],
+      "checkIns": [
+        {
+          "label": "Sales team, Q4",
+          "scenario": "OKR_ALIGNMENT",
+          "status": "ACTIVE",
+          "cadence": "WEEKLY",
+          "lead": "wairimu@msingi.test",
+          "participants": [
+            "amani@msingi.test",
+            "chidi@msingi.test",
+            "zawadi@msingi.test",
+            "juma@msingi.test",
+            "neema@msingi.test"
+          ],
+          "notes": "Round 3 opened today for Wairimu, Amani and Chidi. Zawadi started round 2 and stopped halfway, and Juma and Neema have not answered round 2, so round 2 is still the one open for those three."
+        },
+        {
+          "label": "Imani Hassan, first ninety days",
+          "scenario": "NEW_HIRE",
+          "status": "ACTIVE",
+          "cadence": "FORTNIGHTLY",
+          "lead": "baraka@msingi.test",
+          "participants": [
+            "imani@msingi.test"
+          ],
+          "notes": "Round 2 is open for Imani, who has not answered it. Baraka has answered it."
+        },
+        {
+          "label": "The new stock system, four depots",
+          "scenario": "NEW_PROJECT",
+          "status": "ACTIVE",
+          "cadence": "WEEKLY",
+          "lead": "baraka@msingi.test",
+          "participants": [
+            "kito@msingi.test",
+            "lerato@msingi.test",
+            "tobi@msingi.test",
+            "imani@msingi.test"
+          ],
+          "notes": "Round 5 opened yesterday and nobody has answered it. Imani is in two check-ins (onboarding and this one), so she has two open on WhatsApp."
+        }
+      ],
+      "notes": [
+        "Leave goes to the line manager; spending over 100,000 shillings goes to Fatuma Bello, who looks after finance.",
+        "Three people have no WhatsApp number: Juma Otieno, Tobi Adeyemi and Sade Balogun.",
+        "Company page: four priorities, each with an owner.",
+        "Neema Kamau is also a member of Second org."
+      ]
+    },
+    "secondOrg": {
+      "name": "Lakeview Clinic",
+      "slug": "sweep-second-org",
+      "what": "Second org: shares one person (Neema Kamau) with Client org.",
+      "plan": "Starter, paid (no Stripe customer)",
+      "trial": null,
+      "whatsappAddOn": false,
+      "people": [
+        {
+          "key": "okello",
+          "name": "Esther Okello",
+          "email": "okello@lakeview.test",
+          "role": "ADMIN",
+          "title": "Clinic director",
+          "team": "Management",
+          "managerEmail": null,
+          "whatsappNumber": "+254700200001",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "rukia",
+          "name": "Rukia Salim",
+          "email": "rukia@lakeview.test",
+          "role": "LEAD",
+          "title": "Head nurse",
+          "team": "Nursing",
+          "managerEmail": "okello@lakeview.test",
+          "whatsappNumber": "+254700200002",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "musa",
+          "name": "Musa Barasa",
+          "email": "musa@lakeview.test",
+          "role": "MEMBER",
+          "title": "Nurse",
+          "team": "Nursing",
+          "managerEmail": "rukia@lakeview.test",
+          "whatsappNumber": "+254700200003",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "neema",
+          "name": "Neema Kamau",
+          "email": "neema@msingi.test",
+          "role": "MEMBER",
+          "title": "Part-time pharmacist",
+          "team": "Nursing",
+          "managerEmail": "rukia@lakeview.test",
+          "whatsappNumber": "+254700100008",
+          "password": "Sweep-local-only-1",
+          "notes": "THE SHARED PERSON. The same sign-in and the same number as Neema Kamau in Client org. She is in Ward handover here and in the Sales check-in there."
+        }
+      ],
+      "checkIns": [
+        {
+          "label": "Ward handover, weekly",
+          "scenario": "PULSE_CHECK",
+          "status": "ACTIVE",
+          "cadence": "WEEKLY",
+          "lead": "rukia@lakeview.test",
+          "participants": [
+            "musa@lakeview.test",
+            "neema@msingi.test"
+          ]
+        }
+      ],
+      "notes": [
+        "WhatsApp add-on is OFF here, though it is on for Client org, so Neema should be reached on WhatsApp only about Client org."
+      ]
+    },
+    "existingOrg": {
+      "name": "Riverbank Trading",
+      "slug": "sweep-existing-org",
+      "what": "Existing org: the shape of an existing client (check-ins made before the rebuild, some stalled, some people with no name or number).",
+      "plan": "Small Team, paid (no Stripe customer)",
+      "trial": null,
+      "whatsappAddOn": false,
+      "people": [
+        {
+          "key": "lead",
+          "name": "Mira Costa",
+          "email": "lead@riverbank.test",
+          "role": "ADMIN",
+          "title": "Director",
+          "team": null,
+          "managerEmail": null,
+          "whatsappNumber": "+254720100001",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "dov",
+          "name": "Dov Ellison",
+          "email": "dov@riverbank.test",
+          "role": "MEMBER",
+          "title": null,
+          "team": "Sales",
+          "managerEmail": "lead@riverbank.test",
+          "whatsappNumber": "+254720100002",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "pia",
+          "name": "Pia Lund",
+          "email": "pia@riverbank.test",
+          "role": "MEMBER",
+          "title": null,
+          "team": "Sales",
+          "managerEmail": "lead@riverbank.test",
+          "whatsappNumber": null,
+          "password": "Sweep-local-only-1",
+          "notes": "No WhatsApp number."
+        },
+        {
+          "key": "qx7",
+          "name": "(no name on record)",
+          "email": "qx7@riverbank.test",
+          "role": "MEMBER",
+          "title": null,
+          "team": "Sales",
+          "managerEmail": "dov@riverbank.test",
+          "whatsappNumber": "+254720100004",
+          "password": "Sweep-local-only-1",
+          "notes": "Has no name on the sign-in or the roster, as in old data."
+        },
+        {
+          "key": "zt2",
+          "name": "(no name on record)",
+          "email": "zt2@riverbank.test",
+          "role": "MEMBER",
+          "title": null,
+          "team": "Sales",
+          "managerEmail": "dov@riverbank.test",
+          "whatsappNumber": null,
+          "password": "Sweep-local-only-1",
+          "notes": "Has no name on the sign-in or the roster, as in old data. No WhatsApp number."
+        },
+        {
+          "key": "bn5",
+          "name": "(no name on record)",
+          "email": "bn5@riverbank.test",
+          "role": "MEMBER",
+          "title": null,
+          "team": "Operations",
+          "managerEmail": "lead@riverbank.test",
+          "whatsappNumber": null,
+          "password": "Sweep-local-only-1",
+          "notes": "Has no name on the sign-in or the roster, as in old data. No WhatsApp number."
+        },
+        {
+          "key": "hk9",
+          "name": "(no name on record)",
+          "email": "hk9@riverbank.test",
+          "role": "MEMBER",
+          "title": null,
+          "team": "Operations",
+          "managerEmail": "lead@riverbank.test",
+          "whatsappNumber": "+254720100007",
+          "password": "Sweep-local-only-1",
+          "notes": "Has no name on the sign-in or the roster, as in old data."
+        },
+        {
+          "key": "wr3",
+          "name": "(no name on record)",
+          "email": "wr3@riverbank.test",
+          "role": "MEMBER",
+          "title": null,
+          "team": "Operations",
+          "managerEmail": "lead@riverbank.test",
+          "whatsappNumber": null,
+          "password": "Sweep-local-only-1",
+          "notes": "Has no name on the sign-in or the roster, as in old data. No WhatsApp number."
+        },
+        {
+          "key": "guest",
+          "name": "Tomas Verhoeven",
+          "email": "guest@riverbank.test",
+          "role": "MEMBER",
+          "title": null,
+          "team": null,
+          "managerEmail": null,
+          "whatsappNumber": null,
+          "password": "Sweep-local-only-1",
+          "notes": "No WhatsApp number."
+        },
+        {
+          "key": "ines",
+          "name": "Ines Barros",
+          "email": "ines@riverbank.test",
+          "role": "MEMBER",
+          "title": null,
+          "team": "Health",
+          "managerEmail": "lead@riverbank.test",
+          "whatsappNumber": "+254720100010",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "fo4",
+          "name": "(no name on record)",
+          "email": "fo4@riverbank.test",
+          "role": "MEMBER",
+          "title": null,
+          "team": "Health",
+          "managerEmail": "ines@riverbank.test",
+          "whatsappNumber": null,
+          "password": "Sweep-local-only-1",
+          "notes": "Has no name on the sign-in or the roster, as in old data. No WhatsApp number."
+        },
+        {
+          "key": "lu8",
+          "name": "(no name on record)",
+          "email": "lu8@riverbank.test",
+          "role": "MEMBER",
+          "title": null,
+          "team": "Health",
+          "managerEmail": "ines@riverbank.test",
+          "whatsappNumber": "+254720100012",
+          "password": "Sweep-local-only-1",
+          "notes": "Has no name on the sign-in or the roster, as in old data."
+        }
+      ],
+      "checkIns": [
+        {
+          "label": "Warehouse rollout",
+          "scenario": "NEW_PROJECT",
+          "status": "ACTIVE",
+          "cadence": "WEEKLY",
+          "lead": "lead@riverbank.test",
+          "participants": [
+            "bn5@riverbank.test",
+            "hk9@riverbank.test",
+            "wr3@riverbank.test"
+          ],
+          "notes": "Made before the rebuild: no kind of work, private. A live weekly round is open now."
+        },
+        {
+          "label": "Sales organisation",
+          "scenario": "OKR_ALIGNMENT",
+          "status": "ACTIVE",
+          "cadence": "WEEKLY",
+          "lead": "lead@riverbank.test",
+          "participants": [
+            "dov@riverbank.test",
+            "pia@riverbank.test",
+            "qx7@riverbank.test",
+            "zt2@riverbank.test"
+          ],
+          "notes": "Carries a kind of work from the old setup."
+        },
+        {
+          "label": "Quarter alignment, fortnightly",
+          "scenario": "OKR_ALIGNMENT",
+          "status": "ACTIVE",
+          "cadence": "FORTNIGHTLY",
+          "lead": "lead@riverbank.test",
+          "participants": [
+            "dov@riverbank.test",
+            "ines@riverbank.test"
+          ]
+        },
+        {
+          "label": "Where next, part 1",
+          "scenario": "OKR_ALIGNMENT",
+          "status": "STALLED",
+          "cadence": "WEEKLY",
+          "lead": "lead@riverbank.test",
+          "participants": [
+            "dov@riverbank.test",
+            "pia@riverbank.test",
+            "qx7@riverbank.test"
+          ],
+          "notes": "STALLED: must send no messages after the release."
+        },
+        {
+          "label": "Where next, part 2",
+          "scenario": "OKR_ALIGNMENT",
+          "status": "STALLED",
+          "cadence": "WEEKLY",
+          "lead": "lead@riverbank.test",
+          "participants": [
+            "dov@riverbank.test",
+            "pia@riverbank.test",
+            "qx7@riverbank.test"
+          ],
+          "notes": "STALLED: must send no messages after the release."
+        },
+        {
+          "label": "Where next, part 3",
+          "scenario": "OKR_ALIGNMENT",
+          "status": "STALLED",
+          "cadence": "WEEKLY",
+          "lead": "lead@riverbank.test",
+          "participants": [
+            "dov@riverbank.test",
+            "pia@riverbank.test",
+            "qx7@riverbank.test"
+          ],
+          "notes": "STALLED: must send no messages after the release."
+        },
+        {
+          "label": "Where next, part 4",
+          "scenario": "OKR_ALIGNMENT",
+          "status": "STALLED",
+          "cadence": "WEEKLY",
+          "lead": "lead@riverbank.test",
+          "participants": [
+            "dov@riverbank.test",
+            "pia@riverbank.test",
+            "qx7@riverbank.test"
+          ],
+          "notes": "STALLED: must send no messages after the release."
+        },
+        {
+          "label": "Where next, part 5",
+          "scenario": "OKR_ALIGNMENT",
+          "status": "STALLED",
+          "cadence": "WEEKLY",
+          "lead": "lead@riverbank.test",
+          "participants": [
+            "dov@riverbank.test",
+            "pia@riverbank.test",
+            "qx7@riverbank.test"
+          ],
+          "notes": "STALLED: must send no messages after the release."
+        },
+        {
+          "label": "First ninety days for a new starter",
+          "scenario": "NEW_HIRE",
+          "status": "ACTIVE",
+          "cadence": "FORTNIGHTLY",
+          "lead": "lead@riverbank.test",
+          "participants": [
+            "qx7@riverbank.test"
+          ]
+        },
+        {
+          "label": "A support plan, fortnightly",
+          "scenario": "PIP",
+          "status": "ACTIVE",
+          "cadence": "FORTNIGHTLY",
+          "lead": "ines@riverbank.test",
+          "participants": [
+            "fo4@riverbank.test"
+          ]
+        },
+        {
+          "label": "A matter for review",
+          "scenario": "OPEN_READ",
+          "status": "ACTIVE",
+          "cadence": "WEEKLY",
+          "lead": "ines@riverbank.test",
+          "participants": [
+            "lu8@riverbank.test",
+            "fo4@riverbank.test"
+          ]
+        },
+        {
+          "label": "Realigning operations",
+          "scenario": "REALIGN_TEAM",
+          "status": "AWAITING_PARTIES",
+          "cadence": "WEEKLY",
+          "lead": "lead@riverbank.test",
+          "participants": [
+            "bn5@riverbank.test",
+            "hk9@riverbank.test",
+            "wr3@riverbank.test"
+          ],
+          "notes": "Two people were invited and never joined; their invitation links have lapsed."
+        },
+        {
+          "label": "A new starter, not yet begun",
+          "scenario": "NEW_HIRE",
+          "status": "OPEN",
+          "cadence": "FORTNIGHTLY",
+          "lead": "lead@riverbank.test",
+          "participants": []
+        },
+        {
+          "label": "A support plan, waiting for people",
+          "scenario": "PIP",
+          "status": "AWAITING_PARTIES",
+          "cadence": "FORTNIGHTLY",
+          "lead": "ines@riverbank.test",
+          "participants": [
+            "lu8@riverbank.test"
+          ]
+        },
+        {
+          "label": "Hiring plan for next quarter",
+          "scenario": "WORKPLAN_BUDGET",
+          "status": "AWAITING_APPROVAL",
+          "cadence": "MONTHLY",
+          "lead": "dov@riverbank.test",
+          "participants": [
+            "pia@riverbank.test"
+          ]
+        }
+      ],
+      "notes": [
+        "Names and addresses are made up. Nothing is copied from a real person.",
+        "7 people have no name on their sign-in or the roster; 6 have no WhatsApp number.",
+        "Five check-ins are STALLED. Two are waiting for people who never joined. One waits for an admin to accept it (\"each new check-in waits for an admin\" is on).",
+        "No kind of work on most check-ins, as before the rebuild."
+      ]
+    },
+    "bigOrg": {
+      "name": "Baobab Distribution",
+      "slug": "sweep-big-org",
+      "what": "Big org: a hundred people in nine teams, many check-ins, several approvers each with dozens of requests waiting.",
+      "plan": "Business, paid (no Stripe customer)",
+      "trial": null,
+      "whatsappAddOn": true,
+      "people": [
+        {
+          "key": "ceo",
+          "name": "Amina Dube",
+          "email": "ceo@baobab.test",
+          "role": "ADMIN",
+          "title": "Chief executive",
+          "team": null,
+          "managerEmail": null,
+          "whatsappNumber": "+254710000000",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "sales.head",
+          "name": "Daniel Osei",
+          "email": "sales.head@baobab.test",
+          "role": "LEAD",
+          "title": "Head of Sales",
+          "team": "Sales",
+          "managerEmail": "ceo@baobab.test",
+          "whatsappNumber": "+254710000001",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "sales.manager",
+          "name": "Grace Moyo",
+          "email": "sales.manager@baobab.test",
+          "role": "LEAD",
+          "title": "Sales manager",
+          "team": "Sales",
+          "managerEmail": "sales.head@baobab.test",
+          "whatsappNumber": "+254710000002",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "sales.m1",
+          "name": "Peter Farah",
+          "email": "sales.m1@baobab.test",
+          "role": "MEMBER",
+          "title": "Sales officer",
+          "team": "Sales",
+          "managerEmail": "sales.manager@baobab.test",
+          "whatsappNumber": "+254710000003",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "sales.m2",
+          "name": "Sara Kamau",
+          "email": "sales.m2@baobab.test",
+          "role": "MEMBER",
+          "title": "Sales officer",
+          "team": "Sales",
+          "managerEmail": "sales.manager@baobab.test",
+          "whatsappNumber": "+254710000004",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "sales.m3",
+          "name": "Joseph Mwende",
+          "email": "sales.m3@baobab.test",
+          "role": "MEMBER",
+          "title": "Sales officer",
+          "team": "Sales",
+          "managerEmail": "sales.manager@baobab.test",
+          "whatsappNumber": "+254710000005",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "sales.m4",
+          "name": "Wairimu Mwangi",
+          "email": "sales.m4@baobab.test",
+          "role": "MEMBER",
+          "title": "Sales officer",
+          "team": "Sales",
+          "managerEmail": "sales.manager@baobab.test",
+          "whatsappNumber": "+254710000006",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "sales.m5",
+          "name": "Omar Abara",
+          "email": "sales.m5@baobab.test",
+          "role": "MEMBER",
+          "title": "Sales officer",
+          "team": "Sales",
+          "managerEmail": "sales.manager@baobab.test",
+          "whatsappNumber": "+254710000007",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "sales.m6",
+          "name": "Aisha Danjuma",
+          "email": "sales.m6@baobab.test",
+          "role": "MEMBER",
+          "title": "Sales officer",
+          "team": "Sales",
+          "managerEmail": "sales.manager@baobab.test",
+          "whatsappNumber": "+254710000008",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "sales.m7",
+          "name": "Brian Sow",
+          "email": "sales.m7@baobab.test",
+          "role": "MEMBER",
+          "title": "Sales officer",
+          "team": "Sales",
+          "managerEmail": "sales.manager@baobab.test",
+          "whatsappNumber": "+254710000009",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "sales.m8",
+          "name": "Fatuma Kerubo",
+          "email": "sales.m8@baobab.test",
+          "role": "MEMBER",
+          "title": "Sales officer",
+          "team": "Sales",
+          "managerEmail": "sales.manager@baobab.test",
+          "whatsappNumber": "+254710000010",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "sales.m9",
+          "name": "Kamau Mbeki",
+          "email": "sales.m9@baobab.test",
+          "role": "MEMBER",
+          "title": "Sales officer",
+          "team": "Sales",
+          "managerEmail": "sales.manager@baobab.test",
+          "whatsappNumber": "+254710000011",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "ops.head",
+          "name": "Neema Nkosi",
+          "email": "ops.head@baobab.test",
+          "role": "ADMIN",
+          "title": "Head of Operations",
+          "team": "Operations",
+          "managerEmail": "ceo@baobab.test",
+          "whatsappNumber": "+254710000012",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "ops.manager",
+          "name": "Tobi Toure",
+          "email": "ops.manager@baobab.test",
+          "role": "LEAD",
+          "title": "Operations manager",
+          "team": "Operations",
+          "managerEmail": "ops.head@baobab.test",
+          "whatsappNumber": "+254710000013",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "ops.m1",
+          "name": "Zainab Njoroge",
+          "email": "ops.m1@baobab.test",
+          "role": "MEMBER",
+          "title": "Operations officer",
+          "team": "Operations",
+          "managerEmail": "ops.manager@baobab.test",
+          "whatsappNumber": "+254710000014",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "ops.m2",
+          "name": "Imani Achieng",
+          "email": "ops.m2@baobab.test",
+          "role": "MEMBER",
+          "title": "Operations officer",
+          "team": "Operations",
+          "managerEmail": "ops.manager@baobab.test",
+          "whatsappNumber": "+254710000015",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "ops.m3",
+          "name": "Kofi Okoro",
+          "email": "ops.m3@baobab.test",
+          "role": "MEMBER",
+          "title": "Operations officer",
+          "team": "Operations",
+          "managerEmail": "ops.manager@baobab.test",
+          "whatsappNumber": "+254710000016",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "ops.m4",
+          "name": "Zuri Okafor",
+          "email": "ops.m4@baobab.test",
+          "role": "MEMBER",
+          "title": "Operations officer",
+          "team": "Operations",
+          "managerEmail": "ops.manager@baobab.test",
+          "whatsappNumber": "+254710000017",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "ops.m5",
+          "name": "Thabo Juma",
+          "email": "ops.m5@baobab.test",
+          "role": "MEMBER",
+          "title": "Operations officer",
+          "team": "Operations",
+          "managerEmail": "ops.manager@baobab.test",
+          "whatsappNumber": "+254710000018",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "ops.m6",
+          "name": "Nia Adeyemi",
+          "email": "ops.m6@baobab.test",
+          "role": "MEMBER",
+          "title": "Operations officer",
+          "team": "Operations",
+          "managerEmail": "ops.manager@baobab.test",
+          "whatsappNumber": "+254710000019",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "ops.m7",
+          "name": "Jabari Mutua",
+          "email": "ops.m7@baobab.test",
+          "role": "MEMBER",
+          "title": "Operations officer",
+          "team": "Operations",
+          "managerEmail": "ops.manager@baobab.test",
+          "whatsappNumber": "+254710000020",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "ops.m8",
+          "name": "Asha Otieno",
+          "email": "ops.m8@baobab.test",
+          "role": "MEMBER",
+          "title": "Operations officer",
+          "team": "Operations",
+          "managerEmail": "ops.manager@baobab.test",
+          "whatsappNumber": "+254710000021",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "ops.m9",
+          "name": "Femi Park",
+          "email": "ops.m9@baobab.test",
+          "role": "MEMBER",
+          "title": "Operations officer",
+          "team": "Operations",
+          "managerEmail": "ops.manager@baobab.test",
+          "whatsappNumber": "+254710000022",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "finance.head",
+          "name": "Ayana Hassan",
+          "email": "finance.head@baobab.test",
+          "role": "LEAD",
+          "title": "Head of Finance",
+          "team": "Finance",
+          "managerEmail": "ceo@baobab.test",
+          "whatsappNumber": "+254710000023",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "finance.manager",
+          "name": "Sekou Keita",
+          "email": "finance.manager@baobab.test",
+          "role": "LEAD",
+          "title": "Finance manager",
+          "team": "Finance",
+          "managerEmail": "finance.head@baobab.test",
+          "whatsappNumber": "+254710000024",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "finance.m1",
+          "name": "Nadia Camara",
+          "email": "finance.m1@baobab.test",
+          "role": "MEMBER",
+          "title": "Finance officer",
+          "team": "Finance",
+          "managerEmail": "finance.manager@baobab.test",
+          "whatsappNumber": "+254710000025",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "finance.m2",
+          "name": "Obi Ndlovu",
+          "email": "finance.m2@baobab.test",
+          "role": "MEMBER",
+          "title": "Finance officer",
+          "team": "Finance",
+          "managerEmail": "finance.manager@baobab.test",
+          "whatsappNumber": "+254710000026",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "finance.m3",
+          "name": "Lerato Wekesa",
+          "email": "finance.m3@baobab.test",
+          "role": "MEMBER",
+          "title": "Finance officer",
+          "team": "Finance",
+          "managerEmail": "finance.manager@baobab.test",
+          "whatsappNumber": "+254710000027",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "finance.m4",
+          "name": "Idris Barasa",
+          "email": "finance.m4@baobab.test",
+          "role": "MEMBER",
+          "title": "Finance officer",
+          "team": "Finance",
+          "managerEmail": "finance.manager@baobab.test",
+          "whatsappNumber": "+254710000028",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "finance.m5",
+          "name": "Chiamaka Diallo",
+          "email": "finance.m5@baobab.test",
+          "role": "MEMBER",
+          "title": "Finance officer",
+          "team": "Finance",
+          "managerEmail": "finance.manager@baobab.test",
+          "whatsappNumber": "+254710000029",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "finance.m6",
+          "name": "Tendai Zuma",
+          "email": "finance.m6@baobab.test",
+          "role": "MEMBER",
+          "title": "Finance officer",
+          "team": "Finance",
+          "managerEmail": "finance.manager@baobab.test",
+          "whatsappNumber": "+254710000030",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "finance.m7",
+          "name": "Hawa Eze",
+          "email": "finance.m7@baobab.test",
+          "role": "MEMBER",
+          "title": "Finance officer",
+          "team": "Finance",
+          "managerEmail": "finance.manager@baobab.test",
+          "whatsappNumber": "+254710000031",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "finance.m8",
+          "name": "Musa Kone",
+          "email": "finance.m8@baobab.test",
+          "role": "MEMBER",
+          "title": "Finance officer",
+          "team": "Finance",
+          "managerEmail": "finance.manager@baobab.test",
+          "whatsappNumber": "+254710000032",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "finance.m9",
+          "name": "Amara Lindqvist",
+          "email": "finance.m9@baobab.test",
+          "role": "MEMBER",
+          "title": "Finance officer",
+          "team": "Finance",
+          "managerEmail": "finance.manager@baobab.test",
+          "whatsappNumber": "+254710000033",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "hr.head",
+          "name": "Sade Asante",
+          "email": "hr.head@baobab.test",
+          "role": "LEAD",
+          "title": "Head of HR",
+          "team": "HR",
+          "managerEmail": "ceo@baobab.test",
+          "whatsappNumber": "+254710000034",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "hr.manager",
+          "name": "Bakari Bello",
+          "email": "hr.manager@baobab.test",
+          "role": "LEAD",
+          "title": "HR manager",
+          "team": "HR",
+          "managerEmail": "hr.head@baobab.test",
+          "whatsappNumber": "+254710000035",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "hr.m1",
+          "name": "Rania Sanusi",
+          "email": "hr.m1@baobab.test",
+          "role": "MEMBER",
+          "title": "HR officer",
+          "team": "HR",
+          "managerEmail": "hr.manager@baobab.test",
+          "whatsappNumber": "+254710000036",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "hr.m2",
+          "name": "Gugu Balogun",
+          "email": "hr.m2@baobab.test",
+          "role": "MEMBER",
+          "title": "HR officer",
+          "team": "HR",
+          "managerEmail": "hr.manager@baobab.test",
+          "whatsappNumber": "+254710000037",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "hr.m3",
+          "name": "Yusuf Were",
+          "email": "hr.m3@baobab.test",
+          "role": "MEMBER",
+          "title": "HR officer",
+          "team": "HR",
+          "managerEmail": "hr.manager@baobab.test",
+          "whatsappNumber": "+254710000038",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "hr.m4",
+          "name": "Dalia Yusuf",
+          "email": "hr.m4@baobab.test",
+          "role": "MEMBER",
+          "title": "HR officer",
+          "team": "HR",
+          "managerEmail": "hr.manager@baobab.test",
+          "whatsappNumber": "+254710000039",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "hr.m5",
+          "name": "Kito Dube",
+          "email": "hr.m5@baobab.test",
+          "role": "MEMBER",
+          "title": "HR officer",
+          "team": "HR",
+          "managerEmail": "hr.manager@baobab.test",
+          "whatsappNumber": "+254710000040",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "hr.m6",
+          "name": "Nalu Osei",
+          "email": "hr.m6@baobab.test",
+          "role": "MEMBER",
+          "title": "HR officer",
+          "team": "HR",
+          "managerEmail": "hr.manager@baobab.test",
+          "whatsappNumber": "+254710000041",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "hr.m7",
+          "name": "Baraka Moyo",
+          "email": "hr.m7@baobab.test",
+          "role": "MEMBER",
+          "title": "HR officer",
+          "team": "HR",
+          "managerEmail": "hr.manager@baobab.test",
+          "whatsappNumber": "+254710000042",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "hr.m8",
+          "name": "Lucy Farah",
+          "email": "hr.m8@baobab.test",
+          "role": "MEMBER",
+          "title": "HR officer",
+          "team": "HR",
+          "managerEmail": "hr.manager@baobab.test",
+          "whatsappNumber": "+254710000043",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "hr.m9",
+          "name": "Juma Kamau",
+          "email": "hr.m9@baobab.test",
+          "role": "MEMBER",
+          "title": "HR officer",
+          "team": "HR",
+          "managerEmail": "hr.manager@baobab.test",
+          "whatsappNumber": "+254710000044",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "support.head",
+          "name": "Mercy Mwende",
+          "email": "support.head@baobab.test",
+          "role": "LEAD",
+          "title": "Head of Customer Support",
+          "team": "Customer Support",
+          "managerEmail": "ceo@baobab.test",
+          "whatsappNumber": "+254710000045",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "support.manager",
+          "name": "Linet Mwangi",
+          "email": "support.manager@baobab.test",
+          "role": "LEAD",
+          "title": "Customer Support manager",
+          "team": "Customer Support",
+          "managerEmail": "support.head@baobab.test",
+          "whatsappNumber": "+254710000046",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "support.m1",
+          "name": "Salma Abara",
+          "email": "support.m1@baobab.test",
+          "role": "MEMBER",
+          "title": "Customer Support officer",
+          "team": "Customer Support",
+          "managerEmail": "support.manager@baobab.test",
+          "whatsappNumber": "+254710000047",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "support.m2",
+          "name": "Rukia Danjuma",
+          "email": "support.m2@baobab.test",
+          "role": "MEMBER",
+          "title": "Customer Support officer",
+          "team": "Customer Support",
+          "managerEmail": "support.manager@baobab.test",
+          "whatsappNumber": "+254710000048",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "support.m3",
+          "name": "Njeri Sow",
+          "email": "support.m3@baobab.test",
+          "role": "MEMBER",
+          "title": "Customer Support officer",
+          "team": "Customer Support",
+          "managerEmail": "support.manager@baobab.test",
+          "whatsappNumber": "+254710000049",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "support.m4",
+          "name": "Amina Kerubo",
+          "email": "support.m4@baobab.test",
+          "role": "MEMBER",
+          "title": "Customer Support officer",
+          "team": "Customer Support",
+          "managerEmail": "support.manager@baobab.test",
+          "whatsappNumber": "+254710000050",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "support.m5",
+          "name": "Daniel Mbeki",
+          "email": "support.m5@baobab.test",
+          "role": "MEMBER",
+          "title": "Customer Support officer",
+          "team": "Customer Support",
+          "managerEmail": "support.manager@baobab.test",
+          "whatsappNumber": "+254710000051",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "support.m6",
+          "name": "Grace Nkosi",
+          "email": "support.m6@baobab.test",
+          "role": "MEMBER",
+          "title": "Customer Support officer",
+          "team": "Customer Support",
+          "managerEmail": "support.manager@baobab.test",
+          "whatsappNumber": "+254710000052",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "support.m7",
+          "name": "Peter Toure",
+          "email": "support.m7@baobab.test",
+          "role": "MEMBER",
+          "title": "Customer Support officer",
+          "team": "Customer Support",
+          "managerEmail": "support.manager@baobab.test",
+          "whatsappNumber": "+254710000053",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "support.m8",
+          "name": "Sara Njoroge",
+          "email": "support.m8@baobab.test",
+          "role": "MEMBER",
+          "title": "Customer Support officer",
+          "team": "Customer Support",
+          "managerEmail": "support.manager@baobab.test",
+          "whatsappNumber": "+254710000054",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "support.m9",
+          "name": "Joseph Achieng",
+          "email": "support.m9@baobab.test",
+          "role": "MEMBER",
+          "title": "Customer Support officer",
+          "team": "Customer Support",
+          "managerEmail": "support.manager@baobab.test",
+          "whatsappNumber": "+254710000055",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "eng.head",
+          "name": "Wairimu Okoro",
+          "email": "eng.head@baobab.test",
+          "role": "LEAD",
+          "title": "Head of Engineering",
+          "team": "Engineering",
+          "managerEmail": "ceo@baobab.test",
+          "whatsappNumber": "+254710000056",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "eng.manager",
+          "name": "Omar Okafor",
+          "email": "eng.manager@baobab.test",
+          "role": "LEAD",
+          "title": "Engineering manager",
+          "team": "Engineering",
+          "managerEmail": "eng.head@baobab.test",
+          "whatsappNumber": "+254710000057",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "eng.m1",
+          "name": "Aisha Juma",
+          "email": "eng.m1@baobab.test",
+          "role": "MEMBER",
+          "title": "Engineering officer",
+          "team": "Engineering",
+          "managerEmail": "eng.manager@baobab.test",
+          "whatsappNumber": "+254710000058",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "eng.m2",
+          "name": "Brian Adeyemi",
+          "email": "eng.m2@baobab.test",
+          "role": "MEMBER",
+          "title": "Engineering officer",
+          "team": "Engineering",
+          "managerEmail": "eng.manager@baobab.test",
+          "whatsappNumber": "+254710000059",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "eng.m3",
+          "name": "Fatuma Mutua",
+          "email": "eng.m3@baobab.test",
+          "role": "MEMBER",
+          "title": "Engineering officer",
+          "team": "Engineering",
+          "managerEmail": "eng.manager@baobab.test",
+          "whatsappNumber": "+254710000060",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "eng.m4",
+          "name": "Kamau Otieno",
+          "email": "eng.m4@baobab.test",
+          "role": "MEMBER",
+          "title": "Engineering officer",
+          "team": "Engineering",
+          "managerEmail": "eng.manager@baobab.test",
+          "whatsappNumber": "+254710000061",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "eng.m5",
+          "name": "Neema Park",
+          "email": "eng.m5@baobab.test",
+          "role": "MEMBER",
+          "title": "Engineering officer",
+          "team": "Engineering",
+          "managerEmail": "eng.manager@baobab.test",
+          "whatsappNumber": "+254710000062",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "eng.m6",
+          "name": "Tobi Hassan",
+          "email": "eng.m6@baobab.test",
+          "role": "MEMBER",
+          "title": "Engineering officer",
+          "team": "Engineering",
+          "managerEmail": "eng.manager@baobab.test",
+          "whatsappNumber": "+254710000063",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "eng.m7",
+          "name": "Zainab Keita",
+          "email": "eng.m7@baobab.test",
+          "role": "MEMBER",
+          "title": "Engineering officer",
+          "team": "Engineering",
+          "managerEmail": "eng.manager@baobab.test",
+          "whatsappNumber": "+254710000064",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "eng.m8",
+          "name": "Imani Camara",
+          "email": "eng.m8@baobab.test",
+          "role": "MEMBER",
+          "title": "Engineering officer",
+          "team": "Engineering",
+          "managerEmail": "eng.manager@baobab.test",
+          "whatsappNumber": "+254710000065",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "eng.m9",
+          "name": "Kofi Ndlovu",
+          "email": "eng.m9@baobab.test",
+          "role": "MEMBER",
+          "title": "Engineering officer",
+          "team": "Engineering",
+          "managerEmail": "eng.manager@baobab.test",
+          "whatsappNumber": "+254710000066",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "marketing.head",
+          "name": "Zuri Wekesa",
+          "email": "marketing.head@baobab.test",
+          "role": "LEAD",
+          "title": "Head of Marketing",
+          "team": "Marketing",
+          "managerEmail": "ceo@baobab.test",
+          "whatsappNumber": "+254710000067",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "marketing.manager",
+          "name": "Thabo Barasa",
+          "email": "marketing.manager@baobab.test",
+          "role": "LEAD",
+          "title": "Marketing manager",
+          "team": "Marketing",
+          "managerEmail": "marketing.head@baobab.test",
+          "whatsappNumber": "+254710000068",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "marketing.m1",
+          "name": "Nia Diallo",
+          "email": "marketing.m1@baobab.test",
+          "role": "MEMBER",
+          "title": "Marketing officer",
+          "team": "Marketing",
+          "managerEmail": "marketing.manager@baobab.test",
+          "whatsappNumber": "+254710000069",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "marketing.m2",
+          "name": "Jabari Zuma",
+          "email": "marketing.m2@baobab.test",
+          "role": "MEMBER",
+          "title": "Marketing officer",
+          "team": "Marketing",
+          "managerEmail": "marketing.manager@baobab.test",
+          "whatsappNumber": "+254710000070",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "marketing.m3",
+          "name": "Asha Eze",
+          "email": "marketing.m3@baobab.test",
+          "role": "MEMBER",
+          "title": "Marketing officer",
+          "team": "Marketing",
+          "managerEmail": "marketing.manager@baobab.test",
+          "whatsappNumber": "+254710000071",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "marketing.m4",
+          "name": "Femi Kone",
+          "email": "marketing.m4@baobab.test",
+          "role": "MEMBER",
+          "title": "Marketing officer",
+          "team": "Marketing",
+          "managerEmail": "marketing.manager@baobab.test",
+          "whatsappNumber": "+254710000072",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "marketing.m5",
+          "name": "Ayana Lindqvist",
+          "email": "marketing.m5@baobab.test",
+          "role": "MEMBER",
+          "title": "Marketing officer",
+          "team": "Marketing",
+          "managerEmail": "marketing.manager@baobab.test",
+          "whatsappNumber": "+254710000073",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "marketing.m6",
+          "name": "Sekou Asante",
+          "email": "marketing.m6@baobab.test",
+          "role": "MEMBER",
+          "title": "Marketing officer",
+          "team": "Marketing",
+          "managerEmail": "marketing.manager@baobab.test",
+          "whatsappNumber": "+254710000074",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "marketing.m7",
+          "name": "Nadia Bello",
+          "email": "marketing.m7@baobab.test",
+          "role": "MEMBER",
+          "title": "Marketing officer",
+          "team": "Marketing",
+          "managerEmail": "marketing.manager@baobab.test",
+          "whatsappNumber": "+254710000075",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "marketing.m8",
+          "name": "Obi Sanusi",
+          "email": "marketing.m8@baobab.test",
+          "role": "MEMBER",
+          "title": "Marketing officer",
+          "team": "Marketing",
+          "managerEmail": "marketing.manager@baobab.test",
+          "whatsappNumber": "+254710000076",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "marketing.m9",
+          "name": "Lerato Balogun",
+          "email": "marketing.m9@baobab.test",
+          "role": "MEMBER",
+          "title": "Marketing officer",
+          "team": "Marketing",
+          "managerEmail": "marketing.manager@baobab.test",
+          "whatsappNumber": "+254710000077",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "logistics.head",
+          "name": "Idris Were",
+          "email": "logistics.head@baobab.test",
+          "role": "LEAD",
+          "title": "Head of Logistics",
+          "team": "Logistics",
+          "managerEmail": "ceo@baobab.test",
+          "whatsappNumber": "+254710000078",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "logistics.manager",
+          "name": "Chiamaka Yusuf",
+          "email": "logistics.manager@baobab.test",
+          "role": "LEAD",
+          "title": "Logistics manager",
+          "team": "Logistics",
+          "managerEmail": "logistics.head@baobab.test",
+          "whatsappNumber": "+254710000079",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "logistics.m1",
+          "name": "Tendai Dube",
+          "email": "logistics.m1@baobab.test",
+          "role": "MEMBER",
+          "title": "Logistics officer",
+          "team": "Logistics",
+          "managerEmail": "logistics.manager@baobab.test",
+          "whatsappNumber": "+254710000080",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "logistics.m2",
+          "name": "Hawa Osei",
+          "email": "logistics.m2@baobab.test",
+          "role": "MEMBER",
+          "title": "Logistics officer",
+          "team": "Logistics",
+          "managerEmail": "logistics.manager@baobab.test",
+          "whatsappNumber": "+254710000081",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "logistics.m3",
+          "name": "Musa Moyo",
+          "email": "logistics.m3@baobab.test",
+          "role": "MEMBER",
+          "title": "Logistics officer",
+          "team": "Logistics",
+          "managerEmail": "logistics.manager@baobab.test",
+          "whatsappNumber": "+254710000082",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "logistics.m4",
+          "name": "Amara Farah",
+          "email": "logistics.m4@baobab.test",
+          "role": "MEMBER",
+          "title": "Logistics officer",
+          "team": "Logistics",
+          "managerEmail": "logistics.manager@baobab.test",
+          "whatsappNumber": "+254710000083",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "logistics.m5",
+          "name": "Sade Kamau",
+          "email": "logistics.m5@baobab.test",
+          "role": "MEMBER",
+          "title": "Logistics officer",
+          "team": "Logistics",
+          "managerEmail": "logistics.manager@baobab.test",
+          "whatsappNumber": "+254710000084",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "logistics.m6",
+          "name": "Bakari Mwende",
+          "email": "logistics.m6@baobab.test",
+          "role": "MEMBER",
+          "title": "Logistics officer",
+          "team": "Logistics",
+          "managerEmail": "logistics.manager@baobab.test",
+          "whatsappNumber": "+254710000085",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "logistics.m7",
+          "name": "Rania Mwangi",
+          "email": "logistics.m7@baobab.test",
+          "role": "MEMBER",
+          "title": "Logistics officer",
+          "team": "Logistics",
+          "managerEmail": "logistics.manager@baobab.test",
+          "whatsappNumber": "+254710000086",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "logistics.m8",
+          "name": "Gugu Abara",
+          "email": "logistics.m8@baobab.test",
+          "role": "MEMBER",
+          "title": "Logistics officer",
+          "team": "Logistics",
+          "managerEmail": "logistics.manager@baobab.test",
+          "whatsappNumber": "+254710000087",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "logistics.m9",
+          "name": "Yusuf Danjuma",
+          "email": "logistics.m9@baobab.test",
+          "role": "MEMBER",
+          "title": "Logistics officer",
+          "team": "Logistics",
+          "managerEmail": "logistics.manager@baobab.test",
+          "whatsappNumber": "+254710000088",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "procurement.head",
+          "name": "Dalia Sow",
+          "email": "procurement.head@baobab.test",
+          "role": "LEAD",
+          "title": "Head of Procurement",
+          "team": "Procurement",
+          "managerEmail": "ceo@baobab.test",
+          "whatsappNumber": "+254710000089",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "procurement.manager",
+          "name": "Kito Kerubo",
+          "email": "procurement.manager@baobab.test",
+          "role": "LEAD",
+          "title": "Procurement manager",
+          "team": "Procurement",
+          "managerEmail": "procurement.head@baobab.test",
+          "whatsappNumber": "+254710000090",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "procurement.m1",
+          "name": "Nalu Mbeki",
+          "email": "procurement.m1@baobab.test",
+          "role": "MEMBER",
+          "title": "Procurement officer",
+          "team": "Procurement",
+          "managerEmail": "procurement.manager@baobab.test",
+          "whatsappNumber": "+254710000091",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "procurement.m2",
+          "name": "Baraka Nkosi",
+          "email": "procurement.m2@baobab.test",
+          "role": "MEMBER",
+          "title": "Procurement officer",
+          "team": "Procurement",
+          "managerEmail": "procurement.manager@baobab.test",
+          "whatsappNumber": "+254710000092",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "procurement.m3",
+          "name": "Lucy Toure",
+          "email": "procurement.m3@baobab.test",
+          "role": "MEMBER",
+          "title": "Procurement officer",
+          "team": "Procurement",
+          "managerEmail": "procurement.manager@baobab.test",
+          "whatsappNumber": "+254710000093",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "procurement.m4",
+          "name": "Juma Njoroge",
+          "email": "procurement.m4@baobab.test",
+          "role": "MEMBER",
+          "title": "Procurement officer",
+          "team": "Procurement",
+          "managerEmail": "procurement.manager@baobab.test",
+          "whatsappNumber": "+254710000094",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "procurement.m5",
+          "name": "Mercy Achieng",
+          "email": "procurement.m5@baobab.test",
+          "role": "MEMBER",
+          "title": "Procurement officer",
+          "team": "Procurement",
+          "managerEmail": "procurement.manager@baobab.test",
+          "whatsappNumber": "+254710000095",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "procurement.m6",
+          "name": "Linet Okoro",
+          "email": "procurement.m6@baobab.test",
+          "role": "MEMBER",
+          "title": "Procurement officer",
+          "team": "Procurement",
+          "managerEmail": "procurement.manager@baobab.test",
+          "whatsappNumber": "+254710000096",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "procurement.m7",
+          "name": "Salma Okafor",
+          "email": "procurement.m7@baobab.test",
+          "role": "MEMBER",
+          "title": "Procurement officer",
+          "team": "Procurement",
+          "managerEmail": "procurement.manager@baobab.test",
+          "whatsappNumber": "+254710000097",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "procurement.m8",
+          "name": "Rukia Juma",
+          "email": "procurement.m8@baobab.test",
+          "role": "MEMBER",
+          "title": "Procurement officer",
+          "team": "Procurement",
+          "managerEmail": "procurement.manager@baobab.test",
+          "whatsappNumber": "+254710000098",
+          "password": "Sweep-local-only-1"
+        },
+        {
+          "key": "procurement.m9",
+          "name": "Njeri Adeyemi",
+          "email": "procurement.m9@baobab.test",
+          "role": "MEMBER",
+          "title": "Procurement officer",
+          "team": "Procurement",
+          "managerEmail": "procurement.manager@baobab.test",
+          "whatsappNumber": "+254710000099",
+          "password": "Sweep-local-only-1"
+        }
+      ],
+      "checkIns": [
+        {
+          "label": "Sales weekly update",
+          "scenario": "OKR_ALIGNMENT",
+          "status": "ACTIVE",
+          "cadence": "WEEKLY",
+          "lead": "sales.manager@baobab.test",
+          "participants": [
+            "sales.m1@baobab.test",
+            "sales.m2@baobab.test",
+            "sales.m3@baobab.test",
+            "sales.m4@baobab.test",
+            "sales.m5@baobab.test",
+            "sales.m6@baobab.test"
+          ]
+        },
+        {
+          "label": "Sales new starter, first weeks",
+          "scenario": "NEW_HIRE",
+          "status": "ACTIVE",
+          "cadence": "FORTNIGHTLY",
+          "lead": "sales.manager@baobab.test",
+          "participants": [
+            "sales.m1@baobab.test"
+          ]
+        },
+        {
+          "label": "Sales project, the new stock system",
+          "scenario": "NEW_PROJECT",
+          "status": "CLOSED",
+          "cadence": "WEEKLY",
+          "lead": "sales.manager@baobab.test",
+          "participants": [
+            "sales.m1@baobab.test",
+            "sales.m2@baobab.test",
+            "sales.m3@baobab.test",
+            "sales.m4@baobab.test"
+          ]
+        },
+        {
+          "label": "Sales pulse",
+          "scenario": "PULSE_CHECK",
+          "status": "AWAITING_PARTIES",
+          "cadence": "MONTHLY",
+          "lead": "sales.manager@baobab.test",
+          "participants": [
+            "sales.m1@baobab.test",
+            "sales.m2@baobab.test",
+            "sales.m3@baobab.test"
+          ]
+        },
+        {
+          "label": "Operations weekly update",
+          "scenario": "OKR_ALIGNMENT",
+          "status": "ACTIVE",
+          "cadence": "WEEKLY",
+          "lead": "ops.manager@baobab.test",
+          "participants": [
+            "ops.m1@baobab.test",
+            "ops.m2@baobab.test",
+            "ops.m3@baobab.test",
+            "ops.m4@baobab.test",
+            "ops.m5@baobab.test",
+            "ops.m6@baobab.test"
+          ]
+        },
+        {
+          "label": "Operations new starter, first weeks",
+          "scenario": "NEW_HIRE",
+          "status": "ACTIVE",
+          "cadence": "FORTNIGHTLY",
+          "lead": "ops.manager@baobab.test",
+          "participants": [
+            "ops.m1@baobab.test"
+          ]
+        },
+        {
+          "label": "Operations project, the new stock system",
+          "scenario": "NEW_PROJECT",
+          "status": "ACTIVE",
+          "cadence": "WEEKLY",
+          "lead": "ops.manager@baobab.test",
+          "participants": [
+            "ops.m1@baobab.test",
+            "ops.m2@baobab.test",
+            "ops.m3@baobab.test",
+            "ops.m4@baobab.test"
+          ]
+        },
+        {
+          "label": "Operations pulse",
+          "scenario": "PULSE_CHECK",
+          "status": "ACTIVE",
+          "cadence": "MONTHLY",
+          "lead": "ops.manager@baobab.test",
+          "participants": [
+            "ops.m1@baobab.test",
+            "ops.m2@baobab.test",
+            "ops.m3@baobab.test"
+          ]
+        },
+        {
+          "label": "Finance weekly update",
+          "scenario": "OKR_ALIGNMENT",
+          "status": "ACTIVE",
+          "cadence": "WEEKLY",
+          "lead": "finance.manager@baobab.test",
+          "participants": [
+            "finance.m1@baobab.test",
+            "finance.m2@baobab.test",
+            "finance.m3@baobab.test",
+            "finance.m4@baobab.test",
+            "finance.m5@baobab.test",
+            "finance.m6@baobab.test"
+          ]
+        },
+        {
+          "label": "Finance new starter, first weeks",
+          "scenario": "NEW_HIRE",
+          "status": "ACTIVE",
+          "cadence": "FORTNIGHTLY",
+          "lead": "finance.manager@baobab.test",
+          "participants": [
+            "finance.m1@baobab.test"
+          ]
+        },
+        {
+          "label": "Finance project, the new stock system",
+          "scenario": "NEW_PROJECT",
+          "status": "CLOSED",
+          "cadence": "WEEKLY",
+          "lead": "finance.manager@baobab.test",
+          "participants": [
+            "finance.m1@baobab.test",
+            "finance.m2@baobab.test",
+            "finance.m3@baobab.test",
+            "finance.m4@baobab.test"
+          ]
+        },
+        {
+          "label": "Finance pulse",
+          "scenario": "PULSE_CHECK",
+          "status": "ACTIVE",
+          "cadence": "MONTHLY",
+          "lead": "finance.manager@baobab.test",
+          "participants": [
+            "finance.m1@baobab.test",
+            "finance.m2@baobab.test",
+            "finance.m3@baobab.test"
+          ]
+        },
+        {
+          "label": "HR weekly update",
+          "scenario": "OKR_ALIGNMENT",
+          "status": "ACTIVE",
+          "cadence": "WEEKLY",
+          "lead": "hr.manager@baobab.test",
+          "participants": [
+            "hr.m1@baobab.test",
+            "hr.m2@baobab.test",
+            "hr.m3@baobab.test",
+            "hr.m4@baobab.test",
+            "hr.m5@baobab.test",
+            "hr.m6@baobab.test"
+          ]
+        },
+        {
+          "label": "HR new starter, first weeks",
+          "scenario": "NEW_HIRE",
+          "status": "ACTIVE",
+          "cadence": "FORTNIGHTLY",
+          "lead": "hr.manager@baobab.test",
+          "participants": [
+            "hr.m1@baobab.test"
+          ]
+        },
+        {
+          "label": "HR project, the new stock system",
+          "scenario": "NEW_PROJECT",
+          "status": "ACTIVE",
+          "cadence": "WEEKLY",
+          "lead": "hr.manager@baobab.test",
+          "participants": [
+            "hr.m1@baobab.test",
+            "hr.m2@baobab.test",
+            "hr.m3@baobab.test",
+            "hr.m4@baobab.test"
+          ]
+        },
+        {
+          "label": "HR pulse",
+          "scenario": "PULSE_CHECK",
+          "status": "AWAITING_PARTIES",
+          "cadence": "MONTHLY",
+          "lead": "hr.manager@baobab.test",
+          "participants": [
+            "hr.m1@baobab.test",
+            "hr.m2@baobab.test",
+            "hr.m3@baobab.test"
+          ]
+        },
+        {
+          "label": "Customer Support weekly update",
+          "scenario": "OKR_ALIGNMENT",
+          "status": "ACTIVE",
+          "cadence": "WEEKLY",
+          "lead": "support.manager@baobab.test",
+          "participants": [
+            "support.m1@baobab.test",
+            "support.m2@baobab.test",
+            "support.m3@baobab.test",
+            "support.m4@baobab.test",
+            "support.m5@baobab.test",
+            "support.m6@baobab.test"
+          ]
+        },
+        {
+          "label": "Customer Support new starter, first weeks",
+          "scenario": "NEW_HIRE",
+          "status": "ACTIVE",
+          "cadence": "FORTNIGHTLY",
+          "lead": "support.manager@baobab.test",
+          "participants": [
+            "support.m1@baobab.test"
+          ]
+        },
+        {
+          "label": "Customer Support project, the new stock system",
+          "scenario": "NEW_PROJECT",
+          "status": "CLOSED",
+          "cadence": "WEEKLY",
+          "lead": "support.manager@baobab.test",
+          "participants": [
+            "support.m1@baobab.test",
+            "support.m2@baobab.test",
+            "support.m3@baobab.test",
+            "support.m4@baobab.test"
+          ]
+        },
+        {
+          "label": "Customer Support pulse",
+          "scenario": "PULSE_CHECK",
+          "status": "ACTIVE",
+          "cadence": "MONTHLY",
+          "lead": "support.manager@baobab.test",
+          "participants": [
+            "support.m1@baobab.test",
+            "support.m2@baobab.test",
+            "support.m3@baobab.test"
+          ]
+        },
+        {
+          "label": "Engineering weekly update",
+          "scenario": "OKR_ALIGNMENT",
+          "status": "ACTIVE",
+          "cadence": "WEEKLY",
+          "lead": "eng.manager@baobab.test",
+          "participants": [
+            "eng.m1@baobab.test",
+            "eng.m2@baobab.test",
+            "eng.m3@baobab.test",
+            "eng.m4@baobab.test",
+            "eng.m5@baobab.test",
+            "eng.m6@baobab.test"
+          ]
+        },
+        {
+          "label": "Engineering new starter, first weeks",
+          "scenario": "NEW_HIRE",
+          "status": "ACTIVE",
+          "cadence": "FORTNIGHTLY",
+          "lead": "eng.manager@baobab.test",
+          "participants": [
+            "eng.m1@baobab.test"
+          ]
+        },
+        {
+          "label": "Engineering project, the new stock system",
+          "scenario": "NEW_PROJECT",
+          "status": "ACTIVE",
+          "cadence": "WEEKLY",
+          "lead": "eng.manager@baobab.test",
+          "participants": [
+            "eng.m1@baobab.test",
+            "eng.m2@baobab.test",
+            "eng.m3@baobab.test",
+            "eng.m4@baobab.test"
+          ]
+        },
+        {
+          "label": "Engineering pulse",
+          "scenario": "PULSE_CHECK",
+          "status": "ACTIVE",
+          "cadence": "MONTHLY",
+          "lead": "eng.manager@baobab.test",
+          "participants": [
+            "eng.m1@baobab.test",
+            "eng.m2@baobab.test",
+            "eng.m3@baobab.test"
+          ]
+        },
+        {
+          "label": "Marketing weekly update",
+          "scenario": "OKR_ALIGNMENT",
+          "status": "ACTIVE",
+          "cadence": "WEEKLY",
+          "lead": "marketing.manager@baobab.test",
+          "participants": [
+            "marketing.m1@baobab.test",
+            "marketing.m2@baobab.test",
+            "marketing.m3@baobab.test",
+            "marketing.m4@baobab.test",
+            "marketing.m5@baobab.test",
+            "marketing.m6@baobab.test"
+          ]
+        },
+        {
+          "label": "Marketing new starter, first weeks",
+          "scenario": "NEW_HIRE",
+          "status": "ACTIVE",
+          "cadence": "FORTNIGHTLY",
+          "lead": "marketing.manager@baobab.test",
+          "participants": [
+            "marketing.m1@baobab.test"
+          ]
+        },
+        {
+          "label": "Marketing project, the new stock system",
+          "scenario": "NEW_PROJECT",
+          "status": "CLOSED",
+          "cadence": "WEEKLY",
+          "lead": "marketing.manager@baobab.test",
+          "participants": [
+            "marketing.m1@baobab.test",
+            "marketing.m2@baobab.test",
+            "marketing.m3@baobab.test",
+            "marketing.m4@baobab.test"
+          ]
+        },
+        {
+          "label": "Marketing pulse",
+          "scenario": "PULSE_CHECK",
+          "status": "AWAITING_PARTIES",
+          "cadence": "MONTHLY",
+          "lead": "marketing.manager@baobab.test",
+          "participants": [
+            "marketing.m1@baobab.test",
+            "marketing.m2@baobab.test",
+            "marketing.m3@baobab.test"
+          ]
+        },
+        {
+          "label": "Logistics weekly update",
+          "scenario": "OKR_ALIGNMENT",
+          "status": "ACTIVE",
+          "cadence": "WEEKLY",
+          "lead": "logistics.manager@baobab.test",
+          "participants": [
+            "logistics.m1@baobab.test",
+            "logistics.m2@baobab.test",
+            "logistics.m3@baobab.test",
+            "logistics.m4@baobab.test",
+            "logistics.m5@baobab.test",
+            "logistics.m6@baobab.test"
+          ]
+        },
+        {
+          "label": "Logistics new starter, first weeks",
+          "scenario": "NEW_HIRE",
+          "status": "ACTIVE",
+          "cadence": "FORTNIGHTLY",
+          "lead": "logistics.manager@baobab.test",
+          "participants": [
+            "logistics.m1@baobab.test"
+          ]
+        },
+        {
+          "label": "Logistics project, the new stock system",
+          "scenario": "NEW_PROJECT",
+          "status": "ACTIVE",
+          "cadence": "WEEKLY",
+          "lead": "logistics.manager@baobab.test",
+          "participants": [
+            "logistics.m1@baobab.test",
+            "logistics.m2@baobab.test",
+            "logistics.m3@baobab.test",
+            "logistics.m4@baobab.test"
+          ]
+        },
+        {
+          "label": "Logistics pulse",
+          "scenario": "PULSE_CHECK",
+          "status": "ACTIVE",
+          "cadence": "MONTHLY",
+          "lead": "logistics.manager@baobab.test",
+          "participants": [
+            "logistics.m1@baobab.test",
+            "logistics.m2@baobab.test",
+            "logistics.m3@baobab.test"
+          ]
+        },
+        {
+          "label": "Procurement weekly update",
+          "scenario": "OKR_ALIGNMENT",
+          "status": "ACTIVE",
+          "cadence": "WEEKLY",
+          "lead": "procurement.manager@baobab.test",
+          "participants": [
+            "procurement.m1@baobab.test",
+            "procurement.m2@baobab.test",
+            "procurement.m3@baobab.test",
+            "procurement.m4@baobab.test",
+            "procurement.m5@baobab.test",
+            "procurement.m6@baobab.test"
+          ]
+        },
+        {
+          "label": "Procurement new starter, first weeks",
+          "scenario": "NEW_HIRE",
+          "status": "ACTIVE",
+          "cadence": "FORTNIGHTLY",
+          "lead": "procurement.manager@baobab.test",
+          "participants": [
+            "procurement.m1@baobab.test"
+          ]
+        },
+        {
+          "label": "Procurement project, the new stock system",
+          "scenario": "NEW_PROJECT",
+          "status": "CLOSED",
+          "cadence": "WEEKLY",
+          "lead": "procurement.manager@baobab.test",
+          "participants": [
+            "procurement.m1@baobab.test",
+            "procurement.m2@baobab.test",
+            "procurement.m3@baobab.test",
+            "procurement.m4@baobab.test"
+          ]
+        },
+        {
+          "label": "Procurement pulse",
+          "scenario": "PULSE_CHECK",
+          "status": "ACTIVE",
+          "cadence": "MONTHLY",
+          "lead": "procurement.manager@baobab.test",
+          "participants": [
+            "procurement.m1@baobab.test",
+            "procurement.m2@baobab.test",
+            "procurement.m3@baobab.test"
+          ]
+        }
+      ],
+      "notes": [
+        "110 leave requests and 144 spending requests are waiting in all.",
+        "Approvers with the most waiting: the Sales, Operations and Customer Support managers (sales.manager, ops.manager, support.manager) and finance (finance.m1).",
+        "Several approvers are away this week on approved leave, some with a stand-in and one without (support.manager).",
+        "Leave: manager, then head, then an admin after two working days. Spending in KES: manager then finance up to 50,000; above that manager, head, then finance.",
+        "Admins: ceo and ops.head."
+      ]
+    }
+  }
+}

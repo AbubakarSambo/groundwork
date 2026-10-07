@@ -34,8 +34,12 @@ from urllib.parse import urlparse, parse_qs
 
 from aiosmtpd.controller import Controller
 
-SMTP_PORT = 1025
-HTTP_PORT = 1080
+import os
+
+# 1025 and 1080 unless told otherwise. A second tester starts their own catcher on other ports
+# (MAILCATCHER_SMTP_PORT, MAILCATCHER_HTTP_PORT) and starts their API with MAIL_CATCHER_PORT.
+SMTP_PORT = int(os.environ.get("MAILCATCHER_SMTP_PORT", "1025"))
+HTTP_PORT = int(os.environ.get("MAILCATCHER_HTTP_PORT", "1080"))
 
 MESSAGES = []
 LOCK = threading.Lock()

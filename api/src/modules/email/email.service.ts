@@ -552,7 +552,8 @@ export class EmailService implements OnModuleInit {
       if (links.length) this.logger.warn(`[DEV EMAIL] Links: ${links.join(' ')}`);
       // Also relay to local mailcatcher (127.0.0.1:1025) so persona tests can read links
       try {
-        const transport = nodemailer.createTransport({ host: '127.0.0.1', port: 1025, secure: false, ignoreTLS: true });
+        /* MAIL_CATCHER_PORT is for a test bed only (two testers, two catchers). Unset, it is 1025 as it always was. This branch is only ever reached when nothing is sent for real. */
+        const transport = nodemailer.createTransport({ host: '127.0.0.1', port: Number(process.env.MAIL_CATCHER_PORT) || 1025, secure: false, ignoreTLS: true });
         await transport.sendMail({ from: this.fromEmail, to: options.to, subject: options.subject, html: options.html });
       } catch (_) { /* mailcatcher not running - console log is still available */ }
       const devId = `dev-${crypto.randomUUID()}`;

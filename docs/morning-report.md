@@ -4939,3 +4939,20 @@ example "the colleague who handles the credit files". I did not do that, because
 away". On a small team "handles the credit files" names one person as surely as their name does. So
 an unnameable colleague reads "a colleague", which is your wording. Say if you want the interview
 to have more than the report does here.
+
+## 7 October, the user journey test bed
+
+Built in `api/journey/sweep/` (how to use it is at the top of its `README.md`): the five test organisations
+and Groundwork staff on a fresh local database (`reset.sh`), an API started with mail going to a local
+catcher and WhatsApp to a local recorder (`bed.sh up`), and helpers to write as a person on WhatsApp with a
+signed message, read mail, move the clock and run the scheduled jobs the way the scheduler runs them, and
+list the API's warnings. Two copies, `gw_sweep_a` and `gw_sweep_b`, so two testers do not share anything.
+Sign-ins and numbers are in `api/journey/sweep/the-five-orgs.json`.
+
+**Needs Hafsah.** The safety rules refuse any command that removes a database, so `reset.sh` never does:
+it renames an existing `gw_sweep_<copy>` to `gw_sweep_old_<copy>_<date and time>` and makes a new one.
+The old ones pile up until somebody removes them by hand. Say if you want it to remove them instead.
+
+**One line in the product changed, for the test bed only.** `api/src/modules/email/email.service.ts` sends
+to the mail catcher on port 1025 when mail is not sent for real. It now reads `MAIL_CATCHER_PORT` first,
+so a second tester can have a second catcher. Unset, it is 1025 as before.
