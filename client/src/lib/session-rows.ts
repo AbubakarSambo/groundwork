@@ -2,6 +2,32 @@ import type { SessionRow } from '@/components/gw/TheReportIsAListOfSessions'
 import { whoIsInRound } from '@/lib/who-is-in-this-round'
 
 /**
+ * WHETHER A SESSION'S TEAM PICTURE HAS BEEN SHARED, THE SAME RULE THE ENGINE USES.
+ *
+ * SCREEN FAULT 1 (FINAL WALK): "NOT SHARED" WHEN THE REPORT WAS SHARED. `SessionRow.closed` answers
+ * "did everyone in this round finish" (from `roundCompletions`), which is a DIFFERENT fact from
+ * "has the lead released this session's report to everyone" (`report.releasedAt` /
+ * `report.releasedSessions`, decision 76) - a lead can cut a session short and release it before
+ * everyone has answered, and a finished round is not released until the lead shares it. The Reports
+ * list and the board both drew "Shared"/"Not shared" from `closed`, so a released-but-not-fully-
+ * answered session read "Not shared", and the "Share it" button it drew pointed at a page the
+ * engine never gave a share control. This mirrors the server's own
+ * `isThisSessionReleased` (api/src/modules/reports/each-sessions-picture-is-released-on-its-own.ts)
+ * so the two can never disagree.
+ */
+export function isSessionShared(
+  report: { releasedAt?: string | null; releasedSessions?: number[] | null } | null | undefined,
+  sessionNumber: number,
+): boolean {
+  if (!report?.releasedAt) return false
+  const list = Array.isArray(report.releasedSessions)
+    ? [...new Set(report.releasedSessions.filter((n) => Number.isInteger(n) && n > 0))]
+    : null
+  if (list === null) return true
+  return list.includes(sessionNumber)
+}
+
+/**
  * ONE ROW PER SESSION, AND WHO EACH ROW IS COUNTING.
  *
  * U.10: LIFTED OUT OF GroundAdminPage SO THE BOARD CAN USE THE SAME ROWS.
@@ -63,6 +89,7 @@ export function buildSessionRows(
 ): SessionRow[] {
   const everybody = (ground?.participants ?? []) as any[]
   const checkIns = (ground?.checkIns ?? []) as any[]
+  const report = (ground as any)?.report as { releasedAt?: string | null; releasedSessions?: number[] | null } | null | undefined
   const numbers = [...new Set(checkIns.filter((c) => !c.isSetup).map((c) => c.sessionNumber as number))]
     .filter((n) => checkIns.some((c) => c.sessionNumber === n && c.status === 'COMPLETED'))
     .sort((a, b) => b - a)
@@ -99,6 +126,7 @@ export function buildSessionRows(
       answered: restricted ? (closed ? fullParties!.length : null) : parties.filter((p) => answeredIds.has(p.id)).length,
       total: restricted ? fullParties!.length : parties.length,
       closed,
+      shared: isSessionShared(report, n),
       /* The reader is "you", never their own name (the wording rule); everybody else as labelled. */
       waitingOn: parties.filter((p) => !answeredIds.has(p.id)).map((p) => (p.userId && p.userId === userId ? 'you' : labelInASentence(p))),
       /* WHEN THIS SESSION REALLY OPENED, for the row's "Wed, 23 Sept" (U.9).

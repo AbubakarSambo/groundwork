@@ -10,9 +10,15 @@ import { TheReportIsAListOfSessions, stillToCheckIn, sessionDay } from './TheRep
  * on the lead's page only (GroundAdminPage). A participant reaches the team's report through their
  * own page, which is not this list.
  */
+/*
+ * SCREEN FAULT 1 (FINAL WALK): `closed` AND `shared` CAN DISAGREE, so the fixture below gives each
+ * row its own `shared`, rather than letting the test assume they always match (they used to, which
+ * is exactly how the real bug - "Not shared" drawn from `closed` instead of `shared` - went
+ * unnoticed). See session-rows.ts's `isSessionShared`.
+ */
 const ROWS = [
-  { sessionNumber: 38, myCheckInId: null, answered: 5, total: 6, closed: false, waitingOn: ['Omar'], opened: '2026-09-23T13:00:00.000Z' },
-  { sessionNumber: 37, myCheckInId: null, answered: 6, total: 6, closed: true, waitingOn: [], opened: '2026-09-22T13:00:00.000Z' },
+  { sessionNumber: 38, myCheckInId: null, answered: 5, total: 6, closed: false, shared: false, waitingOn: ['Omar'], opened: '2026-09-23T13:00:00.000Z' },
+  { sessionNumber: 37, myCheckInId: null, answered: 6, total: 6, closed: true, shared: true, waitingOn: [], opened: '2026-09-22T13:00:00.000Z' },
 ]
 
 function renderIt(boardRenders = true, onOpenSession = vi.fn(), onOpenBoard = vi.fn()) {
@@ -69,6 +75,25 @@ describe('every session, as the lead reads it', () => {
   it('has no board row when the server says there is no board', () => {
     renderIt(false)
     expect(screen.queryByRole('button', { name: /The board/ })).toBeNull()
+  })
+
+  it('reads "Shared" for a released session even when the round has not fully answered, and "Not shared" for a fully-answered round the lead has not released', () => {
+    const rows = [
+      /* Released early, before everyone answered - a lead can cut a session short and release it. */
+      { sessionNumber: 2, myCheckInId: null, answered: 1, total: 3, closed: false, shared: true, waitingOn: ['Brian', 'David'], opened: '2026-09-24T13:00:00.000Z' },
+      /* Everyone answered, but the lead has not released it yet. */
+      { sessionNumber: 1, myCheckInId: null, answered: 3, total: 3, closed: true, shared: false, waitingOn: [], opened: '2026-09-20T13:00:00.000Z' },
+    ]
+    render(
+      <MemoryRouter>
+        <TheReportIsAListOfSessions rows={rows} boardRenders={false} onOpenBoard={vi.fn()} onOpenSession={vi.fn()} />
+      </MemoryRouter>,
+    )
+    const buttons = screen.getAllByRole('button').filter((b) => /Session \d+/.test(b.textContent ?? ''))
+    const session2 = buttons.find((b) => b.textContent?.includes('Session 2'))!
+    const session1 = buttons.find((b) => b.textContent?.includes('Session 1'))!
+    expect(session2.textContent).toMatch(/Shared$/)
+    expect(session1.textContent).toContain('Not shared')
   })
 
   it('names who it waits for in a sentence, however many', () => {

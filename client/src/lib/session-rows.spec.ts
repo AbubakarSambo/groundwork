@@ -1,5 +1,66 @@
 import { describe, it, expect } from 'vitest'
-import { buildSessionRows } from './session-rows'
+import { buildSessionRows, isSessionShared } from './session-rows'
+
+/**
+ * SCREEN FAULT 1 (FINAL WALK): `shared` IS READ FROM THE REPORT'S OWN RELEASE, NEVER FROM
+ * `roundCompletions`. A round can close (everyone answered) without the lead ever releasing it, and
+ * a lead can release a session before the round closes - the two facts must be able to disagree.
+ */
+describe('isSessionShared', () => {
+  it('is false with no report, or a report never released', () => {
+    expect(isSessionShared(null, 1)).toBe(false)
+    expect(isSessionShared({ releasedAt: null }, 1)).toBe(false)
+  })
+
+  it('is true for every session once released, when the report carries no per-session list', () => {
+    expect(isSessionShared({ releasedAt: '2026-09-21T10:00:00.000Z' }, 1)).toBe(true)
+    expect(isSessionShared({ releasedAt: '2026-09-21T10:00:00.000Z' }, 7)).toBe(true)
+  })
+
+  it('is true only for the sessions actually in `releasedSessions`', () => {
+    const report = { releasedAt: '2026-09-21T10:00:00.000Z', releasedSessions: [1] }
+    expect(isSessionShared(report, 1)).toBe(true)
+    expect(isSessionShared(report, 2)).toBe(false)
+  })
+})
+
+describe('buildSessionRows: `shared` disagrees with `closed` when it must', () => {
+  const labelInASentence = (p: any) => p.name ?? 'a colleague'
+
+  it('reads shared: true for a released session even though the round never closed', () => {
+    const ground = {
+      report: { releasedAt: '2026-09-21T10:00:00.000Z', releasedSessions: [1] },
+      participants: [
+        { id: 'p1', userId: 'u1', name: 'Rukia Otieno', managingOnly: false },
+        { id: 'p2', userId: 'u2', name: 'Omar Haji', managingOnly: false },
+      ],
+      checkIns: [
+        { id: 'c1', participantId: 'p1', sessionNumber: 1, status: 'COMPLETED', isSetup: false, completedAt: '2026-09-20T09:00:00.000Z' },
+      ],
+      /* Omar never answered - the round is not closed - but the lead released it anyway. */
+      roundCompletions: [],
+    }
+    const rows = buildSessionRows(ground, 'u1', labelInASentence)
+    const session1 = rows.find((r) => r.sessionNumber === 1)
+    expect(session1?.closed).toBe(false)
+    expect(session1?.shared).toBe(true)
+  })
+
+  it('reads shared: false for a fully-answered, closed round the lead has not released', () => {
+    const ground = {
+      report: null,
+      participants: [{ id: 'p1', userId: 'u1', name: 'Rukia Otieno', managingOnly: false }],
+      checkIns: [
+        { id: 'c1', participantId: 'p1', sessionNumber: 1, status: 'COMPLETED', isSetup: false, completedAt: '2026-09-20T09:00:00.000Z' },
+      ],
+      roundCompletions: [{ sessionNumber: 1, completedAt: '2026-09-20T09:01:00.000Z' }],
+    }
+    const rows = buildSessionRows(ground, 'u1', labelInASentence)
+    const session1 = rows.find((r) => r.sessionNumber === 1)
+    expect(session1?.closed).toBe(true)
+    expect(session1?.shared).toBe(false)
+  })
+})
 
 /**
  * BOARD REVIEW, 1 OCTOBER, ITEM 3: THE REPORTS LIST SHOWED A DATE IN THE FUTURE.

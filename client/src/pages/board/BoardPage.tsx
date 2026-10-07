@@ -2279,7 +2279,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             return (
               <EdgeRow
                 key={r.sessionNumber}
-                kind={r.closed ? 'ready' : (viewerRunsThisCheckIn ? 'decide' : 'look')}
+                kind={r.shared ? 'ready' : (viewerRunsThisCheckIn ? 'decide' : 'look')}
                 /* Re-review, 30 September, item 8: `sessionDay` already returns "Sun, 27 Sept"
                    (weekday, comma, date) - wrapped in another ", " here it read "Session 1,
                    Sun, 27 Sept", two commas doing the work of one. The prototype's own Reports
@@ -2289,7 +2289,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 detail={checkedIn(r.answered, r.total)}
                 actions={(
                   <>
-                    <Tag tone={r.closed ? 'proven' : 'attention'}>{r.closed ? EVERY_SESSION.shared : notSharedText}</Tag>
+                    <Tag tone={r.shared ? 'proven' : 'attention'}>{r.shared ? EVERY_SESSION.shared : notSharedText}</Tag>
                     {/* Secondary, not navy: the board's one primary is "Your check-in", in the header.
                         Only whoever runs this check-in can share a round, so only they get
                         "Share it" for one that has not been shared yet - whether or not they also
@@ -2297,13 +2297,24 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         it exists (`myCheckInId`), shared or not; with neither - someone else's
                         session, not yet shared - there is nothing of theirs to press. */}
                     {(() => {
-                      const canShare = viewerRunsThisCheckIn && !r.closed
+                      const canShare = viewerRunsThisCheckIn && !r.shared
                       const canOpenMine = !!r.myCheckInId
-                      if (!r.closed && !canShare && !canOpenMine) return null
+                      if (!r.shared && !canShare && !canOpenMine) return null
+                      /*
+                       * SCREEN FAULT 1 (FINAL WALK): "SHARE IT" OPENED /grounds/:id/session/:n,
+                       * A PAGE WITH NO SHARE OR SEND BUTTON (RoundReportPage.tsx only reads a
+                       * session's report; it never offered a way to release it). The only place
+                       * that can actually share a session is the check-in's own Report tab
+                       * (GroundAdminPage.tsx, `SendTheReportToEveryone` and the release action),
+                       * so "Share it" goes there now instead.
+                       */
+                      const target = canShare
+                        ? `/grounds/${id}?tab=report`
+                        : (!r.shared && canOpenMine ? `/checkin/${r.myCheckInId}/report` : `/grounds/${id}/session/${r.sessionNumber}`)
                       return (
                         <UIButton
                           kind="secondary" size="small"
-                          onClick={() => navigate(!canShare && canOpenMine ? `/checkin/${r.myCheckInId}/report` : `/grounds/${id}/session/${r.sessionNumber}`)}
+                          onClick={() => navigate(target)}
                         >
                           {canShare ? 'Share it' : 'Open'}
                         </UIButton>

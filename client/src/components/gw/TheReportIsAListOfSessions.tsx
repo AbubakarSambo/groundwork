@@ -15,9 +15,12 @@ import { atTheStart } from '@/lib/a-colleague'
  * "3 of 5 answered · waiting on Omar, Brian" and a pill saying "Released", "Ready to release" or
  * "Forming". Pieces joined with dots, and three words for two states.
  *
- * SHARED MEANS THE ROUND CLOSED. A round closes when its report goes out to everyone in it (the
- * listener releases it), so `closed` is the same fact as shared. Anything else is "Not shared",
- * whoever it is waiting for.
+ * SHARED IS NOT THE SAME FACT AS CLOSED (screen fault 1, final walk). A round is "closed" once
+ * everybody in it has answered (`roundCompletions`); it is "shared" once the lead has actually
+ * released that session's report (`report.releasedAt` / `report.releasedSessions`, decision 76).
+ * A lead can release a session before everyone has answered, and a closed round is not shared
+ * until released - so the tag below reads `shared`, never `closed`. See `isSessionShared` in
+ * lib/session-rows.ts.
  *
  * WHO IT IS WAITING FOR STAYS, AS A SENTENCE. The prototype's row has no such line, but the product
  * has had one since Hafsah asked to "see who's checked in, the report is counting". It is kept, and
@@ -37,8 +40,13 @@ export interface SessionRow {
    */
   answered: number | null
   total: number | null
-  /** True once the round closed and its report went out to everyone in it. */
+  /** True once everybody in this round has answered. NOT the same fact as `shared` - a lead can
+      release a session before everyone has answered, and a round that finished is not shared
+      until the lead releases it. Kept for the counting logic that needs it (session-rows.ts). */
   closed: boolean
+  /** True once this session's team picture has actually been released (`report.releasedAt` /
+      `report.releasedSessions`) - the fact the "Shared"/"Not shared" tag and "Share it" must use. */
+  shared: boolean
   /** Names of the people who have not answered yet, for the line under the row. */
   waitingOn: string[]
   /** When this session really opened (its first completed check-in), for "Wed 23 Sept". Absent
@@ -148,7 +156,7 @@ export function TheReportIsAListOfSessions({
                 )}
               </span>
               <span style={{ whiteSpace: 'nowrap' }}>
-                <Tag tone={r.closed ? 'proven' : 'attention'}>{r.closed ? EVERY_SESSION.shared : EVERY_SESSION.notShared}</Tag>
+                <Tag tone={r.shared ? 'proven' : 'attention'}>{r.shared ? EVERY_SESSION.shared : EVERY_SESSION.notShared}</Tag>
               </span>
             </button>
           ))}

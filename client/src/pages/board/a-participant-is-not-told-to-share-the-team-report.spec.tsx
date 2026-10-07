@@ -1,9 +1,24 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { MemoryRouter, Routes, Route } from 'react-router-dom'
+import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BoardPage } from './BoardPage'
 import { boardApi } from '@/api/board'
+import { groundsApi } from '@/api/grounds'
+
+const DEFAULT_GROUND = {
+  initiatorId: 'u-lead',
+  leadFirstName: 'Rukia',
+  participants: [
+    { id: 'p-lead', userId: 'u-lead', managingOnly: true },
+    { id: 'p-aisha', userId: 'u-aisha', managingOnly: false },
+  ],
+  checkIns: [
+    { id: 'c-lead-1', participantId: 'p-lead', sessionNumber: 1, status: 'COMPLETED', isSetup: false, availableFrom: null, completedAt: '2026-09-20T09:00:00.000Z' },
+    { id: 'c-aisha-1', participantId: 'p-aisha', sessionNumber: 1, status: 'COMPLETED', isSetup: false, availableFrom: null, completedAt: '2026-09-21T09:00:00.000Z' },
+  ],
+  roundCompletions: [],
+}
 
 /**
  * BOARD REVIEW, 1 OCTOBER, ITEM 1: A PARTICIPANT IS NO LONGER TOLD TO SHARE THE TEAM REPORT.
@@ -19,19 +34,7 @@ vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ user: me }) 
 vi.mock('@/api/board', () => ({ boardApi: { get: vi.fn() } }))
 vi.mock('@/api/grounds', () => ({
   groundsApi: {
-    get: vi.fn().mockResolvedValue({
-      initiatorId: 'u-lead',
-      leadFirstName: 'Rukia',
-      participants: [
-        { id: 'p-lead', userId: 'u-lead', managingOnly: true },
-        { id: 'p-aisha', userId: 'u-aisha', managingOnly: false },
-      ],
-      checkIns: [
-        { id: 'c-lead-1', participantId: 'p-lead', sessionNumber: 1, status: 'COMPLETED', isSetup: false, availableFrom: null, completedAt: '2026-09-20T09:00:00.000Z' },
-        { id: 'c-aisha-1', participantId: 'p-aisha', sessionNumber: 1, status: 'COMPLETED', isSetup: false, availableFrom: null, completedAt: '2026-09-21T09:00:00.000Z' },
-      ],
-      roundCompletions: [],
-    }),
+    get: vi.fn(),
   },
 }))
 vi.mock('@/api/today', () => ({ todayApi: { get: vi.fn().mockResolvedValue({ count: 0, line: null, comingUp: [], needs: [] }) } }))
@@ -63,13 +66,27 @@ const base = {
 const AS_THE_LEAD = { ...base, myParticipantId: 'p-lead', canEditFrame: true, readOnlyNote: null }
 const AS_AISHA = { ...base, myParticipantId: 'p-aisha', canEditFrame: false, readOnlyNote: null }
 
+/** Renders where navigation actually landed, so a test can prove "Share it" goes somewhere real. */
+function WhereWeLanded() {
+  const loc = useLocation()
+  return <div data-testid="landed">{loc.pathname}{loc.search}</div>
+}
+
+/** Each test picks its own ground fixture; defaults back so one test's override never leaks. */
+beforeEach(() => {
+  ;(groundsApi.get as any).mockResolvedValue(DEFAULT_GROUND)
+})
+
 function renderBoard(payload: any) {
   ;(boardApi.get as any).mockResolvedValue(payload)
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={qc}>
       <MemoryRouter initialEntries={['/grounds/g1/board']}>
-        <Routes><Route path="/grounds/:id/board" element={<BoardPage />} /></Routes>
+        <Routes>
+          <Route path="/grounds/:id/board" element={<BoardPage />} />
+          <Route path="*" element={<WhereWeLanded />} />
+        </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -82,6 +99,36 @@ describe('the Reports section, as the lead and as a participant', () => {
     expect(await screen.findByText('Not shared')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Share it' })).toBeInTheDocument()
     expect(screen.queryByText(/Rukia shares it/)).not.toBeInTheDocument()
+  })
+
+  /*
+   * SCREEN FAULT 1 (FINAL WALK): "NOT SHARED" EVEN THOUGH THE REPORT WAS RELEASED. A session's
+   * round can close (`roundCompletions`) without ever being shared, and - the other way round - a
+   * lead can release a session before the round closes. The tag must follow `report.releasedAt` /
+   * `report.releasedSessions`, never `roundCompletions` alone.
+   */
+  it('reads "Shared" once the report is actually released, even with the round still open', async () => {
+    me = { id: 'u-lead', firstName: 'Wairimu', role: 'MEMBER' }
+    /* Released early (report.releasedAt set), with nobody recorded as closing the round - the
+       lead shared it, not because everyone answered. */
+    ;(groundsApi.get as any).mockResolvedValue({
+      ...DEFAULT_GROUND,
+      report: { releasedAt: '2026-09-21T10:00:00.000Z', releasedSessions: [1] },
+    })
+    renderBoard(AS_THE_LEAD)
+    expect(await screen.findByText('Shared')).toBeInTheDocument()
+    expect(screen.queryByText('Not shared')).not.toBeInTheDocument()
+    /* Already shared, so there is nothing left for the lead to press to share it. */
+    expect(screen.queryByRole('button', { name: 'Share it' })).not.toBeInTheDocument()
+  })
+
+  it('sends the lead to the report tab, which actually has a way to share it, never to a page with no share button', async () => {
+    me = { id: 'u-lead', firstName: 'Wairimu', role: 'MEMBER' }
+    renderBoard(AS_THE_LEAD)
+    const shareIt = await screen.findByRole('button', { name: 'Share it' })
+    shareIt.click()
+    /* Not /grounds/g1/session/1 - RoundReportPage.tsx has no share or send control. */
+    expect(await screen.findByTestId('landed')).toHaveTextContent('/grounds/g1?tab=report')
   })
 
   it('tells a participant who shares it, by name, with no button to press', async () => {

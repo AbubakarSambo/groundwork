@@ -259,7 +259,7 @@ export interface Ground {
   commitments?: { id: string; participantId: string | null; text: string; whenSaid: string | null; explicit: boolean; status: string; settledAt?: string | null }[]
   checkIns?: CheckInSummary[]
   signals?: GroundSignal[]
-  report?: { id: string; releasedAt: string | null; createdAt?: string } | null
+  report?: { id: string; releasedAt: string | null; releasedSessions?: number[] | null; createdAt?: string } | null
   sessionProgress?: {
     sessionNumber: number
     total: number
