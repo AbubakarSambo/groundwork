@@ -4912,6 +4912,34 @@ export class AssistantService {
       })?.catch?.(() => []) ?? []
       : [];
 
+    /*
+     * WHAT THEY SAID THEY WOULD DO, WRITTEN DOWN WHILE SETTING A CHECK-IN UP OR ANSWERING, AS THE YOU PAGE READS IT (user journeys, F-5).
+     * The You page lists the person's own to-dos and commitments from their goals ("person_objectives", said by themselves, still open), and
+     * Ask read neither, so a lead whose You page held "Settle the 21 day credit rule with finance by the end of October." was told she had
+     * said she would do nothing. The same rows, the same rule, and only the asker's own place in each check-in.
+     */
+    const myPlaces: any[] = me.linkedUserId
+      ? await (this.prisma as any).groundParticipant?.findMany?.({
+        where: { userId: me.linkedUserId, awaitingSeat: false, ground: { organizationId, ...notAKeptCheckIn(kept) } },
+        select: { id: true, ground: { select: { label: true } } },
+      })?.catch?.(() => []) ?? []
+      : [];
+    const ownToDos: any[] = myPlaces.length
+      ? await (this.prisma as any).personObjective?.findMany?.({
+        where: { participantId: { in: myPlaces.map((x) => x.id) }, kind: { in: ['COMMITMENT', 'TODO'] }, authoredBy: 'self', status: 'OPEN' },
+        select: { text: true, dueSaid: true, participantId: true },
+        orderBy: { createdAt: 'asc' },
+      })?.catch?.(() => []) ?? []
+      : [];
+    const sameWords = (t: string) => t.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+    const alreadyListed = new Set(inCheckIns.map((c) => sameWords(String(c.text))));
+    for (const o of ownToDos) {
+      const text = String(o.text ?? '').trim();
+      if (!text || alreadyListed.has(sameWords(text))) continue;
+      alreadyListed.add(sameWords(text));
+      inCheckIns.push({ text, whenSaid: o.dueSaid ?? null, ground: myPlaces.find((x) => x.id === o.participantId)?.ground ?? null });
+    }
+
     const now = new Date();
     const lines: string[] = [];
     const late: string[] = [];

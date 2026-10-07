@@ -138,3 +138,33 @@ describe('"What did I say I would do?"', () => {
     expect(textOf(reply)).not.toContain('Kisumu');
   });
 });
+
+/** F-5 OF THE USER JOURNEYS. Wairimu's You page lists the promise she made while setting the check-in up; Ask told her she had said she would do nothing. */
+describe('"What did I say I would do?" for a promise written down while setting a check-in up', () => {
+  const asWairimu = (userId: string) => {
+    const h = askGroundwork({ userId });
+    h.prisma.person.findFirst = jest.fn(async () => ({ id: 'p1', externalId: `ext-${userId}`, displayName: 'X', active: true, linkedUserId: userId }));
+    h.prisma.commitment.findMany = jest.fn(async () => []);
+    h.prisma.groundCommitment = { findMany: jest.fn(async () => []) };
+    h.prisma.groundParticipant.findMany = jest.fn(async ({ where }: any) => (where.userId === 'u-wairimu' ? [{ id: 'pp-w', ground: { label: 'Sales team, last quarter' } }] : []));
+    h.prisma.personObjective = {
+      findMany: jest.fn(async ({ where }: any) => (where.participantId.in.includes('pp-w') && where.authoredBy === 'self' && where.status === 'OPEN'
+        ? [{ text: 'I will settle the 21 day credit rule with finance by the end of October.', dueSaid: 'by the end of October', participantId: 'pp-w' }]
+        : [])),
+    };
+    return h;
+  };
+
+  it('Wairimu reads her own promise, once, in the same words her You page holds', async () => {
+    const reply: any = await asWairimu('u-wairimu').service.respond('org-a', 'p1', 'What did I say I would do?');
+    expect(textOf(reply)).toContain('You said you would do one thing that is still waiting.');
+    expect(textOf(reply)).toContain('settle the 21 day credit rule with finance by the end of October');
+    expect(textOf(reply)).not.toContain('You have not said you will do anything');
+  });
+
+  it('somebody else in the organisation reads none of it', async () => {
+    const reply: any = await asWairimu('u-other').service.respond('org-a', 'p1', 'What did I say I would do?');
+    expect(textOf(reply)).toContain('You have not said you will do anything that is still waiting.');
+    expect(textOf(reply)).not.toContain('credit rule');
+  });
+});
