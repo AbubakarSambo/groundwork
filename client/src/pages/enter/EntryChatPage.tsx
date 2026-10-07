@@ -3317,16 +3317,21 @@ export function EntryChatPage() {
       ) : (
         <>
           {/*
-            "Name + email" (section 13), anchor draft only: the name is asked first, beside the
-            email, before the optional "What do they do" context that follows once Add is pressed.
-            Every other situation's add row is unchanged - just the email and the Add button.
+            "Name + email" (section 13): the name is asked first, beside the email, before the
+            optional "What do they do" context that follows once Add is pressed.
+            FAULT 5(a) (live walk, 6 October 2026): THIS USED TO BE ANCHOR-DRAFT ONLY, SO AN
+            ORDINARY SETUP HAD NO WAY TO GIVE A NAME WHEN ADDING SOMEBODY BY EMAIL - even when the
+            conversation already had one. Walked live, setting up a new hire: Imani Wekesa was
+            named in the chat, then added by her address alone, and the roster read
+            "imani@walk2.test has not checked in…" with no name anywhere, although Groundwork knew
+            it. `displayNames`/`asSomeoneToInvite` already carry a typed name through to the
+            commit's `displayName` for every situation, not only an anchor draft - only the field to
+            type one into was gated. Opened to every situation now; nothing here is anchor-specific.
           */}
-          {isAnchor && (
-            <TextField type="text" aria-label="Name" placeholder="Name" value={inviteDisplayName}
-              onChange={e => setInviteDisplayName(e.target.value)}
-              className="gwui-ec-savecard-field"
-            />
-          )}
+          <TextField type="text" aria-label="Name" placeholder="Name (optional)" value={inviteDisplayName}
+            onChange={e => setInviteDisplayName(e.target.value)}
+            className="gwui-ec-savecard-field"
+          />
           <div className="gwui-ec-savecard-invite-add-row">
             <TextField type="email" placeholder="name@company.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && addInviteEmail()}

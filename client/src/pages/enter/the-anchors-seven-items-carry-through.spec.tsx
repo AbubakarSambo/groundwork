@@ -21,7 +21,10 @@ import { THE_ANCHOR_FIRST_QUESTION } from './TheSetup'
  *   - they travel on `POST /entry/report` too (`entryApi.report`'s fifth argument), so the lead's
  *     reveal says what she said;
  *   - the people step's new "Name" field (section 13, "Name + email") is sent as `displayName`;
- *   - none of this reaches a non-anchor draft.
+ *   - none of the anchor's own seven-item machinery reaches a non-anchor draft - the Name field
+ *     itself is shared with every situation now (fault 5(a), live walk, 6 October 2026: an ordinary
+ *     setup had no way to give a name when adding somebody by email, even when the conversation
+ *     already had one - see the-added-list-keeps-the-name-given.spec.tsx).
  */
 
 const onboardStream = vi.fn()
@@ -276,7 +279,19 @@ describe('the people step’s Name field, for an anchor draft', () => {
     expect(bello?.displayName).toBeUndefined()
   })
 
-  it('does not appear on the people step for any other situation', async () => {
+  /*
+   * FAULT 5(a) (live walk, 6 October 2026): THE NAME FIELD IS NOW SHARED WITH EVERY SITUATION.
+   *
+   * This used to pin the opposite - that the Name field appeared for an anchor draft only, and
+   * never otherwise. Walked live, setting up a new hire: Imani Wekesa was named in the
+   * conversation, then added by her address alone, with nowhere to give a name because this field
+   * was anchor-gated - and her roster row read "imani@walk2.test has not checked in…", though
+   * Groundwork already had her name. `displayNames`/`asSomeoneToInvite` already carried a typed
+   * name through to `displayName` for every situation; only the field to type one into was gated.
+   * What stays anchor-only is the rest of the seven-item machinery this file is really about,
+   * checked elsewhere in this describe block.
+   */
+  it('offers the Name field on the people step for any other situation too, not only an anchor draft', async () => {
     localStorage.setItem('gw_entry_session', JSON.stringify({
       closed: true, onboardingStep: 7,
       history: [{ role: 'assistant', content: 'hi' }, { role: 'user', content: 'ship it' }],
@@ -288,6 +303,6 @@ describe('the people step’s Name field, for an anchor draft', () => {
     fireEvent.change(emailInput, { target: { value: 'lead@example.test' } })
     fireEvent.submit(emailInput.closest('form')!)
     await waitFor(() => expect(authApi.entrySave).toHaveBeenCalled())
-    expect(screen.queryByLabelText('Name')).toBeNull()
+    expect(screen.queryByLabelText('Name')).toBeTruthy()
   })
 })

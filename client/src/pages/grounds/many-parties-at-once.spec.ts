@@ -37,8 +37,12 @@ describe('many parties at once', () => {
 
   it('keeps a line per person about what they answer for', () => {
     expect(PAGE).toMatch(/setQueuedToAdd\(\[\.\.\.queuedToAdd, \{ email, note: newParticipantNote\.trim\(\) \}\]\)/)
-    /* And says what an empty one means, rather than leaving a blank line. */
-    expect(PAGE).toContain('they will be asked the general questions for this situation')
+    /*
+     * And says what an empty one means, rather than leaving a blank line. FAULT 5 (live walk, 6
+     * October 2026): this used to join the two statements with a dash ("No note - they will be
+     * asked..."); each is now its own plain sentence, so the assertion moved to match.
+     */
+    expect(PAGE).toContain('There is no note. They will be asked the general questions for this situation.')
   })
 
   it('refuses to queue the same address twice', () => {
