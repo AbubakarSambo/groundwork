@@ -599,6 +599,10 @@ export const OPTIONS_THE_SHRUG_OFFERS: { key: Lane; label: string }[] = [
 
 export function whatICanDoWith(input: string): { line: string; options: { key: string; label: string }[] } {
   const trimmed = (input ?? '').trim();
+  /* A greeting is not a failed question (B-106). */
+  if (/^\s*((hi|hello|hey|hiya|yo)(\s+there)?|good\s+(morning|afternoon|evening))\s*[.!]*\s*$/i.test(trimmed)) {
+    return { line: 'Hello. Ask me something, or pick one of these.', options: OPTIONS_THE_SHRUG_OFFERS.map((o) => ({ key: o.key as string, label: o.label })) };
+  }
   const short = trimmed.length <= 60 ? trimmed : `${trimmed.slice(0, 57)}…`;
   return {
     line: trimmed

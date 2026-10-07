@@ -28,3 +28,13 @@ describe('who is blocked', () => {
     expect(route('who is Amani').lane).toBe('who_is');
   });
 });
+
+import { whatICanDoWith } from './the-router-is-deterministic';
+/** B-106: 'hello' after finishing was answered 'I cannot answer that one yet. Here is what I can do with "hello".' */
+describe('a greeting', () => {
+  it('is greeted, not told it failed', () => {
+    expect(whatICanDoWith('hello').line).toBe('Hello. Ask me something, or pick one of these.');
+    expect(whatICanDoWith('Good morning!').line).toBe('Hello. Ask me something, or pick one of these.');
+    expect(whatICanDoWith('what did people say').line).toMatch(/^I cannot answer that one yet\./);
+  });
+});
