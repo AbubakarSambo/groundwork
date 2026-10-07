@@ -2,6 +2,9 @@ import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { A_GROUND_IS_OVER } from '../grounds/a-ground-that-has-ended';
 import { theCheckInsHeldForASeat } from '../participants/held-for-a-seat';
 import { theBriefAsTheLeadReadsIt } from '../grounds/what-a-participant-is-told-about-this';
+import { askName } from './ask-name';
+import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
+import { peersAreNamedByDefaultOn } from '../reports/peers-are-named';
 import { readTheCompanyPage, NOT_YOUR_COMPANY } from '../grounds/company.service';
 
 /**
@@ -19,8 +22,8 @@ const inWords = (names: string[]) => (names.length <= 1 ? names.join('') : `${na
 
 async function theirCheckIns(prisma: any, organizationId: string, userId: string) {
   const grounds: any[] = await prisma.ground.findMany({
-    where: { organizationId, status: { notIn: A_GROUND_IS_OVER }, OR: [{ initiatorId: userId }, { participants: { some: { userId } } }] },
-    select: { id: true, label: true, initiatorId: true, brief: true, toldToParticipants: true, initiator: { select: { firstName: true } } },
+    where: { organizationId, status: { notIn: [...A_GROUND_IS_OVER, 'AWAITING_APPROVAL'] as any }, OR: [{ initiatorId: userId }, { participants: { some: { userId } } }] },
+    select: { id: true, label: true, initiatorId: true, brief: true, toldToParticipants: true, scenario: true, peersVisibleToEachOther: true, organization: { select: { name: true } }, initiator: { select: { firstName: true } } },
     orderBy: { createdAt: 'asc' },
   }).catch(() => []);
   const held = await theCheckInsHeldForASeat(prisma, grounds.map((g) => g.id), userId).catch(() => new Set<string>());
@@ -65,7 +68,7 @@ export async function whatMyCheckInIsFor(prisma: any, organizationId: string, us
     const what = forWhat ? `This is what "${g.label}" is for. ${forWhat.replace(/[.!?]*$/, '.')}` : `"${g.label}" has no description of what it is for yet.`;
     const reads = runsIt
       ? 'You run it, so you read its report.'
-      : `${leads || 'The person who runs it'} runs it and reads its report. Your own report is yours alone.`;
+      : whoReadsWhatAMemberSays(g, leads);
     return `${what} ${reads}`;
   });
   if (mine.length > 3) lines.push(`You are in ${mine.length - 3} more, and I can tell you about any of them if you name it.`);
@@ -109,4 +112,21 @@ export function howToAskForLeaveOrSpending(on: { leave: boolean; spend: boolean 
   const spend = 'To spend money, tell me how much, what it is for and when you need it.';
   const end = 'I will say it back to you first, and it goes to the person who approves it only once you say yes.';
   return [on.leave ? leave : null, on.spend ? spend : null, end].filter(Boolean).join(' ');
+}
+
+
+/**
+ * WHO CAN SEE WHAT A MEMBER SAYS IN A CHECK-IN, in the words the guest lane and the invitation already use (privacy sweep, 7 October).
+ * "Wairimu runs it and reads its report. Your own report is yours alone." left out that the people in it read what you say, and that admins
+ * read the board and the reports. Where people do not see each other, it says so; on an evaluation check-in it does not say admins read it.
+ */
+export function whoReadsWhatAMemberSays(g: { label: string; scenario?: any; peersVisibleToEachOther?: boolean | null; organization?: { name?: string | null } | null }, leadsFirstName: string): string {
+  const ask = askName(g.organization?.name ?? null);
+  const lead = (leadsFirstName ?? '').trim();
+  const together = g.peersVisibleToEachOther ?? peersAreNamedByDefaultOn(g as any);
+  const admins = !g.scenario || isEvaluationCheckIn(g.scenario) ? '' : ' Admins can read its board and reports.';
+  const who = together
+    ? `The people in "${g.label}", including ${lead ? `${lead}, who runs it,` : 'the person who runs it,'} can see what you say in it.`
+    : `${lead || 'The person who runs it'} runs "${g.label}" and can see what you say in it. The other people taking part do not see what you say.`;
+  return `${who}${admins} Your own report and your questions to ${ask} stay private.`;
 }

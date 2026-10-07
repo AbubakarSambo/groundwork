@@ -1,4 +1,6 @@
 import { askStartersFor, askStarters } from './ask-name';
+import { whoReadsWhatAMemberSays } from './about-your-check-ins-and-the-company';
+import { EVALUATION_SCENARIOS } from '../reports/is-this-an-evaluation-check-in';
 import { askGroundwork, textOf } from './request-92-harness';
 
 /**
@@ -57,7 +59,7 @@ describe('what Ask offers is answered', () => {
 
 /** What each reader reads, in full, for the starters that answer from the record. */
 describe('what each reader reads in answer', () => {
-  const ground = { id: 'g1', label: 'Sales team, Q4', initiatorId: 'lead-1', organizationId: 'org-a', brief: 'Get the Q4 target back on track.', toldToParticipants: 'This check-in is about how the Q4 sales target is going.', initiator: { firstName: 'Wanjiku' } };
+  const ground = { id: 'g1', label: 'Sales team, Q4', scenario: 'OKR_ALIGNMENT', peersVisibleToEachOther: true, organization: { name: 'Baridi' }, initiatorId: 'lead-1', organizationId: 'org-a', brief: 'Get the Q4 target back on track.', toldToParticipants: 'This check-in is about how the Q4 sales target is going.', initiator: { firstName: 'Wanjiku' } };
   const opens = new Date(Date.now() + 3 * 86_400_000);
   const as = (userId: string, extra: any = {}) => {
     const h = askGroundwork({ userId, grounds: [ground] as any, checkIns: [{ groundId: 'g1', status: 'NOT_STARTED', availableFrom: opens, sessionNumber: 2 }], ...extra });
@@ -71,9 +73,9 @@ describe('what each reader reads in answer', () => {
     expect(textOf(reply)).toMatch(/^Your next check-in in "Sales team, Q4" opens on \d{1,2} \w+ \d{4}\.$/);
   });
 
-  it('Amina is told what it is for, and that Wanjiku, who runs it, reads its report', async () => {
+  it('Amina is told what it is for, and who can see what she says in it (privacy sweep, 7 October)', async () => {
     const reply: any = await as('u-amina').service.respond('org-a', 'p1', 'What is my check-in for, and who reads it?');
-    expect(textOf(reply)).toBe('This is what "Sales team, Q4" is for. This check-in is about how the Q4 sales target is going. Wanjiku runs it and reads its report. Your own report is yours alone.');
+    expect(textOf(reply)).toBe('This is what "Sales team, Q4" is for. This check-in is about how the Q4 sales target is going. The people in "Sales team, Q4", including Wanjiku, who runs it, can see what you say in it. Admins can read its board and reports. Your own report and your questions to Ask Baridi stay private.');
   });
 
   it('Amina never reads what the lead wrote as a brief', async () => {
@@ -213,5 +215,27 @@ describe('"What did I say about ...?" finds what she said in her own check-ins',
     const t = textOf(await asAmani('u-other').service.respond('org-a', 'p1', 'What did I say about the Green Mart proposal?'));
     expect(t).toContain('You have not mentioned');
     expect(t).not.toContain('ready and I will send it');
+  });
+});
+
+
+describe('who can see what a member says, said for each kind of check-in', () => {
+  const g = { label: 'Sales team, Q4', organization: null as any, scenario: 'OKR_ALIGNMENT' };
+  it('where people see each other', () => {
+    expect(whoReadsWhatAMemberSays({ ...g, peersVisibleToEachOther: true }, 'Wairimu')).toBe('The people in "Sales team, Q4", including Wairimu, who runs it, can see what you say in it. Admins can read its board and reports. Your own report and your questions to Ask Groundwork stay private.');
+  });
+  it('where they do not, it says so', () => {
+    expect(whoReadsWhatAMemberSays({ ...g, peersVisibleToEachOther: false }, 'Wairimu')).toBe('Wairimu runs "Sales team, Q4" and can see what you say in it. The other people taking part do not see what you say. Admins can read its board and reports. Your own report and your questions to Ask Groundwork stay private.');
+  });
+  it('on an evaluation check-in it does not say that admins read it', () => {
+    expect(whoReadsWhatAMemberSays({ ...g, scenario: EVALUATION_SCENARIOS[0], peersVisibleToEachOther: false }, 'Wairimu')).not.toContain('Admins');
+  });
+});
+
+describe('when the read of which suites are on fails', () => {
+  it('Ask says nothing is switched on, and never that both are', async () => {
+    const h = askGroundwork({ userId: 'u-amina' });
+    h.prisma.organizationSuite = { findMany: jest.fn(async () => { throw new Error('database down'); }) };
+    expect(textOf(await h.service.respond('org-a', 'p1', 'Ask for leave, or to spend money.'))).toBe('Leave and spending requests are not switched on for your organisation yet. An admin can switch them on.');
   });
 });

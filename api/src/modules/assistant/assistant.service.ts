@@ -454,7 +454,8 @@ export class AssistantService {
     /* "Ask for leave, or to spend money." with nothing said yet: told how, for what is switched on here (request 180 item 1). */
     if (THE_REQUEST_STARTERS.test(message)) {
       const on = await this.prisma.organizationSuite?.findMany?.({ where: { organizationId, suite: { in: ['leave', 'spend'] }, isOn: true }, select: { suite: true } }).catch(() => null);
-      const suites = new Set<string>((on ?? [{ suite: 'leave' }, { suite: 'spend' }]).map((r: any) => r.suite));
+      /* A read that failed says nothing is switched on, never that both are: the sentence must be true or say less (privacy sweep, 7 October). */
+      const suites = new Set<string>((on ?? []).map((r: any) => r.suite));
       return rules('how_to_ask_for_leave_or_spending', text(howToAskForLeaveOrSpending({ leave: suites.has('leave'), spend: suites.has('spend') })));
     }
 
