@@ -1,4 +1,5 @@
 import { WAITING_TO_BE_LET_IN } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
+import { withoutComparisonsAnywhere } from '../reports/no-comparison-between-people';
 import { A_LINK_IS_NOT_READ } from './a-link-is-not-read';
 import { namesTheyCanTellApart } from '../../common/check-ins-you-can-tell-apart';
 import { whatWasSaid } from './what-was-said-is-what-is-kept';
@@ -271,6 +272,11 @@ export class AssistantService {
   }
 
   async respond(organizationId: string, personId: string, message: string, groundId?: string, openedFromSetup = false): Promise<Reply> {
+    /* No sentence that ranks a person against others is said in an answer (reports/no-comparison-between-people.ts). */
+    return withoutComparisonsAnywhere(await this.respondInner(organizationId, personId, message, groundId, openedFromSetup));
+  }
+
+  private async respondInner(organizationId: string, personId: string, message: string, groundId?: string, openedFromSetup = false): Promise<Reply> {
     /* Decision 35: a bank or card number typed here is hidden before it is kept or read by a model. See documents/bank-details-are-never-kept. */
     message = withoutBankDetails(message);
     const me = await this.prisma.person.findFirst({

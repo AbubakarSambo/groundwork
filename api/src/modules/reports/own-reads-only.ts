@@ -1,3 +1,4 @@
+import { withoutComparisonsBetweenPeople } from './no-comparison-between-people';
 /**
  * A READ OF HOW SOMEBODY IS DOING BELONGS TO THAT PERSON, NOT TO THEIR COLLEAGUES.
  *
@@ -76,7 +77,12 @@ const keepOwnById = (map: any, viewerParticipantId: string | null): any => {
  *   concernFlags, which is a list of concerns about named parties and has no
  *   business in anybody's hands but the lead's.
  */
-export function withoutOtherPeoplesReads<T extends Record<string, any>>(
+export function withoutOtherPeoplesReads<T extends Record<string, any>>(report: T, input: OwnReadsInput): T {
+  /* And no sentence that ranks a person against others, for any reader (no-comparison-between-people.ts). */
+  return withoutComparisonsBetweenPeople(withoutOtherPeoplesRatings(report, input));
+}
+
+function withoutOtherPeoplesRatings<T extends Record<string, any>>(
   report: T,
   { viewerLabel, viewerParticipantId, viewerIsLead }: OwnReadsInput,
 ): T {
