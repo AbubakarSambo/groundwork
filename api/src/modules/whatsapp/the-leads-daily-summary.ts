@@ -68,7 +68,7 @@ export function aCheckInInASentence(c: ACheckInToday): string | null {
   /* Which round the count is about, said the way Today and the board say it ("for the second check-in"). */
   const forIt = c.round ? ` for ${theCheckIn(c.round)}` : '';
   if (c.answered >= c.ofHowMany) {
-    return c.ofHowMany === 1 ? `${where}, the one person who can answer has checked in${forIt}.` : `${where}, all ${c.ofHowMany} people have checked in${forIt}.`;
+    return c.ofHowMany === 1 ? `${where}, the one person who can answer has checked in${forIt}.` : c.ofHowMany === 2 ? `${where}, both people have checked in${forIt}.` : `${where}, all ${c.ofHowMany} people have checked in${forIt}.`;
   }
   if (c.answered === 0) return `${where}, nobody has checked in${forIt} yet, out of ${c.ofHowMany} ${c.ofHowMany === 1 ? 'person' : 'people'}.`;
   /* Up to three by name; anybody else, and anybody with no name known, is counted, so the names never read as everyone. */
