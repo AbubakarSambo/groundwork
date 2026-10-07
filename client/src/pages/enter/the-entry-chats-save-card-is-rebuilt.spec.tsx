@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { EntryChatPage } from './EntryChatPage'
@@ -187,7 +187,12 @@ describe('the save card, already signed in', () => {
     const input = screen.getAllByLabelText('How many sessions')[0]
     fireEvent.change(input, { target: { value: '3' } })
     fireEvent.blur(input)
-    expect(await screen.findByText(/Save your session below to get set up/)).toBeTruthy()
+    /* FAULT 4 (live review): this still read "Save your session below to get set up", the same
+       words told to a stranger who still has to sign in - read right beside "you are already
+       signed in" it contradicted itself. A signed-in lead now reads "Save this below", the same
+       words the save card itself uses for them. */
+    expect(await screen.findByText(/Save this below/)).toBeTruthy()
+    expect(screen.queryByText(/Save your session below to get set up/)).toBeNull()
     expect(screen.queryByText(/means signing in/)).toBeNull()
     expect(screen.getByText(/No confirmation needed, you are already signed in\./)).toBeTruthy()
   })
@@ -235,6 +240,50 @@ describe('changing how many sessions a check-in runs (fault 2, live walk, 6 Octo
     expect(screen.getAllByText('How many sessions').length).toBeGreaterThan(0)
     expect(screen.getAllByText('This is your plan for how many check-ins to run. You can change it at any time.').length).toBeGreaterThan(0)
     expect(document.body.textContent).not.toContain('sessions:')
+  })
+})
+
+/*
+ * FAULT 9 (live review): SOMEBODY ADDED FROM A NAMED "PEOPLE MENTIONED" ROW GOT NO NAME FIELD.
+ * Her row then read "wanjiru@suites.test is waiting for a seat on your plan.", with no name
+ * anywhere, though the report had just named her two lines above the "Add them" button. The name
+ * on that row (`p.name`) is now carried into `displayNames` when the address is typed
+ * (`queueSuggestedContributor`, EntryChatPage.tsx), the same map `asSomeoneToInvite` already reads
+ * to send `displayName` to the server - proven here by the patch this page sends the draft with.
+ */
+describe('a mentioned person keeps her name when added by typed address (fault 9, live review)', () => {
+  it('sends the address with the mentioned name as displayName, not the address alone', async () => {
+    authedUser = null
+    const { entryApi } = await import('@/api/entry')
+    const { authApi } = await import('@/api/auth')
+    vi.mocked(authApi.entrySave).mockResolvedValue({ draftToken: 'd-token-mentioned' } as any)
+    seedClosedSession({
+      report: JSON.stringify({
+        alignmentStatus: 'Clear', whatGroundworkSaw: 'x', alignmentBasis: '',
+        areasRequiringAlignment: [], alignmentReached: [], honestClose: { aligned: '', open: '', revisit: '', risk: '' },
+        mentionedPeople: [{ name: 'Wanjiru Kamau', context: 'Owns onboarding.' }], suggestedParties: [],
+      }),
+    })
+    renderPage()
+    fireEvent.click(await screen.findByText(/Invite and finish/))
+    const emailInput = screen.getByPlaceholderText('your@email.com')
+    fireEvent.change(emailInput, { target: { value: 'lead@example.test' } })
+    fireEvent.submit(emailInput.closest('form')!)
+    await waitFor(() => expect(authApi.entrySave).toHaveBeenCalled())
+
+    fireEvent.click(await screen.findByText('Add them'))
+    const addressField = screen.getByPlaceholderText('their@email.com')
+    fireEvent.change(addressField, { target: { value: 'wanjiru@suites.test' } })
+    const addRow = addressField.closest('.gwui-ec-savecard-add-row') as HTMLElement
+    fireEvent.click(within(addRow).getByRole('button', { name: 'Add' }))
+
+    await waitFor(() => {
+      const calls = vi.mocked(entryApi.patchDraft).mock.calls
+      const contributors = calls[calls.length - 1]?.[1]?.contributors
+      expect(contributors).toContainEqual(
+        expect.objectContaining({ email: 'wanjiru@suites.test', displayName: 'Wanjiru Kamau' }),
+      )
+    }, { timeout: 2000 })
   })
 })
 

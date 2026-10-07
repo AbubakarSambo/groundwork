@@ -71,7 +71,9 @@ describe('the setup conversation', () => {
     expect(document.body.textContent).not.toContain("What I've got so far")
     expect(screen.getByText('Who is in it')).toBeTruthy()
     expect(screen.getByText('What you are aiming for')).toBeTruthy()
-    expect(screen.getByText('Learn our bread recipes and Run the morning bake')).toBeTruthy()
+    /* FAULT 5 (live review): the second aim kept its capital. Lower-cased now unless it is a
+       proper noun or "I", so the two clauses read as one sentence. */
+    expect(screen.getByText('Learn our bread recipes and run the morning bake')).toBeTruthy()
     const page = document.body.textContent ?? ''
     expect(page).not.toContain('Learn our bread recipes; Run the morning bake')
   })

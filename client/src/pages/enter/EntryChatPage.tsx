@@ -492,9 +492,29 @@ export function shortLabel(label: string): string {
   }
 }
 
-/** Several aims read as one sentence, joined with "and" - never with a semicolon (fault 3). */
-function joinedWithAnd(xs: string[]): string {
-  return xs.length <= 1 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`
+/**
+ * Several items read as one sentence, joined with "and" - never with a semicolon (fault 3): two
+ * items read "A and B", three or more read "A, B and C".
+ *
+ * `lowerCaseJoins`, when true, lower-cases the first letter of every item after the first, so a
+ * list of aims reads as one sentence ("Know where the project is stuck and understand what each
+ * person needs") rather than two capitals stitched together. Off by default, because names must
+ * keep their own capitals ("Daniel and Grace", not "Daniel and grace").
+ *
+ * The rule, read live: lower-case an item only when its own second letter is already lower-case.
+ * That keeps acronyms ("ROI") and single letters ("I") untouched, while still catching the
+ * ordinary case of a second sentence-cased clause.
+ */
+function joinedWithAnd(xs: string[], lowerCaseJoins = false): string {
+  const items = lowerCaseJoins
+    ? xs.map((x, i) => {
+        if (i === 0 || x.length < 2) return x
+        const second = x.charAt(1)
+        if (second !== second.toLowerCase() || second === second.toUpperCase()) return x
+        return x.charAt(0).toLowerCase() + x.slice(1)
+      })
+    : xs
+  return items.length <= 1 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
 }
 
 export function summariseSetup(
@@ -536,7 +556,7 @@ export function summariseSetup(
    * explicit about.
    */
   const people = sels.peopleNamed?.filter((p) => p.trim()) ?? []
-  if (people.length) have.push({ label: 'People you mentioned', value: people.join(', ') })
+  if (people.length) have.push({ label: 'People you mentioned', value: joinedWithAnd(people) })
   /*
    * "WHY NOW" IS NOT "WHAT THIS IS ABOUT", SAID AGAIN.
    *
@@ -572,7 +592,7 @@ export function summariseSetup(
    * rule says plain full sentences, never pieces joined by a colon, dash or semicolon. Joined with
    * "and" instead, the way anyone would say it aloud.
    */
-  if (sels.goals?.length) have.push({ label: 'What you want from it', value: joinedWithAnd(sels.goals.map((g: string) => g.charAt(0).toUpperCase() + g.slice(1))) })
+  if (sels.goals?.length) have.push({ label: 'What you want from it', value: joinedWithAnd(sels.goals.map((g: string) => g.charAt(0).toUpperCase() + g.slice(1)), true) })
   have.push({ label: 'Sessions', value: sessions === 1 ? 'One' : `${sessions}` })
 
   /*
@@ -2931,6 +2951,20 @@ export function EntryChatPage() {
     const entry = note ? `${email} - ${note}` : email
     setInviteAdded(prev => (prev.some(e => e === email || e.startsWith(`${email} - `)) ? prev : [...prev, entry]))
     setQueuedFromSuggestion(prev => new Set(prev).add(key))
+    /*
+     * FAULT 9 (live review): SOMEBODY ADDED FROM A NAMED "PEOPLE MENTIONED" ROW GOT NO NAME FIELD,
+     * AND THE RESULT READ "wanjiru@suites.test IS WAITING FOR A SEAT" - with no name, though the
+     * name was right there on the row she was added from. `TheReportYouSawAtTheEnd.tsx` keys that
+     * row `men-<i>-<name>` and passes `"<name> - <context>"` as this `note`; a suggested-party row
+     * (`sug-<i>-<role>`) passes only a reason, with no name to carry. Only the first is a name, so
+     * only `men-` keys feed it to `displayNames` - the same map `shownAs` already reads for the
+     * "Add Daniel Park" colleague path and the people step's own Name field, so every path a name
+     * reaches this list through ends up in the same place.
+     */
+    if (key.startsWith('men-')) {
+      const name = note.split(' - ')[0].trim()
+      if (name) setDisplayNames(prev => ({ ...prev, [email.toLowerCase()]: name }))
+    }
     setAddingContributorFor(null)
     setAddingContributorEmail('')
     return true
@@ -3421,9 +3455,18 @@ export function EntryChatPage() {
             />
           ) : (
             <div className="gwui-ec-picked-row">
-              {groundName ? (
+              {/*
+                * FAULT 8 (live review): "WANJIRU, FIRST 90 DAYS" - THE SAME DEFAULT NAME
+                * `theDefaultGroundName()` ALREADY WORKS OUT TO SAVE - SHOWED NOWHERE AT 390px,
+                * BECAUSE THE ONLY PLACE IT WAS PREVIEWED (`FillsInAsYouTalk`'s side panel,
+                * `.gw-fills-in`) IS `display: none` BELOW 1000px. Once set-up finishes, this is
+                * the one place left that can show it: the default name itself, not a placeholder
+                * that calls it unnamed, still editable with the same control as a name the lead
+                * typed herself.
+                */}
+              {groundName || theDefaultGroundName() ? (
                 <>
-                  <span className="gwui-ec-session-name">{groundName}</span>
+                  <span className="gwui-ec-session-name">{groundName || theDefaultGroundName()}</span>
                   <button type="button" onClick={() => { setRenameInput(groundName); setRenamingGround(true) }} className="gwui-plain-link" title="Rename">✎</button>
                 </>
               ) : (
@@ -3462,6 +3505,7 @@ export function EntryChatPage() {
                 <label htmlFor="gwui-ec-sessions-input" className="gwui-fine">How many sessions</label>
                 <TextField
                   id="gwui-ec-sessions-input"
+                  className="gwui-ec-sessions-input"
                   type="number" min={1}
                   value={sessionsInput}
                   onChange={e => setSessionsInput(e.target.value)}
@@ -3471,6 +3515,14 @@ export function EntryChatPage() {
                     setSessionsInput(String(n))
                     setEditingSessions(false)
                     if (n > 1) setShowSessionsUpgrade(true)
+                    /*
+                     * FAULT 3 (live review): typing 5 and pressing Enter still left "8 sessions
+                     * planned", because `plannedNow` recomputed the count from `plannedFrom`'s
+                     * timeline and cadence and never looked at the number just typed. Once the
+                     * lead has typed a number here, that is the plan, and the derived estimate
+                     * from the conversation no longer applies.
+                     */
+                    setPlannedFrom(null)
                   }}
                   onKeyDown={e => {
                     if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
@@ -3650,11 +3702,28 @@ export function EntryChatPage() {
             disagreeing about whether signing in was still ahead of her. Said only to a stranger,
             for whom it is true; a signed-in reader is told only what is still true for them.
           */}
-          {!user && <><b>{sessions} sessions</b> means signing in, and it is free. </>}
-          Save your session below to get set up.{' '}
-          <button type="button" className="gwui-plain-link" onClick={() => { setShowSessionsUpgrade(false); setShowSave(true) }}>
-            Save and set up
-          </button>
+          {/*
+            FAULT 4 (live review): A SIGNED-IN LEAD STILL READ "SAVE YOUR SESSION BELOW TO GET SET
+            UP", WITH "SAVE AND SET UP" FOR A BUTTON - and then, on the save card right below it,
+            "you are already signed in". Nothing was left to set up or sign into; the save card's
+            own words for a signed-in reader ("Save this", `saveAsSignedInUser`, line 4623) are
+            used here too, so the two lines on screen at once agree with each other.
+          */}
+          {user ? (
+            <>
+              Save this below.{' '}
+              <button type="button" className="gwui-plain-link" onClick={() => { setShowSessionsUpgrade(false); setShowSave(true) }}>
+                Save this
+              </button>
+            </>
+          ) : (
+            <>
+              <b>{sessions} sessions</b> means signing in, and it is free. Save your session below to get set up.{' '}
+              <button type="button" className="gwui-plain-link" onClick={() => { setShowSessionsUpgrade(false); setShowSave(true) }}>
+                Save and set up
+              </button>
+            </>
+          )}
           {' '}
           <button type="button" className="gwui-plain-link" onClick={() => setShowSessionsUpgrade(false)}>Not now</button>
         </Callout>
@@ -4195,7 +4264,10 @@ export function EntryChatPage() {
               <div className="gwui-ec-invite-bar">
                 <div className="gwui-ec-invite-bar-text">
                   <div className="gwui-ec-invite-bar-title">{'What you said is on record.'}</div>
-                  <div className="gwui-ec-invite-bar-sub">{skippedCheckin ? 'After this one, only the people you invite check in. You read what comes back.' : 'Invite others to check in. The shared report releases when all parties are in.'}</div>
+                  {/* FAULT 10 (live review): "RELEASES WHEN ALL PARTIES ARE IN" WAS THE PRODUCT'S OWN
+                      JARGON FOR ITSELF, NOT A SENTENCE A LEAD WOULD SAY. Said plainly: everybody gets
+                      the shared report once everyone involved has checked in. */}
+                  <div className="gwui-ec-invite-bar-sub">{skippedCheckin ? 'After this one, only the people you invite check in. You read what comes back.' : 'Invite others to check in. Everyone gets the shared report once all of you have checked in.'}</div>
                 </div>
                 <Button kind="primary" onClick={() => setShowSave(true)}>
                   Invite and finish

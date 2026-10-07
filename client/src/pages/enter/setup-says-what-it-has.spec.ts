@@ -26,7 +26,10 @@ describe('setup says what it has', () => {
     /* "People you mentioned", not "Who is in it": nobody is on the check-in until they are added
        on the report, one at a time. Labelled as membership, this contradicted the assistant's own
        confirmation on a real setup - the lead had just said two of the three were not in it. */
-    expect(have.find((h) => h.label === 'People you mentioned')?.value).toBe('Priya, Tom, Dede')
+    /* FAULT 5 (live review): three or more names read as a list with no joiner ("Priya, Tom,
+       Dede"), which does not read as a sentence. Joined with "and" before the last name instead,
+       the way the rest of the summary card already joins several things. */
+    expect(have.find((h) => h.label === 'People you mentioned')?.value).toBe('Priya, Tom and Dede')
     expect(have.find((h) => h.label === 'Sessions')?.value).toBe('One')
   })
 
@@ -79,8 +82,11 @@ describe('setup says what it has', () => {
     const { have } = summariseSetup(
       { goals: ['learn our bread recipes', 'run the morning bake'] }, 'a_party', 1, false,
     )
+    /* FAULT 5 (live review): the second aim kept its capital ("... and Run the morning bake"),
+       which reads as two sentences stitched together rather than one. The second item of a joined
+       list is lower-cased now, unless it is a proper noun or "I". */
     expect(have.find((h) => h.label === 'What you want from it')?.value)
-      .toBe('Learn our bread recipes and Run the morning bake')
+      .toBe('Learn our bread recipes and run the morning bake')
     expect(have.find((h) => h.label === 'What you want from it')?.value).not.toContain(';')
   })
 
