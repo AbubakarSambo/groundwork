@@ -194,6 +194,16 @@ export function looksLikeAName(q: string): boolean {
   return words.length >= 1 && words.length <= 4;
 }
 
+/** Groundwork's own tags for what people told it (the chat, the panel, the seed), which no customer ever named. */
+function aSourceIsGroundworks(sys: string): boolean {
+  return /^(groundwork|gwc_|panel$|seed$)/i.test(sys);
+}
+
+/** Where the information came from, in words a person uses (B-028): never "groundwork-chat". A customer's own system keeps its own name. */
+function aSourceInPlainWords(sys: string, _stale: boolean): string {
+  return aSourceIsGroundworks(sys) ? 'What you have told Groundwork' : sys;
+}
+
 @Injectable()
 export class AssistantService {
   private readonly logger = new Logger(AssistantService.name);
@@ -5046,7 +5056,14 @@ export class AssistantService {
       where: { organizationId, sourceDeletedAt: null },
       select: { sourceSystem: true, syncedAt: true, sourceDeletedAt: true },
     });
-    const people = await this.prisma.person.count({ where: { organizationId, active: true } });
+    /* EVERYONE WHO BELONGS HERE (B-028): the roster rows, plus members who were invited and never put on a roster, so an organisation of 19 does not read "15 people". */
+    const rosterRows = await this.prisma.person.count({ where: { organizationId, active: true } });
+    const onTheRoster = new Set<string>(((await (this.prisma as any).person?.findMany?.({ where: { organizationId, active: true, linkedUserId: { not: null } }, select: { linkedUserId: true } })) ?? []).map((r: any) => String(r.linkedUserId)));
+    const members: any[] = (await (this.prisma as any).organizationMembership?.findMany?.({
+      where: { organizationId, role: { not: 'GUEST' }, user: { deletedAt: null, isActive: true, awaitingOrgApproval: false } },
+      select: { userId: true },
+    })) ?? [];
+    const people = rosterRows + members.filter((m) => !onTheRoster.has(String(m.userId))).length;
 
     if (!subjects.length && !people) {
       return rules('what_you_can_see', text('Nothing is connected yet, so there is genuinely nothing I can tell you. Your admin can connect your systems from the Connect page.'));
@@ -5066,8 +5083,8 @@ export class AssistantService {
       ...[...bySystem.entries()].map(([sys, v]) =>
         /* Staleness is said out loud rather than left for somebody to infer from a date. */
         v.stale
-          ? `${sys} last sent anything on ${v.syncedAt.toDateString()}, which is old enough that I would check it before relying on it.`
-          : `${sys}, last updated ${v.syncedAt.toDateString()}.`,
+          ? `${aSourceInPlainWords(sys, true)} last ${aSourceIsGroundworks(sys) ? 'added to' : 'sent anything'} on ${v.syncedAt.toDateString()}, which is old enough that I would check it before relying on it.`
+          : `${aSourceInPlainWords(sys, false)}, last updated ${v.syncedAt.toDateString()}.`,
       ),
     ];
 
