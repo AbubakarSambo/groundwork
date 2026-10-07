@@ -126,7 +126,7 @@ import { familyFor, BoardFamily } from '../board/board-families';
 import { theOneWorthAsking, askAboutItBlockFor } from './what-keeps-happening-becomes-a-question';
 import { mayCoach } from './participation-timeline';
 import { theirApprovedLeave } from '../suites/who-is-away';
-import { aNewIdeaIn, afterTheirTurn, anIdeaReadBackAsAPromise, withoutAskingWhatToCapture, anAnswerToTheIdeaOffer } from './ideas-from-the-team';
+import { aNewIdeaIn, afterTheirTurn, anIdeaReadBackAsAPromise, withoutAskingWhatToCapture, anAnswerToTheIdeaOffer, ANSWERED_THE_IDEA_OFFER } from './ideas-from-the-team';
 import { aRequestAfterTheirTurn, theyAreAnsweringAnOffer, withoutACannotApprove, withoutAPromiseToPassItOn } from './a-request-offered-in-the-check-in';
 import { stillAsking } from './one-question-per-turn';
 import { oneThingAsked, wouldLeaveAQuestionOut, asksMoreThanOneThing, withTheOneMoreLine, ASK_ONE_THING } from './a-turn-asks-one-thing';
@@ -1872,8 +1872,11 @@ export class ConversationService {
     this.setThePromptForThisTurn(checkIn.id, fullSystem);
 
     // Persist the person's turn.
+    /* Mark the turn when it answers an idea offer that is showing (the turn's own `stage`, which no person's turn used), so no later read has to guess from the words alone. The words are stored as typed. */
+    const answersTheOfferShowing = anAnswerToTheIdeaOffer(message)
+      && ((await (this.prisma as any).workItem?.count?.({ where: { groundId: checkIn.groundId, kind: 'idea-offered', ownerParticipantId: (checkIn as any).participantId ?? '' } })?.catch?.(() => 0)) ?? 0) > 0;
     const personTurn = await this.prisma.conversationTurn.create({
-      data: { checkInId: checkIn.id, role: TurnRole.PERSON, content: message },
+      data: { checkInId: checkIn.id, role: TurnRole.PERSON, content: message, ...(answersTheOfferShowing ? { stage: ANSWERED_THE_IDEA_OFFER } : {}) },
     });
     await this.keepTheDocumentDescription(checkIn.id, personTurn.id, message).catch((err) =>
       this.logger.warn(`Could not keep a document description on ${checkIn.id}: ${err?.message}`),
@@ -4016,19 +4019,23 @@ export class ConversationService {
      * nothing about this session, and every "still to cover" list read the same on turn nine as on
      * turn one. See what-this-session-has-covered.
      */
-    const turnsThisSession: { role: 'AI' | 'PERSON'; content: string }[] = await (this.prisma.conversationTurn?.findMany?.({
+    const turnsThisSession: { role: 'AI' | 'PERSON'; content: string; answeredTheOffer?: boolean }[] = await (this.prisma.conversationTurn?.findMany?.({
       where: { checkInId: checkIn.id },
       orderBy: { createdAt: 'asc' },
-      select: { role: true, content: true },
+      select: { role: true, content: true, stage: true },
     }) ?? Promise.resolve([]))
-      .then((rows: any[]) => rows.map((r) => ({ role: r.role === TurnRole.AI ? 'AI' as const : 'PERSON' as const, content: r.content ?? '' })))
-      .catch(() => [] as { role: 'AI' | 'PERSON'; content: string }[]);
+      .then((rows: any[]) => rows.map((r) => ({ role: r.role === TurnRole.AI ? 'AI' as const : 'PERSON' as const, content: r.content ?? '', answeredTheOffer: r.stage === ANSWERED_THE_IDEA_OFFER })))
+      .catch(() => [] as { role: 'AI' | 'PERSON'; content: string; answeredTheOffer?: boolean }[]);
     if (latestMessage && (turnsThisSession.length === 0 || turnsThisSession[turnsThisSession.length - 1].content !== latestMessage)) {
-      turnsThisSession.push({ role: 'PERSON', content: latestMessage });
+      /* Not stored yet, so the offer showing is read again here: the same test the turn is marked by when it is stored. */
+      const answersTheOfferNow = anAnswerToTheIdeaOffer(latestMessage)
+        && ((await (this.prisma as any).workItem?.count?.({ where: { groundId: checkIn.groundId, kind: 'idea-offered', ownerParticipantId: (checkIn as any).participantId ?? '' } })?.catch?.(() => 0)) ?? 0) > 0;
+      turnsThisSession.push({ role: 'PERSON', content: latestMessage, answeredTheOffer: answersTheOfferNow });
     }
-    /* In the anchor, a click on the idea offer answers the offer and not the question that was open, so no read of what they have told us counts it (known issue B12). */
+    /* In the anchor, a click on the idea offer answers the offer and not the question that was open, so no read of what they have told us counts it (known issue B12).
+       Only a turn marked as answering an offer that was showing is left out; a "Not now." typed to an ordinary question is their answer and stays. */
     if (aCheckInStartedFromTheAnchor(ground)) {
-      for (let i = turnsThisSession.length - 1; i >= 0; i--) if (turnsThisSession[i].role === 'PERSON' && anAnswerToTheIdeaOffer(turnsThisSession[i].content)) turnsThisSession.splice(i, 1);
+      for (let i = turnsThisSession.length - 1; i >= 0; i--) if (turnsThisSession[i].role === 'PERSON' && turnsThisSession[i].answeredTheOffer) turnsThisSession.splice(i, 1);
     }
 
     /*

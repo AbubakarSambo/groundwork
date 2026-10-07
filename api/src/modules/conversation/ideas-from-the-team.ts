@@ -49,6 +49,8 @@ export const THE_IDEA_QUESTION = 'That sounds like a concrete idea. Want me to c
 export const WHO_WILL_SEE_IT = 'If you say yes, everyone in this check-in will see it, with your name.';
 export const YES_CAPTURE_IT = 'Yes, capture it';
 export const NOT_NOW = 'Not now';
+/** Stamped on a person's turn (its `stage`) when it answered an idea offer that was showing. The words themselves are never changed. */
+export const ANSWERED_THE_IDEA_OFFER = 'answered-the-idea-offer';
 export const IT_IS_CAPTURED = 'I have captured it for the team. Everyone in this check-in will see it, with your name.';
 export const NO_IDEA_CAPTURED_YET = 'No idea from your team has been captured yet.';
 
