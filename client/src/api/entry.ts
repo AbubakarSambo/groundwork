@@ -285,6 +285,9 @@ export const entryApi = {
     checkInBy?: string
     inviteNote?: string
     cadenceChosen?: boolean
+    /** RESTORED (nothing-removed-screens.md item 2): the day check-ins land on - a weekday (0 =
+        Sunday) for WEEKLY/FORTNIGHTLY, a day of the month for MONTHLY. Omit to leave it unset. */
+    cadenceAnchorDay?: number
     history: ChatTurn[]
     report?: EntryReport | null
     /** A colleague picked from the list is sent by `colleagueId`, never by address (U.4). */

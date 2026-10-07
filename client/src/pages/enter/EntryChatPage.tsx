@@ -1735,7 +1735,11 @@ export function EntryChatPage() {
     queryFn: () => authApi.methods(),
     staleTime: 5 * 60 * 1000,
   })
-  const [cadenceAnchorDay] = useState<number | null>(null) // 0=Sun..6=Sat for "every Monday"
+  /* 0=Sun..6=Sat for "every Monday", or a day of the month for "on the 15th". RESTORED
+     (nothing-removed-screens.md item 2): live let the lead choose this ("On which day?" /
+     "On which day of the month?"); this was fixed at null with no setter until `TheSetup`'s own
+     picker was restored below. */
+  const [cadenceAnchorDay, setCadenceAnchorDay] = useState<number | null>(null)
   /* Which days this team works. Empty means nobody said, which is not the same as every day - and
      it is never pre-set to Monday-Friday, because that is one region's office week rather than a
      fact about anybody's. */
@@ -3122,7 +3126,7 @@ export function EntryChatPage() {
     if (cadence === 'ONE_TIME') return 1
     if (cadence === 'SEQUENTIAL') return sessions
     if (lastCheckInBy) {
-      const all = whenTheCheckInsLand({ cadence, anchorDay: null, startsAt: checkInBy ? new Date(`${checkInBy}T00:00:00`) : null, workingDays, howMany: 400 })
+      const all = whenTheCheckInsLand({ cadence, anchorDay: cadenceAnchorDay, startsAt: checkInBy ? new Date(`${checkInBy}T00:00:00`) : null, workingDays, howMany: 400 })
       const n = all.filter((d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` <= lastCheckInBy).length
       return Math.max(1, n)
     }
@@ -3647,7 +3651,7 @@ export function EntryChatPage() {
                      */
                     if (cadence !== 'ONE_TIME' && cadence !== 'SEQUENTIAL') {
                       const landings = whenTheCheckInsLand({
-                        cadence, anchorDay: null,
+                        cadence, anchorDay: cadenceAnchorDay,
                         startsAt: checkInBy ? new Date(`${checkInBy}T00:00:00`) : null,
                         workingDays, howMany: n,
                       })
@@ -4759,7 +4763,8 @@ export function EntryChatPage() {
                 cadence={cadence}
                 cadenceChosen={cadenceChosen}
                 onCadence={(c) => { setCadence(c); setCadenceChosen(true) }}
-                anchorDay={null}
+                anchorDay={cadenceAnchorDay}
+                onAnchorDay={setCadenceAnchorDay}
                 workingDays={workingDays}
                 daysPicker={<WhichDaysTheyWork value={workingDays} onChange={setWorkingDays} />}
                 startsOn={checkInBy}

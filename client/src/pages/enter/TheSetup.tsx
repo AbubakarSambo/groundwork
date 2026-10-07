@@ -237,6 +237,12 @@ function Choice({ on, onClick, children }: { on: boolean; onClick: () => void; c
   )
 }
 
+/** A small field label for the anchor-day controls, matching the look of the picker labels this
+    screen already uses, without requiring an `htmlFor` for the day-of-week button group. */
+function AnchorLabel({ htmlFor, children }: { htmlFor?: string; children: React.ReactNode }) {
+  return <label htmlFor={htmlFor} style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)' }}>{children}</label>
+}
+
 function Section({ title, help, children }: { title: string; help?: string; children: React.ReactNode }) {
   return (
     <section aria-label={title} style={{ marginBottom: 16 }}>
@@ -256,6 +262,9 @@ export function TheSetup(p: {
   cadenceChosen: boolean
   onCadence: (c: Cadence) => void
   anchorDay: number | null
+  /** Restored (nothing-removed-screens.md item 2): the day check-ins land on - a weekday for a
+      weekly rhythm, a day of the month for a monthly one. Optional on every page that offers it. */
+  onAnchorDay?: (day: number | null) => void
   workingDays: number[]
   startsOn: string
   onStartsOn: (s: string) => void
@@ -291,12 +300,63 @@ export function TheSetup(p: {
         {!p.cadenceChosen && <p style={{ ...note, margin: '0 0 8px', color: 'var(--gw-amber-t)' }}>{THE_SETUP.notChosen(cadenceLabel(p.cadence as never))}</p>}
         <div style={row}>
           {HOW_OFTEN.map(([c, label]) => (
-            <Choice key={c} on={p.cadenceChosen && p.cadence === c} onClick={() => p.onCadence(c)}>{label}</Choice>
+            <Choice key={c} on={p.cadenceChosen && p.cadence === c} onClick={() => {
+              p.onCadence(c)
+              /* A day picked for one rhythm means something different, or nothing, in another - a
+                 day of the month chosen for "Monthly" is meaningless once the choice moves to
+                 "Weekly". Cleared here, centrally, whenever the rhythm actually changes. */
+              if (p.onAnchorDay && c !== p.cadence) p.onAnchorDay(null)
+            }}>{label}</Choice>
           ))}
         </div>
-        {/* One day picker only (U.6 review): a second "On which day?" for a weekly rhythm could say
-            Saturday while the days said weekdays only, and the two together turned weekly into
-            fortnightly. The start date sets the weekday, as on the check-in's own Setup. */}
+        {/*
+          RESTORED (nothing-removed-screens.md item 2): live offered "On which day?" for a weekly or
+          fortnightly rhythm and "On which day of the month?" for a monthly one
+          (EntryChatPage.tsx lines 4017 and 4050 on live), sent as `cadenceAnchorDay`. It was removed
+          here (U.6 review, "one day picker") because a second, disconnected picker could say Saturday
+          while "On which days" said weekdays only - but `whenTheCheckInsLand` already folds an anchor
+          day and the working days together correctly (it lands on the anchor day, then moves forward
+          to the next working day), so the two pickers do not disagree; the preview below says exactly
+          what will happen either way. Optional, and the server keeps whatever a check-in already has
+          when nothing is picked. */}
+        {p.cadenceChosen && (p.cadence === 'WEEKLY' || p.cadence === 'FORTNIGHTLY') && p.onAnchorDay && (
+          <div style={{ marginTop: 10 }}>
+            <AnchorLabel>Which day of the week should check-ins open? (optional)</AnchorLabel>
+            <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
+              {DAY_SHORT.map((d, i) => (
+                <button
+                  key={d}
+                  type="button"
+                  aria-pressed={p.anchorDay === i}
+                  title={DAY_NAMES[i]}
+                  onClick={() => p.onAnchorDay!(p.anchorDay === i ? null : i)}
+                  style={{
+                    flex: 1, padding: '6px 0', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                    border: `1px solid ${p.anchorDay === i ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
+                    background: p.anchorDay === i ? 'var(--gw-blue-bg)' : 'white',
+                    color: p.anchorDay === i ? 'var(--gw-navy)' : 'var(--gw-muted)',
+                  }}
+                >{d}</button>
+              ))}
+            </div>
+          </div>
+        )}
+        {p.cadenceChosen && p.cadence === 'MONTHLY' && p.onAnchorDay && (
+          <div style={{ marginTop: 10 }}>
+            <AnchorLabel htmlFor="cadence-anchor-day-of-month">Which day of the month should check-ins open? (optional)</AnchorLabel>
+            <select
+              id="cadence-anchor-day-of-month"
+              value={p.anchorDay ?? ''}
+              onChange={(e) => p.onAnchorDay!(e.target.value ? Number(e.target.value) : null)}
+              style={{ width: '100%', marginTop: 6, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', color: p.anchorDay != null ? 'var(--gw-text)' : 'var(--gw-muted)' }}
+            >
+              <option value="">No fixed day</option>
+              {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
+                <option key={day} value={day}>{day}{day === 1 ? 'st' : day === 2 ? 'nd' : day === 3 ? 'rd' : 'th'} of the month</option>
+              ))}
+            </select>
+          </div>
+        )}
       </Section>
 
       {/* The days are the product's one day picker, WhichDaysTheyWork, handed in by the page, so the
