@@ -12,7 +12,7 @@ import { aQuestionAskedAboutARequest, aQuestionSaidBack, aQuestionSent, aQuestio
 import { whatYouCanAskSaid } from './what-you-can-ask-here';
 import { route, whatICanDoWith, Lane } from './the-router-is-deterministic';
 import { aPromiseAsASentence } from './a-promise-as-a-sentence';
-import { noSeatYetSays, whenIsMyNextCheckIn, whatMyCheckInIsFor, theCompanysPriorities, isTheStrategyMoving, THE_REQUEST_STARTERS, howToAskForLeaveOrSpending } from './about-your-check-ins-and-the-company';
+import { noSeatYetSays, whenIsMyNextCheckIn, whatMyCheckInIsFor, theCompanysPriorities, asksWhatTheCompanyIsWorkingOn, isTheStrategyMoving, THE_REQUEST_STARTERS, howToAskForLeaveOrSpending } from './about-your-check-ins-and-the-company';
 import { Reply, rules, text, picker, SourceBlock } from './a-reply-is-a-payload-not-a-string';
 import { ReportsService } from '../reports/reports.service';
 import { howManyAnsweredInWords } from '../reports/the-picture-in-plain-sentences';
@@ -480,7 +480,12 @@ export class AssistantService {
       return rules('how_to_ask_for_leave_or_spending', text(howToAskForLeaveOrSpending({ leave: suites.has('leave'), spend: suites.has('spend') })));
     }
 
-    const routedByRules = route(message);
+    let routedByRules = route(message);
+    /* The company by its own name: the router cannot know it, so it is asked here (B-134). */
+    if (routedByRules.lane === 'unplaced' && /\bworking\s+on\b/i.test(message)) {
+      const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true } }).catch(() => null);
+      if (asksWhatTheCompanyIsWorkingOn(message, org?.name)) routedByRules = { lane: 'company_priorities' };
+    }
     const routed = !contextIsHere && THE_CONTEXT_LANES.has(routedByRules.lane) ? { ...routedByRules, lane: 'unplaced' as typeof routedByRules.lane } : routedByRules;
 
     /*

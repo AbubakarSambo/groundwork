@@ -146,3 +146,18 @@ export function whoReadsWhatAMemberSays(g: { label: string; scenario?: any; peer
     : `${lead || 'The person who runs it'} runs "${g.label}" and can see what you say in it. The other people taking part do not see what you say.`;
   return `${who}${admins} Your own report and your questions to ${ask} stay private.`;
 }
+
+
+/**
+ * "WHAT IS MSINGI FOODS WORKING ON THIS QUARTER?" and "what is the company working on?" are the Company page's question (B-134). They were
+ * answered "I cannot answer that one yet." because the router cannot know the organisation's name. Only the company, "we" or the
+ * organisation's own name counts: "What is Amani working on this quarter?" is about a person and stays where it was.
+ */
+export function asksWhatTheCompanyIsWorkingOn(message: string, organisationName: string | null | undefined): boolean {
+  const m = /\bwhat\s+(?:is|are)\s+(.+?)\s+working\s+on(?:\s+(?:this|next)\s+(?:quarter|year|month|week)|\s+right\s+now|\s+at\s+the\s+moment|\s+these\s+days)?\s*[?.!]*\s*$/i.exec(message ?? '');
+  if (!m) return false;
+  const who = m[1].toLowerCase().replace(/[’]/g, "'").replace(/^(?:the|our)\s+/, '').trim();
+  if (['company', 'organisation', 'organization', 'business', 'we', 'us'].includes(who)) return true;
+  const name = (organisationName ?? '').toLowerCase().replace(/[’]/g, "'").trim();
+  return !!name && who === name;
+}
