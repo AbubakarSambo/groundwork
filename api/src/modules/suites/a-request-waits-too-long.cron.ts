@@ -28,7 +28,8 @@ export class ARequestWaitsTooLongCron {
     @Optional() private readonly told?: ARequestToldOnWhatsApp,
   ) {}
 
-  @Cron('0 7 * * *', { timeZone: 'UTC' })
+  /* 06:00 UTC, before the approvers' morning message (07:30 Lagos, 06:30 UTC): passed on after it, the morning message said "one request" and this told the same person "172 requests" half an hour later (B-121). */
+  @Cron('0 6 * * *', { timeZone: 'UTC' })
   async passOnTheRequestsThatWaitTooLong(today = new Date()): Promise<{ passedOn: number }> {
     let passedOn = 0;
     await onceAcrossCopies(this.prisma, 'pass-on-the-requests-that-wait-too-long', theDay(today), async () => {
