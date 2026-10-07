@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { askNameOf } from '../assistant/ask-name';
 import { endsOnTheClose } from '../conversation/the-close-says-what-comes-next';
 import { Injectable, Logger } from '@nestjs/common';
@@ -88,6 +89,8 @@ export class WhatsAppForAnOrganisationService {
     /* A redelivery is not a second answer. The id is claimed before anything else happens, with the
        number it came in on, which is how the last number this person wrote to is known. */
     if (message.id && !(await this.firstTimeWeSeeThis(organizationId, anInboundKey(via, WhatsAppService.normalize(from), String(message.id))))) return;
+    /* The same words twice within a few seconds, under two message ids (a double tap, a phone that sent it again), are one answer and get one reply (B-105). */
+    if (message.type === 'text' && typeof message.text?.body === 'string' && !(await this.notTheSameWordsJustNow(organizationId, WhatsAppService.normalize(from), message.text.body))) return;
     if (via === 'theirs') await this.prisma.whatsAppConnection.update({ where: { organizationId }, data: { lastInboundAt: new Date() } }).catch(() => undefined);
     await this.route(organizationId, from, whatArrived(message), {
       /* A reply quoting one of our messages, or a template's button, carries that message's id (decision 106 item 1). */
@@ -561,6 +564,25 @@ export class WhatsAppForAnOrganisationService {
   }
 
   /** Claims the message id. False on a redelivery, which is then not handled a second time. */
+  /**
+   * WHETHER THESE WORDS FROM THIS NUMBER HAVE NOT JUST COME. Claimed the way a message id is, in five-second steps, and the step before
+   * is looked at too, so two copies on either side of a step edge are still one. Words sent again a moment later than that are a new answer.
+   */
+  private async notTheSameWordsJustNow(organizationId: string, phone: string, words: string): Promise<boolean> {
+    const said = createHash('sha1').update(words.trim().replace(/\s+/g, ' ').toLowerCase()).digest('hex').slice(0, 20);
+    const step = Math.floor(Date.now() / 5000);
+    const key = (n: number) => `same:${phone}:${said}:${n}`;
+    try {
+      if (await this.prisma.whatsAppInboundMessage.findFirst({ where: { organizationId, messageId: key(step - 1) }, select: { messageId: true } })) return false;
+      await this.prisma.whatsAppInboundMessage.create({ data: { organizationId, messageId: key(step) } });
+      return true;
+    } catch (err: any) {
+      if (err?.code === 'P2002') return false;
+      /* Not being able to tell must never make a person's words vanish. */
+      return true;
+    }
+  }
+
   private async firstTimeWeSeeThis(organizationId: string, messageId: string): Promise<boolean> {
     try {
       await this.prisma.whatsAppInboundMessage.create({ data: { organizationId, messageId } });
