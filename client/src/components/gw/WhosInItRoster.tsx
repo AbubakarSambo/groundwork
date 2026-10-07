@@ -95,7 +95,9 @@ export function WhosInItRoster({
     <div>
       <p className="gwui-panel-text" style={{ fontWeight: 700 }}>
         {participants.length} {participants.length === 1 ? 'person' : 'people'}.
-        {' '}{checkingIn} checking in{needSomething > 0 ? `; ${needSomething} need${needSomething === 1 ? 's' : ''} something before they can start.` : '.'}
+        {/* FAULT H (reviewer, third round): a semicolon joined two separate counts into one
+            clipped clause. Two plain sentences instead. */}
+        {' '}{checkingIn} {checkingIn === 1 ? 'is' : 'are'} checking in.{needSomething > 0 ? ` ${needSomething} ${needSomething === 1 ? 'needs' : 'need'} something before they can start.` : ''}
       </p>
 
       {/* WHAT THE PILLS SAID THAT WAS NOT PER-PERSON: whether peers can see each other here, and what
