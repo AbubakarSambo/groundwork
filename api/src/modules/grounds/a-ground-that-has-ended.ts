@@ -121,6 +121,21 @@ export const IT_RAN_OUT_OF_TIME_ASK_THE_LEAD =
 export const WHILE_IT_IS_HELD = 'This check-in is on hold. Nothing can be added to it until it is resumed.';
 
 /**
+ * A JOIN LINK INTO A CHECK-IN THAT WAITS FOR AN ADMIN (reviewed on the server, 7 October). With 'each new check-in waits for an admin' on,
+ * the check-in made from the entry chat stays held (1957f86f), but its join link still let anybody ask, confirm and be added to it, and
+ * mailed them a way in, before any admin had said yes. The link is refused until it is accepted, and says why.
+ */
+export const WHILE_IT_WAITS_FOR_AN_ADMIN = 'This check-in is waiting for an admin to accept it. The link will work as soon as they do.';
+export function whyAJoinLinkRefuses(
+  status: GroundStatus | string | null | undefined,
+  endStateLabel?: string | null,
+  scenario?: GroundScenario | string | null,
+): string | null {
+  if (status === 'AWAITING_APPROVAL') return WHILE_IT_WAITS_FOR_AN_ADMIN;
+  return whyItRefuses(status, endStateLabel, 'anybody else', scenario);
+}
+
+/**
  * Why nothing can be added to this ground right now - ended or held - or null while it is live.
  * For the doors that refuse either: a join link, a message, a new participant.
  */
