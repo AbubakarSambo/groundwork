@@ -16,7 +16,8 @@ describe('what is kept is what the person read', () => {
     const { line, options } = whatICanDoWith('It should run for 13 weeks.');
     const kept = whatWasSaid({ blocks: [{ type: 'text', body: line }, { type: 'picker', options }] });
     expect(kept).toContain('Here is what I can do with');
-    expect(kept).toContain('You could Tell me what you can see, What am I on?, What is on my list? or Hold this against my next check-in.');
+    expect(kept).toContain('You could Tell me what you can see, What am I on?, What is on my list? or What can you help me with?.');
+    /* Changed (request 179): "Hold this against my next check-in" had no lane behind it, so choosing it brought the same reply back. */
   });
 
   it('does not end on a sentence that introduces nothing', () => {
