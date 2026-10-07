@@ -232,6 +232,14 @@ export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
     refuses: ['how am I doing', 'what should we talk about'],
   },
   {
+    key: 'who_has_not_checked_in',
+    does: 'Who has not checked in yet, for a lead: the people, by name, on each check-in they run, counted the way the board counts',
+    writes: 'nothing',
+    ordered: 'Above what_is_stuck and who_is, which read "who is waiting" and "who is ..." as questions about a handoff or a person. It needs "checked in", "answered" or "started" beside "not".',
+    owns: ['who has not checked in?', 'who has not checked in on Sales team, Q4?', "who hasn't answered yet", 'who still needs to check in'],
+    refuses: ['who is waiting on me', 'who is Femi', 'what is stuck'],
+  },
+  {
     key: 'how_am_i_doing',
     does: 'The coaching step waiting for somebody, if there is one',
     writes: 'nothing',

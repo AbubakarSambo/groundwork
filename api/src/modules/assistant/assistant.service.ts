@@ -52,6 +52,8 @@ import {
 } from './a-suite-set-up-by-talking';
 import { theirSignIn } from '../suites/a-roster-entry-and-its-sign-in';
 import { withoutCommitmentsFromGoalsNotToldYet } from '../grounds/a-commitment-from-a-goal-not-told-is-not-read-by-its-person';
+import { theOpenSession as theOpenSessionOfACheckIn, whereOneStands } from '../engagement/heres-what-is-new';
+import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
 import { onWhatsApp, keptInTheApp, mayBeRead, notFromAKeptCheckIn, notAKeptCheckIn } from './a-check-in-kept-in-the-app-is-not-read-on-whatsapp';
 import { aDecisionIn, onlyTheDecision, aDecisionSaidBack, aDecisionDone, aDecisionNotMade, whichDecision, NOTHING_TO_DECIDE, HOURS_ARE_NOT_DECLINED, type AWaitingRequest } from '../suites/a-request-in-words';
 import { whatWaitsForYouToDecide } from '../suites/what-waits-for-you-to-decide';
@@ -582,6 +584,8 @@ export class AssistantService {
         return this.compose(await this.whatIsStuck(organizationId, who, message, userId ?? null));
       case 'how_is_the_team':
         return this.howIsTheTeam(organizationId, who, userId ?? null);
+      case 'who_has_not_checked_in':
+        return this.whoHasNotCheckedIn(organizationId, userId ?? null, routed.subject);
       case 'how_am_i_doing':
         return this.compose(await this.howAmIDoing(organizationId, who));
       case 'what_can_you_do':
@@ -932,6 +936,41 @@ export class AssistantService {
       parts.push(`${mine.length > 1 ? 'You have said you are waiting for these things.\n' : ''}${aList(mine.map(yours))}`);
     }
     return rules('what_is_stuck', text(parts.join('\n\n')));
+  }
+
+  /**
+   * "WHO HAS NOT CHECKED IN" (B-134). Private to the lead who asks, about the check-ins they RUN only, counted by the one function the
+   * "here is what is new" email and the board use (the people who can answer the round the board calls open, never anybody only managing or
+   * not yet let in), so the answer agrees with Today, the board and the mail. A check-in somebody only takes part in is not theirs to be
+   * told names about. Stalled, ended, held and waiting check-ins are not asked about.
+   */
+  private async whoHasNotCheckedIn(organizationId: string, userId: string | null, subject: string | undefined): Promise<Reply> {
+    const lane = 'who_has_not_checked_in';
+    if (!userId) return rules(lane, text('I cannot look that up without knowing who you are.'));
+    const kept = await keptInTheApp(this.prisma as any, organizationId);
+    const run = (await this.prisma.ground.findMany({
+      where: { organizationId, initiatorId: userId, status: { notIn: [...A_GROUND_NO_MESSAGE_IS_ABOUT] } },
+      select: { id: true, label: true },
+      orderBy: { createdAt: 'desc' },
+      take: 12,
+    })).filter((g) => mayBeRead(kept, g.id));
+    if (!run.length) {
+      return rules(lane, text('You do not run a check-in that is going yet, so there is nobody for me to tell you about. You can ask me what you are waiting on.'));
+    }
+    const named = (subject ?? '').trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+    const chosen = named ? run.filter((g) => String(g.label).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').includes(named)) : run;
+    if (!chosen.length) {
+      return rules(lane, text(`I cannot find a check-in called ${subject!.trim()} that you run. The ones you run are ${run.slice(0, 5).map((g) => `"${g.label}"`).join(', ')}.`));
+    }
+    const lines: string[] = [];
+    for (const g of chosen.slice(0, 5)) {
+      const open = await theOpenSessionOfACheckIn(this.prisma, g.id, userId).catch(() => null);
+      if (open) lines.push(whereOneStands({ ...open, label: g.label }));
+    }
+    if (!lines.length) {
+      return rules(lane, text('Nothing is open for anybody to check in on in the check-ins you run right now.'));
+    }
+    return rules(lane, text(`${lines.join('\n')}\n\nThis is counted the way your board counts it, and only you can read it here.`));
   }
 
   /**

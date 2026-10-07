@@ -30,6 +30,8 @@ export type Lane =
   | 'how_am_i_doing'
   /** A lead asking how their team is doing: the board and the latest report of the check-ins they run, read to them alone. */
   | 'how_is_the_team'
+  /** A lead asking who has not checked in yet, on a check-in they run: the people, by name (B-134). */
+  | 'who_has_not_checked_in'
   | 'where_am_i_needed'
   | 'what_is_stuck'
   | 'where_am_i_up_to'
@@ -320,7 +322,7 @@ const RULES = [
      * "how am I doing" stays with the coaching lane. Above `what_should_we_talk_about`, whose "how am I doing" is the
      * first person.
      */
-    /\bhow(?:'s|\s+is|\s+are)\s+(?:the|my|our)\s+team(?:\s+(?:doing|going|getting\s+on|looking))?\b/i,
+    /\bhow(?:'s|\s+is|\s+are)\s+(?:the|my|our)\s+(?:[\w'-]+\s+){0,2}team(?:\s+(?:doing|going|getting\s+on|looking))?\b/i,
     /\bhow(?:'s|\s+is|\s+are)\s+(?:everyone|everybody)\s+(?:doing|going|getting\s+on)\b/i,
     /\bhow\s+are\s+(?:the\s+|my\s+|our\s+)?people\s+(?:doing|going)\b/i,
     /\bwhere\s+(?:are|do)\s+we\s+(?:stand\s+)?on\s+the\s+quarter\b/i,
@@ -363,6 +365,16 @@ const RULES = [
     /\bwhat\s+(?:should|do)\s+i\s+(?:focus\s+on|do)\s+this\s+week\b/i,
     /\bwhere\s+(?:do\s+i|should\s+i)\s+(?:start|spend\s+my\s+time)\b/i,
     /\bmy\s+week\b/i,
+  ]),
+  rule('who_has_not_checked_in', [
+    /*
+     * "WHO HAS NOT CHECKED IN" (B-134). Above `what_is_stuck` and `who_is`, which read "who is waiting" and "who is ..." as other questions. The
+     * check-in is named after "on", "in" or "for", and group one carries it. It needs "checked in", "answered" or "started" beside "not", so a
+     * question about a handoff or a person stays with its lane.
+     */
+    /\bwho\s+(?:has|have)(?:\s+not|n'?t)\s+(?:yet\s+)?(?:checked[\s-]*in|answered|replied|responded|started)(?:\s+yet)?(?:\s+(?:on|in|for|to)\s+(.+?))?\s*[?.!]*\s*$/i,
+    /\bwho\s+(?:is|are)\s+(?:yet\s+|still\s+)?(?:to|waiting\s+to|due\s+to)\s+check[\s-]*in(?:\s+(?:on|in|for)\s+(.+?))?\s*[?.!]*\s*$/i,
+    /\bwho\s+(?:still\s+)?needs\s+to\s+check[\s-]*in(?:\s+(?:on|in|for)\s+(.+?))?\s*[?.!]*\s*$/i,
   ]),
   rule('what_is_stuck', [
     /*
