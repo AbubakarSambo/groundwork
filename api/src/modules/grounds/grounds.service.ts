@@ -1299,7 +1299,13 @@ export class GroundsService {
         }),
         contributedParties,
         report: g.report
-          ? { agreements: g.report.agreements, divergences: g.report.divergences, releasedAt: g.report.releasedAt }
+          /* Counts and the release only. The stored sentences carry report labels ("Participant A", "the initiator"),
+             no screen reads them and the developer API does not serve this route (decision 115: names, never labels). */
+          ? {
+              agreementsCount: Array.isArray(g.report.agreements) ? g.report.agreements.length : 0,
+              differencesCount: Array.isArray(g.report.divergences) ? g.report.divergences.length : 0,
+              releasedAt: g.report.releasedAt,
+            }
           : null,
         lastActivity,
       };

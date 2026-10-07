@@ -168,8 +168,11 @@ describe('GW-DECLINE-03: the shared report names people one way', () => {
      * report already does.
      */
     expect(SRC).toContain('labelsForParties(active as any)');
-    expect(SRC).toContain('namesVisibleTo(viewer?.id ?? null, active as any)');
-    expect(SRC).toContain('label: names.get(label) ?? label');
+    /* Changed with decision 115: the names now take the check-in's own setting for whether colleagues see each other,
+       and the label itself is never shown (see the-ending-panel-says-names-never-labels.spec.ts). */
+    expect(SRC).toContain('namesVisibleTo(viewer?.id ?? null, active as any, viewerIsLead || peersAreNamed)');
+    expect(SRC).toContain('whatEachLabelIsCalled(active as any');
+    expect(SRC).not.toContain('label: names.get(label) ?? label');
   });
 
   it('and no longer falls back to a raw address', () => {
