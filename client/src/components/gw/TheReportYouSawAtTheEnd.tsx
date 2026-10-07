@@ -240,8 +240,11 @@ export function TheReportYouSawAtTheEnd({
         )}
 
         {/* Suggested parties */}
+        {/* FAULT 12 (live review): a heading made of two pieces joined with a comma reads as two
+            headings stuck together, not a sentence. One plain phrase instead; the body
+            underneath already says what these people would do for the check-in. */}
         {report.suggestedParties && report.suggestedParties.length > 0 && (
-          <Block n={next()} label="Recommended additions, who else this check-in needs">
+          <Block n={next()} label="Who else this check-in needs">
             <div style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-navy)', borderRadius: 10, padding: 'var(--er-box)', background: 'var(--gw-blue-bg)' }}>
               <div style={{ fontSize: 'var(--er-body)', color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
                 Based on this check-in, these roles would strengthen the check-in. What they say would change or confirm what is currently on record from one side only.
@@ -263,8 +266,10 @@ export function TheReportYouSawAtTheEnd({
         )}
 
         {/* Mentioned people */}
+        {/* FAULT 12 (live review): same fix as "Who else this check-in needs" - one plain phrase,
+            not two joined by a comma. */}
         {report.mentionedPeople && report.mentionedPeople.length > 0 && (
-          <Block n={next()} label="People mentioned, who you named while you were talking">
+          <Block n={next()} label="People you named while you were talking">
             <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: 'var(--er-box)', background: 'var(--gw-paper)' }}>
               <div style={{ fontSize: 'var(--er-body)', color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
                 {/*
@@ -289,8 +294,16 @@ export function TheReportYouSawAtTheEnd({
                   report, where it promised "they will be invited when you save" beside a list of
                   names, no buttons, and no save. It is only true while you are still finishing.
                 */}
+                {/*
+                  FAULT 11 (live review): "ADDING HERE OR BELOW IS THE SAME LIST" CLAIMED A LIST
+                  THAT IS NOT THERE WHEN NOBODY HAS BEEN ADDED YET - the chip row below
+                  (`.gwui-ec-savecard-invite-list`) only renders once `inviteAdded.length > 0`. What
+                  is true regardless is the behaviour, not the layout: adding someone here does the
+                  same thing as adding them in the invite step below, so reworded to say that
+                  instead of describing a list that may not be on screen.
+                */}
                 {renderAdd
-                  ? 'You named these people while you were talking. Add anyone who should answer for this themselves, and they will be invited when you save. Adding here or below is the same list, so nobody is invited twice.'
+                  ? 'You named these people while you were talking. Add anyone who should answer for this themselves, and they will be invited when you save. Adding them here does the same thing as adding them below, so nobody is invited twice.'
                   : 'You named these people while you were talking. Adding somebody to this check-in is done on its Setup tab.'}
               </div>
               {report.mentionedPeople.map((p, i) => {
@@ -342,7 +355,9 @@ export function TheReportYouSawAtTheEnd({
           boxes while the shared report on the same page listed two open items. Settled and still open
           come from the session report now; with nothing in either, one line says so.
         */}
-        <Block n={next()} label="Where this leaves you, settled and still open">
+        {/* FAULT 12 (live review): same fix - "Where this leaves you" is the whole heading; what is
+            settled and what is still open is what the rows underneath already say. */}
+        <Block n={next()} label="Where this leaves you">
           {((stands?.settled?.length ?? 0) || (stands?.open?.length ?? 0))
             ? <div style={{ display: 'grid', gap: 6 }}>
                 {(stands?.settled ?? []).map((t, i) => <div key={`s${i}`} style={{ fontSize: 'var(--er-lead)', lineHeight: 1.5 }}>{`Everyone agrees that ${lowerFirst(t)}`}</div>)}
