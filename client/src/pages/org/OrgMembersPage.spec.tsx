@@ -276,7 +276,9 @@ describe('everyone at Baridi', () => {
     open()
     await screen.findByText('Miriam Wanjiku', { selector: '.gwui-person-name' })
     expect(screen.getByText('Who reports to whom')).toBeTruthy()
-    expect(screen.getByText('Level and reporting lines describe the organisation; what someone can do still comes from their role')).toBeTruthy()
+    /* FAULT 13 (live review): one sentence joined to another with a semicolon. Two full
+       sentences now. */
+    expect(screen.getByText('Level and reporting lines describe the organisation. What someone can do still comes from their role.')).toBeTruthy()
   })
 })
 
