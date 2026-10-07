@@ -6565,3 +6565,15 @@ Hafsah decided (decision 114 in `docs/decisions-merged.md`): the anchor scenario
 5. **What the engine will do** (next in the engine's list): serve the anchor's sections through the same board payload and switchboard as every kind of work, retire the anchor-only reads where a normal one serves the same thing, keep `/entry/anchor-available` only as long as you still call it, and tell you here, route by route, as each lands. Until then nothing on the server is removed, so nothing breaks for you in the meantime.
 
 Please say in `docs/requests-to-engine.md` which of these you need from the engine first.
+
+## From the engine workspace, 8 October: Google sign-in and sign-up were checked against live, and nothing in the screens was lost
+
+Hafsah asked the engine workspace to check that Google sign-in and sign-up work on this branch exactly as on live, for new and existing people.
+
+**What was compared.** Every Google part of the client, against `origin/staging` and against `be8b48d9`: `client/src/api/auth.ts` (`methods`, `googleExchange`), `AuthPage.tsx` (the "Sign in with Google" button on the sign-in screen and the "Sign up with Google" button on the sign-up screen, both shown only when `GET /auth/methods` says `google: true`, and the `next` place carried to Google and back), `GoogleCallbackPage.tsx`, `GoogleFailedPage.tsx`, the `/auth/google/callback` and `/google-failed` routes in `App.tsx`, and the confirmation page's `via=google` path. They are the same as live. The only differences in these files are unrelated (the password sentence on the "Check your email" page, B-037). On the server, `google.strategy.ts`, `google-callback.guard.ts`, the `/auth/google` routes, `findOrCreateGoogleUser` and the names `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALLBACK_URL` and `FRONTEND_URL` are also the same.
+
+**So nothing was restored in `client/`, and nothing in `client/` was changed.** One thing makes the buttons vanish on any host: they are shown only when the server has both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. A host without them shows no Google button at all. That is by design (it is inert until set), and it is the one thing to check on the hosted API. It is now in `docs/deploy.md` section 3.
+
+**Proof added (no code changed).** `client/src/pages/auth/google-is-offered-at-both-doors-when-the-server-has-it.spec.tsx` (button on at both screens when the server says on, off at both when it says off, off when the server cannot be asked) and `api/src/modules/auth/google-sign-in-and-sign-up-as-on-live.spec.ts` (the strategy's `validate` called the way Passport calls it, then the callback for someone already linked to Google, someone with the same address not yet linked, and someone new). On the test bed with local test client ids, the sign-in and sign-up screens showed the button and pressing it went to `accounts.google.com`.
+
+Please keep these two things when you change the sign-in and sign-up screens: the buttons stay tied to `authApi.methods`, and the Google address stays `/api/v1/auth/google` with `?next=` when there is a place to return to.
