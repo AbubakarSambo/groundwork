@@ -18,6 +18,7 @@ const MIGRATIONS = path.join(__dirname, '..', '..', '..', 'prisma', 'migrations'
 const ALL = fs.readdirSync(MIGRATIONS).filter((n) => /^\d{14}_/.test(n)).sort();
 const sqlOf = (name: string) =>
   fs.readFileSync(path.join(MIGRATIONS, name, 'migration.sql'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
     .split('\n').filter((l) => !l.trim().startsWith('--')).join('\n');
 
 const THE_KEEPER = '20261007233000_hafsah_stays_a_platform_admin';
