@@ -21,6 +21,11 @@ import { AuthCard } from './auth-kit'
  * without its second sentence, "Anything you'd started is saved." Signing out clears the drafts this
  * browser was keeping (lib/what-signing-out-takes-with-it.ts), so that is not yet a promise this page
  * can make. It waits for Hafsah.
+ *
+ * ITS FIRST SENTENCE, NOT A DIFFERENT CLAIM (real-user walk, Kijani Foods, fault 8c). This used to
+ * say "You are still signed in on your other devices." instead - true, but not what the prototype
+ * says here, and a different fact ("other devices" rather than "this device"). "On this device."
+ * is both the prototype's own wording and accurate: signing out here clears this browser only.
  */
 export function SignOutPage() {
   const logout = useAuthStore((s) => s.logout)
@@ -34,7 +39,7 @@ export function SignOutPage() {
     /* True: signing out clears this browser only. There is no sign-out on the server, and a
        session on another device lasts until it ends there, or until a password reset raises the
        account's token epoch. */
-    <AuthCard title="You’re signed out" sub="You are still signed in on your other devices.">
+    <AuthCard title="You’re signed out" sub="On this device.">
       <Stack gap={10}>
         <Button wide to="/auth">Sign in again</Button>
         <a href={MARKETING_URL} className="gwui-btn gwui-btn-quiet gwui-btn-wide">Go to the home page</a>

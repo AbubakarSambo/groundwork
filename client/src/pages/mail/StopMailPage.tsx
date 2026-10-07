@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { API_ORIGIN } from '@/lib/where-the-api-lives'
+import { AuthCard } from '@/pages/auth/auth-kit'
+import { Button, Stack } from '@/components/gw/ui'
 
 /**
  * THE PAGE THE LINK ON A MAIL LANDS ON, AND UNTIL NOW THERE WAS NONE.
@@ -18,11 +20,11 @@ import { API_ORIGIN } from '@/lib/where-the-api-lives'
  * me. What differs is scope, and the API says which in its own words rather than this page
  * guessing at it.
  *
- * NO HEX FALLBACKS IN THE var() CALLS. This page is reached from a mail client and renders with no
- * app chrome around it, which is the situation that tempts a `var(--gw-text, #1A1916)` "just in
- * case". `one-vocabulary.spec.ts` refuses it, and it is right: a fallback is a second definition of
- * a colour that the palette already owns, and it goes stale silently the moment the token moves.
- * The tokens are defined on :root in index.css, which this page loads like every other.
+ * BUILT FROM THE SHARED PARTS ONLY (`AuthCard`, `Button`, `Stack`), as its sibling
+ * `StopRemindersPage.tsx` already is - no inline styles, no one-off classes. The page is reached
+ * from a mail client with no app chrome around it, which used to tempt a hand-rolled `<div style=
+ * {{...}}>` card; `AuthCard` already draws exactly that narrow cream-page card (Mark, PageTitle,
+ * a panel), so this page no longer needs its own copy of it.
  */
 type Which = 'unsubscribe' | 'stop-reminders'
 
@@ -33,7 +35,8 @@ export function StopMailPage({ which }: { which: Which }) {
   /* The question for the unsubscribe link, which asks before it stops anything (decision 109). */
   const [question, setQuestion] = useState<{ title: string; says: string[]; keepLabel: string; stopLabel: string; turnBackOnLabel: string; stopped: boolean } | null>(null)
   const [busy, setBusy] = useState(false)
-  /* After a stop: its heading, and whether the page offers the undo (somebody with no account has only this link to come back by). */
+  /* After a stop: its heading, and whether the page offers the undo (somebody with no account has
+     only this link to come back by). From the engine's review of the opt-out (1fe53cb2). */
   const [doneTitle, setDoneTitle] = useState('Done.')
   const [canUndo, setCanUndo] = useState(false)
   async function answer(path: '' | '/undo') {
@@ -56,7 +59,11 @@ export function StopMailPage({ which }: { which: Which }) {
     let alive = true
     void (async () => {
       try {
-        const r = await fetch(`${API_ORIGIN}/api/v1/${which}/${encodeURIComponent(token ?? '')}${which === 'unsubscribe' ? '/question' : ''}`)
+        /* The unsubscribe question is read from its own address (the engine's 1fe53cb2); an API from
+           before it has none and answers 404 there, so the page falls back to the plain read. */
+        const base = `${API_ORIGIN}/api/v1/${which}/${encodeURIComponent(token ?? '')}`
+        let r = await fetch(which === 'unsubscribe' ? `${base}/question` : base)
+        if (which === 'unsubscribe' && r.status === 404) r = await fetch(base)
         const body = await r.json().catch(() => null)
         if (!alive) return
         /* A 404 here still means the mail stops, because the token is gone. Only a server that
@@ -67,9 +74,17 @@ export function StopMailPage({ which }: { which: Which }) {
         }
         if (which === 'unsubscribe') {
           const q = body?.data ?? body
-          setQuestion(q)
+          /* An API from before decision 109 answers `says` as one sentence and no question; the page
+             must still read it (the client and the API are not always released at the same moment). */
+          const lines: string[] = Array.isArray(q?.says) ? q.says : (typeof q?.says === 'string' ? [q.says] : [])
+          if (!q?.title) {
+            setSays(lines.join(' ') || 'No more of this mail is going to you.')
+            setState('done')
+            return
+          }
+          setQuestion({ ...q, says: lines })
           setState(q?.known === false ? 'done' : 'asking')
-          setSays((q?.says ?? []).join(' '))
+          setSays(lines.join(' '))
           if (q?.known === false) setDoneTitle(q?.title ?? 'That link is not one we recognise')
           return
         }
@@ -87,54 +102,44 @@ export function StopMailPage({ which }: { which: Which }) {
     }
   }, [token, which])
 
+  if (state === 'working') return <AuthCard title="One moment." />
+
+  if (state === 'failed') {
+    /* Never "try again later" and nothing else. Somebody at this point wants the mail to stop,
+       and the honest fallback is a person who can do it by hand. */
+    return (
+      <AuthCard
+        title="That did not go through"
+        sub="We could not reach our own system just now, so nothing changed. Reload this page, or reply to any of our mail with the word stop and a person will do it by hand."
+      />
+    )
+  }
+
+  if (state === 'asking' && question) {
+    /* The prototype pre-selects keeping the mail, so only the stop control may read as the one
+       navy primary button there is on the page - which here is none: `keepLabel` is a quiet link
+       and `stopLabel` a plain secondary button, never filled navy. */
+    return (
+      <AuthCard title={question.title} sub={question.says.join(' ')}>
+        <Stack gap={12}>
+          {question.stopped ? (
+            <Button kind="secondary" wide disabled={busy} onClick={() => void answer('/undo')}>{question.turnBackOnLabel}</Button>
+          ) : (
+            <>
+              <Button kind="quiet" to="/">{question.keepLabel}</Button>
+              <Button kind="secondary" disabled={busy} onClick={() => void answer('')}>{question.stopLabel}</Button>
+            </>
+          )}
+        </Stack>
+      </AuthCard>
+    )
+  }
+
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--gw-page)' }}>
-      <div style={{ maxWidth: 460, textAlign: 'left' }}>
-        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 1.4, color: 'var(--gw-navy)', marginBottom: 10 }}>
-          GROUNDWORK
-        </div>
-        {state === 'working' && (
-          <p style={{ fontSize: 15, color: 'var(--gw-sub)', margin: 0 }}>One moment.</p>
-        )}
-        {state === 'asking' && question && (
-          <>
-            <h1 style={{ fontSize: 21, fontWeight: 800, color: 'var(--gw-text)', margin: '0 0 10px' }}>{question.title}</h1>
-            {question.says.map((line, i) => (
-              <p key={i} style={{ fontSize: 14.5, color: 'var(--gw-sub)', lineHeight: 1.7, margin: '0 0 10px' }}>{line}</p>
-            ))}
-            {question.stopped ? (
-              <button type="button" disabled={busy} onClick={() => void answer('/undo')}>{question.turnBackOnLabel}</button>
-            ) : (
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                <a href="/" style={{ fontWeight: 700 }}>{question.keepLabel}</a>
-                <button type="button" disabled={busy} onClick={() => void answer('')}>{question.stopLabel}</button>
-              </div>
-            )}
-          </>
-        )}
-        {state === 'done' && (
-          <>
-            <h1 style={{ fontSize: 21, fontWeight: 800, color: 'var(--gw-text)', margin: '0 0 10px' }}>{which === 'unsubscribe' ? doneTitle : 'Done.'}</h1>
-            <p style={{ fontSize: 14.5, color: 'var(--gw-sub)', lineHeight: 1.7, margin: 0 }}>{says}</p>
-            {which === 'unsubscribe' && canUndo && (
-              <p style={{ margin: '12px 0 0' }}><button type="button" disabled={busy} onClick={() => void answer('/undo')}>Turn them back on</button></p>
-            )}
-          </>
-        )}
-        {state === 'failed' && (
-          <>
-            <h1 style={{ fontSize: 21, fontWeight: 800, color: 'var(--gw-text)', margin: '0 0 10px' }}>
-              That did not go through
-            </h1>
-            {/* Never "try again later" and nothing else. Somebody at this point wants the mail to
-                stop, and the honest fallback is a person who can do it by hand. */}
-            <p style={{ fontSize: 14.5, color: 'var(--gw-sub)', lineHeight: 1.7, margin: 0 }}>
-              We could not reach our own system just now, so nothing changed. Reload this page, or
-              reply to any of our mail with the word stop and a person will do it by hand.
-            </p>
-          </>
-        )}
-      </div>
-    </div>
+    <AuthCard title={which === 'unsubscribe' ? doneTitle : 'Done.'} sub={says}>
+      {which === 'unsubscribe' && canUndo && (
+        <Button kind="secondary" disabled={busy} onClick={() => void answer('/undo')}>Turn them back on</Button>
+      )}
+    </AuthCard>
   )
 }

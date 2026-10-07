@@ -64,8 +64,8 @@ export function RoleMapPage() {
         )
       )}
 
-      {data && data.roles.length === 0 && <Empty>No roles are known yet.</Empty>}
-      {data && data.roles.length > 0 && (
+      {data && (data.roles ?? []).length === 0 && <Empty>No roles are known yet.</Empty>}
+      {data && (data.roles ?? []).length > 0 && (
         <>
           <Panel>
             <table className="gwui-record-table">
@@ -73,20 +73,27 @@ export function RoleMapPage() {
                 <tr><th scope="col">Role</th><th scope="col">What it owns</th><th scope="col">Who holds it</th></tr>
               </thead>
               <tbody>
-                {data.roles.map(r => {
+                {(data.roles ?? []).map(r => {
                   const nobody = r.heldBy.length === 0
                   return (
                     <tr key={r.name}>
                       <th scope="row" className={nobody ? 'gwui-nobody' : undefined}>{r.name}</th>
-                      <td>{r.owns ?? ''}</td>
-                      <td className={nobody ? 'gwui-nobody' : undefined}>{heldBy(r.heldBy)}</td>
+                      {/* FAULT 3 OF THE LIVE WALK (6 October): stacked at 375 wide, a role read as a
+                          bare "Operations director / (blank) / Amina Yusuf", with nothing to say which
+                          value was what it owns and which was who holds it. Labelled the same way
+                          ReviewsBoardPage's table already is. */}
+                      {/* FAULT 7B OF THE LIVE WALK (6 October): "What it owns" was blank on every row
+                          nobody had answered yet, with no words to say so - unlike "Who holds it",
+                          which always says "Nobody" rather than leaving a gap. */}
+                      <td><span className="gwui-record-table-label" aria-hidden="true">What it owns</span>{r.owns ?? 'Nobody has said yet.'}</td>
+                      <td className={nobody ? 'gwui-nobody' : undefined}><span className="gwui-record-table-label" aria-hidden="true">Who holds it</span>{heldBy(r.heldBy)}</td>
                     </tr>
                   )
                 })}
               </tbody>
             </table>
           </Panel>
-          {data.nobody.map(n => (
+          {(data.nobody ?? []).map(n => (
             <p key={n.name} className="gwui-panel-text">{`Nobody owns ${inASentence(n.name)}.${n.why ? ` ${n.why}` : ''}`}</p>
           ))}
         </>

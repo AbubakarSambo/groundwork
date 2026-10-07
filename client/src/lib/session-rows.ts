@@ -40,6 +40,26 @@ export function buildSessionRows(
    * see `answered`/`total` turning `null` below.
    */
   fullParticipants?: { id: string; managingOnly?: boolean | null; notLetInYet?: boolean | null }[] | null,
+  /**
+   * SCREEN FAULT 9, PART 2: THE BOARD CALLED SOMEBODY BOTH "NOT ON ANY OF THESE SESSIONS" AND
+   * "NOT YET CHECKED IN", FOR THE SAME SESSION.
+   *
+   * `whoIsInRound` counts anyone not managing-only and not held at the door as in EVERY round -
+   * right for "whether this round's count should include them" once they are in it, but it has
+   * no notion of when somebody joined, so a party added to the check-in after session `n` had
+   * already run was still named in that round's own `waitingOn`. A missing check-in row at `n` is
+   * not a safe test either: a row for an existing party who simply has not started `n` yet can be
+   * just as absent (proven by session-rows.spec.ts's own "4 of 5... 2 of 5" case, Baraka and
+   * Neema have no row at session 2 and are still correctly counted).
+   *
+   * The server's own grid (`checkInGrid.rows[].cells`, nine-columns-is-not-a-phone-screen.tsx)
+   * already knows the true answer and says "na" for exactly this case - this is that same map,
+   * participant id to the sessions they are actually on, passed in from where the board already
+   * has it (BoardPage.tsx). `null`/absent when it is not to hand (every existing caller, and
+   * every test of this file that predates it), in which case this falls back to `whoIsInRound`
+   * alone, exactly as before.
+   */
+  onSessionFromGrid?: Map<string, Set<number>> | null,
 ): SessionRow[] {
   const everybody = (ground?.participants ?? []) as any[]
   const checkIns = (ground?.checkIns ?? []) as any[]
@@ -48,8 +68,11 @@ export function buildSessionRows(
     .sort((a, b) => b - a)
 
   return numbers.map((n) => {
-    /* Who this round counts: a managing-only lead is in session 1 and not after. See who-is-in-this-round. */
+    /* Who this round counts: a managing-only lead is in session 1 and not after. See who-is-in-this-round.
+       Screen fault 9, part 2: and, when the server's own grid is to hand, only somebody actually on
+       this session by it - see the parameter's own note above. */
     const parties = whoIsInRound(everybody, n, ground?.scenario)
+      .filter((p) => !onSessionFromGrid || onSessionFromGrid.get(p.id)?.has(n))
     const fullParties = fullParticipants ? whoIsInRound(fullParticipants, n, ground?.scenario) : null
     /* `ground.participants` is restricted to the viewer's own row when it is shorter than the full
        roster the board sent for the same round - the only case this read can be too small. */

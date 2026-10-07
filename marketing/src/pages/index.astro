@@ -484,6 +484,44 @@ details.more>summary::marker{color:var(--gw-muted)}
   </div>
 </section>
 
+<!-- ═══ WHAT GROUNDWORK DOES ══════════════════════════════════════════════
+     Added 7 October 2026, per docs/prototype/screens/F3-public-site/. Placed here, after the
+     fairness section and before the close, because it recaps the whole conversation-and-reports
+     story (including the objective guidance, which nothing earlier names) right before the page
+     asks the reader to start one. Same classes as every section above: .lab, .h2, .lede, .w. -->
+<section class="fade">
+  <div class="w">
+    <p class="lab">What Groundwork does</p>
+    <h2 class="h2">Groundwork checks in with your team, so you know how things are really going.</h2>
+    <p class="lede">Each person talks to Groundwork one to one about their work: what's moving, what's stuck, and what they need. You get clear reports on how the work is going, where people see things differently, and what to do next. And Groundwork guides everyone towards the objective you're working on, week after week.</p>
+  </div>
+</section>
+
+<!-- ═══ THE EVERYDAY WORK ══════════════════════════════════════════════════
+     Introduces the suites (leave, performance reviews, expenses) in the same column
+     and band ground the "what a report looks like" section above already uses. -->
+<section class="band fade">
+  <div class="w">
+    <p class="lab">The everyday work</p>
+    <h2 class="h2">Run the everyday work in the same place.</h2>
+    <p class="lede">Add the suites your team needs: leave, performance reviews, expenses and more. People ask in plain words, in the app or on WhatsApp, and the right person approves.</p>
+  </div>
+</section>
+
+<!-- ═══ GETTING STARTED ════════════════════════════════════════════════════
+     Links to the app's own /talk-to-us page, the same route pricing.astro's "Request a call"
+     uses, rather than a mailto - a contact page already exists. "?about=setup" preselects
+     "We would like help getting set up and training the team" in WHAT_ABOUT
+     (client/src/pages/talk/TalkToUsPage.tsx), which matches what this section offers. -->
+<section class="fade">
+  <div class="w">
+    <p class="lab">Getting started</p>
+    <h2 class="h2">We'll help you get started.</h2>
+    <p class="lede" style="margin-bottom:26px">Our team works with you to think through your objectives, adds your team, and sets everyone up. Your first month of support is free. After that, more support is available at a cost. Just ask.</p>
+    <a class="btn btn-nav" href={`${APP_URL}/talk-to-us?about=setup`}>Talk to our team</a>
+  </div>
+</section>
+
 <!-- ═══ CLOSE ════════════════════════════════════════════════════════════ -->
 <section class="end art-bg" style="--ground:var(--gw-dark);background-image:url(/art/seedling.png)">
   <div class="w">

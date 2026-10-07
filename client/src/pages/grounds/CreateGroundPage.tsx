@@ -650,7 +650,7 @@ export function CreateGroundPage() {
     queryFn: billingApi.getPricing,
     staleTime: 60 * 1000,
   })
-  const freeLimit = livePricing?.free.groundLimit ?? FALLBACK_FREE_LIMITS.groundLimit
+  const freeLimit = livePricing?.free?.groundLimit ?? FALLBACK_FREE_LIMITS.groundLimit
 
   const canCreate = useQuery({
     queryKey: ['can-create-ground'],

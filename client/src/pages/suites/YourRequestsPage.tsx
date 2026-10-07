@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { yourRequestsApi, type YourRequest } from '@/api/suites'
+import { yourRequestsApi, type YourRequest, type YourHours } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { Page, PageTitle, Section, Button, Note, Callout, Empty, RowList, Row, Tag, FieldLabel, TextArea } from '@/components/gw/ui'
 import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
@@ -15,6 +15,11 @@ import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
  *
  * WORDING THE SERVER DOES NOT SEND: the title and its one line; "Your leave"; "Your requests to spend";
  * "Waiting", "Approved", "Declined"; "Your answer"; "Send your answer"; and the empty and failed states.
+ *
+ * "YOUR HOURS" (fault 1 of the live walk, 6 October): after confirming hours in chat a person is told
+ * "...you will see it under your hours.", but nothing here showed them - GET /suites/time/mine was
+ * never read. Added as a third section, quiet in the same way as the other two when the time sheets
+ * suite is off or this person keeps none. Every sentence in it is the server's own.
  */
 const DID_NOT_GO = 'That did not go through, and nothing has changed. Try again.'
 const TAGS = { waiting: 'Waiting', approved: 'Approved', declined: 'Declined' } as const
@@ -34,6 +39,7 @@ export function YourRequestsPage() {
   const sentMessage = (location.state as { sentMessage?: string } | null)?.sentMessage
   const leave = useQuery({ queryKey: ['your-leave'], queryFn: yourRequestsApi.leave, enabled: !!user, retry: false })
   const spending = useQuery({ queryKey: ['your-spending'], queryFn: yourRequestsApi.spending, enabled: !!user, retry: false })
+  const hours = useQuery({ queryKey: ['your-hours'], queryFn: yourRequestsApi.hours, enabled: !!user, retry: false })
 
   return (
     <Page>
@@ -61,7 +67,29 @@ export function YourRequestsPage() {
           {data => <Requests rows={data.requests} none="You have not asked to spend anything." answer={yourRequestsApi.answerSpending} queryKey={['your-spending']} />}
         </Loaded>
       </Section>
+
+      <Section heading="Your hours">
+        <Loaded q={hours} off="Time sheets are not switched on in your organisation." role={user?.role}>
+          {data => <YourHoursSection data={data} />}
+        </Loaded>
+      </Section>
     </Page>
+  )
+}
+
+function YourHoursSection({ data }: { data: YourHours }) {
+  if (data.weeks.length === 0) return <Empty>You have not given any hours yet.</Empty>
+  return (
+    <>
+      {data.standing && <p className="gwui-panel-text">{data.standing}</p>}
+      <RowList label="Your hours">
+        {data.weeks.map(w => (
+          <Row key={w.weekOf} columns="minmax(0, 1fr)">
+            <p className="gwui-panel-text">{w.where}</p>
+          </Row>
+        ))}
+      </RowList>
+    </>
   )
 }
 

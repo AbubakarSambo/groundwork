@@ -78,7 +78,7 @@ describe('a lead, a member and a guest', () => {
       unmount()
       open(user, 'whatsapp')
       expect(screen.getByText('Only an admin in your organisation can set this up. Ask whoever manages Groundwork for your organisation.')).toBeTruthy()
-      expect(screen.queryByText('Connect WhatsApp')).toBeNull()
+      expect(screen.queryByText('Use your organisation’s own WhatsApp number')).toBeNull()
       for (const fn of Object.values(api)) expect(fn).not.toHaveBeenCalled()
     })
   }
@@ -101,7 +101,19 @@ describe('Grace, an admin, reads Connections', () => {
     open(GRACE)
     const wa = await screen.findByRole('region', { name: 'WhatsApp' })
     await within(wa).findByText('Connected')
-    expect(wa.textContent).toContain('Your people check in by replying to +254 709 000 111, Baridi Appliances’s WhatsApp Business number. A reply is their check-in, exactly as if typed here.')
+    /* SCREEN FAULT 5b, FIXED: "Baridi Appliances’s" was wrong English - a name already ending in
+       "s" takes just an apostrophe (possessiveOf, client/src/lib/a-possessive.ts). This used to pin
+       that mistake; it now reads "Baridi Appliances’". */
+    expect(wa.textContent).toContain('Your people check in by replying to +254 709 000 111, Baridi Appliances’ WhatsApp Business number. A reply is their check-in, exactly as if typed here.')
+  })
+
+  it('a name ending in "s" ("Kijani Foods") takes just an apostrophe, not "\'s" (screen fault 5b)', async () => {
+    serve({ connection: CONNECTED })
+    open({ ...GRACE, organizationName: 'Kijani Foods' })
+    const wa = await screen.findByRole('region', { name: 'WhatsApp' })
+    await within(wa).findByText('Connected')
+    expect(wa.textContent).toContain('Kijani Foods’ WhatsApp Business number')
+    expect(wa.textContent).not.toContain('Kijani Foods’s')
     await within(wa).findByText('people checking in on WhatsApp')
     expect(within(wa).getByText('6')).toBeTruthy()
     expect(within(wa).getByText('212')).toBeTruthy()
@@ -135,13 +147,55 @@ describe('Grace, an admin, reads Connections', () => {
     await waitFor(() => expect(api.disconnectWhatsapp).toHaveBeenCalledTimes(1))
   })
 
-  it('with WhatsApp on and no number of her own: "Not set up", and the way to set it up', async () => {
+  /*
+   * A SEALED KEY THAT CANNOT BE OPENED (6 October, answers-from-engine.md: "an organisation's own
+   * WhatsApp number, when its keys cannot be opened"). `keysNeedTypingAgain` and its sentence are
+   * served on `connection`; the sentence is shown word for word, as a Note, at the top of the
+   * WhatsApp section, with the token and app secret fields to retype it right there.
+   */
+  it('with her own keys sealed and unreadable: the served sentence, and the fields to type them again', async () => {
+    serve({ connection: { ...CONNECTED, keysNeedTypingAgain: true, keysNeedTypingAgainSays: "Your number's keys need to be typed in again. Nothing is sent from your number until they are." } })
+    api.connectWhatsapp.mockResolvedValue({ connection: CONNECTED, webhookPath: '/x' })
+    open(GRACE)
+    const wa = await screen.findByRole('region', { name: 'WhatsApp' })
+    const note = await within(wa).findByRole('alert')
+    expect(note.textContent).toBe("Your number's keys need to be typed in again. Nothing is sent from your number until they are.")
+    fireEvent.change(within(wa).getByLabelText('Access token'), { target: { value: 'EAA-new-token' } })
+    fireEvent.change(within(wa).getByLabelText('App secret'), { target: { value: 'new-secret' } })
+    fireEvent.click(within(wa).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(api.connectWhatsapp).toHaveBeenCalledWith(expect.objectContaining({
+      phoneNumberId: CONNECTED.phoneNumberId, accessToken: 'EAA-new-token', appSecret: 'new-secret',
+    })))
+  })
+
+  it('with keys sealed and readable, says nothing about retyping them', async () => {
+    serve({ connection: CONNECTED })
+    open(GRACE)
+    const wa = await screen.findByRole('region', { name: 'WhatsApp' })
+    expect(within(wa).queryByRole('alert')).toBeNull()
+    expect(within(wa).queryByLabelText('Access token')).toBeNull()
+    expect(within(wa).queryByLabelText('App secret')).toBeNull()
+  })
+
+  /*
+   * DECISION 112, 7 October: with no number of her own, this section used to lead with "People
+   * check in by replying to your organisation's WhatsApp number" and a "Set it up" button, which
+   * read as though setting up an own number were the normal next step. It now leads with how
+   * WhatsApp works on Groundwork's own number, points her at Plan and billing to turn it on, and
+   * folds setting up her own number under "Advanced", shut, with "Not set up" moved onto that fold.
+   */
+  it('with WhatsApp on and no number of her own: Groundwork’s own number, and her own folded under "Advanced"', async () => {
     serve()
     open(GRACE)
     const wa = await screen.findByRole('region', { name: 'WhatsApp' })
-    expect(within(wa).getByText('Not set up')).toBeTruthy()
-    expect(within(wa).getByText('People check in by replying to your organisation’s WhatsApp number.')).toBeTruthy()
-    expect(hrefOf(wa, 'Set it up')).toBe('/settings/whatsapp')
+    expect(within(wa).getByText('Your people check in by replying to Groundwork’s WhatsApp number. A reply is their check-in, exactly as if typed here.')).toBeTruthy()
+    expect(hrefOf(wa, 'Plan and billing')).toBe('/billing#billing-whatsapp')
+    const advanced = within(wa).getByText('Advanced: use your organisation’s own WhatsApp number').closest('details') as HTMLElement
+    expect(advanced).toBeTruthy()
+    expect(advanced.hasAttribute('open')).toBe(false)
+    expect(within(advanced).getByText('Not set up')).toBeTruthy()
+    expect(within(advanced).getByText('Most organisations never need this. Groundwork’s own number already works for everyone.')).toBeTruthy()
+    expect(hrefOf(advanced, 'Set it up')).toBe('/settings/whatsapp')
   })
 
   it('while WhatsApp is not switched on, and she has no number of her own, the page does not mention it', async () => {
@@ -304,9 +358,10 @@ describe('Grace, an admin, connects WhatsApp step by step', () => {
     const connectionsLink = screen.getByRole('link', { name: 'Connections' })
     expect(connectionsLink.getAttribute('href')).toBe('/settings/connections')
     expect(connectionsLink.closest('nav')?.textContent).toBe('Connections')
-    expect(screen.getByRole('heading', { name: 'Connect WhatsApp' })).toBeTruthy()
-    /* GROUP 1'S THIRD REVIEW: full plain sentences. */
-    expect(screen.getByText('People check in by replying to your organisation’s WhatsApp number. Most of it happens in Meta’s settings. You can stop at any step, and what you have entered is kept.')).toBeTruthy()
+    /* DECISION 112, 7 October: retitled, and its first sentence says it is optional and advanced,
+       because Groundwork's own number already works for everyone without any of this. */
+    expect(screen.getByRole('heading', { name: 'Use your organisation’s own WhatsApp number' })).toBeTruthy()
+    expect(screen.getByText('This is optional and advanced. Groundwork’s own number already works for everyone, without any of this. Most of it happens in Meta’s settings. You can stop at any step, and what you have entered is kept.')).toBeTruthy()
     await screen.findByText('Paste three things from Meta')
     for (const [label, hint] of [
       ['Phone number ID', 'You find it in Meta, under WhatsApp, then API Setup.'],
@@ -377,6 +432,21 @@ describe('Grace, an admin, connects WhatsApp step by step', () => {
     await screen.findByText('Whoever sets up a check-in chooses whether people answer it here or on WhatsApp.')
     expect((screen.getByLabelText('Access token') as HTMLInputElement).value).toBe('')
     expect((screen.getByLabelText('App secret') as HTMLInputElement).value).toBe('')
+  })
+
+  it('with a sealed key that cannot be opened, the sentence shows at the top and step 2 reopens with the fields to retype it, even with everything else done', async () => {
+    serve({
+      connection: { ...CONNECTED, keysNeedTypingAgain: true, keysNeedTypingAgainSays: "Your number's keys need to be typed in again. Nothing is sent from your number until they are." },
+      wa: { canStartAConversation: true, approvedHere: ['gw_session_ready', 'gw_opening', 'gw_report'] },
+    })
+    open(GRACE, 'whatsapp')
+    const note = await screen.findByRole('alert')
+    expect(note.textContent).toBe("Your number's keys need to be typed in again. Nothing is sent from your number until they are.")
+    expect(screen.getByLabelText('Access token')).toBeTruthy()
+    expect(screen.getByLabelText('App secret')).toBeTruthy()
+    /* Every step, including step 2, is still marked done - a sealed key does not undo that - and
+       step 2's own content keeps rendering regardless, which is what shows the fields. */
+    await waitFor(() => expect(screen.getAllByText('Done')).toHaveLength(6))
   })
 
   it('with everything done, steps 5 and 6 carry today’s words and the switch', async () => {

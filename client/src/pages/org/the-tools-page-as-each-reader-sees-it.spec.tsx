@@ -51,13 +51,31 @@ describe('Grace, an admin', () => {
        truncated sentence, missing tools.txt's own last clause ("unless you choose an event that
        carries it") - a real difference in meaning, not decoration: it says data only ever leaves
        because an admin chose an event that carries it, not merely that nothing sends today. Now
-       copied in full from docs/prototype/screens/F1-connections/tools.txt. */
-    expect(screen.getByText('For whoever runs Baridi Appliances’s systems. Everything here is off until you turn it on, and nothing sends what anyone said in a check-in unless you choose an event that carries it.')).toBeTruthy()
+       copied in full from docs/prototype/screens/F1-connections/tools.txt.
+       SCREEN FAULT 5b, FIXED: "Baridi Appliances’s" was wrong English - a name already ending in
+       "s" takes just an apostrophe. This test used to pin that mistake; it now reads "Baridi
+       Appliances’" (possessiveOf, client/src/lib/a-possessive.ts). The tests just below cover a
+       name that does not end in "s" ("’s" kept), and a second name that does. */
+    expect(screen.getByText('For whoever runs Baridi Appliances’ systems. Everything here is off until you turn it on, and nothing sends what anyone said in a check-in unless you choose an event that carries it.')).toBeTruthy()
     expect(await screen.findByText('Keys')).toBeTruthy()
     expect(screen.getByText('Be told when something happens')).toBeTruthy()
     expect(screen.getByText('Show Groundwork inside your own tool')).toBeTruthy()
     expect(screen.getByText('Recent deliveries')).toBeTruthy()
     expect(screen.getByText('How it looks inside your tool')).toBeTruthy()
+  })
+
+  /* SCREEN FAULT 5b: an organisation's name ending in "s" ("Kijani Foods") took just an apostrophe;
+     one that does not ("Nyali Traders") keeps the usual "'s". */
+  it('"Kijani Foods’ systems", for a name already ending in "s"', async () => {
+    open({ id: 'u-g', role: 'ADMIN', organizationName: 'Kijani Foods' })
+    expect(await screen.findByText(/For whoever runs/)).toBeTruthy()
+    expect(screen.getByText(/^For whoever runs Kijani Foods’ systems\./)).toBeTruthy()
+  })
+
+  it('"Nyali Metal’s systems" keeps the usual "\'s" for a name not ending in "s"', async () => {
+    open({ id: 'u-g', role: 'ADMIN', organizationName: 'Nyali Metal' })
+    expect(await screen.findByText(/For whoever runs/)).toBeTruthy()
+    expect(screen.getByText(/^For whoever runs Nyali Metal’s systems\./)).toBeTruthy()
   })
 
   it('reads nothing about WhatsApp, or Slack and Teams, here', async () => {

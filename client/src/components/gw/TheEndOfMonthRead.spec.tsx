@@ -85,6 +85,24 @@ describe('TheEndOfMonthRead, piece 33', () => {
     expect(screen.queryByText(/^17$/)).toBeNull()
   })
 
+  /* Fault 5 of the anchor walk was "0 active commitments" beside "Three people said what they would
+     do". The engine now serves the lines as sentences (`revealSaid`), saying what was not found in
+     words, so the screen draws them as served and never a bare count. These two tests used to check
+     the screen's own zero filter, which the engine's sentences replace. */
+  it('fault 5: draws the served lines word for word, including what was not found, and never a bare 0', () => {
+    const lines = ['Groundwork did not find a shared objective worth tracking.', 'Groundwork found three projects that could have a check-in of their own.']
+    render(<TheEndOfMonthRead read={{ ...fixture, revealSaid: { ...fixture.revealSaid, lines } }} onContinue={() => {}} />)
+    expect(screen.getByText('This started as one check-in.')).toBeTruthy()
+    for (const l of lines) expect(screen.getByText(l)).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(/(^|\s)0 /)
+  })
+
+  it('fault 5: draws the served heading, intro and closing as they are', () => {
+    render(<TheEndOfMonthRead read={fixture} onContinue={() => {}} />)
+    expect(screen.getByText('During the month, Groundwork also found this.')).toBeTruthy()
+    expect(screen.getByText('Your team has already started building its Groundwork.')).toBeTruthy()
+  })
+
   it('draws at most one navy button, and calls back with the chosen option', () => {
     const onContinue = vi.fn()
     render(<TheEndOfMonthRead read={fixture} onContinue={onContinue} />)

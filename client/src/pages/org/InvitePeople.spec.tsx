@@ -43,6 +43,19 @@ describe('invite people (A4 people.txt)', () => {
     expect(screen.getByRole('button', { name: 'Send 1 invitation' })).toBeTruthy()
   })
 
+  /* SCREEN FAULT 5a: "Your plan has room for 0 more people." read as if nobody was allowed to be
+     invited, when really nobody at all fits any more. */
+  it('with no seats left, says so plainly instead of "0 more people" (screen fault 5a)', async () => {
+    vi.spyOn(apiClient, 'post').mockResolvedValue({
+      data: { preview: true, seatsLeft: 0, rows: [{ email: 'c@x.com', result: 'no seat' }], summary: '1 person has no seat on your plan.' },
+    } as any)
+    wrap(<InvitePeople />)
+    fireEvent.change(screen.getByLabelText('One per line: a name and an email. Or paste a list from a spreadsheet.'), { target: { value: 'c@x.com' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send their invitations' }))
+    expect(await screen.findByText('Your plan has no room for anyone else.')).toBeTruthy()
+    expect(screen.queryByText(/0 more people/)).toBeNull()
+  })
+
   it('offers the three roles an invitation can give, and never a guest', () => {
     wrap(<InvitePeople />)
     const options = Array.from((screen.getByLabelText('Role') as HTMLSelectElement).options).map((o) => o.textContent)

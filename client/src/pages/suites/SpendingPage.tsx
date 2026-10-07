@@ -93,17 +93,17 @@ export function SpendingPage() {
             <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/spend/finance">Open the requests for finance</Link></p>
           )}
           <Section heading="Waiting for a yes or no">
-            {data.waiting.length === 0
+            {(data.waiting ?? []).length === 0
               ? <Empty>Nothing is waiting for a yes or no.</Empty>
               : (
                 <RowList label="Waiting for a yes or no">
-                  {data.waiting.map(w => <ARequest key={w.id} w={w} board={data} />)}
+                  {(data.waiting ?? []).map(w => <ARequest key={w.id} w={w} board={data} />)}
                 </RowList>
               )}
           </Section>
 
           <Section heading="Each team’s budget this month">
-            {data.budgets.length === 0
+            {(data.budgets ?? []).length === 0
               ? <Empty>No budget is set for this month.</Empty>
               : (
                 <Panel>
@@ -112,7 +112,7 @@ export function SpendingPage() {
                       <tr><th scope="col">Team</th><th scope="col">Budget</th><th scope="col">Spent so far</th><th scope="col">Left</th></tr>
                     </thead>
                     <tbody>
-                      {data.budgets.map(b => (
+                      {(data.budgets ?? []).map(b => (
                         <tr key={b.team}>
                           <th scope="row">{b.team}</th>
                           <td>{money(b.budget)}</td>
@@ -138,7 +138,7 @@ export function SpendingPage() {
             <p className="gwui-panel-text">In their check-in, in chat, or on WhatsApp. Nobody fills in a form.</p>
           </Section>
 
-          {data.teams.length > 0 && <SetABudget teams={data.teams} />}
+          {(data.teams ?? []).length > 0 && <SetABudget teams={data.teams} />}
         </>
       )}
     </Page>
@@ -156,12 +156,15 @@ function ARequest({ w, board }: { w: SpendWaiting; board: SpendBoard }) {
     onSuccess: (b) => { setProblem(null); qc.setQueryData(['suite-spend'], b) },
     onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
   })
-  const title = `${w.firstName}: ${withCurrency(board.currency, w.amount)} for ${w.what}`
+  /* THE LINE IS THE SERVER'S (request 162, item 3): `says` already reads "Kamau: KES 18,000 for fuel
+     for Kisumu deliveries", built once (a-request-in-words.ts) rather than here a second time - this
+     used to build its own title from the raw fields, which is exactly the kind of drift that put the
+     wrong capitalisation on "The Mwangi agency" (fault 1) in the first place. */
   const known = whatToKnow(w, board.currency, board.limit)
   return (
     <Row columns="minmax(0, 1fr) auto">
       <div>
-        <b>{title}</b>
+        <b>{w.says}</b>
         {w.category && <Tag>{w.category}</Tag>}
         {known && <p className="gwui-panel-text">{known}</p>}
         <p className="gwui-panel-text">{w.where}</p>

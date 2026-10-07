@@ -12,7 +12,7 @@ import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
 import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
 import type { GroundCadence } from '@/api/grounds'
 import { SELECTABLE_CADENCES, sessionsFor, cadenceLabel } from '@/lib/cadence'
-import { SCENARIO_LABELS } from '@/lib/scenario-catalog'
+import { scenarioLabel } from '@/lib/scenario-catalog'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 /**
@@ -120,22 +120,33 @@ export function settingsChangeSentence(c: { changedAt: string; by: 'you' | 'lead
  * in this check-in, including your manager, can see what you say in it." - true for a participant,
  * who reads it on a check-in somebody else runs. But the lead reads this same sentence about her
  * own check-in: she is not being told about a manager of hers here, so the clause is dropped for
- * her. A participant never reaches this admin page, so their wording is unchanged.
+ * her.
+ *
+ * FAULT 5, 6 Oct 2026: AN ADMIN WHO IS NOT IN THE CHECK-IN IS NOT "YOU" EITHER. The comment above
+ * used to say "a participant never reaches this admin page", which stopped being true once an
+ * admin could read People and setup without being in the check-in herself (decision 5) - she saw
+ * "...can see what YOU say in it" about a check-in she says nothing in. `viewerIsInIt` is the lead
+ * or a participant; anybody else reads a third-person sentence that is true of her too.
  */
 export function peersVisibilitySentence(args: {
   peersVisible: boolean
   peersVisibleToEachOther: boolean | null
   peersDefaultHidden: boolean
   isInitiator: boolean
+  viewerIsInIt: boolean
 }): string {
-  const who = args.isInitiator
-    ? 'The people in this check-in can see what you say in it'
-    : 'The people in this check-in, including your manager, can see what you say in it'
-  if (args.peersVisible) return `${who}, once the team's report is shared. You are named to each other.`
+  const who = !args.viewerIsInIt
+    ? 'The people in this check-in can see what each other say in it'
+    : args.isInitiator
+      ? 'The people in this check-in can see what you say in it'
+      : 'The people in this check-in, including your manager, can see what you say in it'
+  const named = args.viewerIsInIt ? 'You are named to each other.' : 'They are named to each other.'
+  const notNamed = args.viewerIsInIt ? 'You are not named to each other.' : 'They are not named to each other.'
+  if (args.peersVisible) return `${who}, once the team's report is shared. ${named}`
   if (args.peersVisibleToEachOther == null) {
-    return `Not set, so this check-in uses the default for its kind: ${args.peersDefaultHidden ? 'hidden' : 'shown'}. ${who}, once the team's report is shared. ${args.peersDefaultHidden ? 'You are not named to each other.' : 'You are named to each other.'}`
+    return `Not set, so this check-in uses the default for its kind: ${args.peersDefaultHidden ? 'hidden' : 'shown'}. ${who}, once the team's report is shared. ${args.peersDefaultHidden ? notNamed : named}`
   }
-  return `${who}, once the team's report is shared. You are not named to each other.`
+  return `${who}, once the team's report is shared. ${notNamed}`
 }
 
 export function CheckInPeopleAndSetup(props: {
@@ -191,6 +202,7 @@ export function CheckInPeopleAndSetup(props: {
   numbersShared: boolean; setWhoSeesTargets: { mutate: (v: boolean) => void; isPending: boolean }
   whatsAppIsOn: boolean
   setOverWhatsApp: { mutate: (v: boolean | null) => void; isPending: boolean }
+  setSimplerWords: { mutate: (v: boolean) => void; isPending: boolean }
   expectsUnblocking: boolean; setExpectThemToUnblock: { mutate: (v: boolean) => void; isPending: boolean }
   setWorkTogether: { mutate: (v: boolean) => void; isPending: boolean }
   setChasing: { mutate: (v: { days?: number[]; stopped?: boolean; tellTheLead?: boolean }) => void; isPending: boolean }
@@ -201,12 +213,32 @@ export function CheckInPeopleAndSetup(props: {
   const {
     ground, user, navigate, isInitiator, isOrgAdmin, viewerIsAParty, mySessionsDone, plannedSessions,
   } = props
-  const canEditRunOrAdmin = isInitiator || isOrgAdmin // aSettingOnlyTheLeadMayChange / updateTimeline / peer-visibility / people-work-together
+  /**
+   * FAULT 5: GATED ON WHAT THE SERVER SAYS, NOT ON ROLE.
+   *
+   * This used to be `isInitiator || isOrgAdmin`, so any org admin saw "Change" on Name, How
+   * often, Use simpler words and the other setup fields - and pressing it opened the field -
+   * even though the 1 October decision gives setup changes to the lead alone, and the server
+   * already refuses an admin's write. Naomi, an admin reading Tendai's check-in, saw and could
+   * open every one of these.
+   *
+   * `mayChangeSetup` (request 104, `GET /grounds/:id`) is the server's own answer to exactly this
+   * question - `ContextPage.tsx`'s `mayRewriteTheBrief` already reads it the same way. The
+   * `isInitiator || isOrgAdmin` fallback stays only for a payload that has not sent the field yet
+   * (older fixtures, mid-rollout), never as a second opinion once the server has spoken.
+   */
+  const canEditRunOrAdmin = typeof (ground as any)?.mayChangeSetup === 'boolean'
+    ? (ground as any).mayChangeSetup === true
+    : (isInitiator || isOrgAdmin) // aSettingOnlyTheLeadMayChange / updateTimeline / peer-visibility / people-work-together
   const canEditLeadOnly = isInitiator // setExternalVisibility / setChasing
+  /* FAULT 5: who "The people in this check-in ... say in it" is about - the lead or a participant,
+     never an admin merely reading. See `peersVisibilitySentence`. */
+  const viewerIsInIt = isInitiator || viewerIsAParty
 
   const [editingWhen, setEditingWhen] = useState(!!props.forceOpenTimeframe)
   const [editingReminders, setEditingReminders] = useState(false)
   const [editingWhere, setEditingWhere] = useState(false)
+  const [editingSimplerWords, setEditingSimplerWords] = useState(false)
   const [remindDaysText, setRemindDaysText] = useState(((ground as any)?.chaseAfterDays ?? [1]).join(', '))
   const [showAddPeople, setShowAddPeople] = useState(false)
   const [showInviteLink, setShowInviteLink] = useState(false)
@@ -280,7 +312,7 @@ export function CheckInPeopleAndSetup(props: {
               row until the server can take it - see docs/requests-to-engine.md. */}
           <FieldRow
             label="Situation"
-            value={SCENARIO_LABELS[ground.scenario as keyof typeof SCENARIO_LABELS] ?? ground.scenario}
+            value={ground.scenario ? scenarioLabel(ground.scenario, ground.brief) : ''}
           />
           {viewerIsAParty && (() => {
             const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === user?.id)
@@ -337,6 +369,20 @@ export function CheckInPeopleAndSetup(props: {
               label="Where people answer"
               value={(ground as any).overWhatsApp === true ? 'On WhatsApp' : (ground as any).overWhatsApp === false ? 'In Groundwork' : 'Whatever this organisation does'}
               action={canEditRunOrAdmin ? <Button kind="quiet" size="small" onClick={() => setEditingWhere((v) => !v)}>Change</Button> : undefined}
+            />
+          )}
+          {/*
+           * "USE SIMPLER WORDS" (6 October answer). Read and changed only by the lead of this
+           * check-in, or an admin in this organisation - the same reach as every other row here,
+           * since a plain participant never opens this page at all (GroundPage.tsx sends them to
+           * GroundParticipantPage instead). Gated again here, defensively, so the row cannot appear
+           * if that ever changes.
+           */}
+          {canEditRunOrAdmin && (
+            <FieldRow
+              label="Use simpler words"
+              value={(ground as any).simplerWords ? 'On' : 'Off'}
+              action={<Button kind="quiet" size="small" onClick={() => setEditingSimplerWords((v) => !v)}>Change</Button>}
             />
           )}
           <FieldRow
@@ -428,6 +474,18 @@ export function CheckInPeopleAndSetup(props: {
           </Panel>
         )}
 
+        {editingSimplerWords && canEditRunOrAdmin && (
+          <Panel>
+            <SwitchRow
+              title="Use simpler words"
+              detail="Everybody in this check-in is spoken to in short sentences and everyday words, and what is sent to them afterwards is written the same way."
+              on={!!(ground as any).simplerWords}
+              onChange={(on) => props.setSimplerWords.mutate(on)}
+              disabled={props.setSimplerWords.isPending}
+            />
+          </Panel>
+        )}
+
         {editingReminders && canEditLeadOnly && (
           <Panel>
             <SwitchRow
@@ -500,6 +558,7 @@ export function CheckInPeopleAndSetup(props: {
             peersVisibleToEachOther: (ground as any)?.peersVisibleToEachOther ?? null,
             peersDefaultHidden: props.peersDefaultHidden,
             isInitiator,
+            viewerIsInIt,
           })}
           on={props.peersVisible}
           onChange={(on) => props.setPeerVisibility.mutate(on)}
@@ -536,10 +595,22 @@ export function CheckInPeopleAndSetup(props: {
         />
         {/* THE TEAM'S REPORT SHARING IS NOT A SETTING HERE. Release happens from the report itself
             (Board/Context), so this row says the true, current state rather than offering a control
-            this tab does not have. */}
+            this tab does not have.
+
+            FAULT 4 (LIVE RE-WALK): "NOT SHARED YET... WHEN IT IS READY" READ AS IF IT WERE NOT
+            READY, FOR A GROUND THAT WAS. This said so for every unreleased report, including a
+            `REPORT_READY` one - while the header (GroundAdminPage.tsx's own `reportState`) read
+            "The report is ready to read." about the very same ground. Distinguished now: once the
+            report is actually ready, this says so, in the same words the header uses. */}
         <FieldRow
           label="The team's report"
-          value={ground.report?.releasedAt ? `Shared on ${whenItWas(ground.report.releasedAt, 'dayAndMonthLong')}.` : 'Not shared yet. Share it from the report when it is ready.'}
+          value={
+            ground.report?.releasedAt
+              ? `Shared on ${whenItWas(ground.report.releasedAt, 'dayAndMonthLong')}.`
+              : ground.status === 'REPORT_READY'
+                ? 'The report is ready. It has not been shared yet.'
+                : 'Not shared yet. Share it from the report when it is ready.'
+          }
         />
         </FieldRows>
         {props.settingsChangeCount > 0 && (
@@ -574,28 +645,48 @@ export function CheckInPeopleAndSetup(props: {
         />
       </Section>
 
-      {/* "ENDING IT": THE PROTOTYPE'S OWN SENTENCE WOULD BE FALSE. No route ends a check-in - see
-          grounds.controller.ts. The product's true state is kept instead: archiving is done by hand
-          for now, and the real "delete it if it was only a test" control, which is not in the
-          prototype and is not dropped for that reason. */}
+      {/*
+        FAULT 7, 6 Oct 2026: THIS STILL SAID "YOU CANNOT END A CHECK-IN YOURSELF YET" AFTER
+        `/grounds/:id/end` (EndingPage.tsx) STARTED LETTING THE LEAD DO EXACTLY THAT - "Save the
+        outcome and end it". The comment above this section was itself the old, now-stale reason:
+        true when it was written (no route ended a check-in), false since the ending page shipped.
+        `ResolutionPanel.tsx`'s own `canChoose` is the server's answer to who may actually decide
+        there (`viewerIsLead || (!leadDecides && viewerIsParty)`); on this page, reached only by
+        the lead or an admin, that is `isInitiator` alone - an admin reading here still only reads
+        the ending page, same as the rest of this tab's "the lead decides setup" rule. She keeps
+        the old sentence and the mail fallback; the lead is pointed at the page that now exists.
+        A plain `<a href>`, not `Button to`, because `Button`'s `to` always renders a react-router
+        `Link` - this page is also mounted outside a Router in its own tests - and `kind="secondary"`
+        to stay within this page's one-primary-button budget (the-rebuilt-pages-use-only-the-new-
+        parts.spec.ts), matching the "Ask us to end this check-in" button beside it.
+      */}
       <Section heading="Ending it">
         <Callout>
           When it ends, nobody can add to it and everything stays as it is. Each person keeps their
           own history. This can't be undone.
         </Callout>
-        <Note>
-          You cannot end a check-in yourself yet. Ask us and we will end it for you, usually the same
-          day.
-          {isOrgAdmin && !isInitiator && (props.whoIsInThisLeadName
-            ? ` ${props.whoIsInThisLeadName} runs it, so ending it ends something they are running.`
-            : ' Somebody else runs it, so ending it ends something they are running.')}
-        </Note>
-        <a
-          className="gwui-btn gwui-btn-secondary gwui-btn-red-text"
-          href={`mailto:hello@myground.work?subject=Archive check-in: ${encodeURIComponent(ground.label)}`}
-        >
-          Ask us to end this check-in
-        </a>
+        {isInitiator ? (
+          <>
+            <Note>You can end this check-in when it has done its job.</Note>
+            <a className="gwui-btn gwui-btn-secondary" href={`/grounds/${props.id}/end`}>Decide how it ends</a>
+          </>
+        ) : (
+          <>
+            <Note>
+              You cannot end a check-in yourself yet. Ask us and we will end it for you, usually the same
+              day.
+              {isOrgAdmin && (props.whoIsInThisLeadName
+                ? ` ${props.whoIsInThisLeadName} runs it, so ending it ends something they are running.`
+                : ' Somebody else runs it, so ending it ends something they are running.')}
+            </Note>
+            <a
+              className="gwui-btn gwui-btn-secondary gwui-btn-red-text"
+              href={`mailto:hello@myground.work?subject=Archive check-in: ${encodeURIComponent(ground.label)}`}
+            >
+              Ask us to end this check-in
+            </a>
+          </>
+        )}
 
         {isInitiator && (
           <Panel>

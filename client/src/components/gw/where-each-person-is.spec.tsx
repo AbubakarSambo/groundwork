@@ -215,3 +215,18 @@ describe('WhereEachPersonIs: someone an admin did not let in', () => {
     }
   })
 })
+
+/*
+ * WALK OF THE EXISTING CLIENTS' USE CASES (7 October). The finding is the product's own sentence
+ * from the record, and drawing it as `<name> said, "…"` put Groundwork's words in the person's mouth
+ * ("Neema Achieng said, "Neema Achieng has signed one shop…""). It stands on its own line, in the
+ * product's voice, never as a quote.
+ */
+describe('the finding is never drawn as something the person said', () => {
+  it('shows the finding as it is, with no "said" and no quotation marks', () => {
+    render(<WhereEachPersonIs rows={[row({ who: 'Neema Achieng', finding: 'Neema Achieng has signed one shop.' })]} />)
+    expect(screen.getByText('Neema Achieng has signed one shop.')).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(/Neema Achieng said/)
+    expect(document.body.textContent).not.toMatch(/“Neema Achieng has signed/)
+  })
+})

@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { suitesApi, type AdminSuite, type Answers, type Question, type SuitesForAnAdmin, type SuitesForALead, type SuitesForADutyHolder } from '@/api/suites'
+import { suitesApi, yourRequestsApi, type AdminSuite, type Answers, type Question, type SuitesForAnAdmin, type SuitesForALead, type SuitesForADutyHolder } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
-import { Page, PageTitle, Section, Panel, Button, Tag, Toggle, Note, Empty, RowList, Row, FieldLabel, TextField, TextArea, Select } from '@/components/gw/ui'
+import { Page, PageTitle, Section, Panel, Button, Tag, Toggle, Note, Empty, RowList, Row, FieldLabel, TextField, TextArea, Select, Modal } from '@/components/gw/ui'
+import { QueueLink } from './QueuePage'
 
 /**
  * THE SUITES PAGE (E, #/settings/suites, group 2 piece 4). The wording is copied from
@@ -68,6 +69,17 @@ export function SuitesPage() {
   })
   const refused = (error as { response?: { status?: number; data?: { message?: string } } } | null)?.response
   const orgName = user?.organization?.name?.trim() || user?.organizationName || ''
+  /* "Your own leave and spending requests" only where a suite is on for this person: with both
+     off, the link opened a page that only says the suite is off (fault 2, live re-walk). The same
+     queries and query keys Today already uses, so this costs nothing more than Today already pays,
+     and the two pages agree on when the link shows.
+     FAULT 1 OF THE LIVE WALK (6 October): hours gates it the same way, and the link's own words
+     change with it - "Your own requests" once hours are part of what it opens. */
+  const yourLeave = useQuery({ queryKey: ['your-leave'], queryFn: yourRequestsApi.leave, enabled: !!user, retry: false, staleTime: 60_000 })
+  const yourSpending = useQuery({ queryKey: ['your-spending'], queryFn: yourRequestsApi.spending, enabled: !!user, retry: false, staleTime: 60_000 })
+  const yourHours = useQuery({ queryKey: ['your-hours'], queryFn: yourRequestsApi.hours, enabled: !!user, retry: false, staleTime: 60_000 })
+  const aSuiteIsOnForYou = yourLeave.isSuccess || yourSpending.isSuccess || yourHours.isSuccess
+  const requestsLinkLabel = yourHours.isSuccess ? 'Your own requests' : 'Your own leave and spending requests'
 
   return (
     <Page>
@@ -100,8 +112,13 @@ export function SuitesPage() {
       {data?.reader === 'lead' && <ForALead page={data} />}
       {data?.reader === 'duty' && <ForADutyHolder page={data} />}
 
-      {/* Every reader has requests of their own, including a member, whom this page otherwise refuses. */}
-      <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/mine">Your own leave and spending requests</Link></p>
+      {/* Every reader has requests of their own, including a member, whom this page otherwise
+          refuses - but only once a suite is actually on for them (fault 2, live re-walk): with
+          both leave and spending off, this opened a page that only says the suite is off. */}
+      {aSuiteIsOnForYou && (
+        <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/mine">{requestsLinkLabel}</Link></p>
+      )}
+      <QueueLink userId={user?.id} />
     </Page>
   )
 }
@@ -181,10 +198,41 @@ function ASuite({ s, people, forYou }: { s: AdminSuite; people: SuitesForAnAdmin
     onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
   })
 
+  /*
+   * FAULT 7D OF THE LIVE WALK (6 October): switching a suite off was one click, with no warning
+   * even while requests or hours were waiting in it. `switch(reader, key, { on: false })`
+   * (suites.service.ts) only sets `isOn: false` and keeps the suite's stored answers - it deletes
+   * nothing, and a request already filed stays exactly as it is, refused only from being added to
+   * (a-suite-that-is-off-says-what-to-do.ts) until it is switched on again, so what the confirmation
+   * below says is true.
+   */
+  const [confirmingOff, setConfirmingOff] = useState(false)
   function pressed() {
     setProblem(null)
-    if (s.on) return flip.mutate({ on: false })
+    if (s.on) { setConfirmingOff(true); return }
     if (s.questions.length === 0) return flip.mutate({ on: true })
+    setAnswers(startFrom(s))
+    setAsking(true)
+  }
+  /*
+   * "SEE OR CHANGE ITS SETTINGS" (screen fault 6). A suite already on, with questions of its own,
+   * used to offer no way back into them - only the switch, which turns the suite off rather than
+   * opening them. `GET /suites` already serves every suite's own stored answers (`s.answers`,
+   * read by `startFrom` below), and `PUT /suites/:key` already accepts `{ on: true, answers }` to
+   * save them without touching the switch, so this opens the same form, filled in, and saves
+   * through the same call `pressed` already uses to switch on - it just never sends `on: false`.
+   */
+  /*
+   * NEVER SAVE OVER SETTINGS THIS FORM CANNOT READ (recheck, 7 October). Some suites' stored
+   * answers were written under other names than the suite's questions (leave stored `daysAYear`
+   * and a person's id where the questions ask `days` and a choice). Opened, the form showed them
+   * empty, and Save would have replaced the real settings. Until the engine serves them under the
+   * questions' own names (request 180), such a suite says so instead of opening the form.
+   */
+  const [cannotChangeHere, setCannotChangeHere] = useState(false)
+  function openSettings() {
+    setProblem(null)
+    if (storedUnderOtherNames(s)) { setCannotChangeHere(true); return }
     setAnswers(startFrom(s))
     setAsking(true)
   }
@@ -197,6 +245,12 @@ function ASuite({ s, people, forYou }: { s: AdminSuite; people: SuitesForAnAdmin
           <h3 className="gwui-panel-heading">{s.name}</h3>
           <p className="gwui-panel-text">{s.line}</p>
           {s.on && BOARDS[s.key] && <Link className="gwui-plain-link" to={forYou && s.key === 'spend' ? '/suite/spend/finance' : BOARDS[s.key].to}>{forYou && s.key === 'spend' ? 'Open the requests for finance' : 'Open its board'}</Link>}
+          {s.on && s.questions.length > 0 && !asking && !cannotChangeHere && (
+            <Button kind="quiet" size="small" onClick={openSettings}>See or change its settings</Button>
+          )}
+          {cannotChangeHere && (
+            <Note tone="muted">These settings were set up another way, so they cannot be changed here yet. Nothing has been changed.</Note>
+          )}
         </div>
         <div className="gwui-suite-switch">
           <Tag>{s.on ? 'On' : 'Off'}</Tag>
@@ -209,18 +263,32 @@ function ASuite({ s, people, forYou }: { s: AdminSuite; people: SuitesForAnAdmin
           className="gwui-suite-ask"
           onSubmit={e => { e.preventDefault(); if (allAnswered) flip.mutate({ on: true, given: answers }) }}
         >
-          <p className="gwui-panel-text">Answer these first, and it switches on.</p>
+          <p className="gwui-panel-text">{s.on ? 'Change your answers below, then save them.' : 'Answer these first, and it switches on.'}</p>
           {s.questions.map(q => (
             <AQuestion key={q.id} suite={s.key} q={q} value={answers[q.id] ?? ''} people={people}
               onChange={v => setAnswers(a => ({ ...a, [q.id]: v }))} />
           ))}
           <div className="gwui-edge-acts">
-            <Button kind="primary" size="small" type="submit" disabled={!allAnswered || flip.isPending}>Switch it on</Button>
+            <Button kind="primary" size="small" type="submit" disabled={!allAnswered || flip.isPending}>{s.on ? 'Save' : 'Switch it on'}</Button>
             <Button kind="quiet" size="small" onClick={() => { setAsking(false); setProblem(null) }}>Cancel</Button>
           </div>
         </form>
       )}
       {problem && <Note tone="error">{problem}</Note>}
+
+      {confirmingOff && (
+        <Modal title={`Switch ${s.name} off?`} onClose={() => setConfirmingOff(false)}>
+          <p className="gwui-panel-text">Anything waiting in it stays as it is, and nobody can add to it until it is switched on again.</p>
+          <div className="gwui-edge-acts">
+            {/* ONE NAVY BUTTON PER PAGE: "Switch it on"/"Save" already carries that role on this
+                page (in the form above, when a suite is being switched on or its answers changed),
+                so this confirmation's own button stays secondary, the same way every other
+                row-level action here does (Approve, Mark done, Change). */}
+            <Button kind="secondary" size="small" disabled={flip.isPending} onClick={() => { setConfirmingOff(false); flip.mutate({ on: false }) }}>Switch it off</Button>
+            <Button kind="quiet" size="small" onClick={() => setConfirmingOff(false)}>Cancel</Button>
+          </div>
+        </Modal>
+      )}
     </Panel>
   )
 }
@@ -252,6 +320,14 @@ function AQuestion({ suite, q, value, people, onChange }: {
       )}
     </div>
   )
+}
+
+/** True when the suite has stored answers, but not under the names its questions use, so the form
+ *  would show them empty and a save would replace them. */
+export function storedUnderOtherNames(s: AdminSuite): boolean {
+  const stored = s.answers ? Object.keys(s.answers) : []
+  if (stored.length === 0) return false
+  return s.questions.some(q => !(q.id in (s.answers as Record<string, unknown>)))
 }
 
 /** What the admin answered last time, so switching on again starts from it. */

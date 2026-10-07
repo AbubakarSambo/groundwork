@@ -137,7 +137,7 @@ export function WhatTheRecordShows({ it }: { it: TheRecordOverTime | null | unde
           <Head>What this cannot tell you</Head>
           <div className="gwui-rule gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14" style={{ background: 'var(--gw-paper-2)', borderRadius: 10 }}>
             {it.cannotTellYou.map((c, i) => (
-              <div key={i} className="gwui-fs-13-5 gwui-ink-sub gwui-pt-4 gwui-pb-4" style={{ lineHeight: 1.55 }}>{c}</div>
+              <div key={i} className="gwui-note gwui-pt-4 gwui-pb-4" style={{ lineHeight: 1.55 }}>{c}</div>
             ))}
           </div>
         </>

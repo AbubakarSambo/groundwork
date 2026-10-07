@@ -40,7 +40,15 @@ export interface SuitesForADutyHolder {
 export type SuitesPage = SuitesForAnAdmin | SuitesForALead | SuitesForADutyHolder
 
 export const suitesApi = {
-  get: async (): Promise<SuitesPage> => (await apiClient.get('/suites')).data,
+  /*
+   * `skipForbiddenToast` (real-user walk, Kijani Foods, fault 7): SuitesPage already renders its
+   * own refusal inline ("Only an admin or a lead can open the suites.", or the server's own
+   * message). Without this, the generic interceptor's toast fired too, and it is written for a
+   * check-in ("whoever runs this check-in can let you in") - wrong for a settings page nobody runs
+   * a check-in to open. Esther, a member, opening /settings/suites read that check-in sentence
+   * instead of a settings-shaped one.
+   */
+  get: async (): Promise<SuitesPage> => (await apiClient.get('/suites', { skipForbiddenToast: true } as any)).data,
   switch: async (key: string, on: boolean, answers?: Answers): Promise<SuitesPage> =>
     (await apiClient.put(`/suites/${key}`, answers ? { on, answers } : { on })).data,
 }
@@ -84,6 +92,12 @@ export interface LeaveWaiting {
   questions: string[]
   /** The whole request as this reader reads it: the days, the days left, who else is off, the stand-in, what the person owns, the questions. */
   said: string[]
+  /**
+   * Others in the same team already off on those days, by approved leave, with how many, who, and
+   * the sentence (the same one the approver's queue says it). Null when the person has no team, or
+   * nobody is off (request 162's new-for-the-screens: `clash` on each waiting leave request).
+   */
+  clash?: { count: number; names: string[]; says: string } | null
 }
 export interface LeaveOff { id: string; name: string; startsOn: string; endsOn: string; kind: string; kindName?: string | null }
 /** A request whoever holds the HR duty is told of; served only to that person. */
@@ -103,7 +117,11 @@ export const leaveBoardApi = {
 export interface TimeWeek {
   weekOf: string
   clients: string[]
-  people: { personId: string; name: string; minutes: Record<string, number>; total: number; approved: boolean; mayApprove: boolean }[]
+  /** `where` is the server's own sentence for this row, for example "They are waiting for Daniel."
+   *  or "Daniel approved these hours." - read only where the cell would otherwise say nothing
+   *  (fault 2 of the live walk, 6 October): a reader who neither approves this row nor already sees
+   *  it marked Approved used to read a blank last cell. */
+  people: { personId: string; name: string; minutes: Record<string, number>; total: number; approved: boolean; mayApprove: boolean; where?: string }[]
 }
 export interface TimeAgreement { client: string; work: string; hours: number; span: 'whole' | 'month'; usedMinutes: number }
 export interface TimeBoard { thisWeek: string; weeks: TimeWeek[]; agreements: TimeAgreement[] | null }
@@ -172,6 +190,8 @@ export interface ReviewForTheWriter {
   dueOn: string
   noticed: Noticed[]
   managersWords: string | null
+  /** Who wrote them, by sign-in, so the screen can tell the reader's own words from somebody else's even where two people share a first name (request 162, item 6). Null until they are written. */
+  managersWordsById?: string | null
   theirView: string | null
   decision: { says: string; reasons: string } | null
   mayWrite: boolean
@@ -190,6 +210,8 @@ export interface ReviewForThePerson {
   theirView: string | null
   /** What the person who writes the review has written, word for word, once they have written it. Null until then. */
   managersWords: string | null
+  /** Who wrote them, by sign-in (request 162, item 6). Null until they are written. */
+  managersWordsById?: string | null
   /** The prototype's "What Wairimu writes". Null until `managersWords` exists. */
   managersWordsHeading: string | null
   /** Both views, side by side, once the writer and the person have each written theirs. Null until both exist. */
@@ -259,6 +281,8 @@ export interface SpendWaiting {
   firstName: string
   amount: number
   what: string
+  /** The line as the prototype reads it: "Kamau: KES 18,000 for fuel for Kisumu deliveries" (request 162, item 3). */
+  says: string
   team: string | null
   left: number | null
   over: boolean
@@ -293,9 +317,86 @@ export const spendApi = {
     (await apiClient.put('/suites/spend/budgets', { team, amount })).data,
 }
 
-/** To-dos (GET /suites/todos/board): what each person said they will do in their check-ins. */
+/**
+ * THE APPROVER'S QUEUE (GET /suites/queue): everything that waits for this one person to approve or
+ * decline, leave and spending together, oldest first, a page at a time, with the counts of the whole
+ * of it (the-approvals-queue.service.ts). Approve and decline use the same calls the leave and
+ * spending boards already use (`leaveBoardApi.decide`/`spendApi.decide`), by `item.suite`.
+ */
+export interface AQueueItem {
+  id: string
+  suite: 'leave' | 'spend'
+  name: string
+  firstName: string
+  team: string | null
+  waitingSince: string
+  workingDaysWaiting: number
+  pastTheDeadline: boolean
+  /** The request in a full sentence: "Aisha asked for leave from Monday 12 October to Friday 16 October, which is 5 working days." */
+  says: string
+  /** How long it has waited, in a full sentence. */
+  waitedSays: string
+  /** Where it is, in a full sentence for this reader. */
+  where: string
+  amount: number | null
+  line: string | null
+  startsOn: string | null
+  endsOn: string | null
+  /** Others in the same team already off on those days, with how many, who, and the sentence. Leave only. */
+  clash: { count: number; names: string[]; says: string } | null
+  /** Set only when the reader reads this because they stand in for somebody on leave. */
+  standingIn: { name: string; until: string | null; says: string } | null
+}
+export interface TheQueue {
+  counts: { all: number; leave: number; spend: number; pastTheDeadline: number }
+  page: number
+  pageSize: number
+  pages: number
+  items: AQueueItem[]
+  /** One full sentence for the top of the page. */
+  says: string
+}
+
+export const queueApi = {
+  /* Quiet on 404 and 403: an organisation with the suites off answers 404 here, and the sidebar and
+     Today read this for everybody, so a pop-up would greet almost every existing client on every page
+     (walk of the existing clients' use cases, 7 October). The pages that show the queue say it in words. */
+  get: async (params?: { page?: number; pageSize?: number; suite?: 'leave' | 'spend' }): Promise<TheQueue> =>
+    (await apiClient.get('/suites/queue', { params, skipNotFoundToast: true, skipForbiddenToast: true } as any)).data,
+}
+
+/**
+ * THE BATCH DECISION (POST /suites/decisions), ready from the engine (docs/answers-from-engine.md,
+ * "For the screens: the batch decision, ready"). Between 1 and 50 decisions at once; every one is
+ * answered by the route that answers it alone, in the order given, and one that fails never stops
+ * the others. `says` is the server's own summary sentence ("All four answers were kept.", or "One of
+ * the six answers was kept. Five could not be kept, and each says why."). A whole-call refusal (none,
+ * more than 50, an outsider, or no suite on) throws instead, and is shown as any other refusal.
+ */
+export interface ADecisionGiven { suite: 'leave' | 'spend' | 'hours'; id: string; answer: 'approve' | 'decline'; reason?: string }
+export interface ADecisionResult { id: string; suite: 'leave' | 'spend' | 'hours' | null; ok: boolean; says: string }
+export interface TheDecisionsResult { results: ADecisionResult[]; answered: number; says: string }
+
+export const decisionsApi = {
+  decide: async (decisions: ADecisionGiven[]): Promise<TheDecisionsResult> =>
+    (await apiClient.post('/suites/decisions', { decisions })).data,
+}
+
+/**
+ * TO-DOS (GET /suites/todos/board): what each person said they will do in their check-ins.
+ * Decision 110, P8: an admin reads these by check-in, never gathered into one list for a person
+ * across check-ins (a person's own load across check-ins stays private). `checkIns` is the
+ * engine's served shape (request 176); until it ships, `people` is regrouped by check-in on the
+ * screen (TodosPage.tsx).
+ */
+/**
+ * The To-dos board, one list for each check-in (decision 110, P8; the engine's answer of 7 October).
+ * The same person in two check-ins is in two lists, and nothing joins them. `people` is the old
+ * shape, kept optional only so a server that has not yet moved still draws, regrouped by check-in.
+ */
 export interface TodoList {
-  people: { name: string; firstName: string; todos: { id: string; text: string; source: 'check-in'; on: string; checkIn: string }[] }[]
+  checkIns?: { id: string; label: string; people: { name: string; firstName: string; todos: { id: string; text: string; source: 'check-in'; on: string; checkIn: string }[] }[] }[]
+  people?: { name: string; firstName: string; todos: { id: string; text: string; source: 'check-in'; on: string; checkIn: string }[] }[]
 }
 
 export const todosApi = {
@@ -353,8 +454,37 @@ export interface FinanceView {
   lines: string[]
 }
 
+/** One line of the month's totals: a team, or a category, or all of them (GET /suites/spend/finance/totals). */
+export interface ATotal {
+  /** The team or category, or "All teams". */
+  name: string
+  asked: { count: number; amount: number }
+  approved: { count: number; amount: number }
+  paid: { count: number; amount: number }
+  waiting: { count: number; amount: number }
+  declined: { count: number }
+  /** The line in one full sentence. */
+  says: string
+}
+export interface TheMonthsTotals {
+  reader: 'finance' | 'admin'
+  currency: string | null
+  /** "2026-10". */
+  month: string
+  /** "October 2026". */
+  monthSays: string
+  all: ATotal
+  byTeam: ATotal[]
+  byCategory: ATotal[]
+  /** One full sentence for the top of the page. */
+  says: string
+}
+
 export const financeApi = {
   get: async (): Promise<FinanceView> => (await apiClient.get('/suites/spend/finance')).data,
+  /** The month's spending added up from the requests, by team and by category (`month`: "2026-10"; the current month when left out). */
+  totals: async (month?: string): Promise<TheMonthsTotals> =>
+    (await apiClient.get('/suites/spend/finance/totals', { params: month ? { month } : undefined })).data,
   check: async (id: string): Promise<FinanceView> => (await apiClient.post(`/suites/spend/requests/${id}/check`)).data,
   code: async (id: string, code: string): Promise<FinanceView> => (await apiClient.put(`/suites/spend/requests/${id}/code`, { code })).data,
   evidence: async (id: string, what: string): Promise<FinanceView> => (await apiClient.post(`/suites/spend/requests/${id}/evidence`, { what })).data,
@@ -383,9 +513,22 @@ export interface YourRequest {
 export interface YourLeave { daysLeftSaid: string; requests: YourRequest[] }
 export interface YourSpending { requests: YourRequest[] }
 
+/**
+ * A PERSON'S OWN HOURS (GET /suites/time/mine, fault 1 of the live walk, 6 October). After
+ * confirming hours in chat a person is told "...you will see it under your hours.", but there was
+ * nowhere on /suite/mine that showed them. `where` is the server's own sentence for each week, for
+ * example "Your hours for the week of Monday 5 October are waiting for Daniel."; `standing` is
+ * where this person stands against the time sheet rules this week (null with no rule, or none set
+ * for this person) - the same sentence Today and Ask Groundwork already read.
+ */
+export interface YourHoursWeek { weekOf: string; minutes: Record<string, number>; total: number; approved: boolean; where: string }
+export interface YourHours { weeks: YourHoursWeek[]; standing: string | null }
+
 export const yourRequestsApi = {
-  leave: async (): Promise<YourLeave> => (await apiClient.get('/suites/leave/mine')).data,
-  spending: async (): Promise<YourSpending> => (await apiClient.get('/suites/spend/mine')).data,
+  /* Quiet on 404 and 403, for the same reason as the queue: the page says the suite is off in words. */
+  leave: async (): Promise<YourLeave> => (await apiClient.get('/suites/leave/mine', { skipNotFoundToast: true, skipForbiddenToast: true } as any)).data,
+  spending: async (): Promise<YourSpending> => (await apiClient.get('/suites/spend/mine', { skipNotFoundToast: true, skipForbiddenToast: true } as any)).data,
+  hours: async (): Promise<YourHours> => (await apiClient.get('/suites/time/mine', { skipNotFoundToast: true, skipForbiddenToast: true } as any)).data,
   answerLeave: async (id: string, answer: string): Promise<YourLeave> =>
     (await apiClient.post(`/suites/leave/requests/${id}/answer`, { answer })).data,
   answerSpending: async (id: string, answer: string): Promise<YourSpending> =>
@@ -396,33 +539,38 @@ export const yourRequestsApi = {
  * FILING A REQUEST FROM ITS OWN FORM (request 165, Hafsah 6 October; docs/requests-to-engine.md).
  * The button on `openTheRequest` (anchor pieces 26/27) opens `/suite/leave/new` or
  * `/suite/spend/new` rather than Ask, so the person files the request themselves, from the same
- * form anybody else reaches these pages from. The routes do not exist on the server yet - until
- * they do, sending either form gets a 404, which the form reads and says in a full sentence (see
- * `whatFilingARequestSays` in `@/lib/file-a-request-error`).
+ * form anybody else reaches these pages from. On success the server answers `{ id, says }` -
+ * `says` is its own sentence, said on `/suite/mine`. A refusal is said in the server's own words
+ * too (see `whatFilingARequestSays` in `@/lib/file-a-request-error`), which falls back to "This
+ * request could not be sent from here yet..." only for a bare 404 that carries no message of its
+ * own - the route existed and simply refused, every other time.
  */
-export interface NewLeaveRequest { startsOn: string; endsOn: string; kind?: string }
-export interface NewSpendingRequest { amount: number; what: string }
-/** The server's own confirmation sentence, when it sends one. */
-export interface RequestFiled { message?: string }
-/** `GET /suites/leave/rules` is for an admin or whoever holds the HR duty only - a plain member is
-    refused, and the form then simply has no kind field (`kindsForFiling` reads that refusal and
-    returns `null` rather than throwing, so the caller never needs its own try/catch). */
-export interface ALeaveKindForFiling { key: string; name: string }
+export interface NewLeaveRequest { startsOn: string; endsOn: string; kind?: string; standInUserId?: string }
+export interface NewSpendingRequest { amount: number; what: string; category?: string }
+/** The server's own confirmation: an id, and its own sentence for what just happened. */
+export interface RequestFiled { id?: string; says?: string }
+/**
+ * WHAT THE LEAVE FORM MAY OFFER (`GET /suites/leave/form`), open to any member of the organisation
+ * who is not a guest - never the rules themselves, which stay admin/HR-only on `/suites/leave/rules`.
+ * `standIns` are the colleagues who could cover, by name and id, never an address.
+ */
+export interface LeaveFormInfo { kinds: { key: string; name: string }[]; standIns: { userId: string; name: string }[] }
+/**
+ * WHAT THE SPENDING FORM MAY OFFER (`GET /suites/spend/form`): the currency, what the organisation
+ * calls a category ("project", "category"), and the categories themselves. Never a limit, a
+ * threshold or who approves.
+ */
+export interface SpendFormInfo { currency: string | null; categoryCalled: string; categories: string[] }
 
 export const fileARequestApi = {
   leave: async (input: NewLeaveRequest): Promise<RequestFiled> =>
     (await apiClient.post('/suites/leave/requests', input, { skipNotFoundToast: true } as any)).data,
   spending: async (input: NewSpendingRequest): Promise<RequestFiled> =>
     (await apiClient.post('/suites/spend/requests', input, { skipNotFoundToast: true } as any)).data,
-  /** `null` when this reader may not read the rules (not an admin or the HR duty holder) - the form
-      asks for a kind of leave only when it can read what the kinds are. */
-  kindsForFiling: async (): Promise<ALeaveKindForFiling[] | null> => {
-    try {
-      const res = await apiClient.get('/suites/leave/rules', { skipForbiddenToast: true } as any)
-      const kinds = (res.data?.rules?.kinds ?? []) as { key: string; name: string }[]
-      return kinds.map(k => ({ key: k.key, name: k.name }))
-    } catch {
-      return null
-    }
-  },
+  /** With the suite off this throws a 404 carrying the board's own off sentence; the form reads
+      that straight from the error rather than treating it as a generic failure. */
+  leaveForm: async (): Promise<LeaveFormInfo> =>
+    (await apiClient.get('/suites/leave/form', { skipNotFoundToast: true, skipForbiddenToast: true } as any)).data,
+  spendForm: async (): Promise<SpendFormInfo> =>
+    (await apiClient.get('/suites/spend/form', { skipNotFoundToast: true, skipForbiddenToast: true } as any)).data,
 }

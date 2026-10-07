@@ -43,11 +43,15 @@ describe('what only this page can answer', () => {
     /* The first question anybody asks their manager after being invited. It is about the admin's
        position rather than the product's, so it lives here and nowhere else. */
     const own = strip(GUIDE)
-    /* The wording changed on 5 October (walkthrough pass 2, item 1): "Never anybody's check-in
-       itself" was a clipped fragment with no subject, against the plain-full-sentences rule. It
-       now reads as a full sentence, saying the same thing. */
+    /*
+     * FAULT 5, 6 Oct 2026: "An admin never sees anybody's check-in itself" was not a wording
+     * problem, it was untrue - the opposite of decision 5 (docs/decisions.md), which gives an
+     * admin every board and report, including what people said in them. Rewritten to say exactly
+     * that, with the organisation's own Ask name - see
+     * LeadsGuidePage.adminCanSeeCheckIns.spec.tsx for the rendered sentence.
+     */
     expect(own).toContain('What an admin can see')
-    expect(own).toContain('An admin never sees anybody\'s check-in')
-    expect(own).toContain('approving that it happens, not reading what is said in it')
+    expect(own).toContain('An admin can see every board and report, including what people said in them')
+    expect(own).not.toContain('An admin never sees anybody\'s check-in')
   })
 })

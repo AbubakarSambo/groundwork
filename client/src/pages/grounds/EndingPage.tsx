@@ -132,7 +132,19 @@ export default function EndingPage() {
         </Panel>
       )}
       {!groundClosed && !!id && <SuggestionsForTheLead groundId={id} where="ending" />}
-      {!!id && <ResolutionPanel groundId={id} place={groundClosed ? 'board-top' : undefined} />}
+      {/*
+        FAULT 5 (live walk, 6 October 2026): ON A CLOSED CHECK-IN, "DECIDE HOW IT ENDS" LINKED
+        BACK TO THIS SAME PAGE.
+        `ResolutionPanel`'s own `board-top` branch offers that button whenever `nearTheEnd` is not
+        explicitly `false` and no outcome was ever proposed through its flow - true by default,
+        since this page never said otherwise. For the anchor's case above (ended by its own clock,
+        `outcomeWasRecorded` false), that meant the plain "This check-in has ended." panel right
+        above this one sat beside a second panel inviting the lead to decide how it ends, from the
+        page where they are already deciding it. Passing `nearTheEnd={false}` once the ground has
+        ended stops that offer; it has no effect on the `closed` (outcome-recorded) branch above
+        it, which still reads "How this ended" in full either way.
+      */}
+      {!!id && <ResolutionPanel groundId={id} place={groundClosed ? 'board-top' : undefined} nearTheEnd={groundClosed ? false : undefined} />}
     </div>
   )
 }

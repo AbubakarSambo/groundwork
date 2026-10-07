@@ -53,7 +53,13 @@ describe('Grace, an admin', () => {
        in place of the page's prior "Breadcrumb". */
     expect(screen.getByRole('navigation', { name: 'Where you are' }).textContent).toBe('Suites/Customers and deals')
     expect(screen.getByRole('heading', { level: 1, name: 'Customers and deals' })).toBeInTheDocument()
-    expect(screen.getByText('One list of customers and deals for the whole company. The sales check-ins keep it up to date, so nobody has to update it by hand.')).toBeInTheDocument()
+    /*
+     * FAULT 6 OF THE LIVE WALK (6 October): "The sales check-ins keep it up to date" is not true -
+     * customers come only from the organisation's own customer records (the-customers.service.ts
+     * reads Subject rows of type COUNTERPARTY, never a check-in). The subtitle says what is true.
+     */
+    expect(screen.getByText('One list of customers and deals for the whole company, from the customer records your organisation brings in.')).toBeInTheDocument()
+    expect(screen.queryByText(/sales check-ins keep it up to date/)).toBeNull()
   })
 
   it('reads every customer, where it stands, who owns it and the last contact, as the prototype writes them', async () => {
@@ -75,9 +81,14 @@ describe('Grace, an admin', () => {
     expect(screen.queryByText(/Changing something here/)).toBeNull()
   })
 
-  it('reads a plain sentence when no customer is known', async () => {
+  /*
+   * FAULT 6 OF THE LIVE WALK (6 October): the empty state now says where a customer actually comes
+   * from, with a link to Connections for Grace, who may open it.
+   */
+  it('reads where a customer comes from, with a link to Connections, when no customer is known', async () => {
     open(GRACE, { customers: [] })
-    expect(await screen.findByText('No customers are known yet.')).toBeInTheDocument()
+    expect(await screen.findByText(/No customers are known yet\. They come from the customer records your organisation brings in under/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Connections' })).toHaveAttribute('href', '/settings/connections')
   })
 
   it('no label on anybody', async () => {
@@ -92,6 +103,16 @@ describe('Wairimu, a lead', () => {
     open(WAIRIMU, WAIRIMUS)
     await screen.findByRole('table')
     expect(rows().map(r => r[0])).toEqual(['Kariuki Butchery', 'Green Mart'])
+  })
+
+  /*
+   * FAULT 6 OF THE LIVE WALK (6 October): a lead cannot open Connections (AdminsOnly), so the empty
+   * state reads it as plain text, not a link that would refuse her.
+   */
+  it('reads the same sentence with no link to Connections, which would refuse her', async () => {
+    open(WAIRIMU, { customers: [] })
+    expect(await screen.findByText(/No customers are known yet\. They come from the customer records your organisation brings in under/)).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Connections' })).toBeNull()
   })
 })
 

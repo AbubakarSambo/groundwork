@@ -23,6 +23,9 @@ import { SCENARIO_FACTS, SCENARIO_KEYS, CADENCE_VALUE, RECOMMENDED_MOMENT, recom
  */
 const ENGINE = resolve(__dirname, '../../../api/src/modules/grounds/grounds.service.ts')
 
+/** Engine situations that are never offered as a card. */
+const NOT_A_CARD = ['HELP_TEAM_UNDERSTAND']
+
 describe('the rhythm the card promises', () => {
   it('reads the engine from where this expects it', () => {
     expect(existsSync(ENGINE), `${ENGINE} is gone - move this check with it, do not delete it`).toBe(true)
@@ -37,6 +40,10 @@ describe('the rhythm the card promises', () => {
     const body = src.slice(start, src.indexOf('};', start))
     const out: Record<string, string> = {}
     for (const m of body.matchAll(pattern)) out[m[1]] = m[2]
+    /* The anchor's situation is not a card: nobody picks it, it is reached only from /start/team
+       behind its own switch, so the card catalogue rightly does not hold it. Every card is still
+       compared below. */
+    for (const k of NOT_A_CARD) delete out[k]
     return out
   }
 

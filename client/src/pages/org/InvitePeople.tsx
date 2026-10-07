@@ -134,7 +134,9 @@ export function InvitePeople() {
           <p className="gwui-panel-text"><b>{answer.summary}</b></p>
           {answer.seatsLeft !== null && (
             <Note>
-              {`Your plan has room for ${answer.seatsLeft} more ${answer.seatsLeft === 1 ? 'person' : 'people'}.`}{' '}
+              {answer.seatsLeft === 0
+                ? 'Your plan has no room for anyone else.'
+                : `Your plan has room for ${answer.seatsLeft} more ${answer.seatsLeft === 1 ? 'person' : 'people'}.`}{' '}
               {answer.rows.some((r) => r.result === 'no seat') && <a href="/billing">See the plans</a>}
             </Note>
           )}

@@ -10,6 +10,8 @@ import { AppealsToDecide } from '@/components/gw/Suggestions'
 import { groundsApi } from '@/api/grounds'
 import { YouAreIn } from './YouAreIn'
 import { firstWordOfAName } from '@/lib/the-first-word-of-a-name'
+import { QueueLink } from '@/pages/suites/QueuePage'
+import { yourRequestsApi } from '@/api/suites'
 
 /**
  * TODAY (C1, #/today). The wording is copied from docs/prototype/screens/C1-today-and-check-ins/
@@ -49,6 +51,17 @@ export function TodayPage() {
   })
 
   /* Only read after joining, for "You are in." (the same list the sidebar reads, so no extra request). */
+  /* "Your own leave and spending requests" only where a suite is on for this person: with both off
+     (almost every existing client), the link opened a page that only says the suite is off. The same
+     queries as the page itself, so opening it costs nothing more.
+     FAULT 1 OF THE LIVE WALK (6 October): hours gates the same link the same way, and the link's own
+     words change once hours are part of what it opens - "Your own requests" reads true for leave,
+     spending and hours together, where "Your own leave and spending requests" would leave hours out. */
+  const yourLeave = useQuery({ queryKey: ['your-leave'], queryFn: yourRequestsApi.leave, enabled: !!user, retry: false, staleTime: 60_000 })
+  const yourSpending = useQuery({ queryKey: ['your-spending'], queryFn: yourRequestsApi.spending, enabled: !!user, retry: false, staleTime: 60_000 })
+  const yourHours = useQuery({ queryKey: ['your-hours'], queryFn: yourRequestsApi.hours, enabled: !!user, retry: false, staleTime: 60_000 })
+  const aSuiteIsOnForYou = yourLeave.isSuccess || yourSpending.isSuccess || yourHours.isSuccess
+  const requestsLinkLabel = yourHours.isSuccess ? 'Your own requests' : 'Your own leave and spending requests'
   const grounds = useQuery({ queryKey: ['grounds'], queryFn: groundsApi.list, enabled: !!user && params.get('welcome') === '1', staleTime: 30_000 })
 
   const now = new Date()
@@ -58,6 +71,16 @@ export function TodayPage() {
   const name = firstWordOfAName(user?.firstName)
   const greeting = name ? `${partOfTheDay(now)}, ${name}` : partOfTheDay(now)
   const needs = data?.needs ?? []
+  /* A SUITE ITEM GOES TO THE QUEUE, NOT STRAIGHT TO THE BOARD (live walk at a hundred people, fault
+     2): with a hundred people waiting on one approver, the board behind "/suite/leave" or
+     "/suite/spend" is the whole organisation's, not filtered to this one thing. The queue
+     (`/suite/queue`) is filtered to what waits for this reader, so "Look at it"/"Look at them" on an
+     approval item goes there instead, with `?suite=` set so the right tab opens. */
+  const whereItGoes = (n: Need) =>
+    n.action.to === '/suite/leave' ? '/suite/queue?suite=leave'
+      : n.action.to === '/suite/spend' ? '/suite/queue?suite=spend'
+        : n.action.to
+  const comingUp = data?.comingUp ?? []
 
   return (
     <Page>
@@ -66,7 +89,6 @@ export function TodayPage() {
           {params.get('welcome') === '1' && (
             <YouAreIn checkIns={grounds.isSuccess ? (grounds.data?.length ?? 0) : null} mayStart={user?.mayOpenCheckIns !== false} />
           )}
-          <AdminFirstRun />
 
           <Greeting
             title={greeting}
@@ -96,17 +118,28 @@ export function TodayPage() {
                     kind={n.kind}
                     title={n.title}
                     detail={n.detail ?? undefined}
-                    actions={<Button kind={n.action.label === 'Start it' && i === needs.findIndex((m: Need) => m.action.label === 'Start it') ? 'primary' : 'secondary'} size="small" to={n.action.to}>{n.action.label}</Button>}
+                    actions={<Button kind={n.action.label === 'Start it' && i === needs.findIndex((m: Need) => m.action.label === 'Start it') ? 'primary' : 'secondary'} size="small" to={whereItGoes(n)}>{n.action.label}</Button>}
                   />
                 ))}
               </EdgeList>
             )}
-            <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/mine">Your own leave and spending requests</Link></p>
+            {aSuiteIsOnForYou && <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/mine">{requestsLinkLabel}</Link></p>}
+            <QueueLink userId={user?.id} />
           </Section>
+
+          {/*
+            SCREEN FAULT 7: THE ADMIN CARD CAME FIRST ON A PHONE, NOT THE GREETING. On a single
+            column (a phone, where this `Stack` is the whole page, not a side-by-side layout) the
+            welcome card and "Get <organisation> going" used to sit above the greeting and "What
+            needs you" - a new admin's first full screen was "You're an admin", with what actually
+            needs her today two screens further down. Moved after "What needs you" so the thing
+            that changes every day comes first, and the one-time welcome comes after it.
+          */}
+          <AdminFirstRun />
         </Stack>
 
-        {data && data.comingUp.length > 0 && (
-          <ComingUp items={data.comingUp.map(c => ({ when: whenItComes(c.at, now), what: c.what, to: c.to }))} />
+        {comingUp.length > 0 && (
+          <ComingUp items={comingUp.map(c => ({ when: whenItComes(c.at, now), what: c.what, to: c.to }))} />
         )}
       </div>
     </Page>

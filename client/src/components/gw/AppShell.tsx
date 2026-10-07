@@ -1,4 +1,6 @@
 import { useNoRailStore } from '@/stores/no-rail'
+import { useCheckInFocusStore } from '@/stores/check-in-focus'
+import { useSuitesKnownOffStore } from '@/stores/suites-known-off'
 import { toast } from 'sonner'
 import { mayRenameACheckIn } from '@/lib/who-may-rename-a-check-in'
 import { MARKETING_URL } from '@/lib/marketing'
@@ -11,6 +13,7 @@ import { useAuthStore } from '@/stores/auth'
 import { justTheQuestion } from '@/pages/invite/the-link-opens-on-the-question'
 import { groundsApi } from '@/api/grounds'
 import { todayApi } from '@/api/today'
+import { queueApi } from '@/api/suites'
 import { useEntryStore } from '@/stores/entry'
 import { useFeedbackStore } from '@/stores/feedback'
 import { useHelpStore } from '@/stores/help'
@@ -586,8 +589,18 @@ export function AppSidebar() {
    * Start, Chat, More) sat under the composer, on top of it, and behind it - a second navigation
    * fighting the one thing on screen that already has its own way out (Pause). `/checkin/:id` is
    * the one route this whole shell renders as a focused conversation.
+   *
+   * SCREEN FAULT 2: NOT THE WHOLE `/checkin/` SUBTREE, AND NOT ONCE THE SESSION HAS SETTLED.
+   * This used to match `/checkin/:id/report` too - never the conversation at all - and kept
+   * matching `/checkin/:id` itself once that session's own Done, completed or declined state had
+   * replaced the composer, when there is no Pause button left to protect and no other way back to
+   * Today on screen. Narrowed to the bare conversation route, and to ChatPage's own
+   * `checkInFocused` (false once it has settled - see stores/check-in-focus.ts), so the bar comes
+   * back exactly where this page no longer needs the full screen to itself.
    */
-  const onConversationPage = /^\/checkin\//.test(useLocation().pathname)
+  const isBareCheckInRoute = /^\/checkin\/[^/]+$/.test(useLocation().pathname)
+  const checkInFocused = useCheckInFocusStore(s => s.focused)
+  const onConversationPage = isBareCheckInRoute && checkInFocused
   /* The check-ins this person pinned to the top, in the order they pinned them. See pinned-check-ins. */
   const [pinState, setPinState] = useState(() => ({ of: user?.id, ids: pinnedFor(user?.id) }))
   /* Read again when a different person signs in on this browser, never someone else's. */
@@ -606,6 +619,31 @@ export function AppSidebar() {
   /* Today's count beside "Today": the same read as the page, so the two cannot disagree. */
   const { data: today } = useQuery({ queryKey: ['today'], queryFn: todayApi.get, staleTime: 30_000, enabled: isAuthenticated, retry: false })
   const todayCount = today?.count ?? 0
+
+  /* Live walk at a hundred people, fault 1: "Suites" in the sidebar was gated on role alone, so a
+     member who holds finance or HR, and decides requests in their own queue, had no door to it. The
+     same quiet read `QueueLink` uses (one row, just the counts) also opens the door for them, a lead
+     or an admin already having it by role. Read only for a member: a lead or an admin already has it,
+     and nobody else is ever served anything by the queue.
+
+     SCREEN FAULT 11: AND NOT AT ALL, ONCE THIS SESSION ALREADY KNOWS BOTH SUITES ARE OFF. This read
+     went out again every time its 30-second cache went stale, on whatever page this reader happened
+     to be on - a quiet 404 in Kilima Traders (suites off), but still a request on every page. There
+     is nowhere cheap to ask first (`/suites` itself refuses a member), so the first 404 is
+     remembered for the rest of this session (stores/suites-known-off.ts) instead of asked again. */
+  const suitesKnownOff = useSuitesKnownOffStore(s => s.off)
+  const setSuitesKnownOff = useSuitesKnownOffStore(s => s.setOff)
+  const queueServesThem = useQuery({
+    queryKey: ['suite-queue-count'],
+    queryFn: () => queueApi.get({ pageSize: 1 }),
+    enabled: isAuthenticated && user?.role === 'MEMBER' && !suitesKnownOff,
+    retry: false,
+    staleTime: 30_000,
+  })
+  useEffect(() => {
+    if (queueServesThem.isError && (queueServesThem.error as any)?.response?.status === 404) setSuitesKnownOff()
+  }, [queueServesThem.isError, queueServesThem.error, setSuitesKnownOff])
+  const navOpts = { queueServesThem: user?.role === 'MEMBER' && !!queueServesThem.data?.counts?.all }
 
   const location = useLocation()
   /*
@@ -715,7 +753,7 @@ export function AppSidebar() {
   const hiddenCount = Math.max(0, grounds.length - (pinned.length + shownUnpinned.length + shownClosed.length))
 
   /* ONE GATE. Every door below comes out of `navItemsFor`, and is only sorted into its part here. */
-  const items = navItemsFor(user)
+  const items = navItemsFor(user, navOpts)
   const pages = items.filter(i => !(i as any).adminOnly && !(i as any).platformAdminOnly && i.to !== '/grounds' && i.to !== '/settings')
   const adminItems = items.filter(i => (i as any).adminOnly)
   const staffItems = items.filter(i => (i as any).platformAdminOnly)
@@ -1050,7 +1088,7 @@ export function AppSidebar() {
         {collapsed && (
           <nav className="gw-rl-scroll folded" aria-label="Check-ins and pages">
             {/* Same gate as everywhere else: navItemsFor, never a filter of its own. */}
-            {navItemsFor(user).map(item => {
+            {navItemsFor(user, navOpts).map(item => {
               const active = window.location.pathname.startsWith(item.to)
               return (
                 <NavLink key={item.to} to={item.to} title={item.label} aria-label={item.label}
@@ -1298,9 +1336,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [isAuthenticated, askOpen])
   /* REVIEW ROUND 3, ITEM 7: SEE AppSidebar's OWN COPY OF THIS - the app's bottom bar does not
      render at all on the conversation, and the room it used to reserve (`--gw-bottom-nav`) is
-     given back to the card so nothing leaves a blank strip where the bar used to sit. */
-  const onConversationPage = /^\/checkin\//.test(location.pathname)
+     given back to the card so nothing leaves a blank strip where the bar used to sit.
+
+     SCREEN FAULT 2: NOT THE WHOLE `/checkin/` SUBTREE, AND NOT ONCE THE SESSION HAS SETTLED.
+     This used to match `/checkin/:id/report` too - a page that was never the conversation at all
+     - and kept matching `/checkin/:id` itself once that session's own Done, completed or declined
+     state replaced the composer, when there is no longer a Pause button to protect and no other
+     way back to Today on screen. Narrowed to the bare conversation route, and to ChatPage's own
+     `checkInFocused` (false once it has settled into Done/completed/declined - see
+     stores/check-in-focus.ts), so the bar - and the "Today" link inside it - comes back exactly
+     where this page no longer needs the full screen to itself. */
+  const isBareCheckInRoute = /^\/checkin\/[^/]+$/.test(location.pathname)
+  const checkInFocused = useCheckInFocusStore(s => s.focused)
+  const onConversationPage = isBareCheckInRoute && checkInFocused
   const consumePendingAskMessage = useAskStore(s => s.consumePendingMessage)
+  /* Decision 65: a check-in's own Context and resources page tells Ask which one it was opened from. */
+  const pendingAskOpenedFromGroundId = useAskStore(s => s.openedFromCheckInSetupGroundId)
+  const consumeOpenedFromCheckInSetup = useAskStore(s => s.consumeOpenedFromCheckInSetup)
   /**
    * Signed-out visitors do not get the signed-in navigation.
    *
@@ -1412,7 +1464,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           position: 'fixed', top: 0, right: 0, bottom: 0, width: 400, maxWidth: '100vw', zIndex: 45,
           boxShadow: '-8px 0 24px rgba(26, 25, 22, 0.08)',
         }}>
-          <AskGroundwork onClose={hideAsk} initialMessage={pendingAskMessage} onSentInitialMessage={consumePendingAskMessage} />
+          <AskGroundwork
+            onClose={hideAsk}
+            initialMessage={pendingAskMessage}
+            onSentInitialMessage={consumePendingAskMessage}
+            initialOpenedFromGroundId={pendingAskOpenedFromGroundId}
+            onSentInitialOpenedFrom={consumeOpenedFromCheckInSetup}
+          />
         </div>
       )}
       <FeedbackWidget />

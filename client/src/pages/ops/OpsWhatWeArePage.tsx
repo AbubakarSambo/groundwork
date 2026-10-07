@@ -22,7 +22,7 @@ export function OpsWhatWeArePage() {
   const it = useQuery({ queryKey: ['ops', 'what-we-are'], queryFn: opsApi.whatWeAre, retry: false })
   const past = useQuery({ queryKey: ['ops', 'what-we-were'], queryFn: opsApi.whatWeUsedToSay, retry: false })
   const me = useQuery({ queryKey: ['ops', 'me'], queryFn: opsApi.me, retry: false })
-  const mayChangeIt = me.data?.capabilities.includes('ceo:board') ?? false
+  const mayChangeIt = me.data?.capabilities?.includes('ceo:board') ?? false
 
   const d = it.data
 

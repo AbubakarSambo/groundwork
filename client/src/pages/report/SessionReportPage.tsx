@@ -699,7 +699,10 @@ export default function SessionReportPage() {
           >
             Copy the link to this report
           </button>
-          <Note>The link opens only for people already entitled to read this.</Note>
+          {/* "ENTITLED" IS JARGON (real-user walk, Kijani Foods, fault 6). Plain words for the
+              same fact: the link itself does nothing: whoever opens it still has to be someone
+              Groundwork already lets read this. */}
+          <Note>The link opens only for people who may already read this.</Note>
         </div>
       )}
     </Page>

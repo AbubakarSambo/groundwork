@@ -10,9 +10,16 @@ import './gw-ui.css'
  * centred, as today's plain arrival frame.
  */
 export function Page({ narrow, children }: { narrow?: boolean; children: React.ReactNode }) {
+  /*
+   * A `<div>`, NOT A SECOND `<main>` (real-user walk, Kijani Foods, fault 8a). AppShell already
+   * renders the page's one `<main id="main">`; this sat inside it as a second `<main>`, so every
+   * page with a sidebar carried two main landmarks. The class, and everything it carries in
+   * gw-ui.css, is unchanged - the stylesheet only ever selects `.gwui-page-main`, never the `main`
+   * element itself, so the look is identical.
+   */
   return (
-    <main className="gwui-page-main">
+    <div className="gwui-page-main">
       <div className={narrow ? 'gwui-page-narrow' : 'gwui-page-wrap'}>{children}</div>
-    </main>
+    </div>
   )
 }

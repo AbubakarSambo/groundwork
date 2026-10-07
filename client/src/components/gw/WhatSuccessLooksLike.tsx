@@ -131,6 +131,8 @@ export function WhatSuccessLooksLike({
   }
 
   const { count, of } = data.spokenTo
+  const conditions = data.conditions ?? []
+  const definitions = data.definitions ?? []
 
   return (
     <div>
@@ -162,9 +164,9 @@ export function WhatSuccessLooksLike({
         <div className="gwui-fs-13 gwui-ink-muted" style={{ lineHeight: 1.65 }}>{data.saying}</div>
       )}
 
-      {data.conditions.length > 0 && (
+      {conditions.length > 0 && (
         <div className="gwui-gap-7 gwui-mt-12" style={{ display: 'flex', flexDirection: 'column' }}>
-          {data.conditions.map((c, i) => {
+          {conditions.map((c, i) => {
             const s = STATE[data.counting ?? 'everyone'][c.state]
             return (
               <div key={i} className="gwui-gap-9" style={{ display: 'flex', alignItems: 'flex-start' }}>
@@ -193,13 +195,13 @@ export function WhatSuccessLooksLike({
         so the honest answer ("they arrive with the report") is indistinguishable from nobody having
         answered.
       */}
-      {data.counting === 'only-yours' && data.conditions.length > 0 && (
+      {data.counting === 'only-yours' && conditions.length > 0 && (
         <div className="gwui-fs-13 gwui-ink-muted gwui-mt-9" style={{ lineHeight: 1.5 }}>
           This is what you said against it. What everybody else has said arrives with the report.
         </div>
       )}
 
-      {data.definitions.length > 0 && (
+      {definitions.length > 0 && (
         <div className="gwui-rule-top gwui-mt-13 gwui-pt-11">
           <div className="gwui-mb-7">
             {/* No verdict on whether these agree with the statement above. The report's own engine
@@ -209,7 +211,7 @@ export function WhatSuccessLooksLike({
             <Note tone="muted">And what each person says it is</Note>
           </div>
           <div className="gwui-gap-6" style={{ display: 'flex', flexDirection: 'column' }}>
-            {data.definitions.map((d, i) => {
+            {definitions.map((d, i) => {
               /* Null is the reader's own line, and so is their own name when the surface
                  resolved it - both say "You" rather than printing a name back at them, and
                  neither says "Somebody", which is what the null used to become. */

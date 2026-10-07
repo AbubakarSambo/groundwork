@@ -249,13 +249,23 @@ const NAV_ITEMS = [
  * So an admin on a desktop had no way to reach billing from the rail, and a team member on a phone had
  * two doors that would bounce them. Her words: "billing and settings for the org should have its own
  * accessibility at the very top for the admin."
+ *
+ * A MEMBER THE QUEUE SERVES NEVER SAW "SUITES" EITHER (live walk at a hundred people, fault 1): the
+ * item was gated on role alone (`LEAD` or `ADMIN`), so somebody holding finance or HR as an ordinary
+ * member - who decides requests in their own queue every day - had no door to the suites at all. The
+ * gate now also lets through anybody the approver's queue currently serves something to, by the same
+ * quiet count `QueueLink` reads (`GET /suites/queue`); everybody else's sidebar is unchanged.
  */
-export function navItemsFor(user: { role?: string; isPlatformAdmin?: boolean } | null | undefined) {
+export function navItemsFor(
+  user: { role?: string; isPlatformAdmin?: boolean } | null | undefined,
+  opts: { queueServesThem?: boolean } = {},
+) {
   return NAV_ITEMS.filter(item => {
     if ((item as any).platformAdminOnly) return !!user?.isPlatformAdmin
     if ((item as any).adminOnly) return user?.role === 'ADMIN'
-    /* A lead of this organisation, by role. An admin has the same page under the organisation's name. */
-    if ((item as any).leadOnly) return user?.role === 'LEAD'
+    /* A lead of this organisation, by role, or anybody else the approver's queue currently serves
+       something to. An admin has the same page under the organisation's name. */
+    if ((item as any).leadOnly) return user?.role === 'LEAD' || !!opts.queueServesThem
     /* Whoever oversees more than one check-in: the org's, or a department's. */
     if ((item as any).oversightOnly) return user?.role === 'ADMIN' || user?.role === 'LEAD'
     /* Everybody in the organisation, and not a guest from another company. */

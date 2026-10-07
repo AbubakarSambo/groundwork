@@ -8,6 +8,7 @@ import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { useAreYouSure, Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
 import { copy } from '@/components/gw/copying-can-fail'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import { possessiveOf } from '@/lib/a-possessive'
 import { OnlyAnAdmin } from '@/pages/connections/ConnectionsPage'
 import {
   Page, PageTitle, Section, Panel, Stack, FieldRows, FieldRow, Folded, Steps, Step,
@@ -244,7 +245,7 @@ export function IntegrationsPage() {
       <PageTitle
         crumbs={[{ label: 'Connections', to: '/settings/connections' }]}
         title="Connect your own tools"
-        subtitle={`For whoever runs ${orgName ? `${orgName}’s` : 'your'} systems. Everything here is off until you turn it on, and nothing sends what anyone said in a check-in unless you choose an event that carries it.`}
+        subtitle={`For whoever runs ${orgName ? possessiveOf(orgName) : 'your'} systems. Everything here is off until you turn it on, and nothing sends what anyone said in a check-in unless you choose an event that carries it.`}
       />
 
       {access.isError && <Note tone="error">We could not read whether your organisation has access. Reload, or email hello@myground.work.</Note>}
@@ -281,7 +282,7 @@ export function IntegrationsPage() {
                     </label>
                     {termsOpen && terms.data && (
                       <ol>
-                        {terms.data.terms.map(t => (
+                        {(terms.data.terms ?? []).map(t => (
                           <li key={t.heading} className="gwui-panel-text-muted"><b className="gwui-panel-text">{t.heading}.</b> {t.body}</li>
                         ))}
                       </ol>
@@ -339,7 +340,7 @@ export function IntegrationsPage() {
               )}
               {termsOpen && terms.data && (
                 <ol>
-                  {terms.data.terms.map(t => (
+                  {(terms.data.terms ?? []).map(t => (
                     <li key={t.heading} className="gwui-panel-text-muted"><b className="gwui-panel-text">{t.heading}.</b> {t.body}</li>
                   ))}
                 </ol>
@@ -603,7 +604,7 @@ Authorization: Bearer ${firstClientId ? 'gw_live_••••' : 'gw_live_••
             <Stack gap={12}>
               <div>
                 <FieldLabel htmlFor="tools-embed-domains">Sites allowed to show it</FieldLabel>
-                <TextArea id="tools-embed-domains" rows={2} placeholder={embed.data?.allowedDomains.join('\n') || 'app.yourcompany.com\nintranet.yourcompany.com'} value={embedDomains} onChange={e => setEmbedDomains(e.target.value)} />
+                <TextArea id="tools-embed-domains" rows={2} placeholder={embed.data?.allowedDomains?.join('\n') || 'app.yourcompany.com\nintranet.yourcompany.com'} value={embedDomains} onChange={e => setEmbedDomains(e.target.value)} />
                 <p className="gwui-field-help">One address per line. People see only what they’d see here, signed in as themselves.</p>
               </div>
 
@@ -618,7 +619,7 @@ Authorization: Bearer ${firstClientId ? 'gw_live_••••' : 'gw_live_••
                   </div>
                   <div>
                     <FieldLabel htmlFor="tools-embed-out">Departments that should see nothing at all</FieldLabel>
-                    <TextField id="tools-embed-out" placeholder={embed.data?.outOfScopeDepartments.join(', ') || 'You can leave this empty. Put a comma between names.'} value={embedOutOfScope} onChange={e => setEmbedOutOfScope(e.target.value)} />
+                    <TextField id="tools-embed-out" placeholder={embed.data?.outOfScopeDepartments?.join(', ') || 'You can leave this empty. Put a comma between names.'} value={embedOutOfScope} onChange={e => setEmbedOutOfScope(e.target.value)} />
                   </div>
                 </Stack>
               </Folded>

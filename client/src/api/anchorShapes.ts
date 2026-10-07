@@ -61,6 +61,8 @@ export type OnePersonTheLeadAdds = {
   /** "What do they do / why are they part of this?" Optional. The lead's own note: never shown to the person. */
   context?: string
   note?: string
+  /** "Name + email" (section 13): what the lead calls this person, asked first, beside their email. Optional. */
+  displayName?: string
 }
 export type ThePeopleStepSends = { contributors: OnePersonTheLeadAdds[] }
 

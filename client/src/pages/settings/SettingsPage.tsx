@@ -1,10 +1,11 @@
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api/auth'
+import { billingApi, isWhatsAppBillingAdmin } from '@/api/billing'
 import { myDataApi, type MyData } from '@/api/my-data'
 import { todaysPasswordRules } from '@/pages/auth/password-rules'
 import {
@@ -120,6 +121,23 @@ export function SettingsPage() {
   const updateUser = useAuthStore(s => s.updateUser)
   const logout = useAuthStore(s => s.logout)
   const orgName = user?.organizationName ?? ''
+  const isAdmin = user?.role === 'ADMIN'
+
+  /*
+   * THE WHATSAPP ADD-ON, FOR A LEAD OR A MEMBER (decision 78, screens gap closed 5 October). Plan
+   * and billing says why their check-ins stay in the app, but that page is admin-only - a lead or
+   * member who opens it reads only "You need admin access". So the server's own sentence lands
+   * here instead, on the one row that already talks about WhatsApp. An admin manages this on
+   * /settings/billing already, so this does not ask for it again.
+   */
+  const { data: whatsappBilling } = useQuery({
+    queryKey: ['billing-whatsapp', 'settings'],
+    queryFn: billingApi.getWhatsApp,
+    enabled: whatsappOn && !isAdmin,
+  })
+  const whatsAppOffSays = whatsappBilling && !isWhatsAppBillingAdmin(whatsappBilling) && !whatsappBilling.on
+    ? whatsappBilling.says
+    : null
 
   const [firstName, setFirstName] = useState(user?.firstName ?? '')
   const [lastName, setLastName] = useState(user?.lastName ?? '')
@@ -290,6 +308,29 @@ export function SettingsPage() {
                 <span>
                   {user?.phoneNumber || 'Not set'}
                   <span className="gwui-field-help">You can check in by replying on WhatsApp.</span>
+                  {whatsAppOffSays && (
+                    <span className="gwui-field-help">{whatsAppOffSays}</span>
+                  )}
+                  {/*
+                   * "CONNECT WHATSAPP" (decision 106, 5 October, night): an optional convenience,
+                   * never something a person must do to get their check-ins. Groundwork already
+                   * writes to every saved number once the templates are approved - this one tap
+                   * just says hello back, so the engine serves it only while that would still do
+                   * something: while it hasn't happened yet. Null otherwise, so nothing draws.
+                   */}
+                  {user?.connectWhatsApp && (
+                    <span className="gwui-field-help">
+                      Optional. Tap to say hello to Groundwork on WhatsApp.{' '}
+                      <a
+                        className="gwui-btn gwui-btn-quiet gwui-btn-small"
+                        href={user.connectWhatsApp.link}
+                        target="_blank"
+                        rel="noopener"
+                      >
+                        {user.connectWhatsApp.says}
+                      </a>
+                    </span>
+                  )}
                 </span>
               ) : (
                 <Stack gap={10}>

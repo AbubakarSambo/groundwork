@@ -66,21 +66,21 @@ export function LeaveBoardPage() {
       {data && (
         <>
           <Section heading="Waiting for approval">
-            {data.waiting.length === 0
+            {(data.waiting ?? []).length === 0
               ? <Empty>Nothing is waiting for approval.</Empty>
               : (
                 <RowList label="Waiting for approval">
-                  {data.waiting.map(w => <ARequest key={w.id} w={w} />)}
+                  {(data.waiting ?? []).map(w => <ARequest key={w.id} w={w} />)}
                 </RowList>
               )}
           </Section>
 
           <Section heading="Who’s off" note="The next two weeks">
-            {data.off.length === 0
+            {(data.off ?? []).length === 0
               ? <Empty>Nobody is off in the next two weeks.</Empty>
               : (
                 <RowList label="Who’s off">
-                  {data.off.map(o => (
+                  {(data.off ?? []).map(o => (
                     <Row key={o.id} columns="minmax(0, 1fr) auto auto">
                       <b>{o.name}</b>
                       <span>{theDaysShort(o.startsOn, o.endsOn)}</span>

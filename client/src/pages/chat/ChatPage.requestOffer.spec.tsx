@@ -179,5 +179,29 @@ describe('what their yes opens', () => {
     await findByText(openWithoutButton.says, {}, { timeout: 6000 })
     expect(screen.queryByRole('button', { name: /Request leave|Create request/ })).toBeNull()
   })
+
+  /*
+   * SCREEN FAULT 5 (live walk, 6 October 2026): STAYS ON THE DONE STATE. The reply that closes the
+   * check-in (`sessionComplete: true`) can be the very same reply that carries `openTheRequest` -
+   * this is the person's only way to reach the request form, so hiding it the moment `done` turned
+   * true stranded them with no way to ask for leave after the conversation that offered it.
+   */
+  it('stays on screen once the check-in closes, if the closing reply carries it', async () => {
+    ;(conversationApi.transcript as any).mockResolvedValue({
+      checkIn: { status: 'IN_PROGRESS', sessionNumber: 1, groundId: 'g1' },
+      turns: [{ id: 't1', role: 'AI', content: OPENING }],
+    })
+    ;(conversationApi.send as any).mockResolvedValue({
+      reply: "You can submit that through Leave here and it'll appear on your manager's board.",
+      sessionComplete: true,
+      openTheRequest: openWithButton,
+    })
+    renderChat()
+    await findByText(OPENING, {}, { timeout: 6000 })
+    const box = await findByRole('textbox', {}, { timeout: 6000 })
+    fireEvent.change(box, { target: { value: 'I am off next week.' } })
+    fireEvent.click(screen.getByRole('button', { name: /send/i }))
+    await findByRole('button', { name: 'Request leave' }, { timeout: 6000 })
+  })
 })
 

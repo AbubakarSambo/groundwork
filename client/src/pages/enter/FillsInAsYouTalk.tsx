@@ -137,11 +137,22 @@ export function FillsInAsYouTalk(k: WhatSetupKnows) {
     <aside aria-label={FILLS_IN.help}>
       <Panel>
         <Stack gap={10}>
+          {/*
+           * FAULT 7 (live walk, 6 October 2026): THE TITLE BEFORE THE CHIP, AT EVERY WIDTH.
+           *
+           * `gwui-sentence-row` lays the name and the "N of 7 set" chip out side by side
+           * (`justify-content: space-between`) and lets them wrap - at the panel's own fixed
+           * 300px width, a longer name wrapping onto two lines left the chip, vertically centred
+           * against the whole wrapped height, reading as though it sat above the name rather than
+           * after it (the prototype's new.txt: the name, then "3 of 4 set", one under the other).
+           * `Stack` - already used throughout this panel - draws its children in a plain vertical
+           * list, so the name is unambiguously first at every width, exactly as at 1440.
+           */}
           {k.name.trim() ? (
-            <div className="gwui-sentence-row">
+            <Stack gap={4}>
               <SubHeading>{k.name.trim()}</SubHeading>
               {howMuch}
-            </div>
+            </Stack>
           ) : howMuch}
           {k.situation && <Note>{k.situation}</Note>}
           <Note>{FILLS_IN.help}</Note>

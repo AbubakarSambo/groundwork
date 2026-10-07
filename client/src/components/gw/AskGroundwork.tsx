@@ -6,6 +6,8 @@ import { documentsApi } from '@/api/documents'
 import { groundsApi } from '@/api/grounds'
 import { UPLOAD_ACCEPT_ATTR } from '@/lib/what-you-can-upload'
 import { whatTellsItApart } from '@/lib/tell-apart-the-same-name'
+import { askNameFor } from '@/lib/ask-name'
+import { useAuthStore } from '@/stores/auth'
 import { Mark } from './kit'
 import { Composer } from './ui/Composer'
 import { PRIVATE_LINE } from './what-ask-groundwork-says'
@@ -15,6 +17,15 @@ const STILL_READING = 'Reading it now.'
 /** Recognised by Ask Groundwork whichever of the two upload routes sent it (docs/answers-from-engine.md,
     30 September, "a document's numbers, said back through Ask Groundwork"). */
 const SAID_AFTER_UPLOAD = "I've uploaded it."
+
+/**
+ * THE NAME AND CAPTION, BEFORE `GET /ask` HAS ANSWERED (screen fault 5d). Loading, or held up by
+ * a 429, used to show the bare "Ask Groundwork" with no caption at all - the organisation's own
+ * name was already in hand (the signed-in person's own profile), and the caption is a fixed
+ * sentence, decision 100, the same one `ASK_CAPTION` on the server always serves
+ * (api/src/modules/assistant/ask-name.ts) - so neither needs to wait for this request to land.
+ */
+const ASK_CAPTION_FALLBACK = 'Ask about the company, your work or your check-ins.'
 
 /*
  * WIDTH CHECK, ITEM 8: THE COMPOSER'S OWN RESTING HEIGHT CUT OFF ITS OWN HINT. The placeholder -
@@ -142,16 +153,26 @@ export async function pollNumbersWaiting(
  */
 export function AskGroundwork({
   onClose, initialMessage, onSentInitialMessage,
+  initialOpenedFromGroundId, onSentInitialOpenedFrom,
   /* Real values in the product; a test hands in small ones so it does not wait a minute. */
   pollIntervalMs = 2000, pollTimeoutMs = 60_000,
 }: {
   onClose?: () => void
   initialMessage?: string | null
   onSentInitialMessage?: () => void
+  /**
+   * DECISION 65: set only when the panel was opened from a check-in's own Context and resources
+   * page or setup. The panel's first message is sent empty, with this check-in's id and
+   * `openedFrom: "check_in_setup"`; every later message in the same opening carries both too.
+   */
+  initialOpenedFromGroundId?: string | null
+  onSentInitialOpenedFrom?: () => void
   pollIntervalMs?: number
   pollTimeoutMs?: number
 }) {
   const location = useLocation()
+  const user = useAuthStore(s => s.user)
+  const orgName = (user as any)?.organization?.name?.trim() || user?.organizationName || ''
   const page = useQuery({ queryKey: ['ask'], queryFn: askApi.mine })
   /* The check-in the page is about, from its address, so the panel opens on it. */
   const here = checkInOnThisPage(location.pathname)
@@ -168,7 +189,7 @@ export function AskGroundwork({
    * This is a screens-owned route (grounds, not ask or assistant); if it should instead come from
    * the engine's own /ask, that is a question for the engine workspace.
    */
-  const needsWiderAbout = !!here && !!page.data && !page.data.about.some((g) => g.id === here)
+  const needsWiderAbout = !!here && !!page.data && !(page.data.about ?? []).some((g) => g.id === here)
   const grounds = useQuery({ queryKey: ['grounds'], queryFn: groundsApi.list, enabled: needsWiderAbout })
   const about = useMemo(() => {
     const base = page.data?.about ?? []
@@ -188,6 +209,9 @@ export function AskGroundwork({
     return about.map((g) => ({ id: g.id, label: g.label, ...startOf.get(g.id) }))
   }, [about, allGrounds.data])
   const [chosen, setChosen] = useState<string | null>(null)
+  /* Decision 65: set once, from `initialOpenedFromGroundId`, for the life of this opening - every
+     message sent while it is set carries this check-in's id and `openedFrom: "check_in_setup"`. */
+  const [openedFromGroundId, setOpenedFromGroundId] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [said, setSaid] = useState<Said[]>([])
   const [answered, setAnswered] = useState<Set<string>>(new Set())
@@ -273,7 +297,9 @@ export function AskGroundwork({
     setProblem(null)
     try {
       const reply = await how()
-      setSaid((s) => [...s, { from: 'you', says: message }, { from: 'groundwork', reply }])
+      /* The very first message of a check-in-setup opening is sent empty, read as "start" - there
+         is nothing of the asker's own to show as a bubble for that one. */
+      setSaid((s) => [...s, ...(message ? [{ from: 'you' as const, says: message }] : []), { from: 'groundwork' as const, reply }])
       if (clearDraft) setDraft('')
     } catch (e: unknown) {
       const said = (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message
@@ -286,7 +312,10 @@ export function AskGroundwork({
   const ask = (message: string, clearDraft = false, groundIdOverride?: string) => {
     const m = message.trim()
     if (!m || sending) return
-    void send(m, () => askApi.ask(m, groundIdOverride ?? aboutId ?? undefined), clearDraft)
+    const gid = groundIdOverride ?? openedFromGroundId ?? aboutId ?? undefined
+    /* Never sent on an ordinary question - only while this opening is the check-in-setup one. An
+       ordinary call still passes exactly two arguments, as it always has. */
+    void send(m, () => (openedFromGroundId ? askApi.ask(m, gid, 'check_in_setup') : askApi.ask(m, gid)), clearDraft)
   }
 
   /** The "Choose a file" button on a `next_step` block: opens the picker for that check-in. */
@@ -325,12 +354,26 @@ export function AskGroundwork({
   }
 
   useEffect(() => {
-    if (!initialMessage || sentInitial.current || sending || !page.data?.canAsk) return
+    if (sentInitial.current || sending || !page.data?.canAsk) return
+    /*
+     * DECISION 65: OPENED FROM A CHECK-IN'S OWN SETUP. Sent before the ordinary `initialMessage`
+     * check below, and with an empty message - this is the one case an empty message is sent at
+     * all, so Ask Groundwork reads it as "start" rather than nothing being sent.
+     */
+    if (initialOpenedFromGroundId) {
+      sentInitial.current = true
+      setOpenedFromGroundId(initialOpenedFromGroundId)
+      setChosen(initialOpenedFromGroundId)
+      void send('', () => askApi.ask('', initialOpenedFromGroundId, 'check_in_setup'), false)
+      onSentInitialOpenedFrom?.()
+      return
+    }
+    if (!initialMessage) return
     sentInitial.current = true
     ask(initialMessage, false)
     onSentInitialMessage?.()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialMessage, page.data?.canAsk])
+  }, [initialMessage, initialOpenedFromGroundId, page.data?.canAsk])
 
   const answer = (proposalId: string, yes: boolean) => {
     if (sending) return
@@ -393,7 +436,7 @@ export function AskGroundwork({
     }}>
       <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid var(--gw-line)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <h2 id="gw-ask-title" style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>{page.data?.askName ?? 'Ask Groundwork'}</h2>
+          <h2 id="gw-ask-title" style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>{page.data?.askName ?? askNameFor(orgName)}</h2>
           {onClose && (
             <button type="button" className="gw-tap44" onClick={onClose} aria-label="Close"
               style={{ border: 0, background: 'transparent', fontSize: 20, cursor: 'pointer', color: 'var(--gw-sub)' }}>×</button>
@@ -405,7 +448,7 @@ export function AskGroundwork({
          * check-ins." and "You can also add context or documents to your check-ins here." -
          * printed under the name exactly as they arrive.
          */}
-        {page.data?.caption && <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--gw-text)', lineHeight: 1.4 }}>{page.data.caption}</p>}
+        <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--gw-text)', lineHeight: 1.4 }}>{page.data?.caption ?? ASK_CAPTION_FALLBACK}</p>
         {page.data?.addLine && <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{page.data.addLine}</p>}
         {about.length > 0 && (
           /*

@@ -240,3 +240,20 @@ describe('a round completion is keyed by sessionNumber, the name the server uses
     expect(sessionRowsSrc).toMatch(/roundCompletions[\s\S]{0,80}sessionNumber === n/);
   });
 });
+
+/**
+ * SCREEN FAULT 4 (live walk, 6 October 2026): THE ANCHOR'S LEAD NEVER GETS AN ORDINARY FIRST
+ * CHECK-IN HERE. Confirming her email used to land her on `/grounds/:id`, whose Check-in tab then
+ * auto-opened her own check-in (the hand-off this file's own first test already pins, for every
+ * other situation) - but `HELP_TEAM_UNDERSTAND` has no second conversation for the lead: her
+ * account of the situation is the entry conversation she already gave (request 168 separately asks
+ * the engine to stop creating this check-in at all). Until it does, the screen must not walk her
+ * into one; she lands on the board instead.
+ */
+describe('an anchor ground never auto-opens the lead into a check-in', () => {
+  it('checks the ground\'s own scenario before opening one, and goes to the board instead', () => {
+    const block = CODE.slice(CODE.indexOf('const myOpenSessionAutoOpenFired'), CODE.indexOf('const myOpenSessionAutoOpenFired') + 1200)
+    expect(block).toMatch(/\(ground as any\)\?\.scenario === 'HELP_TEAM_UNDERSTAND'/)
+    expect(block).toMatch(/navigate\(`\/grounds\/\$\{id\}\/board`, \{ replace: true \}\)/)
+  })
+})

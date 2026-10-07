@@ -1014,10 +1014,16 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
 /* ── FEEDBACK TRIGGER MOBILE OFFSET ───────────────────────
    The bottom nav bar is a fixed 60px strip on mobile; without this the
    trigger's inline `bottom: 20px` sits inside that strip and overlaps the
-   nav labels underneath it. */
+   nav labels underneath it.
+
+   84px, NOT 76px (real-user walk, Kijani Foods, fault 8b). AppShell gives a grounds board its own
+   larger inline clearance (`bottom: 84`), to stay clear of what a board itself keeps near its own
+   foot - but this rule's `!important` always won at phone width, silently cutting that back down
+   to 76px exactly where a narrow screen needs the room most. 84px is never less than any page
+   already asks for, and reserving the extra 8px on a page that did not need it costs nothing. */
 @media (max-width: 640px) {
   .gw-fb-trigger-mobile-safe {
-    bottom: 76px !important;
+    bottom: 84px !important;
   }
 }
 
@@ -2134,3 +2140,8 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
   border-bottom: 2px solid transparent; cursor: pointer; font-family: inherit;
 }
 .gwui-ci-tab-on { font-weight: 700; color: var(--gw-text); border-bottom-color: var(--gw-navy); }
+/* SCREEN FAULT 10: 32px tall on a phone, below the 40px floor every other tappable row control
+   already has - same technique as `.gwui-plain-link`/`.gwui-open-link`, on this class's own name. */
+@media (max-width: 640px) {
+  .gwui-ci-tab { min-height: 40px; display: inline-flex; align-items: center; }
+}

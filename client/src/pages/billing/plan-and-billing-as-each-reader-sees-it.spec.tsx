@@ -1,8 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BillingPage } from './BillingPage'
+import { toast } from 'sonner'
+
+vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
 
 /**
  * PLAN AND BILLING, AS EACH PERSON READS IT (F2, U.19).
@@ -33,7 +36,7 @@ vi.mock('@/api/billing', async () => {
       getContributorCodes: vi.fn().mockResolvedValue([]),
       /* WhatsApp billing (decision 78) is covered on its own, in the-whatsapp-add-on-as-each-reader-sees-it.spec.tsx;
          the minimal shape here just keeps this page's own query from erroring in every test above. */
-      getWhatsApp: vi.fn().mockResolvedValue({ sending: true, says: null }),
+      getWhatsApp: vi.fn().mockResolvedValue({ on: false, sending: true, says: null }),
       setWhatsApp: vi.fn(),
       createSubscription: vi.fn(), changeSubscriptionPlan: vi.fn(), portal: vi.fn(),
       cancelSubscription: vi.fn(), keepSubscription: vi.fn(), pauseSubscription: vi.fn(), resumeSubscription: vi.fn(),
@@ -116,6 +119,26 @@ describe('Grace, an admin, on Growth', () => {
     renderIt()
     await waitFor(() => expect(text()).toContain('Growth, $400 a month.'))
     expect(text()).not.toMatch(/free trial|months free/i)
+  })
+
+  /**
+   * "STARTED WITH" (5 October, evening): `GET /billing/status` serves an admin `startedWith`, one
+   * plain sentence about how the organisation began - never shown when the server has not served
+   * it, and drawn exactly as it comes.
+   */
+  it('reads how it began, when the server serves it', async () => {
+    m.status = {
+      ...m.status,
+      startedWith: { said: 'more', line: 20, says: 'When Baridi Appliances was set up, it had 20 or more people, so it began on a plan.' },
+    }
+    renderIt()
+    await waitFor(() => expect(text()).toContain('When Baridi Appliances was set up, it had 20 or more people, so it began on a plan.'))
+  })
+
+  it('says nothing about how it began when the server has not served it', async () => {
+    renderIt()
+    await waitFor(() => expect(text()).toContain('Growth, $400 a month.'))
+    expect(text()).not.toMatch(/began on a plan/)
   })
 })
 
@@ -267,6 +290,67 @@ describe('group 1 review fixes', () => {
     renderIt()
     const link = await screen.findByRole('link', { name: 'Faith, first 90 days' })
     expect(link).toHaveAttribute('href', '/grounds/g1')
+  })
+})
+
+/* SCREEN FAULT 4a: "Move to this" used to show a served Stripe refusal word for word,
+   "STRIPE_SECRET_KEY is not configured, so nothing can be charged.", naming a configuration key no
+   admin asked to read. Any message naming one now becomes the plain sentence a person needs. */
+describe('"Move to this" never names a configuration key (screen fault 4a)', () => {
+  beforeEach(() => {
+    m.status = { subscription: { plan: null, status: null, periodEnd: null, endsAt: null, freeExtensionUsed: false }, people: { count: 3, cap: 5 }, onTheHouse: null, activeGrounds: [], card: null, invoices: [] }
+  })
+
+  it('shows "Paying is not set up yet. Nothing was charged." instead of the server\'s own sentence', async () => {
+    const { billingApi } = await import('@/api/billing')
+    ;(billingApi.createSubscription as any).mockRejectedValueOnce({
+      response: { data: { message: 'Billing is not set up on this deployment. STRIPE_SECRET_KEY is not configured, so nothing can be charged. Nothing was attempted and no card was touched.' } },
+    })
+    renderIt()
+    await waitFor(() => expect(screen.getAllByText('Move to this').length).toBeGreaterThan(0))
+    fireEvent.click(screen.getAllByText('Move to this')[0])
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Paying is not set up yet. Nothing was charged.'))
+    expect(toast.error).not.toHaveBeenCalledWith(expect.stringContaining('STRIPE_SECRET_KEY'))
+  })
+
+  it('shows a different server message exactly as sent, when it names no configuration key', async () => {
+    const { billingApi } = await import('@/api/billing')
+    ;(billingApi.createSubscription as any).mockRejectedValueOnce({ response: { data: { message: 'Your card was declined. Nothing was charged.' } } })
+    renderIt()
+    await waitFor(() => expect(screen.getAllByText('Move to this').length).toBeGreaterThan(0))
+    fireEvent.click(screen.getAllByText('Move to this')[0])
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Your card was declined. Nothing was charged.'))
+  })
+})
+
+/* SCREEN FAULT 4b: Kijani Foods, a team of 8, used to be offered Starter, "Up to 5 people", with
+   no warning that it does not fit them. Both numbers drawn here are served: the plan's own member
+   cap (the pricing table) and the organisation's own people count. */
+describe('a plan too small for the organisation says so (screen fault 4b)', () => {
+  beforeEach(() => {
+    m.status = {
+      subscription: { plan: null, status: null, periodEnd: null, endsAt: null, freeExtensionUsed: false },
+      people: { count: 8, cap: null },
+      onTheHouse: null,
+      activeGrounds: [],
+      card: null,
+      invoices: [],
+    }
+  })
+
+  it('Kijani Foods, 8 people, reads a warning under Starter (cap 5), and nothing under Growth (cap 100)', async () => {
+    renderIt()
+    await waitFor(() => expect(screen.getAllByText('Move to this').length).toBeGreaterThan(0))
+    expect(screen.getByText('This plan is for up to 5 people, and Baridi Appliances has 8.')).toBeTruthy()
+    const growthCard = screen.getByText('Growth').closest('.gwui-plan-card')!
+    expect(growthCard.textContent).not.toMatch(/is for up to/)
+  })
+
+  it('an organisation that fits every plan reads no warning anywhere', async () => {
+    m.status = { ...m.status, people: { count: 3, cap: null } }
+    renderIt()
+    await waitFor(() => expect(screen.getAllByText('Move to this').length).toBeGreaterThan(0))
+    expect(screen.queryByText(/is for up to/)).toBeNull()
   })
 })
 

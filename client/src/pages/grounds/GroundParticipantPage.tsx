@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { whichSessionIsThisCheckInOn, hasDoneThisSession } from '@/lib/which-session-are-we-on'
+import { whichSessionIsThisCheckInOn, whichSessionAreWeOn, hasDoneThisSession } from '@/lib/which-session-are-we-on'
 import { groundsApi } from '@/api/grounds'
 import { useAuthStore } from '@/stores/auth'
 import { reportsApi } from '@/api/reports'
@@ -70,7 +70,7 @@ export function GroundParticipantPage() {
   const [seenOutOfTime, setSeenOutOfTime] = useState(false)
   /* REVIEW ROUND 3, ITEM 2: THE OPENING FLOW (probe + paywall) MOVED TO A SHARED HOOK, so
      GroundAdminPage.tsx can open a session the same way without landing on this page. */
-  const { open: openSession, opening: sessionOpening, paywall } = useOpenSession(id)
+  const { open: openSession, opening: sessionOpening, openFailed: sessionOpenFailed, openError: sessionOpenError, retryOpen: retrySessionOpen, paywall } = useOpenSession(id)
 
   const user = useAuthStore(s => s.user)
 
@@ -220,16 +220,40 @@ export function GroundParticipantPage() {
    * lands here with the flag set; opening the tab directly on this page is the same action without
    * a round trip through the address bar.
    */
-  useEffect(() => {
-    if (tab !== 'checkin') return
-    if (!myOpenForAutoOpen) return
-    if (sessionOpening) return
-    openSession(myOpenForAutoOpen, {
+  /**
+   * ONE ATTEMPT PER CHECK-IN, NOT ONE PER RENDER.
+   *
+   * This had no "already tried" guard at all - only `sessionOpening`, which is true for the few
+   * seconds the request is actually in flight and false every other moment, including the instant
+   * after it settles. `myOpenForAutoOpen` is rebuilt fresh on every render (a new object from
+   * `.find()`), so it never equals its previous value by reference either - which means this fired
+   * again on essentially every re-render of the page once the first attempt had settled: a
+   * paywall shown, a toast dismissed, any unrelated state change. Request 174, item 2 is this
+   * effect: a check-in that could not open yet (still waiting on approval) was probed again and
+   * again a few seconds apart, each attempt racing the server's own idempotency check before the
+   * previous one's reply had been written, which is how one session ended up with three different
+   * opening questions and one of the `/open` calls back with a 400.
+   *
+   * Guarded by the check-in's own id, kept in a ref so it survives re-renders and (with no cleanup
+   * to undo it) React StrictMode's double-invoked effects alike: once this check-in has been
+   * probed, it is not probed again until `retryOpen` below explicitly clears it.
+   */
+  const checkinTabOpenAttempted = useRef<string | null>(null)
+  function attemptCheckinTabOpen(checkIn: any) {
+    checkinTabOpenAttempted.current = checkIn.id
+    openSession(checkIn, {
       isFreeGround: ground?.isFreeGround,
       groundLabel: ground?.label,
       isInitiator: ((ground as any)?.participants ?? []).find((p: any) => p.userId === user?.id)?.partyType === 'INITIATOR',
     })
-  }, [tab, myOpenForAutoOpen, sessionOpening, openSession])
+  }
+  useEffect(() => {
+    if (tab !== 'checkin') return
+    if (!myOpenForAutoOpen) return
+    if (sessionOpening) return
+    if (checkinTabOpenAttempted.current === myOpenForAutoOpen.id) return
+    attemptCheckinTabOpen(myOpenForAutoOpen)
+  }, [tab, myOpenForAutoOpen, sessionOpening])
 
   if (isLoading) return <Page narrow><Note>Loading…</Note></Page>
   /*
@@ -355,6 +379,22 @@ export function GroundParticipantPage() {
   const myCheckIns: any[] = (ground.checkIns ?? []).filter((ci: any) => ci.participantId === myParticipant?.id)
   const openCheckIn = myCheckIns.find((ci: any) => ci.status !== 'COMPLETED')
   const completedCheckIns = myCheckIns.filter((ci: any) => ci.status === 'COMPLETED').sort((a: any, b: any) => b.sessionNumber - a.sessionNumber)
+  /**
+   * WHICH SESSION THIS IS, THE SAME WAY THE SHARED RULE ANSWERS IT (fault 3b, Esther, live
+   * re-walk): the header read "Session 1 of 6" while this reader's own line, right below it, read
+   * "This is your session 2 of 6" - `completedCheckIns.length + 1` counts ROWS, and a corrected
+   * session (`isSelfCorrection`) leaves two completed rows for the one session actually finished,
+   * so a single self-correction inflated this count past the real next session. `whichSessionAreWeOn`
+   * (lib/which-session-are-we-on.ts) is the one place this product already answers "which session
+   * is a person on" - open if there is one, otherwise the highest session number actually
+   * completed - and was written for exactly this drift between two screens, but was never called
+   * from here. Used now, so this reads the same served session every other reader of the shared
+   * rule does.
+   */
+  const mySessionNumber = whichSessionAreWeOn(
+    (openCheckIn as any)?.sessionNumber ?? null,
+    completedCheckIns.map((c: any) => c.sessionNumber),
+  )
 
   /**
    * OPEN IS NOT THE SAME AS DUE.
@@ -584,15 +624,20 @@ export function GroundParticipantPage() {
                   a heading with a dot, which CLAUDE.md's wording rule rules out same as anywhere
                   else a person reads.
 
-                  "YOUR", NOT "THIS" (U.4 re-review, item 8). `completedCheckIns` and `openCheckIn`
-                  are this reader's own rows, staggered by when THEY personally started, never the
-                  team's shared phase (that is `phaseSpine.currentSession`, on the board, counted
-                  from sessions everybody has finished). Walked on one real check-in: the lead's
-                  board read "Session 1 of 12" because the team, as a whole, had not all finished
-                  session 1 yet, while Amani, who had, read the bare "This is session 2 of 12" here -
-                  two numbers for what read as one fact on two different screens of the same
-                  check-in. Each is true; only one of them was ever about the team. Saying "your"
-                  makes plain which one this is, on every reader's own page, lead included. */}
+                  "YOUR", NOT "THIS" (U.4 re-review, item 8). `mySessionNumber` is this reader's
+                  own position, staggered by when THEY personally started, never the team's shared
+                  phase (that is `phaseSpine.currentSession`, on the board, counted from sessions
+                  everybody has finished). Saying "your" makes plain which one this is, on every
+                  reader's own page, lead included.
+
+                  FAULT 3b (ESTHER, LIVE RE-WALK): THE NUMBER ITSELF WAS WRONG, NOT JUST ITS NAME.
+                  This used to read `completedCheckIns.length + 1` - a count of ROWS, which a
+                  self-correction (a second completed row for the same session) inflates past the
+                  session she was actually on. `mySessionNumber`, computed above with the shared
+                  `whichSessionAreWeOn` rule, reads the open session if there is one, else the
+                  highest session number actually completed - immune to a duplicate row, and the
+                  same rule the rest of this product already uses to answer "which session is a
+                  person on". */}
               {/*
                 GROUP 3'S REVIEW, CONTRADICTION 5: THE SAME DATE, SAID TWICE, ONE OF THEM LESS
                 TRUE. On the Check-in tab, between sessions, this header's "Your next session opens
@@ -605,9 +650,9 @@ export function GroundParticipantPage() {
               {opensLater ? (
                 tab !== 'checkin' && <span>Your next session opens on {whenItWas(openAvailableFrom, 'dayAndMonthLong')}.</span>
               ) : totalSessions != null ? (
-                <span>This is your session {Math.min(completedCheckIns.length + 1, totalSessions)} of {totalSessions}.</span>
+                <span>This is your session {Math.min(mySessionNumber, totalSessions)} of {totalSessions}.</span>
               ) : (
-                <span>This is your session {completedCheckIns.length + 1}.</span>
+                <span>This is your session {mySessionNumber}.</span>
               )}
               {/* A finished run has nothing remaining. "0 days remaining" sat on a one-session check-in everybody
                   had done (21 Sep 2026); the count is for a run that is still going. */}
@@ -659,7 +704,19 @@ export function GroundParticipantPage() {
       {tab === 'checkin' && (
         <>
           {dueNow ? (
-            <Note>Opening your check-in…</Note>
+            /* A FAILED OPEN SAYS SO, WITH A WAY BACK IN - not the same "Opening…" line left
+               standing after the attempt it describes is already over. See
+               attemptCheckinTabOpen above. */
+            sessionOpenFailed ? (
+              <Note>
+                {sessionOpenError}{' '}
+                <Button kind="quiet" size="small" onClick={() => { retrySessionOpen(); attemptCheckinTabOpen(myOpenForAutoOpen!) }}>
+                  Try again
+                </Button>
+              </Note>
+            ) : (
+              <Note>Opening your check-in…</Note>
+            )
           ) : (
             <BetweenCheckIns
               groundLabel={ground.label}
@@ -854,7 +911,7 @@ export function GroundParticipantPage() {
       </div>
 
       {/* REVIEW ROUND 3, ITEM 2: THE PAYWALL, PULLED OUT INTO A SHARED COMPONENT (see useOpenSession.ts) */}
-      <SessionPaywallModal paywall={paywall} canPayHere={canPayHere} />
+      <SessionPaywallModal paywall={paywall} canPayHere={canPayHere} groundId={id} />
 
 
     </div>

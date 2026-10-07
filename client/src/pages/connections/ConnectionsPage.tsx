@@ -1,12 +1,15 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { integrationsApi, type Credential } from '@/api/integrations'
 import { useAuthStore } from '@/stores/auth'
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
+import { possessiveOf } from '@/lib/a-possessive'
 import { Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
+import { WhatsAppKeysNeedTypingAgainNote, WhatsAppKeysRetypeForm } from './WhatsAppKeysNeedTypingAgain'
 import {
-  Page, PageTitle, Section, Panel, Stack, SubHeading, FieldRows, FieldRow, Button, Tag, TextField, Note, OpsConsoleExample, WhatsAppConversationExample,
+  Page, PageTitle, Section, Panel, Stack, SubHeading, FieldRows, FieldRow, Button, Tag, TextField, Note, Folded, OpsConsoleExample, WhatsAppConversationExample,
 } from '@/components/gw/ui'
 
 /**
@@ -20,6 +23,14 @@ import {
  * WHATSAPP IS SHOWN ONLY WHILE IT IS SWITCHED ON (Hafsah, 26 September): on in Groundwork, or through
  * the organisation's own number. An organisation that has connected its own number and switched it
  * off still sees it here, or it could never switch it back on.
+ *
+ * GROUNDWORK'S OWN NUMBER IS THE DEFAULT (decision 112, 7 October). This section leads with how
+ * WhatsApp works on Groundwork's own number - people reply to it, and an admin turns it on for the
+ * organisation in Plan and billing - and says so whether or not the organisation has connected a
+ * number of its own. Setting up an organisation's own WhatsApp number is folded shut at the bottom,
+ * under "Advanced", and stays shut unless an organisation already has one connected: then it is
+ * shown plainly, as connected, the way it always has been. The keys-need-typing-again warning is
+ * never folded, because it needs action.
  *
  * LEFT OUT, because nothing real stands behind them (docs/morning-report-ui.md, item 29):
  * "Paystack, Flutterwave or M-Pesa" and "A weekly spreadsheet" (no such connection exists, and
@@ -124,7 +135,7 @@ export function ConnectionsPage() {
             value={<span>Your own product sends Groundwork its usage numbers.</span>}
             action={(
               <span className="gwui-invite-actions">
-                <Tag tone={glance.data?.figures.fromYourProduct ? 'proven' : 'plain'}>{glance.data?.figures.fromYourProduct ? 'Connected' : 'Not set up'}</Tag>
+                <Tag tone={glance.data?.figures?.fromYourProduct ? 'proven' : 'plain'}>{glance.data?.figures?.fromYourProduct ? 'Connected' : 'Not set up'}</Tag>
                 <Button kind="secondary" size="small" to="/settings/tools">Set it up</Button>
               </span>
             )}
@@ -228,12 +239,14 @@ function WhatsAppSection({ orgName, glance }: { orgName: string; glance: { peopl
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'The connection was not removed. Try again.'),
   })
 
-  const whose = orgName ? `${orgName}’s WhatsApp Business number` : 'your WhatsApp Business number'
+  const whose = orgName ? `${possessiveOf(orgName)} WhatsApp Business number` : 'your WhatsApp Business number'
   return (
-    <Section heading="WhatsApp" action={connection ? <Tag tone={connection.enabled ? 'proven' : 'plain'}>{connection.enabled ? 'Connected' : 'Switched off'}</Tag> : <Tag tone="plain">Not set up</Tag>}>
+    <Section heading="WhatsApp" action={connection ? <Tag tone={connection.enabled ? 'proven' : 'plain'}>{connection.enabled ? 'Connected' : 'Switched off'}</Tag> : undefined}>
       <Panel>
         {connection ? (
           <Stack gap={12}>
+            <WhatsAppKeysNeedTypingAgainNote connection={connection} />
+            {connection.keysNeedTypingAgain && <WhatsAppKeysRetypeForm connection={connection} />}
             <p className="gwui-panel-text-muted">
               {connection.displayNumber
                 ? <>Your people check in by replying to <b>{connection.displayNumber}</b>, {whose}. A reply is their check-in, exactly as if typed here.</>
@@ -270,11 +283,26 @@ function WhatsAppSection({ orgName, glance }: { orgName: string; glance: { peopl
           </Stack>
         ) : (
           <Stack gap={12}>
-            <p className="gwui-panel-text-muted">People check in by replying to your organisation’s WhatsApp number.</p>
-            <Button kind="secondary" size="small" to="/settings/whatsapp">Set it up</Button>
+            {/*
+             * GROUNDWORK'S OWN NUMBER IS THE DEFAULT (decision 112). While an organisation has not
+             * connected a number of its own, this is what is true for it: people already check in
+             * by replying to Groundwork's own number, and an admin turns WhatsApp on for the
+             * organisation in Plan and billing - never a push towards setting up its own number.
+             */}
+            <p className="gwui-panel-text-muted">Your people check in by replying to Groundwork’s WhatsApp number. A reply is their check-in, exactly as if typed here.</p>
+            <p className="gwui-panel-text-muted">An admin turns WhatsApp on for your organisation in <Link className="gwui-plain-link" to="/billing#billing-whatsapp">Plan and billing</Link>.</p>
           </Stack>
         )}
       </Panel>
+
+      {!connection && (
+        <Folded summary="Advanced: use your organisation’s own WhatsApp number" note={<Tag tone="plain">Not set up</Tag>}>
+          <Stack gap={12}>
+            <p className="gwui-panel-text-muted">Most organisations never need this. Groundwork’s own number already works for everyone.</p>
+            <Button kind="secondary" size="small" to="/settings/whatsapp">Set it up</Button>
+          </Stack>
+        </Folded>
+      )}
     </Section>
   )
 }

@@ -221,6 +221,24 @@ export function InvitePage() {
     }
   }, [preview, accept, straightToTheReport])
 
+  /**
+   * FAULT 3 (SCREENS, INVITE PAGE): PREFILL FIRST AND LAST NAME FROM WHAT THE LEAD ALREADY GAVE.
+   *
+   * The lead's people step now asks for a name beside each email (section 13), served back here
+   * as `preview.nameGiven` ("Musa Bello") - but these two fields stayed empty, asking the invited
+   * person to retype a name their own lead had just given. It only fills what the server already
+   * sends, split on the first space, and is still editable either way. This applies to every
+   * situation, not only the anchor, since every invite can carry a name now.
+   */
+  useEffect(() => {
+    const given = preview?.nameGiven?.trim()
+    if (!given || firstName || lastName) return
+    const [first, ...rest] = given.split(' ')
+    setFirstName(first)
+    setLastName(rest.join(' '))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preview?.nameGiven])
+
 
 
   /**

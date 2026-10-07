@@ -35,17 +35,28 @@ export function RequestOffer({ offer, onPick, disabled }: {
  * `open.prefill` in router state, so the form starts from what was read in the person's own words,
  * and empty when nothing was. Nothing is sent here; pressing the button only opens the form. With
  * the suite off, `open.button` is null and only the sentence shows.
+ *
+ * FAULT 7 (LIVE RE-WALK): "YOU CAN SUBMIT THAT THROUGH LEAVE HERE..." TWICE. The reply that
+ * carries `open` is its own chat bubble, drawn above this panel - and the model's own reply text
+ * sometimes already contains the spec's sentence word for word, since that sentence is the answer
+ * to the person's yes. Reading both meant reading the same sentence twice in a row: once as what
+ * the assistant said, once again in the card underneath it. `replyText`, the same bubble's own
+ * content, lets this draw only the button when the reply already said it, and the sentence when
+ * it did not.
  */
-export function OpenTheRequest({ open }: {
+export function OpenTheRequest({ open, replyText }: {
   open: TheRequestToOpen | null | undefined
+  /** The chat reply this card is drawn under - the same text a reader has already just read. */
+  replyText?: string | null
 }) {
   const navigate = useNavigate()
   if (!open) return null
   const to = open.kind === 'leave' ? '/suite/leave/new' : '/suite/spend/new'
+  const replyAlreadySaysIt = !!replyText && !!open.says && replyText.includes(open.says)
 
   return (
     <Panel>
-      <p className="gwui-panel-text">{open.says}</p>
+      {!replyAlreadySaysIt && <p className="gwui-panel-text">{open.says}</p>}
       {open.button && (
         <div style={{ marginTop: 10 }}>
           <Button kind="secondary" onClick={() => navigate(to, { state: { prefill: open.prefill ?? null } })}>{open.button}</Button>

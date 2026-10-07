@@ -27,7 +27,13 @@ import { Page, PageTitle, Section, Panel, Button, Tag, Note, Empty, RowList, Row
  * prototype's sentence, under the heading "Onboarding".
  *
  * WORDING NO SCREEN SHOWS (item 28): "Onboarding" as the page heading, "Done", "Not needed",
- * "Optional", "Nobody is being set up right now." and "The board did not load."
+ * "Optional" and "The board did not load."
+ *
+ * FAULT 7A OF THE LIVE WALK (6 October): "Nobody is being set up right now." gave no next step. A
+ * new person is actually set up by starting a "Help a new hire get started" check-in (the
+ * switchboard's own situation, the-switchboard-g2-table.ts), which seeds this board's steps and
+ * roster entry (the-onboarding-board.service.ts: "built only from... onboarding statuses"). The
+ * empty state now says so, with a link to the switchboard (`/start`).
  *
  * A SUBTITLE SAYING WHAT THE BOARD IS FOR (group 2's review, fault F): while the suite is off this
  * page used to show only "Onboarding / Onboarding" and the server's off sentence, with nothing
@@ -63,8 +69,12 @@ export function OnboardingBoardPage() {
           </div>
         )
       )}
-      {data && data.people.length === 0 && <Empty>Nobody is being set up right now.</Empty>}
-      {data?.people.map(p => <ANewPerson key={p.id} p={p} />)}
+      {data && (data.people ?? []).length === 0 && (
+        <Empty title="Nobody is being set up right now." action={<Button kind="secondary" to="/start">Start a check-in</Button>}>
+          Set someone up by starting a “Help a new hire get started” check-in.
+        </Empty>
+      )}
+      {(data?.people ?? []).map(p => <ANewPerson key={p.id} p={p} />)}
     </Page>
   )
 }

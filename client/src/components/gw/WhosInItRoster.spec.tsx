@@ -154,6 +154,9 @@ describe('somebody with no name, whose email this reader may not see', () => {
       { id: 'p-zawadi', userId: null, email: null, awaitingSeat: true, user: null },
     ],
   }
+  /* PHONE WALK, SCREEN FAULT 1: the held-for-a-seat sentence now names who it is about instead of
+     burying it in the middle ("Your plan has no seat for..."), the same sentence GroundAdminPage's
+     own "Who has answered" roster uses for the same state. */
   it('heads the row plainly and says "this person" in a sentence, never "A colleague"', () => {
     render(
       <MemoryRouter>
@@ -161,7 +164,7 @@ describe('somebody with no name, whose email this reader may not see', () => {
       </MemoryRouter>,
     )
     expect(screen.getAllByText('Somebody invited by email').length).toBeGreaterThan(0)
-    expect(screen.getByText('Your plan has no seat for this person. Free one or move to a larger plan, and the invitation goes out.')).toBeTruthy()
+    expect(screen.getByText('Somebody invited by email is waiting for a seat on your plan. They will get their invitation as soon as there is one.')).toBeTruthy()
     expect(document.body.textContent).not.toMatch(/A colleague/)
   })
 })

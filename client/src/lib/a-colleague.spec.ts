@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
-import { plainWordsByPerson, oneWithNoName, atTheStart } from './a-colleague'
+import { plainWordsByPerson, oneWithNoName, atTheStart, midSentence } from './a-colleague'
 import { peopleLabels, participantLabel, personLabel, firstNameOrLabel } from './utils'
 
 /**
@@ -150,5 +150,21 @@ describe('and the screens read them in sentences', () => {
 
   it('the lead’s own view still uses the address they typed before plain words', () => {
     expect(personLabel(person('a', 2, { email: 'david.okafor@harvestline.test' }))).toBe('David Okafor')
+  })
+})
+
+/* Real-user walk, Kijani Foods, fault 1: "Tendai asked to spend 300,000 on The Mwangi agency" had
+   a capital "The" mid-sentence, because the same served string also stands as a title elsewhere. */
+describe('midSentence: a leading article lower-cased when it is not at the start', () => {
+  it('lower-cases a leading "The", "A" or "An"', () => {
+    expect(midSentence('The Mwangi agency')).toBe('the Mwangi agency')
+    expect(midSentence('A new freezer')).toBe('a new freezer')
+    expect(midSentence('An outstanding invoice')).toBe('an outstanding invoice')
+  })
+
+  it('leaves every other word, including a name, exactly as given', () => {
+    expect(midSentence('Amani Wekesa')).toBe('Amani Wekesa')
+    expect(midSentence('Theodore Mwangi')).toBe('Theodore Mwangi')
+    expect(midSentence('Another supplier')).toBe('Another supplier')
   })
 })

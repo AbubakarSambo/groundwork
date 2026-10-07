@@ -37,7 +37,9 @@ describe('what the lead is told before everyone has answered', () => {
 
   it('says releasing happens by itself, and names the early one for what it does', () => {
     expect(CODE).toContain('the report goes out to everybody on its own')
-    expect(CODE).toContain('Close this round now and publish what there is')
+    /* "Session", not "round" (real-user walk, Kijani Foods, fault 2): the wording rule says
+       "session" everywhere a person reads about one of these. */
+    expect(CODE).toContain('Close this session now and publish what there is')
     expect(CODE).toContain('anybody who has not answered loses their turn')
   })
 

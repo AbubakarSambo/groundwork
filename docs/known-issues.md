@@ -62,7 +62,7 @@ It was drawn from `docs/morning-report.md`, `docs/weekly-plan.md`, `docs/run-log
 - Recommendation: Abubakar answers questions 1 to 9 before release.
 
 **B11 (rest). The anchor still borrows the project's questions for its members, and its wording needs the prompt text.**
-- Where: `api/src/modules/conversation/prompt-library.ts`, `startingRoleQuestionsFor` and `STARTING_SCENARIOS` read `HELP_TEAM_UNDERSTAND` as `NEW_PROJECT` (line 2861 and the pack at line 3508), so a member's check-in in an anchor check-in can still ask the project's "What did you understand the brief to be?", and the first-turn question about whether they are the person this check-in is about (requests 167 item 3 and 168 item 5). `RECOMMENDED_CADENCE`, the planned length and the lead's own check-in are fixed in code (below).
+- Where: `api/src/modules/conversation/prompt-library.ts`, `startingRoleQuestionsFor` and `STARTING_SCENARIOS` read `HELP_TEAM_UNDERSTAND` as `NEW_PROJECT` (line 2861 and the pack at line 3508), so a member's check-in in an anchor check-in can still ask the project's "What did you understand the brief to be?", and the first-turn question about whether they are the person this check-in is about (requests 167 item 3 and 168 item 5). On the screens' side (7 October, `b115c08e` and `6dfded29`) the anchor lead goes straight from her conversation to the reveal and the people step, is never opened into a check-in, and the commit sends the served label, a weekly cadence marked as chosen, and an end one month out. `RECOMMENDED_CADENCE`, the planned length and the lead's own check-in are fixed in code (below).
 - Who: nobody today (`release.anchorScenario` is off). Every anchor member once it is on.
 - Why it was left: it is the conversation's own instructions, and the 24-scenario run was using them when this was fixed. Nothing was changed in a prompt or in a stored prompt version.
 - Recommendation: after the run, give the anchor its own role questions in `STARTING_ROLE_QUESTIONS`, and if a stored version overrides the file, make the new one the active one and prove it from the report's `promptVersionId`.
@@ -317,6 +317,7 @@ It was drawn from `docs/morning-report.md`, `docs/weekly-plan.md`, `docs/run-log
 
 **U2. Small wording faults on existing users' pages (screens workspace, request 174).**
 - Where: "a confirmation from Rukia Rukia" (a first name stored as the full name is doubled); "Amani Wekesa said describes the start date as October 1st…"; "You and Amani Wekesa are waiting on you…"; emails with "at the same moment.." (two full stops), two "To stop these emails" lines, and three emails to the lead for one completed check-in.
+- Fixed on the screens' side (7 October, `ad7a5092`, `ae1c4f08`, `0c8a0db6`): "<name> said" is no longer joined to an engine phrase ("Amani Wekesa said describes…"), the report tab's send button goes when there is nobody new to send to, zero reads "Nobody has checked in yet.", and the header's session number is right. The rest is the engine's.
 - Who: existing users and the paid client.
 - Why it was left: found on 7 October.
 - Recommendation: fix each where it is made; bundle the lead's three emails into one (see W2).
@@ -352,10 +353,34 @@ It was drawn from `docs/morning-report.md`, `docs/weekly-plan.md`, `docs/run-log
 - Recommendation: answer them before the anchor is switched on, and update the plan's table.
 
 **U8. Screens left as they are (screens workspace).**
-- Where: about 173 one-off style classes and the page-only families left after the clean-up; pages nobody can reach (the old report body in `ReportPage.tsx`, `CreateGroundPage`, `SaveCard.tsx`) not removed; pinned check-ins kept in the browser, so they do not follow a person; the logo takes a signed-in person to the marketing site; the floating "Feedback" button; the government, loans, matter, where-next and MarketView Q4 boards have more buttons than their prototypes; `#/system` not built; and one sentence in `client/src/pages/preview/EveryReportSideBySide.tsx` (line 300) still says "It does not quote anybody".
+- Where: about 173 one-off style classes and the page-only families left after the clean-up; pages nobody can reach (the old report body in `ReportPage.tsx`, `CreateGroundPage`, `SaveCard.tsx`) not removed; pinned check-ins kept in the browser, so they do not follow a person; the logo takes a signed-in person to the marketing site; the floating "Feedback" button; the government, loans, matter, where-next and MarketView Q4 boards have more buttons than their prototypes; `#/system` not built.
 - Who: everyone sees some of these; most are invisible.
 - Why it was left: each waits for Hafsah's call or a later clean-up.
-- Recommendation: the screens workspace decides with Hafsah; the preview sentence can be changed now, as the answers file asks.
+- Recommendation: the screens workspace decides with Hafsah. (The preview page's "It does not quote anybody" was fixed on 7 October, `280ed552`.)
+
+**U13. The panel that fills in as you talk is hidden on a phone, for every situation, so an anchor lead on a phone never sees the seven items (screens workspace).**
+- Where: the entry chat's side panel (`FillsInAsYouTalk.tsx`) shows only from 1000 pixels wide (`.gw-fills-in` in `client/src/index.css`).
+- Who: every lead setting up a check-in on a phone, today and with the anchor.
+- Why it was left: drawing it on a phone is new design work; the prototype pictures it only beside the conversation on a wide screen.
+- Recommendation: Hafsah decides whether a phone gets a folded version above the box.
+
+**U14. The leave and spending boards never say "You are standing in for …" (screens workspace, request 173).**
+- Where: `/suite/leave` and `/suite/spend`, read by a stand-in. The approver's queue says it, because it serves `standingIn`; the boards serve nothing like it.
+- Who: stand-ins once the suites are on; no existing client has a suite on.
+- Why it was left: it needs the engine to serve `standingIn` on the boards' waiting items.
+- Recommendation: serve it, and the screens draw it as the queue does.
+
+**U15. Small states left unlike the prototype on purpose (screens workspace).**
+- Where: "You're offline … Everything sends when you're back" is not drawn, because there is no offline queue; "Not saved" is a message with a dash rather than the prototype's sentence with Try again; the end-of-check-in confirmation, "already finished" and "Only <name> can end this check-in" keep their own reviewed flows; the crash page leaves out "We've been told", because no crash is reported anywhere.
+- Who: everyone, rarely.
+- Why it was left: drawing them as the prototype has them would promise things the product does not do.
+- Recommendation: an offline queue and crash reporting first, then the prototype's words.
+
+**U17. The one-off style clean-up stopped where no exact shared class exists (screens workspace).**
+- Where: BoardPage.tsx (584 uses) and about a dozen components (15 to 70 uses each), listed in `client/src/components/gw/ui/one-off-uses-per-file.ts`.
+- Who: nobody sees it; it is code tidiness.
+- Why it was left: every exact replacement was made and proven with byte-identical screenshots (7 October); going further means new shared parts that only rename the one-offs, with a risk to every page and no visible gain.
+- Recommendation: leave it, or decide the shared text parts first and convert a page at a time with screenshot proof.
 
 **U9. Documents that are out of date.**
 - Where: `docs/ready-to-deploy.md` still says migration `20260923200000` reopens check-ins and that scenario packs are switched on by hand; `docs/decisions.md` is out of date against `docs/decisions-merged.md`; `docs/whatsapp-templates.md` and `docs/whatsapp-end-to-end.md` say a waiting approval counts as the approver's message of the day, while the code sends it at once; and the release checklist still lists three screen reviews as not done (the suites screens, the Ask chat and the Company page against the prototype).

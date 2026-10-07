@@ -22,11 +22,17 @@ describe('no total means no total', () => {
     expect(page).toMatch(/const totalSessions: number \| null =/)
     /*
      * Full sentence, no dot (U.8 review): "This is your session {n}.", not "· Session {n}".
-     * "YOUR" (U.4 re-review, item 8): this is the reader's own count, staggered by when they
+     * "YOUR" (U.4 re-review, item 8): this is the reader's own position, staggered by when they
      * personally started, never the team's shared phase - see the comment above `opensLater` in
      * the component.
+     *
+     * FAULT 3b (ESTHER, LIVE RE-WALK): `completedCheckIns.length + 1` PINNED THE VERY BUG IT
+     * SHOULD HAVE CAUGHT. It counts completed ROWS, and a self-corrected session leaves two rows
+     * for the one session actually finished - inflating this past the real session she was on, and
+     * disagreeing with the header's own count of the same check-in. `mySessionNumber` (computed
+     * with the shared `whichSessionAreWeOn` rule, immune to a duplicate row) replaces it.
      */
-    expect(page).toMatch(/<span>This is your session \{completedCheckIns\.length \+ 1\}\.<\/span>/)
+    expect(page).toMatch(/<span>This is your session \{mySessionNumber\}\.<\/span>/)
   })
   it('and a session that opens later is dated, not numbered as current', () => {
     /*

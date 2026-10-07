@@ -77,6 +77,8 @@ describe('somebody with no seat, on the lead’s sessions roster', () => {
     await waitFor(() => expect(screen.getAllByText(/zawadi\.u8@example-test\.invalid/).length).toBeGreaterThan(0))
     expect(screen.queryByText('Copy invite link')).toBeNull()
     expect(screen.queryByText('Resend invite')).toBeNull()
-    expect(screen.getByText('Your plan has no seat for them yet. An admin has to make room before their invitation goes out.')).toBeTruthy()
+    /* PHONE WALK, SCREEN FAULT 1: the held-for-a-seat sentence now names who it is about, the same
+       shape People and setup's own roster uses for the same state. */
+    expect(screen.getByText(/is waiting for a seat on your plan\. They will get their invitation as soon as there is one\./)).toBeTruthy()
   })
 })

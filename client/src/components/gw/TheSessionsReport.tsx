@@ -29,7 +29,8 @@ import { Panel, SubHeading, Note, Callout, EdgeList, EdgeRow } from '@/component
  * `gwui-p*`) and the inline styles sitting beside them are gone. The outer card is now `Panel`
  * (`pad={false}`, since the card needs full-bleed colour bands the finding and the conversation
  * worth having both use); `withheldUntilYouAnswer` and "the conversation worth having now" - the
- * two blue boxes, including the one literally named `gwui-rule-blue` - are now `Callout`; the
+ * two blue boxes, including the one that once carried its own one-off blue-rule class - are now
+ * `Callout`; the
  * loading line is `Note`; and each "still open" topic under "Where things stand" is now an
  * `EdgeList`/`EdgeRow`, its amber accent spur standing in for the hand-drawn dot this file used to
  * paint itself. The local `Row` component keeps its name and its `label`/`n` props exactly -
@@ -194,8 +195,8 @@ function Quotes({ items, yourName }: { items: { text: string; who?: string | nul
  * GROUP 3's DRIFT-LIST REVIEW (1 October 2026): keeps its name and its `label`/`n` props exactly -
  * `the-order-comes-from-one-place.spec.ts` reads this file's own source for `<Row ... label=...>` -
  * but draws the label with `SubHeading` now, not the bespoke bold-and-muted span this file used to
- * build by hand, and the row itself with the local `.gwui-sr-row` class in place of the one-off
- * `gwui-rule-top gwui-pt-16 gwui-pr-20 gwui-pb-16 gwui-pl-20` combination.
+ * build by hand, and the row itself with the local `.gwui-sr-row` class in place of the five
+ * one-off top-rule and padding utilities it used to carry.
  */
 function Row({ label, children, style }: {
   /** Kept on the interface so call sites (and the-order-comes-from-one-place test) are unchanged;
@@ -325,9 +326,58 @@ function lowerFirst(s: string): string {
 function startsWithPerson(view: string, displayWho: string): boolean {
   return view.trim().toLowerCase().startsWith(displayWho.trim().toLowerCase())
 }
+
+/**
+ * REQUEST 174, ITEM 7: "AMANI WEKESA SAID DESCRIBES THE START DATE AS OCTOBER 1ST…"
+ *
+ * The served `view` is the judgement model's own prose about where somebody stands
+ * (reports.service.ts, `REPORT_SCHEMA.divergences.positions.view`, "how this person described it,
+ * in plain language") - nothing in that shape says whether the words are a literal quote of theirs
+ * or the product's own sentence about them, so there is no served flag to read. What the text
+ * itself shows is whether it already has a subject of its own. "Competitor pricing is the main
+ * obstacle." is a complete clause about the topic, not the person - there is nowhere for a name to
+ * go without "said" in front of it, and that is the correct, existing case. "describes the start
+ * date as October 1st" and "is waiting for budget approval" are the opposite: bare predicates with
+ * no subject, written to be read as "{who} describes ..." / "{who} is waiting ...". Joining
+ * "{who} said" onto one of these puts a verb where a noun belongs ("Amani Wekesa said describes
+ * ...").  Never a literal quote either way - the person's own words are never invented, only the
+ * product's existing sentence is placed where its missing subject belongs.
+ *
+ * THE MODEL ALWAYS WRITES THE THIRD-PERSON FORM (its schema's `participantLabel` is never "you"),
+ * so when the reader is reading their own row the verb has to be re-conjugated too, or "is waiting"
+ * becomes "You is waiting" - a name swapped in without the grammar following it.
+ */
+const BARE_VERB_FORMS: Record<string, string> = {
+  is: 'are', was: 'were', has: 'have', does: 'do', did: 'did',
+  remains: 'remain', stays: 'stay', continues: 'continue', keeps: 'keep',
+  describes: 'describe', states: 'state', confirms: 'confirm', believes: 'believe',
+  feels: 'feel', thinks: 'think', wants: 'want', needs: 'need', expects: 'expect',
+  hopes: 'hope', worries: 'worry', insists: 'insist', maintains: 'maintain',
+  argues: 'argue', agrees: 'agree', disagrees: 'disagree', sees: 'see', views: 'view',
+  considers: 'consider', regards: 'regard', reports: 'report', notes: 'note',
+  claims: 'claim', assumes: 'assume', prefers: 'prefer', intends: 'intend', plans: 'plan',
+  counts: 'count', holds: 'hold', says: 'say', wonders: 'wonder', questions: 'question', doubts: 'doubt',
+}
+
+/** The bare verb `view` opens with, if it is one of the forms above - null for a view that is a
+    complete clause with its own subject, which still needs "{who} said" in front of it. */
+function openingBareVerb(view: string): string | null {
+  const m = view.trim().match(/^([A-Za-z]+)\b/)
+  if (!m) return null
+  const w = m[1].toLowerCase()
+  return w in BARE_VERB_FORMS ? w : null
+}
+
 export function sayWhatTheySaid(who: string, view: string, yourName?: string | null): string {
   const displayWho = (who === yourName || who === 'You') ? 'You' : who
-  return startsWithPerson(view, displayWho) ? capitalize(view.trim()) : `${displayWho} said ${lowerFirst(view)}`
+  if (startsWithPerson(view, displayWho)) return capitalize(view.trim())
+  const verb = openingBareVerb(view)
+  if (verb) {
+    const rest = view.trim().slice(verb.length)
+    const form = displayWho === 'You' ? BARE_VERB_FORMS[verb] : verb
+    return `${displayWho} ${form}${rest}`
+  }
+  return `${displayWho} said ${lowerFirst(view)}`
 }
 function withPeriod(s: string): string {
   const t = s.trim()

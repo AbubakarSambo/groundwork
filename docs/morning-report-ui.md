@@ -4,6 +4,120 @@ This is the report from the screens workspace, on the branch `wip/prototype-ui`.
 workspace writes its own report in `docs/morning-report.md`, so the two computers never edit the
 same file.
 
+## Morning, 7 October, 07:00: where the screens stand for the pull request
+
+**Not yet "ready for the pull request".** The last full walk of the core use cases was cut off by a network outage (the model service could not be reached, twice) after it had covered sign-up, joining and setting up a sales check-in. Everything below is pushed to `wip/prototype-ui` at the commit carrying this report. No pull request was opened.
+
+**Finished overnight (your seven steps)**
+1. **The last four phone faults:** done.
+   - A person waiting for a seat is named plainly, with no "Resend".
+   - "Open today's team picture" opens it.
+   - The admin board's session lists agree.
+   - Tap targets are 40 pixels on a phone.
+2. **WhatsApp:** Groundwork's own number is the main one everywhere (decision 112).
+   - Connections leads with it, and an organisation's own number is folded under "Advanced".
+   - The set-up page is titled and introduced as optional.
+   - Today's first steps no longer push towards it.
+3. **Engagement:** the opt-out page and Settings draw the engine's words. The page keeps its shared-parts look and reads either answer shape. The Settings detail is the engine's latest.
+4. **Brand and marketing.**
+   - The WhatsApp profile images are in `docs/brand/whatsapp/`, navy and cream at 640 x 640, with the original mark.
+   - The three marketing sections are on the home page, with your words and a "Talk to our team" button to the existing contact page. They are picture-checked at 1440, 1280, 1024 and 375.
+5. **Abubakar's staging** (`mine/wip/live-base`, seven commits after #322) is merged.
+   - 207 of his 211 added lines are kept word for word.
+   - The other four were empty-state lines this branch had already rewritten; his null-safety is carried into them.
+   - The client builds with staging's own build script.
+6. **The walks and their fixes, since the last report.**
+   - Admin pages and Ask: "Who can join" asks before switching joining on, billing never names WhatsApp while it is off, a payment error is one plain sentence, and suite settings can be seen again but are never saved over settings stored under other names.
+   - The rest of the suites: a member sees her own hours, time-sheet approvers are shown, table cells are labelled on a phone, the empty states are true, and switching a suite off asks first.
+   - The phone walk.
+   - The stop-mail page.
+   - To-dos are inside each check-in (P8).
+7. **Not done:** the full walk of every core use case at every width (see below).
+
+**Results**
+- Client: 4,592 of 4,592 tests pass, the type check is clean, and `npm run build` passes.
+- Marketing: `npm run build` passes with all its checks.
+- Browser tests: 57 of 57 at the last run, before the WhatsApp and marketing changes.
+
+**What is left**
+- **The full walk:** leave, finance requests and reviews end to end, the boards and reports, checking in, Ask, the Company page, billing and the back office WhatsApp page, all at every width, then any fixes. It needs about two hours once the network holds.
+- **Engine requests still open:**
+  - 177, item 1: the lead's note on a member's transcript, a privacy fault;
+  - 179 and 180: Ask's suggested questions and the resend to someone waiting for a seat;
+  - 181: the suites' served wording.
+
+**Needs Hafsah**
+- "Ask to join" (request 159).
+- The anchor's active line wording (request 163).
+- Whether a phone gets the "fills in as you talk" panel (known issue U13).
+
+**Decided for Hafsah to confirm**
+- **Straight apostrophes on the marketing sections.** The site's own build check refuses curly ones, so your words use straight apostrophes.
+- **The marketing button** links to the existing "Talk to our team" page (`/talk-to-us?about=setup`), not an email link.
+- **"Sahar Jamal"** is left on billing, because she is a real Groundwork team member from the public About page.
+
+## Morning, 7 October: the night's work, in short
+
+Abubakar has pull request #322 going to production. No pull request was opened from here. Pushes went only to `wip/prototype-ui` on Hafsah's copy, and the engine's `mine/wip/release` was merged regularly.
+
+**Finished**
+- **The anchor, end to end on the screens.**
+  - The front door at /start/team creates an anchor check-in, saved as "Help my team understand", weekly, for one month.
+  - The side panel's seven items tick as the lead answers.
+  - Once the conversation is `ready`, the lead goes straight to the reveal and then the people step, with Name and email, before the confirmation email. There is no fork, and she never gets a check-in of her own.
+  - A member's ideas are open, with the "Raised by" line.
+  - The recognition sentence, the nudge, the month board first, and the end of month in the engine's sentences.
+- **The leave and payment forms work.** They read the engine's form reads: kinds of leave, who covers, currency and categories. Each form is filled in from what the person said, and sends to the new routes.
+- **Newly served parts drawn.** "Connect WhatsApp", shown as an optional convenience in Settings and in a person's own check-in. "Remind them" on a paused check-in. Billing's "How it began" line, and the WhatsApp-off sentence for leads and members.
+
+**Tests:** the client passes, 4,508 of 4,508, and the type check is clean, at 4fdf6225. The browser tests pass, 57 of 57, after the check-in page's open fix (one had caught a page stuck on "Opening your session…", fixed in 79f04511).
+
+**Also finished later in the night**
+- **Suites at scale.**
+  - The approver's queue at /suite/queue, with filters, paging, the stand-in and the clash.
+  - Approving several at once, now through the engine's batch decision. Each request's result shows, and a plain sentence says if any failed.
+  - Finance totals by team and by category for any month.
+  - The forms work, with a searchable "Who covers for you?".
+  - Today and the sidebar lead approvers to the queue.
+- **"Use simpler words"** is a check-in setting for the lead, next to "Over WhatsApp", in the engine's exact words.
+- **Context in Ask.** The context page can open Ask on that check-in. The button stays hidden until the engine serves its flag (request 169).
+- **The chat page's timing gap** is fixed at the cause, and a test proves it.
+- **Faults that hurt existing users, fixed:**
+  - a false "It went back to session 1" on every running check-in;
+  - "Every session done" in session 1;
+  - "My work" going to two places;
+  - the guide saying admins never see check-ins, which decision 5 contradicts;
+  - an admin offered setup changes she cannot make;
+  - the header and setup tab disagreeing about the report.
+- **The one-off style clean-up.** Every exact replacement is done, proven by byte-identical screenshots. The rest has no exact shared equivalent, so it would need new shared parts that only rename the one-offs. That is left, see below.
+
+**Also later**
+- **The existing clients' use cases, walked in Kilima Traders.** Four new faults are fixed:
+  - a red pop-up on every page for organisations with the suites off;
+  - a dead link on Today;
+  - Groundwork's words drawn as a person's quote;
+  - a mislabelled link.
+- **The check-in page.** It opens a session once, never hangs on an error, and opens correctly under React's development double run.
+- **The report tab's send button and counts** are fixed.
+- **The suites queue** uses the engine's batch decision, and shows each result and what failed.
+- **To-dos** are shown inside each check-in, never as one person's list (decision 110, P8; request 176 asks the engine to serve it that way).
+- **The known problems** are folded into the engine's `docs/known-issues.md`, with the screens' own items U13 to U17.
+
+**Needs Hafsah**
+- **"Ask to join"** (request 159). It needs a new route that lets a person who may read a check-in, but is not in it, ask to join. The engine will not open that way in without your yes. The screen shows only "<name> runs it and can add you." until then.
+- **The anchor's active line** (request 163, item 2). "18/20 active · Groundwork has nudged the remaining 2." is your own wording. The walks found it counts the lead and uses a dot and figures, so it should perhaps read "Four of your five people have checked in. Groundwork has reminded the other one." The engine will not change your words without your yes.
+
+**Decided for Hafsah to confirm**
+- **The rest of the style clean-up is stopped** where no exact shared class exists. Going further means new shared parts with no visible gain, and a risk to every page.
+- **A decline's reason stays optional,** as the engine allows. The box now says who will read it.
+
+**Waiting on the engine (requests 167 and 168)**
+- Two privacy faults: a member is served the lead's objective and set-up probes on the ground read, and the lead's note about them (`roleAsDescribed`) on the transcript.
+- The lead still gets a check-in created for her.
+- The anchor's cadence default is fortnightly.
+- Wording in members' check-ins and on the lead's board.
+- The suites seed's form data.
+
 ## Morning, 6 October: the screens for the release, in short
 
 **What is done**

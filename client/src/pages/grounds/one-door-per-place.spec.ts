@@ -84,9 +84,13 @@ describe('but only once', () => {
      * reader's tabs tells them "You can read this check-in's board and reports", and the Board
      * page is the one of their three tabs that actually has the reports, so a link carrying
      * `?tab=report` now lands them there rather than on Context, where that sentence names
-     * nothing on screen.
+     * nothing on screen - and once more (screen fault 4, live walk 6 October 2026) in the anchor's
+     * own auto-open guard: a lead on `HELP_TEAM_UNDERSTAND` has no ordinary first check-in of her
+     * own to be walked into (the engine is separately asked, request 168, to stop creating one),
+     * so landing on `?tab=chat` redirects her to the board instead of auto-opening a session that
+     * should never have existed for her.
      */
-    expect((ADMIN.match(/\/board`/g) ?? [])).toHaveLength(4)
+    expect((ADMIN.match(/\/board`/g) ?? [])).toHaveLength(5)
     /* The prop, its type and its one use. What matters is that the component renders ONE button. */
     expect((LIST.match(/\{EVERY_SESSION\.board\}/g) ?? [])).toHaveLength(1)
     expect(ADMIN).not.toContain('Team board →')

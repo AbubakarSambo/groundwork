@@ -621,7 +621,7 @@ export const opsApi = {
     apiClient.get<OpsTargetCompaniesBoard>(`/ops/target-companies/${periodKey}`, QUIET).then((r) => r.data),
   standing: (personKey: string) =>
     apiClient.get<OpsStanding>(`/ops/standing/${personKey}`, QUIET).then((r) => r.data),
-  todos: (personKey: string) => apiClient.get<OpsTodo[]>(`/ops/todos/${personKey}`, QUIET).then((r) => r.data),
+  todos: (personKey: string) => apiClient.get<OpsTodo[]>(`/ops/todos/${personKey}`, QUIET).then((r) => (Array.isArray(r.data) ? r.data : [])),
   closeTodo: (id: string, status: 'DONE' | 'CANCELLED') =>
     apiClient.patch(`/ops/todos/${id}/status`, { status }, QUIET).then((r) => r.data),
   /**
@@ -657,7 +657,7 @@ export const opsApi = {
       .get<OpsCommercialOverview>('/ops/commercial/overview', { ...QUIET, params: { from, to } })
       .then((r) => r.data),
   commercialPipeline: () =>
-    apiClient.get<OpsCommercialOpportunity[]>('/ops/commercial/pipeline', QUIET).then((r) => r.data),
+    apiClient.get<OpsCommercialOpportunity[]>('/ops/commercial/pipeline', QUIET).then((r) => (Array.isArray(r.data) ? r.data : [])),
   openCommercial: (body: { companyKey: string; name: string; estimatedMrr?: number; estimatedContractValue?: number }) =>
     apiClient.post('/ops/commercial/pipeline', body, QUIET).then((r) => r.data),
   advanceCommercial: (id: string, stage: string) =>
@@ -666,24 +666,24 @@ export const opsApi = {
     apiClient.post(`/ops/commercial/pipeline/${id}/payments`, body, QUIET).then((r) => r.data),
   claimContribution: (id: string, body: { role: string; claimedBasis: string; evidenceUrl?: string }) =>
     apiClient.post(`/ops/commercial/pipeline/${id}/claims`, body, QUIET).then((r) => r.data),
-  claims: () => apiClient.get<OpsClaim[]>('/ops/commercial/claims', QUIET).then((r) => r.data),
+  claims: () => apiClient.get<OpsClaim[]>('/ops/commercial/claims', QUIET).then((r) => (Array.isArray(r.data) ? r.data : [])),
   decideClaim: (id: string, body: { state: string; note?: string; insteadPersonId?: string }) =>
     apiClient.patch(`/ops/commercial/claims/${id}`, body, QUIET).then((r) => r.data),
   positioningRecords: () =>
-    apiClient.get<OpsPositioningRecord[]>('/ops/commercial/positioning', QUIET).then((r) => r.data),
+    apiClient.get<OpsPositioningRecord[]>('/ops/commercial/positioning', QUIET).then((r) => (Array.isArray(r.data) ? r.data : [])),
   openPositioning: (body: { personOrNetwork: string; organization?: string; accessType: string; evidenceUrl?: string }) =>
     apiClient.post('/ops/commercial/positioning', body, QUIET).then((r) => r.data),
   advancePositioning: (id: string, stage: string) =>
     apiClient.patch(`/ops/commercial/positioning/${id}/stage`, { stage }, QUIET).then((r) => r.data),
-  deployments: () => apiClient.get<OpsDeployment[]>('/ops/deployments', QUIET).then((r) => r.data),
-  campaigns: () => apiClient.get<OpsCampaign[]>('/ops/campaigns', QUIET).then((r) => r.data),
+  deployments: () => apiClient.get<OpsDeployment[]>('/ops/deployments', QUIET).then((r) => (Array.isArray(r.data) ? r.data : [])),
+  campaigns: () => apiClient.get<OpsCampaign[]>('/ops/campaigns', QUIET).then((r) => (Array.isArray(r.data) ? r.data : [])),
   moat: () => apiClient.get<OpsMoat>('/ops/moat', QUIET).then((r) => r.data),
   recordMoat: (body: { componentKey: string; title: string; description?: string; evidenceUrl?: string }) =>
     apiClient.post('/ops/moat', body, QUIET).then((r) => r.data),
-  roadmap: () => apiClient.get<OpsRoadmapItem[]>('/ops/roadmap', QUIET).then((r) => r.data),
-  useCases: () => apiClient.get<OpsUseCase[]>('/ops/use-cases', QUIET).then((r) => r.data),
-  tech: () => apiClient.get<OpsWorkItem[]>('/ops/tech', QUIET).then((r) => r.data),
-  ux: () => apiClient.get<OpsWorkItem[]>('/ops/ux', QUIET).then((r) => r.data),
+  roadmap: () => apiClient.get<OpsRoadmapItem[]>('/ops/roadmap', QUIET).then((r) => (Array.isArray(r.data) ? r.data : [])),
+  useCases: () => apiClient.get<OpsUseCase[]>('/ops/use-cases', QUIET).then((r) => (Array.isArray(r.data) ? r.data : [])),
+  tech: () => apiClient.get<OpsWorkItem[]>('/ops/tech', QUIET).then((r) => (Array.isArray(r.data) ? r.data : [])),
+  ux: () => apiClient.get<OpsWorkItem[]>('/ops/ux', QUIET).then((r) => (Array.isArray(r.data) ? r.data : [])),
   /** Whether a period can open yet, and who it is waiting on. */
   canOpenPeriod: (key: string) =>
     apiClient
@@ -699,10 +699,10 @@ export const opsApi = {
     apiClient.get<OpsEverybody>(`/ops/everybody/${periodKey}`, QUIET).then((r) => r.data),
 
   objectives: (periodKey: string) =>
-    apiClient.get<OpsObjective[]>(`/ops/objectives/${periodKey}`, QUIET).then((r) => r.data),
+    apiClient.get<OpsObjective[]>(`/ops/objectives/${periodKey}`, QUIET).then((r) => (Array.isArray(r.data) ? r.data : [])),
   commitments: (personKey: string, periodKey: string) =>
-    apiClient.get<OpsCommitment[]>(`/ops/commitments/${personKey}/${periodKey}`, QUIET).then((r) => r.data),
-  spend: () => apiClient.get<OpsExpense[]>('/ops/spend', QUIET).then((r) => r.data),
+    apiClient.get<OpsCommitment[]>(`/ops/commitments/${personKey}/${periodKey}`, QUIET).then((r) => (Array.isArray(r.data) ? r.data : [])),
+  spend: () => apiClient.get<OpsExpense[]>('/ops/spend', QUIET).then((r) => (Array.isArray(r.data) ? r.data : [])),
   balance: () => apiClient.get<OpsBalance>('/ops/balance', QUIET).then((r) => r.data),
   /*
    * THE ENDPOINTS THAT EXISTED AND NOTHING CALLED.
@@ -961,7 +961,7 @@ export const opsApi = {
       .then((r) => r.data),
 
   fundraise: () => apiClient.get<OpsFundraise>('/ops/fundraise', QUIET).then((r) => r.data),
-  strategy: () => apiClient.get<OpsStrategic[]>('/ops/strategy', QUIET).then((r) => r.data),
+  strategy: () => apiClient.get<OpsStrategic[]>('/ops/strategy', QUIET).then((r) => (Array.isArray(r.data) ? r.data : [])),
   integration: () => apiClient.get<OpsIntegrationStatus>('/ops/integration', QUIET).then((r) => r.data),
   /**
    * A short-lived identity token for the assistant panel, and where to take it.
@@ -977,7 +977,7 @@ export const opsApi = {
         QUIET,
       )
       .then((r) => r.data),
-  people: () => apiClient.get<OpsPerson[]>('/ops/people', QUIET).then((r) => r.data),
+  people: () => apiClient.get<OpsPerson[]>('/ops/people', QUIET).then((r) => (Array.isArray(r.data) ? r.data : [])),
   /** The roles, from the same list the grants are keyed on. Never a copy here. */
   roles: () =>
     apiClient
@@ -997,7 +997,7 @@ export const opsApi = {
       .then((r) => r.data),
   setAgreement: (key: string, body: { originatorSharePercent?: number | null; originatorShareMonths?: number | null; agreementNote?: string }) =>
     apiClient.patch(`/ops/people/${key}/agreement`, body, QUIET).then((r) => r.data),
-  capabilities: () => apiClient.get<string[]>('/ops/capabilities', QUIET).then((r) => r.data),
+  capabilities: () => apiClient.get<string[]>('/ops/capabilities', QUIET).then((r) => (Array.isArray(r.data) ? r.data : [])),
   addPerson: (body: { key: string; displayName: string; email?: string; functionalRole: string }) =>
     apiClient.post('/ops/people', body, QUIET).then((r) => r.data),
   grant: (key: string, capability: string) =>

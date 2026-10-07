@@ -129,7 +129,7 @@ export function WhatThisServes({
 export function TheFreeze() {
   const freeze = useQuery({ queryKey: ['ops', 'freeze'], queryFn: opsApi.freezeNow, retry: false })
   const me = useQuery({ queryKey: ['ops', 'me'], queryFn: opsApi.me, retry: false })
-  const mayDecide = me.data?.capabilities.includes('ceo:board') ?? false
+  const mayDecide = me.data?.capabilities?.includes('ceo:board') ?? false
   const f = freeze.data
   if (!f) return null
 
@@ -337,7 +337,7 @@ export function WorkThatSaysNothing() {
     >
       <p style={{ ...LABEL, color: 'var(--gw-amber-t)' }}>{nothing.data.says}</p>
       <p style={{ fontSize: 13, margin: '6px 0 0', lineHeight: 1.6 }}>
-        {nothing.data.rows.map((r) => r.title).join(' · ')}
+        {(nothing.data.rows ?? []).map((r) => r.title).join(' · ')}
       </p>
       <p style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '6px 0 0' }}>
         Work that serves neither a customer nor the moat may still be right. It should be said out

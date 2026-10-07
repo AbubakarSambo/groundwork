@@ -166,6 +166,16 @@ export const groundsApi = {
       .then(r => r.data),
 
   /**
+   * "USE SIMPLER WORDS" (6 October answer). `false` for every check-in that exists and for a new
+   * one. Only the lead of the check-in, or an admin who runs it, may change it - the server refuses
+   * anybody else.
+   */
+  setSimplerWords: (id: string, on: boolean) =>
+    apiClient
+      .patch<{ id: string; simplerWords: boolean }>(`/grounds/${id}/simpler-words`, { on })
+      .then(r => r.data),
+
+  /**
    * THE KIND OF WORK THIS CHECK-IN IS ABOUT (request 76), and its own stage names. Only the lead,
    * or an admin of the organisation, can change it. `kind: null` clears it back to none. A name
    * that is not one of the eleven kinds is refused with a plain sentence, shown as the server gives
@@ -429,7 +439,7 @@ export const groundsApi = {
   baselineHistory: (groundId: string) =>
     apiClient.get<{ version: number; successLooksLike: string | null; conditions: string[]; changeReason: string | null; effectiveFrom: string }[]>(
       `/grounds/${groundId}/baseline`,
-    ).then(r => r.data),
+    ).then(r => (Array.isArray(r.data) ? r.data : [])),
 
   /**
    * GW-EXP-2. Marks THIS viewer's own expectation as seen, and only their own.
@@ -538,7 +548,7 @@ export const groundsApi = {
   recordBaselineEntries: (groundId: string, texts: string[]) =>
     apiClient.post<{ text: string; capturedAtSession: number; createdAt: string }[]>(
       `/grounds/${groundId}/baseline-entries`, { texts },
-    ).then(r => r.data),
+    ).then(r => (Array.isArray(r.data) ? r.data : [])),
 
   baselineEntries: (groundId: string) =>
     apiClient.get<{

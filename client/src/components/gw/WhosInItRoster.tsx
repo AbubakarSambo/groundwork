@@ -333,12 +333,17 @@ export function WhosInItRoster({
              *
              * A PLAIN LINK, NOT A BUTTON (Hafsah, 30 September): it only goes to another page, and
              * does nothing here.
+             *
+             * PHONE WALK, SCREEN FAULT 1: SAID PLAINLY, WITH THEIR NAME. Said truly for either
+             * reader already (no Resend is offered here - the `waitingForSeat` branch is checked
+             * before the final `!p.userId && isInitiator` branch that offers it), but "Your plan
+             * has no seat for them yet" buried who this was about in the middle of the sentence.
+             * Leads with their name instead, the same shape for an admin (who still gets "View
+             * plans" below it) and anyone else reading the same row.
              */
             help = {
               tone: 'look',
-              text: isOrgAdmin
-                ? `Your plan has no seat for ${inASentence}. Free one or move to a larger plan, and the invitation goes out.`
-                : 'Your plan has no seat for them yet. An admin has to make room before their invitation goes out.',
+              text: `${atTheStart(name)} is waiting for a seat on your plan. They will get their invitation as soon as there is one.`,
               action: isOrgAdmin
                 ? <Link className="gwui-open-link" to="/billing">View plans</Link>
                 : undefined,

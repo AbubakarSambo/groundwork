@@ -78,13 +78,13 @@ export function LeavingBoardPage() {
 
       {data && (
         <>
-          {data.lists.length === 0 && <Empty>Nobody is leaving.</Empty>}
-          {data.lists.map(l => <AList key={l.id} l={l} owners={data.owners} onDone={done} onFailed={failed} />)}
+          {(data.lists ?? []).length === 0 && <Empty>Nobody is leaving.</Empty>}
+          {(data.lists ?? []).map(l => <AList key={l.id} l={l} owners={data.owners} onDone={done} onFailed={failed} />)}
 
-          {data.departures.length > 0 && (
+          {(data.departures ?? []).length > 0 && (
             <Section heading="Already left, with no list yet">
               <RowList label="Already left, with no list yet">
-                {data.departures.map(d => (
+                {(data.departures ?? []).map(d => (
                   <Row key={d.personId} columns="minmax(0, 1fr) auto">
                     <b>{`${d.name} left on ${longDay(d.departedOn)}.`}</b>
                     <Button kind="secondary" size="small" onClick={() => start.mutate({ personId: d.personId, lastDay: d.departedOn })}
@@ -97,10 +97,10 @@ export function LeavingBoardPage() {
 
           <StartAList people={data.people} onStart={(personId, lastDay) => start.mutate({ personId, lastDay })} busy={start.isPending} />
 
-          {data.strain.length > 0 && (
+          {(data.strain ?? []).length > 0 && (
             <Section heading="Signs a team is under strain">
               <Panel>
-                {data.strain.map((s, i) => <p key={i} className="gwui-panel-text">{s.says}</p>)}
+                {(data.strain ?? []).map((s, i) => <p key={i} className="gwui-panel-text">{s.says}</p>)}
                 <p className="gwui-panel-text-muted">This is shown for the team, never for one named person, and nobody is scored.</p>
               </Panel>
             </Section>
@@ -135,15 +135,18 @@ function AList({ l, owners, onDone, onFailed }: {
                 {owners.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
               </Select>
             </span>
+            {/* FAULT 7C OF THE LIVE WALK (6 October): "Mark done: Hand over Sara's work" and
+                "Undo: Remove Sara's access..." read as two fragments stapled together with a colon,
+                not a sentence. Said as a phrase instead, naming the step in quotes. */}
             {s.done ? (
               <span className="gwui-edge-acts">
                 <Tag>Done</Tag>
                 <Button kind="quiet" size="small" onClick={() => change.mutate({ step: s.step, done: false })} disabled={change.isPending}
-                  aria-label={`Undo: ${stepSays(s.step, l)}`}>Undo</Button>
+                  aria-label={`Undo marking “${stepSays(s.step, l)}” as done`}>Undo</Button>
               </span>
             ) : (
               <Button kind="secondary" size="small" onClick={() => change.mutate({ step: s.step, done: true })} disabled={change.isPending}
-                aria-label={`Mark done: ${stepSays(s.step, l)}`}>Mark done</Button>
+                aria-label={`Mark “${stepSays(s.step, l)}” as done`}>Mark done</Button>
             )}
           </Row>
         ))}

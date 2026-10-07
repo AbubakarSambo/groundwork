@@ -125,16 +125,25 @@ function CheckInsCell({ m, startOf }: { m: OrgMember; startOf: Map<string, { sta
   if (parts.length === 0) return <span>None</span>
   /* Commas between the names, as the prototype writes them, unless a name has a comma of its own
      ("the Nairobi route, round 1"): then a comma cannot tell one check-in from the next, so each
-     goes on its own line. */
+     goes on its own line.
+
+     "AND" FOR THE PLAIN CASE, NOT A BARE COMMA LIST (real-user walk, Kijani Foods, fault 8d).
+     Naomi's three check-ins, none of them sharing a name, used to read as a run-on list joined by
+     commas ("Weekly sales push, Nairobi, Operations drop-in, Finance close"), which reads as one
+     long check-in name rather than three. `namesAnd`, already used above for this same page's own
+     people lists, reads the same three as a plain sentence instead. */
   const oneALine = parts.some(p => p.includes(','))
-  const list = (some: string[]) => oneALine
+  /* `full`: whether `some` is every check-in rather than the first few ahead of a "that many more"
+     button - `namesAnd` reads as a plain sentence only for the complete list; cut short ahead of
+     its own "and N more", "A, B and C and 2 more" reads as two sentences arguing over one "and". */
+  const list = (some: string[], full: boolean) => oneALine
     ? <>{some.map((p, i) => <div key={i}>{p}</div>)}</>
-    : <>{some.join(', ')}</>
-  if (parts.length <= CAP) return <span>{list(parts)}</span>
+    : full ? <>{namesAnd(some)}</> : <>{some.join(', ')}</>
+  if (parts.length <= CAP) return <span>{list(parts, true)}</span>
   if (expanded) {
     return (
       <span>
-        {list(parts)}{' '}
+        {list(parts, true)}{' '}
         <button type="button" className="gwui-plain-link" onClick={() => setExpanded(false)}>
           Show fewer
         </button>
@@ -143,7 +152,7 @@ function CheckInsCell({ m, startOf }: { m: OrgMember; startOf: Map<string, { sta
   }
   return (
     <span>
-      {list(parts.slice(0, CAP))}{' '}
+      {list(parts.slice(0, CAP), false)}{' '}
       <button type="button" className="gwui-plain-link" onClick={() => setExpanded(true)}>
         {`and ${parts.length - CAP} more`}
       </button>
@@ -311,7 +320,7 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
               </ShowAFew>
             </PeopleTable>
           )}
-          {data?.meta.total != null && data.meta.total > everybody.length && (
+          {data?.meta?.total != null && data.meta.total > everybody.length && (
             <Note>{`Showing ${everybody.length} of ${data.meta.total} people.`}</Note>
           )}
         </Stack>

@@ -164,11 +164,11 @@ export function OpsEverybodyPage() {
         </div>
       )}
 
-      {board.data?.people.map((row) => (
+      {(board.data?.people ?? []).map((row) => (
         <PersonRow key={row.personId} row={row} />
       ))}
 
-      {board.data && board.data.people.length === 0 && (
+      {board.data && (board.data.people ?? []).length === 0 && (
         <div style={CARD}>Nobody active is on the team yet.</div>
       )}
     </div>

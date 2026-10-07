@@ -68,6 +68,20 @@ describe('where each person got to', () => {
     /* U.4 review: added by name, invitation not opened yet. It read "Signed in, not on a check-in". */
     expect(statusWord(m({ state: 'signed in', checkInsOn: 1, checkInsAnswered: 0, checkInsNotOpened: 1 }))).toBe('Invited, not opened')
     expect(statusWord(m({ state: 'signed in', checkInsOn: 2, checkInsAnswered: 0, checkInsNotOpened: 1 }))).toBe('Not answered yet')
+    /*
+     * REAL-USER WALK, KIJANI FOODS, FAULT 8D: somebody who only runs check-ins, and is never
+     * expected to answer one, is not "not answered yet" - that reads as a thing still waiting on
+     * them, which is untrue for a lead who leads and never takes part in their own check-in.
+     */
+    expect(statusWord(m({
+      state: 'checked in', checkInsOn: 3, checkInsAnswered: 0,
+      checkIns: [{ id: 'a', label: 'A', runsIt: true }, { id: 'b', label: 'B', runsIt: true }, { id: 'c', label: 'C', runsIt: true }],
+    }))).toBe('Runs 3 check-ins')
+    /* One of the three check-ins is hers to answer, not just to run: back to the honest "not yet". */
+    expect(statusWord(m({
+      state: 'checked in', checkInsOn: 3, checkInsAnswered: 0,
+      checkIns: [{ id: 'a', label: 'A', runsIt: true }, { id: 'b', label: 'B', runsIt: true }, { id: 'c', label: 'C', runsIt: false }],
+    }))).toBe('Not answered yet')
   })
 })
 

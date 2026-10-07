@@ -50,14 +50,14 @@ export function PricingPage() {
     staleTime: 60 * 1000,
   })
   /** The live free limit, or what we shipped with, until the request lands. */
-  const freeGrounds = livePricing?.free.groundLimit ?? FALLBACK_FREE_LIMITS.groundLimit
-  const freeTeam = livePricing?.free.memberLimit ?? FALLBACK_FREE_LIMITS.memberLimit
+  const freeGrounds = livePricing?.free?.groundLimit ?? FALLBACK_FREE_LIMITS.groundLimit
+  const freeTeam = livePricing?.free?.memberLimit ?? FALLBACK_FREE_LIMITS.memberLimit
   /* The shared sentence, or nothing while the trial is off. */
   const trialSentence = theFreeTrialSentence(livePricing?.trial)
   const trialLength = livePricing?.trial?.months === 1 ? '1 month' : `${livePricing?.trial?.months ?? 0} months`
 
   function priceLabel(plan: SubscriptionPlan): string {
-    const live = livePricing?.plans.find(p => p.plan === plan)
+    const live = livePricing?.plans?.find(p => p.plan === plan)
     /** A contact-sales plan has no amount, and "$0/mo" is the one thing this must never say. */
     if (live) return live.amountCents === null ? 'Contact us' : formatMonthlyPrice(live.amountCents)
     return PLAN_PRICES[plan]
@@ -65,7 +65,7 @@ export function PricingPage() {
 
   /** No fallback: an absent seat count is honest, a stale one is the bug being removed. */
   function capLabel(plan: SubscriptionPlan): string {
-    return formatMemberCap(livePricing?.plans.find(p => p.plan === plan)?.memberCap)
+    return formatMemberCap(livePricing?.plans?.find(p => p.plan === plan)?.memberCap)
   }
 
   const subscribeMut = useMutation({

@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { Link } from 'react-router-dom'
 import { Button, Tag } from '@/components/gw/ui'
 import { askNameFor } from '@/lib/ask-name'
+import { WHAT_AN_ADMIN_CANNOT_READ_WITHOUT_ACCESS } from '@/lib/what-an-admin-cannot-read-without-access'
 
 /**
  * WHAT A NEW ORGANISATION'S ADMIN SEES FIRST (A3 and C1, U.3): the welcome card and the prototype's
@@ -59,15 +60,20 @@ function fetchRollout(): Promise<RolloutFacts> {
   return apiClient.get('/users/rollout').then(r => r.data.data ?? r.data)
 }
 
-/** The prototype's four steps, in its order. The WhatsApp one only while WhatsApp is on. */
+/**
+ * THE PROTOTYPE'S THREE STEPS, in its order (decision 112, 7 October). This used to add a fourth,
+ * "Connect WhatsApp (optional)", leading to the page that sets up an organisation's own number -
+ * which made setting up an own number look like a normal early step, when Groundwork's own number
+ * already works for everyone and needs no setup at all. Dropped. There is no served fact yet for
+ * "the platform's WhatsApp is on but the organisation has not turned it on", so no "Turn on
+ * WhatsApp" step is added in its place either; see docs/requests-to-engine.md.
+ */
 export function getItGoing(f: RolloutFacts): Step[] {
-  const steps: Step[] = [
+  return [
     { key: 'invite', title: 'Invite your team', to: '/org/members', done: f.people > 1 },
     { key: 'admin', title: 'Add a second admin', to: '/org/members', done: f.admins > 1 },
     { key: 'checkin', title: 'Start your first check-in', to: '/start', done: f.checkIns > 0 },
   ]
-  if (f.whatsappOn) steps.push({ key: 'wa', title: 'Connect WhatsApp (optional)', to: '/settings/whatsapp', done: !!f.whatsappConnected })
-  return steps
 }
 
 /**
@@ -80,7 +86,16 @@ export function doorsFor(f: Pick<RolloutFacts, 'whatsappOn'>): { title: string; 
     { title: 'People', line: 'Invite people, set their roles and teams, and let guests in.', to: '/org/members' },
     {
       title: 'Connections',
-      line: f.whatsappOn ? 'Connect WhatsApp, bring in your numbers, and use your own address.' : 'Bring in your numbers, and use your own address.',
+      /* SCREEN FAULT 3: "and use your own address" named a feature Connections does not offer -
+         `ConnectionsPage.tsx` leaves "Your own address" out entirely (Hafsah, 29 September, item
+         11), on purpose, because nothing behind it is built. This names what the page actually
+         offers instead: WhatsApp, your numbers, and the people/goals/roles/handbook/API
+         connections under "More you can connect".
+         DECISION 112: "Connect WhatsApp" used to promise setting up an organisation's own number.
+         Groundwork's own number already works for everyone once an admin turns WhatsApp on, so
+         this says "Turn on WhatsApp" instead - true whether or not the organisation ever connects
+         a number of its own. */
+      line: f.whatsappOn ? 'Turn on WhatsApp, bring in your numbers, and connect your other tools.' : 'Bring in your numbers, and connect your other tools.',
       to: '/settings/connections',
     },
     { title: 'Suites', line: 'Switch on leave, spending and onboarding when you need them.', to: '/settings/suites' },
@@ -114,14 +129,18 @@ export function AdminFirstRun() {
     <div className="gwui-first-run">
       {showWelcome && (
         <section className="gwui-welcome-card" aria-label="Welcome">
+          {/*
+            SCREEN FAULT 7: "GOT IT" SAT BETWEEN THE TITLE AND THE BODY, so a new admin's card
+            invited them to dismiss it before they had read it. Moved to its own row after the
+            doors, below everything the card actually says.
+          */}
           <div className="gwui-welcome-card-head">
             <h2>You’re an admin at {orgName}</h2>
-            <Button kind="quiet" size="small" onClick={() => gotIt.mutate()} disabled={gotIt.isPending}>Got it</Button>
           </div>
           <p className="gwui-welcome-card-line">
             You can see every board and report, including what people said in them. You never see anyone’s
-            questions to {askNameFor(realOrgName)}, anyone’s own report, or a lead’s private notes, and never a
-            performance plan, promotion or renewal unless given access to that check-in.
+            questions to {askNameFor(realOrgName)}, anyone’s own report, or a lead’s private notes, and never
+            {' '}{WHAT_AN_ADMIN_CANNOT_READ_WITHOUT_ACCESS} unless given access to that check-in.
           </p>
           <ul className="gwui-welcome-doors">
             {doorsFor(data).map(d => (
@@ -133,6 +152,9 @@ export function AdminFirstRun() {
               </li>
             ))}
           </ul>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Button kind="quiet" size="small" onClick={() => gotIt.mutate()} disabled={gotIt.isPending}>Got it</Button>
+          </div>
         </section>
       )}
       {!finished && (

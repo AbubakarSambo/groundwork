@@ -99,6 +99,21 @@ describe('Today, as the lead', () => {
     ])
   })
 
+  /* Live walk at a hundred people, fault 2: an approval item used to send the approver straight to
+     the whole organisation's board (`/suite/leave`, `/suite/spend`), never filtered to this one
+     thing. It now goes to the approver's own queue, filtered by `?suite=`. */
+  it('sends an approval item to the queue, filtered to its suite, not straight to the whole board', async () => {
+    open(WAIRIMU, {
+      ...LEAD_READ,
+      needs: [
+        { key: 'approve-leave-0', kind: 'decide', title: 'Aisha asked for leave from Monday 12 October to Friday 16 October.', detail: 'It is waiting for you to approve.', action: { label: 'Look at it', to: '/suite/leave' }, groundId: '', organizationId: 'o' },
+        { key: 'approve-spend-0', kind: 'decide', title: 'Kamau asked to spend KES 18,000 on fuel.', detail: 'It is waiting for you to approve.', action: { label: 'Look at it', to: '/suite/spend' }, groundId: '', organizationId: 'o' },
+      ],
+    })
+    const links = await screen.findAllByRole('link', { name: 'Look at it' })
+    expect(links.map(a => a.getAttribute('href'))).toEqual(['/suite/queue?suite=leave', '/suite/queue?suite=spend'])
+  })
+
   it('says what is coming up, in her own time', async () => {
     open(WAIRIMU, LEAD_READ)
     const aside = await screen.findByRole('complementary', { name: 'Coming up' })
@@ -129,19 +144,42 @@ describe('Today, as a participant', () => {
 })
 
 describe('Today, for a new organisation’s admin', () => {
-  it('starts with the welcome card, its doors, and "Get <organisation> going", and says nothing needs you yet', async () => {
-    open(GRACE, { count: 0, line: null, needs: [], comingUp: [] })
+  /*
+   * SCREEN FAULT 7, 6 OCTOBER: THE WELCOME CARD USED TO COME FIRST, ABOVE THE GREETING AND "WHAT
+   * NEEDS YOU". On a phone - where this page is one column, not the side-by-side layout a wide
+   * screen draws - that put "You're an admin" and "Get <organisation> going" as the entire first
+   * screen, with the greeting and anything that actually needed her two screens further down.
+   * This test used to pin that order ("starts with the welcome card..."); it now pins the
+   * corrected one, the reason this file's assertions on greeting-before-welcome-card exist below.
+   */
+  it('greets her and says what needs her before the welcome card and "Get <organisation> going"', async () => {
+    const { container } = open(GRACE, { count: 0, line: null, needs: [], comingUp: [] })
     expect(await screen.findByRole('heading', { name: 'You’re an admin at Nyali Foods' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Get Nyali Foods going' })).toBeTruthy()
     expect(screen.getByText('Nothing needs you right now.')).toBeTruthy()
     expect(screen.getByText('Wednesday 23 September.')).toBeTruthy()
     expect(screen.queryByText(/most important first/)).toBeNull()
+    const text = container.textContent ?? ''
+    const greetingAt = text.indexOf('Morning, Grace')
+    const needsAt = text.indexOf('What needs you')
+    const welcomeAt = text.indexOf('You’re an admin at Nyali Foods')
+    const goingAt = text.indexOf('Get Nyali Foods going')
+    expect(greetingAt).toBeGreaterThan(-1)
+    expect(needsAt).toBeGreaterThan(-1)
+    expect(welcomeAt).toBeGreaterThan(-1)
+    expect(goingAt).toBeGreaterThan(-1)
+    expect(greetingAt).toBeLessThan(welcomeAt)
+    expect(needsAt).toBeLessThan(welcomeAt)
+    expect(welcomeAt).toBeLessThan(goingAt)
     /* Answered 29 September, item 11 conflict B: Hafsah's exact sentence, naming the exceptions
        decision 5 now covers (a performance plan, promotion or renewal alike), replaces the old
        held sentence that pointed "They" at nobody. */
-    /* Ask is named for the organisation (decision 100): "Ask Nyali Foods", not "Ask Groundwork". */
+    /* Ask is named for the organisation (decision 100): "Ask Nyali Foods", not "Ask Groundwork".
+       SCREEN FAULT 8: updated to the one shared sentence (lib/what-an-admin-cannot-read-without-
+       access.ts), which also names somebody's first 90 days - the fourth kind
+       who-may-read-this-check-in.ts closes to an admin, missing here before. */
     expect(screen.getByText(
-      'You can see every board and report, including what people said in them. You never see anyone’s questions to Ask Nyali Foods, anyone’s own report, or a lead’s private notes, and never a performance plan, promotion or renewal unless given access to that check-in.',
+      'You can see every board and report, including what people said in them. You never see anyone’s questions to Ask Nyali Foods, anyone’s own report, or a lead’s private notes, and never a performance plan, a promotion, a renewal or somebody\'s first 90 days unless given access to that check-in.',
     )).toBeTruthy()
   })
 })

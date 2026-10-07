@@ -49,12 +49,19 @@ import { Button, Callout, Note, TextField, TextArea, Bubble, Composer, PhaseStep
  * Everybody typed by hand is still their address.
  */
 const A_COLLEAGUE = 'colleague:'
-function asSomeoneToInvite(entry: string): { email?: string; colleagueId?: string; context?: string } {
+/**
+ * THE NAME ASKED BESIDE EACH EMAIL, FOR AN ANCHOR DRAFT (section 13, "Name + email"; request 166's
+ * `displayName`). Kept apart from `entry` rather than folded into its "email - context" string: an
+ * entry is an address first, and the name is looked up by it here, from the map the people step
+ * builds as names are typed.
+ */
+function asSomeoneToInvite(entry: string, displayNames?: Record<string, string>): { email?: string; colleagueId?: string; context?: string; displayName?: string } {
   const dash = entry.indexOf(' - ')
   const head = dash === -1 ? entry : entry.slice(0, dash)
   const context = dash === -1 ? undefined : entry.slice(dash + 3)
   const who = head.startsWith(A_COLLEAGUE) ? { colleagueId: head.slice(A_COLLEAGUE.length) } : { email: head }
-  return context === undefined ? who : { ...who, context }
+  const name = !head.startsWith(A_COLLEAGUE) ? displayNames?.[head.trim().toLowerCase()] : undefined
+  return { ...who, ...(context !== undefined ? { context } : {}), ...(name ? { displayName: name } : {}) }
 }
 
 /** What a person may say in one message. The API's cap on every door; the same number here so a turn is never refused. */
@@ -1132,15 +1139,17 @@ export function whatOpeningTheLinkDoes(people: number, startsOnLater: string | n
   return `Opening it saves your check-in. Then you see who was invited and who has to wait.${later}`
 }
 
-/* U.6 review: a sentence, not pieces joined with dashes: "daniel@x.test (Daniel). Your note: He is
-   the subject of this check-in." Shown on the lead's own page only; nothing of it reaches the person. */
+/* U.6 review: a sentence, not pieces joined with dashes: "daniel@x.test (Daniel). You wrote “He is
+   the subject of this check-in." Shown on the lead's own page only; nothing of it reaches the person.
+   SCREEN FAULT 6(b): "Your note" was a label naming the thing that follows ("note:"), not a sentence
+   - "You wrote" says who said it, the way the rest of this function already reads as plain speech. */
 export function anEntryAsASentence(entry: string, shownAs: (head: string) => string = (h) => h): string {
   const [who, ...rest] = entry.split(' - ')
   const address = shownAs(who)
   if (!rest.length) return `${address}.`
   const [name, ...note] = rest.length > 1 ? rest : ['', ...rest]
   const said = note.join(' - ').trim()
-  return `${address}${name ? ` (${name.trim()})` : ''}.${said ? ` Your note: ${said.replace(/([^.?!])$/, '$1.')}` : ''}`
+  return `${address}${name ? ` (${name.trim()})` : ''}.${said ? ` You wrote “${said.replace(/[.?!]+$/, '')}”.` : ''}`
 }
 
 /* "daniel@x.test is waiting to be invited." or "a@x.test and b@x.test are waiting to be invited." */
@@ -1367,10 +1376,22 @@ export function EntryChatPage() {
     authApi.colleagues().then(setColleagues).catch(() => setColleagues([]))
   }, [user])
   /** A colleague whose name is the one mentioned, when exactly one matches. Never a guess between two. */
-  /** A queued entry as a person reads it: a colleague by name, anybody else by the address typed. */
+  /**
+   * A queued entry as a person reads it: a colleague by name, anybody else by the address typed -
+   * and, when the people step's own Name field (section 13, "Name + email") was used, "Name
+   * (address)" rather than the address alone.
+   *
+   * FAULT 3: NAMES ARE DROPPED AFTER THE PEOPLE STEP. The Name field only ever reached
+   * `displayNames`, read when building the commit payload (`asSomeoneToInvite`) - never here, so
+   * the added list showed "✓ musa@anchor.test" and the confirmation said "...waiting to be
+   * invited" with the address alone, though a name had been typed for them.
+   */
   function shownAs(head: string): string {
-    if (!head.startsWith(A_COLLEAGUE)) return head
-    return colleagues.find((c) => c.id === head.slice(A_COLLEAGUE.length))?.name ?? 'A colleague'
+    if (head.startsWith(A_COLLEAGUE)) {
+      return colleagues.find((c) => c.id === head.slice(A_COLLEAGUE.length))?.name ?? 'A colleague'
+    }
+    const name = displayNames[head.trim().toLowerCase()]
+    return name ? `${name} (${head})` : head
   }
   function shownEntry(entry: string): string { return anEntryAsASentence(entry, shownAs) }
   function whoIsWaiting(): string { return whoIsWaitingSentence(inviteAdded.map((e) => shownAs(e.split(' - ')[0]))) }
@@ -1501,6 +1522,14 @@ export function EntryChatPage() {
   /* The honeypot the API has always accepted and no form has ever rendered. */
   const trap = useTheTrap()
   const [inviteEmail, setInviteEmail] = useState('')
+  /**
+   * "Name + email" (section 13), anchor draft only. Asked first, beside the email, in the one row
+   * that adds a person by hand - optional, kept by email address until that person is actually
+   * added, then sent on commit as `displayName`.
+   */
+  const [inviteDisplayName, setInviteDisplayName] = useState('')
+  const [pendingDisplayName, setPendingDisplayName] = useState('')
+  const [displayNames, setDisplayNames] = useState<Record<string, string>>({})
   const [inviteNote, setInviteNote] = useState('')
   const [inviteAdded, setInviteAdded] = useState<string[]>([])
   const [inviteContextFor, setInviteContextFor] = useState<string | null>(null)
@@ -1595,6 +1624,32 @@ export function EntryChatPage() {
   const theSituationSaved = (onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario || '') as ScenarioKey
   const [endChosen, setEndChosen] = useState(false)
   useEffect(() => {
+    /*
+     * FAULT 2: THE ANCHOR IS ONE MONTH, WEEKLY (section 20). `HELP_TEAM_UNDERSTAND` is not in
+     * SCENARIO_FACTS at all (it is the anchor's own situation key, not a picker card), so without
+     * this the lookup below found nothing, the cadence stayed the component's bare 'FORTNIGHTLY'
+     * default and no end date was ever set - the save card showed "every 2 weeks" with no end, and
+     * the saved check-in carried `ends_at: null`. The lead can still change either.
+     */
+    if (isAnchorDraft()) {
+      /*
+       * SCREEN FAULT 3: WEEKLY HAS TO BE SENT AS A CHOICE, OR THE SERVER NEVER HEARS IT.
+       *
+       * `cadenceChosen` is what `buildCommitPayload` sends and what the service reads
+       * (`entry.service.ts`: `dto.cadenceChosen === true && dto.cadence ...`) - an unmarked cadence
+       * is read as nobody having picked one, so the server fell back to its own default
+       * (FORTNIGHTLY) regardless of what this screen showed. The anchor's weekly rhythm is not the
+       * page's bare default here, the same way its one-month end date just below is not left to
+       * `endChosen` either - both are this situation's own settled answer, so both are marked chosen.
+       */
+      if (!cadenceChosen) { setCadence('WEEKLY'); setCadenceChosen(true) }
+      if (!endChosen) {
+        const from = checkInBy ? new Date(`${checkInBy}T00:00:00`) : new Date()
+        const end = new Date(from.getFullYear(), from.getMonth() + 1, from.getDate())
+        setLastCheckInBy(`${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`)
+      }
+      return
+    }
     const facts = SCENARIO_FACTS[theSituationSaved]
     if (!facts) return
     if (!cadenceChosen) setCadence(CADENCE_VALUE[facts.cadence] as typeof cadence)
@@ -1610,7 +1665,7 @@ export function EntryChatPage() {
         : new Date(from.getFullYear(), from.getMonth(), from.getDate() + gap * (n - 1))
       setLastCheckInBy(`${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`)
     }
-  }, [theSituationSaved, cadenceChosen, cadence, endChosen, checkInBy, plannedFrom?.timelineDays])
+  }, [theSituationSaved, cadenceChosen, cadence, endChosen, checkInBy, plannedFrom?.timelineDays, onboardingSelections.classifiedScenario, scenario, pickedSituation])
 
   /*
    * PUTS BACK THE SETUP THIS DEVICE KEPT.
@@ -1903,7 +1958,9 @@ export function EntryChatPage() {
     setGeneratingReport(true)
     setReportTurnsForRetry(turns)
     try {
-      const res = await entryApi.report(turns, scenario || undefined, groundName || undefined, onboardingSelections.peopleNamed)
+      /* The anchor's seven items go with the report too (request 166), so the lead's reveal says
+         what she said rather than "not written down yet". Every other draft sends nothing here. */
+      const res = await entryApi.report(turns, scenario || undefined, groundName || undefined, onboardingSelections.peopleNamed, isAnchorDraft() ? onboardingSelections.anchorItems : undefined)
       setSessionReport(res.report)
       setReportTurnsForRetry(null)
       persistCheckin(turns, true, res.report ? JSON.stringify(res.report) : '')
@@ -2176,6 +2233,21 @@ export function EntryChatPage() {
       }
       setOnboardingReady(res.ready)
       persistOnboarding([], onboardingSelections, onboardingStep, updatedHistory, res.ready)
+      /*
+       * THE ANCHOR HAS NO FORK AND NO SECOND CONVERSATION (request 165, "the rest of the anchor's
+       * walk"). Every other situation reaches `ready` and then asks who does the check-ins - "I set
+       * this up and check in myself" against "I check in once...", each of which opens an ordinary
+       * first check-in that asks her opening question again. The spec for the anchor has neither: her
+       * set-up conversation IS the one conversation, so once it is ready, this conversation's own
+       * transcript becomes the session's record straight away, and the next thing she sees is the
+       * reveal and the people step.
+       */
+      if (res.ready && isAnchorDraft()) {
+        setHistory(updatedHistory)
+        setClosed(true)
+        setShowSave(true)
+        generateSessionReport(updatedHistory)
+      }
       setTimeout(() => {
         if (msgsRef.current) msgsRef.current.scrollTop = msgsRef.current.scrollHeight
       }, 50)
@@ -2387,7 +2459,19 @@ export function EntryChatPage() {
     return {
         /* Which setup this is, so a retried save is the same check-in and a new setup is a new one (U.6 review). */
         setupKey: theSetupKey(),
-        groundLabel: groundName.trim() || fallbackGroundName(theSituationTheLeadPicked() ?? onboardingSelections.classifiedScenario, orgName.trim() || user?.organization?.name || undefined),
+        /*
+         * SCREEN FAULT 2: THE NAME, FOR AN ANCHOR DRAFT, IS THE SERVED `groundLabel` ITSELF.
+         *
+         * Everywhere else, `groundName` (what the lead typed, or the aim the conversation drew out)
+         * is the ground's name, and a blank one falls back to "A check-in at <organisation>". An
+         * anchor draft never reaches that fallback and never shows the aim here either: the title,
+         * sidebar, invitation and Today all read the one served sentence ("Help my team
+         * understand") - `anchorGroundLabel`, carried from `/entry/anchor-start` the same way the
+         * people step and the first question are (see `takeTheServedGroundLabel` in TheSetup.tsx).
+         */
+        groundLabel: isAnchorDraft()
+          ? anchorGroundLabel
+          : (groundName.trim() || fallbackGroundName(theSituationTheLeadPicked() ?? onboardingSelections.classifiedScenario, orgName.trim() || user?.organization?.name || undefined)),
         orgName: orgName.trim() || undefined,
         /*
          * FAULT 1(b): AN ANCHOR DRAFT'S SITUATION NEVER LOSES TO `onboardingSelections.mode`.
@@ -2416,7 +2500,7 @@ export function EntryChatPage() {
         // Each contributor gets its own token - the server generates one per participant.
         // Do NOT pass a shared inviteToken here; it would cause unique constraint failures
         // on the second contributor and silently drop them.
-        contributors: inviteAdded.map(asSomeoneToInvite),
+        contributors: inviteAdded.map(e => asSomeoneToInvite(e, displayNames)),
         /**
          * THE DOCUMENT SURVIVES AS A DOCUMENT, not just as words in the chat.
          *
@@ -2686,7 +2770,10 @@ export function EntryChatPage() {
     if (!emailSent || !draftToken) return
     const t = setTimeout(() => {
       const patch = {
-        groundLabel: groundName.trim() || fallbackGroundName(theSituationTheLeadPicked() ?? onboardingSelections.classifiedScenario, orgName.trim() || user?.organization?.name || undefined),
+        /* SCREEN FAULT 2: same rule as `buildCommitPayload` above - the served label, not the aim. */
+        groundLabel: isAnchorDraft()
+          ? anchorGroundLabel
+          : (groundName.trim() || fallbackGroundName(theSituationTheLeadPicked() ?? onboardingSelections.classifiedScenario, orgName.trim() || user?.organization?.name || undefined)),
         orgName: orgName.trim() || undefined,
         cadence,
         /* The page's default is not a choice; the server records only a confirmed pick as one. */
@@ -2696,7 +2783,7 @@ export function EntryChatPage() {
         checkInBy: checkInBy.trim() || undefined,
         lastCheckInBy: lastCheckInBy.trim() || undefined,
         inviteNote: inviteNote.trim() || undefined,
-        contributors: inviteAdded.map(asSomeoneToInvite),
+        contributors: inviteAdded.map(e => asSomeoneToInvite(e, displayNames)),
       }
       entryApi.patchDraft(draftToken, patch).catch(() => { /* best-effort: localStorage still mirrors this */ })
       // Keep the local commit body (gw_commit_payload) in sync with these
@@ -2719,7 +2806,7 @@ export function EntryChatPage() {
       } catch { /* */ }
     }, 800)
     return () => clearTimeout(t)
-  }, [emailSent, draftToken, groundName, orgName, cadence, cadenceAnchorDay, workingDays, checkInBy, lastCheckInBy, inviteNote, inviteAdded])
+  }, [emailSent, draftToken, groundName, orgName, cadence, cadenceAnchorDay, workingDays, checkInBy, lastCheckInBy, inviteNote, inviteAdded, displayNames])
 
   async function copyInviteLink() {
     const link = `${window.location.origin}/invite?token=${inviteToken}`
@@ -2735,8 +2822,19 @@ export function EntryChatPage() {
     const e = inviteEmail.trim()
     if (!looksLikeAnAddress(e)) return
     setInviteEmail('')
+    /* The name typed beside this email (anchor draft only) travels with it into the context step,
+       so it is still there to keep once the person is actually added - Skip included. */
+    setPendingDisplayName(inviteDisplayName.trim())
+    setInviteDisplayName('')
     setInviteContextFor(e)
     setInviteContext('')
+  }
+
+  /** Keeps `pendingDisplayName` against this email, once the person is actually added. A no-op off the anchor path (nothing was ever typed there). */
+  function keepPendingDisplayName(email: string) {
+    const name = pendingDisplayName.trim()
+    if (name) setDisplayNames(prev => ({ ...prev, [email.trim().toLowerCase()]: name }))
+    setPendingDisplayName('')
   }
 
   // Queues a recommended addition / mentioned person straight into the
@@ -2774,6 +2872,12 @@ export function EntryChatPage() {
     const entry = inviteContextFor + (inviteContext.trim() ? ` - ${inviteContext.trim()}` : '')
     const newAdded = inviteAdded.includes(inviteContextFor) ? inviteAdded : [...inviteAdded, entry]
     setInviteAdded(newAdded)
+    /* Built synchronously, not read back from state: `setDisplayNames` below has not re-rendered
+       yet when the localStorage sync just underneath needs the name that was just typed. */
+    const name = pendingDisplayName.trim()
+    const newNames = name ? { ...displayNames, [inviteContextFor.trim().toLowerCase()]: name } : displayNames
+    if (name) setDisplayNames(newNames)
+    setPendingDisplayName('')
     setInviteContext('')
     // Drain bulk queue: advance to next email if one is waiting
     const [next, ...rest] = bulkQueue
@@ -2788,11 +2892,7 @@ export function EntryChatPage() {
       const raw = localStorage.getItem('gw_commit_payload')
       if (raw) {
         const payload = JSON.parse(raw)
-        payload.contributors = newAdded.map(e => {
-          const dashIdx = e.indexOf(' - ')
-          if (dashIdx === -1) return { email: e }
-          return { email: e.slice(0, dashIdx), context: e.slice(dashIdx + 3) }
-        })
+        payload.contributors = newAdded.map(e => asSomeoneToInvite(e, newNames))
         localStorage.setItem('gw_commit_payload', JSON.stringify(payload))
       }
     } catch { /* */ }
@@ -2945,6 +3045,18 @@ export function EntryChatPage() {
      * wording here is unchanged.
      */
     const isAnchor = isAnchorDraft()
+    /**
+     * FAULT 8 (live walk, 6 October 2026): A PASSING TOAST WAS THE ONLY SIGN THE LIMIT WAS
+     * REACHED, AND "ADD PERSON" COULD THEN SILENTLY DO NOTHING.
+     *
+     * A pasted 20th email was dropped with only a toast (gone in a few seconds), and once that
+     * left a 21st, already-typed email sitting in the context step, pressing "Add person" there
+     * called `submitInviteContext`, which checks the same limit and simply returns - no toast, no
+     * disabled control, nothing on screen to say why. `thePeopleStepRules.mayAdd` is the served
+     * limit (decision 96 item 3); this is the same check `mayAddOneMorePerson` already makes,
+     * read here too so the add row itself can show a lasting Note and disable its own buttons.
+     */
+    const peopleLimitReached = isAnchor && inviteAdded.length >= thePeopleStepRules.mayAdd
     const inviteHeading = isAnchor ? thePeopleStepRules.heading : isSensitive ? 'Let them share their side' : 'Invite people'
     const inviteSubtext = isAnchor
       ? thePeopleStepRules.intro
@@ -3038,7 +3150,10 @@ export function EntryChatPage() {
       {inviteContextFor ? (
         <div className="gwui-ec-savecard-invite-context">
           <div className="gwui-ec-savecard-invite-context-head">
-            <div className="gwui-ec-savecard-invite-context-name">{inviteContextFor}</div>
+            {/* SCREEN FAULT 6(a): THE NAME GIVEN, NOT THE EMAIL, WHEN ONE WAS GIVEN.
+                `pendingDisplayName` is this one person's name, typed beside their email a step
+                earlier and not yet kept to `displayNames` (that happens on Add/Skip, below). */}
+            <div className="gwui-ec-savecard-invite-context-name">{pendingDisplayName.trim() || inviteContextFor}</div>
             {bulkQueue.length > 0 && (
               <div className="gwui-ec-savecard-invite-context-more">{bulkQueue.length} more after this</div>
             )}
@@ -3055,13 +3170,26 @@ export function EntryChatPage() {
               if (inviteAdded.includes(inviteContextFor) || mayAddOneMorePerson()) {
                 const newAdded = inviteAdded.includes(inviteContextFor) ? inviteAdded : [...inviteAdded, inviteContextFor]
                 setInviteAdded(newAdded)
+                keepPendingDisplayName(inviteContextFor)
+              } else {
+                setPendingDisplayName('')
               }
               setInviteContext('')
               const [next, ...rest] = bulkQueue
               if (next) { setBulkQueue(rest); setInviteContextFor(next) } else { setInviteContextFor(null) }
             }}>Skip</Button>
-            <Button kind="secondary" size="small" onClick={submitInviteContext}>Add person</Button>
+            <Button
+              kind="secondary" size="small" onClick={submitInviteContext}
+              disabled={peopleLimitReached && !inviteAdded.includes(inviteContextFor)}
+            >
+              Add person
+            </Button>
           </div>
+          {/* FAULT 8: a lasting Note, not a toast that is gone in a few seconds, and "Add person"
+              above is disabled rather than silently doing nothing once the limit is reached. */}
+          {peopleLimitReached && !inviteAdded.includes(inviteContextFor) && (
+            <Note tone="muted">{thePeopleStepRules.limitSentence}</Note>
+          )}
         </div>
       ) : bulkInviteMode ? (
         <div>
@@ -3098,15 +3226,40 @@ export function EntryChatPage() {
               Add all
             </Button>
           </div>
+          {/* FAULT 8: the toast above still says so the moment a paste goes over - this is the
+              lasting version, here whenever the limit was already reached before pasting at all. */}
+          {peopleLimitReached && <Note tone="muted">{thePeopleStepRules.limitSentence}</Note>}
         </div>
       ) : (
         <>
+          {/*
+            "Name + email" (section 13), anchor draft only: the name is asked first, beside the
+            email, before the optional "What do they do" context that follows once Add is pressed.
+            Every other situation's add row is unchanged - just the email and the Add button.
+          */}
+          {isAnchor && (
+            <TextField type="text" aria-label="Name" placeholder="Name" value={inviteDisplayName}
+              onChange={e => setInviteDisplayName(e.target.value)}
+              className="gwui-ec-savecard-field"
+            />
+          )}
           <div className="gwui-ec-savecard-invite-add-row">
             <TextField type="email" placeholder="name@company.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && addInviteEmail()}
             />
             <Button kind="secondary" size="small" onClick={addInviteEmail}>Add</Button>
           </div>
+          {/*
+           * FAULT 8 (live walk, 6 October 2026): A LASTING NOTE UNDER THE ADD ROW, NOT A PASSING
+           * TOAST, ONCE THE LIMIT IS REACHED.
+           *
+           * The row itself still opens the context step either way (asking what somebody does is
+           * not itself adding them, the same design the limit test above already pins) - it is
+           * "Add person" there that actually adds somebody, and that is where it is now disabled.
+           * This Note means the lead already knows why, instead of finding out only once they
+           * reach that further step.
+           */}
+          {peopleLimitReached && <Note tone="muted">{thePeopleStepRules.limitSentence}</Note>}
           <button type="button" className="gwui-plain-link" onClick={() => setBulkInviteMode(true)}>
             Paste multiple emails
           </button>
@@ -3520,8 +3673,11 @@ export function EntryChatPage() {
 
               {/* The fork, shown when the AI signals ready. Replaces the old
                   "are you involved?" question (which drove nothing but
-                  check-in-vs-skip; ownership was never derived from it). */}
-              {onboardingReady && !onboardingLoading && flowPath !== 'lead' && (
+                  check-in-vs-skip; ownership was never derived from it).
+                  NOT FOR THE ANCHOR (request 165): her set-up conversation is the whole
+                  conversation, so by the time this page would draw the fork, `onboardingReady`
+                  handling above has already moved her straight to the reveal. */}
+              {onboardingReady && !onboardingLoading && flowPath !== 'lead' && !isAnchorDraft() && (
                 <div className="gwui-ec-fork">
                   <Bubble mine={false}>
                     {/*
@@ -3710,7 +3866,15 @@ export function EntryChatPage() {
                       sendDisabled={!input.trim()}
                       sendText="Send"
                       sendLabel="Send message"
-                      placeholder="Type your response, or add a document with + Doc"
+                      /*
+                       * FAULT 7 (live walk, 6 October 2026): SHORTENED, AND TWO ROWS TALL, SO IT IS
+                       * NEVER CLIPPED AT 375px. The "+ Doc" button beside this already says how to
+                       * add a document, so repeating "with + Doc" in the placeholder was redundant
+                       * as well as too long to fit one line next to it and "Send" at a phone width -
+                       * `rows={2}` gives the wrapped text somewhere to go instead of being cut off.
+                       */
+                      placeholder="Type your response, or add a document."
+                      rows={2}
                       autoFocus
                     />
                   </div>
@@ -3960,7 +4124,17 @@ export function EntryChatPage() {
             readers on step 1, before anything is on record. */}
         <div className="gwui-ec-savecard">
 
-          {/* Report header */}
+          {/*
+            * SCREEN FAULT 1: NO ORDINARY SESSION-1 HEADER FOR AN ANCHOR DRAFT.
+            *
+            * This header ("This is session 1. It is your private report." and the venn sentence
+            * about a later shared report) describes the ordinary multi-party check-in, where other
+            * people answer their own session 1 and a shared report follows. The anchor has neither:
+            * one conversation, no fork, straight to the reveal (see `isAnchorDraft()`'s own
+            * commentary above). For an anchor draft the reveal below is the whole header - nothing
+            * from the ordinary path announces it first.
+            */}
+          {!isAnchorDraft() && (
           <div className="gwui-ec-savecard-header">
             {/* Full sentence, no dot, no capitals label (U.8 review): CLAUDE.md's wording rule
                 applies here the same as everywhere else a person reads. */}
@@ -4003,6 +4177,7 @@ export function EntryChatPage() {
               )
             })()}
           </div>
+          )}
 
           <div className="gwui-ec-savecard-body">
 
@@ -4098,6 +4273,17 @@ export function EntryChatPage() {
                   <>
                           {/* Anonymous correction: routed through the live engine (/entry/chat),
                               not a one-shot patch. See the comment block above buildCorrectionTurn. */}
+                          {/*
+                            FAULT 6 (LIVE RE-WALK): DARK BLUE ON NAVY. `gwui-plain-link`'s default
+                            ink is `var(--gw-navy)`, right for every other quiet link in this
+                            product - but this one sits inside TheReportYouSawAtTheEnd's own dark
+                            summary card (`.gw-head`, `background: var(--gw-dark)`), the one place
+                            that ink is unreadable against its own ground. Fixed in the shared
+                            stylesheet both reports already draw from (CLOSE_SHEET, `.gw-close
+                            .gw-head .gwui-plain-link`), not here - a rebuilt page like this one may
+                            carry no inline colour and no new one-off class, and the colour only
+                            ever needs to differ inside that one dark card.
+                          */}
                           {!showCorrection ? (
                             <button
                               type="button" className="gwui-plain-link"
@@ -4239,12 +4425,15 @@ export function EntryChatPage() {
                   {(user
                     ? [
                       startsLater ? `Save this. Nobody is invited before ${theDay(new Date(`${checkInBy}T00:00:00`))}.` : 'Save this. You then see who was invited and who has to wait.',
-                      'Once they check in, everyone gets the shared report. It shows where you agree and where the conversation still needs to happen.',
+                      /* SCREEN FAULT 1: no shared report, no round, for an anchor draft - each
+                         person reads their own account, not a report that releases once everyone
+                         has checked in (docs/anchor-scenario.md). */
+                      ...(isAnchorDraft() ? [] : ['Once they check in, everyone gets the shared report. It shows where you agree and where the conversation still needs to happen.']),
                     ]
                     : [
                       'Save your email below to keep access to this report.',
                       'Open the confirmation link we email you. That saves it, then shows who was invited and who has to wait.',
-                      'Once they check in, everyone gets the shared report. It shows where you agree and where the conversation still needs to happen.',
+                      ...(isAnchorDraft() ? [] : ['Once they check in, everyone gets the shared report. It shows where you agree and where the conversation still needs to happen.']),
                     ]).map((step, i) => (
                     <div key={i} className="gwui-ec-savecard-whatnext-row">
                       <div className="gwui-ec-savecard-whatnext-num">{i + 1}</div>
@@ -4419,7 +4608,16 @@ export function EntryChatPage() {
             <div>
             <div className="gwui-ec-savecard-divider" />
 
-            {/* Ground + org naming */}
+            {/*
+              * SCREEN FAULT 2: NOTHING LEFT TO NAME, FOR AN ANCHOR DRAFT.
+              *
+              * Its name is already set - the served `groundLabel` ("Help my team understand"), sent
+              * on commit above - so "Name this situation" asks for something already answered, and
+              * "Still to set: a name and a rhythm" (whatIsSetAndWhatIsNot, below) says a name is
+              * still missing when it never was. Both describe the ordinary path, where the lead
+              * picks her own name and rhythm; the anchor picks neither.
+              */}
+            {!isAnchorDraft() && (
             <div className="gwui-ec-savecard-name-block">
               <div className="gwui-ec-savecard-name-label">Name this situation</div>
               <TextField
@@ -4442,6 +4640,7 @@ export function EntryChatPage() {
                 })}
               </div>
             </div>
+            )}
 
             {/*
               * FAULT 3: FOR AN ANCHOR DRAFT, THE PEOPLE STEP RENDERS EARLIER (see the call to

@@ -440,6 +440,14 @@ a.gwui-person-row:hover { background: var(--gw-page); }
   padding: 0; cursor: pointer; font-family: inherit; text-decoration: none;
 }
 .gwui-open-link:hover { text-decoration: underline; }
+/*
+ * SCREEN FAULT 10: People's "Open" links were 34x22 on a phone - under the 40px floor every other
+ * tappable row control already has. Same technique as `.gwui-tap-40`/`.gwui-plain-link` just
+ * above, on this class's own name since every caller already uses it unchanged.
+ */
+@media (max-width: 640px) {
+  .gwui-open-link { min-height: 40px; display: inline-flex; align-items: center; }
+}
 /* A plain text link that still does something (not a navigation), for a control that must not
    compete with the page's one real primary button (Hafsah, 30 September, item 2). Same look as
    .gwui-open-link, under its own name for anywhere that isn't a list row. */
@@ -487,6 +495,15 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 }
 @media (max-width: 640px) {
   .gwui-icon-btn { width: 40px; height: 40px; }
+}
+/*
+ * SCREEN FAULT 5: THE HELP MODAL'S OWN CLOSE BUTTON WAS A FIXED 28px CIRCLE AT EVERY WIDTH.
+ * Same floor as `.gwui-icon-btn` just above, on its own name because HelpModal.tsx sets this
+ * button's other styles (position, background, colour) inline rather than through that class.
+ */
+.gwui-help-close { width: 28px; height: 28px; }
+@media (max-width: 640px) {
+  .gwui-help-close { width: 40px; height: 40px; }
 }
 .gwui-invite-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
 /* A FIELD BESIDE ITS BUTTON, EVEN ON A PHONE (group 1 review, "Add it, switched off"): `.gwui-input`
@@ -1466,6 +1483,11 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   .gwui-suite-switch { justify-self: start; }
 }
 .gwui-suite-ask { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--gw-border); display: flex; flex-direction: column; gap: 12px; }
+/* The same form, with nothing above it in its panel to divide from (screen fault 6e: the
+   leave and payment request forms reached from the check-in's own button are the only thing
+   their panel holds, so the ordinary top rule drew as an empty line with nothing on either
+   side). Same shape, no line. */
+.gwui-suite-ask-alone { display: flex; flex-direction: column; gap: 12px; }
 .gwui-suite-q { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 /* A record table (time sheets, equipment, spending, customers, the role map): the product's own
    shape, no dedicated prototype class - the prototype draws each of these by hand per screen. */

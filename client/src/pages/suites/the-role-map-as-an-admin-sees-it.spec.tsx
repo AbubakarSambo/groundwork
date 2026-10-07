@@ -58,13 +58,29 @@ describe('Grace, an admin', () => {
     open(GRACE, MAP)
     await screen.findByRole('table')
     expect([...document.querySelectorAll('thead th')].map(th => th.textContent)).toEqual(['Role', 'What it owns', 'Who holds it'])
+    /*
+     * FAULT 3 OF THE LIVE WALK (6 October): each stacked cell now carries its own visible label
+     * ("What it owns"/"Who holds it" prefixed, as ReviewsBoardPage's table already does), which
+     * `rows()` reads too, since it reads each cell's whole text content.
+     */
     expect(rows()).toEqual([
-      ['Sales lead', 'The sales target and the sales team', 'Wairimu Kamau'],
-      ['Head of operations', 'People, pay, finance and credit terms', 'Grace Achieng'],
-      ['Sales rep', 'Their own customers and deals', '6 people'],
-      ['Stock planning', 'Booking freezers before customers need them', 'Nobody'],
-      ['Operations lead', '', 'Kamau Njenga'],
+      ['Sales lead', 'What it ownsThe sales target and the sales team', 'Who holds itWairimu Kamau'],
+      ['Head of operations', 'What it ownsPeople, pay, finance and credit terms', 'Who holds itGrace Achieng'],
+      ['Sales rep', 'What it ownsTheir own customers and deals', 'Who holds it6 people'],
+      ['Stock planning', 'What it ownsBooking freezers before customers need them', 'Who holds itNobody'],
+      /* FAULT 7B OF THE LIVE WALK: "What it owns" said nothing at all for a role nobody has
+         answered yet - now it reads "Nobody has said yet." */
+      ['Operations lead', 'What it ownsNobody has said yet.', 'Who holds itKamau Njenga'],
     ])
+  })
+
+  it('each stacked value carries its own visible label, marked aria-hidden since a screen reader already has the real column headers (fault 3 of the live walk)', async () => {
+    open(GRACE, MAP)
+    await screen.findByRole('table')
+    const labels = [...document.querySelectorAll('.gwui-record-table-label')]
+    expect(labels.length).toBe(MAP.roles.length * 2)
+    expect(labels.every(l => l.textContent === 'What it owns' || l.textContent === 'Who holds it')).toBe(true)
+    expect(labels.every(l => l.getAttribute('aria-hidden') === 'true')).toBe(true)
   })
 
   it('reads each job nobody owns, and why it matters once Groundwork has written it', async () => {

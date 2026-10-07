@@ -43,6 +43,7 @@ import { CompanyContextPage } from '@/pages/company/CompanyContextPage'
 import { SuitesPage } from '@/pages/suites/SuitesPage'
 import { OnboardingBoardPage } from '@/pages/suites/OnboardingBoardPage'
 import { LeaveBoardPage } from '@/pages/suites/LeaveBoardPage'
+import { QueuePage } from '@/pages/suites/QueuePage'
 import { YourRequestsPage } from '@/pages/suites/YourRequestsPage'
 import { LeaveRequestNewPage } from '@/pages/suites/LeaveRequestNewPage'
 import { SpendRequestNewPage } from '@/pages/suites/SpendRequestNewPage'
@@ -217,7 +218,7 @@ function MayOpenCheckIns({ children }: { children: React.ReactNode }) {
   return <ADoorYouCannotOpen may={user?.mayOpenCheckIns !== false} what="open a check-in">{children}</ADoorYouCannotOpen>
 }
 
-function AdminsOnly({ children, what = 'add people to your organisation' }: { children: React.ReactNode; what?: 'add people to your organisation' | 'connect your systems' | 'open People' }) {
+function AdminsOnly({ children, what = 'add people to your organisation' }: { children: React.ReactNode; what?: 'add people to your organisation' | 'connect your systems' | 'connect your organisation’s WhatsApp number' | 'open People' }) {
   const { user } = useAuthStore()
   return <ADoorYouCannotOpen may={user?.role === 'ADMIN'} what={what}>{children}</ADoorYouCannotOpen>
 }
@@ -376,7 +377,7 @@ export function HomeOrChooseAnOrganisation({ home = 'list' }: { home?: 'today' |
     if (!justIn) { setGo('stay'); return }
     /* Only for somebody who belongs nowhere yet (U.4 review): an invited person already belongs to the
        organisation that invited them, and goes where the invitation leads. */
-    if ((offers.data?.byDomain.length ?? 0) > 0 && offers.data?.nowhereYet === true) setGo('welcome')
+    if ((offers.data?.byDomain?.length ?? 0) > 0 && offers.data?.nowhereYet === true) setGo('welcome')
     else if (myOrgs.length >= 2) setGo('orgs')
     else setGo('stay')
   }, [go, loaded, justIn, offers.isFetched, offers.data, myOrgs.length])
@@ -495,6 +496,7 @@ export default function App() {
             <Route path="/suite/leave/new" element={<RequireOrgSetup><LeaveRequestNewPage /></RequireOrgSetup>} />
             <Route path="/suite/spend/new" element={<RequireOrgSetup><SpendRequestNewPage /></RequireOrgSetup>} />
             <Route path="/suite/leave" element={<RequireOrgSetup><LeaveBoardPage /></RequireOrgSetup>} />
+            <Route path="/suite/queue" element={<RequireOrgSetup><QueuePage /></RequireOrgSetup>} />
             <Route path="/suite/time" element={<RequireOrgSetup><TimeSheetsPage /></RequireOrgSetup>} />
             <Route path="/suite/reviews" element={<RequireOrgSetup><ReviewsBoardPage /></RequireOrgSetup>} />
             <Route path="/suite/reviews/:id" element={<RequireOrgSetup><ReviewPage /></RequireOrgSetup>} />
@@ -686,7 +688,7 @@ export default function App() {
                 note above was written to remove. */}
             {/* Connections (F1, U.18): the page, WhatsApp step by step, and your own tools. The old address, which emails still carry, opens your own tools, the page it always was. */}
             <Route path="/settings/connections" element={<RequireOrgSetup><AdminsOnly what="connect your systems"><ConnectionsPage /></AdminsOnly></RequireOrgSetup>} />
-            <Route path="/settings/whatsapp" element={<RequireOrgSetup><AdminsOnly what="connect your systems"><WhatsAppSetupPage /></AdminsOnly></RequireOrgSetup>} />
+            <Route path="/settings/whatsapp" element={<RequireOrgSetup><AdminsOnly what="connect your organisation’s WhatsApp number"><WhatsAppSetupPage /></AdminsOnly></RequireOrgSetup>} />
             <Route path="/settings/tools" element={<RequireOrgSetup><AdminsOnly what="connect your systems"><IntegrationsPage /></AdminsOnly></RequireOrgSetup>} />
             <Route path="/org/integrations" element={<Navigate to="/settings/tools" replace />} />
             <Route path="/admin" element={<RequirePlatformAdmin><AdminPage /></RequirePlatformAdmin>} />

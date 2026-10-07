@@ -31,7 +31,7 @@ import { WhatTheNetworkSaid } from '@/components/gw/WhatTheNetworkSaid'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
 import { NineColumnsIsNotAPhoneScreen } from '@/components/gw/nine-columns-is-not-a-phone-screen'
-import { plainWordsByPerson, atTheStart } from '@/lib/a-colleague'
+import { plainWordsByPerson, atTheStart, midSentence } from '@/lib/a-colleague'
 import { theLeadsNote } from '@/lib/the-leads-note'
 import { whatTheSwitchboardAllows } from './what-the-switchboard-allows'
 import { tileSentence } from '@/components/gw/TheSessionsReport'
@@ -688,11 +688,20 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
               PICTURE IN IT. "Open today's team picture below." used to open and scroll to "The
               whole check-in" fold - which holds everything else this board sends (By area,
               coaching, the switchboard's own sections), never a team picture. The actual team
-              picture is "The team's report" (SessionReportPage.tsx), reached from the report tab
-              this board already links "Read your own report" to. This now sends the reader there
-              instead, and is left out entirely once there is nothing shared to point it at.
+              picture is "The team's report" (SessionReportPage.tsx).
+
+              SCREEN FAULT 4: IT WAS SENT THERE THE LONG WAY ROUND, AND LANDED SOMEWHERE ELSE.
+              `/grounds/${'${groundId}'}/report` is only a redirect (ReportPage.tsx) to
+              `/grounds/${'${groundId}'}?tab=report` - for a participant that is this very page's
+              own "My work" tab, not the session's own report page, and it showed as about 350px of
+              blank gap over two closed rows with no space between them ("Your sessionsYou have one
+              finished session…"), with the tab bar underlining "My work" rather than Report. The
+              session's own report page is exactly where "Read your own report" below already sends
+              this reader (`myLatestCheckInId`) - the same page, since this is the report for the
+              session that just closed and shared. Sent there directly now, with the ground-level
+              redirect kept only for the rare case nothing has completed for this reader yet.
             */
-            <Link to={`/grounds/${groundId}/report`} className="gwui-plain-link gwui-fs-15 gwui-mt-4">
+            <Link to={myLatestCheckInId ? `/checkin/${myLatestCheckInId}/report` : `/grounds/${groundId}/report`} className="gwui-plain-link gwui-fs-15 gwui-mt-4">
               Open today’s team picture.
             </Link>
           )}
@@ -1088,7 +1097,21 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * "Reports" row built from it can say truthfully how many of the whole roster checked in,
    * instead of "1 of 1" for a reader who is restricted to their own one-person list.
    */
-  const sessionRows = buildSessionRows(groundForSignals as any, user?.id, labelInASentence, (data as any)?.participants)
+  /*
+   * SCREEN FAULT 9, PART 2: THE SERVER'S OWN GRID KNOWS WHICH SESSIONS SOMEBODY IS ACTUALLY ON.
+   * `checkInGrid.rows[].cells` already says "na" for a session somebody joined after - passed to
+   * `buildSessionRows` so its own "waitingOn" can agree with it, rather than naming them from
+   * `whoIsInRound`'s blanket eligibility rule alone. See the parameter's own note.
+   */
+  const onSessionFromGrid = (data as any)?.checkInGrid
+    ? new Map(
+        ((data as any).checkInGrid.rows as { participantId: string; cells: Record<string, string> }[]).map((r) => [
+          r.participantId,
+          new Set(Object.entries(r.cells).filter(([, v]) => v !== 'na').map(([s]) => Number(s))),
+        ]),
+      )
+    : null
+  const sessionRows = buildSessionRows(groundForSignals as any, user?.id, labelInASentence, (data as any)?.participants, onSessionFromGrid)
 
   /* Where the run is, read once, so the top and the foot of the board gate the ending panel on the
      same answer (the-exit-belongs-at-the-exit). */
@@ -1327,8 +1350,17 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * The same fact still exists, the same place the check-in page reads it for this very button
    * (`myOpenCheckInId`/`myNextOpensAt`, GroundAdminPage.tsx and GroundParticipantPage.tsx): the
    * reader's own open-or-next check-in row, off `GET /grounds/:id` (`groundForSignals`, already
-   * fetched above). Used only as a fallback, when no phase spine was sent - the spine's own read
-   * stays the one truth wherever it exists.
+   * fetched above).
+   *
+   * FAULT 8 (LIVE RE-WALK): NOT ONLY A FALLBACK FOR WHEN THERE IS NO PHASE SPINE. Amina finished
+   * her own part of the team's current round early - her next check-in exists, `NOT_STARTED`,
+   * `availableFrom` in the future - while the phase spine still called that same round `current`
+   * (it stays open, team-wide, until everybody else finishes it too). This reader's own next
+   * session not yet being open and the team's round still being open are two different facts, and
+   * the button only asked the second one: gated behind `!b.phaseSpine`, this reader's own read
+   * never ran at all on a board that does send a spine, so "Start my check-in" stayed up for a
+   * session that had not opened for her. It runs always now, alongside the spine's own read, not
+   * only in its absence.
    */
   const myParticipantIdForOpenCheck = ((groundForSignals as any)?.participants ?? []).find((p: any) => p.userId === user?.id)?.id ?? null
   const myOpenOrNextCheckIn = myParticipantIdForOpenCheck
@@ -1339,10 +1371,22 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const myOpenOrNextOpensLater = !!myOpenOrNextCheckIn?.availableFrom
     && new Date(myOpenOrNextCheckIn.availableFrom).getTime() > Date.now()
     && myOpenOrNextCheckIn?.status !== 'IN_PROGRESS'
-  const noSessionOpenForReaderFallback = !b.phaseSpine && myOpenOrNextOpensLater
+  const noSessionOpenForReaderFallback = myOpenOrNextOpensLater
   const whenTheNextSessionOpensFallback = myOpenOrNextOpensLater
     ? `Session ${myOpenOrNextCheckIn.sessionNumber} opens on ${whenItWas(myOpenOrNextCheckIn.availableFrom, 'dayAndMonthLong')}.`
     : null
+  /*
+   * SCREEN FAULT 6(d) (live walk, 6 October 2026), EVERY SITUATION: "START MY CHECK-IN" AFTER
+   * FINISHING THE OPEN ONE. Both reads above ask whether a ROUND is open - the phase spine's own
+   * "current" session, or, lacking a spine, whether this reader's next check-in is still in the
+   * future. Neither asks whether THIS READER still has anything unfinished in it: a phase-spine
+   * round can stay "current" (others still answering) after this one person has already completed
+   * theirs, and a spine-less ground with nothing non-completed left for this reader has no "next"
+   * row to be later than. `myOpenOrNextCheckIn` is already the one true source for that - a
+   * participant's own open-or-pending check-in, off the same read the button's destination uses -
+   * so its plain absence (nothing of mine left to open, whether a round is open for anyone else or
+   * not) hides the button regardless of which of the two reads above was used to show it. */
+  const iHaveNothingOpenOrPending = !!myParticipantIdForOpenCheck && !myOpenOrNextCheckIn
   /*
    * U.10 (a): THE SAME FIVE TABS, READ-ONLY FILTERED THE SAME WAY (an-admin-who-only-reads-has-no-
    * check-in-tab.spec.tsx pinned this against the old TheCheckInHeader; the-board-as-each-reader-
@@ -1618,8 +1662,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     divergence: has('divergence') && allowed('divergence') && !!b.divergence,
     /* The note stands in for the block before a round has closed, so either one is enough to show. */
     whatTheRoomIsAbout: has('whatTheRoomIsAbout') && allowed('whatTheRoomIsAbout')
-      && (!!b.whatTheRoomIsAbout?.aims.length || !!b.whatTheRoomIsAbout?.places.length
-        || !!b.whatTheRoomIsAbout?.things.length || !!b.whatTheRoomIsAboutNote),
+      && (!!b.whatTheRoomIsAbout?.aims?.length || !!b.whatTheRoomIsAbout?.places?.length
+        || !!b.whatTheRoomIsAbout?.things?.length || !!b.whatTheRoomIsAboutNote),
     whoOwnsWhat: has('whoOwnsWhat') && !!b.whoOwnsWhat,
     dependencies: has('dependencies') && allowed('dependencies') && !!b.dependencies,
     checkInGrid: has('checkInGrid') && !!b.checkInGrid,
@@ -1701,10 +1745,16 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * fold. Onboarding's real work plan, shown separately as `WorkPlanSection`, never passes through
    * `b.workRecords` at all, so this collapsing a genuinely all-not-known `workRecords` list cannot
    * reach it either way.
+   *
+   * NOT SCOPED TO `isProjectBoard || isOnboarding` ANY MORE (real-user walk, Kijani Foods, fault 4b).
+   * Tendai's role-handover check-in, a scenario this list never covered, still sent six work-record
+   * sections back not-known with the same `why`, and the fold repeated the same sentence six times -
+   * the exact bug this collapsing exists to fix, just on a board whose scenario was never added to
+   * the list. The `allWorkRecords.every(...)` check below already proves it is safe everywhere: the
+   * moment one real row exists this is false and nothing collapses, whatever the board's family.
    */
   const allWorkRecords = b.workRecords ?? []
   const workRecordsAllNotKnownSameWhy =
-    (isProjectBoard || isOnboarding) &&
     allWorkRecords.length > 1 &&
     allWorkRecords.every((s) => s.state === 'not-known') &&
     new Set(allWorkRecords.map((s) => (s as { why: string }).why)).size === 1
@@ -2285,17 +2335,20 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     )
   }
 
+  /*
+   * THE CENTRAL QUESTION IS DRAWN ONCE, ABOVE THE FOLD, FOR EVERY FAMILY (real-user walk, Kijani
+   * Foods, fault 4a). It used to be part of `divergenceBlock` below, which only an onboarding board
+   * called above its own fold - every other family's board only reached it inside "Everything else
+   * from this check-in", folded shut, while the top of the page read as if nothing needed the lead
+   * ("Does a shop count when it signs, or when it orders again?" sat unseen under a closed fold on
+   * Tendai's sales board). The full divergence detail (`DivergenceSectionBody`) stays exactly where
+   * each family already draws it - a deliberate choice (see "Everything else from this check-in",
+   * further down) - only the one-line question moves, drawn once, see where it is rendered below.
+   */
   const divergenceBlock = (heading: string) => (
-    <>
-      {b.divergence && shown.divergence && (
-        <DivergenceSectionBody heading={heading} divergence={b.divergence} whyNothingYet={b.divergence.whyNothingYet} onlyOnePersonHere={onlyOnePersonHere} myName={myName} />
-      )}
-      {b.divergence?.centralQuestion && (
-        <Panel>
-          <WhatToSettleTogether question={b.divergence.centralQuestion} />
-        </Panel>
-      )}
-    </>
+    b.divergence && shown.divergence
+      ? <DivergenceSectionBody heading={heading} divergence={b.divergence} whyNothingYet={b.divergence.whyNothingYet} onlyOnePersonHere={onlyOnePersonHere} myName={myName} />
+      : null
   )
 
   return (
@@ -2352,9 +2405,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 her own action regardless - she always has something to do here, open session or
                 not - but a participant with nothing open now reads when the next one does instead,
                 in the engine's own words.
+
+                FAULT 6 (live walk, 6 October 2026): NEVER "START MY CHECK-IN" ON AN ENDED CHECK-IN.
+                Amani, a member on a check-in that had already ended, still read "Start my check-in"
+                here - pressing it opened "No check-in open right now", because there is none. A
+                participant gets no action at all once `groundEnded`; the lead keeps "Your check-in"
+                either way, since she has other reasons to open it (reading past sessions).
               */}
-              {(viewerRunsThisCheckIn || isAParty) && (
-                !viewerRunsThisCheckIn && (noSessionOpenForReader || noSessionOpenForReaderFallback) ? (
+              {(viewerRunsThisCheckIn || (isAParty && !groundEnded)) && (
+                !viewerRunsThisCheckIn && (noSessionOpenForReader || noSessionOpenForReaderFallback || iHaveNothingOpenOrPending) ? (
                   (whenTheNextSessionOpens ?? whenTheNextSessionOpensFallback) && <Note tone="muted">{whenTheNextSessionOpens ?? whenTheNextSessionOpensFallback}</Note>
                 ) : (
                   <Link
@@ -2457,8 +2516,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           Served only to a person in an anchor check-in who has not yet checked in for the open
           round; `null` once they have, and absent for anybody else or any other check-in - the
           screen draws nothing then either way.
+
+          FAULT 6 (live walk, 6 October 2026): NOT ONCE THE CHECK-IN HAS ENDED. The nudge is built
+          from the open round's own state and can still be sent stale; `!groundEnded` keeps it from
+          ever offering "Start my check-in" with nothing left to start.
         */}
-        {isParticipantView && b.aNudgeForYou && (
+        {isParticipantView && b.aNudgeForYou && !groundEnded && (
           <Panel>
             <Stack gap={12}>
               <Callout tone="info">{b.aNudgeForYou}</Callout>
@@ -2484,6 +2547,18 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {!shown.checkInGrid && b.myParticipantId && kindOfWorkKey !== 'MarketView where next' && everySessionLink()}
 
         {/*
+          FAULT 4 (live walk, 6 October 2026): FOR THE LEAD, "ARE WE MOVING TOGETHER?" COMES
+          BEFORE "IDEAS FROM YOUR TEAM", NOT AFTER.
+          Section 24 makes the month board the top question for the lead. Both already draw open,
+          never folded (see the fault 4 note just below this one, live walk 6 October 2026) - this
+          only changes which of the two comes first, by drawing the month board here, ahead of the
+          ideas block. `theMonthBoardForTheLead` is undefined for anybody but the lead, so a member
+          sees no change at all: the ideas block below is still the first thing in this region for
+          them, open exactly where it was.
+        */}
+        {theMonthBoardForTheLead && <TheMonthBoard monthBoard={theMonthBoardForTheLead} />}
+
+        {/*
           FAULT 4 (live walk, 6 October 2026): FOR AN ANCHOR CHECK-IN, "IDEAS FROM YOUR TEAM" SITS
           OUTSIDE ANY FOLD, THE SAME MOVE AS "EVERY SESSION" JUST ABOVE.
           `MaybeFolded` only ever closes anything for a sales-org participant
@@ -2500,10 +2575,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         <MaybeFolded fold={participantFoldsWhole}>
 
         {/*
-          PIECES 12, 13 AND 20: THE MONTH BOARD, "Are we moving together?", AT THE TOP (plan
-          section 5, row 6). Lead only; draws nothing while `theMonthBoardForTheLead` is undefined.
+          PIECES 12, 13 AND 20: THE MONTH BOARD, "Are we moving together?" (plan section 5, row 6).
+          Moved above, before "Ideas from your team" (fault 4) - this fold no longer draws it a
+          second time; `theMonthBoardForTheLead` already drew it, or there was nothing to draw.
         */}
-        {theMonthBoardForTheLead && <TheMonthBoard monthBoard={theMonthBoardForTheLead} />}
 
         {/*
           PIECE 19/20, "IDEAS FROM YOUR TEAM" (plan section 5, row 7). To everyone in the check-in;
@@ -2579,6 +2654,21 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           <div className="gwui-mt-16">
             <HowItIsGoing glance={(b as any).howItIsGoing.glance} waitingToBeLetIn={b.waitingToBeLetIn ?? null} readerIsTheOnlyPerson={viewerRunsThisCheckIn && onlyOnePersonHere} />
           </div>
+        )}
+
+        {/*
+          THE QUESTION THIS CHECK-IN TURNS ON, UNDER THE HEADLINE AREA, FOR EVERY FAMILY (real-user
+          re-walk, Kijani Foods, fault 1). This used to draw once, but only after "Reports", "Help
+          nobody mentioned", "Open issues", "How it ends" and "Where this is heading" - a dozen
+          sections down the page, which read as the bottom of the board on any screen, not "above
+          the fold" in any sense a person would recognise. It now draws here instead, directly under
+          the headline and the glance line, before any kind-of-work's own sections - the prototype's
+          own place for the one thing a board asks the lead to settle (B5-the-board).
+        */}
+        {b.divergence?.centralQuestion && (
+          <Panel>
+            <WhatToSettleTogether question={b.divergence.centralQuestion} />
+          </Panel>
         )}
 
         {/*
@@ -3733,16 +3823,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           so the literal `{shown.divergence && b.divergence && (` the order-pinning spec reads for
           stays exactly where it always was for every other family; the heavy content itself is
           `DivergenceSectionBody`, shared with the onboarding call, so it is never duplicated.
+          The central question itself no longer draws here - see where it is drawn once, above the
+          fold, for fault 4a.
         */}
         {!isOnboarding && (
           <>
             {shown.divergence && b.divergence && (
               <DivergenceSectionBody heading="Where people differ" divergence={b.divergence} onlyOnePersonHere={onlyOnePersonHere} myName={myName} />
-            )}
-            {b.divergence?.centralQuestion && (
-              <Panel>
-                <WhatToSettleTogether question={b.divergence.centralQuestion} />
-              </Panel>
             )}
           </>
         )}
@@ -3769,9 +3856,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   </div>
                   <div className="gwui-pt-2 gwui-pb-12">
                     <RowList label="What people are trying to do">
-                    {b.whatTheRoomIsAbout.aims.length === 0 ? (
+                    {(b.whatTheRoomIsAbout.aims ?? []).length === 0 ? (
                       <Row columns="1fr" inset="list"><div className="gwui-fs-15 gwui-ink-muted">Nobody has said what they are after yet.</div></Row>
-                    ) : b.whatTheRoomIsAbout.aims.map((a) => (
+                    ) : (b.whatTheRoomIsAbout.aims ?? []).map((a) => (
                       <Row key={a.aim} columns="1fr" inset="list">
                         <div className="gwui-gap-10" style={{display: 'flex', alignItems: 'baseline'}}>
                           <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 600, flex: 1}}>{a.aim}</div>
@@ -3784,7 +3871,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   </div>
                 </Panel>
                 </div>
-                {([['Places named', b.whatTheRoomIsAbout.places], ['What it is about', b.whatTheRoomIsAbout.things]] as const).map(([label, rows]) => (
+                {([['Places named', b.whatTheRoomIsAbout.places ?? []], ['What it is about', b.whatTheRoomIsAbout.things ?? []]] as const).map(([label, rows]) => (
                   <Panel key={label} pad={false}>
                     <div className="gwui-pt-13 gwui-pr-15 gwui-pb-10 gwui-pl-15 gwui-fs-15 gwui-ink-dark gwui-rule-bottom" style={{fontWeight: 700}}>{label}</div>
                     <div className="gwui-pt-2 gwui-pb-12">
@@ -4147,7 +4234,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                           : <>This is waiting on <span className="gwui-ink-dark" style={{fontWeight: 600}}>{onWhom}</span>.</>}
                       </div>
                       <div className="gwui-fs-15 gwui-ink-dark gwui-mt-4" style={{lineHeight: 1.5}}>
-                        <b>{fromWord}</b> {needsWord} {d.what} from <b>{onWhomInSentence}</b>. {statusSaid}
+                        {/* `d.what` can open with a capitalised article ("The Mwangi agency") where the
+                            same string also stands as a title elsewhere; mid-sentence here, only that
+                            leading word is wrong (real-user walk, Kijani Foods, fault 1). */}
+                        <b>{fromWord}</b> {needsWord} {midSentence(d.what)} from <b>{onWhomInSentence}</b>. {statusSaid}
                       </div>
                       {holdingUp && (
                         <div className="gwui-rule-blue gwui-pt-8 gwui-pr-10 gwui-pb-8 gwui-pl-10 gwui-mt-8 gwui-fs-15 gwui-ink-text" style={{background: 'var(--gw-blue-bg)', borderRadius: 8, lineHeight: 1.5}}>
@@ -4826,10 +4916,14 @@ function AskTheBoard({ firstBlocker, myParticipantId }: {
    * would actually ask ("Why am I still waiting on the price list?").
    */
   const readerIsWaiting = !!myParticipantId && firstBlocker?.fromParticipantId === myParticipantId
+  /* `firstBlocker.what` can open with a capitalised article ("The Mwangi agency") where the same
+     string also stands as a title elsewhere; mid-sentence here, only that leading word is wrong
+     (real-user walk, Kijani Foods, fault 1). */
+  const what = firstBlocker ? midSentence(firstBlocker.what) : ''
   const example = firstBlocker?.from
     ? (readerIsWaiting
-      ? `Why am I still waiting on ${firstBlocker.what}?`
-      : `Why is ${firstBlocker.from} still waiting on ${firstBlocker.what}?`)
+      ? `Why am I still waiting on ${what}?`
+      : `Why is ${firstBlocker.from} still waiting on ${what}?`)
     : 'Who is waiting on whom?'
   /*
    * PHONE CHECK, ITEM 4: THE PLACEHOLDER READ CUT OFF MID-EXAMPLE ("Ask about this board, for

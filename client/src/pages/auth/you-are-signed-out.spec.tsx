@@ -16,12 +16,17 @@ vi.mock('@/lib/marketing', () => ({ MARKETING_URL: 'https://groundwork.example' 
 beforeEach(() => { logout.mockClear() })
 
 describe('what a person reads once signed out', () => {
-  /* U.2 review: "On this device." was a lone fragment. It is now a full sentence, and a true one:
-     signing out clears this browser only, so other devices stay signed in. */
-  it('a full, true sentence, without the promise about saved work that is not yet true', () => {
+  /*
+   * REAL-USER WALK, KIJANI FOODS, FAULT 8C: the prototype's own sentence, not a different claim.
+   * This used to read "You are still signed in on your other devices." - true, but not the
+   * prototype's wording (signout.txt), and about a different fact (other devices, not this one).
+   * "On this device." is the prototype's own first sentence, copied exactly, and still true:
+   * signing out here clears this browser only.
+   */
+  it('the prototype\'s own sentence, without the promise about saved work that is not yet true', () => {
     const { container } = render(<MemoryRouter><SignOutPage /></MemoryRouter>)
     expect((container.textContent ?? '').replace(/\s+/g, ' ').trim()).toBe(
-      'Groundwork' + 'You’re signed out' + 'You are still signed in on your other devices.' + 'Sign in again' + 'Go to the home page',
+      'Groundwork' + 'You’re signed out' + 'On this device.' + 'Sign in again' + 'Go to the home page',
     )
     expect(container.textContent).not.toMatch(/Anything you.d started is saved/)
   })

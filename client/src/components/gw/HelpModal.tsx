@@ -19,6 +19,17 @@ import { Button } from './ui/Button'
  */
 const TABS = ['What it is', 'How to use it', 'When to use it', 'Reports', 'Try it'] as const
 
+/**
+ * SCREEN FAULT 5: THIS MODAL WAS WRITTEN FOR A LEAD, AND A MEMBER CANNOT TELL.
+ *
+ * "When to use it" and "Try it" are both about STARTING a check-in - reasons to open one, and how
+ * to trial the whole thing by running both sides yourself. Neither means anything to somebody who
+ * cannot open a check-in (`mayOpenCheckIns === false`): "Try one on your own" already only offers
+ * that tab to somebody who may (GroundsListPage.tsx), so a member reaching it by pressing the tab
+ * bar directly, rather than that link, is the one door left open. Dropped for them below, the
+ * same gate "1. Start a check-in" already used on Tab0.
+ */
+
 const RES_PILLS: { label: string; bg: string; color: string }[] = [
   { label: 'Alignment confirmed',            bg: 'var(--gw-green-bg)', color: 'var(--gw-green-t)' },
   { label: 'Continue current course',        bg: 'var(--gw-green-bg)', color: 'var(--gw-green-t)' },
@@ -71,11 +82,34 @@ function Tab0({ onNext, mayStart }: { onNext: () => void; mayStart: boolean }) {
 }
 
 
-function Tab1({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
+/**
+ * SCREEN FAULT 5: A MEMBER'S OWN VERSION OF "HOW TO USE IT" - answering, reading your report, Ask.
+ * `HOW_TO_STEPS` (how-a-check-in-is-run.ts) is written for whoever is running the check-in
+ * ("open a check-in", "say what you want to be true at the end") and is also sent as its own page
+ * to leads (`/org/guide`), so it stays theirs; this is the shorter, true version of the same two
+ * steps everybody shares, plus the one a lead's version has no need to mention.
+ */
+const MEMBER_HOW_TO_STEPS = [
+  {
+    title: 'Answer your check-in on your own, and be specific',
+    body: 'You get a link and answer Groundwork one to one, in your own words. A vague answer makes a weak record, so the more specific you are, the more useful the report will be.',
+  },
+  {
+    title: 'Read the report once everyone has answered',
+    body: 'It puts what everybody said in one place, and shows where your answers and theirs agree and where they differ. You see the same report as everybody else in that check-in.',
+  },
+  {
+    title: 'Ask Groundwork if anything is unclear',
+    body: 'Ask is in your own menu, wherever you are in the app. It can explain what a question meant, or what a part of your report is saying.',
+  },
+]
+
+function Tab1({ onBack, onNext, mayStart }: { onBack: () => void; onNext: () => void; mayStart: boolean }) {
+  const steps = mayStart ? HOW_TO_STEPS : MEMBER_HOW_TO_STEPS
   return (
     <div style={{ padding: 24 }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {HOW_TO_STEPS.map((s, i) => (
+        {steps.map((s, i) => (
           <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
             <div style={{ width: 26, height: 26, background: 'var(--gw-navy)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'white', flexShrink: 0 }}>{i + 1}</div>
             <div>
@@ -87,7 +121,7 @@ function Tab1({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 20 }}>
         <Button kind="secondary" onClick={onBack}>Back</Button>
-        <Button onClick={onNext}>When to use it</Button>
+        <Button onClick={onNext}>{mayStart ? 'When to use it' : 'Reports'}</Button>
       </div>
     </div>
   )
@@ -125,12 +159,12 @@ function Tab2({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
 const REPORT_ITEMS = [
   { title: 'Resolution summary',          body: 'One sentence. Auto-generated. The thing neither party named directly but both records implied. This is the most valuable line in the report. It is what the conversation needs to be about.' },
   { title: 'Where you agreed', body: 'What you genuinely agree on. Plain language, and everybody in it sees the same list.' },
-  { title: 'Where you saw it differently', body: 'What each party said. Where the difference lies. Not which party is right. The product never decides. It describes.' },
+  { title: 'Where you saw it differently', body: 'What each party said. Where the difference lies. Not which party is right. Groundwork never decides. It describes.' },
   { title: 'Resolution state',            body: 'What everybody agreed they were aiming at before it started. The report closes on that, and says whether what people described actually gets you there.' },
   { title: 'The credential',              body: 'A shareable verified record. End state. Alignment status. Duration. Confirmed by everybody in it, and everybody keeps it permanently. It belongs to the people who built it.' },
 ]
 
-function Tab3({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
+function Tab3({ onBack, onNext, mayStart, onClose }: { onBack: () => void; onNext: () => void; mayStart: boolean; onClose: () => void }) {
   return (
     <div style={{ padding: 24 }}>
       <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 14 }}>What the report contains</div>
@@ -155,7 +189,9 @@ function Tab3({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Button kind="secondary" onClick={onBack}>Back</Button>
-        <Button onClick={onNext}>Try it</Button>
+        {/* "Try it" is a way to START a check-in - a member cannot, so this is their last tab and
+            closes the modal instead (screen fault 5). */}
+        {mayStart ? <Button onClick={onNext}>Try it</Button> : <Button onClick={onClose}>Got it</Button>}
       </div>
     </div>
   )
@@ -261,37 +297,53 @@ export function HelpModal() {
             * a fair reading of an answer that starts with "A shared picture, built from both
             * sides." Say what to do first. The philosophy is still here, one tab across.
             */}
-          <div style={{ fontSize: 22, fontWeight: 800, color: 'white', lineHeight: 1.2, marginBottom: 8, letterSpacing: '-.02em' }}>How this works</div>
-          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', lineHeight: 1.65 }}>Start a check-in, add the people in it, and everyone answers on their own. You get one report showing where those versions agree and where they differ.</div>
+          {/*
+            SCREEN FAULT 5: "START A CHECK-IN, ADD THE PEOPLE IN IT" IS NOT SOMETHING A MEMBER
+            CAN DO. Gated the same way Tab0's own "1. Start a check-in" already is.
+          */}
+          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', lineHeight: 1.65 }}>
+            {mayStart
+              ? 'Start a check-in, add the people in it, and everyone answers on their own. You get one report showing where those versions agree and where they differ.'
+              : 'Each check-in asks you questions on your own, in your own words. Once everyone has answered, you get one report showing where your answers and theirs agree and where they differ.'}
+          </div>
+          {/* THE CLOSE BUTTON, AT LEAST 40x40 ON A PHONE (screen fault 5, tap-target floor). A
+              fixed 28px circle at every width before this. */}
           <button
             onClick={hide}
-            style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(255,255,255,.1)', border: 'none', color: 'white', width: 28, height: 28, borderRadius: '50%', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            aria-label="Close"
+            className="gwui-help-close"
+            style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(255,255,255,.1)', border: 'none', color: 'white', borderRadius: '50%', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >×</button>
         </div>
 
-        {/* Tab bar */}
+        {/* Tab bar. SCREEN FAULT 5: "When to use it" and "Try it" are both reasons and ways to
+            START a check-in - dropped for a member, the same door "Try one on your own"
+            (GroundsListPage.tsx) already keeps shut for them. */}
         <div style={{ display: 'flex', borderBottom: '1px solid var(--gw-border)' }}>
           {TABS.map((label, i) => (
-            <button
-              key={label}
-              onClick={() => go(i as 0 | 1 | 2 | 3 | 4)}
-              style={{
-                flex: 1, padding: '10px 6px', fontSize: 12, fontWeight: tab === i ? 700 : 500,
-                color: tab === i ? 'var(--gw-navy)' : 'var(--gw-muted)',
-                background: 'none', border: 'none',
-                borderBottom: tab === i ? '2px solid var(--gw-navy)' : '2px solid transparent',
-                cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all .15s',
-              }}
-            >{label}</button>
+            (mayStart || (i !== 2 && i !== 4)) && (
+              <button
+                key={label}
+                onClick={() => go(i as 0 | 1 | 2 | 3 | 4)}
+                style={{
+                  flex: 1, padding: '10px 6px', fontSize: 12, fontWeight: tab === i ? 700 : 500,
+                  color: tab === i ? 'var(--gw-navy)' : 'var(--gw-muted)',
+                  background: 'none', border: 'none',
+                  borderBottom: tab === i ? '2px solid var(--gw-navy)' : '2px solid transparent',
+                  cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all .15s',
+                }}
+              >{label}</button>
+            )
           ))}
         </div>
 
-        {/* Panels */}
+        {/* Panels. For a member (!mayStart), "When to use it" (2) and "Try it" (4) are never
+            reached - their own tab-bar buttons are gone, and Tab1/Tab3 step over them. */}
         {tab === 0 && <Tab0 onNext={() => go(1)} mayStart={mayStart} />}
-        {tab === 1 && <Tab1 onBack={() => go(0)} onNext={() => go(2)} />}
-        {tab === 2 && <Tab2 onBack={() => go(1)} onNext={() => go(3)} />}
-        {tab === 3 && <Tab3 onBack={() => go(2)} onNext={() => go(4)} />}
-        {tab === 4 && <Tab4 onBack={() => go(3)} onClose={hide} />}
+        {tab === 1 && <Tab1 onBack={() => go(0)} onNext={() => go(mayStart ? 2 : 3)} mayStart={mayStart} />}
+        {tab === 2 && mayStart && <Tab2 onBack={() => go(1)} onNext={() => go(3)} />}
+        {tab === 3 && <Tab3 onBack={() => go(mayStart ? 2 : 1)} onNext={() => go(4)} mayStart={mayStart} onClose={hide} />}
+        {tab === 4 && mayStart && <Tab4 onBack={() => go(3)} onClose={hide} />}
 
         {/* "TALK TO US", ON EVERY TAB (A1: help and "Talk to us" from anywhere). The sentence is the
             one the request page itself opens with, so the promise is the same in both places. A plain

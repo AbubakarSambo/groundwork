@@ -31,7 +31,7 @@ vi.mock('@/api/billing', () => ({
     getPricing: vi.fn(),
     /* WhatsApp billing (decision 78): the minimal, off-by-default shape, so this page's own
        query resolves without pulling the add-on's section onto a screen this test is not about. */
-    getWhatsApp: vi.fn().mockResolvedValue({ sending: true, says: null }),
+    getWhatsApp: vi.fn().mockResolvedValue({ on: false, sending: true, says: null }),
     setWhatsApp: vi.fn(),
   },
   PLAN_LABELS: {}, PLAN_PRICES: {},
@@ -45,8 +45,12 @@ vi.mock('@/api/billing', () => ({
   formatMemberCap: (cap: number | null | undefined) =>
     cap === null ? 'Unlimited' : cap === undefined ? '' : `Up to ${cap} people`,
   FALLBACK_FREE_LIMITS: { groundLimit: 10, memberLimit: 5 },
-  /* Decides which WhatsApp shape was served; `false` on the minimal shape keeps the new section off. */
-  isWhatsAppBillingAdmin: (w: any) => !!w && typeof w.on === 'boolean',
+  /*
+   * Decides which WhatsApp shape was served. `on` is served to every reader now (5 October,
+   * evening), so this mirrors the real `isWhatsAppBillingAdmin` and reads `says` instead:
+   * `false` on the minimal shape (`says: null`) keeps the new section off.
+   */
+  isWhatsAppBillingAdmin: (w: any) => !!w && typeof w.says === 'object' && w.says !== null,
 }))
 vi.mock('@/api/grounds', () => ({ groundsApi: { list: vi.fn() } }))
 
