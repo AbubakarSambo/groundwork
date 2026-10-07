@@ -1206,6 +1206,8 @@ export class GroundsService {
 
   /** Public: resolve a ground-level join token → name + scenario for the join page. */
   async getJoinPreview(joinToken: string) {
+    /* No code, or not a text (a wrong parameter name, or a list), is a link that was not found, not a fault in the database call (B-150). */
+    if (typeof joinToken !== 'string' || !joinToken.trim()) throw new NotFoundException('Join link not found');
     const ground = await this.prisma.ground.findUnique({
       where: { joinToken },
       include: { initiator: { select: { firstName: true } } },
