@@ -91,6 +91,18 @@ export function whatArrived(message: any): { kind: 'text'; text: string } | { ki
  * A SESSION REPORT AS ONE MESSAGE. Where things stand, the reads at a glance, the conversation worth
  * having. The same card the panel shows at the end, said rather than drawn.
  */
+/**
+ * A REPORT THAT HAS NOTHING TO READ YET IS NOT ANNOUNCED AS READY (B-021). While the round is open and nothing is agreed or open between
+ * people, "Your report is ready. Not everyone has answered yet, so there is nothing to agree or differ with." was sent to the person who had
+ * just answered. They are thanked, and told when they will hear.
+ */
+export function nothingToReadYet(report: any): boolean {
+  return !!report && report.state === 'forming' && (report.whereThingsStand?.agreed ?? 0) === 0 && (report.whereThingsStand?.stillOpen ?? 0) === 0;
+}
+
+export const THANKS_YOUR_ANSWER_IS_IN = (label: string) =>
+  `Thank you, your answer for ${label} is in. The shared picture is made once everyone has answered, and you will be told as soon as there is something to read.`;
+
 export function reportAsText(report: any, label: string, simplerWords?: boolean | null): string {
   const lines: string[] = [`Your report for ${label} is ready.`];
   if (report?.whereThingsStand?.saying) lines.push(report.whereThingsStand.saying);
