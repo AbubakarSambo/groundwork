@@ -760,3 +760,16 @@ width" symptom `.gwui-row > .gwui-btn { justify-self: start; }` already names (B
 3, part 7's follow-up, above) also reached a bare `Tag`: on `YourRequestsPage.tsx` at 375 wide,
 "Waiting"/"Approved" stretched edge to edge of the row once its grid collapsed to one column.
 Fixed the same way, scoped to `.gwui-tag` only: `.gwui-row > .gwui-tag { justify-self: start; }`.
+
+## Live review, 7 October: one new class, a number box
+
+**`.gwui-ec-sessions-input`** (new part, `EntryChatPage.tsx`'s session header): the shared
+`TextField`'s own `.gwui-input` is `width: 100%`, right for a name or an address, wrong for a
+count of sessions - inside the header's own number-of-sessions editor it stretched to fill
+whatever space the name row had given up (measured at 463px wide), and the header's own text
+crushed to "Give / this / a" around it (fault 2, live review, 7 October). No prototype screen
+draws this editor at all (`new.txt` has no sessions control), so there is no prototype value to
+follow; the nearest the product already has is the inline `width: 70` number boxes on
+`AdminPage.tsx` ("Days to correct a record", "Free months"). `.gwui-ec-sessions-input` is that
+same idea as a shared class rather than a fourth inline copy: `width: 64px`, centred text, fixed
+rather than growing, which is all a 1-2 digit count ever needs.

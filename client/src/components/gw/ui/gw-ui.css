@@ -1858,13 +1858,41 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ec-onboarding { flex: 1; display: flex; min-height: 0; }
 .gwui-ec-onboarding-col { flex: 1; display: flex; flex-direction: column; min-height: 0; min-width: 0; }
 
-.gwui-ec-session-header { padding: 10px 20px; border-bottom: 1px solid var(--gw-border); flex-shrink: 0; background: white; display: flex; align-items: center; gap: 8px; }
+/*
+ * FAULT 1 (live review, phone and 1440 walk): THE FLOATING FEEDBACK BUTTON SAT OVER THE RIGHT END
+ * OF "HOW MANY SESSIONS" AND ITS HELP LINE. AppShell gives this one page's trigger a fixed
+ * `top: 64, right: 16` so it clears the header's single-line rest state - but opening the sessions
+ * editor grows the header to two lines (the number box, then "This is your plan…"), and that taller
+ * header reaches down into the same `top: 64` the button already occupies.
+ *
+ * Moving the button lower would only chase the next thing it then covers (the comment on
+ * `the-feedback-button-never-covers-a-control.spec.ts` is the whole history of that chase). Instead
+ * the header's own right edge is given room: this much padding is never narrower than the button's
+ * own rest position plus its gap, so nothing this header ever draws can reach under it, however
+ * tall the open editor gets.
+ */
+.gwui-ec-session-header { padding: 10px 20px; border-bottom: 1px solid var(--gw-border); flex-shrink: 0; background: white; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; position: relative; }
+/* The feedback trigger only floats over this header's own top-right corner at this width and
+   wider (below it, `.gw-fb-trigger-chat-mobile-safe` moves the button below the header instead),
+   so the reserved space is added here too, not baked into the base rule where a narrow screen
+   would pay for clearance it does not need. */
+@media (min-width: 641px) {
+  .gwui-ec-session-header { padding-right: 136px; }
+}
 .gwui-ec-session-back { flex-shrink: 0; }
-.gwui-ec-session-name-row { flex: 1; min-width: 0; }
+.gwui-ec-session-name-row { flex: 1 1 200px; min-width: 0; }
 .gwui-ec-session-name { font-size: 14px; font-weight: 700; color: var(--gw-text); }
 .gwui-ec-session-status { font-size: 13px; color: var(--gw-sub); display: flex; align-items: center; gap: 6px; margin-top: 2px; }
 .gwui-ec-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gw-green-live); display: inline-block; flex-shrink: 0; }
 .gwui-ec-sessions-count { flex-shrink: 0; text-align: right; }
+/*
+ * FAULT 2 (live review, 390px walk): THE OPEN CONTROL MADE A 463px-WIDE NUMBER BOX. `TextField`'s
+ * shared `.gwui-input` is `width: 100%`, right for a name or an email, wrong for a count of
+ * sessions - inside this header it stretched to fill whatever space the name row had given up, and
+ * the header's own text crushed to "Give / this / a" around it. A plain number box is only ever a
+ * few digits wide.
+ */
+.gwui-ec-sessions-input { width: 64px; flex: 0 0 64px; text-align: center; }
 
 .gwui-ec-bar { padding: 6px 20px; border-bottom: 1px solid var(--gw-border); background: white; display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; flex-shrink: 0; }
 .gwui-ec-bar-onboarding { padding: 12px 20px; justify-content: space-between; }
@@ -1903,11 +1931,34 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 }
 .gwui-ec-thinking { margin-right: 6px; font-style: normal; color: var(--gw-muted); font-size: 13px; }
 .gwui-ec-fork { display: flex; flex-direction: column; gap: 8px; max-width: 82%; align-self: flex-start; margin-top: 4px; }
+/*
+ * FAULT 7 (live review, 390px walk): THE FLOATING FEEDBACK TRIGGER COVERED "MYSELF" IN "I SET THIS
+ * UP AND CHECK IN MYSELF". The fork's two wide choice buttons are the last thing in the message
+ * list, and on a short conversation that list ends right where the trigger rests
+ * (`.gw-fb-trigger-chat-mobile-safe`, `bottom: 148px`) - the same corner `.gwui-ec-door-slot`
+ * already gives this trigger room from, for the same reason. Same clearance here, not a moved
+ * button: a floating trigger is not worth chasing across every place a conversation can end.
+ */
+@media (max-width: 640px) {
+  .gwui-ec-fork { padding-bottom: 64px; }
+}
 .gwui-ec-fork-note { font-weight: 700; margin-top: 8px; }
 .gwui-ec-sofar-heading { font-size: 13px; font-weight: 700; letter-spacing: .3px; color: var(--gw-sub); margin-bottom: 5px; }
 .gwui-ec-sofar-row { display: flex; gap: 7px; font-size: 13px; line-height: 1.5; margin-bottom: 3px; }
-.gwui-ec-sofar-label { color: var(--gw-sub); font-weight: 700; flex: 0 0 56px; }
-.gwui-ec-sofar-value { color: var(--gw-text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+/*
+ * FAULT 6 (live review): A 56px LABEL COLUMN WRAPPED "What you are aiming for" ONE WORD AT A TIME
+ * ("What / you are / aiming / for"), AND THE CLAMP ON ITS VALUE THEN CUT THE ANSWER OFF ON A PHONE
+ * ("Understan…"). The full plain labels this card moved to (fault 3, `shortLabel`) are sentences,
+ * not single words, so the column is wide enough for the longest of them on one line, stacks above
+ * its value instead of beside it once the screen is too narrow to keep that width, and the clamp is
+ * gone - the point of the card is to show what is on the record, not to hide part of it.
+ */
+.gwui-ec-sofar-label { color: var(--gw-sub); font-weight: 700; flex: 0 0 160px; }
+.gwui-ec-sofar-value { color: var(--gw-text); }
+@media (max-width: 480px) {
+  .gwui-ec-sofar-row { flex-direction: column; gap: 1px; }
+  .gwui-ec-sofar-label { flex-basis: auto; }
+}
 .gwui-ec-sofar-missing { font-size: 13px; line-height: 1.55; margin-top: 6px; color: var(--gw-amber-t); }
 .gwui-ec-doc-panel-spacer { flex: 1; }
 
