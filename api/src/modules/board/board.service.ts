@@ -592,6 +592,9 @@ export class BoardService {
         completedAt: true, specificityLevel: true, specificityDimensions: true,
         /* When each session opened, for the session lines (request 107 e). */
         availableFrom: true, startedAt: true,
+        /* Whether it was a set-up conversation, which the timeline leaves out: the anchor lead's set-up is saved done, and read as "the first answers for
+           session 1 came in" before anybody had answered (review of fd583ba5). */
+        isSetup: true,
       },
       orderBy: { sessionNumber: 'asc' },
     });
