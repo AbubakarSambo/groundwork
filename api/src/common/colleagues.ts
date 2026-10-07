@@ -41,10 +41,13 @@ export function isAnOutsiderHere(membershipRole: string | null | undefined, awai
 }
 
 /** The only fields that ever leave. Anything else on the row is dropped here, whatever the query selected. */
+/** What a colleague who has not given a name is called in the list: an address is never a name (decision 115), and they must still be pickable. */
+export const A_COLLEAGUE_WITH_NO_NAME = 'Someone who has not given a name yet';
+
 export function onlyNameRoleAndTeam(row: { userId: string; role: string; team: string | null; user: { firstName: string | null; lastName: string | null } }): AColleague | null {
   const name = [row.user.firstName, row.user.lastName].filter(Boolean).join(' ').trim();
-  if (!name) return null;
-  return { id: row.userId, name, role: row.role, team: row.team ?? null };
+  /* Left out, this person could not be picked at all: seven of eleven colleagues at an organisation made before the rebuild. */
+  return { id: row.userId, name: name || A_COLLEAGUE_WITH_NO_NAME, role: row.role, team: row.team ?? null };
 }
 
 export async function colleaguesOf(db: Db, organizationId: string, callerId: string): Promise<AColleague[]> {
@@ -93,7 +96,7 @@ export async function colleaguesOf(db: Db, organizationId: string, callerId: str
   return rows
     .map(onlyNameRoleAndTeam)
     .filter((c): c is AColleague => c !== null)
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => Number(a.name === A_COLLEAGUE_WITH_NO_NAME) - Number(b.name === A_COLLEAGUE_WITH_NO_NAME) || a.name.localeCompare(b.name) || String(a.team).localeCompare(String(b.team)));
 }
 
 /**
