@@ -8,7 +8,8 @@ export function theLeadsNote(role: string | null | undefined): string | null {
   const said = (role ?? '').trim()
   if (!said) return null
   const [name, ...rest] = said.split(' - ')
-  if (!rest.length) return said
+  /* A note with no name in front of it is still the lead's own note, never a line about what the person said. */
+  if (!rest.length) return `Your note: ${said.replace(/([^.?!])$/, '$1.')}`
   const note = rest.join(' - ').trim()
   const sentence = (t: string) => t.replace(/([^.?!])$/, '$1.')
   return note ? `${sentence(name.trim())} Your note: ${sentence(note)}` : sentence(name.trim())
