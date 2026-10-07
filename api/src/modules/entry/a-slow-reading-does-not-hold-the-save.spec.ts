@@ -2,6 +2,9 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { waitNoLongerThan, HOW_LONG_THE_SAVE_WAITS_FOR_THE_READING_MS } from './a-slow-reading-does-not-hold-the-save';
 
+/* Comments are taken out before anything is matched, so a sentence in a comment cannot satisfy this. */
+const withoutComments = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
 /**
  * A SLOW READING OF THE SETUP DOES NOT HOLD THE SAVE (B4). Read as the lead: the save answers within the time it allows, whatever the
  * model does, and the reading she is waiting on still ends up written.
@@ -33,7 +36,7 @@ describe('waiting for the reading, for a while only', () => {
 
 describe('the save', () => {
   it('starts the reading of the aims after the people are on it, and waits for it no longer than that', () => {
-    const src = readFileSync(join(__dirname, 'entry.service.ts'), 'utf8');
+    const src = withoutComments(readFileSync(join(__dirname, 'entry.service.ts'), 'utf8'));
     const commit = src.slice(src.indexOf('private async commitInner('), src.indexOf('async patchDraft('));
     expect(commit).toMatch(/waitNoLongerThan\(reading, HOW_LONG_THE_SAVE_WAITS_FOR_THE_READING_MS\)/);
     /* Still waited for, inside the cap, as the older specs pin: the same call, behind the same await. */

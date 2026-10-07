@@ -131,7 +131,7 @@ export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
     does: 'Email you what I just told you, to you and nobody else',
     writes: 'after you confirm it',
     ordered:
-      'First. "Email me what I am on" reads to the objectives lane as a question about their work, and answering it in the box answers half of what was asked.',
+      'This comes first. The objectives lane reads "Email me what I am on" as a question about their work. The box would then answer only half of what was asked.',
     owns: ['email me that', 'can you send me this', 'send it to me'],
     refuses: ['what am I on', 'what did I commit to'],
   },
@@ -140,7 +140,7 @@ export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
     does: 'Start a check-in that is waiting, or open a new one and invite the people in it',
     writes: 'after you confirm it',
     ordered:
-      'Before the objective lane. "Set up a check-in about our objectives" is a request to start a session and reads to that lane as a request to write an objective. Starting one that exists and opening one that does not are the SAME capability on purpose - nobody should have to know which they want, and a second lane claiming these words would be another collision.',
+      'This comes before the objective lane. "Set up a check-in about our objectives" asks to start a session. That lane reads it as a request to write an objective. Starting a check-in that exists and opening one that does not are the SAME capability on purpose. Nobody should have to know which they want, and a second lane claiming these words would be another collision.',
     owns: ['start my check-in', 'can I start my check-in', 'set up a check-in', 'open the session'],
     refuses: ['how do I run a check-in', 'when is the next session', 'what is my check-in about'],
   },
@@ -167,7 +167,7 @@ export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
     does: 'The conversations the record suggests, and answering yes or no to one',
     writes: 'after you confirm it',
     ordered:
-      'Above what_is_stuck and how_am_i_doing: those suggestions are addressed to this person by name and they expire, so they are the better answer where both would fit.',
+      'This comes above what_is_stuck and how_am_i_doing. Those suggestions are addressed to this person by name and they expire, so they are the better answer where both would fit.',
     owns: ['what should we talk about', 'what is waiting on me to decide'],
     refuses: ['what is stuck', 'how am I doing'],
   },

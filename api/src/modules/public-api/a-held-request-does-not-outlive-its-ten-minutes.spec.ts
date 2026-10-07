@@ -4,6 +4,9 @@ import { WhatsAppForAnOrganisationService } from './whatsapp-for-an-organisation
 import { HeldRequestsCron } from './a-held-request-does-not-outlive-its-ten-minutes.cron';
 import { CronLock } from '../prisma/prisma.service';
 
+/* Comments are taken out before anything is matched, so a sentence in a comment cannot satisfy this. */
+const withoutComments = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
 /**
  * NOTHING A PERSON SAID IS KEPT PAST ITS TEN MINUTES WAITING FOR A YES OR A NO, EVEN WHEN THEY NEVER WRITE AGAIN (decision 110, P12).
  *
@@ -96,7 +99,7 @@ describe('the nightly job', () => {
       $queryRaw: jest.fn(async () => [{ locked: true }]),
     };
     const cron = new HeldRequestsCron(prisma, { putAwayWordsHeldTooLong: put } as any);
-    const src = readFileSync(join(__dirname, 'a-held-request-does-not-outlive-its-ten-minutes.cron.ts'), 'utf8');
+    const src = withoutComments(readFileSync(join(__dirname, 'a-held-request-does-not-outlive-its-ten-minutes.cron.ts'), 'utf8'));
     expect(src).toContain('CronLock.HELD_REQUESTS');
     expect(src).toContain('onceAcrossCopies(');
     expect(src).toMatch(/@Cron\('15 3 \* \* \*'/);

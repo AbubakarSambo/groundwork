@@ -1,4 +1,5 @@
 import { CheckInStatus, GroundStatus } from '@prisma/client';
+import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
 import { isAlreadyHeld } from './a-message-sent-once';
@@ -149,7 +150,7 @@ export async function sendHeresWhatIsNew(
       for (const x of stands) {
         if ((nameCount.get(x.label.trim().toLowerCase()) ?? 0) < 2) continue;
         const made = byId.get(x.groundId ?? '')?.createdAt;
-        if (made) x.startedOn = new Date(made).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' });
+        if (made) x.startedOn = whenItWas(made, 'dayAndMonthLong', 'UTC');
       }
       const w = theWhatIsNewWords(user.firstName, stands, beyond);
       if (!w) continue;
