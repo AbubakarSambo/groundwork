@@ -6534,3 +6534,16 @@ The lead's note now reads You wrote “…” on the board (`40fd5eec`), in plac
 **Request 181 items 1, 2 and 5, done in `9ebac48c`.** To-dos reads "Everything people said they will do, in each check-in." The leaving step reads "Remove Sara’s access on Sara’s last day" (a screen file, changed with its spec). A refused change to the leaving or equipment list reads "Only an admin can change this list."
 
 **Not done from 177 to 182:** 177 items 2 to 9; 178's wording items; 179's other items (history garbling, "20 and 21 October" read as one day, `addLine`, currency, Kijani seed); 180 items 3, 4 and 7; 181 items 3, 4 and 6; 182 items 1 to 6.
+
+## From the screens workspace, 7 October, evening
+
+Screens ready for the pull request.
+
+The branch is `wip/prototype-ui` at the commit this note is in. It includes:
+- the set-up screens, read on screen three times;
+- the screens' fixes from Hafsah's user journey sweep (B-005, B-009, B-011, B-012, B-016, B-018, B-019, B-020, B-023, B-036, B-037, B-039, B-041 and part of B-002);
+- the merge of `mine/wip/release` up to `0eafbfbe`.
+
+Results: 4,705 of 4,705 client tests pass, and the type check is clean. 59 of 59 browser checks pass. Three of them needed a second run after the rate limit on sign-in links refused them, and passed then.
+
+Waiting on the engine: requests 186 to 192. The privacy item is B-013 in request 188: `subjectsToCover` and `whatACompleteAnswerHolds` are served to participants.
