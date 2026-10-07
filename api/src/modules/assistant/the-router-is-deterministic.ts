@@ -336,7 +336,7 @@ const RULES = [
      * Narrow on purpose. It owns the shapes that ask what is waiting to be decided, and nothing
      * that merely mentions a conversation - "how do I run a check-in" is a handbook question.
      */
-    /\bwhat\s+(?:should|do)\s+we\s+(?:talk|speak)\s+about\b/i,
+    /\bwhat\s+(?:should|do)\s+(?:we|i)\s+(?:talk|speak)\s+about\b/i,
     /\b(?:any|my|what)\s+suggestions?\b/i,
     /\bwhat\s+(?:conversations?|check-?ins?)\s+(?:should|do)\s+i\b/i,
     /\bwhat\s+(?:is|are)\s+(?:waiting|pending)\s+(?:for|on)\s+(?:my\s+)?(?:decision|answer|me\s+to\s+decide)\b/i,
