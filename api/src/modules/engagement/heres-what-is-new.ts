@@ -22,7 +22,7 @@ export const WHATS_NEW_SENDER = 'sendHeresWhatIsNew';
 
 const TERMINAL: GroundStatus[] = [...A_GROUND_THE_JOBS_LEAVE_ALONE, ...A_GROUND_IS_HELD];
 
-export interface AnExistingCheckIn { label: string; ofHowMany: number; answered: number; notYet: string[]; /** Whether it has a session still to come, which is what the follow-up is for. */ moreToCome?: boolean }
+export interface AnExistingCheckIn { label: string; ofHowMany: number; answered: number; notYet: string[]; /** Whether it has a session still to come, which is what the follow-up is for. */ moreToCome?: boolean; /** Set only when another listed check-in has the same name: when this one was started, as the lead reads a date ("3 September"). */ startedOn?: string; groundId?: string }
 
 /**
  * WHETHER THIS CHECK-IN HAS A SESSION STILL TO COME. The follow-up (a person's own promise, said back to them) is sent for a session that begins after
@@ -39,21 +39,25 @@ const capLine = (t: string) => `${t.charAt(0).toUpperCase()}${t.slice(1)}`;
 const cap = (t: string) => `${t.charAt(0).toUpperCase()}${t.slice(1)}`;
 const listed = (names: string[]) => (names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
 
+/** The check-in by its name, and, when another has the same name, by when its lead started it. */
+const calledBy = (c: AnExistingCheckIn) => (c.startedOn ? `"${c.label}", which you started on ${c.startedOn}` : `"${c.label}"`);
+
 /** One check-in, in one sentence, from the count alone. */
 export function whereOneStands(c: AnExistingCheckIn): string {
-  if (c.answered <= 0) return `In "${c.label}", nobody has checked in yet, out of ${people(c.ofHowMany)}.`;
-  if (c.answered >= c.ofHowMany) return `In "${c.label}", ${c.ofHowMany === 1 ? 'the one person who can answer has' : `all ${aNumberInWords(c.ofHowMany)} people have`} checked in.`;
+  const In = `In ${calledBy(c)}`;
+  if (c.answered <= 0) return `${In}, nobody has checked in yet, out of ${people(c.ofHowMany)}.`;
+  if (c.answered >= c.ofHowMany) return `${In}, ${c.ofHowMany === 1 ? 'the one person who can answer has' : `all ${aNumberInWords(c.ofHowMany)} people have`} checked in.`;
   const named = c.notYet.slice(0, 3);
   const others = c.ofHowMany - c.answered - named.length;
   const who = named.length ? `, and ${listed(others > 0 ? [...named, others === 1 ? 'one other person' : `${aNumberInWords(others)} others`] : named)} ${c.ofHowMany - c.answered === 1 && !named.includes('you') ? 'has' : 'have'} not yet` : '';
-  return `In "${c.label}", ${aNumberInWords(c.answered)} of ${aNumberInWords(c.ofHowMany)} people ${c.answered === 1 ? 'has' : 'have'} checked in${who}.`;
+  return `${In}, ${aNumberInWords(c.answered)} of ${aNumberInWords(c.ofHowMany)} people ${c.answered === 1 ? 'has' : 'have'} checked in${who}.`;
 }
 
 /** True only for the check-ins that have a session to come; said for all, for some by name, or not at all. */
 function theFollowUpSentence(checkIns: AnExistingCheckIn[]): string | null {
   const some = checkIns.filter((c) => c.moreToCome !== false);
   if (!some.length) return null;
-  const where = some.length === checkIns.length ? '' : ` in ${listed(some.map((c) => `"${c.label}"`))}`;
+  const where = some.length === checkIns.length ? '' : ` in ${listed(some.map(calledBy))}`;
   return `What is new is that Groundwork now follows up${where} with each person about the thing they said they would do, in their own words and only to them.`;
 }
 
@@ -125,6 +129,7 @@ export async function sendHeresWhatIsNew(
       const stands: AnExistingCheckIn[] = [];
       /* Each check-in once, by its own id (two check-ins that share a name are two, and both count), the most recent first, and only the most recent few by name. */
       const seenIds = new Set<string>();
+      const byId = new Map<string, any>(theirs.map((g: any) => [g.id, g]));
       const newestFirst = [...theirs].sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime());
       let beyond = 0;
       for (const g of newestFirst) {
@@ -135,9 +140,17 @@ export async function sendHeresWhatIsNew(
         if (!s) continue;
         seenIds.add(g.id);
         if (stands.length >= MOST_LISTED) { beyond++; continue; }
-        stands.push({ ...s, label: g.label, moreToCome: true });
+        stands.push({ ...s, label: g.label, moreToCome: true, groundId: g.id });
       }
       if (!stands.length) continue;
+      /* Two check-ins with the same name are told apart by something the lead already knows: when each was started. */
+      const nameCount = new Map<string, number>();
+      for (const x of stands) nameCount.set(x.label.trim().toLowerCase(), (nameCount.get(x.label.trim().toLowerCase()) ?? 0) + 1);
+      for (const x of stands) {
+        if ((nameCount.get(x.label.trim().toLowerCase()) ?? 0) < 2) continue;
+        const made = byId.get(x.groundId ?? '')?.createdAt;
+        if (made) x.startedOn = new Date(made).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' });
+      }
       const w = theWhatIsNewWords(user.firstName, stands, beyond);
       if (!w) continue;
       await deps.email.sendHeresWhatIsNew(user.email, w.subject, w.lines, w.linkLabel, link);

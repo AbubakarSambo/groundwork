@@ -48,6 +48,17 @@ describe('a lead with many check-ins', () => {
   });
 });
 
+describe('two check-ins with the same name are told apart in words the lead already knows', () => {
+  it('says when each was started, for those two only, and nothing extra for the others', async () => {
+    const w = lead([g('g1', 'Sales team, Q4', 3), g('g2', 'Kenya launch', 4), g('g3', 'Sales team, Q4', 12)]);
+    await w.run();
+    const lines: string[] = w.sent[0].lines;
+    expect(lines).toContain('In "Sales team, Q4", which you started on 12 September, one of two people has checked in, and Omar has not yet.');
+    expect(lines).toContain('In "Sales team, Q4", which you started on 3 September, one of two people has checked in, and Omar has not yet.');
+    expect(lines.find((l) => l.startsWith('In "Kenya launch"'))).toMatch(/^In "Kenya launch", one of two/);
+  });
+});
+
 describe('the announcement goes first, and the chase is tried the next morning', () => {
   it('the one routine message of the day is the announcement, and the chase after it is refused and not used up', async () => {
     const notifications: any[] = [];
