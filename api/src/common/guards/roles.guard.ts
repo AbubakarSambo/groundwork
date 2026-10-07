@@ -25,11 +25,18 @@ export class RolesGuard implements CanActivate {
     const hasRole = requiredRoles.some((role) => user.role === role);
     
     if (!hasRole) {
-      throw new ForbiddenException(
-        `This action requires one of the following roles: ${requiredRoles.join(', ')}`,
-      );
+      throw new ForbiddenException(whoMayDoThis(requiredRoles));
     }
 
     return true;
   }
+}
+
+const IN_WORDS: Record<string, string> = { ADMIN: 'an admin', LEAD: 'a lead', MEMBER: 'a member', GUEST: 'a guest' };
+
+/** B-001: "Only an admin can do this." and never "This action requires one of the following roles: ADMIN". */
+export function whoMayDoThis(roles: string[]): string {
+  const said = roles.map((r) => IN_WORDS[String(r).toUpperCase()] ?? String(r).toLowerCase());
+  const who = said.length < 2 ? said.join('') : `${said.slice(0, -1).join(', ')} or ${said[said.length - 1]}`;
+  return `Only ${who} can do this.`;
 }
