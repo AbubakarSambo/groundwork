@@ -1,6 +1,6 @@
 {
   "about": "The five test organisations and Groundwork staff, made by journey/sweep/seed.ts. Test values only. Dates in the data are counted from the day it was made.",
-  "madeAt": "2026-10-07T13:40:44.961Z",
+  "madeAt": "2026-10-07T21:02:53.252Z",
   "passwordForEveryone": "Sweep-local-only-1",
   "whatsapp": {
     "note": "Test values. The API is started with these by bed.ts start-api, and signed messages are signed with the app secret.",
@@ -704,6 +704,87 @@
           "participants": [
             "pia@riverbank.test"
           ]
+        },
+        {
+          "label": "Renewal push",
+          "scenario": "NEW_PROJECT",
+          "status": "ACTIVE",
+          "cadence": "WEEKLY",
+          "lead": "lead@riverbank.test",
+          "participants": [
+            "qx7@riverbank.test",
+            "dov@riverbank.test",
+            "pia@riverbank.test"
+          ],
+          "notes": "Made before the rebuild, copied in shape from a made-up existing client: real-shaped answers, finished sessions, a released report and a board. Names scrambled."
+        },
+        {
+          "label": "Fola joining the ward team",
+          "scenario": "NEW_HIRE",
+          "status": "ACTIVE",
+          "cadence": "FORTNIGHTLY",
+          "lead": "ines@riverbank.test",
+          "participants": [
+            "fo4@riverbank.test"
+          ],
+          "notes": "Made before the rebuild, copied in shape from a made-up existing client: real-shaped answers, finished sessions, a released report and a board. Names scrambled."
+        },
+        {
+          "label": "Luis, performance",
+          "scenario": "PIP",
+          "status": "ACTIVE",
+          "cadence": "FORTNIGHTLY",
+          "lead": "ines@riverbank.test",
+          "participants": [
+            "lu8@riverbank.test"
+          ],
+          "notes": "Made before the rebuild, copied in shape from a made-up existing client: real-shaped answers, finished sessions, a released report and a board. Names scrambled."
+        },
+        {
+          "label": "The Fleet Street lease",
+          "scenario": "OPEN_READ",
+          "status": "ACTIVE",
+          "cadence": "WEEKLY",
+          "lead": "lead@riverbank.test",
+          "participants": [
+            "bn5@riverbank.test"
+          ],
+          "notes": "Made before the rebuild, copied in shape from a made-up existing client: real-shaped answers, finished sessions, a released report and a board. Names scrambled."
+        },
+        {
+          "label": "Night rota, the F2s",
+          "scenario": "OPEN_READ",
+          "status": "ACTIVE",
+          "cadence": "WEEKLY",
+          "lead": "ines@riverbank.test",
+          "participants": [
+            "lu8@riverbank.test"
+          ],
+          "notes": "Made before the rebuild, copied in shape from a made-up existing client: real-shaped answers, finished sessions, a released report and a board. Names scrambled."
+        },
+        {
+          "label": "Group revenue 2027",
+          "scenario": "OKR_ALIGNMENT",
+          "status": "ACTIVE",
+          "cadence": "FORTNIGHTLY",
+          "lead": "lead@riverbank.test",
+          "participants": [
+            "dov@riverbank.test",
+            "ines@riverbank.test"
+          ],
+          "notes": "Made before the rebuild, copied in shape from a made-up existing client: real-shaped answers, finished sessions, a released report and a board. Names scrambled."
+        },
+        {
+          "label": "Okr alignment",
+          "scenario": "OKR_ALIGNMENT",
+          "status": "ACTIVE",
+          "cadence": "WEEKLY",
+          "lead": "lead@riverbank.test",
+          "participants": [
+            "dov@riverbank.test",
+            "pia@riverbank.test"
+          ],
+          "notes": "Made before the rebuild, copied in shape from a made-up existing client: real-shaped answers, finished sessions, a released report and a board. Names scrambled."
         }
       ],
       "notes": [
