@@ -34,7 +34,7 @@ type RoleFilter = 'Everyone' | 'Owner' | 'Admins' | 'Can open check-ins' | 'Take
 const ROLE_FILTERS: RoleFilter[] = ['Everyone', 'Owner', 'Admins', 'Can open check-ins', 'Take part', 'Guests', 'Needs something']
 
 /** Team, Role, Status, Check-ins, Open - the name column is PersonRow's own (PEOPLE_NAME_COLUMN). */
-const EXTRA_COLUMNS = '140px 170px 170px minmax(200px, 1fr) 60px'
+const EXTRA_COLUMNS = '120px 170px 230px minmax(150px, 1fr) 40px'
 
 function matches(filter: RoleFilter, m: OrgMember, ownerId: string | null): boolean {
   const role = roleWord(m, ownerId)
