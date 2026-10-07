@@ -275,7 +275,14 @@ export function replyHasQuestion(text: string): boolean {
  * What replaces it points at the derived summary rather than competing with it.
  */
 export const ONBOARD_READY_CLOSER =
-  'That is the setup questions done. Here is what you have told us so far.'
+  /*
+   * FAULT 3 (live walk, 6 October 2026): ONE VOICE, NOT "I" MIXED WITH "US". The closer spoke of
+   * "us" ("told us so far") while the card under it, drawn by the same product in the same
+   * breath, speaks of Groundwork in the third person ("What I've got so far", the model's "I").
+   * Said now the way the rest of the product speaks of itself: "you" for the reader, "Groundwork"
+   * for the product, never "I" or "us" standing in for it.
+   */
+  'That is everything Groundwork needs to set it up. Here is what you said.'
 // The reply to actually display: when the endpoint signals ready but the reply
 // still asks a question, show the clean closer instead so no question is
 // stranded. Otherwise show the reply verbatim.
@@ -459,29 +466,35 @@ export function withoutPickedOpener(
  * inventing a debt.
  */
 /**
- * ONE WORD WHERE ONE WORD WILL DO.
+ * PLAIN WORDS IN FULL, NOT ONE-WORD LABELS (fault 3, live walk, 6 October 2026).
  *
- * The summary card's labels are sentences - "What this is about", "People you mentioned", "What you
- * want from it" - which is fine in a report and wrong on a card somebody is scanning to catch a
- * mistake before clicking. Five sentence-labels down the left edge is five things to read before
- * reaching the values, which are the point.
+ * This used to clip each label to one word - "About", "People", "Why", "Aim", "Sessions" - reasoning
+ * that a card somebody scans to catch a mistake before clicking has no room for a sentence down its
+ * left edge. Read live, that reasoning did not survive contact with a reader: a clipped label asks
+ * the reader to supply the rest of the sentence themselves, which is exactly the clipped-phrase,
+ * work-jargon reading CLAUDE.md's wording rule exists to rule out. `FillsInAsYouTalk.tsx`'s own
+ * panel, right beside this card, already says the same four things in full sentences ("A name",
+ * "How often", "When it runs", "Who's in it") and nobody has found those too long to read at a
+ * glance - a label is not shortened by its neighbours' width, it is shortened by what a person can
+ * read without stalling, and a full short phrase reads faster than a single ambiguous word.
  *
  * Kept as a lookup rather than renamed at source: `summariseSetup` is read by other screens and by
  * its own specs, and the long labels are right where there is room for them.
  */
-function shortLabel(label: string): string {
+export function shortLabel(label: string): string {
   switch (label) {
-    case 'What this is about': return 'About'
-    case 'People you mentioned': return 'People'
-    /* One word, like the rest: at the label column's width "Why now" wraps onto two lines and the
-       row it labels goes out of line with every other row. */
-    case 'Why now': return 'Why'
-    /* "Want" beside a bare clause read as a sentence: "Want take the on-call escalations off me".
-       "Aim" is a noun and frames the clause as the thing being aimed at. */
-    case 'What you want from it': return 'Aim'
-    case 'Sessions': return 'Sessions'
+    case 'What this is about': return 'What it is about'
+    case 'People you mentioned': return 'Who is in it'
+    case 'Why now': return 'Why now'
+    case 'What you want from it': return 'What you are aiming for'
+    case 'Sessions': return 'How many sessions'
     default: return label
   }
+}
+
+/** Several aims read as one sentence, joined with "and" - never with a semicolon (fault 3). */
+function joinedWithAnd(xs: string[]): string {
+  return xs.length <= 1 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`
 }
 
 export function summariseSetup(
@@ -552,7 +565,14 @@ export function summariseSetup(
   }
   /* The goal is a clause the model lifted mid-sentence ("take the on-call escalations off me"). It is
      the person's words, so nothing is added to them; it is capitalised because it now opens a line. */
-  if (sels.goals?.length) have.push({ label: 'What you want from it', value: sels.goals.map((g: string) => g.charAt(0).toUpperCase() + g.slice(1)).join('; ') })
+  /*
+   * FAULT 3 (live walk, 6 October 2026): SEVERAL AIMS JOINED WITH SEMICOLONS READ AS A LIST OF
+   * FRAGMENTS, NOT A SENTENCE. "Learn our bread recipes; Run the morning bake" is two clipped
+   * phrases stitched together with punctuation a reader has to parse as a joiner - the wording
+   * rule says plain full sentences, never pieces joined by a colon, dash or semicolon. Joined with
+   * "and" instead, the way anyone would say it aloud.
+   */
+  if (sels.goals?.length) have.push({ label: 'What you want from it', value: joinedWithAnd(sels.goals.map((g: string) => g.charAt(0).toUpperCase() + g.slice(1))) })
   have.push({ label: 'Sessions', value: sessions === 1 ? 'One' : `${sessions}` })
 
   /*
@@ -3748,8 +3768,14 @@ export function EntryChatPage() {
                             paragraph is the model's own writing and is in the chat three inches
                             above. So one-word labels, and every value clipped to two lines.
                           */}
+                          {/*
+                            FAULT 3 (live walk, 6 October 2026): "WHAT I'VE GOT SO FAR" SPOKE AS
+                            "I", WHILE THE PANEL BESIDE IT AND THE CLOSER ABOVE IT SPEAK OF
+                            GROUNDWORK, NOT THEMSELVES. One voice throughout the product: the
+                            reader is "you", the product is "Groundwork".
+                          */}
                           <div className="gwui-ec-sofar-heading">
-                            What I've got so far
+                            What Groundwork has so far
                           </div>
                           {sum.have.map((h) => (
                             <div key={h.label} className="gwui-ec-sofar-row">

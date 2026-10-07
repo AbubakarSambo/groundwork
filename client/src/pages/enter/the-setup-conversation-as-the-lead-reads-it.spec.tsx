@@ -50,6 +50,32 @@ describe('the setup conversation', () => {
     }
   })
 
+  /*
+   * FAULT 3 (live walk, 6 October 2026): THE "SO FAR" CARD SPOKE AS "I", ONE-WORD LABELS AND A
+   * SEMICOLON-JOINED LIST. Now full plain labels, "and" between several aims, and one voice
+   * throughout ("Groundwork" rather than "I").
+   */
+  it('the "so far" card reads full plain labels, aims joined with "and", and one voice', async () => {
+    openWith({
+      scenario: 'NEW_PROJECT', closed: false, history: [], onboardingStep: 3, onboardingReady: true,
+      onboardingHistory: [
+        { role: 'assistant', content: 'Tell me about it.' },
+        { role: 'user', content: 'We are training new bakers.' },
+      ],
+      onboardingSelections: {
+        mode: 'new', initial: 'Training new bakers.', classifiedScenario: 'NEW_PROJECT',
+        peopleNamed: ['Imani'], goals: ['learn our bread recipes', 'run the morning bake'],
+      },
+    })
+    await waitFor(() => expect(screen.getByText('What Groundwork has so far')).toBeTruthy())
+    expect(document.body.textContent).not.toContain("What I've got so far")
+    expect(screen.getByText('Who is in it')).toBeTruthy()
+    expect(screen.getByText('What you are aiming for')).toBeTruthy()
+    expect(screen.getByText('Learn our bread recipes and Run the morning bake')).toBeTruthy()
+    const page = document.body.textContent ?? ''
+    expect(page).not.toContain('Learn our bread recipes; Run the morning bake')
+  })
+
   it('once in the check-in, the planned number follows how often it runs', async () => {
     openWith({
       scenario: 'PIP', closed: false, flowPath: 'self', onboardingStep: 7,
