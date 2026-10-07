@@ -8,7 +8,7 @@
  * beside a roster of two, the notice said the report needed a second person while two were on it,
  * and the session row read "1 of 1 answered · Released" without her. One rule, mirrored here.
  */
-export const THE_LEAD_ONLY_ASKS = ['TEAM_UPDATES', 'DISCOVERY']
+export const THE_LEAD_ONLY_ASKS = ['TEAM_UPDATES', 'DISCOVERY', 'HELP_TEAM_UNDERSTAND']
 
 /**
  * DECISION 77: SOMEBODY NOT LET IN YET IS NOT COUNTED EITHER (docs/answers-from-engine.md, request
