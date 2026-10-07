@@ -4,7 +4,7 @@ import { withoutTheLeadsSetUpForAMember } from './the-leads-set-up-is-the-leads-
 import { aShortQuestionForAPerson, askedBackToTheLead, theQuestionTheyWereShown } from './a-short-question-for-a-person-in-the-old-chat';
 import { aFindingThatReadsRight } from './a-finding-reads-right';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
-import { refuseSomeoneHeldForASeat, refuseSomeoneAwaitingTheOrganisation, theCheckInsHeldForASeat } from '../participants/held-for-a-seat';
+import { refuseSomeoneAwaitingTheOrganisation, theCheckInsHeldForASeat, theHeldPersonWhoHasAnswered, whatSomeoneHeldForASeatReads } from '../participants/held-for-a-seat';
 import { CANNOT_CHECK_IN_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { theRoomForThisReader } from '../board/the-room-for-this-reader';
 import { goalsThisReaderMaySee, notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead, aWeekHasPassedSinceNotTold, whatThePersonReadsAfterAWeek } from './a-goal-not-told-stays-with-the-lead';
@@ -1737,7 +1737,8 @@ export class GroundsService {
      * list, asked here too; and the same answer as assertMaySeeGround gives every other read.
      */
     /* Nobody held for a seat reads the check-in page: the invitation page's own refusal, asked first (privacy sweep finding 3). */
-    await refuseSomeoneHeldForASeat(this.prisma as any, id, requestingUserId);
+    /* Unless they already answered: then the page is theirs, narrowed to their own answers (decision 110, B3). */
+    const heldButAnswered = await theHeldPersonWhoHasAnswered(this.prisma as any, id, requestingUserId);
     /* Nor anyone waiting for the organisation's approval (row 5). */
     await refuseSomeoneAwaitingTheOrganisation(this.prisma as any, requestingUserId, CANNOT_CHECK_IN_YET);
     const mayRead = requestingUserId ? await this.assertMaySeeGround(id, requestingUserId) : null;
@@ -1910,7 +1911,7 @@ export class GroundsService {
      * check-in, after three periods, in plain words, built by patterns/who-reads-a-pattern. Nothing
      * at all while patterns are not served, and then not even the reader lookup is made.
      */
-    const signals = PATTERNS_ARE_SERVED
+    const signals = PATTERNS_ARE_SERVED && !heldButAnswered
       ? await (async () => {
           const namesForPatterns = whoIsWhoIn(ground.participants as any, ground.initiatorId, (ground as any).cadence);
           const served = servedPatterns(
@@ -2918,6 +2919,7 @@ export class GroundsService {
     /* A goal whose whole sentence carried a number this reader may not read is not left as a goal with no words (it is not served, and what the person's own row says is said plainly). */
     /* In an anchor check-in the lead's own set-up (her aim, what it will cover, what a complete answer holds) is hers alone (decision 96, item 8). */
     const asAMemberReadsIt = <P extends Record<string, any>>(page: P): P => withoutTheLeadsSetUpForAMember(page, { startedFrom: (ground as any).startedFrom ?? null, runsIt: viewerRunsThisGround });
+    if (heldButAnswered && requestingUserId) return whatSomeoneHeldForASeatReads(asAMemberReadsIt(thePage), requestingUserId) as any;
     if (!Array.isArray((thePage as any).participants)) return asAMemberReadsIt(thePage);
     return asAMemberReadsIt({
       ...thePage,

@@ -81,3 +81,69 @@ export async function theCheckInsHeldForASeat(
  * Every sweep already asks for `userId: { not: null }`, so the sign-in is there to ask about.
  */
 export const NOT_HELD_FOR_A_SEAT = { awaitingSeat: false, user: { awaitingOrgApproval: false } } as const;
+
+/** What somebody held for a seat who has already answered reads at the top of their own page (decision 110, B3). */
+export const HELD_BUT_KEEPS_WHAT_THEY_SAID =
+  'There is no seat for you on the plan right now, so you cannot answer a new session yet. What you already said and your own report are still yours to read. You will get your invitation as soon as there is a seat.';
+
+/**
+ * A PERSON HELD FOR A SEAT WHO HAS ALREADY ANSWERED KEEPS THEIR OWN PAGE (decision 110, B3; privacy row 5 and finding 7).
+ *
+ * The seat limit stops new participation only. So the check-in page is not refused to somebody who already gave an answer here: it is served
+ * narrowed to what is theirs - the check-in's name, its status, their own row and their own sessions - with no colleague, no goal, no shared
+ * report, no signal, no setting and no note. Somebody held who never answered is refused as before, with the same sentence. A lookup that fails
+ * refuses: the more private answer.
+ *
+ * Returns true when the reader is held and has answered (so the page must be narrowed), false when they are not held, and throws otherwise.
+ */
+export async function theHeldPersonWhoHasAnswered(
+  prisma: { groundParticipant?: { findFirst?: (args: any) => unknown }; checkIn?: { findFirst?: (args: any) => unknown } } | null | undefined,
+  groundId: string | null | undefined,
+  userId: string | null | undefined,
+): Promise<boolean> {
+  const find = prisma?.groundParticipant?.findFirst;
+  if (!find || !groundId || !userId) return false;
+  const row: any = await Promise.resolve(find.call(prisma!.groundParticipant, { where: { groundId, userId }, select: { id: true, awaitingSeat: true } }))
+    .catch(() => ({ awaitingSeat: true }));
+  if (row?.awaitingSeat !== true) return false;
+  const findAnswer = prisma?.checkIn?.findFirst;
+  if (!findAnswer || !row?.id) throw new ForbiddenException(HELD_FOR_A_SEAT);
+  const answered: any = await Promise.resolve(findAnswer.call(prisma!.checkIn, { where: { groundId, participantId: row.id, completedAt: { not: null }, isSetup: false }, select: { id: true } }))
+    .catch(() => null);
+  if (!answered) throw new ForbiddenException(HELD_FOR_A_SEAT);
+  return true;
+}
+
+/** The page of somebody held for a seat who has answered: only what is theirs, and plainly says why a new session is not open to them. */
+export function whatSomeoneHeldForASeatReads(page: Record<string, any>, userId: string): Record<string, any> {
+  const mine = (Array.isArray(page.participants) ? page.participants : []).filter((p: any) => p?.userId === userId);
+  const myIds = new Set(mine.map((p: any) => p.id));
+  return {
+    id: page.id,
+    label: page.label,
+    status: page.status,
+    scenario: page.scenario,
+    cadence: page.cadence,
+    timelineDays: page.timelineDays ?? null,
+    runsUntilEnded: page.runsUntilEnded ?? false,
+    organizationId: page.organizationId,
+    participants: mine,
+    checkIns: (Array.isArray(page.checkIns) ? page.checkIns : []).filter((c: any) => myIds.has(c.participantId)),
+    objectives: [],
+    commitments: [],
+    contextItems: [],
+    signals: [],
+    contextNotes: [],
+    settingsChanges: [],
+    report: null,
+    baseline: null,
+    joinToken: null,
+    brief: null,
+    asks: {},
+    viewerIsInitiator: false,
+    viewerRunsThisGround: false,
+    mayChangeSetup: false,
+    heldForASeat: true,
+    saying: HELD_BUT_KEEPS_WHAT_THEY_SAID,
+  };
+}
