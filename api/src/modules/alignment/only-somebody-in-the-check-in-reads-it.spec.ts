@@ -43,11 +43,13 @@ describe('a read on a check-in asks who is reading first', () => {
     await expect(ask(who)).resolves.toBe(true);
   });
 
-  it('every GET route in the alignment controller carries the guard', () => {
+  it('every route in the alignment controller, reads and writes, is behind the guard (changed from GET only: the writes checked the organisation and not the check-in)', () => {
     const src = readFileSync(join(__dirname, 'alignment.controller.ts'), 'utf8');
-    const gets = src.match(/@Get\('[^']*'\)/g) ?? [];
-    const guarded = src.match(/@UseGuards\(OnlySomebodyInTheCheckInReadsIt\)\s+@Get\(/g) ?? [];
-    expect(gets.length).toBeGreaterThanOrEqual(9);
-    expect(guarded.length).toBe(gets.length);
+    expect(src).toMatch(/@UseGuards\(JwtAuthGuard, OnlySomebodyInTheCheckInReadsIt\)\s+export class AlignmentController/);
+    const routes = src.match(/@(Get|Post|Put|Patch|Delete)\('[^']*'\)/g) ?? [];
+    expect(routes.filter((r) => r.startsWith('@Post')).length).toBeGreaterThanOrEqual(15);
+    expect(routes.length).toBeGreaterThanOrEqual(30);
+    /* No route opts out of the class's guards. */
+    expect(src).not.toMatch(/@Public\(\)/);
   });
 });
