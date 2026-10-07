@@ -159,9 +159,17 @@ for (const w of WIDTHS) {
       await page.waitForTimeout(600);
 
       expect(new URL(page.url()).search).toContain('naming=1');
-      await expect(page.getByText('Create an organisation')).toBeVisible();
+      /*
+       * B-050 (docs/bug-log-screens.md): this screen used to say "Create an organisation" here,
+       * though the organisation already exists for a new Google sign-up and the button only
+       * renames it. Fixed to say the organisation is ready and ask what to call it.
+       */
+      await expect(page.getByText('Your organisation is ready')).toBeVisible();
+      await expect(page.getByText('What should it be called?')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Save the name' })).toBeVisible();
+      await expect(page.getByText('Create an organisation')).not.toBeVisible();
 
-      await screenshotTo(page, `docs/bug-log-screens/google-new-user-${w.name}.png`);
+      await screenshotTo(page, `docs/bug-log-screens/B-050-fixed-${w.name}.png`);
       const issue = watchSummary(watcher);
       if (issue) console.log(`(b) @ ${w.name} console/network:`, issue);
       await ctx.close();
