@@ -4,6 +4,41 @@ This is the report from the screens workspace, on the branch `wip/prototype-ui`.
 workspace writes its own report in `docs/morning-report.md`, so the two computers never edit the
 same file.
 
+## 12:45 update: the set-up screens, read on screen a second time
+
+A reviewer read the 11:35 fixes on screen, at 1440 and at phone width, and three of them had not held. All of them are now fixed:
+
+- **The sessions control:**
+  - nothing sits under the Feedback button;
+  - the number box is a sensible width at phone width;
+  - the number the lead types now wins (5 used to stay "8 sessions planned").
+- **The save prompt for a signed-in lead** is one sentence: "Save this to set up the check-in and invite the people you named.", with the button "Save and set up".
+- **The summary card:**
+  - aims join as "…and understand what each person needs", in lower case after "and";
+  - names join as "Daniel and Grace";
+  - the labels have room;
+  - nothing is cut off at phone width.
+- **Someone added from "People mentioned"** keeps their name.
+- **Wording:**
+  - "The shared report releases when all parties are in." now reads "Everyone gets the shared report once all of you have checked in."
+  - Three headings that were joined with commas are now plain.
+  - A sentence on the People page that was joined with a semicolon is now two sentences.
+- **The default name.** A check-in with no name typed is called "Amina's project check-in" (or "Amina's check-in"), not the situation's label. A new hire's check-in is still named after the new hire.
+
+**Decided for Hafsah to confirm.** A lead who opens a check-in still lands on its chat tab, not its board. The prototype lands her on the board, but your own words are recorded in the code: "tab 1 was chat, tab 2 reports". So I kept chat first. The tabs for the Board and for People and setup are always shown above it.
+
+**Sent to the engine as request 186.** These are the engine's part:
+- the lead's own set-up check-in does not count as session 1;
+- Daniel shows as "A colleague";
+- the dates the lead said are ignored;
+- several unclear sentences in the engine's wording;
+- what Grace said would clear the problem is lost;
+- the closing card has no "What is now in your record" section.
+
+**Mailpit** was not running on port 1025 during the walk. The reviewer took the sign-in links from the local API's log instead.
+
+Results: 4,659 of 4,659 client tests pass, and the type check is clean. 57 of 57 browser checks pass.
+
 ## 11:35 update: the rest of the core use cases, fixed on the screens
 
 A walk of a lead setting up a new hire's check-in and a project check-in found these faults. All of them are fixed, and each has a test that failed before the fix.
