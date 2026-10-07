@@ -1,3 +1,4 @@
+import { answerFirst } from '../whatsapp/answer-the-webhook-then-do-the-work';
 import { Body, Controller, Delete, Get, HttpCode, Logger, Param, Post, Put, Query, Req, Res, BadRequestException, UseGuards } from '@nestjs/common';
 import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { MachineTokenGuard, RequiresScope, type MachineCaller } from './machine-token.guard';
@@ -321,11 +322,10 @@ export class WhatsAppForAnOrganisationController {
     const raw = req.rawBody ?? Buffer.from(JSON.stringify(req.body ?? {}));
     this.whatsapp.verifySignatureWith(theirKey(own, 'appSecret'), req.headers as Record<string, string | string[] | undefined>, raw);
     if (!own.enabled) return { received: true };
-    try {
-      await this.inbound.handle(organizationId, req.body);
-    } catch (err: any) {
-      this.logger.error(`WhatsApp inbound for org ${organizationId} failed: ${err?.message}`);
-    }
+    await answerFirst(
+      () => this.inbound.handle(organizationId, req.body),
+      (err: any) => this.logger.error(`WhatsApp inbound for org ${organizationId} failed: ${err?.message}`),
+    );
     return { received: true };
   }
 }
