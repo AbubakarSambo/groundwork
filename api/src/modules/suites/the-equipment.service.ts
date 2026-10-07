@@ -6,6 +6,8 @@ import { PrismaService } from '../prisma/prisma.service';
 export const EQUIPMENT_REFUSED = {
   notOn: thisSuiteIsOff('The equipment suite'),
   onlyAnAdmin: 'Only an admin can open this board.',
+  /** Said to somebody who may not add to or change the list. Reading and changing are different sentences (request 181 item 5). */
+  onlyAnAdminChanges: 'Only an admin can change this list.',
   notInIt: 'Only people in this organisation can update equipment here.',
   notFound: 'That item was not found.',
   badName: 'Give the item a name.',
@@ -47,7 +49,7 @@ export class EquipmentService {
 
   async add(reader: Reader, input: { name?: unknown } & Change): Promise<EquipmentBoard> {
     await this.suiteOn(reader.organizationId);
-    await this.admitAdmin(reader);
+    await this.admitAdmin(reader, true);
     const name = typeof input.name === 'string' ? input.name.trim().replace(/\s+/g, ' ').slice(0, 120) : '';
     if (!name) throw new BadRequestException(EQUIPMENT_REFUSED.badName);
     const org = reader.organizationId;
@@ -61,7 +63,7 @@ export class EquipmentService {
 
   async change(reader: Reader, id: string, input: Change): Promise<EquipmentBoard> {
     await this.suiteOn(reader.organizationId);
-    await this.admitAdmin(reader);
+    await this.admitAdmin(reader, true);
     const item = await this.prisma.equipmentItem.findUnique({ where: { id }, select: { id: true, organizationId: true } });
     if (!item || item.organizationId !== reader.organizationId) throw new NotFoundException(EQUIPMENT_REFUSED.notFound);
     const data = await this.checked(reader.organizationId, input);
@@ -132,12 +134,12 @@ export class EquipmentService {
     if (!suite?.isOn) throw new NotFoundException(EQUIPMENT_REFUSED.notOn);
   }
 
-  private async admitAdmin(reader: Reader): Promise<void> {
+  private async admitAdmin(reader: Reader, toChange = false): Promise<void> {
     const m = await this.prisma.organizationMembership.findUnique({
       where: { userId_organizationId: { userId: reader.userId, organizationId: reader.organizationId } },
       select: { role: true },
     });
-    if (m?.role !== 'ADMIN') throw new ForbiddenException(EQUIPMENT_REFUSED.onlyAnAdmin);
+    if (m?.role !== 'ADMIN') throw new ForbiddenException(toChange ? EQUIPMENT_REFUSED.onlyAnAdminChanges : EQUIPMENT_REFUSED.onlyAnAdmin);
   }
 
   private nameOf(p: Person): string {
