@@ -4940,17 +4940,19 @@ export class AssistantService {
       inCheckIns.push({ text, whenSaid: o.dueSaid ?? null, ground: myPlaces.find((x) => x.id === o.participantId)?.ground ?? null });
     }
 
+    const alreadySaysIt = (text: string, said: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').includes(said.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim());
     const now = new Date();
     const lines: string[] = [];
     const late: string[] = [];
     for (const c of open) {
-      const when = c.dueSaid ? ` (you said ${c.dueSaid})` : '';
+      /* What they said the day was is added only where the promise does not already say it: "I will send it by Friday" is not "(you said by Friday)" again (F-15). */
+      const when = c.dueSaid && !alreadySaysIt(String(c.text), c.dueSaid) ? ` (you said ${c.dueSaid})` : '';
       const slipped = hasSlipped(c as any, now);
-      lines.push(`- ${c.text}${when}${slipped ? ', and the date you gave has passed' : ''}`);
+      lines.push(`- ${String(c.text).replace(/[.]+$/, '')}${when}${slipped ? ', and the date you gave has passed' : ''}`);
       if (slipped) late.push(c.text);
     }
     for (const c of inCheckIns) {
-      const when = c.whenSaid ? `you said ${c.whenSaid}, ` : '';
+      const when = c.whenSaid && !alreadySaysIt(String(c.text), c.whenSaid) ? `you said ${c.whenSaid}, ` : '';
       lines.push(`- ${String(c.text).replace(/[.]+$/, '')} (${when}in "${c.ground?.label ?? 'your check-in'}")`);
     }
     if (!lines.length) {

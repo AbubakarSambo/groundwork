@@ -109,6 +109,9 @@ function harness(as: Who, opts: { commitments?: any[]; toDos?: any[]; waiting?: 
     commitment: { findMany: jest.fn(async ({ where }: any) => (where.personExternalId === me.externalId ? opts.commitments ?? [] : [{ text: 'SOMEBODY-ELSES-COMMITMENT', state: 'OPEN', dueAt: null, dueSaid: null, statedAt: new Date(0), lastFollowedUpAt: null }])) },
     /* Added (request 180 item 2): "what did I say I would do" also reads the asker's own promises written down in a check-in, found only through the asker's own sign-in. */
     groundCommitment: { findMany: jest.fn(async ({ where }: any) => (where.participant?.userId === me.linkedUserId ? [] : [{ text: 'SOMEBODY-ELSES-PROMISE', whenSaid: null, ground: { label: 'x' } }])) },
+    /* Added (F-5 of the user journeys): the asker's own to-dos written down while setting up or answering, the same rows the You page lists. Found only through the asker's own place in a check-in; anybody else's are in the fake so a leak would show. */
+    groundParticipant: { findMany: jest.fn(async ({ where }: any) => (where.userId === me.linkedUserId ? [] : [{ id: 'SOMEBODY-ELSES-PLACE', ground: { label: 'x' } }])) },
+    personObjective: { findMany: jest.fn(async () => [{ text: 'SOMEBODY-ELSES-OBJECTIVE', dueSaid: null, participantId: 'SOMEBODY-ELSES-PLACE' }]) },
     todo: { findMany: jest.fn(async ({ where }: any) => (where.personExternalId === me.externalId ? opts.toDos ?? [] : [{ text: 'SOMEBODY-ELSES-TODO', dueAt: null, dueSaid: null, createdAt: new Date(0) }])) },
   }, {
     get(target: any, name: string) {

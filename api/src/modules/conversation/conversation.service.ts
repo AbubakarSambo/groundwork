@@ -1,8 +1,8 @@
 import { HELD_FOR_A_SEAT } from '../participants/held-for-a-seat';
-import { theAimsNameKeepsItsShare } from './the-aims-name-keeps-its-share';
+import { theAimsNameKeepsItsShare, theNameWithItsSum } from './the-aims-name-keeps-its-share';
 import { theParticipantAsServed, theFitAsServed, theCheckInRowAsServed, theyAreTheirOwnWords } from './a-transcript-serves-only-what-is-theirs';
 import { theNumberInTheNameIsKept } from './an-aim-said-twice-is-one-aim';
-import { theDayKeptApart } from '../board/an-aim-is-a-sentence-about-somebody';
+import { theDayKeptApart, aNumberPeopleCanRead } from '../board/an-aim-is-a-sentence-about-somebody';
 import { suggestAnswers } from './suggested-answers';
 import { whatTheYesSays, startsWithAYes } from './yes-but-a-new-number';
 import { READS_DIFFERENTLY, alreadyAsked as theLinesInTheStamps, theStampForWhatItRaised } from './a-document-that-disagrees-is-asked-once';
@@ -128,6 +128,7 @@ import { theOneWorthAsking, askAboutItBlockFor } from './what-keeps-happening-be
 import { mayCoach } from './participation-timeline';
 import { theirApprovedLeave } from '../suites/who-is-away';
 import { aNewIdeaIn, afterTheirTurn, anIdeaReadBackAsAPromise, withoutAskingWhatToCapture, anAnswerToTheIdeaOffer, ANSWERED_THE_IDEA_OFFER } from './ideas-from-the-team';
+import { theSumsOnlyARequestSaid, whereARequestInAnOrdinaryCheckInGoes } from './a-request-in-an-ordinary-check-in-goes-to-ask';
 import { aRequestAfterTheirTurn, theyAreAnsweringAnOffer, withoutACannotApprove, withoutAPromiseToPassItOn } from './a-request-offered-in-the-check-in';
 import { stillAsking } from './one-question-per-turn';
 import { oneThingAsked, wouldLeaveAQuestionOut, asksMoreThanOneThing, withTheOneMoreLine, ASK_ONE_THING } from './a-turn-asks-one-thing';
@@ -2788,6 +2789,16 @@ export class ConversationService {
         this.logger.warn(
           `${invented.length} causal claim(s) nobody made on ${checkIn.id}. ${ASK_INSTEAD_OF_CONCLUDING}`,
         );
+      }
+      /*
+       * A REQUEST FOR LEAVE OR MONEY, SAID IN AN ORDINARY CHECK-IN, IS TOLD WHERE IT IS ASKED FOR, BY US, IN ONE SENTENCE (user journeys, F-9). A bare
+       * "Yes, send it." after that sentence gets the sentence again and no next question. See a-request-in-an-ordinary-check-in-goes-to-ask.
+       */
+      {
+        const there = await (this.prisma as any).ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { startedFrom: true, organizationId: true } })?.catch?.(() => null);
+        const lastWeSaid = await (this.prisma as any).conversationTurn?.findFirst?.({ where: { checkInId: checkIn.id, role: TurnRole.AI, createdAt: { lt: (personTurn as any).createdAt } }, orderBy: { createdAt: 'desc' }, select: { content: true } })?.catch?.(() => null);
+        const where = await whereARequestInAnOrdinaryCheckInGoes(this.prisma, { organizationId: there?.organizationId ?? null, startedFrom: there?.startedFrom ?? null, message, theLastThingWeSaid: lastWeSaid?.content ?? null });
+        if (where) reply = where.replaceTheReply ? where.say : `${reply}\n\n${where.say}`;
       }
       hadCloseMarker = stripped.hadMarker;
       reply = await this.theTurnAsItIsSaved(checkIn as any, reply);
@@ -9508,6 +9519,8 @@ ${told}` : '';
         .flatMap((text) => numbersInAClaim(text))
         .flatMap((n) => [n, Math.round(n)]),
     );
+    const theirWordsAsText = [...turns.filter((t) => t.role === TurnRole.PERSON).map((t) => t.content ?? ''), ...theirDocuments.map((d) => d.content ?? '')].join('\n');
+    const sumsOnlyARequestSaid = theSumsOnlyARequestSaid(turns.filter((t) => t.role === TurnRole.PERSON).map((t) => t.content ?? ''));
     const transcript = turns
       .map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`)
       .join('\n')
@@ -9795,7 +9808,9 @@ ${told}` : '';
      * it alone. The board already has the honest shape for that case - "the record shows 40 for
      * this, not 0, press to accept" - and `suggestedCount` is where a conflict belongs, not here.
      */
-    const aimsAsRead = (result.groundAims ?? [])
+    const aims = (result.groundAims ?? [])
+      /* A sum said only to ask for it is the request's, never an aim (user journeys, F-9). */
+      .filter((a) => !(Number.isFinite(a?.target) && sumsOnlyARequestSaid.has(Math.round(a!.target as number))))
       .map((a) => ({
         name: (a?.name ?? '').trim(),
         /* A target is a whole count of something. A wrong number is worse than none. */
@@ -9808,12 +9823,9 @@ ${told}` : '';
        * appears in none of the person's own turns, at any scale (50, 50k, 50m), is the model's,
        * and the aim keeps its name and loses the number.
        */
-      .map((a) => (a.target != null && !numbersInTheirWords.has(a.target) ? { ...a, target: null } : a));
-    /* An aim the lead said as a share keeps its percent sign and its word, so a limit is not read as a count (user journeys, F-4). */
-    const aims = theAimsNameKeepsItsShare(
-      aimsAsRead,
-      [...turns.filter((t) => t.role === TurnRole.PERSON).map((t) => t.content ?? ''), ...theirDocuments.map((d) => d.content ?? '')].join('\n'),
-    );
+      .map((a) => (a.target != null && !numbersInTheirWords.has(a.target) ? { ...a, target: null } : a))
+      /* An aim the lead said as a share keeps its percent sign and its word, so a limit is not read as a count (user journeys, F-4). */
+      .map((a) => theAimsNameKeepsItsShare([a], theirWordsAsText)[0]);
     /*
      * AND A NUMBER IN THE AIM'S OWN NAME IS ITS NUMBER, WHERE THEY SAID IT (request 117, part 2). "Sign 12 shops for
      * kitchen appliances in Nairobi." was kept with no number, so the board's headline had no answer and no bar.
@@ -9870,7 +9882,8 @@ ${told}` : '';
       theirOwnNumbers.push({ participantId, name: own.name.trim(), target: Math.round(own.target) });
     }
 
-    await this.putOwnedTargetsOnTheRecord(groundId, theirOwnNumbers, participantId);
+    /* A sum said only to ask for it is the request's, never somebody's goal (user journeys, F-9). */
+    await this.putOwnedTargetsOnTheRecord(groundId, theirOwnNumbers.filter((t) => !sumsOnlyARequestSaid.has(t.target)), participantId);
   }
 
   /**
@@ -9928,7 +9941,7 @@ ${told}` : '';
         groundId,
         /* The thing counted as the name, and the day it is due by as its date (request 117, part 11). */
         ...(() => {
-          const kept = theDayKeptApart(t.name, (said) => theDayTheyMeant(said, new Date()));
+          const kept = theDayKeptApart(theNameWithItsSum(t.name, t.target, aNumberPeopleCanRead), (said) => theDayTheyMeant(said, new Date()));
           return { name: kept.name, ...(kept.dueOn ? { dueOn: kept.dueOn } : {}) };
         })(),
         target: t.target,

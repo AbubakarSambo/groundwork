@@ -1,4 +1,5 @@
-import { theAimsNameKeepsItsShare } from './the-aims-name-keeps-its-share';
+import { theAimsNameKeepsItsShare, theNameWithItsSum } from './the-aims-name-keeps-its-share';
+import { aNumberPeopleCanRead } from '../board/an-aim-is-a-sentence-about-somebody';
 import { toCloseTheGap } from '../board/to-close-the-gap';
 
 const PLAN = 'Sales team plan.\n\nWe are at KES 9.6m for the quarter against KES 18m. The number I agreed with Grace is 18m. Credit must stay under 35% of sales.\n\nAmani Wekesa closed Harbor Foods this week.';
@@ -28,5 +29,15 @@ describe('the gap to close is never worked out for a limit', () => {
       { name: 'Reach KES 18 million sales for the quarter', target: 18, count: 9, direction: 'AIM' } as any,
     ], null, new Date('2026-10-07'));
     expect(gap?.aim).toBe('Reach KES 18 million sales for the quarter');
+  });
+});
+
+describe('a sum of money keeps its figure in the name', () => {
+  it('"KES for the quarter" with 4,500,000 is "KES 4.5 million for the quarter"', () => {
+    expect(theNameWithItsSum('KES for the quarter', 4_500_000, aNumberPeopleCanRead)).toBe('KES 4.5 million for the quarter');
+  });
+  it('a name that already holds a figure, or is not a sum, is left alone', () => {
+    expect(theNameWithItsSum('KES 4.5m for the quarter', 4_500_000, aNumberPeopleCanRead)).toBe('KES 4.5m for the quarter');
+    expect(theNameWithItsSum('Shops signed in Kilimani', 3, aNumberPeopleCanRead)).toBe('Shops signed in Kilimani');
   });
 });

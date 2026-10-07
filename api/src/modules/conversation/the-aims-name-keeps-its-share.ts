@@ -31,3 +31,15 @@ export function theAimsNameKeepsItsShare<T extends { name: string; target: numbe
     return { ...a, name: clause.charAt(0).toUpperCase() + clause.slice(1) };
   });
 }
+
+/**
+ * A SUM OF MONEY KEEPS ITS FIGURE IN THE NAME (user journeys, F-15). The model named Amani's aim "KES for the quarter" with the number 4,500,000
+ * beside it, so her You page read "KES for the quarter. You have 0 of 4.5 million." and nobody could tell what the 4.5 million was. A name that
+ * starts with a currency and carries no figure of its own gets the figure the target holds, in words people read ("KES 4.5 million for the quarter").
+ */
+const A_CURRENCY_ALONE = /^(KES|NGN|USD|GHS|GBP|EUR|ZAR|UGX|TZS)\b(?!\s*[\d.])/i;
+export function theNameWithItsSum(name: string, target: number | null | undefined, say: (n: number) => string): string {
+  const t = (name ?? '').trim();
+  if (target == null || !A_CURRENCY_ALONE.test(t) || /\d/.test(t)) return t;
+  return t.replace(A_CURRENCY_ALONE, (code) => `${code.toUpperCase()} ${say(target)}`);
+}

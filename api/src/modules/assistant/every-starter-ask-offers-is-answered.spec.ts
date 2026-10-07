@@ -168,3 +168,20 @@ describe('"What did I say I would do?" for a promise written down while setting 
     expect(textOf(reply)).not.toContain('credit rule');
   });
 });
+
+/** F-15 OF THE USER JOURNEYS. A promise that already says its day is not followed by "(you said ...)" with the same day again. */
+describe('"What did I say I would do?" says each promise whole, once', () => {
+  it('"I will send it by Friday now that I have the new name." is not followed by "(you said by Friday)"', async () => {
+    const h = askGroundwork({ userId: 'u-amani' });
+    h.prisma.person.findFirst = jest.fn(async () => ({ id: 'p1', externalId: 'ext-a', displayName: 'X', active: true, linkedUserId: 'u-amani' }));
+    h.prisma.commitment.findMany = jest.fn(async () => []);
+    h.prisma.groundCommitment = { findMany: jest.fn(async () => [
+      { text: 'I will send it by Friday now that I have the new name.', whenSaid: 'by Friday', ground: { label: 'Sales team, Q3' } },
+      { text: 'I will send the Kisumu list.', whenSaid: 'by Friday', ground: { label: 'Sales team, Q3' } },
+    ]) };
+    const t = textOf(await h.service.respond('org-a', 'p1', 'What did I say I would do?'));
+    expect(t).toContain('- I will send it by Friday now that I have the new name (in "Sales team, Q3")');
+    expect(t).toContain('- I will send the Kisumu list (you said by Friday, in "Sales team, Q3")');
+    expect(t).not.toMatch(/by Friday[^\n]*you said by Friday/);
+  });
+});
