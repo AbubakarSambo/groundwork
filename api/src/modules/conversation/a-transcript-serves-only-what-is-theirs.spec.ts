@@ -92,3 +92,47 @@ describe('nobody else reads it', () => {
     }
   });
 });
+
+/**
+ * THE LEAD'S SENTENCE COMES BACK AS "THE ORGANISATION" (request 177 item 1, 7 October 2026). Wanjiku typed "Amina drives the morning hotel
+ * route." about Amina; the model that fits an answer is told it, handed it back as `organisation`, and Amina's own transcript served it word
+ * for word. Read as each person.
+ */
+describe('the lead\'s sentence about Amina does not come back as what Amina is', () => {
+  const sentence = 'Amina drives the morning hotel route.';
+  const amina = { ...juma, id: 'p-amina', userId: 'u-amina', nameGiven: 'Amina', organisationGiven: null, roleAsDescribed: sentence, user: { firstName: 'Amina', lastName: 'Test', awaitingOrgApproval: false } };
+  const wanjiku = { ...amina, id: 'p-wanjiku', userId: 'u-wanjiku', partyType: 'INITIATOR', nameGiven: 'Wanjiku', roleAsDescribed: 'Runs the shuttle service.' };
+
+  function withFit(participant: any, organisation: string, said: string) {
+    const service: any = transcriptFor(participant);
+    const original = service.prisma.checkIn.findUnique;
+    service.prisma.checkIn.findUnique = jest.fn(async () => ({ ...(await original()), theirAnswerFitted: { participantId: participant.id, organisation, kind: sentence, values: [], completeness: 0.5 } }));
+    service.prisma.conversationTurn.findMany = jest.fn(async () => [
+      { id: 't1', role: TurnRole.AI, content: 'What are you working on?', createdAt: new Date() },
+      { id: 't2', role: TurnRole.PERSON, content: said, createdAt: new Date() },
+    ]);
+    return service;
+  }
+
+  it('Amina reads no organisation she did not say, and none of the lead\'s words', async () => {
+    const out = await withFit(amina, sentence, 'I take guests to the airport.').getTranscript('ci1', 'u-amina');
+    expect(JSON.stringify(out)).not.toContain(sentence);
+    expect(out.checkIn.theirAnswerFitted.organisation).toBeNull();
+  });
+
+  it('Amina still reads an organisation she did say', async () => {
+    const out = await withFit(amina, 'Kijani Shuttles', 'I drive for Kijani Shuttles.').getTranscript('ci1', 'u-amina');
+    expect(out.checkIn.theirAnswerFitted.organisation).toBe('Kijani Shuttles');
+  });
+
+  it('a colleague and an admin are refused, so they read none of it', async () => {
+    for (const who of ['u-miriam', 'u-grace-admin']) {
+      await expect(withFit(amina, sentence, 'x').getTranscript('ci1', who)).rejects.toBeInstanceOf(ForbiddenException);
+    }
+  });
+
+  it('Wanjiku, who wrote it and runs the check-in, reads her own row whole', async () => {
+    const out = await withFit(wanjiku, sentence, 'x').getTranscript('ci1', 'u-wanjiku');
+    expect(out.checkIn.theirAnswerFitted.organisation).toBe(sentence);
+  });
+});

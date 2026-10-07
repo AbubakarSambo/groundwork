@@ -1,5 +1,5 @@
 import { HELD_FOR_A_SEAT } from '../participants/held-for-a-seat';
-import { theParticipantAsServed, theFitAsServed, theCheckInRowAsServed } from './a-transcript-serves-only-what-is-theirs';
+import { theParticipantAsServed, theFitAsServed, theCheckInRowAsServed, theyAreTheirOwnWords } from './a-transcript-serves-only-what-is-theirs';
 import { theNumberInTheNameIsKept } from './an-aim-said-twice-is-one-aim';
 import { theDayKeptApart } from '../board/an-aim-is-a-sentence-about-somebody';
 import { suggestAnswers } from './suggested-answers';
@@ -803,7 +803,10 @@ export class ConversationService {
       checkIn: {
         ...theCheckInRowAsServed(checkIn as any, runsIt),
         participant: theParticipantAsServed((checkIn as any).participant, runsIt),
-        theirAnswerFitted: theFitAsServed((checkIn as any).theirAnswerFitted, runsIt),
+        theirAnswerFitted: theFitAsServed((checkIn as any).theirAnswerFitted, runsIt, {
+          said: (turns as any[]).filter((t) => t.role === TurnRole.PERSON).map((t) => String(t.content ?? '')),
+          organisationGiven: (checkIn as any).participant?.organisationGiven ?? null,
+        }),
         groundLabel: ground?.label ?? null,
         scenario: ground?.scenario ?? null,
       },
@@ -7765,7 +7768,8 @@ ${told}` : '';
       data: {
         theirAnswerFitted: {
           participantId: row.participant?.id ?? null,
-          organisation: String(read.organisation ?? '').trim() || row.participant?.organisationGiven || null,
+          /* Only the person's own words: the model is told what the lead wrote about them and can hand it back as "the organisation". */
+          organisation: (theyAreTheirOwnWords(String(read.organisation ?? ''), said, row.participant?.organisationGiven) ? String(read.organisation).trim() : null) || row.participant?.organisationGiven || null,
           kind,
           values,
           completeness: howCompletely(values, frame, kind),
