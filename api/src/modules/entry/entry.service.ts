@@ -2644,7 +2644,13 @@ from finishing at all.`;
     // A TOTAL invite failure is NOT intent - the ground stays OPEN ("parties
     // may not all be added") and failedInvites tells the client to surface it
     // with a resend path, instead of silently rebranding it a solo ground.
-    if (dto.contributors.length === 0) {
+    /*
+     * BUT NOT WHILE IT WAITS FOR AN ADMIN. A check-in the organisation holds for approval stays held, whether or
+     * not anybody is named on it: this line moved a held check-in to ACTIVE, so the lead could then add people
+     * from its settings page and invitations went out before any admin had said yes (user journeys, F-8).
+     * `grounds.create` already decided whether it waits, by the same rule as POST /grounds.
+     */
+    if (dto.contributors.length === 0 && !answer.waits) {
       await this.prisma.ground.update({ where: { id: ground.id }, data: { status: 'ACTIVE' as any } });
     }
 
