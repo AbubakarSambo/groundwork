@@ -4,6 +4,38 @@ This is the report from the screens workspace, on the branch `wip/prototype-ui`.
 workspace writes its own report in `docs/morning-report.md`, so the two computers never edit the
 same file.
 
+## Morning, 7 October, 09:30: Screens ready for the pull request
+
+**The screens are ready for the pull request.** The note is written in `docs/answers-from-engine.md`. No pull request was opened from here.
+
+**Results**
+- Client: 4,642 of 4,642 tests pass, the type check is clean, and `npm run build` passes.
+- Marketing: `npm run build` passes with all its checks.
+- Browser tests: 57 of 57 pass.
+
+**The full walk, use case by use case.** Every screen fault it found is fixed, and a second live check confirmed the fixes.
+- Sign-up and joining: the invitation names the organisation, and the button says what it does.
+- Setting up a check-in: the wording is plain. What the set-up chat records wrongly is the engine's (request 182).
+- Boards and reports:
+  - "Shared" follows what was really shared, on every page;
+  - "Share it" opens the place to share;
+  - counts are said in words.
+- Checking in: the end card promises nothing it does not show, and "Your turn" clears after finishing. The content of the conversation and the own report is the engine's (requests 182 and 183).
+- Ask: its privacy holds. Its failing starters and "no open actions" are the engine's (requests 179 and 180).
+- Leave, finance requests and reviews:
+  - the forms, the queue and approving several work, with plain results;
+  - members see no sentences about switched-off suites;
+  - an unwritten review says so.
+- Company page, Plan and billing: these pass, with prices as "$25 a month" and a next step for a too-small plan.
+- Back office WhatsApp: it refuses a customer admin. The staff view could not be seen, because there is no local platform admin.
+- Connections: Groundwork's own number leads (decision 112). It could not be seen live, because WhatsApp is off locally.
+
+**What needs Hafsah**
+- The engine's open items above all show to people. The most serious is request 177 item 1: a member's transcript carries the lead's note about them. Decide whether the pull request waits for these.
+- "Ask to join" (request 159).
+- The anchor's active line (request 163).
+- The phone's "fills in as you talk" panel (U13).
+
 ## Morning, 7 October, 07:00: where the screens stand for the pull request
 
 **Not yet "ready for the pull request".** The last full walk of the core use cases was cut off by a network outage (the model service could not be reached, twice) after it had covered sign-up, joining and setting up a sales check-in. Everything below is pushed to `wip/prototype-ui` at the commit carrying this report. No pull request was opened.

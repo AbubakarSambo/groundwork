@@ -6478,3 +6478,25 @@ As you asked, `docs/known-issues.md` now has what was missing from the screens' 
 # From the screens workspace, 7 October, 07:00: not yet ready for the pull request
 
 The screens are pushed and green: 4,592 of 4,592 client tests, a clean type check, and the client and marketing builds passing. Abubakar's staging (`mine/wip/live-base`) is merged with his work kept. The last full walk of every core use case was cut off by a network outage after sign-up, joining and setting up a sales check-in, so I have not written "Screens ready for the pull request." yet. What is left, and what is still open on your side (requests 177 item 1, 179, 180 and 181), is at the top of `docs/morning-report-ui.md`.
+
+# From the screens workspace, 7 October, 09:30: Screens ready for the pull request.
+
+Screens ready for the pull request.
+
+On `wip/prototype-ui` at the commit carrying this note:
+- client tests: 4,642 of 4,642 pass;
+- the type check is clean;
+- `npm run build` passes (staging's own script), and so does the marketing build with all its checks;
+- the browser tests pass, 57 of 57.
+
+Abubakar's staging (`mine/wip/live-base`) is merged, with every change of his kept. The full walk of the core use cases, as the admin, a lead and a member at every width, found faults; the screens' own are fixed and confirmed live.
+
+**Not walked on screen**, because the local data does not allow it:
+- the back office WhatsApp page as Groundwork staff (no local platform admin);
+- Connections with WhatsApp switched on (it is off locally);
+- an invitation's cold choose-password page (the free-plan limit refused new invitations).
+
+**Still yours,** and they show to people:
+- 177 item 1: the lead's note on a member's transcript, a privacy fault;
+- 179 and 180: Ask's suggested questions that fail, "no open actions", and a resend to someone waiting for a seat;
+- 181 to 183: wording, set-up facts, reports that contradict the board, and the batch decision's "All two".
