@@ -395,3 +395,15 @@ export function whatAParticipantIsToldAboutThis(
   const said = parts.filter(Boolean);
   return said.length ? said.join(' ') : null;
 }
+
+
+/**
+ * "ZAWADI'S FIRST WEEKS", TO ZAWADI HERSELF, IS "YOUR FIRST WEEKS" (privacy sweep, 7 October, item 6). Only the possessive of the reader's own first name, only
+ * in what is served to them, and nothing about anybody else. Never a pronoun after it: only "Zawadi's" and its curly form are touched, so no verb has to agree.
+ */
+export function theirOwnFirstNameAsYour<T extends string | null | undefined>(text: T, firstName: string | null | undefined): T {
+  const first = (firstName ?? '').trim();
+  if (typeof text !== 'string' || first.length < 2) return text;
+  const rx = new RegExp(`(^|[.!?]\\s+|\\n)${first.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['\u2019]s\\b|(?<![\\p{L}])${first.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['\u2019]s\\b`, 'gu');
+  return text.replace(rx, (_m, lead) => (lead !== undefined ? `${lead}Your` : 'your')) as T;
+}
