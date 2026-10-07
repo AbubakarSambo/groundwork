@@ -404,7 +404,14 @@ export default function App() {
           {/* First in the document, so it is the first thing a keyboard reaches. It was inside the
               shell, behind the help button, which made it the second stop and therefore useless. */}
           <a href="#main" className="gw-skip">Skip to content</a>
-          <Toaster position="top-right" richColors />
+          {/* B-042: a toast fired the moment a page loads (for example, a suite that is switched
+              off) used to sit right over the page's own heading and subtitle - the two-line
+              subtitles on Time sheets, Onboarding, Leaving, Roles, To-dos and Customers and deals
+              were the ones long enough for the default 24px/16px offset to reach into. 150px (170
+              on a phone, where the toast also spans the full width and the subtitle can wrap to
+              three lines) clears every page's own heading and subtitle before a toast begins,
+              without moving the toast off the screen on any page. */}
+          <Toaster position="top-right" richColors offset={{ top: 150 }} mobileOffset={{ top: 170 }} />
           <HelpModal />
           {/* A render error in one page used to blank the entire app. W8-63. Outside the shell, so
               the crash card takes the whole window (crash.jpg) and a broken sidebar is caught too. */}
