@@ -4,6 +4,21 @@ This is the report from the screens workspace, on the branch `wip/prototype-ui`.
 workspace writes its own report in `docs/morning-report.md`, so the two computers never edit the
 same file.
 
+## 11:35 update: the rest of the core use cases, fixed on the screens
+
+A walk of a lead setting up a new hire's check-in and a project check-in found these faults. All of them are fixed, and each has a test that failed before the fix.
+
+- A signed-in lead is no longer told to sign in to plan more than one session.
+- The Feedback button no longer covers the sessions control. The control is labelled "How many sessions" and explains itself in one sentence.
+- The summary card uses plain labels in full, such as "What you are aiming for". Aims are joined with "and", and the card speaks in one voice: "That is everything Groundwork needs to set it up. Here is what you said."
+- A new hire's check-in is named after them, for example "Imani, first 90 days", and the side panel ticks "A name" straight away. Every other kind of check-in keeps its usual name.
+- In the people step, someone added by email shows with their name. The dash and the word "releases" are gone.
+- Company context has its heading, and a measure reads as one sentence, for example "40 shops ordering weekly".
+- The note a lead types in "What do you want them to cover?" is saved, but no part of the API returns it to the screens yet. I asked the engine for it in request 185.
+- I merged the engine's latest work (requests 177 to 182, the People list and the Suites wording) and rebuilt the API.
+
+Results: 4,657 of 4,657 client tests pass, and the type check is clean. 57 of 57 browser checks pass.
+
 ## Morning, 7 October, 09:30: Screens ready for the pull request
 
 **The screens are ready for the pull request.** The note is written in `docs/answers-from-engine.md`. No pull request was opened from here.
