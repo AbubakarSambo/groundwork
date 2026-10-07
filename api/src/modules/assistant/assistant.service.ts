@@ -136,7 +136,7 @@ import { isAGuestsKey } from './a-guests-questions-are-kept-apart';
 import { withoutGoalsNotToldIn } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { theWordsOfWhatTheLeadHasNotToldThemAbout, theyRunThisCheckIn } from '../board/an-untold-goal-is-not-a-board-objective';
 import { targetsHiddenFrom, withoutHiddenTargetsIn, namesOnTheRoster } from '../board/a-hidden-target-stays-hidden';
-import { runsIt } from '../grounds/who-may-read-this-check-in';
+import { runsIt, groundsAViewerMayList } from '../grounds/who-may-read-this-check-in';
 import { A_GROUND_IS_OVER } from '../grounds/a-ground-that-has-ended';
 import { parseContextLine, parseLeadNote, labelForContextKind, parseChangeContextLine, parseAskAPerson } from './a-line-or-a-note-typed-in-chat';
 import { quotedThenEnding } from './a-quote-takes-no-second-mark';
@@ -953,19 +953,27 @@ export class AssistantService {
     const lane = 'who_has_not_checked_in';
     if (!userId) return rules(lane, text('I cannot look that up without knowing who you are.'));
     const kept = await keptInTheApp(this.prisma as any, organizationId);
+    /* An admin reads every board in the organisation, who has answered included (decision 5), except a performance plan, a promotion or a renewal
+       they were not given; everybody else is told about the check-ins they run. The one rule says which (who-may-read-this-check-in). */
+    const membership = await this.prisma.organizationMembership.findUnique({ where: { userId_organizationId: { userId, organizationId } }, select: { role: true } }).catch(() => null);
+    const anAdmin = membership?.role === 'ADMIN';
     const run = (await this.prisma.ground.findMany({
-      where: { organizationId, initiatorId: userId, status: { notIn: [...A_GROUND_NO_MESSAGE_IS_ABOUT] } },
+      where: anAdmin
+        ? { AND: [groundsAViewerMayList(userId, { role: 'ADMIN', organizationId }, organizationId) as any, { status: { notIn: [...A_GROUND_NO_MESSAGE_IS_ABOUT] } }] }
+        : { organizationId, initiatorId: userId, status: { notIn: [...A_GROUND_NO_MESSAGE_IS_ABOUT] } },
       select: { id: true, label: true },
       orderBy: { createdAt: 'desc' },
-      take: 12,
+      take: 40,
     })).filter((g) => mayBeRead(kept, g.id));
     if (!run.length) {
-      return rules(lane, text('You do not run a check-in that is going yet, so there is nobody for me to tell you about. You can ask me what you are waiting on.'));
+      return rules(lane, text(anAdmin
+        ? 'There is no check-in going in the organisation that you can read, so there is nobody for me to tell you about.'
+        : 'You do not run a check-in that is going yet, so there is nobody for me to tell you about. You can ask me what you are waiting on.'));
     }
     const named = (subject ?? '').trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
     const chosen = named ? run.filter((g) => String(g.label).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').includes(named)) : run;
     if (!chosen.length) {
-      return rules(lane, text(`I cannot find a check-in called ${subject!.trim()} that you run. The ones you run are ${run.slice(0, 5).map((g) => `"${g.label}"`).join(', ')}.`));
+      return rules(lane, text(`I cannot find a check-in called ${subject!.trim()} that you ${anAdmin ? 'can read' : 'run'}. The ones you ${anAdmin ? 'can read' : 'run'} include ${run.slice(0, 5).map((g) => `"${g.label}"`).join(', ')}.`));
     }
     const lines: string[] = [];
     for (const g of chosen.slice(0, 5)) {
@@ -973,9 +981,10 @@ export class AssistantService {
       if (open) lines.push(whereOneStands({ ...open, label: g.label }));
     }
     if (!lines.length) {
-      return rules(lane, text('Nothing is open for anybody to check in on in the check-ins you run right now.'));
+      return rules(lane, text(`Nothing is open for anybody to check in on in the check-ins you ${anAdmin ? 'can read' : 'run'} right now.`));
     }
-    return rules(lane, text(`${lines.join('\n')}\n\nThis is counted the way your board counts it, and only you can read it here.`));
+    const more = chosen.length > 5 ? `\n\nThere ${chosen.length - 5 === 1 ? 'is one more check-in' : `are ${chosen.length - 5} more check-ins`} you can read. Ask me about one by its name.` : '';
+    return rules(lane, text(`${lines.join('\n')}${more}\n\nThis is counted the way your board counts it, and only you can read it here.`));
   }
 
   /**

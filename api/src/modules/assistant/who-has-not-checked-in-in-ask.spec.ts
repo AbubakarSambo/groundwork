@@ -13,12 +13,15 @@ const ROWS: Record<string, any[]> = {
   'g-ops': [person('u-wairimu', 'Wairimu', 'COMPLETED'), person('u-kito', 'Kito', 'COMPLETED')],
 };
 
+const ROLE = { value: 'LEAD' };
+const RUNS_NOTHING = { value: false };
 function svc() {
   const prisma: any = {
-    ground: { findMany: jest.fn(async (a: any) => (a.where.overWhatsApp === false ? [] : GROUNDS)) },
+    ground: { findMany: jest.fn(async (a: any) => (a.where.overWhatsApp === false || (a.where.initiatorId && RUNS_NOTHING.value) ? [] : GROUNDS)) },
     checkIn: { findMany: jest.fn(async (a: any) => ROWS[a.where.groundId] ?? []) },
     assistantProposal: { findFirst: jest.fn(async () => null), create: jest.fn(async (a: any) => ({ id: 'pr1', ...a.data })), update: jest.fn(async () => ({})) },
     assistantTurn: { count: jest.fn(async () => 5), createMany: jest.fn(async () => ({ count: 2 })) },
+    organizationMembership: { findUnique: jest.fn(async () => ({ role: ROLE.value })) },
     person: { count: jest.fn(async () => 2), findFirst: jest.fn(async () => ({ externalId: 'x-wairimu', linkedUserId: 'u-wairimu', email: 'wairimu@msingi.test' })), findMany: jest.fn(async () => []) },
     subject: { findMany: jest.fn(async () => []), count: jest.fn(async () => 0) },
     detectionQuietPeriod: { findMany: jest.fn(async () => []) },
@@ -35,6 +38,23 @@ describe('how a named team is doing', () => {
     expect(route('How is the sales team doing?').lane).toBe('how_is_the_team');
     expect(route('how is our operations team getting on').lane).toBe('how_is_the_team');
     expect(route('How am I doing?').lane).toBe('how_am_i_doing');
+  });
+});
+
+describe('who has not checked in, asked by an admin who runs nothing', () => {
+  afterEach(() => { ROLE.value = 'LEAD'; RUNS_NOTHING.value = false; });
+  it('is told by name about the check-ins she may read, which a lead is told only for the ones she runs', async () => {
+    ROLE.value = 'ADMIN';
+    RUNS_NOTHING.value = true;
+    const said = await ask(svc().service, 'Who has not checked in on Sales team, Q4?');
+    expect(said).toContain('Juma and Neema have not yet');
+    RUNS_NOTHING.value = true;
+    ROLE.value = 'LEAD';
+    expect(await ask(svc().service, 'Who has not checked in?')).toContain('You do not run a check-in that is going yet');
+    ROLE.value = 'ADMIN';
+    const none = svc();
+    none.prisma.ground.findMany = jest.fn(async () => []);
+    expect(await ask(none.service, 'Who has not checked in?')).toContain('There is no check-in going in the organisation that you can read');
   });
 });
 
