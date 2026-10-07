@@ -92,7 +92,10 @@ function chasingSentence(days: number[]): string {
  */
 export function yourSessionsSentence(done: number, planned: number | null): string {
   if (planned == null) return `${done} session${done === 1 ? '' : 's'} done so far.`
-  return `${done} of ${planned} session${planned === 1 ? ' is' : 's are'} done.`
+  /* B-012: "9 of 6 sessions are done" is not a possible count. However it is counted, how many are
+     done can never be more than how many are planned. */
+  const clamped = Math.min(done, planned)
+  return `${clamped} of ${planned} session${planned === 1 ? ' is' : 's are'} done.`
 }
 
 export function settingsChangeSentence(c: { changedAt: string; by: 'you' | 'lead' | 'admin'; weeks: { from: number | null; to: number } | null; cadence: { from: GroundCadence | null; to: GroundCadence } | null }): string {
@@ -363,6 +366,14 @@ export function CheckInPeopleAndSetup(props: {
               const left = daysLeft != null ? ` ${daysLeft} day${daysLeft === 1 ? '' : 's'} left.` : ''
               return `${startText} to ${whenItWas(end, 'dayAndMonthLong')}.${left}`
             })()}
+            /*
+             * B-018: THE PROTOTYPE'S OWN "GIVE IT MORE TIME" BUTTON (check-in-people-and-setup.txt:
+             * "How long … Give it more time"), MISSING HERE. The only way in was the warning that
+             * appears in the last week of a check-in - so extending it early, before that warning
+             * ever shows, had no button anywhere. Opens the same timeframe editor "How often"'s own
+             * "Change" button does (it holds the "Ends on" field this actually extends).
+             */
+            action={canEditRunOrAdmin ? <Button kind="quiet" size="small" onClick={() => setEditingWhen(true)}>Give it more time</Button> : undefined}
           />
           {props.whatsAppIsOn && (ground as any)?.orgHasWhatsApp && (
             <FieldRow

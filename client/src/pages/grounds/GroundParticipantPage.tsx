@@ -3,7 +3,7 @@ import { OutOfTime } from './OutOfTime'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useEffect, useRef, useState } from 'react'
 import { GroundGone } from '@/components/gw/GroundGone'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { whichSessionIsThisCheckInOn, whichSessionAreWeOn, hasDoneThisSession } from '@/lib/which-session-are-we-on'
 import { groundsApi } from '@/api/grounds'
@@ -252,8 +252,16 @@ export function GroundParticipantPage() {
     if (!myOpenForAutoOpen) return
     if (sessionOpening) return
     if (checkinTabOpenAttempted.current === myOpenForAutoOpen.id) return
+    /*
+     * B-019: THE SAME FALSE "CLOSED" REFUSAL, ONE MORE WAY IN. A ground that ended early (the lead
+     * stopped it with a session still IN_PROGRESS or not started) still had a row here that is not
+     * COMPLETED, so this still tried to open it - the server's own "This check-in is closed."
+     * error toasted on top of the "This check-in has ended" message this tab now shows instead.
+     * Nothing can open once the ground itself has ended, whatever any one row still says.
+     */
+    if (howItEnded(ground as any)) return
     attemptCheckinTabOpen(myOpenForAutoOpen)
-  }, [tab, myOpenForAutoOpen, sessionOpening])
+  }, [tab, myOpenForAutoOpen, sessionOpening, ground])
 
   if (isLoading) return <Page narrow><Note>Loading…</Note></Page>
   /*
@@ -703,7 +711,19 @@ export function GroundParticipantPage() {
         */}
       {tab === 'checkin' && (
         <>
-          {dueNow ? (
+          {/*
+           * B-19: AN ENDED CHECK-IN STILL PROMISED A NEXT ONE.
+           *
+           * `BetweenCheckIns` is written for a check-in still running - "Your next check-in opens
+           * on Tuesday" - and said that, unchanged, once the ground had ended, with no outcome
+           * shown anywhere on this tab. The board is where the full ending (who decided, when, and
+           * why) is read, once it has one; this stops the false promise of a next session here.
+           */}
+          {howItEnded(ground as any) ? (
+            <Callout tone="info" title={howItEnded(ground as any)!}>
+              <Link to={`/grounds/${id}/board`}>Go to the board</Link> to read how it ended and why.
+            </Callout>
+          ) : dueNow ? (
             /* A FAILED OPEN SAYS SO, WITH A WAY BACK IN - not the same "Opening…" line left
                standing after the attempt it describes is already over. See
                attemptCheckinTabOpen above. */

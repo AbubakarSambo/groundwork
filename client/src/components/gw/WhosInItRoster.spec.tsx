@@ -70,6 +70,41 @@ function renderRoster(sessionParties?: { id: string; done: boolean; isSelf: bool
   )
 }
 
+/*
+ * FAULT 5 (live walk, 6 October 2026): PLAIN SENTENCES, NOT JARGON OR A DASH JOIN.
+ *
+ * "You cannot see what they write until the report releases" used the filing-cabinet word
+ * ("releases") for sharing a report with people, and "adding somebody is the approval - there is
+ * no queue" joined two separate statements with a dash rather than saying each as its own
+ * sentence - both against the wording rule in CLAUDE.md.
+ */
+describe('the "add a person" panel reads plain sentences (fault 5, live walk, 6 October 2026)', () => {
+  function renderAddPanel(isOrgAdmin: boolean) {
+    return render(
+      <MemoryRouter>
+        <WhosInItRoster
+          {...baseProps()}
+          isOrgAdmin={isOrgAdmin}
+          ground={{ initiatorId: 'lead-1', createdAt: '2026-09-27T09:00:00.000Z', participants: [] }}
+          showAdd
+        />
+      </MemoryRouter>,
+    )
+  }
+
+  it('says "until you share the report", not "until the report releases"', () => {
+    renderAddPanel(true)
+    expect(screen.getByText(/You cannot see what they write until you share the report\./)).toBeTruthy()
+    expect(document.body.textContent).not.toContain('until the report releases')
+  })
+
+  it('for an admin, says adding is the approval and nobody waits in a queue, as two sentences', () => {
+    renderAddPanel(true)
+    expect(screen.getByText(/You are an admin here, so adding someone here is all the approval they need\. Nobody waits in a queue\./)).toBeTruthy()
+    expect(document.body.textContent).not.toContain('is the approval - there is no queue')
+  })
+})
+
 describe('somebody an admin has declined, in "Who is in it"', () => {
   it('never says he has not checked in for this session, because he cannot check in at all', () => {
     renderRoster([

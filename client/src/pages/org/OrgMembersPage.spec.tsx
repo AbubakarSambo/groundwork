@@ -276,7 +276,9 @@ describe('everyone at Baridi', () => {
     open()
     await screen.findByText('Miriam Wanjiku', { selector: '.gwui-person-name' })
     expect(screen.getByText('Who reports to whom')).toBeTruthy()
-    expect(screen.getByText('Level and reporting lines describe the organisation; what someone can do still comes from their role')).toBeTruthy()
+    /* FAULT 13 (live review): one sentence joined to another with a semicolon. Two full
+       sentences now. */
+    expect(screen.getByText('Level and reporting lines describe the organisation. What someone can do still comes from their role.')).toBeTruthy()
   })
 })
 
@@ -284,7 +286,7 @@ describe('the rest of the page, in the prototype\'s order and words', () => {
   it('invite people, who can join, who can open a check-in, help your team get started', async () => {
     open()
     expect(await screen.findByRole('heading', { name: 'Invite people' })).toBeTruthy()
-    expect(screen.getByText('One per line: a name and an email. Or paste a list from a spreadsheet.')).toBeTruthy()
+    expect(screen.getByText('Write one person on each line, with their name and email. Or paste a list from a spreadsheet.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Send their invitations' })).toBeTruthy()
     expect(screen.getByText('They’ll get an email with a link to set themselves up.')).toBeTruthy()
     expect(await screen.findByRole('heading', { name: 'Who can open a check-in' })).toBeTruthy()
@@ -431,7 +433,7 @@ describe('the head count keeps up', () => {
       return { data: {} }
     })
     vi.spyOn(apiClient, 'post').mockImplementation(async (_u: string, body: any) => ({ data: { preview: body.preview, seatsLeft: 71, rows: [{ email: 'a@x.co', result: 'invited' }, { email: 'b@x.co', result: 'invited' }], summary: body.preview ? '2 people will be invited.' : '2 people were invited.' } }) as any)
-    fireEvent.change(screen.getByLabelText('One per line: a name and an email. Or paste a list from a spreadsheet.'), { target: { value: 'a@x.co\nb@x.co' } })
+    fireEvent.change(screen.getByLabelText('Write one person on each line, with their name and email. Or paste a list from a spreadsheet.'), { target: { value: 'a@x.co\nb@x.co' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send their invitations' }))
     expect(await screen.findByText('29 people, on the Growth plan, which is for up to 100.')).toBeTruthy()
   })
@@ -440,8 +442,11 @@ describe('the head count keeps up', () => {
 describe('the people with no seat say who added them', () => {
   it('one person added them all: their name, and says who "them" is', async () => {
     const { whoAddedThem } = await import('./OrgMembersPage')
+    /* FAULT I (reviewer, third round): a missing comma before "and your plan is full" ran two
+       separate facts into one clause - "and" now joins a new sentence, not a third item in the
+       list of names. */
     expect(whoAddedThem([{ addedBy: 'Nadia Owino', email: 'tom@baridi.co.ke' }, { addedBy: 'Nadia Owino', email: 'ama@baridi.co.ke' }]))
-      .toBe('Nadia Owino added tom@baridi.co.ke and ama@baridi.co.ke and your plan is full, so nothing has been sent to them. Free a seat or move to a larger plan, then send the invitations. They have not been told any of this.')
+      .toBe('Nadia Owino added tom@baridi.co.ke and ama@baridi.co.ke, and your plan is full, so nothing has been sent to them. Free a seat or move to a larger plan, then send the invitations. They have not been told any of this.')
   })
   it('several people, or nobody recorded: a sentence true of all of them, never "A lead"', async () => {
     const { whoAddedThem } = await import('./OrgMembersPage')
@@ -451,7 +456,28 @@ describe('the people with no seat say who added them', () => {
   it('names the one person, from what is served, when only one is waiting', async () => {
     const { whoAddedThem } = await import('./OrgMembersPage')
     expect(whoAddedThem([{ addedBy: 'Nadia Owino', email: 'tom@baridi.co.ke' }]))
-      .toBe('Nadia Owino added tom@baridi.co.ke and your plan is full, so nothing has been sent to them. Free a seat or move to a larger plan, then send the invitations. They have not been told any of this.')
+      .toBe('Nadia Owino added tom@baridi.co.ke, and your plan is full, so nothing has been sent to them. Free a seat or move to a larger plan, then send the invitations. They have not been told any of this.')
+  })
+  /*
+   * FAULT I (reviewer, third round): READ BACK TO HERSELF AS A STRANGER. "Amina Yusuf added ..."
+   * named the admin reading it as though she were somebody else. When she is the one who added
+   * them, this now reads "You added ...", the way she would say it herself.
+   */
+  it('reads "You added" when the admin reading it is the one who added them', async () => {
+    const { whoAddedThem } = await import('./OrgMembersPage')
+    expect(whoAddedThem([{ addedBy: 'Amina Yusuf', email: 'wanjiru@suites.test' }, { addedBy: 'Amina Yusuf', email: 'peter.otieno@fitout.test' }], 0, 'Amina Yusuf'))
+      .toMatch(/^You added wanjiru@suites\.test and peter\.otieno@fitout\.test, and your plan is full/)
+  })
+  /*
+   * FAULT I (reviewer, third round): AN EMAIL WHERE A NAME WAS KNOWN. "wanjiru@suites.test" read
+   * by address when the row carries a name; used in place of it, address still the fallback.
+   */
+  it('names the waiting people themselves, when a name is known for them', async () => {
+    const { whoAddedThem } = await import('./OrgMembersPage')
+    expect(whoAddedThem([
+      { addedBy: 'Amina Yusuf', email: 'wanjiru@suites.test', name: 'Wanjiru' },
+      { addedBy: 'Amina Yusuf', email: 'peter.otieno@fitout.test', name: 'Peter Otieno' },
+    ], 0, 'Amina Yusuf')).toMatch(/^You added Wanjiru and Peter Otieno, and your plan is full/)
   })
   it('on the page, with each person\'s line', async () => {
     open()
@@ -465,7 +491,7 @@ describe('the people with no seat say who added them', () => {
     vi.spyOn(authApi, 'waitingForASeat').mockResolvedValue([{ id: 'p1', email: 'tom@baridi.co.ke', addedBy: 'Nadia Owino', forCheckIn: 'Sales team, Q3' }] as any)
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(<QueryClientProvider client={qc}><MemoryRouter><OrgMembersPage /></MemoryRouter></QueryClientProvider>)
-    expect(await screen.findByText(/^Nadia Owino added tom@baridi\.co\.ke and your plan is full/)).toBeTruthy()
+    expect(await screen.findByText(/^Nadia Owino added tom@baridi\.co\.ke, and your plan is full/)).toBeTruthy()
     expect(screen.getByText('Added by Nadia Owino for Sales team, Q3.')).toBeTruthy()
     expect(screen.queryByText(/A lead added them/)).toBeNull()
   })
@@ -497,7 +523,7 @@ describe('the no-seat card once a seat is freed (U.4 fourth review)', () => {
     expect(whoAddedThem(three, null)).toBe('There are seats for all 3 of them now. Send their invitations when you are ready.')
     expect(whoAddedThem(three, 1)).toBe('There is a seat for 1 of them now. Send their invitations when you are ready, and the rest wait until there is room.')
     expect(whoAddedThem(three, 2)).toBe('There are seats for 2 of them now. Send their invitations when you are ready, and the rest wait until there is room.')
-    expect(whoAddedThem(one, 0)).toMatch(/^Nadia Owino added them and your plan is full/)
+    expect(whoAddedThem(one, 0)).toMatch(/^Nadia Owino added them, and your plan is full/)
   })
 
   it('on the page, after a seat was freed, the card no longer says the plan is full', async () => {

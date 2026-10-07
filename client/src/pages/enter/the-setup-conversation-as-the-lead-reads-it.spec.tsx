@@ -50,6 +50,57 @@ describe('the setup conversation', () => {
     }
   })
 
+  /*
+   * FAULT 3 (live walk, 6 October 2026): THE "SO FAR" CARD SPOKE AS "I", ONE-WORD LABELS AND A
+   * SEMICOLON-JOINED LIST. Now full plain labels, "and" between several aims, and one voice
+   * throughout ("Groundwork" rather than "I").
+   */
+  it('the "so far" card reads full plain labels, aims joined with "and", and one voice', async () => {
+    openWith({
+      scenario: 'NEW_PROJECT', closed: false, history: [], onboardingStep: 3, onboardingReady: true,
+      onboardingHistory: [
+        { role: 'assistant', content: 'Tell me about it.' },
+        { role: 'user', content: 'We are training new bakers.' },
+      ],
+      onboardingSelections: {
+        mode: 'new', initial: 'Training new bakers.', classifiedScenario: 'NEW_PROJECT',
+        peopleNamed: ['Imani'], goals: ['learn our bread recipes', 'run the morning bake'],
+      },
+    })
+    await waitFor(() => expect(screen.getByText('What Groundwork has so far')).toBeTruthy())
+    expect(document.body.textContent).not.toContain("What I've got so far")
+    expect(screen.getByText('Who is in it')).toBeTruthy()
+    expect(screen.getByText('What you are aiming for')).toBeTruthy()
+    /* FAULT 5 (live review): the second aim kept its capital. Lower-cased now unless it is a
+       proper noun or "I", so the two clauses read as one sentence. */
+    expect(screen.getByText('Learn our bread recipes and run the morning bake')).toBeTruthy()
+    const page = document.body.textContent ?? ''
+    expect(page).not.toContain('Learn our bread recipes; Run the morning bake')
+  })
+
+  /*
+   * FAULT 4 (live walk, 6 October 2026): "A NAME" STAYED UNTICKED THOUGH THE PERSON (IMANI) WAS
+   * ALREADY NAMED. The side panel's "0 of 4 set" never ticked "A name" while `groundName` itself
+   * was still blank, even though the new hire's own name had already come up in conversation and
+   * the check-in would be named after her the moment it saved (fault 6). Offering that same name
+   * here ticks the row the moment Groundwork has a name to offer.
+   */
+  it('ticks "A name" for a new hire once the person has been named, before the lead types anything', async () => {
+    openWith({
+      scenario: 'NEW_HIRE', closed: false, history: [], onboardingStep: 3,
+      onboardingHistory: [
+        { role: 'assistant', content: 'Tell me about it.' },
+        { role: 'user', content: 'Imani is starting as our new baker next week.' },
+      ],
+      onboardingSelections: {
+        mode: 'new', initial: 'Imani is starting as our new baker.', classifiedScenario: 'NEW_HIRE',
+        peopleNamed: ['Imani'],
+      },
+    })
+    await waitFor(() => expect(screen.getAllByText('Imani, first 90 days').length).toBeGreaterThan(0))
+    expect(document.body.textContent).not.toContain('0 of 4 set')
+  })
+
   it('once in the check-in, the planned number follows how often it runs', async () => {
     openWith({
       scenario: 'PIP', closed: false, flowPath: 'self', onboardingStep: 7,
@@ -75,8 +126,9 @@ describe('the setup shows what will be saved (U.6 review)', () => {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/start']}><EntryChatPage /></MemoryRouter></QueryClientProvider>)
     expect(await screen.findByText('Not set yet. This will run every week unless you pick one.')).toBeTruthy()
-    /* 90 days, weekly: 12 check-ins, as the server keeps them, and the end date goes with the save. */
-    await waitFor(() => expect(document.body.textContent).toMatch(/: 12 in all\./))
+    /* 90 days, weekly: 12 check-ins, as the server keeps them, and the end date goes with the save.
+       Screen fault 10 (final walk): a comma, not a colon, and "sessions" said plainly. */
+    await waitFor(() => expect(document.body.textContent).toMatch(/, 12 sessions in all\./))
     expect(document.body.textContent).not.toContain('every 2 weeks unless')
   })
 })

@@ -32,7 +32,7 @@ const WAIT_SECONDS = 30
  * typed was set to nothing. So the caller, which knows what sent the first link, says how to send it
  * again.
  */
-export function LinkSentPanel({ email, resend: sendAgain, onUseDifferent, forReset }: {
+export function LinkSentPanel({ email, resend: sendAgain, onUseDifferent, forReset, withPassword }: {
   email: string
   /**
    * A password-reset link rather than a sign-in link. The sentence stays the same whether or not the
@@ -42,6 +42,13 @@ export function LinkSentPanel({ email, resend: sendAgain, onUseDifferent, forRes
   /** Sends the link again, the same way the first one was sent. */
   resend: () => Promise<unknown>
   onUseDifferent: () => void
+  /**
+   * B-037: set when the account being created chose "With a password". The password is saved
+   * server-side already (entrySave sends it, and it does sign the person in afterwards); what was
+   * missing was saying so here, since confirming the email first is still required either way -
+   * nothing can let somebody claim an address they have not proved they own.
+   */
+  withPassword?: boolean
 }) {
   const [countdown, setCountdown] = useState(WAIT_SECONDS)
   const [sentAgain, setSentAgain] = useState(false)
@@ -64,7 +71,9 @@ export function LinkSentPanel({ email, resend: sendAgain, onUseDifferent, forRes
       title="Check your email"
       sub={forReset
         ? <>If there is an account for <strong>{email}</strong>, we sent it a link to choose a new password. The link works for an hour.</>
-        : <>We sent a sign-in link to <strong>{email}</strong>. Open it on any device.</>}
+        : withPassword
+          ? <>Your password is saved. We sent a link to <strong>{email}</strong> to confirm it is yours. Open it to finish, then sign in with your password any time.</>
+          : <>We sent a sign-in link to <strong>{email}</strong>. Open it on any device.</>}
     >
       {failed && <AuthError>{failed}</AuthError>}
       <Stack gap={10}>

@@ -44,16 +44,30 @@ import { Page, PageTitle, EdgeList, EdgeRow, Button, Section, Panel, Note, Stack
 /**
  * WHO "THEM" IS, FROM WHAT IS SERVED (walkthrough pass 2, item 5): one email on its own, or a list
  * joined with "and", never a bare pronoun with nothing before it to name.
+ *
+ * FAULT I (reviewer, third round): AN EMAIL WHERE A NAME WAS KNOWN. "wanjiru@suites.test and
+ * peter.otieno@fitout.test" read two people by address when the row already carries a name for
+ * them (`r.name` - `/users/waiting/seats`' own `GroundParticipant.nameGiven`, request 187 to the
+ * engine to actually populate it rather than always serving `null`). Used here the moment it is
+ * there; the address stays the fallback for whoever has none.
  */
-function namesFor(rows: { email?: string | null }[]): string {
-  const names = rows.map((r) => r.email).filter((e): e is string => !!e)
+function namesFor(rows: { email?: string | null; name?: string | null }[]): string {
+  const names = rows.map((r) => r.name?.trim() || r.email).filter((e): e is string => !!e)
   if (names.length === 0) return 'them'
   if (names.length === 1) return names[0]
   if (names.length === 2) return `${names[0]} and ${names[1]}`
   return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
 }
 
-export function whoAddedThem(rows: { addedBy?: string | null; email?: string | null }[], seatsFree: number | null = 0): string {
+/**
+ * FAULT I (reviewer, third round): "AMINA YUSUF ADDED ... " READ BACK TO AMINA HERSELF, NAMING
+ * HER AS THOUGH SHE WERE SOMEBODY ELSE. `viewerName` is the admin's own name, as she would be
+ * named in `addedBy` were she the one who added them (same `fullNameToCall` shape the server
+ * already uses) - when it matches, this reads "You added ...", the way she would say it herself.
+ * A missing comma before "and your plan is full" also ran two separate facts into one clause;
+ * added here.
+ */
+export function whoAddedThem(rows: { addedBy?: string | null; email?: string | null; name?: string | null }[], seatsFree: number | null = 0, viewerName?: string | null): string {
   /*
    * AND WHETHER THERE IS ROOM NOW (U.4 fourth review). After a seat was freed the card still said the
    * plan was full. With room for all of them, or some, it says so; null is a plan with no cap.
@@ -69,8 +83,9 @@ export function whoAddedThem(rows: { addedBy?: string | null; email?: string | n
       + 'Send their invitations when you are ready, and the rest wait until there is room.'
   }
   const names = [...new Set(rows.map((r) => r.addedBy).filter((n): n is string => !!n))]
-  const who = names.length === 1 && rows.every((r) => r.addedBy === names[0]) ? names[0] : 'Someone on your team'
-  return `${who} added ${namesFor(rows)} and your plan is full, so nothing has been sent to them. `
+  const oneAdder = names.length === 1 && rows.every((r) => r.addedBy === names[0]) ? names[0] : null
+  const who = oneAdder && viewerName && oneAdder.trim() === viewerName.trim() ? 'You' : (oneAdder ?? 'Someone on your team')
+  return `${who} added ${namesFor(rows)}, and your plan is full, so nothing has been sent to them. `
     + 'Free a seat or move to a larger plan, then send the invitations. They have not been told any of this.'
 }
 
@@ -143,7 +158,7 @@ export function OrgMembersPage() {
         <EdgeList label={noSeatHeading}>
           {/* THE SUMMARY SENTENCE (kept, word for word): who added them, and whether there is room
               now - `whoAddedThem`, unchanged, still the one place that says this. */}
-          <p className="gwui-panel-text-muted">{whoAddedThem(seatQueue.data!, seatsFree)}</p>
+          <p className="gwui-panel-text-muted">{whoAddedThem(seatQueue.data!, seatsFree, [user?.firstName, user?.lastName].filter(Boolean).join(' ') || null)}</p>
           <ShowAFew rows={seatQueue.data!} few={5} what="waiting for a seat">
             {(person: any) => (
               <EdgeRow

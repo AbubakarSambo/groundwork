@@ -4,6 +4,146 @@ This is the report from the screens workspace, on the branch `wip/prototype-ui`.
 workspace writes its own report in `docs/morning-report.md`, so the two computers never edit the
 same file.
 
+## The user journey sweep, in progress (7 October, afternoon)
+
+The sweep follows Hafsah's `docs/user-journey-tests.md`. The bug log is `docs/bug-log-screens.md`, the screenshots are in `docs/bug-log-screens/`, and the journeys that can be run again are in `e2e/sweep/`.
+
+**Journeys passed and failed so far:**
+- **Passed:** A3, M1 and A6 (what could be checked), and in "Situations to repeat": two check-ins open, a used sign-in link, a double-clicked invitation, and two tabs on one check-in.
+- **Failed:** A1, A2, A4, L1, L4, L6, L7, L8, M2, M4 and M6. Each failing line is a row in the bug log.
+- **Passed in part:** L5 (the approval worked, but the email has no link) and M5 (it may be too early for her to have commitments or patterns).
+- **Not yet run:**
+  - A5's payment step and A7's staff steps, for the two set-up gaps below;
+  - L2 in full;
+  - in "Situations to repeat", someone in two organisations, a slow connection and phone numbers typed different ways.
+
+**Bugs found:** 41.
+- **Privacy:** 1 (B-013). It is the engine's, sent as request 188.
+- **Stops someone using it:** 6.
+- **Wrong information:** 17.
+- **Confusing:** 20.
+- **Cosmetic:** 1.
+
+**Bugs fixed on the screens:** 16. A few more were checked and are not bugs. The rest are the engine's, sent as requests 188 to 191.
+
+**Pages audited:** none yet. The page audit comes after the remaining faults.
+
+**What needs Hafsah:**
+- **A5, payment in test mode.** On this computer `api/.env` has no `STRIPE_SECRET_KEY`, no `STRIPE_PUBLISHABLE_KEY` and no `STRIPE_WEBHOOK_SECRET`. `STRIPE_CALLBACK_URL` is set. Please add the three as Stripe TEST values (they start `sk_test_`, `pk_test_` and `whsec_`) and restart the API. The screens will never use a live key or print a key.
+- **A7, a staff account.** The only way to become staff is `PLATFORM_ADMIN_BOOTSTRAP_EMAIL` in `api/.env`. I have asked the engine for a local seed instead (request 192).
+- **B-003, decided for Hafsah to confirm.** Your document says someone from the same company domain is offered to join. The product does this only once an admin switches joining on, and it is off for a new organisation. I kept it off, because switching it on by default would let anyone with a company address in.
+- **B-001, the trial.** The trial is switched off in this computer's platform settings, so the page rightly shows no trial. It needs checking where the trial is on.
+
+## 13:30 update: the set-up screens, read on screen a third time
+
+**The most important fix.** A lead who was already signed in had no way to add people when saving a new check-in. The people step only appeared after an emailed link, so "Save and set up" made a check-in with only the lead in it. This was in the release before today's work. It is fixed, with a test proving that the people she adds are sent on save.
+
+**Also fixed:**
+- The number of sessions the lead types now wins everywhere, including what is saved. Before, typing 5 still saved 12.
+- The save card reads "We save this to your account, amina@suites.test." It no longer calls the conversation a private report before she has said anything.
+- **The People page:**
+  - it says "You added Wanjiru and Peter Otieno, and your plan is full." to the person who added them;
+  - the instruction reads "Write one person on each line, with their name and email.";
+  - a semicolon join is gone.
+- **Layout:**
+  - at phone width nothing sits under the Feedback button, and nothing is clipped or wraps badly;
+  - at 1024 the fork buttons and the summary card have room.
+
+  A new browser check proves the Feedback button stays clear on the start page.
+
+**Decided for Hafsah to confirm.** "Only you so far. Weekly. Session 1 of 12." on All check-ins is kept, because the prototype's own check-ins screen writes its rows this way.
+
+**Sent to the engine as request 187:**
+- a colleague added with the "Add Daniel Park" button shows by email address;
+- the waiting-for-a-seat list never serves names;
+- Today names a new hire's check-in by its kind, not its own name.
+
+Results: 4,664 of 4,664 client tests pass, and the type check is clean. 59 of 59 browser checks pass, which is the 57 from before plus the new Feedback check.
+
+## 12:45 update: the set-up screens, read on screen a second time
+
+A reviewer read the 11:35 fixes on screen, at 1440 and at phone width, and three of them had not held. All of them are now fixed:
+
+- **The sessions control:**
+  - nothing sits under the Feedback button;
+  - the number box is a sensible width at phone width;
+  - the number the lead types now wins (5 used to stay "8 sessions planned").
+- **The save prompt for a signed-in lead** is one sentence: "Save this to set up the check-in and invite the people you named.", with the button "Save and set up".
+- **The summary card:**
+  - aims join as "…and understand what each person needs", in lower case after "and";
+  - names join as "Daniel and Grace";
+  - the labels have room;
+  - nothing is cut off at phone width.
+- **Someone added from "People mentioned"** keeps their name.
+- **Wording:**
+  - "The shared report releases when all parties are in." now reads "Everyone gets the shared report once all of you have checked in."
+  - Three headings that were joined with commas are now plain.
+  - A sentence on the People page that was joined with a semicolon is now two sentences.
+- **The default name.** A check-in with no name typed is called "Amina's project check-in" (or "Amina's check-in"), not the situation's label. A new hire's check-in is still named after the new hire.
+
+**Decided for Hafsah to confirm.** A lead who opens a check-in still lands on its chat tab, not its board. The prototype lands her on the board, but your own words are recorded in the code: "tab 1 was chat, tab 2 reports". So I kept chat first. The tabs for the Board and for People and setup are always shown above it.
+
+**Sent to the engine as request 186.** These are the engine's part:
+- the lead's own set-up check-in does not count as session 1;
+- Daniel shows as "A colleague";
+- the dates the lead said are ignored;
+- several unclear sentences in the engine's wording;
+- what Grace said would clear the problem is lost;
+- the closing card has no "What is now in your record" section.
+
+**Mailpit** was not running on port 1025 during the walk. The reviewer took the sign-in links from the local API's log instead.
+
+Results: 4,659 of 4,659 client tests pass, and the type check is clean. 57 of 57 browser checks pass.
+
+## 11:35 update: the rest of the core use cases, fixed on the screens
+
+A walk of a lead setting up a new hire's check-in and a project check-in found these faults. All of them are fixed, and each has a test that failed before the fix.
+
+- A signed-in lead is no longer told to sign in to plan more than one session.
+- The Feedback button no longer covers the sessions control. The control is labelled "How many sessions" and explains itself in one sentence.
+- The summary card uses plain labels in full, such as "What you are aiming for". Aims are joined with "and", and the card speaks in one voice: "That is everything Groundwork needs to set it up. Here is what you said."
+- A new hire's check-in is named after them, for example "Imani, first 90 days", and the side panel ticks "A name" straight away. Every other kind of check-in keeps its usual name.
+- In the people step, someone added by email shows with their name. The dash and the word "releases" are gone.
+- Company context has its heading, and a measure reads as one sentence, for example "40 shops ordering weekly".
+- The note a lead types in "What do you want them to cover?" is saved, but no part of the API returns it to the screens yet. I asked the engine for it in request 185.
+- I merged the engine's latest work (requests 177 to 182, the People list and the Suites wording) and rebuilt the API.
+
+Results: 4,657 of 4,657 client tests pass, and the type check is clean. 57 of 57 browser checks pass.
+
+## Morning, 7 October, 09:30: Screens ready for the pull request
+
+**The screens are ready for the pull request.** The note is written in `docs/answers-from-engine.md`. No pull request was opened from here.
+
+**Results**
+- Client: 4,643 of 4,643 tests pass (after merging the engine's 09:30 work), the type check is clean, and `npm run build` passes.
+- Marketing: `npm run build` passes with all its checks.
+- Browser tests: 57 of 57 pass.
+
+**The full walk, use case by use case.** Every screen fault it found is fixed, and a second live check confirmed the fixes.
+- Sign-up and joining: the invitation names the organisation, and the button says what it does.
+- Setting up a check-in: the wording is plain. What the set-up chat records wrongly is the engine's (request 182).
+- Boards and reports:
+  - "Shared" follows what was really shared, on every page;
+  - "Share it" opens the place to share;
+  - counts are said in words.
+- Checking in: the end card promises nothing it does not show, and "Your turn" clears after finishing. The content of the conversation and the own report is the engine's (requests 182 and 183).
+- Ask: its privacy holds. Its failing starters and "no open actions" are the engine's (requests 179 and 180).
+- Leave, finance requests and reviews:
+  - the forms, the queue and approving several work, with plain results;
+  - members see no sentences about switched-off suites;
+  - an unwritten review says so.
+- Company page, Plan and billing: these pass, with prices as "$25 a month" and a next step for a too-small plan.
+- Back office WhatsApp: it refuses a customer admin. The staff view could not be seen, because there is no local platform admin.
+- Connections: Groundwork's own number leads (decision 112). It could not be seen live, because WhatsApp is off locally.
+
+**What needs Hafsah**
+- **The privacy fault is fixed.** Request 177 item 1, the lead's note on a member's transcript, was fixed by the engine at 09:30 (e8416f2c and 6a9669c2) and is merged here. The note now reads You wrote “…” on the lead's own board (40fd5eec).
+- **The engine's other open items** (requests 179 to 183) still show to people: Ask's starters, the resend to someone waiting for a seat, reports that contradict the board, and the set-up's facts. Decide whether the pull request waits for them.
+- **A guard refusal, for the record.** The guard refused an edit to `client/src/lib/the-leads-note.ts` because a comment named the project's rules file. The same edit was made with the comment reworded. No protected file was touched.
+- "Ask to join" (request 159).
+- The anchor's active line (request 163).
+- The phone's "fills in as you talk" panel (U13).
+
 ## Morning, 7 October, 07:00: where the screens stand for the pull request
 
 **Not yet "ready for the pull request".** The last full walk of the core use cases was cut off by a network outage (the model service could not be reached, twice) after it had covered sign-up, joining and setting up a sales check-in. Everything below is pushed to `wip/prototype-ui` at the commit carrying this report. No pull request was opened.

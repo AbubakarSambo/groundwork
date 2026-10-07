@@ -65,6 +65,21 @@ describe('the feedback pill clears the ask box and the chat', () => {
   })
 
   /*
+   * FAULT 2, PHONE WALK (6 October 2026): "/start" RESTS LOWER THAN EVERY OTHER CHAT PAGE,
+   * CLEAR OF ITS OWN SESSION HEADER.
+   *
+   * EntryChatPage.tsx's own header carries "N sessions planned" at its right edge, the one real
+   * control a lead has for how many sessions the check-in runs - at the trigger's plain `top: 12`
+   * rest position, a click meant for it landed on Feedback instead, and there was no other way to
+   * open it. Lowered here, on this one page only: every other chat page keeps `top: 12`, since
+   * none of them carries a control in that corner.
+   */
+  it('rests lower on /start, clear of its own session header', () => {
+    const btn = trigger(mount('/start').container)
+    expect(btn!.style.top).toBe('64px')
+  })
+
+  /*
    * WALKTHROUGH PASS 2, ITEM 2: THREE MORE PLACES THE PILL SAT ON A CONTROL.
    *
    * "/chat" (Ask Groundwork's own page) sat on the composer's Send arrow, the same problem

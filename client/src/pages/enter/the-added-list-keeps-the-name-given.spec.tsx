@@ -115,4 +115,41 @@ describe('the added list and the waiting sentence keep the name given', () => {
 
     await waitFor(() => expect(screen.getByText('✓ bello@example.test.')).toBeTruthy())
   })
+
+  /*
+   * FAULT 5(a) (live walk, 6 October 2026): AN ORDINARY SETUP KEEPS A NAME GIVEN BY EMAIL TOO.
+   *
+   * The Name field used to show only for an anchor draft - so a lead setting up a new hire,
+   * Imani Wekesa, already named in the conversation, had nowhere to give her name when adding her
+   * by address, and the roster afterwards read "imani@walk2.test has not checked in…" with no name
+   * anywhere. The field is shared with every situation now; this is the same mechanism as the
+   * anchor's own ("Name (email)" on the chip, named in "is waiting to be invited"), proven here on
+   * an ordinary, non-anchor session.
+   */
+  it('an ordinary (non-anchor) setup keeps a name given beside an email too', async () => {
+    localStorage.setItem('gw_entry_session', JSON.stringify({
+      scenario: 'NEW_HIRE', closed: true, onboardingStep: 7,
+      history: [{ role: 'assistant', content: 'hi' }, { role: 'user', content: 'ship it' }],
+      report: JSON.stringify({ alignmentStatus: 'Clear', whatGroundworkSaw: 'x', alignmentBasis: '', areasRequiringAlignment: [], alignmentReached: [], honestClose: { aligned: '', open: '', revisit: '', risk: '' }, mentionedPeople: [], suggestedParties: [] }),
+      onboardingSelections: { mode: 'new', initial: 'A new hire is starting.', classifiedScenario: 'NEW_HIRE', peopleNamed: ['Imani'] },
+    }))
+    const { authApi } = await import('@/api/auth')
+    vi.mocked(authApi.entrySave).mockResolvedValue({ draftToken: 'd-token-new-hire' } as any)
+    renderPage()
+    fireEvent.click(await screen.findByText(/Invite and finish/))
+    const emailInput = screen.getByPlaceholderText('your@email.com')
+    fireEvent.change(emailInput, { target: { value: 'lead@example.test' } })
+    fireEvent.submit(emailInput.closest('form')!)
+    await waitFor(() => expect(authApi.entrySave).toHaveBeenCalled())
+    await screen.findByText('Invite people')
+
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Imani Wekesa' } })
+    fireEvent.change(screen.getByPlaceholderText('name@company.com'), { target: { value: 'imani@walk2.test' } })
+    fireEvent.click(screen.getByText('Add'))
+    await screen.findByText('Skip')
+    fireEvent.click(screen.getByText('Skip'))
+
+    await waitFor(() => expect(screen.getByText('✓ Imani Wekesa (imani@walk2.test).')).toBeTruthy())
+    expect(screen.queryByText('✓ imani@walk2.test.')).toBeNull()
+  })
 })

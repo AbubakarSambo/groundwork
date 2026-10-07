@@ -299,7 +299,13 @@ export function BillingPage() {
           <FieldRow
             label="Plan"
             value={`${thePlanLine(billingStatus, livePricing, freeGrounds)}${peopleOverCap ? ' More people have accounts here than this plan covers.' : ''}`}
-            action={<Button kind="quiet" size="small" onClick={scrollToPlans}>Change</Button>}
+            /*
+             * SCREEN FAULT 11 (FINAL WALK): "MORE PEOPLE HAVE ACCOUNTS HERE THAN THIS PLAN COVERS."
+             * NAMED A PROBLEM WITH NO NEXT STEP BESIDE IT. The row's own action was the same plain
+             * "Change" every other plan row carries, which says nothing about why somebody in this
+             * situation specifically would press it. Named for what it actually does here instead.
+             */
+            action={<Button kind="quiet" size="small" onClick={scrollToPlans}>{peopleOverCap ? "Choose a plan for your team's size" : 'Change'}</Button>}
           />
           {/*
            * "WHEN BARIDI APPLIANCES WAS SET UP, IT HAD 20 OR MORE PEOPLE, SO IT BEGAN ON A PLAN."

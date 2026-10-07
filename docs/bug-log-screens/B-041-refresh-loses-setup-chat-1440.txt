@@ -1,0 +1,23 @@
+B-041: L1/A1, /start, the entry set-up chat, refreshing while Groundwork is still composing its
+reply. Admin (fresh test organisation), browser, 1440 width. Reproduced with Playwright
+(e2e/sweep/situations-flows.spec.ts, "refresh halfway through set-up").
+
+Steps:
+1. On /start, typed "We run a small ops team and want to keep a weekly read on the work." and
+   pressed Send. While the page still showed "Thinking..." (the reply had not arrived yet),
+   refreshed the page.
+2. After the refresh, the page is back to the very first, blank "Set up a check-in" screen
+   ("Describe it in your own words. Nothing is sent to anyone until you press send.", an empty
+   textbox, no history) - as if nothing had been said. Screenshots:
+   _situations-refresh-before-1440.png (mid "Thinking...") and
+   _situations-refresh-after-1440.png (blank start screen).
+
+This is a different page from the one M2 already covers (the participant's check-in chat, which
+resumes correctly after a refresh/navigate-away - verified separately and not a bug). Here, the
+one thing the lead typed is gone with no warning, and they must describe their situation again
+from scratch.
+
+Severity: Confusing, arguably Stops someone using it if it happens more than once in a row (nothing
+in the rules promises this chat survives a refresh, but losing a freshly-typed answer with no
+"are you sure" or recovery is the same class of problem the M2 "nothing lost" requirement exists
+to prevent, just on a different screen - engine or client state, not determined which here).

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { billingApi, PLAN_LABELS, PLAN_PRICES, formatMemberCap, formatMonthlyPrice, type SubscriptionPlan, FALLBACK_FREE_LIMITS } from '@/api/billing'
+import { billingApi, PLAN_LABELS, PLAN_PRICES, formatMemberCap, formatDollars, type SubscriptionPlan, FALLBACK_FREE_LIMITS } from '@/api/billing'
 import { theFreeTrialSentence } from '@/lib/the-free-trial'
 import { whatCoversThem } from './what-plan-and-billing-says'
 import { useAuthStore } from '@/stores/auth'
@@ -56,11 +56,17 @@ export function PricingPage() {
   const trialSentence = theFreeTrialSentence(livePricing?.trial)
   const trialLength = livePricing?.trial?.months === 1 ? '1 month' : `${livePricing?.trial?.months ?? 0} months`
 
+  /*
+   * SCREEN FAULT 11 (FINAL WALK): "$25/mo" IS NOT A SENTENCE. Drawn here as one plain line of text
+   * (unlike BillingPage's own plan card, which deliberately splits a big price figure from a small
+   * "/mo" unit label beside it, the prototype's own card shape), so this is "the screen formats
+   * it" - "/mo" becomes "a month", keeping the currency symbol and the number exactly as served.
+   */
   function priceLabel(plan: SubscriptionPlan): string {
     const live = livePricing?.plans?.find(p => p.plan === plan)
-    /** A contact-sales plan has no amount, and "$0/mo" is the one thing this must never say. */
-    if (live) return live.amountCents === null ? 'Contact us' : formatMonthlyPrice(live.amountCents)
-    return PLAN_PRICES[plan]
+    /** A contact-sales plan has no amount, and "$0 a month" is the one thing this must never say. */
+    if (live) return live.amountCents === null ? 'Contact us' : `${formatDollars(live.amountCents)} a month`
+    return PLAN_PRICES[plan].replace(/\/mo$/, ' a month')
   }
 
   /** No fallback: an absent seat count is honest, a stale one is the bug being removed. */

@@ -32,9 +32,10 @@ describe('somebody who is already signed in', () => {
   })
 
   it('and is told where it is being saved, by name', () => {
-    // The old copy promised an email that is not coming.
-    expect(CODE).toMatch(/Saving to \{user\.email\}/)
-    expect(CODE).toMatch(/already signed in/)
+    /* FAULT E (reviewer, third round): "Saving to {user.email}. No confirmation needed, you are
+       already signed in." read like a log line. Reworded to "We save this to your account,
+       {user.email}." - still named by email, no "signed in" talk needed to say it. */
+    expect(CODE).toMatch(/We save this to your account, \{user\.email\}/)
   })
 
   it('lands on the check-in rather than back at a list', () => {

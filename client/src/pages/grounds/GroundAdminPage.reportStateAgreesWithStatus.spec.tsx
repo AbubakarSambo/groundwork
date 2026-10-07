@@ -88,3 +88,36 @@ describe('the header reads the same report state as People and setup and the sid
     expect(screen.queryByText('Not shared yet. Share it from the report when it is ready.')).toBeNull()
   })
 })
+
+/**
+ * SCREEN FAULT 1 (FINAL WALK): "NOT SHARED" WHEN THE REPORT WAS ACTUALLY SHARED.
+ *
+ * Session 1 was released (`report.releasedAt` set, `report.releasedSessions` holds `[1]`). People
+ * and setup's "The team's report" row and the Report tab's "Every session" list must both say it is
+ * shared - neither may fall back to `roundCompletions` (whether everyone answered), which is a
+ * different fact from whether the lead released it.
+ */
+describe('a released session reads "Shared" everywhere the lead can see it', () => {
+  function releasedGround() {
+    return {
+      ...ground(),
+      status: 'REPORT_READY',
+      report: { id: 'r1', releasedAt: '2026-09-24T16:00:00.000Z', releasedSessions: [1] },
+    }
+  }
+
+  it('People and setup reads "Shared on", not "Not shared yet"', async () => {
+    ;(groundsApi.get as any).mockResolvedValue(releasedGround())
+    renderPage('/grounds/g1?tab=settings')
+    expect(await screen.findByText(/^Shared on /)).toBeTruthy()
+    expect(screen.queryByText(/Not shared yet/)).toBeNull()
+  })
+
+  it('the Report tab\'s "Every session" list reads "Shared" for session 1, not "Not shared"', async () => {
+    ;(groundsApi.get as any).mockResolvedValue(releasedGround())
+    renderPage('/grounds/g1?tab=report')
+    expect(await screen.findByRole('heading', { name: 'Every session' })).toBeTruthy()
+    expect(await screen.findByText('Shared')).toBeTruthy()
+    expect(screen.queryByText('Not shared')).toBeNull()
+  })
+})

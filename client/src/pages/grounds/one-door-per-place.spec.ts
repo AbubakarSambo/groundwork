@@ -88,9 +88,12 @@ describe('but only once', () => {
      * own auto-open guard: a lead on `HELP_TEAM_UNDERSTAND` has no ordinary first check-in of her
      * own to be walked into (the engine is separately asked, request 168, to stop creating one),
      * so landing on `?tab=chat` redirects her to the board instead of auto-opening a session that
-     * should never have existed for her.
+     * should never have existed for her - and once more (B-019) in the Check-in tab's own message
+     * to a PARTY whose check-in has already ended: "Bring this to your next check-in" is wrong once
+     * there is no next one, and the board is where the full ending (who decided, when and why) is
+     * read.
      */
-    expect((ADMIN.match(/\/board`/g) ?? [])).toHaveLength(5)
+    expect((ADMIN.match(/\/board`/g) ?? [])).toHaveLength(6)
     /* The prop, its type and its one use. What matters is that the component renders ONE button. */
     expect((LIST.match(/\{EVERY_SESSION\.board\}/g) ?? [])).toHaveLength(1)
     expect(ADMIN).not.toContain('Team board →')

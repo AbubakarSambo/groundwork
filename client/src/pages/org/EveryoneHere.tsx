@@ -230,7 +230,9 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
     <>
       <Folded
         summary="Who reports to whom"
-        note="Level and reporting lines describe the organisation; what someone can do still comes from their role"
+        /* FAULT 13 (live review): one sentence joined to another with a semicolon reads as a
+           single clipped clause, not plain writing. Two full sentences instead. */
+        note="Level and reporting lines describe the organisation. What someone can do still comes from their role."
       >
         <TheTree people={everybody.filter((m) => m.role !== 'GUEST' && !m.noAccountYet)} />
       </Folded>

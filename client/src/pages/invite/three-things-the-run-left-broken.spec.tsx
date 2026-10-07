@@ -40,9 +40,16 @@ describe('a check-in is not named after a database value', () => {
      */
     const chat = readFileSync(join(__dirname, '..', 'enter', 'EntryChatPage.tsx'), 'utf8')
     expect(chat).toMatch(/export function fallbackGroundName\(/)
-    /* Handed the situation the LEAD picked, never the classifier's (the "Drift" case). */
-    /* And never her own first words (U.6 review): an invitation never carries the lead's words. */
-    expect(chat).toMatch(/fallbackGroundName\(theSituationTheLeadPicked\(\) \?\? onboardingSelections\.classifiedScenario, orgName\.trim\(\) \|\| user\?\.organization\?\.name \|\| undefined\)/)
+    /*
+     * FAULTS 4 AND 6 (live walk, 6 October 2026): THE TWO COMMIT SITES NOW SHARE ONE
+     * `theDefaultGroundName()` HELPER, rather than each repeating this exact call - the one place
+     * the new hire's own default (naming the person rather than the situation) has to live so the
+     * committed name and the side panel's preview can never disagree. The ordering this test pins
+     * (the lead's pick first, then the classified situation, never her own first words) now lives
+     * inside `theDefaultGroundName`, which still ends by calling `fallbackGroundName` the same way.
+     */
+    expect(chat).toMatch(/function theDefaultGroundName\(\): string \{\s*\n\s*return effectiveFallbackGroundName\(\s*\n\s*theSituationTheLeadPicked\(\) \?\? onboardingSelections\.classifiedScenario,/)
+    expect(chat).toMatch(/return fallbackGroundName\(situation, where\)/)
     expect(chat).not.toMatch(/fallbackGroundName\([^)]*onboardingSelections\.initial/)
     /* And the raw key is turned into words rather than printed: "NEW_HIRE" is not a name. */
     expect(chat).toMatch(/\.replace\(\/_\/g, ' '\)/)

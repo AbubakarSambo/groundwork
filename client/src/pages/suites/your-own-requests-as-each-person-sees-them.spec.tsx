@@ -87,10 +87,17 @@ describe('Aisha reads her own requests', () => {
     expect(screen.getByText('You have not asked to spend anything.')).toBeTruthy()
   })
 
-  it('reads the server\'s words when a suite is off, and still reads the other', async () => {
+  /*
+   * SCREEN FAULT 8 (FINAL WALK): a member read "Leave requests are not switched on in your
+   * organisation." with nothing she could do about it. This test used to pin that she read it;
+   * "Your leave" (heading included) is now left out entirely for her when it is off, and the
+   * other section she can actually use still reads as before.
+   */
+  it('leaves out "Your leave" entirely when it is off, for a member, and still reads the other', async () => {
     open(refusal(404, 'Leave requests are not switched on in your organisation.'), SPENDING)
-    expect(await screen.findByText('Leave requests are not switched on in your organisation.')).toBeTruthy()
-    expect(screen.getByText('Your request to spend KES 12,000 for tyres for the van is approved by Fatuma.')).toBeTruthy()
+    expect(await screen.findByText('Your request to spend KES 12,000 for tyres for the van is approved by Fatuma.')).toBeTruthy()
+    expect(screen.queryByText(/Leave requests are not switched on/)).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Your leave' })).toBeNull()
   })
 
   /*
@@ -108,9 +115,15 @@ describe('Aisha reads her own requests', () => {
     for (const link of links) expect(link).toHaveAttribute('href', '/settings/suites')
   })
 
-  it('does not point a participant at Suites, which would refuse them', async () => {
+  /*
+   * SCREEN FAULT 8 (FINAL WALK): a participant now reads no sentence about it at all, not a
+   * sentence with no link - the whole section is left out for whoever cannot switch it on.
+   */
+  it('leaves the section out for a participant entirely, rather than a sentence with no way to act on it', async () => {
     open(refusal(404, 'The leave suite is not switched on.'), SPENDING)
-    expect(await screen.findByText(/The leave suite is not switched on\./)).toBeTruthy()
+    await screen.findByText('Your request to spend KES 12,000 for tyres for the van is approved by Fatuma.')
+    expect(screen.queryByText(/The leave suite is not switched on/)).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Your leave' })).toBeNull()
     expect(screen.queryByRole('link', { name: 'Suites' })).toBeNull()
   })
 
@@ -163,10 +176,29 @@ describe('Aisha reads her own requests', () => {
     expect(await screen.findByText('You have not given any hours yet.')).toBeTruthy()
   })
 
-  it('reads the server’s words when time sheets are off, and still reads leave and spending', async () => {
+  /*
+   * SCREEN FAULT 8 (FINAL WALK): "THE TIME SHEETS SUITE IS NOT SWITCHED ON. AN ADMIN SWITCHES IT
+   * ON UNDER SUITES." used to show to Aisha, a member, who can do nothing with it and has no
+   * reason to be sent to a settings page that would refuse her anyway. This test used to pin that
+   * the sentence showed; a member now gets no "Your hours" section at all when it is off, heading
+   * included, and reads leave and spending exactly as before.
+   */
+  it('leaves out "Your hours" entirely when time sheets are off, for a member, and still reads leave and spending', async () => {
     open(LEAVE, SPENDING, Object.assign(new Error('404'), { response: { status: 404, data: { message: 'Time sheets are not switched on in your organisation.' } } }))
-    expect(await screen.findByText('Time sheets are not switched on in your organisation.')).toBeTruthy()
-    expect(screen.getByText('You have 16 days of leave left this year, out of 21.')).toBeTruthy()
+    expect(await screen.findByText('You have 16 days of leave left this year, out of 21.')).toBeTruthy()
     expect(screen.getByText('Your request to spend KES 12,000 for tyres for the van is approved by Fatuma.')).toBeTruthy()
+    expect(screen.queryByText(/Time sheets are not switched on/)).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Your hours' })).toBeNull()
+  })
+
+  it('an admin still reads the sentence, since an admin can actually switch it on', async () => {
+    useAuthStore.setState({ user: { ...AISHA, role: 'ADMIN' }, token: 't', isAuthenticated: true } as any)
+    ;(yourRequestsApi.leave as any).mockResolvedValue(LEAVE)
+    ;(yourRequestsApi.spending as any).mockResolvedValue(SPENDING)
+    ;(yourRequestsApi.hours as any).mockRejectedValue(Object.assign(new Error('404'), { response: { status: 404, data: { message: 'The time sheets suite is not switched on. An admin switches it on under Suites.' } } }))
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(<QueryClientProvider client={qc}><MemoryRouter><YourRequestsPage /></MemoryRouter></QueryClientProvider>)
+    expect(await screen.findByRole('heading', { name: 'Your hours' })).toBeTruthy()
+    expect(await screen.findByText(/The time sheets suite is not switched on/)).toBeTruthy()
   })
 })

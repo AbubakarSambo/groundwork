@@ -1,0 +1,18 @@
+B-036: M4, the between-session "Ask, or add a note" chat on a check-in page
+(/grounds/f35ec5b5-8d28-4049-92c3-e0809687c9f8, "Get a new project off to a good start"),
+Grace Mwangi (grace@suites.test), Suites Test Company, browser, 1440 width.
+
+After Grace typed "I am planning to take some leave next week, from 13 to 17 October, for a
+family trip.", Groundwork's reply:
+  "You asked for leave from Tuesday 13 October to Saturday 17 October, which is 4 working days.
+  You have 8 days of leave left this year. Shall I send it to Daniel to approve?"
+rendered as two separate, identical message bubbles, one directly under the other, with no
+visible difference between them (confirmed on screen, not just in the page's text dump - see
+screenshot taken interactively during the session). The same thing happened again for the next
+bot reply in the same conversation.
+
+This is a rendering/duplication defect in the chat, independent of B-035 (the leave confirmation
+itself being lost): a person reading this would reasonably wonder whether they are being asked
+the same question twice, or whether two requests are about to be sent.
+
+Severity: Confusing.

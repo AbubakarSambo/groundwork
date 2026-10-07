@@ -296,6 +296,19 @@ describe('one review', () => {
     expect(screen.getByText('Aisha’s own view is not in yet.')).toBeInTheDocument()
   })
 
+  /*
+   * SCREEN FAULT 9 (FINAL WALK): "WHAT DANIEL WRITES", WITH NOTHING UNDER IT. Grace's review page
+   * (reader: 'person', reading about themselves) drew the heading and nothing else when the writer
+   * had not written their part yet. Said in words now, and never a guessed pronoun ("his part").
+   */
+  it('says the writer has not written anything yet, rather than a heading with nothing under it', async () => {
+    ;(reviewsApi.one as any).mockResolvedValue({ ...FOR_AISHA, managersWords: null })
+    open(AISHA, '/suite/reviews/r-a')
+    const section = await screen.findByRole('region', { name: 'What Wairimu writes' })
+    expect(within(section).getByText('Wairimu has not written anything yet.')).toBeInTheDocument()
+    expect(within(section).queryByText(/his part|her part|their part/)).toBeNull()
+  })
+
   it('a colleague reads the server’s refusal', async () => {
     ;(reviewsApi.one as any).mockRejectedValue(refusal(403, 'You cannot open this review.'))
     open(AISHA, '/suite/reviews/r-a')

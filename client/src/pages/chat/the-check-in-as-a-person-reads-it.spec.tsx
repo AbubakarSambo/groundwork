@@ -72,8 +72,7 @@ const SALES = {
 
 const OPENING = 'Good news first: last week you said Lakeside’s buyer would meet you on the 29th. The buyer has now confirmed the meeting. That is in your record. Now, yesterday you said Green Mart wanted a quote. What happened?'
 
-function renderChat() {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+function renderChat(qc: QueryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })) {
   return render(
     <QueryClientProvider client={qc}>
       <MemoryRouter initialEntries={['/checkin/ci1']}>
@@ -340,6 +339,16 @@ describe('the + button', () => {
 
 describe('the end card, once Groundwork has closed the conversation', () => {
   const CLOSING = 'That’s all for today. Below is what I wrote down from your answers. Is anything wrong?'
+  /*
+   * SCREEN FAULT 2 (FINAL WALK): the closing message claimed "Below is what I wrote down from your
+   * answers." even on a close with no record lines for the card to show (request 182) - untrue of
+   * what was actually on screen. The screen now drops that one claim when nothing backs it
+   * (a-closing-message-claims-nothing-it-does-not-keep.ts), leaving the two true sentences either
+   * side of it. `answerTheLastQuestion` used to assert the full `CLOSING` text unconditionally,
+   * which is exactly the claim this fixes - every no-record-lines test below now waits for the
+   * corrected, shorter message instead.
+   */
+  const SHORTENED = 'That’s all for today. Is anything wrong?'
   function closesOnTheNextAnswer(endCard?: unknown) {
     ;(conversationApi.transcript as any).mockResolvedValue({
       checkIn: { status: 'IN_PROGRESS', sessionNumber: 38, groundId: 'g1' },
@@ -347,11 +356,18 @@ describe('the end card, once Groundwork has closed the conversation', () => {
     })
     ;(conversationApi.send as any).mockResolvedValue({ reply: CLOSING, sessionComplete: true, endCard })
   }
-  async function answerTheLastQuestion() {
+  async function answerTheLastQuestion(expectToRead: string = SHORTENED) {
     renderChat()
     fireEvent.click(await findByRole('button', { name: 'I’ll visit Westgate Deli on Friday' }, { timeout: 6000 }))
-    await findByText(CLOSING, {}, { timeout: 6000 })
+    await findByText(expectToRead, {}, { timeout: 6000 })
   }
+
+  it('never claims "Below is what I wrote down from your answers." when the end card has no record lines', async () => {
+    closesOnTheNextAnswer()
+    await answerTheLastQuestion()
+    expect(screen.queryByText(CLOSING)).toBeNull()
+    expect(screen.getByText(SHORTENED)).toBeTruthy()
+  })
 
   it('Miriam reads the header change, why answering matters, what happens next, and the two buttons', async () => {
     closesOnTheNextAnswer()
@@ -385,7 +401,8 @@ describe('the end card, once Groundwork has closed the conversation', () => {
       ],
       next: ['If Green Mart sends a written order, add a photo of it. Then the sale counts as proven.'],
     })
-    await answerTheLastQuestion()
+    // Record lines are sent, so the claim is true, and the full closing message stays.
+    await answerTheLastQuestion(CLOSING)
     expect(screen.getByRole('heading', { name: '1. What is now in your record' })).toBeTruthy()
     expect(screen.getByText('Green Mart will buy in January')).toBeTruthy()
     expect(screen.getByText('You said this. It will count next quarter, from October.')).toBeTruthy()
@@ -432,7 +449,7 @@ describe('the Done page, after “That’s right, finish”', () => {
   const DIMS = { delivery: 'specific', evidence: 'vague', enablement: 'specific', coverage: 'directional', commitment: 'specific' }
   const tomorrowAt4 = () => { const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(16, 0, 0, 0); return d.toISOString() }
 
-  async function finish(opts: { ground?: any; carry?: string | null; whatChanged?: unknown } = {}) {
+  async function finish(opts: { ground?: any; carry?: string | null; whatChanged?: unknown; qc?: QueryClient } = {}) {
     const ground = opts.ground ?? { ...SALES, checkIns: [{ id: 'ci1', participantId: 'p-m', sessionNumber: 38, status: 'COMPLETED', specificityDimensions: DIMS }], roundCompletions: [] }
     ;(groundsApi.get as any).mockResolvedValue(ground)
     ;(groundsApi.getMyCheckinStatus as any).mockResolvedValue({
@@ -449,11 +466,38 @@ describe('the Done page, after “That’s right, finish”', () => {
     })
     ;(conversationApi.send as any).mockResolvedValue({ reply: 'That’s all for today. Is anything wrong?', sessionComplete: true })
     ;(conversationApi.complete as any).mockResolvedValue({ status: 'COMPLETED', whatChanged: opts.whatChanged })
-    renderChat()
+    renderChat(opts.qc)
     fireEvent.click(await findByRole('button', { name: 'I’ll visit Westgate Deli on Friday' }, { timeout: 6000 }))
     fireEvent.click(await findByRole('button', { name: 'That’s right, finish' }, { timeout: 6000 }))
     await findByRole('heading', { name: 'Done. Thanks, Miriam.' }, { timeout: 6000 })
   }
+
+  /*
+   * SCREEN FAULT 3 (FINAL WALK): "YOUR TURN" AND "NOBODY HAS CHECKED IN YET" RIGHT AFTER
+   * FINISHING. Nothing invalidated the ground, grounds or board queries when a session completed,
+   * so the check-in's own page and the sidebar kept reading the answer just given as still
+   * outstanding. Proven directly against the query cache, since that is the one fact that was
+   * actually wrong - the rendered page after finishing is the Done page, which reads its own,
+   * fresh data regardless.
+   */
+  it('marks the ground, grounds and board queries stale the moment a session completes', async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+    // Nobody is observing 'grounds' or the board in this test, so an invalidated one stays
+    // marked invalidated - there is nothing mounted to refetch it straight away.
+    qc.setQueryData(['grounds'], { stale: true })
+    qc.setQueryData(['board', 'g1', 'default'], { stale: true })
+    const callsBefore = (groundsApi.get as any).mock.calls.length
+    await finish({ qc })
+    expect(qc.getQueryState(['grounds'])?.isInvalidated).toBe(true)
+    expect(qc.getQueryState(['board', 'g1', 'default'])?.isInvalidated).toBe(true)
+    /*
+     * ChatPage's own ['ground', 'g1'] query IS mounted here, so invalidating it also refetches
+     * it immediately - the `isInvalidated` flag clears again once that succeeds, which is the
+     * invalidation actually working, not it never having fired. A second call to `groundsApi.get`
+     * for this ground is the proof.
+     */
+    expect((groundsApi.get as any).mock.calls.filter((c: any[]) => c[0] === 'g1').length).toBeGreaterThan(callsBefore)
+  })
 
   it('Miriam reads that it is saved, when the next one opens, and her two reports', async () => {
     await finish()

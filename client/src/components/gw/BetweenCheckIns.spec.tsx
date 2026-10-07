@@ -141,6 +141,29 @@ describe('between check-ins', () => {
     expect(await screen.findByText('Sure - here is what I have.')).toBeTruthy()
   })
 
+  /*
+   * B-036: Grace's leave dates came back as two identical bubbles, one directly under the other -
+   * the reply's own `text` block and a `claim` block repeating the same sentence. The same guard
+   * AskGroundwork.tsx's `drawBlocks` already uses for this (`!texts.has(b.summary)`) now applies
+   * here too, in `linesOf`.
+   */
+  it('does not print the same sentence twice when a claim or proposal repeats the reply\'s own text block', async () => {
+    ;(askApi.ask as any).mockResolvedValue({
+      blocks: [
+        { type: 'text', body: 'That is 5 working days, Monday 12 to Friday 16 October.' },
+        { type: 'claim', says: 'That is 5 working days, Monday 12 to Friday 16 October.', mark: 'proven' },
+        { type: 'text', body: 'Shall I send it to Daniel to approve?' },
+      ],
+      composedBy: 'model', lane: 'test',
+    })
+    mount()
+    const field = screen.getByPlaceholderText('Ask, or add a note')
+    await userEvent.type(field, 'I need leave from Monday to Friday next week.')
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }))
+    await screen.findByText('Shall I send it to Daniel to approve?')
+    expect(screen.getAllByText('That is 5 working days, Monday 12 to Friday 16 October.')).toHaveLength(1)
+  })
+
   it('a failed question does not lose what was typed nor crash the card', async () => {
     ;(askApi.ask as any).mockRejectedValue(new Error('network'))
     mount()

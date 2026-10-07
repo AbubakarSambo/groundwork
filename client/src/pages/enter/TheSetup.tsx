@@ -210,8 +210,14 @@ export function whenTheyOpen(a: { cadence: Cadence; anchorDay: number | null; st
   })
   const list = words.length === 1 ? words[0] : `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`
   if (!end) return `Check-ins open on ${words.join(', ')} and on from there.`
-  if (inRange.length <= 5) return `Check-ins open on ${list}: ${inRange.length} in all.`
-  return `Check-ins open on ${words.join(', ')} and on from there, until ${end.getDate()} ${MONTHS[end.getMonth()]}: ${inRange.length} in all.`
+  /*
+   * SCREEN FAULT 10 (FINAL WALK): "UNTIL 23 DECEMBER: 12 IN ALL" JOINED TWO PIECES WITH A COLON,
+   * AND NEVER SAID WHAT WAS BEING COUNTED. "12" on its own, after a colon, reads as a label and a
+   * number rather than a sentence - said now as "until 23 December, 12 sessions in all.".
+   */
+  const sessionsInAll = `${inRange.length} session${inRange.length === 1 ? '' : 's'} in all`
+  if (inRange.length <= 5) return `Check-ins open on ${list}, ${sessionsInAll}.`
+  return `Check-ins open on ${words.join(', ')} and on from there, until ${end.getDate()} ${MONTHS[end.getMonth()]}, ${sessionsInAll}.`
 }
 
 function Choice({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {

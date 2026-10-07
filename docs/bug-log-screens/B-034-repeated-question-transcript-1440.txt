@@ -1,0 +1,18 @@
+B-034: M2 check-in (Sales team, Q3, Amani Wekesa, amani.u8@example.test), browser, 1440 width.
+
+Transcript (as rendered to the participant), in order:
+
+...
+Understood. What did you try after Naivas Yaya said no last week?
+[Amani answers:] I will message Rukia directly today and ask her to send it by tomorrow.
+You are waiting on Rukia for the price list, and last week Naivas Yaya said no. It helps to understand what happened after that. What did you try after Naivas Yaya said no last week?
+
+The same question ("What did you try after Naivas Yaya said no last week?") is asked twice in a
+row, with the participant's answer sandwiched in between and never acknowledged - the second
+time it is wrapped in a sentence that restates facts already established ("You are waiting on
+Rukia...") as if nothing had been said. Amani's answer was about messaging Rukia for the price
+list, not about Naivas Yaya, so this also suggests the question itself was misrouted onto an
+unrelated answer, then asked again when the mismatch was not resolved.
+
+Network: POST to the check-in message endpoint for both turns returned 200; no error in console
+at this point. The defect is in the generated conversation content/routing, not a failed request.

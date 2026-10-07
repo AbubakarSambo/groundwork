@@ -181,7 +181,9 @@ describe('the check-in phase, once the engine has spoken', () => {
     }))
     const { container } = renderPage()
     await waitFor(() => expect(screen.getByText('What you said is on record.')).toBeTruthy())
-    expect(screen.getByText('Invite others to check in. The shared report releases when all parties are in.')).toBeTruthy()
+    /* FAULT 10 (live review): "releases when all parties are in" was the product's own jargon for
+       itself. Said plainly now: everyone gets the shared report once everyone has checked in. */
+    expect(screen.getByText('Invite others to check in. Everyone gets the shared report once all of you have checked in.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Invite and finish' })).toBeTruthy()
     expect(screen.queryByPlaceholderText('Type your response.')).toBeNull()
     expectAtMostOnePrimaryButton(container)

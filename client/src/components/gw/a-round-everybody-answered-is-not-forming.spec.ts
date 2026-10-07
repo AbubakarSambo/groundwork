@@ -18,7 +18,9 @@ const SRC = readFileSync(join(__dirname, 'TheReportIsAListOfSessions.tsx'), 'utf
  */
 describe('a round everybody answered is not forming', () => {
   it('says Shared once it is out, and Not shared otherwise, whoever it is waiting for', () => {
-    expect(SRC).toContain('r.closed ? EVERY_SESSION.shared : EVERY_SESSION.notShared')
+    /* The final walk (7 October): "Shared" follows whether the report was released, `r.shared`,
+       never whether the round closed, `r.closed`; a closed round can still wait to be shared. */
+    expect(SRC).toContain('r.shared ? EVERY_SESSION.shared : EVERY_SESSION.notShared')
     expect(SRC).toContain("shared: 'Shared'")
     expect(SRC).toContain("notShared: 'Not shared'")
     expect(SRC).not.toContain("'Forming'")

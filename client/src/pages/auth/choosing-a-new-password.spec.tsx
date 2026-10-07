@@ -113,8 +113,14 @@ describe('the rules, before anything is sent', () => {
 
 describe('"Choose a password", the first password from a set-up link (A2, #/password)', () => {
   /* Hafsah's decision of 26 September: choosing a password is optional, so the prototype's
-     "Keep using email links instead" is offered (it was left out while that waited on her). */
-  it('reads the prototype\'s words, including "Keep using email links instead"', () => {
+     "Keep using email links instead" is offered (it was left out while that waited on her).
+     SCREEN FAULT 5 (FINAL WALK): with no session yet - exactly this fixture's case, a bare
+     `/set-password?token=` with nobody signed in - that button used to claim "Keep using" an
+     email link nobody had ever used, then still asked for the address again regardless. It now
+     says plainly what happens for this case: a new link is what gets sent
+     (ChoosePasswordPage.spec.tsx has the signed-in case, where the prototype's own wording is
+     unchanged because skipping there costs nothing). */
+  it('reads the prototype\'s words, except "Email me a sign-in link instead" in place of "Keep using email links instead"', () => {
     const { container } = renderAt('/set-password?token=tok')
     expect(readable(container)).toBe([
       'Groundwork',
@@ -126,7 +132,7 @@ describe('"Choose a password", the first password from a set-up link (A2, #/pass
       'Not your email address',
       'Use one you don’t use anywhere else. A few unrelated words are easier to remember than symbols.',
       'Save password',
-      'Keep using email links instead',
+      'Email me a sign-in link instead',
     ].join(''))
     expect(screen.queryByLabelText('Type it again')).toBeNull()
     /* U.2 step 12: a set-up link is checked as the page opens too, so an old one shows the expired card. */
@@ -166,10 +172,10 @@ describe('"Choose a password", the first password from a set-up link (A2, #/pass
   })
 })
 
-describe('"Keep using email links instead"', () => {
+describe('"Email me a sign-in link instead" (no session yet - screen fault 5, final walk)', () => {
   it('without a session, goes to the sign-in link form, and no password is sent', async () => {
     renderAt('/set-password?token=tok&next=%2Fgrounds')
-    fireEvent.click(screen.getByRole('button', { name: 'Keep using email links instead' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Email me a sign-in link instead' }))
     expect(authApi.setPassword).not.toHaveBeenCalled()
   })
 })

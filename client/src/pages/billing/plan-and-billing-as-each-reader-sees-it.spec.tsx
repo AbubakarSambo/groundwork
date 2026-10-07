@@ -354,6 +354,43 @@ describe('a plan too small for the organisation says so (screen fault 4b)', () =
   })
 })
 
+/*
+ * SCREEN FAULT 11 (FINAL WALK): "MORE PEOPLE HAVE ACCOUNTS HERE THAN THIS PLAN COVERS." NAMED A
+ * PROBLEM WITH NO NEXT STEP BESIDE IT - the row's own action was the same plain "Change" every
+ * other plan row carries. Named for what it does here instead: it scrolls to the plans, exactly as
+ * "Change" always did, but now says so.
+ */
+describe('the current plan’s own seat count is over its cap (screen fault 11)', () => {
+  beforeEach(() => {
+    m.status = {
+      subscription: { plan: 'STARTER', status: 'active', periodEnd: '2026-10-01T09:00:00.000Z', endsAt: null, freeExtensionUsed: false },
+      people: { count: 8, cap: 5 },
+      onTheHouse: null,
+      usage: { checkIns: 3, reportsReleased: 0, peopleTakingPart: 8 },
+      activeGrounds: [],
+      card: { brand: 'visa', last4: '4417' },
+      invoices: [],
+    }
+  })
+
+  it('names the next step beside the warning, not the plain "Change" every other row has', async () => {
+    renderIt()
+    await waitFor(() => expect(text()).toContain('More people have accounts here than this plan covers.'))
+    expect(screen.getByRole('button', { name: "Choose a plan for your team's size" })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Change' })).toBeNull()
+  })
+
+  it('still scrolls to the plans, exactly as "Change" always did', async () => {
+    renderIt()
+    const button = await screen.findByRole('button', { name: "Choose a plan for your team's size" })
+    const scrollIntoView = vi.fn()
+    const plansSection = document.getElementById('billing-plans')
+    if (plansSection) plansSection.scrollIntoView = scrollIntoView
+    fireEvent.click(button)
+    expect(scrollIntoView).toHaveBeenCalled()
+  })
+})
+
 describe('everybody but an admin', () => {
   for (const [who, role] of [['Wairimu, a lead', 'LEAD'], ['Miriam, who takes part', 'MEMBER'], ['Tomas, a guest', 'GUEST']]) {
     it(`${who} reads only that billing is for an admin, and nothing is fetched`, async () => {

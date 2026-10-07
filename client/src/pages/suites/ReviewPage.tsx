@@ -163,9 +163,19 @@ function ManagersWords({ r, myUserId }: { r: AReview; myUserId: string | null })
   if (r.reader === 'person') {
     const heading = r.managersWordsHeading ?? (r.writtenWithFirstName ? `What ${r.writtenWithFirstName} writes` : null)
     if (!heading) return null
+    /*
+     * SCREEN FAULT 9 (FINAL WALK): "WHAT DANIEL WRITES", WITH NOTHING UNDER IT. Grace's own review
+     * showed the heading and nothing else when the writer had not written their part yet - this
+     * drew `null` for an empty `managersWords`, leaving the heading standing over a blank. Said in
+     * words instead, the same way the other reader of this same section already is, below.
+     * Nobody's gender is known, so this never guesses a pronoun ("his part"): it names the writer
+     * and says what is true, "has not written anything yet.".
+     */
     return (
       <Section heading={heading}>
-        {r.managersWords ? <p className="gwui-quoted-text">“{r.managersWords}”</p> : null}
+        {r.managersWords
+          ? <p className="gwui-quoted-text">“{r.managersWords}”</p>
+          : <p className="gwui-panel-text-muted">{r.writtenWithFirstName ? `${r.writtenWithFirstName} has not written anything yet.` : 'Nobody has written this yet.'}</p>}
       </Section>
     )
   }

@@ -89,7 +89,9 @@ export function InvitePeople() {
       <Panel>
         <Stack gap={10}>
           <label htmlFor="invite-list" className="gwui-panel-text" style={{ display: 'block' }}>
-            One per line: a name and an email. Or paste a list from a spreadsheet.
+            {/* FAULT I (reviewer, third round): a label built from a clipped fragment joined by a
+                colon reads as a filing instruction, not a sentence. */}
+            Write one person on each line, with their name and email. Or paste a list from a spreadsheet.
           </label>
           <TextArea
             id="invite-list"

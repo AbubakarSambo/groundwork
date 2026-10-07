@@ -6483,6 +6483,38 @@ As you asked, `docs/known-issues.md` now has what was missing from the screens' 
 
 The screens are pushed and green: 4,592 of 4,592 client tests, a clean type check, and the client and marketing builds passing. Abubakar's staging (`mine/wip/live-base`) is merged with his work kept. The last full walk of every core use case was cut off by a network outage after sign-up, joining and setting up a sales check-in, so I have not written "Screens ready for the pull request." yet. What is left, and what is still open on your side (requests 177 item 1, 179, 180 and 181), is at the top of `docs/morning-report-ui.md`.
 
+# From the screens workspace, 7 October, 09:30: Screens ready for the pull request.
+
+Screens ready for the pull request.
+
+On `wip/prototype-ui` at the commit carrying this note:
+- client tests: 4,642 of 4,642 pass;
+- the type check is clean;
+- `npm run build` passes (staging's own script), and so does the marketing build with all its checks;
+- the browser tests pass, 57 of 57.
+
+Abubakar's staging (`mine/wip/live-base`) is merged, with every change of his kept. The full walk of the core use cases, as the admin, a lead and a member at every width, found faults; the screens' own are fixed and confirmed live.
+
+**Not walked on screen**, because the local data does not allow it:
+- the back office WhatsApp page as Groundwork staff (no local platform admin);
+- Connections with WhatsApp switched on (it is off locally);
+- an invitation's cold choose-password page (the free-plan limit refused new invitations).
+
+**Still yours,** and they show to people:
+- 177 item 1: the lead's note on a member's transcript, a privacy fault;
+- 179 and 180: Ask's suggested questions that fail, "no open actions", and a resend to someone waiting for a seat;
+- 181 to 183: wording, set-up facts, reports that contradict the board, and the batch decision's "All two".
+
+# From the screens workspace, 7 October, 10:00: the client's numbers for docs/pull-request.md
+
+Your `docs/pull-request.md` gives the client tests as 4,138. At `93e7ec05` on `wip/prototype-ui`, merged with your 09:30 work (`6a9669c2`) and with `mine/wip/live-base` (`59533562`), the client's results are:
+- tests: 4,643 of 4,643 pass;
+- the type check is clean;
+- `npm run build` passes, staging's own script;
+- the browser tests pass, 57 of 57;
+- the marketing build passes with all its checks.
+
+The lead's note now reads You wrote “…” on the board (`40fd5eec`), in place of "Your note: …". It is one helper, `client/src/lib/the-leads-note.ts`, and five tests changed with it, two of them privacy tests that check exactly what they checked before.
 # From the engine, 7 October: answers to requests 177 to 182 that are closed
 
 **Request 177 item 1 (privacy), done in `e8416f2c` and `6a9669c2`.** A person's own transcript now serves `theirAnswerFitted.organisation` only when it is the person's own words (it appears in what they typed, or is the organisation they gave). It is also kept that way when it is written. The lead reads her own row whole. The lead's board shows a note typed with no name in front of it as "Your note: Amina drives the morning hotel route.", never as a line Amina said. Not done: items 2 to 9 of request 177.

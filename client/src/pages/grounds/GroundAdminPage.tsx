@@ -48,6 +48,7 @@ import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-
 import { copy } from '@/components/gw/copying-can-fail'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { SendTheReportToEveryone } from '@/components/gw/SendTheReportToEveryone'
+import { howManyHaveNotAnsweredYet } from '@/lib/a-number-up-to-ten-in-words'
 
 /**
  * THE THIRD COPY OF THE SITUATION NAMES, DELETED.
@@ -481,6 +482,26 @@ export function GroundAdminPage() {
     if (tab !== 'chat' || !viewerIsAParty) return
     if (myOpenSessionAutoOpenFired.current) return
     if (!myOpenCheckIn || myOpenOpensLater) return
+    /*
+     * B-009: NOTHING CAN OPEN WHILE AN ADMIN HAS NOT YET ACCEPTED THIS CHECK-IN.
+     *
+     * The "Waiting for an admin to accept this check-in" callout above already says "You can keep
+     * editing it, and nobody can be invited until it is accepted" - but this effect tried to open
+     * the lead's own session anyway, the server refused with its own "This check-in is closed.
+     * Nothing further can be added." (the sentence written for a check-in that has actually ended),
+     * and that refusal banner then sat directly under the waiting callout, flatly contradicting it.
+     * Nothing here can open until it is accepted, so this waits until then.
+     */
+    if ((ground as any)?.status === 'AWAITING_APPROVAL') return
+    /*
+     * B-019: THE SAME FALSE "CLOSED" REFUSAL, FOR A GROUND THAT HAS ALREADY ENDED.
+     *
+     * A ground ended early (the lead stopped it) can still have a row here that is not COMPLETED,
+     * so this still tried to open it even though the tab now reads "This check-in has ended" -
+     * the server's own "This check-in is closed." toasted on top of that message. Nothing can
+     * open once the ground itself has ended.
+     */
+    if (howItEnded(ground as any)) return
     /*
      * SCREEN FAULT 4: THE ANCHOR'S LEAD NEVER GETS AN ORDINARY FIRST CHECK-IN HERE.
      *
@@ -1147,9 +1168,19 @@ export function GroundAdminPage() {
   /* Counted once, and out here, so the row's own label does not have to reach into the record. */
   const settingsChangeCount = ((ground as any)?.settingsChanges?.length ?? 0) as number
 
-  const mySessionsDone = ((ground?.checkIns ?? []) as any[]).filter(
-    (c) => c.status === 'COMPLETED' && (ground?.participants ?? []).some((p: any) => p.id === c.participantId && p.userId === user?.id),
-  ).length
+  /*
+   * B-012: counting rows, not sessions, read "9 of 6 sessions are done" - a self-correction adds a
+   * second COMPLETED row for the same session number (the dots below already know this; `done` and
+   * `corrected` are both a completed row for one session), so a session answered once and then
+   * corrected was being counted twice. Counting the distinct session numbers fixes it, and
+   * `yourSessionsSentence` also clamps to the planned total so this can never again read more done
+   * than the check-in has.
+   */
+  const mySessionsDone = new Set(
+    ((ground?.checkIns ?? []) as any[])
+      .filter((c) => c.status === 'COMPLETED' && (ground?.participants ?? []).some((p: any) => p.id === c.participantId && p.userId === user?.id))
+      .map((c) => c.sessionNumber ?? 0),
+  ).size
   /* One dot per session of mine. The same read the party's page makes - the two views of a check-in
      have to move together, which is what the-two-views-are-a-pair protects. */
   const mySessionDots = ((ground?.checkIns ?? []) as any[])
@@ -1520,8 +1551,10 @@ export function GroundAdminPage() {
           const say: { t: string; tone?: 'amber' | 'navy' } | null =
             a.kind === 'overdue' ? { t: a.daysLate === 1 ? 'Your turn. It is 1 day late.' : `Your turn. It is ${a.daysLate} days late.`, tone: 'amber' }
             : a.kind === 'yours' ? { t: 'Your turn.', tone: 'navy' }
-            /* U.9 re-review, item B: a sentence, not a label and a fraction. */
-            : a.kind === 'waiting' ? { t: `${a.total - a.done} of the ${a.total} have not answered yet.` }
+            /* U.9 re-review, item B: a sentence, not a label and a fraction. Screen fault 4
+               (final walk): "1 of the 3 have not answered yet." is now said in words, with the
+               right verb for one person left over - "One of the three has not answered yet." */
+            : a.kind === 'waiting' ? { t: howManyHaveNotAnsweredYet(a.total - a.done, a.total) }
             : null
           return say ? <Note tone={say.tone}>{say.t}</Note> : null
         })()}
@@ -1747,7 +1780,16 @@ export function GroundAdminPage() {
         {tab === 'chat' && (
           <div>
             {viewerIsAParty ? (
-              myOpenCheckIn && !myOpenOpensLater ? (
+              /*
+               * B-19: AN ENDED CHECK-IN STILL PROMISED A NEXT ONE, here on the lead's own Check-in
+               * tab too ("Bring this to your next check-in" never applied once it had ended). The
+               * board is where the full ending (who decided, when, and why) is read.
+               */
+              howItEnded(ground as any) ? (
+                <Callout tone="info" title={howItEnded(ground as any)!}>
+                  <Link to={`/grounds/${id}/board`}>Go to the board</Link> to read how it ended and why.
+                </Callout>
+              ) : myOpenCheckIn && !myOpenOpensLater ? (
                 /* A FAILED OPEN SAYS SO, WITH A WAY BACK IN - the probe above
                    (myOpenSessionAutoOpenFired) only ever fires once per mount, so
                    without this a failed attempt left this note standing with nothing

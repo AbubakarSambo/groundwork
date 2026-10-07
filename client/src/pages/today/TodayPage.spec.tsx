@@ -228,6 +228,32 @@ describe('when the read fails', () => {
   })
 })
 
+/**
+ * SCREEN FAULT 4 (FINAL WALK): "YOU HAVE NOT CHECKED IN YET." BESIDE "NOTHING NEEDS YOU RIGHT NOW."
+ *
+ * Walked live as a lead with no open session anywhere (the check-in's own tab agreed: "No check-in
+ * open right now") - the greeting still carried this exact claim while "What needs you" said
+ * nothing needed him, which cannot both be true read together.
+ */
+describe('Today: the greeting never claims what "What needs you" does not', () => {
+  it('drops "You have not checked in yet." when nothing needs the lead', async () => {
+    open(WAIRIMU, { count: 0, line: 'You have not checked in yet.', needs: [], comingUp: [] })
+    expect(await screen.findByText('Nothing needs you right now.')).toBeTruthy()
+    expect(screen.queryByText(/You have not checked in yet/)).toBeNull()
+    expect(screen.getByText('Wednesday 23 September.')).toBeTruthy()
+  })
+
+  it('keeps the greeting line once an open session actually is something that needs the lead', async () => {
+    open(WAIRIMU, {
+      count: 1,
+      line: 'You have not checked in yet.',
+      needs: [{ key: 'turn-s', kind: 'decide', title: 'Your own check-in for Sales team, Q3', detail: 'About two minutes.', action: { label: 'Start it', to: '/checkin/s1' }, groundId: 's', organizationId: 'o' }],
+      comingUp: [],
+    })
+    expect(await screen.findByText(/You have not checked in yet\./)).toBeTruthy()
+  })
+})
+
 describe('the words for when', () => {
   it('today and tomorrow with the hour, then the day of the week, then the date', () => {
     expect(whenItComes(new Date(2026, 8, 23, 18, 0), MORNING)).toBe('Today, 6pm')

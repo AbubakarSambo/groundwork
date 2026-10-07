@@ -12,6 +12,9 @@ import { YouAreIn } from './YouAreIn'
 import { firstWordOfAName } from '@/lib/the-first-word-of-a-name'
 import { QueueLink } from '@/pages/suites/QueuePage'
 import { yourRequestsApi } from '@/api/suites'
+import { useSuitesKnownOffStore } from '@/stores/suites-known-off'
+import { useEffect } from 'react'
+import { todayGreetingLine } from '@/lib/the-greeting-line-does-not-claim-what-needs-you-does-not'
 
 /**
  * TODAY (C1, #/today). The wording is copied from docs/prototype/screens/C1-today-and-check-ins/
@@ -57,9 +60,24 @@ export function TodayPage() {
      FAULT 1 OF THE LIVE WALK (6 October): hours gates the same link the same way, and the link's own
      words change once hours are part of what it opens - "Your own requests" reads true for leave,
      spending and hours together, where "Your own leave and spending requests" would leave hours out. */
-  const yourLeave = useQuery({ queryKey: ['your-leave'], queryFn: yourRequestsApi.leave, enabled: !!user, retry: false, staleTime: 60_000 })
-  const yourSpending = useQuery({ queryKey: ['your-spending'], queryFn: yourRequestsApi.spending, enabled: !!user, retry: false, staleTime: 60_000 })
-  const yourHours = useQuery({ queryKey: ['your-hours'], queryFn: yourRequestsApi.hours, enabled: !!user, retry: false, staleTime: 60_000 })
+  /*
+   * B-002: THESE THREE 404'D ON EVERY /today LOAD FOR AN ORGANISATION WITH NO SUITE SWITCHED ON
+   * (almost every brand-new one), a real failed request each, every time the 60-second cache went
+   * stale - the same "screen fault 11" `stores/suites-known-off.ts` already exists to fix for the
+   * queue read (AppShell.tsx). There is nowhere cheap to ask first, so the same remembered answer
+   * is read and written here too: once this session already knows every suite is off, these three
+   * stop asking until the page is reloaded.
+   */
+  const suitesKnownOff = useSuitesKnownOffStore(s => s.off)
+  const setSuitesKnownOff = useSuitesKnownOffStore(s => s.setOff)
+  const yourLeave = useQuery({ queryKey: ['your-leave'], queryFn: yourRequestsApi.leave, enabled: !!user && !suitesKnownOff, retry: false, staleTime: 60_000 })
+  const yourSpending = useQuery({ queryKey: ['your-spending'], queryFn: yourRequestsApi.spending, enabled: !!user && !suitesKnownOff, retry: false, staleTime: 60_000 })
+  const yourHours = useQuery({ queryKey: ['your-hours'], queryFn: yourRequestsApi.hours, enabled: !!user && !suitesKnownOff, retry: false, staleTime: 60_000 })
+  useEffect(() => {
+    const notFound = (q: { isError: boolean; error: unknown }) => q.isError && (q.error as any)?.response?.status === 404
+    if (notFound(yourLeave) || notFound(yourSpending) || notFound(yourHours)) setSuitesKnownOff()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [yourLeave.isError, yourSpending.isError, yourHours.isError, setSuitesKnownOff])
   const aSuiteIsOnForYou = yourLeave.isSuccess || yourSpending.isSuccess || yourHours.isSuccess
   const requestsLinkLabel = yourHours.isSuccess ? 'Your own requests' : 'Your own leave and spending requests'
   const grounds = useQuery({ queryKey: ['grounds'], queryFn: groundsApi.list, enabled: !!user && params.get('welcome') === '1', staleTime: 30_000 })
@@ -71,6 +89,9 @@ export function TodayPage() {
   const name = firstWordOfAName(user?.firstName)
   const greeting = name ? `${partOfTheDay(now)}, ${name}` : partOfTheDay(now)
   const needs = data?.needs ?? []
+  /* Screen fault 4 (final walk): never claim "You have not checked in yet." beside "Nothing needs
+     you right now." - see the-greeting-line-does-not-claim-what-needs-you-does-not.ts. */
+  const greetingLine = todayGreetingLine(data?.line, needs.length)
   /* A SUITE ITEM GOES TO THE QUEUE, NOT STRAIGHT TO THE BOARD (live walk at a hundred people, fault
      2): with a hundred people waiting on one approver, the board behind "/suite/leave" or
      "/suite/spend" is the whole organisation's, not filtered to this one thing. The queue
@@ -92,7 +113,7 @@ export function TodayPage() {
 
           <Greeting
             title={greeting}
-            subtitle={`${whenItWas(now, 'weekdayAndDay')}.${data?.line ? ` ${data.line}` : ''}`}
+            subtitle={`${whenItWas(now, 'weekdayAndDay')}.${greetingLine ? ` ${greetingLine}` : ''}`}
           />
 
           {/* Appeals to decide (C3, U.13): an admin's only. The server refuses anybody else. */}

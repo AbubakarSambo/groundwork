@@ -94,6 +94,18 @@ function addedUp(results: ADecisionResult[]): string {
   return `${capital(inWords(answered))} of the ${inWords(total)} answers ${answered === 1 ? 'was' : 'were'} kept. ${capital(inWords(left))} could not be kept, and ${left === 1 ? 'it says' : 'each says'} why.`
 }
 
+/**
+ * SCREEN FAULT 7 (FINAL WALK), ITEM 1: OUR OWN SHORT SENTENCE, FIRST. Approving two used to open
+ * straight on the served "All two answers were kept." - true, but the engine's summary line, not a
+ * plain line about what the person just did. This says that first, in our own words, only when
+ * every one of them actually went through (a partial result's own served sentence already explains
+ * itself, and nothing here should claim "all" when some did not go through).
+ */
+function youApprovedLine(total: number, approved: number): string | null {
+  if (approved !== total || total === 0) return null
+  return total === 2 ? 'You approved both.' : `You approved all ${inWords(total)}.`
+}
+
 /** The served `says`, with the request's name beside it only when `says` does not already name them. */
 function lineFor(r: ADecisionRow): string {
   const named = !!r.name && (r.says.includes(r.name) || (!!r.firstName && r.says.includes(r.firstName)))
@@ -116,6 +128,14 @@ export function QueuePage() {
      refreshes (Hafsah, 7 October: always show the result for each, and say plainly if any failed;
      6 October's batch route: the rows and the summary are the server's own `says`). */
   const [results, setResults] = useState<{ rows: ADecisionRow[]; summary: string } | null>(null)
+  /*
+   * SCREEN FAULT 7 (FINAL WALK), ITEM 2: A DECLINE SHOWED NOTHING AT ALL. `leaveBoardApi.decide`/
+   * `spendApi.decide` return the whole board, not a sentence confirming what just happened, and
+   * the row that was declined disappears the moment the list refreshes - so without state kept
+   * here, in the parent, any confirmation built in the row would vanish with it. Kept the same way
+   * the batch results are: set on success, cleared by the person or the next decision.
+   */
+  const [declined, setDeclined] = useState<string | null>(null)
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['suite-queue', suite, pageSize],
@@ -134,6 +154,7 @@ export function QueuePage() {
       const items = (data?.items ?? []).filter(i => selected.has(i.id))
       const total = items.length
       setResults(null)
+      setDeclined(null)
       setProgress(total > MOST_IN_A_CALL ? { done: 0, total } : null)
       const named = new Map<string, AQueueItem>(items.map(i => [`${i.suite}|${i.id}`, i]))
       const all: ADecisionResult[] = []
@@ -168,6 +189,12 @@ export function QueuePage() {
 
   function afterOne() {
     qc.invalidateQueries({ queryKey: ['suite-queue'] })
+  }
+
+  function afterDecline(message: string) {
+    setResults(null)
+    setDeclined(message)
+    afterOne()
   }
 
   function toggleOne(id: string) {
@@ -208,12 +235,21 @@ export function QueuePage() {
       )}
 
       {data && (
-        <Section heading="Waiting for approval">
+        /*
+         * SCREEN FAULT 7 (FINAL WALK), ITEM 3: ONE HEADING, NOT TWO. "Waiting for you to decide"
+         * (the page's own title, above) was followed immediately by a second heading, "Waiting for
+         * approval" - the same claim twice, in two different headings, on one screen. `Section`
+         * always draws a heading (it is a named landmark by it), so this keeps the same body
+         * classes without a second `<h2>`, rather than giving `Section` an optional heading just
+         * for this one page.
+         */
+        <div className="gwui-section">
+          <div className="gwui-section-body">
           <p className="gwui-panel-text">{data.says}</p>
           <Tabs
             label="Filter by suite"
             active={suite}
-            onChange={(k) => { setSuite(k as SuiteFilter); setPageSize(PAGE_STEP); setSelected(new Set()) }}
+            onChange={(k) => { setSuite(k as SuiteFilter); setPageSize(PAGE_STEP); setSelected(new Set()); setDeclined(null) }}
             items={[
               { key: 'all', label: 'All' },
               { key: 'leave', label: 'Leave' },
@@ -249,11 +285,13 @@ export function QueuePage() {
                 {progress && <Note>{`Working through ${progress.done} of ${progress.total}…`}</Note>}
                 {results && <TheResults results={results} onDone={() => setResults(null)} />}
                 {batchProblem && <Note tone="error">{batchProblem}</Note>}
+                {/* Screen fault 7, item 2: a decline now says so, rather than the row simply vanishing. */}
+                {declined && <Note>{declined}</Note>}
 
                 <RowList label="Waiting for approval">
                   {items.map(item => (
                     <AQueueRow key={item.id} item={item} selected={selected.has(item.id)} onToggle={() => toggleOne(item.id)}
-                      onChanged={afterOne} />
+                      onChanged={afterOne} onDeclined={afterDecline} />
                   ))}
                 </RowList>
 
@@ -264,7 +302,8 @@ export function QueuePage() {
                 )}
               </>
             )}
-        </Section>
+          </div>
+        </div>
       )}
     </Page>
   )
@@ -277,11 +316,13 @@ function emptyQueueSays(suite: SuiteFilter): string {
   return 'Nothing is waiting for you to approve or decline.'
 }
 
-function AQueueRow({ item, selected, onToggle, onChanged }: {
+function AQueueRow({ item, selected, onToggle, onChanged, onDeclined }: {
   item: AQueueItem
   selected: boolean
   onToggle: () => void
   onChanged: () => void
+  /** Screen fault 7, item 2: told the confirmation sentence once a decline actually goes through. */
+  onDeclined: (message: string) => void
 }) {
   const [problem, setProblem] = useState<string | null>(null)
   const [declining, setDeclining] = useState(false)
@@ -291,7 +332,21 @@ function AQueueRow({ item, selected, onToggle, onChanged }: {
       if (item.suite === 'leave') return leaveBoardApi.decide(item.id, outcome, outcome === 'decline' ? reason.trim() || undefined : undefined)
       return spendApi.decide(item.id, outcome, outcome === 'decline' ? reason.trim() || undefined : undefined)
     },
-    onSuccess: () => { setProblem(null); onChanged() },
+    onSuccess: (_data, outcome) => {
+      setProblem(null)
+      /*
+       * SCREEN FAULT 7 (FINAL WALK), ITEM 2: A DECLINE SHOWED NOTHING. Neither `leaveBoardApi`
+       * nor `spendApi`'s `decide` returns a confirmation sentence (they answer with the whole
+       * board), so there is no served line to show here - this is the plain, true fallback the
+       * task calls for, named for who reads it, the same as the reason field already is.
+       */
+      if (outcome === 'decline') {
+        onDeclined(reason.trim()
+          ? `You declined ${item.firstName}’s request. ${item.firstName} will read your reason.`
+          : `You declined ${item.firstName}’s request.`)
+      }
+      onChanged()
+    },
     onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
   })
 
@@ -300,7 +355,14 @@ function AQueueRow({ item, selected, onToggle, onChanged }: {
       <input type="checkbox" checked={selected} onChange={onToggle} aria-label={`Select ${item.name}’s request`} />
       <div>
         <b>{item.says}</b>
-        <p className="gwui-panel-text">{item.where}</p>
+        {/*
+          SCREEN FAULT 7 (FINAL WALK), ITEM 4: "IT IS WAITING FOR YOU." REPEATED ON EVERY ROW. The
+          whole page is already "Waiting for you to decide" - every row saying so again added
+          nothing. `item.where` can also read "Wairimu has approved it, and it is now waiting for
+          you." (an earlier step's own approval, on its way to this reader), which still says
+          something this page does not - that form is kept.
+        */}
+        {item.where !== 'It is waiting for you.' && <p className="gwui-panel-text">{item.where}</p>}
         <p className="gwui-panel-text">{item.waitedSays}</p>
         {item.clash && <p className="gwui-panel-text">{item.clash.says}</p>}
         {item.standingIn && <p className="gwui-panel-text">{item.standingIn.says}</p>}
@@ -340,8 +402,11 @@ function AQueueRow({ item, selected, onToggle, onChanged }: {
  */
 function TheResults({ results, onDone }: { results: { rows: ADecisionRow[]; summary: string }; onDone: () => void }) {
   const anyFailed = results.rows.some(r => !r.ok)
+  const leadIn = youApprovedLine(results.rows.length, results.rows.filter(r => r.ok).length)
   return (
     <Section heading="What happened">
+      {/* Screen fault 7, item 1: our own short sentence first, then the engine's served summary. */}
+      {leadIn && <p className="gwui-panel-text">{leadIn}</p>}
       <Note tone={anyFailed ? 'error' : undefined}>{results.summary}</Note>
       <RowList label="What happened">
         {results.rows.map((r, i) => (

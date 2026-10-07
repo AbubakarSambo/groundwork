@@ -291,4 +291,117 @@ describe('declining', () => {
     /* Never offered as a bulk action: only "Approve the N selected" exists beside the list. */
     expect(screen.queryByRole('button', { name: /Decline the .* selected/ })).toBeNull()
   })
+
+  /*
+   * SCREEN FAULT 7 (FINAL WALK), ITEM 2: A DECLINE USED TO SHOW NOTHING AT ALL - the row simply
+   * disappeared once the list refreshed, with no confirmation anywhere on screen. Neither
+   * `leaveBoardApi.decide` nor `spendApi.decide` returns a sentence confirming what happened (they
+   * answer with the whole board), so this is the plain, true fallback: named for who reads it, the
+   * same as the reason field already is.
+   */
+  it('confirms a decline with a reason, naming who will read it', async () => {
+    ;(leaveBoardApi.decide as any).mockResolvedValue({ waiting: [], off: [] })
+    open()
+    await screen.findByRole('list', { name: 'Waiting for approval' })
+    const aisha = rowOf('Aisha')
+    fireEvent.click(within(aisha).getByRole('button', { name: 'Decline Aisha Otieno’s request' }))
+    fireEvent.change(within(aisha).getByLabelText('Say why. Aisha will read it.'), { target: { value: 'Two people are already away.' } })
+    fireEvent.click(within(aisha).getByRole('button', { name: 'Decline' }))
+    expect(await screen.findByText('You declined Aisha’s request. Aisha will read your reason.')).toBeInTheDocument()
+  })
+
+  it('confirms a decline given with no reason, without claiming one will be read', async () => {
+    ;(spendApi.decide as any).mockResolvedValue({ waiting: [] })
+    open()
+    await screen.findByRole('list', { name: 'Waiting for approval' })
+    const kamau = rowOf('Kamau')
+    fireEvent.click(within(kamau).getByRole('button', { name: 'Decline Kamau Njenga’s request' }))
+    fireEvent.click(within(kamau).getByRole('button', { name: 'Decline' }))
+    expect(await screen.findByText('You declined Kamau’s request.')).toBeInTheDocument()
+    expect(screen.queryByText(/will read your reason/)).toBeNull()
+  })
+})
+
+/*
+ * SCREEN FAULT 7 (FINAL WALK), ITEM 1: OUR OWN SHORT SENTENCE, BEFORE THE ENGINE'S SUMMARY.
+ */
+describe('a short sentence of our own, before the served summary', () => {
+  it('says "You approved both." before the served summary, for exactly two', async () => {
+    ;(decisionsApi.decide as any).mockResolvedValue({
+      results: [
+        { id: 'q-1', suite: 'leave', ok: true, says: 'You approved Aisha’s leave.' },
+        { id: 'q-2', suite: 'spend', ok: true, says: 'You approved Kamau’s spending.' },
+      ],
+      answered: 2,
+      says: 'All two answers were kept.',
+    })
+    open()
+    await screen.findByRole('list', { name: 'Waiting for approval' })
+    fireEvent.click(screen.getByLabelText('Select all on this page'))
+    fireEvent.click(screen.getByRole('button', { name: 'Approve the 2 selected' }))
+    expect(await screen.findByText('You approved both.')).toBeInTheDocument()
+    expect(screen.getByText('All two answers were kept.')).toBeInTheDocument()
+  })
+
+  it('says "You approved all three." in words, for three or more', async () => {
+    const third: AQueueItem = { ...AISHA, id: 'q-3', name: 'Brian Otieno', firstName: 'Brian' }
+    open({ ...QUEUE, counts: { all: 3, leave: 2, spend: 1, pastTheDeadline: 0 }, items: [AISHA, KAMAU, third] })
+    await screen.findByRole('list', { name: 'Waiting for approval' })
+    ;(decisionsApi.decide as any).mockResolvedValue({
+      results: [
+        { id: 'q-1', suite: 'leave', ok: true, says: 'Kept.' },
+        { id: 'q-2', suite: 'spend', ok: true, says: 'Kept.' },
+        { id: 'q-3', suite: 'leave', ok: true, says: 'Kept.' },
+      ],
+      answered: 3,
+      says: 'All three answers were kept.',
+    })
+    fireEvent.click(screen.getByLabelText('Select all on this page'))
+    fireEvent.click(screen.getByRole('button', { name: 'Approve the 3 selected' }))
+    expect(await screen.findByText('You approved all three.')).toBeInTheDocument()
+  })
+
+  it('says nothing of its own when not every one of them went through - the served sentence already explains it', async () => {
+    ;(decisionsApi.decide as any).mockResolvedValue({
+      results: [
+        { id: 'q-1', suite: 'leave', ok: true, says: 'You approved Aisha’s leave.' },
+        { id: 'q-2', suite: 'spend', ok: false, says: 'Only KES 20,000 or less may be approved without a second person.' },
+      ],
+      answered: 1,
+      says: 'One of the two answers was kept. One could not be kept, and it says why.',
+    })
+    open()
+    await screen.findByRole('list', { name: 'Waiting for approval' })
+    fireEvent.click(screen.getByLabelText('Select all on this page'))
+    fireEvent.click(screen.getByRole('button', { name: 'Approve the 2 selected' }))
+    await screen.findByText('One of the two answers was kept. One could not be kept, and it says why.')
+    expect(screen.queryByText('You approved both.')).toBeNull()
+    expect(screen.queryByText(/^You approved all/)).toBeNull()
+  })
+})
+
+/*
+ * SCREEN FAULT 7 (FINAL WALK), ITEMS 3 AND 4: ONE HEADING, AND NO REDUNDANT "IT IS WAITING FOR YOU."
+ */
+describe('one heading, and no row repeating what the whole page already says', () => {
+  it('has exactly one heading reading about waiting for approval, not two', async () => {
+    open()
+    await screen.findByRole('list', { name: 'Waiting for approval' })
+    expect(screen.getAllByRole('heading', { name: 'Waiting for you to decide' })).toHaveLength(1)
+    expect(screen.queryByRole('heading', { name: 'Waiting for approval' })).toBeNull()
+  })
+
+  it('does not repeat "It is waiting for you." on a row, when that is all `where` says', async () => {
+    open()
+    await screen.findByRole('list', { name: 'Waiting for approval' })
+    const aisha = rowOf('Aisha')
+    expect(within(aisha).queryByText('It is waiting for you.')).toBeNull()
+  })
+
+  it('keeps a `where` that says more than that - an earlier approval, on its way to this reader', async () => {
+    const approvedOnward: AQueueItem = { ...AISHA, id: 'q-4', where: 'Wairimu has approved it, and it is now waiting for you.' }
+    open({ ...QUEUE, items: [approvedOnward] })
+    await screen.findByRole('list', { name: 'Waiting for approval' })
+    expect(screen.getByText('Wairimu has approved it, and it is now waiting for you.')).toBeInTheDocument()
+  })
 })

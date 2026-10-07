@@ -95,7 +95,9 @@ export function WhosInItRoster({
     <div>
       <p className="gwui-panel-text" style={{ fontWeight: 700 }}>
         {participants.length} {participants.length === 1 ? 'person' : 'people'}.
-        {' '}{checkingIn} checking in{needSomething > 0 ? `; ${needSomething} need${needSomething === 1 ? 's' : ''} something before they can start.` : '.'}
+        {/* FAULT H (reviewer, third round): a semicolon joined two separate counts into one
+            clipped clause. Two plain sentences instead. */}
+        {' '}{checkingIn} {checkingIn === 1 ? 'is' : 'are'} checking in.{needSomething > 0 ? ` ${needSomething} ${needSomething === 1 ? 'needs' : 'need'} something before they can start.` : ''}
       </p>
 
       {/* WHAT THE PILLS SAID THAT WAS NOT PER-PERSON: whether peers can see each other here, and what
@@ -131,14 +133,20 @@ export function WhosInItRoster({
               <Link className="gwui-open-link" to="/billing">View plans</Link>
             </div>
           )}
+          {/*
+            FAULT 5 (live walk, 6 October 2026): PLAIN SENTENCES, NOT JARGON OR A DASH JOIN. "Until
+            the report releases" used the filing-cabinet word for sharing a report with people; "is
+            the approval - there is no queue" joined two pieces with a dash instead of saying each
+            as its own sentence.
+          */}
           <p className="gwui-note">
-            They give their own version of the same work. You cannot see what they write until the
-            report releases.
+            They give their own version of the same work. You cannot see what they write until you
+            share the report.
           </p>
           <p className="gwui-note">
             {isOrgAdmin
-              ? "You are an admin here, so adding somebody is the approval - there is no queue. Anybody from outside your organisation gets a login here and appears on your People page, where you can take them off again."
-              : "Somebody from outside your organisation is invited straight away, and an admin here has to let them in before they can check in. They are told the same thing, and you can see it beside their name below."}
+              ? 'You are an admin here, so adding someone here is all the approval they need. Nobody waits in a queue. Anybody from outside your organisation gets a login here and appears on your People page, where you can take them off again.'
+              : 'Somebody from outside your organisation is invited straight away, and an admin here has to let them in before they can check in. They are told the same thing, and you can see it beside their name below.'}
           </p>
           <PeoplePicker
             people={colleagues ?? []}
@@ -191,7 +199,8 @@ export function WhosInItRoster({
                   <div className="gwui-field-row-value">
                     {q.email}
                     <div className="gwui-switch-row-detail">
-                      {q.note || 'No note - they will be asked the general questions for this situation.'}
+                      {/* FAULT 5 (live walk, 6 October 2026): a plain sentence, not two pieces joined by a dash. */}
+                      {q.note || 'There is no note. They will be asked the general questions for this situation.'}
                     </div>
                   </div>
                   <button
