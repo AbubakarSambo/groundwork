@@ -19,7 +19,11 @@ import { authApi } from '@/api/auth'
  */
 
 vi.mock('@/api/auth', () => ({ authApi: { setPassword: vi.fn(), resetPassword: vi.fn(), validateToken: vi.fn().mockResolvedValue({ valid: true }) } }))
-vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ setAuth: vi.fn() }) }))
+/* Most tests reach this page with no session yet (a team invite's own emailed link, opened cold).
+   A couple below set `authState` to the signed-in shape MagicVerifyPage hands this page after
+   `/auth/verify-email` - see the-invitation-names-the-organisation.spec.tsx-style tests further down. */
+let authState: any = { setAuth: vi.fn(), isAuthenticated: false, user: null }
+vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel(authState) }))
 
 const mockedNavigate = vi.fn()
 vi.mock('react-router-dom', async () => {
@@ -51,6 +55,7 @@ beforeEach(() => {
   // called, and calls from the set-side tests above leak into that without this.
   vi.clearAllMocks()
   mockedNavigate.mockReset()
+  authState = { setAuth: vi.fn(), isAuthenticated: false, user: null }
   ;(authApi.setPassword as any).mockResolvedValue({ user: { id: 'u1' }, accessToken: 'a' })
 })
 
@@ -153,5 +158,68 @@ describe('resetting a password', () => {
     /* U.2 review: the account card's "That link didn’t work", with a way to ask for a new link. */
     expect(screen.getByText('That link didn’t work')).toBeTruthy()
     expect(screen.queryByLabelText(/New password/i)).toBeNull()
+  })
+})
+
+/**
+ * SCREEN FAULT 5 (FINAL WALK): "CHOOSE A PASSWORD", WITH NO ORGANISATION NAMED.
+ *
+ * `GET /auth/validate-token` deliberately answers only `valid`/`expired` for a set-password token
+ * (A10, a privacy decision: "nothing here ever names the account"), so somebody who opens a team
+ * invite's own emailed link cold - no session yet - cannot be named an organisation from the
+ * server. Reached signed in instead (MagicVerifyPage, after `/auth/verify-email` has already set
+ * `useAuthStore`'s `user`), the organisation is already there, the same place every other
+ * signed-in screen reads it from, and this page can finally say whose account it is.
+ */
+function renderSetPassword(token = 'tok123') {
+  const qc = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
+  return render(
+    <QueryClientProvider client={qc}>
+      <MemoryRouter initialEntries={[`/set-password?token=${token}`]}>
+        <Routes><Route path="/set-password" element={<ChoosePasswordPage />} /></Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  )
+}
+
+describe('naming the organisation, once this page actually knows it', () => {
+  it('names nothing when there is no session yet - a team invite’s own link, opened cold', async () => {
+    renderSetPassword()
+    expect(await screen.findByText('Choose a password')).toBeTruthy()
+    expect(screen.getByText('For signing in without an email link. You can keep using links too.')).toBeTruthy()
+  })
+
+  it('names the organisation once this is a signed-in session that already carries one', async () => {
+    authState = { setAuth: vi.fn(), isAuthenticated: true, user: { email: 'amani@kito.test', organizationName: 'Kito Foods' } }
+    renderSetPassword()
+    expect(await screen.findByText('For your account at Kito Foods. You can keep using email links too.')).toBeTruthy()
+  })
+})
+
+/**
+ * SCREEN FAULT 5 (FINAL WALK): "KEEP USING EMAIL LINKS INSTEAD" ASKED FOR A SECOND EMAIL ANYWAY.
+ *
+ * With no session yet, the button still claimed to "keep using" an email link nobody had used,
+ * then sent the person to type their address in again (`/auth?mode=member`) regardless - the
+ * behaviour nothing here can fix without a way to start a session from the token alone, which the
+ * auth API does not offer. Said plainly instead: a new link is what actually happens. Signed in,
+ * skipping costs nothing, so the prototype's own wording (password.txt) is unchanged.
+ */
+describe('“Keep using email links instead” says plainly what happens, for whoever has no session yet', () => {
+  it('reads "Email me a sign-in link instead" with no session, and still asks for the address there', async () => {
+    renderSetPassword()
+    const button = await screen.findByRole('button', { name: 'Email me a sign-in link instead' })
+    expect(screen.queryByRole('button', { name: 'Keep using email links instead' })).toBeNull()
+    fireEvent.click(button)
+    await waitFor(() => expect(mockedNavigate).toHaveBeenCalledWith('/auth?mode=member', { replace: true }))
+  })
+
+  it('keeps the prototype’s own wording, and skips straight on, once a session already exists', async () => {
+    authState = { setAuth: vi.fn(), isAuthenticated: true, user: { email: 'amani@kito.test', organizationName: 'Kito Foods' } }
+    renderSetPassword('tok123&next=%2Fgrounds%2Fg-1')
+    const button = await screen.findByRole('button', { name: 'Keep using email links instead' })
+    expect(screen.queryByRole('button', { name: 'Email me a sign-in link instead' })).toBeNull()
+    fireEvent.click(button)
+    await waitFor(() => expect(mockedNavigate).toHaveBeenCalledWith('/grounds/g-1', { replace: true }))
   })
 })

@@ -49,6 +49,20 @@ export function ChoosePasswordPage() {
    */
   const signedInEmail = useAuthStore(s => s.user?.email ?? null)
   const signedIn = useAuthStore(s => !!s.isAuthenticated)
+  /*
+   * SCREEN FAULT 5 (FINAL WALK): "CHOOSE A PASSWORD", WITH NO ORGANISATION NAMED.
+   *
+   * Reached signed in - from MagicVerifyPage, after `/auth/verify-email` has already signed this
+   * person in and handed them a `passwordSetupToken` to finish setting up - this page already has
+   * the organisation on `useAuthStore`'s own `user`, the same one every other signed-in screen
+   * reads it from. Nothing new fetched, and nothing invented for the other path (opening a team
+   * invite's own emailed link straight into this page, with no session yet): `GET
+   * /auth/validate-token` deliberately answers only `valid`/`expired` for a set-password token (A10:
+   * "nothing here ever names the account", a privacy decision, not an oversight) - there is
+   * genuinely nothing server-side to read the organisation from before a password exists, so that
+   * path keeps its plain, unnamed title.
+   */
+  const signedInOrgName = useAuthStore(s => s.user?.organizationName ?? null)
 
   /**
    * Which of the two links they opened. The endpoints are genuinely different -
@@ -164,7 +178,11 @@ export function ChoosePasswordPage() {
    */
   const title = kind === 'set' ? 'Choose a password' : 'Choose a new password'
   const sub = kind === 'set'
-    ? 'For signing in without an email link. You can keep using links too.'
+    /* Screen fault 5: name the organisation when the signed-in session already carries one,
+       rather than a page that never says whose account this is or what it is for. */
+    ? signedInOrgName
+      ? `For your account at ${signedInOrgName}. You can keep using email links too.`
+      : 'For signing in without an email link. You can keep using links too.'
     /* True: saving a new password raises the account's token epoch, which ends every other session. */
     : forAddress
       ? <>For <strong>{forAddress}</strong>. Once it’s saved, you’re signed out everywhere else.</>
@@ -221,6 +239,16 @@ export function ChoosePasswordPage() {
             skipping goes on to where they were going. Somebody here without a session (a set-up
             link from an invitation) is sent to ask for a sign-in link instead, which is what
             "email links" means for them. The unused set-up link simply runs out.
+
+            SCREEN FAULT 5 (FINAL WALK): "KEEP USING EMAIL LINKS INSTEAD" READ AS IF ONE ALREADY
+            EXISTED, THEN ASKED FOR A SECOND EMAIL ANYWAY. For somebody with no session yet (the
+            team invite's own link, opened straight into this page - checked `/auth/validate-token`
+            for a way to sign them in from the token already in hand, and it deliberately answers
+            only `valid`/`expired`, never enough to start a session without a password), the button
+            still said "Keep using" a method they had never used, then sent them to type their
+            address in again regardless. Said plainly instead, for exactly that case: a fresh link
+            is what actually happens. The signed-in case is unchanged - skipping there costs
+            nothing, so it keeps the prototype's own words (password.txt).
           */}
           <Button
             kind="quiet"
@@ -229,7 +257,7 @@ export function ChoosePasswordPage() {
               navigate(signedIn ? next : '/auth?mode=member', { replace: true })
             }}
           >
-            Keep using email links instead
+            {signedIn ? 'Keep using email links instead' : 'Email me a sign-in link instead'}
           </Button>
         </div>
       )}
