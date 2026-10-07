@@ -22,6 +22,7 @@ import { isCovered } from '../../common/subscription';
 import { HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
 import { mayChange, mayHandOver } from './the-person-who-set-this-up';
 import { colleaguesOf, A_COLLEAGUE_WITH_NO_NAME } from '../../common/colleagues';
+import { theInvitationsWaiting, keepThemWaiting, stopWaiting, type AnInvitationWaiting } from './invitations-waiting-for-a-seat';
 import { aLineOrNothing, wouldMakeALoop, CANNOT_REPORT_TO_THEMSELVES, THAT_WOULD_MAKE_A_LOOP, NOT_IN_THIS_ORGANISATION } from './where-they-sit';
 import { groundsAViewerMayList } from '../grounds/who-may-read-this-check-in';
 import { fullNameToCall } from '../engagement/a-name-to-call-them';
@@ -379,7 +380,45 @@ export class UsersService {
         sent.push({ email: row.email, result: 'no seat' });
       }
     }
+    /* The people with no seat are kept, so the admin can see who they were and let them in when there is room (B-129). */
+    const noSeat = sent.filter((r) => r.result === 'no seat').map((r) => ({ email: r.email, name: names.get(r.email) ?? null, role }));
+    if (noSeat.length) await keepThemWaiting(this.prisma, organizationId, noSeat).catch(() => undefined);
     return { preview: false, seatsLeft: await this.billing.seatsLeft(organizationId), rows: sent, summary: summarise(sent, true) };
+  }
+
+  /** The invitations kept for want of a seat, as rows for the queue of people waiting for one. */
+  async theInvitationsWaitingForASeat(organizationId: string) {
+    return (await theInvitationsWaiting(this.prisma, organizationId)).map((w) => ({
+      id: `invite:${w.email}`,
+      email: w.email,
+      name: w.name,
+      waitingSince: new Date(w.at),
+      addedBy: null,
+      forCheckIn: null,
+      kind: 'INVITATION' as const,
+      /* The one line an admin needs to know what pressing the button does. */
+      saying: 'Invited, and not yet written to. Their invitation goes out when there is a seat.',
+    }));
+  }
+
+  /** Send the kept invitations, oldest first, as far as there is room; the rest stay kept. Returns how many went and how many still wait. */
+  async releaseTheInvitationsWaiting(organizationId: string, orgName: string): Promise<{ sent: number; stillWaiting: number }> {
+    const waiting = await theInvitationsWaiting(this.prisma, organizationId);
+    if (!waiting.length) return { sent: 0, stillWaiting: 0 };
+    const room = await this.billing.seatsLeft(organizationId);
+    const may = room === null ? waiting.length : Math.max(0, room);
+    const went: string[] = [];
+    for (const w of waiting.slice(0, may)) {
+      try {
+        await this.auth.teamInvite(orgName, w.email, organizationId, { role: w.role, name: w.name });
+        went.push(w.email);
+      } catch {
+        /* The seat gate closed in the meantime: this one and the rest stay kept. */
+        break;
+      }
+    }
+    await stopWaiting(this.prisma, organizationId, went);
+    return { sent: went.length, stillWaiting: waiting.length - went.length };
   }
 
   /** See UsersController.colleagues and common/colleagues.ts: name, role and team, and a guest sees only their own check-ins' people. */
@@ -580,7 +619,7 @@ export class UsersService {
         select: { id: true, email: true, createdAt: true, ground: { select: { id: true, label: true } } },
       })
       : [];
-    const heldByEmail = new Map<string, { id: string; email: string; createdAt: Date; checkIns: { id: string; label: string | null; runsIt: boolean }[] }>();
+    const heldByEmail = new Map<string, { id: string; email: string; createdAt: Date; name?: string | null; checkIns: { id: string; label: string | null; runsIt: boolean }[] }>();
     for (const h of held) {
       const key = (h.email ?? '').toLowerCase();
       if (!key || idByEmail.has(key)) continue; // already a real row (an account exists after all)
@@ -588,10 +627,17 @@ export class UsersService {
       if (!row.checkIns.some((c) => c.id === h.ground.id)) row.checkIns.push({ id: h.ground.id, label: h.ground.label, runsIt: false });
       heldByEmail.set(key, row);
     }
+    /* And the people a paste invited who had no seat, kept until there is room (B-129). Only page 1, like the others. */
+    const keptInvitations: AnInvitationWaiting[] = page === 1 ? await theInvitationsWaiting(this.prisma, organizationId) : [];
+    for (const w of keptInvitations) {
+      const key = w.email.toLowerCase();
+      if (idByEmail.has(key) || heldByEmail.has(key)) continue;
+      heldByEmail.set(key, { id: `invite-${key}`, email: w.email, createdAt: new Date(w.at), name: w.name, checkIns: [] });
+    }
     const heldRows = [...heldByEmail.values()].map((h) => ({
       id: `held:${h.id}`,
       email: h.email,
-      displayName: 'Somebody invited by email',
+      displayName: h.name?.trim() || 'Somebody invited by email',
       firstName: null,
       lastName: null,
       role: null as string | null,

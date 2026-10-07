@@ -175,6 +175,12 @@ export function summarise(rows: Row[], sent = false): string {
   const bad = n('not an email');
   if (bad) said.push(one(bad) ? '1 line is not an email address.' : `${bad} lines are not email addresses.`);
   const noSeat = n('no seat');
-  if (noSeat) said.push(one(noSeat) ? '1 person has no seat on your plan.' : `${noSeat} people have no seat on your plan.`);
+  if (noSeat) {
+    const has = one(noSeat) ? '1 person has' : `${noSeat} people have`;
+    /* After the send they are kept (B-129); before it they will be. */
+    said.push(sent
+      ? `${has} no seat on your plan, so ${one(noSeat) ? 'the invitation is' : 'the invitations are'} kept and will go out when there is room.`
+      : `${has} no seat on your plan, so ${one(noSeat) ? 'the invitation' : 'the invitations'} will be kept until there is room.`);
+  }
   return said.length ? said.join(' ') : 'There is nobody new to invite.';
 }

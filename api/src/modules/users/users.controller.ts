@@ -83,14 +83,18 @@ export class UsersController {
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'People on a check-in whose invitation is waiting for a seat' })
   async waitingForASeat(@CurrentUser('organizationId') organizationId: string) {
-    return this.door.waitingForASeat(organizationId);
+    /* People added to a check-in with no seat, and people invited by a paste with no seat (B-129). */
+    return [...(await this.door.waitingForASeat(organizationId)), ...(await this.usersService.theInvitationsWaitingForASeat(organizationId))];
   }
 
   @Post('waiting/seats/release')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Send the invitations that were waiting for a seat, as far as there is room' })
   async releaseSeats(@CurrentUser('organizationId') organizationId: string) {
-    return this.grounds.releaseAnyoneWaitingForASeat(organizationId);
+    const onCheckIns = await this.grounds.releaseAnyoneWaitingForASeat(organizationId);
+    /* And then the people invited by a paste, with whatever room is left (B-129). */
+    const invited = await this.usersService.releaseTheInvitationsWaiting(organizationId, await this.usersService.organisationName(organizationId));
+    return { sent: onCheckIns.sent + invited.sent, stillWaiting: onCheckIns.stillWaiting + invited.stillWaiting };
   }
 
   /**
