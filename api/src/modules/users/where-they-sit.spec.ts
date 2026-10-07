@@ -126,13 +126,15 @@ describe('the People list', () => {
       membershipRequest: {
         findMany: jest.fn(async () => []),
       },
+      /* Changed (request 179): the list names only the check-ins the reader may open, so the reader's own list of them is part of the set-up. */
+      ground: { findMany: jest.fn(async () => [{ id: 'g1' }]) },
     };
     return { service: new UsersService(prisma, {} as any, {} as any, {} as any, { emit: () => undefined } as any), asked };
   }
 
   it('lists everyone who belongs here, whichever organisation they are looking at, with their role here', async () => {
     const { service } = aList();
-    const { data, meta } = await service.findAll('baridi', { page: 1, limit: 100 } as any);
+    const { data, meta } = await service.findAll('baridi', { page: 1, limit: 100 } as any, 'grace');
     const miriam = data.find((p: any) => p.id === 'miriam')!;
     /* Her account says Ouma and ADMIN; here she takes part. */
     expect(miriam.role).toBe('MEMBER');
@@ -142,14 +144,14 @@ describe('the People list', () => {
 
   it('somebody who left is not listed, and the total agrees with the rows (U.4 fourth review)', async () => {
     const { service } = aList();
-    const { data, meta } = await service.findAll('baridi', { page: 1, limit: 100 } as any);
+    const { data, meta } = await service.findAll('baridi', { page: 1, limit: 100 } as any, 'grace');
     expect(data.map((p: any) => p.id)).not.toContain('pendo');
     expect(meta.total).toBe(data.length);
   });
 
   it('a guest who switched in to look is listed as a guest, never as one of this organisation\'s people', async () => {
     const { service } = aList();
-    const { data } = await service.findAll('baridi', { page: 1, limit: 100 } as any);
+    const { data } = await service.findAll('baridi', { page: 1, limit: 100 } as any, 'grace');
     expect(data.find((p: any) => p.id === 'peter')!.role).toBe('GUEST');
     /* And at Ouma, where he is an admin, he is one. */
     const ouma = await aList().service.findAll('ouma', { page: 1, limit: 100 } as any);
@@ -162,7 +164,7 @@ describe('the People list', () => {
       /* Added by name: the row has no account yet, only the address the invitation went to. */
       { userId: null, email: 'Peter@Ouma-Agencies.co.ke', createdAt: new Date('2026-09-22'), partyType: 'PARTICIPANT', ground: { id: 'g1', label: 'Sales team, Q3' }, checkIns: [] },
     ]);
-    const { data } = await service.findAll('baridi', { page: 1, limit: 100 } as any);
+    const { data } = await service.findAll('baridi', { page: 1, limit: 100 } as any, 'grace');
     expect(data.find((p: any) => p.id === 'peter')).toMatchObject({
       checkIns: [{ id: 'g1', label: 'Sales team, Q3', runsIt: false }], checkInsOn: 1, checkInsAnswered: 0, checkInsNotOpened: 1,
     });
@@ -170,7 +172,7 @@ describe('the People list', () => {
 
   it('counts and names only this organisation\'s check-ins, and says where each person sits', async () => {
     const { service, asked } = aList();
-    const { data } = await service.findAll('baridi', { page: 1, limit: 100 } as any);
+    const { data } = await service.findAll('baridi', { page: 1, limit: 100 } as any, 'grace');
     /* Another company's check-ins are never counted here: each person's load is private. */
     expect(asked[0]).toEqual({
       ground: { organizationId: 'baridi' },
@@ -223,13 +225,13 @@ describe('"Not let in" (Hafsah, 29 September)', () => {
 
   it('a declined person comes back as not let in', async () => {
     const service = aService([{ userId: 'grace', status: 'DECLINED', createdAt: new Date('2026-09-20') }]);
-    const { data } = await service.findAll('baridi', { page: 1, limit: 100 } as any);
+    const { data } = await service.findAll('baridi', { page: 1, limit: 100 } as any, 'grace');
     expect(data.find((p: any) => p.id === 'grace')).toMatchObject({ notLetIn: true });
   });
 
   it('a person still waiting on an answer comes back as waiting, not not-let-in', async () => {
     const service = aService([{ userId: 'faraji', status: 'PENDING', createdAt: new Date('2026-09-21') }]);
-    const { data } = await service.findAll('baridi', { page: 1, limit: 100 } as any);
+    const { data } = await service.findAll('baridi', { page: 1, limit: 100 } as any, 'grace');
     expect(data.find((p: any) => p.id === 'faraji')).toMatchObject({ notLetIn: false, awaitingOrgApproval: true });
   });
 
@@ -238,7 +240,7 @@ describe('"Not let in" (Hafsah, 29 September)', () => {
       { userId: 'grace', status: 'DECLINED', createdAt: new Date('2026-09-10') },
       { userId: 'grace', status: 'PENDING', createdAt: new Date('2026-09-20') },
     ]);
-    const { data } = await service.findAll('baridi', { page: 1, limit: 100 } as any);
+    const { data } = await service.findAll('baridi', { page: 1, limit: 100 } as any, 'grace');
     expect(data.find((p: any) => p.id === 'grace')).toMatchObject({ notLetIn: false });
   });
 });

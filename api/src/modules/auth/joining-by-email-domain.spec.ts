@@ -53,11 +53,11 @@ describe('the admin\'s switch', () => {
 });
 
 describe('an admin names or changes the domain', () => {
-  function make(o: { email?: string; verified?: boolean; taken?: boolean } = {}) {
+  function make(o: { email?: string; verified?: boolean; taken?: boolean; off?: boolean } = {}) {
     const updates: any[] = [];
     const prisma: any = {
       organization: {
-        findUnique: jest.fn(async () => ({ email: 'founder@baridi.co.ke', joinDomain: 'baridi.co.ke' })),
+        findUnique: jest.fn(async () => ({ email: 'founder@baridi.co.ke', joinDomain: o.off ? null : 'baridi.co.ke' })),
         findFirst: jest.fn(async () => (o.taken ? { id: 'other' } : null)),
         update: jest.fn(async (a: any) => { updates.push(a); return {}; }),
       },
@@ -70,6 +70,12 @@ describe('an admin names or changes the domain', () => {
     const { users, updates } = make();
     expect(await users.changeJoinDomain('o1', 'u1')).toEqual({ on: true, domain: 'baridi.co.ke', whyNot: null });
     expect(updates[0]).toEqual({ where: { id: 'o1' }, data: { joinDomain: 'newco.com' } });
+  });
+
+  it('does not switch joining on by itself: while it is off, nothing is written and the admin is told to switch it on first', async () => {
+    const { users, updates } = make({ off: true });
+    await expect(users.changeJoinDomain('o1', 'u1')).rejects.toThrow('Joining by email is switched off, so there is no domain to change. Switch it on first, and then you can change the domain.');
+    expect(updates).toHaveLength(0);
   });
 
   it('never a public mail provider', async () => {

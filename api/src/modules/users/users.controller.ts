@@ -270,8 +270,8 @@ export class UsersController {
   @Get()
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'List users in the organization' })
-  async findAll(@CurrentUser('organizationId') organizationId: string, @Query() pagination: PaginationDto) {
-    return this.usersService.findAll(organizationId, pagination);
+  async findAll(@CurrentUser('organizationId') organizationId: string, @Query() pagination: PaginationDto, @CurrentUser('id') readerId: string) {
+    return this.usersService.findAll(organizationId, pagination, readerId);
   }
 
   /**
