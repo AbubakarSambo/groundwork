@@ -56,3 +56,31 @@ describe('the only admin asking for leave in a chat (B-137)', () => {
     expect(leave.ask).not.toHaveBeenCalled();
   });
 });
+
+describe('the same request sent twice while the first waits (B-147)', () => {
+  it('is the first request, and the approver is told once', async () => {
+    const leave = bed(1, 'leave');
+    leave.leaveRequest.findFirst = jest.fn(async () => ({ id: 'r-already' }));
+    const told = jest.fn();
+    const svc: any = new LeaveBoardService(leave, { tell: told } as any);
+    await expect(svc.ask(ORG, 'u-grace', { startsOn: '2026-12-14', endsOn: '2026-12-16' })).resolves.toEqual({ id: 'r-already' });
+    expect(leave.leaveRequest.create).not.toHaveBeenCalled();
+    expect(told).not.toHaveBeenCalled();
+    const spend = bed(1, 'spend');
+    spend.spendRequest.findFirst = jest.fn(async () => ({ id: 's-already' }));
+    await expect(new SpendingService(spend).ask(ORG, 'u-grace', { amount: 15000, what: 'A new chair' })).resolves.toEqual({ id: 's-already' });
+    expect(spend.spendRequest.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('three identical requests at the same moment (B-147)', () => {
+  it('make one', async () => {
+    const prisma = bed(1, 'leave');
+    let made = 0;
+    prisma.leaveRequest.create = jest.fn(async () => { made += 1; await new Promise((r) => setTimeout(r, 20)); return { id: `r${made}` }; });
+    const svc = new LeaveBoardService(prisma);
+    const out = await Promise.all([1, 2, 3].map(() => svc.ask(ORG, 'u-grace', { startsOn: '2026-12-14', endsOn: '2026-12-16' })));
+    expect(made).toBe(1);
+    expect(new Set(out.map((o) => o.id)).size).toBe(1);
+  });
+});

@@ -5,6 +5,7 @@ import { askNameOf } from '../assistant/ask-name';
 import { theirRosterEntry, withTheirSignIns } from './a-roster-entry-and-its-sign-in';
 import { inTheLeadsTeam } from './a-leads-team';
 import { loadLookups, type Lookups } from './the-lookups';
+import { oneAtATime } from './the-same-request-at-once';
 import { theStepsADecisionFollows, NOBODY_ELSE_CAN_DECIDE, nobodyElseCanDecide, couldBeNamed, decidesIt, everyStepFor, passWhatTheyAlreadyApproved, theStepsFor, whoComesNext, whoDecidesNow, type DecidesNow } from './who-may-decide';
 import { whyPassOn } from './a-request-waits-too-long';
 import { aRequestsHistory, recordIt, saidAsADate } from './a-request-is-recorded';
@@ -642,6 +643,10 @@ export class SpendingService {
 
   /** A request to spend, as the engine records it once the person has confirmed it (request 26). No route. */
   async ask(organizationId: string, userId: string, input: { amount: number; what: string; proposalId?: string | null; category?: string | null }) {
+    return oneAtATime(`spend|${organizationId}|${userId}|${input.amount}|${(input.what ?? '').trim()}`, () => this.askOnce(organizationId, userId, input));
+  }
+
+  private async askOnce(organizationId: string, userId: string, input: { amount: number; what: string; proposalId?: string | null; category?: string | null }) {
     const answers = await this.suiteAnswers(organizationId);
     const role = await this.roleOf({ userId, organizationId });
     if (!role || role === 'GUEST') throw new ForbiddenException(SPEND_REFUSED.notInIt);
@@ -662,6 +667,9 @@ export class SpendingService {
     if (await nobodyElseCanDecide(this.prisma, theStepsADecisionFollows(answers, input.amount), { organizationId, requesterUserId: userId, managerExternalId: (person as any)?.managerExternalId ?? null, team }, role)) {
       throw new BadRequestException(NOBODY_ELSE_CAN_DECIDE);
     }
+    /* The same request while the first still waits is that request (B-147): nothing new is made and the approver hears once. */
+    const already = await (this.prisma.spendRequest as any).findFirst?.({ where: { organizationId, userId, amount: input.amount, what, status: 'waiting' }, select: { id: true } }).catch(() => null);
+    if (already?.id) return { id: already.id };
     const created = await this.prisma.spendRequest.create({
       data: { organizationId, userId, amount: input.amount, what, team, ...(category ? { category: category.name } : {}), ...(evidenceNeeded.length ? { evidenceNeeded } : {}) },
       select: { id: true },
