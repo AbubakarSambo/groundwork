@@ -200,7 +200,7 @@ export const authApi = {
    * this is a purchase - and answered by making room rather than by saying yes.
    */
   waitingForASeat: () =>
-    apiClient.get<{ id: string; email: string; addedBy: string | null; forCheckIn: string | null; waitingSince: string; saying: string }[]>('/users/waiting/seats').then(r => (Array.isArray(r.data) ? r.data : [])),
+    apiClient.get<{ id: string; email: string; name: string | null; addedBy: string | null; forCheckIn: string | null; waitingSince: string; saying: string }[]>('/users/waiting/seats').then(r => (Array.isArray(r.data) ? r.data : [])),
 
   sendTheHeldInvitations: () =>
     apiClient.post<{ sent: number; stillWaiting: number }>('/users/waiting/seats/release', {}).then(r => r.data),
