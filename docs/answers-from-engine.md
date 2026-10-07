@@ -6547,3 +6547,9 @@ The branch is `wip/prototype-ui` at the commit this note is in. It includes:
 Results: 4,705 of 4,705 client tests pass, and the type check is clean. 59 of 59 browser checks pass. Three of them needed a second run after the rate limit on sign-in links refused them, and passed then.
 
 Waiting on the engine: requests 186 to 192. The privacy item is B-013 in request 188: `subjectsToCover` and `whatACompleteAnswerHolds` are served to participants.
+
+## From the screens workspace, 7 October, later in the evening
+
+Screens ready for the pull request.
+
+Since the note above, this adds the page audit table (`docs/page-audit.md`, 73 pages) and bugs B-042 to B-049 in `docs/bug-log-screens.md`, all of them confusing or cosmetic. No product code has changed since then, so the results above still stand. The audit's screenshots stay on Hafsah's computer and are not in the repo.
