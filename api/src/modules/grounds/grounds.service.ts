@@ -6121,9 +6121,18 @@ export class GroundsService {
       throw new ForbiddenException('Only the person who runs this check-in, or an administrator of the organisation, can send an invitation again.');
     }
 
-    const participant = await this.prisma.groundParticipant.findFirst({ where: { id: participantId, groundId } });
+    const participant = await this.prisma.groundParticipant.findFirst({ where: { id: participantId, groundId }, include: { user: { select: { firstName: true } } } });
     if (!participant) throw new NotFoundException('Participant not found');
-    if (participant.userId) throw new BadRequestException('This participant has already accepted their invite');
+    const theirName = ((participant as any).user?.firstName ?? (participant as any).nameGiven ?? '').toString().trim() || 'This person';
+    /*
+     * SOMEBODY WAITING FOR A SEAT GETS NO INVITATION (request 180 item 5). Their link leads to "This check-in cannot start for you yet",
+     * with no way forward, so nothing is sent and the lead is told why. Asked before "already joined": a person held for a seat may have
+     * an account already, and the invitation would still lead nowhere.
+     */
+    if ((participant as any).awaitingSeat === true) {
+      throw new BadRequestException(`${theirName} is waiting for a seat on the plan, so an invitation would not let them in yet. They will get their invitation as soon as there is a seat for them.`);
+    }
+    if (participant.userId) throw new BadRequestException(`${theirName} has already joined this check-in, so there is no invitation to send again.`);
 
     // Block resend if the participant has already completed a check-in via the invite flow.
     const completedCheckIn = await this.prisma.checkIn.findFirst({
@@ -6170,10 +6179,10 @@ export class GroundsService {
 
     const participant = await this.prisma.groundParticipant.findFirst({
       where: { id: participantId, groundId },
-      select: { inviteToken: true, userId: true },
+      select: { inviteToken: true, userId: true, nameGiven: true, user: { select: { firstName: true } } },
     });
     if (!participant) throw new NotFoundException('Participant not found');
-    if (participant.userId) throw new BadRequestException('This participant has already accepted their invite');
+    if (participant.userId) throw new BadRequestException(`${participant.user?.firstName?.trim() || participant.nameGiven?.trim() || 'This person'} has already joined this check-in, so there is no invitation link to share.`);
     if (!participant.inviteToken) throw new BadRequestException('No active invite token');
 
     return { inviteUrl: this.email.buildInviteUrl(participant.inviteToken) };

@@ -5,6 +5,9 @@ import { theTeamIsAlmostIn } from './what-goes-to-a-phone';
 import { theSummaryOnWhatsApp } from '../suites/the-approvals-summary';
 import { THE_REMINDERS_IN_SIMPLER_WORDS } from '../grounds/what-is-sent-in-simpler-words';
 
+/* Comments are taken out before anything is matched, so a sentence in a comment cannot satisfy this. */
+const withoutComments = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
 /**
  * EVERY TEMPLATE IN THE CODE FOLLOWS THE RULES META CHECKS (Hafsah is submitting them).
  *
@@ -13,7 +16,7 @@ import { THE_REMINDERS_IN_SIMPLER_WORDS } from '../grounds/what-is-sent-in-simpl
  * that broke the rules are read rendered, as the person reads them.
  */
 const blanks = (body: string) => [...body.matchAll(/\{\{(\d+)\}\}/g)].map((m) => Number(m[1]));
-const doc = readFileSync(join(__dirname, '..', '..', '..', '..', 'docs', 'whatsapp-templates.md'), 'utf8');
+const doc = withoutComments(readFileSync(join(__dirname, '..', '..', '..', '..', 'docs', 'whatsapp-templates.md'), 'utf8'));
 
 const all = Object.entries(TEMPLATES).map(([kind, t]) => ({ kind, name: t.name, body: t.body }));
 

@@ -8,6 +8,7 @@ import { DependencyStatus } from '@prisma/client';
 import { aQuestionAskedAboutARequest, aQuestionSaidBack, aQuestionSent, aQuestionNotSent, WHICH_REQUEST_TO_ASK_ABOUT, NOTHING_TO_ASK_ABOUT, HOURS_TAKE_NO_QUESTION } from '../suites/an-approver-asks-by-saying-so';
 import { whatYouCanAskSaid } from './what-you-can-ask-here';
 import { route, whatICanDoWith, Lane } from './the-router-is-deterministic';
+import { whenIsMyNextCheckIn, whatMyCheckInIsFor, theCompanysPriorities, isTheStrategyMoving, THE_REQUEST_STARTERS, howToAskForLeaveOrSpending } from './about-your-check-ins-and-the-company';
 import { Reply, rules, text, picker, SourceBlock } from './a-reply-is-a-payload-not-a-string';
 import { ReportsService } from '../reports/reports.service';
 import { howManyAnsweredInWords } from '../reports/the-picture-in-plain-sentences';
@@ -450,6 +451,13 @@ export class AssistantService {
     }
 
 
+    /* "Ask for leave, or to spend money." with nothing said yet: told how, for what is switched on here (request 180 item 1). */
+    if (THE_REQUEST_STARTERS.test(message)) {
+      const on = await this.prisma.organizationSuite?.findMany?.({ where: { organizationId, suite: { in: ['leave', 'spend'] }, isOn: true }, select: { suite: true } }).catch(() => null);
+      const suites = new Set<string>((on ?? [{ suite: 'leave' }, { suite: 'spend' }]).map((r: any) => r.suite));
+      return rules('how_to_ask_for_leave_or_spending', text(howToAskForLeaveOrSpending({ leave: suites.has('leave'), spend: suites.has('spend') })));
+    }
+
     const routedByRules = route(message);
     const routed = !contextIsHere && THE_CONTEXT_LANES.has(routedByRules.lane) ? { ...routedByRules, lane: 'unplaced' as typeof routedByRules.lane } : routedByRules;
 
@@ -515,7 +523,7 @@ export class AssistantService {
       case 'who_is':
         return this.compose(await this.whoIs(organizationId, routed.subject ?? ''));
       case 'what_did_i_commit_to':
-        return this.compose(await this.myCommitments(organizationId, personId));
+        return this.myCommitments(organizationId, personId);
       case 'where_am_i_up_to':
         /*
          * The role name has to survive. Losing it is what turned "what is my role" into a checklist
@@ -560,6 +568,14 @@ export class AssistantService {
         return this.whatIsDue(organizationId, who, userId ?? null);
       case 'who_is_away':
         return this.whoIsAway(organizationId, userId ?? null, routed.subject ?? message);
+      case 'when_is_my_next_check_in':
+        return rules('when_is_my_next_check_in', text(await whenIsMyNextCheckIn(this.prisma, organizationId, userId ?? null)));
+      case 'what_my_check_in_is_for':
+        return rules('what_my_check_in_is_for', text(await whatMyCheckInIsFor(this.prisma, organizationId, userId ?? null)));
+      case 'company_priorities':
+        return rules('company_priorities', text(await theCompanysPriorities(this.prisma, this.grounds, await this.readerOfTheCompany(organizationId, userId ?? null))));
+      case 'is_the_strategy_moving':
+        return rules('is_the_strategy_moving', text(await isTheStrategyMoving(this.prisma, this.grounds, await this.readerOfTheCompany(organizationId, userId ?? null))));
       case 'what_next':
         return this.whatNext(organizationId, who, userId ?? null);
       case 'what_did_they_say':
@@ -1043,6 +1059,13 @@ export class AssistantService {
    * ONE THING FIRST, AND WHY (week 17). Read as the person asking and nobody else: their own
    * commitments and to-dos, and what is waiting on them. See what-to-do-next.ts.
    */
+  /** Who is asking about the company, with their standing in this organisation, as the Company page asks it. */
+  private async readerOfTheCompany(organizationId: string, userId: string | null) {
+    const m = userId ? await this.prisma.organizationMembership.findUnique({ where: { userId_organizationId: { userId, organizationId } }, select: { role: true } }).catch(() => null) : null;
+    const u = userId ? await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } }).catch(() => null) : null;
+    return { userId, email: u?.email ?? '', organizationId, role: m?.role ?? 'MEMBER' };
+  }
+
   private async whatNext(organizationId: string, who: string | null, userId: string | null = null): Promise<Reply> {
     if (!who) return rules('what_next', text('I cannot see you in your organisation records, so I have nothing to put first.'));
     const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { email: true } });
@@ -4859,30 +4882,56 @@ export class AssistantService {
     return rules(lane, text(moveDone(m)));
   }
 
+  /**
+   * WHAT THE PERSON SAID THEY WOULD DO, IN PLAIN WORDS (requests 170, 180 item 2 and 182 item 8). It read only the commitments brought in from the
+   * organisation's own systems, so somebody with two promises written down in a check-in ("ground_commitments", still unsettled) was told they had
+   * none, in the words "open actions". Both are read now, and only the asker's own: a check-in's promises are found through the asker's own
+   * place in it, never through a name. Not reworded by the model: what is written down goes out as written.
+   */
   private async myCommitments(organizationId: string, personId: string): Promise<Reply> {
     const me = await this.prisma.person.findFirst({
       where: { id: personId, organizationId },
-      select: { externalId: true },
+      select: { externalId: true, linkedUserId: true },
     });
     if (!me) return rules('what_did_i_commit_to', text('I cannot find you in what your organisation has sent us.'));
 
+    const kept = await keptInTheApp(this.prisma as any, organizationId);
     const open = await withoutCommitmentsFromGoalsNotToldYet(this.prisma, await this.prisma.commitment.findMany({
-      where: { organizationId, personExternalId: me.externalId, state: 'OPEN', ...notFromAKeptCheckIn(await keptInTheApp(this.prisma as any, organizationId), 'sourceGroundId') },
+      where: { organizationId, personExternalId: me.externalId, state: 'OPEN', ...notFromAKeptCheckIn(kept, 'sourceGroundId') },
       orderBy: [{ dueAt: 'asc' }, { statedAt: 'asc' }],
     }));
-    if (!open.length) {
-      return rules('what_did_i_commit_to', text('Nothing is open. Anything you say you will do in a check-in shows up here.'));
-    }
+    const inCheckIns: any[] = me.linkedUserId
+      ? await (this.prisma as any).groundCommitment?.findMany?.({
+        where: {
+          status: 'UNKNOWN',
+          participant: { userId: me.linkedUserId, awaitingSeat: false },
+          ground: { organizationId, ...notAKeptCheckIn(kept) },
+        },
+        select: { text: true, whenSaid: true, ground: { select: { label: true } } },
+        orderBy: { createdAt: 'asc' },
+      })?.catch?.(() => []) ?? []
+      : [];
 
     const now = new Date();
-    const line = (c: (typeof open)[number]) => {
+    const lines: string[] = [];
+    const late: string[] = [];
+    for (const c of open) {
       const when = c.dueSaid ? ` (you said ${c.dueSaid})` : '';
-      return `- ${c.text}${when}${hasSlipped(c as any, now) ? ' - the date you gave has passed' : ''}`;
-    };
-    const late = open.filter((c) => hasSlipped(c as any, now));
-    const parts = [`${open.length} open:`, ...open.map(line)];
+      const slipped = hasSlipped(c as any, now);
+      lines.push(`- ${c.text}${when}${slipped ? ', and the date you gave has passed' : ''}`);
+      if (slipped) late.push(c.text);
+    }
+    for (const c of inCheckIns) {
+      const when = c.whenSaid ? `you said ${c.whenSaid}, ` : '';
+      lines.push(`- ${String(c.text).replace(/[.]+$/, '')} (${when}in "${c.ground?.label ?? 'your check-in'}")`);
+    }
+    if (!lines.length) {
+      return rules('what_did_i_commit_to', text('You have not said you will do anything that is still waiting. When you say you will do something in a check-in, it shows up here.'));
+    }
+    const heading = `You said you would do ${lines.length === 1 ? 'one thing' : `${lines.length} things`} that ${lines.length === 1 ? 'is' : 'are'} still waiting.`;
+    const parts = [heading, ...lines];
     if (late.length) {
-      parts.push(`\n${late.length} of those ${late.length === 1 ? 'is' : 'are'} past the date you gave. That is worth saying out loud in your next check-in rather than letting it sit.`);
+      parts.push(`\n${late.length === 1 ? 'One of them is' : `${late.length} of them are`} past the date you gave. That is worth saying out loud in your next check-in rather than letting it sit.`);
     }
     return this.withItsSource(rules('what_did_i_commit_to', text(parts.join('\n'))), YOUR_COMMITMENTS_SOURCE);
   }

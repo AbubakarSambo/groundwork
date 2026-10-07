@@ -17,6 +17,10 @@ export function askGroundwork(opts: {
   parked?: any;
   grounds?: { id: string; label: string; initiatorId: string; organizationId: string }[];
   contextItems?: { id: string; text: string; audience: string }[];
+  /** The organisation's own objectives, for the company page. */
+  subjects?: any[];
+  /** The check-ins the person has waiting, as the check-in table holds them. */
+  checkIns?: any[];
 } = {}) {
   const grounds = opts.grounds ?? [{ id: 'g1', label: 'Sales team, Q3', initiatorId: 'lead-1', organizationId: 'org-a' }];
   const created: any[] = [];
@@ -44,7 +48,11 @@ export function askGroundwork(opts: {
     },
     groundContextItem: { findMany: jest.fn(async () => opts.contextItems ?? []) },
     commitment: { create: jest.fn(async () => ({})), findUnique: jest.fn(async () => null), findMany: jest.fn(async () => []) },
-    subject: { findMany: jest.fn(async () => []), count: jest.fn(async () => 0) },
+    checkIn: { findMany: jest.fn(async () => opts.checkIns ?? []) },
+    organizationMembership: { findUnique: jest.fn(async () => ({ role: opts.role ?? 'MEMBER' })), findMany: jest.fn(async () => []) },
+    organization: { findUnique: jest.fn(async () => ({ name: 'Baridi' })) },
+    companyPicture: { findUnique: jest.fn(async () => null) },
+    subject: { findMany: jest.fn(async () => opts.subjects ?? []), count: jest.fn(async () => 0) },
     detectionQuietPeriod: { findMany: jest.fn(async () => []) },
   };
   const truth: any = {
@@ -60,7 +68,7 @@ export function askGroundwork(opts: {
     truth,
     { read: async () => ({ read: false, because: 'no reading in these tests' }) } as any,
     { sendMeThat: async () => { throw new Error('no mail in these tests'); }, sendRoundDigest: async () => { throw new Error('no mail in these tests'); } } as any,
-    (opts.groundsService ?? {}) as any,
+    (opts.groundsService ?? { list: async () => [] }) as any,
   );
   return { service, prisma, created };
 }

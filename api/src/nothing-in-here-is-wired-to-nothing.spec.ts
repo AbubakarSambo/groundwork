@@ -61,6 +61,7 @@ const NOT_WIRED_ON_PURPOSE: Record<string, string> = {
   // state a boundary the product must not cross, and the enforcement is the test.
   /* Request 36, 27 September 2026: a label never uses the lead's description of a person, so nothing
      calls this any more. Kept with its spec, rather than deleted, until Hafsah says it can go. */
+  'the-faults-in-a-judgement.ts': 'finds the faults in a served judgement as evidence for a prompt proposal, and only journey/self-learning-one-cycle.ts makes proposals, by hand; no product path makes one yet, so nothing in the product can call this',
   'a-name-is-short.ts': 'unwired on purpose since request 36: it shortens the lead\'s description into a name, which no label may use now',
   'a-worry-steers-questions-not-findings.ts': "G39's reachability rules, enforced by its spec - the product has no branch that could import a rule saying 'never'",
   /**

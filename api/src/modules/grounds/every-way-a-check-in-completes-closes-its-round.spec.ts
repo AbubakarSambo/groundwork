@@ -35,8 +35,15 @@ const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\
  * It goes back on the moment anything in entry writes a COMPLETED again, which is what the guard
  * below the list is for: a completion site missing from here fails.
  */
+/*
+ * ENTRY IS BACK ON THE LIST (7 October 2026). With the anchor switched on, entry.service.ts saves the lead's set-up conversation as a
+ * COMPLETED, set-up session 1. It closes its round where every ground created there does, once the people are added (the one
+ * recordRoundCompletion call after them), not at the write: at the write the party is not known yet, and a round counted then would be
+ * closed at a count of one for good. The lead is managing only in the anchor, so her set-up is not what closes the round.
+ */
 const COMPLETION_SITES = [
   '../conversation/conversation.service.ts',
+  '../entry/entry.service.ts',
 ];
 
 describe('every way a check-in completes closes its round', () => {
