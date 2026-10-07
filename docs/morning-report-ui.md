@@ -4,6 +4,32 @@ This is the report from the screens workspace, on the branch `wip/prototype-ui`.
 workspace writes its own report in `docs/morning-report.md`, so the two computers never edit the
 same file.
 
+## 13:30 update: the set-up screens, read on screen a third time
+
+**The most important fix.** A lead who was already signed in had no way to add people when saving a new check-in. The people step only appeared after an emailed link, so "Save and set up" made a check-in with only the lead in it. This was in the release before today's work. It is fixed, with a test proving that the people she adds are sent on save.
+
+**Also fixed:**
+- The number of sessions the lead types now wins everywhere, including what is saved. Before, typing 5 still saved 12.
+- The save card reads "We save this to your account, amina@suites.test." It no longer calls the conversation a private report before she has said anything.
+- **The People page:**
+  - it says "You added Wanjiru and Peter Otieno, and your plan is full." to the person who added them;
+  - the instruction reads "Write one person on each line, with their name and email.";
+  - a semicolon join is gone.
+- **Layout:**
+  - at phone width nothing sits under the Feedback button, and nothing is clipped or wraps badly;
+  - at 1024 the fork buttons and the summary card have room.
+
+  A new browser check proves the Feedback button stays clear on the start page.
+
+**Decided for Hafsah to confirm.** "Only you so far. Weekly. Session 1 of 12." on All check-ins is kept, because the prototype's own check-ins screen writes its rows this way.
+
+**Sent to the engine as request 187:**
+- a colleague added with the "Add Daniel Park" button shows by email address;
+- the waiting-for-a-seat list never serves names;
+- Today names a new hire's check-in by its kind, not its own name.
+
+Results: 4,664 of 4,664 client tests pass, and the type check is clean. 59 of 59 browser checks pass, which is the 57 from before plus the new Feedback check.
+
 ## 12:45 update: the set-up screens, read on screen a second time
 
 A reviewer read the 11:35 fixes on screen, at 1440 and at phone width, and three of them had not held. All of them are now fixed:
