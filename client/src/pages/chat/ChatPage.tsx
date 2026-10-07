@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { nothingInternalReachesTheBubble } from '@/lib/nothing-internal-reaches-the-bubble'
 import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom'
 import { justTheQuestion } from '@/pages/invite/the-link-opens-on-the-question'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
 import { conversationApi, streamMessage, type CheckInBrief, type TheEndCard as TheEndCardData } from '@/api/conversation'
 import { closingMessageText } from '@/lib/a-closing-message-claims-nothing-it-does-not-keep'
@@ -140,6 +140,7 @@ export function ChatPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const user = useAuthStore(s => s.user)
+  const qc = useQueryClient()
 
   const [searchParams] = useSearchParams()
   /* Opened from a team update's link: one card, no band, nothing but the question. */
@@ -475,6 +476,20 @@ export function ChatPage() {
       setJustFinished(true)
       if (res?.whatChanged) setWhatChanged(res.whatChanged as WhatChanged)
       if (res?.whatYouGave) setWhatYouGave(res.whatYouGave as WhatYouGave)
+      /*
+       * SCREEN FAULT 3 (FINAL WALK): "YOUR TURN" AND "NOBODY HAS CHECKED IN YET" RIGHT AFTER
+       * FINISHING. Finishing a session marks this person's own check-in COMPLETED on the server,
+       * but nothing here told the query cache - so the check-in's own page (`['ground', id]`,
+       * `railAttention` off its stale `checkIns`), the sidebar's "what needs you" list
+       * (`['grounds']`) and the board's "who checked in" (`['board', id]`) kept reading the
+       * answer this person had just finished as still outstanding. Invalidated here, the moment
+       * the server has actually recorded it.
+       */
+      if (groundId) {
+        qc.invalidateQueries({ queryKey: ['ground', groundId] })
+        qc.invalidateQueries({ queryKey: ['board', groundId] })
+      }
+      qc.invalidateQueries({ queryKey: ['grounds'] })
       if (bareFrame && groundId) navigate(`/grounds/${groundId}/board?done=1`, { replace: true })
     },
     /**
@@ -497,7 +512,18 @@ export function ChatPage() {
      */
     onError: (err: any) => {
       const message: string = err?.response?.data?.message ?? ''
-      if (/already complete/i.test(message)) { setCompleted(true); setJustFinished(true); return }
+      if (/already complete/i.test(message)) {
+        setCompleted(true)
+        setJustFinished(true)
+        /* Screen fault 3: the engine closed this session itself, on the last answer - the same
+           stale-cache problem as the success path above, so the same refresh. */
+        if (groundId) {
+          qc.invalidateQueries({ queryKey: ['ground', groundId] })
+          qc.invalidateQueries({ queryKey: ['board', groundId] })
+        }
+        qc.invalidateQueries({ queryKey: ['grounds'] })
+        return
+      }
       /**
        * A REFUSAL THAT ASKS FOR MORE HAS TO LET THEM GIVE IT.
        *
