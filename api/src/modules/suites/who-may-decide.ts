@@ -282,21 +282,26 @@ export function theStepsFor(suite: 'leave' | 'time' | 'reviews' | 'spend', answe
   const longer = suite === 'leave' && amount != null ? theThresholdCrossed({ thresholds: answers?.rules?.thresholds ?? answers?.thresholds ?? undefined }, Number(amount)) : null;
   if (longer) return longer.steps;
   if (suite === 'spend' && answers?.limit != null && Number(amount ?? 0) > answers.limit) {
-    if (workflow?.stepsAbove?.length) {
-      /* The person the admin named for large spending still decides the last step, in front of "an admin" (B-004): two answers on one page must not silently disagree. */
-      const above = workflow.stepsAbove;
-      const last = above[above.length - 1];
-      const named = typeof answers.above === 'string' && answers.above.trim() ? answers.above.trim() : null;
-      const alreadyNamed = above.some((step) => step.some((rule) => typeof rule === 'object' && !!rule && (rule as { named: string }).named === named));
-      if (named && !alreadyNamed && last.includes('admin')) {
-        return [...above.slice(0, -1), [{ named }, ...last]];
-      }
-      return above;
-    }
+    if (workflow?.stepsAbove?.length) return workflow.stepsAbove;
     return [['budgetOwner', 'finance', ...(answers.above ? [{ named: answers.above as string }] : []), 'admin']];
   }
   if (workflow?.steps?.length) return workflow.steps;
   return [['manager', 'admin']];
+}
+
+/**
+ * THE STEPS A SPENDING REQUEST ACTUALLY GOES THROUGH. `theStepsFor` gives the steps as the admin stored them, which is what a page
+ * shows back. When the admin has set steps above the limit AND named a person for spending above it, that person still decides the
+ * last step, in front of "an admin", unless the steps already name them (B-004): two answers on one page must not silently disagree.
+ */
+export function theStepsADecisionFollows(answers: { limit: number | null; above: string | null; workflow?: AWorkflow | null; thresholds?: AThreshold[] | null }, amount: number): Step[] {
+  const steps = theStepsFor('spend', answers, amount);
+  const stored = answers.workflow?.stepsAbove;
+  if (!stored?.length || steps !== stored) return steps;
+  const named = typeof answers.above === 'string' && answers.above.trim() ? answers.above.trim() : null;
+  const last = stored[stored.length - 1];
+  const alreadyNamed = stored.some((step) => step.some((rule) => typeof rule === 'object' && !!rule && (rule as { named: string }).named === named));
+  return named && !alreadyNamed && last.includes('admin') ? [...stored.slice(0, -1), [{ named }, ...last]] : steps;
 }
 
 /** Every rule in these steps, in order: what a board asks `couldBeNamed`. */
@@ -307,7 +312,7 @@ export function everyStepFor(suite: 'spend', answers: { limit: number | null; ab
   const below = { ...answers, thresholds: null };
   return [
     ...everyRuleIn(theStepsFor(suite, below, 0)),
-    ...(answers.limit == null ? [] : everyRuleIn(theStepsFor(suite, below, answers.limit + 1))),
+    ...(answers.limit == null ? [] : everyRuleIn(theStepsADecisionFollows(below, answers.limit + 1))),
     ...(answers.thresholds ?? []).flatMap((t) => everyRuleIn(t.steps)),
   ];
 }

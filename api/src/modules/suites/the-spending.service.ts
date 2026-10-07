@@ -5,7 +5,7 @@ import { askNameOf } from '../assistant/ask-name';
 import { theirRosterEntry, withTheirSignIns } from './a-roster-entry-and-its-sign-in';
 import { inTheLeadsTeam } from './a-leads-team';
 import { loadLookups, type Lookups } from './the-lookups';
-import { NOBODY_ELSE_CAN_DECIDE, nobodyElseCanDecide, couldBeNamed, decidesIt, everyStepFor, passWhatTheyAlreadyApproved, theStepsFor, whoComesNext, whoDecidesNow, type DecidesNow } from './who-may-decide';
+import { theStepsADecisionFollows, NOBODY_ELSE_CAN_DECIDE, nobodyElseCanDecide, couldBeNamed, decidesIt, everyStepFor, passWhatTheyAlreadyApproved, theStepsFor, whoComesNext, whoDecidesNow, type DecidesNow } from './who-may-decide';
 import { whyPassOn } from './a-request-waits-too-long';
 import { aRequestsHistory, recordIt, saidAsADate } from './a-request-is-recorded';
 import { claimIt, theyGotThereFirst, whereItIsNow } from './a-request-is-answered-once';
@@ -317,7 +317,7 @@ export class SpendingService {
    * passed." kept in the record for each.
    */
   private async passOnFrom(r: Row, answers: Answers, byUser: Map<string, Dir>, from: { step: number; escalatedTo: number }, approvedByIds: string[], record = true, shared: { lookups?: Lookups; on?: Date } = {}) {
-    const moved = await passWhatTheyAlreadyApproved(this.prisma, theStepsFor('spend', answers, n(r.amount)), {
+    const moved = await passWhatTheyAlreadyApproved(this.prisma, theStepsADecisionFollows(answers, n(r.amount)), {
       organizationId: r.organizationId, requesterUserId: r.userId,
       managerExternalId: byUser.get(r.userId)?.managerExternalId ?? null,
       team: r.team?.trim() || byUser.get(r.userId)?.department?.trim() || null,
@@ -492,7 +492,7 @@ export class SpendingService {
     const out: PassedOn[] = [];
     const toTell: { approverUserIds: string[]; request: AWaitingRequest }[] = [];
     for (const r of rows) {
-      const comes = await whoComesNext(this.prisma, theStepsFor('spend', answers, n(r.amount)), {
+      const comes = await whoComesNext(this.prisma, theStepsADecisionFollows(answers, n(r.amount)), {
         organizationId, requesterUserId: r.userId,
         managerExternalId: byUser.get(r.userId)?.managerExternalId ?? null,
         team: r.team?.trim() || byUser.get(r.userId)?.department?.trim() || null,
@@ -659,7 +659,7 @@ export class SpendingService {
     const person = await theirRosterEntry(this.prisma, organizationId, userId, { department: true, managerExternalId: true });
     const team = person?.department?.trim() || null;
     /* The only admin cannot decide their own request, and nobody else could: said now, not after it has waited for ever. */
-    if (await nobodyElseCanDecide(this.prisma, theStepsFor('spend', answers, input.amount), { organizationId, requesterUserId: userId, managerExternalId: (person as any)?.managerExternalId ?? null, team }, role)) {
+    if (await nobodyElseCanDecide(this.prisma, theStepsADecisionFollows(answers, input.amount), { organizationId, requesterUserId: userId, managerExternalId: (person as any)?.managerExternalId ?? null, team }, role)) {
       throw new BadRequestException(NOBODY_ELSE_CAN_DECIDE);
     }
     const created = await this.prisma.spendRequest.create({
@@ -705,7 +705,7 @@ export class SpendingService {
     organizationId: string, r: { userId: string; amount: unknown; team?: string | null; step?: number | null; escalatedTo?: number | null },
     answers: Answers, byUser: Map<string, Dir>, shared: { lookups?: Lookups; on?: Date } = {},
   ): Promise<DecidesNow> {
-    return whoDecidesNow(this.prisma, theStepsFor('spend', answers, n(r.amount)), {
+    return whoDecidesNow(this.prisma, theStepsADecisionFollows(answers, n(r.amount)), {
       organizationId, requesterUserId: r.userId,
       managerExternalId: byUser.get(r.userId)?.managerExternalId ?? null,
       team: r.team?.trim() || byUser.get(r.userId)?.department?.trim() || null,
