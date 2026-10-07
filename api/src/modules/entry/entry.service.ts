@@ -64,6 +64,7 @@ import { mayOpen, HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in
 import { whyItRefuses } from '../grounds/a-ground-that-has-ended';
 import { theThingsThatCannotBeMissed } from '../conversation/the-last-thing-it-reads-is-the-thing-it-must-not-miss';
 import { whatIsSettledAndWhatIsNot, type WhatSetupHasSoFar } from './what-setup-already-knows-travels-with-it';
+import { whatTheyAskedFor } from './what-they-asked-for-in-so-many-words';
 import { whatTheyAlreadyHave, ENOUGH_TO_RECOGNISE_THEM } from './setup-is-not-a-stranger-to-somebody-who-is-signed-in';
 import { theSetupHasStoppedAsking } from './a-gate-that-can-never-open-is-shut';
 import { onboardingIsReady as theGate, whatSetupNeverGot, anAimIsOwedHere } from './a-check-in-with-no-aim-has-nothing-to-read-against';
@@ -790,6 +791,8 @@ export class EntryService {
       goals?: string[];
       brief?: string;
       yourRole?: string;
+      /** The name the lead gave in so many words ("Call it ..."). Absent when they did not. */
+      name?: string;
     } & TheSevenItems;
     ready: boolean;
     /** Party path only: setup can finish, but nobody has been named yet and they are told so. */
@@ -1335,6 +1338,17 @@ from finishing at all.`;
      * See a-gate-that-can-never-open-is-shut.ts. It is not a lowered bar; it is the only reading of
      * the gate that a person can actually get past.
      */
+    /*
+     * WHAT THE LEAD SAID IN SO MANY WORDS BEATS WHAT THE MODEL MADE OF IT (user journeys, F-2 and F-3). A rhythm said beside "check in", a length
+     * said as "for twelve weeks" and "Call it ..." are read from the lead's own messages, so the check-in is not set up on the situation's default
+     * (every month, 360 days, the card's title) when they said otherwise. Nothing is added that they did not say.
+     */
+    {
+      const said = whatTheyAskedFor(messages.filter((m) => m.role === 'user').map((m) => m.content));
+      if (said.cadence) extracted.cadence = said.cadence;
+      if (said.timelineDays && extracted.runsUntilEnded !== true) extracted.timelineDays = said.timelineDays;
+      if (said.name) (extracted as any).name = said.name;
+    }
     const stoppedAsking = theSetupHasStoppedAsking(messages, reply);
     /*
      * THE AIM IS NOT IN THIS GATE, AND a-check-in-with-no-aim-has-nothing-to-read-against HOLDS THE
@@ -2211,8 +2225,15 @@ from finishing at all.`;
     };
     /* Fix plan B15: the client's cadence state starts at FORTNIGHTLY and is sent whether or not
        anybody picked it, so every ground set up here recorded a choice nobody made. */
+    /* What they said in so many words fills only what nobody picked on the screen (user journeys, F-2). */
+    const theyAsked = whatTheyAskedFor([
+      ...((dto.history ?? []).filter((t) => t.role === 'user').map((t) => t.content)),
+      ...(dto.leadsOwnWords ?? []).filter((t) => typeof t === 'string'),
+    ]);
     const chosenCadence: Cadence | undefined =
-      dto.cadenceChosen === true && dto.cadence && cadenceMap[dto.cadence] ? cadenceMap[dto.cadence] : undefined;
+      dto.cadenceChosen === true && dto.cadence && cadenceMap[dto.cadence] ? cadenceMap[dto.cadence]
+        : theyAsked.cadence ? cadenceMap[theyAsked.cadence] : undefined;
+    const howLongTheyAsked = !dto.lastCheckInBy && dto.runsUntilEnded !== true && theyAsked.timelineDays ? theyAsked.timelineDays : undefined;
 
     // --- Coordinator/lead path ---------------------------------------------
     // The committer is setting this ground up for someone ELSE to run: route
@@ -2245,6 +2266,7 @@ from finishing at all.`;
         /* A default the page sent is not a choice. Only a confirmed pick is handed on; the ground
            service records an absent cadence as unstated and takes the scenario's recommendation. */
         cadence: chosenCadence,
+        ...(howLongTheyAsked ? { timelineDays: howLongTheyAsked } : {}),
         runsUntilEnded: dto.runsUntilEnded === true ? true : undefined,
         cadenceAnchorDay: dto.cadenceAnchorDay ?? undefined,
         workingDays: dto.workingDays ?? undefined,
@@ -2341,7 +2363,7 @@ from finishing at all.`;
       endsAt: theAnchorIsOn ? theMonthEnds : dto.lastCheckInBy || undefined,
       /* Thirty days, which is four weekly sessions. Without it the length was read from the end date, which counts the weeks that start inside it, five, and
          the members read "Session 1 of 5" (review of fd583ba5). */
-      ...(theAnchorIsOn ? { timelineDays: DEFAULT_TIMELINE_DAYS.HELP_TEAM_UNDERSTAND } : {}),
+      ...(theAnchorIsOn ? { timelineDays: DEFAULT_TIMELINE_DAYS.HELP_TEAM_UNDERSTAND } : howLongTheyAsked ? { timelineDays: howLongTheyAsked } : {}),
       brief,
       freeParticipantCap: isBroadcast ? 100 : DEFAULT_FREE_MEMBER_LIMIT,
       /*

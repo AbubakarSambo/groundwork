@@ -154,6 +154,8 @@ export interface OnboardResult {
        */
       peopleNamed?: string[];
       goals?: string[]; brief?: string;
+      /** The name the lead gave in so many words ("Call it ..."). Absent when they did not. */
+      name?: string;
       // What they actually said about rhythm and length. Absent when they did
       // not say - never guessed. GW-017.
       cadence?: 'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ONE_TIME';

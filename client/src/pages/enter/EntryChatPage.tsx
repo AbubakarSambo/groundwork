@@ -2197,6 +2197,8 @@ export function EntryChatPage() {
            * they said and the click starts it.
            */
         }
+        /* The name they gave in so many words ("Call it ..."), unless they have already typed one in the header (user journeys, F-3). */
+        if (res.extracted.name && (!groundName.trim() || groundName === 'Entry session')) setGroundName(res.extracted.name)
         if (res.extracted.cadence) { setCadence(res.extracted.cadence); setCadenceChosen(true) }
         if (res.extracted.timelineDays && res.extracted.timelineDays > 0) {
           /**
