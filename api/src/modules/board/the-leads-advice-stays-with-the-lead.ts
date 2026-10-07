@@ -15,9 +15,19 @@
  * the words hidden by the screen: it is taken out here, on the server. The lead and an admin with
  * access keep every word. The person's own row keeps what it says about themselves.
  */
+/**
+ * Of the reasons a coverage row can carry, only SHARED_BY_DESIGN is a plain statement about the person
+ * ("Your responsibilities are staying with you", or "you said this was handed over deliberately"). The
+ * other four sentences tell the lead how to read the person ("Watch for overload", "Take the blocked
+ * part out before you read anything into the rest", "Worth asking about, not concluding", "Treat it
+ * as a question") and go.
+ */
+const SAYS_HOW_TO_READ_THE_PERSON = new Set(['CANNOT_DETERMINE', 'OVER_REACH', 'BLOCKED_OR_OVERLOADED', 'OWNERSHIP_DROP']);
+
 export function withoutTheLeadsAdvice<T extends Record<string, any>>(row: T): T {
   if (!row || typeof row !== 'object') return row;
-  const { note: _note, reasonText: _reasonText, ...rest } = row as Record<string, any>;
+  const { note: _note, ...rest } = row as Record<string, any>;
+  if (SAYS_HOW_TO_READ_THE_PERSON.has(String(rest.reason ?? ''))) delete rest.reasonText;
   return rest as T;
 }
 

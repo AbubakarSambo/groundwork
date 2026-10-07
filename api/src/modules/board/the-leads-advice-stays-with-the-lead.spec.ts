@@ -44,6 +44,11 @@ describe('advice written to the lead is not served to the person it is about', (
     expect(out[0].remitDefined).toBe(false);
   });
 
+  it('and what is said plainly about her own work stays ("Your responsibilities are staying with you")', () => {
+    const out = coverageWithoutTheLeadsAdvice({ scope: 'role', reads: [{ participantId: 'p1', reason: 'SHARED_BY_DESIGN', reasonText: 'Your responsibilities are staying with you.' }] });
+    expect(out.reads[0].reasonText).toBe('Your responsibilities are staying with you.');
+  });
+
   it.each([
     classifyCoverageReason({ kind: 'STABLE' as any, isBlocked: false, remitDefined: false, ownVoiceClaimsDelegation: false, risingPeriods: 0 }),
     classifyCoverageReason({ kind: 'ABSORBING' as any, isBlocked: false, remitDefined: true, ownVoiceClaimsDelegation: false, risingPeriods: 0 }),
