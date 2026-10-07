@@ -1148,9 +1148,19 @@ export function GroundAdminPage() {
   /* Counted once, and out here, so the row's own label does not have to reach into the record. */
   const settingsChangeCount = ((ground as any)?.settingsChanges?.length ?? 0) as number
 
-  const mySessionsDone = ((ground?.checkIns ?? []) as any[]).filter(
-    (c) => c.status === 'COMPLETED' && (ground?.participants ?? []).some((p: any) => p.id === c.participantId && p.userId === user?.id),
-  ).length
+  /*
+   * B-012: counting rows, not sessions, read "9 of 6 sessions are done" - a self-correction adds a
+   * second COMPLETED row for the same session number (the dots below already know this; `done` and
+   * `corrected` are both a completed row for one session), so a session answered once and then
+   * corrected was being counted twice. Counting the distinct session numbers fixes it, and
+   * `yourSessionsSentence` also clamps to the planned total so this can never again read more done
+   * than the check-in has.
+   */
+  const mySessionsDone = new Set(
+    ((ground?.checkIns ?? []) as any[])
+      .filter((c) => c.status === 'COMPLETED' && (ground?.participants ?? []).some((p: any) => p.id === c.participantId && p.userId === user?.id))
+      .map((c) => c.sessionNumber ?? 0),
+  ).size
   /* One dot per session of mine. The same read the party's page makes - the two views of a check-in
      have to move together, which is what the-two-views-are-a-pair protects. */
   const mySessionDots = ((ground?.checkIns ?? []) as any[])
