@@ -48,7 +48,13 @@ export function PaymentPage() {
   })
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 20px' }}>
+    /* B-045: `justifyContent: 'center'` on a `minHeight: '100vh'` column centred this page's own
+       content vertically in the whole viewport, leaving an empty band of roughly 300px above
+       "Back" and the heading - every other page in the audit starts at the same height, near the
+       top. `flex-start` with the same 48px top padding PricingPage already uses for its own
+       centred column removes the band without changing how this page looks once its content is
+       on screen. */
+    <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', padding: '48px 20px' }}>
       <div style={{ width: '100%', maxWidth: 400 }}>
 
         <button type="button" style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 20, cursor: 'pointer' }} onClick={() => navigate(-1)}>Back</button>
