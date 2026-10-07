@@ -117,7 +117,7 @@ import {
 } from './a-colleague-in-an-interview-has-a-name';
 import { buildDeliveriesBlock } from './what-they-say-they-delivered';
 import { buildNotesBlock } from './between-session-notes';
-import { closeReadiness, askedToFinish } from './close-readiness';
+import { closeReadiness, askedToFinish, isTheWordFinish, tooFewAnswersToFinish, NOT_ENOUGH_YET_TO_FINISH_HERE } from './close-readiness';
 import { observeStyle, mergeStyle, styleGuidance, simplerWordsGuidance } from './person-style';
 import { readOutcome, isGenericStep } from './coaching-step';
 import { theBehavioursAnybodyCanBeRead, universalSignalRead } from '../board/a-role-nobody-mapped-is-still-a-person';
@@ -1808,6 +1808,11 @@ export class ConversationService {
        * there-is-a-ceiling-and-it-is-not-a-surprise.ts.
        */
       throw new BadRequestException({ message: theCeilingIsReached(), canFinish: true });
+    }
+    /* The word "finish" on its own, before there is enough to finish with, is a command and not an answer: one plain sentence, as on WhatsApp, and nothing is kept (user journeys, F-10). */
+    if (isTheWordFinish(message)) {
+      const scenarioHere = (await (this.prisma as any).ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { scenario: true } })?.catch?.(() => null))?.scenario ?? null;
+      if (tooFewAnswersToFinish(personTurnCount, !!(checkIn as any).isSelfCorrection, scenarioHere)) return { reply: NOT_ENOUGH_YET_TO_FINISH_HERE, sessionComplete: false };
     }
 
     const composedBefore = await this.composeSystemPrompt(checkIn, message);

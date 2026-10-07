@@ -445,6 +445,18 @@ export function ChatPage() {
   /* The end card's parts that only the engine can write, sent with the reply that closes the
      conversation (request 7). Null until it does; the card shows what is there. */
   const [endCard, setEndCard] = useState<TheEndCardData | null>(null)
+  /* Whether the card is still being written. It takes ten to forty seconds after the goodbye, so the screen waits for it instead of showing a card with nothing in it (user journeys, F-10). */
+  const [cardIsBeingWritten, setCardIsBeingWritten] = useState(false)
+  useEffect(() => {
+    if (!done || completed || declined || endCard || !checkInId) return
+    let stillHere = true
+    setCardIsBeingWritten(true)
+    Promise.resolve(conversationApi.endCard?.(checkInId))
+      .then((c) => { if (stillHere && c) setEndCard(c) })
+      .catch(() => { /* No card stands: finishing reads the record, as it always did. */ })
+      .finally(() => { if (stillHere) setCardIsBeingWritten(false) })
+    return () => { stillHere = false }
+  }, [done, completed, declined, endCard, checkInId])
   /*
    * THE DONE PAGE (done.txt) replaces the conversation the moment somebody finishes here. A check-in
    * finished earlier and opened again still shows its conversation and its report, as before.
@@ -1537,6 +1549,7 @@ export function ChatPage() {
           {done && !completed && !declined && (
             <TheEndCard
               engine={endCard}
+              beingWritten={cardIsBeingWritten}
               leadName={whoElseAnswers(ground.data as any)}
               nextOpens={whenTheNextOneOpens(myStatus.data?.checkIns, checkInId)}
               othersCanSeeWhatYouSay={(ground.data as any)?.aTeamReportComes}

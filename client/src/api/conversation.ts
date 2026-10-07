@@ -110,6 +110,9 @@ export const conversationApi = {
 
   transcript: (checkInId: string) =>
     apiClient.get<TranscriptResponse>(`/check-ins/${checkInId}/transcript`).then(r => r.data),
+  /** The end card, waited for on the server for as long as it is being built (up to about a minute). Null when no card stands. */
+  endCard: (checkInId: string) =>
+    apiClient.get<{ endCard: TheEndCard | null }>(`/check-ins/${checkInId}/end-card`, { timeout: 70_000 }).then(r => r.data?.endCard ?? null),
 
   artifact: (checkInId: string) =>
     apiClient.get(`/check-ins/${checkInId}/artifact`, { skipNotFoundToast: true }).then(r => r.data),
