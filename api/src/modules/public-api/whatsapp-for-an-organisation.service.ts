@@ -280,7 +280,9 @@ export class WhatsAppForAnOrganisationService {
         if (target) {
           await this.remember(organizationId, from, target.id);
           const opened = await this.openIfWaiting(target, userId!);
-          await say(opened ? `${sessionHeader(target)} ${THE_WORDS(ask)}\n\n${opened}` : BACK_IN(target));
+          /* Back in a check-in already begun: the question that was waiting is asked again (B-146), not left for her to remember. */
+          const waiting = opened ? null : await this.theQuestionStillWaiting(target.id, userId!);
+          await say(opened ? `${sessionHeader(target)} ${THE_WORDS(ask)}\n\n${opened}` : waiting ? `${BACK_IN(target)}\n\n${waiting}` : BACK_IN(target));
           return;
         }
         if (open.length > 1) {
@@ -845,6 +847,18 @@ export class WhatsAppForAnOrganisationService {
       create: { organizationId, phone, pickPendingAt: new Date() },
       update: { pickPendingAt: new Date() },
     }).catch(() => undefined);
+  }
+
+  /** The last thing asked in this check-in, when it is still waiting for an answer; null otherwise. Her own check-in, read as her. */
+  private async theQuestionStillWaiting(checkInId: string, userId: string): Promise<string | null> {
+    try {
+      const t: any = await this.conversation.getTranscript?.(checkInId, userId);
+      const turns: { role: string; content: string }[] = Array.isArray(t?.turns) ? t.turns : [];
+      const last = turns[turns.length - 1];
+      return last && last.role === 'AI' && last.content?.trim() ? last.content.trim() : null;
+    } catch {
+      return null;
+    }
   }
 
   private async openIfWaiting(c: AnOpenCheckIn, userId: string): Promise<string | null> {
