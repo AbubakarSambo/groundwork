@@ -379,6 +379,8 @@ const RULES = [
     /\bwho\s+is\s+waiting\s+on\s+me\b/i,
     /\bwhat'?s?\s+(?:blocked|stuck|held\s+up)\b/i,
     /\bwhat\s+is\s+(?:blocked|stuck)\b/i,
+    /* "Who is blocked right now?" is about handoffs, not a person called "blocked right now" (B-135). */
+    /\bwho(?:'s|\s+is|\s+are)\s+(?:blocked|stuck|held\s+up|waiting)\b/i,
   ]),
   rule('who_is', [
     /\bwho(?:'s| is)\s+(.+?)\s*\??$/i,

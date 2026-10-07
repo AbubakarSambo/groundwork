@@ -18,3 +18,13 @@ describe('what Ask says a lead can ask', () => {
     expect(route('what is stuck').lane).toBe('what_is_stuck');
   });
 });
+
+/** B-135: 'Who is blocked right now?' was answered 'You do not have anyone called "blocked right now"'. */
+describe('who is blocked', () => {
+  it.each(['Who is blocked right now?', "who's stuck", 'Who is waiting on me'])('%s is a question about handoffs', (t) => {
+    expect(route(t).lane).toBe('what_is_stuck');
+  });
+  it('a real name is still a person', () => {
+    expect(route('who is Amani').lane).toBe('who_is');
+  });
+});
