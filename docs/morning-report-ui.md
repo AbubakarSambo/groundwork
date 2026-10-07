@@ -7979,3 +7979,31 @@ All 503 board and privacy tests pass. On the running product, a participant neve
 - The board's one-off classes were not yet replaced. The review will list them, and the fixes will do it.
 
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
+
+## Three things live could do that ours could not, restored, and B-050 fixed (8 October 2026)
+
+`docs/nothing-removed-screens.md`'s first table named three things the audit found removed with no
+decision, the API still supporting each. All three are restored, each in the prototype's design and
+wording, each with a test that failed before and passes after, each pictured at 1440 and 390 against
+the real local client and API:
+
+- **Your notes for your next check-in**, listed under "Waiting for your next check-in" with a way to
+  delete one, with a confirm step ("Delete this note?" / "Yes, delete it" / "Keep it") rather than
+  live's one-click delete. Only the viewer's own notes, ever. `c1f6cab5`.
+- **The day check-ins land on**, at setup: a weekday picker for a weekly or fortnightly rhythm, a day
+  of the month for a monthly one, in `TheSetup.tsx`'s "How often" section. **Not restored on an
+  existing check-in**: `PATCH /grounds/:id` does not accept `cadenceAnchorDay` and would refuse it
+  outright, and `GET /grounds/:id` does not appear to serve the field either - request 194.
+  `0be58c81`, `7a8f2ff5`.
+- **A name for the Slack or Teams channel**, when connecting it on `/settings/connections`, sent only
+  when typed so an existing caller is unchanged. `b654f2bf`.
+
+Also fixed, from the bug log: **B-050**, `/org-new?naming=1` said "Create an organisation", "You'll
+be its owner" and "Create it" for a step that only names an organisation the server had already made
+for a new Google sign-up. It now says "Your organisation is ready", "What should it be called?" and
+"Save the name". Proven in `OrgNewPage.spec.tsx` and in the real end-to-end sweep,
+`e2e/sweep/google-sign-in.spec.ts`, run against the real local client and API. `01bb27da`.
+
+All three restorations and the fix are marked in `docs/nothing-removed-screens.md` and
+`docs/bug-log-screens.md`. `client/`: `npx tsc --noEmit -p .` is clean and the full `npx vitest run`
+is green, 712 files and 4,723 tests (up from 4,710, the new tests this work added).
