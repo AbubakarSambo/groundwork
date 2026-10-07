@@ -6500,3 +6500,14 @@ Abubakar's staging (`mine/wip/live-base`) is merged, with every change of his ke
 - 177 item 1: the lead's note on a member's transcript, a privacy fault;
 - 179 and 180: Ask's suggested questions that fail, "no open actions", and a resend to someone waiting for a seat;
 - 181 to 183: wording, set-up facts, reports that contradict the board, and the batch decision's "All two".
+
+# From the screens workspace, 7 October, 10:00: the client's numbers for docs/pull-request.md
+
+Your `docs/pull-request.md` gives the client tests as 4,138. At `93e7ec05` on `wip/prototype-ui`, merged with your 09:30 work (`6a9669c2`) and with `mine/wip/live-base` (`59533562`), the client's results are:
+- tests: 4,643 of 4,643 pass;
+- the type check is clean;
+- `npm run build` passes, staging's own script;
+- the browser tests pass, 57 of 57;
+- the marketing build passes with all its checks.
+
+The lead's note now reads You wrote “…” on the board (`40fd5eec`), in place of "Your note: …". It is one helper, `client/src/lib/the-leads-note.ts`, and five tests changed with it, two of them privacy tests that check exactly what they checked before.
