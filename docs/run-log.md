@@ -1137,3 +1137,107 @@ For each of the six kinds, with the person who stops halfway and another who is 
 - Kept in the app: nothing reaches the phone (run 7 and the spec).
 
 Also fixed: the script's start-up check ("nothing is set") failed on a reused copy; this run used a fresh one and it passed.
+
+## User journeys for the client's core use cases, on the merged code (7 October)
+
+Built from `59331ee6` (`wip/release`, merged with the screens and staging), in a fresh worktree with its own `npm ci`, a new database (`gw_journeys_oct7`, migrations applied from nothing), the API on port 3091 and the client on 5193. Mail stayed in the local catcher on 127.0.0.1:1025 (`EMAIL_SENDS_FOR_REAL=false`). WhatsApp went through the signed local webhook to a local recorder, with test secrets only. The model was the repo's own local Gemini setup, and it answered in every journey, so no journey was cut short for want of the model. Nothing was changed in the code, the tests, the scorer or the baseline. The 24-scenario run (port 3084, `gw_run_full3`) was not touched.
+
+Setup notes: the in-repo browser journeys have the address `localhost:5173` written into them, so in the scratch copy only I changed that to 5193 (not committed). One WhatsApp run on a second database (`gw_journeys_wa2`, port 3092) needed the free plan's 10-check-in limit raised and a display number set, because the script makes more than 10 check-ins in one organisation. `docs/prototype/` is not in git, so the prototype-button test could only run after copying it in.
+
+### What ran
+
+| Run | Result |
+| --- | --- |
+| `user-journeys.ts` (the nine journeys through the API, as Grace, Wairimu, Amani, Baraka) | 125 of 130 checks passed. Two of the five are the script's own stale expectations (port 5173; the old sign-in sentence). Two ask about words that changed (F-12, F-24) and one is the Green Mart commitment (F-24). |
+| Browser journeys 1 to 4 (`e2e/journey-1…4`, Chromium) | 4 of 4 passed. |
+| My own browser walks of every screen as admin, lead and team member (about 110 page readings, written to the scratchpad, `keep/walk*`) | read and judged below. |
+| `whatsapp-journeys.ts` (every client journey on WhatsApp, signed messages) | 230 of 232 passed on the second database. Two failed, see F-19 and F-20. The first run on `gw_journeys_oct7` stopped at the free-plan limit after 158 passes. |
+| `whatsapp-an-organisations-own-number.ts` | 32 of 32 passed. |
+| `a-guest-asks-only-about-their-own-check-in.ts` (decision 36) | 34 of 34 passed. |
+| `existing-clients-compare.ts` on a fresh, migrated copy of `gw_existing_6oct_a` | 192 check-ins read, old and new code. 18 FAULT lines (all one cause, F-21). 0 LEAK, 0 ASK. 15 WHERE lines. 4,499 of 54,480 old sentences have no place now (931 not explained). Wording: worse in nothing. |
+| `existing-clients-check.ts` on the same copy | 200 check-ins, 1,152 reads: 1,095 served, 57 refused on purpose, 0 failed, 0 tried to write. 0 FAULT, 0 LEAK. 21 SCHEDULE lines (sessions finished with no next session, all from 28 August to 8 September, none picked up by the nightly jobs, as on the live main line). |
+| API tests (`npx jest`, 2 workers) | 1,822 of 1,824 suites passed, 2 skipped (the live journeys); 17,928 tests passed, 4 failed, 10 skipped. Failures: F-22. |
+| Client tests (`npx vitest run`) | 692 of 692 files passed; 4,587 tests passed, 6 skipped. |
+| Typecheck | `npx tsc -b` in client: clean. `npx tsc --noEmit` in api: clean. |
+| Other browser tests | `the-page-is-cream` 4 of 4 passed. `nothing-overlaps-at-in-between-widths` 1024x768 passed, 1280x800 failed (F-23). `the-prototype-count-of-buttons` 30 passed, 21 failed with "page shows less than 300 characters": not trusted, because it expects a seeded world of every kind of board and this database is clean. |
+
+### The journeys, as each person (pass means a person would be content reading it)
+
+**Admin (Grace)**
+
+| Journey | Result | What was read |
+| --- | --- | --- |
+| Sign up | Pass | "Check your email for your sign-in link." Then the first screen as the owner. |
+| Add people | Pass | The invitation mail says "added you to their Groundwork workspace" (see F-28). Njeri set a password and arrived on "You are in. You have no check-ins yet." |
+| Set who can start check-ins | Pass | People page offers "Only the people you name", "Anybody signed in here", "Check-ins wait for an admin". |
+| Approve a check-in | Fail | Through the API she approves. On the screen nothing ever waited for her (F-8). |
+| Plan and billing, defaults | Pass with a note | No trial and no WhatsApp add-on are shown: both are off at release (`pricing.freeTrial` off, `release.planAndBillingNewParts` off). |
+| Plan and billing, trial and add-on switched on | Pass | "Small Team, free until 7 November 2026. 1 of 20 people." "WhatsApp costs $72 a month on your Small Team plan." "Your free trial lasts 1 month. Nothing is charged for WhatsApp until it ends." Switch on: "Your organisation has sent 0 of its 2,000 WhatsApp messages this month." Wording "account" appears (F-16). |
+| Back office WhatsApp (/admin/whatsapp) | Pass | Asks first for a six-digit code by email, then reads plainly: "Is it connected? Not connected. Groundwork could not reach Meta just now." (true on this computer). |
+| Approve leave and a spending request | Pass | Reads "Amani Wekesa, Tue 20 to Thu 22 Oct" and "Baraka: KES 12,000 for fuel for the delivery van"; approves; the person reads "approved by Grace Achieng". |
+| Company page | Pass | "4 people work here, and there was 1 check-in this week." |
+| Ask (every starter) | Pass | Two starters. Answers are plain. |
+
+**Lead (Wairimu)**
+
+| Journey | Result | What was read |
+| --- | --- | --- |
+| Sales check-in from a pasted plan | Pass with faults | Reads the plan back, asks for a yes to each card. Then F-1 to F-5. |
+| Onboarding check-in | Pass with faults | F-3, F-6. |
+| Project check-in | Pass with faults | F-3, F-7. |
+| Invite people | Pass with a fault | F-7. |
+| Read the board and the reports | Fail | F-2 and F-4 are on the board itself. |
+| Daily summary (WhatsApp) | Pass | "Good morning Wairimu. Here is today's summary of your check-ins. In "Sales team, Q4", 1 of 4 people has checked in, and you, Amani and Baraka have not yet. Amani's leave … is waiting for you to approve or decline." The script still expects the old wording (F-20). |
+| Ask | Fail | F-5, F-14. |
+| Approve leave and a finance request | Pass | Through WhatsApp: "You are approving Baraka's request to spend KES 12,000 for fuel for the delivery van. Is that right?" then approved and the person told. On the screen the lead's own boards read "Nothing is waiting" because the admin decides. |
+| Performance review | Pass | "Ready to start." No score. The person reads her own review and cannot be shown how answers were rated. |
+| Company page | Pass | |
+
+**Team member (Amani, Baraka, Njeri)**
+
+| Journey | Result | What was read |
+| --- | --- | --- |
+| Join | Pass | Invitation, choose a password, in. |
+| Check in on WhatsApp | Pass | 16 kinds of check-in to the end; "finish" with too little: "I need a little more from you before this check-in can close. Please answer one or two more questions, then write "finish" again." |
+| Check in in the app | Pass with faults | F-9, F-10, F-11. |
+| Finish | Fail | F-10. |
+| Read their own report | Pass | "Your report is still being written. Your answers are saved…" then the report; nobody else can open it (checked as Baraka and Wairimu). |
+| Ask for leave and spending inside a check-in | Fail in the app, pass on WhatsApp | F-9. On WhatsApp: "Shall I treat this as a leave request?", then said back, then sent. |
+| Ask for leave and spending in Ask | Pass | Said back with the days and the sum, sent only after a yes. |
+| Use Ask (every starter) | Pass with faults | Five starters. F-12, F-13, F-15. |
+
+Privacy: nothing private crossed between people in any run. Amani was refused Baraka's words; Wairimu, Grace and Baraka were refused Amani's own report and her questions; the guest saw only his own check-in; no lead was shown how answers were rated; no label sits on any person.
+
+### Failures to fix (who, where, what they read, what they should read, likely file)
+
+| # | Who, where | What they read | What they should read | Likely file |
+| --- | --- | --- | --- | --- |
+| F-1 | Lead and admin, "What this check-in is for" on the Context tab, and the lead's Ask answer "What is my check-in for…" | "Sales team performance against target … When asked who is part of this, the answer was taken to mean this. The sales team. When asked why this matters now, the answer was taken to mean this. …" | A plain description with no mention of questions and answers. | `api/src/modules/grounds/what-a-participant-is-told-about-this.ts` (and where the brief is stored from `entry.service.ts`) |
+| F-2 | Lead and admin, board and settings | The lead said weekly for twelve weeks. Reads "Every month. 12 sessions in total." "7 October to 7 September. 334 days left." The Context chat asks "This check-in runs for 360 days. How often should people check in?" | Weekly, twelve sessions, ending in about three months, and no question she already answered. | `api/src/modules/entry/entry.service.ts` (cadence and length on commit) |
+| F-3 | Lead, setup and every list | She said "Call it Sales team, last quarter", "New starter onboarding", "Website relaunch", "Weekly pulse". The setup shows "A name" still empty, and the check-ins are named "Keep a read on live work", "Help a new hire get started", "Get a new project off to a good start", "Keep a read on live work, from 7 October". Two check-ins end up with nearly the same name. | The name she gave. | `api/src/modules/entry/entry.service.ts` and the entry chat's slots |
+| F-4 | Lead and admin, board | Plan said "Credit must stay under 35% of sales". Reads "Will we keep credit of sales within 35 by 7 September 2027?", "0 of 35", and "35 more are needed by 7 September 2027. There is 1 open deal on record… Each open deal is counted as one toward the aim of 35." | A limit of 35 per cent, with no count of deals, and the date from the plan (the end of December). | the board's target and gap text (`api/src/modules/board/`) and how a limit is read from a plan |
+| F-5 | Lead, Today, board, You, Ask | After she answered and saved during setup: "Wairimu has not checked in", Today asks "Your first check-in for … Start it", and Ask "What did I say I would do?" says "You have not said you will do anything that is still waiting", while You lists "Settle the 21 day credit rule with finance by the end of October." | Her setup answers count as her first check-in everywhere, and Ask lists her promise. | the entry commit in `entry.service.ts`; the promises answer from commit `1c2080d9` in `api/src/modules/ask/` |
+| F-6 | Lead, onboarding setup | "The next screen will ask who gives the accounts." The new starter she named with an email is not added, and she, the lead, is offered "Add them" beside her own name. In the first run her own first question called her the new starter ("Wairimu Njoroge needs a laptop… for Njoroge?"). | No "accounts"; the starter offered to add; the lead not offered herself. | `api/src/modules/entry/entry.service.ts` |
+| F-7 | Lead, People and setup; admin, People | Somebody already in the organisation, added by email, reads as their email address ("amani.wekesa@…") or "Somebody invited by email" / "A colleague" on the board. | The person's name. | `client/src/components/gw/RolesInThisCheckIn.tsx`, `client/src/lib/utils.ts`, `GroundAdminPage.tsx`; the roster behind them |
+| F-8 | Admin and lead | Organisation set to "Each new check-in waits for an admin before invitations go out". The lead set up three check-ins on the screen: all went live (status `AWAITING_PARTIES`), invitations went out, Njeri joined, and the admin read "Nothing needs you right now." The same lead through `POST /grounds` does wait. | The check-in waits for Grace, and she is told. | `api/src/modules/entry/entry.service.ts` (~2173 to 2200, `mayOpen(...)` is asked but `answer.waits` is never used; compare `grounds.service.ts:706`) |
+| F-9 | Team member, in a project check-in (not an anchor one) | "I would also like leave on 27 and 28 October, please." gets the next question. "Yes, send it." is taken as an answer. Nothing is sent and nothing tells her to use Ask. The leave sentence stays under "What is still open for you". "I need to spend KES 5,000 on printing the launch flyers." becomes a goal on her You page: "You need to spend KES 5,000 on printing the launch flyers. You have 0 of 5,000." | The offer to send it (as on WhatsApp and in anchor check-ins), and no goal made from a request. | `api/src/modules/conversation/a-request-offered-in-the-check-in.ts` (only offered in an anchor check-in), the goal extraction |
+| F-10 | Team member, ending in the app | Typing "finish" after two answers is read as an answer ("What would tell you this project is "finished", and by when?"). With enough answers: "That’s all for today. Below is what I wrote down from your answers. Is anything wrong?" followed by "1. Why answering matters 2. What happens next", not her answers, and a second button to press. | One plain sentence when it is too early (as on WhatsApp) and her own answers under "what I wrote down". | `api/src/modules/conversation/the-close-says-what-comes-next.ts` and the finish handling |
+| F-11 | Team member, suggested replies in a check-in | "I asked ... to chase them.", "I need to ask ... for them.", "Still stuck on ..." | Complete sentences. | the suggested-replies prompt in `api/src/modules/prompts/` |
+| F-12 | Team member, Ask, before the team's report is shared | "What did Baraka say about the warehouse?" reads "I cannot show you Baraka Mutua's words from their check-in of 7 October on Sales team, last quarter. This person has answered, and nothing specific enough to record came out of it. This is from Baraka Mutua's check-in of 7 October on Sales team, last quarter." (untrue, and said twice) | "Baraka's words open to you when the team's report is shared." | `api/src/modules/ask/` (the refusal for a colleague's words) |
+| F-13 | Team member, Ask | "What did I say about the Green Mart proposal?" reads "You have not mentioned the Green Mart proposal before." She did, and her own report holds it. | What she said. | `api/src/modules/ask/` retrieval of the asker's own words |
+| F-14 | Lead, Ask | "Where are we on the quarter?" and "How is the team doing?" read the same answer, with "All three people have answered." twice in one paragraph. | One answer each, each sentence once. | `api/src/modules/ask/` board and report summary |
+| F-15 | Team member, Ask and You | "- I will send it (you said by Friday…)" and, on You, "Send it" beside "Send it by Friday now that I have the new name." Also "KES for the quarter. You have 0 of 4.5 million." | The whole promise, once, and a goal named for what it is. | the commitment and goal text extraction |
+| F-16 | Admin, Plan and billing; admin, check-in settings; back office | "Everyone with a Groundwork account at … counts. Guests without an account do not." "The report can show where accounts differ…" | No "account" in what a person reads. | `client/src/pages/billing/what-plan-and-billing-says.ts` and the settings sentence |
+| F-17 | Admin, Plan and billing at release defaults | No trial and no WhatsApp add-on shown. | Confirm with Hafsah that this is meant (it is hidden by `release.planAndBillingNewParts` and `pricing.freeTrial`). | `api/src/modules/admin/what-is-hidden-at-release.ts` |
+| F-18 | Participant, any setup chat that says "1 of 3 person has checked in" | "1 of 3 person has checked in for session 1." | "1 of 3 people has checked in" (or "One of three people has…"). | the settings tab sentence (`GroundAdminPage.tsx` or its server text) |
+| F-19 | Person with two check-ins opening at once, on WhatsApp | Two messages in a row, each starting "This is Groundwork, writing for Kito Foods … Not you? Reply STOP." | The introduction and the STOP line once; the second is the ordinary notice. | `api/src/modules/whatsapp/the-first-message-to-a-number.ts` |
+| F-20 | Script, not product | `whatsapp-journeys-steps.ts:208` still expects "Here's today's summary of your check-ins: " and "people have checked in". The product now says "Here is today's summary of your check-ins." and "1 of 4 people has checked in". | Update the script's expected wording (a person judges the new wording; it reads well). | `api/journey/whatsapp-journeys-steps.ts` |
+| F-21 | Existing clients, participants of 3 Tea Co check-ins | 18 FAULT lines: the board, the report and the check-in page were served to a participant before and are refused now: "This check-in cannot start for you yet, because there is no seat for you on the plan. You will get your invitation as soon as there is one." The copy holds 76 people marked as waiting for a seat (64 in Tea Co, 10 in Northwind). | Hafsah to decide: either those people keep the access they had, or they are told why. This is the rule from decision 93 meeting old data. | `api/src/modules/participants/held-for-a-seat.ts` |
+| F-22 | API tests | `journey/bring-a-check-in-up-to-date.spec.ts` ("on Sales team, Q3"): expects "Twelve signed supply contracts with shops is what success looks like, and …" but the fixture now says "Success means twelve signed supply contracts with shops, and …". `src/modules/grounds/request-122-2-today-gives-the-day-the-board-gives.spec.ts` (3 tests): date-bound, because today is 7 October, the very day the fixtures use, so "The third check-in … opens" no longer appears. | The first needs the expected line updated to the fixture's new words, with the reason. The second needs a fixed clock. | those two spec files |
+| F-23 | Admin, People page at 1280x800 | The status tag "Signed in, not on a check-in" overlaps the word "None" in the check-ins column. | No overlap. | `client/src/pages/org/OrgMembersPage.tsx` |
+| F-24 | Script, `user-journeys.ts` | Five checks fail: the link regex hard-codes port 5173, "the same sentence" expects "If an account with that email exists, a sign-in link has been sent." (the product says "We have sent a sign-in link to that address, if we know it. Check your email.", so the script is stale), and two Ask checks expect the old "opens to you when the report is released" and "4 October" (see F-12). The fifth, Amani's Green Mart commitment, was not stored on one run (only Baraka's was): possibly the model, possibly F-5-type extraction. | Update the stale expectations; re-run the commitment check three times. | `api/journey/user-journeys-steps.ts` |
+| F-25 | WhatsApp, slowest webhook call | The message "Hi" took 65.5 seconds to answer. Meta redelivers a message that is not answered in time. | A fast 200, with the reply sent after. | `api/src/modules/whatsapp/` webhook handling |
+| F-26 | Participant and admin, invitation mail | "added you to their Groundwork workspace." | Plain wording (the organisation's name and "Groundwork"). | `api/src/modules/email/` |
+| F-27 | Admin, lead, Today and suite pages | A heading "Your own leave and spending requests" appears with nothing under it, on Today and at the foot of the suite pages. Seen in the page text only; check on screen. | No empty heading. | `client/src/pages/today/TodayPage.tsx` |
+
+Not fixable here, only noted: the screens' own button-count test needs a seeded world and `docs/prototype/` (ignored by git); the 24-scenario run is the other workspace's.
