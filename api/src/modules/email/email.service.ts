@@ -1298,7 +1298,8 @@ export class EmailService implements OnModuleInit {
       REALIGN_TEAM: 'Your team realignment check-in is open',
       PIP: 'Your performance plan check-in is waiting',
     };
-    const subject = (scenario && subjectMap[scenario]) || 'Your check-in is waiting';
+    /* Said with the check-in's name, so four waiting check-ins are four different subjects (B-145). */
+    const subject = (scenario && subjectMap[scenario]) || `Your check-in for ${groundLabel} is waiting`;
     const otherPartyNote = otherPartyCompleted
       ? `<p><strong>${words.theOtherHasAnswered}</strong></p>`
       : '';
