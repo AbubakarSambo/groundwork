@@ -62,8 +62,10 @@ describe('the setup, as the lead reads it', () => {
   it('says which days the check-ins open, as the prototype does', () => {
     render(<Harness start="2026-07-01" end="2026-09-30" cadence="DAILY" chosen days={[1, 2, 3, 4, 5]} />)
     /* The prototype's sample says 65; counted for real, 1 July to 30 September 2026 has 66 weekdays
-       (23 in July, 21 in August, 22 in September). The sentence is the prototype's; the number is true. */
-    expect(screen.getByText('Check-ins open on Wed 1 July, Thu 2, Fri 3, Mon 6, Tue 7 and on from there, until 30 September: 66 in all.')).toBeTruthy()
+       (23 in July, 21 in August, 22 in September). The sentence is the prototype's; the number is true.
+       SCREEN FAULT 10 (FINAL WALK): "until 30 September: 66 in all." joined two pieces with a colon
+       and never said what was counted - now "until 30 September, 66 sessions in all.". */
+    expect(screen.getByText('Check-ins open on Wed 1 July, Thu 2, Fri 3, Mon 6, Tue 7 and on from there, until 30 September, 66 sessions in all.')).toBeTruthy()
     expect(screen.queryByText(/Not set yet/)).toBeNull()
   })
 
@@ -103,11 +105,12 @@ describe('counting the days (U.6 review)', () => {
     const now = whenTheyOpen({ cadence: 'DAILY', anchorDay: null, startsOn: '', endsOn: '2026-07-10', workingDays: [], today: afternoon })
     const onTheDate = whenTheyOpen({ cadence: 'DAILY', anchorDay: null, startsOn: '2026-06-30', endsOn: '2026-07-10', workingDays: [], today: afternoon })
     expect(now).toBe(onTheDate)
-    expect(now).toMatch(/: 11 in all\.$/)
+    /* Screen fault 10 (final walk): a comma, not a colon, and "sessions" said plainly. */
+    expect(now).toMatch(/, 11 sessions in all\.$/)
   })
   it('and a weekly run keeps its last day', () => {
     expect(whenTheyOpen({ cadence: 'WEEKLY', anchorDay: null, startsOn: '', endsOn: '2026-07-21', workingDays: [], today: afternoon }))
-      .toBe('Check-ins open on Tue 30 June, Tue 7 July, Tue 14 and Tue 21: 4 in all.')
+      .toBe('Check-ins open on Tue 30 June, Tue 7 July, Tue 14 and Tue 21, 4 sessions in all.')
   })
 })
 
@@ -142,6 +145,6 @@ describe('the chosen end, as the server will keep it (U.6 review)', () => {
      so the check-in's header, its Setup and its invitation say the same. */
   it('weekly from Sunday 27 September until 6 November is 6 check-ins', () => {
     expect(whenTheyOpen({ cadence: 'WEEKLY', anchorDay: null, startsOn: '2026-09-27', endsOn: '2026-11-06', workingDays: [], today: new Date(2026, 8, 27) }))
-      .toBe('Check-ins open on Sun 27 September, Sun 4 October, Sun 11, Sun 18, Sun 25 and on from there, until 6 November: 6 in all.')
+      .toBe('Check-ins open on Sun 27 September, Sun 4 October, Sun 11, Sun 18, Sun 25 and on from there, until 6 November, 6 sessions in all.')
   })
 })

@@ -3410,14 +3410,16 @@ export function EntryChatPage() {
       )}
 
       {/* Phase stepper: makes which phase you are in legible at a glance.
-          1 Describe the situation -> 2 Your check-in (or Hand-off) -> 3 Save & invite. */}
+          1 Describe the situation -> 2 Your check-in (or Hand-off) -> 3 Save and invite. */}
       {!atTheDoor && phase !== 'onboarding' && (() => {
         /* Both answers at the fork lead into the same first check-in, so the step bar is the same for both. */
         const step = closed || showSave ? 3 : 2
         /* "Hand-off to your lead" named a step that no longer exists - handing the context to
            somebody else was removed on 7 September. Somebody who picks "I set this check-in up only"
-           was being promised a hand-off screen they would never reach. */
-        const labels = ['What is going on', 'Your check-in', 'Save & invite']
+           was being promised a hand-off screen they would never reach.
+           SCREEN FAULT 10 (FINAL WALK): "Save & invite" became "Save and invite" - "&" is a symbol
+           standing in for a word, and the wording rule is plain full sentences. */
+        const labels = ['What is going on', 'Your check-in', 'Save and invite']
         const hints = [
           "You are telling us what is going on. Nothing is saved yet.",
           "You're saying how you see it.",
@@ -4796,7 +4798,15 @@ export function EntryChatPage() {
       {showEndConfirm && (
         <Modal title="End this session?" onClose={() => setShowEndConfirm(false)}>
           <Note>
-            Your answers are saved on this device. Ending this session generates your report, and this session's answers then lock.
+            {/*
+              SCREEN FAULT 10 (FINAL WALK): "YOUR ANSWERS ARE SAVED ON THIS DEVICE" TOLD A SIGNED-IN
+              LEAD SOMETHING FALSE. That sentence describes the anonymous draft kept in this
+              browser before anybody has an account - once signed in, the answers are saved on the
+              server against their account, not this device, and closing this tab loses nothing.
+            */}
+            {user
+              ? "Ending this session generates your report, and this session's answers then lock."
+              : "Your answers are saved on this device. Ending this session generates your report, and this session's answers then lock."}
           </Note>
           <Note>
             Once you save the record below, you can revisit and correct it any time from your report. The shared report releases once all parties have checked in.

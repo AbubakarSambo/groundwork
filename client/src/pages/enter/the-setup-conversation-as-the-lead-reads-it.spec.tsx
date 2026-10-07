@@ -75,8 +75,9 @@ describe('the setup shows what will be saved (U.6 review)', () => {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/start']}><EntryChatPage /></MemoryRouter></QueryClientProvider>)
     expect(await screen.findByText('Not set yet. This will run every week unless you pick one.')).toBeTruthy()
-    /* 90 days, weekly: 12 check-ins, as the server keeps them, and the end date goes with the save. */
-    await waitFor(() => expect(document.body.textContent).toMatch(/: 12 in all\./))
+    /* 90 days, weekly: 12 check-ins, as the server keeps them, and the end date goes with the save.
+       Screen fault 10 (final walk): a comma, not a colon, and "sessions" said plainly. */
+    await waitFor(() => expect(document.body.textContent).toMatch(/, 12 sessions in all\./))
     expect(document.body.textContent).not.toContain('every 2 weeks unless')
   })
 })
