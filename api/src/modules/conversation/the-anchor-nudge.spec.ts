@@ -28,7 +28,7 @@ function anchor(on = true, startedFrom: string | null = 'anchor'): Setup {
   return {
     people: PEOPLE, checkIns, commitments, dependencies: [], groundRow: { startedFrom, startsAt: OPENED },
     prismaExtras: {
-      platformSetting: { findUnique: jest.fn(async () => (on ? { value: { on: true } } : null)) },
+      platformSetting: { findUnique: jest.fn(async () => (on ? { value: { on: true } } : { value: { on: false } })) },
       groundDependency: { findMany: jest.fn(async () => []) },
       recommendation: { findMany: jest.fn(async () => []) },
       checkIn: {
@@ -66,7 +66,7 @@ describe('the nudge, as each reader is served it in the app', () => {
 
 describe('the line, by email and in a WhatsApp template\'s shape', () => {
   const prisma = (on: boolean, rows: any[]) => ({
-    platformSetting: { findUnique: jest.fn(async () => (on ? { value: { on: true } } : null)) },
+    platformSetting: { findUnique: jest.fn(async () => (on ? { value: { on: true } } : { value: { on: false } })) },
     groundCommitment: { findMany: jest.fn(async (a: any) => rows.filter((c) => c.participantId === a.where.participantId && c.status === a.where.status && c.source === a.where.source)) },
   });
   const ROWS = [
@@ -100,7 +100,7 @@ describe('the nudge on WhatsApp, as the morning job sends it', () => {
   const aCron = (rows: any[], opts: { on?: boolean; onLeave?: boolean; promise?: string | null; before?: any[] } = {}) => {
     const sendFor = jest.fn(async (..._a: any[]) => ({ sent: true }));
     const prisma: any = {
-      platformSetting: { findUnique: jest.fn(async () => (opts.on === false ? null : { value: { on: true } })) },
+      platformSetting: { findUnique: jest.fn(async () => (opts.on === false ? { value: { on: false } } : { value: { on: true } })) },
       checkIn: { findMany: jest.fn(async (q: any) => (q.where.sessionNumber !== undefined ? [{ status: 'NOT_STARTED', participant: { managingOnly: false, user: { awaitingOrgApproval: false } } }, { status: 'NOT_STARTED', participant: { managingOnly: false, user: { awaitingOrgApproval: false } } }] : rows)) },
       groundParticipant: { findMany: jest.fn(async () => rows.map((r) => ({ id: r.participantId, userId: r.participant.userId, ground: { organizationId: 'org-1' } }))) },
       organization: { findMany: jest.fn(async () => [{ id: 'org-1' }]) },

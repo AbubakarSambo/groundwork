@@ -1,5 +1,5 @@
 import { GroundStatus } from '@prisma/client';
-import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
+import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
 import { nameToCall, aNameToList } from './a-name-to-call-them';
 import { aNumberInWords } from './a-number-in-words';
 import { theEngagementMoment } from './the-engagement-release-moment';
@@ -21,7 +21,7 @@ import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
  */
 export const PARTICIPANT_WEEK_SENDER = 'sendYourWeek';
 
-const TERMINAL: GroundStatus[] = [...A_GROUND_THE_JOBS_LEAVE_ALONE, ...A_GROUND_IS_HELD];
+const TERMINAL: GroundStatus[] = A_GROUND_NO_MESSAGE_IS_ABOUT;
 const cap = (t: string) => `${t.charAt(0).toUpperCase()}${t.slice(1)}`;
 const listed = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
 const trimmed = (t: string) => t.trim().replace(/[.!?]+$/, '');

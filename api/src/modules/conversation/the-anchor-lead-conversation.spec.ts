@@ -24,7 +24,7 @@ import {
  * conversation, the scenario's guidance; in every other case, the same bytes as before.
  */
 function world(switchOn: boolean, stored?: { id: string; content: string }) {
-  const prisma: any = { platformSetting: { findUnique: jest.fn(async () => (switchOn ? { value: { on: true } } : null)) } };
+  const prisma: any = { platformSetting: { findUnique: jest.fn(async () => (switchOn ? { value: { on: true } } : { value: { on: false } })) } };
   const prompts: any = { getActive: jest.fn(async () => { if (!stored) throw new Error('none'); return stored; }) };
   const service = new EntryService({} as any, prisma, {} as any, {} as any, {} as any, {} as any, {} as any, prompts);
   const seen: string[] = [];

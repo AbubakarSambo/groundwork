@@ -1,7 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AN_ADMIN_SWITCHES_IT_ON } from './a-suite-that-is-off-says-what-to-do';
-import { decidesIt, theStepsFor, whoDecidesNow, type DecidesNow } from './who-may-decide';
+import { decidesIt, theStepsADecisionFollows, theStepsFor, whoDecidesNow, type DecidesNow } from './who-may-decide';
 import { dutiesFrom } from './who-holds-each-duty';
 import { loadLookups, type Lookups } from './the-lookups';
 import { WORKFLOWS_ROW, workflowsFrom, type AWorkflow } from './the-approval-steps';
@@ -225,7 +225,7 @@ export class ApprovalsQueueService {
     }
     for (const r of spendRows ?? []) {
       const team = r.team?.trim() || lookups.entryOf.get(r.userId)?.department?.trim() || null;
-      const now = await whoDecidesNow(this.prisma, theStepsFor('spend', spendAnswers, num(r.amount)), { ...asker(r), team }, r, { lookups, on: today });
+      const now = await whoDecidesNow(this.prisma, theStepsADecisionFollows(spendAnswers, num(r.amount)), { ...asker(r), team }, r, { lookups, on: today });
       waiting.push({ suite: 'spend', row: r, now, since: r.stepSince ?? r.createdAt ?? today });
     }
     /* Oldest first, and by id after that, so no two pages ever hold the same request. */

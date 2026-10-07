@@ -336,7 +336,7 @@ const RULES = [
      * Narrow on purpose. It owns the shapes that ask what is waiting to be decided, and nothing
      * that merely mentions a conversation - "how do I run a check-in" is a handbook question.
      */
-    /\bwhat\s+(?:should|do)\s+we\s+(?:talk|speak)\s+about\b/i,
+    /\bwhat\s+(?:should|do)\s+(?:we|i)\s+(?:talk|speak)\s+about\b/i,
     /\b(?:any|my|what)\s+suggestions?\b/i,
     /\bwhat\s+(?:conversations?|check-?ins?)\s+(?:should|do)\s+i\b/i,
     /\bwhat\s+(?:is|are)\s+(?:waiting|pending)\s+(?:for|on)\s+(?:my\s+)?(?:decision|answer|me\s+to\s+decide)\b/i,
@@ -379,6 +379,8 @@ const RULES = [
     /\bwho\s+is\s+waiting\s+on\s+me\b/i,
     /\bwhat'?s?\s+(?:blocked|stuck|held\s+up)\b/i,
     /\bwhat\s+is\s+(?:blocked|stuck)\b/i,
+    /* "Who is blocked right now?" is about handoffs, not a person called "blocked right now" (B-135). */
+    /\bwho(?:'s|\s+is|\s+are)\s+(?:blocked|stuck|held\s+up|waiting)\b/i,
   ]),
   rule('who_is', [
     /\bwho(?:'s| is)\s+(.+?)\s*\??$/i,
@@ -597,6 +599,10 @@ export const OPTIONS_THE_SHRUG_OFFERS: { key: Lane; label: string }[] = [
 
 export function whatICanDoWith(input: string): { line: string; options: { key: string; label: string }[] } {
   const trimmed = (input ?? '').trim();
+  /* A greeting is not a failed question (B-106). */
+  if (/^\s*((hi|hello|hey|hiya|yo)(\s+there)?|good\s+(morning|afternoon|evening))\s*[.!]*\s*$/i.test(trimmed)) {
+    return { line: 'Hello. Ask me something, or pick one of these.', options: OPTIONS_THE_SHRUG_OFFERS.map((o) => ({ key: o.key as string, label: o.label })) };
+  }
   const short = trimmed.length <= 60 ? trimmed : `${trimmed.slice(0, 57)}…`;
   return {
     line: trimmed

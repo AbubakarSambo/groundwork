@@ -10,6 +10,15 @@ import {
 import { Request, Response } from 'express';
 import { whatToSayAboutADatabaseError } from './a-database-error-is-not-a-message';
 
+/** What a person is told when the payment provider refuses, whatever it said. No key, no provider vocabulary, and the truth about the money. */
+export const PAYMENTS_ARE_NOT_AVAILABLE = 'Payments are not available right now. Nothing has been charged. Please try again later.';
+
+/** An error thrown by Stripe's library (its classes are all called Stripe...Error and carry a `type` of the same kind). */
+export function isAStripeError(e: unknown): boolean {
+  const t = (e as any)?.type;
+  return e instanceof Error && ((typeof t === 'string' && /^Stripe/.test(t)) || /^Stripe/.test(e.constructor?.name ?? ''));
+}
+
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(GlobalExceptionFilter.name);
@@ -77,17 +86,24 @@ export class GlobalExceptionFilter implements ExceptionFilter {
        * gets a sentence and a status that matches what actually went wrong.
        */
       const database = whatToSayAboutADatabaseError(exception);
-      if (database) {
-        status = database.status;
-        message = database.message;
+      if (isAStripeError(exception)) {
+        /* Stripe's own words can carry the start of our key ("Invalid API Key provided: sk_test_..."). The detail goes to the log, trimmed of any key. */
+        status = HttpStatus.SERVICE_UNAVAILABLE;
+        message = PAYMENTS_ARE_NOT_AVAILABLE;
+        this.logger.warn(`Stripe refused a request: ${exception.message.replace(/\b(sk|rk|pk)_(test|live)_\w*/g, '[a key]')}`);
       } else {
-        message = exception.message;
-      }
+        if (database) {
+          status = database.status;
+          message = database.message;
+        } else {
+          message = exception.message;
+        }
 
-      this.logger.error(
-        `Unhandled exception: ${exception.message}`,
-        exception.stack,
-      );
+        this.logger.error(
+          `Unhandled exception: ${exception.message}`,
+          exception.stack,
+        );
+      }
     }
 
     /**

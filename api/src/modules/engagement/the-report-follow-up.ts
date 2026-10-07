@@ -1,5 +1,5 @@
 import { GroundStatus } from '@prisma/client';
-import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
+import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
 import { theEngagementMoment } from './the-engagement-release-moment';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 import { aNumberInWords } from './a-number-in-words';
@@ -63,7 +63,7 @@ export function theFollowUpWords(firstName: string | null | undefined, label: st
   return { subject, lines, linkLabel: 'See where it stands' };
 }
 
-const TERMINAL: GroundStatus[] = [...A_GROUND_THE_JOBS_LEAVE_ALONE, ...A_GROUND_IS_HELD];
+const TERMINAL: GroundStatus[] = A_GROUND_NO_MESSAGE_IS_ABOUT;
 
 export async function sendTheReportFollowUps(
   deps: { prisma: any; email: { sendTheReportFollowUp: (to: string, subject: string, lines: string[], linkLabel: string, linkUrl: string) => Promise<'sent' | 'held' | 'suppressed' | unknown> }; frontendUrl: string },

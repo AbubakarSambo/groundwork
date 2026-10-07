@@ -1,10 +1,12 @@
 import { CheckInStatus, GroundStatus } from '@prisma/client';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
-import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
+import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
 import { isAlreadyHeld } from './a-message-sent-once';
 import { theEngagementMoment } from './the-engagement-release-moment';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
+import { theRoundACountIsAbout } from '../board/which-round-is-open';
+import { theCheckIn } from '../grounds/which-check-in-it-is';
 import { aNumberInWords } from './a-number-in-words';
 import { nameToCall, aNameToList } from './a-name-to-call-them';
 
@@ -21,9 +23,9 @@ import { nameToCall, aNameToList } from './a-name-to-call-them';
  */
 export const WHATS_NEW_SENDER = 'sendHeresWhatIsNew';
 
-const TERMINAL: GroundStatus[] = [...A_GROUND_THE_JOBS_LEAVE_ALONE, ...A_GROUND_IS_HELD];
+const TERMINAL: GroundStatus[] = A_GROUND_NO_MESSAGE_IS_ABOUT;
 
-export interface AnExistingCheckIn { label: string; ofHowMany: number; answered: number; notYet: string[]; /** Whether it has a session still to come, which is what the follow-up is for. */ moreToCome?: boolean; /** Set only when another listed check-in has the same name: when this one was started, as the lead reads a date ("3 September"). */ startedOn?: string; groundId?: string }
+export interface AnExistingCheckIn { label: string; ofHowMany: number; answered: number; notYet: string[]; /** Whether it has a session still to come, which is what the follow-up is for. */ moreToCome?: boolean; /** Set only when another listed check-in has the same name: when this one was started, as the lead reads a date ("3 September"). */ startedOn?: string; groundId?: string; /** Which round the count is about. */ round?: number }
 
 /**
  * WHETHER THIS CHECK-IN HAS A SESSION STILL TO COME. The follow-up (a person's own promise, said back to them) is sent for a session that begins after
@@ -46,12 +48,14 @@ const calledBy = (c: AnExistingCheckIn) => (c.startedOn ? `"${c.label}", which y
 /** One check-in, in one sentence, from the count alone. */
 export function whereOneStands(c: AnExistingCheckIn): string {
   const In = `In ${calledBy(c)}`;
-  if (c.answered <= 0) return `${In}, nobody has checked in yet, out of ${people(c.ofHowMany)}.`;
-  if (c.answered >= c.ofHowMany) return `${In}, ${c.ofHowMany === 1 ? 'the one person who can answer has' : `all ${aNumberInWords(c.ofHowMany)} people have`} checked in.`;
+  /* Which round the count is about, said the way Today and the board say it. */
+  const forIt = c.round ? ` for ${theCheckIn(c.round)}` : '';
+  if (c.answered <= 0) return `${In}, nobody has checked in${forIt} yet, out of ${people(c.ofHowMany)}.`;
+  if (c.answered >= c.ofHowMany) return `${In}, ${c.ofHowMany === 1 ? 'the one person who can answer has' : `all ${aNumberInWords(c.ofHowMany)} people have`} checked in${forIt}.`;
   const named = c.notYet.slice(0, 3);
   const others = c.ofHowMany - c.answered - named.length;
   const who = named.length ? `, and ${listed(others > 0 ? [...named, others === 1 ? 'one other person' : `${aNumberInWords(others)} others`] : named)} ${c.ofHowMany - c.answered === 1 && !named.includes('you') ? 'has' : 'have'} not yet` : '';
-  return `${In}, ${aNumberInWords(c.answered)} of ${aNumberInWords(c.ofHowMany)} people ${c.answered === 1 ? 'has' : 'have'} checked in${who}.`;
+  return `${In}, ${aNumberInWords(c.answered)} of ${aNumberInWords(c.ofHowMany)} people ${c.answered === 1 ? 'has' : 'have'} checked in${forIt}${who}.`;
 }
 
 /** True only for the check-ins that have a session to come; said for all, for some by name, or not at all. */
@@ -90,7 +94,8 @@ export async function theOpenSession(prisma: any, groundId: string, leadUserId: 
     select: { status: true, sessionNumber: true, participant: { select: { userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } } },
   });
   if (!rows.length) return null;
-  const latest = Math.max(...rows.map((r) => r.sessionNumber ?? 0));
+  /* The round the board and Today call open, not whichever is newest: rows for the next round are written ahead. */
+  const latest = theRoundACountIsAbout(rows.map((r) => ({ sessionNumber: r.sessionNumber ?? 0, status: r.status })));
   const counted = rows.filter((r) => (r.sessionNumber ?? 0) === latest && !r.participant?.managingOnly && !isNotLetInYet(r.participant));
   if (!counted.length) return null;
   /* A check-in where only the lead is in it has nothing to say about anybody else (decision 109 review). */
@@ -100,7 +105,7 @@ export async function theOpenSession(prisma: any, groundId: string, leadUserId: 
     .map((r) => (r.participant?.userId === leadUserId ? 'you' : nameToCall(r.participant)))
     .filter(aNameToList)
     .sort((a: string, b: string) => (a === 'you' ? -1 : b === 'you' ? 1 : 0));
-  return { label: '', ofHowMany: counted.length, answered, notYet };
+  return { label: '', ofHowMany: counted.length, answered, notYet, round: latest };
 }
 
 /** The sweep. Returns how many were tried; the sender decides whether each may go. */

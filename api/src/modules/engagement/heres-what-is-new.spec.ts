@@ -37,7 +37,7 @@ describe('what Wairimu reads', () => {
       subject: 'Five of six people have checked in on "Sales team, Q4", and here is what is new',
       lines: [
         'Hello Wairimu. Here is where your check-ins stand today.',
-        'In "Sales team, Q4", five of six people have checked in, and Omar has not yet.',
+        'In "Sales team, Q4", five of six people have checked in for the third check-in, and Omar has not yet.',
         'What is new is that Groundwork now follows up with each person about the thing they said they would do, in their own words and only to them.',
         'You can also stop the emails we decide to send from the link at the bottom of any of them, or in Settings, and turn them back on in Settings. Emails you ask for, such as sign-in links and reports, always reach you.',
       ],

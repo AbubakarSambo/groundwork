@@ -13,7 +13,7 @@ function makeService(switchOn: boolean) {
   const prisma: any = {
     user: { findUnique: jest.fn(async () => ({ role: 'ADMIN', email: 'rehema@sokoni.test' })) },
     organization: { findUnique: jest.fn(async () => ({ whoMayOpenCheckIns: 'NAMED_LEADS', checkInsNeedApproval: true })), update: jest.fn(async () => ({})) },
-    platformSetting: { findUnique: jest.fn(async () => (switchOn ? { value: { on: true } } : null)) },
+    platformSetting: { findUnique: jest.fn(async () => (switchOn ? { value: { on: true } } : { value: { on: false } })) },
     entryDraft: { findUnique: jest.fn(async () => null), updateMany: jest.fn(async () => ({ count: 0 })) },
     groundParticipant: { findMany: jest.fn(async () => [{ id: 'p1' }]), findFirst: jest.fn(async () => ({ id: 'p1' })), update: jest.fn(async () => ({})) },
     roundCompletion: { create: jest.fn(async (a: any) => a.data) },

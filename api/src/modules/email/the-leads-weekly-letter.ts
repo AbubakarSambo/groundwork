@@ -1,7 +1,7 @@
 import { CheckInStatus, GroundStatus } from '@prisma/client';
 import { nameToCall, aNameToList } from '../engagement/a-name-to-call-them';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
-import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
+import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 
 /**
@@ -146,7 +146,7 @@ export function theLeadsLetter(weeks: AWeekInOneCheckIn[]): TheLetter | null {
   return { subject: theSubjectFor(counted), lines, linkLabel: THE_LINK_SAYS, linkPath: counted.length === 1 ? 'board' : 'grounds', groundId: counted.length === 1 ? counted[0].groundId : null };
 }
 
-const TERMINAL: GroundStatus[] = [...A_GROUND_THE_JOBS_LEAVE_ALONE, ...A_GROUND_IS_HELD];
+const TERMINAL: GroundStatus[] = A_GROUND_NO_MESSAGE_IS_ABOUT;
 const WEEK = 7 * 86_400_000;
 
 /**

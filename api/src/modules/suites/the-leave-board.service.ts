@@ -5,7 +5,8 @@ import { askNameOf } from '../assistant/ask-name';
 import { theirRosterEntries, theirRosterEntry } from './a-roster-entry-and-its-sign-in';
 import { inTheLeadsTeam } from './a-leads-team';
 import { loadLookups, type Lookups } from './the-lookups';
-import { couldBeNamed, decidesIt, everyRuleIn, passWhatTheyAlreadyApproved, theStepsFor, whoComesNext, whoDecidesNow, type APassedStep, type DecidesNow, type WhoDecides } from './who-may-decide';
+import { oneAtATime } from './the-same-request-at-once';
+import { NOBODY_ELSE_CAN_DECIDE, nobodyElseCanDecide, couldBeNamed, decidesIt, everyRuleIn, passWhatTheyAlreadyApproved, theStepsFor, whoComesNext, whoDecidesNow, type APassedStep, type DecidesNow, type WhoDecides } from './who-may-decide';
 import { whyPassOn, type WhyPassedOn } from './a-request-waits-too-long';
 import { aRequestsHistory, recordIt } from './a-request-is-recorded';
 import { claimIt, theyGotThereFirst, whereItIsNow } from './a-request-is-answered-once';
@@ -28,6 +29,7 @@ export const LEAVE_REFUSED = {
   notYours: 'Only the person who approves this request can decide it.',
   alreadyDecided: 'This request has already been decided.',
   badDates: 'Give a first and a last day, with the last day on or after the first.',
+  tooLongAgo: 'Those days ended more than a month ago, so they cannot be asked for now. Give days from the last month onwards.',
   badStandIn: 'The stand-in has to be somebody else in this organisation.',
   badKind: 'That kind of leave is not one your organisation has set.',
 };
@@ -698,6 +700,10 @@ export class LeaveBoardService {
    * (docs/requests-to-engine.md, request 21). There is no route for it: nobody fills in a form.
    */
   async ask(organizationId: string, userId: string, input: { startsOn: Day; endsOn: Day; standInUserId?: string | null; proposalId?: string | null; kind?: string | null }) {
+    return oneAtATime(`leave|${organizationId}|${userId}|${input.startsOn}|${input.endsOn}`, () => this.askOnce(organizationId, userId, input));
+  }
+
+  private async askOnce(organizationId: string, userId: string, input: { startsOn: Day; endsOn: Day; standInUserId?: string | null; proposalId?: string | null; kind?: string | null }) {
     const answers = await this.suiteAnswers(organizationId);
     /* The kind of leave (build step 8): one the admin set, or the first when none is said. No kinds set: as before. */
     const kinds = answers.rules.kinds ?? [];
@@ -710,11 +716,21 @@ export class LeaveBoardService {
     const startsOn = atMidnight(input.startsOn);
     const endsOn = atMidnight(input.endsOn);
     if (Number.isNaN(startsOn.getTime()) || Number.isNaN(endsOn.getTime()) || endsOn < startsOn) throw new BadRequestException(LEAVE_REFUSED.badDates);
+    /* Leave asked for after the fact (sick leave yesterday) is still taken; leave for days gone a month ago is not (B-148). */
+    if (endsOn.getTime() < Date.now() - 31 * 86_400_000) throw new BadRequestException(LEAVE_REFUSED.tooLongAgo);
     const standIn = input.standInUserId ?? null;
     if (standIn) {
       const theirs = await this.roleOf({ userId: standIn, organizationId });
       if (standIn === userId || !theirs || theirs === 'GUEST') throw new BadRequestException(LEAVE_REFUSED.badStandIn);
     }
+    /* The only admin cannot decide their own leave, and nobody else could: said now, not after it has waited for ever. */
+    const me = await theirRosterEntry(this.prisma, organizationId, userId, { managerExternalId: true, department: true }).catch(() => null);
+    if (await nobodyElseCanDecide(this.prisma, theStepsFor('leave', answers, workingDays(startsOn, endsOn)), { organizationId, requesterUserId: userId, managerExternalId: (me as any)?.managerExternalId ?? null, team: (me as any)?.department ?? null }, role)) {
+      throw new BadRequestException(NOBODY_ELSE_CAN_DECIDE);
+    }
+    /* The same request while the first still waits is that request (B-147): nothing new is made and the approver hears once. */
+    const already = await (this.prisma.leaveRequest as any).findFirst?.({ where: { organizationId, userId, startsOn, endsOn, status: 'waiting' }, select: { id: true } }).catch(() => null);
+    if (already?.id) return { id: already.id };
     const created = await this.prisma.leaveRequest.create({
       data: { organizationId, userId, startsOn, endsOn, standInUserId: standIn, ...(kind ? { kind } : {}) },
       select: { id: true },

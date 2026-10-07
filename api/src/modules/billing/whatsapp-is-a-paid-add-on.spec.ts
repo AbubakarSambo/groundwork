@@ -227,7 +227,7 @@ describe('Baridi after its trial, paying for Small Team, without the add-on', ()
     expect(await addOn.mayWeSend('org-baridi', NOW)).toEqual({ send: false, why: 'not turned on', saying: WHATSAPP_NOT_TURNED_ON });
     expect(await addOn.whatTheyRead('org-baridi', false, NOW)).toEqual({
       sending: false,
-      says: 'Your organisation has not turned on WhatsApp, so this check-in stays in the app.',
+      says: 'Your organisation has not turned on WhatsApp, so Groundwork does not send you reminders or summaries on WhatsApp.',
     });
   });
 
@@ -244,7 +244,8 @@ describe('Baridi after its trial, paying for Small Team, without the add-on', ()
     expect(read.price).toEqual({ amountCents: 7200, currency: 'USD' });
     expect(read.says.onOrOff).toBe('WhatsApp is off for your organisation, so check-ins stay in the app.');
     expect(read.says.charge).toBe('If you turn WhatsApp on, it is added to your monthly bill as a second line.');
-    expect(read.says.held).toBe(WHATSAPP_NOT_TURNED_ON);
+    /* B-007: the page is about the organisation, so it says what the other readers of the page say, not "this check-in". */
+    expect(read.says.held).toBe('Your organisation has not turned on WhatsApp, so Groundwork does not send you reminders or summaries on WhatsApp.');
   });
 
   it('the WhatsApp service sends nothing, and records the sentence the person reads', async () => {

@@ -1,6 +1,8 @@
 import { Injectable, Logger, Optional, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { readsAsAnAdmin, WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS } from '../grounds/who-may-read-this-check-in';
+import { refuseSomeoneHeldForASeat, refuseSomeoneAwaitingTheOrganisation } from '../participants/held-for-a-seat';
+import { CANNOT_CHECK_IN_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { PrismaService } from '../prisma/prisma.service';
 import { IntelligenceService } from '../intelligence';
 import { ReportsService } from '../reports';
@@ -52,6 +54,11 @@ export class ResolutionService {
       select: { id: true, organizationId: true, initiatorId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
+    /* Nobody held for a seat or waiting for the organisation reads how everybody else means to end it (privacy row 5). */
+    if (ground.initiatorId !== userId) {
+      await refuseSomeoneHeldForASeat(this.prisma as any, groundId, userId);
+      await refuseSomeoneAwaitingTheOrganisation(this.prisma as any, userId, CANNOT_CHECK_IN_YET);
+    }
     const isParty = !!(await this.prisma.groundParticipant.findFirst({ where: { groundId, userId }, select: { id: true } }));
     if (!isParty) {
       const admin = await this.prisma.user.findFirst({

@@ -289,6 +289,21 @@ export function theStepsFor(suite: 'leave' | 'time' | 'reviews' | 'spend', answe
   return [['manager', 'admin']];
 }
 
+/**
+ * THE STEPS A SPENDING REQUEST ACTUALLY GOES THROUGH. `theStepsFor` gives the steps as the admin stored them, which is what a page
+ * shows back. When the admin has set steps above the limit AND named a person for spending above it, that person still decides the
+ * last step, in front of "an admin", unless the steps already name them (B-004): two answers on one page must not silently disagree.
+ */
+export function theStepsADecisionFollows(answers: { limit: number | null; above: string | null; workflow?: AWorkflow | null; thresholds?: AThreshold[] | null }, amount: number): Step[] {
+  const steps = theStepsFor('spend', answers, amount);
+  const stored = answers.workflow?.stepsAbove;
+  if (!stored?.length || steps !== stored) return steps;
+  const named = typeof answers.above === 'string' && answers.above.trim() ? answers.above.trim() : null;
+  const last = stored[stored.length - 1];
+  const alreadyNamed = stored.some((step) => step.some((rule) => typeof rule === 'object' && !!rule && (rule as { named: string }).named === named));
+  return named && !alreadyNamed && last.includes('admin') ? [...stored.slice(0, -1), [{ named }, ...last]] : steps;
+}
+
 /** Every rule in these steps, in order: what a board asks `couldBeNamed`. */
 export const everyRuleIn = (steps: Step[]): ARule[] => steps.flat();
 
@@ -297,7 +312,7 @@ export function everyStepFor(suite: 'spend', answers: { limit: number | null; ab
   const below = { ...answers, thresholds: null };
   return [
     ...everyRuleIn(theStepsFor(suite, below, 0)),
-    ...(answers.limit == null ? [] : everyRuleIn(theStepsFor(suite, below, answers.limit + 1))),
+    ...(answers.limit == null ? [] : everyRuleIn(theStepsADecisionFollows(below, answers.limit + 1))),
     ...(answers.thresholds ?? []).flatMap((t) => everyRuleIn(t.steps)),
   ];
 }
@@ -343,4 +358,30 @@ async function theTeamOf(prisma: PrismaService, request: ARequest, known: Known 
   if (known.lookups) return known.lookups.entryOf.get(request.requesterUserId)?.department?.trim() || null;
   const me = await theirRosterEntry(prisma, request.organizationId, request.requesterUserId, { department: true });
   return me?.department?.trim() || null;
+}
+
+
+/**
+ * AN ADMIN WHO IS THE ONLY ADMIN, ASKING FOR SOMETHING AN ADMIN DECIDES (B-005). Nobody decides their own request
+ * and nobody else is an admin, so it would be "sent to an admin" and wait for ever, with nobody told. This is the
+ * sentence they are given instead, at the moment they ask, when nothing has been kept.
+ */
+export const NOBODY_ELSE_CAN_DECIDE = 'Nobody else can decide this one, because you are the only admin and nobody is named to approve your requests. Add another admin, or name someone to approve it in the suite\u2019s settings, and then ask again.';
+
+/** True when the first step names "an admin" for this request, the requester is that organisation's only admin, and so nobody could ever decide it. */
+export async function nobodyElseCanDecide(
+  prisma: PrismaService, steps: Step[], request: ARequest, requesterRole: string | null | undefined,
+): Promise<boolean> {
+  if (requesterRole !== 'ADMIN' || !request.requesterUserId) return false;
+  try {
+    const now = await whoDecidesNow(prisma, steps, request);
+    if (now.who.kind !== 'admin') return false;
+    const others = await (prisma as any).user.count({
+      where: { organizationId: request.organizationId, role: 'ADMIN', isActive: true, deletedAt: null, id: { not: request.requesterUserId } },
+    });
+    return others === 0;
+  } catch {
+    /* A read that cannot be made never refuses a request. */
+    return false;
+  }
 }

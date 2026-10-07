@@ -27,7 +27,7 @@ function anchor(on: boolean, startedFrom: string | null, nudged: string[] = ['p-
   return {
     people: PEOPLE, checkIns, groundRow: { startedFrom },
     prismaExtras: {
-      platformSetting: { findUnique: jest.fn(async () => (on ? { value: { on: true } } : null)) },
+      platformSetting: { findUnique: jest.fn(async () => (on ? { value: { on: true } } : { value: { on: false } })) },
       groundParticipant: {
         findMany: jest.fn(async (a: any) => {
           if (a?.where?.id?.in) return PEOPLE.filter((p) => a.where.id.in.includes(p.id)).map((p) => ({ id: p.id, lastNudgedAt: nudged.includes(p.id) ? NUDGED : null }));

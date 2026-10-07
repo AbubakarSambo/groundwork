@@ -40,7 +40,7 @@ function aWorld(w: World = {}) {
   };
   const seed: Record<string, any> = {
     ground: { findUnique: jest.fn(async () => ground), findFirst: jest.fn(async () => ground) },
-    platformSetting: { findUnique: jest.fn(async () => (w.switchOn ? { value: { on: true } } : null)) },
+    platformSetting: { findUnique: jest.fn(async () => (w.switchOn ? { value: { on: true } } : { value: { on: false } })) },
     checkIn: {
       findUnique: jest.fn(async () => checkIn),
       findMany: jest.fn(async () => []),

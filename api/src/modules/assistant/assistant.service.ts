@@ -1,4 +1,7 @@
 import { WAITING_TO_BE_LET_IN } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
+import { withoutComparisonsAnywhere } from '../reports/no-comparison-between-people';
+import { A_LINK_IS_NOT_READ } from './a-link-is-not-read';
+import { namesTheyCanTellApart } from '../../common/check-ins-you-can-tell-apart';
 import { whatWasSaid } from './what-was-said-is-what-is-kept';
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { NOTHING_FLAGGED } from '../detectors/who-needs-you-this-week';
@@ -269,6 +272,11 @@ export class AssistantService {
   }
 
   async respond(organizationId: string, personId: string, message: string, groundId?: string, openedFromSetup = false): Promise<Reply> {
+    /* No sentence that ranks a person against others is said in an answer (reports/no-comparison-between-people.ts). */
+    return withoutComparisonsAnywhere(await this.respondInner(organizationId, personId, message, groundId, openedFromSetup));
+  }
+
+  private async respondInner(organizationId: string, personId: string, message: string, groundId?: string, openedFromSetup = false): Promise<Reply> {
     /* Decision 35: a bank or card number typed here is hidden before it is kept or read by a model. See documents/bank-details-are-never-kept. */
     message = withoutBankDetails(message);
     const me = await this.prisma.person.findFirst({
@@ -476,6 +484,12 @@ export class AssistantService {
      * to add one on a check-in where an earlier upload is still waiting on a yes.
      */
     if (who && (routed.lane === 'add_a_document' || JUST_ADDED_A_DOCUMENT.test(message))) {
+      /*
+       * A LINK IS NOT A FILE (B-027). Wairimu wrote "Here is a document https://docs.google.com/... for Sales team, Q4" and was
+       * shown the numbers of a different file she had uploaded earlier, and asked whether to record them. A link to a document
+       * is not read, so this says so, and never offers another file in its place.
+       */
+      if (/https?:\/\/\S+/i.test(message) && message.length < 600) return rules('add_a_document', text(A_LINK_IS_NOT_READ));
       /*
        * A DOCUMENT THE LEAD ADDED TO A CHECK-IN THEY RUN IS READ THE WAY A PASTE IS (4 October 2026).
        * The numbers in it were said back, and nothing else in it was: not its dates, decisions,
@@ -690,6 +704,14 @@ export class AssistantService {
    * `composedBy` stamp differ, and the stamp is why that is honest rather than hidden.
    */
   private async compose(reply: Reply, mustKeep: string[] = []): Promise<Reply> {
+    /*
+     * NEVER THE "I CANNOT ANSWER THAT" SENTENCE (release check, 7 October 2026). Lanes such as "who is" fall back to it, and the
+     * composer turned 'I cannot answer that one yet. Here is what I can do with "behind on Sales team, Q4".' into "You are behind on
+     * the Sales team's Q4 work." for the lead, a member, somebody held for a seat and a lead the board refuses: a verdict about the
+     * reader that nothing on record says. It passed every check, because every word was in the draft. The default lane already leaves
+     * this sentence alone for the same reason.
+     */
+    if (reply.lane === 'unplaced') return reply;
     const first = reply.blocks[0];
     if (!first || first.type !== 'text') return reply;
     const draft = first.body;
@@ -2926,7 +2948,7 @@ export class AssistantService {
 
     const grounds = await this.prisma.ground.findMany({
       where: { organizationId, status: { notIn: A_GROUND_IS_OVER } },
-      select: { id: true, label: true, initiatorId: true, organizationId: true, scenario: true, createdByUserId: true, participants: { select: { userId: true } } },
+      select: { id: true, label: true, createdAt: true, initiator: { select: { firstName: true } }, initiatorId: true, organizationId: true, scenario: true, createdByUserId: true, participants: { select: { userId: true } } },
     });
     const viewer = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, organizationId: true } });
     /*
@@ -2968,8 +2990,8 @@ export class AssistantService {
           organizationId,
           personExternalId: who,
           kind: 'which_context_check_in',
-          summary: `Which check-in do you mean? ${candidates.map((g) => g.label).join(', ')}.`,
-          payload: { candidates: candidates.map((g) => ({ groundId: g.id, label: g.label })), said: message, purpose: 'setup' } as never,
+          summary: `Which check-in do you mean? ${toldApart(candidates).map((g) => g.label).join(', ')}.`,
+          payload: { candidates: toldApart(candidates).map((g) => ({ groundId: g.id, label: g.label })), said: message, purpose: 'setup' } as never,
         },
       });
       return {
@@ -4137,7 +4159,7 @@ export class AssistantService {
   ): Promise<{ id: string; label: string } | Reply> {
     const grounds = await this.prisma.ground.findMany({
       where: { organizationId, status: { notIn: A_GROUND_IS_OVER } },
-      select: { id: true, label: true, initiatorId: true, organizationId: true, scenario: true, createdByUserId: true, participants: { select: { userId: true } } },
+      select: { id: true, label: true, createdAt: true, initiator: { select: { firstName: true } }, initiatorId: true, organizationId: true, scenario: true, createdByUserId: true, participants: { select: { userId: true } } },
     });
     const viewer = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, organizationId: true } });
     /* Only the check-ins this person may set up (decisions 63 and 72), the same as the setup conversation:
@@ -4171,8 +4193,8 @@ export class AssistantService {
         organizationId,
         personExternalId: who,
         kind: 'which_context_check_in',
-        summary: `Which check-in do you mean? ${candidates.map((g) => g.label).join(', ')}.`,
-        payload: { candidates: candidates.map((g) => ({ groundId: g.id, label: g.label })), said: message, purpose } as never,
+        summary: `Which check-in do you mean? ${toldApart(candidates).map((g) => g.label).join(', ')}.`,
+        payload: { candidates: toldApart(candidates).map((g) => ({ groundId: g.id, label: g.label })), said: message, purpose } as never,
       },
     });
     return {
@@ -5188,4 +5210,11 @@ export class AssistantService {
     return rules('who_is', text(bits.join(' ')));
   }
 
+}
+
+
+/** Two check-ins of the same name are offered with when each started, so the person can pick one. */
+function toldApart<T extends { id: string; label: string; createdAt?: Date | null; initiator?: { firstName?: string | null } | null }>(candidates: T[]): T[] {
+  const said = namesTheyCanTellApart(candidates.map((g) => ({ id: g.id, label: g.label, startedAt: g.createdAt, leadName: g.initiator?.firstName })));
+  return candidates.map((g) => ({ ...g, label: said.get(g.id) ?? g.label }));
 }

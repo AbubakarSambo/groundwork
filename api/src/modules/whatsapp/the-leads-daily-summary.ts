@@ -9,7 +9,10 @@ import { keptOffThePhone } from './a-check-in-kept-off-the-phone';
 import { everyRowAPageAtATime } from './every-row-a-page-at-a-time';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { organisationsThatTurnedWhatsAppOn } from './only-where-whatsapp-is-turned-on';
-import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
+import { theRoundACountIsAbout } from '../board/which-round-is-open';
+import { theCheckIn } from '../grounds/which-check-in-it-is';
+import { namesTheyCanTellApart } from '../../common/check-ins-you-can-tell-apart';
+import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
 import { theirApprovedLeave, fallsInLeave } from '../suites/who-is-away';
 import { theirRosterEntry } from '../suites/a-roster-entry-and-its-sign-in';
 import { whatWaitsForYouToDecide, type TheBoards } from '../suites/what-waits-for-you-to-decide';
@@ -43,6 +46,8 @@ export interface ACheckInToday {
   notYet: string[];
   /** When somebody who can answer last checked in, for this session. Null when nobody has. */
   lastAnswerAt?: Date | null;
+  /** Which round it is about, so the count says so and agrees with Today and the board. */
+  round?: number;
 }
 
 /**
@@ -60,10 +65,12 @@ export function somethingUsefulHappened(checkIns: ACheckInToday[], waiting: AWai
 export function aCheckInInASentence(c: ACheckInToday): string | null {
   if (c.ofHowMany < 1) return null;
   const where = `In "${c.label}"`;
+  /* Which round the count is about, said the way Today and the board say it ("for the second check-in"). */
+  const forIt = c.round ? ` for ${theCheckIn(c.round)}` : '';
   if (c.answered >= c.ofHowMany) {
-    return c.ofHowMany === 1 ? `${where}, the one person who can answer has checked in.` : `${where}, all ${c.ofHowMany} people have checked in.`;
+    return c.ofHowMany === 1 ? `${where}, the one person who can answer has checked in${forIt}.` : `${where}, all ${c.ofHowMany} people have checked in${forIt}.`;
   }
-  if (c.answered === 0) return `${where}, nobody has checked in yet, out of ${c.ofHowMany} ${c.ofHowMany === 1 ? 'person' : 'people'}.`;
+  if (c.answered === 0) return `${where}, nobody has checked in${forIt} yet, out of ${c.ofHowMany} ${c.ofHowMany === 1 ? 'person' : 'people'}.`;
   /* Up to three by name; anybody else, and anybody with no name known, is counted, so the names never read as everyone. */
   const missing = c.ofHowMany - c.answered;
   const named = c.notYet.slice(0, c.notYet.length > 3 ? 2 : 3);
@@ -72,7 +79,7 @@ export function aCheckInInASentence(c: ACheckInToday): string | null {
   const waitingOn = named.length
     ? `, and ${listed(others > 0 ? [...named, others === 1 ? 'one other person' : `${others} others`] : named)} ${missing === 1 && !named.includes('you') ? 'has' : 'have'} not yet`
     : '';
-  return `${where}, ${c.answered} of ${c.ofHowMany} people ${c.answered === 1 ? 'has' : 'have'} checked in${waitingOn}.`;
+  return `${where}, ${c.answered} of ${c.ofHowMany} people ${c.answered === 1 ? 'has' : 'have'} checked in${forIt}${waitingOn}.`;
 }
 
 /** What waits for the lead to decide, in one sentence. Null when nothing does. */
@@ -110,7 +117,7 @@ async function nowSaid(prisma: any, leadId: string, hash: string): Promise<void>
   catch { try { await prisma.platformSetting.update({ where: { key: SAID_KEY(leadId) }, data: { value, updatedBy: 'engagement' } }); } catch { /* not remembered: the next morning may repeat once */ } }
 }
 
-const TERMINAL: GroundStatus[] = [...A_GROUND_THE_JOBS_LEAVE_ALONE, ...A_GROUND_IS_HELD];
+const TERMINAL: GroundStatus[] = A_GROUND_NO_MESSAGE_IS_ABOUT;
 
 /**
  * THE MORNING SWEEP. Every lead with a check-in open, in every organisation, one message each. A lead
@@ -124,12 +131,13 @@ export async function sendTheLeadsDailySummaries(
   const { prisma } = deps;
   const grounds: any[] = await everyRowAPageAtATime((page) => prisma.ground.findMany({
     where: { status: { notIn: TERMINAL } },
-    select: { id: true, label: true, organizationId: true, overWhatsApp: true, initiatorId: true },
+    select: { id: true, label: true, createdAt: true, organizationId: true, overWhatsApp: true, initiatorId: true },
     ...page,
   }), 1000);
 
   /* Each lead's open check-ins that may go to a phone, per organisation. */
   const turnedOn = await organisationsThatTurnedWhatsAppOn(prisma, deps.whatsapp, grounds.map((g) => g.organizationId));
+  const startedOn = new Map<string, Date | null>();
   const byLead = new Map<string, { organizationId: string; leadId: string; checkIns: (ACheckInToday & { groundId: string })[] }>();
   for (const g of grounds) {
     if (keptOffThePhone(g)) continue;
@@ -140,7 +148,13 @@ export async function sendTheLeadsDailySummaries(
     const key = `${g.organizationId}|${g.initiatorId}`;
     const lead = byLead.get(key) ?? { organizationId: g.organizationId as string, leadId: g.initiatorId as string, checkIns: [] as (ACheckInToday & { groundId: string })[] };
     lead.checkIns.push({ ...today, groundId: g.id, label: g.label });
+    startedOn.set(g.id, g.createdAt);
     byLead.set(key, lead);
+  }
+  /* Two of her check-ins with the same name are told apart by when each started. */
+  for (const lead of byLead.values()) {
+    const said = namesTheyCanTellApart(lead.checkIns.map((c) => ({ id: c.groundId, label: c.label, startedAt: startedOn.get(c.groundId) })));
+    lead.checkIns = lead.checkIns.map((c) => ({ ...c, label: said.get(c.groundId) ?? c.label }));
   }
 
   let tried = 0;
@@ -188,7 +202,8 @@ async function theOpenSession(prisma: PrismaService, groundId: string, now: Date
     },
   });
   if (!rows.length) return null;
-  const latest = Math.max(...rows.map((r) => r.sessionNumber ?? 0));
+  /* The round the board and Today call open, not whichever is newest: rows for the next round are written ahead. */
+  const latest = theRoundACountIsAbout(rows.map((r) => ({ sessionNumber: r.sessionNumber ?? 0, status: r.status })));
   const session = rows.filter((r) => (r.sessionNumber ?? 0) === latest);
   if (!session.some((r) => r.status === CheckInStatus.NOT_STARTED || r.status === CheckInStatus.IN_PROGRESS)) return null;
   const counted = session.filter((r) => !r.participant?.managingOnly && !isNotLetInYet(r.participant));
@@ -202,5 +217,5 @@ async function theOpenSession(prisma: PrismaService, groundId: string, now: Date
   const times = done.map((r) => r.completedAt).filter((t: unknown): t is Date => t instanceof Date);
   /* An answer with no time recorded is not evidence that anything happened since the last summary. */
   const lastAnswerAt = times.length ? new Date(Math.max(...times.map((t) => t.getTime()))) : null;
-  return { ofHowMany: counted.length, answered: done.length, notYet, lastAnswerAt };
+  return { ofHowMany: counted.length, answered: done.length, notYet, lastAnswerAt, round: latest };
 }

@@ -15,13 +15,15 @@ import { TEMPLATES, NOT_TODAY, OUTSIDE_THE_WINDOW } from './a-message-outside-th
 const NOW = new Date('2026-10-05T06:00:00Z');
 const answered = (first: string, completedAt?: Date) => ({ completedAt, status: 'COMPLETED', sessionNumber: 3, participant: { managingOnly: false, nameGiven: null, user: { firstName: first, awaitingOrgApproval: false } } });
 
-function aMorning(opts: { onLeave?: boolean; onlyThePlan?: boolean; waiting?: boolean; lastSummary?: Date; answeredAt?: Date; nobodyIn?: boolean } = {}) {
+function aMorning(opts: { onLeave?: boolean; onlyThePlan?: boolean; waiting?: boolean; lastSummary?: Date; answeredAt?: Date; nobodyIn?: boolean; twins?: boolean; roundAhead?: boolean } = {}) {
   const sent: { org: string; to: string; text: string; context: any }[] = [];
   const grounds = [
-    ...(opts.onlyThePlan ? [] : [{ id: 'g-sales', label: 'Sales team, Q3', organizationId: 'org-1', overWhatsApp: null, initiatorId: 'u-wairimu' }]),
+    ...(opts.onlyThePlan ? [] : [{ id: 'g-sales', label: 'Sales team, Q3', createdAt: new Date('2026-09-02T09:00:00Z'), organizationId: 'org-1', overWhatsApp: null, initiatorId: 'u-wairimu' }]),
+    ...(opts.twins ? [{ id: 'g-sales-2', label: 'Sales team, Q3', createdAt: new Date('2026-09-20T09:00:00Z'), organizationId: 'org-1', overWhatsApp: null, initiatorId: 'u-wairimu' }] : []),
     { id: 'g-pip', label: 'Performance plan, Femi', organizationId: 'org-1', overWhatsApp: false, initiatorId: 'u-wairimu' },
   ];
   const sessions: Record<string, any[]> = {
+    'g-sales-2': [{ status: 'COMPLETED', sessionNumber: 1, completedAt: opts.answeredAt, participant: { managingOnly: false, nameGiven: null, user: { firstName: 'Zawadi', awaitingOrgApproval: false } } }, { status: 'NOT_STARTED', sessionNumber: 1, participant: { managingOnly: false, nameGiven: null, user: { firstName: 'Chidi', awaitingOrgApproval: false } } }],
     'g-sales': [
       ...(opts.nobodyIn ? [] : ['Miriam', 'Bisi', 'Femi', 'Kofi', 'Amina'].map((n) => answered(n, opts.answeredAt))),
       { status: 'NOT_STARTED', sessionNumber: 3, participant: { managingOnly: false, nameGiven: null, user: { firstName: 'Omar', awaitingOrgApproval: false } } },
@@ -31,6 +33,11 @@ function aMorning(opts: { onLeave?: boolean; onlyThePlan?: boolean; waiting?: bo
     ],
     'g-pip': [{ status: 'IN_PROGRESS', sessionNumber: 1, participant: { managingOnly: false, nameGiven: null, user: { firstName: 'Femi', awaitingOrgApproval: false } } }],
   };
+  /* The next round is written ahead for three of the six, while the second is still being answered. */
+  if (opts.roundAhead) {
+    const p = (first: string, status: string, n: number) => ({ status, sessionNumber: n, completedAt: status === 'COMPLETED' ? opts.answeredAt : undefined, participant: { managingOnly: false, nameGiven: null, user: { firstName: first, awaitingOrgApproval: false } } });
+    sessions['g-sales'] = [...['Miriam', 'Bisi', 'Femi'].map((n) => p(n, 'COMPLETED', 2)), ...['Kofi', 'Amina', 'Omar'].map((n) => p(n, 'NOT_STARTED', 2)), ...['Miriam', 'Bisi', 'Femi'].map((n) => p(n, 'NOT_STARTED', 3))];
+  }
   const prisma: any = {
     ground: { findMany: jest.fn(async () => grounds) },
     organization: { findMany: jest.fn(async () => [{ id: 'org-1' }]) },
@@ -53,7 +60,7 @@ describe("what Wairimu reads on her phone", () => {
     expect(await m.run()).toEqual({ tried: 1 });
     expect(m.sent).toHaveLength(1);
     expect(m.sent[0].text).toBe(
-      "Good morning Wairimu. Here is today's summary of your check-ins. In \"Sales team, Q3\", 5 of 6 people have checked in, and Omar has not yet. Amina's leave from Monday 5 October to Friday 9 October is waiting for you to approve or decline. You can open your board for the full picture here https://myground.work/grounds/g-sales/board If you would rather not hear from us here again today, reply \"not now\".",
+      "Good morning Wairimu. Here is today's summary of your check-ins. In \"Sales team, Q3\", 5 of 6 people have checked in for the third check-in, and Omar has not yet. Amina's leave from Monday 5 October to Friday 9 October is waiting for you to approve or decline. You can open your board for the full picture here https://myground.work/grounds/g-sales/board If you would rather not hear from us here again today, reply \"not now\".",
     );
     expect(m.sent[0].context).toEqual({ kind: 'lead-summary', params: ['Wairimu', expect.any(String), 'https://myground.work/grounds/g-sales/board'] });
     expect(m.sent[0].context.params[1]).not.toMatch(/[\r\n\t]/);
@@ -77,7 +84,20 @@ describe("what Wairimu reads on her phone", () => {
   it('with nothing waiting, it is only the check-ins', async () => {
     const m = aMorning({ waiting: false });
     await m.run();
-    expect(m.sent[0].context.params[1]).toBe('In "Sales team, Q3", 5 of 6 people have checked in, and Omar has not yet.');
+    expect(m.sent[0].context.params[1]).toBe('In "Sales team, Q3", 5 of 6 people have checked in for the third check-in, and Omar has not yet.');
+  });
+
+  it('two of her check-ins with the same name are told apart by when each started', async () => {
+    const m = aMorning({ twins: true, waiting: false });
+    await m.run();
+    expect(m.sent[0].context.params[1]).toContain('In "Sales team, Q3, started 2 September"');
+    expect(m.sent[0].context.params[1]).toContain('In "Sales team, Q3, started 20 September"');
+  });
+
+  it('counts the round the board counts, and says which, when the next round is already written for some', async () => {
+    const m = aMorning({ roundAhead: true, waiting: false, answeredAt: new Date('2026-10-05T05:00:00Z') });
+    await m.run();
+    expect(m.sent[0].context.params[1]).toBe('In "Sales team, Q3", 3 of 6 people have checked in for the second check-in, and Kofi, Amina and Omar have not yet.');
   });
 
   it('nothing on a day she is on leave', async () => {
@@ -102,7 +122,7 @@ describe('a morning when nothing useful happened', () => {
   it('it goes when somebody has checked in since the last one', async () => {
     const m = aMorning({ waiting: false, lastSummary: yesterday, answeredAt: new Date('2026-10-04T15:00:00Z') });
     expect(await m.run()).toEqual({ tried: 1 });
-    expect(m.sent[0].context.params[1]).toBe('In "Sales team, Q3", 5 of 6 people have checked in, and Omar has not yet.');
+    expect(m.sent[0].context.params[1]).toBe('In "Sales team, Q3", 5 of 6 people have checked in for the third check-in, and Omar has not yet.');
   });
   it('an answer with no time recorded does not count as something new', async () => {
     const m = aMorning({ waiting: false, lastSummary: yesterday });

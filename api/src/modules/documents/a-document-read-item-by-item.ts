@@ -22,7 +22,7 @@
  * is found on none, it has no page. Nothing is guessed.
  */
 import type { WhatLanded } from './what-a-document-holds';
-import { byWhen, BANK_DETAILS_LEFT_OUT } from './what-a-document-holds';
+import { byWhen, inTheMiddle, BANK_DETAILS_LEFT_OUT } from './what-a-document-holds';
 import { HIDDEN } from './bank-details-are-never-kept';
 
 /** pdf-parse's own marker after each page: "-- 3 of 4 --". */
@@ -136,7 +136,7 @@ export const forEveryoneSentence = (t: { what: string; target: number; kind?: st
 export const forOnePersonSentence = (t: { who: string; what: string; target: number; by?: string | null }, fmt: (n: number) => string) =>
   `${t.who}'s target for ${t.what} is ${fmt(t.target)}${byWhen(t.by)}.`;
 export const dateSentence = (d: { what: string; when: string }) =>
-  `The date it sets for ${d.what} is ${d.when.trim().replace(/\.$/, '')}.`;
+  `The date it sets for ${inTheMiddle(d.what)} is ${d.when.trim().replace(/\.$/, '')}.`;
 
 /**
  * WHAT A PERSON READS UNDER "WHAT IT TOOK" AND "WHAT IT LEFT OUT". Built from `holds` when it is

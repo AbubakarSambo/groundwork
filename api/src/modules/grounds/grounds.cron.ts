@@ -12,7 +12,7 @@ import { onceAcrossCopies, theDay, theWeek } from '../prisma/once-across-copies'
 import { theReleaseMoment, reachedTheWarningPointBefore } from './the-release-moment';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { deadlineOf } from './when-the-clock-starts';
-import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD, A_GROUND_HAS_STOPPED } from './a-ground-that-has-ended';
+import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD, A_GROUND_HAS_STOPPED, A_GROUND_NO_MESSAGE_IS_ABOUT } from './a-ground-that-has-ended';
 import { AN_ANSWER } from './an-answer-includes-a-refusal';
 import { recordRoundCompletion } from './round-completion';
 import { awayUntilOn, leaveOfThePeopleOn, whoOnACheckInIsAway } from '../suites/who-is-away';
@@ -38,6 +38,8 @@ import { sendTheTestCheckInMessages } from '../engagement/a-test-check-in-moves-
 import { theirPromiseToFollowUp } from '../engagement/a-follow-up-from-their-own-record';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { isNotLetInYet } from './who-an-admin-did-not-let-in';
+import { theNamesOfReadersCheckIns } from './the-names-of-a-readers-check-ins';
+import { isAWorkingDay } from './which-days-this-team-works';
 
 /* Every kind a morning message is recorded under, sent, held or as a template. */
 const MORNING_KINDS = ['overdue', 'due-tomorrow', 'team-almost-in', 'your-view-matters', 'anchor-follow-up'].flatMap((k) => [k, `${k}:template`, `${k}:held`]);
@@ -712,6 +714,7 @@ export class GroundsCron implements OnApplicationBootstrap {
 
   private async sendSessionReadyNotificationsInner() {
     const now = new Date();
+    const nameFor = theNamesOfReadersCheckIns(this.prisma);
     await this.announceOpenedSessions(now);
     const frontend = this.config.get<string>('resend.frontendUrl') || '';
 
@@ -721,7 +724,7 @@ export class GroundsCron implements OnApplicationBootstrap {
         status: CheckInStatus.NOT_STARTED,
         sessionReadyNotifiedAt: null,
         availableFrom: { lte: now },
-        participant: { userId: { not: null }, ...NOT_HELD_FOR_A_SEAT, ground: { status: { notIn: TERMINAL } } },
+        participant: { userId: { not: null }, ...NOT_HELD_FOR_A_SEAT, ground: { status: { notIn: A_GROUND_NO_MESSAGE_IS_ABOUT } } },
       },
       select: {
         id: true,
@@ -730,6 +733,7 @@ export class GroundsCron implements OnApplicationBootstrap {
           select: {
             id: true,
             email: true,
+            userId: true,
             ground: { select: { label: true, simplerWords: true } },
             /* No recordEntries here, structurally (NL-007): this sweep used to put the person's last
                private record line into the mail and the WhatsApp body as "Last time: ...". The product's
@@ -757,7 +761,7 @@ export class GroundsCron implements OnApplicationBootstrap {
          * every session on whichever number the organisation uses. This sweep used to send its own
          * WhatsApp message as well, so a person got two for one session (survey items 7 and 8).
          */
-        await this.email.sendSessionReady(p.email, p.ground.label, checkInUrl, p.ground.simplerWords);
+        await this.email.sendSessionReady(p.email, await nameFor({ userId: p.userId, email: p.email }, ci.groundId, p.ground.label), checkInUrl, p.ground.simplerWords);
 
         await this.prisma.checkIn.update({ where: { id: ci.id }, data: { sessionReadyNotifiedAt: now } });
       } catch (err: any) {
@@ -786,6 +790,7 @@ export class GroundsCron implements OnApplicationBootstrap {
   }
 
   async sendWhatsAppRemindersInner(now: Date = new Date()): Promise<{ sent: number }> {
+    const nameFor = theNamesOfReadersCheckIns(this.prisma);
     const waiting: any[] = await everyRowAPageAtATime((page) => this.prisma.checkIn.findMany({
       where: {
         status: CheckInStatus.NOT_STARTED,
@@ -794,7 +799,7 @@ export class GroundsCron implements OnApplicationBootstrap {
       },
       select: {
         id: true, groundId: true, sessionNumber: true, createdAt: true, availableFrom: true, participantId: true,
-        ground: { select: { label: true, scenario: true, organizationId: true, overWhatsApp: true, cadence: true, chaseAfterDays: true, chasingStopped: true, tellTheLead: true, startedFrom: true, simplerWords: true, initiator: { select: { firstName: true } } } },
+        ground: { select: { label: true, scenario: true, organizationId: true, overWhatsApp: true, cadence: true, chaseAfterDays: true, chasingStopped: true, tellTheLead: true, workingDays: true, startedFrom: true, simplerWords: true, initiatorId: true, initiator: { select: { firstName: true } } } },
         participant: { select: { id: true, email: true, userId: true, user: { select: { firstName: true, email: true, phoneNumber: true, isActive: true, deletedAt: true } } } },
       },
       ...page,
@@ -832,13 +837,15 @@ export class GroundsCron implements OnApplicationBootstrap {
           dueAt, now, alreadyHad: had, hoursSinceLastChase: hoursSince(lastChase?.createdAt),
         });
         if (!what) continue;
+        /* A team that said which days it works is not chased on the others (B-020). Nothing said: as before. */
+        if (!isAWorkingDay(now, (ci.ground as any).workingDays)) continue;
         if (await isAGuestIn(this.prisma, ci.ground.organizationId, { userId: ci.participant.userId, email: ci.participant.email, userEmail: user?.email })) continue;
         const person = ci.participant.email
           ? await this.prisma.person.findFirst({ where: { organizationId: ci.ground.organizationId, email: ci.participant.email, active: true }, select: { phone: true } })
           : null;
         const phone = person?.phone ?? user?.phoneNumber ?? null;
         if (!phone) continue;
-        const who = { firstName: user?.firstName, label: ci.ground.label };
+        const who = { firstName: user?.firstName, label: await nameFor({ userId: ci.participant.userId, email: ci.participant.email }, ci.groundId, ci.ground.label) };
         let said;
         if (what === 'overdue') said = itIsOverdue(who, ci.ground.simplerWords);
         else if (what === 'due-tomorrow') said = itIsDueTomorrow(who, dueAt!, ci.ground.simplerWords);
@@ -852,7 +859,7 @@ export class GroundsCron implements OnApplicationBootstrap {
           else {
             const counts = await this.whoHasAnswered(ci.groundId, ci.sessionNumber);
             const chase = whichChase({ ...counts, aboutOnePerson: isEvaluationCheckIn(ci.ground.scenario) });
-            said = chase === 'team-almost-in' ? theTeamIsAlmostIn(who, counts.answered, counts.ofHowMany, ci.ground.simplerWords) : yourViewMatters(who, ci.ground.initiator?.firstName, ci.ground.simplerWords);
+            said = chase === 'team-almost-in' ? theTeamIsAlmostIn(who, counts.answered, counts.ofHowMany, ci.ground.simplerWords) : yourViewMatters(who, ci.participant.userId && ci.participant.userId === (ci.ground as any).initiatorId ? 'you' : ci.ground.initiator?.firstName, ci.ground.simplerWords);
           }
         }
         const rank = MORNING_ORDER.indexOf(what);
@@ -1046,6 +1053,7 @@ export class GroundsCron implements OnApplicationBootstrap {
   }
 
   async sendWhatsAppOpensSoonInner(now: Date = new Date()): Promise<{ sent: number }> {
+    const nameFor = theNamesOfReadersCheckIns(this.prisma);
     const soon: any[] = await everyRowAPageAtATime((page) => this.prisma.checkIn.findMany({
       where: {
         status: CheckInStatus.NOT_STARTED,
@@ -1077,7 +1085,7 @@ export class GroundsCron implements OnApplicationBootstrap {
           : null;
         const phone = person?.phone ?? user?.phoneNumber ?? null;
         if (!phone) continue;
-        const said = itOpensSoon({ firstName: user?.firstName, label: ci.ground.label }, new Date(ci.availableFrom), ci.ground.simplerWords);
+        const said = itOpensSoon({ firstName: user?.firstName, label: await nameFor({ userId: ci.participant.userId, email: ci.participant.email }, ci.groundId, ci.ground.label) }, new Date(ci.availableFrom), ci.ground.simplerWords);
         await this.whatsapp.sendFor(ci.ground.organizationId, phone, said.text, { checkInId: ci.id, kind: said.kind, params: said.params });
         sent++;
       } catch (err: any) {
@@ -1101,7 +1109,7 @@ export class GroundsCron implements OnApplicationBootstrap {
         status: CheckInStatus.NOT_STARTED,
         openedAnnouncedAt: null,
         OR: [{ availableFrom: null }, { availableFrom: { lte: now } }],
-        participant: { userId: { not: null }, ...NOT_HELD_FOR_A_SEAT, ground: { status: { notIn: TERMINAL } } },
+        participant: { userId: { not: null }, ...NOT_HELD_FOR_A_SEAT, ground: { status: { notIn: A_GROUND_NO_MESSAGE_IS_ABOUT } } },
       },
       select: {
         id: true,
@@ -1172,7 +1180,7 @@ export class GroundsCron implements OnApplicationBootstrap {
         userId: { not: null },
         ...NOT_HELD_FOR_A_SEAT,
         partyType: PartyType.PARTICIPANT,
-        ground: { status: { notIn: TERMINAL }, report: { releasedAt: { not: null } } },
+        ground: { status: { notIn: A_GROUND_NO_MESSAGE_IS_ABOUT }, report: { releasedAt: { not: null } } },
         OR: [{ lastNudgedAt: null }, { lastNudgedAt: { lt: throttleBefore } }],
         reportActivations: { none: { status: ReportActivationStatus.ACTIVATED } },
         /*

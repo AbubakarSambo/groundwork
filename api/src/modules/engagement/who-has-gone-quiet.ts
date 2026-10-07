@@ -1,6 +1,6 @@
 import { CheckInStatus, GroundStatus } from '@prisma/client';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
-import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
+import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
 import { theEngagementMoment } from './the-engagement-release-moment';
 import { nameToCall, namesWithTheRestCounted } from './a-name-to-call-them';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
@@ -92,7 +92,7 @@ export function theAcrossWords(firstName: string | null | undefined, cs: AQuietC
   };
 }
 
-const TERMINAL: GroundStatus[] = [...A_GROUND_THE_JOBS_LEAVE_ALONE, ...A_GROUND_IS_HELD];
+const TERMINAL: GroundStatus[] = A_GROUND_NO_MESSAGE_IS_ABOUT;
 
 /** One check-in's quiet people, from its rows. Null when it has no latest session old enough, or began before the release. */
 export function theQuietIn(rows: any[], label: string, leadUserId: string, now: Date, release: Date, away: ReadonlySet<string> = new Set()): AQuietCheckIn | null {

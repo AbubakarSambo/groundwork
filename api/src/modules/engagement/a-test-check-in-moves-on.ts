@@ -1,6 +1,6 @@
 import { CheckInStatus, GroundStatus } from '@prisma/client';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
-import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
+import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
 import { isAlreadyHeld } from './a-message-sent-once';
 import { theEngagementMoment } from './the-engagement-release-moment';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
@@ -77,7 +77,7 @@ export function isATestCheckIn(
   return tookPart.every((p) => p.userId === leadUserId);
 }
 
-const TERMINAL: GroundStatus[] = [...A_GROUND_THE_JOBS_LEAVE_ALONE, ...A_GROUND_IS_HELD];
+const TERMINAL: GroundStatus[] = A_GROUND_NO_MESSAGE_IS_ABOUT;
 
 /**
  * The sweep. One email to a lead, once ever, for the oldest check-in of theirs that is a test. Returns how many were tried. The sender decides

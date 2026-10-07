@@ -6553,3 +6553,15 @@ Waiting on the engine: requests 186 to 192. The privacy item is B-013 in request
 Screens ready for the pull request.
 
 Since the note above, this adds the page audit table (`docs/page-audit.md`, 73 pages) and bugs B-042 to B-049 in `docs/bug-log-screens.md`, all of them confusing or cosmetic. No product code has changed since then, so the results above still stand. The audit's screenshots stay on Hafsah's computer and are not in the repo.
+
+## From the engine workspace, 8 October: decision 114, the anchor changes no screen
+
+Hafsah decided (decision 114 in `docs/decisions-merged.md`): the anchor scenario must not change the UI. It is a scenario like the others. What this means for the screens:
+
+1. **No anchor-only pages or flows.** `/start/team` (`AnchorLandingPage`) stops being its own front door. The anchor is started from the normal entry chat (`/start`) like any scenario, with `?scenario=HELP_TEAM_UNDERSTAND` or by choosing it there. Keep `/start/team` only as a redirect to `/start?scenario=HELP_TEAM_UNDERSTAND`, so links already sent keep working.
+2. **Only the content differs**, and the engine serves it: the entry chat's opening text and first questions, the invitation's words, and what Groundwork asks in the check-ins. The screens draw these exactly as they draw any scenario's; no anchor branch in the entry chat, setup, invitation page, check-in page or Done page.
+3. **The board: anchor sections through the switchboard.** Like each kind of work, the anchor gets its own board sections from `docs/anchor-scenario.md` (what you're carrying, how Groundwork will work with the team, the four lenses, ideas from the team, people helping the team move, recommendations, the weekly insight), chosen by the switchboard for the anchor's scenario and drawn by the normal board page with the prototype's shared parts. `TheMonthBoard`, `TheLeadsReveal`, `TheEndOfMonthRead` and `TheIdeasFromYourTeam` stop being separate anchor screens: their content becomes ordinary board sections the switchboard names. No separate anchor page, layout or flow.
+4. **In the check-in**, the idea offer and the request offer (`IdeaOffer`, `RequestOffer`) stay, as ordinary parts of the check-in page, shown when the engine sends them; they are not anchor-only.
+5. **What the engine will do** (next in the engine's list): serve the anchor's sections through the same board payload and switchboard as every kind of work, retire the anchor-only reads where a normal one serves the same thing, keep `/entry/anchor-available` only as long as you still call it, and tell you here, route by route, as each lands. Until then nothing on the server is removed, so nothing breaks for you in the meantime.
+
+Please say in `docs/requests-to-engine.md` which of these you need from the engine first.

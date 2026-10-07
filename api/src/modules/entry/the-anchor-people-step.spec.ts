@@ -3,7 +3,7 @@ import { THE_PEOPLE_STEP_RULES } from './the-anchor-people-step';
 import { THE_SHAPES_KEYS } from './the-anchor-served-shapes';
 
 /** Request 149: the people step's rules are served where the draft is started, and only with the switch on. */
-const prismaWith = (on: boolean): any => ({ platformSetting: { findUnique: jest.fn(async () => (on ? { value: { on: true } } : null)) } });
+const prismaWith = (on: boolean): any => ({ platformSetting: { findUnique: jest.fn(async () => (on ? { value: { on: true } } : { value: { on: false } })) } });
 
 describe('the people step, as the lead reads it when she starts the anchor draft', () => {
   it('serves the rules and the words, with the pinned keys', async () => {

@@ -21,12 +21,13 @@ import { aDecisionIn } from '../suites/a-request-in-words';
 import { aQuestionAskedAboutARequest } from '../suites/an-approver-asks-by-saying-so';
 import { BACK_TO_THE_CHECK_IN, YES_OR_NO_TO_AN_ANSWER, isThisYourAnswer, type AQuestionWaiting } from '../suites/a-question-about-a-request';
 import { plainlyEnglish } from './plainly-english';
+import { namesTheyCanTellApart } from '../../common/check-ins-you-can-tell-apart';
 import { closingSoonestFirst, oneAtATime, theNextOne } from './several-check-ins-open';
 import { whenItIsDue } from '../whatsapp/what-goes-to-a-phone';
 import { formsOfTheSameNumber } from '../whatsapp/a-number-whatsapp-can-reach';
 import { theCheckInIsCompleteSaying, enoughToCloseSaying } from '../grounds/what-is-sent-in-simpler-words';
-import { AnOpenCheckIn, whatTheFileIsCalled, sessionHeader, whichOneRows, whichOneAsText, pickedOne, pickedFromText, whatArrived, reportAsText, reportAsTemplateBlanks, LANGUAGES_WE_CONVERSE_IN, A_FINISH_WORD, A_GREETING_ALONE, A_NOT_NOW, NOT_NOW_SAYING,
-  NOT_ENOUGH_YET_TO_FINISH, isAnAskWord, A_BACK_WORD, A_SWITCH_WORD, A_YES, A_NO, THE_WORDS, NOW_ASKING, ASKING_NEEDS_A_ROSTER_ENTRY, ASK_READS_WORDS,
+import { AnOpenCheckIn, whatTheFileIsCalled, sessionHeader, whichOneRows, whichOneAsText, pickedOne, pickedFromText, whatArrived, reportAsText, nothingToReadYet, THANKS_YOUR_ANSWER_IS_IN, reportAsTemplateBlanks, LANGUAGES_WE_CONVERSE_IN, A_FINISH_WORD, A_GREETING_ALONE, A_NOT_NOW, NOT_NOW_SAYING,
+  NOT_ENOUGH_YET_TO_FINISH, isAnAskWord, A_BACK_WORD, A_WISH_TO_CARRY_ON_THE_CHECK_IN, A_SWITCH_WORD, A_YES, A_NO, THE_WORDS, NOW_ASKING, ASKING_NEEDS_A_ROSTER_ENTRY, ASK_READS_WORDS,
   ONLY_ONE_OPEN, NONE_OPEN, BACK_IN, BACK_TO_NOTHING, ASKING, isAsking, wasIn, namedCheckIn, looksLikeARequest, shallITreatThisAs, YES_OR_NO, HELD_WORDS_PUT_IN, heldWordsNotPut, type ARequest,
 } from './a-whatsapp-message-is-routed';
 import { A_STOP_WORD, A_START_WORD, STOPPED_SAYING, RESUMED_SAYING, UNKNOWN_NUMBER_SAYING } from '../whatsapp/a-message-outside-the-window';
@@ -47,6 +48,19 @@ import {
  * language is read from their first message and the conversation happens in it; the record stays in
  * English.
  */
+/** What a person reads when a file they sent could not be read (B-104): a sentence of ours, never the library's ("Invalid PDF structure."). */
+export const THAT_FILE_COULD_NOT_BE_READ = 'I could not read that file. It may be damaged, or not the kind of file its name says. Send it again, or upload it in Groundwork. A PDF, an image or a text document works.';
+export function aFileProblemInWords(err: any): string {
+  const said = typeof err?.message === 'string' ? err.message.trim() : '';
+  /* One of our own refusals is already a sentence a person can use: a capital, a full stop, several words, and no library words. */
+  const ours = !!err?.getStatus && /^[A-Z][^]{25,}[.!?]$/.test(said) && !/\b(pdf structure|invalid|parse|unexpected|stack|undefined|null|ENOENT)\b/i.test(said);
+  return ours ? said : THAT_FILE_COULD_NOT_BE_READ;
+}
+
+export function isHeldByTheAddOn(error?: string | null): boolean {
+  return /this check-in stays in the app/i.test(error ?? '');
+}
+
 @Injectable()
 export class WhatsAppForAnOrganisationService {
   private readonly logger = new Logger(WhatsAppForAnOrganisationService.name);
@@ -258,7 +272,7 @@ export class WhatsAppForAnOrganisationService {
     }
     if (isAsking(thread?.checkInId) && who.personId) {
       const named = arrived.kind === 'pick' ? pickedOne(arrived.id, open) : arrived.kind === 'text' ? namedCheckIn(said, open) : null;
-      if (named || (arrived.kind === 'text' && A_BACK_WORD.test(said))) {
+      if (named || (arrived.kind === 'text' && (A_BACK_WORD.test(said) || A_WISH_TO_CARRY_ON_THE_CHECK_IN.test(said)))) {
         const target = named ?? open.find((c) => c.id === wasIn(thread?.checkInId)) ?? (open.length === 1 ? open[0] : null);
         if (target) {
           await this.remember(organizationId, from, target.id);
@@ -358,7 +372,7 @@ export class WhatsAppForAnOrganisationService {
         const doc: any = await this.documents.upload(ground!.groundId, userId!, { originalname: arrived.fileName, mimetype: fetched.mimeType, buffer: fetched.buffer, size: fetched.buffer.length } as any, false, arrived.caption || undefined);
         await say(`${whatTheFileIsCalled(arrived)} is on your check-in${arrived.caption ? ` with your note: ${arrived.caption}` : ''}. ${doc?.whoCanSeeIt ?? 'Only you can see it until you say otherwise.'} Anything it backs up is read against what you said.`);
       } catch (err: any) {
-        await say(err?.message ?? 'That file could not be read. A PDF, an image, or a text document works.');
+        await say(aFileProblemInWords(err));
       }
       return;
     }
@@ -568,7 +582,7 @@ export class WhatsAppForAnOrganisationService {
       report = await this.reports.sessionReport(row.groundId, c.sessionNumber, userId, organizationId).catch(() => null);
       if (!report?.whereThingsStand) { report = null; await new Promise((r) => setTimeout(r, 4000)); }
     }
-    let text = report ? reportAsText(report, c.label, c.simplerWords) : `Your check-in on ${c.label} is on record. The report is being written and is in Groundwork under Report.`;
+    let text = nothingToReadYet(report) ? THANKS_YOUR_ANSWER_IS_IN(c.label) : report ? reportAsText(report, c.label, c.simplerWords) : `Your check-in on ${c.label} is on record. The report is being written and is in Groundwork under Report.`;
     text = await this.inTheirLanguage(text, row.participant.language);
     /* Outside the 24 hours it goes as groundwork_report_ready: the name and one short line, never a line break. */
     const params = reportAsTemplateBlanks(report, c.label);
@@ -577,6 +591,8 @@ export class WhatsAppForAnOrganisationService {
     /* On the number the person last wrote to, so the report arrives in the same conversation (survey item 8). */
     const via = (await this.whatsapp.lastWroteTo(organizationId, phone).catch(() => null)) ?? 'theirs';
     const first = await this.whatsapp.sendOn(via, organizationId, phone, text, { checkInId: c.id, kind: 'report', params });
+    /* A message the organisation's own WhatsApp settings hold back is not a failure to log twice and retry (B-119): the report is in the app. */
+    if (!first.sent && isHeldByTheAddOn(first.error)) return;
     if (!first.sent) {
       await new Promise((r) => setTimeout(r, 3000));
       const second = await this.whatsapp.sendOn(via, organizationId, phone, text, { checkInId: c.id, kind: 'report-retry', params });
@@ -623,11 +639,13 @@ export class WhatsAppForAnOrganisationService {
         OR: [{ availableFrom: null }, { availableFrom: { lte: new Date() } }],
       },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, status: true, sessionNumber: true, availableFrom: true, createdAt: true, ground: { select: { label: true, overWhatsApp: true, cadence: true, simplerWords: true } } },
+      select: { id: true, status: true, sessionNumber: true, availableFrom: true, createdAt: true, ground: { select: { label: true, createdAt: true, initiator: { select: { firstName: true } }, overWhatsApp: true, cadence: true, simplerWords: true } } },
     });
+    /* Two of the same name are told apart by when each started (or who runs it), so "You have two check-ins open" can be answered. */
+    const said = namesTheyCanTellApart(rows.map((r) => ({ id: r.id, label: r.ground.label, startedAt: r.ground.createdAt, leadName: r.ground.initiator?.firstName })));
     /* The one closing soonest first (decision 106 item 1), by the same due date the reminders use. */
     return closingSoonestFirst(rows.map((r) => ({
-      id: r.id, status: r.status, sessionNumber: r.sessionNumber, label: r.ground.label, simplerWords: r.ground.simplerWords, keptOffThePhone: keptOffThePhone(r.ground),
+      id: r.id, status: r.status, sessionNumber: r.sessionNumber, label: said.get(r.id) ?? r.ground.label, simplerWords: r.ground.simplerWords, keptOffThePhone: keptOffThePhone(r.ground),
       dueAt: whenItIsDue(r.availableFrom ?? r.createdAt, r.ground.cadence),
     })));
   }

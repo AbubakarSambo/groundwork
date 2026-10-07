@@ -92,6 +92,23 @@ describe('every report read strips other people\'s ratings', () => {
     expect(e.parties.every((p: any) => p.contributed === true)).toBe(true);
   });
 
+  /*
+   * B-110. concernFlags is a list of sentences about named people that says how thin or generic their
+   * answers were ("significantly fewer and less specific entries than others"). The lead's report
+   * carried it. CLAUDE.md: leads never see how a person's answers were rated, and decision 43 lets a
+   * lead read only the plain forms (the sentence in the report, the pattern, one level for the whole
+   * report, "Nothing checkable" beside a name). So no reader is sent it, the lead and an org admin included.
+   */
+  it.each(READERS)('nobody is sent a sentence about how a named person\'s answers were rated: $who', ({ viewerLabel, viewerParticipantId, viewerIsLead }) => {
+    const input: any = RATED();
+    input.engagement.concernFlags = [
+      { label: 'Participant B', observation: "This person's record contains significantly fewer and less specific entries than others on the same ground." },
+    ];
+    const out: any = withoutOtherPeoplesReads(input, { viewerLabel, viewerParticipantId, viewerIsLead });
+    expect(out.engagement.concernFlags).toBeUndefined();
+    expect(JSON.stringify(out)).not.toContain('less specific entries');
+  });
+
   it('an org admin with no account of their own is sent no rating at all', () => {
     const out: any = withoutOtherPeoplesReads(RATED(), { viewerLabel: null, viewerParticipantId: null, viewerIsLead: true });
     expect(out.engagement.specificitySignal).toEqual({});

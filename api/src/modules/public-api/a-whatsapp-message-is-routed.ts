@@ -91,6 +91,18 @@ export function whatArrived(message: any): { kind: 'text'; text: string } | { ki
  * A SESSION REPORT AS ONE MESSAGE. Where things stand, the reads at a glance, the conversation worth
  * having. The same card the panel shows at the end, said rather than drawn.
  */
+/**
+ * A REPORT THAT HAS NOTHING TO READ YET IS NOT ANNOUNCED AS READY (B-021). While the round is open and nothing is agreed or open between
+ * people, "Your report is ready. Not everyone has answered yet, so there is nothing to agree or differ with." was sent to the person who had
+ * just answered. They are thanked, and told when they will hear.
+ */
+export function nothingToReadYet(report: any): boolean {
+  return !!report && report.state === 'forming' && (report.whereThingsStand?.agreed ?? 0) === 0 && (report.whereThingsStand?.stillOpen ?? 0) === 0;
+}
+
+export const THANKS_YOUR_ANSWER_IS_IN = (label: string) =>
+  `Thank you, your answer for ${label} is in. The shared picture is made once everyone has answered, and you will be told as soon as there is something to read.`;
+
 export function reportAsText(report: any, label: string, simplerWords?: boolean | null): string {
   const lines: string[] = [`Your report for ${label} is ready.`];
   if (report?.whereThingsStand?.saying) lines.push(report.whereThingsStand.saying);
@@ -196,9 +208,15 @@ export const isAnAskWord = (text: string, ask: string): boolean =>
   AN_ASK_WORD.test(text) || text.trim().replace(/[.!]$/, '').replace(/\s+/g, ' ').toLowerCase() === ask.toLowerCase();
 /** "back": from Ask Groundwork to the check-in. */
 export const A_BACK_WORD = /^\s*(back|go\s+back|back\s+to\s+(my\s+)?check-?in)\s*[.!]?\s*$/i;
+/**
+ * SOMEBODY WHO IS IN ASK AND WRITES AS IF TO THEIR CHECK-IN (B-143). After she approved a request on WhatsApp, Wairimu's thread stayed in
+ * Ask, her reminders said "you can answer here now", and "Hi", "I want to do my check-in" and "START" were each answered "I cannot answer
+ * that one yet". Those words are a return to the check-in, as "back" is. A question ("when is my next check-in?") stays with Ask.
+ */
+export const A_WISH_TO_CARRY_ON_THE_CHECK_IN = /^\s*(?:(?:hi|hello|hey)[\s,!.]*|(?:start|begin|continue|resume)\s*[.!]?\s*|(?!(?:when|what|how|who|why|is|are|can|could|do|does|where)\b)[^?]*\b(?:(?:do|start|begin|continue|resume|finish|answer)\b[^?]*\bcheck-?in|check-?in\b[^?]*\b(?:now|please))[^?]*)$/i;
 /** "switch": the list of check-ins again, or, on Groundwork's number, the list of organisations. */
 export const A_SWITCH_WORD = /^\s*switch\s*[.!]?\s*$/i;
-export const A_YES = /^\s*(yes|yeah|yep|y|ok|okay|sure|please do)\s*[.!]?\s*$/i;
+export const A_YES = /^\s*(?:(?:yes|yeah|yep|ok|okay|sure)(?:\s+(?:please|thanks|thank\s+you|do))?|y|please\s+do|go\s+ahead|yes,?\s+please)\s*[.!]?\s*$/i;
 export const A_NO = /^\s*(no|nope|n|no thanks|keep it|keep it in the check-?in)\s*[.!]?\s*$/i;
 
 /** The one sentence that says the words, said when a check-in starts on WhatsApp. */

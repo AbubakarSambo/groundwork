@@ -1,3 +1,4 @@
+import { withoutComparisonsBetweenPeople } from './no-comparison-between-people';
 /**
  * A READ OF HOW SOMEBODY IS DOING BELONGS TO THAT PERSON, NOT TO THEIR COLLEAGUES.
  *
@@ -35,7 +36,7 @@ export interface OwnReadsInput {
   viewerLabel: string | null;
   /** The reader's participant id, for the fields keyed that way. */
   viewerParticipantId: string | null;
-  /** A lead or org admin. They keep concernFlags and leadershipGaps; like everyone, only their own rating. */
+  /** A lead or org admin. They keep leadershipGaps; like everyone, only their own rating, and no concernFlags. */
   viewerIsLead: boolean;
 }
 
@@ -76,7 +77,12 @@ const keepOwnById = (map: any, viewerParticipantId: string | null): any => {
  *   concernFlags, which is a list of concerns about named parties and has no
  *   business in anybody's hands but the lead's.
  */
-export function withoutOtherPeoplesReads<T extends Record<string, any>>(
+export function withoutOtherPeoplesReads<T extends Record<string, any>>(report: T, input: OwnReadsInput): T {
+  /* And no sentence that ranks a person against others, for any reader (no-comparison-between-people.ts). */
+  return withoutComparisonsBetweenPeople(withoutOtherPeoplesRatings(report, input));
+}
+
+function withoutOtherPeoplesRatings<T extends Record<string, any>>(
   report: T,
   { viewerLabel, viewerParticipantId, viewerIsLead }: OwnReadsInput,
 ): T {
@@ -149,6 +155,14 @@ export function withoutOtherPeoplesReads<T extends Record<string, any>>(
   if (finalSynthesis && 'tiers' in finalSynthesis) {
     finalSynthesis.tiers = keepOwnById(finalSynthesis.tiers, viewerParticipantId);
   }
+
+  /*
+   * B-110: `concernFlags` says, per named person, how thin or generic their answers were ("significantly
+   * fewer and less specific entries than others on the same ground"). That is a rating of how a person's
+   * answers were rated, so it goes for every reader, the lead and an org admin included (CLAUDE.md, and
+   * the Hafsah decision that a lead reads only the plain forms). The engine still builds it and may use it inside.
+   */
+  if (engagement) delete engagement.concernFlags;
 
   const withoutRatings: Record<string, any> = {
     ...withoutGuides,

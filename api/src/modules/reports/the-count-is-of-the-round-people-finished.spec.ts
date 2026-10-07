@@ -23,8 +23,8 @@ const BASE = [
 ];
 const RECORD = PARTICIPANTS.map((p, i) => ({ id: `r${i}`, participantId: p.id, participant: { id: p.id }, checkIn: { sessionNumber: 1 }, type: 'PROGRESS', text: `Said number ${i} about the renewals.`, disputedAt: null, saidWordForWord: true, createdAt: new Date() }));
 
-function harness(leadFinishesWhileItIsWritten = false) {
-  const ROWS = BASE.map((r) => ({ ...r }));
+function harness(leadFinishesWhileItIsWritten = false, nobodyAnswered = false) {
+  const ROWS = BASE.map((r) => ({ ...r, ...(nobodyAnswered ? { status: 'NOT_STARTED' } : {}) }));
   if (leadFinishesWhileItIsWritten) ROWS.find((r) => r.participantId === 'pid-1' && r.sessionNumber === 1)!.status = 'IN_PROGRESS';
   let first = true;
   const upserts: any[] = [];
@@ -89,5 +89,15 @@ describe('a report written after all three finished counts all three', () => {
     const stored = JSON.stringify(upserts[upserts.length - 1].create);
     expect(stored).toContain('All three people have answered.');
     expect(stored).not.toMatch(/Two of the three|answered so far/);
+  });
+});
+
+describe('a report before anybody has answered (B-009)', () => {
+  it('says nobody has checked in, with the count of people, and never calls it a ground or the lead the only one invited', async () => {
+    const { service, upserts } = harness(false, true);
+    await service.synthesize('g1');
+    const stored = upserts[upserts.length - 1]?.create;
+    expect(stored?.sharedPicture).toBe('Nobody has checked in yet, out of three people. The shared picture is made once people have answered.');
+    expect(stored?.sharedPicture).not.toMatch(/ground|only person invited/);
   });
 });

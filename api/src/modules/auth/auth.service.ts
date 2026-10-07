@@ -1499,6 +1499,8 @@ export class AuthService {
     if (dto.emailNotifications !== undefined) userUpdate.emailNotifications = dto.emailNotifications;
 
     const me = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    /* A first name of only spaces would wipe the name everybody reads (B-130). Somebody who has no name yet may still save the rest of the form. */
+    if (dto.firstName !== undefined && !dto.firstName.trim() && me.firstName?.trim()) throw new BadRequestException('Please write your first name. It cannot be left empty.');
     /* Turning the switch on is the undo for a stop made from a link in a mail: the one choice, in both places (decision 109). */
     if (dto.emailNotifications === true) await new TheWaysToStopMail(this.prisma).turnBackOnFor(me.email).catch(() => undefined);
     /* One stored form for every number, the way WhatsApp sends it; a local number takes the

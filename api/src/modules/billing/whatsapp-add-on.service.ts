@@ -324,7 +324,8 @@ export class WhatsAppAddOnService {
    */
   async whatTheyRead(organizationId: string, isAdmin: boolean, now: Date = new Date()) {
     const s = await this.standing(organizationId, now);
-    const personSays = s.heldBecause ? whatThePersonReads(s.heldBecause, now) : null;
+    /* This read is about the organisation, not one check-in: when WhatsApp is not turned on it says the one sentence the other readers of the page say (B-007), not "this check-in stays in the app". */
+    const personSays = s.heldBecause === 'not turned on' ? WHATSAPP_REMINDERS_ARE_OFF : s.heldBecause ? whatThePersonReads(s.heldBecause, now) : null;
     /* The price, the trial, the use and the limit are hidden at release (docs/deploy.md): an admin reads what everybody reads. */
     /*
      * A LEAD OR A PERSON IN A CHECK-IN READS WHY NOT, ON THEIR OWN READ (screens gap, 5 October). With the add-on off and

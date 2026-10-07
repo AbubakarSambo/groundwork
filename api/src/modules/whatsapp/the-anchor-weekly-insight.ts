@@ -4,7 +4,7 @@ import type { WhatsAppService } from './whatsapp.service';
 import { TEMPLATES, fill } from './a-message-outside-the-window';
 import { keptOffThePhone } from './a-check-in-kept-off-the-phone';
 import { organisationsThatTurnedWhatsAppOn } from './only-where-whatsapp-is-turned-on';
-import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
+import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
 import { theirApprovedLeave, fallsInLeave } from '../suites/who-is-away';
 import { theirRosterEntry } from '../suites/a-roster-entry-and-its-sign-in';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
@@ -55,7 +55,7 @@ export function theWeeklyInsight(firstName: string | null | undefined, paragraph
   return { kind: THE_INSIGHT_KIND, text: fill(TEMPLATES[THE_INSIGHT_KIND].body, params), params };
 }
 
-const TERMINAL: GroundStatus[] = [...A_GROUND_THE_JOBS_LEAVE_ALONE, ...A_GROUND_IS_HELD];
+const TERMINAL: GroundStatus[] = A_GROUND_NO_MESSAGE_IS_ABOUT;
 
 /**
  * The round that is open, by the board's own rule (whichRoundIsOpen), over the people who give a check-in: never

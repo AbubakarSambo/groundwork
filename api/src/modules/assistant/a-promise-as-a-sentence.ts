@@ -11,6 +11,9 @@
 const A_DAY_IN_IT = /\b(?:mon|tues?|wednes|thurs?|fri|satur|sun)day\b|\b(?:today|tomorrow|tonight|next week|this week|next month|this month|end of (?:the )?(?:week|month|quarter|year|october|november|december)|by the end)\b|\b\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{1,2}\b/i;
 const A_WAY_OF_SAYING_WHEN = /^(?:by|on|before|until|in|next|this|every|at|from|after|within|today|tomorrow)\b/i;
 
+/** Starts with a number or a word that begins a noun phrase: not a verb. */
+const A_THING_NOT_AN_ACTION = /^(?:\d|(?:a|an|the|one|two|three|four|five|six|seven|eight|nine|ten|some|several|more|another|your|our|each|every|all|no|weekly|daily|monthly)\b)/i;
+
 const lowerFirst = (s: string) => (/^[A-Z][a-z]/.test(s) && !/^(?:I|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b/.test(s) ? s.charAt(0).toLowerCase() + s.slice(1) : s);
 
 export function whatTheyWouldDo(rawText: string): string {
@@ -26,6 +29,8 @@ export function aPromiseAsASentence(rawText: string, whenSaid: string | null | u
   const when = (whenSaid ?? '').trim().replace(/[.!?]+$/, '');
   const carriesADay = A_DAY_IN_IT.test(does);
   const day = when && !carriesADay && !does.toLowerCase().includes(when.toLowerCase()) ? (A_WAY_OF_SAYING_WHEN.test(when) ? ` ${when.charAt(0).toLowerCase()}${when.slice(1)}` : ` by ${when}`) : '';
+  /* A thing and not an action ("two depot visits each week") cannot follow "you would": "you said you would two depot visits" is not a sentence (B-136). */
+  if (A_THING_NOT_AN_ACTION.test(does)) return `${where ? `In "${where}", what you said you would do is ` : 'What you said you would do is '}${does}${day}.`;
   const head = where ? `In "${where}", you said you would ` : 'You said you would ';
   return `${head}${does}${day}.`;
 }

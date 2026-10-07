@@ -176,7 +176,10 @@ describe.each(SCENARIOS)('%s after the admin accepted it', (_l, scenario) => {
     expect(where.OR).toContainEqual({ approvedById: APPROVER });
     expect(where.OR).toContainEqual({ status: 'AWAITING_APPROVAL' });
     const member: any = groundsAViewerMayList(SUBJECT, { role: 'MEMBER', organizationId: 'org1' }, 'org1');
-    expect(JSON.stringify(member)).not.toContain('AWAITING_APPROVAL');
+    /* A member is never given a waiting check-in: nothing in their list lets one in, and since B-126 their
+       roster line says so outright by leaving waiting ones out. */
+    expect(member.OR).not.toContainEqual({ status: 'AWAITING_APPROVAL' });
+    expect(JSON.stringify(member)).toContain('{"not":"AWAITING_APPROVAL"}');
     expect(JSON.stringify(member)).not.toContain('approvedById');
   });
 });

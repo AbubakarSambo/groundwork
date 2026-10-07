@@ -552,11 +552,14 @@ export class EmailService implements OnModuleInit {
       if (links.length) this.logger.warn(`[DEV EMAIL] Links: ${links.join(' ')}`);
       // Also relay to local mailcatcher (127.0.0.1:1025) so persona tests can read links
       try {
-        const transport = nodemailer.createTransport({ host: '127.0.0.1', port: 1025, secure: false, ignoreTLS: true });
+        /* MAIL_CATCHER_PORT is for a test bed only (two testers, two catchers). Unset, it is 1025 as it always was. This branch is only ever reached when nothing is sent for real. */
+        const transport = nodemailer.createTransport({ host: '127.0.0.1', port: Number(process.env.MAIL_CATCHER_PORT) || 1025, secure: false, ignoreTLS: true });
         await transport.sendMail({ from: this.fromEmail, to: options.to, subject: options.subject, html: options.html });
       } catch (_) { /* mailcatcher not running - console log is still available */ }
       const devId = `dev-${crypto.randomUUID()}`;
       await this.delivery.recordSend(devId, options.to, context);
+      /* A mail that is only logged is still written down as sent, the way a real one is: the once-only and one-a-day rules read this record, so without it a local run sends the same routine mail every morning, which production never does. */
+      if (sender && ROUTINE_EMAILS.has(sender)) await this.writeItDown(options, sender, 'sent', null); else void this.writeItDown(options, sender, 'sent', null);
       // DEV BOUNCE CONVENTION: a recipient containing '+bounce' emits a
       // synthetic email.bounced event through the SAME webhook handler, so
       // the full bounced-state UI is provable at the real local UI. The
@@ -744,6 +747,11 @@ export class EmailService implements OnModuleInit {
      * makes that true.
      */
     const stopLine = await this.theWayToStopBeingChased(context?.participantId);
+    /* THE NAME THE LEAD TYPED, OR THE ONE ON THEIR SIGN-IN (B-002). The mail said "Hi," to a person the lead had named. */
+    const them = context?.participantId
+      ? await this.prisma.groundParticipant.findUnique({ where: { id: context.participantId }, select: { nameGiven: true, user: { select: { firstName: true } } } }).catch(() => null)
+      : null;
+    const theirFirstName = (them?.user?.firstName?.trim() || them?.nameGiven?.trim().split(/\s+/)[0] || '') || null;
     /* Free text from the inviter, inside a styled block, in a mail from noreply@: escaped, so a note
        with an ampersand or an angle bracket renders as written rather than as half a sentence. */
     const noteHtml = note ? `<p style="border-left:3px solid #5DCAA5;padding:8px 14px;margin:20px 0;color:#4A4540;font-style:italic;">${escapeHtml(note)}</p>` : '';
@@ -751,7 +759,7 @@ export class EmailService implements OnModuleInit {
       to: email,
       subject: `${founderName} would like your take on ${groundLabel}`,
       html: this.layout(
-        `<p>Hi,</p>
+        `<p>${escapeHtml(greeting(theirFirstName))}</p>
          <p><strong>${escapeHtml(founderName)}</strong> would like to know what you are seeing in <strong>${escapeHtml(groundLabel)}</strong>.</p>
          <p>It is a short check-in, about ten minutes, where you say what is actually going on from where you sit.</p>
          <p>${escapeHtml(await this.whoSeesWhatYouSay(context))}</p>
@@ -817,13 +825,13 @@ export class EmailService implements OnModuleInit {
     }, undefined, 'sendApprovalsSummary');
   }
 
-  async sendGroundApproved(email: string, firstName: string, groundLabel: string, url: string): Promise<void> {
+  async sendGroundApproved(email: string, firstName: string, groundLabel: string, url: string, invitedNow = 0): Promise<void> {
     await this.sendEmail({
       to: email,
       subject: `Your check-in is approved: ${groundLabel}`,
       html: this.layout(
         `<p>${greeting(firstName)}</p>
-         <p>An admin in your organisation has approved <strong>${escapeHtml(groundLabel)}</strong>. You can invite the people involved now, and their check-ins can begin.</p>
+         <p>An admin in your organisation has approved <strong>${escapeHtml(groundLabel)}</strong>. ${invitedNow > 0 ? `${invitedNow === 1 ? 'The person' : 'The people'} you named ${invitedNow === 1 ? 'has' : 'have'} now been invited, so you do not need to invite them again.` : 'You can invite the people involved now, and their check-ins can begin.'}</p>
          <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open the check-in →</a></p>`,
       ),
     }, undefined, 'sendGroundApproved');
@@ -1290,7 +1298,8 @@ export class EmailService implements OnModuleInit {
       REALIGN_TEAM: 'Your team realignment check-in is open',
       PIP: 'Your performance plan check-in is waiting',
     };
-    const subject = (scenario && subjectMap[scenario]) || 'Your check-in is waiting';
+    /* Said with the check-in's name, so four waiting check-ins are four different subjects (B-145). */
+    const subject = (scenario && subjectMap[scenario]) || `Your check-in for ${groundLabel} is waiting`;
     const otherPartyNote = otherPartyCompleted
       ? `<p><strong>${words.theOtherHasAnswered}</strong></p>`
       : '';
@@ -1553,7 +1562,7 @@ export class EmailService implements OnModuleInit {
       subject: `"${groundLabel}" is now closed`,
       html: this.layout(
         `<p><strong>${escapeHtml(groundLabel)}</strong> has been closed.${endStateLabel ? ` ${escapeHtml(theOutcomeIsThat(endStateLabel))}` : ''}</p>
-         <p>Your record is permanent and both parties retain access to everything that was on the check-in.</p>
+         <p>Everything in the check-in is kept, and the people in it can still read it.</p>
          <p><a href="${groundUrl}">View the check-in</a></p>`,
       ),
     }, undefined, 'sendGroundClosed');

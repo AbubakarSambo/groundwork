@@ -27,13 +27,13 @@ describe('what Wairimu reads about her own check-in', () => {
   it('"you" for herself, first, and "have" because "you" is plural to the verb', async () => {
     const m = aMorning([person('Chidi', 'u-chidi', 'COMPLETED'), person('Wairimu', 'u-wairimu', 'NOT_STARTED'), person('Amani', 'u-amani', 'IN_PROGRESS'), person('Baraka', 'u-baraka', 'NOT_STARTED')]);
     await m.run();
-    expect(m.sent[0]).toContain('In "Sales team, Q4", 1 of 4 people has checked in, and you, Amani and Baraka have not yet.');
+    expect(m.sent[0]).toContain('In "Sales team, Q4", 1 of 4 people has checked in for the first check-in, and you, Amani and Baraka have not yet.');
     expect(m.sent[0]).not.toMatch(/Wairimu, Amani|and Wairimu/);
   });
   it('when she is the only one left', async () => {
     const m = aMorning([person('Chidi', 'u-chidi', 'COMPLETED'), person('Amani', 'u-amani', 'COMPLETED'), person('Wairimu', 'u-wairimu', 'NOT_STARTED')]);
     await m.run();
-    expect(m.sent[0]).toContain('2 of 3 people have checked in, and you have not yet.');
+    expect(m.sent[0]).toContain('2 of 3 people have checked in for the first check-in, and you have not yet.');
   });
   it('somebody else who is the only one left is still "has"', () => {
     expect(aCheckInInASentence({ label: 'Sales team, Q4', ofHowMany: 6, answered: 5, notYet: ['Omar'] })).toBe('In "Sales team, Q4", 5 of 6 people have checked in, and Omar has not yet.');

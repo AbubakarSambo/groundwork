@@ -35,7 +35,7 @@ function anchor(on: boolean, startedFrom: string | null, completedOn = '2026-09-
   return {
     people: PEOPLE, checkIns, commitments, dependencies, groundRow: { startedFrom, startsAt: OPENED },
     prismaExtras: {
-      platformSetting: { findUnique: jest.fn(async () => (on ? { value: { on: true } } : null)) },
+      platformSetting: { findUnique: jest.fn(async () => (on ? { value: { on: true } } : { value: { on: false } })) },
       groundDependency: { findMany: jest.fn(async () => dependencies) },
       recommendation: { findMany: jest.fn(async () => []) },
       groundParticipant: {

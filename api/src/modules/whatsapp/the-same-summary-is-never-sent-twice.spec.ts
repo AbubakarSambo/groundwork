@@ -48,7 +48,7 @@ describe('eight mornings with nothing new', () => {
     d.setAnswers(d.nobodyIn);
     for (let n = 0; n < 8; n++) await d.morning(n);
     expect(d.sent).toHaveLength(1);
-    expect(d.sent[0]).toContain('nobody has checked in yet, out of 1 person');
+    expect(d.sent[0]).toContain('nobody has checked in for the first check-in yet, out of 1 person');
     expect(d.sent[0]).toContain("Amina's leave");
   });
 

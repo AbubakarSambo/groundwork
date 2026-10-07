@@ -209,12 +209,14 @@ export class ReportsListener {
           select: {
             id: true, managingOnly: true,
             user: { select: { email: true, firstName: true, lastName: true, isActive: true, deletedAt: true, awaitingOrgApproval: true } },
-            checkIns: { where: { sessionNumber: event.sessionNumber, status: CheckInStatus.COMPLETED }, select: { id: true } },
+            /* Somebody the clock closed, who never said anything, has not checked in (B-132). */
+            checkIns: { where: { sessionNumber: event.sessionNumber, status: CheckInStatus.COMPLETED, turns: { some: { role: 'PERSON' as any } } }, select: { id: true } },
           },
         },
       },
     });
     if (!ground?.initiator?.email) return;
+    if (!ground.participants.find((p) => p.id === event.participantId)?.checkIns.length) return;
 
     const who = ground.participants.find((p) => p.id === event.participantId);
     const participantEmail = who?.user?.email;

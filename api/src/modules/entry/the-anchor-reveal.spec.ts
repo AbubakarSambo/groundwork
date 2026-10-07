@@ -23,7 +23,7 @@ const REPORT = {
 
 function makeService(switchOn: boolean) {
   const anthropic: any = { extract: jest.fn(async () => JSON.parse(JSON.stringify(REPORT))) };
-  const prisma: any = { platformSetting: { findUnique: jest.fn(async () => (switchOn ? { value: { on: true } } : null)) } };
+  const prisma: any = { platformSetting: { findUnique: jest.fn(async () => (switchOn ? { value: { on: true } } : { value: { on: false } })) } };
   return new EntryService(anthropic, prisma, {} as any, {} as any, {} as any, {} as any, {} as any);
 }
 

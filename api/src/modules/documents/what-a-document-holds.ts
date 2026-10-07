@@ -207,7 +207,7 @@ export function theContextWeHave(held: WhatLanded, opts: { asking?: boolean; wil
   }
   if (held.dates.length) {
     lines.push('');
-    for (const d of held.dates) lines.push(`The date it sets for ${d.what} is ${d.when.trim().replace(/\.$/, '')}.`);
+    for (const d of held.dates) lines.push(`The date it sets for ${inTheMiddle(d.what)} is ${d.when.trim().replace(/\.$/, '')}.`);
   }
   if (held.unmatched.length) {
     lines.push(
@@ -228,10 +228,18 @@ export function theContextWeHave(held: WhatLanded, opts: { asking?: boolean; wil
   return lines.join('\n');
 }
 
+/** A name that starts a sentence in the document reads in the middle of ours with a small first letter, unless it is a name or an acronym: "for the new stock system", "for Kilifi". */
+export function inTheMiddle(what: string): string {
+  const w = (what ?? '').trim();
+  return /^(The|A|An)\s/.test(w) ? `${w.charAt(0).toLowerCase()}${w.slice(1)}` : w;
+}
+
 /** " by 9 October", said once, whether or not the document wrote its own "by". */
 export function byWhen(by?: string | null): string {
   const when = (by ?? '').trim().replace(/\.$/, '').replace(/^by\s+/i, '');
-  return when ? ` by ${when}` : '';
+  if (!when) return '';
+  /* "each week", "every Friday", "per month" say how often, not by when: "15 each week", never "15 by each week" (B-014). */
+  return /^(each|every|per|a|once|twice|weekly|daily|monthly|yearly|annually)\b/i.test(when) ? ` ${when}` : ` by ${when}`;
 }
 
 /**
@@ -259,8 +267,12 @@ const HAS_A_VERB =
 export const aSentence = (t: string | null | undefined): string | null => {
   const s = (t ?? '').trim().replace(/[.;:,\s]+$/, '').trim();
   if (!s) return null;
-  if (HAS_A_VERB.test(s)) return `${s}.`;
-  const lower = `${s.charAt(0).toLowerCase()}${s.slice(1)}`;
+  /* A sentence in the first person ("I will keep this on record ...") is already one, and its "I" is never made small (B-014). */
+  if (HAS_A_VERB.test(s) || /^I(\s|'|\u2019)/.test(s) || /\b(will|shall|can|should|must)\b/i.test(s)) return `${s}.`;
+  /* The first letter is made small only where the first word is an ordinary one: not an "I", not an acronym such as OKR or KPI. */
+  const first = s.split(/\s+/)[0];
+  const keepsItsCapital = first === 'I' || /^[A-Z]{2,}\b/.test(first) || /^[A-Z][a-z]*[A-Z]/.test(first);
+  const lower = keepsItsCapital ? s : `${s.charAt(0).toLowerCase()}${s.slice(1)}`;
   return `It looks like ${lower}.`;
 };
 

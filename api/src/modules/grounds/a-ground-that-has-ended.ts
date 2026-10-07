@@ -58,6 +58,20 @@ export const A_GROUND_THE_JOBS_LEAVE_ALONE: GroundStatus[] = [...A_GROUND_IS_OVE
  */
 export const A_GROUND_IS_HELD: GroundStatus[] = [GroundStatus.PAUSED];
 
+/**
+ * WHAT NO SCHEDULED MESSAGE IS EVER ABOUT: ended, stalled, held, and waiting for somebody to let it start.
+ * Found on the test bed on 7 October 2026: after a one-day clock move the lead of an old organisation got
+ * five emails saying people "have not started" check-ins that had stalled weeks before, because the morning
+ * reminder read every NOT_STARTED session and never asked the check-in's own state. A job that sends a
+ * message to a person about a check-in reads this list.
+ */
+export const A_GROUND_NO_MESSAGE_IS_ABOUT: GroundStatus[] = [
+  ...A_GROUND_THE_JOBS_LEAVE_ALONE,
+  ...A_GROUND_IS_HELD,
+  GroundStatus.AWAITING_APPROVAL,
+  GroundStatus.AWAITING_LEAD,
+];
+
 export function hasEnded(status: GroundStatus | string | null | undefined): boolean {
   return !!status && (A_GROUND_IS_OVER as string[]).includes(status);
 }
