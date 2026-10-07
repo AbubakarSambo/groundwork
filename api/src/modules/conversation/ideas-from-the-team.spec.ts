@@ -13,7 +13,7 @@ const MESSAGE = 'Honestly we could send the price list to every shop on Monday s
 function world(opts: { on?: boolean; startedFrom?: string | null; model?: any; items?: any[] } = {}) {
   const items: any[] = opts.items ?? [];
   const prisma: any = {
-    platformSetting: { findUnique: jest.fn(async () => (opts.on === false ? null : { value: { on: true } })) },
+    platformSetting: { findUnique: jest.fn(async () => (opts.on === false ? { value: { on: false } } : { value: { on: true } })) },
     workItem: {
       findMany: jest.fn(async (a: any) => items.filter((i) => i.kind === a.where.kind && i.ownerParticipantId === a.where.ownerParticipantId)),
       create: jest.fn(async ({ data }: any) => { const row = { id: `w${items.length + 1}`, ...data }; items.push(row); return row; }),
@@ -94,7 +94,7 @@ describe('"Ideas from your team" on the board, as each reader reads it', () => {
     people: PEOPLE, checkIns: [answered('p-amina', 1), answered('p-rukia', 1), answered('p-baraka', 1)], commitments: [], dependencies: [],
     groundRow: { startedFrom, startsAt: new Date('2026-09-08') },
     prismaExtras: {
-      platformSetting: { findUnique: jest.fn(async () => (on ? { value: { on: true } } : null)) },
+      platformSetting: { findUnique: jest.fn(async () => (on ? { value: { on: true } } : { value: { on: false } })) },
       recommendation: { findMany: jest.fn(async () => []) },
       groundParticipant: {
         findMany: jest.fn(async (a: any) => (a?.where?.id?.in ? PEOPLE.filter((p) => a.where.id.in.includes(p.id)).map((p) => ({ id: p.id, lastNudgedAt: null })) : PEOPLE.map((p) => ({ ...p, checkIns: [{ status: 'COMPLETED' }] })))),

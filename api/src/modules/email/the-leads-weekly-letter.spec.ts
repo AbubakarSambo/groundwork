@@ -121,7 +121,7 @@ describe('the mail itself, with the sender stubbed', () => {
 describe('the job, behind the switch', () => {
   const cron = (on: boolean) => {
     const c: any = Object.create(GroundsCron.prototype);
-    c.prisma = { platformSetting: { findUnique: async () => (on ? { value: { on: true } } : null) }, ground: { findMany: jest.fn(async () => []) } };
+    c.prisma = { platformSetting: { findUnique: async () => (on ? { value: { on: true } } : { value: { on: false } }) }, ground: { findMany: jest.fn(async () => []) } };
     c.email = { sendTheLeadsWeeklyLetter: jest.fn() };
     c.config = { get: () => 'https://app.test' };
     c.logger = { log: jest.fn(), warn: jest.fn() };

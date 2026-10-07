@@ -14,7 +14,7 @@ function preview(opts: { startedFrom: string | null; on: boolean; invitee?: { em
     ground: { findUnique: jest.fn(async () => ({ id: 'g1', label: 'Help my team understand', scenario: 'HELP_TEAM_UNDERSTAND', startedFrom: opts.startedFrom, cadence: 'WEEKLY', cadenceAnchorDay: null, workingDays: [], endsAt: null, startsAt: null, whoSeesTargets: 'THEIR_OWN', initiator: { firstName: 'Hafsah', lastName: 'Jumare' }, organization: { name: 'Coamana' }, objectives: [] })) },
     checkIn: { count: jest.fn(async () => 0) },
     personObjective: { findMany: jest.fn(async () => []) },
-    platformSetting: { findUnique: jest.fn(async () => (opts.on ? { value: { on: true } } : null)) },
+    platformSetting: { findUnique: jest.fn(async () => (opts.on ? { value: { on: true } } : { value: { on: false } })) },
   };
   return new ParticipantsService(prisma, {} as any, {} as any, {} as any).preview('tok') as Promise<any>;
 }

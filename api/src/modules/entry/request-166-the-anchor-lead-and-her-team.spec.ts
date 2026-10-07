@@ -36,7 +36,7 @@ const whole = () => [
 ];
 
 function world(switchOn: boolean, read: any, reply: string) {
-  const prisma: any = { platformSetting: { findUnique: jest.fn(async () => (switchOn ? { value: { on: true } } : null)) } };
+  const prisma: any = { platformSetting: { findUnique: jest.fn(async () => (switchOn ? { value: { on: true } } : { value: { on: false } })) } };
   const extractSeen: string[] = [];
   const anthropic: any = {
     extract: jest.fn(async (system: string) => { extractSeen.push(system); return read; }),
@@ -162,7 +162,7 @@ describe('the situation the saved check-in keeps', () => {
     const prisma: any = {
       user: { findUnique: jest.fn(async () => ({ role: 'ADMIN', email: 'rukia@sokoni.test' })) },
       organization: { findUnique: jest.fn(async () => ({ whoMayOpenCheckIns: 'NAMED_LEADS', checkInsNeedApproval: true })), update: jest.fn(async () => ({})) },
-      platformSetting: { findUnique: jest.fn(async () => (switchOn ? { value: { on: true } } : null)) },
+      platformSetting: { findUnique: jest.fn(async () => (switchOn ? { value: { on: true } } : { value: { on: false } })) },
       entryDraft: { findUnique: jest.fn(async () => null), updateMany: jest.fn(async () => ({ count: 0 })) },
       groundParticipant: { findMany: jest.fn(async () => [{ id: 'p1' }]), findFirst: jest.fn(async () => ({ id: 'p1' })), update: jest.fn(async () => ({})) },
       roundCompletion: { create: jest.fn(async (a: any) => a.data) },
@@ -204,7 +204,7 @@ describe('the invitation a person on the team reads', () => {
     const prisma: any = {
       ground: { findUnique: jest.fn(async () => ({ startedFrom, scenario: 'HELP_TEAM_UNDERSTAND', peersVisibleToEachOther: null, organization: { name: 'Sokoni Fresh' }, organizationId: 'org-1', overWhatsApp: null })) },
       groundParticipant: { findUnique: jest.fn(async () => null) },
-      platformSetting: { findUnique: jest.fn(async () => (switchOn ? { value: { on: true } } : null)) },
+      platformSetting: { findUnique: jest.fn(async () => (switchOn ? { value: { on: true } } : { value: { on: false } })) },
     };
     const svc = new EmailService({ get: () => undefined } as any, {} as any, prisma);
     const sent: any[] = [];

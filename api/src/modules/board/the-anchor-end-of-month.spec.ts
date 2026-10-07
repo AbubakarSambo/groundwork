@@ -35,7 +35,7 @@ function anchor(opts: { on?: boolean; startedFrom?: string | null; completedOn?:
   return {
     people: PEOPLE, checkIns, commitments, dependencies, groundRow: { startedFrom, startsAt: OPENED, ...(status ? { status } : {}) },
     prismaExtras: {
-      platformSetting: { findUnique: jest.fn(async () => (on ? { value: { on: true } } : null)) },
+      platformSetting: { findUnique: jest.fn(async () => (on ? { value: { on: true } } : { value: { on: false } })) },
       groundDependency: { findMany: jest.fn(async () => dependencies) },
       recommendation: { findMany: jest.fn(async () => []) },
       conversationTurn: { findMany: jest.fn(async (a: any) => (a?.where?.role === 'PERSON' && a?.where?.checkIn?.groundId && words ? [{ content: words }] : [])) },

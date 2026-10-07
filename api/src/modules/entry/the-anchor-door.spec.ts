@@ -5,7 +5,7 @@ import { EntryController } from './entry.controller';
 import { IS_PUBLIC_KEY } from '../../common/decorators/public.decorator';
 
 const prismaWith = (on: boolean) => {
-  const findUnique = jest.fn(async () => (on ? { value: { on: true } } : null));
+  const findUnique = jest.fn(async () => (on ? { value: { on: true } } : { value: { on: false } }));
   return { prisma: { platformSetting: { findUnique } } as any, findUnique };
 };
 

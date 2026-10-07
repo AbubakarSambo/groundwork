@@ -24,7 +24,7 @@ function aWorld(opts: { switchOn?: boolean; startedFrom?: string | null } = {}) 
   const rows: any[] = [];
   const created: string[] = [];
   const prisma: any = {
-    platformSetting: { findUnique: jest.fn(async () => (switchOn ? { value: { on: true } } : null)) },
+    platformSetting: { findUnique: jest.fn(async () => (switchOn ? { value: { on: true } } : { value: { on: false } })) },
     ground: {
       findUnique: jest.fn(async () => ({ id: GROUND, organizationId: 'org-1', initiatorId: LEAD, startedFrom: opts.startedFrom === undefined ? 'anchor' : opts.startedFrom })),
       create: jest.fn(async () => { created.push('ground'); }),

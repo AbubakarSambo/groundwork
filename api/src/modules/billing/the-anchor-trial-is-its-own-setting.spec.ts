@@ -20,7 +20,7 @@ function baridi(opts: { anchorOn?: boolean; trialOn?: boolean; org?: any; regula
   const writes: any[] = [];
   const org = { subscriptionPlan: null, subscriptionStatus: null, freeUntil: null, freePlan: null, freeTrialStartedAt: null, ...(opts.org ?? {}) };
   const prisma: any = {
-    platformSetting: { findUnique: jest.fn(async ({ where }: any) => (where.key === 'release.anchorScenario' && opts.anchorOn ? { value: { on: true } } : null)) },
+    platformSetting: { findUnique: jest.fn(async ({ where }: any) => (where.key === 'release.anchorScenario' ? { value: { on: !!opts.anchorOn } } : null)) },
     organization: {
       findUnique: jest.fn(async () => org),
       updateMany: jest.fn(async (q: any) => { writes.push(q); Object.assign(org, q.data); return { count: 1 }; }),
