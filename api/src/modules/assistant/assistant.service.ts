@@ -523,7 +523,7 @@ export class AssistantService {
       case 'who_is':
         return this.compose(await this.whoIs(organizationId, routed.subject ?? ''));
       case 'what_did_i_commit_to':
-        return this.compose(await this.myCommitments(organizationId, personId));
+        return this.myCommitments(organizationId, personId);
       case 'where_am_i_up_to':
         /*
          * The role name has to survive. Losing it is what turned "what is my role" into a checklist
@@ -4882,30 +4882,56 @@ export class AssistantService {
     return rules(lane, text(moveDone(m)));
   }
 
+  /**
+   * WHAT THE PERSON SAID THEY WOULD DO, IN PLAIN WORDS (requests 170, 180 item 2 and 182 item 8). It read only the commitments brought in from the
+   * organisation's own systems, so somebody with two promises written down in a check-in ("ground_commitments", still unsettled) was told they had
+   * none, in the words "open actions". Both are read now, and only the asker's own: a check-in's promises are found through the asker's own
+   * place in it, never through a name. Not reworded by the model: what is written down goes out as written.
+   */
   private async myCommitments(organizationId: string, personId: string): Promise<Reply> {
     const me = await this.prisma.person.findFirst({
       where: { id: personId, organizationId },
-      select: { externalId: true },
+      select: { externalId: true, linkedUserId: true },
     });
     if (!me) return rules('what_did_i_commit_to', text('I cannot find you in what your organisation has sent us.'));
 
+    const kept = await keptInTheApp(this.prisma as any, organizationId);
     const open = await withoutCommitmentsFromGoalsNotToldYet(this.prisma, await this.prisma.commitment.findMany({
-      where: { organizationId, personExternalId: me.externalId, state: 'OPEN', ...notFromAKeptCheckIn(await keptInTheApp(this.prisma as any, organizationId), 'sourceGroundId') },
+      where: { organizationId, personExternalId: me.externalId, state: 'OPEN', ...notFromAKeptCheckIn(kept, 'sourceGroundId') },
       orderBy: [{ dueAt: 'asc' }, { statedAt: 'asc' }],
     }));
-    if (!open.length) {
-      return rules('what_did_i_commit_to', text('Nothing is open. Anything you say you will do in a check-in shows up here.'));
-    }
+    const inCheckIns: any[] = me.linkedUserId
+      ? await (this.prisma as any).groundCommitment?.findMany?.({
+        where: {
+          status: 'UNKNOWN',
+          participant: { userId: me.linkedUserId, awaitingSeat: false },
+          ground: { organizationId, ...notAKeptCheckIn(kept) },
+        },
+        select: { text: true, whenSaid: true, ground: { select: { label: true } } },
+        orderBy: { createdAt: 'asc' },
+      })?.catch?.(() => []) ?? []
+      : [];
 
     const now = new Date();
-    const line = (c: (typeof open)[number]) => {
+    const lines: string[] = [];
+    const late: string[] = [];
+    for (const c of open) {
       const when = c.dueSaid ? ` (you said ${c.dueSaid})` : '';
-      return `- ${c.text}${when}${hasSlipped(c as any, now) ? ' - the date you gave has passed' : ''}`;
-    };
-    const late = open.filter((c) => hasSlipped(c as any, now));
-    const parts = [`${open.length} open:`, ...open.map(line)];
+      const slipped = hasSlipped(c as any, now);
+      lines.push(`- ${c.text}${when}${slipped ? ', and the date you gave has passed' : ''}`);
+      if (slipped) late.push(c.text);
+    }
+    for (const c of inCheckIns) {
+      const when = c.whenSaid ? `you said ${c.whenSaid}, ` : '';
+      lines.push(`- ${String(c.text).replace(/[.]+$/, '')} (${when}in "${c.ground?.label ?? 'your check-in'}")`);
+    }
+    if (!lines.length) {
+      return rules('what_did_i_commit_to', text('You have not said you will do anything that is still waiting. When you say you will do something in a check-in, it shows up here.'));
+    }
+    const heading = `You said you would do ${lines.length === 1 ? 'one thing' : `${lines.length} things`} that ${lines.length === 1 ? 'is' : 'are'} still waiting.`;
+    const parts = [heading, ...lines];
     if (late.length) {
-      parts.push(`\n${late.length} of those ${late.length === 1 ? 'is' : 'are'} past the date you gave. That is worth saying out loud in your next check-in rather than letting it sit.`);
+      parts.push(`\n${late.length === 1 ? 'One of them is' : `${late.length} of them are`} past the date you gave. That is worth saying out loud in your next check-in rather than letting it sit.`);
     }
     return this.withItsSource(rules('what_did_i_commit_to', text(parts.join('\n'))), YOUR_COMMITMENTS_SOURCE);
   }

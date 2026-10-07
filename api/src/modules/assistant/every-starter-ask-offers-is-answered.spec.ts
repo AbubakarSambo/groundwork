@@ -111,3 +111,30 @@ describe('what each reader reads in answer', () => {
     expect(textOf(await h.service.respond('org-a', 'p1', 'Ask for leave, or to spend money.'))).toBe('Leave and spending requests are not switched on for your organisation yet. An admin can switch them on.');
   });
 });
+
+/** REQUEST 180 ITEM 2, AS EACH PERSON READS IT. Baraka has two promises written down in "Sales team, Q3"; Esther has none. */
+describe('"What did I say I would do?"', () => {
+  const asBaraka = (userId: string) => {
+    const h = askGroundwork({ userId });
+    h.prisma.person.findFirst = jest.fn(async () => ({ id: 'p1', externalId: `ext-${userId}`, displayName: 'X', active: true, linkedUserId: userId }));
+    h.prisma.commitment.findMany = jest.fn(async () => []);
+    h.prisma.groundCommitment = {
+      findMany: jest.fn(async ({ where }: any) => (where.participant.userId === 'u-baraka'
+        ? [{ text: 'Send the Kisumu price list', whenSaid: 'by Friday', ground: { label: 'Sales team, Q3' } }, { text: 'Ask Juma about the discount.', whenSaid: null, ground: { label: 'Sales team, Q3' } }]
+        : [])),
+    };
+    return h;
+  };
+
+  it('Baraka reads both promises, in plain words, and never "open actions"', async () => {
+    const reply: any = await asBaraka('u-baraka').service.respond('org-a', 'p1', 'What did I say I would do?');
+    expect(textOf(reply)).toContain('You said you would do 2 things that are still waiting.\n- Send the Kisumu price list (you said by Friday, in "Sales team, Q3")\n- Ask Juma about the discount (in "Sales team, Q3")');
+    expect(textOf(reply)).not.toMatch(/open actions|You have no/i);
+  });
+
+  it('Esther reads none of Baraka\'s, and is told plainly she has said nothing is waiting', async () => {
+    const reply: any = await asBaraka('u-esther').service.respond('org-a', 'p1', 'What did I say I would do?');
+    expect(textOf(reply)).toContain('You have not said you will do anything that is still waiting.');
+    expect(textOf(reply)).not.toContain('Kisumu');
+  });
+});

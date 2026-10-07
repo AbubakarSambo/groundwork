@@ -107,6 +107,8 @@ function harness(as: Who, opts: { commitments?: any[]; toDos?: any[]; waiting?: 
     assistantProposal: { findFirst: jest.fn(async () => null) },
     assistantTurn: { createMany: jest.fn(async ({ data }: any) => { turns.push(...data); return { count: data.length }; }) },
     commitment: { findMany: jest.fn(async ({ where }: any) => (where.personExternalId === me.externalId ? opts.commitments ?? [] : [{ text: 'SOMEBODY-ELSES-COMMITMENT', state: 'OPEN', dueAt: null, dueSaid: null, statedAt: new Date(0), lastFollowedUpAt: null }])) },
+    /* Added (request 180 item 2): "what did I say I would do" also reads the asker's own promises written down in a check-in, found only through the asker's own sign-in. */
+    groundCommitment: { findMany: jest.fn(async ({ where }: any) => (where.participant?.userId === me.linkedUserId ? [] : [{ text: 'SOMEBODY-ELSES-PROMISE', whenSaid: null, ground: { label: 'x' } }])) },
     todo: { findMany: jest.fn(async ({ where }: any) => (where.personExternalId === me.externalId ? opts.toDos ?? [] : [{ text: 'SOMEBODY-ELSES-TODO', dueAt: null, dueSaid: null, createdAt: new Date(0) }])) },
   }, {
     get(target: any, name: string) {
