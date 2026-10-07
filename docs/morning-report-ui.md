@@ -9,7 +9,7 @@ same file.
 **The screens are ready for the pull request.** The note is written in `docs/answers-from-engine.md`. No pull request was opened from here.
 
 **Results**
-- Client: 4,642 of 4,642 tests pass, the type check is clean, and `npm run build` passes.
+- Client: 4,643 of 4,643 tests pass (after merging the engine's 09:30 work), the type check is clean, and `npm run build` passes.
 - Marketing: `npm run build` passes with all its checks.
 - Browser tests: 57 of 57 pass.
 
@@ -31,7 +31,9 @@ same file.
 - Connections: Groundwork's own number leads (decision 112). It could not be seen live, because WhatsApp is off locally.
 
 **What needs Hafsah**
-- The engine's open items above all show to people. The most serious is request 177 item 1: a member's transcript carries the lead's note about them. Decide whether the pull request waits for these.
+- **The privacy fault is fixed.** Request 177 item 1, the lead's note on a member's transcript, was fixed by the engine at 09:30 (e8416f2c and 6a9669c2) and is merged here. The note now reads You wrote “…” on the lead's own board (40fd5eec).
+- **The engine's other open items** (requests 179 to 183) still show to people: Ask's starters, the resend to someone waiting for a seat, reports that contradict the board, and the set-up's facts. Decide whether the pull request waits for them.
+- **A guard refusal, for the record.** The guard refused an edit to `client/src/lib/the-leads-note.ts` because a comment named the project's rules file. The same edit was made with the comment reworded. No protected file was touched.
 - "Ask to join" (request 159).
 - The anchor's active line (request 163).
 - The phone's "fills in as you talk" panel (U13).
