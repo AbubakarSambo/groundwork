@@ -1,3 +1,4 @@
+import { numberUpToTenInWords } from '@/lib/a-number-up-to-ten-in-words'
 import { AnAdminDecidesWhetherItStarts } from './an-admin-decides-whether-it-starts'
 import { howItEnded, hasStalled, itRanOutOfTime } from '@/lib/a-ground-that-has-ended'
 import { scrollToId } from '@/lib/scroll-to'
@@ -1629,7 +1630,7 @@ export function GroundAdminPage() {
               parts.push(
                 roundDone === 0
                   ? 'Nobody has checked in yet.'
-                  : `${roundDone} of ${total} ${roundDone === 1 ? 'person has' : 'people have'} checked in for session ${openRound}.`,
+                  : `${capitalFirst(numberUpToTenInWords(roundDone))} of the ${numberUpToTenInWords(total)} ${total === 1 ? 'person' : 'people'} ${roundDone === 1 ? 'has' : 'have'} checked in for session ${openRound}.`,
               )
             }
             if (roundWentBack) parts.push(`It went back to session ${openRound}, because somebody new was added. Nothing anybody wrote is lost.`)
@@ -2737,3 +2738,5 @@ function Shell({ children }: { children: React.ReactNode }) {
   return <div className="gwui-page-shell">{children}</div>
 }
 
+/** The first letter in capitals, for a number said in words at the start of a sentence. */
+function capitalFirst(t: string): string { return t ? t[0].toUpperCase() + t.slice(1) : t }

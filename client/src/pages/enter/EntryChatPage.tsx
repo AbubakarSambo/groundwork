@@ -4809,7 +4809,7 @@ export function EntryChatPage() {
               : "Your answers are saved on this device. Ending this session generates your report, and this session's answers then lock."}
           </Note>
           <Note>
-            Once you save the record below, you can revisit and correct it any time from your report. The shared report releases once all parties have checked in.
+            Once you save the record below, you can revisit and correct it any time from your report. The team’s report is shared with everyone in the check-in when you choose to share it.
           </Note>
           <div className="gwui-ec-modal-actions">
             <Button kind="secondary" onClick={() => setShowEndConfirm(false)}>Keep going</Button>

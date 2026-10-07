@@ -1,3 +1,4 @@
+import { isSessionShared } from '@/lib/session-rows'
 import { useId } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useNavigate, Link } from 'react-router-dom'
@@ -196,9 +197,11 @@ export function TheDonePage({
    * already carries on `report.releasedAt` - the same field the report endpoint itself is built
    * from, so this cannot disagree with it.
    */
-  const teamReportReleased = !!(g?.report as { releasedAt?: string | null } | null | undefined)?.releasedAt
   const carry: string | null = artifact.data?.artifact?.whatToCarry ?? null
   const thisOne = ((g?.checkIns ?? []) as any[]).find(c => c.id === checkInId)
+  /* THIS session's team report, not any session's (confirm walk, 7 October): after session 1 was
+     shared, session 2's Done page said "Shared" too. The same rule as the board's rows. */
+  const teamReportReleased = isSessionShared(g?.report as { releasedAt?: string | null; releasedSessions?: number[] | null } | null | undefined, thisOne?.sessionNumber ?? 1)
   const dims: Record<string, string> | null = thisOne?.specificityDimensions ?? null
   const five = dims && Object.keys(dims).length > 0 ? THE_FIVE.map(f => ({ ...f, there: wasItThere(dims[f.key]) })) : null
   const changed = (whatChanged?.items ?? []).filter(i => i?.name && Array.isArray(i.stages))
