@@ -1561,7 +1561,7 @@ export class EmailService implements OnModuleInit {
       subject: `"${groundLabel}" is now closed`,
       html: this.layout(
         `<p><strong>${escapeHtml(groundLabel)}</strong> has been closed.${endStateLabel ? ` ${escapeHtml(theOutcomeIsThat(endStateLabel))}` : ''}</p>
-         <p>Your record is permanent and both parties retain access to everything that was on the check-in.</p>
+         <p>Everything in the check-in is kept, and the people in it can still read it.</p>
          <p><a href="${groundUrl}">View the check-in</a></p>`,
       ),
     }, undefined, 'sendGroundClosed');

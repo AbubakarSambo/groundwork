@@ -28,6 +28,8 @@ export async function whatGroundworkNoticed(
   linkedUserId: string | null | undefined,
 ): Promise<ANoticedLine[]> {
   if (!linkedUserId) return [];
+  let theirFirstName: string | null = null;
+  try { theirFirstName = (await prisma.user.findUnique({ where: { id: linkedUserId }, select: { firstName: true } }))?.firstName?.trim() || null; } catch { /* no name: the neutral wording stands */ }
   const closed: any[] = await prisma.resolution.findMany({
     where: { closedAt: { not: null }, ground: { organizationId, participants: { some: { userId: linkedUserId } } } },
     orderBy: { closedAt: 'desc' },
@@ -42,7 +44,8 @@ export async function whatGroundworkNoticed(
     const g = r.ground;
     if (!g || !r.closedAt) continue;
     const lead = (g.participants ?? []).find((p: any) => p.userId === g.initiatorId)?.user?.firstName?.trim() || 'The person who ran it';
-    const outcome = theEndingSaid(g.scenario, r.endState);
+    /* The person's own name where the ending is about them: "Imani stays in the role.", never "the person" (B-025). */
+    const outcome = theEndingSaid(g.scenario, r.endState, { name: theirFirstName });
     if (!outcome) continue;
     const why = (r.reason ?? '').trim().replace(/[.!?\s]+$/, '');
     /* The ending is its own plain sentence (decision 75, item 48), so it is said as one, not quoted as a label. */
