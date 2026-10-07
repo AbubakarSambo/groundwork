@@ -984,6 +984,22 @@ export class WhatsAppService implements OnModuleInit {
    * every organisation whose roster or Settings carries the number, and the inbound handler asks the
    * person which they mean when there is more than one, rather than guessing.
    */
+  /**
+   * A NUMBER IS ONLY OFFERED THE ORGANISATIONS WHERE WHATSAPP WORKS FOR IT (B-107). Neema was offered Lakeview Clinic, where WhatsApp is off,
+   * chose it, and then wrote a handover that was taken into a check-in whose next question she never received. Where every organisation is
+   * held, all are kept, so the person is told why as before.
+   */
+  async whichOrganisationsWhereItWorks(rawNumber: string): Promise<{ id: string; name: string }[]> {
+    const all = await this.whichOrganisations(rawNumber);
+    if (all.length < 2 || !this.addOn) return all;
+    const works: { id: string; name: string }[] = [];
+    for (const o of all) {
+      const may = await this.addOn.mayWeSend(o.id).catch(() => ({ send: true as const }));
+      if (may.send) works.push(o);
+    }
+    return works.length ? works : all;
+  }
+
   async whichOrganisations(rawNumber: string): Promise<{ id: string; name: string }[]> {
     const forms = formsOfTheSameNumber(rawNumber);
     const [people, users] = await Promise.all([

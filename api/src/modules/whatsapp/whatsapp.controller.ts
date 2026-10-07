@@ -124,7 +124,7 @@ export class WhatsAppController {
    * answer only while the question is fresh, the same rule the check-in list uses.
    */
   private async whichOrganisation(fromNumber: string, message: any): Promise<string | null> {
-    const orgs = await this.whatsapp.whichOrganisations(fromNumber);
+    const orgs = await (this.whatsapp.whichOrganisationsWhereItWorks?.(fromNumber) ?? this.whatsapp.whichOrganisations(fromNumber));
     if (orgs.length === 0) {
       await this.whatsapp.sendMessage(fromNumber, UNKNOWN_NUMBER_SAYING, { kind: 'refusal' });
       return null;
