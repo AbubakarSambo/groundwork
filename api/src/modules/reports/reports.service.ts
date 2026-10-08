@@ -3075,7 +3075,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     });
   }
 
-  private async sessionReportAsBuilt(groundId: string, sessionNumber: number, requestingUserId: string, requestingUserOrgId?: string) {
+  private async sessionReportAsBuilt(groundId: string, sessionNumber: number, requestingUserId: string, requestingUserOrgId?: string, asIfReleased = false) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
@@ -3169,7 +3169,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * emptied here, at the source every line below reads, so no line can bring it back. The previous
      * session's picture is theirs only if that session is released.
      */
-    const pictureWithheld = !!me && !viewerIsLead && !released;
+    /* `asIfReleased` is for the one mail that goes at the moment of release, before the release is stamped (tellThemTheReportIsReady): the team's picture, which
+       everybody is about to read, is not withheld from it. Everybody's words stay as walled as before, because `released` still decides those. */
+    const pictureWithheld = !!me && !viewerIsLead && !released && !asIfReleased;
     if (pictureWithheld) {
       (ground as any).report = ground.report
         ? { ...ground.report, agreements: [], divergences: [], centralQuestion: '', findings: null, direction: null, engagement: null }
@@ -5179,7 +5181,8 @@ happened, and what is in the way.`;
     sessionNumber: number,
   ) {
     if (!p.userId) return null;
-    const report = await this.sessionReport(ground.id, sessionNumber, p.userId, ground.organizationId);
+    /* As if released: this goes out at the moment of release, before it is stamped, and a participant's own read of the team's picture is withheld until then. */
+    const report = await this.sessionReport(ground.id, sessionNumber, p.userId, ground.organizationId, true);
     return theFirstInsight(report, ground.label, { isTheLead: p.userId === ground.initiatorId, simplerWords: ground.simplerWords });
   }
 
@@ -6942,9 +6945,9 @@ happened, and what is in the way.`;
   }
 
   /** The same for the report of one session. */
-  async sessionReport(groundId: string, sessionNumber: number, requestingUserId: string, requestingUserOrgId?: string) {
+  async sessionReport(groundId: string, sessionNumber: number, requestingUserId: string, requestingUserOrgId?: string, asIfReleased = false) {
     await this.refuseSomeoneNotYetLetIn(requestingUserId, groundId);
-    const served = await this.sessionReportAsBuilt(groundId, sessionNumber, requestingUserId, requestingUserOrgId);
+    const served = await this.sessionReportAsBuilt(groundId, sessionNumber, requestingUserId, requestingUserOrgId, asIfReleased);
     return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, served);
   }
 

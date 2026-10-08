@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { ReportsService } from '../reports/reports.service';
 import { EmailService } from '../email/email.service';
 import { theFirstInsight } from './the-first-insight';
@@ -55,6 +57,21 @@ function world(serve: (userId: string) => any) {
 }
 const text = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/\s+/g, ' ');
 const to = (sent: any[], address: string) => sent.find((m) => m.to === address || (Array.isArray(m.to) && m.to.includes(address)));
+
+describe('the finding is read at the moment of release, before the release is stamped', () => {
+  it('as each person is served the picture they are about to read, with the team\'s picture not withheld from the participant (found on the test bed, journey 5)', async () => {
+    const w = world(() => SERVED());
+    await w.service.tellThemTheReportIsReady('g1', 1);
+    expect(w.service.sessionReport).toHaveBeenCalledWith('g1', 1, 'u-lead', 'org1', true);
+    expect(w.service.sessionReport).toHaveBeenCalledWith('g1', 1, 'u-abi', 'org1', true);
+  });
+  it('and the read honours it for the picture only: the words of the others stay walled until the release', () => {
+    const src = readFileSync(join(__dirname, '..', 'reports', 'reports.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    expect(src).toContain('const pictureWithheld = !!me && !viewerIsLead && !released && !asIfReleased;');
+    expect(src).toContain('const readableParticipantIds = released || viewerIsLead');
+    expect(src).toContain('othersWordsAreNotYetOpen: !(released || viewerIsLead)');
+  });
+});
 
 describe('the lead reads the finding, in the subject and in the body', () => {
   it('names what the people differ on, how many things are settled, the question worth answering and what to do first', async () => {
