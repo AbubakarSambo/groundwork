@@ -434,8 +434,10 @@ export class ReviewsService {
       /* The person who actually started it, or decided it: never the line manager by default (bug 2). */
       const writer = (await this.theWriterNamed(reader.organizationId, r, me, answers.writer, directory)).first;
       const yours = stands === 'decided' && wasAppealed(r as any) ? await this.yourAppeal(r as any, writer, directory) : null;
+      /* Once an appeal has changed the decision, the decision is the admin's who changed it, and that is who has decided the review now. */
+      const decidedNow = await this.whoHasDecidedItNow(r as any, writer, directory);
       out.push({
-        id: r.id, dueOn: dayOf(due.dueOn), writtenWithFirstName: writer, stands, says: yourReviewSaid(stands, writer, !!r.theirView?.trim()),
+        id: r.id, dueOn: dayOf(due.dueOn), writtenWithFirstName: decidedNow, stands, says: yourReviewSaid(stands, decidedNow, !!r.theirView?.trim()),
         mayAppeal: stands === 'decided' && !wasAppealed(r as any),
         appealStands: yours?.stands ?? null,
         appealSays: yours?.says ?? null,
@@ -470,7 +472,7 @@ export class ReviewsService {
     }).catch(() => null);
     if (person.userId === reader.userId) {
       return {
-        reader: 'person', id: row.id, firstName: this.firstOf(person), writtenWithFirstName: writerFirst,
+        reader: 'person', id: row.id, firstName: this.firstOf(person), writtenWithFirstName: await this.whoHasDecidedItNow(row as any, writerFirst, directory),
         dueOn, noticed: this.noticedOf(row.noticed, true),
         record: await this.theRecordServed(row, person, reader.userId, writerId, writerFirst),
         theirView: row.theirView ?? null,
@@ -930,6 +932,16 @@ export class ReviewsService {
     }
     if (rule && rule.kind !== 'admin') return { id: rule.userId, first: await this.firstNameOf(rule.userId, directory), anAdmin: false };
     return { id: null, first: null, anAdmin: !!rule && rule.kind === 'admin' };
+  }
+
+  /**
+   * WHO HAS DECIDED THIS REVIEW NOW (8 October). The person read "Grace has decided your review" and "You and Grace talk it through, and Grace decides" after an
+   * admin had read the appeal and changed the decision: the decision on the page is that admin's, so that admin is named. If the decision stands, or there was no
+   * appeal, it is the one who decided it first.
+   */
+  private async whoHasDecidedItNow(row: { appealOutcome?: string | null; appealDecidedById?: string | null }, writerFirst: string | null, directory: Map<string, Person>): Promise<string | null> {
+    if (row.appealOutcome !== 'changed' || !row.appealDecidedById) return writerFirst;
+    return (await this.firstNameOf(row.appealDecidedById, directory)) ?? writerFirst;
   }
 
   /** Whether this reader writes the review with this person, by the organisation's answer (who-may-decide.ts). */
