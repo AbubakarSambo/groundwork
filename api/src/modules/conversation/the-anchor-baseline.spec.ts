@@ -51,7 +51,7 @@ function aWorld(w: World = {}) {
     recordEntry: { findMany: jest.fn(async () => [{ text: THEIR_WORDS }]), count: jest.fn(async () => 0) },
     groundCommitment: { findMany: jest.fn(async () => [{ text: THEIR_PROMISE, whenSaid: 'this week' }]) },
     groundParticipant: { count: jest.fn(async () => 3), findUnique: jest.fn(async () => ({ specificityHistory: [] })), findFirst: jest.fn(async () => me), findMany: jest.fn(async () => [LEAD, PERSON, COLLEAGUE].map((p) => ({ ...p, checkIns: [] }))) },
-    conversationTurn: { count: jest.fn(async () => 1), findMany: jest.fn(async (a: any) => { const t = (w.turns ?? []).map((x, n) => ({ id: `t${n}`, createdAt: new Date(2026, 9, 1, 9, n), ...x })); return a?.orderBy?.createdAt === 'desc' ? [...t].reverse().slice(0, a.take ?? 99) : t; }), create: jest.fn(async (a: any) => ({ id: 't1', content: a.data.content })) },
+    conversationTurn: { count: jest.fn(async () => 1), findMany: jest.fn(async (a: any) => { const t = (w.turns ?? []).map((x, n) => ({ id: `t${n}`, createdAt: new Date(2026, 9, 1, 9, n), ...x })); return a?.orderBy?.createdAt === 'desc' ? [...t].reverse().slice(0, a.take ?? 99) : t; }), create: jest.fn(async (a: any) => ({ id: 't1', content: a.data.content })), update: jest.fn(async (a: any) => ({ id: 't1', content: a.data.content })) },
   };
   const prisma: any = new Proxy(seed, {
     get: (target: any, model: string) => new Proxy(target[model] ?? {}, {

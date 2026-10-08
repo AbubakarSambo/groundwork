@@ -37,6 +37,11 @@ export const THE_WEEKLY_FOLLOW_UP_TOOL = {
   },
 };
 
+/** The weekly check-in, when they have asked to finish and have said enough. Read last. */
+export const THE_WEEKLY_FINISH_REMINDER = `# For this person, they have asked to finish, so this turn closes
+
+Do not ask a question in this turn. Do not use a question mark anywhere in it. In two short sentences, thank them in plain words for what they told you this week, and say that Groundwork will check in with them again. Do not repeat what they told you, do not praise it, and do not say what their lead wants or thinks.`;
+
 /** Read last on the turn that follows it up. It stands in for "your question is the offer" and "ask one question" only when it is a blocker or a duty. */
 export const THE_WEEKLY_FOLLOW_UP_REMINDER = `# For this person, this turn
 

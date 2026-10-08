@@ -82,7 +82,7 @@ import { mirrorCommitment } from '../assistant/a-commitment-carries-past-the-gro
 import { STARTED_FROM_THE_ANCHOR, aCheckInStartedFromTheAnchor, theAnchorMarkOf, theAnchorParticipantGuidance, whatTheyToldYouBefore, withoutAnAnnouncedAngle } from './the-anchor-weekly-check-in';
 import { theAnchorBaselineGuidance } from './the-anchor-baseline';
 import { withoutAnExampleAnswer, THE_BASELINE_CLOSING_REMINDER, THE_BASELINE_FINISH_REMINDER, THE_BASELINE_FOLLOW_UP_REMINDER, THE_BASELINE_READ_SYSTEM, THE_BASELINE_READ_TOOL, everythingIsLearned, whatIsLearnedFrom, theFollowUpFrom, whatTheBaselineHasLearned, whatTheyJustSaidComesFirst, type WhatIsLearned, type WhatToFollowUp } from './the-baseline-so-far';
-import { THE_ANCHOR_GIVES_IT_PASSING_WEIGHT, THE_WEEKLY_FOLLOW_UP_REMINDER, whatToFollowUpInTheWeekly } from './the-anchor-follows-up-what-was-said';
+import { THE_ANCHOR_GIVES_IT_PASSING_WEIGHT, THE_WEEKLY_FINISH_REMINDER, THE_WEEKLY_FOLLOW_UP_REMINDER, whatToFollowUpInTheWeekly } from './the-anchor-follows-up-what-was-said';
 import { whatTheAnswerAgreedTo, hasAlreadyOffered, whatHappenedToTheOffer, weSayAboutTheOffer, whatIsStillOwedToThem, withoutTheSecondTellingOfIt, isAnOfferToWriteItDown, whatTheyJustSaidMayBeTheirOwnStep, YOU_HAVE_ALREADY_OFFERED } from './giving-the-person-agency';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { DocumentsService } from '../documents/documents.service';
@@ -1983,7 +1983,7 @@ export class ConversationService {
             `Marks removed. Longest was ${Math.max(...misquoted.map((q) => q.length))} characters.`,
         );
       }
-      const stripped = { text: honest, hadMarker: textHadCloseMarker(rawReply) };
+      const stripped = { text: honest, hadMarker: textHadCloseMarker(rawReply) || this.theTurnWasToldToClose(checkIn.id) };
       /**
        * W2. THE NAME GOES BACK BEFORE THE SENTENCE IS STORED OR SHOWN.
        *
@@ -2068,7 +2068,7 @@ export class ConversationService {
        */
       /* `textHadCloseMarker`, not the local flag of the same name: that one is set further down,
          after this runs. The alias exists for exactly this collision. */
-      const closingNow = textHadCloseMarker(rawReply);
+      const closingNow = textHadCloseMarker(rawReply) || this.theTurnWasToldToClose(checkIn.id);
       if (isADeadEnd(screened.text, closingNow)) {
         /*
          * IT USED TO STOP AT THE WARNING, and the comment above said what should happen next: a
@@ -5625,9 +5625,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     return this._anchorVersionForThisTurn;
   }
   /* The anchor's weekly words for this turn, written by composeSystemPrompt and read by the reply path that puts them after the rest. */
-  private _anchorWeekForThisTurn?: Map<string, { text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo>; isTheBaseline?: boolean; followUp?: WhatToFollowUp | null } | null>;
+  private _anchorWeekForThisTurn?: Map<string, { text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo>; isTheBaseline?: boolean; followUp?: WhatToFollowUp | null; closing?: boolean } | null>;
   private get anchorWeekForThisTurn() {
-    if (!this._anchorWeekForThisTurn) this._anchorWeekForThisTurn = new Map<string, { text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo>; isTheBaseline?: boolean; followUp?: WhatToFollowUp | null } | null>();
+    if (!this._anchorWeekForThisTurn) this._anchorWeekForThisTurn = new Map<string, { text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo>; isTheBaseline?: boolean; followUp?: WhatToFollowUp | null; closing?: boolean } | null>();
     return this._anchorWeekForThisTurn;
   }
   /** The anchor's weekly words that go before the turn's own additions, and the ones that go after everything. Both empty unless the anchor is in play. */
@@ -5647,7 +5647,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     untoldHere: AnUntoldGoalRow[],
     latestMessage: string,
     turnsThisSession: { role: 'AI' | 'PERSON'; content: string }[] = [],
-  ): Promise<{ text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo>; isTheBaseline?: boolean; followUp?: WhatToFollowUp | null } | null> {
+  ): Promise<{ text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo>; isTheBaseline?: boolean; followUp?: WhatToFollowUp | null; closing?: boolean } | null> {
     const guidance = await theAnchorParticipantGuidance(() => theAnchorScenarioIsOn(this.prisma), this.prompts, {
       ground,
       isTheLead: checkIn.participant.partyType === PartyType.INITIATOR,
@@ -5676,11 +5676,12 @@ ${told}` : '';
       const finishes = askedToFinish([latestMessage]) && !tooFewAnswersToFinish(this.answersIn(turnsThisSession), false, ground?.scenario ?? null);
       /* What they just said comes first, unless it is the close. */
       const followUp = closes || finishes ? null : read?.followUp ?? null;
+      if (followUp) this.logger.log(`Check-in ${checkIn.id}: they just named ${followUp.kind === 'duty' ? 'a duty' : `a ${followUp.kind}`} (${followUp.about}); it is asked about first.`);
       return {
         text: baseline.text,
         block: [aboutIt, learned ? whatTheBaselineHasLearned(learned, followUp) : (followUp ? whatTheyJustSaidComesFirst(followUp) : '')].filter(Boolean).join('\n\n'),
         last: closes ? THE_BASELINE_CLOSING_REMINDER : finishes ? THE_BASELINE_FINISH_REMINDER : followUp ? THE_BASELINE_FOLLOW_UP_REMINDER : baseline.last,
-        promptVersionId: baseline.promptVersionId, agreed: null as any, isTheBaseline: true,
+        promptVersionId: baseline.promptVersionId, agreed: null as any, isTheBaseline: true, closing: closes || finishes,
       };
     }
     const lastCheckIn = await this.prisma.checkIn.findFirst({
@@ -5731,16 +5732,26 @@ ${told}` : '';
     /* "Finish" closes it as it closes any other check-in, once there are enough answers. */
     const finishes = askedToFinish([latestMessage]) && !tooFewAnswersToFinish(this.answersIn(turnsThisSession), false, ground?.scenario ?? null);
     if (finishes) {
-      return { text: guidance.text, block, last: THE_BASELINE_FINISH_REMINDER, promptVersionId: guidance.promptVersionId, agreed };
+      return { text: guidance.text, block, last: THE_WEEKLY_FINISH_REMINDER, promptVersionId: guidance.promptVersionId, agreed, closing: true };
     }
     /* What they just said comes first, and the lead's fields wait behind it. Not while an offer is being answered. */
     const followUp = agreed ? null : await whatToFollowUpInTheWeekly(this.anthropic as any, turnsThisSession, (m) => this.logger.warn(m));
+    if (followUp) this.logger.log(`Check-in ${checkIn.id}: they just named ${followUp.kind === 'duty' ? 'a duty' : `a ${followUp.kind}`} (${followUp.about}); it is asked about first.`);
     return {
       text: guidance.text,
       block: [block, followUp ? whatTheyJustSaidComesFirst(followUp) : ''].filter(Boolean).join('\n\n'),
       last: [guidance.last, owed, offered ? YOU_HAVE_ALREADY_OFFERED : '', followUp ? THE_WEEKLY_FOLLOW_UP_REMINDER : ''].filter(Boolean).join('\n\n'),
       promptVersionId: guidance.promptVersionId, agreed, followUp,
     };
+  }
+
+  /**
+   * A TURN THE PRODUCT TOLD TO CLOSE IS A CLOSING TURN, WHETHER OR NOT THE MODEL WROTE THE MARKER. The anchor's closing and finishing words ask for a
+   * statement and no question; the model does not always add the close marker to it, and a closing turn without the marker was taken for a
+   * dead end and given "What else should I know?" (final check, 8 October).
+   */
+  private theTurnWasToldToClose(checkInId: string): boolean {
+    return !!this.anchorWeekForThisTurn.get(checkInId)?.closing;
   }
 
   /** How many answers the person has given in this session. */

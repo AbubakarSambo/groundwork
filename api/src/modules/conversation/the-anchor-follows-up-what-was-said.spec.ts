@@ -4,7 +4,7 @@ import { ConversationContextService } from './context.service';
 import { ANCHOR_BASELINE_PROMPT_KEY } from './the-anchor-baseline';
 import { ANCHOR_PARTICIPANT_PROMPT_KEY } from './the-anchor-weekly-check-in';
 import { THE_NINE, THE_BASELINE_FOLLOW_UP_REMINDER, THE_BASELINE_FINISH_REMINDER, THE_BASELINE_CLOSING_REMINDER, theFollowUpFrom } from './the-baseline-so-far';
-import { THE_WEEKLY_FOLLOW_UP_REMINDER, THE_ANCHOR_GIVES_IT_PASSING_WEIGHT } from './the-anchor-follows-up-what-was-said';
+import { THE_WEEKLY_FINISH_REMINDER, THE_WEEKLY_FOLLOW_UP_REMINDER, THE_ANCHOR_GIVES_IT_PASSING_WEIGHT } from './the-anchor-follows-up-what-was-said';
 
 /**
  * ANCHOR PIECE 14: THE TEAM BASELINE IS THE FIRST SESSION FOR SOMEBODY ON THE LEAD'S TEAM (section 15; decision 105
@@ -51,7 +51,7 @@ function aWorld(w: World = {}) {
     recordEntry: { findMany: jest.fn(async () => [{ text: THEIR_WORDS }]), count: jest.fn(async () => 0) },
     groundCommitment: { findMany: jest.fn(async () => [{ text: THEIR_PROMISE, whenSaid: 'this week' }]) },
     groundParticipant: { count: jest.fn(async () => 3), findUnique: jest.fn(async () => ({ specificityHistory: [] })), findFirst: jest.fn(async () => me), findMany: jest.fn(async () => [LEAD, PERSON, COLLEAGUE].map((p) => ({ ...p, checkIns: [] }))) },
-    conversationTurn: { count: jest.fn(async () => 1), findMany: jest.fn(async (a: any) => { const t = (w.turns ?? []).map((x, n) => ({ id: `t${n}`, createdAt: new Date(2026, 9, 1, 9, n), ...x })); return a?.orderBy?.createdAt === 'desc' ? [...t].reverse().slice(0, a.take ?? 99) : t; }), create: jest.fn(async (a: any) => ({ id: 't1', content: a.data.content })) },
+    conversationTurn: { count: jest.fn(async () => 1), findMany: jest.fn(async (a: any) => { const t = (w.turns ?? []).map((x, n) => ({ id: `t${n}`, createdAt: new Date(2026, 9, 1, 9, n), ...x })); return a?.orderBy?.createdAt === 'desc' ? [...t].reverse().slice(0, a.take ?? 99) : t; }), create: jest.fn(async (a: any) => ({ id: 't1', content: a.data.content })), update: jest.fn(async (a: any) => ({ id: 't1', content: a.data.content })) },
   };
   const prisma: any = new Proxy(seed, {
     get: (target: any, model: string) => new Proxy(target[model] ?? {}, {
@@ -185,8 +185,25 @@ describe('"finish" closes an anchor check-in as it closes any other (final check
   it('second session, enough said: the same', async () => {
     const w = worldReading({ sessionNumber: 2, turns: FIVE, answer: 'finish' }, {});
     await w.service.sendMessage('ci2', 'user-1', 'finish');
-    expect(w.seen[0].endsWith(THE_BASELINE_FINISH_REMINDER)).toBe(true);
+    expect(w.seen[0].endsWith(THE_WEEKLY_FINISH_REMINDER)).toBe(true);
     expect(w.calls).not.toContain('what_to_follow_up');
+  });
+  it('the closing statement is the close: it is not given a question of the product\'s own, and the check-in is complete', async () => {
+    /* The person's own word is stored before the reply is made, as it is in the product. */
+    const w = worldReading({ turns: [...FIVE, { role: 'PERSON', content: 'finish' }], answer: 'finish' }, { learned: { workingOn: true } });
+    w.seed.conversationTurn.count = jest.fn(async () => 5);
+    (w.service as any).anthropic.respond = jest.fn(async () => 'Thank you for telling me how your work looks from where you sit. The others on the team are being asked as well.');
+    const out: any = await w.service.sendMessage('ci2', 'user-1', 'finish');
+    expect(out.reply).not.toContain('What else should I know');
+    expect(out.reply).toContain('Thank you for telling me how your work looks from where you sit.');
+    expect(out.sessionComplete).toBe(true);
+  });
+  it('an anchor reply that asks nothing, when it was not told to close, is still given its question as before', async () => {
+    const w = worldReading({ turns: FIVE, answer: 'Getting the trucks out on time.' }, { learned: { workingOn: true } });
+    (w.service as any).anthropic.respond = jest.fn(async () => 'Thank you for telling me that.');
+    const out: any = await w.service.sendMessage('ci2', 'user-1', 'Getting the trucks out on time.');
+    expect(out.reply).toContain('?');
+    expect(out.sessionComplete).toBe(false);
   });
   it('too early, the plain sentence asking for one or two more answers, and nothing is kept', async () => {
     const w = worldReading({ turns: [{ role: 'AI', content: 'What are you working on right now?' }], answer: 'finish' }, {});
