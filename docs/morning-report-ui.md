@@ -4,6 +4,35 @@ This is the report from the screens workspace, on the branch `wip/prototype-ui`.
 workspace writes its own report in `docs/morning-report.md`, so the two computers never edit the
 same file.
 
+## 8 October, evening: the next pull request, where each of the seven pieces stands
+
+Hafsah set the next pull request's contents. This is the screens' half of each piece. It is **not ready yet**, because pieces 2, 4, 5 and 7 wait on the engine.
+
+1. **The engagement work and participant activation: screens done.**
+   - The weekly report (`/grounds/:id/report/week`) is drawn for each reader.
+   - Today shows a lead's outstanding items under "Needs you", "Overdue on your team" and "Risks", with nothing said twice. This was proven live on the test bed.
+   - The back office funnels count check-ins and people.
+   - Ask can be opened with a question already put (`/chat?about=`).
+   - The newly invited person's journey was proven in the browser: one tap, no password, straight onto the first question, and picking up where they left off.
+   - Waiting on the engine: request 198 (the real "difference" sentence, and the Friday letter facts), request 199 (choosing how often and by which channel, which Hafsah may defer), the WhatsApp switch in Settings (no route yet), and request 205 (ids beside Today's sentences).
+2. **The anchor through the normal flow (decision 114): screens done.**
+   - `/start/team` is a redirect.
+   - The opening comes from `/entry/opener`, and every month part is an ordinary board section.
+   - The old anchor-only board and end-of-month read are gone, and a frozen list of their sentences proves nothing was lost.
+   - Privacy was proven live on the test bed: a member gets no lead-only section and none of the lead's aims.
+   - Waiting on the engine: request 202 (`groundLabel` on the opener, retiring the old fields, and switching the anchor on), and request 204 (wording read on the test bed).
+3. **The sweep's remaining bugs: the screens' part is done.** Every screen row in `docs/bug-log-screens.md` is fixed, checked and not a bug, or sent to the engine (requests 186 to 206).
+4. **E1, "nothing lost" on realistic old data: run.** Nothing old is lost, and the screens' four faults are fixed. Waiting on the engine: request 201, which is urgent. On the first day, sessions left open since July were closed as check-ins nobody made, and people were told about them.
+5. **The restored screens and the four removals: screens done**, except changing the day check-ins land on from People and setup (request 194). Decision 119 settles the four removals, so all stay removed. Under H10, every set-up control, including the rename pencil, is now offered only to whoever the server allows.
+6. **Small states and error pages: done.**
+7. **Context and resources in Ask, with the old context chat off: waiting on the engine.** The button is built but hidden until the server serves `addsContext` and `release.contextInAskGroundwork` is on (requests 169 and 200). Then the screens will prove it live, and say the old chat can be switched off.
+
+**Also checked:**
+- Every one of Abubakar's screen guards since 20 September still holds (`docs/abubakars-changes-still-hold.md`).
+- `mine/wip/live-base` has had nothing new since 6 October. If Abubakar has pushed newer work, it needs copying into Hafsah's branch first.
+
+**Results now:** 4,793 of 4,793 client tests pass, and the type check is clean.
+
 ## 8 October, the screens' half of E1's bugs: B-057, B-058, B-059, B-064 and B-066
 
 Five of the eleven rows E1 found (docs/existing-users-check.md), the ones that are the screens' to fix
