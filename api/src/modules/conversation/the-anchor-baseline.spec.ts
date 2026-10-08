@@ -283,9 +283,9 @@ describe('the team baseline counts what it has learned from the person\'s own wo
 
 describe('the team baseline is never held at its close (6 October)', () => {
   const SAID = ['Getting the trucks out.', 'Stock reaching the shops.', 'The floor.', 'A full van.', 'Ken worries about the shops.', 'The stock list.', 'The office.', 'The drivers.', 'Send the list early.'];
-  async function theClose(startedFrom: string | null) {
+  async function theClose(startedFrom: string | null, scenario: GroundScenario = GroundScenario.HELP_TEAM_UNDERSTAND) {
     const world = aWorld({ startedFrom, switchOn: true, turns: SAID.flatMap((t, i) => [{ role: 'AI', content: `Question ${i}` }, { role: 'PERSON', content: t }]) });
-    world.seed.checkIn.findUnique = jest.fn(async () => ({ closeHeldAt: null, participantId: 'p1', startedAt: new Date(), isClarification: false, sessionNumber: 1, participant: { partyType: PartyType.PARTICIPANT }, ground: { cadence: 'WEEKLY', scenario: GroundScenario.HELP_TEAM_UNDERSTAND, startedFrom } }));
+    world.seed.checkIn.findUnique = jest.fn(async () => ({ closeHeldAt: null, participantId: 'p1', startedAt: new Date(), isClarification: false, sessionNumber: 1, participant: { partyType: PartyType.PARTICIPANT }, ground: { cadence: 'WEEKLY', scenario, startedFrom } }));
     return (world.service as any).mayClose('ci2') as Promise<{ ready: boolean; ask?: string }>;
   }
 
@@ -301,7 +301,8 @@ describe('the team baseline is never held at its close (6 October)', () => {
   });
 
   it('still holds an ordinary first session once, as before', async () => {
-    const held = await theClose(null);
+    /* An ordinary scenario: the anchor's own is the anchor's even when startedFrom is empty (decision 114). */
+    const held = await theClose(null, GroundScenario.NEW_PROJECT);
     expect(held.ready).toBe(false);
     expect(held.ask).toMatch(/one more question|What will you do|by when/i);
   });
