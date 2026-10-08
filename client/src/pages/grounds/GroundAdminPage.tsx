@@ -41,7 +41,7 @@ import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { CheckInHeader } from '@/components/gw/ui/CheckInHeader'
 import { Page } from '@/components/gw/ui/Page'
 import { billingApi } from '@/api/billing'
-import { CheckInPeopleAndSetup } from './CheckInPeopleAndSetup'
+import { CheckInPeopleAndSetup, sessionsDoneBy } from './CheckInPeopleAndSetup'
 import { whoIsInRound } from '@/lib/who-is-in-this-round'
 import { whoWasNotInvited, rememberWhoWasNotInvited, thatIsDealtWith, whatToSayAboutThem, type NotInvited } from './who-was-not-invited'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
@@ -1168,15 +1168,11 @@ export function GroundAdminPage() {
    * `yourSessionsSentence` also clamps to the planned total so this can never again read more done
    * than the check-in has.
    */
-  const mySessionsDone = new Set(
-    ((ground?.checkIns ?? []) as any[])
-      .filter((c) => c.status === 'COMPLETED' && (ground?.participants ?? []).some((p: any) => p.id === c.participantId && p.userId === user?.id))
-      .map((c) => c.sessionNumber ?? 0),
-  ).size
+  const mySessionsDone = sessionsDoneBy((ground?.checkIns ?? []) as any[], (ground?.participants ?? []) as any[], user?.id)
   /* One dot per session of mine. The same read the party's page makes - the two views of a check-in
      have to move together, which is what the-two-views-are-a-pair protects. */
   const mySessionDots = ((ground?.checkIns ?? []) as any[])
-    .filter((c) => (ground?.participants ?? []).some((p: any) => p.id === c.participantId && p.userId === user?.id))
+    .filter((c) => !c.isSetup && (ground?.participants ?? []).some((p: any) => p.id === c.participantId && p.userId === user?.id))
     .sort((a, b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0))
     .map((c) => ({
       sessionNumber: c.sessionNumber ?? 0,
