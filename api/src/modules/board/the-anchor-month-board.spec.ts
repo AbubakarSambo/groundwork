@@ -1,6 +1,6 @@
 import { PartyType } from '@prisma/client';
 import { person, answered, commitment, handoff, boardAs, AMINA, RUKIA, BARAKA, JUMA, SETUP_ADMIN, type Setup } from './the-switchboards-sections-harness';
-import { theMonthBoard, aDifferenceInAWords, theWeekOfTheMonth, theLenses, howManyHeard } from './the-anchor-month-board';
+import { theMonthBoard, aDifferenceInAWords, aWaitInAWords, theWeekOfTheMonth, theLenses, howManyHeard } from './the-anchor-month-board';
 import type { TheMonthRecord } from './the-anchor-month-record';
 import { THE_SHAPES_KEYS } from '../entry/the-anchor-served-shapes';
 
@@ -227,5 +227,19 @@ describe('the lenses count people in plain, correct sentences', () => {
     expect(reading(record({ checkedIn: 1, ofHowMany: 1, saidWhatTheyWillDo: 1 }), 'ownership')).toBe('The one person has said what they will do themselves.');
     expect(howManyHeard(1, 1)).toBe('the one person');
     expect(howManyHeard(3, 5)).toBe('three of five people');
+  });
+});
+
+/* Found in the anchor walk (8 October): "Neema is waiting on Zawadi for to be told which orders went late." and
+   'Amani Wekesa, Chidi Okeke and others see "The timing of handovers ... creates daily friction and delays" differently.' */
+describe('a wait and a difference read as sentences', () => {
+  it('a wait that is "to be told" is not waited "for"', () => {
+    expect(aWaitInAWords({ from: 'Neema', on: 'Zawadi', what: 'to be told which orders went late' })).toBe('Neema is waiting on Zawadi to be told which orders went late.');
+    expect(aWaitInAWords({ from: 'Baraka', on: 'Rukia', what: 'the sales deck' })).toBe('Baraka is waiting on Rukia for the sales deck.');
+  });
+  it('a topic that is a whole sentence is said as one, and then who said different things', () => {
+    expect(aDifferenceInAWords({ topic: 'The timing of handovers between team members creates daily friction and delays', whoSeesIt: 'Amani, Zawadi and Chidi see this differently.' }))
+      .toBe('The timing of handovers between team members creates daily friction and delays. Amani, Zawadi and Chidi said different things about this.');
+    expect(aDifferenceInAWords({ topic: 'The renewals target.', whoSeesIt: 'You and Rukia see this differently.' })).toBe('You and Rukia see "The renewals target" differently.');
   });
 });

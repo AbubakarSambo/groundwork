@@ -30,7 +30,8 @@ export function theWeekOfTheMonth(startedOn: Date | null, clock: Date | null): 1
 /** One handoff, said as a sentence: who is waiting, on whom, and for what. */
 export function aWaitInAWords(w: { from: string; on: string | null; what: string | null }): string {
   const what = (w.what ?? '').trim().replace(/[.\s]+$/, '');
-  const forWhat = what && what.length <= 120 ? ` for ${what}` : '';
+  /* "to be told which orders went late" is not something one waits "for" (anchor walk, 8 October). */
+  const forWhat = what && what.length <= 120 ? (/^to\s/i.test(what) ? ` ${what}` : ` for ${what}`) : '';
   return `${w.from} is waiting on ${w.on ?? 'someone outside this check-in'}${forWhat}.`;
 }
 
@@ -39,6 +40,11 @@ export function aDifferenceInAWords(d: { topic?: string | null; whoSeesIt?: stri
   const topic = (d.topic ?? '').trim().replace(/[.\s]+$/, '');
   const who = (d.whoSeesIt ?? '').trim();
   if (!topic) return who || null;
+  /* A topic that is already a whole sentence ("The timing of handovers between team members creates daily friction and delays") is said as one,
+     and the people who differ come after it. Put in quotation marks between "see" and "differently" it read as nonsense (anchor walk, 8 October). */
+  if (topic.split(/\s+/).length > 8 && who.endsWith('see this differently.')) {
+    return `${topic.charAt(0).toUpperCase()}${topic.slice(1)}. ${who.slice(0, -'see this differently.'.length)}said different things about this.`;
+  }
   if (who.endsWith('see this differently.')) return `${who.slice(0, -'see this differently.'.length)}see "${topic}" differently.`;
   return `${who || 'People see this differently.'} It is about "${topic}".`;
 }
