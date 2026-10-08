@@ -25,8 +25,9 @@ describe('what the opener carries beside its words', () => {
   });
 
   it('with the switch off, or for another scenario, there is no people step; the words are the ordinary opener\'s', async () => {
-    const off = await entry(false).openerWithItsRules('Help my team understand');
-    expect('thePeopleStep' in off).toBe(false);
+    const off = await entry(false).openerWithItsRules('Help my team understand', 'linkedin');
+    expect(Object.keys(off)).toEqual(['reply']);
+    expect(Object.keys(await entry(false).openerWithItsRules('New hire', 'linkedin'))).toEqual(['reply']);
     expect(off.reply).toBe(await entry(false).opener(undefined));
     const other = await entry(true).openerWithItsRules('New hire');
     expect('thePeopleStep' in other).toBe(false);

@@ -82,8 +82,17 @@ describe('a test check-in', () => {
     const took = [{ participantId: 'p', userId: lead }];
     const now = new Date('2026-10-15T10:00:00Z');
     const created = new Date('2026-10-10T10:00:00Z');
-    expect(isATestCheckIn({ startedFrom: 'anchor', createdAt: created }, took, lead, now)).toBe(true);
-    expect(isATestCheckIn({ startedFrom: null, scenario: 'HELP_TEAM_UNDERSTAND', createdAt: created }, took, lead, now)).toBe(true);
-    expect(isATestCheckIn({ startedFrom: null, scenario: 'OKR_ALIGNMENT', createdAt: created }, took, lead, now)).toBe(false);
+    expect(isATestCheckIn({ startedFrom: 'anchor', createdAt: created }, took, lead, now, true)).toBe(true);
+    expect(isATestCheckIn({ startedFrom: null, scenario: 'HELP_TEAM_UNDERSTAND', createdAt: created }, took, lead, now, true)).toBe(true);
+    expect(isATestCheckIn({ startedFrom: null, scenario: 'OKR_ALIGNMENT', createdAt: created }, took, lead, now, true)).toBe(false);
+  });
+
+  it('with the switch off, a check-in that is the anchor\'s only by its scenario keeps the usual week; one from the link keeps the anchor\'s', () => {
+    const lead = 'u-wairimu';
+    const took = [{ participantId: 'p', userId: lead }];
+    const now = new Date('2026-10-15T10:00:00Z');
+    const created = new Date('2026-10-10T10:00:00Z');
+    expect(isATestCheckIn({ startedFrom: null, scenario: 'HELP_TEAM_UNDERSTAND', createdAt: created }, took, lead, now, false)).toBe(false);
+    expect(isATestCheckIn({ startedFrom: 'anchor', createdAt: created }, took, lead, now, false)).toBe(true);
   });
 });

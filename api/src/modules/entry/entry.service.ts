@@ -679,8 +679,10 @@ export class EntryService {
    */
   async openerWithItsRules(scenario?: string, source?: string): Promise<{ reply: string; source?: string; thePeopleStep?: ThePeopleStepRules }> {
     const reply = await this.opener(scenario);
-    const mark = aSourceMark(source);
-    const has = isTheAnchorScenario(scenario) && (await theAnchorScenarioIsOn(this.prisma));
+    /* With the anchor's switch off, the answer is exactly what it was: the words alone, for every scenario and every link. */
+    const on = await theAnchorScenarioIsOn(this.prisma);
+    const mark = on ? aSourceMark(source) : null;
+    const has = on && isTheAnchorScenario(scenario);
     return { reply, ...(mark ? { source: mark } : {}), ...(has ? { thePeopleStep: { ...THE_PEOPLE_STEP_RULES } } : {}) };
   }
 
