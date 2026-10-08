@@ -5,6 +5,7 @@ import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 import { aNumberInWords } from './a-number-in-words';
 import { hasBeenToldOnce, nowToldOnce, isAlreadyHeld } from './a-message-sent-once';
 import { theNextCheckInFor, theSuggestionSaid } from './the-next-check-in-from-what-happened';
+import { aSubjectThatFits } from './the-first-insight';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 
 /**
@@ -70,7 +71,7 @@ export function theFollowUpWords(firstName: string | null | undefined, label: st
     ...(stillThere.length ? [`${capital(stillThere.join(' and '))}.`] : []),
     theSuggestionSaid(theNextCheckInFor(c)),
   ];
-  return { subject: c.difference ? `In "${name}", ${c.difference}, and it has not been looked at again` : subject, lines, linkLabel: 'See where it stands' };
+  return { subject: c.difference ? aSubjectThatFits(`In "${name}", ${c.difference}, and it has not been looked at again`, `In "${name}", a difference the report found has not been looked at again`) : subject, lines, linkLabel: 'See where it stands' };
 }
 
 const TERMINAL: GroundStatus[] = A_GROUND_NO_MESSAGE_IS_ABOUT;

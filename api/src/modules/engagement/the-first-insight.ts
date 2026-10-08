@@ -29,7 +29,8 @@ const capital = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
 export function anOpenThing(t: unknown): string | null {
   const x = String(t ?? '').replace(/\s+/g, ' ').trim().replace(/[.:;,\s]+$/, '');
   if (!x) return null;
-  return x.length <= 140 ? x : `${x.slice(0, 140).replace(/\s+\S*$/, '')}...`;
+  /* A sentence is not cut in the middle: it is said whole, or (in a subject) not said. */
+  return x.length <= 400 ? x : `${x.slice(0, 400).replace(/\s+\S*$/, '')}...`;
 }
 
 /** A thing the report names, as it is quoted. */
@@ -57,6 +58,10 @@ function firstOpenSaid(label: string, items: string[], capitalised: boolean): st
   }
   return `The people in "${label}" differ on "${first}"${rest}${capitalised ? '.' : ''}`;
 }
+
+/** A subject is read in a list, so it is short; where the finding does not fit, the count says it and the body says the rest. */
+export const A_SUBJECT_FITS = 140;
+export const aSubjectThatFits = (said: string, instead: string) => (said.length <= A_SUBJECT_FITS ? said : instead);
 
 const cutLabel = (label: string, max: number) => (label.length <= max ? label : `${label.slice(0, max).replace(/\s+\S*$/, '')}...`);
 
@@ -94,7 +99,7 @@ export function theFirstInsight(report: any, label: string, reader: { isTheLead:
   }
 
   return {
-    subjectForTheLead: reader.isTheLead && open.length ? firstOpenSaid(cutLabel(label, 40), open, false) : null,
+    subjectForTheLead: reader.isTheLead && open.length ? aSubjectThatFits(firstOpenSaid(cutLabel(label, 40), open, false), `The shared picture for "${cutLabel(label, 40)}" found ${aNumberInWords(open.length)} ${open.length === 1 ? 'difference' : 'differences'} still open`) : null,
     lines,
   };
 }

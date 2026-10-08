@@ -138,6 +138,13 @@ describe('the words themselves', () => {
     expect(them.lines.join(' ')).not.toContain('what I would do');
     for (const l of [i.subjectForTheLead!, ...i.lines]) expect(l).not.toMatch(/differ on "Who|;|→/);
   });
+  it('a long sentence is never cut in the middle and never makes a subject too long to read (found on the test bed)', () => {
+    const long = 'The team\'s progress toward the 120,000,000 objective cannot be calculated because team members are measuring their contributions in different units.';
+    const i = theFirstInsight(SERVED({ stand: { open: [long, 'Who signs off the discount is not agreed.'], agreed: 1, settled: ['x'], openWithReasons: [] } }), 'Q4 priorities', { isTheLead: true })!;
+    expect(i.subjectForTheLead).toBe('The shared picture for "Q4 priorities" found two differences still open');
+    expect(i.lines[0]).toBe('The team\'s progress toward the 120,000,000 objective cannot be calculated because team members are measuring their contributions in different units, and one more difference is still open.');
+    expect(i.lines.join(' ')).not.toContain('...');
+  });
   it('never put a colon, an arrow or a dash between pieces', () => {
     const i = theFirstInsight(SERVED(), 'Kenya launch', { isTheLead: true })!;
     for (const l of [i.subjectForTheLead!, ...i.lines]) expect(l).not.toMatch(/ [:–—-] |→|;/);

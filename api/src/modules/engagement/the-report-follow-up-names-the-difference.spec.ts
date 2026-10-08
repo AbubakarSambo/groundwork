@@ -64,6 +64,12 @@ describe('the difference is read from the served report', () => {
   it('a whole sentence is the sentence itself, so it does not read "differ on" a sentence', () => {
     expect(theFirstOpenDifference({ whereThingsStand: { open: ['Who owns the next step with the distributor is not agreed upon by the team.'] } })).toBe('who owns the next step with the distributor is not agreed upon by the team');
   });
+  it('a long one is said whole in the body and not in the subject', () => {
+    const long = 'the team\'s progress toward the 120,000,000 objective cannot be calculated because team members are measuring their contributions in different units';
+    const w = theFollowUpWords('W', 'Q4 priorities', WENT_OUT, { done: 0, cleared: 0, waiting: 0, open: 0, difference: long });
+    expect(w.subject).toBe('In "Q4 priorities", a difference the report found has not been looked at again');
+    expect(w.lines[1]).toBe(`The shared picture found that ${long}. No check-in has been held since, so that has not been looked at again.`);
+  });
   it('nothing for a report with nothing open, or one withheld until the person answers', () => {
     expect(theFirstOpenDifference({ whereThingsStand: { open: [] } })).toBeNull();
     expect(theFirstOpenDifference({ withheldUntilYouAnswer: true, whereThingsStand: { open: ['x'] } })).toBeNull();
