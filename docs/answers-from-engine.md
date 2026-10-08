@@ -6635,3 +6635,53 @@ The anchor switch is still off by default, and nothing was removed. Every anchor
 The two answers to a recommendation, `POST /grounds/:groundId/recommended-check-ins/:offerId/yes` and `.../not-now`, are ordinary answers to an offer and stay as they are.
 
 **Kept for now, and why.** `theMonthBoard`, `theEndOfMonthRead`, `activeLine`, `yourPartInMovingThings`, `aNudgeForYou` and `leadsReveal` are still served. `theMonthBoard` also holds the weeks of the month, what is moving and what is in the way; those move to ordinary sections next. Please move to the table above, then say in `docs/requests-to-engine.md` which of the kept ones you still call, and they go one at a time.
+
+## From the engine workspace, 8 October (later): appealing a decided review, for the screens to draw (decision 113, bug B-024)
+
+Built and walked through the API on the test bed (copy a) as the person, the reviewer, another admin, the only admin who is also the reviewer, a colleague and a lead. Nothing is behind a switch: it is part of the reviews suite, which is already on or off per organisation. All routes are under `/suites`, like the rest of the reviews.
+
+**What the person draws (on `GET /suites/reviews/:id`, `reader: "person"`).** Three new fields on the read, and the same on the list.
+
+| Field | Meaning |
+| --- | --- |
+| `mayAppeal` (boolean) | True once the review is decided and not yet appealed. Show the "Appeal this decision" button only then. |
+| `mayAppealSays` (string or null) | The sentence over the button. Example: "If you disagree with this decision, you can appeal it. An admin other than Grace reads the review, your side and your reasons, and decides." |
+| `appeal` (object or null) | Null until they appeal. Then `{ stands, says, appealedOn, yourReasons, additions: [{ said, on }], outcome, decidedByFirstName, reasons, decisionWas }`. |
+
+`appeal.stands` is one of `with-an-admin`, `needs-another-admin` and `decided`. Draw `appeal.says` as the sentence, as it is; it is already plain and names the people. The three, as the person reads them:
+
+- `with-an-admin`: "You have appealed this decision. An admin other than Grace reads your reasons and decides. You can add to your reasons until then."
+- `needs-another-admin`: "You have appealed this decision, and your appeal is saved. It needs an admin other than Grace, and there is not one yet. Grace has been asked to add a second admin, and that admin will decide your appeal. You can add to your reasons until then."
+- `decided`: "Baraka, an admin, has read your appeal, and the decision stands. You can read the reasons below." or, when changed, "Baraka, an admin, has read your appeal and has changed the decision. You can read the new decision and the reasons below."
+
+Once decided, `appeal.outcome` is `stands` or `changed`, `appeal.reasons` are the admin's reasons, and `decision` (already on the read) is the decision as it now stands. When it was changed, `appeal.decisionWas` is `{ says, reasons }` of the earlier decision; draw it small, below. `additions` is what the person added later, oldest first; draw `yourReasons` and then each addition.
+
+`GET /suites/reviews/mine` (the person's list) carries `mayAppeal`, `appealStands` and `appealSays` on each review, so the card on Today can say the same thing.
+
+**Routes for the person.**
+
+| Route | Body | What it does |
+| --- | --- | --- |
+| `POST /suites/reviews/:id/appeal` | `{ "why": "..." }` (up to 2,000 characters) | Appeals. Refused with a sentence if the review is not decided, already appealed, empty, or not the reader's own. Returns the person's review, with `appeal`. |
+| `POST /suites/reviews/:id/appeal/more` | `{ "text": "..." }` | Adds to their reasons until it is decided. The first reasons are kept; up to 10 additions. Returns the review. |
+
+**What the admin draws.** On `GET /suites/reviews/:id` (`reader: "writer"` or `"admin"`), a new field `appeal`, which is null unless the reader is an admin who is not the reviewer or the person, or the reviewer.
+
+- For an admin who may decide it: `{ reader: "admin", stands, says, personFirstName, appealedOn, theirReasons, additions, mayDecide, outcome, decidedByFirstName, reasons, decisionWas }`. Draw `theirReasons` and `additions` beside the review and the person's own view (`theirView`, already on the read). When `mayDecide` is true, draw the decision form: a choice of "The decision stands" (`outcome: "stands"`) or "Change the decision" (`outcome: "changed"`, which also needs the new decision in `decision`), and the reasons, which the person and the reviewer both read. `says`: "Juma appealed Grace's decision on 8 October. You are an admin who did not decide this review, so you decide the appeal. Juma and Grace both read your reasons."
+- For the reviewer (the one who decided the review, who may also be an admin): `{ reader: "reviewer", stands, says, personFirstName, appealedOn, mayDecide: false, outcome, decidedByFirstName, reasons, decisionWas }`. There is **no** `theirReasons` for the reviewer while it waits; do not look for it. `says`, when there is no other admin: "Wairimu has appealed your decision. It needs an admin other than you to decide it, and there is not one yet. Please add a second admin to Groundwork. Once you have, that admin decides the appeal." When there is one: "Juma has appealed your decision. An admin other than you reads the review, Juma's side and the reasons, and decides." Once decided, the reviewer reads the outcome and the admin's reasons.
+- A lead who does not write the review, and anybody else who may open the review, gets `appeal: null`. A colleague is refused the review as before.
+
+| Route | Body | What it does |
+| --- | --- | --- |
+| `GET /suites/reviews/appeals` | none | Admins only. `{ appeals: [{ id, name, firstName, dueOn, appealedOn, reviewerFirstName }], waitingForAnotherAdmin: [{ id, name, firstName, dueOn, appealedOn, says }] }`. `appeals` are the ones this admin may decide (newest last); `waitingForAnotherAdmin` are the ones this admin decided as the reviewer, with nobody else yet able to decide them. No reasons are in the list: open the review (`GET /suites/reviews/:id`). Use it for an admin's Today and the reviews board. Anyone who is not an admin is refused with a sentence. |
+| `POST /suites/reviews/:id/appeal/decision` | `{ "outcome": "stands" or "changed", "reasons": "...", "decision": "..." }` | Admin only, and not the reviewer and not the person. `reasons` always; `decision` (what the review decision now says) only with `changed`. Returns the admin's read. |
+
+Once a review is appealed, `POST /suites/reviews/:id/decision` refuses the reviewer ("This decision has been appealed, so an admin other than you decides it now."), so draw no "change the decision" button for them after that.
+
+**Who is told, and what it says.** Never a word of the review or of the person's reasons, in the email or on WhatsApp.
+
+- An admin who may decide it, when the person appeals: the email "Juma has appealed a decision on their review", with "Open Groundwork to read the review, their side and their reasons, and then say whether the decision stands or is changed."
+- With no such admin, the reviewer: the email "Wairimu has appealed your decision, and it needs a second admin", and on WhatsApp "Hi Grace, Wairimu has appealed your decision on their review. It needs an admin other than you, and there is not one yet. Please add a second admin in Groundwork, and that admin will decide it." The appeal stays open until an admin who is not the reviewer exists; they then find it in `GET /suites/reviews/appeals`, and the person's `appeal.stands` changes to `with-an-admin` by itself. Nobody is told again when the second admin is added (the new admin finds it on their list).
+- When it is decided, the person and the reviewer: "Your appeal has been decided" and "Juma's appeal has been decided", by email, and on WhatsApp where it is on.
+
+**For Hafsah to confirm.** Three new WhatsApp templates are proposed in `docs/whatsapp-templates.md` and must be submitted to Meta: `groundwork_review_appeal_waiting`, `groundwork_review_appeal_needs_admin` and `groundwork_review_appeal_decided`. Until Meta approves them, outside the 24 hours a WhatsApp message is recorded as not sent, and the email still goes. A review's history (`GET /suites/reviews/:id/history`) says nothing about an appeal, because the lead reads it too.

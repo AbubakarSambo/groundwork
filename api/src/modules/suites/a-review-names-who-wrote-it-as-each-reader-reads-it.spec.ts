@@ -93,6 +93,8 @@ describe('the organisation answered "An admin", and Grace starts Aisha’s revie
     expect(mine).toEqual([{
       id: 'r-aisha', dueOn: '2026-10-05', writtenWithFirstName: 'Grace', stands: 'started',
       says: 'Grace has started your review. You can read it and add your own view before you meet.',
+      /* Added by decision 113: nothing to appeal before the review is decided. */
+      mayAppeal: false, appealStands: null, appealSays: null,
     }]);
     expect(yourReviewsOnToday(mine, ORG, TODAY).map((n) => [n.title, n.detail])).toEqual([
       ['Grace has started your review.', 'You can read it and add your own view before you meet.'],

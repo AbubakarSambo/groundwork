@@ -26,7 +26,12 @@ export type WhatHappened = 'asked' | 'told' | 'approved' | 'declined' | 'escalat
   /* Finance's part of a request to spend (build step 10). */
   | 'verified' | 'coded' | 'evidence' | 'exported' | 'paid'
   /* The person marked a line of their review as wrong and said what is true (build step 12). */
-  | 'corrected';
+  | 'corrected'
+  /*
+   * An appeal of a decided review, and its decision (decision 113). Kept for the record of who did what, and said to nobody in a
+   * history: only the person, the admin who decides it and the reviewer may read that there was an appeal, and they read it on the review.
+   */
+  | 'appealed' | 'appeal-decided';
 
 export interface ARecord {
   organizationId: string;

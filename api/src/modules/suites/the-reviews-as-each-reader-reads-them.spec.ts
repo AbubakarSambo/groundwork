@@ -178,6 +178,10 @@ describe('one review, as each reader reads it', () => {
         yourView: 'I want to lead the supermarket accounts, but I need faster stock.',
       },
       decision: { says: 'Aisha leads the supermarket accounts from April.', reasons: 'She closed 9 sales, all paid, and helped two others.' },
+      /* Added by decision 113: once decided, the person may appeal it, and is told to whom it goes. */
+      mayAppeal: true,
+      mayAppealSays: 'If you disagree with this decision, you can appeal it. An admin other than Wairimu reads the review, your side and your reasons, and decides.',
+      appeal: null,
     });
     expect(JSON.stringify(r)).not.toMatch(/pv-1|promptVersion/);
   });
