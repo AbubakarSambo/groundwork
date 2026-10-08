@@ -27,7 +27,7 @@ const PLAN = { id: 'g-pip', label: 'Performance plan, Femi', scenario: 'ALIGNMEN
 
 const promise = (over: any) => ({ text: 'send the price list', dueDate: day('2026-10-06'), groundId: 'g-sales', authoredBy: 'self', seenBySubject: true, participantId: 'p-omar', participant: { ...PEOPLE['p-omar'], ground: SALES }, ...over });
 
-interface Opts { phone?: string | null; whatsappOn?: boolean; promises?: any[]; waits?: any[]; objectives?: any[]; snapshots?: any[]; waiting?: boolean; onLeave?: boolean; stopped?: boolean; quiet?: boolean; sendResult?: any; held?: boolean; weekend?: boolean }
+interface Opts { phone?: string | null; whatsappOn?: boolean; promises?: any[]; waits?: any[]; objectives?: any[]; snapshots?: any[]; waiting?: boolean; onLeave?: boolean; stopped?: boolean; quiet?: boolean; quietRows?: any[]; sendResult?: any; held?: boolean; weekend?: boolean }
 
 function aMorning(o: Opts = {}) {
   const whats: { org: string; to: string; text: string; context: any }[] = [];
@@ -57,7 +57,7 @@ function aMorning(o: Opts = {}) {
     subject: { findMany: jest.fn(async () => []) },
     groundObjective: { findMany: jest.fn(async ({ where }: any) => (where.groundId === 'g-sales' ? o.objectives ?? [] : [])) },
     groundObjectiveSnapshot: { findMany: jest.fn(async () => o.snapshots ?? []) },
-    checkIn: { findMany: jest.fn(async ({ where }: any) => (o.quiet && where.groundId === 'g-sales' ? QUIET_ROWS : [])) },
+    checkIn: { findMany: jest.fn(async ({ where }: any) => (o.quiet && where.groundId === 'g-sales' ? o.quietRows ?? QUIET_ROWS : [])) },
     notification: { findMany: jest.fn(async () => []) },
   };
   const whatsapp: any = {
@@ -234,7 +234,7 @@ describe('the risks', () => {
     const risks: string[] = m.mails[0][2].risks;
     expect(risks[0]).toMatch(/^The target “25 shops signed” in “Sales team, Q3” is behind\. /);
     expect(risks).toContain('Bisi has been waiting on Omar for the price list since Monday 21 September.');
-    expect(risks).toContain('All three people in “Sales team, Q3” have not answered the latest check-in for more than a week.');
+    expect(risks).toContain('All three people in “Sales team, Q3” have not answered a check-in for more than a week.');
     expect(m.mails[0][1]).toBe('One risk is open'.replace('One risk is open', 'Three risks are open'));
   });
 
@@ -299,6 +299,29 @@ describe('a commitment stored in the person\'s own first-person words is said as
       'Bisi said \u201cNext I will pick up the export bug\u201d. That was due by Wednesday 7 October and is five days late.',
       'Kofi committed to \u201csend the supplier list\u201d. That was due by Thursday 8 October and is four days late.',
     ]);
+  });
+});
+
+describe('who has gone quiet counts everyone who can answer (8 October 2026)', () => {
+  const row = (id: string, sessionNumber: number, status: string, opened: string) => ({ participantId: id, sessionNumber, status, createdAt: day(opened), availableFrom: day(opened), participant: PEOPLE[id] ?? { ...person(`u-${id}`, id) } });
+  /* Six people can answer. Omar is on the newest session, which he has not answered. Bisi, Kofi and Amina are still on earlier sessions and have said nothing for more than a week. Two have answered everything. */
+  const SIX = [
+    row('p-omar', 1, 'COMPLETED', '2026-09-14'), row('p-omar', 2, 'NOT_STARTED', '2026-09-28'),
+    row('p-bisi', 1, 'NOT_STARTED', '2026-09-14'),
+    row('p-kofi', 1, 'COMPLETED', '2026-09-14'), row('p-kofi', 2, 'NOT_STARTED', '2026-09-21'),
+    row('p-amina', 1, 'NOT_STARTED', '2026-09-14'),
+    row('p-tunde', 1, 'COMPLETED', '2026-09-14'), row('p-tunde', 2, 'COMPLETED', '2026-09-28'),
+    row('p-ada', 1, 'COMPLETED', '2026-09-14'), row('p-ada', 2, 'COMPLETED', '2026-09-28'),
+  ];
+  it('says four of the six, and not "the one person who can answer"', async () => {
+    const m = aMorning({ promises: [], waiting: false, quiet: true, phone: null, quietRows: SIX });
+    await m.run();
+    expect(m.mails[0][2].risks).toEqual(['Four of the six people in \u201cSales team, Q3\u201d have not answered a check-in for more than a week.']);
+  });
+  it('a person who has answered everything they were given is not counted as quiet', async () => {
+    const m = aMorning({ promises: [], waiting: false, quiet: true, phone: null, quietRows: SIX.filter((r) => ['p-tunde', 'p-ada'].includes(r.participantId)) });
+    await m.run();
+    expect(m.mails).toEqual([]);
   });
 });
 

@@ -107,24 +107,34 @@ export function theAcrossWords(firstName: string | null | undefined, cs: AQuietC
 
 const TERMINAL: GroundStatus[] = A_GROUND_NO_MESSAGE_IS_ABOUT;
 
-/** One check-in's quiet people, from its rows. Null when it has no latest session old enough, or began before the release. */
+/**
+ * One check-in's quiet people, from its rows. EVERYONE who can answer is counted, not only those with a row for the newest session: a person still on an
+ * earlier session has been asked and has said nothing, and was left out before (six people, four of them behind, read as "the one person who can answer").
+ * A person is quiet when the newest session they have been given is not answered and opened more than a week ago. Null when nobody is quiet or it began
+ * before the release.
+ */
 export function theQuietIn(rows: any[], label: string, leadUserId: string, now: Date, release: Date, away: ReadonlySet<string> = new Set()): AQuietCheckIn | null {
   if (!rows.length) return null;
-  const latest = Math.max(...rows.map((r) => r.sessionNumber ?? 0));
-  const latestRows = rows.filter((r) => (r.sessionNumber ?? 0) === latest);
-  /* A session opens when it becomes available, not when its row was made: the row is made when the one before is answered, a week or more earlier (found on the test bed). */
-  const opened = Math.min(...latestRows.map((r) => new Date(r.availableFrom ?? r.createdAt).getTime()));
-  if (opened < release.getTime() || now.getTime() - opened < QUIET_AFTER_DAYS * DAY) return null;
-  const counted = latestRows.filter((r) => !r.participant?.managingOnly && !isNotLetInYet(r.participant) && r.participant?.userId !== leadUserId && !away.has(r.participantId));
+  const opensAt = (r: any) => new Date(r.availableFrom ?? r.createdAt).getTime();
+  /* Each person's own newest row. A session opens when it becomes available, not when its row was made: the row is made when the one before is answered, a week or more earlier (found on the test bed). */
+  const newestOf = new Map<string, any>();
+  for (const r of rows) {
+    const had = newestOf.get(r.participantId);
+    if (!had || (r.sessionNumber ?? 0) > (had.sessionNumber ?? 0)) newestOf.set(r.participantId, r);
+  }
+  const counted = [...newestOf.values()].filter((r) => !r.participant?.managingOnly && !r.participant?.leftAt && !isNotLetInYet(r.participant) && r.participant?.userId !== leadUserId && !away.has(r.participantId));
   if (!counted.length) return null;
   let never = 0;
   const stopped: string[] = [];
   for (const r of counted) {
     if (r.status === CheckInStatus.COMPLETED) continue;
-    const before = rows.some((x) => x.participantId === r.participantId && (x.sessionNumber ?? 0) < latest && x.status === CheckInStatus.COMPLETED);
+    const opened = opensAt(r);
+    if (opened < release.getTime() || now.getTime() - opened < QUIET_AFTER_DAYS * DAY) continue;
+    const before = rows.some((x) => x.participantId === r.participantId && (x.sessionNumber ?? 0) < (r.sessionNumber ?? 0) && x.status === CheckInStatus.COMPLETED);
     if (before) stopped.push(nameToCall(r.participant));
     else never++;
   }
+  if (never === 0 && !stopped.length) return null;
   return { label, ofHowMany: counted.length, neverAnswered: never, stoppedAfterAnswering: stopped.filter((n) => !!n) };
 }
 
@@ -155,7 +165,7 @@ export async function sendWhoHasGoneQuiet(
       for (const g of theirs) {
         const rows: any[] = await prisma.checkIn.findMany({
           where: { groundId: g.id },
-          select: { participantId: true, sessionNumber: true, status: true, createdAt: true, availableFrom: true, participant: { select: { userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } } },
+          select: { participantId: true, sessionNumber: true, status: true, createdAt: true, availableFrom: true, participant: { select: { userId: true, managingOnly: true, leftAt: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } } },
         });
         /* Somebody on approved leave is not one who has gone quiet. */
         const away = await Promise.resolve(whoOnACheckInIsAway(prisma, g.id, now)).catch(() => new Map());

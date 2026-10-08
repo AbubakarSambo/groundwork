@@ -365,7 +365,7 @@ export async function whatIsOutstandingFor(
     for (const g of grounds) {
       const rows: any[] = await prisma.checkIn.findMany({
         where: { groundId: g.id },
-        select: { participantId: true, sessionNumber: true, status: true, createdAt: true, availableFrom: true, participant: { select: { userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } } },
+        select: { participantId: true, sessionNumber: true, status: true, createdAt: true, availableFrom: true, participant: { select: { userId: true, managingOnly: true, leftAt: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } } },
       }).catch(() => []);
       const away = await Promise.resolve(whoOnACheckInIsAway(prisma, g.id, now)).catch(() => new Map());
       const q = theQuietIn(rows, g.label, lead.userId, now, deps.release, new Set([...(away as Map<string, unknown>).keys()]));
@@ -374,7 +374,7 @@ export async function whatIsOutstandingFor(
       const who = n >= q.ofHowMany
         ? (q.ofHowMany === 1 ? 'The one person who can answer' : q.ofHowMany === 2 ? 'Both people' : `All ${aNumberInWords(q.ofHowMany)} people`)
         : `${capital(aNumberInWords(n))} of the ${aNumberInWords(q.ofHowMany)} people`;
-      out.risks.push({ text: `${who} in ${quoted(g.label)} ${n === 1 ? 'has' : 'have'} not answered the latest check-in for more than a week.`, keptInTheApp: keptOffThePhone(g) });
+      out.risks.push({ text: `${who} in ${quoted(g.label)} ${n === 1 ? 'has' : 'have'} not answered a check-in for more than a week.`, keptInTheApp: keptOffThePhone(g) });
     }
   }
 
