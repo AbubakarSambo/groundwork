@@ -180,10 +180,13 @@ export function theLeadsLetter(weeks: AWeekInOneCheckIn[], opts: { onlyWhenSomet
   const lines = [moving ? 'Your team is starting to move.' : "Here is your team's week."];
   /* Three recommendations at most, over the whole letter (spec section 24). */
   let room = 3;
+  /* One next check-in in the whole letter, the first one: the same suggestion under each of two check-ins is the same advice twice (found on the test bed). */
+  let nextAlreadyShown = false;
   for (const w of counted) {
     if (counted.length > 1) lines.push(`"${w.label}"`);
     lines.push(theWeekInSentences(w).join(' '));
-    const rest = theRestOfTheWeekIn(w, room);
+    const rest = theRestOfTheWeekIn(nextAlreadyShown ? { ...w, next: null } : w, room);
+    if (w.next) nextAlreadyShown = true;
     room -= Math.min(room, (w.toDo ?? []).length);
     lines.push(...rest);
   }

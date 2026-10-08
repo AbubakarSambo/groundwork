@@ -101,6 +101,21 @@ describe('a 12-person Ground that is not the anchor\'s, as the lead reads her Fr
   });
 });
 
+describe('a lead with two check-ins', () => {
+  it('is offered one next check-in in the whole letter, not the same one under each (found on the test bed)', async () => {
+    const w = aFriday({ done: 0, waiting: 3 });
+    w.prisma.report = { findFirst: async () => ({ id: 'r1' }) };
+    w.prisma.ground.findMany = async () => [
+      { id: 'g1', label: 'Supplier terms', initiatorId: 'u-wairimu', scenario: 'ALIGNMENT' },
+      { id: 'g2', label: 'Depot safety', initiatorId: 'u-wairimu', scenario: 'ALIGNMENT' },
+    ];
+    await send(w, { anchorIsOn: false, weeklyReport: async () => null });
+    const asked = w.sent[0].lines.filter((l: string) => l.startsWith('Here is something worth doing next.'));
+    expect(asked).toHaveLength(1);
+    expect(w.sent[0].lines.indexOf(asked[0])).toBeLessThan(w.sent[0].lines.indexOf('"Depot safety"'));
+  });
+});
+
 describe('when nothing useful happened, nothing is sent', () => {
   it('a quiet week, where nobody checked in and nothing was settled', async () => {
     const w = aFriday({ finished: [], done: 0 });
