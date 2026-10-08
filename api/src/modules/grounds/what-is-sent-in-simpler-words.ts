@@ -46,6 +46,7 @@ export function theConversationWorthHavingSaying(simplerWords?: boolean | null):
  */
 export const THE_REMINDERS_IN_SIMPLER_WORDS: Record<string, string> = {
   'checkin-open': 'Hi {{1}}, your check-in for {{2}} is open. It takes about five minutes. You can answer here. Write START to begin.',
+  'checkin-catch-up': 'Hi {{1}}, your check-in for {{2}} is open. It takes about five minutes. You can answer here. Write START to begin.',
   'due-tomorrow': 'Hi {{1}}, your check-in for {{2}} is due tomorrow, {{3}}. You can answer here at any time before then.',
   'opens-soon': 'Hi {{1}}, your check-in for {{2}} opens in one hour, at {{3}}. Write here when it opens, and we will start.',
   'closes-soon': 'Hi {{1}}, your check-in for {{2}} closes in one hour, at {{3}}. Please answer now. It takes five minutes. Then your answers go into the report.',

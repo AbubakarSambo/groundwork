@@ -696,7 +696,7 @@ export class WhatsAppForAnOrganisationService {
   /** The open check-in the last opening notice to this number was about, when it came after where the person was. */
   private async theLastOpeningNoticeTo(from: string, open: AnOpenCheckIn[], sinceTheyWereIn: Date | null): Promise<AnOpenCheckIn | null> {
     const last = await (this.prisma.whatsAppSend as any).findFirst?.({
-      where: { phone: { in: formsOfTheSameNumber(from) }, kind: { startsWith: 'checkin-open' }, sentAt: { not: null }, checkInId: { in: open.map((c) => c.id) }, ...(sinceTheyWereIn ? { createdAt: { gt: sinceTheyWereIn } } : {}) },
+      where: { phone: { in: formsOfTheSameNumber(from) }, OR: [{ kind: { startsWith: 'checkin-open' } }, { kind: { startsWith: 'checkin-catch-up' } }], sentAt: { not: null }, checkInId: { in: open.map((c) => c.id) }, ...(sinceTheyWereIn ? { createdAt: { gt: sinceTheyWereIn } } : {}) },
       orderBy: { createdAt: 'desc' },
       select: { checkInId: true },
     })?.catch?.(() => null);

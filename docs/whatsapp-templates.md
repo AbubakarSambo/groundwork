@@ -26,6 +26,7 @@ The code holds the same wording in `api/src/modules/whatsapp/a-message-outside-t
 - **Sample values:** {{1}} Miriam. {{2}} the sales team.
 - **Why:** sent when each session opens, the first one included, on Groundwork's number or the organisation's own. "Start" (tapped, or START typed) begins the check-in. "Not now" stops Groundwork writing first that day.
 - **Checked against WhatsApp's rules:** passes. The blanks are in order, there is text before the first and after the last, and the longest expected message is about 200 characters. One thing to know: WhatsApp itself treats START as "send me messages again" after STOP. Groundwork does the same for somebody who had said STOP, and for everybody else START begins the check-in.
+- **Also sent as a catch-up (8 October, participant activation): the same template, not a new one.** A person with a number on record who nobody has ever written to on WhatsApp about a session that is open and not started (WhatsApp was not on when it opened, the number was added later, or the first message could not go) is sent this message once, in the morning, at least a day and at most three weeks after the session opened. It is the code's kind `checkin-catch-up`, counted as the day's one routine message and not as an opening. Not sent to somebody who stopped the reminders, whose lead stopped the chasing, who has a check-in going or finished one in the last fortnight, or who has already been sent it. Built in `api/src/modules/engagement/a-person-the-opening-never-reached.ts`.
 
 ### 2. `checkin_due_tomorrow`
 

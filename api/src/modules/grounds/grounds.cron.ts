@@ -25,7 +25,7 @@ import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { keptOffThePhone } from '../whatsapp/a-check-in-kept-off-the-phone';
-import { whatToSendThisMorning, whichChase, whenItIsDue, itIsOverdue, itIsDueTomorrow, theTeamIsAlmostIn, yourViewMatters, itOpensSoon, MORNING_ORDER, itFollowsUpTheirPromise } from '../whatsapp/what-goes-to-a-phone';
+import { whatToSendThisMorning, whichChase, whenItIsDue, itIsOverdue, itIsDueTomorrow, theTeamIsAlmostIn, yourViewMatters, itOpensSoon, MORNING_ORDER, itFollowsUpTheirPromise, theCheckInIsStillOpen } from '../whatsapp/what-goes-to-a-phone';
 import { theirTimeZone } from '../whatsapp/the-persons-own-time-zone';
 import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
 import { sendWhoHasGoneQuiet as sendWhoHasGoneQuietToLeads } from '../engagement/who-has-gone-quiet';
@@ -44,6 +44,8 @@ import { theOpenSession } from '../engagement/heres-what-is-new';
 import { theRanOutOfTimeSubject } from '../engagement/the-leads-subjects-carry-the-facts';
 import { sendTheTestCheckInMessages } from '../engagement/a-test-check-in-moves-on';
 import { theirPromiseToFollowUp } from '../engagement/a-follow-up-from-their-own-record';
+import { theOpeningNeverReachedThem, itHasBeenOpenLongEnough } from '../engagement/a-person-the-opening-never-reached';
+import { formsOfTheSameNumber } from '../whatsapp/a-number-whatsapp-can-reach';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { isNotLetInYet } from './who-an-admin-did-not-let-in';
 import { theNamesOfReadersCheckIns } from './the-names-of-a-readers-check-ins';
@@ -810,7 +812,7 @@ export class GroundsCron implements OnApplicationBootstrap {
       select: {
         id: true, groundId: true, sessionNumber: true, createdAt: true, availableFrom: true, participantId: true,
         ground: { select: { label: true, scenario: true, organizationId: true, overWhatsApp: true, cadence: true, chaseAfterDays: true, chasingStopped: true, tellTheLead: true, workingDays: true, startedFrom: true, simplerWords: true, initiatorId: true, initiator: { select: { firstName: true } } } },
-        participant: { select: { id: true, email: true, userId: true, user: { select: { firstName: true, email: true, phoneNumber: true, isActive: true, deletedAt: true } } } },
+        participant: { select: { id: true, email: true, userId: true, remindersStoppedAt: true, user: { select: { firstName: true, email: true, phoneNumber: true, isActive: true, deletedAt: true } } } },
       },
       ...page,
     }));
@@ -846,7 +848,8 @@ export class GroundsCron implements OnApplicationBootstrap {
           daysOpen: Math.floor((now.getTime() - new Date(ci.createdAt).getTime()) / 86_400_000),
           dueAt, now, alreadyHad: had, hoursSinceLastChase: hoursSince(lastChase?.createdAt),
         });
-        if (!what) continue;
+        /* No chase, overdue or due-tomorrow today: the only message left is the catch-up for somebody the opening notice never reached, and only if the lead has not stopped the chasing. */
+        if (!what && (ci.ground.chasingStopped || !itHasBeenOpenLongEnough(ci.availableFrom ?? ci.createdAt, now))) continue;
         /* A team that said which days it works is not chased on the others (B-020). Nothing said: as before. */
         if (!isAWorkingDay(now, (ci.ground as any).workingDays)) continue;
         if (await isAGuestIn(this.prisma, ci.ground.organizationId, { userId: ci.participant.userId, email: ci.participant.email, userEmail: user?.email })) continue;
@@ -855,9 +858,12 @@ export class GroundsCron implements OnApplicationBootstrap {
           : null;
         const phone = person?.phone ?? user?.phoneNumber ?? null;
         if (!phone) continue;
+        const catchUp = !what;
+        if (catchUp && !(await theOpeningNeverReachedThem(this.prisma, ci, formsOfTheSameNumber(phone), now))) continue;
         const who = { firstName: user?.firstName, label: await nameFor({ userId: ci.participant.userId, email: ci.participant.email }, ci.groundId, ci.ground.label) };
         let said;
-        if (what === 'overdue') said = itIsOverdue(who, ci.ground.simplerWords);
+        if (catchUp) said = theCheckInIsStillOpen(who, ci.ground.simplerWords);
+        else if (what === 'overdue') said = itIsOverdue(who, ci.ground.simplerWords);
         else if (what === 'due-tomorrow') said = itIsDueTomorrow(who, dueAt!, ci.ground.simplerWords);
         else {
           /*
@@ -872,7 +878,8 @@ export class GroundsCron implements OnApplicationBootstrap {
             said = chase === 'team-almost-in' ? theTeamIsAlmostIn(who, counts.answered, counts.ofHowMany, ci.ground.simplerWords) : yourViewMatters(who, ci.participant.userId && ci.participant.userId === (ci.ground as any).initiatorId ? 'you' : ci.ground.initiator?.firstName, ci.ground.simplerWords);
           }
         }
-        const rank = MORNING_ORDER.indexOf(what);
+        /* The catch-up comes last: anything the chase would say today is more use to the person. */
+        const rank = catchUp ? MORNING_ORDER.length : MORNING_ORDER.indexOf(what as any);
         const key = ci.participant.userId ?? phone;
         const kept = best.get(key);
         if (kept && kept.rank <= rank) continue;
