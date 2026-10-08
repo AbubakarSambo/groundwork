@@ -224,6 +224,14 @@ export interface Ground {
   daysLeft?: number | null
   /** The day this ends, from the start on record and how long it runs; null where it has no fixed length. */
   endsOn?: string | null
+  /**
+   * REQUEST 206: whether this check-in's lead has left the organisation, and whether this viewer
+   * may change its setup - the same rule `GET /grounds/:id` already serves as `mayChangeSetup`,
+   * now on every row of the list too, worked out for the viewer who asked for it
+   * (`who-may-rename-a-check-in.ts`).
+   */
+  leadHasLeft?: boolean
+  mayChangeSetup?: boolean
   checkInsToday?: number
   overdue?: number
   contextNotes?: string[]
