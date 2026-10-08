@@ -168,7 +168,9 @@ function TheReview({ r, myUserId }: { r: AReview; myUserId: string | null }) {
  */
 function ManagersWords({ r, myUserId }: { r: AReview; myUserId: string | null }) {
   if (r.reader === 'person') {
-    const heading = r.managersWordsHeading ?? (r.writtenWithFirstName ? `What ${r.writtenWithFirstName} writes` : null)
+    /* The one who writes it, never the admin who changed the decision on appeal (decision 113), who writes nothing here. */
+    const writes = r.writerFirstName ?? r.writtenWithFirstName
+    const heading = r.managersWordsHeading ?? (writes ? `What ${writes} writes` : null)
     if (!heading) return null
     /*
      * SCREEN FAULT 9 (FINAL WALK): "WHAT DANIEL WRITES", WITH NOTHING UNDER IT. Grace's own review
@@ -182,7 +184,7 @@ function ManagersWords({ r, myUserId }: { r: AReview; myUserId: string | null })
       <Section heading={heading}>
         {r.managersWords
           ? <p className="gwui-quoted-text">“{r.managersWords}”</p>
-          : <p className="gwui-panel-text-muted">{r.writtenWithFirstName ? `${r.writtenWithFirstName} has not written anything yet.` : 'Nobody has written this yet.'}</p>}
+          : <p className="gwui-panel-text-muted">{writes ? `${writes} has not written anything yet.` : 'Nobody has written this yet.'}</p>}
       </Section>
     )
   }

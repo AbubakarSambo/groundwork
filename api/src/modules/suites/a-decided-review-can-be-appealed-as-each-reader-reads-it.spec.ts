@@ -207,6 +207,8 @@ describe('Imani appeals, and Grace, an admin who did not decide it, decides', ()
     await changed.svc.decideTheAppeal(changed.as('u-grace'), 'r-imani', { outcome: 'changed', decision: 'Imani moves up one level in January.', reasons: 'Her Karen work came in after the draft was written.' });
     const page: any = await changed.svc.one(changed.as('u-imani'), 'r-imani');
     expect(page.writtenWithFirstName).toBe('Grace');
+    /* Baraka still wrote the review: "What Baraka writes", never "What Grace writes" (test bed copy a, 9 October). */
+    expect(page.writerFirstName).toBe('Baraka');
     const list = await changed.svc.mine(changed.as('u-imani'));
     expect(list[0].says).toBe('Grace has decided your review. You can read the decision and the reasons.');
     expect(list[0].writtenWithFirstName).toBe('Grace');

@@ -234,6 +234,11 @@ export interface ForThePerson {
   managersWordsById: string | null;
   managersWordsHeading: string | null;
   /**
+   * Who writes the review with them, for "What Grace writes" before anything is written. Not `writtenWithFirstName`, which
+   * names the admin who changed the decision on appeal (decision 113): that admin never writes the review's words.
+   */
+  writerFirstName: string | null;
+  /**
    * WHERE THE TWO VIEWS DIFFER (decision 93, row 15; the prototype's "where she and Wairimu see things differently").
    * Both views, side by side, once the writer and the person have each written theirs. Groundwork does not say
    * which of them is right, and works out no difference of its own. Null until both exist.
@@ -487,6 +492,7 @@ export class ReviewsService {
         theirView: row.theirView ?? null,
         managersWords: row.managersWords?.trim() ? row.managersWords : null,
         managersWordsById: wordsById,
+        writerFirstName: writerFirst,
         managersWordsHeading: row.managersWords?.trim() ? `What ${wordsFirst ?? writerFirst ?? 'the person who writes your review'} writes` : null,
         whereYouDiffer: row.managersWords?.trim() && row.theirView?.trim()
           ? { says: whereYouDifferSaid(wordsFirst ?? writerFirst), managersWords: row.managersWords, yourView: row.theirView }

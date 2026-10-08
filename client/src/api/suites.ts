@@ -254,6 +254,8 @@ export interface ReviewForThePerson {
   decision: { says: string; reasons: string } | null
   record?: TheRecord | null
   recognise?: RecogniseForThePerson
+  /** Who writes the review with them; not the admin who changed the decision on appeal (who is `writtenWithFirstName` then). */
+  writerFirstName?: string | null
   mayAppeal?: boolean
   mayAppealSays?: string | null
   appeal?: YourAppeal | null

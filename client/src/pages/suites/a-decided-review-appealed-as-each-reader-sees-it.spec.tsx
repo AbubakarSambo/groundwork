@@ -69,6 +69,14 @@ describe('the person', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add to my reasons' }))
     await waitFor(() => expect(reviewsApi.addToTheAppeal).toHaveBeenCalledWith('r1', 'One more thing.'))
   })
+  it('reads who writes the review, not the admin who changed the decision on appeal', async () => {
+    ;(reviewsApi.one as any).mockResolvedValue({ ...DECIDED, writtenWithFirstName: 'Baraka', writerFirstName: 'Grace' })
+    open(U('u-j', 'Juma', 'MEMBER'))
+    expect(await screen.findByRole('heading', { name: 'What Grace writes' })).toBeInTheDocument()
+    expect(text()).toContain('Grace has not written anything yet.')
+    expect(text()).not.toContain('What Baraka writes')
+    expect(text()).not.toContain('Baraka has not written anything yet.')
+  })
   it('reads the outcome, the admin’s reasons and what the decision said before, with nothing more to add', async () => {
     ;(reviewsApi.one as any).mockResolvedValue(DECIDED)
     open(U('u-j', 'Juma', 'MEMBER'))
