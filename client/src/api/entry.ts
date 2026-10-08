@@ -331,27 +331,24 @@ export const entryApi = {
 }
 
 /**
- * THE ANCHOR SCENARIO'S FRONT DOOR CALLS (plan pieces 1 and 2; docs/answers-from-engine.md,
- * "Request 144 (1)" and "Request 144 (2) and (3)"). Both are open to a visitor who is not signed in.
+ * THE ANCHOR SCENARIO'S OWN START CALL (decision 114, docs/decisions-merged.md;
+ * docs/answers-from-engine.md, "8 October: decision 114, the anchor changes no screen").
+ *
+ * `GET /entry/anchor-available` is no longer called from the client: it used to be the public
+ * signal `AnchorLandingPage.tsx` asked before showing itself at all, and that page is gone - the
+ * anchor now opens from the ordinary entry chat like any scenario, and a 404 from `start` below
+ * already says the switch is off, which is the only thing `anchor-available` ever answered.
  */
 export const entryAnchorApi = {
   /**
-   * `GET /entry/anchor-available`: the one public signal of whether `release.anchorScenario` is on.
-   * Answers only `{ available }`, cached by the server for 30 seconds. This is the call the landing
-   * page asks before it decides whether to show itself at all, replacing the old stub that could
-   * only ever answer false (`anchor-scenario-is-on.ts`).
-   */
-  available: (): Promise<{ available: boolean }> =>
-    apiClient.get('/entry/anchor-available').then(r => r.data),
-
-  /**
-   * `GET /entry/anchor-start?source=<mark>`: called once on arrival at `/start/team`. With the
-   * switch on it answers the situation key (`HELP_TEAM_UNDERSTAND`), a label for the ground, the
-   * source mark read back exactly as sent (or `null`), and `thePeopleStep`
-   * (docs/answers-from-engine.md, "Request 149 (2 of 6)") - the people step's own heading, intro,
-   * context label, button and limit sentence, carried from here through to the entry chat's people
-   * step rather than read off the fixed `ANCHOR_PEOPLE_STEP_RULES`. With the switch off it answers
-   * 404 - the caller is expected to show the engine's own sentence rather than invent one.
+   * `GET /entry/anchor-start?source=<mark>`: called once, by `EntryChatPage.tsx`, on a fresh
+   * arrival with `?scenario=HELP_TEAM_UNDERSTAND` in the address. With the switch on it answers the
+   * situation key (`HELP_TEAM_UNDERSTAND`), a label for the ground, the source mark read back
+   * exactly as sent (or `null`), and `thePeopleStep` (docs/answers-from-engine.md, "Request 149 (2
+   * of 6)") - the people step's own heading, intro, context label, button and limit sentence,
+   * carried straight into the entry chat's people step rather than read off the fixed
+   * `ANCHOR_PEOPLE_STEP_RULES`. With the switch off it answers 404 - the caller falls back to
+   * today's ordinary door rather than show a sentence of its own.
    *
    * `firstQuestion` (request 163, item 9): the engine's own opening line for the anchor
    * conversation, "What's happening right now that makes you wish your team saw more of what you

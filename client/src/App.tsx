@@ -18,7 +18,6 @@ import { GoogleCallbackPage } from '@/pages/auth/GoogleCallbackPage'
 import { ChoosePasswordPage } from '@/pages/auth/ChoosePasswordPage'
 import { GoogleFailedPage } from '@/pages/auth/GoogleFailedPage'
 import { EntryChatPage } from '@/pages/enter/EntryChatPage'
-import { AnchorLandingPage } from '@/pages/enter/AnchorLandingPage'
 import { ChatPage } from '@/pages/chat/ChatPage'
 import SessionReportPage from '@/pages/report/SessionReportPage'
 import RoundReportPage from '@/pages/report/RoundReportPage'
@@ -34,6 +33,23 @@ function KeepTheQuery({ to }: { to: string }) {
 function ChatRedirect() {
   const { checkInId } = useParams()
   return <Navigate to={`/checkin/${checkInId}`} replace />
+}
+
+/**
+ * `/start/team` KEEPS WORKING, DECISION 114 (docs/decisions-merged.md). Links already sent (on
+ * WhatsApp, LinkedIn, email) still carry people here; this just redirects into the ordinary entry
+ * chat with the anchor's own scenario key, keeping whatever else was on the address (a `?source=`
+ * mark, say) - `/start/team?x=1` lands on `/start?scenario=HELP_TEAM_UNDERSTAND&x=1`. A `scenario`
+ * already on the address is replaced: this door only ever means the one scenario.
+ */
+export function AnchorTeamRedirect() {
+  const { search, hash } = useLocation()
+  const rest = new URLSearchParams(search)
+  rest.delete('scenario')
+  const query = new URLSearchParams()
+  query.set('scenario', 'HELP_TEAM_UNDERSTAND')
+  for (const [key, value] of rest) query.append(key, value)
+  return <Navigate to={`/start?${query.toString()}${hash}`} replace />
 }
 import { GroundsListPage } from '@/pages/grounds/GroundsListPage'
 import { TodayPage } from '@/pages/today/TodayPage'
@@ -461,12 +477,17 @@ export default function App() {
               */}
             <Route path="/start" element={<MayOpenCheckIns><EntryChatPage /></MayOpenCheckIns>} />
             {/*
-              The anchor scenario's own front door (plan pieces 1 and 2, docs/anchor-scenario-plan.md
-              section 5, address suggested in section 1). Open to a stranger, like /start: the page
-              itself redirects to /start unless the engine's public switch, `GET /entry/anchor-
-              available`, says the anchor scenario is on (request 144 (1)).
+              DECISION 114 (docs/decisions-merged.md; docs/answers-from-engine.md, "8 October:
+              decision 114, the anchor changes no screen"): the anchor scenario must not change the
+              UI. It used to have its own front door, `AnchorLandingPage.tsx` - now gone - which
+              asked the engine's public switch before showing itself at all. This address is kept,
+              for links already sent, as a plain redirect into the ordinary entry chat with the
+              anchor's own scenario key, which now makes the one call `AnchorLandingPage.tsx` used to
+              make (`GET /entry/anchor-start`, see `EntryChatPage.tsx`). `GET /entry/anchor-available`
+              is no longer called from the client at all: nothing here needs to know the switch is on
+              before asking anything else, and a 404 from `anchor-start` already says it is off.
             */}
-            <Route path="/start/team" element={<AnchorLandingPage />} />
+            <Route path="/start/team" element={<AnchorTeamRedirect />} />
             <Route path="/invite" element={<InvitePage />} />
             <Route path="/join" element={<JoinPage />} />
             {/* The QR code's own door: answer first, say who you are at the end. */}

@@ -39,43 +39,19 @@ export const ANCHOR_PEOPLE_STEP_RULES: ThePeopleStepRules = {
 }
 
 /**
- * HOW THE SERVED PEOPLE STEP TRAVELS FROM THE LANDING PAGE TO THE ENTRY CHAT.
- *
- * `AnchorLandingPage.tsx` is the one caller of `GET /entry/anchor-start`; its button then opens the
- * ordinary entry chat at `/start?scenario=...`, a fresh page load. `sessionStorage` (not the saved
- * draft itself, which does not exist until the chat has started) is the plain way to carry the
- * served `ThePeopleStepRules` across that one navigation - written here, read once by
- * `EntryChatPage.tsx` on a fresh mount, and folded into the draft's own session state from then on
- * so a reload keeps it.
- */
-export const ANCHOR_PEOPLE_STEP_SESSION_KEY = 'gw-anchor-people-step'
-
-export function rememberTheServedPeopleStep(rules: ThePeopleStepRules | undefined) {
-  if (!rules) return
-  try { sessionStorage.setItem(ANCHOR_PEOPLE_STEP_SESSION_KEY, JSON.stringify(rules)) } catch { /* best effort */ }
-}
-
-/** Read once, then forget - the draft's own session state carries it from here on. */
-export function takeTheServedPeopleStep(): ThePeopleStepRules | undefined {
-  try {
-    const raw = sessionStorage.getItem(ANCHOR_PEOPLE_STEP_SESSION_KEY)
-    if (!raw) return undefined
-    sessionStorage.removeItem(ANCHOR_PEOPLE_STEP_SESSION_KEY)
-    return JSON.parse(raw) as ThePeopleStepRules
-  } catch {
-    return undefined
-  }
-}
-
-/**
- * THE ANCHOR'S FIRST QUESTION, THE SAME WAY THE PEOPLE STEP TRAVELS (request 163, item 9).
+ * THE ANCHOR'S FIRST QUESTION, REMEMBERED ACROSS THE ONE RE-RENDER IT TAKES TO ARRIVE (request 163,
+ * item 9; decision 114, docs/decisions-merged.md).
  *
  * The plan's own wording (docs/anchor-scenario-plan.md section 6; docs/anchor-scenario.md): "the
- * first psychological trigger: recognition". This is the FALLBACK ONLY - `AnchorLandingPage.tsx`
- * remembers the engine's served `firstQuestion` (`GET /entry/anchor-start`) across the one
- * navigation into `EntryChatPage.tsx`, exactly as it does for `ThePeopleStepRules` above; this
- * constant is drawn only when nothing was served (the engine has not built it yet, an older link,
- * or the call failed).
+ * first psychological trigger: recognition". This is the FALLBACK ONLY. `EntryChatPage.tsx` is now
+ * the one caller of `GET /entry/anchor-start` (it used to be a separate page, `AnchorLandingPage
+ * .tsx`, handing off to this one on a fresh page load - decision 114 folded that front door into the
+ * ordinary entry chat, so there is no second page to hand off to any more). `thePeopleStep` and
+ * `groundLabel`, served on the same call, are set directly into this page's own state now that
+ * caller and user are the same component; `firstQuestion` still goes through `sessionStorage`
+ * because it has to outlive the render in which the call resolves and land in the ONE onboarding
+ * turn this page ever seeds - the same reason the confirmation flag below also reads from
+ * `sessionStorage` rather than a plain variable.
  */
 export const THE_ANCHOR_FIRST_QUESTION =
   "What's happening right now that makes you wish your team saw more of what you see?"
@@ -100,30 +76,13 @@ export function takeTheServedFirstQuestion(): string | undefined {
 }
 
 /**
- * THE ANCHOR'S OWN SITUATION NAME, THE SAME WAY THE PEOPLE STEP AND FIRST QUESTION TRAVEL (request
- * 144 (2) and (3)): `GET /entry/anchor-start` answers `groundLabel: "Help my team understand"`, and
- * that served sentence - not `SCENARIO_LABELS`' own entry for `HELP_TEAM_UNDERSTAND`, which is
- * missing its "my" - is what an anchor draft shows wherever it names its own situation (the side
- * panel, and anywhere else `EntryChatPage.tsx` would otherwise have reached for a label map).
+ * THE ANCHOR'S OWN SITUATION NAME (request 144 (2) and (3)): `GET /entry/anchor-start` answers
+ * `groundLabel: "Help my team understand"`, which `EntryChatPage.tsx` now sets straight into its own
+ * `anchorGroundLabel` state the moment the call resolves (decision 114) - not `SCENARIO_LABELS`' own
+ * entry for `HELP_TEAM_UNDERSTAND`, which is missing its "my". That served sentence is what an
+ * anchor draft shows wherever it names its own situation (the side panel, and anywhere else
+ * `EntryChatPage.tsx` would otherwise have reached for a label map).
  */
-const ANCHOR_GROUND_LABEL_SESSION_KEY = 'gw-anchor-ground-label'
-
-export function rememberTheServedGroundLabel(label: string | undefined) {
-  if (!label) return
-  try { sessionStorage.setItem(ANCHOR_GROUND_LABEL_SESSION_KEY, label) } catch { /* best effort */ }
-}
-
-/** Read once, then forget - the draft's own session state carries it from here on. */
-export function takeTheServedGroundLabel(): string | undefined {
-  try {
-    const raw = sessionStorage.getItem(ANCHOR_GROUND_LABEL_SESSION_KEY)
-    if (!raw) return undefined
-    sessionStorage.removeItem(ANCHOR_GROUND_LABEL_SESSION_KEY)
-    return raw
-  } catch {
-    return undefined
-  }
-}
 
 /**
  * WHETHER `GET /entry/anchor-start` ACTUALLY SUCCEEDED FOR THIS TAB (plan piece 2; the plan's "do it
@@ -133,9 +92,9 @@ export function takeTheServedGroundLabel(): string | undefined {
  * moment it sees `?scenario=HELP_TEAM_UNDERSTAND`, which is only right while `release.anchorScenario`
  * is really on: a STALE such link, kept from before Hafsah switches it off, must fall back to
  * today's ordinary door rather than open a conversation the engine no longer runs. `anchor-start`
- * answers 404 whenever the switch is off (`AnchorLandingPage.tsx`'s own `isError`), so whether it
- * succeeded is the plan's own stand-in for the switch, carried the same way the people step and the
- * first question are. This is read, not taken: every place that opens the door checks it fresh,
+ * answers 404 whenever the switch is off, so whether it succeeded is the plan's own stand-in for the
+ * switch, carried the same way the first question is. This is read, not taken: every place that
+ * opens the door checks it fresh,
  * rather than consuming it once into component state, so it cannot go stale depending on which of
  * two effects happens to run first on the same mount (`takeTheServedFirstQuestion` above is
  * genuinely single-use - the onboarding history it seeds is itself then kept across reloads - but a
