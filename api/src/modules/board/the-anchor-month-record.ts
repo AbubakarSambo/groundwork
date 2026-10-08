@@ -1,6 +1,7 @@
 import { CheckInStatus } from '@prisma/client';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
+import { theSameWaitInOtherWords } from './reads';
 import { inOurVoice } from '../reports/what-the-record-shows-over-time';
 
 /**
@@ -67,7 +68,9 @@ export async function readTheMonthRecord(prisma: any, groundId: string, openRoun
     return p ? theFirstNameOfAParticipant(p) ?? null : null;
   };
   const mine = (commitments as any[]).filter((c) => c.participantId && ids.has(c.participantId));
-  const open = (handoffs as any[]).filter((d) => d.status !== 'CLEARED');
+  /* The same wait said twice in different words is listed once (found on "What's still stuck"). */
+  const stillOpen = (handoffs as any[]).filter((d) => d.status !== 'CLEARED');
+  const open: any[] = stillOpen.reduce((kept: any[], d: any) => (kept.some((k) => theSameWaitInOtherWords(k, d)) ? kept : [...kept, d]), []);
   const startedOn = (ground?.startsAt ?? ground?.createdAt ?? (people as any[]).map((p) => p.createdAt).filter(Boolean).sort((a: Date, b: Date) => a.getTime() - b.getTime())[0] ?? null) as Date | null;
   const byKind = { pair: 0, project: 0, aim: 0 };
   for (const o of offers as any[]) byKind[THE_ANCHOR_OFFERS[o.kind as keyof typeof THE_ANCHOR_OFFERS]]++;
@@ -81,7 +84,7 @@ export async function readTheMonthRecord(prisma: any, groundId: string, openRoun
     commitmentsDone: mine.filter((c) => c.status === 'DONE').length,
     commitmentsOpen: mine.filter((c) => c.status === 'UNKNOWN').length,
     waiting: open.map((d) => ({ from: firstName(d.fromParticipantId) ?? 'Someone', on: d.onParticipantId ? firstName(d.onParticipantId) : (d.onLabel ?? null), what: d.what ?? null })),
-    handoffsCleared: (handoffs as any[]).length - open.length,
+    handoffsCleared: (handoffs as any[]).length - stillOpen.length,
     offers: byKind,
     startedOn,
     ideas: ideaRows.filter((i) => i.kind === 'idea').map((i) => ({ id: i.id, name: i.name, ownerParticipantId: i.ownerParticipantId ?? null, raisedBy: firstName(i.ownerParticipantId ?? null) })),
