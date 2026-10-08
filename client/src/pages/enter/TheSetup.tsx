@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { whenTheCheckInsLand, type Cadence } from '@/components/gw/when-the-check-ins-land'
+import { AnchorDayPicker } from '@/components/gw/AnchorDayPicker'
 import { cadenceLabel } from '@/lib/cadence'
 import type { ThePeopleStepRules } from '@/api/anchorShapes'
 
@@ -195,12 +196,6 @@ function Choice({ on, onClick, children }: { on: boolean; onClick: () => void; c
   )
 }
 
-/** A small field label for the anchor-day controls, matching the look of the picker labels this
-    screen already uses, without requiring an `htmlFor` for the day-of-week button group. */
-function AnchorLabel({ htmlFor, children }: { htmlFor?: string; children: React.ReactNode }) {
-  return <label htmlFor={htmlFor} style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)' }}>{children}</label>
-}
-
 function Section({ title, help, children }: { title: string; help?: string; children: React.ReactNode }) {
   return (
     <section aria-label={title} style={{ marginBottom: 16 }}>
@@ -277,43 +272,8 @@ export function TheSetup(p: {
           to the next working day), so the two pickers do not disagree; the preview below says exactly
           what will happen either way. Optional, and the server keeps whatever a check-in already has
           when nothing is picked. */}
-        {p.cadenceChosen && (p.cadence === 'WEEKLY' || p.cadence === 'FORTNIGHTLY') && p.onAnchorDay && (
-          <div style={{ marginTop: 10 }}>
-            <AnchorLabel>Which day of the week should check-ins open? (optional)</AnchorLabel>
-            <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
-              {DAY_SHORT.map((d, i) => (
-                <button
-                  key={d}
-                  type="button"
-                  aria-pressed={p.anchorDay === i}
-                  title={DAY_NAMES[i]}
-                  onClick={() => p.onAnchorDay!(p.anchorDay === i ? null : i)}
-                  style={{
-                    flex: 1, padding: '6px 0', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                    border: `1px solid ${p.anchorDay === i ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
-                    background: p.anchorDay === i ? 'var(--gw-blue-bg)' : 'white',
-                    color: p.anchorDay === i ? 'var(--gw-navy)' : 'var(--gw-muted)',
-                  }}
-                >{d}</button>
-              ))}
-            </div>
-          </div>
-        )}
-        {p.cadenceChosen && p.cadence === 'MONTHLY' && p.onAnchorDay && (
-          <div style={{ marginTop: 10 }}>
-            <AnchorLabel htmlFor="cadence-anchor-day-of-month">Which day of the month should check-ins open? (optional)</AnchorLabel>
-            <select
-              id="cadence-anchor-day-of-month"
-              value={p.anchorDay ?? ''}
-              onChange={(e) => p.onAnchorDay!(e.target.value ? Number(e.target.value) : null)}
-              style={{ width: '100%', marginTop: 6, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', color: p.anchorDay != null ? 'var(--gw-text)' : 'var(--gw-muted)' }}
-            >
-              <option value="">No fixed day</option>
-              {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
-                <option key={day} value={day}>{day}{day === 1 ? 'st' : day === 2 ? 'nd' : day === 3 ? 'rd' : 'th'} of the month</option>
-              ))}
-            </select>
-          </div>
+        {p.cadenceChosen && (p.cadence === 'WEEKLY' || p.cadence === 'FORTNIGHTLY' || p.cadence === 'MONTHLY') && p.onAnchorDay && (
+          <AnchorDayPicker cadence={p.cadence} anchorDay={p.anchorDay} onAnchorDay={p.onAnchorDay} idPrefix="setup" />
         )}
       </Section>
 

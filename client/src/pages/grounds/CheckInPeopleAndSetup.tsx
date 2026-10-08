@@ -10,6 +10,7 @@ import { whatThisStatusMeans } from '@/components/gw/what-a-status-means-to-the-
 import { BaselinePanel } from '@/components/gw/BaselinePanel'
 import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
 import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
+import { AnchorDayPicker, DAY_NAMES, ordinal } from '@/components/gw/AnchorDayPicker'
 import type { GroundCadence } from '@/api/grounds'
 import { SELECTABLE_CADENCES, sessionsFor, cadenceLabel } from '@/lib/cadence'
 import { scenarioLabel } from '@/lib/scenario-catalog'
@@ -90,6 +91,17 @@ function chasingSentence(days: number[]): string {
  * this used to read "1 of 12 done" beside its own label, a number with no sentence around it. Reads
  * the way "Your status" beside it already does.
  */
+/**
+ * REQUEST 194: THE DAY CHECK-INS LAND ON, IN WORDS, BESIDE "HOW OFTEN". Empty for a cadence with no
+ * day to land on (daily, one-time or as-you-decide), or when no day has been chosen.
+ */
+export function anchorDaySentence(cadence: GroundCadence, anchorDay: number | null | undefined): string {
+  if (anchorDay == null) return ''
+  if (cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY') return ` Lands on ${DAY_NAMES[anchorDay]}s.`
+  if (cadence === 'MONTHLY') return ` Lands on the ${ordinal(anchorDay)} of the month.`
+  return ''
+}
+
 export function yourSessionsSentence(done: number, planned: number | null): string {
   if (planned == null) return `${done} session${done === 1 ? '' : 's'} done so far.`
   /* B-012: "9 of 6 sessions are done" is not a possible count. However it is counted, how many are
@@ -196,6 +208,9 @@ export function CheckInPeopleAndSetup(props: {
   timelineDaysDraft: number; setTimelineDaysDraft: (n: number) => void
   cadenceDraft: GroundCadence; setCadenceDraft: (c: GroundCadence) => void
   workingDaysDraft: number[]; setWorkingDaysDraft: (d: number[]) => void
+  /** Request 194: the day check-ins land on. 0-6 (Sunday-Saturday) for a weekly or fortnightly
+      rhythm, 1-31 for a monthly one, `null` for none set. */
+  anchorDayDraft: number | null; setAnchorDayDraft: (d: number | null) => void
   theTimeframeChanged: boolean
   saveSetup: { mutate: (v: any) => void; isPending: boolean }
   groundLabel: string; setGroundLabel: (v: string) => void
@@ -346,7 +361,7 @@ export function CheckInPeopleAndSetup(props: {
         <FieldRows>
           <FieldRow
             label="How often"
-            value={`${cadenceLabel(ground.cadence)}. ${sessionsFor(ground.timelineDays, ground.cadence) ?? '?'} session${(sessionsFor(ground.timelineDays, ground.cadence) ?? 0) === 1 ? '' : 's'} in total.`}
+            value={`${cadenceLabel(ground.cadence)}. ${sessionsFor(ground.timelineDays, ground.cadence) ?? '?'} session${(sessionsFor(ground.timelineDays, ground.cadence) ?? 0) === 1 ? '' : 's'} in total.${anchorDaySentence(ground.cadence, (ground as any).cadenceAnchorDay)}`}
             action={canEditRunOrAdmin ? <Button kind="quiet" size="small" onClick={() => setEditingWhen((v) => !v)}>Change</Button> : undefined}
           />
           <FieldRow
@@ -447,9 +462,28 @@ export function CheckInPeopleAndSetup(props: {
                 if (Number.isFinite(days) && days >= 1) props.setTimelineDaysDraft(days)
               }}
             />
-            <Select value={props.cadenceDraft} onChange={(e) => props.setCadenceDraft(e.target.value as GroundCadence)} aria-label="Session cadence">
+            <Select
+              value={props.cadenceDraft}
+              onChange={(e) => {
+                const c = e.target.value as GroundCadence
+                props.setCadenceDraft(c)
+                /* A day picked for one rhythm means something different, or nothing, in another -
+                   the same rule TheSetup.tsx's own picker follows (request 194). */
+                if (c !== props.cadenceDraft) props.setAnchorDayDraft(null)
+              }}
+              aria-label="Session cadence"
+            >
               {SELECTABLE_CADENCES.map((c) => <option key={c.cadence} value={c.cadence}>{c.label}</option>)}
             </Select>
+            {/*
+              REQUEST 194 (8 October 2026): THE SAME DAY PICKER SETUP ALREADY OFFERS, NOW HERE TOO,
+              so a lead can change the day check-ins land on after the check-in has started, not only
+              while it is being created. Applies from the next session that is made; a session
+              already made keeps its date (docs/answers-from-engine.md, "Request 194, answered").
+            */}
+            {(props.cadenceDraft === 'WEEKLY' || props.cadenceDraft === 'FORTNIGHTLY' || props.cadenceDraft === 'MONTHLY') && (
+              <AnchorDayPicker cadence={props.cadenceDraft} anchorDay={props.anchorDayDraft} onAnchorDay={props.setAnchorDayDraft} idPrefix="people-and-setup" />
+            )}
             {props.cadenceDraft !== 'ONE_TIME' && (
               <WhichDaysTheyWork value={props.workingDaysDraft} onChange={props.setWorkingDaysDraft} />
             )}
@@ -457,12 +491,16 @@ export function CheckInPeopleAndSetup(props: {
               {props.timelineDaysDraft} days, {sessionsFor(props.timelineDaysDraft, props.cadenceDraft) ?? 1} session{(sessionsFor(props.timelineDaysDraft, props.cadenceDraft) ?? 1) === 1 ? '' : 's'}.
               {' '}Sessions already completed are never removed. On the last one, everybody is asked
               how this should close, and it ends on the answer you agree.
+              {/* Request 194, answered: a session already made keeps its own date. */}
+              {(props.cadenceDraft === 'WEEKLY' || props.cadenceDraft === 'FORTNIGHTLY' || props.cadenceDraft === 'MONTHLY') && (
+                <> The day you choose applies from the next check-in on. A session already made keeps its own date.</>
+              )}
             </Note>
             <Button
               kind="secondary"
               size="small"
               disabled={!props.theTimeframeChanged || props.saveSetup.isPending}
-              onClick={() => props.saveSetup.mutate({ timelineDays: props.timelineDaysDraft, cadence: props.cadenceDraft, workingDays: props.workingDaysDraft })}
+              onClick={() => props.saveSetup.mutate({ timelineDays: props.timelineDaysDraft, cadence: props.cadenceDraft, workingDays: props.workingDaysDraft, cadenceAnchorDay: props.anchorDayDraft })}
             >
               Save timeframe
             </Button>
