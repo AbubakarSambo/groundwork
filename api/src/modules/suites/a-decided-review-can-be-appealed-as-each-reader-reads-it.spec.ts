@@ -194,7 +194,10 @@ describe('Imani appeals, and Grace, an admin who did not decide it, decides', ()
     const imani: any = await svc.one(as('u-imani'), 'r-imani');
     expect(imani.decision).toEqual({ says: 'Imani moves up one level in January.', reasons: 'Her Karen work came in after the draft was written.' });
     expect(imani.appeal.decisionWas).toEqual({ says: 'Imani moves up one level in March.', reasons: 'She has kept nearly every commitment and led two shops.' });
-    expect(imani.appeal.says).toBe('Grace, an admin, has read your appeal and has changed the decision. You can read the new decision and the reasons below.');
+    /* The new decision is the review's own decision, drawn above the appeal, so the sentence does not say "below" (test bed copy a, 9 October). */
+    expect(imani.appeal.says).toBe('Grace, an admin, has read your appeal and has changed the decision. The decision and the reasons on your review are now the new ones.');
+    const baraka: any = await svc.one(as('u-baraka'), 'r-imani');
+    expect(baraka.appeal.says).toBe('Imani appealed your decision. Grace, an admin, has read the appeal and has changed the decision. The decision and the reasons on this review are now the new ones.');
   });
 
   /* After the appeal changed the decision, Imani is told who has decided her review now, on the review and in the list Today reads. (8 October) */

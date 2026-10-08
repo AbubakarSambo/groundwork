@@ -83,7 +83,7 @@ export function yourAppealSaid(stands: AppealStands, reviewerFirstName: string |
   if (stands === 'decided') {
     const who = deciderFirstName?.trim() || 'An admin';
     return outcome === 'changed'
-      ? `${who}, an admin, has read your appeal and has changed the decision. You can read the new decision and the reasons below.`
+      ? `${who}, an admin, has read your appeal and has changed the decision. The decision and the reasons on your review are now the new ones.`
       : `${who}, an admin, has read your appeal, and the decision stands. You can read the reasons below.`;
   }
   if (stands === 'needs-another-admin') {
@@ -97,7 +97,7 @@ export function theReviewerReadsSaid(stands: AppealStands, personFirstName: stri
   if (stands === 'decided') {
     const who = deciderFirstName?.trim() || 'An admin';
     return outcome === 'changed'
-      ? `${personFirstName} appealed your decision. ${who}, an admin, has read the appeal and has changed the decision. You can read the new decision and the reasons below.`
+      ? `${personFirstName} appealed your decision. ${who}, an admin, has read the appeal and has changed the decision. The decision and the reasons on this review are now the new ones.`
       : `${personFirstName} appealed your decision. ${who}, an admin, has read the appeal, and the decision stands. You can read the reasons below.`;
   }
   if (stands === 'needs-another-admin') {

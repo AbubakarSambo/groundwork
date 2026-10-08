@@ -24,7 +24,7 @@ const APPEALED: ReviewForThePerson = {
 }
 const DECIDED: ReviewForThePerson = {
   ...APPEALED, decision: { says: 'Juma leads the Kisumu route.', reasons: 'Baraka changed it.' },
-  appeal: { ...APPEALED.appeal!, stands: 'decided', says: 'Baraka, an admin, has read your appeal and has changed the decision. You can read the new decision and the reasons below.',
+  appeal: { ...APPEALED.appeal!, stands: 'decided', says: 'Baraka, an admin, has read your appeal and has changed the decision. The decision and the reasons on your review are now the new ones.',
     outcome: 'changed', decidedByFirstName: 'Baraka', reasons: 'Juma covered the route for four months.', decisionWas: DECISION },
 }
 const BASE: ReviewForTheWriter = {
