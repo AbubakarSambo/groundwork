@@ -64,7 +64,8 @@ describe('one floor, read in both places', () => {
   it('and tells the screen, which never inlines a number of its own', () => {
     expect(SRC.match(/mayCompleteAfter: theFloorFor\(/g)).toHaveLength(3);
     const page = strip(readFileSync(join(__dirname, '..', '..', '..', '..', 'client', 'src', 'pages', 'chat', 'ChatPage.tsx'), 'utf8'));
-    expect(page).toMatch(/\.length >= mayCompleteAfter && \(/);
+    /* The count is the answers the server kept (60835ba84, release check): still the server's own floor, never a number of the screen's. */
+    expect(page).toMatch(/answersTheServerKept\(msgs\) >= mayCompleteAfter && \(/);
     expect(page).not.toMatch(/\.length >= \d+ && \(/);
     expect(page).toContain('setMayCompleteAfter(res.mayCompleteAfter)');
     expect(page).toContain('setMayCompleteAfter(t.mayCompleteAfter)');
