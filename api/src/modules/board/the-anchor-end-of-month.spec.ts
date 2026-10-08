@@ -130,6 +130,15 @@ describe('her own words, where she said them first', () => {
     expect(await herOwnWords(stub([], [HER_WORDS], null), 'g-1', 'u-amina')).toBe(HER_WORDS);
   });
 
+  it('reads the first message she typed in the ordinary set-up chat when she has no turn of her own (decision 114), and not another person\'s', async () => {
+    const world: any = { ...stub([], [], 'The brief.'), leadSetUpWords: undefined };
+    world.leadSetupWords = { findUnique: jest.fn(async () => ({ authorUserId: 'u-amina', text: 'Everyone says their own bit is fine.\n\nNobody owns the time between packing and the van.' })) };
+    expect(await herOwnWords(world, 'g-1', 'u-amina')).toBe('Everyone says their own bit is fine.');
+    expect(world.leadSetupWords.findUnique).toHaveBeenCalledWith({ where: { groundId: 'g-1' } });
+    world.leadSetupWords = { findUnique: jest.fn(async () => ({ authorUserId: 'u-somebody-else', text: 'Not hers.' })) };
+    expect(await herOwnWords(world, 'g-1', 'u-amina')).toBe('The brief.');
+  });
+
   it('still reads her first typed words before the record, and the brief only when neither has anything', async () => {
     expect(await herOwnWords(stub(['I want the team to stop waiting on each other.'], [HER_WORDS], 'The brief.'), 'g-1', 'u-amina')).toBe('I want the team to stop waiting on each other.');
     expect(await herOwnWords(stub([], [], 'The brief.'), 'g-1', 'u-amina')).toBe('The brief.');

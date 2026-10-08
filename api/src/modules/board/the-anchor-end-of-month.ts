@@ -105,6 +105,13 @@ export async function herOwnWords(prisma: any, groundId: string, leadUserId: str
     })) ?? [];
     const onTheRecord = herFirstWords(entries?.[0]?.text);
     if (onTheRecord) return onTheRecord;
+    /*
+     * A LEAD WHO SET THE CHECK-IN UP IN THE ORDINARY ENTRY CHAT (decision 114) has no turn in her own check-in: what she typed there is kept
+     * as her set-up words, hers alone. Her first message is her first words.
+     */
+    const setUp: { text: string; authorUserId?: string } | null = (await prisma.leadSetupWords?.findUnique?.({ where: { groundId } })?.catch?.(() => null)) ?? null;
+    const firstTyped = herFirstWords((setUp && (!setUp.authorUserId || setUp.authorUserId === leadUserId) ? setUp.text : '').split(/\n\s*\n/)[0]);
+    if (firstTyped) return firstTyped;
   }
   const ground = await prisma.ground.findUnique({ where: { id: groundId }, select: { brief: true } });
   return herFirstWords(ground?.brief);
