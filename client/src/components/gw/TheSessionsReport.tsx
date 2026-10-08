@@ -357,6 +357,25 @@ const BARE_VERB_FORMS: Record<string, string> = {
   considers: 'consider', regards: 'regard', reports: 'report', notes: 'note',
   claims: 'claim', assumes: 'assume', prefers: 'prefer', intends: 'intend', plans: 'plan',
   counts: 'count', holds: 'hold', says: 'say', wonders: 'wonder', questions: 'question', doubts: 'doubt',
+  /*
+   * B-059: PAST-TENSE OLD DATA OPENS WITH ITS VERB TOO. E1 on Riverbank Trading's old data
+   * (docs/existing-users-check.md) found reports stored by the old engine whose `view` already
+   * opened with a past-tense verb - "described success in terms of a three-month outcome.",
+   * "stated the rewrite was 'shipped' in session 2." - and `openingBareVerb` only knew the present
+   * tense, so the default case ran and glued "said" onto a sentence that already had its own verb:
+   * "Ines Barros said described success...", "You said stated...". English past tense does not
+   * change with the subject (unlike "is"/"are"), so every one of these maps to itself - the one
+   * exception kept exactly as the present-tense table above keeps it, "was" to "were".
+   */
+  described: 'described', stated: 'stated', confirmed: 'confirmed', believed: 'believed',
+  felt: 'felt', thought: 'thought', wanted: 'wanted', needed: 'needed', expected: 'expected',
+  hoped: 'hoped', worried: 'worried', insisted: 'insisted', maintained: 'maintained',
+  argued: 'argued', agreed: 'agreed', disagreed: 'disagreed', saw: 'saw', viewed: 'viewed',
+  considered: 'considered', regarded: 'regarded', reported: 'reported', noted: 'noted',
+  claimed: 'claimed', assumed: 'assumed', preferred: 'preferred', intended: 'intended',
+  planned: 'planned', counted: 'counted', held: 'held', said: 'said', wondered: 'wondered',
+  questioned: 'questioned', doubted: 'doubted', remained: 'remained', stayed: 'stayed',
+  continued: 'continued', kept: 'kept', had: 'had', wished: 'wished',
 }
 
 /** The bare verb `view` opens with, if it is one of the forms above - null for a view that is a
