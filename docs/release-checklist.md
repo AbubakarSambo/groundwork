@@ -63,7 +63,7 @@ The engine workspace keeps this file current. The screens workspace reads it aft
 - [x] **The three WhatsApp messages for somebody who stops a check-in halfway are ON by default** (6 October, after the review's fixes and a run that drives the real sweeps, `docs/run-log.md` run 8). `release.whatsappHalfwayMessages`: a missing row reads as on, `{"on": false}` switches them off, an unreadable row reads as off. `docs/deploy.md`, "Hidden at release".
 - [x] Boards for kinds of work nobody uses yet. Hidden from new check-ins by `release.boardKindsOffered`; existing check-ins keep their kind. `docs/deploy.md`, "Hidden at release".
 - [x] The back office rebuild. Checked: none of it was built, so nothing to hide. The existing back office stays for Groundwork's staff.
-- [x] The Context tab's move to Ask Groundwork. Hidden by `release.contextInAskGroundwork` (off). The old context chat stays.
+- [x] The Context tab's move to Ask Groundwork. On by default (`release.contextInAskGroundwork`, a missing row reads on). The old context chat still answers until `release.oldContextChat` is written `{"on": false}`, which Hafsah does once the screens stop drawing it.
 - [x] The anchor scenario. Off at release (Hafsah, 8 October); it follows in the next pull request through the normal flow (decision 114).
 - [x] The offer to ask for leave or spending from inside a check-in. On (6 October): request 165's routes exist and were walked end to end, so a missing `release.requestOfferInTheCheckIn` row reads as on, and `{"on": false}` takes it away. It is made only in an anchor check-in.
 - [x] Plan and billing's new parts. Hidden by `release.planAndBillingNewParts` (off) when the migrations run; switched on with the free trial by the release step below.

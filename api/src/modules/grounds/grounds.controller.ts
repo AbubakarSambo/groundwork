@@ -617,7 +617,8 @@ export class GroundsController {
 
   @Post(':id/context-chat')
   @ApiOperation({ summary: "The lead's setup conversation: what context is missing, and the material that would settle it" })
-  async contextChat(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: ContextChatDto) {
+  async contextChat(@Param('id') id: string, @CurrentUser('id') userId: string, @CurrentUser('organizationId') organizationId: string, @Body() dto: ContextChatDto) {
+    await this.grounds.theOldContextChatMustBeOpen(organizationId);
     return this.grounds.contextChat(id, userId, dto.history ?? []);
   }
 
@@ -631,10 +632,12 @@ export class GroundsController {
   async confirmContextProposal(
     @Param('id') id: string,
     @CurrentUser('id') userId: string,
+    @CurrentUser('organizationId') organizationId: string,
     /* `history` is how a pronoun resolves. The change is still derived on this side from the words
        themselves - there is no field here that names a person or carries a value. */
     @Body() dto: { said: string; history?: { role: 'user' | 'assistant'; content: string }[]; offerId?: string; leave?: boolean },
   ) {
+    await this.grounds.theOldContextChatMustBeOpen(organizationId);
     return this.grounds.applyContextProposal(id, userId, dto);
   }
 
@@ -644,8 +647,10 @@ export class GroundsController {
   async declineContextProposal(
     @Param('id') id: string,
     @CurrentUser('id') userId: string,
+    @CurrentUser('organizationId') organizationId: string,
     @Body() dto: { offerId?: string },
   ) {
+    await this.grounds.theOldContextChatMustBeOpen(organizationId);
     return this.grounds.declineContextOffer(id, userId, dto?.offerId ?? '');
   }
 

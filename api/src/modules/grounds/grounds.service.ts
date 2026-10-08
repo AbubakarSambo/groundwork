@@ -25,7 +25,7 @@ import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD, hasEnded, hasStalled, 
 import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT } from './an-answer-includes-a-refusal';
 import { isNotLetInYet, whoIsNotLetInYet, theWaitingToBeLetInLine } from './who-an-admin-did-not-let-in';
 import { waitsOnAManagingOnlyLead } from './the-lead-who-only-asks';
-import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException, Optional } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException, Optional, GoneException } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import { seatsIn } from '../../common/seats';
 import { whetherThereIsRoomForOneMore, type SeatAnswer } from './added-but-waiting-for-a-seat';
@@ -35,7 +35,8 @@ import { daysRemaining, deadlineOf, clockStartsAt } from './when-the-clock-start
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
-import { aKindMayBeGiven, theBoardKindsOffered } from '../admin/what-is-hidden-at-release';
+import { aKindMayBeGiven, theBoardKindsOffered, theOldContextChatIsOpen } from '../admin/what-is-hidden-at-release';
+import { askNameOf } from '../assistant/ask-name';
 import { KINDS_OF_WORK, THE_KIND_OF_WORK_PROMPT, THE_KIND_OF_WORK_SCHEMA, oneOfTheKinds, theSetupWords } from '../board/the-kind-of-work';
 import { PrismaService } from '../prisma/prisma.service';
 import { theNextDayTheyWork, workingDaysOf } from './which-days-this-team-works';
@@ -466,6 +467,18 @@ export class GroundsService {
     });
     if (!decision.allowed) throw new ForbiddenException(onlyTheLeadConfirmsSetup([lead?.firstName, lead?.lastName].filter(Boolean).join(' ')));
     return decision;
+  }
+
+  /**
+   * THE OLD CONTEXT CHAT, WHEN IT IS SWITCHED OFF (`release.oldContextChat`, decision 50). Context and resources are done in Ask now, so while the
+   * switch says off, the three routes of the old chat on the check-in page answer with one sentence that sends the person there, naming Ask for
+   * their organisation. Only the controller calls this: Ask's own setup lane calls `contextChat` and `applyContextProposal` directly and is never
+   * stopped by it. ON when the row is missing or cannot be read.
+   */
+  async theOldContextChatMustBeOpen(organizationId: string): Promise<void> {
+    if (await theOldContextChatIsOpen(this.prisma)) return;
+    const ask = await askNameOf(this.prisma as any, organizationId);
+    throw new GoneException(`Setting up a check-in now happens in ${ask}, so open ${ask} from this check-in's Context and resources page and say what you want to add.`);
   }
 
   /**

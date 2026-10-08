@@ -334,11 +334,11 @@ It was drawn from `docs/morning-report.md`, `docs/weekly-plan.md`, `docs/run-log
 - Why it was left: the email module belongs to another builder, and the minutes need Hafsah.
 - Recommendation: one email that names the person and the check-in; once a day for the paused notice; its own subject for the limit; Hafsah picks the minutes.
 
-**U5. Context in Ask Groundwork is hidden, and the old context chat stays the way in.**
-- Where: `release.contextInAskGroundwork` is off. Switching the old chat off needs the screens to open Ask from the Context and resources page, a flag the screens can read (`addsContext`, request 169, not served yet), Hafsah's switch on live, and request 92's five live checks again. The plan page's own promise still names only goals, roles and commitments, though it reads seven kinds.
+**U5. Context in Ask Groundwork is on, and the old context chat still answers until the screens stop drawing it.**
+- Where: `release.contextInAskGroundwork` is on (a missing row reads on) and `GET /ask` serves `addsContext` and `oldContextChatIsOpen`. Switching the old chat off is `release.oldContextChat` written `{"on": false}`, which needs the screens to stop drawing it on the Context and resources page (they read `oldContextChatIsOpen`), and request 92's five live checks again. The plan page's own promise still names only goals, roles and commitments, though it reads seven kinds.
 - Who: leads.
 - Why it was left: proved side by side on 6 October, waiting on the screens and on Hafsah.
-- Recommendation: serve `addsContext` on the Ask read, then follow the steps in `docs/run-log.md`.
+- Recommendation: the screens hide the old chat when `oldContextChatIsOpen` is false, then Hafsah writes the row.
 
 **U6. Decisions taken provisionally that still wait for Hafsah.**
 - Where: decisions 102 (a goal a person wrote is not rewritten to "you"), 103 (two session counts worded apart) and 104 (pattern A1 reworded); quiet hours of 20:00 to 07:00 in Lagos for approvals, chosen because there were none; "they" for one named person; the ending `REACH_WITH_A_CHANGE`; the list of placeholder surnames; a headline asked without a day; the recognise threshold and whether to switch it on; the two-week window for reviews on Today; prototype fragments turned into sentences on the settings pages (screens workspace); and the twenty or so suites questions in the morning report of 2 October (for example whether a missing receipt blocks payment, whether hours can be declined, and whether a review has an appeal).
