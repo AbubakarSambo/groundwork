@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { reviewsApi, type AReview, type ReviewForThePerson, type TheRecord, type ABriefing, type RecogniseForTheWriter, type RecogniseForThePerson } from '@/api/suites'
+import { reviewsApi, type AReview, type ReviewForTheWriter, type YourAppeal, type AppealForAnotherReader, type ReviewForThePerson, type TheRecord, type ABriefing, type RecogniseForTheWriter, type RecogniseForThePerson } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { Page, PageTitle, Section, Panel, Button, Note, ProofMark, FieldLabel, TextArea, TextField, RowList, Row } from '@/components/gw/ui'
@@ -137,6 +137,8 @@ function TheReview({ r, myUserId }: { r: AReview; myUserId: string | null }) {
       {person && r.recognise && <WhatMayBeSuggested firstName={manager} r={r.recognise as RecogniseForThePerson} />}
 
       <Decision r={r} />
+
+      <Appeal r={r} />
 
       <p className="gwui-panel-text-muted">{footer}</p>
     </>
@@ -434,6 +436,157 @@ function Decision({ r }: { r: AReview }) {
         <div><Button type="submit" disabled={!says.trim() || !reasons.trim() || saving.isPending}>Save my decision</Button></div>
         {problem && <Note tone="error">{problem}</Note>}
       </form>
+    </Section>
+  )
+}
+
+/**
+ * APPEALING A DECIDED REVIEW (decision 113, bug B-024). Every sentence is the server's, drawn as it is
+ * (`mayAppealSays`, `appeal.says`). The person appeals with their reasons, adds to them until it is
+ * decided, and reads the outcome and the admin's reasons. An admin who did not decide the review
+ * reads the person's reasons and decides. The reviewer reads only where it stands (the server sends
+ * no reasons for the reviewer, and nothing here asks for them).
+ */
+function Appeal({ r }: { r: AReview }) {
+  if (r.reader === 'person') {
+    if (r.appeal) return <YourAppealSection r={r} a={r.appeal} />
+    if (r.mayAppeal && r.mayAppealSays) return <MakeAnAppeal r={r} says={r.mayAppealSays} />
+    return null
+  }
+  if (r.appeal) return <AnAppealForAnotherReader r={r} a={r.appeal} />
+  return null
+}
+
+function DecisionWas({ was }: { was: { says: string; reasons: string } }) {
+  return (
+    <>
+      <h3 className="gwui-panel-heading">What the decision said before</h3>
+      <p className="gwui-panel-text-muted">{was.says}</p>
+      <p className="gwui-panel-text-muted">{was.reasons}</p>
+    </>
+  )
+}
+
+function MakeAnAppeal({ r, says }: { r: ReviewForThePerson; says: string }) {
+  const qc = useQueryClient()
+  const [asking, setAsking] = useState(false)
+  const [why, setWhy] = useState('')
+  const [problem, setProblem] = useState<string | null>(null)
+  const appeal = useMutation({
+    mutationFn: () => reviewsApi.appeal(r.id, why.trim()),
+    onSuccess: (x) => { setProblem(null); qc.setQueryData(['suite-review', r.id], x) },
+    onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
+  })
+  return (
+    <Section heading="Appeal this decision">
+      <p className="gwui-panel-text">{says}</p>
+      {!asking
+        ? <div><Button kind="secondary" size="small" onClick={() => setAsking(true)}>Appeal this decision</Button></div>
+        : (
+          <form className="gwui-suite-ask" onSubmit={e => { e.preventDefault(); if (why.trim()) appeal.mutate() }}>
+            <div className="gwui-suite-q">
+              <FieldLabel htmlFor="rv-appeal-why">Why you disagree</FieldLabel>
+              <TextArea id="rv-appeal-why" rows={4} value={why} onChange={e => setWhy(e.target.value)} maxLength={2000} />
+            </div>
+            <div className="gwui-edge-acts">
+              <Button type="submit" size="small" disabled={!why.trim() || appeal.isPending}>Send my appeal</Button>
+              <Button kind="quiet" size="small" onClick={() => { setAsking(false); setProblem(null) }}>Cancel</Button>
+            </div>
+            {problem && <Note tone="error">{problem}</Note>}
+          </form>
+        )}
+    </Section>
+  )
+}
+
+function YourAppealSection({ r, a }: { r: ReviewForThePerson; a: YourAppeal }) {
+  const qc = useQueryClient()
+  const [more, setMore] = useState('')
+  const [problem, setProblem] = useState<string | null>(null)
+  const add = useMutation({
+    mutationFn: () => reviewsApi.addToTheAppeal(r.id, more.trim()),
+    onSuccess: (x) => { setProblem(null); setMore(''); qc.setQueryData(['suite-review', r.id], x) },
+    onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
+  })
+  const decided = a.stands === 'decided'
+  return (
+    <Section heading="Your appeal">
+      <p className="gwui-panel-text">{a.says}</p>
+      <h3 className="gwui-panel-heading">Your reasons</h3>
+      <p className="gwui-quoted-text">“{a.yourReasons}”</p>
+      {a.additions.map((x, i) => <p key={i} className="gwui-quoted-text">“{x.said}”</p>)}
+      {decided && a.reasons && (
+        <>
+          <h3 className="gwui-panel-heading">{a.decidedByFirstName ? `${a.decidedByFirstName}’s reasons` : 'The reasons'}</h3>
+          <p className="gwui-panel-text">{a.reasons}</p>
+        </>
+      )}
+      {decided && a.outcome === 'changed' && a.decisionWas && <DecisionWas was={a.decisionWas} />}
+      {!decided && (
+        <form className="gwui-suite-ask" onSubmit={e => { e.preventDefault(); if (more.trim()) add.mutate() }}>
+          <div className="gwui-suite-q">
+            <FieldLabel htmlFor="rv-appeal-more">Add to your reasons</FieldLabel>
+            <TextArea id="rv-appeal-more" rows={3} value={more} onChange={e => setMore(e.target.value)} maxLength={2000} />
+          </div>
+          <div><Button kind="secondary" size="small" type="submit" disabled={!more.trim() || add.isPending}>Add to my reasons</Button></div>
+          {problem && <Note tone="error">{problem}</Note>}
+        </form>
+      )}
+    </Section>
+  )
+}
+
+function AnAppealForAnotherReader({ r, a }: { r: ReviewForTheWriter; a: AppealForAnotherReader }) {
+  const qc = useQueryClient()
+  const [outcome, setOutcome] = useState<'stands' | 'changed' | ''>('')
+  const [reasons, setReasons] = useState('')
+  const [now, setNow] = useState('')
+  const [problem, setProblem] = useState<string | null>(null)
+  const decide = useMutation({
+    mutationFn: () => reviewsApi.decideTheAppeal(r.id, { outcome: outcome as 'stands' | 'changed', reasons: reasons.trim(), ...(outcome === 'changed' ? { decision: now.trim() } : {}) }),
+    onSuccess: (x) => { setProblem(null); qc.setQueryData(['suite-review', r.id], x) },
+    onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
+  })
+  const decided = a.stands === 'decided'
+  const ready = !!outcome && !!reasons.trim() && (outcome !== 'changed' || !!now.trim())
+  return (
+    <Section heading={`${a.personFirstName}’s appeal`}>
+      <p className="gwui-panel-text">{a.says}</p>
+      {a.theirReasons && (
+        <>
+          <h3 className="gwui-panel-heading">{`${a.personFirstName}’s reasons`}</h3>
+          <p className="gwui-quoted-text">“{a.theirReasons}”</p>
+          {(a.additions ?? []).map((x, i) => <p key={i} className="gwui-quoted-text">“{x.said}”</p>)}
+        </>
+      )}
+      {decided && a.reasons && (
+        <>
+          <h3 className="gwui-panel-heading">{a.decidedByFirstName ? `${a.decidedByFirstName}’s reasons` : 'The reasons'}</h3>
+          <p className="gwui-panel-text">{a.reasons}</p>
+        </>
+      )}
+      {decided && a.outcome === 'changed' && a.decisionWas && <DecisionWas was={a.decisionWas} />}
+      {a.mayDecide && !decided && (
+        <form className="gwui-suite-ask" onSubmit={e => { e.preventDefault(); if (ready) decide.mutate() }}>
+          <fieldset className="gwui-suite-q">
+            <legend>Your decision on the appeal</legend>
+            <label><input type="radio" name="rv-appeal-outcome" checked={outcome === 'stands'} onChange={() => setOutcome('stands')} /> The decision stands</label>
+            <label><input type="radio" name="rv-appeal-outcome" checked={outcome === 'changed'} onChange={() => setOutcome('changed')} /> Change the decision</label>
+          </fieldset>
+          {outcome === 'changed' && (
+            <div className="gwui-suite-q">
+              <FieldLabel htmlFor="rv-appeal-now">What the decision is now</FieldLabel>
+              <TextField id="rv-appeal-now" value={now} onChange={e => setNow(e.target.value)} maxLength={1000} />
+            </div>
+          )}
+          <div className="gwui-suite-q">
+            <FieldLabel htmlFor="rv-appeal-reasons">Your reasons, in a sentence or two</FieldLabel>
+            <TextArea id="rv-appeal-reasons" rows={3} value={reasons} onChange={e => setReasons(e.target.value)} maxLength={2000} />
+          </div>
+          <div><Button type="submit" disabled={!ready || decide.isPending}>Save my decision on the appeal</Button></div>
+          {problem && <Note tone="error">{problem}</Note>}
+        </form>
+      )}
     </Section>
   )
 }
