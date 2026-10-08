@@ -6784,4 +6784,4 @@ Today a person can stop messages on WhatsApp only by writing "stop" or "not now"
 
 ### 4. Nothing for the screens in the catch-up message
 
-A person who has a number and was never written to on WhatsApp about an open check-in now gets the opening notice's own words once, as a message on their phone. There is no screen for it and no setting; it follows the organisation's WhatsApp switch, the person's "stop" and the lead's choice to stop the chasing. It is described in `docs/whatsapp-templates.md` under `checkin_open`.
+A person who has a number that Groundwork has never got a WhatsApp message through to, and who has an open check-in they have not started, now gets the opening notice's own words once, as a message on their phone. There is no screen for it and no setting; it follows the organisation's WhatsApp switch, the person's "stop" and the lead's choice to stop the chasing. It is described in `docs/whatsapp-templates.md` under `checkin_open`.

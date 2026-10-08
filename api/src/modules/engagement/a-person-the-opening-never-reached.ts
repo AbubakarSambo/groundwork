@@ -5,12 +5,13 @@ import { CheckInStatus } from '@prisma/client';
  *
  * The opening notice goes to a person's phone at the moment a session opens, once. If WhatsApp was not on for the organisation then, or the number was added
  * afterwards, or the message could not go (the template was not approved, the person's number was wrong), nobody ever wrote to them there, and nothing would
- * until one of the lead's chase days. Each morning the reminders ask this about every session that is open and not started: has anybody ever got a WhatsApp
- * message about this one, on this number? If not, and the person has not already been engaged some other way, they are sent the opening notice's own words
+ * until one of the lead's chase days. Each morning the reminders ask this about every session that is open and not started: has Groundwork ever got a WhatsApp
+ * message through to this number? If not, and the person has not already been engaged some other way, they are sent the opening notice's own words
  * (the same template, no new one), once.
  *
- * "Never twice" is a fact in the send record and not a flag: a message counts as reaching them only when it went (a refused or held one is tried again), so
- * restarting the integration or the server cannot send a second welcome. Only what is open and was opened in the last three weeks is introduced this way: a
+ * "Never twice" is a fact in the send record and not a flag: a message counts as reaching them only when it went (a refused or held one is tried again), and once
+ * any message has gone to the number the number is reached, whichever check-in it was about, so restarting the integration or the server cannot send a second welcome,
+ * and a person with two sessions open is welcomed once and not once a day for each. Only what is open and was opened in the last three weeks is introduced this way: a
  * session nobody has opened for months is not a new arrival. Somebody who stopped the reminders, or whose lead stopped the chasing, is not written to.
  * Somebody who has started or finished a check-in in the last fortnight is already engaged and is left to the usual messages.
  */
@@ -34,14 +35,10 @@ export async function theOpeningNeverReachedThem(
 ): Promise<boolean> {
   if (!itHasBeenOpenLongEnough(ci.availableFrom ?? ci.createdAt, now)) return false;
   if (ci.participant.remindersStoppedAt) return false;
-  /* Reached: a WhatsApp message about this session went to this number, as its opening or as this. */
+  /* Reached: any WhatsApp message from Groundwork has ever gone to this number, about any check-in or none. A welcome is for a number and not for a session (spec section 3 B,
+     "never send duplicate welcomes"), so a person who has already been written to is not introduced again for the next session. */
   const reached = await prisma.whatsAppSend.findFirst({
-    where: {
-      checkInId: ci.id,
-      phone: { in: phoneForms },
-      sentAt: { not: null },
-      OR: [{ kind: { startsWith: 'checkin-open' } }, { kind: { startsWith: CATCH_UP_KIND } }],
-    },
+    where: { phone: { in: phoneForms }, sentAt: { not: null }, NOT: { kind: { startsWith: 'admin-test' } } },
     select: { id: true },
   });
   if (reached) return false;

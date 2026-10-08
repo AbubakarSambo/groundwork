@@ -18,7 +18,7 @@ const PHONES = ['+254712345678', '254712345678', '0712345678'];
 function theRecord(opts: { sends?: any[]; engaged?: boolean } = {}) {
   return {
     whatsAppSend: {
-      findFirst: jest.fn(async (q: any) => (opts.sends ?? []).find((s) => s.checkInId === q.where.checkInId && q.where.phone.in.includes(s.phone) && s.sentAt != null && /^(checkin-open|checkin-catch-up)/.test(s.kind)) ?? null),
+      findFirst: jest.fn(async (q: any) => (opts.sends ?? []).find((s) => q.where.phone.in.includes(s.phone) && s.sentAt != null && !String(s.kind).startsWith('admin-test')) ?? null),
       findMany: jest.fn(async () => []),
     },
     checkIn: { findFirst: jest.fn(async () => (opts.engaged ? { id: 'other' } : null)) },
@@ -30,15 +30,15 @@ describe('who the opening never reached', () => {
   it('somebody nobody has ever written to on this number, with a session open eight days, is reached', async () => {
     expect(await theOpeningNeverReachedThem(theRecord(), aSession(), PHONES, NOW)).toBe(true);
   });
-  it('is not, once an opening notice or this went to the number', async () => {
-    for (const kind of ['checkin-open', 'checkin-open:template', CATCH_UP_KIND, `${CATCH_UP_KIND}:template`]) {
+  it('is not, once any message from Groundwork went to the number: an opening notice, this, a reminder, the lead\'s summary', async () => {
+    for (const kind of ['checkin-open', 'checkin-open:template', CATCH_UP_KIND, `${CATCH_UP_KIND}:template`, 'overdue', 'lead-summary:template']) {
       expect({ kind, again: await theOpeningNeverReachedThem(theRecord({ sends: [{ checkInId: 'ci-1', phone: '+254712345678', kind, sentAt: new Date() }] }), aSession(), PHONES, NOW) }).toEqual({ kind, again: false });
     }
   });
   it('is, when the earlier message never went (refused, or waiting for its template)', async () => {
     expect(await theOpeningNeverReachedThem(theRecord({ sends: [{ checkInId: 'ci-1', phone: '+254712345678', kind: 'checkin-open:template', sentAt: null }] }), aSession(), PHONES, NOW)).toBe(true);
   });
-  it('is, on a new number, whatever went to the old one', async () => {
+  it('is, on a number nothing has gone to, even for a session whose notice went to the person\'s old number', async () => {
     expect(await theOpeningNeverReachedThem(theRecord({ sends: [{ checkInId: 'ci-1', phone: '+254799999999', kind: 'checkin-open', sentAt: new Date() }] }), aSession(), PHONES, NOW)).toBe(true);
   });
   it('is not for a session that opened today, or that has been open for months', async () => {
@@ -106,6 +106,15 @@ describe('the morning job', () => {
     await cron.sendWhatsAppRemindersInner(new Date());
     await cron.sendWhatsAppRemindersInner(new Date());
     expect(sendFor).not.toHaveBeenCalled();
+  });
+
+  it('a person with two sessions open is welcomed once: the second session finds the number already reached', async () => {
+    const first = aMorning();
+    await first.cron.sendWhatsAppRemindersInner(new Date());
+    expect(first.sendFor).toHaveBeenCalledTimes(1);
+    const second = aMorning({ sends: [{ checkInId: 'ci-0', phone: '+254712345678', kind: `${CATCH_UP_KIND}:template`, sentAt: new Date() }] });
+    await second.cron.sendWhatsAppRemindersInner(new Date());
+    expect(second.sendFor).not.toHaveBeenCalled();
   });
 
   it('not when the lead has stopped the chasing, when the session opened today, or when he is already answering some other check-in', async () => {
