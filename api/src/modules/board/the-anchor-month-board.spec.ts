@@ -228,6 +228,13 @@ describe('the lenses count people in plain, correct sentences', () => {
     expect(howManyHeard(1, 1)).toBe('the one person');
     expect(howManyHeard(3, 5)).toBe('three of five people');
   });
+
+  it('a team of two is "both people", never "all two people" (found on the test bed, 8 October)', () => {
+    expect(reading(record({ checkedIn: 2, ofHowMany: 2 }), 'understanding')).toBe('Groundwork has heard from both people.');
+    expect(reading(record({ saidWhatTheyWillDo: 2, ofHowMany: 2 }), 'ownership')).toBe('Both people have said what they will do themselves.');
+    expect(howManyHeard(2, 2)).toBe('both people');
+    expect(reading(record({ checkedIn: 0 }), 'understanding')).toBe('Nobody has told Groundwork anything yet, so there is nothing to compare with what you said.');
+  });
 });
 
 /* Found in the anchor walk (8 October): "Neema is waiting on Zawadi for to be told which orders went late." and

@@ -86,21 +86,21 @@ export function theMovement(r: Pick<TheMonthRecord, 'commitmentsDone' | 'commitm
   return parts.join(' ') || 'Nothing people said they would do is open, and no handoff is waiting on anyone.';
 }
 
-/** "all four people", "the one person", or "three of five people": never "four of four people". */
+/** "all four people", "both people", "the one person", or "three of five people": never "four of four people" or "all two people". */
 export function howManyHeard(heard: number, of: number): string {
   if (of === 1 && heard === 1) return 'the one person';
-  if (heard >= of) return `all ${aNumber(of)} people`;
+  if (heard >= of) return of === 2 ? 'both people' : `all ${aNumber(of)} people`;
   return `${aNumber(heard)} of ${aNumber(of)} ${plural(of, 'person', 'people')}`;
 }
 
 export function theLenses(r: TheMonthRecord, differences: string[]): TheLens[] {
   const heard = r.checkedIn === 0
-    ? 'Nobody has given Groundwork an account yet, so there is nothing to compare with what you said.'
+    ? 'Nobody has told Groundwork anything yet, so there is nothing to compare with what you said.'
     : `Groundwork has heard from ${howManyHeard(r.checkedIn, r.ofHowMany)}.${differences.length ? ` ${capital(aNumber(differences.length))} ${plural(differences.length, 'thing is', 'things are')} seen differently by different people.` : ''}`;
   const owns = r.saidWhatTheyWillDo === 0
     ? 'Nobody has said yet what they will do themselves.'
     : r.saidWhatTheyWillDo >= r.ofHowMany
-      ? `${r.ofHowMany === 1 ? 'The one person has' : `All ${aNumber(r.ofHowMany)} people have`} said what they will do themselves.`
+      ? `${r.ofHowMany === 1 ? 'The one person has' : r.ofHowMany === 2 ? 'Both people have' : `All ${aNumber(r.ofHowMany)} people have`} said what they will do themselves.`
       : `${capital(aNumber(r.saidWhatTheyWillDo))} of ${aNumber(r.ofHowMany)} people ${r.saidWhatTheyWillDo === 1 ? 'has' : 'have'} said what they will do themselves.`;
   const moved = r.commitmentsDone + r.commitmentsOpen + r.waiting.length + r.handoffsCleared === 0
     ? 'Nobody has said they would do anything yet, so there is no movement to read yet.'
