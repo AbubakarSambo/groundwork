@@ -243,7 +243,8 @@ export function inOurVoice(what: string | null | undefined, aboutThem?: 'you' | 
   const frame = continuing ? null : FIRST_PERSON_FRAME.exec(trimmed) ?? /^going to\s+/i.exec(trimmed);
   const rest = (continuing ? `continue ${trimmed.slice(continuing[0].length)}` : frame ? trimmed.slice(frame[0].length) : trimmed).trim().replace(/[.!?]+$/, '');
   if (!rest) return null;
-  let said = rest;
+  /* "ask Zawadi myself whether..." said about them became "ask Zawadi themselves whether...", which reads as though Zawadi does it (anchor walk, 8 October). The "myself" there only stresses who asks; without it the sentence says the same thing. */
+  let said = rest.replace(/\b((?:ask|tell|call|email|message|text|remind|speak to|talk to|check with)\s+[A-Za-z'’-]+)\s+myself\b/gi, '$1');
   if (FIRST_PERSON_WORD.test(said)) {
     if (!aboutThem) return null;
     const turned = said.replace(OBJECT_FIRST_PERSON, (w) => {
