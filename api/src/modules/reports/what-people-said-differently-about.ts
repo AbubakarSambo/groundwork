@@ -22,7 +22,12 @@ const STARTS_A_NOUN_CLAUSE = /^(?:whether|what|how|who|when|where|which|why|if)\
  * the completion of the Atlas analysis is not agreed." starts like "who has ..." but says something of it, so Tunde read
  * "People in this check-in said different things about who has the final authority ... is not agreed".
  */
-const SAYS_SOMETHING_OF_IT = /\s(?:is|are|was|were)\s+(?:still\s+)?(?:not\s+)?(?:agreed|clear|settled|decided|known|defined|shared)(?:\s+(?:upon|on))?$|\s(?:is|are|remains?|was|were)\s+(?:unclear|undecided|unsettled|disputed|undefined|open|contested)$/i;
+/* "... is not agreed upon by the team" and "... is not clear to the team" are the same sentences with the people it is said of after them (found on the test bed, 8 October). */
+const OF_WHOM = '(?:\\s+(?:by|among|across|within|between|to|for)\\s+(?:the\\s+|all\\s+|our\\s+|these\\s+|those\\s+)?[\\w\'-]+(?:\\s+[\\w\'-]+){0,2})?';
+const SAYS_SOMETHING_OF_IT = new RegExp(
+  `\\s(?:is|are|was|were)\\s+(?:still\\s+)?(?:not\\s+)?(?:agreed|clear|settled|decided|known|defined|shared)(?:\\s+(?:upon|on))?${OF_WHOM}$|\\s(?:is|are|remains?|was|were)\\s+(?:unclear|undecided|unsettled|disputed|undefined|open|contested)${OF_WHOM}$`,
+  'i',
+);
 
 export function isAWholeSentence(topic: string): boolean {
   const t = (topic ?? '').trim().replace(/[.!?]+$/, '');
