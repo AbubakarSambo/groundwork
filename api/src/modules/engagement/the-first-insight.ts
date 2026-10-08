@@ -1,5 +1,6 @@
 import { aNumberInWords } from './a-number-in-words';
 import { theConversationWorthHavingSaying } from '../grounds/what-is-sent-in-simpler-words';
+import { isAWholeSentence } from '../reports/what-people-said-differently-about';
 
 /**
  * THE FIRST MEANINGFUL INSIGHT IS IN THE MAIL (engagement spec section 7; section 36, journey 5).
@@ -24,21 +25,37 @@ export interface TheInsight {
 
 const capital = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
 
-/** A thing the report names, as it is quoted: no full stop or colon at its end, and not longer than a line. */
-export function aTopicQuoted(t: unknown): string | null {
+/** What the report names as still open, cleaned: no full stop or colon at its end, and not longer than a line. */
+export function anOpenThing(t: unknown): string | null {
   const x = String(t ?? '').replace(/\s+/g, ' ').trim().replace(/[.:;,\s]+$/, '');
   if (!x) return null;
-  const cut = x.length <= 90 ? x : `${x.slice(0, 90).replace(/\s+\S*$/, '')}...`;
-  return `"${cut}"`;
+  return x.length <= 140 ? x : `${x.slice(0, 140).replace(/\s+\S*$/, '')}...`;
 }
 
-const listed = (items: string[]) => (items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`);
+/** A thing the report names, as it is quoted. */
+export function aTopicQuoted(t: unknown): string | null {
+  const x = anOpenThing(t);
+  return x ? `"${x}"` : null;
+}
 
-/** "differ on "a"", "differ on "a" and "b"", "differ on "a", "b" and one more". */
-function differOn(topics: string[]): string {
-  const shown = topics.slice(0, 2);
-  const rest = topics.length - shown.length;
-  return `differ on ${listed(rest > 0 ? [...shown, `${aNumberInWords(rest)} more`] : shown)}`;
+const LOWER_AFTER_A_COMMA = /^(?:The|A|An|Whether|What|How|Who|When|Where|Which|Why|If|This|That|Our|Their|His|Her|Its)\b/;
+const lowerFirstOfAClause = (s: string) => (LOWER_AFTER_A_COMMA.test(s) ? `${s.charAt(0).toLowerCase()}${s.slice(1)}` : s);
+
+/**
+ * The first thing open, said as the report says it. The report writes a difference either as a noun phrase ("the unit of measurement for success") or as a
+ * whole sentence ("Who owns the next step with the distributor is not agreed upon by the team."), and a sentence does not follow "differ on". So a phrase is
+ * "The people in "X" differ on "T"" and a sentence is said as itself: "In "X", who owns the next step ... is not agreed upon by the team". The same test the
+ * report's own tile uses (isAWholeSentence), so the mail and the page say it the same way.
+ */
+function firstOpenSaid(label: string, items: string[], capitalised: boolean): string {
+  const first = items[0];
+  const more = items.length - 1;
+  const rest = more > 0 ? `, and ${aNumberInWords(more)} more ${more === 1 ? 'difference is' : 'differences are'} still open` : '';
+  if (isAWholeSentence(first)) {
+    const clause = lowerFirstOfAClause(first);
+    return capitalised ? `${capital(first)}${rest}.` : `In "${label}", ${clause}${rest}`;
+  }
+  return `The people in "${label}" differ on "${first}"${rest}${capitalised ? '.' : ''}`;
 }
 
 const cutLabel = (label: string, max: number) => (label.length <= max ? label : `${label.slice(0, max).replace(/\s+\S*$/, '')}...`);
@@ -51,12 +68,12 @@ export function theFirstInsight(report: any, label: string, reader: { isTheLead:
   const stand = report?.whereThingsStand;
   if (!stand || report?.withheldUntilYouAnswer) return null;
   const settled = Array.isArray(stand.settled) ? stand.settled.length : Number(stand.agreed) || 0;
-  const open: string[] = (Array.isArray(stand.open) ? stand.open : []).map(aTopicQuoted).filter((t: string | null): t is string => !!t);
+  const open: string[] = (Array.isArray(stand.open) ? stand.open : []).map(anOpenThing).filter((t: string | null): t is string => !!t);
   if (settled === 0 && open.length === 0) return null;
 
   const lines: string[] = [];
   const name = cutLabel(label, 60);
-  if (open.length) lines.push(`The people in "${name}" ${differOn(open)}.`);
+  if (open.length) lines.push(firstOpenSaid(name, open, true));
   else lines.push(`${capital(aNumberInWords(settled))} ${settled === 1 ? 'thing' : 'things'} in "${name}" ${settled === 1 ? 'is' : 'are'} settled, and none are still open.`);
   if (open.length) {
     lines.push(
@@ -77,15 +94,21 @@ export function theFirstInsight(report: any, label: string, reader: { isTheLead:
   }
 
   return {
-    subjectForTheLead: reader.isTheLead && open.length ? `The people in "${cutLabel(label, 40)}" ${differOn(open)}` : null,
+    subjectForTheLead: reader.isTheLead && open.length ? firstOpenSaid(cutLabel(label, 40), open, false) : null,
     lines,
   };
 }
 
-/** The first thing the served report names as still open, quoted, or null. Used by the follow-up a week after, which asks again about the same thing. */
+/**
+ * The first thing the served report names as still open, as a clause that follows "found that" or "In "X",": a phrase is "the people differ on "T"" and a
+ * sentence is itself with its first word lower case where it is not a name. Null where the report names nothing open.
+ */
 export function theFirstOpenDifference(report: any): string | null {
   if (!report?.whereThingsStand || report?.withheldUntilYouAnswer) return null;
   const open: unknown[] = Array.isArray(report.whereThingsStand.open) ? report.whereThingsStand.open : [];
-  for (const t of open) { const q = aTopicQuoted(t); if (q) return q; }
+  for (const t of open) {
+    const x = anOpenThing(t);
+    if (x) return isAWholeSentence(x) ? lowerFirstOfAClause(x) : `the people differ on "${x}"`;
+  }
   return null;
 }

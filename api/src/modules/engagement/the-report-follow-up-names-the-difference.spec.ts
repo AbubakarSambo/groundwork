@@ -33,10 +33,10 @@ function world(theDifference?: (r: any) => Promise<string | null>) {
 
 describe('the follow-up names what the people differ on', () => {
   it('in the subject and the body, as the lead is served the latest picture', async () => {
-    const w = world(async () => '"Who owns the next step with the distributor"');
+    const w = world(async () => 'the people differ on "Who owns the next step with the distributor"');
     expect(await w.run()).toEqual({ tried: 1 });
     expect(w.asked).toEqual([{ groundId: 'g1', organizationId: 'org1', leadUserId: 'u-w', lastReleasedSession: 2 }]);
-    expect(w.sent[0].subject).toBe('"Sales team, Q4" still has a difference open on "Who owns the next step with the distributor"');
+    expect(w.sent[0].subject).toBe('In "Sales team, Q4", the people differ on "Who owns the next step with the distributor", and it has not been looked at again');
     expect(w.sent[0].lines).toEqual([
       expect.stringMatching(/^Hello Wairimu\. The report for "Sales team, Q4" went out on /),
       'The shared picture found that the people differ on "Who owns the next step with the distributor". No check-in has been held since, so that has not been looked at again.',
@@ -58,8 +58,11 @@ describe('the follow-up names what the people differ on', () => {
 });
 
 describe('the difference is read from the served report', () => {
-  it('the first thing open, quoted, with no full stop at its end', () => {
-    expect(theFirstOpenDifference({ whereThingsStand: { open: ['', 'Who owns the next step.', 'Pricing'] } })).toBe('"Who owns the next step"');
+  it('a phrase is "the people differ on ...", with no full stop at its end', () => {
+    expect(theFirstOpenDifference({ whereThingsStand: { open: ['', 'The unit of measurement for success.', 'Pricing'] } })).toBe('the people differ on "The unit of measurement for success"');
+  });
+  it('a whole sentence is the sentence itself, so it does not read "differ on" a sentence', () => {
+    expect(theFirstOpenDifference({ whereThingsStand: { open: ['Who owns the next step with the distributor is not agreed upon by the team.'] } })).toBe('who owns the next step with the distributor is not agreed upon by the team');
   });
   it('nothing for a report with nothing open, or one withheld until the person answers', () => {
     expect(theFirstOpenDifference({ whereThingsStand: { open: [] } })).toBeNull();
@@ -67,7 +70,9 @@ describe('the difference is read from the served report', () => {
     expect(theFirstOpenDifference(null)).toBeNull();
   });
   it('and the words alone carry it only when it is given', () => {
-    expect(theFollowUpWords('W', 'X', WENT_OUT, { done: 0, cleared: 0, waiting: 0, open: 0, difference: '"A"' }).lines[1]).toContain('differ on "A"');
-    expect(theFollowUpWords('W', 'X', WENT_OUT, { done: 0, cleared: 0, waiting: 0, open: 0 }).lines.join(' ')).not.toContain('differ on');
+    const w = theFollowUpWords('W', 'X', WENT_OUT, { done: 0, cleared: 0, waiting: 0, open: 0, difference: 'who signs off is not agreed' });
+    expect(w.lines[1]).toBe('The shared picture found that who signs off is not agreed. No check-in has been held since, so that has not been looked at again.');
+    expect(w.subject).toBe('In "X", who signs off is not agreed, and it has not been looked at again');
+    expect(theFollowUpWords('W', 'X', WENT_OUT, { done: 0, cleared: 0, waiting: 0, open: 0 }).lines.join(' ')).not.toContain('found that');
   });
 });

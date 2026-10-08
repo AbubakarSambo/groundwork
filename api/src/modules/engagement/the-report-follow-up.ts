@@ -24,7 +24,7 @@ const DAY = 86_400_000;
 
 export interface WhatChangedSinceTheReport {
   done: number; cleared: number; waiting: number; open: number; scenario?: string | null; daysSinceTheReport?: number;
-  /** What the shared picture found the people differ on, quoted, where the report is readable for the lead. Absent otherwise. */
+  /** What the shared picture found still open, as a clause that follows "found that", where the report is readable for the lead. Absent otherwise. */
   difference?: string | null;
 }
 
@@ -61,7 +61,7 @@ export function theFollowUpWords(firstName: string | null | undefined, label: st
   /* THE FINDING, WHERE THERE IS ONE (engagement spec section 11). The message goes only when no next session has been opened, so no picture has been made since
      and the difference the report found has not been looked at again: that is said as what it is, and not as "still unresolved". */
   const looked = c.difference
-    ? [`The shared picture found that the people differ on ${c.difference}. No check-in has been held since, so that has not been looked at again.`]
+    ? [`The shared picture found that ${c.difference}. No check-in has been held since, so that has not been looked at again.`]
     : [];
   const lines = [
     `Hello ${firstName?.trim() || 'there'}. The report for "${label}" went out on ${whenItWas(wentOut, 'day')}.`,
@@ -70,14 +70,14 @@ export function theFollowUpWords(firstName: string | null | undefined, label: st
     ...(stillThere.length ? [`${capital(stillThere.join(' and '))}.`] : []),
     theSuggestionSaid(theNextCheckInFor(c)),
   ];
-  return { subject: c.difference ? `"${name}" still has a difference open on ${c.difference}` : subject, lines, linkLabel: 'See where it stands' };
+  return { subject: c.difference ? `In "${name}", ${c.difference}, and it has not been looked at again` : subject, lines, linkLabel: 'See where it stands' };
 }
 
 const TERMINAL: GroundStatus[] = A_GROUND_NO_MESSAGE_IS_ABOUT;
 
 export async function sendTheReportFollowUps(
   deps: { prisma: any; email: { sendTheReportFollowUp: (to: string, subject: string, lines: string[], linkLabel: string, linkUrl: string) => Promise<'sent' | 'held' | 'suppressed' | unknown> }; frontendUrl: string;
-    /** What the shared picture found the lead's people differ on, as she is served it (ReportsService.sessionReport), quoted; null where it cannot be read. */
+    /** What the shared picture found still open for the lead's people, as she is served it (ReportsService.sessionReport), as a clause; null where it cannot be read. */
     theDifference?: (r: { groundId: string; organizationId: string; leadUserId: string; lastReleasedSession: number }) => Promise<string | null>;
   },
   now: Date = new Date(),
