@@ -131,6 +131,9 @@ export function TodayPage() {
   const outstandingNeedsYou = outstanding ? outstandingNotAlreadyShown(needs, outstanding.needsYou) : []
   const overdueOnYourTeam = outstanding?.overdueOnYourTeam ?? []
   const risks = outstanding?.risks ?? []
+  /* What the lead's mail also tells her (request 198, b): the server's own sentences and links, drawn once. Absent for everybody else. */
+  const nobodyHasStarted = data?.forTheLead?.nobodyHasStarted ?? []
+  const whatIWouldDo = data?.forTheLead?.whatIWouldDoThisWeek ?? []
 
   return (
     <Page>
@@ -203,6 +206,31 @@ export function TodayPage() {
               <EdgeList label="Risks">
                 {risks.map((sentence) => (
                   <EdgeRow key={sentence} kind="look" title={sentence} />
+                ))}
+              </EdgeList>
+            </Section>
+          )}
+
+          {(nobodyHasStarted.length > 0 || whatIWouldDo.length > 0) && (
+            <Section heading="From Groundwork">
+              <EdgeList label="From Groundwork">
+                {nobodyHasStarted.map((n) => (
+                  <EdgeRow
+                    key={`started-${n.groundId}`}
+                    kind="look"
+                    title={n.subject}
+                    detail={n.lines.map((line, i) => <p key={i} className="gwui-panel-text">{line}</p>)}
+                    actions={<Button kind="secondary" size="small" to={n.to}>{n.linkLabel}</Button>}
+                  />
+                ))}
+                {whatIWouldDo.map((w) => (
+                  <EdgeRow
+                    key={`week-${w.groundId}`}
+                    kind="look"
+                    title={w.lines[0]}
+                    detail={[`This is for ${w.label}.`, ...w.lines.slice(1)].map((line, i) => <p key={i} className="gwui-panel-text">{line}</p>)}
+                    actions={<Button kind="secondary" size="small" to={`/grounds/${w.groundId}`}>Open the check-in</Button>}
+                  />
                 ))}
               </EdgeList>
             </Section>

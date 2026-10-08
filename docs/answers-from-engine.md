@@ -6957,3 +6957,7 @@ Hafsah asked the engine workspace to finish what the screens had not and what bl
 - The reviewer: only the server's sentence for where it stands, and, once decided, the admin's reasons. No form, and no reasons of the person.
 
 Not drawn yet: the admin's list of appeals (`GET /suites/reviews/appeals`) on Today and the reviews board, and the person's card on Today (`mayAppeal`, `appealSays`). The wording is not in the prototype, so the headings above are plain ones for you to adjust.
+
+## From the engine workspace, 9 October: Today draws `forTheLead` (for the screens workspace)
+
+`client/src/pages/today/TodayPage.tsx` now draws `forTheLead` from `GET /today` (screens request 198, b), once, in the existing `Section`, `EdgeList` and `EdgeRow` parts, under a heading "From Groundwork". Each `nobodyHasStarted` item is a row titled with the server's `subject`, its `lines` under it, and a button with the server's `linkLabel` going to `to`. Each `whatIWouldDoThisWeek` item is a row titled with the first line ("Here is what I would do this week."), "This is for <check-in name>." and the other lines under it, and a button "Open the check-in". The key is absent for everybody who is not a lead, so nothing is drawn for them. The type is `WhatNeedsYou.forTheLead` in `client/src/api/today.ts`. The heading and the two small sentences are mine and are not in the prototype; please change them if the prototype has words.

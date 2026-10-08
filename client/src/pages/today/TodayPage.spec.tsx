@@ -336,3 +336,29 @@ describe('Today has one navy button', () => {
     expect(document.querySelectorAll('.gwui-btn-primary')).toHaveLength(1)
   })
 })
+
+/*
+ * THE LEAD'S TODAY ALSO DRAWS WHAT HER MAIL TELLS HER (request 198, b): nobody has started, and what
+ * Groundwork would do this week. The sentences are the server's (what-the-lead-is-told-on-today.ts).
+ */
+describe('the lead’s Today, with what her mail also tells her', () => {
+  const FOR_THE_LEAD = {
+    nobodyHasStarted: [{ groundId: 'd', label: 'Distributor review', subject: 'Nobody has started “Distributor review” yet, and Groundwork is following up', lines: ['You invited Kito and Lerato three days ago.', 'Groundwork is reminding them.'], linkLabel: 'See who has started', to: '/grounds/d' }],
+    whatIWouldDoThisWeek: [{ groundId: 's', label: 'Sales team, Q3', lines: ['Here is what I would do this week.', 'Ask Omar about the Naivas order, because it has been open for a fortnight.'] }],
+  }
+  it('draws each sentence once, with its link, for the lead', async () => {
+    open(WAIRIMU, { ...LEAD_READ, forTheLead: FOR_THE_LEAD })
+    const region = await screen.findByRole('list', { name: 'From Groundwork' })
+    expect(within(region).getAllByText('Nobody has started “Distributor review” yet, and Groundwork is following up')).toHaveLength(1)
+    expect(within(region).getByText('Groundwork is reminding them.')).toBeInTheDocument()
+    expect(within(region).getByRole('link', { name: 'See who has started' })).toHaveAttribute('href', '/grounds/d')
+    expect(within(region).getByText('Here is what I would do this week.')).toBeInTheDocument()
+    expect(within(region).getByText('Ask Omar about the Naivas order, because it has been open for a fortnight.')).toBeInTheDocument()
+    expect(within(region).getByRole('link', { name: 'Open the check-in' })).toHaveAttribute('href', '/grounds/s')
+  })
+  it('draws nothing for a reader the server gave no key', async () => {
+    open(MIRIAM, PARTICIPANT_READ)
+    await screen.findByText('Your own report for Sales team, Q3')
+    expect(screen.queryByRole('list', { name: 'From Groundwork' })).toBeNull()
+  })
+})

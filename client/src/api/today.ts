@@ -33,6 +33,11 @@ export interface WhatNeedsYou {
   count: number
   line: string | null
   comingUp: ComingUp[]
+  /** A lead's only (screens request 198, b); absent for everybody else and for a lead with nothing to add. Every sentence is the server's, the mail's own. */
+  forTheLead?: {
+    nobodyHasStarted: { groundId: string; label: string; subject: string; lines: string[]; linkLabel: string; to: string }[]
+    whatIWouldDoThisWeek: { groundId: string; label: string; lines: string[] }[]
+  }
 }
 
 /**
