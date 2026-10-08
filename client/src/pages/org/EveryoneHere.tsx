@@ -67,6 +67,10 @@ function namesAnd(names: string[]): string {
 export function howManyHere(
   count: number, plan: string | null | undefined, cap: number | null | undefined,
   waitingToBeLetIn: string[] = [], heldForASeat: string[] = [], notLetIn: string[] = [],
+  /* Release check, 9 October: people waiting for a seat who are on no check-in (the plan is full, or a paste's invitation is kept)
+     read "Omondi is on a check-in with no seat for them", which was not true. They are said apart, and the server's own sentence
+     about the plan being full (request 197) is said when it is served. */
+  waitingWithNoCheckIn: string[] = [], overThePlanSays: string | null = null,
 ): string {
   const people = count === 1 ? '1 person' : `${count} people`
   const first = cap == null ? `${people}.` : (() => {
@@ -92,7 +96,8 @@ export function howManyHere(
   const extra = [
     sentence(waitingToBeLetIn, 'waiting to be let in', 'more are waiting to be let in'),
     wasNotSentence(notLetIn),
-    sentence(heldForASeat, 'on a check-in with no seat for them', 'more are on a check-in with no seat for them'),
+    sentence(heldForASeat, 'on a check-in with no seat for them', 'people are on a check-in with no seat for them'),
+    overThePlanSays?.trim() || sentence(waitingWithNoCheckIn, 'waiting for a seat on your plan', 'people are waiting for a seat on your plan'),
   ].filter((s): s is string => !!s)
   return [first, ...extra].join(' ')
 }
@@ -223,7 +228,8 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
   /* Who the head count leaves out, and why (U.4 people-group review, item 1): named, so "N people"
      and the number of rows below it never quietly disagree. */
   const waitingToBeLetIn = everybody.filter((m) => m.awaitingOrgApproval && !m.notLetIn).map(firstNameOf)
-  const heldForASeat = everybody.filter((m) => m.heldForASeat).map(firstNameOf)
+  const heldForASeat = everybody.filter((m) => m.heldForASeat && (m.checkInsOn ?? 0) > 0).map(firstNameOf)
+  const waitingWithNoCheckIn = everybody.filter((m) => m.heldForASeat && (m.checkInsOn ?? 0) === 0).map(firstNameOf)
   const notLetIn = everybody.filter((m) => m.notLetIn).map(firstNameOf)
 
   return (
@@ -246,6 +252,8 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
           waitingToBeLetIn,
           heldForASeat,
           notLetIn,
+          waitingWithNoCheckIn,
+          data?.overThePlanSays ?? null,
         )}
       >
         <Stack gap={18}>
