@@ -486,6 +486,16 @@ export function GroundAdminPage() {
    * further down for the roster; named here because the tab row asks it too.
    */
   const viewerIsAParty = (ground?.participants ?? []).some((p: any) => p.userId === user?.id)
+  /**
+   * AND WHETHER SHE ANSWERS IT HERSELF, WHICH IS A THIRD QUESTION.
+   *
+   * A lead who only manages (`managingOnly`) IS a party (she is on `ground.participants`, same as
+   * anybody else), but never gives her own account of a round - the same fact "Your sessions" and
+   * every count on the Check-ins tab already leave her out for (`participantsWhoCheckIn` above).
+   * The "Your check-in" tab and header button are a door to a check-in she does not do; this is
+   * the same `managingOnly` rule, named for where a party who checks in is asked for.
+   */
+  const viewerChecksIn = viewerIsAParty && !(myParticipant as any)?.managingOnly
 
   /**
    * ROUND 4, ITEM A STEP 3: THE CHECK-IN TAB IS THE FOCUSED CONVERSATION, FOR A PARTY.
@@ -506,7 +516,9 @@ export function GroundAdminPage() {
    */
   const myOpenSessionAutoOpenFired = useRef(false)
   useEffect(() => {
-    if (tab !== 'chat' || !viewerIsAParty) return
+    /* A lead who only manages has no session of her own to auto-open - `viewerChecksIn`, not
+       `viewerIsAParty`, the same distinction the tab and header button below now make. */
+    if (tab !== 'chat' || !viewerChecksIn) return
     if (myOpenSessionAutoOpenFired.current) return
     if (!myOpenCheckIn || myOpenOpensLater) return
     /*
@@ -550,7 +562,7 @@ export function GroundAdminPage() {
       groundLabel: (ground as any)?.label,
       isInitiator,
     })
-  }, [tab, viewerIsAParty, myOpenCheckIn, myOpenOpensLater, openMySession, ground, isInitiator])
+  }, [tab, viewerChecksIn, myOpenCheckIn, myOpenOpensLater, openMySession, ground, isInitiator])
 
   /**
    * REVIEW ROUND 3, ITEM 3: AN ADMIN WHO NEITHER RUNS THIS CHECK-IN NOR TAKES PART IN IT LANDS ON
@@ -1521,8 +1533,13 @@ export function GroundAdminPage() {
                 tabs - only "Add people" is navy on that screen. Without this, the People and setup
                 tab carried two navy buttons at once ("Your check-in" here, "Add people" further
                 down); the prototype's own screen has exactly one.
+
+                COORDINATOR FOLLOW-UP: NOT FOR A LEAD WHO ONLY MANAGES EITHER. She is a party
+                (`viewerIsAParty`), but never answers a round of her own - `viewerChecksIn` is the
+                same distinction `participantsWhoCheckIn` already draws for every count on the
+                Check-ins tab. Offering this button promised a check-in she does not do.
               */}
-              {viewerIsAParty && outerTabOf(tab) !== 'people' && (
+              {viewerChecksIn && outerTabOf(tab) !== 'people' && (
                 /*
                  * RE-REVIEW: THIS LINKED TO THE BARE GROUND PAGE, NOT TO A CHECK-IN.
                  * `/grounds/:id` is this very page - clicking it while already here did
@@ -1561,6 +1578,12 @@ export function GroundAdminPage() {
              * Filtered from ONE list (not two literal arrays) so "/board`" - which
              * one-door-per-place.spec.ts pins at an exact count - still appears once here, not
              * once per branch.
+             *
+             * COORDINATOR FOLLOW-UP: "CHECK-IN" IS ALSO NOT FOR A LEAD WHO ONLY MANAGES. She is
+             * `isInitiator`, so the general condition below never dropped it for her - but she has
+             * no check-in of her own to answer, same as the admin the comment above already
+             * excludes it for. This one tab reads `viewerChecksIn` on its own; every other tab
+             * keeps the existing rule.
              */
             [
               { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
@@ -1568,7 +1591,9 @@ export function GroundAdminPage() {
               { key: 'context', label: contextEnabled ? 'Context and resources' : 'Documents' },
               { key: 'mywork', label: 'My work' },
               { key: 'people', label: 'People and setup' },
-            ].filter(t => (isInitiator || viewerIsAParty) || (t.key === 'board' || t.key === 'context' || t.key === 'people'))
+            ].filter(t => t.key === 'checkin'
+              ? viewerChecksIn
+              : (isInitiator || viewerIsAParty) || (t.key === 'board' || t.key === 'context' || t.key === 'people'))
           }
           onSelectTab={(k) => {
             if (k === 'checkin') goTab('chat')
@@ -1869,10 +1894,15 @@ export function GroundAdminPage() {
           * read-only history used to stand in for that; it is retired now that the history it drew
           * lives on My work and the roster it drew lives on People and setup, so this says plainly
           * that this reader does not answer the check-in, and links to the board instead.
+          *
+          * COORDINATOR FOLLOW-UP: THE SAME IS TRUE OF A LEAD WHO ONLY MANAGES. She is a party
+          * (`viewerIsAParty`), but has no check-in of her own either - reading `viewerChecksIn`
+          * here means she gets this same plain sentence and link, rather than "No check-in open
+          * right now" for a check-in she was never going to have.
           */}
         {tab === 'chat' && (
           <div>
-            {viewerIsAParty ? (
+            {viewerChecksIn ? (
               /*
                * B-19: AN ENDED CHECK-IN STILL PROMISED A NEXT ONE, here on the lead's own Check-in
                * tab too ("Bring this to your next check-in" never applied once it had ended). The

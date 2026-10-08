@@ -52,7 +52,13 @@ describe('the chat is here at all', () => {
      * what should be one check-in. She opens it from here now, through the same shared hook the
      * participant page uses (useOpenSession.ts), and never lands on the other page for it.
      */
-    expect(CODE).toMatch(/if \(tab !== 'chat' \|\| !viewerIsAParty\) return/)
+    /*
+     * COORDINATOR FOLLOW-UP: `viewerIsAParty` WAS TOO WIDE. A lead who only manages
+     * (`managingOnly`) is a party but has no check-in of her own to auto-open - this now reads
+     * `viewerChecksIn` (`viewerIsAParty && !managingOnly`), which agrees with every ordinary
+     * party exactly as before and only differs for her.
+     */
+    expect(CODE).toMatch(/if \(tab !== 'chat' \|\| !viewerChecksIn\) return/)
     expect(CODE).toContain('openMySession(myOpenCheckIn')
     expect(CODE).not.toMatch(/\/grounds\/\$\{id\}\/p\?open=1/)
   })
