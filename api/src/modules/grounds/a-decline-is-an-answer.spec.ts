@@ -121,7 +121,9 @@ describe('GW-DECLINE-02: a declined session cannot be written to', () => {
   });
 
   it.each([
-    ['open', /openTheDoor\(/],
+    /* `open` hands two opens at once the same first question (ce35bc25); its work, door first, is `openOnce`. */
+    ['open', /openOnce\(/],
+    ['openOnce', /openTheDoor\(/],
     ['sendMessage', /aSessionUnderway\(/],
     ['sendMessageStream', /aSessionUnderway\(/],
     ['complete', /openTheDoor\(/],
