@@ -3801,7 +3801,7 @@ export class ConversationService {
       this.hasOtherPartyCheckedIn(checkIn.groundId, checkIn.participantId),
       this.prisma.adminProfile.findUnique({ where: { userId: ground.initiatorId }, select: { signals: true } }).catch(() => null),
     ]);
-    const groundState = await this.buildGroundState(checkIn.groundId, otherPartyCheckedIn);
+    const groundState = await this.buildGroundState(checkIn.groundId, otherPartyCheckedIn, aCheckInStartedFromTheAnchor(ground));
     const leadSignals = Array.isArray(initiatorProfile?.signals) ? (initiatorProfile!.signals as string[]) : null;
 
     // Session-1-only DB override for this scenario+party's pack (PromptVersion
@@ -10994,7 +10994,19 @@ ${told}` : '';
     return count > 0;
   }
 
-  private async buildGroundState(groundId: string, otherPartyCheckedIn: boolean): Promise<string> {
+  private async buildGroundState(groundId: string, otherPartyCheckedIn: boolean, theAnchors = false): Promise<string> {
+    /*
+     * IN THE ANCHOR, THE LEAD IS NOT ONE OF THE PEOPLE WHO ANSWER. Her set-up conversation is saved as a finished session and she is on the roster, so
+     * the count read "3 of 3 parties have submitted" to a team of two (found on the test bed, weekly check-in). It counts the team, in plain words.
+     */
+    if (theAnchors) {
+      const team = { groundId, managingOnly: false };
+      const answered = new Set(
+        ((await this.prisma.checkIn.findMany({ where: { groundId, status: CheckInStatus.COMPLETED, participant: { managingOnly: false } }, select: { participantId: true } })) ?? []).map((c: any) => c.participantId),
+      ).size;
+      const everyone = await this.prisma.groundParticipant.count({ where: team });
+      return `${answered} of ${everyone} people on the team have answered so far.`;
+    }
     /* PEOPLE, NOT CHECK-INS. This counted every completed check-in, so from the second round on it
        said more had answered than there are people, and the model read it out: "Since then, 5 of
        the 4 people involved in this check-in have submitted" (week 3 re-runs, 28 Sep 2026). */
