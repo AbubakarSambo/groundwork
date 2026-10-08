@@ -253,7 +253,8 @@ Hafsah's participant activation spec (`docs/participant-activation-spec.md`) ask
 
 - **Category:** Utility. **Language:** en.
 - **Body:** Hi {{1}}, {{2}} added you to {{3}} on Groundwork. What is one thing you are focused on this week? You can answer here, and it takes about two minutes.
-- **Examples and sample values:** {{1}} Abigail. {{2}} Wairimu. {{3}} the operations team.
+- **Examples:** {{1}} Abigail. {{2}} Wairimu. {{3}} the operations team.
+- **Sample values:** {{1}} Abigail. {{2}} Wairimu. {{3}} the operations team.
 - **Why:** the spec's strategies C and F: give a reason to answer before asking for an update, and make the first answer very small. It would go once, to someone verified or reachable on WhatsApp who has had the opening notice and has still not started, on the same day the spec calls day 7. It would be the day's one routine message. Where it cannot go on WhatsApp, the same words go by email.
 - **Checked against WhatsApp's rules:** the blanks are in order and none is next to another. The body starts with words and ends with words. It has three blanks and a fair amount of fixed text. The question may make Meta call it Marketing; if it does, the body to try is "Hi {{1}}, {{2}} added you to {{3}} on Groundwork, and your check-in is open. You can answer here, and it takes about two minutes."
 - **Not said, on purpose:** the spec's example calls the space "private". The people in a check-in, including a manager, can read what a person says in it (CLAUDE.md, privacy), so the words do not say private.
@@ -262,7 +263,8 @@ Hafsah's participant activation spec (`docs/participant-activation-spec.md`) ask
 
 - **Category:** Utility. **Language:** en.
 - **Body:** Hi {{1}}, last time you wrote about {{2}}. Has anything changed since then? Your check-in for {{3}} is open, and you can answer here.
-- **Examples and sample values:** {{1}} Chidi. {{2}} supplier coordination taking longer than expected. {{3}} the sales team.
+- **Examples:** {{1}} Chidi. {{2}} supplier coordination taking longer than expected. {{3}} the sales team.
+- **Sample values:** {{1}} Chidi. {{2}} supplier coordination taking longer than expected. {{3}} the sales team.
 - **Why:** the spec's strategy G, a person's own contribution said back to them. It is close to `anchor_checkin_follow_up`, which says it for a promise the person made and is already in the code and widened to every check-in (decision 109 item 10). This would say it for something they raised that is not a promise. {{2}} would come only from the person's own record, as that one does, and never from anybody else's words. If Hafsah thinks the follow-up on a promise is enough, this one is not needed.
 - **Checked against WhatsApp's rules:** the blanks are in order and none is next to another, and it starts and ends with words.
 
