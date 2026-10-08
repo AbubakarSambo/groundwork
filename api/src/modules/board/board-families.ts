@@ -210,7 +210,11 @@ export type BoardSection =
   | 'ideasFromTheTeam'
   | 'peopleHelpingTheTeamMove'
   | 'recommendations'
-  | 'weeklyInsight';
+  | 'weeklyInsight'
+  | 'whereTheMonthIs'
+  | 'whatIsMoving'
+  | 'whatIsStillInTheWay'
+  | 'theEndOfTheMonth';
 
 /**
  * Which sections each family renders. SENSING is deliberately empty: not "a
@@ -461,7 +465,7 @@ export function sectionsForARunOf(scenario: GroundScenario, roundsPlanned: numbe
  * scenario with no row here has exactly its family's sections.
  */
 export const SCENARIO_SECTIONS_ADDED: Partial<Record<GroundScenario, BoardSection[]>> = {
-  HELP_TEAM_UNDERSTAND: ['whatYouAreCarrying', 'howGroundworkWillWork', 'theFourLenses', 'ideasFromTheTeam', 'peopleHelpingTheTeamMove', 'recommendations', 'weeklyInsight'],
+  HELP_TEAM_UNDERSTAND: ['whatYouAreCarrying', 'howGroundworkWillWork', 'theFourLenses', 'ideasFromTheTeam', 'peopleHelpingTheTeamMove', 'recommendations', 'weeklyInsight', 'whereTheMonthIs', 'whatIsMoving', 'whatIsStillInTheWay', 'theEndOfTheMonth'],
 };
 
 export function sectionsFor(scenario: GroundScenario): BoardSection[] {

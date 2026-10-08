@@ -1,6 +1,6 @@
 import { GroundScenario } from '@prisma/client';
 import { HOW_I_WILL_WORK_WITH_YOUR_TEAM } from '../entry/the-anchor-served-shapes';
-import type { TheLens, TheIdeasFromYourTeam, TheWayGroundworkWillHelp } from '../entry/the-anchor-served-shapes';
+import type { TheLens, TheIdeasFromYourTeam, TheWayGroundworkWillHelp, TheEndOfMonthRead, TheMonthBoard } from '../entry/the-anchor-served-shapes';
 import type { AnOfferTheLeadReads } from '../detectors/the-anchor-recommendations';
 import { sectionsFor, type BoardSection } from './board-families';
 import type { TheMonthRecord } from './the-anchor-month-record';
@@ -28,6 +28,12 @@ export type AnchorBoardSections = {
   peopleHelpingTheTeamMove?: { heading: string; people: { name: string; sentence: string }[] };
   recommendations?: { heading: string; offers: AnOfferTheLeadReads[] };
   weeklyInsight?: { heading: string; text: string };
+  /* The month board's own parts, as sections of their own (decision 114): where the month is, what is moving, what is still in the way. The lead's. */
+  whereTheMonthIs?: { heading: string; weekOfTheMonth: 1 | 2 | 3 | 4; text: string };
+  whatIsMoving?: { heading: string; items: string[] };
+  whatIsStillInTheWay?: { heading: string; items: string[] };
+  /** The end-of-month read, from the lead's own words down to what should happen next, the reveal and the ways to carry on. The lead's. */
+  theEndOfTheMonth?: { heading: string; yourOwnWords: string; parts: { heading: string; items: string[] }[]; people: { name: string; sentence: string }[]; reveal: TheEndOfMonthRead['reveal']; revealSaid: TheEndOfMonthRead['revealSaid']; continueOptions: TheEndOfMonthRead['continueOptions'] };
 };
 
 export function theAnchorSections(input: {
@@ -42,6 +48,9 @@ export function theAnchorSections(input: {
   offers?: AnOfferTheLeadReads[] | null;
   record?: TheMonthRecord | null;
   ended?: boolean;
+  /** The month board and the end-of-month read, already built once from the record (opening the board never rebuilds them). */
+  monthBoard?: TheMonthBoard | null;
+  endOfMonth?: TheEndOfMonthRead | null;
 }): AnchorBoardSections {
   const has = (s: BoardSection) => sectionsFor(input.scenario).includes(s);
   const out: AnchorBoardSections = {};
@@ -52,6 +61,20 @@ export function theAnchorSections(input: {
   if (has('theFourLenses') && input.lenses?.length) out.theFourLenses = { heading: 'The four lenses', question: input.question ?? 'Are we moving together?', lenses: input.lenses };
   if (has('peopleHelpingTheTeamMove') && input.people?.length) out.peopleHelpingTheTeamMove = { heading: 'People helping the team move', people: input.people };
   if (has('recommendations') && input.offers?.length) out.recommendations = { heading: 'Groundwork recommends', offers: input.offers };
+  if (has('whereTheMonthIs') && input.monthBoard) out.whereTheMonthIs = { heading: 'Where the month is', weekOfTheMonth: input.monthBoard.weekOfTheMonth, text: input.monthBoard.weekSaid };
+  if (has('whatIsMoving') && input.monthBoard?.whatIsMoving?.length) out.whatIsMoving = { heading: "What's moving", items: input.monthBoard.whatIsMoving };
+  if (has('whatIsStillInTheWay') && input.monthBoard?.whatIsStillGettingInTheWay?.length) out.whatIsStillInTheWay = { heading: "What's still getting in the way", items: input.monthBoard.whatIsStillGettingInTheWay };
+  if (has('theEndOfTheMonth') && input.endOfMonth) {
+    const e = input.endOfMonth;
+    out.theEndOfTheMonth = {
+      heading: 'You wanted your team to understand...', yourOwnWords: e.yourOwnWords,
+      parts: ([
+        ['What we found', e.whatWeFound], ['What they now understand differently', e.whatTheyNowUnderstandDifferently], ['What they are doing differently', e.whatTheyAreDoingDifferently],
+        ['What your team contributed', e.whatYourTeamContributed], ['What you changed as a lead', e.whatYouChangedAsALead], ["What's still stuck", e.whatIsStillStuck], ['What should happen next', e.whatShouldHappenNext],
+      ] as [string, string[]][]).filter(([, items]) => items?.length).map(([heading, items]) => ({ heading, items })),
+      people: e.peopleWhoHelpedMoveTheThinking ?? [], reveal: e.reveal, revealSaid: e.revealSaid, continueOptions: e.continueOptions,
+    };
+  }
   /* An ended check-in has no week to say anything about. */
   if (has('weeklyInsight') && input.record && !input.ended) {
     const text = theWeeklyInsightParagraph(input.record);

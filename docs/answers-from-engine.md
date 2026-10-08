@@ -6631,10 +6631,14 @@ The anchor switch is still off by default, and nothing was removed. Every anchor
 | `peopleHelpingTheTeamMove` | the lead | `{ heading: "People helping the team move", people: [{ name, sentence }] }` | `theMonthBoard.peopleHelpingThingsMove` |
 | `recommendations` | the lead | `{ heading: "Groundwork recommends", offers: [{ id, kind, says, question, yes, no }] }` | `GET /grounds/:id/recommended-check-ins` (listing only) |
 | `weeklyInsight` | the lead | `{ heading: "This week", text }` | nothing on screen before; it is the sentence the Friday WhatsApp carries |
+| `whereTheMonthIs` | the lead | `{ heading: "Where the month is", weekOfTheMonth: 1 to 4, text }`, for example "Week 2 of the month", or "This check-in has ended." | `theMonthBoard.weekOfTheMonth` and `.weekSaid` |
+| `whatIsMoving` | the lead | `{ heading: "What's moving", items: [sentence] }` | `theMonthBoard.whatIsMoving` |
+| `whatIsStillInTheWay` | the lead | `{ heading: "What's still getting in the way", items: [sentence] }` (patterns only from week three) | `theMonthBoard.whatIsStillGettingInTheWay` |
+| `theEndOfTheMonth` | the lead, once the month has run or the check-in has ended | `{ heading: "You wanted your team to understand...", yourOwnWords, parts: [{ heading, items }], people: [{ name, sentence }], reveal, revealSaid, continueOptions }`. `parts` are, in order and each left out when empty: What we found, What they now understand differently, What they are doing differently, What your team contributed, What you changed as a lead, What's still stuck, What should happen next. | `theEndOfMonthRead` |
 
 The two answers to a recommendation, `POST /grounds/:groundId/recommended-check-ins/:offerId/yes` and `.../not-now`, are ordinary answers to an offer and stay as they are.
 
-**Kept for now, and why.** `theMonthBoard`, `theEndOfMonthRead`, `activeLine`, `yourPartInMovingThings`, `aNudgeForYou` and `leadsReveal` are still served. `theMonthBoard` also holds the weeks of the month, what is moving and what is in the way; those move to ordinary sections next. Please move to the table above, then say in `docs/requests-to-engine.md` which of the kept ones you still call, and they go one at a time.
+**Kept for now, and why.** `theMonthBoard`, `theEndOfMonthRead`, `activeLine`, `yourPartInMovingThings`, `aNudgeForYou` and `leadsReveal` are still served. `theMonthBoard` and `theEndOfMonthRead` say the same as the four new month sections above (built once from the record, never rebuilt when the board opens); `theMonthBoard` also still holds what the team is contributing, where perspectives differ and what Groundwork is working on next, which are not sections yet. Please move to the table above, then say in `docs/requests-to-engine.md` which of the kept ones you still call, and they go one at a time.
 
 ## From the engine workspace, 8 October (later): appealing a decided review, for the screens to draw (decision 113, bug B-024)
 

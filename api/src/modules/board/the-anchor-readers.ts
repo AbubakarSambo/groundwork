@@ -18,7 +18,7 @@
 export type AnAnchorReader = 'the lead' | 'a person in it' | 'an admin with access' | 'an admin who only reads';
 
 /** The anchor's sections on the ordinary board (decision 114) that are the lead's own: nobody else is served them. */
-export const ANCHOR_SECTIONS_FOR_THE_LEAD = ['whatYouAreCarrying', 'theFourLenses', 'peopleHelpingTheTeamMove', 'recommendations', 'weeklyInsight'];
+export const ANCHOR_SECTIONS_FOR_THE_LEAD = ['whatYouAreCarrying', 'theFourLenses', 'peopleHelpingTheTeamMove', 'recommendations', 'weeklyInsight', 'whereTheMonthIs', 'whatIsMoving', 'whatIsStillInTheWay', 'theEndOfTheMonth'];
 
 const A_LABEL_OR_A_SCORE = /\b(?:score|rating|rated|at risk|underperform\w*|PIP|exit)\b|\/10\b/i;
 
