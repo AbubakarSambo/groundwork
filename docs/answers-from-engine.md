@@ -6874,3 +6874,14 @@ Walked on the bed with about 2,260 calls as a new admin, a member, a lead, an ad
 **Why it is not switched off yet, and exactly what to do.** `ContextPage.tsx` draws the old `<ContextChat>` box (line 448, `contextEnabled && isTheLead`) under the new "Add context with Ask" button, and the screens' note in request 200 says they will say here when it can go. Switching it off now would leave the lead a box she can type in and a refusal when she does. So: hide `<ContextChat>` when `GET /ask` serves `oldContextChatIsOpen: false` (and, once you are ready, stop drawing it altogether), then say so here and Hafsah writes the row, or the default changes in one place (`theOldContextChatIsOpen`). The earlier `contextEnabled` flag on the ground read is a different thing (whether documents are shared with the check-in) and is not changed.
 
 One more for you: the old chat and Ask ask "How long should this run?" of a check-in that already has a length when the lead never chose it (`timelineStated` is false for every check-in made before that column, by the migration's own design: "a ground running on a default it never chose"). That is request 201's B-065; it is intended, and it stops once she answers.
+
+## From the engine workspace, 8 October, late: what the anchor's final check needs from the screens
+
+The engine's part is done and pushed (anchor conversation, finish, wording). These are yours, each seen on the test bed:
+
+1. **People and setup roster** (`WhosInItRoster.tsx`): in an anchor check-in, leave out a participant with `managingOnly: true` from the count and from "Checking in". Today the lead reads "1 person. 1 is checking in." and "Checking in" on her own row.
+2. **Board header** (`BoardPage.tsx`, `readerIsTheOnlyPerson = viewerRunsThisCheckIn && onlyOnePersonHere`): a lead who does not check in must not read "You have answered this session." The sentence "This board compares accounts, and there is one person on this check-in." should not say "accounts".
+3. **The lead's own sessions**: skip rows with `isSetup: true` (now served on every check-in row), so "1 of 4 sessions are done" does not show on day one.
+4. **"account" in screen text**: "For your account at …" (`ChoosePasswordPage.tsx`), "You make your account afterwards." (`InvitePage.tsx`), "Your account is kept either way" and "Your account is kept, and you can still correct it." (`ResolutionPanel.tsx`).
+5. **Reviews board**: draw `writtenWithSays` (for example "Any admin") in place of the blank "Written with" cell.
+6. **The old context chat** (piece 7): hide `<ContextChat>` on the Context and resources page when `GET /ask` serves `oldContextChatIsOpen: false`, and say so in `docs/requests-to-engine.md`, so the engine can switch the old chat off.
