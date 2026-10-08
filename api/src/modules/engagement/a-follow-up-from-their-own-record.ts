@@ -50,5 +50,21 @@ export async function theNudgeLineFor(
 ): Promise<string | null> {
   if (aGroundIsTheAnchors(ground)) return theAnchorNudgeFor(prisma, ground, participantId);
   const promise = await theirPromiseToFollowUp(prisma, ground, sessionBeganAt, participantId);
-  return promise ? theAnchorNudgeLine(promise) : null;
+  if (promise) return theAnchorNudgeLine(promise);
+  /* NO PROMISE, BUT A WAIT OF THEIR OWN (engagement spec sections 17 and 18, journey 8): what they said they were waiting for, still waiting. Their own words, said
+     back to them, and a question that helps them act. It is by email only: the WhatsApp template says "last time you said you would", which a wait is not. */
+  if (!(await beganAfterTheRelease(prisma, sessionBeganAt))) return null;
+  const wait = await theirOwnLastOpenWait(prisma, ground.id, participantId);
+  return wait ? `You said you were waiting for "${wait}". I'd love to hear whether that has moved.` : null;
+}
+
+/** What they said they were waiting for, still waiting, in their own words and from their own check-in; never anybody else's. */
+export async function theirOwnLastOpenWait(prisma: any, groundId: string, participantId: string): Promise<string | null> {
+  const rows = ((await prisma.groundDependency?.findMany?.({
+    where: { groundId, fromParticipantId: participantId, status: { in: ['WAITING', 'BLOCKING'] }, clearedAt: null },
+    orderBy: { createdAt: 'desc' },
+    select: { what: true, fromParticipantId: true },
+  })?.catch?.(() => [])) ?? []) as any[];
+  const mine = rows.find((d) => d.fromParticipantId === participantId && String(d.what ?? '').trim());
+  return mine ? String(mine.what).trim().replace(/[.!?]+$/, '') : null;
 }
