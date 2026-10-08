@@ -5,6 +5,7 @@ import { resolutionApi } from '@/api/resolution'
 import { toast } from 'sonner'
 import { Confirm } from './a-second-press-before-it-is-gone'
 import { Panel, Callout, Button, Note } from './ui'
+import { useAuthStore } from '@/stores/auth'
 
 /**
  * HOW A GROUND ENDS.
@@ -37,6 +38,13 @@ const possessive = (name: string) => `${name}’s`
 /* "30 September", through the one date formatter (one-date-format-everywhere). */
 const onTheDay = (iso: string) => whenItWas(iso, 'dayAndMonthLong')
 
+/**
+ * "You decide", never "You decides" (B-071). A name swapped for "You" still needs its verb to
+ * agree: wherever a sentence here puts a subject that MAY be "You" in front of "decides", it goes
+ * through this first, so a future caller never has to remember the conjugation by hand.
+ */
+const decidesVerb = (subject: string) => (subject === 'You' ? 'decide' : 'decides')
+
 export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }: {
   groundId: string
   /**
@@ -57,6 +65,7 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
   place?: WhereThePanelSits
 }) {
   const qc = useQueryClient()
+  const user = useAuthStore((s) => s.user)
   const [picked, setPicked] = useState<string | null>(null)
   const [why, setWhy] = useState('')
   const [confirming, setConfirming] = useState(false)
@@ -111,6 +120,16 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
   const others = confirmations.filter((c) => c.partyType !== 'INITIATOR')
   const oneOther = others.length === 1 ? others[0].label : null
 
+  /**
+   * THE NAME EVERYONE ELSE ACTUALLY READS, NEVER "YOU" (B-071). The server's own label for the
+   * lead's confirmation is "You" when the reader IS the lead - right wherever this panel addresses
+   * her directly ("You decided this on..."), but `leadName` is also quoted below as what SOMEBODY
+   * ELSE's screen says, and nobody else ever reads "You" about her. `myFullName` is the one source
+   * of her own name this component has when the server has swapped it away.
+   */
+  const myFullName = user?.firstName?.trim() ? `${user.firstName} ${user.lastName ?? ''}`.trim() : null
+  const leadNameAsOthersReadIt = (leadName === 'You' ? myFullName : leadName) ?? 'Whoever runs it'
+
   const label = (v: string | null) => options.find(o => o.value === v)?.label ?? v ?? ''
 
   const headingClass = 'gwui-fs-16 gwui-ink-text gwui-mb-8'
@@ -121,8 +140,8 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
 
   /* What a participant reads while it is open. The lead is shown the same words, word for word. */
   const whatTheyRead = viewerIsParty
-    ? `These are the outcomes this check-in can reach. ${leadName ?? 'Whoever runs it'} decides which one it is. Your account is kept either way, and you can still correct or add to it.`
-    : `These are the outcomes this check-in can reach. ${leadName ?? 'Whoever runs it'} decides which one it is.`
+    ? `These are the outcomes this check-in can reach. ${leadNameAsOthersReadIt} ${decidesVerb(leadNameAsOthersReadIt)} which one it is. Your account is kept either way, and you can still correct or add to it.`
+    : `These are the outcomes this check-in can reach. ${leadNameAsOthersReadIt} ${decidesVerb(leadNameAsOthersReadIt)} which one it is.`
 
   /* ------------------------------------------------------------------ how it ended, for everyone */
   const howItEnded = closed && resolution && (
@@ -285,7 +304,7 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
               : 'Ending means nobody can add to it. Everyone keeps their own history, and can still correct their own account.'}
           </div>
           <div className={subheadingClass} style={subheadingStyle}>{oneOther ? `What ${oneOther} sees now` : 'What everyone else sees now'}</div>
-          <div className="gwui-fs-13 gwui-ink-sub" style={{ lineHeight: 1.6 }}>“{`These are the outcomes this check-in can reach. ${leadName ?? 'Whoever runs it'} decides which one it is. Your account is kept either way, and you can still correct or add to it.`}”</div>
+          <div className="gwui-fs-13 gwui-ink-sub" style={{ lineHeight: 1.6 }}>“{`These are the outcomes this check-in can reach. ${leadNameAsOthersReadIt} ${decidesVerb(leadNameAsOthersReadIt)} which one it is. Your account is kept either way, and you can still correct or add to it.`}”</div>
         </>
       )}
 

@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ResolutionPanel, type WhereThePanelSits } from './ResolutionPanel'
 import { resolutionApi } from '@/api/resolution'
+import { useAuthStore } from '@/stores/auth'
 
 vi.mock('@/api/resolution', () => ({
   resolutionApi: { get: vi.fn(), propose: vi.fn(), counter: vi.fn() },
@@ -179,5 +180,79 @@ describe('on the board', () => {
     const lead = renderAs('wairimu', false, { place: 'board-bottom', nearTheEnd: true })
     await settled()
     expect(lead.container.textContent).toBe('')
+  })
+})
+
+/**
+ * B-071: the server's own label for the lead's confirmation is "You" when the reader IS the lead
+ * (`whatEachLabelIsCalled`, `readerIsYou: true`) - right wherever the panel addresses her directly,
+ * wrong in "What everyone else sees now", a literal quote of somebody else's screen, where Amani
+ * never reads "You" about Wairimu. Reproduced with the server's real label, not a test-only name.
+ */
+function stateWithTheLeadsOwnLabelAsYou(closed: boolean) {
+  return {
+    resolution: closed
+      ? { id: 'r1', groundId: 'g1', endState: 'KEEP', closedAt: '2026-09-30T10:00:00Z', reason: REASON }
+      : null,
+    confirmations: [
+      { participantId: 'p1', label: 'You', partyType: 'INITIATOR', endState: closed ? 'KEEP' : null, confirmed: closed },
+      { participantId: 'p2', label: 'Kwame', partyType: 'PARTICIPANT', endState: null, confirmed: false },
+    ],
+    confirmedCount: closed ? 1 : 0,
+    totalActive: 2,
+    options: [
+      { value: 'KEEP', label: 'Keep the hire' },
+      { value: 'EXTEND', label: 'Extend evaluation period' },
+    ],
+    groundStatus: closed ? 'CLOSED' : 'ACTIVE',
+    leadDecides: true,
+    viewerIsLead: true,
+    viewerIsParty: true,
+  }
+}
+
+describe('B-071: the lead reads what Amani sees, and it is never "You decides"', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    useAuthStore.setState({ user: null, token: null, isAuthenticated: false } as any)
+  })
+
+  it('Wairimu, with her own real name known to the app, reads her own name in "What everyone else sees now", not "You"', async () => {
+    useAuthStore.setState({
+      user: { id: 'u1', email: 'wairimu@msingi.test', firstName: 'Wairimu', lastName: 'Njoroge', role: 'LEAD', organizationId: 'o1' },
+      token: 't',
+      isAuthenticated: true,
+    } as any)
+    ;(resolutionApi.get as any).mockResolvedValue(stateWithTheLeadsOwnLabelAsYou(false))
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <MemoryRouter>
+        <QueryClientProvider client={qc}>
+          <ResolutionPanel groundId="g1" />
+        </QueryClientProvider>
+      </MemoryRouter>,
+    )
+    expect(await screen.findByText('What Kwame sees now')).toBeTruthy()
+    expect(screen.getByText(
+      '“These are the outcomes this check-in can reach. Wairimu Njoroge decides which one it is. Your account is kept either way, and you can still correct or add to it.”',
+    )).toBeTruthy()
+    expect(screen.queryByText(/You decides|You decide which one it is/)).toBeNull()
+  })
+
+  it('falls back to "Whoever runs it decides" rather than "You decides" when her own name has not loaded yet', async () => {
+    ;(resolutionApi.get as any).mockResolvedValue(stateWithTheLeadsOwnLabelAsYou(false))
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <MemoryRouter>
+        <QueryClientProvider client={qc}>
+          <ResolutionPanel groundId="g1" />
+        </QueryClientProvider>
+      </MemoryRouter>,
+    )
+    expect(await screen.findByText('What Kwame sees now')).toBeTruthy()
+    expect(screen.getByText(
+      '“These are the outcomes this check-in can reach. Whoever runs it decides which one it is. Your account is kept either way, and you can still correct or add to it.”',
+    )).toBeTruthy()
+    expect(screen.queryByText(/You decides|You decide which one it is/)).toBeNull()
   })
 })
