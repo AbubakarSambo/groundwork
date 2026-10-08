@@ -14,6 +14,7 @@ const NOW = new Date('2026-10-20T10:00:00Z');
 function world(opts: { counts?: any; nextSession?: boolean; told?: boolean; outcome?: 'sent' | 'held' | 'suppressed' } = {}) {
   const told = new Set<string>(opts.told ? ['engagement.once.report-follow-up:g1'] : []);
   const asked: any[] = [];
+  const checkInWhere: any[] = [];
   const sent: any[] = [];
   const c = { done: 2, cleared: 1, waiting: 3, open: 4, ...(opts.counts ?? {}) };
   const prisma: any = {
@@ -22,12 +23,12 @@ function world(opts: { counts?: any; nextSession?: boolean; told?: boolean; outc
       create: jest.fn(async ({ data }: any) => { told.add(data.key); return data; }),
     },
     report: { findMany: jest.fn(async (a: any) => { asked.push(a.where); return [{ groundId: 'g1', releasedAt: WENT_OUT, ground: { label: 'Sales team, Q4', initiatorId: 'u-w', initiator: { email: 'wairimu@x.test', firstName: 'Wairimu', deletedAt: null, isActive: true } } }]; }) },
-    checkIn: { findFirst: jest.fn(async () => (opts.nextSession ? { id: 'next' } : null)) },
+    checkIn: { findFirst: jest.fn(async ({ where }: any) => { checkInWhere.push(where); return opts.nextSession ? { id: 'next' } : null; }) },
     groundCommitment: { count: jest.fn(async ({ where }: any) => (where.status === 'DONE' ? c.done : c.open)) },
     groundDependency: { count: jest.fn(async ({ where }: any) => (where.status === 'CLEARED' ? c.cleared : c.waiting)) },
   };
   const email = { sendTheReportFollowUp: jest.fn(async (to: string, subject: string, lines: string[], linkLabel: string, linkUrl: string) => { sent.push({ to, subject, lines, linkLabel, linkUrl }); return opts.outcome ?? 'sent'; }) };
-  return { run: () => sendTheReportFollowUps({ prisma, email, frontendUrl: 'https://app.test/' }, NOW), sent, asked, told };
+  return { run: () => sendTheReportFollowUps({ prisma, email, frontendUrl: 'https://app.test/' }, NOW), sent, asked, told, checkInWhere };
 }
 
 describe('what Wairimu reads a week after the report', () => {
@@ -63,6 +64,17 @@ describe('what Wairimu reads a week after the report', () => {
     expect(refused.told.size).toBe(0);
     expect(await refused.run()).toEqual({ tried: 0 });
     expect(refused.sent).toHaveLength(2);
+  });
+});
+
+describe('what counts as a next session opened', () => {
+  it('asks for a later session that has been STARTED since the report, not for a row made after it (found on the test bed)', async () => {
+    const w = world();
+    await w.run();
+    const where = w.checkInWhere[0];
+    expect(where.sessionNumber).toEqual({ gt: 1 });
+    expect(where.OR).toEqual([{ startedAt: { gt: WENT_OUT } }, { completedAt: { gt: WENT_OUT } }]);
+    expect(where.createdAt).toBeUndefined();
   });
 });
 

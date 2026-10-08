@@ -132,6 +132,13 @@ describe('who is not written to', () => {
     const young = salesRows.map((r) => (r.sessionNumber === 2 ? { ...r, createdAt: new Date('2026-10-25T08:00:00Z') } : r));
     expect(await world({ g1: young }).run()).toEqual({ tried: 0 });
   });
+  it('a latest session whose row was made long ago but became available less than a week ago (found on the test bed)', async () => {
+    /* The row for session 2 is made when session 1 is answered, a week or more before session 2 opens, so its own date says nothing of when it opened. */
+    const waiting = salesRows.map((r) => (r.sessionNumber === 2 ? { ...r, createdAt: new Date('2026-10-12T08:00:00Z'), availableFrom: new Date('2026-10-25T08:00:00Z') } : r));
+    expect(await world({ g1: waiting }).run()).toEqual({ tried: 0 });
+    const open = salesRows.map((r) => (r.sessionNumber === 2 ? { ...r, createdAt: new Date('2026-10-25T08:00:00Z'), availableFrom: new Date('2026-10-12T08:00:00Z') } : r));
+    expect(await world({ g1: open }).run()).toEqual({ tried: 1 });
+  });
   it('a check-in whose latest session opened before the release', async () => {
     const old = salesRows.map((r) => ({ ...r, createdAt: new Date('2026-09-10T08:00:00Z') }));
     expect(await world({ g1: old }).run()).toEqual({ tried: 0 });

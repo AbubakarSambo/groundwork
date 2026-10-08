@@ -99,7 +99,8 @@ export function theQuietIn(rows: any[], label: string, leadUserId: string, now: 
   if (!rows.length) return null;
   const latest = Math.max(...rows.map((r) => r.sessionNumber ?? 0));
   const latestRows = rows.filter((r) => (r.sessionNumber ?? 0) === latest);
-  const opened = Math.min(...latestRows.map((r) => new Date(r.createdAt).getTime()));
+  /* A session opens when it becomes available, not when its row was made: the row is made when the one before is answered, a week or more earlier (found on the test bed). */
+  const opened = Math.min(...latestRows.map((r) => new Date(r.availableFrom ?? r.createdAt).getTime()));
   if (opened < release.getTime() || now.getTime() - opened < QUIET_AFTER_DAYS * DAY) return null;
   const counted = latestRows.filter((r) => !r.participant?.managingOnly && !isNotLetInYet(r.participant) && r.participant?.userId !== leadUserId && !away.has(r.participantId));
   if (!counted.length) return null;
@@ -141,7 +142,7 @@ export async function sendWhoHasGoneQuiet(
       for (const g of theirs) {
         const rows: any[] = await prisma.checkIn.findMany({
           where: { groundId: g.id },
-          select: { participantId: true, sessionNumber: true, status: true, createdAt: true, participant: { select: { userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } } },
+          select: { participantId: true, sessionNumber: true, status: true, createdAt: true, availableFrom: true, participant: { select: { userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } } },
         });
         /* Somebody on approved leave is not one who has gone quiet. */
         const away = await Promise.resolve(whoOnACheckInIsAway(prisma, g.id, now)).catch(() => new Map());

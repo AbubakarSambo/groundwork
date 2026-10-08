@@ -101,7 +101,13 @@ export async function sendTheReportFollowUps(
       const once = `report-follow-up:${r.groundId}`;
       if (await hasBeenToldOnce(prisma, once) || await isAlreadyHeld(prisma, REPORT_FOLLOW_UP_SENDER, lead.email)) continue;
       /* She has opened a next session: the work went on, so there is nothing to follow up. */
-      const next = await prisma.checkIn.findFirst({ where: { groundId: r.groundId, createdAt: { gt: r.releasedAt } }, select: { id: true } });
+      /* "She has opened a next session" means a later session has been STARTED since the report went out. Its rows are made when the one before is answered, a week
+         before it opens, so the row's own date is always before the report's and says nothing (found on the test bed). */
+      const lastReleased = Math.max(1, ...((r.releasedSessions as number[] | undefined) ?? [1]));
+      const next = await prisma.checkIn.findFirst({
+        where: { groundId: r.groundId, sessionNumber: { gt: lastReleased }, OR: [{ startedAt: { gt: r.releasedAt } }, { completedAt: { gt: r.releasedAt } }] },
+        select: { id: true },
+      });
       if (next) continue;
       const since = { gte: r.releasedAt as Date, lte: now };
       const [done, cleared, waiting, open] = await Promise.all([
