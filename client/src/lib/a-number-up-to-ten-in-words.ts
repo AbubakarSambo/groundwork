@@ -21,8 +21,14 @@ export function numberUpToTenInWords(n: number): string {
  * through yet, the outstanding count equals the whole roster - "Neither of the two has answered
  * yet." for two people, "None of the three has answered yet." for more, the same word a person
  * would actually reach for, rather than a fraction with the same number on both sides of "of".
+ *
+ * "OF THE ONE" IS NOT ENGLISH EITHER. With a single person on the check-in this read "One of the
+ * one has not answered yet." - the same fault B-056 already fixed for `howManyCheckedInSentence`
+ * ("The one person in it has checked in for session N."), not yet applied here. Same form, here
+ * too: "The one person in it has not answered yet."
  */
 export function howManyHaveNotAnsweredYet(outstanding: number, total: number): string {
+  if (total === 1) return 'The one person in it has not answered yet.'
   if (outstanding === total && total >= 2) {
     const subject = total === 2 ? 'Neither' : 'None'
     return `${subject} of the ${numberUpToTenInWords(total)} has answered yet.`
