@@ -1234,7 +1234,7 @@ export class EmailService implements OnModuleInit {
    * reports/who-shared-it-because-the-lead-left.ts, which builds the sentence. Null in the
    * ordinary case, where the lead released it themselves and nothing extra is said.
    */
-  async sendReportReady(email: string, groundLabel: string, reportUrl: string, sharedByAnAdminSentence?: string, groundId?: string, subjectLine?: string): Promise<void> {
+  async sendReportReady(email: string, groundLabel: string, reportUrl: string, sharedByAnAdminSentence?: string, groundId?: string, subjectLine?: string, theInsight?: string[]): Promise<void> {
     /* Who can see what people said, as the invitation says it (whoSeesWhatYouSay): not "it does not quote anybody", which is not true. */
     const whoSees = await this.whoSeesWhatYouSay(groundId ? { groundId } as DeliveryContext : undefined);
     await this.sendEmail({
@@ -1249,8 +1249,11 @@ export class EmailService implements OnModuleInit {
        * ordinary case, to a participant who has met the product exactly once, ten minutes ago.
        */
       html: this.layout(
-        `<p>Everybody on <strong>${escapeHtml(groundLabel)}</strong> has now checked in, so the shared picture is open to all of you at the same moment.</p>` +
-        `<p>It shows where what you each said lines up, where it does not, and the one question worth answering together.</p>` +
+        /* THE FINDING FIRST (engagement spec section 7) when the report has one for this reader; otherwise the notice it always was. */
+        (theInsight?.length
+          ? theInsight.map((l) => `<p>${escapeHtml(l)}</p>`).join('') + `<p>The shared picture for <strong>${escapeHtml(groundLabel)}</strong> is open to all of you at the same moment, with the detail behind this.</p>`
+          : `<p>Everybody on <strong>${escapeHtml(groundLabel)}</strong> has now checked in, so the shared picture is open to all of you at the same moment.</p>` +
+            `<p>It shows where what you each said lines up, where it does not, and the one question worth answering together.</p>`) +
         `<p>${escapeHtml(whoSees)}</p>` +
         (sharedByAnAdminSentence ? `<p>${escapeHtml(sharedByAnAdminSentence)}</p>` : '') +
         `<p><a href="${reportUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Read the shared picture →</a></p>` +

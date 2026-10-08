@@ -1,6 +1,7 @@
 import { theOpenSession } from '../engagement/heres-what-is-new';
 import { aNumberInWords } from '../engagement/a-number-in-words';
 import { theSharedPictureSubject } from '../engagement/the-leads-subjects-carry-the-facts';
+import { theFirstInsight } from '../engagement/the-first-insight';
 import { theFactsOfTheWeek, theWeekOf } from '../email/the-leads-weekly-letter';
 import { theRecordsClock, theDayItBegan, wholeDaysTo } from '../board/a-wait-is-dated-not-counted';
 import { THE_REPORT_IN_SIMPLER_WORDS } from '../grounds/what-is-sent-in-simpler-words';
@@ -5171,6 +5172,17 @@ happened, and what is in the way.`;
    * two facts (what was done and by whom, what waits and on whom) where there are any, as facts and never comparisons. Counts and first names only:
    * nothing anybody said, and nothing from the report itself.
    */
+  /** What the shared picture finds, for one person, read as they are served it (never the stored report), so their privacy and naming rules hold. */
+  private async theInsightFor(
+    ground: { id: string; label: string; initiatorId: string; organizationId: string; simplerWords?: boolean | null },
+    p: { userId: string | null },
+    sessionNumber: number,
+  ) {
+    if (!p.userId) return null;
+    const report = await this.sessionReport(ground.id, sessionNumber, p.userId, ground.organizationId);
+    return theFirstInsight(report, ground.label, { isTheLead: p.userId === ground.initiatorId, simplerWords: ground.simplerWords });
+  }
+
   private async theReportReadySubject(ground: { id: string; label: string; initiatorId: string }, p: { userId: string | null }): Promise<string | undefined> {
     const stood = await theOpenSession(this.prisma, ground.id, ground.initiatorId);
     const isTheLead = !!p.userId && p.userId === ground.initiatorId;
@@ -5228,7 +5240,12 @@ happened, and what is in the way.`;
       } catch { continue; }
       try {
         if (aStandingUpdate && theOneLine) await this.email.sendTeamUpdateAllIn(p.email, theOneLine, ground.participants.length, linkFor(p), sharedByAnAdminSentence);
-        else await this.email.sendReportReady(p.email, ground.label, linkFor(p), sharedByAnAdminSentence, ground.id, await this.theReportReadySubject(ground, p).catch(() => undefined));
+        else {
+          /* The finding itself, as this reader is served the report (spec section 7). Where it cannot be read, the notice goes as it always did. */
+          const insight = await this.theInsightFor(ground, p, sessionNumber).catch(() => null);
+          const subject = (insight?.subjectForTheLead) ?? await this.theReportReadySubject(ground, p).catch(() => undefined);
+          await this.email.sendReportReady(p.email, ground.label, linkFor(p), sharedByAnAdminSentence, ground.id, subject, insight?.lines);
+        }
       } catch (err: any) {
         failed += 1;
         this.logger.error(`Report-ready mail failed for ${p.email} on ${groundId} round ${sessionNumber}: ${err?.message}`);
