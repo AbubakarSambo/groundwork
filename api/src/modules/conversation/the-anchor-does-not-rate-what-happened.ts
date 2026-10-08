@@ -8,13 +8,15 @@
  */
 const A_CLAUSE = /,?\s+which\s+(?:is|was|sounds like|looks like|shows|means)\s+(?:some |real |good |great |solid |clear |a lot of )?(?:progress|a good sign|good news|a step forward)(?=\s*[.!?,])/gi;
 const A_SENTENCE = /(?:^|(?<=[.!?]\s))(?:That(?:'|’)s|That is|This is|It(?:'|’)s|It is)\s+(?:really |very |some |real )?(?:good |great |solid |clear )?(?:progress|a good sign|good news|a step forward)\s*[.!]\s*/g;
+/** "That is the strongest kind of record entry." (anchor walk, 8 October): a mark given to what somebody said. */
+const A_MARK = /(?:^|(?<=[.!?]\s))(?:That(?:'|’)s|That is|This is|It(?:'|’)s|It is)\s+the\s+(?:strongest|best|clearest|most\s+\w+)\s+kind\s+of\s+(?:record\s+)?(?:entry|evidence|answer|update)\s*[.!]\s*/gi;
 const GLAD = /(?:^|(?<=[.!?]\s))I(?:'|’)m\s+(?:really\s+)?(?:glad|pleased|happy)\s+(?:to hear|that)\b[^.!?]*[.!?]\s*/gi;
 
 export function withoutARatingOfWhatHappened(reply: string): { text: string; cut: string[] } {
   const cut: string[] = [];
   const note = (re: RegExp) => (m: string) => { cut.push(m.trim()); return ''; };
   let text = String(reply ?? '');
-  text = text.replace(A_SENTENCE, note(A_SENTENCE)).replace(GLAD, note(GLAD)).replace(A_CLAUSE, note(A_CLAUSE));
+  text = text.replace(A_SENTENCE, note(A_SENTENCE)).replace(A_MARK, note(A_MARK)).replace(GLAD, note(GLAD)).replace(A_CLAUSE, note(A_CLAUSE));
   text = text.replace(/[ \t]{2,}/g, ' ').replace(/\s+([.!?])/g, '$1').trim();
   /* Never leave nothing: a reply that was only the rating is kept as it was. */
   return cut.length && text ? { text, cut } : { text: String(reply ?? ''), cut: [] };
