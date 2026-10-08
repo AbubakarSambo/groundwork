@@ -2751,6 +2751,20 @@ model PerformanceReview {
   recordRead             Json?     @map("record_read")
   /// The first day of the period the record was read for. The last day is `startedAt`.
   recordFrom             DateTime? @map("record_from")
+  /// THE APPEAL (decision 113, bug B-024). The person appeals a decided review, saying why; they may add to it
+  /// until it is decided. It goes to an admin who is not whoever decided the review (and not the person).
+  /// With no such admin it is saved and stays open, and `appealAskedForAdminAt` says the reviewer was asked to
+  /// add one. Read by the person, the admin who decides it, and (once decided) the reviewer; nobody else.
+  appeal                 String?   @map("appeal") @db.Text
+  appealAdditions        Json?     @map("appeal_additions")
+  appealedAt             DateTime? @map("appealed_at")
+  appealAskedForAdminAt  DateTime? @map("appeal_asked_for_admin_at")
+  appealOutcome          String?   @map("appeal_outcome")
+  appealReasons          String?   @map("appeal_reasons") @db.Text
+  appealDecidedById      String?   @map("appeal_decided_by_id")
+  appealDecidedAt        DateTime? @map("appeal_decided_at")
+  /// The decision and reasons as they stood before an appeal changed them, so nothing is lost.
+  appealDecisionWas      Json?     @map("appeal_decision_was")
 
   organization Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   corrections  PerformanceReviewCorrection[]

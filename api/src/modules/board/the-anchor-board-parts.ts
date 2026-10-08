@@ -75,6 +75,7 @@ async function theAnchorPartsOnly(args: {
     Object.assign(parts, theAnchorSections({
       scenario: ground.scenario as GroundScenario, reader: 'lead', carrying, lenses: parts.theMonthBoard?.lenses ?? null, question: parts.theMonthBoard?.question ?? null,
       ideas: parts.ideasFromYourTeam ?? null, people: parts.theMonthBoard?.peopleHelpingThingsMove ?? null, offers, record, ended,
+      monthBoard: parts.theMonthBoard ?? null, endOfMonth: parts.theEndOfMonthRead ?? null,
     }));
   } else {
     /* Whoever runs it but is not the lead (an admin) reads the fixed words about how Groundwork works with the team, and nothing that is a person's or the lead's own: the ideas are for the people in the check-in. */

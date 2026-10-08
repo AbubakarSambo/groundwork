@@ -49,6 +49,20 @@ class ReviewDecisionDto {
   @IsOptional() @IsString() @MaxLength(2000) reasons?: string;
 }
 
+class AppealDto {
+  @IsString() @MaxLength(2000) why!: string;
+}
+
+class AppealMoreDto {
+  @IsString() @MaxLength(2000) text!: string;
+}
+
+class AppealDecisionDto {
+  @IsOptional() @IsString() @MaxLength(40) outcome?: string;
+  @IsOptional() @IsString() @MaxLength(2000) reasons?: string;
+  @IsOptional() @IsString() @MaxLength(1000) decision?: string;
+}
+
 class StartLeavingDto {
   @IsString() @MaxLength(200) personId!: string;
   @IsString() @MaxLength(10) lastDay!: string;
@@ -329,6 +343,12 @@ export class SuitesController {
     return this.reviews.mine({ userId: user.id, organizationId: user.organizationId });
   }
 
+  @Get('reviews/appeals')
+  @ApiOperation({ summary: 'Appeals of decided reviews: those this admin may decide, and those waiting for another admin to be added (admins only)' })
+  reviewAppeals(@CurrentUser() user: CurrentUserData) {
+    return this.reviews.appealsToDecide({ userId: user.id, organizationId: user.organizationId });
+  }
+
   @Get('reviews/:id')
   @ApiOperation({ summary: 'One review, as this reader may read it' })
   oneReview(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
@@ -357,6 +377,24 @@ export class SuitesController {
   @ApiOperation({ summary: 'The person marks one line of their review as wrong and says what is true. It is kept beside the line, and the record is not changed.' })
   correctAReviewLine(@Param('id') id: string, @Param('key') key: string, @CurrentUser() user: CurrentUserData, @Body() dto: WordsDto) {
     return this.reviews.correct({ userId: user.id, organizationId: user.organizationId }, id, key, dto.text);
+  }
+
+  @Post('reviews/:id/appeal')
+  @ApiOperation({ summary: 'The person appeals a decided review, saying why. An admin who is not the reviewer decides it.' })
+  appealAReview(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: AppealDto) {
+    return this.reviews.appeal({ userId: user.id, organizationId: user.organizationId }, id, dto.why);
+  }
+
+  @Post('reviews/:id/appeal/more')
+  @ApiOperation({ summary: 'The person adds to their reasons, until the appeal is decided' })
+  addToAnAppeal(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: AppealMoreDto) {
+    return this.reviews.addToTheAppeal({ userId: user.id, organizationId: user.organizationId }, id, dto.text);
+  }
+
+  @Post('reviews/:id/appeal/decision')
+  @ApiOperation({ summary: 'An admin who is not the reviewer decides the appeal, giving reasons the person and the reviewer read' })
+  decideAnAppeal(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: AppealDecisionDto) {
+    return this.reviews.decideTheAppeal({ userId: user.id, organizationId: user.organizationId }, id, dto);
   }
 
   @Post('reviews/:id/decision')

@@ -25,7 +25,8 @@ describe('the text part', () => {
 
 describe('the way out', () => {
   it('is added for every mail we decided to send, as a footer and as the headers a mail client reads', () => {
-    expect(send).toMatch(/whatThisMailIs\(sender\) !== 'the way back in' \? await this\.theWayToStopHearingFromUs\(options\.to\) : null/);
+    /* Changed 8 October: the footer was on everything except the way back in, so mail an unsubscribed person still gets carried a "stop them here" that stopped nothing. It is on what we decide to send (the-stop-link-is-only-where-it-stops.spec.ts). */
+    expect(send).toMatch(/whatThisMailIs\(sender\) === 'we decided to send it' \? await this\.theWayToStopHearingFromUs\(options\.to\) : null/);
     expect(send).toContain("'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'");
     expect(UNSUBSCRIBE_FOOTER('https://x.test/u/t')).toContain('href="https://x.test/u/t"');
   });

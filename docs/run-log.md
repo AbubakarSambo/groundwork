@@ -1316,3 +1316,31 @@ Privacy: nothing private crossed between people in any run. Amani was refused Ba
 | F-27 | Admin, lead, Today and suite pages | A heading "Your own leave and spending requests" appears with nothing under it, on Today and at the foot of the suite pages. Seen in the page text only; check on screen. | No empty heading. | `client/src/pages/today/TodayPage.tsx` |
 
 Not fixable here, only noted: the screens' own button-count test needs a seeded world and `docs/prototype/` (ignored by git); the 24-scenario run is the other workspace's.
+
+## After-piece check, 8 October (head 391bf6d2): browser journeys, existing users, new mail
+
+Test bed copy a (fresh `reset.sh a`, API from a fresh build, one browser, local test Google ids, one jest at a time). Nothing was changed in the code or the tests. Temporary copies of the journeys (a mail reader for the bed's catcher, an admin approval step, a longer first-question wait) were used and deleted.
+
+| Part | Result |
+| --- | --- |
+| Journeys 1 to 4 (sign up, invite, lead set-up from a plan, member checks in, Ask, leave approved, Company page) | Pass, after the known adaptations. |
+| Google sign-in | `/auth/methods` says google true; both doors show the Google button; each goes to accounts.google.com (which refuses the made-up client id, as expected); a refused callback lands on "Google sign-in didn't finish" with two ways on. `google-sign-in-and-sign-up-as-on-live.spec.ts` 9 of 9. |
+| Review appeal | The screens do not draw it. Walked through the API on Msingi (two cases): the only admin is the reviewer, so the appeal waits and the reviewer is asked by email and WhatsApp to add a second admin; the admin added later is told and decides; the person, the reviewer and the new admin each read their own part; a colleague is refused; no mail carries any review content. A second review, with the person, the reviewer and the deciding admin all having stopped our mail, still sent all three appeal mails. |
+| `existing-clients-carry-on.spec.ts` | 11 of 11. |
+| Riverbank, 14 days, one day at a time | No mail or message about any of the five stalled check-ins; no WhatsApp at all (no add-on); a lead letter ("what is new") to the two leads only; report-ready reminders at most twice each. Faults below. |
+
+Faults, who reads them and where:
+
+| Who | Where | What |
+| --- | --- | --- |
+| Mira (Riverbank lead) | Day after release | Four emails in one day: the "what is new" digest and three "has not started" notices. Ines gets three in a day. `sendWhoHasNotStarted` is marked "asked for", so the one-routine-message rule never counts it. |
+| Leads | "has not started" mails | "Mira, Two people ...", "Ines, Someone ..." (capital after the comma); "Groundwork has stopped sending them reminders. Groundwork will not remind them again." says one thing twice; "their check-in" after a single named person. |
+| Approvers, Baobab | WhatsApp | Daily summary plus "requests waiting" within one day, five people on one day. |
+| Lead and members | Report-ready mail | "The team's sales target is 21" (21 is the credit days, the target is 18 million), and the same sentence three times in the lead's mail (opening, "conversation worth having", "what I would do first"). The Friday letter repeats it. |
+| Lead who set up from a plan | Mail after two others checked in | "You have not checked in yet either", although she answered during set-up (F-5 still there). |
+| Everyone | Footer "stop them here" | Sits on mail an unsubscribed person still gets (appeal mails, report-ready, has-not-started). |
+| Person reviewed | Review page and Today | After an appeal changed the decision it still says "Grace has decided your review" and "You and Grace talk it through, and Grace decides". |
+| Everyone | Sign-in link | The browser sends a stray empty save (`POST /entry/commit`, 400) on every sign-in by link; the person sees nothing. 404 on `/suites/time/mine` when timesheets are off, 403 on `/suites/reviews/board` for a member. |
+| Admin and member | Today | The heading "Your own leave and spending requests" has nothing under it (F-27 still there). |
+
+Not seen rendered on the bed: the follow-up that names the finding, and the value-first message when a wait clears (neither came due). The 24 scenarios and the scorer were not part of this check.

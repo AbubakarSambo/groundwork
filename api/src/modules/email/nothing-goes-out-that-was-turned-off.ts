@@ -200,7 +200,8 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendBillingChangeNotification: 'asked for',
   sendPaymentRequestEmail: 'asked for',
   sendPaymentFailed: 'asked for',
-  sendWhoHasNotStarted: 'asked for',
+  /* A chase Groundwork decided to send, told to the lead at the end of the reminders: routine, so the one-a-day rule counts it and her own opt-out stops it (8 October). */
+  sendWhoHasNotStarted: 'we decided to send it',
   /* They sent the invitation; this is what became of it. */
   sendInviteBounced: 'asked for',
   sendInviteLapsed: 'asked for',
@@ -264,6 +265,8 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendLeadFirstCheckIn: 'we decided to send it',
   /* A week after a report, if the lead has not opened a next session. */
   sendTheReportFollowUp: 'we decided to send it',
+  /* Invited, and nobody has started: what Groundwork is doing, told to the lead once while it does it. */
+  sendWaitingOnThePeople: 'we decided to send it',
   /* People have stopped answering: told to the lead once a week as an insight. */
   sendWhoHasGoneQuiet: 'we decided to send it',
 };

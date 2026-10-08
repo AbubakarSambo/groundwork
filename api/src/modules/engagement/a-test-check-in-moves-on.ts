@@ -4,7 +4,8 @@ import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended
 import { isAlreadyHeld } from './a-message-sent-once';
 import { theEngagementMoment } from './the-engagement-release-moment';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
-import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
+import { aGroundIsTheAnchors, STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
+import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 
 /**
  * A TEST CHECK-IN MOVES TOWARD ONE SMALL REAL ONE (decision 109 item 8; engagement spec sections 8 and 9).
@@ -66,12 +67,14 @@ export function theTestWords(g: { label: string; scenario?: string | null }): Th
 
 /** Whether this check-in is a test: only the lead took part, and it has been long enough. */
 export function isATestCheckIn(
-  g: { startedFrom?: string | null; createdAt: Date },
+  g: { startedFrom?: string | null; scenario?: unknown; createdAt: Date },
   tookPart: { participantId: string; userId: string | null }[],
   leadUserId: string,
   now: Date,
+  /* The anchor's switch. A check-in started from the anchor link keeps the anchor's clock either way; one that is the anchor's only by its scenario has it only while the switch is on (decision 114). */
+  anchorIsOn = false,
 ): boolean {
-  const days = g.startedFrom === STARTED_FROM_THE_ANCHOR ? THE_TRIAL_DAYS : A_WEEK_DAYS;
+  const days = g.startedFrom === STARTED_FROM_THE_ANCHOR || (anchorIsOn && aGroundIsTheAnchors(g)) ? THE_TRIAL_DAYS : A_WEEK_DAYS;
   if (now.getTime() - g.createdAt.getTime() < days * DAY) return false;
   if (!tookPart.length) return false;
   return tookPart.every((p) => p.userId === leadUserId);
@@ -96,6 +99,7 @@ export async function sendTheTestCheckInMessages(
     orderBy: { createdAt: 'asc' },
     ...page,
   }), 1000);
+  const anchorIsOn = await theAnchorScenarioIsOn(prisma).catch(() => false);
   const seen = new Set<string>();
   const base = (deps.frontendUrl || '').replace(/\/$/, '');
   let tried = 0;
@@ -109,7 +113,7 @@ export async function sendTheTestCheckInMessages(
       const tookPart = rows
         .filter((r) => !r.participant?.managingOnly && !isNotLetInYet(r.participant))
         .map((r) => ({ participantId: r.participantId as string, userId: (r.participant?.userId ?? null) as string | null }));
-      if (!isATestCheckIn(g, tookPart, g.initiatorId, now)) continue;
+      if (!isATestCheckIn(g, tookPart, g.initiatorId, now, anchorIsOn)) continue;
       /* NOBODY ELSE WAS EVER ADDED (decision 109 review): a check-in with a person invited, even one who never answered, is a real one that is waiting, not a test. */
       const others = await prisma.groundParticipant.count({ where: { groundId: g.id, OR: [{ userId: null }, { userId: { not: g.initiatorId } }] } });
       if (others > 0) continue;

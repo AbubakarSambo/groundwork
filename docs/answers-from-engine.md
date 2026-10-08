@@ -6613,7 +6613,7 @@ The anchor switch is still off by default, and nothing was removed. Every anchor
    >
    > Tell me what you are trying to get across. What's happening right now that makes you wish your team saw more of what you see?
 
-   Still only from `anchor-start`: the source mark of the link (`?source=`) and `thePeopleStep` (the people step's words and the limit of 20). Keep calling it for those two until they have moved; they will be served on the ordinary routes next.
+   The same call now also carries the other two things `anchor-start` held (8 October, later). Send the link's mark with it: `{ "scenario": "Help my team understand", "source": "founders-whatsapp" }`. The reply is `{ reply, source?, thePeopleStep? }`. `source` is the mark cleaned (letters, digits, dashes and underscores, up to 40; anything else is dropped and `source` is left out), for you to keep in the draft as before; like `thePeopleStep`, it is only there with the anchor's switch on, so with the switch off the reply is `{ reply }` alone, as it always was. `thePeopleStep` is `{ limit: 20, theLeadCounts: true, mayAdd: 19, heading, intro, contextLabel, button, limitSentence }`, the people step's words and limit, and is present only for a scenario that has its own (the anchor's, with the switch on); for every other scenario, and with the switch off, it is absent and you draw the ordinary people step. The server still holds the limit when the people are committed. You no longer need `GET /entry/anchor-start`; it still answers until you have moved.
 2. `GET /entry/anchor-available`: keep it only to decide whether to offer the "Help my team understand" card in the ordinary picker. It is not a page of its own.
 
 **The invitation**
@@ -6631,6 +6631,10 @@ The anchor switch is still off by default, and nothing was removed. Every anchor
 | `peopleHelpingTheTeamMove` | the lead | `{ heading: "People helping the team move", people: [{ name, sentence }] }` | `theMonthBoard.peopleHelpingThingsMove` |
 | `recommendations` | the lead | `{ heading: "Groundwork recommends", offers: [{ id, kind, says, question, yes, no }] }` | `GET /grounds/:id/recommended-check-ins` (listing only) |
 | `weeklyInsight` | the lead | `{ heading: "This week", text }` | nothing on screen before; it is the sentence the Friday WhatsApp carries |
+| `whereTheMonthIs` | the lead | `{ heading: "Where the month is", weekOfTheMonth: 1 to 4, text }`, for example "Week 2 of the month", or "This check-in has ended." | `theMonthBoard.weekOfTheMonth` and `.weekSaid` |
+| `whatIsMoving` | the lead | `{ heading: "What's moving", items: [sentence] }` | `theMonthBoard.whatIsMoving` |
+| `whatIsStillInTheWay` | the lead | `{ heading: "What's still getting in the way", items: [sentence] }` (patterns only from week three) | `theMonthBoard.whatIsStillGettingInTheWay` |
+| `theEndOfTheMonth` | the lead, once the month has run or the check-in has ended | `{ heading: "You wanted your team to understand...", yourOwnWords, parts: [{ heading, items }], people: [{ name, sentence }], reveal, revealSaid, continueOptions }`. `parts` are, in order and each left out when empty: What we found, What they now understand differently, What they are doing differently, What your team contributed, What you changed as a lead, What's still stuck, What should happen next. | `theEndOfMonthRead` |
 
 The two answers to a recommendation, `POST /grounds/:groundId/recommended-check-ins/:offerId/yes` and `.../not-now`, are ordinary answers to an offer and stay as they are.
 
@@ -6648,3 +6652,76 @@ The branch is `wip/prototype-ui` at the commit this note is in. Since the last n
 - Google sign-in is proven on the screens.
 
 4,760 of 4,760 client tests pass, and so do 59 of 59 browser checks. Still waiting on you: requests 186 to 197. Request 196 lists the anchor reads the screens still call, and request 197 is B-055.
+**Kept for now, and why.** `theMonthBoard`, `theEndOfMonthRead`, `activeLine`, `yourPartInMovingThings`, `aNudgeForYou` and `leadsReveal` are still served. `theMonthBoard` and `theEndOfMonthRead` say the same as the four new month sections above (built once from the record, never rebuilt when the board opens); `theMonthBoard` also still holds what the team is contributing, where perspectives differ and what Groundwork is working on next, which are not sections yet. Please move to the table above, then say in `docs/requests-to-engine.md` which of the kept ones you still call, and they go one at a time.
+
+## From the engine workspace, 8 October (later): appealing a decided review, for the screens to draw (decision 113, bug B-024)
+
+Built and walked through the API on the test bed (copy a) as the person, the reviewer, another admin, the only admin who is also the reviewer, a colleague and a lead. Nothing is behind a switch: it is part of the reviews suite, which is already on or off per organisation. All routes are under `/suites`, like the rest of the reviews.
+
+**What the person draws (on `GET /suites/reviews/:id`, `reader: "person"`).** Three new fields on the read, and the same on the list.
+
+| Field | Meaning |
+| --- | --- |
+| `mayAppeal` (boolean) | True once the review is decided and not yet appealed. Show the "Appeal this decision" button only then. |
+| `mayAppealSays` (string or null) | The sentence over the button. Example: "If you disagree with this decision, you can appeal it. An admin other than Grace reads the review, your side and your reasons, and decides." |
+| `appeal` (object or null) | Null until they appeal. Then `{ stands, says, appealedOn, yourReasons, additions: [{ said, on }], outcome, decidedByFirstName, reasons, decisionWas }`. |
+
+`appeal.stands` is one of `with-an-admin`, `needs-another-admin` and `decided`. Draw `appeal.says` as the sentence, as it is; it is already plain and names the people. The three, as the person reads them:
+
+- `with-an-admin`: "You have appealed this decision. An admin other than Grace reads your reasons and decides. You can add to your reasons until then."
+- `needs-another-admin`: "You have appealed this decision, and your appeal is saved. It needs an admin other than Grace, and there is not one yet. Grace has been asked to add a second admin, and that admin will decide your appeal. You can add to your reasons until then."
+- `decided`: "Baraka, an admin, has read your appeal, and the decision stands. You can read the reasons below." or, when changed, "Baraka, an admin, has read your appeal and has changed the decision. You can read the new decision and the reasons below."
+
+Once decided, `appeal.outcome` is `stands` or `changed`, `appeal.reasons` are the admin's reasons, and `decision` (already on the read) is the decision as it now stands. When it was changed, `appeal.decisionWas` is `{ says, reasons }` of the earlier decision; draw it small, below. `additions` is what the person added later, oldest first; draw `yourReasons` and then each addition.
+
+`GET /suites/reviews/mine` (the person's list) carries `mayAppeal`, `appealStands` and `appealSays` on each review, so the card on Today can say the same thing.
+
+**Routes for the person.**
+
+| Route | Body | What it does |
+| --- | --- | --- |
+| `POST /suites/reviews/:id/appeal` | `{ "why": "..." }` (up to 2,000 characters) | Appeals. Refused with a sentence if the review is not decided, already appealed, empty, or not the reader's own. Returns the person's review, with `appeal`. |
+| `POST /suites/reviews/:id/appeal/more` | `{ "text": "..." }` | Adds to their reasons until it is decided. The first reasons are kept; up to 10 additions. Returns the review. |
+
+**What the admin draws.** On `GET /suites/reviews/:id` (`reader: "writer"` or `"admin"`), a new field `appeal`, which is null unless the reader is an admin who is not the reviewer or the person, or the reviewer.
+
+- For an admin who may decide it: `{ reader: "admin", stands, says, personFirstName, appealedOn, theirReasons, additions, mayDecide, outcome, decidedByFirstName, reasons, decisionWas }`. Draw `theirReasons` and `additions` beside the review and the person's own view (`theirView`, already on the read). When `mayDecide` is true, draw the decision form: a choice of "The decision stands" (`outcome: "stands"`) or "Change the decision" (`outcome: "changed"`, which also needs the new decision in `decision`), and the reasons, which the person and the reviewer both read. `says`: "Juma appealed Grace's decision on 8 October. You are an admin who did not decide this review, so you decide the appeal. Juma and Grace both read your reasons. If you change the decision, your reasons become the reasons for the new decision, and everyone who may read the review reads them." Once it is decided, `theirReasons` is null and `additions` empty for any admin other than the one who decided it.
+- For the reviewer (the one who decided the review, who may also be an admin): `{ reader: "reviewer", stands, says, personFirstName, appealedOn, mayDecide: false, outcome, decidedByFirstName, reasons, decisionWas }`. There is **no** `theirReasons` for the reviewer while it waits; do not look for it. `says`, when there is no other admin: "Wairimu has appealed your decision. It needs an admin other than you to decide it, and there is not one yet. Please add a second admin to Groundwork. Once you have, that admin decides the appeal." When there is one: "Juma has appealed your decision. An admin other than you reads the review, Juma's side and the reasons, and decides." Once decided, the reviewer reads the outcome and the admin's reasons.
+- A lead who does not write the review, and anybody else who may open the review, gets `appeal: null`. A colleague is refused the review as before.
+
+| Route | Body | What it does |
+| --- | --- | --- |
+| `GET /suites/reviews/appeals` | none | Admins only. `{ appeals: [{ id, name, firstName, dueOn, appealedOn, reviewerFirstName }], waitingForAnotherAdmin: [{ id, name, firstName, dueOn, appealedOn, says }] }`. `appeals` are the ones this admin may decide (newest last); `waitingForAnotherAdmin` are the ones this admin decided as the reviewer, with nobody else yet able to decide them. No reasons are in the list: open the review (`GET /suites/reviews/:id`). Use it for an admin's Today and the reviews board. Anyone who is not an admin is refused with a sentence. |
+| `POST /suites/reviews/:id/appeal/decision` | `{ "outcome": "stands" or "changed", "reasons": "...", "decision": "..." }` | Admin only, and not the reviewer and not the person. `reasons` always; `decision` (what the review decision now says) only with `changed`. Returns the admin's read. |
+
+Once a review is appealed, `POST /suites/reviews/:id/decision` refuses the reviewer ("This decision has been appealed, so an admin other than you decides it now."), so draw no "change the decision" button for them after that. `PUT /suites/reviews/:id/words` refuses them too ("This decision has been appealed, so the review stays as it was when it was appealed. An admin other than you decides the appeal."), so the admin decides on the review as it was appealed.
+
+**Who is told, and what it says.** Never a word of the review or of the person's reasons, in the email or on WhatsApp.
+
+- An admin who may decide it, when the person appeals: the email "Juma has appealed a decision on their review", with "Open Groundwork to read the review, their side and their reasons, and then say whether the decision stands or is changed."
+- With no such admin, the reviewer: the email "Wairimu has appealed your decision, and it needs a second admin", and on WhatsApp "Hi Grace, Wairimu has appealed your decision on their review. It needs an admin other than you, and there is not one yet. Please add a second admin in Groundwork, and that admin will decide it." The appeal stays open until an admin who is not the reviewer exists; they then find it in `GET /suites/reviews/appeals`, and the person's `appeal.stands` changes to `with-an-admin` by itself. When a second admin is added, that admin is told once (the same email and WhatsApp as an admin who was there when the person appealed, with no word of the review or the reasons): at once when somebody is made an admin on the people page, and within the hour for any other way an admin appears. Nobody is told twice. (Changed 8 October, later.)
+- When it is decided, the person and the reviewer: "Your appeal has been decided" and "Juma's appeal has been decided", by email, and on WhatsApp where it is on.
+
+**For Hafsah to confirm.** Three new WhatsApp templates are proposed in `docs/whatsapp-templates.md` and must be submitted to Meta: `groundwork_review_appeal_waiting`, `groundwork_review_appeal_needs_admin` and `groundwork_review_appeal_decided`. Until Meta approves them, outside the 24 hours a WhatsApp message is recorded as not sent, and the email still goes. A review's history (`GET /suites/reviews/:id/history`) says nothing about an appeal, because the lead reads it too.
+
+**The anchor's messages by scenario (8 October, later; decision 114).** Nothing for the screens to draw. The lead's weekly email, the Friday WhatsApp insight, the nudge (email and WhatsApp) and the clock for a test check-in now treat a check-in as the anchor's when it has the anchor's scenario (`HELP_TEAM_UNDERSTAND`) as well as when it was started from the anchor link, so the check-in you make through the ordinary set-up gets them. They are still gated by the anchor switch, which is off. Not changed: the conversation's own anchor behaviour (ideas, offers, the participant guidance) and the recommendations still recognise `startedFrom` alone; those go next, with the conversation work.
+
+## 8 October: the engagement work, what is built on the engine and what is left for the screens (decision 109; spec `docs/engagement-spec.md`)
+
+The map of every requirement against what is built is `docs/engagement-spec-status.md`. The journeys, driven on the test bed with the clock moved, with every mail as each person read it, are `docs/engagement-journeys-on-the-test-bed.md`. Almost all of it is email, and nothing in it needs a screen. These are the parts a screen can show, and what each one reads.
+
+**1. The activation funnel, for the back office usage tab (screen only; the data is built).** `GET /api/v1/prompts/platform-funnel?range=...` (platform admins only, the call the Usage tab already makes) now carries `activation`. It is counts only, never a person or a word anybody said, over customers' check-ins and never our own organisations.
+- `activation.reached` counts how many check-ins ever got to each stage, in order: `created`, `peopleAdded` (somebody besides the lead was added), `firstResponse` (somebody besides the lead finished a session), `enoughToReport` (a report was made), `firstInsight` (the report went out), `leadActed` (a later session was started or something people said they would do was marked done after the report), `secondRound` (a second session was finished).
+- `activation.now` says where check-ins stand now, each in one place only: `test` (a week old or more, and nobody but the lead was ever added), `abandonedBeforeValue` (made over a fortnight ago, people added, no report, nothing moving for a fortnight), `abandonedAfterValue` (the report went out over a fortnight ago and nothing has moved since), `active` (a session started or finished in the last fortnight).
+- `activation.leadsWhoCameBack` is the count of leads with a second check-in, which is repeat use.
+- `activation.emails` is what became of the mail Groundwork decides to send: `delivered`, `failed`, `held` (kept for the morning) and `notSentOnPurpose` (stopped because the person had stopped these emails, or had already been sent their one for the day). The last two were never delivered, so they must not be drawn as mail nobody answered. Suggested words: "Sent", "Could not be sent", "Kept for the morning", "Not sent, because the person asked us not to or had already had their one for the day".
+- Suggested funnel title: "How far check-ins get". Read the stages as a funnel from `created` down to `secondRound`. `activation` can be `null` if it could not be read; the rest of the tab is unaffected.
+- What is not there: which message brought a person back. Nothing records which message a person answered, and email opens are deliberately not recorded (spec section 35), so "re-engaged" cannot be counted yet. It needs a record on the answer's route of which message the link came from; that is a request, not built.
+
+**2. The lead's Friday letter, the first insight and "what Groundwork is doing" have no screen of their own.** They are email. Each links to the check-in's board (or to the check-ins list when there is more than one). If the screens want the same facts on the lead's Today page ("Nobody has started Distributor review yet, and Groundwork is following up", "Here is what I would do this week"), the sentences are built in `engagement/waiting-on-the-people-you-invited.ts` (`theWaitingWords`) and `email/the-leads-weekly-letter.ts` (`theLeadsLetter`), and the weekly report's own "For you to do next week" is already served at `GET /grounds/:groundId/report/week`; no new engine route exists for them. Say so in a request and I will serve them.
+
+**3. "I can help you do that" (spec section 7) is not in the first-insight mail.** There is no route that opens Ask Groundwork with a question already put. If the screens add `/chat?about=<check-in id>` (the page opens with "Help me prepare for the conversation about <the difference>"), I will add the link to the mail. Until then the mail says what the report says would settle it ("Here is what I would do first") and links to the shared picture.
+
+**4. Words that changed in mail (so a screen that repeats them can).** Subjects are now: the lead, when a report goes out, reads `In "Q4 priorities", who owns the next step with the distributor is not agreed upon by the team, and one more difference is still open` (or `The shared picture for "X" found two differences still open` where the sentence is long); a participant reads the count as before and the finding in the body. A lead with a quiet team reads `Seven of 11 people on "Launch readiness" have not answered the latest check-in, and four things people said they would do were done, all by Amani`. The footer paragraph "The people in this check-in, including your manager, can see what you say in it" is now only under mail to the person who said something (reminders, the report notice), and not under review appeals, bills, API decisions, requests, seats or the lead's notices.
+
+**5. Left alone on purpose.** The stop-mail page and Settings label are unchanged since the section above.

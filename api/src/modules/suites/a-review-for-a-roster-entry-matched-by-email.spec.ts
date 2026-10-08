@@ -97,6 +97,8 @@ describe('Aisha, on the roster but never linked, finds her own review by her ema
     expect(await svc.mine(as('u-aisha'))).toEqual([{
       id: 'r-aisha', dueOn: '2027-03-01', writtenWithFirstName: 'Wairimu', stands: 'started',
       says: 'Wairimu has started your review. You can read it and add your own view before you meet.',
+      /* Added by decision 113: nothing to appeal before the review is decided. */
+      mayAppeal: false, appealStands: null, appealSays: null,
     }]);
   });
 

@@ -82,6 +82,12 @@ const CHECKED_AND_FINE = new Set([
    */
   'modules/grounds/grounds.service.ts:userId',
   /*
+   * The same collision. `if (!p.userId) return null` in reports.service.ts `theInsightFor` is about a GroundParticipant, whose `userId` is `String?`:
+   * somebody invited by address, or by the open link, who has not opened the invitation has no account yet, and is sent the report-ready notice without a
+   * finding because there is no one to serve the report to. It matched `AdminProfile.userId` on the name alone (engagement spec section 7, 8 October).
+   */
+  'modules/reports/reports.service.ts:userId',
+  /*
    * The same kind of collision, one table along. `if (!c.participantId)` and `!same.participantId`
    * in the paste writer are `GroundCommitment.participantId`, which is `String?` on purpose: an
    * action nobody owns keeps no owner rather than being attached to the nearest name, and placing

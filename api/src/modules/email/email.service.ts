@@ -528,7 +528,9 @@ export class EmailService implements OnModuleInit {
      * shows its own "unsubscribe" button from. The way-back-in mails (a sign-in link, a password
      * reset) are transactional and carry no footer: stopping those is not something anybody means.
      */
-    const wayOut = sender && whatThisMailIs(sender) !== 'the way back in' ? await this.theWayToStopHearingFromUs(options.to) : null;
+    /* THE STOP LINK IS ONLY ON MAIL THE STOP ACTUALLY STOPS (8 October). An unsubscribed person is still sent what they asked for (a report they took part in, a review
+       appeal, an invitation) and what is about running the product, so "stop them here" under those promised something that was not true. It is on what we decide to send. */
+    const wayOut = sender && whatThisMailIs(sender) === 'we decided to send it' ? await this.theWayToStopHearingFromUs(options.to) : null;
     if (wayOut) options = { ...options, html: `${options.html}${UNSUBSCRIBE_FOOTER(wayOut)}` };
     const text = plainTextOf(options.html);
     /* The one-click POST goes to the API, not the page: a mail program posts it with no person reading anything. */
@@ -595,7 +597,9 @@ export class EmailService implements OnModuleInit {
    */
   private writeItDown(options: { to: string; subject: string }, sender: string | undefined, outcome: 'sent' | 'held' | 'suppressed' | 'failed', because: string | null): Promise<unknown> {
     return this.prisma.notification
-      .create({ data: { channel: 'email', toAddress: options.to, sender: sender ?? null, subject: options.subject, outcome, because } })
+      /* The time is the application's own and not the database's default, because "has this person had their one today" compares it with the application's today
+         (decision 109 item 6). They are the same moment in production. On the test bed, whose clock is moved, a row stamped by the database would be days behind. */
+      .create({ data: { channel: 'email', toAddress: options.to, sender: sender ?? null, subject: options.subject, outcome, because, createdAt: new Date() } })
       .catch((err: any) => this.logger.warn(`Could not record a notification for ${options.to}: ${err?.message}`));
   }
 
@@ -1234,7 +1238,7 @@ export class EmailService implements OnModuleInit {
    * reports/who-shared-it-because-the-lead-left.ts, which builds the sentence. Null in the
    * ordinary case, where the lead released it themselves and nothing extra is said.
    */
-  async sendReportReady(email: string, groundLabel: string, reportUrl: string, sharedByAnAdminSentence?: string, groundId?: string, subjectLine?: string): Promise<void> {
+  async sendReportReady(email: string, groundLabel: string, reportUrl: string, sharedByAnAdminSentence?: string, groundId?: string, subjectLine?: string, theInsight?: string[]): Promise<void> {
     /* Who can see what people said, as the invitation says it (whoSeesWhatYouSay): not "it does not quote anybody", which is not true. */
     const whoSees = await this.whoSeesWhatYouSay(groundId ? { groundId } as DeliveryContext : undefined);
     await this.sendEmail({
@@ -1249,8 +1253,11 @@ export class EmailService implements OnModuleInit {
        * ordinary case, to a participant who has met the product exactly once, ten minutes ago.
        */
       html: this.layout(
-        `<p>Everybody on <strong>${escapeHtml(groundLabel)}</strong> has now checked in, so the shared picture is open to all of you at the same moment.</p>` +
-        `<p>It shows where what you each said lines up, where it does not, and the one question worth answering together.</p>` +
+        /* THE FINDING FIRST (engagement spec section 7) when the report has one for this reader; otherwise the notice it always was. */
+        (theInsight?.length
+          ? theInsight.map((l) => `<p>${escapeHtml(l)}</p>`).join('') + `<p>The shared picture for <strong>${escapeHtml(groundLabel)}</strong> is open to all of you at the same moment, with the detail behind this.</p>`
+          : `<p>Everybody on <strong>${escapeHtml(groundLabel)}</strong> has now checked in, so the shared picture is open to all of you at the same moment.</p>` +
+            `<p>It shows where what you each said lines up, where it does not, and the one question worth answering together.</p>`) +
         `<p>${escapeHtml(whoSees)}</p>` +
         (sharedByAnAdminSentence ? `<p>${escapeHtml(sharedByAnAdminSentence)}</p>` : '') +
         `<p><a href="${reportUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Read the shared picture →</a></p>` +
@@ -1331,6 +1338,17 @@ export class EmailService implements OnModuleInit {
       subject,
       html: this.layout(lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('') + `<p><a href="${linkUrl}">${escapeHtml(linkLabel)}</a></p>`),
     }, context, 'sendTheReportFollowUp');
+    return context.outcome ?? 'sent';
+  }
+
+  /** INVITED, AND NOBODY HAS STARTED: what Groundwork is doing, told to the lead while it does it (engagement spec section 5, journey 3). Words: engagement/waiting-on-the-people-you-invited.ts. */
+  async sendWaitingOnThePeople(email: string, subject: string, lines: string[], linkLabel: string, linkUrl: string): Promise<'sent' | 'held' | 'suppressed'> {
+    const context: DeliveryContext = { kind: 'OTHER' };
+    await this.sendEmail({
+      to: email,
+      subject,
+      html: this.layout(lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('') + `<p><a href="${linkUrl}">${escapeHtml(linkLabel)}</a></p>`),
+    }, context, 'sendWaitingOnThePeople');
     return context.outcome ?? 'sent';
   }
 
@@ -1416,7 +1434,7 @@ export class EmailService implements OnModuleInit {
   }
 
   /** Participant checked in. The lead is told by the person's name, with how many are still to come. */
-  async sendParticipantCheckedIn(adminEmail: string, participantName: string, groundLabel: string, groundUrl: string, stillPending?: number | WhoIsLeft, progress?: { answered: string[]; ofHowMany: number }): Promise<void> {
+  async sendParticipantCheckedIn(adminEmail: string, participantName: string, groundLabel: string, groundUrl: string, stillPending?: number | WhoIsLeft, progress?: { answered: string[]; ofHowMany: number; youAreStillToAnswer?: boolean }): Promise<void> {
     const left: WhoIsLeft | undefined = typeof stillPending === 'number' ? { names: [], count: stillPending } : stillPending;
     const partial = progress && progress.answered.length > 0 && progress.answered.length < progress.ofHowMany ? thePartialPicture(groundLabel, progress, left) : null;
     const pendingNote = left && left.count > 0
@@ -1442,16 +1460,18 @@ export class EmailService implements OnModuleInit {
    * rule that it is never a count, belong with the decision to send it rather than
    * with the mail. Here it is only wrapped and posted.
    */
-  async sendWhoHasNotStarted(email: string, subject: string, text: string): Promise<void> {
+  async sendWhoHasNotStarted(email: string, subject: string, text: string): Promise<'sent' | 'held' | 'suppressed'> {
     const escaped = text
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
+    const context: DeliveryContext = { kind: 'OTHER' };
     await this.sendEmail({
       to: email,
       subject,
       html: this.layout(escaped.split('\n').map((l) => `<p>${l || '&nbsp;'}</p>`).join('')),
-    }, undefined, 'sendWhoHasNotStarted');
+    }, context, 'sendWhoHasNotStarted');
+    return context.outcome ?? 'sent';
   }
 
   /**

@@ -15,7 +15,7 @@ describe('the lead is told who checked in, by name, with the true count', () => 
     /* Changed on 7 October: the count is made by whoIsLeftToCheckIn, which leaves out the person who just checked in, the lead and anybody not expected (who-has-not-checked-in-yet.spec.ts reads what it says). */
     expect(src).toMatch(/const stillPending = whoIsLeftToCheckIn\(ground\.participants as any, \{ justCheckedIn: event\.participantId, readerEmail: ground\.initiator\.email \}\)/);
     /* Changed under decision 109, journey 4: the call also carries who is in, for the honest partial picture. */
-    expect(src).toMatch(/sendParticipantCheckedIn\(ground\.initiator\.email, participantName, ground\.label, groundUrl, stillPending, \{ answered, ofHowMany: counted\.length \}\)/);
+    expect(src).toMatch(/sendParticipantCheckedIn\(ground\.initiator\.email, participantName, ground\.label, groundUrl, stillPending, \{ answered, ofHowMany: counted\.length, youAreStillToAnswer \}\)/);
   });
   it('and the mail takes a name, not an address', () => {
     const mail = strip(readFileSync(join(__dirname, '../email/email.service.ts'), 'utf8'));

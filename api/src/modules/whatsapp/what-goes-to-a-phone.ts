@@ -127,3 +127,11 @@ export const aReviewWasStarted = (personFirstName: string | null | undefined, wr
   notice('review-started', [personFirstName?.trim() || 'there', writerFirstName?.trim() || 'The person who writes it with you']);
 export const aReviewWasDecided = (personFirstName: string | null | undefined, writerFirstName: string | null | undefined) =>
   notice('review-decided', [personFirstName?.trim() || 'there', writerFirstName?.trim() || 'The person who writes it with you']);
+
+/** The appeal of a decided review (decision 113). Never a word of the review or of the reasons. */
+export const anAppealWaitsForAnAdmin = (adminFirstName: string | null | undefined, personFirstName: string) =>
+  notice('review-appeal-waiting', [adminFirstName?.trim() || 'there', personFirstName.trim() || 'Somebody']);
+export const anAppealNeedsASecondAdmin = (reviewerFirstName: string | null | undefined, personFirstName: string) =>
+  notice('review-appeal-needs-admin', [reviewerFirstName?.trim() || 'there', personFirstName.trim() || 'Somebody']);
+export const anAppealWasDecidedSaid = (toFirstName: string | null | undefined, adminFirstName: string | null | undefined) =>
+  notice('review-appeal-decided', [toFirstName?.trim() || 'there', adminFirstName?.trim() || 'An admin']);

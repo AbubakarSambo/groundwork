@@ -20,7 +20,10 @@ describe('the report-ready mail', () => {
     /* Decision 53 (29 September 2026) added a fourth argument: the sentence naming who shared the
        report, when it was not the lead - see who-shared-it-because-the-lead-left.ts. */
     /* Changed under decision 109: the call also carries the subject, a fact about who checked in (theReportReadySubject). */
-    expect(tell).toMatch(/sendReportReady\(p\.email, ground\.label, linkFor\(p\), sharedByAnAdminSentence, ground\.id, await this\.theReportReadySubject\(ground, p\)/);
+    /* Changed again on 8 October (engagement spec section 7): the call also carries the finding read for that person (theInsightFor), and the lead's subject is the
+       finding where there is one. The link, the sentence naming who shared it and the check-in are the same. */
+    expect(tell).toMatch(/sendReportReady\(p\.email, ground\.label, linkFor\(p\), sharedByAnAdminSentence, ground\.id, subject, insight\?\.lines\)/);
+    expect(tell).toMatch(/await this\.theReportReadySubject\(ground, p\)/);
     /* And release() sends through it, not on its own. */
     const release = reports.slice(reports.indexOf('async release('), reports.indexOf('async tellThemTheReportIsReady('));
     expect(release).toContain('await this.tellThemTheReportIsReady(groundId, roundNow, undefined, sharedBecauseLeadLeft?.sentence)');

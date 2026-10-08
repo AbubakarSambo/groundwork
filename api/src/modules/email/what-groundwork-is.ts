@@ -27,12 +27,38 @@ import { whoSeesWhatYouSayIn } from './who-sees-what-you-say';
  * have answered, what is new, or what to do next. Those leave it off.
  */
 export const NOT_ABOUT_ONE_CHECK_INS_ANSWERS: ReadonlySet<string> = new Set([
-  'sendYourWeek', 'sendHeresWhatIsNew', 'sendTestCheckInMovesOn', 'sendLeadFirstCheckIn', 'sendTheReportFollowUp', 'sendWhoHasGoneQuiet', 'sendTheLeadsWeeklyLetter',
+  'sendYourWeek', 'sendHeresWhatIsNew', 'sendTestCheckInMovesOn', 'sendLeadFirstCheckIn', 'sendTheReportFollowUp', 'sendWhoHasGoneQuiet', 'sendWaitingOnThePeople', 'sendTheLeadsWeeklyLetter',
+]);
+
+/**
+ * MAIL THAT IS NOT ABOUT WHAT ANYBODY SAID, OR THAT IS NOT WRITTEN TO THE PERSON WHO SAID IT (engagement review, 8 October).
+ *
+ * The paragraph says "The people in this check-in, including your manager, can see what you say in it." That is true under a reminder to answer. It is not
+ * true under a review appeal that goes to an admin, under a message to the back-office team, under a bill, an API decision, a request somebody decided, a
+ * person let into the organisation, or a lead's notice that somebody has checked in (the lead is not the person who said it). Those leave it off, and a
+ * mail that is not listed here and is not "the way back in" still carries it, as before.
+ */
+export const NOT_WRITTEN_TO_THE_PERSON_WHO_SAID_IT: ReadonlySet<string> = new Set([
+  /* To the back-office team, and to an admin about a review appeal or an admin added after one (suites/a-review-appeal-told.service.ts). */
+  'sendTeamAlert',
+  /* To the lead or an admin, about somebody else. */
+  'sendParticipantCheckedIn', 'sendWhoHasNotStarted', 'sendMoreTimeAsked', 'sendSomebodyIsWaiting', 'sendParticipantBlockedNudge',
+  /* About a request, an approval, a seat or the organisation. */
+  'sendApprovalsSummary', 'sendRequestDecided', 'sendGroundApproved', 'sendGroundDeclined', 'sendYouAreInNow', 'sendTheyAreInNow', 'sendTheyWereNotLetIn',
+  'sendInviteBounced', 'sendInviteLapsed',
+  /* About money, the account, the API and the running of the product. */
+  'sendCoachRequestReceived', 'sendRecordPortabilityNotice', 'sendBillingChangeNotification', 'sendPaymentRequestEmail', 'sendPaymentFailed',
+  'sendSubscriptionConfirmed', 'sendSubscriptionCancelled', 'sendSubscriptionPaymentFailed', 'sendSubscriptionRenewal', 'sendFreeExtensionClaimed',
+  'sendApproachingSessionLimit', 'sendMemberCapWarning', 'sendCareFeeConfirmation', 'sendCodeExpiryReminder',
+  'sendApiAccessApproved', 'sendApiAccessDeclined', 'sendApiAccessWithdrawn', 'sendWebhookEndpointDying',
 ]);
 
 export function shouldSayWhatGroundworkIs(sender: string | undefined): boolean {
   if (!sender) return false;
   if (NOT_ABOUT_ONE_CHECK_INS_ANSWERS.has(sender)) return false;
+  if (NOT_WRITTEN_TO_THE_PERSON_WHO_SAID_IT.has(sender)) return false;
+  /* Mail to our own roster about the running of the product is never about a check-in's answers. */
+  if (whatThisMailIs(sender) === 'operational') return false;
   /* A door does not need explaining, and a person opening one is not writing anything down. */
   return whatThisMailIs(sender) !== 'the way back in';
 }

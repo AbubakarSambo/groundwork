@@ -30,6 +30,12 @@ import { theirTimeZone } from '../whatsapp/the-persons-own-time-zone';
 import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
 import { sendWhoHasGoneQuiet as sendWhoHasGoneQuietToLeads } from '../engagement/who-has-gone-quiet';
 import { sendTheReportFollowUps } from '../engagement/the-report-follow-up';
+import { sendWhatGroundworkIsDoing as sendWhatGroundworkIsDoingToLeads } from '../engagement/waiting-on-the-people-you-invited';
+import { whatTheLeadsWeeklyReportSays } from '../engagement/the-leads-own-weekly-report';
+import { theFirstOpenDifference } from '../engagement/the-first-insight';
+import { ReportsService } from '../reports/reports.service';
+import { TheWeeklyReportService } from '../reports/the-weekly-report.service';
+import { ModuleRef } from '@nestjs/core';
 import { sendHeresWhatIsNew as sendHeresWhatIsNewToLeads } from '../engagement/heres-what-is-new';
 import { theEngagementMoment } from '../engagement/the-engagement-release-moment';
 import { sendTheParticipantsWeeks } from '../engagement/the-participants-week';
@@ -113,6 +119,8 @@ export class GroundsCron implements OnApplicationBootstrap {
     @Optional() private spending?: SpendingService,
     /* The You board, read for each person's own week by email (decision 109). Optional and last for the same reason. */
     @Optional() private yourBoard?: YourBoardService,
+    /* Finds the weekly report's service for the lead's weekly letter, without importing the module that imports this one. Optional and last for the same reason. */
+    @Optional() private moduleRef?: ModuleRef,
   ) {}
 
   /**
@@ -856,7 +864,7 @@ export class GroundsCron implements OnApplicationBootstrap {
            * ON AN ANCHOR CHECK-IN, THE ANCHOR'S NUDGE (piece 30; decision 105 item 3): the person's own last open promise,
            * to them only, in place of the chase. Every gate above still holds, and the sender counts it as the day's one.
            */
-          const theirs = await theirPromiseToFollowUp(this.prisma, { id: ci.groundId, startedFrom: ci.ground.startedFrom }, ci.createdAt, ci.participantId);
+          const theirs = await theirPromiseToFollowUp(this.prisma, { id: ci.groundId, startedFrom: ci.ground.startedFrom, scenario: ci.ground.scenario }, ci.createdAt, ci.participantId);
           if (theirs) said = itFollowsUpTheirPromise(who, theirs, ci.ground.simplerWords);
           else {
             const counts = await this.whoHasAnswered(ci.groundId, ci.sessionNumber);
@@ -921,6 +929,18 @@ export class GroundsCron implements OnApplicationBootstrap {
   }
 
   /**
+   * The lead's own weekly report for one check-in, as she is served it, or null. The service is looked up when it is needed and not injected, because the
+   * reports module already imports this one and a module cannot import the one that imports it. It is read, never built: opening it rebuilds nothing.
+   */
+  private async theLeadsOwnWeeklyReport(g: { id: string; initiatorId: string }, now: Date) {
+    const weekly = this.moduleRef?.get(TheWeeklyReportService, { strict: false });
+    if (!weekly) return null;
+    const lead = await this.prisma.user.findUnique({ where: { id: g.initiatorId }, select: { role: true, organizationId: true } }).catch(() => null);
+    const read = await weekly.read(g.id, { userId: g.initiatorId, role: (lead as any)?.role ?? null, organizationId: (lead as any)?.organizationId ?? null }, now).catch(() => null);
+    return whatTheLeadsWeeklyReportSays(read as any, now);
+  }
+
+  /**
    * THE LEAD'S WEEKLY LETTER BY EMAIL (anchor piece 29), Friday at three in the afternoon in Lagos, only
    * while the anchor switch is on. One letter per lead, from the past seven days of the check-ins they
    * started from the anchor link. What it says and never says is in email/the-leads-weekly-letter.ts.
@@ -931,9 +951,13 @@ export class GroundsCron implements OnApplicationBootstrap {
   }
 
   async sendTheLeadsWeeklyLettersInner(now: Date = new Date()): Promise<{ tried: number }> {
-    if (!(await theAnchorScenarioIsOn(this.prisma))) return { tried: 0 };
+    /* Every lead's check-ins, not the anchor's alone (engagement spec section 24). The anchor's own are kept only while its switch is on. */
+    const anchorIsOn = await theAnchorScenarioIsOn(this.prisma);
     const result = await sendTheLeadsWeeklyLetters(
-      { prisma: this.prisma, email: this.email, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
+      {
+        prisma: this.prisma, email: this.email, frontendUrl: this.config.get<string>('resend.frontendUrl') || '',
+        everyCheckIn: { anchorIsOn, weeklyReport: (g, at) => this.theLeadsOwnWeeklyReport(g, at) },
+      },
       now,
     ).catch((err: any) => { this.logger.warn(`The leads' weekly letters could not be sent: ${err?.message}`); return { tried: 0 }; });
     if (result.tried) this.logger.log(`Email: ${result.tried} weekly lead letter(s) tried.`);
@@ -941,10 +965,10 @@ export class GroundsCron implements OnApplicationBootstrap {
   }
 
   /**
-   * A TEST CHECK-IN MOVES TOWARD ONE SMALL REAL ONE (decision 109 item 8), Tuesday morning in Lagos. Once ever per lead; see
+   * A TEST CHECK-IN MOVES TOWARD ONE SMALL REAL ONE (decision 109 item 8), Tuesday at ten past eight in Lagos, before the morning's reminders (see below). Once ever per lead; see
    * engagement/a-test-check-in-moves-on.ts for what a test is and what is said.
    */
-  @Cron('0 10 * * 2', { timeZone: 'Africa/Lagos' })
+  @Cron('10 8 * * 2', { timeZone: 'Africa/Lagos' })
   async sendTheTestCheckInMessages() {
     await onceAcrossCopies(this.prisma, 'test-check-in-moves-on', theWeek(), () => this.sendTheTestCheckInMessagesInner());
   }
@@ -959,17 +983,25 @@ export class GroundsCron implements OnApplicationBootstrap {
   }
 
   /**
-   * THE FOLLOW-UP AFTER A REPORT (decision 109; section 36, journey 6), mid-morning in Lagos on weekdays: a week after a report went out, once, to a
+   * THE FOLLOW-UP AFTER A REPORT (decision 109; section 36, journey 6), at a quarter past eight in Lagos on weekdays, before the morning's reminders (see below): a week after a report went out, once, to a
    * lead who has not opened a next session. See engagement/the-report-follow-up.ts.
    */
-  @Cron('0 11 * * 1-5', { timeZone: 'Africa/Lagos' })
+  @Cron('15 8 * * 1-5', { timeZone: 'Africa/Lagos' })
   async sendTheReportFollowUps() {
     await onceAcrossCopies(this.prisma, 'report-follow-up', theDay(), () => this.sendTheReportFollowUpsInner());
   }
 
   async sendTheReportFollowUpsInner(now: Date = new Date()): Promise<{ tried: number }> {
     const result = await sendTheReportFollowUps(
-      { prisma: this.prisma, email: this.email, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
+      {
+        prisma: this.prisma, email: this.email, frontendUrl: this.config.get<string>('resend.frontendUrl') || '',
+        /* The report as the lead is served it, found when it is needed (the reports module imports this one). */
+        theDifference: async (r) => {
+          const reports = this.moduleRef?.get(ReportsService, { strict: false });
+          if (!reports) return null;
+          return theFirstOpenDifference(await reports.sessionReport(r.groundId, r.lastReleasedSession, r.leadUserId, r.organizationId));
+        },
+      },
       now,
     ).catch((err: any) => { this.logger.warn(`The report follow-ups could not be sent: ${err?.message}`); return { tried: 0 }; });
     if (result.tried) this.logger.log(`Email: ${result.tried} report follow-up(s) tried.`);
@@ -977,10 +1009,10 @@ export class GroundsCron implements OnApplicationBootstrap {
   }
 
   /**
-   * WHO HAS GONE QUIET (decision 109; section 36, journeys 7 and 9), Wednesday mid-morning in Lagos: once a week to a lead, as an insight about the
+   * WHO HAS GONE QUIET (decision 109; section 36, journeys 7 and 9), Wednesday at a quarter to nine in Lagos, before the morning's reminders (see below): once a week to a lead, as an insight about the
    * team or across her check-ins. See engagement/who-has-gone-quiet.ts.
    */
-  @Cron('0 10 * * 3', { timeZone: 'Africa/Lagos' })
+  @Cron('45 8 * * 3', { timeZone: 'Africa/Lagos' })
   async sendWhoHasGoneQuiet() {
     await onceAcrossCopies(this.prisma, 'who-has-gone-quiet', theWeek(), () => this.sendWhoHasGoneQuietInner());
   }
@@ -991,6 +1023,31 @@ export class GroundsCron implements OnApplicationBootstrap {
       now,
     ).catch((err: any) => { this.logger.warn(`The "gone quiet" messages could not be sent: ${err?.message}`); return { tried: 0 }; });
     if (result.tried) this.logger.log(`Email: ${result.tried} "gone quiet" message(s) tried.`);
+    return result;
+  }
+
+  /*
+   * WHY THE LEAD'S INSIGHTS GO BEFORE THE MORNING'S REMINDERS (found on the test bed, 13 November). A person is sent one routine message a day (decision 109 item 6),
+   * and the first to ask gets it. The reminders ran at 08:00 and 09:00 UTC and these at 09:00 to 10:30, so a lead who had a check-in of her own to answer was
+   * reminded about it every morning, and the follow-up, the gone-quiet insight and "what Groundwork is doing" were refused that day and tried again the next, and
+   * never went. They now run from 07:10 to 07:45 UTC (ten past eight to a quarter to nine in Lagos, which is after quiet hours end there and in East Africa), ahead
+   * of the reminders.
+   */
+  /**
+   * INVITED, AND NOBODY HAS STARTED (engagement spec section 5; journey 3), weekdays at half past eight in Lagos, before the morning's reminders (see below). On the first reminder day it says that
+   * Groundwork is about to remind them; on later days, who has been reminded. Once per check-in. See engagement/waiting-on-the-people-you-invited.ts.
+   */
+  @Cron('30 8 * * 1-5', { timeZone: 'Africa/Lagos' })
+  async sendWhatGroundworkIsDoing() {
+    await onceAcrossCopies(this.prisma, 'what-groundwork-is-doing', theDay(), () => this.sendWhatGroundworkIsDoingInner());
+  }
+
+  async sendWhatGroundworkIsDoingInner(now: Date = new Date()): Promise<{ tried: number }> {
+    const result = await sendWhatGroundworkIsDoingToLeads(
+      { prisma: this.prisma, email: this.email, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
+      now,
+    ).catch((err: any) => { this.logger.warn(`The "waiting on the people you invited" messages could not be sent: ${err?.message}`); return { tried: 0 }; });
+    if (result.tried) this.logger.log(`Email: ${result.tried} "waiting on the people you invited" message(s) tried.`);
     return result;
   }
 

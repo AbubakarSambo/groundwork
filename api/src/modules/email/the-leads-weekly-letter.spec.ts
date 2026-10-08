@@ -60,7 +60,8 @@ describe('the lead\'s weekly letter, as the lead reads it', () => {
   it('is built from check-ins started from the anchor that are still going, and never reads what anybody said', async () => {
     const w = aFriday();
     await sendTheLeadsWeeklyLetters({ prisma: w.prisma, email: w.email, frontendUrl: 'https://app.test' }, NOW);
-    expect(w.prisma.lastWhere.startedFrom).toBe('anchor');
+    /* Changed by decision 114: a check-in with the anchor's scenario is the anchor's too, so it asks for either (the-anchor-is-recognised-by-its-scenario.spec.ts). */
+    expect(w.prisma.lastWhere.OR).toEqual([{ startedFrom: 'anchor' }, { scenario: 'HELP_TEAM_UNDERSTAND' }]);
     /* Only counts: no turn, message, question to Ask Groundwork or report is read. */
     expect([...w.touched].sort()).toEqual(['checkIn', 'ground', 'groundCommitment', 'groundDependency', 'groundParticipant', 'user']);
   });
@@ -127,15 +128,21 @@ describe('the job, behind the switch', () => {
     c.logger = { log: jest.fn(), warn: jest.fn() };
     return c;
   };
-  it('with the switch off it looks at nothing and sends nothing', async () => {
+  /* Changed on 8 October (engagement spec section 24, decision 117): the anchor is off at release and its check-ins follow through the ordinary flow, so with
+     the switch off the job no longer looks at nothing. It looks at every check-in that is NOT the anchor's, and the anchor's only while the switch is on. */
+  it('with the switch off it looks only at check-ins that are not the anchor\'s', async () => {
     const c = cron(false);
     expect(await c.sendTheLeadsWeeklyLettersInner(NOW)).toEqual({ tried: 0 });
-    expect(c.prisma.ground.findMany).not.toHaveBeenCalled();
+    expect(c.prisma.ground.findMany).toHaveBeenCalled();
+    const where = c.prisma.ground.findMany.mock.calls[0][0].where;
+    expect(JSON.stringify(where)).toContain('"not":"HELP_TEAM_UNDERSTAND"');
+    expect(JSON.stringify(where)).not.toContain('"scenario":"HELP_TEAM_UNDERSTAND"');
   });
-  it('with the switch on it looks for the anchor check-ins', async () => {
+  it('with the switch on it looks at every check-in, the anchor\'s included', async () => {
     const c = cron(true);
     expect(await c.sendTheLeadsWeeklyLettersInner(NOW)).toEqual({ tried: 0 });
     expect(c.prisma.ground.findMany).toHaveBeenCalled();
+    expect(JSON.stringify(c.prisma.ground.findMany.mock.calls[0][0].where)).not.toContain('HELP_TEAM_UNDERSTAND');
   });
   it('is scheduled for Friday at three in the afternoon in Lagos', () => {
     const opts = Reflect.getMetadata('SCHEDULE_CRON_OPTIONS', GroundsCron.prototype.sendTheLeadsWeeklyLetters);

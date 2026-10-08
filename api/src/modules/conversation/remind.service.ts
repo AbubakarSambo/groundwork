@@ -19,7 +19,7 @@ import { theNudgeLineFor } from '../engagement/a-follow-up-from-their-own-record
 import { WorkspaceNotifierService } from '../workspace/workspace-notifier.service';
 import {
   whatToDoToday,
-  theEmailForTheLead,
+  theOneEmailForTheLead,
   ChasingPolicy,
 } from './chasing-belongs-to-the-lead';
 
@@ -62,7 +62,7 @@ export class RemindService {
 
     const ground = await this.prisma.ground.findUnique({
       where: { id: checkIn.groundId },
-      select: { id: true, label: true, startedFrom: true },
+      select: { id: true, label: true, startedFrom: true, scenario: true },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
 
@@ -268,6 +268,7 @@ export class RemindService {
             label: true,
             /* Whether it is an anchor check-in, for the anchor's nudge (piece 30). */
             startedFrom: true,
+            scenario: true,
             /* The lead set the check-in to use simpler words: the reminder email says it in the plainer form. */
             simplerWords: true,
             /* For the channel notice: `tell` is scoped to an organisation. */
@@ -295,15 +296,15 @@ export class RemindService {
       },
     });
 
-    /* Who the lead should hear about, gathered as we go and sent as ONE email per
-       ground below. A mail per person is the same chase with the lead as its
-       target. */
-    const forTheLead = new Map<string, {
-      to: string; leadName: string | null; label: string; chasedOn: number[];
+    /* Who each lead should hear about, gathered as we go and sent as ONE email per LEAD, not per ground or per person: a lead with four check-ins that ran out
+       of reminders on one morning was sent four mails (8 October). Each ground keeps its own part inside it. */
+    type APart = {
+      label: string; chasedOn: number[];
       who: string[]; whoEmails: string[]; whoNudgedAt: (Date | null)[]; checkInIds: string[]; leadIsOpenToo: boolean;
       /* For the channel notice: `tell` is scoped to an organisation, not to a ground. */
       organizationId: string;
-    }>();
+    };
+    const forTheLead = new Map<string, { to: string; leadName: string | null; parts: Map<string, APart> }>();
 
     /* Approved leave, for every person in the sweep, in one read (week 23). */
     const leave = await leaveOfThePeopleOn(this.prisma as any, [...new Set(notStarted.map((c) => c.groundId))]);
@@ -317,7 +318,10 @@ export class RemindService {
          not started. The round does not wait for them. */
       if (checkIn.participantId && awayUntilOn(leave.get(checkIn.participantId), now)) continue;
 
-      const daysElapsed = Math.floor((now.getTime() - checkIn.createdAt.getTime()) / (1000 * 60 * 60 * 24));
+      /* DAYS OPEN COUNT FROM WHEN THE SESSION OPENED. A later session's row is made when the one before it is answered, a week or more before it opens, so counting from
+         the row's date chased people on the day it opened as if it had been waiting a week, and told the lead the chasing was over a week after that, not two (found on
+         the test bed). The WhatsApp reminders already count from when it opened. */
+      const daysElapsed = Math.floor((now.getTime() - (checkIn.availableFrom ?? checkIn.createdAt).getTime()) / (1000 * 60 * 60 * 24));
 
       const participant = checkIn.participant;
       if (!participant) continue;
@@ -343,10 +347,9 @@ export class RemindService {
              open sent the lead three emails in one morning, all about the same
              people — which is the chase this was supposed to end, addressed to
              the lead instead. */
-          const key = checkIn.groundId;
-          const entry = forTheLead.get(key) ?? {
-            to: lead.email,
-            leadName: lead.firstName ?? null,
+          const lead_ = forTheLead.get(lead.email.trim().toLowerCase()) ?? { to: lead.email, leadName: lead.firstName ?? null, parts: new Map<string, APart>() };
+          forTheLead.set(lead.email.trim().toLowerCase(), lead_);
+          const entry = lead_.parts.get(checkIn.groundId) ?? {
             label: await nameFor({ userId: (checkIn.ground as any).initiatorId, email: lead.email }, checkIn.groundId, checkIn.ground.label),
             chasedOn: policy.days,
             who: [],
@@ -356,6 +359,7 @@ export class RemindService {
             checkInIds: [],
             organizationId: checkIn.ground.organizationId,
           };
+          lead_.parts.set(checkIn.groundId, entry);
           /* THE LEAD IS NEVER ONE OF THE PEOPLE THE LEAD IS TOLD HAVE NOT STARTED (decision 109 review). Her own open check-in is her own line below. */
           if (participant.userId && participant.userId === (checkIn.ground as any).initiatorId) {
             entry.leadIsOpenToo = true;
@@ -364,7 +368,6 @@ export class RemindService {
             if (!entry.whoEmails.includes(participant.email)) { entry.who.push(named); entry.whoEmails.push(participant.email); entry.whoNudgedAt.push(participant.lastNudgedAt ?? null); }
           }
           entry.checkInIds.push(checkIn.id);
-          forTheLead.set(key, entry);
         }
         continue;
       }
@@ -416,7 +419,7 @@ export class RemindService {
           undefined,
           otherPartyCompleted,
           /* Their own last open promise, to them only, on an anchor check-in (piece 30). */
-          await theNudgeLineFor(this.prisma, { id: checkIn.groundId, startedFrom: (checkIn.ground as any).startedFrom }, (checkIn as any).createdAt, participant.id),
+          await theNudgeLineFor(this.prisma, { ...(checkIn.ground as any), id: checkIn.groundId }, (checkIn as any).createdAt, participant.id),
           /* So the reminder carries its own way out. */
           participant.id,
           (checkIn.ground as any).simplerWords,
@@ -469,30 +472,34 @@ export class RemindService {
      * column would mean the lead never hears about those people at all, and
      * nothing would ever say so.
      */
-    for (const [, entry] of forTheLead) {
+    for (const [, one] of forTheLead) {
       /* WHAT WAS REALLY SENT, ABOUT THIS CHECK-IN TO THIS PERSON. The participant row is one person in one check-in, and its `lastNudgedAt` is set only
-         when a reminder went (decision 109 review): the notification record has an address but no check-in, so it could say "reminded" about another one. */
-      const remindedNames = entry.who.filter((_, i) => !!entry.whoNudgedAt[i]);
-      const stamps = entry.whoNudgedAt.filter((d): d is Date => !!d).map((d) => new Date(d).getTime());
-      const lastRemindedOn = stamps.length ? whenItWas(new Date(Math.max(...stamps)), 'day') : null;
-      /* When she is the only one who has not started there is nothing to tell her about other people (decision 109 review). */
-      if (entry.who.length === 0) continue;
-      const composed = theEmailForTheLead({
-        leadName: entry.leadName,
-        groundLabel: entry.label,
-        whoHasNotStarted: entry.who,
-        chasedOn: entry.chasedOn,
+         when a reminder went (decision 109 review): the notification record has an address but no check-in, so it could say "reminded" about another one.
+         When she is the only one who has not started a check-in there is nothing to tell her about other people there (decision 109 review). */
+      const parts = [...one.parts.values()].filter((p) => p.who.length > 0);
+      const composed = theOneEmailForTheLead({
+        leadName: one.leadName,
+        grounds: parts.map((p) => {
+          const stamps = p.whoNudgedAt.filter((d): d is Date => !!d).map((d) => new Date(d).getTime());
+          return {
+            groundLabel: p.label,
+            whoHasNotStarted: p.who,
+            chasedOn: p.chasedOn,
+            remindedNames: p.who.filter((_, i) => !!p.whoNudgedAt[i]),
+            lastRemindedOn: stamps.length ? whenItWas(new Date(Math.max(...stamps)), 'day') : null,
+            leadIsOpenToo: p.leadIsOpenToo,
+          };
+        }),
         link: `${frontendUrl}/grounds`,
-        remindedNames,
-        lastRemindedOn,
-        leadIsOpenToo: entry.leadIsOpenToo,
       });
       if (!composed) continue;
 
       try {
-        await this.email.sendWhoHasNotStarted(entry.to, composed.subject, composed.text);
+        const went = await this.email.sendWhoHasNotStarted(one.to, composed.subject, composed.text);
+        /* The lead's one routine message of the day may already have gone (the what-is-new letter, say). Then she is told tomorrow, and nothing is marked told. */
+        if ((went as unknown) === 'suppressed') continue;
         await this.prisma.checkIn.updateMany({
-          where: { id: { in: entry.checkInIds } },
+          where: { id: { in: [...one.parts.values()].flatMap((p) => p.checkInIds) } },
           data: { leadToldAt: now },
         });
 
@@ -508,16 +515,18 @@ export class RemindService {
          * Outside the failure path on purpose: a lead is told by email whether or not a customer's
          * channel is reachable.
          */
-        await this.workspace
-          .tell(entry.organizationId, {
-            what: 'a check-in is waiting',
-            about: entry.label,
-            howMany: entry.who.length,
-            link: `${frontendUrl}/grounds`,
-          })
-          .catch((err) => this.logger.warn(`Workspace notice failed for "${entry.label}": ${err?.message}`));
+        for (const p of parts) {
+          await this.workspace
+            .tell(p.organizationId, {
+              what: 'a check-in is waiting',
+              about: p.label,
+              howMany: p.who.length,
+              link: `${frontendUrl}/grounds`,
+            })
+            .catch((err) => this.logger.warn(`Workspace notice failed for "${p.label}": ${err?.message}`));
+        }
       } catch (err: any) {
-        this.logger.error(`Telling the lead about "${entry.label}" failed: ${err.message}`);
+        this.logger.error(`Telling ${one.to} about the people who have not started failed: ${err.message}`);
       }
     }
   }

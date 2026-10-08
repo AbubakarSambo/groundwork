@@ -1,6 +1,7 @@
 import { theOpenSession } from '../engagement/heres-what-is-new';
 import { aNumberInWords } from '../engagement/a-number-in-words';
 import { theSharedPictureSubject } from '../engagement/the-leads-subjects-carry-the-facts';
+import { theFirstInsight } from '../engagement/the-first-insight';
 import { theFactsOfTheWeek, theWeekOf } from '../email/the-leads-weekly-letter';
 import { theRecordsClock, theDayItBegan, wholeDaysTo } from '../board/a-wait-is-dated-not-counted';
 import { THE_REPORT_IN_SIMPLER_WORDS } from '../grounds/what-is-sent-in-simpler-words';
@@ -1098,9 +1099,9 @@ export class ReportsService {
        `.catch` can see it, and a report must never fail because the arithmetic could not run. */
     const objectivesForTheSums = await (this.prisma.groundObjective?.findMany?.({
       where: { groundId },
-      select: { name: true, target: true, ownerParticipantId: true },
+      select: { name: true, target: true, ownerParticipantId: true, direction: true },
     }) ?? Promise.resolve([]))
-      .catch(() => [] as { name: string; target: number | null; ownerParticipantId: string | null }[]);
+      .catch(() => [] as { name: string; target: number | null; ownerParticipantId: string | null; direction?: string | null }[]);
     const answering = (ground.participants ?? []).filter((p: any) => !p.managingOnly).length;
     const numbers = howTheNumbersSit(objectivesForTheSums, answering);
     if (numbers.says) groundContextLines.push(numbers.says);
@@ -3074,7 +3075,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     });
   }
 
-  private async sessionReportAsBuilt(groundId: string, sessionNumber: number, requestingUserId: string, requestingUserOrgId?: string) {
+  private async sessionReportAsBuilt(groundId: string, sessionNumber: number, requestingUserId: string, requestingUserOrgId?: string, asIfReleased = false) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
@@ -3168,7 +3169,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * emptied here, at the source every line below reads, so no line can bring it back. The previous
      * session's picture is theirs only if that session is released.
      */
-    const pictureWithheld = !!me && !viewerIsLead && !released;
+    /* `asIfReleased` is for the one mail that goes at the moment of release, before the release is stamped (tellThemTheReportIsReady): the team's picture, which
+       everybody is about to read, is not withheld from it. Everybody's words stay as walled as before, because `released` still decides those. */
+    const pictureWithheld = !!me && !viewerIsLead && !released && !asIfReleased;
     if (pictureWithheld) {
       (ground as any).report = ground.report
         ? { ...ground.report, agreements: [], divergences: [], centralQuestion: '', findings: null, direction: null, engagement: null }
@@ -3949,7 +3952,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
           numbers: howTheNumbersSit(
             (await (this.prisma.groundObjective?.findMany?.({
               where: { groundId },
-              select: { name: true, target: true, ownerParticipantId: true },
+              select: { name: true, target: true, ownerParticipantId: true, direction: true },
             }) ?? Promise.resolve([])).catch(() => [] as any[])) as any[],
             whoAnswered.expected,
           ).says,
@@ -5171,6 +5174,18 @@ happened, and what is in the way.`;
    * two facts (what was done and by whom, what waits and on whom) where there are any, as facts and never comparisons. Counts and first names only:
    * nothing anybody said, and nothing from the report itself.
    */
+  /** What the shared picture finds, for one person, read as they are served it (never the stored report), so their privacy and naming rules hold. */
+  private async theInsightFor(
+    ground: { id: string; label: string; initiatorId: string; organizationId: string; simplerWords?: boolean | null },
+    p: { userId: string | null },
+    sessionNumber: number,
+  ) {
+    if (!p.userId) return null;
+    /* As if released: this goes out at the moment of release, before it is stamped, and a participant's own read of the team's picture is withheld until then. */
+    const report = await this.sessionReport(ground.id, sessionNumber, p.userId, ground.organizationId, true);
+    return theFirstInsight(report, ground.label, { isTheLead: p.userId === ground.initiatorId, simplerWords: ground.simplerWords });
+  }
+
   private async theReportReadySubject(ground: { id: string; label: string; initiatorId: string }, p: { userId: string | null }): Promise<string | undefined> {
     const stood = await theOpenSession(this.prisma, ground.id, ground.initiatorId);
     const isTheLead = !!p.userId && p.userId === ground.initiatorId;
@@ -5228,7 +5243,12 @@ happened, and what is in the way.`;
       } catch { continue; }
       try {
         if (aStandingUpdate && theOneLine) await this.email.sendTeamUpdateAllIn(p.email, theOneLine, ground.participants.length, linkFor(p), sharedByAnAdminSentence);
-        else await this.email.sendReportReady(p.email, ground.label, linkFor(p), sharedByAnAdminSentence, ground.id, await this.theReportReadySubject(ground, p).catch(() => undefined));
+        else {
+          /* The finding itself, as this reader is served the report (spec section 7). Where it cannot be read, the notice goes as it always did. */
+          const insight = await this.theInsightFor(ground, p, sessionNumber).catch(() => null);
+          const subject = (insight?.subjectForTheLead) ?? await this.theReportReadySubject(ground, p).catch(() => undefined);
+          await this.email.sendReportReady(p.email, ground.label, linkFor(p), sharedByAnAdminSentence, ground.id, subject, insight?.lines);
+        }
       } catch (err: any) {
         failed += 1;
         this.logger.error(`Report-ready mail failed for ${p.email} on ${groundId} round ${sessionNumber}: ${err?.message}`);
@@ -6925,9 +6945,9 @@ happened, and what is in the way.`;
   }
 
   /** The same for the report of one session. */
-  async sessionReport(groundId: string, sessionNumber: number, requestingUserId: string, requestingUserOrgId?: string) {
+  async sessionReport(groundId: string, sessionNumber: number, requestingUserId: string, requestingUserOrgId?: string, asIfReleased = false) {
     await this.refuseSomeoneNotYetLetIn(requestingUserId, groundId);
-    const served = await this.sessionReportAsBuilt(groundId, sessionNumber, requestingUserId, requestingUserOrgId);
+    const served = await this.sessionReportAsBuilt(groundId, sessionNumber, requestingUserId, requestingUserOrgId, asIfReleased);
     return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, served);
   }
 

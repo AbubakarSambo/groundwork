@@ -123,7 +123,9 @@ describe('2. who has not checked in yet', () => {
 describe('3. what Groundwork is, and who sees what people say', () => {
   it('a team check-in: the people in it, your manager included, can see what you say; and nothing says it is private or never quoted', async () => {
     const { email, sent } = theMails();
-    await email.sendParticipantCheckedIn('wairimu@x.test', 'Lucy', 'Kenya launch', 'https://app.test/g', 1);
+    /* Changed on 8 October: this used the lead's "Lucy has checked in" notice, which is not written to the person who said anything, so it no longer carries
+       the paragraph (the-footer-says-only-what-is-true.spec). The reminder to a participant is the mail the paragraph is for. */
+    await email.sendNudge('lucy@x.test', 'Kenya launch', 'https://app.test/g', undefined, undefined, null, 'p1');
     const read = text(sent[0].html);
     expect(read).toContain('Groundwork is where the people involved in a piece of work each give their own account of it, and get one shared record back. The people in this check-in, including your manager, can see what you say in it. Your questions to Ask Groundwork stay private.');
     expect(read).not.toMatch(/not shown to anybody|does not quote you|privately/i);

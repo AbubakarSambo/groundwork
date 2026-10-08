@@ -233,7 +233,8 @@ export class ReportsListener {
     /* The lead is "you", first, as she is everywhere she reads herself. */
     const nameOf = (p: (typeof counted)[number]) => (p.user?.email === ground.initiator.email ? 'you' : nameToCall({ user: p.user as any }));
     const answered = counted.filter((p) => p.checkIns.length > 0).map(nameOf).filter((x) => !!x).sort((a, b) => (a === 'you' ? -1 : b === 'you' ? 1 : 0));
-    await this.email.sendParticipantCheckedIn(ground.initiator.email, participantName, ground.label, groundUrl, stillPending, { answered, ofHowMany: counted.length });
+    const youAreStillToAnswer = counted.some((p) => nameOf(p) === 'you') && !answered.includes('you');
+    await this.email.sendParticipantCheckedIn(ground.initiator.email, participantName, ground.label, groundUrl, stillPending, { answered, ofHowMany: counted.length, youAreStillToAnswer });
   }
 
   /**

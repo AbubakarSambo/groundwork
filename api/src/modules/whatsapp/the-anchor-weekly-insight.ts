@@ -8,7 +8,7 @@ import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended
 import { theirApprovedLeave, fallsInLeave } from '../suites/who-is-away';
 import { theirRosterEntry } from '../suites/a-roster-entry-and-its-sign-in';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
-import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
+import { WHERE_A_GROUND_IS_THE_ANCHORS, aGroundIsTheAnchors } from '../conversation/the-anchor-weekly-check-in';
 import { readTheMonthRecord, type TheMonthRecord } from '../board/the-anchor-month-record';
 import { aContributionSaid, aWaitInAWords, aNumber, capital } from '../board/the-anchor-month-board';
 import { whichRoundIsOpen } from '../board/which-round-is-open';
@@ -79,10 +79,10 @@ export async function sendTheAnchorWeeklyInsights(
   const { prisma } = deps;
   if (!(await theAnchorScenarioIsOn(prisma))) return { tried: 0 };
   const grounds: any[] = await (prisma as any).ground.findMany({
-    where: { startedFrom: STARTED_FROM_THE_ANCHOR, status: { notIn: TERMINAL } },
-    select: { id: true, organizationId: true, overWhatsApp: true, initiatorId: true, startedFrom: true },
+    where: { ...WHERE_A_GROUND_IS_THE_ANCHORS, status: { notIn: TERMINAL } },
+    select: { id: true, organizationId: true, overWhatsApp: true, initiatorId: true, startedFrom: true, scenario: true },
   });
-  const anchor = grounds.filter((g) => g.startedFrom === STARTED_FROM_THE_ANCHOR && !keptOffThePhone(g));
+  const anchor = grounds.filter((g) => aGroundIsTheAnchors(g) && !keptOffThePhone(g));
   const turnedOn = await organisationsThatTurnedWhatsAppOn(prisma, deps.whatsapp, anchor.map((g) => g.organizationId));
   const base = (deps.frontendUrl || '').replace(/\/$/, '');
   let tried = 0;

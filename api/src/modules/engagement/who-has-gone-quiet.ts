@@ -3,6 +3,7 @@ import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
 import { theEngagementMoment } from './the-engagement-release-moment';
 import { nameToCall, namesWithTheRestCounted } from './a-name-to-call-them';
+import { aSubjectThatFits } from './the-first-insight';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 import { whoOnACheckInIsAway } from '../suites/who-is-away';
 import { aNumberInWords } from './a-number-in-words';
@@ -51,14 +52,26 @@ export function mostOfTheTeamIs(c: AQuietCheckIn): boolean {
   return quietIn(c) >= 3 && quietIn(c) * 2 > c.ofHowMany;
 }
 
+/** "Four things people said they would do were done, all by Amani." Said only where one person closed all of what was closed (a plain fact about them, never a comparison). */
+function theDoneByOne(c: AQuietCheckIn): string | null {
+  if (!c.closedAllBy || c.closedAllBy.count <= 0) return null;
+  const n = c.closedAllBy.count;
+  return `${capital(aNumberInWords(n))} ${n === 1 ? 'thing people said they would do was' : 'things people said they would do were'} done, ${n === 1 ? 'by' : n === 2 ? 'both by' : 'all by'} ${c.closedAllBy.name}`;
+}
+
 export function theTeamWords(firstName: string | null | undefined, c: AQuietCheckIn) {
   const n = quietIn(c);
+  /* THE POSITIVE IS NOT LEFT OUT WHEN MOST OF A TEAM IS QUIET (spec sections 16 and 21, journey 7): "seven have not answered" and, as a plain fact on its own, who did
+     what got done. "And", never "but": it sets nobody against anybody. */
+  const done = theDoneByOne(c);
+  const base = `${capital(aNumberInWords(n))} of ${aNumberInWords(c.ofHowMany)} people on "${c.label}" have not answered the latest check-in`;
   return {
-    subject: `${capital(aNumberInWords(n))} of ${aNumberInWords(c.ofHowMany)} people on "${c.label}" have not answered the latest check-in`,
+    subject: done ? aSubjectThatFits(`${base}, and ${done.charAt(0).toLowerCase()}${done.slice(1)}`, base) : base,
     lines: [
       `Hello ${firstName?.trim() || 'there'}. ${capital(aNumberInWords(n))} of the ${aNumberInWords(c.ofHowMany)} people on "${c.label}" have not answered the latest check-in, which opened more than a week ago.`,
       `${capital(theKinds(c))}.`,
-      'Most of the team has not answered, so this looks like something about the team rather than about each person. Groundwork has not changed or shortened the check-in.',
+      ...(done ? [`${done}.`] : []),
+      'Most of the team has not answered, so this is a pattern across the team and not about one person. Groundwork has not changed or shortened the check-in.',
       'If you want to know what is in the way, asking one of them directly is the quickest way to find out.',
     ],
     linkLabel: 'See who has answered',
@@ -99,7 +112,8 @@ export function theQuietIn(rows: any[], label: string, leadUserId: string, now: 
   if (!rows.length) return null;
   const latest = Math.max(...rows.map((r) => r.sessionNumber ?? 0));
   const latestRows = rows.filter((r) => (r.sessionNumber ?? 0) === latest);
-  const opened = Math.min(...latestRows.map((r) => new Date(r.createdAt).getTime()));
+  /* A session opens when it becomes available, not when its row was made: the row is made when the one before is answered, a week or more earlier (found on the test bed). */
+  const opened = Math.min(...latestRows.map((r) => new Date(r.availableFrom ?? r.createdAt).getTime()));
   if (opened < release.getTime() || now.getTime() - opened < QUIET_AFTER_DAYS * DAY) return null;
   const counted = latestRows.filter((r) => !r.participant?.managingOnly && !isNotLetInYet(r.participant) && r.participant?.userId !== leadUserId && !away.has(r.participantId));
   if (!counted.length) return null;
@@ -141,7 +155,7 @@ export async function sendWhoHasGoneQuiet(
       for (const g of theirs) {
         const rows: any[] = await prisma.checkIn.findMany({
           where: { groundId: g.id },
-          select: { participantId: true, sessionNumber: true, status: true, createdAt: true, participant: { select: { userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } } },
+          select: { participantId: true, sessionNumber: true, status: true, createdAt: true, availableFrom: true, participant: { select: { userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } } },
         });
         /* Somebody on approved leave is not one who has gone quiet. */
         const away = await Promise.resolve(whoOnACheckInIsAway(prisma, g.id, now)).catch(() => new Map());

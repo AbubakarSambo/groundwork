@@ -53,7 +53,7 @@ describe('journey 9: most of one team has stopped', () => {
       lines: [
         'Hello Wairimu. Four of the six people on "Sales team, Q4" have not answered the latest check-in, which opened more than a week ago.',
         'Two have never answered, and Omar and Vera answered before and have not answered since.',
-        'Most of the team has not answered, so this looks like something about the team rather than about each person. Groundwork has not changed or shortened the check-in.',
+        'Most of the team has not answered, so this is a pattern across the team and not about one person. Groundwork has not changed or shortened the check-in.',
         'If you want to know what is in the way, asking one of them directly is the quickest way to find out.',
       ],
       linkLabel: 'See who has answered',
@@ -132,6 +132,13 @@ describe('who is not written to', () => {
     const young = salesRows.map((r) => (r.sessionNumber === 2 ? { ...r, createdAt: new Date('2026-10-25T08:00:00Z') } : r));
     expect(await world({ g1: young }).run()).toEqual({ tried: 0 });
   });
+  it('a latest session whose row was made long ago but became available less than a week ago (found on the test bed)', async () => {
+    /* The row for session 2 is made when session 1 is answered, a week or more before session 2 opens, so its own date says nothing of when it opened. */
+    const waiting = salesRows.map((r) => (r.sessionNumber === 2 ? { ...r, createdAt: new Date('2026-10-12T08:00:00Z'), availableFrom: new Date('2026-10-25T08:00:00Z') } : r));
+    expect(await world({ g1: waiting }).run()).toEqual({ tried: 0 });
+    const open = salesRows.map((r) => (r.sessionNumber === 2 ? { ...r, createdAt: new Date('2026-10-25T08:00:00Z'), availableFrom: new Date('2026-10-12T08:00:00Z') } : r));
+    expect(await world({ g1: open }).run()).toEqual({ tried: 1 });
+  });
   it('a check-in whose latest session opened before the release', async () => {
     const old = salesRows.map((r) => ({ ...r, createdAt: new Date('2026-09-10T08:00:00Z') }));
     expect(await world({ g1: old }).run()).toEqual({ tried: 0 });
@@ -147,5 +154,29 @@ describe('who is not written to', () => {
     const w = world({ g1: leadQuiet });
     await w.run();
     expect(w.sent[0].lines[0]).toContain('Four of the six');
+  });
+});
+
+/**
+ * JOURNEY 7 AS THE SPEC WORDS IT (found on the test bed, 21 October): "Launch readiness" has twelve people, seven of the eleven besides Wairimu have not
+ * answered the latest check-in, and Amani has closed all four of the things people said they would do. The message about most of a team said only the seven.
+ */
+describe('when most of a team is quiet and one person has closed everything that was closed', () => {
+  const c = { label: 'Launch readiness', ofHowMany: 11, neverAnswered: 0, stoppedAfterAnswering: ['Lerato', 'Kito', 'Imani', 'Peter', 'Neema', 'Fatuma', 'Tobi'], closedAllBy: { name: 'Amani', count: 4 } };
+  it('says the plain fact beside it, with "and" and never "but", in the subject and the body', () => {
+    const w = theTeamWords('Wairimu', c);
+    expect(w.subject).toBe('Seven of 11 people on "Launch readiness" have not answered the latest check-in, and four things people said they would do were done, all by Amani');
+    expect(w.lines).toContain('Four things people said they would do were done, all by Amani.');
+    expect(w.lines.join(' ')).not.toMatch(/\bbut\b|ahead|behind|strong|best|worst/i);
+  });
+  it('is the message it was where nobody closed all of it', () => {
+    const w = theTeamWords('Wairimu', { ...c, closedAllBy: null });
+    expect(w.subject).toBe('Seven of 11 people on "Launch readiness" have not answered the latest check-in');
+    expect(w.lines.join(' ')).not.toContain('were done');
+  });
+  it('and a subject that would run too long keeps the count and leaves the fact to the body', () => {
+    const w = theTeamWords('Wairimu', { ...c, label: 'Launch readiness for every depot in the western region', closedAllBy: { name: 'Amani Wekesa-Otieno', count: 4 } });
+    expect(w.subject).toBe('Seven of 11 people on "Launch readiness for every depot in the western region" have not answered the latest check-in');
+    expect(w.lines).toContain('Four things people said they would do were done, all by Amani Wekesa-Otieno.');
   });
 });
