@@ -1,3 +1,4 @@
+import { theActivationFunnel } from '../engagement/the-activation-funnel';
 import { Injectable, NotFoundException, BadRequestException, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnthropicService, ChatTurn } from '../conversation/anthropic.service';
@@ -156,6 +157,7 @@ export class PromptsService implements OnModuleInit {
       stalledCheckIns,
       session5Count,
       avgDaysRaw,
+      activation,
     ] = await Promise.all([
       // 1. Completed sessions per session number (1-7)
       Promise.all(
@@ -213,6 +215,10 @@ export class PromptsService implements OnModuleInit {
         JOIN check_ins ci ON ci.ground_id = g.id
         WHERE ci.session_number = 1 AND ci.started_at IS NOT NULL AND ci.is_setup = false AND o.is_internal = false ${sinceSql}
       `,
+
+      // 11. How far each check-in got towards being useful, and what became of the mail sent to bring people back (engagement spec sections 2, 34 and 35)
+      /* An extra read: if it cannot be made, the rest of the tab still is. */
+      theActivationFunnel(this.prisma, since, now).catch(() => null),
     ]);
 
     // Build funnel with drop-off rates, each carrying the count it is a rate of
@@ -261,6 +267,7 @@ export class PromptsService implements OnModuleInit {
       stalledCheckIns,
       session5Count,
       avgDaysToFirstCheckin,
+      activation,
     };
   }
 
