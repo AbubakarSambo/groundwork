@@ -1099,9 +1099,9 @@ export class ReportsService {
        `.catch` can see it, and a report must never fail because the arithmetic could not run. */
     const objectivesForTheSums = await (this.prisma.groundObjective?.findMany?.({
       where: { groundId },
-      select: { name: true, target: true, ownerParticipantId: true },
+      select: { name: true, target: true, ownerParticipantId: true, direction: true },
     }) ?? Promise.resolve([]))
-      .catch(() => [] as { name: string; target: number | null; ownerParticipantId: string | null }[]);
+      .catch(() => [] as { name: string; target: number | null; ownerParticipantId: string | null; direction?: string | null }[]);
     const answering = (ground.participants ?? []).filter((p: any) => !p.managingOnly).length;
     const numbers = howTheNumbersSit(objectivesForTheSums, answering);
     if (numbers.says) groundContextLines.push(numbers.says);
@@ -3952,7 +3952,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
           numbers: howTheNumbersSit(
             (await (this.prisma.groundObjective?.findMany?.({
               where: { groundId },
-              select: { name: true, target: true, ownerParticipantId: true },
+              select: { name: true, target: true, ownerParticipantId: true, direction: true },
             }) ?? Promise.resolve([])).catch(() => [] as any[])) as any[],
             whoAnswered.expected,
           ).says,

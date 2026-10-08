@@ -1,4 +1,5 @@
 import { aNumberInWords } from './a-number-in-words';
+import { saysTheSame } from './a-sentence-said-twice';
 import { theConversationWorthHavingSaying } from '../grounds/what-is-sent-in-simpler-words';
 import { isAWholeSentence } from '../reports/what-people-said-differently-about';
 
@@ -86,16 +87,21 @@ export function theFirstInsight(report: any, label: string, reader: { isTheLead:
     );
   }
   const question = String(report?.theConversationWorthHaving ?? '').replace(/\s+/g, ' ').trim();
-  if (question) lines.push(`${theConversationWorthHavingSaying(reader.simplerWords)} ${question}`);
+  /* What the report writes about one finding can say it in all three places; a line that repeats one already in the mail is left out (a-sentence-said-twice.ts). */
+  if (question && !lines.some((l) => saysTheSame(l, question))) lines.push(`${theConversationWorthHavingSaying(reader.simplerWords)} ${question}`);
 
   if (reader.isTheLead && open.length) {
     const first = (Array.isArray(stand.openWithReasons) ? stand.openWithReasons : [])[0];
     const settledBy = String(first?.settledBy ?? '').replace(/\s+/g, ' ').trim();
-    lines.push(
-      settledBy
-        ? `Here is what I would do first. ${/[.!?]$/.test(settledBy) ? settledBy : `${settledBy}.`}`
-        : question ? 'What I would do is bring the people involved together on that one question.' : 'What I would do is start with the first of these.',
-    );
+    if (settledBy && lines.some((l) => saysTheSame(l, settledBy))) {
+      /* It says what the mail already says, so it is not said again. */
+    } else {
+      lines.push(
+        settledBy
+          ? `Here is what I would do first. ${/[.!?]$/.test(settledBy) ? settledBy : `${settledBy}.`}`
+          : question ? 'What I would do is bring the people involved together on that one question.' : 'What I would do is start with the first of these.',
+      );
+    }
   }
 
   return {

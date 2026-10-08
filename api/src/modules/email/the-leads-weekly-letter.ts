@@ -1,5 +1,6 @@
 import { CheckInStatus, GroundStatus } from '@prisma/client';
 import { nameToCall, aNameToList } from '../engagement/a-name-to-call-them';
+import { withoutRepeats, saysTheSame } from '../engagement/a-sentence-said-twice';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
@@ -156,10 +157,12 @@ export const somethingUsefulHappened = (w: AWeekInOneCheckIn): boolean => w.ofHo
 /** The sentences after the week's counts, for one check-in: what moved, what Groundwork is already doing, what to do, and what to start next. */
 export function theRestOfTheWeekIn(w: AWeekInOneCheckIn, roomForToDo: number): string[] {
   const out: string[] = [];
-  if (w.moved?.length) out.push(`Here is what moved this week. ${w.moved.slice(0, 3).join(' ')}`);
+  const moved = withoutRepeats(w.moved ?? []).slice(0, 3);
+  if (moved.length) out.push(`Here is what moved this week. ${moved.join(' ')}`);
   const reminded = (w.reminded ?? []).filter(aNameToList).filter((n) => w.notYet.includes(n));
   if (reminded.length) out.push(`I have already sent reminders to ${listed(reminded)} this week.`);
-  const todo = (w.toDo ?? []).slice(0, Math.max(0, roomForToDo));
+  /* A thing to do that only says again what moved is not said a second time (a-sentence-said-twice.ts). */
+  const todo = (w.toDo ?? []).filter((t) => !moved.some((m) => saysTheSame(m, `${t.do} ${t.why ?? ''}`))).slice(0, Math.max(0, roomForToDo));
   if (todo.length) {
     out.push('Here is what I would do this week.');
     for (const t of todo) out.push(`${t.do.trim()}${t.why?.trim() ? ` ${t.why.trim()}` : ''}`);
