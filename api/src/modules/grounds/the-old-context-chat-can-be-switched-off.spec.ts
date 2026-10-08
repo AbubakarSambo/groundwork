@@ -5,7 +5,7 @@ import { GroundsService } from './grounds.service';
 /**
  * PIECE 7: THE OLD CONTEXT CHAT SWITCHES OFF ON THE SERVER, WITH ONE SENTENCE THAT POINTS TO ASK.
  *
- * `release.oldContextChat` is ON when its row is missing, so nobody loses the chat before the screens stop drawing it. Written `{ "on": false }`, the three
+ * `release.oldContextChat` is OFF when its row is missing, or cannot be read (8 October; it was on until the screens stopped drawing it). Written `{ "on": true }`, it stays open. Off, the three
  * routes of the old chat (the conversation, the confirm and the decline) answer 410 with a sentence naming Ask for the person's organisation, before anything is
  * read or written. Ask's own setup lane calls the same two methods inside the engine and is never stopped by this.
  */
@@ -16,19 +16,22 @@ const settings = (rows: Record<string, unknown>, orgName = 'Baridi') => ({
 const service = (prisma: unknown) => Object.assign(Object.create(GroundsService.prototype), { prisma }) as GroundsService;
 
 describe('the gate', () => {
-  it('lets the old chat through with no row, and when the row cannot be read', async () => {
-    await expect(service(settings({})).theOldContextChatMustBeOpen('org')).resolves.toBeUndefined();
+  it('lets the old chat through only when the row says on', async () => {
+    await expect(service(settings({ 'release.oldContextChat': { on: true } })).theOldContextChatMustBeOpen('org')).resolves.toBeUndefined();
+  });
+  it('says the plain sentence with no row, and when the row cannot be read', async () => {
     const broken = { platformSetting: { findUnique: async () => { throw new Error('down'); } }, organization: { findUnique: async () => ({ name: 'Baridi' }) } };
-    await expect(service(broken).theOldContextChatMustBeOpen('org')).resolves.toBeUndefined();
+    await expect(service(settings({})).theOldContextChatMustBeOpen('org')).rejects.toBeInstanceOf(GoneException);
+    await expect(service(broken).theOldContextChatMustBeOpen('org')).rejects.toBeInstanceOf(GoneException);
   });
   it('says one plain sentence, naming Ask for the organisation, when it is off', async () => {
-    const off = service(settings({ 'release.oldContextChat': { on: false } }));
+    const off = service(settings({}));
     const err: any = await off.theOldContextChatMustBeOpen('org').catch((e) => e);
     expect(err).toBeInstanceOf(GoneException);
     expect(err.message).toBe("Setting up a check-in now happens in Ask Baridi, so open Ask Baridi from this check-in's Context and resources page and say what you want to add.");
   });
   it('says Ask Groundwork where the organisation has no name', async () => {
-    const off = service(settings({ 'release.oldContextChat': { on: false } }, ''));
+    const off = service(settings({}, ''));
     const err: any = await off.theOldContextChatMustBeOpen('org').catch((e) => e);
     expect(err.message).toContain('Ask Groundwork');
   });

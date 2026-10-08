@@ -186,3 +186,14 @@ describe('onboarding and project check-ins get their board without a kind', () =
     expect([...KINDS_OFFERED_AT_RELEASE]).toEqual(['sales org', 'engineering release']);
   });
 });
+
+describe('the old context chat switch (8 October)', () => {
+  it('is OFF with no row, off when the row cannot be read, and open only when the row says on', async () => {
+    expect(await theOldContextChatIsOpen(settings({}))).toBe(false);
+    expect(await theOldContextChatIsOpen({ platformSetting: { findUnique: async () => { throw new Error('down'); } } } as any)).toBe(false);
+    expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': 'garbage' }))).toBe(false);
+    expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': { on: false } }))).toBe(false);
+    expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': { on: true } }))).toBe(true);
+    expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': true }))).toBe(true);
+  });
+});
