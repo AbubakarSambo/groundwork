@@ -156,3 +156,27 @@ describe('who is not written to', () => {
     expect(w.sent[0].lines[0]).toContain('Four of the six');
   });
 });
+
+/**
+ * JOURNEY 7 AS THE SPEC WORDS IT (found on the test bed, 21 October): "Launch readiness" has twelve people, seven of the eleven besides Wairimu have not
+ * answered the latest check-in, and Amani has closed all four of the things people said they would do. The message about most of a team said only the seven.
+ */
+describe('when most of a team is quiet and one person has closed everything that was closed', () => {
+  const c = { label: 'Launch readiness', ofHowMany: 11, neverAnswered: 0, stoppedAfterAnswering: ['Lerato', 'Kito', 'Imani', 'Peter', 'Neema', 'Fatuma', 'Tobi'], closedAllBy: { name: 'Amani', count: 4 } };
+  it('says the plain fact beside it, with "and" and never "but", in the subject and the body', () => {
+    const w = theTeamWords('Wairimu', c);
+    expect(w.subject).toBe('Seven of 11 people on "Launch readiness" have not answered the latest check-in, and four things people said they would do were done, all by Amani');
+    expect(w.lines).toContain('Four things people said they would do were done, all by Amani.');
+    expect(w.lines.join(' ')).not.toMatch(/\bbut\b|ahead|behind|strong|best|worst/i);
+  });
+  it('is the message it was where nobody closed all of it', () => {
+    const w = theTeamWords('Wairimu', { ...c, closedAllBy: null });
+    expect(w.subject).toBe('Seven of 11 people on "Launch readiness" have not answered the latest check-in');
+    expect(w.lines.join(' ')).not.toContain('were done');
+  });
+  it('and a subject that would run too long keeps the count and leaves the fact to the body', () => {
+    const w = theTeamWords('Wairimu', { ...c, label: 'Launch readiness for every depot in the western region', closedAllBy: { name: 'Amani Wekesa-Otieno', count: 4 } });
+    expect(w.subject).toBe('Seven of 11 people on "Launch readiness for every depot in the western region" have not answered the latest check-in');
+    expect(w.lines).toContain('Four things people said they would do were done, all by Amani Wekesa-Otieno.');
+  });
+});

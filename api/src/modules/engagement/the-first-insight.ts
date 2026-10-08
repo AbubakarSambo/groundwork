@@ -60,7 +60,7 @@ function firstOpenSaid(label: string, items: string[], capitalised: boolean): st
 }
 
 /** A subject is read in a list, so it is short; where the finding does not fit, the count says it and the body says the rest. */
-export const A_SUBJECT_FITS = 140;
+export const A_SUBJECT_FITS = 150;
 export const aSubjectThatFits = (said: string, instead: string) => (said.length <= A_SUBJECT_FITS ? said : instead);
 
 const cutLabel = (label: string, max: number) => (label.length <= max ? label : `${label.slice(0, max).replace(/\s+\S*$/, '')}...`);
