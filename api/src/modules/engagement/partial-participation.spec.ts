@@ -66,3 +66,32 @@ describe('the words', () => {
     expect(text(w.sent[0].html)).toContain('three people in it');
   });
 });
+
+/**
+ * FOUND ON THE TEST BED (8 October): Grace leads "Q4 priorities", eight others can answer, and she has not checked in herself. Amani finished, and Grace read
+ * "Amani has checked in so far, one of the nine people in it" and then "Seven people have not checked in yet". One and seven are eight, not nine: the list of
+ * people left leaves out the lead, who is the one reading, and nothing said she is one of them.
+ */
+describe('when the lead has not checked in herself either', () => {
+  it('Grace is told so, and the counts add up: one in, seven others, and her', async () => {
+    const lead = person('p-g', 'Grace', false);
+    const others = ['Chidi', 'Zawadi', 'Juma', 'Neema', 'Fatuma', 'Sade', 'Imani'].map((n) => person(`p-${n}`, n, false));
+    const sent: any[] = [];
+    const prisma: any = { ground: { findUnique: jest.fn(async () => ({ label: 'Q4 priorities', initiator: { email: 'grace@x.test' }, participants: [lead, person('p-amani', 'Amani', true), ...others] })) } };
+    const email: any = new EmailService({ get: () => undefined } as any, {} as any, prisma);
+    email.sendEmail = jest.fn(async (o: any) => { sent.push(o); });
+    const listener: any = new ReportsListener(prisma, {} as any, {} as any, email, { get: () => 'https://app.test' } as any);
+    await listener.notifyAdminOnCheckIn({ groundId: 'g1', sessionNumber: 1, participantId: 'p-amani' });
+    const body = text(sent[0].html);
+    expect(body).toContain('Amani has checked in so far, one of the nine people in it.');
+    expect(body).toContain('Seven people have not checked in yet.');
+    expect(body).toContain('You have not checked in yet either.');
+  });
+
+  it('is said only when she is one of the people counted and has not answered', () => {
+    const base = { answered: ['Amani'], ofHowMany: 9 };
+    expect(thePartialPicture('Q4', { ...base, youAreStillToAnswer: true }, { names: [], count: 7 }).lines).toContain('You have not checked in yet either.');
+    expect(thePartialPicture('Q4', { ...base }, { names: [], count: 7 }).lines.join(' ')).not.toContain('either');
+    expect(thePartialPicture('Q4', { answered: ['you', 'Amani'], ofHowMany: 9 }, { names: [], count: 7 }).lines.join(' ')).not.toContain('either');
+  });
+});

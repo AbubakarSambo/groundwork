@@ -10,7 +10,7 @@ import { haveNotCheckedInSaid, type WhoIsLeft } from '../email/who-has-not-check
 const capital = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
 const listed = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
 
-export function thePartialPicture(label: string, progress: { answered: string[]; ofHowMany: number }, left?: WhoIsLeft) {
+export function thePartialPicture(label: string, progress: { answered: string[]; ofHowMany: number; /** The lead is one of the people counted and has not answered herself. */ youAreStillToAnswer?: boolean }, left?: WhoIsLeft) {
   const n = progress.answered.length;
   const of = progress.ofHowMany;
   const verb = n === 1 ? 'has' : 'have';
@@ -23,6 +23,9 @@ export function thePartialPicture(label: string, progress: { answered: string[];
       `${who} ${isHave} checked in so far, ${aNumberInWords(n)} of the ${aNumberInWords(of)} people in it.`,
       "That is not yet the whole team's view, so Groundwork has not drawn any conclusion about the team from it.",
       ...(left && left.count > 0 ? [haveNotCheckedInSaid(left)] : []),
+      /* The people left to check in are counted without the lead, who is reading this. When she is one of the people counted and has not answered, the counts only add up
+         if she is told so: "one of the nine" and "seven have not" leaves one person nobody mentions. */
+      ...(progress.youAreStillToAnswer ? ['You have not checked in yet either.'] : []),
       'The shared picture is made once everyone is in.',
     ],
   };
