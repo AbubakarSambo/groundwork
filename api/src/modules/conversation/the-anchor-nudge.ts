@@ -47,6 +47,17 @@ export function isSaidOfThemselves(raw: string): boolean {
   return true;
 }
 
+/**
+ * A PROMISE THAT NAMES NOBODY BUT "HER" CANNOT BE SAID BACK. "I will ask her tomorrow" was said by Neema about Zawadi in the conversation; sent alone, as
+ * "last time you said you would ask her. I'd love to hear how it went.", it leaves her wondering who (anchor walk, 8 October). With a name anywhere in the
+ * words it stands on its own; without one, the plain line is sent instead.
+ */
+export function standsOnItsOwn(raw: string): boolean {
+  const t = String(raw ?? '');
+  if (!/\b(?:her|him|them)\b/i.test(t)) return true;
+  return /(?:^|[^.!?]\s)[A-Z][a-z]+/.test(t.replace(/^\s*I\b/, 'i'));
+}
+
 export function withoutALeadingWill(said: string | null): string | null {
   if (!said) return null;
   /* A PROMISE STORED IN THE THIRD PERSON IS NOT SAID BACK (decision 109 review): "amina will send the contract" is somebody else's promise, or a promise about somebody
@@ -67,7 +78,7 @@ export async function theirOwnLastOpenPromise(prisma: any, groundId: string, par
     select: { text: true, explicit: true, participantId: true, source: true, status: true },
   })?.catch?.(() => [])) ?? []) as any[];
   const theirs = rows.find((c) => c.participantId === participantId && c.source === 'CHECK_IN' && c.status === 'UNKNOWN' && c.explicit !== false);
-  return theirs && isSaidOfThemselves(String(theirs.text ?? '')) ? withoutALeadingWill(inOurVoice(String(theirs.text ?? ''), 'you')) : null;
+  return theirs && isSaidOfThemselves(String(theirs.text ?? '')) && standsOnItsOwn(String(theirs.text ?? '')) ? withoutALeadingWill(inOurVoice(String(theirs.text ?? ''), 'you')) : null;
 }
 
 /** The line for this person on this check-in, or null where it is not an anchor check-in or the switch is off. */
