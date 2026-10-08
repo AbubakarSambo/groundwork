@@ -891,11 +891,14 @@ export class GroundsCron implements OnApplicationBootstrap {
   }
 
   /**
-   * THE LEAD'S DAILY NUDGE (decision 120), at seven in the morning in Lagos, an hour and a half before the reminders, so it is the lead's one message of the day. It takes the
-   * place of the WhatsApp daily summary of decision 82 item 9: the same hour, the same kind of message, the same limits (once a day, "not now", the 24 hours, the template),
-   * with what is outstanding in place of the counts. What it says and never says is in engagement/the-leads-daily-nudge.ts.
+   * THE LEAD'S DAILY NUDGE (decision 120), at nine in the morning in Lagos, half an hour before the WhatsApp reminders and an hour before the email ones, so it is the lead's one
+   * message of the day. It takes the place of the WhatsApp daily summary of decision 82 item 9: the same kind of message, the same limits (once a day, "not now", the 24 hours,
+   * the template), with what is outstanding in place of the counts. It goes AFTER the lead's once-ever and weekly insights (what is new at half past six, the test check-in, the
+   * follow-up after a report, what Groundwork is doing and who has gone quiet, from ten past eight to a quarter to nine): found on the test bed, a nudge that went first every
+   * day starved all of them, because a lead with something outstanding is told something every day. On the days one of those goes, that is the lead's message; on the others,
+   * this is. What it says and never says is in engagement/the-leads-daily-nudge.ts.
    */
-  @Cron('0 7 * * *', { timeZone: 'Africa/Lagos' })
+  @Cron('0 9 * * *', { timeZone: 'Africa/Lagos' })
   async sendTheLeadsDailyNudges() {
     await onceAcrossCopies(this.prisma, 'lead-daily-summary', theDay(), () => this.sendTheLeadsDailyNudgesInner());
   }
