@@ -8051,3 +8051,59 @@ the redirect and the inline `anchor-start` call) - nothing a person could do is 
 
 Request 195 (`docs/requests-to-engine.md`) is the one open item: the board sections through the
 switchboard, and the entry chat's remaining questions through the normal onboarding payload.
+
+## Decision 114, the rest of it: the engine's new ordinary routes are drawn (8 October 2026, later)
+
+The engine answered request 195 in two commits (`dc6aa2af`, `b4b3751c`) and this finishes the
+screens' side of both, route by route, keeping everything request 195 named as "waiting".
+
+- **The entry chat's opening.** `EntryChatPage.tsx` now also calls `POST /entry/opener` (like any
+  scenario) alongside `GET /entry/anchor-start`, and draws the opener's own `reply` - the hook's two
+  sentences, then "Tell me what you are trying to get across." and the first question, in one piece -
+  as the intro turn. `anchor-start` stays, for `groundLabel`, `source` and `thePeopleStep`, none of
+  which the opener serves; its own `firstQuestion` is no longer read (the opener's reply already ends
+  in it, and is richer), but the session-carried question and `THE_ANCHOR_FIRST_QUESTION` stay
+  underneath as a fallback for if the opener call itself fails - never removed outright, since a
+  dropped request must not leave the lead looking at a blank chat.
+- **The invitation.** `InvitePage.tsx` reads the ordinary `invitationWords` first, falling back to
+  the older `anchorInvitation` only for a reply that has not moved across yet - kept rather than
+  deleted, since both are populated identically today and there is nothing to gain by risking the
+  one case where they are not.
+- **The board.** `whatYouAreCarrying`, `howGroundworkWillWork` and `weeklyInsight` - the three
+  sections with no existing UI - are drawn by a new `TheAnchorBoardSections.tsx`, gated on
+  `b.sections.includes(...)`, the same mechanism every other kind of work's sections already use.
+  `ideasFromTheTeam` is drawn through the existing `TheIdeasFromYourTeam`, read first ahead of the
+  older `ideasFromYourTeam`. `theMonthBoard` and `TheIdeasFromYourTeam`'s own positioning no longer
+  check `anchorScenarioOn`/`viewerRunsThisCheckIn` at all - decision 114's "who reads a section is
+  decided by the server" taken literally: the field's own presence on the payload is now the whole
+  signal. `theFourLenses` and `peopleHelpingTheTeamMove` are deliberately not drawn a second time:
+  `theMonthBoard`, still served alongside the new fields, already draws the same lenses and the same
+  people, and drawing both would duplicate them. `recommendations` is left to the existing
+  `recommendedCheckInsApi` listing, which it would only duplicate.
+- `FillsInAsYouTalk`'s `anchorItems` and `EndingPage.tsx`'s `anchorScenarioOn` are untouched: neither
+  is served by an ordinary route yet (`anchorItems` is assembled from the onboarding extraction, not
+  a GET; `theEndOfMonthRead` is still on the "kept for now" list), so decision 114 does not ask for
+  either to change yet.
+- `the-month-board.spec.tsx` updated: the two tests that handed the lead a payload combination the
+  real backend cannot produce (`theMonthBoard` served with `anchorScenarioOn: false`, or served to a
+  colleague) are gone, replaced by the realistic shape of each reader's own payload - the privacy
+  intent (a colleague never reads the lead's board) is unchanged, now checked by the field's absence
+  rather than by a client-side flag.
+- New specs: `the-anchor-opener-is-drawn.spec.tsx`, `InvitePage.invitationWords.spec.tsx`,
+  `the-anchors-new-sections.spec.tsx`.
+- Request 196 (`docs/requests-to-engine.md`) answers the engine's own question, "which of the kept
+  ones you still call."
+- Fresh `anchor-start-{1440,390}.png`: the opener's full text now shows live, at both widths. While
+  retaking them, `e2e/anchor-shots.local.mjs`'s `shot()` was found reusing one browser page across
+  both widths, so the second (390) capture inherited `gw-anchor-start-confirmed` from the first and
+  fell back to the shorter remembered question rather than a fresh opener call - fixed by clearing
+  `sessionStorage` before each per-width navigation. `anchor-setup/board-lead/board-participant/
+  checkin-*.png` are byte-identical to before: the one anchor check-in in the local seed predates
+  scenario tagging (`scenario: REALIGN_TEAM`, `startedFrom: 'anchor'`), so it draws none of the new
+  sections and keeps rendering exactly as it did - proven live, not only by the specs above.
+  `invitation-*.png` was not retaken: no seeded check-in has `scenario: HELP_TEAM_UNDERSTAND` to
+  generate a real invite link from, and building one from scratch was out of scope for this pass;
+  `InvitePage.invitationWords.spec.tsx` exercises the exact payload shape the engine now serves
+  instead.
+- `client/`: `npx tsc --noEmit -p .` clean; the full `npx vitest run` is green, 717 files and 4,733
+  tests (up from 4,725).
