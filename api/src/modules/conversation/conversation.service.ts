@@ -79,7 +79,7 @@ export { CLOSED_BY_THE_CLOCK };
 /** `CheckIn.closedReason` when the person declined to take part. */
 export const DECLINED_TO_TAKE_PART = 'declined';
 import { mirrorCommitment } from '../assistant/a-commitment-carries-past-the-ground';
-import { STARTED_FROM_THE_ANCHOR, aCheckInStartedFromTheAnchor, theAnchorParticipantGuidance, whatTheyToldYouBefore, withoutAnAnnouncedAngle } from './the-anchor-weekly-check-in';
+import { STARTED_FROM_THE_ANCHOR, aCheckInStartedFromTheAnchor, theAnchorMarkOf, theAnchorParticipantGuidance, whatTheyToldYouBefore, withoutAnAnnouncedAngle } from './the-anchor-weekly-check-in';
 import { theAnchorBaselineGuidance } from './the-anchor-baseline';
 import { withoutAnExampleAnswer, THE_BASELINE_CLOSING_REMINDER, THE_BASELINE_READ_SYSTEM, THE_BASELINE_READ_TOOL, everythingIsLearned, whatIsLearnedFrom, whatTheBaselineHasLearned, type WhatIsLearned } from './the-baseline-so-far';
 import { whatTheAnswerAgreedTo, hasAlreadyOffered, whatHappenedToTheOffer, weSayAboutTheOffer, whatIsStillOwedToThem, withoutTheSecondTellingOfIt, isAnOfferToWriteItDown, whatTheyJustSaidMayBeTheirOwnStep, YOU_HAVE_ALREADY_OFFERED } from './giving-the-person-agency';
@@ -981,7 +981,7 @@ export class ConversationService {
      * says so, which nothing records yet. So her brief and the aims her words made are not served to anybody who is not the lead: the
      * invitation has already said that she wants to hear their side. Her own reading of them is unchanged.
      */
-    if (!reader?.isLead && (ground as any).startedFrom === STARTED_FROM_THE_ANCHOR) {
+    if (!reader?.isLead && aCheckInStartedFromTheAnchor(ground as any)) {
       return {
         subject: ground.label ?? null,
         /* Only what the product was told to tell them, never the brief and never her aims. */
@@ -2825,9 +2825,9 @@ export class ConversationService {
        * "Yes, send it." after that sentence gets the sentence again and no next question. See a-request-in-an-ordinary-check-in-goes-to-ask.
        */
       {
-        const there = await (this.prisma as any).ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { startedFrom: true, organizationId: true } })?.catch?.(() => null);
+        const there = await (this.prisma as any).ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { startedFrom: true, scenario: true, organizationId: true } })?.catch?.(() => null);
         const lastWeSaid = await (this.prisma as any).conversationTurn?.findFirst?.({ where: { checkInId: checkIn.id, role: TurnRole.AI, createdAt: { lt: (personTurn as any).createdAt } }, orderBy: { createdAt: 'desc' }, select: { content: true } })?.catch?.(() => null);
-        const where = await whereARequestInAnOrdinaryCheckInGoes(this.prisma, { organizationId: there?.organizationId ?? null, startedFrom: there?.startedFrom ?? null, message, theLastThingWeSaid: lastWeSaid?.content ?? null });
+        const where = await whereARequestInAnOrdinaryCheckInGoes(this.prisma, { organizationId: there?.organizationId ?? null, startedFrom: theAnchorMarkOf(there), message, theLastThingWeSaid: lastWeSaid?.content ?? null });
         if (where) reply = where.replaceTheReply ? where.say : `${reply}\n\n${where.say}`;
       }
       hadCloseMarker = stripped.hadMarker;
@@ -2857,8 +2857,9 @@ export class ConversationService {
     /* A yes or a no to an offer of a request that is waiting is never the person saying they are done (known issue B12). */
     const answeringAnOffer = await theyAreAnsweringAnOffer(this.prisma, {
       groundId: checkIn.groundId,
-      startedFrom: (checkIn as any).ground?.startedFrom
-        ?? (await (this.prisma as any).ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { startedFrom: true } })?.catch?.(() => null))?.startedFrom ?? null,
+      startedFrom: theAnchorMarkOf((checkIn as any).ground?.startedFrom !== undefined && (checkIn as any).ground?.scenario !== undefined
+        ? (checkIn as any).ground
+        : await (this.prisma as any).ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { startedFrom: true, scenario: true } })?.catch?.(() => null)),
       participantId: (checkIn as any).participantId ?? null,
       message,
     });
@@ -3058,9 +3059,9 @@ export class ConversationService {
      * on: their yes captures the idea waiting for it, and a new idea in what they just wrote is offered in the spec's
      * words. See ideas-from-the-team.
      */
-    const startedFrom = (checkIn as any).ground?.startedFrom
-      ?? (await (this.prisma as any).ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { startedFrom: true } })?.catch?.(() => null))?.startedFrom
-      ?? null;
+    const startedFrom = theAnchorMarkOf((checkIn as any).ground?.startedFrom !== undefined && (checkIn as any).ground?.scenario !== undefined
+      ? (checkIn as any).ground
+      : await (this.prisma as any).ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { startedFrom: true, scenario: true } })?.catch?.(() => null));
     /* A request said in their own words is offered there, as WhatsApp does (anchor pieces 26 and 27). Read first, so a
        leave request is never also offered as an idea. See a-request-offered-in-the-check-in. */
     const organizationId = (checkIn as any).ground?.organizationId

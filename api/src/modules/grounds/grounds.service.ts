@@ -2931,7 +2931,7 @@ export class GroundsService {
     /* The reader's own first name, as a possessive, is "your": "Zawadi's first weeks" is "Your first weeks" to Zawadi (privacy sweep, 7 October). */
     const myFirstName = ((ground.participants ?? []) as any[]).find((p: any) => !!requestingUserId && p.userId === requestingUserId)?.user?.firstName ?? null;
     const asAMemberReadsIt = <P extends Record<string, any>>(page: P): P => {
-      const out: any = withoutTheLeadsSetUpForAMember(page, { startedFrom: (ground as any).startedFrom ?? null, runsIt: viewerRunsThisGround });
+      const out: any = withoutTheLeadsSetUpForAMember(page, { startedFrom: (ground as any).startedFrom ?? null, scenario: (ground as any).scenario ?? null, runsIt: viewerRunsThisGround });
       if (viewerRunsThisGround || !myFirstName) return out;
       return { ...out, label: theirOwnFirstNameAsYour(out.label, myFirstName), brief: theirOwnFirstNameAsYour(out.brief, myFirstName), ...(out.briefAsEveryoneReadsIt !== undefined ? { briefAsEveryoneReadsIt: theirOwnFirstNameAsYour(out.briefAsEveryoneReadsIt, myFirstName) } : {}) };
     };
