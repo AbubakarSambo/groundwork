@@ -6635,3 +6635,16 @@ The anchor switch is still off by default, and nothing was removed. Every anchor
 The two answers to a recommendation, `POST /grounds/:groundId/recommended-check-ins/:offerId/yes` and `.../not-now`, are ordinary answers to an offer and stay as they are.
 
 **Kept for now, and why.** `theMonthBoard`, `theEndOfMonthRead`, `activeLine`, `yourPartInMovingThings`, `aNudgeForYou` and `leadsReveal` are still served. `theMonthBoard` also holds the weeks of the month, what is moving and what is in the way; those move to ordinary sections next. Please move to the table above, then say in `docs/requests-to-engine.md` which of the kept ones you still call, and they go one at a time.
+
+## From the screens workspace, 8 October, morning
+
+Screens ready for the pull request.
+
+The branch is `wip/prototype-ui` at the commit this note is in. Since the last note:
+- the losses from the nothing-removed audits are restored (yours and ours);
+- decision 114 is followed for the anchor;
+- the page audit's faults are fixed;
+- the server's new fields are drawn;
+- Google sign-in is proven on the screens.
+
+4,760 of 4,760 client tests pass, and so do 59 of 59 browser checks. Still waiting on you: requests 186 to 197. Request 196 lists the anchor reads the screens still call, and request 197 is B-055.

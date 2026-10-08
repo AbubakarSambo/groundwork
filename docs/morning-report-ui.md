@@ -4,6 +4,65 @@ This is the report from the screens workspace, on the branch `wip/prototype-ui`.
 workspace writes its own report in `docs/morning-report.md`, so the two computers never edit the
 same file.
 
+## Morning, 8 October: screens ready for the pull request
+
+**The rule for the night was that existing users must never lose anything they can do today.**
+
+### What was found removed, and restored
+
+We compared every page, button, link and setting on the live product (`mine/wip/live-staging`) with ours, in `docs/nothing-removed-screens.md`. The engine's own audit is in `docs/nothing-removed-audit.md`. Everything below is now back, in the prototype's design:
+
+1. **The notes waiting for your next check-in.** You can see them and delete one, with a confirmation. Only the person who wrote them is served them, which was checked from the network as the writer, the lead and the admin.
+2. **The day check-ins land on.** It is back in set-up: a day of the week for weekly check-ins, a day of the month for monthly. Changing it later from People and setup needs the server first (request 194).
+3. **The name of a Slack or Teams channel,** when connecting one.
+4. **"Begin the last check-in" for the lead,** at any time while the check-in runs, as on live.
+5. **Today's link to your own leave and spending requests.** Our own fix for B-002 had hidden it when any one suite was off. It is now decided suite by suite.
+6. **The leave and spending forms** still open, with a "Try again", when the server has a passing fault. Only a refusal hides them.
+7. **Google sign-in** was never missing on our screens. "Sign in with Google" and "Sign up with Google" use the prototype's words, and like live they show only when the server has Google set up. One sentence in the person's own settings offered Google even where it is not set up, and that is fixed. Ten browser checks prove an existing user, a new user, a link that survives the trip, a failed sign-in, and Google switched off. Google's own sign-in page cannot be tested on this computer: it needs a deployed server with real Google credentials.
+
+### What needs Hafsah's confirmation
+
+These were removed by a decision or a rule. My recommendation is to keep all four removed.
+
+1. **The set-up sign-off step.** Removed on your own instruction (commit 38d8c078).
+2. **"See the counts behind this" under the judgement.** Removed under the rule that leads never see how a person's answers were rated.
+3. **The coverage percentage bar on a person.** Removed under the no-scores rule (request 111 (a)).
+4. **An admin who does not run a check-in rewriting its brief.** Removed by decisions 72 and 63. Your 8 September answer went the other way, so please confirm that decision 72 replaces it. The engine lists this as H10, and also H11: the WhatsApp add-on section is hidden from admins while WhatsApp is off for everybody.
+
+**Also yours to decide:**
+- The "Stop the reminders" link stops them as soon as it is opened. A button first would need a change on both sides (the engine's note, item 6).
+- **Payment in test mode** needs `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY` and `STRIPE_WEBHOOK_SECRET` in `api/.env`, as TEST values.
+- **The staff steps of A7** need a local staff account. Request 192 asks the engine for one. The engine's new database change only keeps your own address as staff.
+
+### What else changed overnight
+
+- **The anchor follows decision 114.**
+  - `/start/team` is now only a redirect to `/start?scenario=HELP_TEAM_UNDERSTAND`, so old links work.
+  - The anchor opens in the normal entry chat with the engine's opening text, and the invitation reads the engine's `invitationWords`.
+  - Its board sections are drawn by the normal board page, and the server decides who reads each.
+  - A few reads stay anchor-only until the engine serves them the ordinary way (request 196).
+  - The set-up screen crashed when a reveal arrived with a list missing (B-051), and that is fixed.
+- **The page audit's faults** (B-042 to B-049) are fixed or sent to the engine. `Arrival.tsx` and `GroundworkLogo.tsx` were deleted because nothing used them once B-047 was fixed. Arrival's own test went with it, and nothing a person does was lost.
+- **The page audit's table** is split into 171 rows, one for each page and role. Its 340 screenshots stay on this computer, in `docs/page-audit/`, and are ignored by git.
+- **Small states and error pages:** one fault, B-052, a toast that did not say the message was safe, is now fixed. The rest were already right from 6 October. No fresh screenshots were taken of the states.
+- **Drawn from the server:** names on People, never an address in place of a name; the role and team in the colleague picker; invitations kept for want of a seat; names read from a paste; and the session line in a check-in's header.
+- **The final browser run** found B-053, B-054 and B-056, all from changes made tonight, and all are fixed. B-055 went to the engine as request 197.
+- To take its screenshots, one helper signed in to the local test account tendai@kijani.test with a password it set on this computer.
+
+### Every result
+
+- **Client:** 4,760 of 4,760 tests pass, and the type check is clean.
+- **Browser checks:** 59 of 59 pass, at the first run.
+- **Google sign-in:** 10 of 10 pass.
+- **The final browser run:** 22 sweep files pass.
+  - Two more (l5 and l7) pass once an output folder is set for them.
+  - situations-orgs-tabs-slow failed twice at the sign-in limit; by hand, the link arrived at once.
+  - Two could not run because of their data: l8's check-in has already ended, and m2's session does not open until 15 October.
+- **Privacy, read from the network as each role:** held everywhere. A member is served none of the anchor board's lead-only parts, and the judgement is empty for them. Notes go only to their writer. Ask stays private. A lead's own coaching never reaches the admin.
+
+  One gap: both seeded anchor check-ins are the older kind (REALIGN_TEAM), so the five new anchor sections are served to nobody here. Their privacy is proven only by the engine's unit test.
+- **The bug log:** B-001 to B-056. All the screens' faults are fixed, except a few the engine must serve first, each with a request (186 to 197).
+
 ## 8 October, final browser run
 
 The reviewer's last run in a real browser before the pull request, at c05a396e, on this computer (client 5173, API 3000, localhost only). Nothing in `api/` or `client/` was changed. Every screen below was read as the person it is for, at 1440 and 390, with the console and every 4xx/5xx response watched, and the privacy checks were read from the network responses, not only from the screen.
