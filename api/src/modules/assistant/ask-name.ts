@@ -7,9 +7,18 @@
  */
 
 /** The name, for an organisation name that may be missing or blank. */
+/**
+ * THE NAME GROUNDWORK MAKES UP WHEN NOBODY GIVES ONE: "Wanjiru's workspace", or "My workspace" (see whatTheirWorkspaceIsCalled and register). It is a placeholder
+ * and not the organisation's name, so no sentence says it as one. Until a real name is given, Ask is "Ask Groundwork".
+ */
+export function isAMadeUpWorkspaceName(name?: string | null): boolean {
+  const n = (name ?? '').replace(/\s+/g, ' ').trim();
+  return /^my workspace$/i.test(n) || /^.+['\u2019]s workspace$/i.test(n);
+}
+
 export function askName(organisationName?: string | null): string {
   const name = (organisationName ?? '').replace(/\s+/g, ' ').trim();
-  return name ? `Ask ${name}` : 'Ask Groundwork';
+  return name && !isAMadeUpWorkspaceName(name) ? `Ask ${name}` : 'Ask Groundwork';
 }
 
 /** The caption under the name. */
