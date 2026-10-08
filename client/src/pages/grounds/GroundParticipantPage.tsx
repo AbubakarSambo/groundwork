@@ -839,6 +839,7 @@ export function GroundParticipantPage() {
               report={report}
               ground={ground}
               onOpenBoard={() => navigate(`/grounds/${id}/board`)}
+              onOpenWeek={() => navigate(`/grounds/${id}/report/week`)}
               /*
                 U.9 THIRD REVIEW, ITEM 6: THE SAME RATING THE SESSION'S OWN METER READS, NOT A
                 SEPARATE NUMBER. This used to come from `specificity.scores`, a continuous 0-1

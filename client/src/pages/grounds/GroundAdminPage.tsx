@@ -2662,6 +2662,7 @@ export function GroundAdminPage() {
               boardRenders={!!(ground as any).boardRenders}
               onOpenBoard={() => navigate(`/grounds/${ground.id}/board`)}
               onOpenSession={(n: number) => navigate(`/grounds/${ground.id}/session/${n}`)}
+              onOpenWeek={() => navigate(`/grounds/${ground.id}/report/week`)}
             />
 
             {/*

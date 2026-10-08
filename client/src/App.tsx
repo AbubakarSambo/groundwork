@@ -77,6 +77,7 @@ import { AskPage } from '@/pages/ask/AskPage'
 import { GroundParticipantPage } from '@/pages/grounds/GroundParticipantPage'
 import { GroundPage } from '@/pages/grounds/GroundPage'
 import { ReportPage } from '@/pages/report/ReportPage'
+import WeeklyReportPage from '@/pages/report/WeeklyReportPage'
 import { BoardPage } from '@/pages/board/BoardPage'
 import EndingPage from '@/pages/grounds/EndingPage'
 import { TeamBoardsPage } from '@/pages/boards/TeamBoardsPage'
@@ -555,6 +556,8 @@ export default function App() {
             <Route path="/grounds/:id" element={<RequireOrgSetup><GroundPage /></RequireOrgSetup>} />
             <Route path="/grounds/:id/p" element={<RequireOrgSetup><GroundParticipantPage /></RequireOrgSetup>} />
             <Route path="/grounds/:id/report" element={<RequireOrgSetup><ReportPage /></RequireOrgSetup>} />
+            {/* THE WEEKLY REPORT (B4, "This week"): GET /grounds/:id/report/week. See WeeklyReportPage.tsx. */}
+            <Route path="/grounds/:id/report/week" element={<RequireOrgSetup><WeeklyReportPage /></RequireOrgSetup>} />
             {/*
               BACK, AND IT SHOULD NOT SHIP. It was deleted on the grounds that every surface had a
               real home - which was checked, and was the wrong question. The question is whether

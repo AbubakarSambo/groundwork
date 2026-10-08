@@ -95,12 +95,21 @@ export function TheReportIsAListOfSessions({
   boardRenders,
   onOpenBoard,
   onOpenSession,
+  onOpenWeek,
 }: {
   rows: SessionRow[]
   boardRenders: boolean
   onOpenBoard: () => void
   /** Opening a session with no check-in of your own on it - the lead's view of a round. */
   onOpenSession: (sessionNumber: number) => void
+  /**
+   * THE WEEKLY REPORT (B4, "This week"; docs/prototype/screens/B5-the-board/board-as-lead.txt's
+   * own "This week" report row). Optional because a check-in that does not run often enough to
+   * have one still lists its sessions - the weekly report page itself says so when there is
+   * nothing to show for a given week, so this entry point is safe to always offer once a caller
+   * passes it.
+   */
+  onOpenWeek?: () => void
 }) {
   const navigate = useNavigate()
 
@@ -121,6 +130,23 @@ export function TheReportIsAListOfSessions({
           <span>
             <span style={{ display: 'block', fontSize: 15, fontWeight: 700 }}>{EVERY_SESSION.board}</span>
             <span style={{ display: 'block', fontSize: 13, color: 'var(--gw-sub)', marginTop: 2 }}>{EVERY_SESSION.boardSub}</span>
+          </span>
+          <span aria-hidden style={{ fontSize: 14, color: 'var(--gw-navy)' }}>&rarr;</span>
+        </button>
+      )}
+
+      {onOpenWeek && (
+        <button
+          onClick={onOpenWeek}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+            background: 'white', color: 'var(--gw-text)', border: '1px solid var(--gw-border)',
+            borderRadius: 10, padding: '14px 16px', marginBottom: 12, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+          }}
+        >
+          <span>
+            <span style={{ display: 'block', fontSize: 15, fontWeight: 700 }}>This week</span>
+            <span style={{ display: 'block', fontSize: 13, color: 'var(--gw-sub)', marginTop: 2 }}>What kept happening for three check-ins in a row or more</span>
           </span>
           <span aria-hidden style={{ fontSize: 14, color: 'var(--gw-navy)' }}>&rarr;</span>
         </button>

@@ -34,6 +34,8 @@ export interface SharedReportForAPartyProps {
   ground: any
   /** Open the team board. A prop, because the route is the page's business and not this view's. */
   onOpenBoard: () => void
+  /** Open the weekly report (B4, "This week"), same reasoning as `onOpenBoard`. */
+  onOpenWeek: () => void
   /**
    * Per-session specificity, so a row can say how checkable that account was.
    *
@@ -51,6 +53,7 @@ export function SharedReportForAParty({
   report,
   ground,
   onOpenBoard,
+  onOpenWeek,
   specificityBySession,
   viewerUserId,
 }: SharedReportForAPartyProps) {
@@ -123,6 +126,21 @@ export function SharedReportForAParty({
               <span style={{ fontSize: 13 }}>&rarr;</span>
             </button>
           )}
+          {/* THE WEEKLY REPORT (B4, "This week"), the same door the lead's Report tab offers. */}
+          <button
+            onClick={() => onOpenWeek()}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+              background: 'white', color: 'var(--gw-text)', border: '1px solid var(--gw-border)',
+              borderRadius: 10, padding: '14px 16px', marginBottom: 12, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+            }}
+          >
+            <span>
+              <span style={{ display: 'block', fontSize: 15, fontWeight: 700 }}>This week</span>
+              <span style={{ display: 'block', fontSize: 13, color: 'var(--gw-sub)', marginTop: 2 }}>What kept happening for three check-ins in a row or more</span>
+            </span>
+            <span aria-hidden style={{ fontSize: 14, color: 'var(--gw-navy)' }}>&rarr;</span>
+          </button>
           {/*
             AND THE SESSIONS ARE BACK HERE, WHICH REVERSES WHAT I DID AN HOUR AGO.
 
