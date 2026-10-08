@@ -83,6 +83,8 @@ export function theWhatIsNewWords(firstName: string | null | undefined, checkIns
     ...checkIns.map(whereOneStands),
     ...(andMore > 0 ? [`${capLine(aNumberInWords(andMore))} more ${andMore === 1 ? 'is' : 'are'} still going.`] : []),
     follow,
+    /* The two other things that are new for a lead (engagement spec sections 7 and 24), said so she is not surprised by them. */
+    'On Fridays, when your team has done something that week, Groundwork also sends you a short letter about it. The email that tells you a shared picture is ready now says what the picture found.',
     'You can also stop the emails we decide to send from the link at the bottom of any of them, or in Settings, and turn them back on in Settings. Emails you ask for, such as sign-in links and reports, always reach you.',
   ];
   return { subject, lines, linkLabel: 'See your check-ins' };

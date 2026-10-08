@@ -39,6 +39,7 @@ describe('what Wairimu reads', () => {
         'Hello Wairimu. Here is where your check-ins stand today.',
         'In "Sales team, Q4", five of six people have checked in for the third check-in, and Omar has not yet.',
         'What is new is that Groundwork now follows up with each person about the thing they said they would do, in their own words and only to them.',
+        'On Fridays, when your team has done something that week, Groundwork also sends you a short letter about it. The email that tells you a shared picture is ready now says what the picture found.',
         'You can also stop the emails we decide to send from the link at the bottom of any of them, or in Settings, and turn them back on in Settings. Emails you ask for, such as sign-in links and reports, always reach you.',
       ],
       linkLabel: 'See your check-ins',
