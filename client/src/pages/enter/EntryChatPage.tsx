@@ -1367,8 +1367,8 @@ export function EntryChatPage() {
    * Fetched alongside it, gated the same way, so it settles before the intro turn below is seeded.
    */
   const anchorOpenerQuery = useQuery({
-    queryKey: ['anchor-opener-inline'],
-    queryFn: () => entryApi.opener('HELP_TEAM_UNDERSTAND'),
+    queryKey: ['anchor-opener-inline', params.get('source')],
+    queryFn: () => entryApi.opener('HELP_TEAM_UNDERSTAND', params.get('source') ?? undefined),
     enabled: scenario === 'HELP_TEAM_UNDERSTAND' && !theAnchorStartSucceededForThisTab(),
     retry: false,
   })
@@ -2585,15 +2585,28 @@ export function EntryChatPage() {
    * through `TheSetup.tsx`'s sessionStorage helpers - `theAnchorStartSucceededForThisTab()` is read
    * from several places below, and `takeTheServedFirstQuestion()` is what the intro turn, just
    * below, still reads - so neither needed to change shape, only who calls them.
+   *
+   * `thePeopleStep` NOW COMES FROM THE OPENER, NOT FROM HERE (request 196). `POST /entry/opener`
+   * serves its own `thePeopleStep` (`entry.service.ts`, `openerWithItsRules`), so this reads
+   * `anchorOpenerQuery.data?.thePeopleStep` instead of `started.thePeopleStep` - one call answering
+   * for the field it actually carries, rather than two calls disagreeing about which one is read.
+   * `anchor-start` is still called for `groundLabel` alone: the opener's own reply does not carry
+   * it (checked against `entry.service.ts` directly - the doc note claiming otherwise is ahead of
+   * what the route actually sends), so there is nowhere else to read it from yet. See the request
+   * written to the engine asking for `groundLabel` on the opener too, so this call can retire.
    */
   useEffect(() => {
     const started = anchorStartQuery.data
     if (!started) return
     rememberTheAnchorStartSucceeded()
-    if (started.thePeopleStep) setThePeopleStepRules(started.thePeopleStep)
     if (started.groundLabel) setAnchorGroundLabel(started.groundLabel)
     rememberTheServedFirstQuestion(started.firstQuestion)
   }, [anchorStartQuery.data])
+
+  useEffect(() => {
+    const peopleStep = anchorOpenerQuery.data?.thePeopleStep
+    if (peopleStep) setThePeopleStepRules(peopleStep)
+  }, [anchorOpenerQuery.data])
 
   useEffect(() => {
     if (phase !== 'onboarding' || anchorStartPending) return

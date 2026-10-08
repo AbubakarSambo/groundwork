@@ -187,8 +187,15 @@ export interface OnboardResult {
 // ── Entry API ─────────────────────────────────────────────────────────────────
 
 export const entryApi = {
-  opener: (scenario?: string) =>
-    apiClient.post<{ reply: string }>('/entry/opener', { scenario }).then(r => r.data),
+  /**
+   * `POST /entry/opener`: `reply` is the opening words, as before. `source` and `thePeopleStep`
+   * ride on the same call for a scenario that has its own (today the anchor's, with its switch on)
+   * and are absent for every other - request 196, docs/answers-from-engine.md, "8 October (later):
+   * the anchor through the ordinary routes, route by route". `source` is not read by any caller yet
+   * (nothing used it off `/entry/anchor-start` either); `thePeopleStep` is, by `EntryChatPage.tsx`.
+   */
+  opener: (scenario?: string, source?: string) =>
+    apiClient.post<{ reply: string; source?: string; thePeopleStep?: ThePeopleStepRules }>('/entry/opener', { scenario, source }).then(r => r.data),
 
   // Supports two call forms:
   //   new: entryApi.chat(mode, messages)       → posts { mode, messages }

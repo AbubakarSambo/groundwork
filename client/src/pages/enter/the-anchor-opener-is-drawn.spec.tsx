@@ -65,7 +65,9 @@ describe('the anchor opener, served like any scenario’s', () => {
     // The bubble keeps the served text's own line breaks (white-space: pre-wrap, one text node),
     // so the whole reply is checked against the messages column's own text at once.
     await waitFor(() => expect(container.querySelector('.gwui-ec-messages')?.textContent).toBe(theFullOpening))
-    expect(opener).toHaveBeenCalledWith('HELP_TEAM_UNDERSTAND')
+    /* Request 196: the opener is also asked for `source` (undefined here - no `?source=` on this
+       arrival), since a scenario with its own `thePeopleStep` rides on the very same call. */
+    expect(opener).toHaveBeenCalledWith('HELP_TEAM_UNDERSTAND', undefined)
     // Never the page’s own fallback once the engine has answered.
     expect(screen.queryByText(THE_ANCHOR_FIRST_QUESTION)).toBeNull()
   })
