@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnApplicationBootstrap, Optional } from '@nestjs/common';
+import { THE_MOST_REPORT_READY_REMINDERS, howManyReportReadyRemindersWereSent } from '../email/the-report-is-ready-reminder';
 import { NOT_HELD_FOR_A_SEAT } from '../participants/held-for-a-seat';
 import { LeaveBoardService } from '../suites/the-leave-board.service';
 import { TimeSheetsService } from '../suites/the-time-sheets.service';
@@ -1207,6 +1208,8 @@ export class GroundsCron implements OnApplicationBootstrap {
     for (const p of pendingReveal) {
       if (p.user?.emailNotifications === false) continue;
       try {
+        /* At most two for a person and a report (decision 117, D14). Not being able to count is not leave to send. */
+        if ((await howManyReportReadyRemindersWereSent(this.prisma as any, p.email, p.ground.label)) >= THE_MOST_REPORT_READY_REMINDERS) continue;
         await this.email.sendActivationRevealReminder(p.email, p.ground.label, `${frontend}/grounds/${p.ground.id}/report`);
         await this.prisma.groundParticipant.update({ where: { id: p.id }, data: { lastNudgedAt: now } });
         revealReminders++;

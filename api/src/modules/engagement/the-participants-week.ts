@@ -37,6 +37,11 @@ export interface TheirWeek {
   waitingOn: { what: string; from: string | null }[];
   /** What waits on them, as the board serves it: who is null where the check-in does not let them see. */
   waitingOnYou: { who: string | null; what: string; checkIn: string }[];
+  /**
+   * The check-ins whose report is ready for this person to read, by name (decision 117, D14). The "your report is ready" email goes at most twice
+   * for a report; after that the report is told here, in the regular summary, and only here.
+   */
+  reportsReady?: string[];
 }
 
 /** The email, or null where nothing useful is left to say. Full sentences, numbers in words, no colon anywhere. */
@@ -46,6 +51,8 @@ export function theirWeekInWords(firstName: string | null | undefined, w: TheirW
   const facts: string[] = [];
   if (kept) facts.push(kept.of === kept.kept && kept.of === 1 ? 'You kept the one thing you said you would do' : `You kept ${aNumberInWords(kept.kept)} of the ${aNumberInWords(kept.of)} ${thing(kept.of)} you said you would do`);
   if (w.waitingOnYou.length) facts.push(`${aNumberInWords(w.waitingOnYou.length)} ${w.waitingOnYou.length === 1 ? 'request is' : 'requests are'} waiting on you`);
+  const reports = (w.reportsReady ?? []).filter((l) => !!l?.trim());
+  if (reports.length) facts.push(reports.length === 1 ? 'Your report is ready to read' : `${cap(aNumberInWords(reports.length))} of your reports are ready to read`);
   if (!facts.length && w.open.length) facts.push(`${cap(aNumberInWords(w.open.length))} ${thing(w.open.length)} you said you would do ${w.open.length === 1 ? 'is' : 'are'} still open`);
   if (!facts.length && w.waitingOn.length) facts.push(`You are waiting on ${aNumberInWords(w.waitingOn.length)} ${thing(w.waitingOn.length)}`);
   if (!facts.length) return null;
@@ -53,6 +60,7 @@ export function theirWeekInWords(firstName: string | null | undefined, w: TheirW
 
   const lines = [`Hello ${firstName?.trim() || 'there'}. Here is your week in Groundwork. Only you can read this.`];
   if (kept) lines.push(kept.of === 1 ? 'You kept the one thing you said you would do in the last four weeks.' : `You kept ${aNumberInWords(kept.kept)} of the ${aNumberInWords(kept.of)} things you said you would do in the last four weeks.`);
+  if (reports.length) lines.push(reports.length === 1 ? `Your report for "${trimmed(reports[0])}" is ready to read.` : `Your reports for ${listed(quoted(reports.slice(0, 3)))} are ready to read.`);
   if (w.open.length) {
     const shown = w.open.slice(0, 3);
     lines.push(`${cap(aNumberInWords(w.open.length))} ${thing(w.open.length)} you said you would do ${w.open.length === 1 ? 'is' : 'are'} still open, ${listed(quoted(shown))}${w.open.length > 3 ? `, and ${aNumberInWords(w.open.length - 3)} more` : ''}.`);
@@ -83,18 +91,20 @@ export async function sendTheParticipantsWeeks(
   const rows: any[] = await everyRowAPageAtATime((page: any) => prisma.groundParticipant.findMany({
     where: { userId: { not: null }, managingOnly: false, ground: { status: { notIn: TERMINAL } } },
     select: {
-      id: true, userId: true, groundId: true,
-      ground: { select: { label: true, runsUntilEnded: true, endsAt: true, timelineDays: true, createdAt: true } },
+      id: true, userId: true, groundId: true, partyType: true,
+      ground: { select: { label: true, report: { select: { releasedAt: true } }, runsUntilEnded: true, endsAt: true, timelineDays: true, createdAt: true } },
       checkIns: { where: { status: 'COMPLETED', completedAt: { gte: began } }, select: { id: true }, take: 1 },
     },
     orderBy: { id: 'asc' },
     ...page,
   }), 1000);
-  const open = new Map<string, { labels: Set<string>; participantIds: string[]; groundIds: string[] }>();
+  const open = new Map<string, { labels: Set<string>; participantIds: string[]; groundIds: string[]; reportsReady: Set<string> }>();
   for (const r of rows) {
     const stillGoing = (r.checkIns?.length ?? 0) > 0 || thereIsASessionToCome(r.ground, now);
     if (!stillGoing) continue;
-    const o = open.get(r.userId) ?? { labels: new Set<string>(), participantIds: [], groundIds: [] };
+    const o = open.get(r.userId) ?? { labels: new Set<string>(), participantIds: [], groundIds: [], reportsReady: new Set<string>() };
+    /* Their own report is ready: it was released, they are a person who checks in, and they have answered since the messages began. */
+    if (r.ground?.report?.releasedAt && r.partyType === 'PARTICIPANT' && (r.checkIns?.length ?? 0) > 0) o.reportsReady.add(r.ground.label);
     o.labels.add(r.ground.label);
     o.groundIds.push(r.groundId);
     o.participantIds.push(r.id);
@@ -129,6 +139,7 @@ export async function sendTheParticipantsWeeks(
           from: d.onLabel?.trim() || (d.ground?.peersVisibleToEachOther !== false ? (d.onParticipant && aNameToList(nameToCall(d.onParticipant)) ? nameToCall(d.onParticipant) : null) : null),
         })),
         waitingOnYou: own.askedOfYou.filter((i) => inOpen(i.checkIn)),
+        reportsReady: [...mine.reportsReady],
       };
       const words = theirWeekInWords(user.firstName, week);
       if (!words) continue;
