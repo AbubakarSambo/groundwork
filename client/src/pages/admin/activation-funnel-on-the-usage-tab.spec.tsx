@@ -65,3 +65,59 @@ describe('the activation funnel on the usage tab', () => {
     expect(screen.getByText('Avg days to first check-in')).toBeTruthy()
   })
 })
+
+/**
+ * THE BACK OFFICE FUNNEL: PEOPLE, NOT ONLY CHECK-INS (docs/answers-from-engine.md, 8 October, point
+ * 2). Beside the check-in funnel above, on the same Drop-offs/Usage tab.
+ */
+describe('the people funnel, beside the check-in funnel, on the usage tab', () => {
+  it('draws "How far people get" as a funnel and "Where the people who stopped are standing" as counts, with the engine’s own words for each row', () => {
+    render(<DropoffsTab data={{
+      ...BASE,
+      activation: {
+        reached: { created: 100, peopleAdded: 80, firstResponse: 60, enoughToReport: 40, firstInsight: 35, leadActed: 20, secondRound: 10 },
+        now: { test: 5, abandonedBeforeValue: 3, abandonedAfterValue: 2, active: 90 },
+        leadsWhoCameBack: 14,
+        emails: { delivered: 120, failed: 2, held: 5, notSentOnPurpose: 8 },
+        participants: {
+          reached: { added: 146, invited: 141, reached: 141, verified: 146, engaged: 134, inAHabit: 1 },
+          stuck: { notInvited: 5, invitedNotVerified: 0, verifiedNeverStarted: 12, startedNotFinished: 0, answeredOnceNotReturned: 36, wentQuiet: 97 },
+        },
+      },
+    }} />)
+
+    expect(screen.getByText('How far people get')).toBeTruthy()
+    expect(screen.getByText('Added to a check-in')).toBeTruthy()
+    expect(screen.getByText('Sent an invitation')).toBeTruthy()
+    expect(screen.getByText('The invitation arrived')).toBeTruthy()
+    expect(screen.getByText('Opened it and signed in')).toBeTruthy()
+    expect(screen.getByText('Started a check-in')).toBeTruthy()
+    expect(screen.getByText('Finished two or more, the latest in the last two weeks')).toBeTruthy()
+    expect(screen.getAllByText('146')).toHaveLength(2)
+
+    expect(screen.getByText('Where the people who stopped are standing')).toBeTruthy()
+    expect(screen.getByText('Added and never sent an invitation')).toBeTruthy()
+    expect(screen.getByText('Invited and has not signed in')).toBeTruthy()
+    expect(screen.getByText('Signed in and has not started')).toBeTruthy()
+    expect(screen.getByText('Started and not finished')).toBeTruthy()
+    expect(screen.getByText('Answered once and has not come back')).toBeTruthy()
+    expect(screen.getByText('Answered twice or more and has gone quiet')).toBeTruthy()
+    expect(screen.getByText('97')).toBeTruthy()
+  })
+
+  it('hides the whole people funnel when `participants` is missing, without affecting the check-in funnel beside it', () => {
+    render(<DropoffsTab data={{
+      ...BASE,
+      activation: {
+        reached: { created: 100, peopleAdded: 80, firstResponse: 60, enoughToReport: 40, firstInsight: 35, leadActed: 20, secondRound: 10 },
+        now: { test: 5, abandonedBeforeValue: 3, abandonedAfterValue: 2, active: 90 },
+        leadsWhoCameBack: 14,
+        emails: { delivered: 120, failed: 2, held: 5, notSentOnPurpose: 8 },
+      },
+    }} />)
+    expect(screen.queryByText('How far people get')).toBeFalsy()
+    expect(screen.queryByText('Where the people who stopped are standing')).toBeFalsy()
+    /* The check-in funnel beside it still renders. */
+    expect(screen.getByText('How far check-ins get')).toBeTruthy()
+  })
+})

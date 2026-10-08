@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { promptsApi, UsageFunnelData, PlatformDashboardData, OrgListItem, UsageStatsData, FeedbackSummaryData, PANEL_RANGES, type PanelRange, type Rate, type ActivationFunnel, type ActivationStage, type ActivationNowBucket, type ActivationEmailOutcome } from '@/api/prompts'
+import { promptsApi, UsageFunnelData, PlatformDashboardData, OrgListItem, UsageStatsData, FeedbackSummaryData, PANEL_RANGES, type PanelRange, type Rate, type ActivationFunnel, type ActivationStage, type ActivationNowBucket, type ActivationEmailOutcome, type ParticipantActivation, type ParticipantReachedStep, type ParticipantStuckBucket } from '@/api/prompts'
 import { adminApi, type PricingPlanRow, type InboundMessage, type CallRequestRow, type CoachingBatch } from '@/api/admin'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
@@ -915,6 +915,7 @@ export function DropoffsTab({ data }: { data: UsageFunnelData }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
 
       <ActivationSection activation={data.activation} />
+      <ParticipantsSection participants={data.activation?.participants} />
 
       <section>
         <div style={SL}>Session retention</div>
@@ -1088,6 +1089,63 @@ function ActivationSection({ activation }: { activation: ActivationFunnel | null
               <div style={{ fontSize: 12, color: 'var(--gw-text)' }}>{ACTIVATION_EMAIL_LABELS[outcome]}</div>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)' }}>{activation.emails[outcome].toLocaleString()}</div>
             </div>
+          ))}
+        </div>
+      </section>
+    </>
+  )
+}
+
+/**
+ * THE BACK OFFICE FUNNEL: PEOPLE, NOT ONLY CHECK-INS (docs/answers-from-engine.md, 8 October, point
+ * 2; beside the check-in funnel built in 5bdfc442). Staff-only, counts only - no name and no
+ * address is served. `participants` is missing on a server that has not shipped it yet, so this
+ * whole part of the tab draws nothing then, and the rest of the Drop-offs tab is unaffected.
+ */
+const PARTICIPANT_REACHED_LABELS: Record<ParticipantReachedStep, string> = {
+  added: 'Added to a check-in',
+  invited: 'Sent an invitation',
+  reached: 'The invitation arrived',
+  verified: 'Opened it and signed in',
+  engaged: 'Started a check-in',
+  inAHabit: 'Finished two or more, the latest in the last two weeks',
+}
+const PARTICIPANT_REACHED_ORDER: ParticipantReachedStep[] = ['added', 'invited', 'reached', 'verified', 'engaged', 'inAHabit']
+
+const PARTICIPANT_STUCK_LABELS: Record<ParticipantStuckBucket, string> = {
+  notInvited: 'Added and never sent an invitation',
+  invitedNotVerified: 'Invited and has not signed in',
+  verifiedNeverStarted: 'Signed in and has not started',
+  startedNotFinished: 'Started and not finished',
+  answeredOnceNotReturned: 'Answered once and has not come back',
+  wentQuiet: 'Answered twice or more and has gone quiet',
+}
+const PARTICIPANT_STUCK_ORDER: ParticipantStuckBucket[] = ['notInvited', 'invitedNotVerified', 'verifiedNeverStarted', 'startedNotFinished', 'answeredOnceNotReturned', 'wentQuiet']
+
+function ParticipantsSection({ participants }: { participants: ParticipantActivation | undefined }) {
+  if (!participants) return null
+  const top = participants.reached.added || 1
+
+  return (
+    <>
+      <section>
+        <div style={SL}>How far people get</div>
+        <div style={{ ...C, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {PARTICIPANT_REACHED_ORDER.map((step) => (
+            <div key={step} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', minWidth: 36, textAlign: 'right', flexShrink: 0 }}>{participants.reached[step]}</div>
+              <Bar pct={top > 0 ? (participants.reached[step] / top) * 100 : 0} />
+              <div style={{ fontSize: 12, color: 'var(--gw-text)', minWidth: 260, flexShrink: 0 }}>{PARTICIPANT_REACHED_LABELS[step]}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <div style={SL}>Where the people who stopped are standing</div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          {PARTICIPANT_STUCK_ORDER.map((bucket) => (
+            <Stat key={bucket} val={participants.stuck[bucket]} label={PARTICIPANT_STUCK_LABELS[bucket]} />
           ))}
         </div>
       </section>

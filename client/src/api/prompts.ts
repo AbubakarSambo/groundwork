@@ -105,6 +105,22 @@ export interface ActivationFunnel {
   /** Leads with a second check-in - repeat use. */
   leadsWhoCameBack: number
   emails: Record<ActivationEmailOutcome, number>
+  /**
+   * THE BACK OFFICE FUNNEL: PEOPLE, NOT ONLY CHECK-INS (docs/answers-from-engine.md, 8 October,
+   * point 2). Counts only - no name and no address is served. `undefined` on a server that has not
+   * shipped it yet; this whole part of the tab draws nothing then.
+   */
+  participants?: ParticipantActivation
+}
+
+/** One ordered step's count, how far people got, in `participants.reached`. */
+export type ParticipantReachedStep = 'added' | 'invited' | 'reached' | 'verified' | 'engaged' | 'inAHabit'
+/** Where the people who stopped are standing now, each counted in one bucket only, never overlapping. */
+export type ParticipantStuckBucket = 'notInvited' | 'invitedNotVerified' | 'verifiedNeverStarted' | 'startedNotFinished' | 'answeredOnceNotReturned' | 'wentQuiet'
+
+export interface ParticipantActivation {
+  reached: Record<ParticipantReachedStep, number>
+  stuck: Record<ParticipantStuckBucket, number>
 }
 
 export interface OrgListItem {
