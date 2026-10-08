@@ -785,8 +785,10 @@ export class ReviewsService {
     }
     if (role === 'ADMIN' && person.userId !== reader.userId) {
       const reviewerFirst = await this.firstNameOf(row.decidedById ?? null, directory);
-      /* The person's reasons go to an admin who may decide it; once decided, only to the admin who did (decision 113). */
-      const readsTheReasons = stands !== 'decided' || row.appealDecidedById === reader.userId;
+      /* The person's reasons go to every admin who may read this review, before and after it is decided (decision 118,
+         Hafsah 8 October: decision 5 and the evaluation access rule decide which admins those are; an admin without
+         access never reaches this line). The reviewer is answered above and never reads them. */
+      const readsTheReasons = true;
       return {
         reader: 'admin', stands, says: theAdminReadsSaid(stands, personFirst, reviewerFirst, appealedOn, decider, outcome), personFirstName: personFirst, appealedOn,
         theirReasons: readsTheReasons ? row.appeal : null,

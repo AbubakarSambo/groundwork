@@ -185,8 +185,8 @@ describe('the admin who decides is told truly who reads their reasons', () => {
   });
 });
 
-describe('once decided, the person\'s reasons stay with the admin who decided', () => {
-  it('an admin added after Grace decided reads the outcome and Grace\'s reasons, and not Imani\'s', async () => {
+describe('once decided, every admin who may read the review reads the person\'s reasons (decision 118)', () => {
+  it('an admin added after Grace decided reads the outcome, Grace\'s reasons and Imani\'s reasons and additions', async () => {
     const roles: Record<string, string> = { ...onlyBaraka(), 'u-grace': 'ADMIN' };
     const { svc, as } = setup(roles);
     await svc.appeal(as('u-imani'), 'r-imani', HER_REASONS);
@@ -194,8 +194,8 @@ describe('once decided, the person\'s reasons stay with the admin who decided', 
     await svc.decideTheAppeal(as('u-grace'), 'r-imani', { outcome: 'stands', reasons: 'The decision matches the record.' });
     roles['u-wairimu'] = 'ADMIN';
     const wairimu: any = await svc.one(as('u-wairimu'), 'r-imani');
-    expect(wairimu.appeal).toMatchObject({ reader: 'admin', stands: 'decided', outcome: 'stands', reasons: 'The decision matches the record.', theirReasons: null, additions: [], mayDecide: false });
-    expect(JSON.stringify(wairimu.appeal)).not.toContain('Karen');
+    expect(wairimu.appeal).toMatchObject({ reader: 'admin', stands: 'decided', outcome: 'stands', reasons: 'The decision matches the record.', theirReasons: HER_REASONS, mayDecide: false });
+    expect(JSON.stringify(wairimu.appeal)).toContain('Karen');
     const grace: any = await svc.one(as('u-grace'), 'r-imani');
     expect(grace.appeal.theirReasons).toBe(HER_REASONS);
     expect(grace.appeal.additions.map((a: any) => a.said)).toEqual(['The Karen notes are from 14 September.']);
