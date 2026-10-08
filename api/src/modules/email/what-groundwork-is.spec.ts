@@ -13,7 +13,9 @@ import { WHAT_EACH_MAIL_IS } from './nothing-goes-out-that-was-turned-off';
 describe('where it belongs', () => {
   it('goes on a mail about the work', () => {
     expect(shouldSayWhatGroundworkIs('sendReportReady')).toBe(true);
-    expect(shouldSayWhatGroundworkIs('sendParticipantCheckedIn')).toBe(true);
+    /* Changed on 8 October: this said sendParticipantCheckedIn too. That mail goes to the lead about somebody else's answer, and the paragraph tells the
+       reader that "your manager" can see what THEY say, which is not what the lead is reading. It is left off (see the-footer-says-only-what-is-true.spec). */
+    expect(shouldSayWhatGroundworkIs('sendNudge')).toBe(true);
   });
 
   it('stays off a door', () => {
