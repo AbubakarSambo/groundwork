@@ -1145,14 +1145,6 @@ export function GroundAdminPage() {
   )
   const sessionsDone = openRoundFromRule - 1
   /**
-   * NEAR ITS END: ITS LAST SESSION IS THE NEXT ONE (fault 4, live re-walk). The same rule the
-   * board already uses for "It's yours to decide how this ends" (BoardPage.tsx's `whereTheRunIs`,
-   * `done >= planned - 1`) - here, `sessionsDone` is that `done`, and `plannedSessions` that
-   * `planned`. With no plan at all, a check-in is never "near its end" by this rule; it can only
-   * be ended early, which the button already allows either way, right below.
-   */
-  const nearTheEnd = plannedSessions != null && plannedSessions > 0 && sessionsDone >= plannedSessions - 1
-  /**
    * HOW MANY SESSIONS *YOU* HAVE FINISHED, which is not the same number.
    *
    * `sessionsDone` is the round EVERYONE has finished - the person furthest behind sets the pace,
@@ -2468,13 +2460,15 @@ export function GroundAdminPage() {
               where somebody is added - which is also where it can be said BEFORE an address is
               typed rather than after the button is pressed.
 
-              FAULT 4 (LIVE RE-WALK): NOT UNTIL IT IS NEAR ITS END. My work offered "Begin the last
-              check-in" in session 1 of 6, with five more sessions still to come - a red button for
-              ending the whole engagement, beside nothing saying it was early to do so. Gated on
-              `nearTheEnd` now (defined above, beside `sessionsDone`): the same "its last session is
-              the next one" rule the board already uses for its own ending control.
+              RESTORED (8 October, nothing-removed audit S1): live showed this at any time while
+              the check-in ran, including a check-in with no planned number of sessions, gating only
+              on status. Gating on `nearTheEnd` (fault 4, live re-walk) hid the button for five
+              sessions out of six and removed it entirely from an open-ended check-in - live had
+              neither restriction, and nothing else calls `beginClosingSession`, so there was no
+              other way to close early. No decision of Hafsah's covers taking that away, so it is
+              shown again in every case live did: gated on status alone.
             */}
-            {isInitiator && nearTheEnd && !['RESOLVED', 'CLOSED', 'STALLED', 'AWAITING_LEAD'].includes(ground.status) && (
+            {isInitiator && !['RESOLVED', 'CLOSED', 'STALLED', 'AWAITING_LEAD'].includes(ground.status) && (
               confirmClosing ? (
                 <Stack gap={10}>
                   {/* GROUP 3'S REVIEW, BATCH A FAULT 6: "SESSION" IS INTERNAL JARGON HERE; THE
