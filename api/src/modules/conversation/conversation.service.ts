@@ -4038,7 +4038,9 @@ export class ConversationService {
      * AND NO GOAL THE LEAD HAS NOT TOLD THEM ABOUT (decision 56), for every block below that reads the
      * targets: the record, what does not add up, the disagreement and the rest. The board's own wall.
      */
-    const objectivesOnRecord = withoutWhatTheLeadHasNotToldThemAbout(
+    /* AND, IN AN ANCHOR CHECK-IN, NONE OF THE LEAD'S AIMS FOR SOMEBODY ON HER TEAM (decision 96, item 8): the same wall as OBJECTIVES below. Without it this
+       block told a team member's model "The team is aiming for 20 depots on the new stock system ... ask where they are against it" (review, 8 October). */
+    const objectivesOnRecord = this.theLeadsOwnWordsStayHers(ground, checkIn) ? [] : withoutWhatTheLeadHasNotToldThemAbout(
       (objectivesAsStored ?? []) as any[], untoldHere, (ground.participants ?? []) as any[], checkIn.participant.partyType === PartyType.INITIATOR,
     ).kept;
     const recordAlreadyHolds = whatTheRecordAlreadyHolds({

@@ -25,7 +25,7 @@ const COLLEAGUE = { id: 'p2', groundId: 'g1', partyType: PartyType.PARTICIPANT, 
 const THEIR_WORDS = 'I sent the district data to the programme office on Tuesday.';
 const THEIR_PROMISE = 'I will ask Ngozi for the Kano attendance sheets';
 
-type World = { modelSays?: string; turns?: { role: string; content: string }[]; answer?: string; startedFrom?: string | null; switchOn?: boolean; sessionNumber?: number; asTheLead?: boolean; scenario?: GroundScenario; stored?: { id: string; content: string } | null };
+type World = { modelSays?: string; turns?: { role: string; content: string }[]; answer?: string; startedFrom?: string | null; switchOn?: boolean; sessionNumber?: number; asTheLead?: boolean; scenario?: GroundScenario; onRecord?: { name: string; target: number | null; count: number; ownerParticipantId: string | null; setByParticipantId: string | null; direction: null }[]; stored?: { id: string; content: string } | null };
 
 function aWorld(w: World = {}) {
   const sessionNumber = w.sessionNumber ?? 2;
@@ -56,6 +56,7 @@ function aWorld(w: World = {}) {
       update: jest.fn(async () => ({})),
     },
     recordEntry: { findMany: jest.fn(async () => [{ text: THEIR_WORDS }]), count: jest.fn(async () => 0) },
+    groundObjective: { findMany: jest.fn(async () => w.onRecord ?? []) },
     groundCommitment: { findMany: jest.fn(async () => [{ text: THEIR_PROMISE, whenSaid: 'this week' }]) },
     groundParticipant: { count: jest.fn(async () => 3), findUnique: jest.fn(async () => ({ specificityHistory: [] })), findFirst: jest.fn(async () => me), findMany: jest.fn(async () => [LEAD, PERSON, COLLEAGUE].map((p) => ({ ...p, checkIns: [] }))) },
     conversationTurn: { count: jest.fn(async () => 1), findMany: jest.fn(async (a: any) => { const t = (w.turns ?? []).map((x, n) => ({ id: `t${n}`, createdAt: new Date(2026, 9, 1, 9, n), ...x })); return a?.orderBy?.createdAt === 'desc' ? [...t].reverse().slice(0, a.take ?? 99) : t; }), create: jest.fn(async (a: any) => ({ id: 't1', content: a.data.content })) },
@@ -127,6 +128,26 @@ describe('anchor piece 15: the weekly check-in, as the model reads it', () => {
     expect(await aWorld({ startedFrom: 'anchor', switchOn: true, modelSays }).reply()).toBe('You finished the route plan. What do you think could happen next?');
     expect(await aWorld({ startedFrom: 'anchor', switchOn: true, asTheLead: true, modelSays }).reply()).toContain('which is progress');
     expect(await aWorld({ switchOn: true, modelSays }).reply()).toContain('which is progress');
+  });
+
+  /*
+   * AND NOT THROUGH THE RECORD EITHER (review, 8 October, on test bed copy a). The lead's aims were taken off OBJECTIVES, but the block "what is already on
+   * the record for this check-in" read the same aims from the table and told a team member's model "ask where they are against it": on the bed, Amani's
+   * anchor prompt still held "The team is aiming for 20 depots on the new stock system, the whole check-in is at 4 of 20". On an anchor check-in every aim
+   * came out of the lead's own conversation (decision 96, item 8); her own model and every check-in that is not an anchor one still read them.
+   */
+  it('hands a team member\'s model none of the lead\'s aims through what is already on the record, and still hands them to the lead and to a check-in that is not an anchor one', async () => {
+    const onRecord = [{ name: 'Depots on the new stock system', target: 20, count: 4, ownerParticipantId: null, setByParticipantId: 'p0', direction: null }];
+    for (const w of [{ startedFrom: 'anchor' }, { scenario: GroundScenario.HELP_TEAM_UNDERSTAND }] as World[]) {
+      for (const switchOn of [true, false]) {
+        const member = await aWorld({ ...w, switchOn, onRecord }).compose();
+        expect(member).not.toMatch(/depots on the new stock system/i);
+      }
+      const lead = await aWorld({ ...w, switchOn: true, asTheLead: true, onRecord }).compose();
+      expect(lead).toMatch(/depots on the new stock system, the whole check-in is at 4 of 20/i);
+    }
+    const ordinary = await aWorld({ switchOn: false, onRecord }).compose();
+    expect(ordinary).toMatch(/depots on the new stock system, the whole check-in is at 4 of 20/i);
   });
 
   it('ends on the short reminder, read last', async () => {
