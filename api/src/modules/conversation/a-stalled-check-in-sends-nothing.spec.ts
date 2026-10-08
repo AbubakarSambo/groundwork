@@ -31,7 +31,7 @@ function theMorning(states: string[]) {
   };
   const email: any = {
     sendNudge: jest.fn(async (to: string) => { mailed.push(`nudge to ${to}`); }),
-    sendWhoHasNotStarted: jest.fn(async (to: string, subject: string) => { mailed.push(`lead ${to}: ${subject}`); }),
+    sendWhoHasNotStarted: jest.fn(async (to: string, subject: string, text: string) => { mailed.push(`lead ${to}: ${subject} ${text}`); }),
     sendAbsenceReminder: jest.fn(async () => ({})),
     buildCheckInUrl: (id: string) => `http://localhost/checkin/${id}`,
   };
@@ -49,6 +49,7 @@ describe('the morning reminder and a check-in that is not live', () => {
     expect(mailed).toEqual([]);
   });
 
+  /* Changed 8 October: a lead is sent ONE mail a day with every check-in in it, so the check-ins are looked for in its words and not in a subject of their own. */
   it('still reminds about a check-in that is live', async () => {
     const { service, mailed } = theMorning(['STALLED', 'ACTIVE', 'AWAITING_PARTIES']);
     await service.sendScheduledNudges();
