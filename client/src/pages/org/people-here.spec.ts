@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { firstNameOf, nameOf, checkInsWordApart, checkInsPartsApart } from './people-here'
+import { firstNameOf, nameOf, checkInsWordApart, checkInsPartsApart, initialsOf } from './people-here'
 
 /**
  * U.4 RE-REVIEW, ITEM 7: THE ONE-PERSON PAGE USES THE FIRST NAME, EVERY TIME.
@@ -99,5 +99,25 @@ describe('checkInsPartsApart', () => {
     const startOf = new Map([['g1', { startsAt: '2026-09-01' }], ['g2', { startsAt: '2026-09-10' }]])
     expect(checkInsPartsApart({ checkIns: [{ id: 'g1', label: 'Sales team, Q3', runsIt: false }, { id: 'g2', label: 'Leadership, Q3', runsIt: false }] }, startOf))
       .toEqual(['Sales team, Q3', 'Leadership, Q3'])
+  })
+})
+
+/**
+ * B-066: "SOMEONE WHO HAS NOT GIVEN A NAME YET" READ AS THE INITIALS "SW". E1 on Riverbank
+ * Trading's old data found every person with no name on People reading "SW" in their avatar circle
+ * - the first letters of "Someone" and "who", the start of the placeholder sentence decision 115
+ * serves for them, never a name.
+ */
+describe('initialsOf', () => {
+  it('reads a plain neutral mark, not "SW", for decision 115\'s placeholder sentence', () => {
+    expect(initialsOf('Someone who has not given a name yet')).toBe('')
+  })
+
+  it('does the same for the no-seat placeholder', () => {
+    expect(initialsOf('Somebody invited by email')).toBe('')
+  })
+
+  it('still reads initials from an actual name', () => {
+    expect(initialsOf('Faraji Odhiambo')).toBe('FO')
   })
 })
