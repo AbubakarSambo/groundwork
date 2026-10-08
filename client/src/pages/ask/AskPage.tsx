@@ -1,3 +1,7 @@
+import { useEffect, useRef } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router-dom'
+import { groundsApi } from '@/api/grounds'
 import { AskGroundwork } from '@/components/gw/AskGroundwork'
 import { useAskStore } from '@/stores/ask'
 
@@ -9,10 +13,39 @@ import { useAskStore } from '@/stores/ask'
  * Company page button) is kept in `pendingMessage` and handed in here as `initialMessage`, the same
  * way AppShell's desktop drawer already does - AppShell redirects here instead of opening that
  * drawer once the screen is phone width. Read and consumed once, so it is never re-sent.
+ *
+ * "I CAN HELP YOU DO THAT" (docs/answers-from-engine.md, 8 October, point 3 of "the engagement
+ * work"): `/chat?about=<check-in id>` opens Ask with a question already put, so a first-insight
+ * mail can hand a lead straight into the conversation worth having rather than an empty box.
+ * There is no server route today that serves the actual finding for an arbitrary check-in (that
+ * sentence is written only inside the mail itself, server-side) - so, per the engine's own answer,
+ * this opens with a neutral question naming the check-in, and the screens have asked for the real
+ * sentence in docs/requests-to-engine.md. `about` is read once; a second visit with the same
+ * query string (the browser back button) does not ask it again, because `pendingMessage` already
+ * carries whatever the panel is showing by then.
  */
 export function AskPage() {
   const pendingAskMessage = useAskStore(s => s.pendingMessage)
   const consumePendingAskMessage = useAskStore(s => s.consumePendingMessage)
+  const showWith = useAskStore(s => s.showWith)
+  const [searchParams] = useSearchParams()
+  const about = searchParams.get('about')
+  const askedAboutRef = useRef<string | null>(null)
+
+  const { data: ground, isFetched } = useQuery({
+    queryKey: ['ask-about-ground', about],
+    queryFn: () => groundsApi.get(about!),
+    enabled: !!about,
+    retry: false,
+  })
+
+  useEffect(() => {
+    if (!about || askedAboutRef.current === about || !isFetched) return
+    askedAboutRef.current = about
+    const name = ground?.label ? `the conversation about ${ground.label}` : 'this conversation'
+    showWith(`Help me prepare for ${name}.`)
+  }, [about, isFetched, ground, showWith])
+
   return (
     <div style={{ maxWidth: 680, margin: '0 auto', padding: '24px 16px 16px', display: 'flex', flexDirection: 'column', gap: 16, height: 'calc(100dvh - var(--gw-bottom-nav, 0px))', boxSizing: 'border-box' }}>
       <h1 style={{ margin: 0, fontFamily: 'var(--gw-font-name)', fontSize: 26, fontWeight: 500 }}>Chat</h1>
