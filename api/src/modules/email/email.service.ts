@@ -1442,16 +1442,18 @@ export class EmailService implements OnModuleInit {
    * rule that it is never a count, belong with the decision to send it rather than
    * with the mail. Here it is only wrapped and posted.
    */
-  async sendWhoHasNotStarted(email: string, subject: string, text: string): Promise<void> {
+  async sendWhoHasNotStarted(email: string, subject: string, text: string): Promise<'sent' | 'held' | 'suppressed'> {
     const escaped = text
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
+    const context: DeliveryContext = { kind: 'OTHER' };
     await this.sendEmail({
       to: email,
       subject,
       html: this.layout(escaped.split('\n').map((l) => `<p>${l || '&nbsp;'}</p>`).join('')),
-    }, undefined, 'sendWhoHasNotStarted');
+    }, context, 'sendWhoHasNotStarted');
+    return context.outcome ?? 'sent';
   }
 
   /**

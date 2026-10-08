@@ -35,7 +35,8 @@ describe('what Wairimu reads when four people have not started', () => {
   beforeEach(() => jest.useFakeTimers().setSystemTime(NOW));
   afterEach(() => jest.useRealTimers());
 
-  it('who, what Groundwork sent and when, that it has stopped, and that she need do nothing', async () => {
+  /* Changed 8 October: the greeting is one line with the first sentence, it says 'the check-in', and 'will not remind them again' is gone because it said the same thing twice. */
+  it('who, what Groundwork sent and when, and that it has stopped, said once', async () => {
     const at = new Date('2026-10-19T08:00:00.000Z');
     const w = sweep({ Omar: at, Vera: at, Bisi: at, Femi: at });
     await w.service.sendScheduledNudges();
@@ -43,10 +44,9 @@ describe('what Wairimu reads when four people have not started', () => {
     expect(w.told[0].subject).toBe('Omar, Vera, Bisi and Femi have not started "Kenya launch", and Groundwork has reminded them');
     const lines = w.told[0].text.split('\n').filter(Boolean);
     expect(lines).toEqual([
-      'Wairimu,',
-      'Omar, Vera, Bisi and Femi have not started their check-in on "Kenya launch".',
+      'Hi Wairimu, Omar, Vera, Bisi and Femi have not started the check-in on "Kenya launch".',
       expect.stringMatching(/^Groundwork reminded them, the last time on .*19.*, and has now stopped reminding them\.$/),
-      'Groundwork will not remind them again. If you still want their view, a short note from you is the next step. You can send a fresh link from the check-in page with Resend invite.',
+      'If you still want their view, a short note from you is the next step. You can send a fresh link from the check-in page with Resend invite.',
       'You could write, "I would value your view on Kenya launch. It takes about five minutes, and I will send you a fresh link if you reply."',
       'https://app.test/grounds',
     ]);
@@ -92,7 +92,7 @@ describe('the lead has not started either', () => {
     await w.service.sendScheduledNudges();
     expect(w.told[0].subject).toBe('Vera and Bisi have not started "Kenya launch"');
     const lines = w.told[0].text.split('\n').filter(Boolean);
-    expect(lines[1]).toBe('Vera and Bisi have not started their check-in on "Kenya launch". Your own check-in is still open too.');
+    expect(lines[0]).toBe('Hi Wairimu, Vera and Bisi have not started the check-in on "Kenya launch". Your own check-in is still open too.');
     expect(w.told[0].text).not.toMatch(/Omar|You, /);
     expect(w.told[0].text).toContain('You can send a fresh link from the check-in page with Resend invite.');
   });

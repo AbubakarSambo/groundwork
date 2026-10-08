@@ -131,7 +131,9 @@ describe('what the lead is told', () => {
   /* Changed under decision 109, journey 3: this held that the lead is told "it is theirs now". She is told what Groundwork did and that it has stopped, and that she need do nothing. */
   it('says what Groundwork did and that the reminders have stopped, and never that the chasing is the lead\'s now', () => {
     expect(composed.text).toContain('has now stopped reminding them');
-    expect(composed.text).toContain('Groundwork will not remind them again. If you still want their view, a short note from you is the next step. You can send a fresh link from the check-in page with Resend invite.');
+    /* Changed 8 October: "Groundwork will not remind them again" said the same thing as the sentence before it, so it is gone. */
+    expect(composed.text).not.toContain('will not remind them again');
+    expect(composed.text).toContain('If you still want their view, a short note from you is the next step. You can send a fresh link from the check-in page with Resend invite.');
     expect(composed.text).not.toMatch(/yours now|this is yours/i);
   });
 
@@ -168,11 +170,13 @@ describe('the schedule has one home', () => {
     expect(scheduled).toContain('emailNotifications === false');
   });
 
-  it('sends the lead one email per check-in, not one per session', () => {
+  /* Changed 8 October: it was one mail per check-in; it is now one mail per lead, with a part for each check-in (one-has-not-started-mail-a-lead-a-day.spec.ts). */
+  it('sends the lead one email, with a part for each check-in, not one per session or per check-in', () => {
     /* A ground with three sessions open sent three emails in one morning, all
        about the same people. Found by running it, not by reading it. */
     const service = withoutComments('remind.service.ts');
-    expect(service).toContain('const key = checkIn.groundId;');
+    expect(service).toContain('forTheLead.get(lead.email.trim().toLowerCase())');
+    expect(service).toContain('lead_.parts.get(checkIn.groundId)');
     expect(service).not.toContain('${checkIn.groundId}:${checkIn.sessionNumber}');
   });
 

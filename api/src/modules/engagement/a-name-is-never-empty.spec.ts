@@ -44,7 +44,7 @@ describe('the not-started email, when somebody has no first name', () => {
     await new RemindService(prisma, email, { tell: async () => [] } as any).sendScheduledNudges();
     expect(told[0].subject).toBe('Someone has not started "Kenya launch", and Groundwork has reminded them');
     expect(told[0].subject.startsWith(' ')).toBe(false);
-    expect(told[0].text).toContain('Someone has not started their check-in on "Kenya launch".');
+    expect(told[0].text).toContain('Hi Wairimu, someone has not started the check-in on "Kenya launch".');
     /* No address, and no piece of one, reads as a name. */
     expect(`${told[0].subject} ${told[0].text}`).not.toMatch(/amina|otieno|@x\.test/i);
   });
