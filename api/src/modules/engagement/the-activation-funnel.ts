@@ -31,7 +31,7 @@ export interface TheActivationFunnel {
 }
 
 export const ENGAGEMENT_SENDERS = [
-  'sendLeadFirstCheckIn', 'sendTestCheckInMovesOn', 'sendHeresWhatIsNew', 'sendYourWeek', 'sendTheReportFollowUp', 'sendWhoHasGoneQuiet', 'sendTheLeadsWeeklyLetter',
+  'sendLeadFirstCheckIn', 'sendWaitingOnThePeople', 'sendTestCheckInMovesOn', 'sendHeresWhatIsNew', 'sendYourWeek', 'sendTheReportFollowUp', 'sendWhoHasGoneQuiet', 'sendTheLeadsWeeklyLetter',
   'sendNudge', 'sendReportReady', 'sendRoundDigest',
 ];
 

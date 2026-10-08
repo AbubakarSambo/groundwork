@@ -30,6 +30,7 @@ import { theirTimeZone } from '../whatsapp/the-persons-own-time-zone';
 import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
 import { sendWhoHasGoneQuiet as sendWhoHasGoneQuietToLeads } from '../engagement/who-has-gone-quiet';
 import { sendTheReportFollowUps } from '../engagement/the-report-follow-up';
+import { sendWhatGroundworkIsDoing as sendWhatGroundworkIsDoingToLeads } from '../engagement/waiting-on-the-people-you-invited';
 import { whatTheLeadsWeeklyReportSays } from '../engagement/the-leads-own-weekly-report';
 import { theFirstOpenDifference } from '../engagement/the-first-insight';
 import { ReportsService } from '../reports/reports.service';
@@ -1022,6 +1023,24 @@ export class GroundsCron implements OnApplicationBootstrap {
       now,
     ).catch((err: any) => { this.logger.warn(`The "gone quiet" messages could not be sent: ${err?.message}`); return { tried: 0 }; });
     if (result.tried) this.logger.log(`Email: ${result.tried} "gone quiet" message(s) tried.`);
+    return result;
+  }
+
+  /**
+   * INVITED, AND NOBODY HAS STARTED (engagement spec section 5; journey 3), weekdays at half past ten in Lagos, after the morning's reminders have gone, so that it can say who
+   * has been reminded. Once per check-in. See engagement/waiting-on-the-people-you-invited.ts.
+   */
+  @Cron('30 10 * * 1-5', { timeZone: 'Africa/Lagos' })
+  async sendWhatGroundworkIsDoing() {
+    await onceAcrossCopies(this.prisma, 'what-groundwork-is-doing', theDay(), () => this.sendWhatGroundworkIsDoingInner());
+  }
+
+  async sendWhatGroundworkIsDoingInner(now: Date = new Date()): Promise<{ tried: number }> {
+    const result = await sendWhatGroundworkIsDoingToLeads(
+      { prisma: this.prisma, email: this.email, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
+      now,
+    ).catch((err: any) => { this.logger.warn(`The "waiting on the people you invited" messages could not be sent: ${err?.message}`); return { tried: 0 }; });
+    if (result.tried) this.logger.log(`Email: ${result.tried} "waiting on the people you invited" message(s) tried.`);
     return result;
   }
 
