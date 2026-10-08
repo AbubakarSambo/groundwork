@@ -99,6 +99,31 @@ branch (see citations above). The one real gap found - item J, a frequency or ch
 the single on/off switch - has no field on the server to build against, so it is request 199 in
 `docs/requests-to-engine.md`, not a screen change.
 
+## Update, 8 October (night): the back office can now see people, not only check-ins
+
+The engine's answer of 8 October (night) added `participants` to `GET /prompts/platform-funnel`'s
+`activation` field: `reached` (how many people got as far as each step - added, invited, the
+invitation arrived, opened it and signed in, started, in a habit) and `stuck` (where the people who
+stopped are standing now, the six buckets never overlapping). Counts only, no name and no address,
+for the Groundwork team, not a customer. This is the staff side of the spec items above, not a
+participant-facing screen: it lets Hafsah's team see, across every organisation, how far the
+activation work above (items A, B, D, F) is actually landing - how many people never got an
+invitation at all, how many signed in and never started, how many answered once and went quiet.
+
+Built on the back office's Drop-offs/Usage tab (`AdminPage.tsx`), beside the check-in funnel built
+in 5bdfc442: "How far people get" as a funnel (`ParticipantsSection`, `PARTICIPANT_REACHED_LABELS`)
+and "Where the people who stopped are standing" as counts (`PARTICIPANT_STUCK_LABELS`), both using
+the engine's own suggested wording for each row. The whole section draws nothing when `participants`
+is missing (a server that has not shipped it yet), so nothing else on the tab is affected - checked
+with a served payload in `activation-funnel-on-the-usage-tab.spec.tsx`.
+
+The same answer also gave Today, for a lead only, `GET /today/outstanding` - the page the lead's
+daily nudge's "to see everything" link opens, with three more lists: "Needs you", "Overdue on your
+team" and "Risks". Not a participant screen (a member reads `null` and sees nothing new), so it is
+not one of the ten strategies above, but noted here since it shares this build. A sentence "Needs
+you" would otherwise say twice, because "What needs you" already says it, is left out
+(`outstanding-not-already-shown.ts`). Built in `TodayPage.tsx`, checked in `TodayPage.spec.tsx`.
+
 ## For Hafsah
 
 Nothing here needs a decision from you yet: the one gap found (item J) is a request to the engine

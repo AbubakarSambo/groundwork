@@ -8273,3 +8273,36 @@ screens' side of both, route by route, keeping everything request 195 named as "
   instead.
 - `client/`: `npx tsc --noEmit -p .` clean; the full `npx vitest run` is green, 717 files and 4,733
   tests (up from 4,725).
+
+## 8 October (night): the lead's daily nudge, and the back office funnel for people
+
+From the engine's answer of 8 October night (`docs/answers-from-engine.md`) and decision 120.
+
+- **Today's own link for the lead's daily nudge, `GET /today/outstanding`.** Three more lists,
+  "Needs you", "Overdue on your team" and "Risks", every sentence already worded by the server, each
+  heading left out while its own list is empty. `null` for anybody who is not a lead, or who has
+  nothing outstanding, so a member's Today is unaffected (checked live as esther@kijani.test: no new
+  heading appears). A sentence "Needs you" shares, in whole or in part, with "What needs you" above
+  it is left out, so nothing is said twice - `outstanding-not-already-shown.ts`, its own spec, and
+  four new tests in `TodayPage.spec.tsx` (all three lists; one heading left out; a member sees
+  nothing; the shared sentence is said once). Built in `TodayPage.tsx`, `api/today.ts`.
+- **The back office funnel: people, not only check-ins.** `GET /prompts/platform-funnel`'s
+  `activation` now carries `participants`, counts only - no name and no address. Drawn on the
+  Drop-offs/Usage tab (`AdminPage.tsx`, `ParticipantsSection`) beside the check-in funnel built in
+  5bdfc442: "How far people get" as a funnel and "Where the people who stopped are standing" as
+  counts, with the engine's own suggested words for each row. The whole section draws nothing when
+  `participants` is missing, checked with a served payload in
+  `activation-funnel-on-the-usage-tab.spec.tsx` (two new tests).
+- **A WhatsApp switch in Settings (item 3): nothing drawn, noted as waiting.** The engine side
+  (`WhatsAppService.stopOrResume`) is not built yet.
+- **Proven live** as tendai@kijani.test (lead) and esther@kijani.test (member),
+  `e2e/sweep/today-outstanding.spec.ts`, both pass. Kijani's seed has nothing outstanding for
+  Tendai, so the three new lists do not appear for her either - correct, not a fault, since the
+  seeding script that would put something outstanding into a check-in
+  (`api/journey/sweep/put-what-is-outstanding-in.ts`) only ever touches a database named
+  `gw_sweep_a`/`gw_sweep_b` (a hard safety check in `the-test-bed.ts`), never `groundwork_dev`, so it
+  was read but not run against the local dev database. Screenshots:
+  `today-outstanding-lead-{1440,390}.png` (committed); esther's sign-in state was not written to
+  disk.
+- `client/`: `npx tsc --noEmit -p .` clean; the full `npx vitest run` is green, 725 files and 4,790
+  tests (up from 4,733).
