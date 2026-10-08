@@ -35,7 +35,15 @@ The nine things:
 - dependOnThem: who depends on them.
 - teamCouldDoBetter: what they think the team could be doing better.
 
-Say true only where the person has plainly told Groundwork. A passing mention of a person's name or of a thing they do is not enough unless it answers the thing.`;
+Say true only where the person has plainly told Groundwork. A passing mention of a person's name or of a thing they do is not enough unless it answers the thing.
+
+Something they name in passing does count when it plainly answers the thing. A problem they describe in their work (a broken van fridge, a shop that has not paid, a person who did not act) answers whatMakesItHard. A duty they say is theirs, or say they have been left to do or leave undone, answers responsibleFor. Say true for these even when they said them while answering a different question.
+
+ALSO say what, in their latest answer only, Groundwork should ask about first, as followUp. Return it only when the latest answer names one of these, and only when Groundwork has not already asked about it:
+- blocker: something in the way of their work, or something they told somebody about that nobody acted on.
+- promise: something they say they will do or have agreed to do.
+- duty: something they say is their job, or is not their job but they thought somebody else did it.
+Give kind, and about: three to eight plain words naming what it is about, in the person's own terms. Leave followUp out when the latest answer names none of these, or when the question just before it was already about this.`;
 
 export const THE_BASELINE_READ_TOOL = {
   name: 'what_the_person_has_told_us',
@@ -46,6 +54,15 @@ export const THE_BASELINE_READ_TOOL = {
     required: THE_NINE.map((n) => n.key) as string[],
   },
 };
+(THE_BASELINE_READ_TOOL.input_schema.properties as Record<string, unknown>).followUp = {
+  type: 'object',
+  description: 'What the latest answer names that Groundwork should ask about first. Leave out when it names none.',
+  properties: {
+    kind: { type: 'string', enum: ['blocker', 'promise', 'duty'] },
+    about: { type: 'string', description: 'Three to eight plain words naming what it is about.' },
+  },
+  required: ['kind', 'about'],
+};
 
 export function whatIsLearnedFrom(read: unknown, before?: Partial<WhatIsLearned> | null): WhatIsLearned {
   const r = (read && typeof read === 'object' ? read : {}) as Record<string, unknown>;
@@ -54,19 +71,54 @@ export function whatIsLearnedFrom(read: unknown, before?: Partial<WhatIsLearned>
   return out;
 }
 
+export type WhatToFollowUp = { kind: 'blocker' | 'promise' | 'duty'; about: string };
+
+/** What the latest answer names that is asked about first, or nothing. Only a known kind and a short, plain subject are kept. */
+export function theFollowUpFrom(read: unknown): WhatToFollowUp | null {
+  const f = (read && typeof read === 'object' ? (read as Record<string, any>).followUp : null) as { kind?: unknown; about?: unknown } | null;
+  if (!f || (f.kind !== 'blocker' && f.kind !== 'promise' && f.kind !== 'duty')) return null;
+  const about = typeof f.about === 'string' ? f.about.replace(/\s+/g, ' ').trim() : '';
+  if (!about || about.length > 80) return null;
+  return { kind: f.kind, about };
+}
+
 export const everythingIsLearned = (l: WhatIsLearned) => THE_NINE.every((n) => l[n.key]);
 
+/**
+ * WHAT THEY JUST SAID COMES FIRST, AND THE LIST WAITS (final check of the anchor, 8 October).
+ *
+ * Juma said two shops on his round owed for three weeks and he never asked, and was asked what he is responsible for. Kofi said the fridge in van
+ * 2 had been broken for two weeks and he told the yard manager, and was asked what he is responsible for. The list went first and what they
+ * had said was left lying. When the latest answer names something in their way, something they will do, or a duty, the turn is about that;
+ * the nine and the fields are a checklist behind it, come back to on a later turn.
+ */
+const WHAT_THEY_NAMED: Record<WhatToFollowUp['kind'], string> = {
+  blocker: 'something in the way of their work',
+  promise: 'something they will do',
+  duty: 'a duty, or something they thought somebody else did',
+};
+export function whatTheyJustSaidComesFirst(f: WhatToFollowUp): string {
+  return `# What they have just said comes first\n\nTheir last answer named ${WHAT_THEY_NAMED[f.kind]}: ${f.about}. Your question this turn is one plain question about that: it may be what happened, who else is involved, or what they did about it. Ask about nothing else. The list below is a checklist for later turns; it is not what to ask next.`;
+}
+
 /** The context handed to the model every turn. Labels only: none of the person's words are put back in front of the model to echo. */
-export function whatTheBaselineHasLearned(l: WhatIsLearned): string {
+export function whatTheBaselineHasLearned(l: WhatIsLearned, followUp?: WhatToFollowUp | null): string {
   const got = THE_NINE.filter((n) => l[n.key]).map((n) => `- ${n.said}`);
   const missing = THE_NINE.filter((n) => !l[n.key]).map((n) => `- ${n.said}`);
   const lines = ['# What you have learned from this person, and what you have not'];
   lines.push(got.length ? `Learned already. Do not ask about these again:\n${got.join('\n')}` : 'You have not yet learned any of the nine things.');
   if (missing.length) {
-    lines.push(`Not learned yet. Ask about only these, one at a time, in the order that follows what they have just said:\n${missing.join('\n')}\nDo not ask why, what makes it so, or how they know. Take their answer and move to the next thing you have not learned. You must not close yet.`);
+    lines.push(followUp
+      ? `Not learned yet, to come back to on a later turn, one at a time, once what they have just said has been followed up:\n${missing.join('\n')}\nYou must not close yet.`
+      : `Not learned yet. Ask about only these, one at a time, in the order that follows what they have just said:\n${missing.join('\n')}\nDo not ask why, what makes it so, or how they know. Take their answer and move to the next thing you have not learned. You must not close yet.`);
   }
-  return lines.join('\n\n');
+  return (followUp ? [whatTheyJustSaidComesFirst(followUp), ...lines] : lines).join('\n\n');
 }
+
+/** Read last, on the turn that follows up what they said: it stands in for "ask about one of the nine" for this turn only. */
+export const THE_BASELINE_FOLLOW_UP_REMINDER = `# For this person, this turn
+
+Ask exactly one question, and it is about what they have just said, as the part above says. It is not about one of the nine. Do not ask for proof, numbers, dates or documents, and never give an example of an answer: no "for instance", no "such as". Do not coach, and do not suggest what they should do.`;
 
 /** The turn on which all nine are learned. Read last. */
 export const THE_BASELINE_CLOSING_REMINDER = `# For this person, all nine things are learned, so this turn closes

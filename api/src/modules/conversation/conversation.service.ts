@@ -81,7 +81,8 @@ export const DECLINED_TO_TAKE_PART = 'declined';
 import { mirrorCommitment } from '../assistant/a-commitment-carries-past-the-ground';
 import { STARTED_FROM_THE_ANCHOR, aCheckInStartedFromTheAnchor, theAnchorMarkOf, theAnchorParticipantGuidance, whatTheyToldYouBefore, withoutAnAnnouncedAngle } from './the-anchor-weekly-check-in';
 import { theAnchorBaselineGuidance } from './the-anchor-baseline';
-import { withoutAnExampleAnswer, THE_BASELINE_CLOSING_REMINDER, THE_BASELINE_READ_SYSTEM, THE_BASELINE_READ_TOOL, everythingIsLearned, whatIsLearnedFrom, whatTheBaselineHasLearned, type WhatIsLearned } from './the-baseline-so-far';
+import { withoutAnExampleAnswer, THE_BASELINE_CLOSING_REMINDER, THE_BASELINE_FOLLOW_UP_REMINDER, THE_BASELINE_READ_SYSTEM, THE_BASELINE_READ_TOOL, everythingIsLearned, whatIsLearnedFrom, theFollowUpFrom, whatTheBaselineHasLearned, whatTheyJustSaidComesFirst, type WhatIsLearned, type WhatToFollowUp } from './the-baseline-so-far';
+import { THE_ANCHOR_GIVES_IT_PASSING_WEIGHT, THE_WEEKLY_FOLLOW_UP_REMINDER, whatToFollowUpInTheWeekly } from './the-anchor-follows-up-what-was-said';
 import { whatTheAnswerAgreedTo, hasAlreadyOffered, whatHappenedToTheOffer, weSayAboutTheOffer, whatIsStillOwedToThem, withoutTheSecondTellingOfIt, isAnOfferToWriteItDown, whatTheyJustSaidMayBeTheirOwnStep, YOU_HAVE_ALREADY_OFFERED } from './giving-the-person-agency';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { DocumentsService } from '../documents/documents.service';
@@ -5095,7 +5096,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * talked about it - decided by the same coverage rule as everything else.
      */
     const frame = await this.theFrameFor(checkIn.groundId).catch(() => [] as AField[]);
-    const theHole = this.whichHoleToPush(notes, subjects, theirAnswers, frame).text;
+    let theHole = this.whichHoleToPush(notes, subjects, theirAnswers, frame).text;
 
     /*
      * AND ONE THING THE ROOM ALREADY KNOWS THAT THEY DO NOT.
@@ -5576,6 +5577,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     if (anchorWeek) this.logger.log(`anchor-weekly check-in=${checkIn.id} prompt-version=${anchorWeek.promptVersionId ?? 'the file'}`);
     this.anchorVersionForThisTurn.set(checkIn.id, anchorWeek?.promptVersionId ?? null);
     this.anchorWeekForThisTurn.set(checkIn.id, anchorWeek);
+    /* What they just said comes first in the anchor's weekly check-in: the lead's field is not the turn's question then. */
+    if (anchorWeek?.followUp) theHole = '';
 
     const theBaselinePrompt = !theBaselineRuns ? '' : await (async () => {
       /* The engine's own rules, the person's language, and the few things every turn needs; the baseline's words follow, and its reminder is read last. */
@@ -5594,14 +5597,14 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * WHICH OF THE NINE THE PERSON HAS TOLD US, from their own words, by one fast read. Nothing when there is nothing to read yet or the read fails:
    * the baseline then runs on its own words, as before.
    */
-  private async whatTheBaselineHasLearnedSoFar(turns: { role: 'AI' | 'PERSON'; content: string }[]): Promise<WhatIsLearned | null> {
+  private async whatTheBaselineHasLearnedSoFar(turns: { role: 'AI' | 'PERSON'; content: string }[]): Promise<{ learned: WhatIsLearned; followUp: WhatToFollowUp | null } | null> {
     if (!turns.some((t) => t.role === 'PERSON' && t.content.trim())) return null;
     const history = turns.map((t) => ({ role: t.role === 'AI' ? 'assistant' as const : 'user' as const, content: t.content }));
     while (history.length && history[history.length - 1].role === 'assistant') history.pop();
     if (!history.length) return null;
     try {
-      const read = await this.anthropic.extract<Record<string, boolean>>(THE_BASELINE_READ_SYSTEM, history, THE_BASELINE_READ_TOOL, { fast: true });
-      return whatIsLearnedFrom(read);
+      const read = await this.anthropic.extract<Record<string, any>>(THE_BASELINE_READ_SYSTEM, history, THE_BASELINE_READ_TOOL, { fast: true });
+      return { learned: whatIsLearnedFrom(read), followUp: theFollowUpFrom(read) };
     } catch (err: any) {
       this.logger.warn(`The baseline could not count what it has learned: ${err?.message}`);
       return null;
@@ -5622,9 +5625,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     return this._anchorVersionForThisTurn;
   }
   /* The anchor's weekly words for this turn, written by composeSystemPrompt and read by the reply path that puts them after the rest. */
-  private _anchorWeekForThisTurn?: Map<string, { text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo>; isTheBaseline?: boolean } | null>;
+  private _anchorWeekForThisTurn?: Map<string, { text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo>; isTheBaseline?: boolean; followUp?: WhatToFollowUp | null } | null>;
   private get anchorWeekForThisTurn() {
-    if (!this._anchorWeekForThisTurn) this._anchorWeekForThisTurn = new Map<string, { text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo>; isTheBaseline?: boolean } | null>();
+    if (!this._anchorWeekForThisTurn) this._anchorWeekForThisTurn = new Map<string, { text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo>; isTheBaseline?: boolean; followUp?: WhatToFollowUp | null } | null>();
     return this._anchorWeekForThisTurn;
   }
   /** The anchor's weekly words that go before the turn's own additions, and the ones that go after everything. Both empty unless the anchor is in play. */
@@ -5644,7 +5647,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     untoldHere: AnUntoldGoalRow[],
     latestMessage: string,
     turnsThisSession: { role: 'AI' | 'PERSON'; content: string }[] = [],
-  ): Promise<{ text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo>; isTheBaseline?: boolean } | null> {
+  ): Promise<{ text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo>; isTheBaseline?: boolean; followUp?: WhatToFollowUp | null } | null> {
     const guidance = await theAnchorParticipantGuidance(() => theAnchorScenarioIsOn(this.prisma), this.prompts, {
       ground,
       isTheLead: checkIn.participant.partyType === PartyType.INITIATOR,
@@ -5666,12 +5669,15 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
 ${told}` : '';
       /* What has been learned so far, counted from the person's own words, and the closing once all nine are. */
-      const learned = await this.whatTheBaselineHasLearnedSoFar(turnsThisSession);
+      const read = await this.whatTheBaselineHasLearnedSoFar(turnsThisSession);
+      const learned = read?.learned ?? null;
       const closes = !!learned && everythingIsLearned(learned);
+      /* What they just said comes first, unless it is the close. */
+      const followUp = closes ? null : read?.followUp ?? null;
       return {
         text: baseline.text,
-        block: [aboutIt, learned ? whatTheBaselineHasLearned(learned) : ''].filter(Boolean).join('\n\n'),
-        last: closes ? THE_BASELINE_CLOSING_REMINDER : baseline.last,
+        block: [aboutIt, learned ? whatTheBaselineHasLearned(learned, followUp) : (followUp ? whatTheyJustSaidComesFirst(followUp) : '')].filter(Boolean).join('\n\n'),
+        last: closes ? THE_BASELINE_CLOSING_REMINDER : followUp ? THE_BASELINE_FOLLOW_UP_REMINDER : baseline.last,
         promptVersionId: baseline.promptVersionId, agreed: null as any, isTheBaseline: true,
       };
     }
@@ -5720,8 +5726,16 @@ ${told}` : '';
     const offered = hasAlreadyOffered(sofar as any[]);
     /* Owed to them, read from the record: asked after the reminder, so it is the last thing read about what to ask. Not while an offer is being answered. */
     const owed = agreed ? '' : [whatTheyJustSaidMayBeTheirOwnStep(sofar as any[], latestMessage), whatIsStillOwedToThem(sofar as any[])].filter(Boolean).join('\n\n');
-    return { text: guidance.text, block, last: [guidance.last, owed, offered ? YOU_HAVE_ALREADY_OFFERED : ''].filter(Boolean).join('\n\n'), promptVersionId: guidance.promptVersionId, agreed };
+    /* What they just said comes first, and the lead's fields wait behind it. Not while an offer is being answered. */
+    const followUp = agreed ? null : await whatToFollowUpInTheWeekly(this.anthropic as any, turnsThisSession, (m) => this.logger.warn(m));
+    return {
+      text: guidance.text,
+      block: [block, followUp ? whatTheyJustSaidComesFirst(followUp) : ''].filter(Boolean).join('\n\n'),
+      last: [guidance.last, owed, offered ? YOU_HAVE_ALREADY_OFFERED : '', followUp ? THE_WEEKLY_FOLLOW_UP_REMINDER : ''].filter(Boolean).join('\n\n'),
+      promptVersionId: guidance.promptVersionId, agreed, followUp,
+    };
   }
+
 
   /**
    * THEIR YES BECOMES A COMMITMENT, AND ONLY THEIR YES (anchor piece 17). Read from the anchor's weekly words for this turn: when the
@@ -8053,9 +8067,11 @@ ${told}` : '';
   private async noteWhatTheySaidNow(checkInId: string, theirTurn: string): Promise<void> {
     const row = await this.prisma.checkIn.findUnique({
       where: { id: checkInId },
-      select: { whatWeHave: true, sessionNumber: true, groundId: true, completedAt: true },
+      select: { whatWeHave: true, sessionNumber: true, groundId: true, completedAt: true, participant: { select: { partyType: true } }, ground: { select: { startedFrom: true, scenario: true } } },
     });
     if (!row) return;
+    /* A person on the lead's team in an anchor check-in: what they name in passing counts as given (see THE_ANCHOR_GIVES_IT_PASSING_WEIGHT). */
+    const anAnchorMember = aCheckInStartedFromTheAnchor((row as any).ground) && (row as any).participant?.partyType !== PartyType.INITIATOR;
     const before: WhatWeHave = ((row as any).whatWeHave as WhatWeHave) ?? nothingYet();
 
     /*
@@ -8157,6 +8173,7 @@ ${told}` : '';
         content: [
           theNotesSoFar(before),
           theFieldsToJudgeAgainst(frame, before),
+          anAnchorMember && frame.length ? THE_ANCHOR_GIVES_IT_PASSING_WEIGHT : '',
           theSubjectsToJudgeAgainst(subjects),
           `WHAT THEY JUST SAID:\n${theirTurn}`,
         ].filter(Boolean).join('\n\n'),
