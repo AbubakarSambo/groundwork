@@ -319,8 +319,9 @@ describe('release night, for a check-in that already exists', () => {
        86: "Use simpler words" adds one column, grounds.simpler_words, false for every check-in (row 86).
        87 since 6 October: the strategy keeps its versions, one new empty table, strategy_versions (row 87).
        88 since 6 October: an address can always stop the mail, one new empty table, email_address_preferences (row 88).
-       89 since 7 October: Hafsah's address stays a platform admin, one flag set true on one row, never off (row 89). */
-    expect(names).toHaveLength(89);
+       89 since 7 October: Hafsah's address stays a platform admin, one flag set true on one row, never off (row 89).
+       90 since 8 October: a decided review can be appealed, nine empty columns on performance_reviews and nothing else (docs/deploy.md row 90). */
+    expect(names).toHaveLength(90);
     // The six statements deploy.md lists, plus the WhatsApp prices (five updates and one insert).
     expect(o.dataChangesRun).toBeGreaterThanOrEqual(8);
   }));
