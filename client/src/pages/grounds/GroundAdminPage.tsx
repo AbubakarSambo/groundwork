@@ -1228,10 +1228,41 @@ export function GroundAdminPage() {
    * a fact about arithmetic that nobody can be expected to reconstruct, and it takes one sentence to
    * say. Shown only when it has actually happened: somebody here has finished more sessions than the
    * open round, which cannot be true unless the round moved back under them.
+   *
+   * B-064: THE ARITHMETIC ALONE IS NOT EVIDENCE SOMEBODY WAS ADDED. E1 on Riverbank Trading's old
+   * data (docs/existing-users-check.md) found "It went back to session 2, because somebody new was
+   * added." on check-ins where nobody had been added - the old data simply carried one person much
+   * further than another (session 20 against session 2), because it was put in with each person's
+   * own stray session numbers rather than everybody starting together. The arithmetic condition
+   * above is still necessary (it is what "went back" even means), but it is not sufficient: it is
+   * also true of two people who have always been in the check-in and have simply answered a very
+   * different number of times. The server does not send a "this person was added after the round
+   * opened" flag (request 201 asks for one), so this reads the nearest honest signal already on the
+   * page: `createdAt`, when every non-managing participant has one. Only when somebody who is BEHIND
+   * joined the check-in later than somebody who is AHEAD could they plausibly be the newcomer the
+   * sentence is about; when the data gives no such evidence (old imports often give everybody the
+   * same `createdAt`, or none at all), the sentence is dropped rather than guessed.
    */
-  const roundWentBack = (ground.participants ?? []).some((p: any) =>
-    (ground.checkIns ?? []).filter((c: any) => c.participantId === p.id && c.status === 'COMPLETED').length > openRound,
-  )
+  const roundWentBack = (() => {
+    const parties = (ground.participants ?? []).filter((p: any) => !p.managingOnly)
+    const doneCountOf = (p: any) =>
+      (ground.checkIns ?? []).filter((c: any) => c.participantId === p.id && c.status === 'COMPLETED').length
+    const joinedAt = (p: any): number | null => {
+      const t = p?.createdAt ? new Date(p.createdAt).getTime() : NaN
+      return Number.isFinite(t) ? t : null
+    }
+    const ahead = parties.filter((p: any) => doneCountOf(p) > openRound)
+    if (!ahead.length) return false
+    const behind = parties.filter((p: any) => doneCountOf(p) <= openRound)
+    return ahead.some((a: any) => {
+      const whenAheadJoined = joinedAt(a)
+      if (whenAheadJoined == null) return false
+      return behind.some((b: any) => {
+        const whenBehindJoined = joinedAt(b)
+        return whenBehindJoined != null && whenBehindJoined > whenAheadJoined
+      })
+    })
+  })()
   /**
    * The report has three states worth telling apart, and only the last is good
    * news. "Waiting" is not a failure and does not get a warning colour - it is
