@@ -20,7 +20,7 @@ export const FIRST_CONTACT = 'first-contact';
 export const FIRST_CONTACT_NOT_APPROVED = 'The first message to this number must go as groundwork_first_contact, which is not approved yet; not sent';
 
 /** The longest the message's own words may be inside the template, which Meta caps at 1,024 characters in all. */
-const ITS_OWN_WORDS_AT_MOST = 800;
+export const ITS_OWN_WORDS_AT_MOST = 800;
 
 /** What the message was going to say, on one line, for the template's second blank. */
 export function theFirstContactLine(kind: string | null | undefined, params: string[] | undefined, text: string): string {

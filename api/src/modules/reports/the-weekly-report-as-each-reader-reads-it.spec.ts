@@ -514,3 +514,18 @@ describe('somebody an admin has not let in yet, as the lead reads the week', () 
     expect(r.eachPerson.find((e) => e.who === 'Chidi')?.says).toBe('Chidi has not checked in this week, so there is nothing here yet about what Chidi is working on.');
   });
 });
+
+/* Found in the anchor walk (8 October): the week in numbers read the lead's own aims aloud to every person in the team, in an anchor check-in, where they are hers alone (decision 96, item 8). */
+describe('in an anchor check-in the lead\'s aims are not in a team member\'s week', () => {
+  const aims = (r: any) => (r.inNumbers ?? []).filter((f: any) => !/check-ins made|photo or document/.test(f.of));
+  it('Aisha reads the check-ins made and what has proof behind it, and no aim of the lead\'s', async () => {
+    const { r } = await served(AISHA, 'HELP_TEAM_UNDERSTAND');
+    expect(r.inNumbers!.length).toBeGreaterThan(0);
+    expect(aims(r)).toEqual([]);
+    expect(JSON.stringify(r)).not.toMatch(/Freezers sold|Spending this quarter/);
+  });
+  it('the lead still reads them whole, and another kind of check-in is unchanged for Aisha', async () => {
+    expect(aims((await served(LEAD, 'HELP_TEAM_UNDERSTAND')).r).length).toBeGreaterThan(0);
+    expect(aims((await served(AISHA, 'SALES_TEAM_CHECK')).r).length).toBeGreaterThan(0);
+  });
+});

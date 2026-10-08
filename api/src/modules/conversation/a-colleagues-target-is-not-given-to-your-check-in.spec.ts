@@ -42,7 +42,8 @@ describe('both places the conversation used every target', () => {
   const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
   it('the prompt\'s objectives, and what the invention check treats as already said', () => {
     /* Since 1 October 2026 both also leave out a goal the lead has not told them about (decision 56, `untoldHere`). */
-    expect(src).toContain('objectives: this.theTargetsAsSentences(this.theTargetsThisPersonMaySee(ground as any, checkIn as any, untoldHere) as any[], ground as any, checkIn.participantId),');
+    /* Changed 8 October (anchor walk): on an anchor check-in a team member's model is given none of the lead's aims; every other check-in passes the targets this person may see, as before. */
+    expect(src).toContain('objectives: this.theLeadsOwnWordsStayHers(ground, checkIn) ? [] : this.theTargetsAsSentences(this.theTargetsThisPersonMaySee(ground as any, checkIn as any, untoldHere) as any[], ground as any, checkIn.participantId),');
     expect(src).toContain('...this.theTargetsThisPersonMaySee(ground as any, checkIn as any, untoldHere).map((o: any) => `${o.name ?? \'\'} ${o.target ?? \'\'}`),');
     expect(src).not.toContain("objectives: (ground as any).objectives ?? [],");
     expect(src).not.toContain("...((ground as any).objectives ?? []).map((o: any) => `${o.name ?? ''} ${o.target ?? ''}`),");

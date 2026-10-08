@@ -1,6 +1,6 @@
 import { PartyType } from '@prisma/client';
 import { person, answered, commitment, handoff, boardAs, AMINA, RUKIA, BARAKA, JUMA, SETUP_ADMIN, type Setup } from './the-switchboards-sections-harness';
-import { theMonthBoard, aDifferenceInAWords, theWeekOfTheMonth } from './the-anchor-month-board';
+import { theMonthBoard, aDifferenceInAWords, aWaitInAWords, theWeekOfTheMonth, theLenses, howManyHeard } from './the-anchor-month-board';
 import type { TheMonthRecord } from './the-anchor-month-record';
 import { THE_SHAPES_KEYS } from '../entry/the-anchor-served-shapes';
 
@@ -208,5 +208,38 @@ describe('the action lens never says "no are still open" (request 163, item 1)',
     for (const r of [{ commitmentsDone: 1, commitmentsOpen: 0, waiting: [] }, { commitmentsDone: 0, commitmentsOpen: 1, waiting: [] }]) {
       expect(theMovement(r)).not.toMatch(/\bno (?:are|is)\b/i);
     }
+  });
+});
+
+/* Found in the walk (8 October): "One of four people have said what they will do themselves." and "Groundwork has heard from four of four people." */
+describe('the lenses count people in plain, correct sentences', () => {
+  const record = (over: Partial<TheMonthRecord>) => ({ checkedIn: 4, ofHowMany: 4, saidWhatTheyWillDo: 1, commitmentsDone: 0, commitmentsOpen: 0, waiting: [], handoffsCleared: 0, ideas: [], ...over }) as unknown as TheMonthRecord;
+  const reading = (r: TheMonthRecord, key: string) => theLenses(r, []).find((l) => l.key === key)!.reading;
+
+  it('one person who has said what they will do is "has", not "have"', () => {
+    expect(reading(record({}), 'ownership')).toBe('One of four people has said what they will do themselves.');
+    expect(reading(record({ saidWhatTheyWillDo: 2 }), 'ownership')).toBe('Two of four people have said what they will do themselves.');
+  });
+
+  it('everybody is "all", and a team of one is "the one person"', () => {
+    expect(reading(record({ saidWhatTheyWillDo: 4 }), 'ownership')).toBe('All four people have said what they will do themselves.');
+    expect(reading(record({ checkedIn: 4, ofHowMany: 4 }), 'understanding')).toBe('Groundwork has heard from all four people.');
+    expect(reading(record({ checkedIn: 1, ofHowMany: 1, saidWhatTheyWillDo: 1 }), 'ownership')).toBe('The one person has said what they will do themselves.');
+    expect(howManyHeard(1, 1)).toBe('the one person');
+    expect(howManyHeard(3, 5)).toBe('three of five people');
+  });
+});
+
+/* Found in the anchor walk (8 October): "Neema is waiting on Zawadi for to be told which orders went late." and
+   'Amani Wekesa, Chidi Okeke and others see "The timing of handovers ... creates daily friction and delays" differently.' */
+describe('a wait and a difference read as sentences', () => {
+  it('a wait that is "to be told" is not waited "for"', () => {
+    expect(aWaitInAWords({ from: 'Neema', on: 'Zawadi', what: 'to be told which orders went late' })).toBe('Neema is waiting on Zawadi to be told which orders went late.');
+    expect(aWaitInAWords({ from: 'Baraka', on: 'Rukia', what: 'the sales deck' })).toBe('Baraka is waiting on Rukia for the sales deck.');
+  });
+  it('a topic that is a whole sentence is said as one, and then who said different things', () => {
+    expect(aDifferenceInAWords({ topic: 'The timing of handovers between team members creates daily friction and delays', whoSeesIt: 'Amani, Zawadi and Chidi see this differently.' }))
+      .toBe('The timing of handovers between team members creates daily friction and delays. Amani, Zawadi and Chidi said different things about this.');
+    expect(aDifferenceInAWords({ topic: 'The renewals target.', whoSeesIt: 'You and Rukia see this differently.' })).toBe('You and Rukia see "The renewals target" differently.');
   });
 });

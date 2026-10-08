@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { theActivationFunnel, ENGAGEMENT_SENDERS } from './the-activation-funnel';
+import { theActivationFunnel, theParticipantStages, ENGAGEMENT_SENDERS } from './the-activation-funnel';
 import { WHAT_EACH_MAIL_IS } from '../email/nothing-goes-out-that-was-turned-off';
 
 /**
@@ -82,5 +82,67 @@ describe('where the team reads it', () => {
     const src = readFileSync(join(__dirname, '..', 'prompts', 'prompts.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(src).toContain('theActivationFunnel(this.prisma, since, now).catch(() => null)');
     expect(src.slice(src.indexOf('async usageFunnel'), src.indexOf('async platformDashboard'))).toMatch(/avgDaysToFirstCheckin,\s*activation,/);
+  });
+});
+
+/**
+ * THE PEOPLE, NOT THE CHECK-INS (participant activation spec, sections 1, 5 and 6). Where each person added to a customer's check-in stands: invited, reached, verified,
+ * engaged, in a habit, and where those who stopped are. The query is asked of a double that answers with the counts the database would give, so what is checked is
+ * what is asked (who is counted at all) and how the answer is read.
+ */
+describe('how far each person got', () => {
+  const ROW = { added: 40, invited: 36, reached: 34, verified: 30, engaged: 24, in_a_habit: 9, not_invited: 3, invited_not_verified: 6, verified_never_started: 6, started_not_finished: 2, answered_once_not_returned: 7, went_quiet: 6 };
+  function asked(rows: any[] = [ROW]) {
+    const queries: string[] = [];
+    const prisma: any = { $queryRaw: jest.fn(async (strings: TemplateStringsArray) => { queries.push(strings.join('?')); return rows; }) };
+    return { prisma, queries };
+  }
+
+  it('reads each stage and where the people who stopped are standing', async () => {
+    const f = await theParticipantStages(asked().prisma, null, NOW);
+    expect(f.reached).toEqual({ added: 40, invited: 36, reached: 34, verified: 30, engaged: 24, inAHabit: 9 });
+    expect(f.stuck).toEqual({ notInvited: 3, invitedNotVerified: 6, verifiedNeverStarted: 6, startedNotFinished: 2, answeredOnceNotReturned: 7, wentQuiet: 6 });
+  });
+
+  it('counts only people on customers\' live check-ins: not our own organisations, not the lead, not a person who only manages, not an open link\'s placeholder, not one who left', async () => {
+    const w = asked();
+    await theParticipantStages(w.prisma, null, NOW);
+    const sql = w.queries[0];
+    expect(sql).toContain("gp.\"partyType\" = 'PARTICIPANT'");
+    expect(sql).toContain('o.is_internal = false');
+    expect(sql).toContain('gp.managing_only = false');
+    expect(sql).toContain('gp.left_at IS NULL');
+    expect(sql).toContain("NOT LIKE '%@unclaimed.invalid'");
+    expect(sql).toMatch(/g\.status NOT IN \('STALLED', 'CLOSED', 'RESOLVED', 'AWAITING_APPROVAL'\)/);
+    /* Setup turns are not a check-in anybody answered. */
+    expect(sql).toContain('is_setup = false');
+  });
+
+  it('a person waiting for a seat is not "never invited": the invitation waits for the seat', async () => {
+    const w = asked();
+    await theParticipantStages(w.prisma, null, NOW);
+    expect(w.queries[0]).toContain('invited_at IS NULL AND NOT awaiting_seat');
+  });
+
+  it('a bounced or complained invitation is not "reached"', async () => {
+    const w = asked();
+    await theParticipantStages(w.prisma, null, NOW);
+    expect(w.queries[0]).toContain("NOT IN ('BOUNCED', 'COMPLAINED')");
+  });
+
+  it('is part of the funnel the usage tab is given, and a failed read counts nobody rather than stopping the funnel', async () => {
+    const w = world();
+    w.prisma.$queryRaw = jest.fn(async (strings: TemplateStringsArray) => (strings.join('?').includes('ground_participants') ? Promise.reject(new Error('no such table')) : [{ n: 7 }]));
+    const f = await theActivationFunnel(w.prisma, null, NOW);
+    expect(f.participants.reached.added).toBe(0);
+    expect(f.leadsWhoCameBack).toBe(7);
+    const ok = world();
+    ok.prisma.$queryRaw = jest.fn(async (strings: TemplateStringsArray) => (strings.join('?').includes('ground_participants') ? [ROW] : [{ n: 7 }]));
+    expect((await theActivationFunnel(ok.prisma, null, NOW)).participants.reached.verified).toBe(30);
+  });
+
+  it('says nothing about any person: counts only', async () => {
+    const f = await theParticipantStages(asked().prisma, null, NOW);
+    expect(JSON.stringify(f)).not.toMatch(/@|name|email/i);
   });
 });

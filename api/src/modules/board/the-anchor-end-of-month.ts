@@ -1,6 +1,6 @@
 import type { TheEndOfMonthRead, TheContinueOption } from '../entry/the-anchor-served-shapes';
 import type { TheMonthRecord } from './the-anchor-month-record';
-import { aNumber, capital, aWaitInAWords, NO_IDEA_YET, aContributionSaid, ideasSaid } from './the-anchor-month-board';
+import { aNumber, capital, aWaitInAWords, NO_IDEA_YET, aContributionSaid, ideasSaid, howManyHeard } from './the-anchor-month-board';
 import { theRevealSaid } from './the-anchor-reveal-said';
 
 /**
@@ -43,7 +43,7 @@ export function herFirstWords(raw: string | null | undefined): string | null {
 
 export function theEndOfMonthRead(input: { herWords: string; record: TheMonthRecord; differences: string[]; patterns: string[] }): TheEndOfMonthRead {
   const r = input.record;
-  const found = [r.checkedIn === 0 ? 'Groundwork did not hear from anyone over the month.' : `Groundwork heard from ${aNumber(r.checkedIn)} of ${aNumber(r.ofHowMany)} ${plural(r.ofHowMany, 'person', 'people')} over the month.`];
+  const found = [r.checkedIn === 0 ? 'Groundwork did not hear from anyone over the month.' : `Groundwork heard from ${howManyHeard(r.checkedIn, r.ofHowMany)} over the month.`];
   if (input.differences.length) found.push(`${capital(aNumber(input.differences.length))} ${plural(input.differences.length, 'thing is', 'things are')} seen differently by different people.`);
   const doing: string[] = [];
   if (r.saidWhatTheyWillDo > 0) doing.push(`${capital(aNumber(r.saidWhatTheyWillDo))} ${plural(r.saidWhatTheyWillDo, 'person', 'people')} said what they would do themselves.`);
@@ -105,6 +105,13 @@ export async function herOwnWords(prisma: any, groundId: string, leadUserId: str
     })) ?? [];
     const onTheRecord = herFirstWords(entries?.[0]?.text);
     if (onTheRecord) return onTheRecord;
+    /*
+     * A LEAD WHO SET THE CHECK-IN UP IN THE ORDINARY ENTRY CHAT (decision 114) has no turn in her own check-in: what she typed there is kept
+     * as her set-up words, hers alone. Her first message is her first words.
+     */
+    const setUp: { text: string; authorUserId?: string } | null = (await prisma.leadSetupWords?.findUnique?.({ where: { groundId } })?.catch?.(() => null)) ?? null;
+    const firstTyped = herFirstWords((setUp && (!setUp.authorUserId || setUp.authorUserId === leadUserId) ? setUp.text : '').split(/\n\s*\n/)[0]);
+    if (firstTyped) return firstTyped;
   }
   const ground = await prisma.ground.findUnique({ where: { id: groundId }, select: { brief: true } });
   return herFirstWords(ground?.brief);

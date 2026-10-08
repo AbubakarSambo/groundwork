@@ -105,7 +105,8 @@ describe('and the service actually fetches them', () => {
        this person may see, not every target on the check-in. Stricter, not weaker. */
     /* Since 1 October 2026 also without a goal the lead has not told them about (decision 56), and worded
        as sentences about whoever set each one (decision 69). Stricter again. */
-    expect(CODE).toMatch(/objectives: this\.theTargetsAsSentences\(this\.theTargetsThisPersonMaySee\(ground as any, checkIn as any, untoldHere\)/);
+    /* Changed 8 October (anchor walk): preceded by the wall that gives a team member of an anchor check-in none of the lead's aims. */
+    expect(CODE).toMatch(/objectives: this\.theLeadsOwnWordsStayHers\(ground, checkIn\) \? \[\] : this\.theTargetsAsSentences\(this\.theTargetsThisPersonMaySee\(ground as any, checkIn as any, untoldHere\)/);
   });
 });
 

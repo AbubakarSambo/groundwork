@@ -269,6 +269,8 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendWaitingOnThePeople: 'we decided to send it',
   /* People have stopped answering: told to the lead once a week as an insight. */
   sendWhoHasGoneQuiet: 'we decided to send it',
+  /* What is outstanding for a lead, once each morning when something is (decision 120). */
+  sendTheLeadsDailyNudge: 'we decided to send it',
 };
 
 export function whatThisMailIs(sender: string): WhatKindOfMail {

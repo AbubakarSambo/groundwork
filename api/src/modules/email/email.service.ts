@@ -1352,6 +1352,29 @@ export class EmailService implements OnModuleInit {
     return context.outcome ?? 'sent';
   }
 
+  /**
+   * THE LEAD'S DAILY NUDGE ABOUT WHAT IS OUTSTANDING (decision 120), by email when the lead has no WhatsApp to be told on. It is the lead's one routine message of the
+   * day, and the door counts it as such. Words: engagement/the-leads-daily-nudge.ts.
+   */
+  async sendTheLeadsDailyNudge(
+    email: string, subject: string,
+    parts: { needsYou: string[]; overdueOnYourTeam: string[]; risks: string[] },
+    firstName: string | null | undefined, linkLabel: string, linkUrl: string,
+  ): Promise<'sent' | 'held' | 'suppressed'> {
+    const context: DeliveryContext = { kind: 'OTHER' };
+    const section = (heading: string, lines: string[]) => (lines.length ? `<p><strong>${escapeHtml(heading)}</strong></p>${lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('')}` : '');
+    await this.sendEmail({
+      to: email,
+      subject,
+      html: this.layout(
+        `<p>Good morning ${escapeHtml(firstName?.trim() || 'there')}. Here is what is outstanding today.</p>`
+        + section('Needs you', parts.needsYou) + section('Overdue on your team', parts.overdueOnYourTeam) + section('Risks', parts.risks)
+        + `<p><a href="${linkUrl}">${escapeHtml(linkLabel)}</a></p>`,
+      ),
+    }, context, 'sendTheLeadsDailyNudge');
+    return context.outcome ?? 'sent';
+  }
+
   /** WHO HAS GONE QUIET, as an insight to the lead (decision 109, journeys 7 and 9). Says what became of it. Words: engagement/who-has-gone-quiet.ts. */
   async sendWhoHasGoneQuiet(email: string, subject: string, lines: string[], linkLabel: string, linkUrl: string): Promise<'sent' | 'held' | 'suppressed'> {
     const context: DeliveryContext = { kind: 'OTHER' };

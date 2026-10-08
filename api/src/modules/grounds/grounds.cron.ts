@@ -5,7 +5,7 @@ import { LeaveBoardService } from '../suites/the-leave-board.service';
 import { TimeSheetsService } from '../suites/the-time-sheets.service';
 import { SpendingService } from '../suites/the-spending.service';
 import { organisationsThatTurnedWhatsAppOn } from '../whatsapp/only-where-whatsapp-is-turned-on';
-import { sendTheLeadsDailySummaries } from '../whatsapp/the-leads-daily-summary';
+import { sendTheLeadsDailyNudges } from '../engagement/the-leads-daily-nudge';
 import { sendTheAnchorWeeklyInsights } from '../whatsapp/the-anchor-weekly-insight';
 import { sendTheLeadsWeeklyLetters } from '../email/the-leads-weekly-letter';
 import { theAnchorScenarioIsOn, theHalfwayMessagesAreOn } from '../admin/what-is-hidden-at-release';
@@ -25,7 +25,7 @@ import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { keptOffThePhone } from '../whatsapp/a-check-in-kept-off-the-phone';
-import { whatToSendThisMorning, whichChase, whenItIsDue, itIsOverdue, itIsDueTomorrow, theTeamIsAlmostIn, yourViewMatters, itOpensSoon, MORNING_ORDER, itFollowsUpTheirPromise } from '../whatsapp/what-goes-to-a-phone';
+import { whatToSendThisMorning, whichChase, whenItIsDue, itIsOverdue, itIsDueTomorrow, theTeamIsAlmostIn, yourViewMatters, itOpensSoon, MORNING_ORDER, itFollowsUpTheirPromise, theCheckInIsStillOpen } from '../whatsapp/what-goes-to-a-phone';
 import { theirTimeZone } from '../whatsapp/the-persons-own-time-zone';
 import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
 import { sendWhoHasGoneQuiet as sendWhoHasGoneQuietToLeads } from '../engagement/who-has-gone-quiet';
@@ -44,6 +44,8 @@ import { theOpenSession } from '../engagement/heres-what-is-new';
 import { theRanOutOfTimeSubject } from '../engagement/the-leads-subjects-carry-the-facts';
 import { sendTheTestCheckInMessages } from '../engagement/a-test-check-in-moves-on';
 import { theirPromiseToFollowUp } from '../engagement/a-follow-up-from-their-own-record';
+import { theOpeningNeverReachedThem, itHasBeenOpenLongEnough } from '../engagement/a-person-the-opening-never-reached';
+import { formsOfTheSameNumber } from '../whatsapp/a-number-whatsapp-can-reach';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { isNotLetInYet } from './who-an-admin-did-not-let-in';
 import { theNamesOfReadersCheckIns } from './the-names-of-a-readers-check-ins';
@@ -810,7 +812,7 @@ export class GroundsCron implements OnApplicationBootstrap {
       select: {
         id: true, groundId: true, sessionNumber: true, createdAt: true, availableFrom: true, participantId: true,
         ground: { select: { label: true, scenario: true, organizationId: true, overWhatsApp: true, cadence: true, chaseAfterDays: true, chasingStopped: true, tellTheLead: true, workingDays: true, startedFrom: true, simplerWords: true, initiatorId: true, initiator: { select: { firstName: true } } } },
-        participant: { select: { id: true, email: true, userId: true, user: { select: { firstName: true, email: true, phoneNumber: true, isActive: true, deletedAt: true } } } },
+        participant: { select: { id: true, email: true, userId: true, remindersStoppedAt: true, user: { select: { firstName: true, email: true, phoneNumber: true, isActive: true, deletedAt: true } } } },
       },
       ...page,
     }));
@@ -846,7 +848,8 @@ export class GroundsCron implements OnApplicationBootstrap {
           daysOpen: Math.floor((now.getTime() - new Date(ci.createdAt).getTime()) / 86_400_000),
           dueAt, now, alreadyHad: had, hoursSinceLastChase: hoursSince(lastChase?.createdAt),
         });
-        if (!what) continue;
+        /* No chase, overdue or due-tomorrow today: the only message left is the catch-up for somebody the opening notice never reached, and only if the lead has not stopped the chasing. */
+        if (!what && (ci.ground.chasingStopped || !itHasBeenOpenLongEnough(ci.availableFrom ?? ci.createdAt, now))) continue;
         /* A team that said which days it works is not chased on the others (B-020). Nothing said: as before. */
         if (!isAWorkingDay(now, (ci.ground as any).workingDays)) continue;
         if (await isAGuestIn(this.prisma, ci.ground.organizationId, { userId: ci.participant.userId, email: ci.participant.email, userEmail: user?.email })) continue;
@@ -855,9 +858,12 @@ export class GroundsCron implements OnApplicationBootstrap {
           : null;
         const phone = person?.phone ?? user?.phoneNumber ?? null;
         if (!phone) continue;
+        const catchUp = !what;
+        if (catchUp && !(await theOpeningNeverReachedThem(this.prisma, ci, formsOfTheSameNumber(phone), now))) continue;
         const who = { firstName: user?.firstName, label: await nameFor({ userId: ci.participant.userId, email: ci.participant.email }, ci.groundId, ci.ground.label) };
         let said;
-        if (what === 'overdue') said = itIsOverdue(who, ci.ground.simplerWords);
+        if (catchUp) said = theCheckInIsStillOpen(who, ci.ground.simplerWords);
+        else if (what === 'overdue') said = itIsOverdue(who, ci.ground.simplerWords);
         else if (what === 'due-tomorrow') said = itIsDueTomorrow(who, dueAt!, ci.ground.simplerWords);
         else {
           /*
@@ -872,7 +878,8 @@ export class GroundsCron implements OnApplicationBootstrap {
             said = chase === 'team-almost-in' ? theTeamIsAlmostIn(who, counts.answered, counts.ofHowMany, ci.ground.simplerWords) : yourViewMatters(who, ci.participant.userId && ci.participant.userId === (ci.ground as any).initiatorId ? 'you' : ci.ground.initiator?.firstName, ci.ground.simplerWords);
           }
         }
-        const rank = MORNING_ORDER.indexOf(what);
+        /* The catch-up comes last: anything the chase would say today is more use to the person. */
+        const rank = catchUp ? MORNING_ORDER.length : MORNING_ORDER.indexOf(what as any);
         const key = ci.participant.userId ?? phone;
         const kept = best.get(key);
         if (kept && kept.rank <= rank) continue;
@@ -891,24 +898,30 @@ export class GroundsCron implements OnApplicationBootstrap {
   }
 
   /**
-   * THE LEAD'S DAILY SUMMARY ON WHATSAPP (decision 82, item 9), at seven in the morning in Lagos, an
-   * hour and a half before the reminders, so it is the lead's one message of the day. What it says,
-   * and what it never says, is in whatsapp/the-leads-daily-summary.ts; how often, STOP, "Not now",
-   * the 24 hours and the template are the sender's.
+   * THE LEAD'S DAILY NUDGE (decision 120), at nine in the morning in Lagos, half an hour before the WhatsApp reminders and an hour before the email ones, so it is the lead's one
+   * message of the day. It takes the place of the WhatsApp daily summary of decision 82 item 9: the same kind of message, the same limits (once a day, "not now", the 24 hours,
+   * the template), with what is outstanding in place of the counts. It goes AFTER the lead's once-ever and weekly insights (what is new at half past six, the test check-in, the
+   * follow-up after a report, what Groundwork is doing and who has gone quiet, from ten past eight to a quarter to nine): found on the test bed, a nudge that went first every
+   * day starved all of them, because a lead with something outstanding is told something every day. On the days one of those goes, that is the lead's message; on the others,
+   * this is. What it says and never says is in engagement/the-leads-daily-nudge.ts.
    */
-  @Cron('0 7 * * *', { timeZone: 'Africa/Lagos' })
-  async sendTheLeadsDailySummaries() {
-    await onceAcrossCopies(this.prisma, 'lead-daily-summary', theDay(), () => this.sendTheLeadsDailySummariesInner());
+  @Cron('0 9 * * *', { timeZone: 'Africa/Lagos' })
+  async sendTheLeadsDailyNudges() {
+    await onceAcrossCopies(this.prisma, 'lead-daily-summary', theDay(), () => this.sendTheLeadsDailyNudgesInner());
   }
 
-  async sendTheLeadsDailySummariesInner(now: Date = new Date()): Promise<{ tried: number }> {
-    const result = await sendTheLeadsDailySummaries(
-      { prisma: this.prisma, whatsapp: this.whatsapp, boards: { leave: this.leave, timeSheets: this.timeSheets, spending: this.spending }, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
+  async sendTheLeadsDailyNudgesInner(now: Date = new Date()): Promise<{ tried: number }> {
+    const result = await sendTheLeadsDailyNudges(
+      { prisma: this.prisma, whatsapp: this.whatsapp as any, email: this.email as any, boards: { leave: this.leave, timeSheets: this.timeSheets, spending: this.spending }, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
       now,
-    ).catch((err: any) => { this.logger.warn(`The leads' daily summaries could not be sent: ${err?.message}`); return { tried: 0 }; });
-    if (result.tried) this.logger.log(`WhatsApp: ${result.tried} lead summary message(s) tried.`);
+    ).catch((err: any) => { this.logger.warn(`The leads' daily nudges could not be sent: ${err?.message}`); return { tried: 0 }; });
+    if (result.tried) this.logger.log(`Lead daily nudge: ${result.tried} tried.`);
     return result;
   }
+
+  /** The old name of the job, kept so the journeys and the test bed that call it by that name still run the one morning job. */
+  async sendTheLeadsDailySummaries() { return this.sendTheLeadsDailyNudges(); }
+  async sendTheLeadsDailySummariesInner(now: Date = new Date()) { return this.sendTheLeadsDailyNudgesInner(now); }
 
   /**
    * THE ANCHOR'S WEEKLY INSIGHT ON WHATSAPP (anchor piece 28), Friday at half past six in the morning in Lagos, before

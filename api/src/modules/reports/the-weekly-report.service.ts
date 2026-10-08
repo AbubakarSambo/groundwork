@@ -1,3 +1,4 @@
+import { aGroundIsTheAnchors } from '../conversation/the-anchor-weekly-check-in';
 import { anAimTheHolderSet } from '../board/an-aim-is-a-sentence-about-somebody';
 import { refuseSomeoneHeldForASeat, refuseSomeoneAwaitingTheOrganisation } from '../participants/held-for-a-seat';
 import { CANNOT_READ_THE_REPORT_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
@@ -283,7 +284,7 @@ export class TheWeeklyReportService {
     const ground: any = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
-        organizationId: true, initiatorId: true, createdByUserId: true, scenario: true, peersVisibleToEachOther: true, whoSeesTargets: true, cadence: true,
+        organizationId: true, initiatorId: true, createdByUserId: true, scenario: true, startedFrom: true, peersVisibleToEachOther: true, whoSeesTargets: true, cadence: true,
         /* Decision 75, item 2: the admin asked to approve an evaluation check-in reads it. */
         status: true, approvedById: true,
         participants: { select: { id: true, userId: true, partyType: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, roleAsDescribed: true, user: { select: { firstName: true, lastName: true, email: true } } } },
@@ -360,8 +361,12 @@ export class TheWeeklyReportService {
       /* Every share, to whoever reads the whole check-in, admins included (decision 86). */
       { isLead: runsIt, seesEveryShare: viewerIsLead },
     ).shown as any[];
+    /* IN AN ANCHOR CHECK-IN THE LEAD'S AIMS ARE THE LEAD'S ALONE (decision 96, item 8): what she said she is carrying and wants the team to understand
+       reaches a person in it only once she says so. The check-in page and the board are walled that way; the week in numbers read her aims aloud to
+       every person in the team ("wairimu is aiming for the team to understand that..."), found in the anchor walk. Whoever runs the check-in reads them. */
+    const theLeadsAimsAreHers = !runsTheCheckIn && aGroundIsTheAnchors(ground as any);
     const shownUntold = withoutWhatTheLeadHasNotToldThemAbout(
-      shownTargets.map((t: any) => ({ ...t, setByParticipantId: t.setByTheHolder ? t.ownerParticipantId ?? null : null })), notTold, parties, runsTheCheckIn,
+      (theLeadsAimsAreHers ? [] : shownTargets).map((t: any) => ({ ...t, setByParticipantId: t.setByTheHolder ? t.ownerParticipantId ?? null : null })), notTold, parties, runsTheCheckIn,
     ).kept as any[];
     const whoseIs = (t: any) => (!t.ownerParticipantId ? 'team' as const : t.ownerParticipantId === me?.id ? 'you' as const : { label: labels.get(t.ownerParticipantId) ?? 'A colleague' });
     /* Aims and limits (Hafsah, 1 October, decision 73): whoever runs the check-in reads them; a person

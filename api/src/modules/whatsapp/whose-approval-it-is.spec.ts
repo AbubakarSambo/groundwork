@@ -42,7 +42,8 @@ describe('whose approval it is', () => {
      * are all of them.
      */
     expect(new Set(ALL).size).toBe(ALL.length);
-    expect(ALL.length).toBe(Object.keys(TEMPLATES).filter((k) => k !== 'report-retry').length);
+    /* One name for each different template: 'report-retry' and 'checkin-catch-up' are the same template as 'report' and 'checkin-open', so they are not submitted twice. */
+    expect(ALL.length).toBe(new Set(Object.values(TEMPLATES).map((t) => t.name)).size);
     /* Meta's rule for a name: lower-case letters, digits and underscores. */
     for (const name of ALL) expect(name).toMatch(/^[a-z0-9_]+$/);
   });

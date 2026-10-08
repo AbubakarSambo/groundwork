@@ -68,9 +68,11 @@ export function anInboundHarness(opts: {
         const w = q?.where ?? {};
         const rows = (opts.sends ?? []).filter((x) => (!w.providerMessageId || x.providerMessageId === w.providerMessageId)
           && (!w.kind?.startsWith || x.kind.startsWith(w.kind.startsWith))
+          /* The last opening notice is now an opening notice or the catch-up with its words (engagement/a-person-the-opening-never-reached.ts). */
+          && (!w.OR || w.OR.some((c: any) => !c.kind?.startsWith || x.kind.startsWith(c.kind.startsWith)))
           && (!w.checkInId?.in || w.checkInId.in.includes(x.checkInId))
           && (!w.createdAt?.gt || x.createdAt > w.createdAt.gt));
-        if (!w.providerMessageId && !w.kind) return null;
+        if (!w.providerMessageId && !w.kind && !w.OR) return null;
         return rows.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0] ?? null;
       }),
     },

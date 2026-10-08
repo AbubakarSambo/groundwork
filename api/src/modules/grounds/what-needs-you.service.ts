@@ -20,6 +20,7 @@ import { aQuestionOnToday, inQuotes } from '../suites/a-question-about-a-request
 import { leaveInWords, spendInWords } from '../suites/a-request-in-words';
 import { peersAreNamedOn } from '../reports/peers-are-named';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-internal-label-reaches-anyone';
+import { everythingOutstandingFor } from '../engagement/the-leads-daily-nudge';
 
 /**
  * THE ONE READ OF "WHAT NEEDS YOU" (C1, U.5), for Today and for "Choose an organisation".
@@ -230,6 +231,15 @@ export class WhatNeedsYouService {
       for (const [k, v] of whatEachLabelIsCalled(g.participants ?? [], { viewerParticipantId: me?.id ?? null, viewerIsLead: runsIt, peersAreNamed: runsIt || peersAreNamedOn(g, { participantId: me?.id ?? null }) })) if (k[0] === '@' || k[0] === '~') called.set(k, v);
     }
     return called.size ? withoutInternalLabelsIn(told, called) : told;
+  }
+
+  /**
+   * EVERYTHING THAT IS OUTSTANDING FOR A LEAD, the page the daily nudge's link goes to (decision 120): what needs her, what is overdue on her team and the risks, every one
+   * of them and not three, in the nudge's own sentences. Only her own check-ins; null for somebody who runs none, and when nothing is outstanding.
+   */
+  async outstanding(userId: string, organizationId: string): Promise<{ needsYou: string[]; overdueOnYourTeam: string[]; risks: string[] } | null> {
+    return everythingOutstandingFor(this.prisma as any, { userId, organizationId }, { boards: { leave: this.leave as any, timeSheets: this.time as any, spending: this.spend as any } })
+      .catch(() => null);
   }
 
   /**

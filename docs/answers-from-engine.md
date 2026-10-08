@@ -6739,3 +6739,63 @@ The map of every requirement against what is built is `docs/engagement-spec-stat
 - The browser console shows a 404 on `GET /suites/time/mine` when timesheets are off for the organisation, and a 403 on `GET /suites/reviews/board` for a member who is not a lead or admin. Both are correct refusals; the page should not make the call unless the organisation has the part turned on and the person may read it (the sidebar already knows both).
 - Today shows the heading "Your own leave and spending requests" with nothing under it for an admin and a member when they have no requests. The heading should only be drawn when there is at least one request under it.
 
+
+## From the engine workspace, 8 October (evening): the anchor's last month parts are board sections, and what the walk on the test bed changed
+
+**Three more sections, the last parts of `theMonthBoard`.** The anchor's sections named by the switchboard now include these, carried in `GET /grounds/:id/board` like the others, for the lead only (left out, never filled and hidden, for anybody else). `theMonthBoard` is still served with the same fields.
+
+| Section (switchboard name) | Shape | Replaces |
+| --- | --- | --- |
+| `whatTheTeamIsContributing` | `{ heading: "What the team is contributing", items: [sentence] }` | `theMonthBoard.whatTheTeamIsContributing` |
+| `wherePerspectivesDiffer` | `{ heading: "Where perspectives differ", items: [sentence] }` | `theMonthBoard.wherePerspectivesDiffer` |
+| `whatGroundworkIsWorkingOnNext` | `{ heading: "What Groundwork is working on next", items: [sentence] }` | `theMonthBoard.whatGroundworkIsWorkingOnNext` |
+
+With these, every part of `theMonthBoard` has a section: the four lenses (`theFourLenses`), `whatIsMoving`, `whatTheTeamIsContributing`, `peopleHelpingTheTeamMove`, `wherePerspectivesDiffer`, `whatIsStillInTheWay`, `whatGroundworkIsWorkingOnNext`, and the week (`whereTheMonthIs`). `theEndOfMonthRead` is `theEndOfTheMonth`, and the recommendations are `recommendations`. Nothing is left that only `theMonthBoard` carries, so the screens can stop drawing `TheMonthBoard` and `EndingPage`'s own read and draw the sections. Please say in `docs/requests-to-engine.md` when each old field is no longer called, and they go one at a time. `activeLine` is not a section yet (its words, "1/4 active · Groundwork has nudged the remaining 3.", are Hafsah's own from the spec and use a dot to join two sentences; if you want it as a section with two plain sentences, say so).
+
+**A check-in with the anchor's scenario is the anchor's even when `startedFrom` is empty,** in every part that asked `startedFrom` alone: the first session's questions and the weekly words, the lead's own words staying hers (the check-in page, the board, the model), ideas, the request offer, Groundwork's recommendations, the one-month trial's start, the old `anchorInvitation` field and the invitation mail. A check-in with neither is untouched.
+
+**What the walk found and fixed** (all with specs that fail without the fix):
+- **Privacy.** In an anchor check-in a team member's weekly report read the lead's own aims aloud ("wairimu is aiming for the team to understand that one late truck at 5am becomes a hotel breakfast with no tomatoes"), and the model of a team member's check-in was given the lead's brief and aims and said one to the member ("That connects directly to Wairimu's aim for the team to understand that a crate left in the sun for twenty minutes is a spoiled order."). Both are closed in code, with the switch on or off. The lead still reads them.
+- "What you're carrying" (and the end of the month's "You wanted your team to understand...") was empty for a lead who set the anchor up in the ordinary entry chat, because her words are not a turn in her own check-in. They are now her first message in the set-up.
+- A report was written from the lead's finished set-up alone, with nothing on the record, and the model made up two differences (bank statements, a credit committee, a person called "Participant"). No report is written from a set-up with nothing on the record.
+- Words: "One of four people have said what they will do themselves." now reads "One of four people has said what they will do themselves."; "heard from four of four people" reads "heard from all four people"; "Neema is waiting on Zawadi for to be told which orders went late." reads "Neema is waiting on Zawadi to be told which orders went late."; "Amani, Zawadi and Chidi see \"The timing of handovers between team members creates daily friction and delays\" differently." reads "The timing of handovers between team members creates daily friction and delays. Amani, Zawadi and Chidi said different things about this."; "Nobody has been named as the owner of \"Wairimu is aiming for the team to understand that...\"" (read by Wairimu) reads "Nobody has been named as the owner of your aim for the team to understand that..."; "Amani committed to ask Zawadi themselves whether she can send it..." reads "Amani committed to ask Zawadi whether she can send it..."; "Amani Wekesa named Zawadi, Wairimu and INFERRED this week" no longer names "INFERRED"; a nudge "last time you said you would ask her" is not sent when the promise names nobody (the plain line is sent instead).
+- In a team member's check-in the engine takes off "...which is progress", "That is good progress", "I'm glad to hear that" and "That is the strongest kind of record entry", which the weekly words forbid.
+
+**The switch is still off by default.** The screens still draw `TheMonthBoard` (from `theMonthBoard`), `EndingPage` (from `theEndOfMonthRead`), the dedicated recommendations listing, and call `GET /entry/anchor-start` for `groundLabel`, `source` and `thePeopleStep` (all of which `POST /entry/opener` now serves). When they have moved, the default changes in one place (`theAnchorScenarioIsOn`).
+
+## From the engine workspace, 8 October (night): the lead's daily nudge, and participant activation, for the screens to draw
+
+### 1. `GET /today/outstanding`: what the nudge's link goes to (decision 120)
+
+Every lead is sent one message each morning, when something is outstanding, with a link "to see everything". The link is the Today page (`/today`). Today did not have those things, so the engine now serves them: `GET /api/v1/today/outstanding` answers `{ outstanding: null }` when the reader runs no check-in or nothing is outstanding, and otherwise:
+
+```json
+{ "outstanding": {
+  "needsYou": ["Amina's leave from Wednesday 14 October to Friday 16 October is waiting for you to approve or decline.", "Kofi is waiting on you for the pricing for Q4 since Thursday 8 October.", "You committed to “write up the Kisumu visit” by Friday 9 October, and it is three days late."],
+  "overdueOnYourTeam": ["Omar committed to “send the price list” by Tuesday 6 October, and it is six days late.", "..."],
+  "risks": ["The target “25 shops signed” in “Sales team, Q4” is behind. At the pace it has kept since session 1, it would be about 13 by the last session, short of the aim of 25.", "Bisi has been waiting on Omar for the price list since Monday 21 September.", "All three people in “Sales team, Q4” have not answered the latest check-in for more than a week."]
+} }
+```
+
+Each array holds whole sentences, already worded, in the order they should be read: in `needsYou` what waits for her to approve, then a decision she owes, then her own commitments that are late; in `overdueOnYourTeam` the most overdue first. Draw them as three lists under the headings "Needs you", "Overdue on your team" and "Risks", and leave a heading out when its list is empty. Do not rewrite the sentences. They are the same ones the message uses (the message shows at most three of each; this has every one). The check-in's name is in a sentence only when she runs more than one. It is for the lead's own check-ins only, so a reader who is not a lead gets `null`; it never names anybody as better or worse, and nothing here is a label on a person. A check-in about one person's performance, promotion or renewal is never in it. It is read on demand and is not stored, so opening it rebuilds nothing.
+
+### 2. The back office usage tab: people, not only check-ins
+
+The usage funnel (`GET /prompts/platform-funnel`, field `activation`) now also carries `participants`, counts only:
+
+```json
+"participants": {
+  "reached": { "added": 146, "invited": 141, "reached": 141, "verified": 146, "engaged": 134, "inAHabit": 1 },
+  "stuck": { "notInvited": 5, "invitedNotVerified": 0, "verifiedNeverStarted": 12, "startedNotFinished": 0, "answeredOnceNotReturned": 36, "wentQuiet": 97 }
+}
+```
+
+`reached` is how many people got as far as each step; `stuck` is where the people who stopped are standing now, and the six never overlap. Suggested words for the rows: "Added to a check-in", "Sent an invitation", "The invitation arrived", "Opened it and signed in", "Started a check-in", "Finished two or more, the latest in the last two weeks", and for the others "Added and never sent an invitation", "Invited and has not signed in", "Signed in and has not started", "Started and not finished", "Answered once and has not come back", "Answered twice or more and has gone quiet". Counts only: no name and no address is served, and this is for the Groundwork team, not for a customer.
+
+### 3. A switch for WhatsApp in Settings (screen, with a small route to follow)
+
+Today a person can stop messages on WhatsApp only by writing "stop" or "not now" to the number, and can stop the email we decide to send in Settings. The spec asks for one place for both. The Settings page could show "Messages on WhatsApp" with the same on and off the email one has. The engine side is one route that records the same thing "stop" and "start" record (`WhatsAppService.stopOrResume`). It is not built yet, so draw nothing until it is; this is the request. Who it is for: every person with a number.
+
+### 4. Nothing for the screens in the catch-up message
+
+A person who has a number that Groundwork has never got a WhatsApp message through to, and who has an open check-in they have not started, now gets the opening notice's own words once, as a message on their phone. There is no screen for it and no setting; it follows the organisation's WhatsApp switch, the person's "stop" and the lead's choice to stop the chasing. It is described in `docs/whatsapp-templates.md` under `checkin_open`.

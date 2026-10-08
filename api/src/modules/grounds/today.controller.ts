@@ -16,6 +16,12 @@ export class TodayController {
     return this.needs.forReader(user.id, user.email, user.organizationId, user.role);
   }
 
+  @Get('outstanding')
+  @ApiOperation({ summary: "Everything that is outstanding for you as a lead: what needs you, what is overdue on your team, the risks. The page the daily message's link goes to." })
+  async outstanding(@CurrentUser() user: CurrentUserData) {
+    return { outstanding: await this.needs.outstanding(user.id, user.organizationId) };
+  }
+
   @Get('everywhere')
   @ApiOperation({ summary: 'How many things need you in each organisation you belong to' })
   async everywhere(@CurrentUser() user: CurrentUserData) {

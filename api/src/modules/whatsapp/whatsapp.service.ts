@@ -464,6 +464,8 @@ export class WhatsAppService implements OnModuleInit {
           phone,
           checkInId: context.checkInId ?? null,
           kind: context.kind ?? null,
+          /* Stamped by the application's clock, as the email record is, so the day's one-message count follows the same clock when it is moved (the test bed). */
+          createdAt: new Date(),
           sentAt: result.sent ? new Date() : null,
           failedAt: result.sent ? null : new Date(),
           status: result.status ?? null,
@@ -756,7 +758,7 @@ export class WhatsAppService implements OnModuleInit {
   /** "stop" or "start" from a number, kept in the send record so the sender can read it whoever the number belongs to. */
   async stopOrResume(organizationId: string | null, phoneNumber: string, word: 'stopped' | 'resumed'): Promise<void> {
     await this.prisma.whatsAppSend
-      .create({ data: { organizationId, phone: WhatsAppService.normalize(phoneNumber), kind: word, checkInId: null, sentAt: null, failedAt: null, status: null, error: null } })
+      .create({ data: { organizationId, phone: WhatsAppService.normalize(phoneNumber), kind: word, checkInId: null, sentAt: null, failedAt: null, status: null, error: null, createdAt: new Date() } })
       .catch((err: any) => this.logger.warn(`Could not record "${word}" from ${phoneNumber}: ${err?.message}`));
   }
 
@@ -801,7 +803,7 @@ export class WhatsAppService implements OnModuleInit {
   /** "Not now": nothing more is written first to this person today. Kept in the send record, which the rule above reads. */
   async notNow(organizationId: string | null, phoneNumber: string): Promise<void> {
     await this.prisma.whatsAppSend
-      .create({ data: { organizationId, phone: WhatsAppService.normalize(phoneNumber), kind: 'not-now', checkInId: null, sentAt: null, failedAt: null, status: null, error: null } })
+      .create({ data: { organizationId, phone: WhatsAppService.normalize(phoneNumber), kind: 'not-now', checkInId: null, sentAt: null, failedAt: null, status: null, error: null, createdAt: new Date() } })
       .catch((err: any) => this.logger.warn(`Could not record "Not now" from ${phoneNumber}: ${err?.message}`));
   }
 

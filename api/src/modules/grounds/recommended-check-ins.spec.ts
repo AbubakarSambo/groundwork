@@ -157,6 +157,15 @@ describe('what is offered, in other shapes of the same record', () => {
     expect(theOffers({ people: [p('l', null, true), p('a', 'Kennedy')], handoffs: [{ fromId: 'l', onId: 'a' }], aims: [], openCommitmentsBy: [] })).toEqual([]);
     expect(theOffers({ people: [p('l', null, true), p('a', null)], handoffs: [{ fromId: 'l', onId: 'a' }, { fromId: 'a', onId: 'l' }], aims: [], openCommitmentsBy: [] })).toEqual([]);
   });
+  it('an aim the lead set is said to her as her aim, not as a sentence about her by name (anchor walk, 8 October)', () => {
+    const people = [p('l', 'Wairimu', true), p('a', 'Amani'), p('b', 'Chidi'), p('c', 'Zawadi')];
+    const say = (aim: string) => theOffers({ people, handoffs: [], aims: [{ id: 'o', name: aim, ownerId: null }], openCommitmentsBy: ['a', 'b', 'c'] })[0].says;
+    expect(say('Wairimu is aiming for the team to understand that one late truck at 5am becomes a hotel breakfast with no tomatoes.'))
+      .toBe('Nobody has been named as the owner of your aim for the team to understand that one late truck at 5am becomes a hotel breakfast with no tomatoes, and three people are each carrying something open. Their responsibilities may not be completely clear.');
+    expect(say('Wairimu is trying to stop Msingi losing a third of its income.')).toContain('owner of your aim to stop Msingi losing a third of its income, and');
+    /* Any other sentence is quoted as it stands. */
+    expect(say('Win the Nairobi tender')).toContain('owner of "Win the Nairobi tender", and');
+  });
   it('an aim somebody owns is not offered', () => {
     expect(theOffers({ people: [p('a', 'A'), p('b', 'B'), p('c', 'C')], handoffs: [], aims: [{ id: 'o', name: 'X', ownerId: 'a' }], openCommitmentsBy: ['a', 'b', 'c'] })).toEqual([]);
   });

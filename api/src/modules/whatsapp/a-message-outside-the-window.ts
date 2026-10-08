@@ -25,6 +25,8 @@ export function insideTheServiceWindow(lastInboundAt: Date | string | null | und
 /** The kinds of send the product starts, as opposed to a reply to something the person just wrote. */
 export const BUSINESS_INITIATED: ReadonlySet<string> = new Set([
   'checkin-open', 'due-tomorrow', 'opens-soon', 'closes-soon', 'overdue', 'team-almost-in', 'your-view-matters', 'lead-summary',
+  /* The same words as the opening notice, to somebody it never reached (engagement/a-person-the-opening-never-reached.ts). It is the day's routine message and not an opening, so it counts. */
+  'checkin-catch-up',
   'anchor-weekly-insight', 'anchor-follow-up',
   'report', 'report-retry', 'request-waiting', 'request-decided', 'review-started', 'review-decided',
   /* An appeal of a decided review (decision 113): it waits for an admin, the reviewer is asked for a second admin, and it is decided. Each follows something a person did, so none counts as the day's first message. */
@@ -48,6 +50,8 @@ export const BUSINESS_INITIATED: ReadonlySet<string> = new Set([
  */
 export const FIRST_MESSAGES: ReadonlySet<string> = new Set([
   'checkin-open', 'due-tomorrow', 'opens-soon', 'closes-soon', 'overdue', 'team-almost-in', 'your-view-matters', 'lead-summary',
+  /* The same words as the opening notice, to somebody it never reached (engagement/a-person-the-opening-never-reached.ts). It is the day's routine message and not an opening, so it counts. */
+  'checkin-catch-up',
   /*
    * A REVIEW (item 16). The person did nothing to start their review or to have it decided, so both
    * count towards their one message of the day. Held back, the review still waits for them in the app
@@ -189,6 +193,8 @@ export const TEMPLATES: Record<string, ATemplate> = {
   'review-appeal-decided': aTemplate('groundwork_review_appeal_decided', 'Hi {{1}}, {{2}} has decided the appeal of a decision on a review. Open Groundwork to read the decision and the reasons.'),
 };
 TEMPLATES['report-retry'] = TEMPLATES.report;
+/* The catch-up for somebody the opening notice never reached is the opening notice's own template: no new template (Hafsah, 8 October). */
+TEMPLATES['checkin-catch-up'] = TEMPLATES['checkin-open'];
 /*
  * THE FIRST MESSAGE TO A NUMBER (decision 106 item 2). Ours, for Hafsah: whatever the first message is, it goes
  * in this one template, naming the organisation, with the message's own words, and how to end it. Hafsah's

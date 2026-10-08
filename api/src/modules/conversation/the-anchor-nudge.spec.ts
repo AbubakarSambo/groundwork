@@ -78,6 +78,12 @@ describe('the line, by email and in a WhatsApp template\'s shape', () => {
     expect(await theAnchorNudgeFor(prisma(true, ROWS), { id: 'g', startedFrom: 'anchor' }, 'p-rukia')).toBe("You mentioned you would send your manager the deck. I'd love to hear how it went.");
     expect(await theAnchorNudgeFor(prisma(true, ROWS.slice(2)), { id: 'g', startedFrom: 'anchor' }, 'p-rukia')).toBe(IT_HAS_BEEN_A_FEW_DAYS);
   });
+  it('does not say a promise back that names nobody but "her" (anchor walk, 8 October: "last time you said you would ask her")', async () => {
+    const rows = [{ participantId: 'p-neema', text: 'I will ask her tomorrow.', status: 'UNKNOWN', source: 'CHECK_IN', explicit: true }];
+    expect(await theAnchorNudgeFor(prisma(true, rows), { id: 'g', startedFrom: 'anchor' }, 'p-neema')).toBe(IT_HAS_BEEN_A_FEW_DAYS);
+    const named = [{ participantId: 'p-neema', text: 'I will ask Zawadi to text them the list.', status: 'UNKNOWN', source: 'CHECK_IN', explicit: true }];
+    expect(await theAnchorNudgeFor(prisma(true, named), { id: 'g', startedFrom: 'anchor' }, 'p-neema')).toBe("You mentioned you would ask Zawadi to text them the list. I'd love to hear how it went.");
+  });
   it('is nothing with the switch off or on another check-in', async () => {
     expect(await theAnchorNudgeFor(prisma(false, ROWS), { id: 'g', startedFrom: 'anchor' }, 'p-rukia')).toBeNull();
     expect(await theAnchorNudgeFor(prisma(true, ROWS), { id: 'g', startedFrom: null }, 'p-rukia')).toBeNull();

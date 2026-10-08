@@ -1,6 +1,6 @@
 import {
   commitmentsOverTime, dependenciesOverTime, patternsOverTime, gapsOverTime, theOnesStillOpen,
-  whatThisCannotTellYou, toSettleFirst,
+  whatThisCannotTellYou, toSettleFirst, inOurVoice,
 } from './what-the-record-shows-over-time';
 
 /*
@@ -373,5 +373,14 @@ describe('what the record shows over time', () => {
       );
       expect(questions[0]).not.toContain('"');
     });
+  });
+});
+
+/* Found in the anchor walk (8 October): "Amani committed to ask Zawadi themselves whether she can send it...", which reads as though Zawadi does it. */
+describe('a line said in our voice', () => {
+  it('drops the "myself" that only stresses who asks, and still turns a "myself" that is the object', () => {
+    expect(inOurVoice('I will ask Zawadi myself whether she can send it at half past four every day.', 'them')).toBe('ask Zawadi whether she can send it at half past four every day');
+    expect(inOurVoice('I will ask Zawadi myself whether she can send it.', 'you')).toBe('ask Zawadi whether she can send it');
+    expect(inOurVoice('I will remind myself to call the supplier.', 'them')).toBe('remind themselves to call the supplier');
   });
 });

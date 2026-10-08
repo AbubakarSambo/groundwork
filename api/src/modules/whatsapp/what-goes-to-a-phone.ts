@@ -27,6 +27,8 @@ const notice = (kind: string, params: string[], simplerWords?: boolean | null): 
 
 /** checkin_open: a session has opened, the first or a later one. */
 export const theCheckInIsOpen = (w: WhoAndWhat, simplerWords?: boolean | null) => notice('checkin-open', [first(w), w.label], simplerWords);
+/** checkin_open again, to somebody the opening notice never reached: the same words, as its own kind so it is the day's routine message and not a second opening. */
+export const theCheckInIsStillOpen = (w: WhoAndWhat, simplerWords?: boolean | null) => notice('checkin-catch-up', [first(w), w.label], simplerWords);
 /** checkin_due_tomorrow, with the day it is due ("Thursday 8 October"). */
 export const itIsDueTomorrow = (w: WhoAndWhat, dueAt: Date, simplerWords?: boolean | null) => notice('due-tomorrow', [first(w), w.label, whenItWas(dueAt, 'weekdayAndDay')], simplerWords);
 /** checkin_opens_soon, with the time it opens ("10:00 am"). */

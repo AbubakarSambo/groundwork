@@ -64,6 +64,21 @@ const NUMBERS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'e
 const aNumber = (n: number) => (n <= 10 ? NUMBERS[n] : String(n));
 const capital = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
 
+/**
+ * AN AIM IS STORED AS A SENTENCE ABOUT WHOEVER SET IT ("Wairimu is aiming for the team to understand that..."), and the offer is read by her alone.
+ * Quoted as it is stored it read "Nobody has been named as the owner of "Wairimu is aiming for...", ..." to Wairimu (anchor walk, 8 October).
+ * Said to her, it is her aim; any other sentence is quoted as it stands.
+ */
+export function theAimAsTheLeadReadsIt(aim: string, byId: Map<string, APersonHere>): string {
+  const lead = [...byId.values()].find((p) => p.isTheLead);
+  const name = lead?.name?.trim();
+  if (name && aim.toLowerCase().startsWith(`${name.toLowerCase()} is `)) {
+    const m = aim.slice(name.length + 4).match(/^(?:aiming|trying)\s+(for|to)\s+(.+?)[.!]*$/i);
+    if (m) return `your aim ${m[1].toLowerCase()} ${m[2]}`;
+  }
+  return `"${aim}"`;
+}
+
 export function theOffers(record: TheRecordOfOneCheckIn): AnOffer[] {
   const byId = new Map(record.people.map((p) => [p.id, p]));
   const offers: AnOffer[] = [];
@@ -125,7 +140,7 @@ export function theOffers(record: TheRecordOfOneCheckIn): AnOffer[] {
       offers.push({
         kind: 'anchor_aim_check_in',
         key: aim.id,
-        says: `Nobody has been named as the owner of "${aim.name.trim()}", and ${aNumber(carrying.length)} people are each carrying something open. Their responsibilities may not be completely clear.`,
+        says: `Nobody has been named as the owner of ${theAimAsTheLeadReadsIt(aim.name.trim(), byId)}, and ${aNumber(carrying.length)} people are each carrying something open. Their responsibilities may not be completely clear.`,
         question: 'Set up a check-in for this aim?',
         peopleIds: carrying.sort(),
         aim: aim.name.trim(),

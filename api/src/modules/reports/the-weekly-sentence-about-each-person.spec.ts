@@ -167,3 +167,11 @@ describe('the weekly sentences, built and read', () => {
     expect(prisma.recordEntry.findMany).not.toHaveBeenCalled();
   });
 });
+
+/* Found in the anchor walk (8 October): "Amani Wekesa named Zawadi, Wairimu and INFERRED this week." */
+describe('a note on a line is not a name', () => {
+  it('"[INFERRED: from context]" and "[VERIFIABILITY:LOW]" are not things the person named', () => {
+    expect(thingsNamedIn('The van list comes from Zawadi at five in the morning. [INFERRED: from context]')).toEqual(['Zawadi']);
+    expect(thingsNamedIn('I think Wairimu says it every Monday. [VERIFIABILITY:LOW] [INFERRED: Wairimu means the hotels]')).toEqual(['Wairimu']);
+  });
+});
