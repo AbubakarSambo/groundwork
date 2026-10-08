@@ -8,6 +8,9 @@ import { hasEnded } from '../grounds/a-ground-that-has-ended';
 import { theAnchorNudgeLine, theirOwnLastOpenPromise } from '../conversation/the-anchor-nudge';
 import type { TheActiveLine, TheMonthBoard, TheEndOfMonthRead, TheIdeasFromYourTeam } from '../entry/the-anchor-served-shapes';
 import { theIdeasFromYourTeam } from '../conversation/ideas-from-the-team';
+import { theAnchorSections, type AnchorBoardSections } from './the-anchor-sections-on-the-board';
+import { theOffersWaiting } from '../detectors/the-anchor-recommendations';
+import { GroundScenario } from '@prisma/client';
 
 /**
  * THE ANCHOR SCENARIO'S PARTS OF THE BOARD (request 149). One door, so `board.service.ts` carries a single call.
@@ -17,11 +20,11 @@ import { theIdeasFromYourTeam } from '../conversation/ideas-from-the-team';
  * end-of-month read are the lead's own, as the screens' contract says ("Lead only"), so they go to the lead alone.
  * For anybody else, and for every other check-in, this returns nothing, so the board is exactly what it was.
  */
-export type TheAnchorParts = { activeLine?: TheActiveLine; theMonthBoard?: TheMonthBoard; theEndOfMonthRead?: TheEndOfMonthRead; yourPartInMovingThings?: string | null; aNudgeForYou?: string | null; ideasFromYourTeam?: TheIdeasFromYourTeam };
+export type TheAnchorParts = { activeLine?: TheActiveLine; theMonthBoard?: TheMonthBoard; theEndOfMonthRead?: TheEndOfMonthRead; yourPartInMovingThings?: string | null; aNudgeForYou?: string | null; ideasFromYourTeam?: TheIdeasFromYourTeam } & AnchorBoardSections;
 
-export async function theAnchorBoardParts(args: {
+async function theAnchorPartsOnly(args: {
   prisma: any;
-  ground: { id: string; startedFrom?: string | null; initiatorId?: string | null; status?: string | null };
+  ground: { id: string; startedFrom?: string | null; initiatorId?: string | null; status?: string | null; scenario?: GroundScenario | string | null; organizationId?: string | null };
   readerRunsIt: boolean;
   openRound: number;
   roundOpenedAt: Date | null;
@@ -50,7 +53,7 @@ export async function theAnchorBoardParts(args: {
     const nudge = answered ? null : theAnchorNudgeLine(await theirOwnLastOpenPromise(prisma, ground.id, args.readerParticipantId));
     /* Ideas from the team, to everyone in the check-in, each with who raised it (piece 19; decision 96 item 10). */
     const ideas = theIdeasFromYourTeam(record.ideas ?? [], args.readerParticipantId, (pid) => (record.ideas ?? []).find((i) => i.ownerParticipantId === pid)?.raisedBy ?? null);
-    return { yourPartInMovingThings: mine ? aContributionSaid(null, mine.clauseToThem ?? mine.clause, mine.settledBy) : null, aNudgeForYou: nudge, ideasFromYourTeam: ideas };
+    return { yourPartInMovingThings: mine ? aContributionSaid(null, mine.clauseToThem ?? mine.clause, mine.settledBy) : null, aNudgeForYou: nudge, ideasFromYourTeam: ideas, ...theAnchorSections({ scenario: ground.scenario as GroundScenario, reader: 'member', ideas }) };
   }
   if (!(await theAnchorScenarioIsOn(prisma))) return {};
   const ended = hasEnded(ground.status ?? null);
@@ -66,6 +69,26 @@ export async function theAnchorBoardParts(args: {
       const herWords = await herOwnWords(prisma, ground.id, ground.initiatorId ?? null);
       if (herWords) parts.theEndOfMonthRead = theEndOfMonthRead({ herWords, record, differences, patterns: args.patterns });
     }
+    /* The same things, as the ordinary board's own sections under the switchboard's names (decision 114). */
+    const carrying = await herOwnWords(prisma, ground.id, ground.initiatorId ?? null);
+    const offers = ended || !ground.organizationId ? [] : await theOffersWaiting(prisma, ground.id, ground.organizationId).catch(() => []);
+    Object.assign(parts, theAnchorSections({
+      scenario: ground.scenario as GroundScenario, reader: 'lead', carrying, lenses: parts.theMonthBoard?.lenses ?? null, question: parts.theMonthBoard?.question ?? null,
+      ideas: parts.ideasFromYourTeam ?? null, people: parts.theMonthBoard?.peopleHelpingThingsMove ?? null, offers, record, ended,
+    }));
+  } else {
+    /* Whoever runs it but is not the lead (an admin) reads the fixed words about how Groundwork works with the team, and nothing that is a person's or the lead's own: the ideas are for the people in the check-in. */
+    Object.assign(parts, theAnchorSections({ scenario: ground.scenario as GroundScenario, reader: 'member' }));
   }
   return parts;
+}
+
+/**
+ * The anchor's parts of the board, one door (request 149), and now also its sections under the switchboard's names (decision 114).
+ * A check-in is the anchor's when it was started from the anchor or its scenario is the anchor's; the switch gates both, as before.
+ */
+export async function theAnchorBoardParts(args: Parameters<typeof theAnchorPartsOnly>[0]): Promise<TheAnchorParts> {
+  const g = args.ground;
+  if (g.startedFrom !== STARTED_FROM_THE_ANCHOR && g.scenario !== GroundScenario.HELP_TEAM_UNDERSTAND) return {};
+  return theAnchorPartsOnly({ ...args, ground: { ...g, startedFrom: STARTED_FROM_THE_ANCHOR } });
 }

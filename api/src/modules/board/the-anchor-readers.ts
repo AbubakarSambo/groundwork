@@ -17,12 +17,15 @@
  */
 export type AnAnchorReader = 'the lead' | 'a person in it' | 'an admin with access' | 'an admin who only reads';
 
+/** The anchor's sections on the ordinary board (decision 114) that are the lead's own: nobody else is served them. */
+export const ANCHOR_SECTIONS_FOR_THE_LEAD = ['whatYouAreCarrying', 'theFourLenses', 'peopleHelpingTheTeamMove', 'recommendations', 'weeklyInsight'];
+
 const A_LABEL_OR_A_SCORE = /\b(?:score|rating|rated|at risk|underperform\w*|PIP|exit)\b|\/10\b/i;
 
 export function whatIsWrongForThisReader(reader: AnAnchorReader, board: Record<string, any>, opts: { monthIsOver?: boolean; /** The check-in has ended: nobody is being nudged, so there is no active line. */ ended?: boolean; theirOwnName?: string | null; othersNames?: string[] } = {}): string[] {
   const problems: string[] = [];
   const has = (k: string) => board && Object.prototype.hasOwnProperty.call(board, k) && board[k] != null;
-  const text = JSON.stringify({ a: board?.activeLine, m: board?.theMonthBoard, e: board?.theEndOfMonthRead, y: board?.yourPartInMovingThings, n: board?.aNudgeForYou });
+  const text = JSON.stringify({ a: board?.activeLine, m: board?.theMonthBoard, e: board?.theEndOfMonthRead, y: board?.yourPartInMovingThings, n: board?.aNudgeForYou, s: ANCHOR_SECTIONS_FOR_THE_LEAD.concat(['howGroundworkWillWork', 'ideasFromTheTeam']).map((k) => board?.[k]) });
   if (A_LABEL_OR_A_SCORE.test(text)) problems.push('An anchor part holds a score, a rating or a label on a person.');
 
   if (reader === 'the lead') {
@@ -35,6 +38,7 @@ export function whatIsWrongForThisReader(reader: AnAnchorReader, board: Record<s
     if (has('aNudgeForYou')) problems.push('The lead is served a person\'s own nudge.');
     return problems;
   }
+  for (const k of ANCHOR_SECTIONS_FOR_THE_LEAD) if (has(k)) problems.push(`${reader === 'a person in it' ? 'A person in the check-in' : reader === 'an admin with access' ? 'An admin with access' : 'An admin who only reads'} is served the section ${k}, which is the lead's own.`);
   for (const k of ['theMonthBoard', 'theEndOfMonthRead']) if (has(k)) problems.push(`${reader === 'a person in it' ? 'A person in the check-in' : reader === 'an admin with access' ? 'An admin with access' : 'An admin who only reads'} is served ${k === 'theMonthBoard' ? 'the month board' : 'the end-of-month read'}, which is the lead's own.`);
 
   if (reader === 'a person in it') {

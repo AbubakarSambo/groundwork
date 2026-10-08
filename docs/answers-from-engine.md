@@ -6598,3 +6598,40 @@ Found and fixed on the server by the overnight run (`docs/bug-log-engine.md` row
 4. **The names read from a paste are in the preview (B-128).** Each row of the preview and of the answer carries `name` when a name was typed beside the address ("Дмитрий Иванов <p01@fieldnote.test>", "Ada Obi, ada@x.com", a spreadsheet's two columns). Show it beside the address, so the admin sees what was read. The invitation begins "Hi Дмитрий,".
 5. **The header of a check-in says two things (B-112, for you).** `GET /grounds/:id` serves `sessionClock.says` ("Session 2 of 12.") and, when a later session has started for some people, `sessionClock.whileOpen` ("Session 3 has started for some people, while session 2 is still open."). Both are true; the server keeps them as two sentences on purpose. If one statement reads better, join them on the screen as one line ("Session 2 of 12. Session 3 has started for some people, while session 2 is still open."), or show `whileOpen` under the header in the smaller type.
 6. **Opening a "Stop the reminders" link stops them at once (B-152), and that is Hafsah's to decide.** The link in the mail opens `GET /stop-reminders/:token`, which stops the reminders on the GET itself, by design (a scanner that follows it stops some reminders and costs nobody anything). If Hafsah wants a button first, the page `StopRemindersPage` would have to show the button and call a POST, and the server would add the POST then. Nothing changes until she says.
+
+## From the engine workspace, 8 October (later): the anchor through the ordinary routes, route by route (decision 114)
+
+The anchor switch is still off by default, and nothing was removed. Every anchor-only route below still answers as before, so nothing breaks until you move over. Each line says what to call instead. With the switch off, none of the new things below is served.
+
+**The entry chat**
+
+1. `GET /entry/anchor-start` (opening line, first question): call `POST /entry/opener` with `{ "scenario": "Help my team understand" }` (the key `HELP_TEAM_UNDERSTAND` works too), as for any scenario. The reply is the anchor's opening, ending in its first question. With the switch off it is the ordinary opener. Then keep sending `scenario: "HELP_TEAM_UNDERSTAND"` on every entry call and on commit, as now; the server marks the saved check-in as the anchor's. What the opener says, in full:
+
+   > You know what it takes to keep the work, customers and company moving. Does your team?
+   >
+   > For one month, Groundwork will check in with each person one to one, to help everyone understand how their work connects, contribute more, and move in the same direction. You can add up to 20 people, yourself included.
+   >
+   > Tell me what you are trying to get across. What's happening right now that makes you wish your team saw more of what you see?
+
+   Still only from `anchor-start`: the source mark of the link (`?source=`) and `thePeopleStep` (the people step's words and the limit of 20). Keep calling it for those two until they have moved; they will be served on the ordinary routes next.
+2. `GET /entry/anchor-available`: keep it only to decide whether to offer the "Help my team understand" card in the ordinary picker. It is not a page of its own.
+
+**The invitation**
+
+3. `anchorInvitation` on the invitation read: read `invitationWords` on the same read instead (`{ subject, heading, lines, leadHasSharedWhatTheyAreSeeing, button }`). It is present for a scenario that has its own words (today only the anchor's, with the switch on) and absent for the rest; draw it the way you would draw any scenario's. The first line reads: "For the next month, Groundwork will check in with each person one to one about the work you’re doing, what you’re seeing, what’s getting in the way and how it connects to the bigger picture."
+
+**The board.** The anchor's sections are named by the switchboard for the anchor's scenario and carried in `GET /grounds/:id/board`, each under the section's own name, with a `heading` and plain sentences. Draw them as any section. Each is left out, never filled and hidden, for a reader who may not read it.
+
+| Section (switchboard name) | Who is served it | Shape | Replaces |
+| --- | --- | --- | --- |
+| `whatYouAreCarrying` | the lead | `{ heading: "What you're carrying", text }`, the lead's own first words | `leadsReveal.carrying` |
+| `howGroundworkWillWork` | everybody in the check-in, and an admin who runs it | `{ heading: "How I'll work with your team", ways: [{ key, heading, sentence }] }`, eight ways, Hafsah's words | `leadsReveal.howIWillWorkWithYourTeam` |
+| `theFourLenses` | the lead | `{ heading: "The four lenses", question, lenses: [{ key, heading, question, reading }] }` | `theMonthBoard.lenses` |
+| `ideasFromTheTeam` | everybody in the check-in | `{ heading: "Ideas from your team", ideas: [{ id, title, raisedBy, similarNeedsSentence }], whenThereAreNone }` | `ideasFromYourTeam` |
+| `peopleHelpingTheTeamMove` | the lead | `{ heading: "People helping the team move", people: [{ name, sentence }] }` | `theMonthBoard.peopleHelpingThingsMove` |
+| `recommendations` | the lead | `{ heading: "Groundwork recommends", offers: [{ id, kind, says, question, yes, no }] }` | `GET /grounds/:id/recommended-check-ins` (listing only) |
+| `weeklyInsight` | the lead | `{ heading: "This week", text }` | nothing on screen before; it is the sentence the Friday WhatsApp carries |
+
+The two answers to a recommendation, `POST /grounds/:groundId/recommended-check-ins/:offerId/yes` and `.../not-now`, are ordinary answers to an offer and stay as they are.
+
+**Kept for now, and why.** `theMonthBoard`, `theEndOfMonthRead`, `activeLine`, `yourPartInMovingThings`, `aNudgeForYou` and `leadsReveal` are still served. `theMonthBoard` also holds the weeks of the month, what is moving and what is in the way; those move to ordinary sections next. Please move to the table above, then say in `docs/requests-to-engine.md` which of the kept ones you still call, and they go one at a time.
