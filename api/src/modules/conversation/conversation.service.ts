@@ -81,7 +81,7 @@ export const DECLINED_TO_TAKE_PART = 'declined';
 import { mirrorCommitment } from '../assistant/a-commitment-carries-past-the-ground';
 import { STARTED_FROM_THE_ANCHOR, aCheckInStartedFromTheAnchor, theAnchorMarkOf, theAnchorParticipantGuidance, whatTheyToldYouBefore, withoutAnAnnouncedAngle } from './the-anchor-weekly-check-in';
 import { theAnchorBaselineGuidance } from './the-anchor-baseline';
-import { withoutAnExampleAnswer, THE_BASELINE_CLOSING_REMINDER, THE_BASELINE_FOLLOW_UP_REMINDER, THE_BASELINE_READ_SYSTEM, THE_BASELINE_READ_TOOL, everythingIsLearned, whatIsLearnedFrom, theFollowUpFrom, whatTheBaselineHasLearned, whatTheyJustSaidComesFirst, type WhatIsLearned, type WhatToFollowUp } from './the-baseline-so-far';
+import { withoutAnExampleAnswer, THE_BASELINE_CLOSING_REMINDER, THE_BASELINE_FINISH_REMINDER, THE_BASELINE_FOLLOW_UP_REMINDER, THE_BASELINE_READ_SYSTEM, THE_BASELINE_READ_TOOL, everythingIsLearned, whatIsLearnedFrom, theFollowUpFrom, whatTheBaselineHasLearned, whatTheyJustSaidComesFirst, type WhatIsLearned, type WhatToFollowUp } from './the-baseline-so-far';
 import { THE_ANCHOR_GIVES_IT_PASSING_WEIGHT, THE_WEEKLY_FOLLOW_UP_REMINDER, whatToFollowUpInTheWeekly } from './the-anchor-follows-up-what-was-said';
 import { whatTheAnswerAgreedTo, hasAlreadyOffered, whatHappenedToTheOffer, weSayAboutTheOffer, whatIsStillOwedToThem, withoutTheSecondTellingOfIt, isAnOfferToWriteItDown, whatTheyJustSaidMayBeTheirOwnStep, YOU_HAVE_ALREADY_OFFERED } from './giving-the-person-agency';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
@@ -5672,12 +5672,14 @@ ${told}` : '';
       const read = await this.whatTheBaselineHasLearnedSoFar(turnsThisSession);
       const learned = read?.learned ?? null;
       const closes = !!learned && everythingIsLearned(learned);
+      /* "Finish" closes it as it closes any other check-in: once there are enough answers. Below that, the plain sentence was already given before this point. */
+      const finishes = askedToFinish([latestMessage]) && !tooFewAnswersToFinish(this.answersIn(turnsThisSession), false, ground?.scenario ?? null);
       /* What they just said comes first, unless it is the close. */
-      const followUp = closes ? null : read?.followUp ?? null;
+      const followUp = closes || finishes ? null : read?.followUp ?? null;
       return {
         text: baseline.text,
         block: [aboutIt, learned ? whatTheBaselineHasLearned(learned, followUp) : (followUp ? whatTheyJustSaidComesFirst(followUp) : '')].filter(Boolean).join('\n\n'),
-        last: closes ? THE_BASELINE_CLOSING_REMINDER : followUp ? THE_BASELINE_FOLLOW_UP_REMINDER : baseline.last,
+        last: closes ? THE_BASELINE_CLOSING_REMINDER : finishes ? THE_BASELINE_FINISH_REMINDER : followUp ? THE_BASELINE_FOLLOW_UP_REMINDER : baseline.last,
         promptVersionId: baseline.promptVersionId, agreed: null as any, isTheBaseline: true,
       };
     }
@@ -5726,6 +5728,11 @@ ${told}` : '';
     const offered = hasAlreadyOffered(sofar as any[]);
     /* Owed to them, read from the record: asked after the reminder, so it is the last thing read about what to ask. Not while an offer is being answered. */
     const owed = agreed ? '' : [whatTheyJustSaidMayBeTheirOwnStep(sofar as any[], latestMessage), whatIsStillOwedToThem(sofar as any[])].filter(Boolean).join('\n\n');
+    /* "Finish" closes it as it closes any other check-in, once there are enough answers. */
+    const finishes = askedToFinish([latestMessage]) && !tooFewAnswersToFinish(this.answersIn(turnsThisSession), false, ground?.scenario ?? null);
+    if (finishes) {
+      return { text: guidance.text, block, last: THE_BASELINE_FINISH_REMINDER, promptVersionId: guidance.promptVersionId, agreed };
+    }
     /* What they just said comes first, and the lead's fields wait behind it. Not while an offer is being answered. */
     const followUp = agreed ? null : await whatToFollowUpInTheWeekly(this.anthropic as any, turnsThisSession, (m) => this.logger.warn(m));
     return {
@@ -5736,6 +5743,10 @@ ${told}` : '';
     };
   }
 
+  /** How many answers the person has given in this session. */
+  private answersIn(turns: { role: 'AI' | 'PERSON'; content: string }[]): number {
+    return turns.filter((t) => t.role === 'PERSON' && t.content.trim()).length;
+  }
 
   /**
    * THEIR YES BECOMES A COMMITMENT, AND ONLY THEIR YES (anchor piece 17). Read from the anchor's weekly words for this turn: when the

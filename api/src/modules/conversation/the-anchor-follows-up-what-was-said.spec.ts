@@ -3,7 +3,7 @@ import { ConversationService } from './conversation.service';
 import { ConversationContextService } from './context.service';
 import { ANCHOR_BASELINE_PROMPT_KEY } from './the-anchor-baseline';
 import { ANCHOR_PARTICIPANT_PROMPT_KEY } from './the-anchor-weekly-check-in';
-import { THE_NINE, THE_BASELINE_FOLLOW_UP_REMINDER, THE_BASELINE_CLOSING_REMINDER, theFollowUpFrom } from './the-baseline-so-far';
+import { THE_NINE, THE_BASELINE_FOLLOW_UP_REMINDER, THE_BASELINE_FINISH_REMINDER, THE_BASELINE_CLOSING_REMINDER, theFollowUpFrom } from './the-baseline-so-far';
 import { THE_WEEKLY_FOLLOW_UP_REMINDER, THE_ANCHOR_GIVES_IT_PASSING_WEIGHT } from './the-anchor-follows-up-what-was-said';
 
 /**
@@ -173,3 +173,28 @@ describe('the anchor reads what the person just said, and follows it up before i
   });
 });
 
+describe('"finish" closes an anchor check-in as it closes any other (final check, 8 October)', () => {
+  const FIVE = [1, 2, 3, 4, 5].flatMap((n) => [{ role: 'AI', content: `Question ${n}?` }, { role: 'PERSON', content: `Answer number ${n} about the work, in a few words.` }]).concat([{ role: 'AI', content: 'Question 6?' }]);
+  it('first session, enough said: the turn closes with no question, and says so last', async () => {
+    const w = worldReading({ turns: FIVE, answer: 'finish' }, { learned: { workingOn: true } });
+    await w.service.sendMessage('ci2', 'user-1', 'finish');
+    expect(w.seen[0].endsWith(THE_BASELINE_FINISH_REMINDER)).toBe(true);
+    expect(w.seen[0]).not.toContain('Ask exactly one question in this turn');
+    expect(THE_BASELINE_FINISH_REMINDER).toContain('Do not ask a question in this turn.');
+  });
+  it('second session, enough said: the same', async () => {
+    const w = worldReading({ sessionNumber: 2, turns: FIVE, answer: 'finish' }, {});
+    await w.service.sendMessage('ci2', 'user-1', 'finish');
+    expect(w.seen[0].endsWith(THE_BASELINE_FINISH_REMINDER)).toBe(true);
+    expect(w.calls).not.toContain('what_to_follow_up');
+  });
+  it('too early, the plain sentence asking for one or two more answers, and nothing is kept', async () => {
+    const w = worldReading({ turns: [{ role: 'AI', content: 'What are you working on right now?' }], answer: 'finish' }, {});
+    const out: any = await w.service.sendMessage('ci2', 'user-1', 'finish');
+    expect(out.reply).toBe('I need a little more from you before this check-in can close. Please answer one or two more questions, then write "finish" again.');
+    expect(w.seen.length).toBe(0);
+  });
+  it('the closing reminder for nine learned is untouched', () => {
+    expect(THE_BASELINE_CLOSING_REMINDER).toContain('all nine things are learned');
+  });
+});
