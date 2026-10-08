@@ -1,4 +1,6 @@
-import { sendTheLeadsDailyNudges, theWindowForm, theTemplateParagraph, theNudgeParts, theNudgeSubject, atMostThreeLines, type WhatIsOutstanding } from './the-leads-daily-nudge';
+import 'reflect-metadata';
+import { TodayController } from '../grounds/today.controller';
+import { everythingOutstandingFor, sendTheLeadsDailyNudges, theWindowForm, theTemplateParagraph, theNudgeParts, theNudgeSubject, atMostThreeLines, type WhatIsOutstanding } from './the-leads-daily-nudge';
 import { TEMPLATES, A_TEMPLATE_BODY_LIMIT, OUTSIDE_THE_WINDOW } from '../whatsapp/a-message-outside-the-window';
 import { theFirstContactLine, ITS_OWN_WORDS_AT_MOST } from '../whatsapp/the-first-message-to-a-number';
 
@@ -304,6 +306,29 @@ describe('facts about one thing, never a comparison and never a label', () => {
     const all = JSON.stringify(m.mails[0][2]) + m.mails[0][1];
     expect(all).not.toMatch(/\b(ahead|behind of|worst|best|slowest|fastest|at risk|exit|PIP|score|rank|compared)\b/i);
     expect(all).not.toMatch(/@/);
+  });
+});
+
+describe('the page the link goes to shows everything, in the same sentences', () => {
+  it('every one of them and not three, including what she keeps in the app, with the check-in named because there are two', async () => {
+    const m = aMorning({ phone: null });
+    const boards: any = { leave: { board: async () => ({ waiting: [] }) } };
+    const all = await everythingOutstandingFor(m.prisma, { userId: 'u-wairimu', organizationId: 'org-1' }, { boards }, NOW);
+    expect(all?.needsYou).toEqual(['You committed to \u201cwrite up the Kisumu visit\u201d in \u201cSales team, Q3\u201d by Friday 9 October, and it is three days late.']);
+    expect(all?.overdueOnYourTeam).toHaveLength(4);
+    expect(all?.overdueOnYourTeam.join(' ')).toContain('keep the plan notes');
+    expect(JSON.stringify(all)).not.toMatch(/more are not listed here|Mombasa|Juma/);
+    /* And the nudge's email says the same things in fewer lines. */
+    await m.run();
+    expect(m.mails[0][2].overdueOnYourTeam[0]).toBe(all?.overdueOnYourTeam[0]);
+  });
+  it('says nothing, rather than an empty page, when nothing is outstanding', async () => {
+    const m = aMorning({ promises: [], waiting: false });
+    expect(await everythingOutstandingFor(m.prisma, { userId: 'u-wairimu', organizationId: 'org-1' }, { boards: {} as any }, NOW)).toBeNull();
+  });
+  it('is served at GET /today/outstanding, on the reader\'s own sign-in', () => {
+    expect(Reflect.getMetadata('path', TodayController.prototype.outstanding)).toBe('outstanding');
+    expect(Reflect.getMetadata('path', TodayController)).toBe('today');
   });
 });
 

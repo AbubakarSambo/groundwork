@@ -349,6 +349,29 @@ export async function whatIsOutstandingFor(
   return out;
 }
 
+/**
+ * EVERYTHING THE NUDGE COULD HAVE SAID, FOR THE PAGE ITS LINK GOES TO (Today). The same facts in the same sentences, none left out for lack of room, with the check-in
+ * named wherever she is told about more than one. Served only to the lead herself, for the check-ins she runs, so it is the nudge's own wall. Null when nothing is outstanding.
+ */
+export async function everythingOutstandingFor(
+  prisma: any,
+  reader: { userId: string; organizationId: string },
+  deps: { boards: TheBoards },
+  now: Date = new Date(),
+): Promise<{ needsYou: string[]; overdueOnYourTeam: string[]; risks: string[] } | null> {
+  const grounds: any[] = await prisma.ground.findMany({
+    where: { initiatorId: reader.userId, organizationId: reader.organizationId, status: { notIn: [...TERMINAL, ...HELD, GroundStatus.AWAITING_APPROVAL] } },
+    select: { id: true, label: true, scenario: true, organizationId: true, overWhatsApp: true, initiatorId: true, timelineDays: true, cadence: true },
+  });
+  if (!grounds.length) return null;
+  const release = await theEngagementMoment(prisma, now).catch(() => null);
+  const found = await whatIsOutstandingFor(prisma, { userId: reader.userId, organizationId: reader.organizationId, grounds }, { boards: deps.boards, release }, now);
+  if (!theseAreOutstanding(found)) return null;
+  const said = withPlacesWhereTheyTellApart(found);
+  const lines = (things: AThingOutstanding[]) => things.map((t) => sentence(t.text));
+  return { needsYou: lines(said.needsYou), overdueOnYourTeam: lines(said.overdueOnYourTeam), risks: lines(said.risks) };
+}
+
 /** Each lead, from every check-in that is running: who runs what. */
 async function theLeadsAndTheirCheckIns(prisma: any) {
   const grounds: any[] = await everyRowAPageAtATime((page: any) => prisma.ground.findMany({
