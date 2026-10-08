@@ -124,15 +124,15 @@ export function theAdminReadsSaid(stands: AppealStands, personFirstName: string,
 
 export interface TheMessage { subject: string; lines: string[]; linkLabel: string }
 
-/** To an admin who may decide it. */
+/** To an admin who may decide it. The person is called by name; "their" is never used for a person who has been named. */
 export function anAppealWaitsForYou(adminFirstName: string | null, personFirstName: string, reviewerFirstName: string | null): TheMessage {
   const reviewer = reviewerFirstName?.trim() || 'the person who decided it';
   return {
-    subject: `${personFirstName} has appealed a decision on their review`,
+    subject: `${personFirstName} has appealed a decision on a review`,
     lines: [
       `Hi ${adminFirstName?.trim() || 'there'},`,
-      `${personFirstName} has appealed ${reviewer}'s decision on their review. You are an admin who did not decide it, so you decide the appeal.`,
-      'Open Groundwork to read the review, their side and their reasons, and then say whether the decision stands or is changed.',
+      `${personFirstName} has appealed ${reviewer}'s decision on ${personFirstName}'s review. You are an admin who did not decide it, so you decide the appeal.`,
+      `Open Groundwork to read the review, ${personFirstName}'s side and the reasons ${personFirstName} gave, and then say whether the decision stands or is changed.`,
     ],
     linkLabel: 'Read the appeal',
   };
@@ -144,7 +144,7 @@ export function pleaseAddASecondAdmin(reviewerFirstName: string | null, personFi
     subject: `${personFirstName} has appealed your decision, and it needs a second admin`,
     lines: [
       `Hi ${reviewerFirstName?.trim() || 'there'},`,
-      `${personFirstName} has appealed your decision on their review. An appeal has to be decided by an admin who is not you, and your organisation does not have another one yet.`,
+      `${personFirstName} has appealed your decision on ${personFirstName}'s review. An appeal has to be decided by an admin who is not you, and your organisation does not have another one yet.`,
       reviewerIsAnAdmin
         ? 'Please add a second admin to Groundwork. The appeal is saved and stays open, and that admin decides it as soon as they are added.'
         : 'Please add a second admin to Groundwork, or ask an admin of your organisation to. The appeal is saved and stays open, and that admin decides it as soon as they are added.',
@@ -153,16 +153,19 @@ export function pleaseAddASecondAdmin(reviewerFirstName: string | null, personFi
   };
 }
 
-/** To the person and the reviewer, when it is decided. Never the reasons themselves. */
-export function theAppealWasDecided(firstName: string | null, whoDecidedFirstName: string | null, forThePerson: boolean, personFirstName: string): TheMessage {
+/** To the person and the reviewer, when it is decided: who decided it and what the outcome is, and never the reasons themselves. */
+export function theAppealWasDecided(firstName: string | null, whoDecidedFirstName: string | null, forThePerson: boolean, personFirstName: string, outcome: string | null): TheMessage {
   const who = whoDecidedFirstName?.trim() || 'An admin';
+  const changed = outcome === 'changed';
   return {
-    subject: forThePerson ? 'Your appeal has been decided' : `${personFirstName}'s appeal has been decided`,
+    subject: forThePerson
+      ? `Your appeal was decided, and the decision ${changed ? 'was changed' : 'stands'}`
+      : `${personFirstName}'s appeal was decided, and your decision ${changed ? 'was changed' : 'stands'}`,
     lines: [
       `Hi ${firstName?.trim() || 'there'},`,
       forThePerson
-        ? `${who}, an admin, has decided your appeal of the decision on your review.`
-        : `${who}, an admin, has decided ${personFirstName}'s appeal of your decision on their review.`,
+        ? `${who}, an admin, has read your appeal of the decision on your review. ${changed ? 'The decision has been changed.' : 'The decision stands.'}`
+        : `${who}, an admin, has read ${personFirstName}'s appeal of your decision on ${personFirstName}'s review. ${changed ? 'The decision has been changed.' : 'The decision stands.'}`,
       'Open Groundwork to read the decision and the reasons.',
     ],
     linkLabel: 'Read the decision',

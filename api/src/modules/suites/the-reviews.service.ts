@@ -657,7 +657,7 @@ export class ReviewsService {
       },
     });
     await recordIt(this.prisma, { organizationId: reader.organizationId, suite: 'reviews', ref: row.id, kind: 'appeal-decided', byUserId: reader.userId, basis: { row: 'performance_reviews', id: row.id, outcome: input.outcome } });
-    try { await this.appealTold?.decided(reader.organizationId, row.id, reader.userId, person.userId, this.firstOf(person), (row as any).decidedById ?? null); } catch { /* It is decided; they read it in the app. */ }
+    try { await this.appealTold?.decided(reader.organizationId, row.id, reader.userId, person.userId, this.firstOf(person), (row as any).decidedById ?? null, input.outcome ?? null); } catch { /* It is decided; they read it in the app. */ }
     void directory;
     return this.one(reader, id);
   }

@@ -32,8 +32,8 @@ describe('a review appeal, as the admin, the reviewer and the person each read i
   it.each([
     ['the admin it waits for', () => anAppealWaitsForYou('Grace', 'Imani', 'Baraka')],
     ['the reviewer asked to add a second admin', () => pleaseAddASecondAdmin('Baraka', 'Imani', false)],
-    ['the person, told it was decided', () => theAppealWasDecided('Imani', 'Grace', true, 'Imani')],
-    ['the reviewer, told it was decided', () => theAppealWasDecided('Baraka', 'Grace', false, 'Imani')],
+    ['the person, told it was decided', () => theAppealWasDecided('Imani', 'Grace', true, 'Imani', 'stands')],
+    ['the reviewer, told it was decided', () => theAppealWasDecided('Baraka', 'Grace', false, 'Imani', 'changed')],
   ])('%s does not read that the people in a check-in can see what they say', async (_who, message) => {
     const d = door();
     const m = message();

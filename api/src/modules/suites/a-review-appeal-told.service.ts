@@ -44,13 +44,13 @@ export class AReviewAppealToldService {
     await this.send(organizationId, reviewId, reviewerUserId, m, to, anAppealNeedsASecondAdmin(to.firstName, personFirstName));
   }
 
-  /** The appeal was decided: the person and the reviewer are told, and only that it is decided. */
-  async decided(organizationId: string, reviewId: string, adminUserId: string, personUserId: string | null, personFirstName: string, reviewerUserId: string | null): Promise<void> {
+  /** The appeal was decided: the person and the reviewer are told who decided it and what the outcome is (it stands, or it was changed), and nothing else. */
+  async decided(organizationId: string, reviewId: string, adminUserId: string, personUserId: string | null, personFirstName: string, reviewerUserId: string | null, outcome: string | null): Promise<void> {
     const admin = await this.reach.firstNameOf(adminUserId);
     for (const [userId, forThePerson] of [[personUserId, true], [reviewerUserId, false]] as const) {
       if (!userId || userId === adminUserId) continue;
       const to = await this.reach.reach(organizationId, userId);
-      await this.send(organizationId, reviewId, userId, theAppealWasDecided(to.firstName, admin, forThePerson, personFirstName), to, anAppealWasDecidedSaid(to.firstName, admin));
+      await this.send(organizationId, reviewId, userId, theAppealWasDecided(to.firstName, admin, forThePerson, personFirstName, outcome), to, anAppealWasDecidedSaid(to.firstName, admin));
     }
   }
 

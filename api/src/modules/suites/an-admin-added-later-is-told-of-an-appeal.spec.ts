@@ -101,11 +101,11 @@ describe('Baraka, the only admin and the reviewer, makes Grace an admin while Im
     await sweep.anAdminWasMade({ organizationId: ORG, userId: 'u-grace' });
 
     expect(sent).toHaveLength(1);
-    expect(sent[0]).toMatchObject({ to: 'grace@kilima.test', subject: 'Imani has appealed a decision on their review' });
+    expect(sent[0]).toMatchObject({ to: 'grace@kilima.test', subject: 'Imani has appealed a decision on a review' });
     expect(sent[0].lines).toEqual([
       'Hi Grace,',
-      "Imani has appealed Baraka's decision on their review. You are an admin who did not decide it, so you decide the appeal.",
-      'Open Groundwork to read the review, their side and their reasons, and then say whether the decision stands or is changed.',
+      "Imani has appealed Baraka's decision on Imani's review. You are an admin who did not decide it, so you decide the appeal.",
+      "Open Groundwork to read the review, Imani's side and the reasons Imani gave, and then say whether the decision stands or is changed.",
     ]);
     expect(phones).toHaveLength(1);
     expect(phones[0]).toMatchObject({

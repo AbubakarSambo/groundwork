@@ -122,11 +122,11 @@ describe('Imani appeals, and Grace, an admin who did not decide it, decides', ()
     });
     /* Grace is told it waits. Not Baraka, not Imani. */
     expect(sent).toHaveLength(1);
-    expect(sent[0]).toMatchObject({ to: 'grace@kilima.test', subject: 'Imani has appealed a decision on their review' });
+    expect(sent[0]).toMatchObject({ to: 'grace@kilima.test', subject: 'Imani has appealed a decision on a review' });
     expect(sent[0].lines).toEqual([
       'Hi Grace,',
-      "Imani has appealed Baraka's decision on their review. You are an admin who did not decide it, so you decide the appeal.",
-      'Open Groundwork to read the review, their side and their reasons, and then say whether the decision stands or is changed.',
+      "Imani has appealed Baraka's decision on Imani's review. You are an admin who did not decide it, so you decide the appeal.",
+      "Open Groundwork to read the review, Imani's side and the reasons Imani gave, and then say whether the decision stands or is changed.",
     ]);
     expect(JSON.stringify(sent)).not.toContain('Karen account');
 
@@ -178,9 +178,9 @@ describe('Imani appeals, and Grace, an admin who did not decide it, decides', ()
     expect(baraka.appeal.says).toBe('Imani appealed your decision. Grace, an admin, has read the appeal, and the decision stands. You can read the reasons below.');
 
     /* Both are told it is decided, by email and on WhatsApp, and neither message carries the reasons. */
-    expect(sent.map((s) => [s.to, s.subject])).toEqual([['imani@kilima.test', 'Your appeal has been decided'], ['baraka@kilima.test', "Imani's appeal has been decided"]]);
-    expect(sent[0].lines).toEqual(['Hi Imani,', 'Grace, an admin, has decided your appeal of the decision on your review.', 'Open Groundwork to read the decision and the reasons.']);
-    expect(sent[1].lines[1]).toBe("Grace, an admin, has decided Imani's appeal of your decision on their review.");
+    expect(sent.map((s) => [s.to, s.subject])).toEqual([['imani@kilima.test', 'Your appeal was decided, and the decision stands'], ['baraka@kilima.test', "Imani's appeal was decided, and your decision stands"]]);
+    expect(sent[0].lines).toEqual(['Hi Imani,', 'Grace, an admin, has read your appeal of the decision on your review. The decision stands.', 'Open Groundwork to read the decision and the reasons.']);
+    expect(sent[1].lines[1]).toBe("Grace, an admin, has read Imani's appeal of your decision on Imani's review. The decision stands.");
     expect(JSON.stringify(sent)).not.toContain('Karen');
     await expect(svc.decideTheAppeal(as('u-grace'), 'r-imani', { outcome: 'stands', reasons: 'Again.' })).rejects.toThrow(new BadRequestException(APPEAL_REFUSED.alreadyDecided));
     await expect(svc.addToTheAppeal(as('u-imani'), 'r-imani', 'More.')).rejects.toThrow(new BadRequestException(APPEAL_REFUSED.alreadyDecided));
@@ -221,7 +221,7 @@ describe('with no admin other than the reviewer', () => {
     expect(sent[0].subject).toBe('Imani has appealed your decision, and it needs a second admin');
     expect(sent[0].lines).toEqual([
       'Hi Baraka,',
-      'Imani has appealed your decision on their review. An appeal has to be decided by an admin who is not you, and your organisation does not have another one yet.',
+      "Imani has appealed your decision on Imani's review. An appeal has to be decided by an admin who is not you, and your organisation does not have another one yet.",
       'Please add a second admin to Groundwork. The appeal is saved and stays open, and that admin decides it as soon as they are added.',
     ]);
     expect(phones).toHaveLength(1);
