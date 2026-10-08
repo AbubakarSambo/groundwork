@@ -126,9 +126,20 @@ describe('where it sits in the rules every message follows', () => {
   it('does not carry the paragraph about who can see what people say, which is not about it', () => {
     expect(shouldSayWhatGroundworkIs(WAITING_SENDER)).toBe(false);
   });
-  it('is scheduled on weekdays at half past ten in Lagos, after the morning\'s reminders', () => {
+  it('is scheduled on weekdays at half past eight in Lagos, before the morning\'s reminders, so that a lead\'s own reminder does not take her one message of the day', () => {
     const opts = Reflect.getMetadata('SCHEDULE_CRON_OPTIONS', GroundsCron.prototype.sendWhatGroundworkIsDoing);
-    expect(opts.cronTime).toBe('30 10 * * 1-5');
+    expect(opts.cronTime).toBe('30 8 * * 1-5');
     expect(opts.timeZone).toBe('Africa/Lagos');
+  });
+  it('and so are the lead\'s other insights, each before the reminders that run at 08:00 and 09:00 UTC', () => {
+    const at = (name: keyof GroundsCron) => Reflect.getMetadata('SCHEDULE_CRON_OPTIONS', (GroundsCron.prototype as any)[name]).cronTime;
+    expect(at('sendTheTestCheckInMessages')).toBe('10 8 * * 2');
+    expect(at('sendTheReportFollowUps')).toBe('15 8 * * 1-5');
+    expect(at('sendWhoHasGoneQuiet')).toBe('45 8 * * 3');
+    /* 08:45 in Lagos is 07:45 UTC; the first reminders are 08:00 UTC. */
+    for (const t of ['10 8 * * 2', '15 8 * * 1-5', '45 8 * * 3', '30 8 * * 1-5']) {
+      const [minute, hour] = t.split(' ').map(Number);
+      expect(hour * 60 + minute).toBeLessThan(9 * 60);
+    }
   });
 });

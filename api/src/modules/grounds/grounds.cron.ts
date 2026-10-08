@@ -965,10 +965,10 @@ export class GroundsCron implements OnApplicationBootstrap {
   }
 
   /**
-   * A TEST CHECK-IN MOVES TOWARD ONE SMALL REAL ONE (decision 109 item 8), Tuesday morning in Lagos. Once ever per lead; see
+   * A TEST CHECK-IN MOVES TOWARD ONE SMALL REAL ONE (decision 109 item 8), Tuesday at ten past eight in Lagos, before the morning's reminders (see below). Once ever per lead; see
    * engagement/a-test-check-in-moves-on.ts for what a test is and what is said.
    */
-  @Cron('0 10 * * 2', { timeZone: 'Africa/Lagos' })
+  @Cron('10 8 * * 2', { timeZone: 'Africa/Lagos' })
   async sendTheTestCheckInMessages() {
     await onceAcrossCopies(this.prisma, 'test-check-in-moves-on', theWeek(), () => this.sendTheTestCheckInMessagesInner());
   }
@@ -983,10 +983,10 @@ export class GroundsCron implements OnApplicationBootstrap {
   }
 
   /**
-   * THE FOLLOW-UP AFTER A REPORT (decision 109; section 36, journey 6), mid-morning in Lagos on weekdays: a week after a report went out, once, to a
+   * THE FOLLOW-UP AFTER A REPORT (decision 109; section 36, journey 6), at a quarter past eight in Lagos on weekdays, before the morning's reminders (see below): a week after a report went out, once, to a
    * lead who has not opened a next session. See engagement/the-report-follow-up.ts.
    */
-  @Cron('0 11 * * 1-5', { timeZone: 'Africa/Lagos' })
+  @Cron('15 8 * * 1-5', { timeZone: 'Africa/Lagos' })
   async sendTheReportFollowUps() {
     await onceAcrossCopies(this.prisma, 'report-follow-up', theDay(), () => this.sendTheReportFollowUpsInner());
   }
@@ -1009,10 +1009,10 @@ export class GroundsCron implements OnApplicationBootstrap {
   }
 
   /**
-   * WHO HAS GONE QUIET (decision 109; section 36, journeys 7 and 9), Wednesday mid-morning in Lagos: once a week to a lead, as an insight about the
+   * WHO HAS GONE QUIET (decision 109; section 36, journeys 7 and 9), Wednesday at a quarter to nine in Lagos, before the morning's reminders (see below): once a week to a lead, as an insight about the
    * team or across her check-ins. See engagement/who-has-gone-quiet.ts.
    */
-  @Cron('0 10 * * 3', { timeZone: 'Africa/Lagos' })
+  @Cron('45 8 * * 3', { timeZone: 'Africa/Lagos' })
   async sendWhoHasGoneQuiet() {
     await onceAcrossCopies(this.prisma, 'who-has-gone-quiet', theWeek(), () => this.sendWhoHasGoneQuietInner());
   }
@@ -1026,11 +1026,18 @@ export class GroundsCron implements OnApplicationBootstrap {
     return result;
   }
 
-  /**
-   * INVITED, AND NOBODY HAS STARTED (engagement spec section 5; journey 3), weekdays at half past ten in Lagos, after the morning's reminders have gone, so that it can say who
-   * has been reminded. Once per check-in. See engagement/waiting-on-the-people-you-invited.ts.
+  /*
+   * WHY THE LEAD'S INSIGHTS GO BEFORE THE MORNING'S REMINDERS (found on the test bed, 13 November). A person is sent one routine message a day (decision 109 item 6),
+   * and the first to ask gets it. The reminders ran at 08:00 and 09:00 UTC and these at 09:00 to 10:30, so a lead who had a check-in of her own to answer was
+   * reminded about it every morning, and the follow-up, the gone-quiet insight and "what Groundwork is doing" were refused that day and tried again the next, and
+   * never went. They now run from 07:10 to 07:45 UTC (ten past eight to a quarter to nine in Lagos, which is after quiet hours end there and in East Africa), ahead
+   * of the reminders.
    */
-  @Cron('30 10 * * 1-5', { timeZone: 'Africa/Lagos' })
+  /**
+   * INVITED, AND NOBODY HAS STARTED (engagement spec section 5; journey 3), weekdays at half past eight in Lagos, before the morning's reminders (see below). On the first reminder day it says that
+   * Groundwork is about to remind them; on later days, who has been reminded. Once per check-in. See engagement/waiting-on-the-people-you-invited.ts.
+   */
+  @Cron('30 8 * * 1-5', { timeZone: 'Africa/Lagos' })
   async sendWhatGroundworkIsDoing() {
     await onceAcrossCopies(this.prisma, 'what-groundwork-is-doing', theDay(), () => this.sendWhatGroundworkIsDoingInner());
   }
