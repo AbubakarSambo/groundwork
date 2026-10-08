@@ -318,7 +318,10 @@ export class RemindService {
          not started. The round does not wait for them. */
       if (checkIn.participantId && awayUntilOn(leave.get(checkIn.participantId), now)) continue;
 
-      const daysElapsed = Math.floor((now.getTime() - checkIn.createdAt.getTime()) / (1000 * 60 * 60 * 24));
+      /* DAYS OPEN COUNT FROM WHEN THE SESSION OPENED. A later session's row is made when the one before it is answered, a week or more before it opens, so counting from
+         the row's date chased people on the day it opened as if it had been waiting a week, and told the lead the chasing was over a week after that, not two (found on
+         the test bed). The WhatsApp reminders already count from when it opened. */
+      const daysElapsed = Math.floor((now.getTime() - (checkIn.availableFrom ?? checkIn.createdAt).getTime()) / (1000 * 60 * 60 * 24));
 
       const participant = checkIn.participant;
       if (!participant) continue;
