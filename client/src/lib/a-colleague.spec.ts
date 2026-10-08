@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import { plainWordsByPerson, oneWithNoName, atTheStart, midSentence } from './a-colleague'
-import { peopleLabels, participantLabel, personLabel, firstNameOrLabel } from './utils'
+import { peopleLabels, participantLabel, personLabel, firstNameOrLabel, SOMEONE_WITH_NO_NAME } from './utils'
 
 /**
  * THE SCREENS SAY WHAT THE ENGINE SAYS ABOUT SOMEBODY WITH NO NAME. Request 36, 27 September 2026.
@@ -148,8 +148,16 @@ describe('and the screens read them in sentences', () => {
     expect(firstNameOrLabel(lead)).toBe('Grace')
   })
 
-  it('the lead’s own view still uses the address they typed before plain words', () => {
-    expect(personLabel(person('a', 2, { email: 'david.okafor@harvestline.test' }))).toBe('David Okafor')
+  /*
+   * UPDATED FOR DECISION 115 (B-058): this used to assert that the lead's own view guessed a name
+   * out of the address ("david.okafor@harvestline.test" read as "David Okafor"). E1 on Riverbank
+   * Trading's old data found that exact guess shown as a person's real name on the Context tab, the
+   * Report tab and My work, while the same person was "Someone who has not given a name yet" on
+   * People - one person, two different names. Decision 115 settled it: the placeholder sentence,
+   * never a guess made from the address.
+   */
+  it('the lead’s own view uses the placeholder sentence, never a name guessed from the address', () => {
+    expect(personLabel(person('a', 2, { email: 'david.okafor@harvestline.test' }))).toBe(SOMEONE_WITH_NO_NAME)
   })
 })
 

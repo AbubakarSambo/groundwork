@@ -46,11 +46,21 @@ describe('a long list is not a page', () => {
     expect(readFileSync(join(__dirname, '../../pages/org/OrgMembersPage.tsx'), 'utf8')).toContain('<ShowAFew')
   })
 
-  it('and a digit in somebody\'s address is part of who they are', () => {
-    /* person1@ and person2@ both read as "Person" until 23 September 2026, so a hundred people's
-       numbers collapsed into one group on the targets table. */
+  /*
+   * UPDATED FOR DECISION 115 (B-058, 8 October 2026): person1@ and person2@ both used to read as
+   * "Person" because the name-from-the-address guess stripped their digits, collapsing a hundred
+   * distinct people into one name on the targets table - fixed, at the time, by keeping the digits
+   * in the guess. Decision 115 then removed that guess altogether: a person with no name now reads
+   * the same placeholder sentence the People page already serves for them ("Someone who has not
+   * given a name yet"), on every row, the same way People already shows it on every row of its own
+   * hundred-person list - accepted there as the right answer to the same problem, because the row
+   * itself (the address, the avatar, the rest of what is on it) still tells two such people apart,
+   * which a name invented out of their address never did honestly in the first place.
+   */
+  it('and a person with no name reads the placeholder sentence, not a name guessed out of their address', () => {
     const utils = readFileSync(join(__dirname, '../../lib/utils.ts'), 'utf8')
-    expect(utils).toContain('DIGITS STAY')
+    expect(utils).toContain('SOMEONE_WITH_NO_NAME')
     expect(utils).not.toMatch(/replace\(\/\\d\+\/g, ' '\)/)
+    expect(utils).not.toMatch(/local\.split\(\/\\s\+\/\)\.map/)
   })
 })
