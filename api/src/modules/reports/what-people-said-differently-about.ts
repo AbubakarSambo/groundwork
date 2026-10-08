@@ -14,7 +14,7 @@
 /** A topic that is a whole sentence: it has a verb of its own after its first word. */
 /* And the verbs of saying and seeing (item 21, the government programme board): "Your reporting shows full system adoption,
    but both branch leads describe ..." was put after "about". Only verbs that are hardly ever nouns. */
-const A_VERB = /\s(?:is|are|was|were|has|have|had|does|do|did|differs?|disagrees?|agrees?|can|cannot|can't|will|would|should|could|may|might|must|seems?|appears?|remains?|needs?|wants?|depends?|lacks?|exceeds?|shows|describes?|relies|rely|believes?|thinks?|expects?|suggests?|indicates?|says|feels?|considers?|insists?|argues?|understands?|attributes?|blames?)\b/i;
+const A_VERB = /\s(?:is|are|was|were|has|have|had|does|do|did|differs?|disagrees?|agrees?|can|cannot|can't|will|would|should|could|may|might|must|seems?|appears?|remains?|needs?|wants?|depends?|lacks?|exceeds?|shows|describes?|relies|rely|believes?|thinks?|expects?|suggests?|indicates?|says|feels?|considers?|insists?|argues?|understands?|attributes?|blames?|sees?|saw|regards?)\b/i;
 const STARTS_A_NOUN_CLAUSE = /^(?:whether|what|how|who|when|where|which|why|if)\b/i;
 
 /*

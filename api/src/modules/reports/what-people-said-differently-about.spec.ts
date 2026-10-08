@@ -34,6 +34,8 @@ describe('a clause that says something of the people it is about is a whole sent
     'Who owns the next step with the distributor is not agreed upon by the team.',
     'Who has the authority to sign off on discounts is not clear to the team.',
     'Who signs off the discount is not agreed among the sales leads.',
+    /* Found on the test bed, 5 November: "see" was not among the verbs, so this read "differ on" and "That is what settles the parties see different things...". */
+    'The parties see different things as the biggest safety risk at the depots.',
   ])('%s', (t) => {
     expect(isAWholeSentence(t)).toBe(true);
   });
