@@ -528,7 +528,9 @@ export class EmailService implements OnModuleInit {
      * shows its own "unsubscribe" button from. The way-back-in mails (a sign-in link, a password
      * reset) are transactional and carry no footer: stopping those is not something anybody means.
      */
-    const wayOut = sender && whatThisMailIs(sender) !== 'the way back in' ? await this.theWayToStopHearingFromUs(options.to) : null;
+    /* THE STOP LINK IS ONLY ON MAIL THE STOP ACTUALLY STOPS (8 October). An unsubscribed person is still sent what they asked for (a report they took part in, a review
+       appeal, an invitation) and what is about running the product, so "stop them here" under those promised something that was not true. It is on what we decide to send. */
+    const wayOut = sender && whatThisMailIs(sender) === 'we decided to send it' ? await this.theWayToStopHearingFromUs(options.to) : null;
     if (wayOut) options = { ...options, html: `${options.html}${UNSUBSCRIBE_FOOTER(wayOut)}` };
     const text = plainTextOf(options.html);
     /* The one-click POST goes to the API, not the page: a mail program posts it with no person reading anything. */
