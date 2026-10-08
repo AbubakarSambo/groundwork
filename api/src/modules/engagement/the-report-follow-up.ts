@@ -22,7 +22,11 @@ export const REPORT_FOLLOW_UP_SENDER = 'sendTheReportFollowUp';
 export const A_WEEK = 7;
 const DAY = 86_400_000;
 
-export interface WhatChangedSinceTheReport { done: number; cleared: number; waiting: number; open: number; scenario?: string | null; daysSinceTheReport?: number }
+export interface WhatChangedSinceTheReport {
+  done: number; cleared: number; waiting: number; open: number; scenario?: string | null; daysSinceTheReport?: number;
+  /** What the shared picture found the people differ on, quoted, where the report is readable for the lead. Absent otherwise. */
+  difference?: string | null;
+}
 
 /** A long name cut at a word, never in the middle of one. */
 export function cutAtAWord(label: string, max: number): string {
@@ -54,19 +58,28 @@ export function theFollowUpWords(firstName: string | null | undefined, label: st
       : c.waiting > 0
         ? `${capital(things(c.waiting, 'handoff', 'handoffs'))} on "${name}" still ${c.waiting === 1 ? 'waits' : 'wait'}, and nothing has been marked done since the report`
         : `Nothing has been marked done or cleared on "${name}" since the report went out`;
+  /* THE FINDING, WHERE THERE IS ONE (engagement spec section 11). The message goes only when no next session has been opened, so no picture has been made since
+     and the difference the report found has not been looked at again: that is said as what it is, and not as "still unresolved". */
+  const looked = c.difference
+    ? [`The shared picture found that the people differ on ${c.difference}. No check-in has been held since, so that has not been looked at again.`]
+    : [];
   const lines = [
     `Hello ${firstName?.trim() || 'there'}. The report for "${label}" went out on ${whenItWas(wentOut, 'day')}.`,
+    ...looked,
     changed.length ? `Since then, ${changed.join(' and ')}.` : 'Since then, nothing has been marked done or cleared.',
     ...(stillThere.length ? [`${capital(stillThere.join(' and '))}.`] : []),
     theSuggestionSaid(theNextCheckInFor(c)),
   ];
-  return { subject, lines, linkLabel: 'See where it stands' };
+  return { subject: c.difference ? `"${name}" still has a difference open on ${c.difference}` : subject, lines, linkLabel: 'See where it stands' };
 }
 
 const TERMINAL: GroundStatus[] = A_GROUND_NO_MESSAGE_IS_ABOUT;
 
 export async function sendTheReportFollowUps(
-  deps: { prisma: any; email: { sendTheReportFollowUp: (to: string, subject: string, lines: string[], linkLabel: string, linkUrl: string) => Promise<'sent' | 'held' | 'suppressed' | unknown> }; frontendUrl: string },
+  deps: { prisma: any; email: { sendTheReportFollowUp: (to: string, subject: string, lines: string[], linkLabel: string, linkUrl: string) => Promise<'sent' | 'held' | 'suppressed' | unknown> }; frontendUrl: string;
+    /** What the shared picture found the lead's people differ on, as she is served it (ReportsService.sessionReport), quoted; null where it cannot be read. */
+    theDifference?: (r: { groundId: string; organizationId: string; leadUserId: string; lastReleasedSession: number }) => Promise<string | null>;
+  },
   now: Date = new Date(),
 ): Promise<{ tried: number }> {
   const { prisma } = deps;
@@ -74,7 +87,7 @@ export async function sendTheReportFollowUps(
   try { release = await theEngagementMoment(prisma, now); } catch { return { tried: 0 }; }
   const reports: any[] = await everyRowAPageAtATime((page: any) => prisma.report.findMany({
     where: { releasedAt: { gte: release, lte: new Date(now.getTime() - A_WEEK * DAY) }, ground: { status: { notIn: TERMINAL } } },
-    select: { groundId: true, releasedAt: true, ground: { select: { label: true, scenario: true, initiatorId: true, initiator: { select: { email: true, firstName: true, deletedAt: true, isActive: true } } } } },
+    select: { groundId: true, releasedAt: true, releasedSessions: true, ground: { select: { label: true, scenario: true, initiatorId: true, organizationId: true, initiator: { select: { email: true, firstName: true, deletedAt: true, isActive: true } } } } },
     orderBy: { releasedAt: 'asc' },
     ...page,
   }), 500);
@@ -96,7 +109,10 @@ export async function sendTheReportFollowUps(
         prisma.groundDependency.count({ where: { groundId: r.groundId, status: { not: 'CLEARED' } } }),
         prisma.groundCommitment.count({ where: { groundId: r.groundId, status: 'UNKNOWN' } }),
       ]);
-      const w = theFollowUpWords(lead.firstName, r.ground.label, r.releasedAt, { done, cleared, waiting, open, scenario: r.ground.scenario, daysSinceTheReport: Math.floor((now.getTime() - new Date(r.releasedAt).getTime()) / DAY) });
+      const difference = deps.theDifference
+        ? await deps.theDifference({ groundId: r.groundId, organizationId: r.ground.organizationId, leadUserId: r.ground.initiatorId, lastReleasedSession: Math.max(1, ...((r.releasedSessions as number[] | undefined) ?? [1])) }).catch(() => null)
+        : null;
+      const w = theFollowUpWords(lead.firstName, r.ground.label, r.releasedAt, { done, cleared, waiting, open, difference, scenario: r.ground.scenario, daysSinceTheReport: Math.floor((now.getTime() - new Date(r.releasedAt).getTime()) / DAY) });
       const went = await deps.email.sendTheReportFollowUp(lead.email, w.subject, w.lines, w.linkLabel, `${base}/grounds/${r.groundId}/board`);
       await nowToldOnce(prisma, once, went, { sender: REPORT_FOLLOW_UP_SENDER, to: lead.email });
       if (went !== 'suppressed') tried++;

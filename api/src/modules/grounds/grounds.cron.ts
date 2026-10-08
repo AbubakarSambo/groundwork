@@ -31,6 +31,8 @@ import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check
 import { sendWhoHasGoneQuiet as sendWhoHasGoneQuietToLeads } from '../engagement/who-has-gone-quiet';
 import { sendTheReportFollowUps } from '../engagement/the-report-follow-up';
 import { whatTheLeadsWeeklyReportSays } from '../engagement/the-leads-own-weekly-report';
+import { theFirstOpenDifference } from '../engagement/the-first-insight';
+import { ReportsService } from '../reports/reports.service';
 import { TheWeeklyReportService } from '../reports/the-weekly-report.service';
 import { ModuleRef } from '@nestjs/core';
 import { sendHeresWhatIsNew as sendHeresWhatIsNewToLeads } from '../engagement/heres-what-is-new';
@@ -990,7 +992,15 @@ export class GroundsCron implements OnApplicationBootstrap {
 
   async sendTheReportFollowUpsInner(now: Date = new Date()): Promise<{ tried: number }> {
     const result = await sendTheReportFollowUps(
-      { prisma: this.prisma, email: this.email, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
+      {
+        prisma: this.prisma, email: this.email, frontendUrl: this.config.get<string>('resend.frontendUrl') || '',
+        /* The report as the lead is served it, found when it is needed (the reports module imports this one). */
+        theDifference: async (r) => {
+          const reports = this.moduleRef?.get(ReportsService, { strict: false });
+          if (!reports) return null;
+          return theFirstOpenDifference(await reports.sessionReport(r.groundId, r.lastReleasedSession, r.leadUserId, r.organizationId));
+        },
+      },
       now,
     ).catch((err: any) => { this.logger.warn(`The report follow-ups could not be sent: ${err?.message}`); return { tried: 0 }; });
     if (result.tried) this.logger.log(`Email: ${result.tried} report follow-up(s) tried.`);

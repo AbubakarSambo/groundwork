@@ -81,3 +81,11 @@ export function theFirstInsight(report: any, label: string, reader: { isTheLead:
     lines,
   };
 }
+
+/** The first thing the served report names as still open, quoted, or null. Used by the follow-up a week after, which asks again about the same thing. */
+export function theFirstOpenDifference(report: any): string | null {
+  if (!report?.whereThingsStand || report?.withheldUntilYouAnswer) return null;
+  const open: unknown[] = Array.isArray(report.whereThingsStand.open) ? report.whereThingsStand.open : [];
+  for (const t of open) { const q = aTopicQuoted(t); if (q) return q; }
+  return null;
+}
