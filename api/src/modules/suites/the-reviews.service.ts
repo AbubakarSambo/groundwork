@@ -795,7 +795,7 @@ export class ReviewsService {
          access never reaches this line). The reviewer is answered above and never reads them. */
       const readsTheReasons = true;
       return {
-        reader: 'admin', stands, says: theAdminReadsSaid(stands, personFirst, reviewerFirst, appealedOn, decider, outcome), personFirstName: personFirst, appealedOn,
+        reader: 'admin', stands, says: theAdminReadsSaid(stands, personFirst, reviewerFirst, appealedOn, decider, outcome, !!row.appealDecidedById && row.appealDecidedById === reader.userId), personFirstName: personFirst, appealedOn,
         theirReasons: readsTheReasons ? row.appeal : null,
         additions: readsTheReasons ? theAdditions(row).map((a) => ({ said: a.said, on: a.at ? aDaySaid(a.at) : '' })) : [],
         mayDecide: stands !== 'decided', outcome, decidedByFirstName: decider, reasons, decisionWas: was,

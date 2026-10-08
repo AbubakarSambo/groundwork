@@ -109,9 +109,15 @@ export function theReviewerReadsSaid(stands: AppealStands, personFirstName: stri
 }
 
 /** What an admin who may decide it reads. */
-export function theAdminReadsSaid(stands: AppealStands, personFirstName: string, reviewerFirstName: string | null, appealedOn: string, deciderFirstName: string | null, outcome: string | null): string {
+export function theAdminReadsSaid(stands: AppealStands, personFirstName: string, reviewerFirstName: string | null, appealedOn: string, deciderFirstName: string | null, outcome: string | null, readerDecidedIt = false): string {
   const reviewer = reviewerFirstName?.trim() || 'the person who decided it';
   if (stands === 'decided') {
+    /* The admin who decided it is "you", never her own name and "an admin" (release check, 9 October). */
+    if (readerDecidedIt) {
+      return outcome === 'changed'
+        ? `${personFirstName} appealed the decision on ${appealedOn}. You read the appeal and changed the decision.`
+        : `${personFirstName} appealed the decision on ${appealedOn}. You read the appeal, and the decision stands.`;
+    }
     const who = deciderFirstName?.trim() || 'An admin';
     return outcome === 'changed'
       ? `${personFirstName} appealed the decision on ${appealedOn}. ${who}, an admin, read the appeal and changed the decision.`
