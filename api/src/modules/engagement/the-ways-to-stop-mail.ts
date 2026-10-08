@@ -155,3 +155,17 @@ export class TheWaysToStopMail {
     }
   }
 }
+
+/**
+ * WHETHER THIS ADDRESS HAS STOPPED THE MAIL WE DECIDE TO SEND (the footer link, the same choice in Settings). For a message that would make a promise about
+ * reminding somebody: it is not made about a person who will not be reminded by email, and nothing is said to anyone about why.
+ */
+export async function theyHaveStoppedTheseEmails(prisma: any, address: string | null | undefined): Promise<boolean> {
+  const a = (address ?? '').trim().toLowerCase();
+  if (!a) return false;
+  const [byAddress, user] = await Promise.all([
+    Promise.resolve(prisma.emailAddressPreference?.findUnique?.({ where: { email: a }, select: { unsubscribedAt: true } })).catch(() => null),
+    Promise.resolve(prisma.user?.findUnique?.({ where: { email: a }, select: { emailNotifications: true } })).catch(() => null),
+  ]);
+  return !!(byAddress as any)?.unsubscribedAt || (user as any)?.emailNotifications === false;
+}

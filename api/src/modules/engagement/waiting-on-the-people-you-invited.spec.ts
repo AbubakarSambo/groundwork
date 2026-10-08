@@ -18,7 +18,7 @@ const NOW = new Date('2026-10-11T09:30:00Z');
 
 const person = (id: string, first: string, extra: any = {}) => ({ id, userId: `u-${id}`, email: `${first.toLowerCase()}@x.test`, managingOnly: false, nameGiven: null, invitedAt: INVITED, createdAt: INVITED, lastNudgedAt: null, user: { firstName: first, lastName: null, awaitingOrgApproval: false }, checkIns: [{ status: 'NOT_STARTED' }], ...extra });
 
-function world(over: { participants?: any[]; told?: boolean; outcome?: 'sent' | 'held' | 'suppressed'; ground?: any } = {}) {
+function world(over: { participants?: any[]; told?: boolean; outcome?: 'sent' | 'held' | 'suppressed'; ground?: any; stopped?: string[]; stoppedInSettings?: string[] } = {}) {
   const told = new Set<string>(over.told ? ['engagement.once.waiting-on-the-people:g1'] : []);
   const sent: any[] = [];
   const asked: any[] = [];
@@ -32,6 +32,8 @@ function world(over: { participants?: any[]; told?: boolean; outcome?: 'sent' | 
       findUnique: jest.fn(async ({ where }: any) => (where.key === RELEASE_MOMENT_KEY ? { value: { at: RELEASE.toISOString() } } : told.has(where.key) ? { key: where.key } : null)),
       create: jest.fn(async ({ data }: any) => { told.add(data.key); return data; }),
     },
+    emailAddressPreference: { findUnique: jest.fn(async ({ where }: any) => ((over.stopped ?? []).includes(where.email) ? { unsubscribedAt: new Date() } : null)) },
+    user: { findUnique: jest.fn(async ({ where }: any) => ((over.stoppedInSettings ?? []).includes(where.email) ? { emailNotifications: false } : { emailNotifications: true })) },
     ground: { findMany: jest.fn(async (a: any) => { asked.push(a.where); return [{ id: 'g1', label: 'Distributor review', initiatorId: 'u-lead', chaseAfterDays: [3, 7, 14], initiator: { email: 'baraka@x.test', firstName: 'Baraka', deletedAt: null, isActive: true }, participants, ...over.ground }]; }) },
   };
   const email = { sendWaitingOnThePeople: jest.fn(async (to: string, subject: string, lines: string[], linkLabel: string, linkUrl: string) => { sent.push({ to, subject, lines, linkLabel, linkUrl }); return over.outcome ?? 'sent'; }) };
@@ -44,7 +46,7 @@ describe('what Baraka reads on the first reminder day', () => {
     expect(await w.run()).toEqual({ tried: 1 });
     expect(w.sent).toHaveLength(1);
     expect(w.sent[0].to).toBe('baraka@x.test');
-    expect(w.sent[0].subject).toBe('Nobody has started "Distributor review" yet, and Groundwork is following up with all four');
+    expect(w.sent[0].subject).toBe('Nobody has started "Distributor review" yet, and Groundwork is following up');
     expect(w.sent[0].lines).toEqual([
       expect.stringMatching(/^Hello Baraka\. Kito, Lerato, Tobi and Peter were invited to "Distributor review" on .*8.*Oct.*, and nobody has started yet\.$/),
       'Groundwork has already sent a reminder to Kito, Lerato, Tobi and Peter.',
@@ -73,6 +75,22 @@ describe('what Baraka reads on the first reminder day', () => {
     expect(w.lines[0]).toMatch(/^Hello Baraka\. Kito was invited to "Distributor review" on /);
     expect(w.lines[1]).toBe('Groundwork sent each of them the invitation, and is about to remind them.');
     expect(w.lines[2]).toBe('It will not send any more reminders after this, and will tell you when that is so.');
+  });
+});
+
+describe('a person who has stopped the emails Groundwork decides to send', () => {
+  it('is not promised a reminder: with nobody left to remind there is nothing to say', async () => {
+    expect(await world({ stopped: ['kito@x.test', 'lerato@x.test', 'tobi@x.test', 'peter@x.test'] }).run()).toEqual({ tried: 0 });
+  });
+  it('with some left, the message is the same and says nothing about who has stopped', async () => {
+    const w = world({ stopped: ['kito@x.test'] });
+    expect(await w.run()).toEqual({ tried: 1 });
+    const read = [w.sent[0].subject, ...w.sent[0].lines].join(' ');
+    expect(read).toContain('Kito, Lerato, Tobi and Peter were invited');
+    expect(read).not.toMatch(/stopped|opted|unsubscribe|turned off|cannot be reached/i);
+  });
+  it('the Settings switch counts as stopping them too', async () => {
+    expect(await world({ stoppedInSettings: ['kito@x.test', 'lerato@x.test', 'tobi@x.test', 'peter@x.test'] }).run()).toEqual({ tried: 0 });
   });
 });
 

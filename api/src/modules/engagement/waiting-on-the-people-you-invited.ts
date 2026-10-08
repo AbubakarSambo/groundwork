@@ -6,6 +6,7 @@ import { nameToCall, namesWithTheRestCounted } from './a-name-to-call-them';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 import { aNumberInWords } from './a-number-in-words';
 import { hasBeenToldOnce, nowToldOnce, isAlreadyHeld } from './a-message-sent-once';
+import { theyHaveStoppedTheseEmails } from './the-ways-to-stop-mail';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 
 /**
@@ -42,7 +43,7 @@ export function theWaitingWords(firstName: string | null | undefined, w: WhoWasI
   const who = listed(named);
   const subject = n === 1
     ? `${capital(who)} has not started "${w.label}" yet, and Groundwork is following up`
-    : `Nobody has started "${w.label}" yet, and Groundwork is following up with ${n === 2 ? 'both' : `all ${aNumberInWords(n)}`}`;
+    : `Nobody has started "${w.label}" yet, and Groundwork is following up`;
   const reminded = namesWithTheRestCounted(w.reminded, aNumberInWords);
   const again = w.remindingAgainOn.length
     ? `It will remind them again on ${listed(w.remindingAgainOn.map((d) => whenItWas(d, 'day')))}.`
@@ -104,6 +105,11 @@ export async function sendWhatGroundworkIsDoing(
       const last = chaseDays[chaseDays.length - 1];
       /* From the first reminder day, and until the reminders are over, when the end-of-reminders message takes over. */
       if (first === undefined || days < first || days >= last + 1) continue;
+      /* A promise to remind is not made about people who will not be reminded by email. If nobody can be, there is nothing to say; if only some cannot, nothing is
+         said about which, and the message promises the schedule and not each person. */
+      let reachable = 0;
+      for (const p of others) if (!(await theyHaveStoppedTheseEmails(prisma, p.email))) reachable += 1;
+      if (!reachable) continue;
       const once = `waiting-on-the-people:${g.id}`;
       if (await hasBeenToldOnce(prisma, once) || await isAlreadyHeld(prisma, WAITING_SENDER, lead.email)) continue;
       const w = theWaitingWords(lead.firstName, {
