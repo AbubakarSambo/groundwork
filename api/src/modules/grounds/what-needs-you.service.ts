@@ -21,6 +21,8 @@ import { leaveInWords, spendInWords } from '../suites/a-request-in-words';
 import { peersAreNamedOn } from '../reports/peers-are-named';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-internal-label-reaches-anyone';
 import { everythingOutstandingFor } from '../engagement/the-leads-daily-nudge';
+import { whatTheLeadIsToldOnToday, type WhatTheLeadIsToldOnToday } from '../engagement/what-the-lead-is-told-on-today';
+import { TheWeeklyReportService } from '../reports/the-weekly-report.service';
 
 /**
  * THE ONE READ OF "WHAT NEEDS YOU" (C1, U.5), for Today and for "Choose an organisation".
@@ -232,6 +234,27 @@ export class WhatNeedsYouService {
       for (const [k, v] of whatEachLabelIsCalled(g.participants ?? [], { viewerParticipantId: me?.id ?? null, viewerIsLead: runsIt, peersAreNamed: runsIt || peersAreNamedOn(g, { participantId: me?.id ?? null }) })) if (k[0] === '@' || k[0] === '~') called.set(k, v);
     }
     return called.size ? withoutInternalLabelsIn(told, called) : told;
+  }
+
+  /**
+   * TODAY, AS THE SCREEN READS IT: what needs you, and for a lead the two facts the mail also tells her (screens request 198, b), under `forTheLead`. The key is
+   * absent for anybody who runs no check-in here, and for a lead with nothing to add; a sentence Today already says (a card, or the daily nudge's page) is not said
+   * again.
+   */
+  async today(userId: string, email: string, organizationId: string, role: string): Promise<WhatNeedsYou & { forTheLead?: WhatTheLeadIsToldOnToday }> {
+    const told = await this.forReader(userId, email, organizationId, role);
+    const weekly = this.moduleRef?.get(TheWeeklyReportService, { strict: false });
+    const outstanding = await this.outstanding(userId, organizationId).catch(() => null);
+    const alreadySaid = [
+      ...told.needs.flatMap((n) => [n.title, n.detail ?? '']),
+      ...(outstanding ? [...outstanding.needsYou, ...outstanding.overdueOnYourTeam, ...outstanding.risks] : []),
+    ];
+    const forTheLead = await whatTheLeadIsToldOnToday(
+      this.prisma as any,
+      { userId, role, organizationId },
+      { alreadySaid, weeklyReport: weekly ? (groundId, at) => weekly.read(groundId, { userId, role, organizationId }, at) : undefined },
+    ).catch(() => null);
+    return forTheLead ? { ...told, forTheLead } : told;
   }
 
   /**

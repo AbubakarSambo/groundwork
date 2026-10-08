@@ -62,6 +62,50 @@ export function theWaitingWords(firstName: string | null | undefined, w: WhoWasI
   };
 }
 
+
+/** The columns of a check-in that `whoIsWaitedOn` reads. */
+export const WHAT_WAITING_READS = {
+  id: true, label: true, initiatorId: true, chaseAfterDays: true,
+  participants: {
+    select: {
+      id: true, userId: true, email: true, managingOnly: true, nameGiven: true, invitedAt: true, createdAt: true, lastNudgedAt: true,
+      user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } },
+      checkIns: { select: { status: true } },
+    },
+  },
+} as const;
+
+/**
+ * WHO THE LEAD IS WAITING ON, from a check-in's own rows (screens request 198, b): the one place the facts behind "Nobody has started X yet, and Groundwork is
+ * following up" are found, so the mail and Today (GET /today) say the same thing for the same check-in. Null where the message is not true: nobody was invited,
+ * somebody has started, the reminders have not begun or are over, or nobody can be reminded by email. Whether it has been sent already is not decided here.
+ */
+export async function whoIsWaitedOn(prisma: any, g: any, now: Date): Promise<WhoWasInvited | null> {
+  const others = (g.participants as any[]).filter((p) => p.userId !== g.initiatorId && !p.managingOnly && !isNotLetInYet(p) && !/@unclaimed\.invalid$/i.test(p.email ?? ''));
+  if (!others.length) return null;
+  /* Somebody has started: it is a partial picture, said by another message. */
+  if (others.some((p) => (p.checkIns as any[]).some((c) => c.status !== 'NOT_STARTED'))) return null;
+  const invitedOn = new Date(Math.min(...others.map((p) => new Date(p.invitedAt ?? p.createdAt).getTime())));
+  const days = Math.floor((now.getTime() - invitedOn.getTime()) / DAY);
+  const chaseDays: number[] = [...(g.chaseAfterDays ?? [])].sort((a: number, b: number) => a - b);
+  const first = chaseDays[0];
+  const last = chaseDays[chaseDays.length - 1];
+  /* From the first reminder day, and until the reminders are over, when the end-of-reminders message takes over. */
+  if (first === undefined || days < first || days >= last + 1) return null;
+  /* A promise to remind is not made about people who will not be reminded by email. If nobody can be, there is nothing to say; if only some cannot, nothing is
+     said about which, and the message promises the schedule and not each person. */
+  let reachable = 0;
+  for (const p of others) if (!(await theyHaveStoppedTheseEmails(prisma, p.email))) reachable += 1;
+  if (!reachable) return null;
+  return {
+    label: g.label,
+    invited: others.map((p) => nameToCall(p)),
+    invitedOn,
+    reminded: others.filter((p) => p.lastNudgedAt).map((p) => nameToCall(p)),
+    remindingAgainOn: chaseDays.filter((d) => d > days).map((d) => new Date(invitedOn.getTime() + d * DAY)),
+  };
+}
+
 const TERMINAL: GroundStatus[] = A_GROUND_NO_MESSAGE_IS_ABOUT;
 
 /** The sweep. Returns how many were tried. The sender decides whether each may go (the opt-out, the one routine message a day, quiet hours). */
@@ -74,17 +118,7 @@ export async function sendWhatGroundworkIsDoing(
   try { release = await theEngagementMoment(prisma, now); } catch { return { tried: 0 }; }
   const grounds: any[] = await everyRowAPageAtATime((page: any) => prisma.ground.findMany({
     where: { status: { notIn: TERMINAL }, createdAt: { gte: release }, chasingStopped: false, tellTheLead: true },
-    select: {
-      id: true, label: true, initiatorId: true, chaseAfterDays: true,
-      initiator: { select: { email: true, firstName: true, deletedAt: true, isActive: true } },
-      participants: {
-        select: {
-          id: true, userId: true, email: true, managingOnly: true, nameGiven: true, invitedAt: true, createdAt: true, lastNudgedAt: true,
-          user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } },
-          checkIns: { select: { status: true } },
-        },
-      },
-    },
+    select: { ...WHAT_WAITING_READS, initiator: { select: { email: true, firstName: true, deletedAt: true, isActive: true } } },
     orderBy: { id: 'asc' },
     ...page,
   }), 500);
@@ -94,31 +128,11 @@ export async function sendWhatGroundworkIsDoing(
     try {
       const lead = g.initiator;
       if (!lead?.email || lead.deletedAt || lead.isActive === false) continue;
-      const others = (g.participants as any[]).filter((p) => p.userId !== g.initiatorId && !p.managingOnly && !isNotLetInYet(p) && !/@unclaimed\.invalid$/i.test(p.email ?? ''));
-      if (!others.length) continue;
-      /* Somebody has started: it is a partial picture, said by another message. */
-      if (others.some((p) => (p.checkIns as any[]).some((c) => c.status !== 'NOT_STARTED'))) continue;
-      const invitedOn = new Date(Math.min(...others.map((p) => new Date(p.invitedAt ?? p.createdAt).getTime())));
-      const days = Math.floor((now.getTime() - invitedOn.getTime()) / DAY);
-      const chaseDays: number[] = [...(g.chaseAfterDays ?? [])].sort((a: number, b: number) => a - b);
-      const first = chaseDays[0];
-      const last = chaseDays[chaseDays.length - 1];
-      /* From the first reminder day, and until the reminders are over, when the end-of-reminders message takes over. */
-      if (first === undefined || days < first || days >= last + 1) continue;
-      /* A promise to remind is not made about people who will not be reminded by email. If nobody can be, there is nothing to say; if only some cannot, nothing is
-         said about which, and the message promises the schedule and not each person. */
-      let reachable = 0;
-      for (const p of others) if (!(await theyHaveStoppedTheseEmails(prisma, p.email))) reachable += 1;
-      if (!reachable) continue;
+      const facts = await whoIsWaitedOn(prisma, g, now);
+      if (!facts) continue;
       const once = `waiting-on-the-people:${g.id}`;
       if (await hasBeenToldOnce(prisma, once) || await isAlreadyHeld(prisma, WAITING_SENDER, lead.email)) continue;
-      const w = theWaitingWords(lead.firstName, {
-        label: g.label,
-        invited: others.map((p) => nameToCall(p)),
-        invitedOn,
-        reminded: others.filter((p) => p.lastNudgedAt).map((p) => nameToCall(p)),
-        remindingAgainOn: chaseDays.filter((d) => d > days).map((d) => new Date(invitedOn.getTime() + d * DAY)),
-      });
+      const w = theWaitingWords(lead.firstName, facts);
       const went = await deps.email.sendWaitingOnThePeople(lead.email, w.subject, w.lines, w.linkLabel, `${base}/grounds/${g.id}`);
       await nowToldOnce(prisma, once, went, { sender: WAITING_SENDER, to: lead.email });
       if (went !== 'suppressed') tried++;

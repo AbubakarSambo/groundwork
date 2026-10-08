@@ -13,7 +13,7 @@ export class TodayController {
   @Get()
   @ApiOperation({ summary: 'What needs you now, across every check-in you can see' })
   async today(@CurrentUser() user: CurrentUserData) {
-    return this.needs.forReader(user.id, user.email, user.organizationId, user.role);
+    return this.needs.today(user.id, user.email, user.organizationId, user.role);
   }
 
   @Get('outstanding')
