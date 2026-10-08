@@ -254,6 +254,39 @@ describe('the risks', () => {
   });
 });
 
+describe('in "Needs you", what waits for her to approve comes first, then a decision she owes, then her own late commitments', () => {
+  it('whatever the days', async () => {
+    const m = aMorning({
+      phone: null,
+      waits: [{ id: 'w-2', groundId: 'g-sales', what: 'the pricing for Q4', namedTheThing: true, onLabel: null, status: 'WAITING', createdAt: day('2026-10-11'), dueOn: null, blockerKind: 'DECISION', fromParticipantId: 'p-kofi', onParticipantId: 'p-wairimu', fromParticipant: PEOPLE['p-kofi'], onParticipant: PEOPLE['p-wairimu'] }],
+    });
+    await m.run();
+    const needs: string[] = m.mails[0][2].needsYou;
+    expect(needs[0]).toMatch(/waiting for you to approve or decline\.$/);
+    expect(needs[1]).toMatch(/^Kofi is waiting on you for the pricing for Q4/);
+    expect(needs[2]).toMatch(/^You committed to/);
+  });
+});
+
+describe('a commitment stored in the person\'s own first-person words is said as theirs', () => {
+  it('"said" for "I will chase legal on Monday", "committed to" for "send the supplier list"', async () => {
+    const m = aMorning({
+      phone: null, waiting: false,
+      promises: [
+        promise({ text: 'I will chase legal on Monday', dueDate: day('2026-10-06') }),
+        promise({ text: 'Next I will pick up the export bug', dueDate: day('2026-10-07'), participantId: 'p-bisi', participant: { ...PEOPLE['p-bisi'], ground: SALES } }),
+        promise({ text: 'send the supplier list', dueDate: day('2026-10-08'), participantId: 'p-kofi', participant: { ...PEOPLE['p-kofi'], ground: SALES } }),
+      ],
+    });
+    await m.run();
+    expect(m.mails[0][2].overdueOnYourTeam).toEqual([
+      'Omar said \u201cI will chase legal on Monday\u201d by Tuesday 6 October, and it is six days late.',
+      'Bisi said \u201cNext I will pick up the export bug\u201d by Wednesday 7 October, and it is five days late.',
+      'Kofi committed to \u201csend the supplier list\u201d by Thursday 8 October, and it is four days late.',
+    ]);
+  });
+});
+
 describe('facts about one thing, never a comparison and never a label', () => {
   it('names nobody as better or worse, and puts no word on a person', async () => {
     const m = aMorning({ phone: null });

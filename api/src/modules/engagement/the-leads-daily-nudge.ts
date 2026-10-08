@@ -56,6 +56,8 @@ const sentence = (s: string) => (/[.!?]$/.test(s.trim()) ? s.trim() : `${s.trim(
 export interface AThingOutstanding {
   text: string;
   late?: number;
+  /** Within "Needs you": what waits for her to approve comes first (0), then a decision she owes (1), then her own commitments that are late (2). */
+  group?: number;
   keptInTheApp?: boolean;
   /** The check-in it is about. Said (" in \u201cSales team, Q3\u201d" at the {in} mark) only when the lead is being told about more than one. */
   place?: string;
@@ -166,6 +168,10 @@ export function theTemplateParagraph(firstName: string | null | undefined, o: Wh
   return { params, text: body.replace(/\{\{(\d+)\}\}/g, (_m, n) => params[Number(n) - 1] ?? '') };
 }
 
+/** A commitment is "said" when it is stored in the person's own first-person words ("I will chase legal on Monday"), and "committed to" when it is the thing itself ("send the supplier list"). */
+const FIRST_PERSON = /^(?:(?:next|then|first|also|and|so|now)[,\s]+)?(?:i|we)(?:[\u2019']\w+)?\b/i;
+const theyCommitted = (who: string, text: string) => (FIRST_PERSON.test(text.trim()) ? `${who} said ${quoted(text.trim())}` : `${who} committed to ${quoted(text.trim())}`);
+
 const lateWords = (n: number) => (n === 1 ? 'one day late' : `${aNumberInWords(n)} days late`);
 
 /** The days between a day that has passed and today in Lagos. Zero or less is not late. */
@@ -204,7 +210,7 @@ export async function whatIsOutstandingFor(
   /* NEEDS YOU, first: what waits for her to approve. */
   const waiting = await whatWaitsForYouToDecide({ userId: lead.userId, organizationId: lead.organizationId }, deps.boards).catch(() => []);
   const approvals = whatWaitsInASentence(waiting);
-  if (approvals) out.needsYou.push({ text: approvals });
+  if (approvals) out.needsYou.push({ text: approvals, group: 0 });
 
   /* Who is on her check-ins, and what is open on each of them. */
   const mine = ids.length
@@ -233,8 +239,8 @@ export async function whatIsOutstandingFor(
     if (!g || isEvaluationCheckIn(g.scenario) || !pr.text?.trim()) continue;
     const late = daysLate(pr.dueDate, today);
     if (late < 1) continue;
-    const text = (who: string) => `${who} committed to ${quoted(pr.text.trim())}${THE_PLACE_MARK} by ${theDay(pr.dueDate)}, and it is ${lateWords(late)}.`;
-    if (pr.participant?.userId === lead.userId) out.needsYou.push({ text: text('You'), late, keptInTheApp: keptOffThePhone(g), place: g.label });
+    const text = (who: string) => `${theyCommitted(who, pr.text)}${THE_PLACE_MARK} by ${theDay(pr.dueDate)}, and it is ${lateWords(late)}.`;
+    if (pr.participant?.userId === lead.userId) out.needsYou.push({ text: text('You'), late, group: 2, keptInTheApp: keptOffThePhone(g), place: g.label });
     else if (ids.includes(pr.groundId) && letIn(pr.participant) && (pr.authoredBy === 'self' || pr.seenBySubject)) out.overdueOnYourTeam.push({ text: text(nameToCall(pr.participant)), late, keptInTheApp: keptOffThePhone(g), place: g.label });
   }
 
@@ -263,13 +269,13 @@ export async function whatIsOutstandingFor(
     /* A decision she owes: somebody is waiting for her to decide it. */
     if (onHer && w.blockerKind === 'DECISION') {
       const since = `since ${theDay(w.createdAt)}`;
-      out.needsYou.push({ text: `${saidWait(w, 'is')}${THE_PLACE_MARK} ${since}.`, late: late > 0 ? late : 0, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId) });
+      out.needsYou.push({ text: `${saidWait(w, 'is')}${THE_PLACE_MARK} ${since}.`, late: late > 0 ? late : 0, group: 1, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId) });
       counted.add(w.id);
       continue;
     }
     if (late < 1) continue;
     const text = `${saidWait(w, 'is')}${THE_PLACE_MARK}, which was due on ${theDay(w.dueOn)} and is ${lateWords(late)}.`;
-    if (onHer) out.needsYou.push({ text, late, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId) });
+    if (onHer) out.needsYou.push({ text, late, group: 2, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId) });
     else if (w.onParticipant && letIn(w.onParticipant)) out.overdueOnYourTeam.push({ text, late, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId) });
     else continue;
     counted.add(w.id);
@@ -285,7 +291,7 @@ export async function whatIsOutstandingFor(
       if (/^(done|decided|closed|complete|completed|met|dropped|cancelled|canceled)$/i.test((d.status ?? '').trim()) || !d.title?.trim()) continue;
       const late = daysLate(d.dueDate, today);
       if (late < 1) continue;
-      out.needsYou.push({ text: `The decision ${quoted(d.title.trim())} is yours, and it was due on ${theDay(d.dueDate)}, so it is ${lateWords(late)}.`, late });
+      out.needsYou.push({ text: `The decision ${quoted(d.title.trim())} is yours, and it was due on ${theDay(d.dueDate)}, so it is ${lateWords(late)}.`, late, group: 1 });
     }
   }
 
@@ -333,10 +339,9 @@ export async function whatIsOutstandingFor(
     }
   }
 
-  /* Most important first within a part: the most overdue first, then as found. */
+  /* Most important first within a part: in "Needs you" what waits for her to approve, then a decision she owes, then her own late commitments; always the most overdue first. */
   const byLate = (a: AThingOutstanding, b: AThingOutstanding) => (b.late ?? 0) - (a.late ?? 0);
-  const approvalFirst = (list: AThingOutstanding[]) => (list.length && approvals && list[0].text === approvals ? [list[0], ...list.slice(1).sort(byLate)] : [...list].sort(byLate));
-  out.needsYou = approvalFirst(out.needsYou);
+  out.needsYou.sort((a, b) => (a.group ?? 9) - (b.group ?? 9) || byLate(a, b));
   out.overdueOnYourTeam.sort(byLate);
   return out;
 }
