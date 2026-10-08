@@ -30,7 +30,7 @@ This is the whole build: the engine work, the screens work, and everything you c
 5. **Staying in touch** (decision 109): "here is what is new" made from the person's own data, one-click opt-out with a confirmation, and a daily lead summary that is skipped when nothing changed.
 6. **Privacy, enforced on the server**, each with a test. What a lead writes about a person never reaches that person. A lead in the same department does not read evaluation check-ins she is not in. A person held for a seat keeps their own answers and own report and nothing else. An email address is never shown in place of a name.
 7. **Safety fixes**: only the person who runs a check-in, or an organisation admin, can resend an invitation; the scheduled jobs' lock is held on one connection; each visitor is counted by their own address in the rate limits; the WhatsApp webhook answers at once and never does a message twice.
-8. **The anchor scenario, switched on.** A lead starts it from `/start/team` (it opens the normal entry chat with the anchor's scenario); the team is invited with the anchor's own words and checks in as in any check-in. It can be switched off with `release.anchorScenario` = `{ "on": false }`. Decision 114: the anchor is a scenario like the others; its own board sections are moving into the normal board page through the switchboard in the next pull request.
+8. **The anchor scenario, built and switched off** (`release.anchorScenario`). Its separate screens contradict Hafsah's decision 114 that the anchor uses the normal entry chat, board and reports, so it follows in the next pull request, rebuilt through the normal flow.
 9. **Nothing removed.** A feature-by-feature audit of live against this branch (`docs/nothing-removed-audit.md`) found nothing live can do that this cannot, on the server: every sign-in method including Google, every route the live client calls, every setting, email, WhatsApp message, scheduled job and staff page. Google sign-in and staff access were checked and proved; nothing in the code had changed.
 10. **The user journey sweep** (`docs/user-journey-tests.md`): 83 problems found through the engine, WhatsApp and email; 63 fixed, each with a test that fails without it. The 20 left are listed below.
 
@@ -62,7 +62,7 @@ All from 8 October, on the final commit of this branch.
 | Privacy sweep | 28 readers across three organisations, about 17,000 server reads plus Ask questions. No leak. Transcripts reach only their owner; nobody reads another person's You or Ask; no lead-only field reaches a member; no comparison between people; ratings only to the person they are about; decision 40's checkability rule holds; no email address where a name goes. The last three findings were fixed on 8 October (a lead-only field in the report, labels on the ending panel, the roster's stored text). |
 | Browser journeys | Sign-up and sign-in (link and password, at 1440, 1280, 1024 and 390), the admin, the lead's set-up from a pasted plan, the member joining and checking in, approvals and reviews, people, a check-in waiting for an admin, joining at 390: all pass. One fault found and fixed: a new check-in's first open takes 65 to 88 seconds and the screen gave up at 45. |
 | Google sign-in | With test client ids, `/auth/methods` says google is on, "Sign in with Google" and "Sign up with Google" show at 1440 and 390, and both go to Google's sign-in with the right redirect. Tests prove an existing Google user signs in, a same-address user is linked, and a new one signs up. |
-| The anchor | Walked as a lead and a team member from `/start/team` through set-up, invitation, the member's check-in and both boards. Nothing stopped either. |
+| The anchor | Off in this release. It was walked as a lead and a team member before being switched off, and nothing stopped either; it follows in the next pull request through the normal flow. |
 | Existing clients ("nothing lost") | Old code against new on realistic old data, as 12 people: every person's words identical in 142 of 142 transcripts; two real losses found and fixed (unnamed colleagues missing from the picker, and words shown as "nothing specific" on the lead's report). Everything else that differs comes from a decision. Stalled check-ins send nothing. |
 | The 24-scenario run (run-oct7c, 7 October) | Every problem count is 0. Every engine number holds or rises except "proof asked for", 34 against 42, mostly the word "picture". |
 
@@ -72,7 +72,7 @@ Each is one row in `platform_settings`, and a missing row reads as the safe defa
 
 | Switch | At release |
 | --- | --- |
-| `release.anchorScenario` | **On** (switch off with `{ "on": false }`) |
+| `release.anchorScenario` | Off (follows in the next pull request) |
 | `release.contextInAskGroundwork` | Off |
 | `release.planAndBillingNewParts` | Off |
 | `release.boardKindsOffered` | Sales and engineering release only |
@@ -102,7 +102,7 @@ Restore the database backup and the old code together, never the code alone. One
 ## Still being polished, for the next pull request
 
 - **Decision 113, appealing a decided review** (bug B-024): built next.
-- **The anchor as a scenario like the others** (decision 114): its board sections through the switchboard and the normal board page; `/start/team` becomes a redirect. The engine and the screens are both on it.
+- **The anchor scenario, switched on**, as a scenario like the others (decision 114): the normal entry chat, invitations, board and reports, with its board sections through the switchboard; `/start/team` becomes a redirect. The engine and the screens are both on it.
 - **The engagement work** from `docs/engagement-spec.md`.
 - **Prompt changes, each waiting for a full 24-scenario run:** the anchor member's opening questions, "..." in suggested replies, back-to-front lines, "they" for one named person, and the 15 sweep bugs that are the model's own wording.
 - **Open sweep bugs** (`docs/bug-log-engine.md`): B-127 needs a decision (nothing links a check-in to a company priority, so the Company page says "No team feeds it"); B-141 and B-152 are by design; B-112 is a screen item.

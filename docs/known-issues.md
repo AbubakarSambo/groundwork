@@ -63,7 +63,7 @@ It was drawn from `docs/morning-report.md`, `docs/weekly-plan.md`, `docs/run-log
 
 **B11 (rest). The anchor still borrows the project's questions for its members, and its wording needs the prompt text.**
 - Where: `api/src/modules/conversation/prompt-library.ts`, `startingRoleQuestionsFor` and `STARTING_SCENARIOS` read `HELP_TEAM_UNDERSTAND` as `NEW_PROJECT` (line 2861 and the pack at line 3508), so a member's check-in in an anchor check-in can still ask the project's "What did you understand the brief to be?", and the first-turn question about whether they are the person this check-in is about (requests 167 item 3 and 168 item 5). On the screens' side (7 October, `b115c08e` and `6dfded29`) the anchor lead goes straight from her conversation to the reveal and the people step, is never opened into a check-in, and the commit sends the served label, a weekly cadence marked as chosen, and an end one month out. `RECOMMENDED_CADENCE`, the planned length and the lead's own check-in are fixed in code (below).
-- Who: every anchor member, now that `release.anchorScenario` is on at release.
+- Who: every anchor member once `release.anchorScenario` is switched on (it is off at release, Hafsah, 8 October).
 - Why it was left: it is the conversation's own instructions, and the 24-scenario run was using them when this was fixed. Nothing was changed in a prompt or in a stored prompt version.
 - Recommendation: after the run, give the anchor its own role questions in `STARTING_ROLE_QUESTIONS`, and if a stored version overrides the file, make the new one the active one and prove it from the report's `promptVersionId`.
 
