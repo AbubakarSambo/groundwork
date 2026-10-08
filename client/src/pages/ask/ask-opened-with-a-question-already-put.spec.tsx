@@ -16,13 +16,17 @@ import { AskPage } from './AskPage'
 
 /**
  * ASK OPENED WITH A QUESTION ALREADY PUT (docs/answers-from-engine.md, 8 October, "the engagement
- * work", point 3: "I can help you do that"). `/chat?about=<check-in id>` should open Ask with a
- * question already asked, rather than an empty box the lead has to fill in themselves after
- * clicking through from the first-insight mail.
+ * work", point 3: "I can help you do that"). `/chat?about=<check-in id>` opens Ask with a question
+ * already asked, rather than an empty box the lead has to fill in themselves after clicking
+ * through from the first-insight mail.
  *
- * There is no server route yet that serves the actual finding for a check-in id on its own (see
- * the request in docs/requests-to-engine.md), so this opens with a neutral question naming the
- * check-in instead of inventing the sentence client-side.
+ * REQUEST 198 (a), DONE (docs/answers-from-engine.md, 8 October (late night)): `GET
+ * /grounds/:groundId/report/finding` serves the real finding, read exactly as the mail's own
+ * subject reads it - `finding: null` when the picture is not released to this reader yet, or names
+ * nothing open. `AskPage.tsx` asks about the real finding when there is one and keeps the neutral
+ * question otherwise, so a reader with nothing open yet is never left asking Ask about a sentence
+ * that does not exist - Ask still opens, on a real question about their own check-in, and the
+ * conversation continues from there rather than dead-ending on an empty box.
  */
 function renderAsk(entry: string) {
   useAskStore.setState({ open: false, pendingMessage: null, openedFromCheckInSetupGroundId: null })
@@ -56,6 +60,23 @@ describe('ask opened with a question already put', () => {
     renderAsk('/chat?about=g1')
     expect(await screen.findByText('Help me with what the shared picture found about Kenya launch. Who owns the next step with the distributor is not agreed upon by the team.')).toBeTruthy()
     expect(groundsApi.finding).toHaveBeenCalledWith('g1')
+    /* NOT A DEAD END: the panel is actually open, with the finding as its first message, not just
+       a sentence sitting unread in the store. */
+    expect(useAskStore.getState().open).toBe(true)
+  })
+
+  /**
+   * REQUEST 198 (a): A READER WITH NO FINDING YET IS NOT LEFT ASKING ABOUT NOTHING. `finding: null`
+   * is served both when the picture is not released to this reader and when it names nothing open
+   * - either way, Ask still opens on a real, neutral question about their own check-in rather than
+   * the box staying empty or the page erroring out.
+   */
+  it('a reader with no finding yet still gets a real, open conversation - never a dead end', async () => {
+    vi.mocked(groundsApi.get).mockResolvedValue({ id: 'g2', label: 'Night rota' } as any)
+    vi.mocked(groundsApi.finding).mockResolvedValue({ groundId: 'g2', label: 'Night rota', sessionNumber: null, finding: null, moreStillOpen: 0, conversationWorthHaving: null })
+    renderAsk('/chat?about=g2')
+    expect(await screen.findByText('Help me prepare for the conversation about Night rota.')).toBeTruthy()
+    expect(useAskStore.getState().open).toBe(true)
   })
 
   it('falls back to a neutral question with no name when the check-in cannot be read', async () => {
