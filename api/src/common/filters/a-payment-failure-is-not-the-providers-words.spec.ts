@@ -22,7 +22,7 @@ describe('when the payment provider refuses', () => {
     expect(out.statusCode).toBe(503);
     expect(JSON.stringify(out)).not.toMatch(/sk_|API Key|Stripe/);
   });
-  it('leaves every other error as it was', () => {
-    expect(respond(new Error('Something else broke')).message).toBe('Something else broke');
+  it('answers every other crash with one plain sentence, not its own words', () => {
+    expect(respond(new Error('Something else broke')).message).toBe('Something went wrong on our side. Please try again in a minute, and if it happens again, tell us.');
   });
 });

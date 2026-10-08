@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { whatToSayAboutADatabaseError } from './a-database-error-is-not-a-message';
+import { aPlainRefusal } from './a-refusal-is-plain';
 
 /** What a person is told when the payment provider refuses, whatever it said. No key, no provider vocabulary, and the truth about the money. */
 export const PAYMENTS_ARE_NOT_AVAILABLE = 'Payments are not available right now. Nothing has been charged. Please try again later.';
@@ -45,6 +46,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
      * boolean only, the same way `code` is: never the whole exception, never a class name or a stack.
      */
     let canContinue: boolean | null = null;
+    /* How it failed, so the screens' own routes can be made plain (a-refusal-is-plain.ts). */
+    let fromTheValidationList = false;
+    let fromOurOwnCrash = false;
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
@@ -62,6 +66,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         if (Array.isArray(responseObj.message)) {
           errors = responseObj.message;
           message = summariseValidation(responseObj.message);
+          fromTheValidationList = !writtenForAPerson(responseObj.message);
         } else {
           message = responseObj.message || message;
           errors = responseObj.errors || null;
@@ -85,7 +90,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
        * information. The detail goes to the log, where it is useful; the caller
        * gets a sentence and a status that matches what actually went wrong.
        */
-      const database = whatToSayAboutADatabaseError(exception);
+      const database = whatToSayAboutADatabaseError(exception, isPublished(request.url));
       if (isAStripeError(exception)) {
         /* Stripe's own words can carry the start of our key ("Invalid API Key provided: sk_test_..."). The detail goes to the log, trimmed of any key. */
         status = HttpStatus.SERVICE_UNAVAILABLE;
@@ -97,6 +102,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
           message = database.message;
         } else {
           message = exception.message;
+          fromOurOwnCrash = true;
         }
 
         this.logger.error(
@@ -132,6 +138,11 @@ export class GlobalExceptionFilter implements ExceptionFilter {
      * API's parser learns `{ error: { code, message, details } }` once. Same list the success
      * interceptor reads. (F14)
      */
+    /* The screens' own routes read in plain sentences; a developer's code on the published API keeps the field names it sent. */
+    if (!isPublished(request.url)) {
+      message = aPlainRefusal(status, typeof message === 'string' ? message : String(message ?? ''), { fromTheValidationList, fromOurOwnCrash });
+    }
+
     if (isPublished(request.url)) {
       response.status(status).json({
         error: { code: code ?? codeFor(status), message, details: errors },
@@ -153,6 +164,12 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 }
 
 /** One sentence for a pipe failure; the sentences themselves travel as `errors` / `details`. */
+/** Every message is a sentence somebody wrote to be read (a capital letter first, a full stop last). */
+function writtenForAPerson(sentences: string[]): boolean {
+  const written = sentences.map((s) => String(s).trim());
+  return written.length > 0 && written.every((s) => /^[A-Z].*[.!?]$/.test(s));
+}
+
 export function summariseValidation(sentences: string[]): string {
   /*
    * A MESSAGE ALREADY WRITTEN FOR A PERSON IS PASSED ON AS IT IS. U.2 re-review.
