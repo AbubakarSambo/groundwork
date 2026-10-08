@@ -16,6 +16,9 @@ import { theLeaveRequestSent } from './leave-said-in-chat';
  * sentences, the same record of who did what, and the same message to whoever decides. The sentence the person reads
  * afterwards is the chat's own sentence, built by the same function.
  */
+/** Said when the request was recorded and sent but the longer sentence about it could not be put together. It is true, and it says where to look. */
+export const THE_REQUEST_WAS_SENT = 'Your request has been sent. You can see where it is under your requests.';
+
 @Injectable()
 export class ARequestFiledFromItsForm {
   constructor(
@@ -32,7 +35,8 @@ export class ARequestFiledFromItsForm {
       ...(input.standInUserId ? { standInUserId: input.standInUserId } : {}),
     };
     const created = await this.leave.ask(reader.organizationId, reader.userId, asked);
-    const says = await theLeaveRequestSent(this.prisma, reader, asked);
+    /* The request is on the approver's board by now. Failing to word it must not turn a sent request into a server fault the person would send again. */
+    const says = await theLeaveRequestSent(this.prisma, reader, asked).catch(() => THE_REQUEST_WAS_SENT);
     return { id: (created as { id: string }).id, says };
   }
 
@@ -44,7 +48,11 @@ export class ARequestFiledFromItsForm {
       what: input.what,
       ...(input.category ? { category: input.category } : {}),
     });
-    const said: SpendSaid = { amount: input.amount, what: aReasonInASentence(input.what.trim()), currency: facts.currency };
-    return { id: (created as { id: string }).id, says: spendingSent(said, facts.currency, facts.approverFirstName) };
+    let says = THE_REQUEST_WAS_SENT;
+    try {
+      const said: SpendSaid = { amount: input.amount, what: aReasonInASentence(input.what.trim()), currency: facts.currency };
+      says = spendingSent(said, facts.currency, facts.approverFirstName);
+    } catch { /* the request is sent; the plain sentence stands */ }
+    return { id: (created as { id: string }).id, says };
   }
 }
