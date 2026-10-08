@@ -41,10 +41,24 @@ export interface WhatNeedsYou {
  * server, in the order they should be read. `null` for anybody who is not a lead, or who has
  * nothing outstanding.
  */
+/** Request 205: what each `Outstanding` sentence is about, matched against `Need` rows by id
+    instead of by wording (`outstanding-not-already-shown.ts`). */
+export interface OutstandingAbout {
+  kind: 'requests' | 'wait' | 'decision' | 'promise' | 'plan-decision' | 'target' | 'quiet'
+  ids: string[]
+  groundId?: string
+}
+
 export interface Outstanding {
   needsYou: string[]
   overdueOnYourTeam: string[]
   risks: string[]
+  /** One entry per sentence in each list above, in the same order. Absent on an older server. */
+  about?: {
+    needsYou: OutstandingAbout[]
+    overdueOnYourTeam: OutstandingAbout[]
+    risks: OutstandingAbout[]
+  }
 }
 
 export const todayApi = {

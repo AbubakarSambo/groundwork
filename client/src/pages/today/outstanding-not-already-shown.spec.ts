@@ -77,4 +77,66 @@ describe('the lead’s daily nudge is not said twice on Today', () => {
       expect(outstandingNotAlreadyShown(existing, sentences)).toEqual(sentences)
     })
   })
+
+  /**
+   * REQUEST 205, DONE: `GET /today/outstanding` now serves `about` beside each sentence - an id (or
+   * a few, for a summary) instead of needing the sentence's own words to be parsed back apart. This
+   * matches by that first, falling back to the wording checks above only for a sentence `about`
+   * does not cover.
+   */
+  describe('matched by id, once the server serves one (request 205)', () => {
+    it('drops a wait with the same id as an existing row, worded completely differently', () => {
+      const existing = [need('You need to get back to Amani Wekesa, who is waiting on you for the discount limit for the Naivas order.')]
+      ;(existing[0] as any).key = 'wait-w-77'
+      const sentences = ['Amani has been waiting on you for the discount limit for the Naivas order since Saturday 3 October.']
+      const about = [{ kind: 'wait' as const, ids: ['w-77'] }]
+      expect(outstandingNotAlreadyShown(existing, sentences, about)).toEqual([])
+    })
+
+    it('keeps a sentence whose id is not among the existing rows, even if its words happen to overlap', () => {
+      const existing = [need('Something unrelated', undefined as any)]
+      ;(existing[0] as any).key = 'wait-w-1'
+      const sentences = ['A promise is late.']
+      const about = [{ kind: 'promise' as const, ids: ['c-99'] }]
+      expect(outstandingNotAlreadyShown(existing, sentences, about)).toEqual(sentences)
+    })
+
+    it('drops a leave or spend request by its id, stripping the "leave:"/"spend:" the sentence never carried', () => {
+      const existing = [need('Approve the leave')]
+      ;(existing[0] as any).key = 'leave-question-leave-55'
+      const sentences = ["Kito's leave from Thursday 22 October to Monday 26 October is waiting for you to approve or decline."]
+      const about = [{ kind: 'requests' as const, ids: ['leave:leave-55'] }]
+      expect(outstandingNotAlreadyShown(existing, sentences, about)).toEqual([])
+    })
+
+    it('drops a summary sentence only once every id it carries already has a row', () => {
+      const existing = [need('Approve the leave'), need('Approve the spend')]
+      ;(existing[0] as any).key = 'leave-question-leave-1'
+      ;(existing[1] as any).key = 'spend-question-spend-2'
+      const sentences = ['Two requests are waiting for you to approve or decline.']
+      const incomplete = [{ kind: 'requests' as const, ids: ['leave:leave-1', 'spend:spend-2', 'leave:leave-3'] }]
+      expect(outstandingNotAlreadyShown(existing, sentences, incomplete)).toEqual(sentences)
+      const complete = [{ kind: 'requests' as const, ids: ['leave:leave-1', 'spend:spend-2'] }]
+      expect(outstandingNotAlreadyShown(existing, sentences, complete)).toEqual([])
+    })
+
+    it('a "quiet" entry is matched by the check-in itself, not by any id', () => {
+      const existing = [need('Nudge the quiet check-in')]
+      existing[0].groundId = 'g-quiet'
+      const sentences = ['Nobody has said anything in "Night rota" for two weeks.']
+      const about = [{ kind: 'quiet' as const, ids: [], groundId: 'g-quiet' }]
+      expect(outstandingNotAlreadyShown(existing, sentences, about)).toEqual([])
+      expect(outstandingNotAlreadyShown([], sentences, about)).toEqual(sentences)
+    })
+
+    it('falls back to the wording check for a row an older server sends no entry for', () => {
+      const existing = [need('Decide whether a price range counts as a budget', 'Brian and Miriam both raised it.')]
+      const sentences = [
+        'Decide whether a price range counts as a budget',
+        'Kofi is waiting on you for the pricing for Q4 since Thursday 8 October.',
+      ]
+      const about = [undefined, undefined]
+      expect(outstandingNotAlreadyShown(existing, sentences, about)).toEqual([sentences[1]])
+    })
+  })
 })
