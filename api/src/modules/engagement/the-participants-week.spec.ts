@@ -132,3 +132,21 @@ describe('what Vera reads', () => {
     expect(ROUTINE_EMAILS.has('sendYourWeek')).toBe(true);
   });
 });
+
+/**
+ * FOUND ON THE TEST BED, 22 OCTOBER, as Sade and Amani read their week.
+ */
+describe('what the week says when it would only say a thing twice', () => {
+  it('leaves off "from" when who they wait on only says the thing again', () => {
+    const w = theirWeekInWords('Sade', { kept: null, open: [], waitingOn: [{ what: 'who owns the distributor next step', from: 'the person who owns the distributor next step' }, { what: 'a signature from the buyer', from: 'the buyer' }, { what: 'the price list', from: 'Vera' }], waitingOnYou: [] })!;
+    expect(w.lines).toContain('You are waiting for "who owns the distributor next step".');
+    expect(w.lines).toContain('You are waiting for "the price list" from Vera.');
+    expect(w.lines.join(' ')).not.toMatch(/from the person who owns/);
+  });
+  it('says all four, not "four of the four"', () => {
+    const w = theirWeekInWords('Amani', { kept: { kept: 4, of: 4 }, open: [], waitingOn: [], waitingOnYou: [] })!;
+    expect(w.subject).toBe('You kept all four things you said you would do');
+    expect(w.lines).toContain('You kept all four things you said you would do in the last four weeks.');
+    expect(theirWeekInWords('A', { kept: { kept: 3, of: 4 }, open: [], waitingOn: [], waitingOnYou: [] })!.subject).toBe('You kept three of the four things you said you would do');
+  });
+});

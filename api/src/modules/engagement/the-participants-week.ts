@@ -27,6 +27,20 @@ const listed = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -
 const trimmed = (t: string) => t.trim().replace(/[.!?]+$/, '');
 const quoted = (xs: string[]) => xs.map((x) => `"${trimmed(x)}"`);
 const thing = (n: number) => (n === 1 ? 'thing' : 'things');
+/**
+ * Who the person is waiting on, when it only says the thing again: "You are waiting for "who owns the distributor next step" from the person who owns the distributor
+ * next step." (found on the test bed). When most of the words of the one are in the other, the "from" adds nothing and is left off.
+ */
+const WORDS_THAT_SAY_NOTHING = new Set(['the', 'a', 'an', 'of', 'to', 'for', 'from', 'who', 'person', 'someone', 'somebody', 'is', 'on', 'and', 'in', 'by', 'with']);
+const wordsOf = (t: string) => new Set(t.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w && !WORDS_THAT_SAY_NOTHING.has(w)));
+export function saysTheSameThing(what: string, from: string): boolean {
+  const a = wordsOf(what);
+  const b = wordsOf(from);
+  if (!a.size || !b.size) return false;
+  let shared = 0;
+  for (const w of b) if (a.has(w)) shared += 1;
+  return shared / b.size >= 0.6;
+}
 
 export interface TheirWeek {
   /** What they kept and settled in the last four weeks, in check-ins still going. */
@@ -49,7 +63,7 @@ export function theirWeekInWords(firstName: string | null | undefined, w: TheirW
   /* A kept count of nothing is not said: "You kept none of two" is a verdict, and the open things below it say what is true. */
   const kept = w.kept && w.kept.of > 0 && w.kept.kept > 0 ? w.kept : null;
   const facts: string[] = [];
-  if (kept) facts.push(kept.of === kept.kept && kept.of === 1 ? 'You kept the one thing you said you would do' : `You kept ${aNumberInWords(kept.kept)} of the ${aNumberInWords(kept.of)} ${thing(kept.of)} you said you would do`);
+  if (kept) facts.push(kept.of === kept.kept && kept.of === 1 ? 'You kept the one thing you said you would do' : kept.of === kept.kept ? `You kept all ${aNumberInWords(kept.of)} things you said you would do` : `You kept ${aNumberInWords(kept.kept)} of the ${aNumberInWords(kept.of)} ${thing(kept.of)} you said you would do`);
   if (w.waitingOnYou.length) facts.push(`${aNumberInWords(w.waitingOnYou.length)} ${w.waitingOnYou.length === 1 ? 'request is' : 'requests are'} waiting on you`);
   const reports = (w.reportsReady ?? []).filter((l) => !!l?.trim());
   if (reports.length) facts.push(reports.length === 1 ? 'Your report is ready to read' : `${cap(aNumberInWords(reports.length))} of your reports are ready to read`);
@@ -59,13 +73,13 @@ export function theirWeekInWords(firstName: string | null | undefined, w: TheirW
   const subject = facts.map((f, i) => (i ? `${f.charAt(0).toLowerCase()}${f.slice(1)}` : cap(f))).join('; ');
 
   const lines = [`Hello ${firstName?.trim() || 'there'}. Here is your week in Groundwork. Only you can read this.`];
-  if (kept) lines.push(kept.of === 1 ? 'You kept the one thing you said you would do in the last four weeks.' : `You kept ${aNumberInWords(kept.kept)} of the ${aNumberInWords(kept.of)} things you said you would do in the last four weeks.`);
+  if (kept) lines.push(kept.of === 1 ? 'You kept the one thing you said you would do in the last four weeks.' : kept.kept === kept.of ? `You kept all ${aNumberInWords(kept.of)} things you said you would do in the last four weeks.` : `You kept ${aNumberInWords(kept.kept)} of the ${aNumberInWords(kept.of)} things you said you would do in the last four weeks.`);
   if (reports.length) lines.push(reports.length === 1 ? `Your report for "${trimmed(reports[0])}" is ready to read.` : `Your reports for ${listed(quoted(reports.slice(0, 3)))} are ready to read.`);
   if (w.open.length) {
     const shown = w.open.slice(0, 3);
     lines.push(`${cap(aNumberInWords(w.open.length))} ${thing(w.open.length)} you said you would do ${w.open.length === 1 ? 'is' : 'are'} still open, ${listed(quoted(shown))}${w.open.length > 3 ? `, and ${aNumberInWords(w.open.length - 3)} more` : ''}.`);
   }
-  for (const d of w.waitingOn.slice(0, 3)) lines.push(`You are waiting for "${trimmed(d.what)}"${d.from ? ` from ${d.from}` : ''}.`);
+  for (const d of w.waitingOn.slice(0, 3)) lines.push(`You are waiting for "${trimmed(d.what)}"${d.from && !saysTheSameThing(d.what, d.from) ? ` from ${d.from}` : ''}.`);
   for (const r of w.waitingOnYou.slice(0, 3)) lines.push(`${cap(r.who ?? 'somebody')} ${r.who === 'you' ? 'are' : 'is'} waiting for "${trimmed(r.what)}" from you in "${r.checkIn}".`);
   return { subject, lines, linkLabel: 'Open your page' };
 }
