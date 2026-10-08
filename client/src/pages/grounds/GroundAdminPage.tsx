@@ -2034,8 +2034,12 @@ export function GroundAdminPage() {
                    * it was about. That is why the tab needed a separate flat list of cards underneath
                    * repeating the same information a different way.
                    */
+                  /* B-080: a set-up row (`isSetup`) is not a session, the same rule `sessionsDoneBy`
+                     already applies to "Your sessions" - without it, a lead who only manages and
+                     never checks in read "Some sessions done, some still open" from her one
+                     completed set-up row alone. */
                   const theirSessions = [...(ground.checkIns ?? [])]
-                    .filter((c: any) => c.participantId === p.id)
+                    .filter((c: any) => c.participantId === p.id && !c.isSetup)
                     .sort((a: any, b: any) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0))
                   const status = myCheckIn?.status ?? 'NOT_STARTED'
                   /**

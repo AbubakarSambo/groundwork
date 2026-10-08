@@ -248,6 +248,16 @@ export function CheckInPeopleAndSetup(props: {
   const {
     ground, user, navigate, isInitiator, isOrgAdmin, viewerIsAParty, mySessionsDone, plannedSessions,
   } = props
+  /*
+   * B-080: A LEAD WHO ONLY MANAGES NEVER CHECKS IN, SO SHE IS NOT GIVEN A SESSION COUNT OF HER OWN.
+   * Grace runs "Shops reorder in two days" and does not check in; `sessionsDoneBy` already leaves
+   * her set-up row out of the count (it is never a session), which left her reading "0 of 4
+   * sessions are done." for the whole month and a note that appears "once you finish your first
+   * check-in" she will never have. She reads what she actually does instead, in the prototype's
+   * own voice.
+   */
+  const viewerParticipant = (ground?.participants ?? []).find((p: any) => p.userId === user?.id)
+  const viewerManagingOnly = !!viewerParticipant?.managingOnly
   /**
    * FAULT 5: GATED ON WHAT THE SERVER SAYS, NOT ON ROLE.
    *
@@ -439,7 +449,10 @@ export function CheckInPeopleAndSetup(props: {
           {viewerIsAParty && (
             <>
               <FieldRow label="Your status" value={statusSentence(whatThisStatusMeans(ground.status))} />
-              <FieldRow label="Your sessions" value={yourSessionsSentence(mySessionsDone, plannedSessions)} />
+              <FieldRow
+                label="Your sessions"
+                value={viewerManagingOnly ? 'You run this check-in and do not check in yourself.' : yourSessionsSentence(mySessionsDone, plannedSessions)}
+              />
             </>
           )}
         </FieldRows>

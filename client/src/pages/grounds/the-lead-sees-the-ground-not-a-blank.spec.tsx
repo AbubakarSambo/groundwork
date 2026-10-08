@@ -156,7 +156,10 @@ describe('the four things mounting it exposed', () => {
 
   /** And they are that person's sessions, not everybody's. This is the BUG7 protection, structural. */
   it('and they are filtered to that person', () => {
-    expect(CODE).toMatch(/\.filter\(\(c: any\) => c\.participantId === p\.id\)/)
+    /* B-080: `&& !c.isSetup` added - a set-up row is not a session (see
+       one-row-per-person-per-session.spec.ts for the full reason). Still filtered to this one
+       person, which is what this test protects. */
+    expect(CODE).toMatch(/\.filter\(\(c: any\) => c\.participantId === p\.id && !c\.isSetup\)/)
   })
 
   it('the history computation this protected is gone, not fixed twice', () => {
