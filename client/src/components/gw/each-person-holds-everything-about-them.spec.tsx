@@ -120,4 +120,29 @@ describe('each person holds everything about them', () => {
     fireEvent.click(screen.getByText('Miriam'))
     expect(screen.getByText('Nothing yet. It comes from your own check-in, or from the conversation on this page.')).toBeTruthy()
   })
+
+  /*
+   * B-082: ONCE THE OLD CHAT IS GONE, "CHANGE THIS IN THE CHAT" ASKS ASK INSTEAD OF A DEAD CONTROL.
+   * The lead's "Nothing yet" line stops naming "the conversation on this page" (there is none), and
+   * the link beside an expectation hands the whole question to Ask, not a half-sentence for a box
+   * that is never drawn.
+   */
+  it('once the old chat is off, the lead reads "telling Ask ..." and the link asks the whole question', () => {
+    const onChangeInChat = vi.fn()
+    render(
+      <EachPerson
+        groundId="g1" people={[people[1]] as any} targets={[]} toDos={[]} files={[]} asks={{}}
+        viewerUserId="u-wanjiru" isLead isTheLead leadFirstName="Wanjiru"
+        groundLabel="Weekly sales push" oldChatIsOpen={false} askName="Ask Kijani Foods"
+        onChangeInChat={onChangeInChat}
+      />,
+    )
+    fireEvent.click(screen.getByText('Miriam'))
+    expect(screen.getByText('Nothing yet. It comes from your own check-in, or from telling Ask Kijani Foods.')).toBeTruthy()
+    fireEvent.click(screen.getByText('Change this in the chat'))
+    expect(onChangeInChat).toHaveBeenCalledWith(
+      'Change what I expect of Miriam to ',
+      'I want to change what Weekly sales push expects of Miriam.',
+    )
+  })
 })

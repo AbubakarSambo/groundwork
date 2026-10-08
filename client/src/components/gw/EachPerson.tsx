@@ -85,6 +85,9 @@ export function EachPerson({
   isLead,
   isTheLead = false,
   leadFirstName = null,
+  groundLabel = 'this check-in',
+  oldChatIsOpen = true,
+  askName = 'Ask Groundwork',
   onChangeInChat,
   onUploadFor,
   onSetToDo,
@@ -102,8 +105,14 @@ export function EachPerson({
   isTheLead?: boolean
   /** The lead's first name, so nobody but the lead reads "your" about the lead's own things. */
   leadFirstName?: string | null
-  /** The lead changes what is expected of somebody in the conversation, not in a form. */
-  onChangeInChat?: (said: string) => void
+  /** This check-in's own name, said to Ask so it knows which one (B-082). */
+  groundLabel?: string
+  /** Whether the old context chat is still drawn below this page (B-082). */
+  oldChatIsOpen?: boolean
+  /** What Ask is called for this organisation, read before its own panel has opened. */
+  askName?: string
+  /** The lead changes what is expected of somebody in the conversation, or, once that chat is gone, by asking Ask. */
+  onChangeInChat?: (said: string, askSaid: string) => void
   /** A person attaching the thing they said they would show. */
   onUploadFor?: (participantId: string, ask?: AnAskOnTheCard) => void
   /** Their own to-do, moved by them. */
@@ -223,15 +232,18 @@ export function EachPerson({
                       */
                       <Empty>
                         {isTheLead
-                          ? <>Nothing yet. It comes from your own check-in, or from the conversation on this page.</>
+                          ? (oldChatIsOpen
+                            ? <>Nothing yet. It comes from your own check-in, or from the conversation on this page.</>
+                            : <>Nothing yet. It comes from your own check-in, or from telling {askName}.</>)
                           : <>Nothing yet. It comes from {leadsOwn} own check-in.</>}
                       </Empty>
                     )}
                   {/* THIS ONLY GOES ELSEWHERE (Hafsah, 30 September, the button rules): it hands the
                       change to the conversation rather than doing anything itself, so it is a quiet
-                      text link, `.gwui-plain-link`, not a button. */}
+                      text link, `.gwui-plain-link`, not a button. B-082: once the old chat is gone,
+                      the same link asks Ask the whole question instead of filling a box nobody can see. */}
                   {isLead && onChangeInChat && (
-                    <QuietLink onClick={() => onChangeInChat(`Change what I expect of ${labelOf(p)} to `)}>Change this in the chat</QuietLink>
+                    <QuietLink onClick={() => onChangeInChat(`Change what I expect of ${labelOf(p)} to `, `I want to change what ${groundLabel} expects of ${labelOf(p)}.`)}>Change this in the chat</QuietLink>
                   )}
                 </Part>
 
