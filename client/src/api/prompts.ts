@@ -83,6 +83,28 @@ export interface UsageFunnelData {
   stalledCheckIns: number
   session5Count: number
   avgDaysToFirstCheckin: { value: number | null; n: number }
+  /**
+   * THE ACTIVATION FUNNEL (docs/answers-from-engine.md, 8 October, "the engagement work", point 1;
+   * decision 109). Counts only, never a person or a word anybody said, over customers' check-ins
+   * and never our own organisations. `null` when it could not be read - draw nothing, the rest of
+   * the tab is unaffected.
+   */
+  activation: ActivationFunnel | null
+}
+
+/** One ordered stage's count, in `activation.reached`. */
+export type ActivationStage = 'created' | 'peopleAdded' | 'firstResponse' | 'enoughToReport' | 'firstInsight' | 'leadActed' | 'secondRound'
+/** Where a check-in stands now, each check-in counted in one bucket only, in `activation.now`. */
+export type ActivationNowBucket = 'test' | 'abandonedBeforeValue' | 'abandonedAfterValue' | 'active'
+/** What became of mail Groundwork decided to send, in `activation.emails`. */
+export type ActivationEmailOutcome = 'delivered' | 'failed' | 'held' | 'notSentOnPurpose'
+
+export interface ActivationFunnel {
+  reached: Record<ActivationStage, number>
+  now: Record<ActivationNowBucket, number>
+  /** Leads with a second check-in - repeat use. */
+  leadsWhoCameBack: number
+  emails: Record<ActivationEmailOutcome, number>
 }
 
 export interface OrgListItem {
