@@ -595,7 +595,9 @@ export class EmailService implements OnModuleInit {
    */
   private writeItDown(options: { to: string; subject: string }, sender: string | undefined, outcome: 'sent' | 'held' | 'suppressed' | 'failed', because: string | null): Promise<unknown> {
     return this.prisma.notification
-      .create({ data: { channel: 'email', toAddress: options.to, sender: sender ?? null, subject: options.subject, outcome, because } })
+      /* The time is the application's own and not the database's default, because "has this person had their one today" compares it with the application's today
+         (decision 109 item 6). They are the same moment in production. On the test bed, whose clock is moved, a row stamped by the database would be days behind. */
+      .create({ data: { channel: 'email', toAddress: options.to, sender: sender ?? null, subject: options.subject, outcome, because, createdAt: new Date() } })
       .catch((err: any) => this.logger.warn(`Could not record a notification for ${options.to}: ${err?.message}`));
   }
 
