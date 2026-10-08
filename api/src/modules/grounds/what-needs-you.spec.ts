@@ -84,12 +84,17 @@ describe('Today, as the lead who runs the sales team', () => {
     expect(r.count).toBe(3);
   });
 
+  it('names the check-in a coming-up row is about, with the day it started, so two close names are told apart by the thing (request 193)', () => {
+    const two = whatNeedsYou([{ ...sales, createdAt: new Date('2026-09-01T08:00:00Z') } as ListedCheckIn], { userId: WAIRIMU, role: 'MEMBER', organizationId: 'org' }, [], NOW);
+    expect(two.comingUp[0]).toMatchObject({ groundId: 'g-sales', checkInStartedOn: '2026-09-01T08:00:00.000Z' });
+  });
+
   it('tells her who has checked in to the check-in she runs, by name', () => {
     expect(r.line).toBe('In Sales team, Q3, 2 of 3 have checked in for the second check-in. Omar has not checked in yet.');
   });
 
   it('says what is coming up, as moments the screen puts in her own time', () => {
-    expect(r.comingUp).toEqual([{ at: ahead(31), what: 'The third check-in for Sales team, Q3 opens.', to: '/grounds/g-sales' }]);
+    expect(r.comingUp).toEqual([{ at: ahead(31), what: 'The third check-in for Sales team, Q3 opens.', to: '/grounds/g-sales', groundId: 'g-sales' }]);
   });
 });
 
@@ -204,7 +209,7 @@ describe('Today, for a session that was started before its own date', () => {
   it('Neema, who has not started, is still told that it opens later, and is offered nothing yet', () => {
     const r = whatNeedsYou([started], { userId: 'u-neema', role: 'MEMBER', organizationId: 'org' }, [], NOW);
     expect(titles(r)).toEqual([]);
-    expect(r.comingUp).toEqual([{ at: ahead(150), what: 'Your second check-in for Sales team, Q3 opens.', to: '/grounds/g-early' }]);
+    expect(r.comingUp).toEqual([{ at: ahead(150), what: 'Your second check-in for Sales team, Q3 opens.', to: '/grounds/g-early', groundId: 'g-early' }]);
   });
 });
 

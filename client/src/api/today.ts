@@ -23,6 +23,9 @@ export interface ComingUp {
   at: string
   what: string
   to: string
+  /** The check-in it is about, and the day it started, so two close names can be told apart by the thing (request 193). */
+  groundId?: string
+  checkInStartedOn?: string
 }
 
 export interface WhatNeedsYou {

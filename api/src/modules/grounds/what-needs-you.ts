@@ -51,6 +51,15 @@ export interface ComingUp {
   at: string;
   what: string;
   to: string;
+  /** The check-in it is about, and the day that check-in started, so two close names can be told apart by the thing and not by a clause in the sentence (request 193). */
+  groundId?: string;
+  checkInStartedOn?: string;
+}
+
+/** The check-in a "coming up" row is about, by id, with the day it started when that is known. */
+function aboutTheCheckIn(g: { id: string; createdAt?: string | Date | null }): { groundId: string; checkInStartedOn?: string } {
+  const started = g.createdAt ? new Date(g.createdAt) : null;
+  return { groundId: g.id, ...(started && !Number.isNaN(started.getTime()) ? { checkInStartedOn: started.toISOString() } : {}) };
 }
 
 export interface WhatNeedsYou {
@@ -404,11 +413,12 @@ export function whatNeedsYou(
           at: new Date(future.at).toISOString(),
           what: mayName ? `${cap(theCheckIn(future.sessionNumber))} for ${g.label} opens.` : `${yourCheckIn(future.sessionNumber)} for ${g.label} opens.`,
           to: `/grounds/${g.id}`,
+          ...aboutTheCheckIn(g),
         });
       }
       const ends = time(g.endsAt);
       if ((iRunIt || me) && ends !== null && ends > at && ends <= at + AHEAD) {
-        comingUp.push({ at: new Date(ends).toISOString(), what: `${g.label} ends.`, to: `/grounds/${g.id}` });
+        comingUp.push({ at: new Date(ends).toISOString(), what: `${g.label} ends.`, to: `/grounds/${g.id}`, ...aboutTheCheckIn(g) });
       }
     }
   }
