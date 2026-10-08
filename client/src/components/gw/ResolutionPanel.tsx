@@ -140,7 +140,7 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
 
   /* What a participant reads while it is open. The lead is shown the same words, word for word. */
   const whatTheyRead = viewerIsParty
-    ? `These are the outcomes this check-in can reach. ${leadNameAsOthersReadIt} ${decidesVerb(leadNameAsOthersReadIt)} which one it is. Your account is kept either way, and you can still correct or add to it.`
+    ? `These are the outcomes this check-in can reach. ${leadNameAsOthersReadIt} ${decidesVerb(leadNameAsOthersReadIt)} which one it is. Your words are kept either way, and you can still correct or add to them.`
     : `These are the outcomes this check-in can reach. ${leadNameAsOthersReadIt} ${decidesVerb(leadNameAsOthersReadIt)} which one it is.`
 
   /* ------------------------------------------------------------------ how it ended, for everyone */
@@ -165,7 +165,7 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
       )}
       {!viewerIsLead && viewerIsParty && (
         <div className="gwui-mt-12">
-          <Note>Your account is kept, and you can still correct it.</Note>
+          <Note>Your words are kept, and you can still correct them.</Note>
         </div>
       )}
     </Panel>
@@ -304,7 +304,7 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
               : 'Ending means nobody can add to it. Everyone keeps their own history, and can still correct their own account.'}
           </div>
           <div className={subheadingClass} style={subheadingStyle}>{oneOther ? `What ${oneOther} sees now` : 'What everyone else sees now'}</div>
-          <div className="gwui-fs-13 gwui-ink-sub" style={{ lineHeight: 1.6 }}>“{`These are the outcomes this check-in can reach. ${leadNameAsOthersReadIt} ${decidesVerb(leadNameAsOthersReadIt)} which one it is. Your account is kept either way, and you can still correct or add to it.`}”</div>
+          <div className="gwui-fs-13 gwui-ink-sub" style={{ lineHeight: 1.6 }}>“{`These are the outcomes this check-in can reach. ${leadNameAsOthersReadIt} ${decidesVerb(leadNameAsOthersReadIt)} which one it is. Your words are kept either way, and you can still correct or add to them.`}”</div>
         </>
       )}
 

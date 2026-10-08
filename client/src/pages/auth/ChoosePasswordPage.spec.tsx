@@ -192,7 +192,7 @@ describe('naming the organisation, once this page actually knows it', () => {
   it('names the organisation once this is a signed-in session that already carries one', async () => {
     authState = { setAuth: vi.fn(), isAuthenticated: true, user: { email: 'amani@kito.test', organizationName: 'Kito Foods' } }
     renderSetPassword()
-    expect(await screen.findByText('For your account at Kito Foods. You can keep using email links too.')).toBeTruthy()
+    expect(await screen.findByText('For signing in at Kito Foods. You can keep using email links too.')).toBeTruthy()
   })
 })
 

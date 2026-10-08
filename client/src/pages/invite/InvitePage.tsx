@@ -446,9 +446,9 @@ export function InvitePage() {
                 </form>
 
                 <p className="gwui-fine" style={{ textAlign: 'center' }}>
-                  {/* "You make your account afterwards" only to someone not signed in (U.6 review). Whether an
+                  {/* "You choose how you sign in afterwards" only to someone not signed in (U.6 review). Whether an
                       address has an account is never revealed, so being signed in is what this can know. */}
-                  {signedIn ? 'About two minutes.' : 'About two minutes. You make your account afterwards.'}
+                  {signedIn ? 'About two minutes.' : 'About two minutes. You choose how you sign in afterwards.'}
                 </p>
               </Stack>
             )}

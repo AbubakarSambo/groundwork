@@ -87,7 +87,7 @@ describe('what the new hire sees', () => {
     renderPanel()
     /* U.11: the prototype's words (ending-and-probation-review.txt), with the lead's name. */
     expect(await screen.findByText(
-      'These are the outcomes this check-in can reach. the manager decides which one it is. Your account is kept either way, and you can still correct or add to it.',
+      'These are the outcomes this check-in can reach. the manager decides which one it is. Your words are kept either way, and you can still correct or add to them.',
     )).toBeTruthy()
   })
 
