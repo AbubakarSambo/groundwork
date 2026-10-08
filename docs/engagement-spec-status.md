@@ -121,3 +121,74 @@ Each is one commit with a spec that fails without it. The journeys these were dr
 1. Bundling the "has checked in" mails (above): yes or no.
 2. The Friday letter now goes, for every lead, when her team did something that week. It replaces nothing and is a mail we decide to send (the stop link stops it). An existing client's lead is told once, in "what is new". If you would rather it start only for check-ins made after the release, it is one line.
 3. The participant's weekly summary and the report reminder compete for the day's one message, and the earlier one wins (the reminder, at 09:00 UTC, beats the summary at 11:15 UTC on a Thursday). The summary is the one with value. I moved the lead's insights ahead of the reminders and left the participant's summary where it was; moving it too is a change of schedule for every participant.
+
+## Participant activation
+
+Written 8 October 2026 on `wip/release`. The spec is `docs/participant-activation-spec.md` (Hafsah's, word for word), built as the participant half of the engagement work above and within her decisions: Groundwork's own WhatsApp number is the main one (112), at most one routine message a person a day across email and WhatsApp (109 item 6), no rankings or labels on people, existing users only ever get better, and no new WhatsApp template without her. A row says BUILT only where the code that sends, serves or decides it exists on this branch and a spec fails without it. Every message here goes through the doors the engagement work built: `EmailService.sendEmail` for mail and `WhatsAppService.sendFor` for WhatsApp, so the opt-out, the one routine message a day, quiet hours, STOP and "not now" apply to all of it.
+
+### What was built in this piece
+
+| Commit | What | Files |
+| --- | --- | --- |
+| `ec2408b5` | A phone number on record is not a person reached. Each morning, the WhatsApp reminders also ask of every open session that has not been started whether anybody has ever written to that person's number about it. If not, they are sent the opening notice's own words once, as the day's one routine message and never as a second. Same template as `checkin_open`, so no new template. | `engagement/a-person-the-opening-never-reached.ts`, `grounds/grounds.cron.ts`, `whatsapp/a-message-outside-the-window.ts` |
+| `e2365578` | The funnel counts people as well as check-ins: invited, reached, verified, engaged, in a habit, and where those who stopped stand. | `engagement/the-activation-funnel.ts` |
+| `1482e052` | The record of a WhatsApp message is stamped by the application's clock, as the email record is, so the day's one-message count is the same count for both doors (found on the test bed). | `whatsapp/whatsapp.service.ts` |
+
+The lead's daily nudge (decision 120) is the other half of the piece and is in the section above ("Built in this work") only by reference: `6e6827a9`, `1c5417be`, `2bcf0f81`, `58a8b317`, `da21062e`, `a3aa2a6e`; `engagement/the-leads-daily-nudge.ts`.
+
+### Section 2, the ten bottlenecks
+
+| Participant state | State | Where it is built, or what is missing |
+| --- | --- | --- |
+| Added but never invited | BUILT | The invitation goes when the person is added (`grounds/grounds.service.ts`, `addParticipant`). One that waits goes on its own: on the person's first day (`grounds.cron.ts`, `inviteJoinersWhoStartToday`), when a seat frees, and when an admin accepts the check-in. Nothing waits for the lead. Those still not invited are now counted (`stuck.notInvited`, `e2365578`). |
+| Invited but not verified | PARTIAL | The reminders go on the lead's chase days, 3, 7 and 14 by default (`conversation/remind.service.ts`), with the link that signs the person in. Two days before the link lapses the person is told, and a lapsed link is a form that sends a fresh one (`participants/how-long-an-invite-lasts.ts`, `grounds.cron.ts` `tellThemBeforeAnInviteLapses`). Not built: a reminder that says what the person gains. The words of the reminder are fixed ("Your check-in for X is still open"); changing them changes every reminder to every person. |
+| Email invitation ignored | BUILT, for an open session | Once WhatsApp is on for the person's organisation and they have a number, the opening notice goes when the session opens, and the catch-up goes if it never reached them (`ec2408b5`). There is no separate "day 4" switch to WhatsApp. |
+| Number exists but WhatsApp was never sent | BUILT | `engagement/a-person-the-opening-never-reached.ts` (`ec2408b5`). It asks the send record, so it is true after a restart and a second welcome is not possible. Only for a session open for at least a day and at most three weeks. |
+| WhatsApp message failed | PARTIAL | A message that was refused or could not go is written down with its reason (`WhatsAppSend`) and does not count as reaching the person, so the catch-up tries again the next morning (`ec2408b5`). The invitation email goes at the same time, so another channel is already open. Not built: a failure Meta reports after it accepted the message. Groundwork does not read Meta's delivery statuses (sent, delivered, read, failed) at all; that needs two columns on `WhatsAppSend` and the webhook to read them, so a migration. |
+| Verified but never checked in | PARTIAL | The chase on the lead's days, and the value-first follow-up from the person's own record (`engagement/a-follow-up-from-their-own-record.ts`). Not built: a first message that asks one small question. The message is written as a proposed template, not submitted (`docs/whatsapp-templates.md`, `groundwork_first_question`). |
+| Started but abandoned | PARTIAL | What they said is kept. After three hours of quiet one reminder to carry on, at eleven hours the warning, and at twelve hours the clock closes it with what was said and the report follows (`whatsapp/a-check-in-left-halfway.ts`). The reminder is on WhatsApp for a session done there, and is off at release (`release.whatsappHalfwayMessages`). Not built: carrying on days later from the exact point. A closed session is finished with what was said. |
+| Completed one but never returned | PARTIAL | The next session opens with its notice; the weekly email from the person's own board (`engagement/the-participants-week.ts`); the follow-up from their own record. |
+| Regular participant becoming inactive | PARTIAL | The same, and the lead is told who has gone quiet (`engagement/who-has-gone-quiet.ts`). Not built: a message to the person that recognises what they gave. |
+| Repeatedly ignores messages | PARTIAL | The chase ends after the lead's last chase day and the lead is told it is hers now (`conversation/chasing-belongs-to-the-lead.ts`); each person has "stop these reminders" on the reminder, the email opt-out in Settings, and "not now" and "stop" on WhatsApp; and one routine message a day. Not built: fewer messages the more are ignored. It changes what leads rely on, so it needs Hafsah's yes. |
+
+### Section 3, the ten strategies
+
+| Strategy | State | Where, or why not |
+| --- | --- | --- |
+| A. Verification feels worthwhile, one tap | PARTIAL | One tap is built: the invitation link signs the person in with no password and no form (`MagicVerifyPage`, the join page). The benefit sentence is not, for the reason in the second row above. The spec's example calls the space private. The people in a check-in, including a manager, can read what a person says in it (CLAUDE.md, privacy), so Groundwork does not write "private". |
+| B. Activate existing numbers when WhatsApp goes live | BUILT | `ec2408b5`. Sent, delivered, failed, replied and opted out: sent, failed and opted out ("stop") are kept apart in the send record; replied is the person's own message (`WhatsAppInboundMessage`); delivered is not kept, see the failed row above. |
+| C. A reason to check in before asking for updates | NOT BUILT | The words are Hafsah's and need a template outside the 24 hours. Proposed, not submitted: `groundwork_first_question`. |
+| D. Unfinished conversations are the re-entry point | PARTIAL | As in the abandoned row. |
+| E. Personal ownership | PARTIAL | Their own promise said back (`a-follow-up-from-their-own-record.ts`, email and WhatsApp), their own board and weekly email. Not built: help to prepare for a responsibility, which is the conversation's work. |
+| F. The first check-in is very easy | NOT TOUCHED | That is the conversation and its prompts, which this piece does not change. |
+| G. Visible evidence that contributing matters | PARTIAL | The first-insight mail carries what the picture found (`engagement/the-first-insight.ts`). Not built: "since you raised X". Proposed, not submitted: `groundwork_since_you_last_wrote`. |
+| H. Recognition without rankings | NOT BUILT, on purpose | Recognition has to name a specific thing a person did and no comparison. It needs wording from Hafsah. |
+| I. Context-aware nudges | PARTIAL | The follow-up is triggered by the person's own record; the chase is on the lead's days. |
+| J. Learn what motivates each person | NOT BUILT, on purpose | The spec itself says to avoid invasive profiles. Nothing here learns a person. |
+
+### Sections 4 to 8
+
+| Part of the spec | State | Where, or why not |
+| --- | --- | --- |
+| 4. The sequence, day 0 to day 14 | PARTIAL | There is no fixed sequence. The lead's chase days (3, 7, 14 by default), the opening notice and the catch-up do the work, and every one of them reads the person's current state, so each stops by itself when the person acts. |
+| 5. Activation state tracking | BUILT | `theParticipantStages` in `engagement/the-activation-funnel.ts` (`e2365578`), read from rows that already exist; no new column. |
+| 5. Channel readiness | BUILT | The catch-up asks each morning, so WhatsApp becoming available or a number being added is noticed the next morning (`ec2408b5`). Email is always on. |
+| 5. Delivery reconciliation | PARTIAL | Email: sent, delivered, bounced and complained, from the Resend webhook (`email/resend-webhook.controller.ts`). WhatsApp: sent and failed. Delivered and read are not kept (see above). Replied is the person's own message. |
+| 5. Personalised message generation | PARTIAL | From the person's own record where there is one. Nothing is written by the model. |
+| 5. Conversation recovery | PARTIAL | As in the abandoned row. |
+| 5. Engagement memory (which prompts were answered, ignored or found useful) | NOT BUILT | Nothing records which message a person answered, and opens are deliberately not recorded (engagement spec section 35). It needs the link to carry its source. |
+| 5. Adaptive timing | NOT BUILT | The hours are fixed by the sweeps and quiet hours. Learning a person's hour is a profile of a person, which the spec warns against. |
+| 5. Nudge fatigue protection | BUILT | One routine message a person a day across both doors (`engagement/one-routine-message-a-day.ts`), made true on the test bed by `1482e052`. The less-the-more-ignored rule is not built (the last row of section 2). |
+| 5. Feedback and recognition | PARTIAL | As G and H. |
+| 5. Self-service controls | BUILT | The stop link on a reminder, the email opt-out in Settings, "not now" and "stop" on WhatsApp. A switch in Settings for WhatsApp is a screen and a small route, written for the screens in `docs/answers-from-engine.md`. |
+| 6. Reach, verification, first value, return, contribution, retention | PARTIAL | Reach, verification, first value (engaged), return and retention (in a habit, went quiet) are counted for people (`e2365578`), and the engagement mail by what became of it. Contribution (meaningful information) is not counted. Which invitation, channel or opening works best is not compared, because there are no variants to compare. The five reasons (unreachable, does not understand, sees no value, too busy, does not want to) are not told apart: nothing in the record says which. |
+| 7. WhatsApp as the natural entry point | BUILT | A reply to the opening notice, or START, goes straight into that check-in (decision 106 item 1); a number is not an identity, and what a person may read is checked the same way as in the app (`whatsapp/a-phone-number-is-not-an-identity.spec.ts`). |
+| 8. What to build first | | 1 BUILT (`ec2408b5`). 2 BUILT, see the second row of section 2. 3 PARTIAL. 4 PARTIAL. 5 PARTIAL. 6 PARTIAL. |
+
+### Left, and who decides
+
+1. The words for a first small question and for "since you raised X", and whether to submit the two proposed templates (`docs/whatsapp-templates.md`). Hafsah.
+2. Whether Groundwork writes "private" to a new participant (the spec's example does). It is not true of a check-in. Hafsah.
+3. Fewer messages the more are ignored. Hafsah's yes, because it changes what leads rely on.
+4. Meta's delivery statuses (delivered, read, failed after accepting): a migration and the webhook. Ready to build when asked.
+5. The screens: the back office usage tab shows the participant stages; Settings could hold a switch for WhatsApp; Today shows `GET /today/outstanding`. Written in `docs/answers-from-engine.md`.

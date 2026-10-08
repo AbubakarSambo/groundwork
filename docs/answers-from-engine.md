@@ -6748,3 +6748,40 @@ With these, every part of `theMonthBoard` has a section: the four lenses (`theFo
 - In a team member's check-in the engine takes off "...which is progress", "That is good progress", "I'm glad to hear that" and "That is the strongest kind of record entry", which the weekly words forbid.
 
 **The switch is still off by default.** The screens still draw `TheMonthBoard` (from `theMonthBoard`), `EndingPage` (from `theEndOfMonthRead`), the dedicated recommendations listing, and call `GET /entry/anchor-start` for `groundLabel`, `source` and `thePeopleStep` (all of which `POST /entry/opener` now serves). When they have moved, the default changes in one place (`theAnchorScenarioIsOn`).
+
+## From the engine workspace, 8 October (night): the lead's daily nudge, and participant activation, for the screens to draw
+
+### 1. `GET /today/outstanding`: what the nudge's link goes to (decision 120)
+
+Every lead is sent one message each morning, when something is outstanding, with a link "to see everything". The link is the Today page (`/today`). Today did not have those things, so the engine now serves them: `GET /api/v1/today/outstanding` answers `{ outstanding: null }` when the reader runs no check-in or nothing is outstanding, and otherwise:
+
+```json
+{ "outstanding": {
+  "needsYou": ["Amina's leave from Wednesday 14 October to Friday 16 October is waiting for you to approve or decline.", "Kofi is waiting on you for the pricing for Q4 since Thursday 8 October.", "You committed to “write up the Kisumu visit” by Friday 9 October, and it is three days late."],
+  "overdueOnYourTeam": ["Omar committed to “send the price list” by Tuesday 6 October, and it is six days late.", "..."],
+  "risks": ["The target “25 shops signed” in “Sales team, Q4” is behind. At the pace it has kept since session 1, it would be about 13 by the last session, short of the aim of 25.", "Bisi has been waiting on Omar for the price list since Monday 21 September.", "All three people in “Sales team, Q4” have not answered the latest check-in for more than a week."]
+} }
+```
+
+Each array holds whole sentences, already worded, in the order they should be read: in `needsYou` what waits for her to approve, then a decision she owes, then her own commitments that are late; in `overdueOnYourTeam` the most overdue first. Draw them as three lists under the headings "Needs you", "Overdue on your team" and "Risks", and leave a heading out when its list is empty. Do not rewrite the sentences. They are the same ones the message uses (the message shows at most three of each; this has every one). The check-in's name is in a sentence only when she runs more than one. It is for the lead's own check-ins only, so a reader who is not a lead gets `null`; it never names anybody as better or worse, and nothing here is a label on a person. A check-in about one person's performance, promotion or renewal is never in it. It is read on demand and is not stored, so opening it rebuilds nothing.
+
+### 2. The back office usage tab: people, not only check-ins
+
+The usage funnel (`GET /prompts/platform-funnel`, field `activation`) now also carries `participants`, counts only:
+
+```json
+"participants": {
+  "reached": { "added": 146, "invited": 141, "reached": 141, "verified": 146, "engaged": 134, "inAHabit": 1 },
+  "stuck": { "notInvited": 5, "invitedNotVerified": 0, "verifiedNeverStarted": 12, "startedNotFinished": 0, "answeredOnceNotReturned": 36, "wentQuiet": 97 }
+}
+```
+
+`reached` is how many people got as far as each step; `stuck` is where the people who stopped are standing now, and the six never overlap. Suggested words for the rows: "Added to a check-in", "Sent an invitation", "The invitation arrived", "Opened it and signed in", "Started a check-in", "Finished two or more, the latest in the last two weeks", and for the others "Added and never sent an invitation", "Invited and has not signed in", "Signed in and has not started", "Started and not finished", "Answered once and has not come back", "Answered twice or more and has gone quiet". Counts only: no name and no address is served, and this is for the Groundwork team, not for a customer.
+
+### 3. A switch for WhatsApp in Settings (screen, with a small route to follow)
+
+Today a person can stop messages on WhatsApp only by writing "stop" or "not now" to the number, and can stop the email we decide to send in Settings. The spec asks for one place for both. The Settings page could show "Messages on WhatsApp" with the same on and off the email one has. The engine side is one route that records the same thing "stop" and "start" record (`WhatsAppService.stopOrResume`). It is not built yet, so draw nothing until it is; this is the request. Who it is for: every person with a number.
+
+### 4. Nothing for the screens in the catch-up message
+
+A person who has a number and was never written to on WhatsApp about an open check-in now gets the opening notice's own words once, as a message on their phone. There is no screen for it and no setting; it follows the organisation's WhatsApp switch, the person's "stop" and the lead's choice to stop the chasing. It is described in `docs/whatsapp-templates.md` under `checkin_open`.

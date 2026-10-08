@@ -245,6 +245,27 @@ Whatever the first message is (an opening notice, an approval, a review, the dai
 - **A note for submitting:** the template has two blanks and its fixed words at both ends, which Meta's rules ask for. Meta may still ask for a sample: use the one above.
 - **If Meta refuses it for having too few fixed words:** Meta can refuse a template whose fixed words are short compared with its blanks, because the blanks then carry most of the message. This one has a long blank ({{2}} is a whole message), so that is possible. A longer fallback body is ready: "This is Groundwork, writing for {{1}} about your check-ins. {{2}} If this is not you, or you did not expect it, reply STOP and nothing more will be sent." It keeps the same two blanks in the same order, so nothing that fills them changes. **Where the code would change if Meta asks for it:** one line, the `groundwork_first_contact` entry (`TEMPLATES['first-contact']`) in `api/src/modules/whatsapp/a-message-outside-the-window.ts`, plus the sentence quoted in the header comment of `api/src/modules/whatsapp/the-first-message-to-a-number.ts` and the "What Amani reads" line above. The message that goes inside {{2}} is unchanged.
 
+## Proposed for participant activation (8 October). Not submitted, not in the code
+
+Hafsah's participant activation spec (`docs/participant-activation-spec.md`) asks for messages that Groundwork starts to a person who has never answered, and for ones that show a person that what they said was used. Where such a message would go outside the 24 hours, WhatsApp needs a template Meta has approved, and no new template is added without Hafsah. So, until she says yes, those messages go by email only, or not at all (see the section "Participant activation" in `docs/engagement-spec-status.md`). These two are written out so she can decide. Neither is in `a-message-outside-the-window.ts`, neither is in `THE_NAMES_TO_SUBMIT`, and nothing sends them.
+
+### `groundwork_first_question` (proposed, not submitted). For someone who is on a check-in and has never answered
+
+- **Category:** Utility. **Language:** en.
+- **Body:** Hi {{1}}, {{2}} added you to {{3}} on Groundwork. What is one thing you are focused on this week? You can answer here, and it takes about two minutes.
+- **Examples and sample values:** {{1}} Abigail. {{2}} Wairimu. {{3}} the operations team.
+- **Why:** the spec's strategies C and F: give a reason to answer before asking for an update, and make the first answer very small. It would go once, to someone verified or reachable on WhatsApp who has had the opening notice and has still not started, on the same day the spec calls day 7. It would be the day's one routine message. Where it cannot go on WhatsApp, the same words go by email.
+- **Checked against WhatsApp's rules:** the blanks are in order and none is next to another. The body starts with words and ends with words. It has three blanks and a fair amount of fixed text. The question may make Meta call it Marketing; if it does, the body to try is "Hi {{1}}, {{2}} added you to {{3}} on Groundwork, and your check-in is open. You can answer here, and it takes about two minutes."
+- **Not said, on purpose:** the spec's example calls the space "private". The people in a check-in, including a manager, can read what a person says in it (CLAUDE.md, privacy), so the words do not say private.
+
+### `groundwork_since_you_last_wrote` (proposed, not submitted). For someone who answered before and has gone quiet
+
+- **Category:** Utility. **Language:** en.
+- **Body:** Hi {{1}}, last time you wrote about {{2}}. Has anything changed since then? Your check-in for {{3}} is open, and you can answer here.
+- **Examples and sample values:** {{1}} Chidi. {{2}} supplier coordination taking longer than expected. {{3}} the sales team.
+- **Why:** the spec's strategy G, a person's own contribution said back to them. It is close to `anchor_checkin_follow_up`, which says it for a promise the person made and is already in the code and widened to every check-in (decision 109 item 10). This would say it for something they raised that is not a promise. {{2}} would come only from the person's own record, as that one does, and never from anybody else's words. If Hafsah thinks the follow-up on a promise is enough, this one is not needed.
+- **Checked against WhatsApp's rules:** the blanks are in order and none is next to another, and it starts and ends with words.
+
 ## Names no longer used
 
 `groundwork_session_ready`, `groundwork_check_in_opened` and `groundwork_check_in_nudge` were names in the code before decision 83. `checkin_open` replaces the first two. The third was for a check-in started and left, and is not needed: Groundwork already finishes a started check-in after 12 hours of quiet. None of the three needs submitting.
