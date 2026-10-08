@@ -25,7 +25,7 @@ import { yourRequestsApi } from '@/api/suites'
  * to prove that shared behaviour; it now proves the per-suite version (`offByKey`), and a second
  * test below proves the restored case: one suite 404s, the other two keep asking normally.
  */
-vi.mock('@/api/today', () => ({ todayApi: { get: vi.fn().mockResolvedValue({ count: 0, line: '', needs: [], comingUp: [] }) } }))
+vi.mock('@/api/today', () => ({ todayApi: { get: vi.fn().mockResolvedValue({ count: 0, line: '', needs: [], comingUp: [] }), outstanding: vi.fn().mockResolvedValue(null) } }))
 vi.mock('@/api/suites', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/api/suites')>()
   return { ...actual, yourRequestsApi: { leave: vi.fn(), spending: vi.fn(), hours: vi.fn() } }

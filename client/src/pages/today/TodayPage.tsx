@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
 import { todayApi, type Need } from '@/api/today'
+import { outstandingNotAlreadyShown } from './outstanding-not-already-shown'
 import { useAuthStore } from '@/stores/auth'
 import { Page, Stack, Greeting, Section, EdgeList, EdgeRow, Button, Note, Empty, ComingUp } from '@/components/gw/ui'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
@@ -34,6 +35,13 @@ import { todayGreetingLine } from '@/lib/the-greeting-line-does-not-claim-what-n
  * NOT HERE YET, because nothing in the product holds it: the message Groundwork writes first, "Since
  * yesterday" with the deal ladder, "Your deals", and the chief executive's company priorities. Each
  * waits for the part of the product that holds it (see docs/morning-report-ui.md, U.5).
+ *
+ * THE LEAD'S DAILY NUDGE'S OWN LINK (decision 120, GET /today/outstanding): three more lists, "Needs
+ * you", "Overdue on your team" and "Risks", every sentence already worded by the server. `null` for
+ * anybody who is not a lead, or who has nothing outstanding, so a member sees nothing new here. A
+ * heading whose list is empty is left out. A sentence "Needs you" shares with "What needs you" above
+ * it (same wording, in whole or in part) is left out of "Needs you", so nothing is said twice
+ * (outstanding-not-already-shown.ts).
  *
  * REBUILT FROM THE SHARED PARTS (group 2): `Greeting` for the big heading, in place of the old
  * `gw-t-greet`/`gw-today-line` classes; `Section` with its own `note` for "What needs you"; the
@@ -91,6 +99,10 @@ export function TodayPage() {
   const requestsLinkLabel = yourHours.isSuccess ? 'Your own requests' : 'Your own leave and spending requests'
   const grounds = useQuery({ queryKey: ['grounds'], queryFn: groundsApi.list, enabled: !!user && params.get('welcome') === '1', staleTime: 30_000 })
 
+  /* The lead's daily nudge's own link (decision 120): `null` for anybody who is not a lead, or who
+     has nothing outstanding - a member's query simply resolves to nothing drawn. */
+  const outstandingQuery = useQuery({ queryKey: ['today-outstanding'], queryFn: todayApi.outstanding, enabled: !!user, staleTime: 30_000 })
+
   const now = new Date()
   /* Signup asks for "Your name" in one field, stored whole as `firstName` (AuthPage.tsx), so a real
      signup ("Rukia Otieno") used to greet "Morning, Rukia Otieno". The prototype's greeting is a
@@ -111,6 +123,14 @@ export function TodayPage() {
       : n.action.to === '/suite/spend' ? '/suite/queue?suite=spend'
         : n.action.to
   const comingUp = data?.comingUp ?? []
+
+  /* The lead's daily nudge's own link (decision 120). Every sentence is already worded by the
+     server; "Needs you" leaves out anything "What needs you" already says, in whole or in part, so
+     nothing is said twice (outstanding-not-already-shown.ts). */
+  const outstanding = outstandingQuery.data ?? null
+  const outstandingNeedsYou = outstanding ? outstandingNotAlreadyShown(needs, outstanding.needsYou) : []
+  const overdueOnYourTeam = outstanding?.overdueOnYourTeam ?? []
+  const risks = outstanding?.risks ?? []
 
   return (
     <Page>
@@ -156,6 +176,37 @@ export function TodayPage() {
             {aSuiteIsOnForYou && <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/mine">{requestsLinkLabel}</Link></p>}
             <QueueLink userId={user?.id} />
           </Section>
+
+          {/* The lead's daily nudge's own link (decision 120): "Needs you", "Overdue on your team"
+              and "Risks", each left out while its own list is empty. `null` for anybody who is not
+              a lead, or who has nothing outstanding, so a member's Today is unaffected. */}
+          {outstandingNeedsYou.length > 0 && (
+            <Section heading="Needs you">
+              <EdgeList label="Needs you">
+                {outstandingNeedsYou.map((sentence) => (
+                  <EdgeRow key={sentence} kind="look" title={sentence} />
+                ))}
+              </EdgeList>
+            </Section>
+          )}
+          {overdueOnYourTeam.length > 0 && (
+            <Section heading="Overdue on your team">
+              <EdgeList label="Overdue on your team">
+                {overdueOnYourTeam.map((sentence) => (
+                  <EdgeRow key={sentence} kind="look" title={sentence} />
+                ))}
+              </EdgeList>
+            </Section>
+          )}
+          {risks.length > 0 && (
+            <Section heading="Risks">
+              <EdgeList label="Risks">
+                {risks.map((sentence) => (
+                  <EdgeRow key={sentence} kind="look" title={sentence} />
+                ))}
+              </EdgeList>
+            </Section>
+          )}
 
           {/*
             SCREEN FAULT 7: THE ADMIN CARD CAME FIRST ON A PHONE, NOT THE GREETING. On a single
