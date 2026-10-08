@@ -76,9 +76,14 @@ describe('a team named on the sign-up form has its trial before the link answers
     expect(order).toEqual(['before', 'the organisation exists', 'the trial rule has run', 'answered']);
   });
 
-  it('a team not named on the form is not given it here (its size is asked, or decided, elsewhere)', async () => {
-    const { svc, sizeSaid } = service({ ...waiting, orgName: null });
+  /* Changed 8 October (decision 121, item 3). This case used to say a blank name is "not given it here", which left the organisation with
+     no plan for ever ("Your organisation has no plan yet"). A blank name gets the trial like any other, while pricing.freeTrial is on. */
+  it('a team that left the name blank has it too, and the back office is told the sign-up never asked its size', async () => {
+    const { svc, order, sizeSaid } = service({ ...waiting, orgName: null });
+    const emitted = (svc as any).events.emit as jest.Mock;
     await svc.verifyEmail({ token: 'link' } as any);
-    expect(sizeSaid).toEqual([]);
+    expect(sizeSaid).toEqual([{ organizationId: 'o-tamu', said: 'fewer', line: 20 }]);
+    expect(order).toEqual(['the organisation exists', 'the trial rule has run']);
+    expect(emitted.mock.calls.find((c) => c[0] === GroundworkEvents.ORG_SIGNED_UP)?.[1]).toMatchObject({ namedOnTheForm: true });
   });
 });

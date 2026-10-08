@@ -148,7 +148,7 @@ export interface OrgSignedUpEvent {
   organizationId: string;
   organizationName: string;
   adminEmail: string;
-  /** True when the organisation was named on the sign-up form, which never asks the team's size. */
+  /** True when the organisation was made by a sign-up that never asks the team's size, whether it was named on the form or left blank (decision 121, item 3). */
   namedOnTheForm?: boolean;
 }
 

@@ -564,8 +564,8 @@ export class AuthService {
       const created = await this.prisma.$transaction(async (tx) => {
         /* The contact email is the admin's until they say otherwise - see the note on register. */
         const org = await tx.organization.create({ data: { name: orgName, slug, email: pending.email } });
-        /* Named on the sign-up form means the team's size was never asked, so billing applies the trial rule itself. */
-        this.signedUp(org, pending.email, !!(!onlySuggested && pending.orgName?.trim()));
+        /* A sign-up link that makes an organisation never asks the team's size, named or not (decision 121, item 3), so billing applies the trial rule itself. */
+        this.signedUp(org, pending.email, true);
         const u = await tx.user.create({
           data: {
             organizationId: org.id,
@@ -602,8 +602,8 @@ export class AuthService {
         return u;
       });
 
-      /* Named on the form: the trial is in place before the page saves the check-in it was holding. */
-      if (!onlySuggested && pending.orgName?.trim()) await this.theTrialIsGivenBeforeTheyGoOn(created.organizationId);
+      /* Named or left blank: the trial is in place before the page saves the check-in it was holding. */
+      await this.theTrialIsGivenBeforeTheyGoOn(created.organizationId);
 
       /* This link has just made the account and its organisation (U.2). */
       /* Chosen on "Where do you work?": on to the new organisation's Today, not back to where they came from. */
@@ -1183,7 +1183,7 @@ export class AuthService {
         user = await this.prisma.$transaction(async (tx) => {
           /* The contact email is the admin's until they say otherwise - see the note on register. */
           const organization = await tx.organization.create({ data: { name: orgName, slug, email } });
-          this.signedUp(organization, email);
+          this.signedUp(organization, email, true);
           const created = await tx.user.create({
             data: {
               organizationId: organization.id,
