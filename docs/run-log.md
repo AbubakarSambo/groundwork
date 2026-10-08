@@ -1344,3 +1344,28 @@ Faults, who reads them and where:
 | Admin and member | Today | The heading "Your own leave and spending requests" has nothing under it (F-27 still there). |
 
 Not seen rendered on the bed: the follow-up that names the finding, and the value-first message when a wait clears (neither came due). The 24 scenarios and the scorer were not part of this check.
+
+## Pieces 5, 6 and 7 on the test bed (8 October, late)
+
+**How it was run.** Test bed copy a (fresh `reset.sh a`, `gw_sweep_a`, one API on port 3201 built from `api/dist` at the head of `wip/release`, one jest at a time). The model is the real one (the local `api/.env` credentials). Nothing was sent to anybody. Two bed side effects, both on the bed's own database: a probing walk of every write route called a "turn off my own sign-in" route for five test people (turned back on with one `UPDATE`), and the closing-session check made "Sales team, Q4" run until the lead ends it and marked its next sessions final.
+
+**Context and resources through Ask, side by side with the old chat, as shipped (no switch row).** `api/journey/context-through-ask-side-by-side-with-the-old-chat.ts`: **18 of 18**.
+
+| Part | Reader | What was read or written | Result |
+| --- | --- | --- | --- |
+| The switch | Wanjiru, Miriam, Grace | With `{ "on": false }` Ask answers "I cannot answer that one yet." and the old chat answers. With the row deleted (the default) `GET /ask` serves Wanjiru `addsContext: true` and "You can also add context or documents to your check-ins here.", Miriam `false`, Grace (lead still there) `false`. | proved |
+| A line | Wanjiru | `DECISION \| EVERYONE \| we will drop the pilot`, identical rows from the old route and from Ask ("I have added the line to this check-in.") | identical |
+| A private note about Miriam | Wanjiru; Miriam | `NOTE \| LEAD_ONLY \| keeps missing the Friday call \| about Miriam`, identical; Miriam reads none of it | identical |
+| A paste | Wanjiru | the same kinds on the same people, nothing before the yes (the model words a line afresh each time, as before) | same kinds |
+| A short question for a person | Wanjiru | said back word for word and kept only on a yes, identical | identical |
+| A document | Wanjiru | said back and read through Ask; the yes writes rows | works |
+| Who may | Grace; Miriam | Grace refused while the lead is there in both, and may once the lead has left in both; Miriam refused by the old chat and Ask writes nothing for her | same |
+| The old chat switched off (`release.oldContextChat` `{ "on": false }`) | Wanjiru | the three routes answer 410: "Setting up a check-in now happens in Ask Tana 1791471179896, so open Ask Tana 1791471179896 from this check-in's Context and resources page and say what you want to add." Ask still writes the same row; `GET /ask` serves `oldContextChatIsOpen: false`; with the row deleted the old chat answers again | proved |
+
+**Closing session, open-ended.** Wairimu (lead) after "Sales team, Q4" was made to run until she ends it (`timelineDays` null): `POST /grounds/:id/closing-session` answered 201 with `participantsFlagged: 6`, the next sessions read `isFinal: true`, and pressing again changed nothing. Amani and Grace were refused in one sentence; a check-in that is not there answered 404 in one sentence.
+
+**The day check-ins land on (request 194).** Wairimu set Monday on the weekly check-in (200, `GET /grounds/:id` reads `cadenceAnchorDay: 1`), was refused 15 ("Choose a day of the week for the check-ins to land on, from Sunday to Saturday."), and cleared it with `null`; Amani was refused.
+
+**Refusals as people read them.** About 2,260 calls (149 read routes and 244 write routes, with made-up ids and empty bodies) as a new admin, a member, a lead, an admin and a member of an existing client: no 5xx, and every refusal one sentence. A broken body, a body that is too large, a route that does not exist and a missing sign-in each read as the sentences in `docs/answers-from-engine.md`, piece 6.
+
+**The existing users' check.** `journey/existing-clients-carry-on.spec.ts` against the local copy of the existing clients' database: 12 of 12 pass.
