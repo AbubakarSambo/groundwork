@@ -52,7 +52,16 @@ const spellOne = (n: number) => (n === 1 ? 'One' : String(n))
  * everywhere a person reads about one of these; "round" was the old, jargon word.
  */
 function roundsSentence(progress: Glance['progress']): string {
-  const { roundsDone, roundsPlanned } = progress
+  const { roundsPlanned } = progress
+  /*
+   * B-057: A COUNT THAT CAN NEVER PASS THE PLANNED NUMBER. E1 on Riverbank Trading's old data
+   * (docs/existing-users-check.md) found this board reading "9 sessions are done." on a check-in
+   * planned for 8 - the old data gave one person far more completed sessions than the check-in was
+   * ever planned to run, because it was put in with that person's own stray session numbers.
+   * `roundsDone` is clamped to the planned total here, the one place this sentence is built, so a
+   * check-in can never be reported as further along than its own plan allows.
+   */
+  const roundsDone = roundsPlanned ? Math.min(progress.roundsDone, roundsPlanned) : progress.roundsDone
   const verb = roundsDone === 1 ? 'is' : 'are'
   /* None done yet reads as a sentence, not "0 of the 12 sessions are done." */
   if (roundsDone === 0) return roundsPlanned ? `None of the ${roundsPlanned} sessions is done yet.` : 'No session is done yet.'

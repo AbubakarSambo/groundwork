@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { askApi, type AskBlock, type AskReply } from '@/api/ask'
 import { groundsApi } from '@/api/grounds'
@@ -37,6 +37,16 @@ import { Button } from './ui/Button'
  * only one composer now. The chip switches it into note mode: the placeholder becomes "Note
  * something for your next check-in…", the send button reads "Save", and what is typed goes to the
  * same private note endpoint GroundChat's own composer used, rather than to Ask Groundwork.
+ *
+ * RESTORED (nothing-removed-screens.md, item 1): live's `GroundChat.tsx` (lines 362 to 449) listed
+ * every note waiting for the person's next check-in, under "Waiting for your next check-in", with a
+ * way to delete one. That was lost when this card replaced `GroundChat` on this tab - the card could
+ * only add a note, never see or take one back. The list is restored here, in the same place live put
+ * it: above the composer, the last thing in the card before someone writes anything new. Only the
+ * viewer's own notes, ever - `groundsApi.myNotes` already scopes to the signed-in person on the
+ * server, so there is nothing further to filter here. Deleting asks first ("Delete this note?" /
+ * "Yes, delete it" / "Keep it"), the same shape `CheckInPeopleAndSetup.tsx` uses for deleting a
+ * check-in, rather than removing it on one click as live did.
  */
 
 /**
@@ -82,7 +92,26 @@ export function BetweenCheckIns({ groundLabel, nextOpensSaying, groundId, canCha
   const [exchanges, setExchanges] = useState<Exchange[]>([])
   const [draft, setDraft] = useState('')
   const [asking, setAsking] = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const qc = useQueryClient()
+
+  const { data: notes = [] } = useQuery({
+    queryKey: ['my-notes', groundId],
+    queryFn: () => groundsApi.myNotes(groundId),
+  })
+  // A note a session has already asked about belongs to that conversation, not to the pile still
+  // waiting for the next one.
+  const waitingNotes = notes.filter(n => !n.carriedIntoCheckInId)
+
+  const deleteNote = useMutation({
+    mutationFn: (noteId: string) => groundsApi.deleteMyNote(groundId, noteId),
+    onSuccess: () => {
+      setConfirmDeleteId(null)
+      qc.invalidateQueries({ queryKey: ['my-notes', groundId] })
+      toast.success('Deleted.')
+    },
+    onError: () => toast.error('That did not delete. Try again.'),
+  })
 
   const ask = async (message: string) => {
     const m = message.trim()
@@ -161,6 +190,33 @@ export function BetweenCheckIns({ groundLabel, nextOpensSaying, groundId, canCha
           {exchanges.map((ex, i) => (
             <Bubble key={i} mine={ex.mine}>{ex.text}</Bubble>
           ))}
+          {waitingNotes.length > 0 && (
+            <div style={{ marginTop: 4 }}>
+              <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 6 }}>
+                Waiting for your next check-in
+              </div>
+              {waitingNotes.map(n => (
+                <div key={n.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '9px 11px', marginBottom: 6 }}>
+                  <div style={{ flex: 1, fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.55, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0 }}>{n.text}</div>
+                  {confirmDeleteId === n.id ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 12, color: 'var(--gw-muted)' }}>Delete this note?</span>
+                      <Button kind="danger" size="small" disabled={deleteNote.isPending} onClick={() => deleteNote.mutate(n.id)}>
+                        {deleteNote.isPending ? 'Deleting…' : 'Yes, delete it'}
+                      </Button>
+                      <Button kind="secondary" size="small" onClick={() => setConfirmDeleteId(null)}>Keep it</Button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmDeleteId(n.id)}
+                      aria-label="Delete this note"
+                      style={{ background: 'none', border: 'none', color: 'var(--gw-muted)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0, fontFamily: 'inherit' }}
+                    >×</button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </ConversationCard>
       </div>
       {/* REVIEW ROUND 3, ITEM 4: REACHABLE DIRECTLY, NOT ONLY FROM INSIDE THE NOTE BOX - which

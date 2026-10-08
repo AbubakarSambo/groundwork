@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
 import { todayApi, type Need } from '@/api/today'
+import { outstandingNotAlreadyShown } from './outstanding-not-already-shown'
 import { useAuthStore } from '@/stores/auth'
 import { Page, Stack, Greeting, Section, EdgeList, EdgeRow, Button, Note, Empty, ComingUp } from '@/components/gw/ui'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
@@ -35,6 +36,13 @@ import { todayGreetingLine } from '@/lib/the-greeting-line-does-not-claim-what-n
  * yesterday" with the deal ladder, "Your deals", and the chief executive's company priorities. Each
  * waits for the part of the product that holds it (see docs/morning-report-ui.md, U.5).
  *
+ * THE LEAD'S DAILY NUDGE'S OWN LINK (decision 120, GET /today/outstanding): three more lists, "Needs
+ * you", "Overdue on your team" and "Risks", every sentence already worded by the server. `null` for
+ * anybody who is not a lead, or who has nothing outstanding, so a member sees nothing new here. A
+ * heading whose list is empty is left out. A sentence "Needs you" shares with "What needs you" above
+ * it (same wording, in whole or in part) is left out of "Needs you", so nothing is said twice
+ * (outstanding-not-already-shown.ts).
+ *
  * REBUILT FROM THE SHARED PARTS (group 2): `Greeting` for the big heading, in place of the old
  * `gw-t-greet`/`gw-today-line` classes; `Section` with its own `note` for "What needs you"; the
  * shared `EdgeList`/`EdgeRow` in place of `NeedsYouList`/`NeedsYouRow` (the same shape, one shared
@@ -65,22 +73,35 @@ export function TodayPage() {
    * (almost every brand-new one), a real failed request each, every time the 60-second cache went
    * stale - the same "screen fault 11" `stores/suites-known-off.ts` already exists to fix for the
    * queue read (AppShell.tsx). There is nowhere cheap to ask first, so the same remembered answer
-   * is read and written here too: once this session already knows every suite is off, these three
-   * stop asking until the page is reloaded.
+   * is read and written here too: once this session already knows a suite is off, that one stops
+   * asking until the page is reloaded.
+   *
+   * RESTORED (8 October, nothing-removed audit S2): PER SUITE, NOT ACROSS ALL THREE. B-002's first
+   * fix shared one flag for all three reads, so a single 404 from a suite that really was off (say
+   * time sheets) also silenced leave and spending for the rest of the session, once their own
+   * cached "on" answers went stale - losing the link entirely for an organisation with leave on and
+   * time sheets off. `offByKey` remembers each suite on its own, so a suite that has not 404'd
+   * keeps asking normally, and the link still hides only once every suite has actually said no.
    */
-  const suitesKnownOff = useSuitesKnownOffStore(s => s.off)
-  const setSuitesKnownOff = useSuitesKnownOffStore(s => s.setOff)
-  const yourLeave = useQuery({ queryKey: ['your-leave'], queryFn: yourRequestsApi.leave, enabled: !!user && !suitesKnownOff, retry: false, staleTime: 60_000 })
-  const yourSpending = useQuery({ queryKey: ['your-spending'], queryFn: yourRequestsApi.spending, enabled: !!user && !suitesKnownOff, retry: false, staleTime: 60_000 })
-  const yourHours = useQuery({ queryKey: ['your-hours'], queryFn: yourRequestsApi.hours, enabled: !!user && !suitesKnownOff, retry: false, staleTime: 60_000 })
+  const offByKey = useSuitesKnownOffStore(s => s.offByKey)
+  const setKeyOff = useSuitesKnownOffStore(s => s.setKeyOff)
+  const yourLeave = useQuery({ queryKey: ['your-leave'], queryFn: yourRequestsApi.leave, enabled: !!user && !offByKey.leave, retry: false, staleTime: 60_000 })
+  const yourSpending = useQuery({ queryKey: ['your-spending'], queryFn: yourRequestsApi.spending, enabled: !!user && !offByKey.spending, retry: false, staleTime: 60_000 })
+  const yourHours = useQuery({ queryKey: ['your-hours'], queryFn: yourRequestsApi.hours, enabled: !!user && !offByKey.hours, retry: false, staleTime: 60_000 })
   useEffect(() => {
     const notFound = (q: { isError: boolean; error: unknown }) => q.isError && (q.error as any)?.response?.status === 404
-    if (notFound(yourLeave) || notFound(yourSpending) || notFound(yourHours)) setSuitesKnownOff()
+    if (notFound(yourLeave)) setKeyOff('leave')
+    if (notFound(yourSpending)) setKeyOff('spending')
+    if (notFound(yourHours)) setKeyOff('hours')
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [yourLeave.isError, yourSpending.isError, yourHours.isError, setSuitesKnownOff])
+  }, [yourLeave.isError, yourSpending.isError, yourHours.isError, setKeyOff])
   const aSuiteIsOnForYou = yourLeave.isSuccess || yourSpending.isSuccess || yourHours.isSuccess
   const requestsLinkLabel = yourHours.isSuccess ? 'Your own requests' : 'Your own leave and spending requests'
   const grounds = useQuery({ queryKey: ['grounds'], queryFn: groundsApi.list, enabled: !!user && params.get('welcome') === '1', staleTime: 30_000 })
+
+  /* The lead's daily nudge's own link (decision 120): `null` for anybody who is not a lead, or who
+     has nothing outstanding - a member's query simply resolves to nothing drawn. */
+  const outstandingQuery = useQuery({ queryKey: ['today-outstanding'], queryFn: todayApi.outstanding, enabled: !!user, staleTime: 30_000 })
 
   const now = new Date()
   /* Signup asks for "Your name" in one field, stored whole as `firstName` (AuthPage.tsx), so a real
@@ -102,6 +123,14 @@ export function TodayPage() {
       : n.action.to === '/suite/spend' ? '/suite/queue?suite=spend'
         : n.action.to
   const comingUp = data?.comingUp ?? []
+
+  /* The lead's daily nudge's own link (decision 120). Every sentence is already worded by the
+     server; "Needs you" leaves out anything "What needs you" already says, in whole or in part, so
+     nothing is said twice (outstanding-not-already-shown.ts). */
+  const outstanding = outstandingQuery.data ?? null
+  const outstandingNeedsYou = outstanding ? outstandingNotAlreadyShown(needs, outstanding.needsYou) : []
+  const overdueOnYourTeam = outstanding?.overdueOnYourTeam ?? []
+  const risks = outstanding?.risks ?? []
 
   return (
     <Page>
@@ -147,6 +176,37 @@ export function TodayPage() {
             {aSuiteIsOnForYou && <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/mine">{requestsLinkLabel}</Link></p>}
             <QueueLink userId={user?.id} />
           </Section>
+
+          {/* The lead's daily nudge's own link (decision 120): "Needs you", "Overdue on your team"
+              and "Risks", each left out while its own list is empty. `null` for anybody who is not
+              a lead, or who has nothing outstanding, so a member's Today is unaffected. */}
+          {outstandingNeedsYou.length > 0 && (
+            <Section heading="Needs you">
+              <EdgeList label="Needs you">
+                {outstandingNeedsYou.map((sentence) => (
+                  <EdgeRow key={sentence} kind="look" title={sentence} />
+                ))}
+              </EdgeList>
+            </Section>
+          )}
+          {overdueOnYourTeam.length > 0 && (
+            <Section heading="Overdue on your team">
+              <EdgeList label="Overdue on your team">
+                {overdueOnYourTeam.map((sentence) => (
+                  <EdgeRow key={sentence} kind="look" title={sentence} />
+                ))}
+              </EdgeList>
+            </Section>
+          )}
+          {risks.length > 0 && (
+            <Section heading="Risks">
+              <EdgeList label="Risks">
+                {risks.map((sentence) => (
+                  <EdgeRow key={sentence} kind="look" title={sentence} />
+                ))}
+              </EdgeList>
+            </Section>
+          )}
 
           {/*
             SCREEN FAULT 7: THE ADMIN CARD CAME FIRST ON A PHONE, NOT THE GREETING. On a single

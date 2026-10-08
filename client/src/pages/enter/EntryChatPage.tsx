@@ -12,7 +12,7 @@ import { SCENARIO_LABELS, SCENARIO_GROUPS, scenarioLabel, SCENARIO_FACTS, CADENC
 import { groupOfCard } from '@/pages/grounds/CreateGroundPage'
 import { useSearchParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { entryApi } from '@/api/entry'
+import { entryApi, entryAnchorApi } from '@/api/entry'
 import { billingApi } from '@/api/billing'
 import { authApi } from '@/api/auth'
 import { PeoplePicker } from '@/components/gw/PeoplePicker'
@@ -24,7 +24,7 @@ import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { toast } from 'sonner'
 import AskYourTeamOneThing from './AskYourTeamOneThing'
 import { TheDoor } from './TheDoor'
-import { TheSetup, theDay, ANCHOR_PEOPLE_STEP_RULES, takeTheServedPeopleStep, THE_ANCHOR_FIRST_QUESTION, takeTheServedFirstQuestion, theAnchorStartSucceededForThisTab, takeTheServedGroundLabel } from './TheSetup'
+import { TheSetup, theDay, ANCHOR_PEOPLE_STEP_RULES, THE_ANCHOR_FIRST_QUESTION, takeTheServedFirstQuestion, rememberTheServedFirstQuestion, theAnchorStartSucceededForThisTab, rememberTheAnchorStartSucceeded } from './TheSetup'
 import type { ThePeopleStepRules } from '@/api/anchorShapes'
 import { TheLeadsReveal } from '@/components/gw/TheLeadsReveal'
 import { FillsInAsYouTalk, type WhatTheAnchorConversationKnows } from './FillsInAsYouTalk'
@@ -1337,6 +1337,53 @@ export function EntryChatPage() {
   const scenario = params.get('scenario') ?? ''
   const urlMode = params.get('mode') ?? ''
   /**
+   * THE ANCHOR'S OWN FRONT DOOR, NOW FOLDED INTO THE ORDINARY ENTRY CHAT (decision 114,
+   * docs/decisions-merged.md; docs/answers-from-engine.md, "8 October: decision 114, the anchor
+   * changes no screen"). `AnchorLandingPage.tsx` is gone: `/start/team` is only a redirect to
+   * `/start?scenario=HELP_TEAM_UNDERSTAND` (App.tsx), so this is now the one place that calls
+   * `GET /entry/anchor-start` - on a fresh arrival with the anchor's own scenario key in the
+   * address, the same call the landing page used to make before handing over to this page.
+   *
+   * `enabled` is false once `theAnchorStartSucceededForThisTab()` already reads true, so this
+   * calls the engine once per tab, not once per mount - the same "read, not taken" rule the
+   * confirmation flag always followed (TheSetup.tsx). `GET /entry/anchor-available` is no longer
+   * called from the client at all: a 404 here already means the switch is off, which is exactly
+   * what that call used to decide, and there is no longer a separate screen that needs to know
+   * the answer before anything else has been asked for.
+   */
+  const anchorStartQuery = useQuery({
+    queryKey: ['anchor-start-inline', params.get('source')],
+    queryFn: () => entryAnchorApi.start(params.get('source')),
+    enabled: scenario === 'HELP_TEAM_UNDERSTAND' && !theAnchorStartSucceededForThisTab(),
+    retry: false,
+  })
+  /**
+   * THE ANCHOR'S OPENING TEXT, FROM THE ORDINARY OPENER, LIKE ANY SCENARIO'S (decision 114;
+   * docs/answers-from-engine.md, "8 October (later): the anchor through the ordinary routes, route
+   * by route"). `POST /entry/opener` now answers for "Help my team understand" with the anchor's
+   * full opening - the hook's two sentences and then "Tell me what you are trying to get across."
+   * followed by its first question - while the switch is on; `GET /entry/anchor-start` above still
+   * carries what the opener does not (`groundLabel`, `source`, `thePeopleStep`), so that call stays.
+   * Fetched alongside it, gated the same way, so it settles before the intro turn below is seeded.
+   */
+  const anchorOpenerQuery = useQuery({
+    queryKey: ['anchor-opener-inline', params.get('source')],
+    queryFn: () => entryApi.opener('HELP_TEAM_UNDERSTAND', params.get('source') ?? undefined),
+    enabled: scenario === 'HELP_TEAM_UNDERSTAND' && !theAnchorStartSucceededForThisTab(),
+    retry: false,
+  })
+  /**
+   * WHILE THAT CALL IS STILL OUT, THE DOOR WAITS. `AnchorLandingPage.tsx` used to draw nothing at
+   * all until the switch answered (never a half-answered page); this page cannot draw nothing,
+   * since it is also the ordinary door for every other situation, so instead it simply does not
+   * seed the first onboarding turn (below) until this settles one way or the other. The door and
+   * the picker only ever show once `onboardingHistory` has a turn in it, so this is the same
+   * "nothing yet" as the old page, just inside the shared screen rather than a page of its own.
+   */
+  const anchorStartPending = scenario === 'HELP_TEAM_UNDERSTAND'
+    && !theAnchorStartSucceededForThisTab()
+    && (!anchorStartQuery.isFetched || !anchorOpenerQuery.isFetched)
+  /**
    * PIECE 25, "YES, SET IT UP" OPENS HERE PREFILLED (plan piece 25, docs/anchor-scenario-plan.md
    * section 5 row 9; docs/answers-from-engine.md, "Request 148 (1)"). BoardPage.tsx's "Groundwork
    * recommends" calls `POST /entry/draft-from-set-up` and navigates here with the answer as router
@@ -1735,7 +1782,11 @@ export function EntryChatPage() {
     queryFn: () => authApi.methods(),
     staleTime: 5 * 60 * 1000,
   })
-  const [cadenceAnchorDay] = useState<number | null>(null) // 0=Sun..6=Sat for "every Monday"
+  /* 0=Sun..6=Sat for "every Monday", or a day of the month for "on the 15th". RESTORED
+     (nothing-removed-screens.md item 2): live let the lead choose this ("On which day?" /
+     "On which day of the month?"); this was fixed at null with no setter until `TheSetup`'s own
+     picker was restored below. */
+  const [cadenceAnchorDay, setCadenceAnchorDay] = useState<number | null>(null)
   /* Which days this team works. Empty means nobody said, which is not the same as every day - and
      it is never pre-set to Monday-Friday, because that is one region's office week rather than a
      fact about anybody's. */
@@ -1913,14 +1964,6 @@ export function EntryChatPage() {
       setShowNewScenarioConflict(true)
     } else {
       clearEntrySession()
-      /*
-       * THE SERVED PEOPLE STEP, PICKED UP ONCE (item 2). Only the anchor landing page's button
-       * leaves anything here, so this is a no-op for every other way of arriving at this page.
-       */
-      const servedPeopleStep = takeTheServedPeopleStep()
-      if (servedPeopleStep) setThePeopleStepRules(servedPeopleStep)
-      const servedGroundLabel = takeTheServedGroundLabel()
-      if (servedGroundLabel) setAnchorGroundLabel(servedGroundLabel)
       /*
        * THE SCENARIO KEY IS NOT A DESCRIPTION OF ANYTHING.
        *
@@ -2107,8 +2150,14 @@ export function EntryChatPage() {
     },
     onError: (_err, msgs) => {
       setLoading(false)
+      /* B-052: `msgs` is `[...history, userTurn]`, so the turn that failed stays on screen as a
+         sent message rather than vanishing - and `send()` already called `persistCheckin` with it
+         before this mutation ran, so it survives a reload too. The toast used to say only "Message
+         failed. Try again.", a clipped label that never told the reader their words were safe (the
+         prototype's own "Not saved" state, states.txt, always pairs the failure with that). Said
+         plainly and truthfully here, the same way ChatPage's own failed-send toast already does. */
       setHistory(msgs)
-      toast.error('Message failed. Try again.')
+      toast.error('That did not send. What you wrote is still here, try again.')
     },
   })
 
@@ -2528,22 +2577,61 @@ export function EntryChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase])
 
+  /**
+   * WHAT `GET /entry/anchor-start` ANSWERED, FOLDED STRAIGHT INTO THIS DRAFT'S OWN STATE (decision
+   * 114). This used to be `AnchorLandingPage.tsx` writing `sessionStorage` for this page to read on
+   * its next, separate mount; now it is this page's own call settling, so the served values are set
+   * directly. `rememberTheAnchorStartSucceeded` and `rememberTheServedFirstQuestion` still go
+   * through `TheSetup.tsx`'s sessionStorage helpers - `theAnchorStartSucceededForThisTab()` is read
+   * from several places below, and `takeTheServedFirstQuestion()` is what the intro turn, just
+   * below, still reads - so neither needed to change shape, only who calls them.
+   *
+   * `thePeopleStep` NOW COMES FROM THE OPENER, NOT FROM HERE (request 196). `POST /entry/opener`
+   * serves its own `thePeopleStep` (`entry.service.ts`, `openerWithItsRules`), so this reads
+   * `anchorOpenerQuery.data?.thePeopleStep` instead of `started.thePeopleStep` - one call answering
+   * for the field it actually carries, rather than two calls disagreeing about which one is read.
+   * `anchor-start` is still called for `groundLabel` alone: the opener's own reply does not carry
+   * it (checked against `entry.service.ts` directly - the doc note claiming otherwise is ahead of
+   * what the route actually sends), so there is nowhere else to read it from yet. See the request
+   * written to the engine asking for `groundLabel` on the opener too, so this call can retire.
+   */
   useEffect(() => {
-    if (phase !== 'onboarding') return
+    const started = anchorStartQuery.data
+    if (!started) return
+    rememberTheAnchorStartSucceeded()
+    if (started.groundLabel) setAnchorGroundLabel(started.groundLabel)
+    rememberTheServedFirstQuestion(started.firstQuestion)
+  }, [anchorStartQuery.data])
+
+  useEffect(() => {
+    const peopleStep = anchorOpenerQuery.data?.thePeopleStep
+    if (peopleStep) setThePeopleStepRules(peopleStep)
+  }, [anchorOpenerQuery.data])
+
+  useEffect(() => {
+    if (phase !== 'onboarding' || anchorStartPending) return
     /*
      * FAULT 1 (the anchor's own first question, no door). An anchor arrival (`?scenario=
      * HELP_TEAM_UNDERSTAND`, with the switch confirmed on - `anchorConversationOpensDirectly()`,
      * above) opens on the engine's own opening line, never the ordinary picker's
-     * `THE_OPENING_QUESTION`. `takeTheServedFirstQuestion()` reads what `AnchorLandingPage.tsx`
-     * carried across from `GET /entry/anchor-start` (request 163 item 9); until the engine serves
-     * it, `THE_ANCHOR_FIRST_QUESTION` is the plan's own wording (docs/anchor-scenario-plan.md
-     * section 6). This is the ONLY assistant turn ever placed in this draft's history for an anchor
-     * arrival - nothing below sends a word on the lead's behalf; she types the first answer herself,
-     * into the ordinary composer, which carries `scenario` (this page's own URL-derived constant)
-     * straight through `sendOnboarding` to `entryApi.onboardStream`'s `scenario` field (see
-     * `atTheDoor`, below, for where the door itself is skipped).
+     * `THE_OPENING_QUESTION`. DECISION 114: that opening line is now drawn from `POST /entry/
+     * opener`, the same route any scenario's would be, fetched just above as `anchorOpenerQuery` -
+     * its `reply` is the anchor's full opening (the hook's two sentences, then "Tell me what you are
+     * trying to get across." and its first question), so it comes first. `takeTheServedFirstQuestion
+     * ()` (what an earlier `anchor-start` effect remembered, request 163 item 9) and `THE_ANCHOR_
+     * FIRST_QUESTION` (the plan's own wording, docs/anchor-scenario-plan.md section 6) stay underneath
+     * it, only reached if the opener call itself failed - the opener covers the first question's
+     * content, but not a dropped request. This is the ONLY assistant turn ever placed in this draft's
+     * history for an anchor arrival - nothing below sends a word on the lead's behalf; she types the
+     * first answer herself, into the ordinary composer, which carries `scenario` (this page's own
+     * URL-derived constant) straight through `sendOnboarding` to `entryApi.onboardStream`'s `scenario`
+     * field (see `atTheDoor`, below, for where the door itself is skipped). `anchorStartPending`
+     * (above) holds this off until both the engine's calls have settled one way or the other, so a
+     * fresh anchor arrival never seeds `THE_OPENING_QUESTION` for a moment and then has to replace it.
      */
-    const INTRO = anchorConversationOpensDirectly() ? (takeTheServedFirstQuestion() ?? THE_ANCHOR_FIRST_QUESTION) : THE_OPENING_QUESTION
+    const INTRO = anchorConversationOpensDirectly()
+      ? (anchorOpenerQuery.data?.reply || takeTheServedFirstQuestion() || THE_ANCHOR_FIRST_QUESTION)
+      : THE_OPENING_QUESTION
     // If URL params pre-populate, inject as first user message
     if (urlInitial) {
       setOnboardingHistory(prev => {
@@ -2557,7 +2645,7 @@ export function EntryChatPage() {
     } else {
       setOnboardingHistory(prev => (prev.length > 0 ? prev : [{ role: 'assistant', content: INTRO }]))
     }
-  }, [phase])
+  }, [phase, anchorStartPending])
 
 // Check-in send
   function send(text?: string) {
@@ -2660,8 +2748,8 @@ export function EntryChatPage() {
          * is the ground's name, and a blank one falls back to "A check-in at <organisation>". An
          * anchor draft never reaches that fallback and never shows the aim here either: the title,
          * sidebar, invitation and Today all read the one served sentence ("Help my team
-         * understand") - `anchorGroundLabel`, carried from `/entry/anchor-start` the same way the
-         * people step and the first question are (see `takeTheServedGroundLabel` in TheSetup.tsx).
+         * understand") - `anchorGroundLabel`, set from `/entry/anchor-start`'s own `groundLabel`
+         * the moment that call resolves (the `anchor-start` effect, above).
          */
         groundLabel: isAnchorDraft()
           ? anchorGroundLabel
@@ -3122,7 +3210,7 @@ export function EntryChatPage() {
     if (cadence === 'ONE_TIME') return 1
     if (cadence === 'SEQUENTIAL') return sessions
     if (lastCheckInBy) {
-      const all = whenTheCheckInsLand({ cadence, anchorDay: null, startsAt: checkInBy ? new Date(`${checkInBy}T00:00:00`) : null, workingDays, howMany: 400 })
+      const all = whenTheCheckInsLand({ cadence, anchorDay: cadenceAnchorDay, startsAt: checkInBy ? new Date(`${checkInBy}T00:00:00`) : null, workingDays, howMany: 400 })
       const n = all.filter((d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` <= lastCheckInBy).length
       return Math.max(1, n)
     }
@@ -3647,7 +3735,7 @@ export function EntryChatPage() {
                      */
                     if (cadence !== 'ONE_TIME' && cadence !== 'SEQUENTIAL') {
                       const landings = whenTheCheckInsLand({
-                        cadence, anchorDay: null,
+                        cadence, anchorDay: cadenceAnchorDay,
                         startsAt: checkInBy ? new Date(`${checkInBy}T00:00:00`) : null,
                         workingDays, howMany: n,
                       })
@@ -4746,20 +4834,25 @@ export function EntryChatPage() {
               {/*
                 PIECE 9: THE LEAD'S REVEAL, "Help my team understand" (plan section 5, row 3;
                 docs/answers-from-engine.md, "Request 149 (1 of 6)"). Served now, on `/entry/report`,
-                for an anchor draft's own report. Drawn only for an anchor draft, and only once the
-                engine has actually sent one - `sessionReport?.leadsReveal` is still `undefined` for
-                every other situation. Placed as the set-up screen's own last step, right before the
-                schedule and the people step, following the plan's "if unclear, show it on the
-                set-up screen's last step for an anchor draft".
+                for an anchor draft's own report - no other situation's report carries a `leadsReveal`
+                key at all. DECISION 114 (docs/decisions-merged.md; "the anchor changes no screen"):
+                this is drawn whenever the engine sends one, for any scenario, exactly like
+                `IdeaOffer`/`RequestOffer` on the check-in page - `TheLeadsReveal` itself draws
+                nothing when `reveal` is undefined (see its own file), so the `isAnchorDraft()` gate
+                this used to carry was a UI branch doing the same job the data already does, and is
+                gone. Placed as the set-up screen's own last step, right before the schedule and the
+                people step, following the plan's "if unclear, show it on the set-up screen's last
+                step for an anchor draft".
               */}
-              {isAnchorDraft() && <TheLeadsReveal reveal={sessionReport?.leadsReveal} />}
+              <TheLeadsReveal reveal={sessionReport?.leadsReveal} />
 
               {/* U.6: the prototype's setup (setup.txt). The start date is still what the invitations wait for. */}
               <TheSetup
                 cadence={cadence}
                 cadenceChosen={cadenceChosen}
                 onCadence={(c) => { setCadence(c); setCadenceChosen(true) }}
-                anchorDay={null}
+                anchorDay={cadenceAnchorDay}
+                onAnchorDay={setCadenceAnchorDay}
                 workingDays={workingDays}
                 daysPicker={<WhichDaysTheyWork value={workingDays} onChange={setWorkingDays} />}
                 startsOn={checkInBy}

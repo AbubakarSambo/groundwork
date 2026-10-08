@@ -39,43 +39,19 @@ export const ANCHOR_PEOPLE_STEP_RULES: ThePeopleStepRules = {
 }
 
 /**
- * HOW THE SERVED PEOPLE STEP TRAVELS FROM THE LANDING PAGE TO THE ENTRY CHAT.
- *
- * `AnchorLandingPage.tsx` is the one caller of `GET /entry/anchor-start`; its button then opens the
- * ordinary entry chat at `/start?scenario=...`, a fresh page load. `sessionStorage` (not the saved
- * draft itself, which does not exist until the chat has started) is the plain way to carry the
- * served `ThePeopleStepRules` across that one navigation - written here, read once by
- * `EntryChatPage.tsx` on a fresh mount, and folded into the draft's own session state from then on
- * so a reload keeps it.
- */
-export const ANCHOR_PEOPLE_STEP_SESSION_KEY = 'gw-anchor-people-step'
-
-export function rememberTheServedPeopleStep(rules: ThePeopleStepRules | undefined) {
-  if (!rules) return
-  try { sessionStorage.setItem(ANCHOR_PEOPLE_STEP_SESSION_KEY, JSON.stringify(rules)) } catch { /* best effort */ }
-}
-
-/** Read once, then forget - the draft's own session state carries it from here on. */
-export function takeTheServedPeopleStep(): ThePeopleStepRules | undefined {
-  try {
-    const raw = sessionStorage.getItem(ANCHOR_PEOPLE_STEP_SESSION_KEY)
-    if (!raw) return undefined
-    sessionStorage.removeItem(ANCHOR_PEOPLE_STEP_SESSION_KEY)
-    return JSON.parse(raw) as ThePeopleStepRules
-  } catch {
-    return undefined
-  }
-}
-
-/**
- * THE ANCHOR'S FIRST QUESTION, THE SAME WAY THE PEOPLE STEP TRAVELS (request 163, item 9).
+ * THE ANCHOR'S FIRST QUESTION, REMEMBERED ACROSS THE ONE RE-RENDER IT TAKES TO ARRIVE (request 163,
+ * item 9; decision 114, docs/decisions-merged.md).
  *
  * The plan's own wording (docs/anchor-scenario-plan.md section 6; docs/anchor-scenario.md): "the
- * first psychological trigger: recognition". This is the FALLBACK ONLY - `AnchorLandingPage.tsx`
- * remembers the engine's served `firstQuestion` (`GET /entry/anchor-start`) across the one
- * navigation into `EntryChatPage.tsx`, exactly as it does for `ThePeopleStepRules` above; this
- * constant is drawn only when nothing was served (the engine has not built it yet, an older link,
- * or the call failed).
+ * first psychological trigger: recognition". This is the FALLBACK ONLY. `EntryChatPage.tsx` is now
+ * the one caller of `GET /entry/anchor-start` (it used to be a separate page, `AnchorLandingPage
+ * .tsx`, handing off to this one on a fresh page load - decision 114 folded that front door into the
+ * ordinary entry chat, so there is no second page to hand off to any more). `thePeopleStep` and
+ * `groundLabel`, served on the same call, are set directly into this page's own state now that
+ * caller and user are the same component; `firstQuestion` still goes through `sessionStorage`
+ * because it has to outlive the render in which the call resolves and land in the ONE onboarding
+ * turn this page ever seeds - the same reason the confirmation flag below also reads from
+ * `sessionStorage` rather than a plain variable.
  */
 export const THE_ANCHOR_FIRST_QUESTION =
   "What's happening right now that makes you wish your team saw more of what you see?"
@@ -100,30 +76,13 @@ export function takeTheServedFirstQuestion(): string | undefined {
 }
 
 /**
- * THE ANCHOR'S OWN SITUATION NAME, THE SAME WAY THE PEOPLE STEP AND FIRST QUESTION TRAVEL (request
- * 144 (2) and (3)): `GET /entry/anchor-start` answers `groundLabel: "Help my team understand"`, and
- * that served sentence - not `SCENARIO_LABELS`' own entry for `HELP_TEAM_UNDERSTAND`, which is
- * missing its "my" - is what an anchor draft shows wherever it names its own situation (the side
- * panel, and anywhere else `EntryChatPage.tsx` would otherwise have reached for a label map).
+ * THE ANCHOR'S OWN SITUATION NAME (request 144 (2) and (3)): `GET /entry/anchor-start` answers
+ * `groundLabel: "Help my team understand"`, which `EntryChatPage.tsx` now sets straight into its own
+ * `anchorGroundLabel` state the moment the call resolves (decision 114) - not `SCENARIO_LABELS`' own
+ * entry for `HELP_TEAM_UNDERSTAND`, which is missing its "my". That served sentence is what an
+ * anchor draft shows wherever it names its own situation (the side panel, and anywhere else
+ * `EntryChatPage.tsx` would otherwise have reached for a label map).
  */
-const ANCHOR_GROUND_LABEL_SESSION_KEY = 'gw-anchor-ground-label'
-
-export function rememberTheServedGroundLabel(label: string | undefined) {
-  if (!label) return
-  try { sessionStorage.setItem(ANCHOR_GROUND_LABEL_SESSION_KEY, label) } catch { /* best effort */ }
-}
-
-/** Read once, then forget - the draft's own session state carries it from here on. */
-export function takeTheServedGroundLabel(): string | undefined {
-  try {
-    const raw = sessionStorage.getItem(ANCHOR_GROUND_LABEL_SESSION_KEY)
-    if (!raw) return undefined
-    sessionStorage.removeItem(ANCHOR_GROUND_LABEL_SESSION_KEY)
-    return raw
-  } catch {
-    return undefined
-  }
-}
 
 /**
  * WHETHER `GET /entry/anchor-start` ACTUALLY SUCCEEDED FOR THIS TAB (plan piece 2; the plan's "do it
@@ -133,9 +92,9 @@ export function takeTheServedGroundLabel(): string | undefined {
  * moment it sees `?scenario=HELP_TEAM_UNDERSTAND`, which is only right while `release.anchorScenario`
  * is really on: a STALE such link, kept from before Hafsah switches it off, must fall back to
  * today's ordinary door rather than open a conversation the engine no longer runs. `anchor-start`
- * answers 404 whenever the switch is off (`AnchorLandingPage.tsx`'s own `isError`), so whether it
- * succeeded is the plan's own stand-in for the switch, carried the same way the people step and the
- * first question are. This is read, not taken: every place that opens the door checks it fresh,
+ * answers 404 whenever the switch is off, so whether it succeeded is the plan's own stand-in for the
+ * switch, carried the same way the first question is. This is read, not taken: every place that
+ * opens the door checks it fresh,
  * rather than consuming it once into component state, so it cannot go stale depending on which of
  * two effects happens to run first on the same mount (`takeTheServedFirstQuestion` above is
  * genuinely single-use - the onboarding history it seeds is itself then kept across reloads - but a
@@ -237,6 +196,12 @@ function Choice({ on, onClick, children }: { on: boolean; onClick: () => void; c
   )
 }
 
+/** A small field label for the anchor-day controls, matching the look of the picker labels this
+    screen already uses, without requiring an `htmlFor` for the day-of-week button group. */
+function AnchorLabel({ htmlFor, children }: { htmlFor?: string; children: React.ReactNode }) {
+  return <label htmlFor={htmlFor} style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)' }}>{children}</label>
+}
+
 function Section({ title, help, children }: { title: string; help?: string; children: React.ReactNode }) {
   return (
     <section aria-label={title} style={{ marginBottom: 16 }}>
@@ -256,6 +221,9 @@ export function TheSetup(p: {
   cadenceChosen: boolean
   onCadence: (c: Cadence) => void
   anchorDay: number | null
+  /** Restored (nothing-removed-screens.md item 2): the day check-ins land on - a weekday for a
+      weekly rhythm, a day of the month for a monthly one. Optional on every page that offers it. */
+  onAnchorDay?: (day: number | null) => void
   workingDays: number[]
   startsOn: string
   onStartsOn: (s: string) => void
@@ -291,12 +259,63 @@ export function TheSetup(p: {
         {!p.cadenceChosen && <p style={{ ...note, margin: '0 0 8px', color: 'var(--gw-amber-t)' }}>{THE_SETUP.notChosen(cadenceLabel(p.cadence as never))}</p>}
         <div style={row}>
           {HOW_OFTEN.map(([c, label]) => (
-            <Choice key={c} on={p.cadenceChosen && p.cadence === c} onClick={() => p.onCadence(c)}>{label}</Choice>
+            <Choice key={c} on={p.cadenceChosen && p.cadence === c} onClick={() => {
+              p.onCadence(c)
+              /* A day picked for one rhythm means something different, or nothing, in another - a
+                 day of the month chosen for "Monthly" is meaningless once the choice moves to
+                 "Weekly". Cleared here, centrally, whenever the rhythm actually changes. */
+              if (p.onAnchorDay && c !== p.cadence) p.onAnchorDay(null)
+            }}>{label}</Choice>
           ))}
         </div>
-        {/* One day picker only (U.6 review): a second "On which day?" for a weekly rhythm could say
-            Saturday while the days said weekdays only, and the two together turned weekly into
-            fortnightly. The start date sets the weekday, as on the check-in's own Setup. */}
+        {/*
+          RESTORED (nothing-removed-screens.md item 2): live offered "On which day?" for a weekly or
+          fortnightly rhythm and "On which day of the month?" for a monthly one
+          (EntryChatPage.tsx lines 4017 and 4050 on live), sent as `cadenceAnchorDay`. It was removed
+          here (U.6 review, "one day picker") because a second, disconnected picker could say Saturday
+          while "On which days" said weekdays only - but `whenTheCheckInsLand` already folds an anchor
+          day and the working days together correctly (it lands on the anchor day, then moves forward
+          to the next working day), so the two pickers do not disagree; the preview below says exactly
+          what will happen either way. Optional, and the server keeps whatever a check-in already has
+          when nothing is picked. */}
+        {p.cadenceChosen && (p.cadence === 'WEEKLY' || p.cadence === 'FORTNIGHTLY') && p.onAnchorDay && (
+          <div style={{ marginTop: 10 }}>
+            <AnchorLabel>Which day of the week should check-ins open? (optional)</AnchorLabel>
+            <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
+              {DAY_SHORT.map((d, i) => (
+                <button
+                  key={d}
+                  type="button"
+                  aria-pressed={p.anchorDay === i}
+                  title={DAY_NAMES[i]}
+                  onClick={() => p.onAnchorDay!(p.anchorDay === i ? null : i)}
+                  style={{
+                    flex: 1, padding: '6px 0', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                    border: `1px solid ${p.anchorDay === i ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
+                    background: p.anchorDay === i ? 'var(--gw-blue-bg)' : 'white',
+                    color: p.anchorDay === i ? 'var(--gw-navy)' : 'var(--gw-muted)',
+                  }}
+                >{d}</button>
+              ))}
+            </div>
+          </div>
+        )}
+        {p.cadenceChosen && p.cadence === 'MONTHLY' && p.onAnchorDay && (
+          <div style={{ marginTop: 10 }}>
+            <AnchorLabel htmlFor="cadence-anchor-day-of-month">Which day of the month should check-ins open? (optional)</AnchorLabel>
+            <select
+              id="cadence-anchor-day-of-month"
+              value={p.anchorDay ?? ''}
+              onChange={(e) => p.onAnchorDay!(e.target.value ? Number(e.target.value) : null)}
+              style={{ width: '100%', marginTop: 6, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', color: p.anchorDay != null ? 'var(--gw-text)' : 'var(--gw-muted)' }}
+            >
+              <option value="">No fixed day</option>
+              {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
+                <option key={day} value={day}>{day}{day === 1 ? 'st' : day === 2 ? 'nd' : day === 3 ? 'rd' : 'th'} of the month</option>
+              ))}
+            </select>
+          </div>
+        )}
       </Section>
 
       {/* The days are the product's one day picker, WhichDaysTheyWork, handed in by the page, so the

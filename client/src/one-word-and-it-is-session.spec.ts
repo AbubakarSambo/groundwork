@@ -82,7 +82,11 @@ describe('one word and it is session', () => {
      * `${openRound}` in a template string rather than `{openRound}` as a JSX child - the same
      * word, "session", not "round", said the same way, just no longer inside a `<span>`.
      */
-    /* F-18: the sentence is written once, in lib/how-many-checked-in.ts, and the header calls it. */
-    expect(SURFACES['the check-in header']).toContain('howManyCheckedInSentence(roundDone, total, openRound)')
+    /* F-18: the sentence is written once, in lib/how-many-checked-in.ts, and the header calls it.
+       UPDATED (B-053): the call now reads `clockRound`/`clockRoundDone`, the session
+       `ground.sessionClock.says` itself names, rather than the page's own `openRound` - the two
+       used to disagree the moment the lead had finished a session the server still called
+       current. Still "session", never "round". */
+    expect(SURFACES['the check-in header']).toContain('howManyCheckedInSentence(clockRoundDone, total, clockRound)')
   })
 })

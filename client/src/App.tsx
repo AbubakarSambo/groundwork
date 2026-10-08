@@ -18,7 +18,6 @@ import { GoogleCallbackPage } from '@/pages/auth/GoogleCallbackPage'
 import { ChoosePasswordPage } from '@/pages/auth/ChoosePasswordPage'
 import { GoogleFailedPage } from '@/pages/auth/GoogleFailedPage'
 import { EntryChatPage } from '@/pages/enter/EntryChatPage'
-import { AnchorLandingPage } from '@/pages/enter/AnchorLandingPage'
 import { ChatPage } from '@/pages/chat/ChatPage'
 import SessionReportPage from '@/pages/report/SessionReportPage'
 import RoundReportPage from '@/pages/report/RoundReportPage'
@@ -34,6 +33,23 @@ function KeepTheQuery({ to }: { to: string }) {
 function ChatRedirect() {
   const { checkInId } = useParams()
   return <Navigate to={`/checkin/${checkInId}`} replace />
+}
+
+/**
+ * `/start/team` KEEPS WORKING, DECISION 114 (docs/decisions-merged.md). Links already sent (on
+ * WhatsApp, LinkedIn, email) still carry people here; this just redirects into the ordinary entry
+ * chat with the anchor's own scenario key, keeping whatever else was on the address (a `?source=`
+ * mark, say) - `/start/team?x=1` lands on `/start?scenario=HELP_TEAM_UNDERSTAND&x=1`. A `scenario`
+ * already on the address is replaced: this door only ever means the one scenario.
+ */
+export function AnchorTeamRedirect() {
+  const { search, hash } = useLocation()
+  const rest = new URLSearchParams(search)
+  rest.delete('scenario')
+  const query = new URLSearchParams()
+  query.set('scenario', 'HELP_TEAM_UNDERSTAND')
+  for (const [key, value] of rest) query.append(key, value)
+  return <Navigate to={`/start?${query.toString()}${hash}`} replace />
 }
 import { GroundsListPage } from '@/pages/grounds/GroundsListPage'
 import { TodayPage } from '@/pages/today/TodayPage'
@@ -61,6 +77,7 @@ import { AskPage } from '@/pages/ask/AskPage'
 import { GroundParticipantPage } from '@/pages/grounds/GroundParticipantPage'
 import { GroundPage } from '@/pages/grounds/GroundPage'
 import { ReportPage } from '@/pages/report/ReportPage'
+import WeeklyReportPage from '@/pages/report/WeeklyReportPage'
 import { BoardPage } from '@/pages/board/BoardPage'
 import EndingPage from '@/pages/grounds/EndingPage'
 import { TeamBoardsPage } from '@/pages/boards/TeamBoardsPage'
@@ -404,7 +421,14 @@ export default function App() {
           {/* First in the document, so it is the first thing a keyboard reaches. It was inside the
               shell, behind the help button, which made it the second stop and therefore useless. */}
           <a href="#main" className="gw-skip">Skip to content</a>
-          <Toaster position="top-right" richColors />
+          {/* B-042: a toast fired the moment a page loads (for example, a suite that is switched
+              off) used to sit right over the page's own heading and subtitle - the two-line
+              subtitles on Time sheets, Onboarding, Leaving, Roles, To-dos and Customers and deals
+              were the ones long enough for the default 24px/16px offset to reach into. 150px (170
+              on a phone, where the toast also spans the full width and the subtitle can wrap to
+              three lines) clears every page's own heading and subtitle before a toast begins,
+              without moving the toast off the screen on any page. */}
+          <Toaster position="top-right" richColors offset={{ top: 150 }} mobileOffset={{ top: 170 }} />
           <HelpModal />
           {/* A render error in one page used to blank the entire app. W8-63. Outside the shell, so
               the crash card takes the whole window (crash.jpg) and a broken sidebar is caught too. */}
@@ -454,12 +478,17 @@ export default function App() {
               */}
             <Route path="/start" element={<MayOpenCheckIns><EntryChatPage /></MayOpenCheckIns>} />
             {/*
-              The anchor scenario's own front door (plan pieces 1 and 2, docs/anchor-scenario-plan.md
-              section 5, address suggested in section 1). Open to a stranger, like /start: the page
-              itself redirects to /start unless the engine's public switch, `GET /entry/anchor-
-              available`, says the anchor scenario is on (request 144 (1)).
+              DECISION 114 (docs/decisions-merged.md; docs/answers-from-engine.md, "8 October:
+              decision 114, the anchor changes no screen"): the anchor scenario must not change the
+              UI. It used to have its own front door, `AnchorLandingPage.tsx` - now gone - which
+              asked the engine's public switch before showing itself at all. This address is kept,
+              for links already sent, as a plain redirect into the ordinary entry chat with the
+              anchor's own scenario key, which now makes the one call `AnchorLandingPage.tsx` used to
+              make (`GET /entry/anchor-start`, see `EntryChatPage.tsx`). `GET /entry/anchor-available`
+              is no longer called from the client at all: nothing here needs to know the switch is on
+              before asking anything else, and a 404 from `anchor-start` already says it is off.
             */}
-            <Route path="/start/team" element={<AnchorLandingPage />} />
+            <Route path="/start/team" element={<AnchorTeamRedirect />} />
             <Route path="/invite" element={<InvitePage />} />
             <Route path="/join" element={<JoinPage />} />
             {/* The QR code's own door: answer first, say who you are at the end. */}
@@ -527,6 +556,8 @@ export default function App() {
             <Route path="/grounds/:id" element={<RequireOrgSetup><GroundPage /></RequireOrgSetup>} />
             <Route path="/grounds/:id/p" element={<RequireOrgSetup><GroundParticipantPage /></RequireOrgSetup>} />
             <Route path="/grounds/:id/report" element={<RequireOrgSetup><ReportPage /></RequireOrgSetup>} />
+            {/* THE WEEKLY REPORT (B4, "This week"): GET /grounds/:id/report/week. See WeeklyReportPage.tsx. */}
+            <Route path="/grounds/:id/report/week" element={<RequireOrgSetup><WeeklyReportPage /></RequireOrgSetup>} />
             {/*
               BACK, AND IT SHOULD NOT SHIP. It was deleted on the grounds that every surface had a
               real home - which was checked, and was the wrong question. The question is whether

@@ -56,4 +56,21 @@ describe('sayWhatTheySaid', () => {
     expect(sayWhatTheySaid('Amani Wekesa', 'is waiting for budget approval.', 'Amani Wekesa'))
       .toBe('You are waiting for budget approval.')
   })
+
+  /**
+   * B-059: E1 on Riverbank Trading's old data (docs/existing-users-check.md) found reports stored
+   * by the old engine whose `view` opens with a PAST-tense bare verb - "described success in terms
+   * of a three-month outcome." - which `openingBareVerb` did not recognise, so the default case ran
+   * and read "Ines Barros said described success...", "You said stated...". Past tense needs no
+   * re-conjugation for "you" (unlike "is"/"are"), so the same word is used either way.
+   */
+  it('puts the name straight in front of a served phrase that already opens with a past-tense verb, with no "said"', () => {
+    expect(sayWhatTheySaid('Ines Barros', 'described success in terms of a three-month outcome.', null))
+      .toBe('Ines Barros described success in terms of a three-month outcome.')
+  })
+
+  it('does the same for the reader\'s own row, with no re-conjugation needed for past tense', () => {
+    expect(sayWhatTheySaid('Amani Wekesa', "stated the rewrite was 'shipped' in session 2.", 'Amani Wekesa'))
+      .toBe("You stated the rewrite was 'shipped' in session 2.")
+  })
 })

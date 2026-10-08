@@ -5,7 +5,7 @@ import { boardApi } from '@/api/board'
 import { resolutionApi } from '@/api/resolution'
 import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
 import { SuggestionsForTheLead } from '@/components/gw/Suggestions'
-import { TheEndOfMonthRead } from '@/components/gw/TheEndOfMonthRead'
+import { TheAnchorBoardSections } from '@/components/gw/TheAnchorBoardSections'
 import type { TheContinueOption } from '@/api/anchorShapes'
 import { hasEnded } from '@/lib/a-ground-that-has-ended'
 import { Panel, Note, Button as UIButton, Stack } from '@/components/gw/ui'
@@ -35,12 +35,15 @@ export default function EndingPage() {
   })
 
   /**
-   * PIECE 33: THE END-OF-MONTH READ (plan section 5, row 13; docs/answers-from-engine.md,
-   * "Request 149 (6 of 6)", `TheEndOfMonthRead`). The same board call the board page itself makes.
-   * Served only once the month has run and the lead has her own first words to begin with; before
-   * that the key is absent and the component below draws nothing. Lead only (`canEditFrame`), and
-   * only for an anchor Ground (`anchorScenarioOn`): a board that is neither sends nothing here
-   * either.
+   * PIECE 33: THE END-OF-MONTH READ, NOW THE `theEndOfTheMonth` SECTION (decision 114, 8 October
+   * evening; docs/answers-from-engine.md, "8 October (later): the anchor through the ordinary
+   * routes, route by route", table row `theEndOfTheMonth`). The same board call the board page
+   * itself makes. WHO READS WHAT IS DECIDED BY THE SERVER: the field is present only once the month
+   * has run and the lead has her own first words to begin with, for whoever runs the check-in, and
+   * absent for everybody else - no `canEditFrame` or `anchorScenarioOn` check here any more,
+   * trusting the payload the same way every other section on the board already does. `theEndOfMonth
+   * Read` is retired in favour of this (see the-anchor-old-and-new-sections-agree.spec.tsx for the
+   * proof the same sentences still appear).
    */
   const { data: board } = useQuery({
     queryKey: ['board', id],
@@ -48,9 +51,7 @@ export default function EndingPage() {
     enabled: !!id,
     retry: false,
   })
-  const monthReadForTheLead = board && board.renders && (board as any).canEditFrame && (board as any).anchorScenarioOn
-    ? (board as any).theEndOfMonthRead
-    : undefined
+  const theEndOfTheMonth = (board as any)?.theEndOfTheMonth
 
   /**
    * FAULT 3 (live walk, 6 October 2026): A CLOSED CHECK-IN WAS STILL OFFERED "SAVE THE OUTCOME AND
@@ -116,14 +117,14 @@ export default function EndingPage() {
       {ground?.label && (
         <h1 style={{ fontSize: 22, fontWeight: 800, margin: '12px 0 16px' }}>{ground.label}</h1>
       )}
-      {monthReadForTheLead && (
+      {theEndOfTheMonth && (
         <div style={{ marginBottom: 24 }}>
-          <TheEndOfMonthRead read={monthReadForTheLead} onContinue={onContinue} />
+          <TheAnchorBoardSections sections={{ theEndOfTheMonth }} onContinue={onContinue} />
         </div>
       )}
       {/* FAULT 3: a closed check-in with no month-in-review read gets a plain sentence that it has
           ended, never the "decide how it ends" form - see the comment on `groundClosed` above. */}
-      {!monthReadForTheLead && groundClosed && !outcomeWasRecorded && !!id && (
+      {!theEndOfTheMonth && groundClosed && !outcomeWasRecorded && !!id && (
         <Panel>
           <Stack gap={10}>
             <Note>This check-in has ended.</Note>

@@ -4,6 +4,172 @@ This is the report from the screens workspace, on the branch `wip/prototype-ui`.
 workspace writes its own report in `docs/morning-report.md`, so the two computers never edit the
 same file.
 
+## 8 October, the screens' half of E1's bugs: B-057, B-058, B-059, B-064 and B-066
+
+Five of the eleven rows E1 found (docs/existing-users-check.md), the ones that are the screens' to fix
+rather than the engine's (request 201 has the rest). All four are also fixed at the root, not just where
+E1 happened to find them, so the fixes apply everywhere a lead or a participant reads these things, not
+only on old data.
+
+- **B-058, a person with no name called by the front of their address** ("Qx7", "Fo4") **on the Context
+  tab, the Report tab and My work, while People already called the same person "Someone who has not
+  given a name yet".** `theNameOrAddress` (`client/src/lib/utils.ts`) - the one helper behind
+  `personLabel`, `peopleLabels(forTheLead: true)` and `firstNameOrLabel` - no longer guesses a name out
+  of an address, or falls back to showing the address itself, for an actual person with no name: it
+  returns the exact same placeholder sentence People already serves (decision 115), so the three screens
+  agree. A shared desk address ("accounts@...") still reads as itself. Proven live: added a nameless
+  person by email to a Kijani check-in and the Context tab's card now reads "Someone who has not given a
+  name yet". Screenshots: `B-058-fixed-1440.png`, `B-058-fixed-390.png`.
+- **B-059, "Ines Barros said described success..."** `sayWhatTheySaid` (`TheSessionsReport.tsx`) only
+  knew present-tense bare verbs ("describes", "states"); the old engine's stored reports open some
+  views with the past tense instead, so it fell through to its default and glued "said" onto a sentence
+  that already had its own verb. Past-tense verbs now join the same table (past tense needs no
+  re-conjugation for "you", unlike "is"/"are").
+- **B-064, "It went back to session 2, because somebody new was added." though nobody was.**
+  `roundWentBack` used to read this off arithmetic alone (somebody has completed more sessions than the
+  round that is open), which old, oddly-numbered data satisfies too. It now also asks whether somebody
+  who is behind joined LATER than somebody who is ahead (`createdAt`); with no such evidence, the
+  sentence is dropped rather than guessed.
+- **B-066, the account menu reading "F" and an address where a nameless person's own name goes, and
+  People giving everyone with no name the initials "SW" (from "Someone who...").** The menu now reads
+  "You" with "Add your name" underneath and a neutral mark in the avatar; `initialsOf` (`people-here.ts`)
+  reads the same for both of the app's placeholder sentences, never their own first letters.
+- **B-057, screen side only** (the server's own `sessionClock`/stored session numbers are the engine's,
+  request 201): the board's own "X sessions are done" line (`how-it-is-going.tsx`) is now clamped to the
+  check-in's planned total, so it can never again say more is done than the plan allows, whatever the
+  server sends.
+- **B-067, partly fixed as a side effect of B-058:** the Context and Report tabs now agree with People
+  ("Someone who has not given a name yet") rather than disagreeing with both of them ("Qx7"). The
+  board's own "A colleague" is the engine's separate wording and is left alone; it is still Hafsah's
+  choice whether the board moves to match, as the row already said.
+
+All green: `npx tsc --noEmit` clean, and the full client suite (4,781 tests, 724 files) passes, including
+the new regression test for each bug above and three existing tests updated with the reason noted in
+their own comments and in the commits (two pinned the exact address-guessing behaviour decision 115
+removes; one pinned the old "went back" guess with no `createdAt` evidence behind it).
+
+**Not reproduced live, and said so rather than guessed at:** B-059 and B-064 need data shapes (an old
+engine's stored past-tense text; several participants with different `createdAt`s and completion counts)
+that are not in the Kijani seed and were not easy to produce without writing to the database directly,
+which this session's permissions refused. B-066's own-account-menu case needs a signed-in member with no
+name, and a real member cannot blank their own name through Settings (correctly - that form is for
+people, not placeholders). All three are proven instead by component tests that exercise the real
+functions and components directly against the exact strings E1 found, listed against each row above and
+in `docs/bug-log-screens.md`.
+
+## Morning, 8 October: screens ready for the pull request
+
+**The rule for the night was that existing users must never lose anything they can do today.**
+
+### What was found removed, and restored
+
+We compared every page, button, link and setting on the live product (`mine/wip/live-staging`) with ours, in `docs/nothing-removed-screens.md`. The engine's own audit is in `docs/nothing-removed-audit.md`. Everything below is now back, in the prototype's design:
+
+1. **The notes waiting for your next check-in.** You can see them and delete one, with a confirmation. Only the person who wrote them is served them, which was checked from the network as the writer, the lead and the admin.
+2. **The day check-ins land on.** It is back in set-up: a day of the week for weekly check-ins, a day of the month for monthly. Changing it later from People and setup needs the server first (request 194).
+3. **The name of a Slack or Teams channel,** when connecting one.
+4. **"Begin the last check-in" for the lead,** at any time while the check-in runs, as on live.
+5. **Today's link to your own leave and spending requests.** Our own fix for B-002 had hidden it when any one suite was off. It is now decided suite by suite.
+6. **The leave and spending forms** still open, with a "Try again", when the server has a passing fault. Only a refusal hides them.
+7. **Google sign-in** was never missing on our screens. "Sign in with Google" and "Sign up with Google" use the prototype's words, and like live they show only when the server has Google set up. One sentence in the person's own settings offered Google even where it is not set up, and that is fixed. Ten browser checks prove an existing user, a new user, a link that survives the trip, a failed sign-in, and Google switched off. Google's own sign-in page cannot be tested on this computer: it needs a deployed server with real Google credentials.
+
+### What needs Hafsah's confirmation
+
+These were removed by a decision or a rule. My recommendation is to keep all four removed.
+
+1. **The set-up sign-off step.** Removed on your own instruction (commit 38d8c078).
+2. **"See the counts behind this" under the judgement.** Removed under the rule that leads never see how a person's answers were rated.
+3. **The coverage percentage bar on a person.** Removed under the no-scores rule (request 111 (a)).
+4. **An admin who does not run a check-in rewriting its brief.** Removed by decisions 72 and 63. Your 8 September answer went the other way, so please confirm that decision 72 replaces it. The engine lists this as H10, and also H11: the WhatsApp add-on section is hidden from admins while WhatsApp is off for everybody.
+
+**Also yours to decide:**
+- The "Stop the reminders" link stops them as soon as it is opened. A button first would need a change on both sides (the engine's note, item 6).
+- **Payment in test mode** needs `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY` and `STRIPE_WEBHOOK_SECRET` in `api/.env`, as TEST values.
+- **The staff steps of A7** need a local staff account. Request 192 asks the engine for one. The engine's new database change only keeps your own address as staff.
+
+### What else changed overnight
+
+- **The anchor follows decision 114.**
+  - `/start/team` is now only a redirect to `/start?scenario=HELP_TEAM_UNDERSTAND`, so old links work.
+  - The anchor opens in the normal entry chat with the engine's opening text, and the invitation reads the engine's `invitationWords`.
+  - Its board sections are drawn by the normal board page, and the server decides who reads each.
+  - A few reads stay anchor-only until the engine serves them the ordinary way (request 196).
+  - The set-up screen crashed when a reveal arrived with a list missing (B-051), and that is fixed.
+- **The page audit's faults** (B-042 to B-049) are fixed or sent to the engine. `Arrival.tsx` and `GroundworkLogo.tsx` were deleted because nothing used them once B-047 was fixed. Arrival's own test went with it, and nothing a person does was lost.
+- **The page audit's table** is split into 171 rows, one for each page and role. Its 340 screenshots stay on this computer, in `docs/page-audit/`, and are ignored by git.
+- **Small states and error pages:** one fault, B-052, a toast that did not say the message was safe, is now fixed. The rest were already right from 6 October. No fresh screenshots were taken of the states.
+- **Drawn from the server:** names on People, never an address in place of a name; the role and team in the colleague picker; invitations kept for want of a seat; names read from a paste; and the session line in a check-in's header.
+- **The final browser run** found B-053, B-054 and B-056, all from changes made tonight, and all are fixed. B-055 went to the engine as request 197.
+- To take its screenshots, one helper signed in to the local test account tendai@kijani.test with a password it set on this computer.
+
+### Every result
+
+- **Client:** 4,760 of 4,760 tests pass, and the type check is clean.
+- **Browser checks:** 59 of 59 pass, at the first run.
+- **Google sign-in:** 10 of 10 pass.
+- **The final browser run:** 22 sweep files pass.
+  - Two more (l5 and l7) pass once an output folder is set for them.
+  - situations-orgs-tabs-slow failed twice at the sign-in limit; by hand, the link arrived at once.
+  - Two could not run because of their data: l8's check-in has already ended, and m2's session does not open until 15 October.
+- **Privacy, read from the network as each role:** held everywhere. A member is served none of the anchor board's lead-only parts, and the judgement is empty for them. Notes go only to their writer. Ask stays private. A lead's own coaching never reaches the admin.
+
+  One gap: both seeded anchor check-ins are the older kind (REALIGN_TEAM), so the five new anchor sections are served to nobody here. Their privacy is proven only by the engine's unit test.
+- **The bug log:** B-001 to B-056. All the screens' faults are fixed, except a few the engine must serve first, each with a request (186 to 197).
+
+## 8 October, final browser run
+
+The reviewer's last run in a real browser before the pull request, at c05a396e, on this computer (client 5173, API 3000, localhost only). Nothing in `api/` or `client/` was changed. Every screen below was read as the person it is for, at 1440 and 390, with the console and every 4xx/5xx response watched, and the privacy checks were read from the network responses, not only from the screen.
+
+**Privacy, first: nothing private reached the wrong person.**
+- **The anchor's board, by role, from `GET /grounds/:id/board`:** on both anchor check-ins in the seeds (Sokoni Fresh, `ecdb18b1` live and `54e38fa0` ended), Rukia (the lead) is served `activeLine`, `theMonthBoard` and `theEndOfMonthRead`. Amani and Baraka (members) are served none of the lead-only parts, only their own `yourPartInMovingThings`, `aNudgeForYou` and `ideasFromYourTeam`, and `theJudgement` is null for them. Grace (an admin in neither) is served only `activeLine`, as the server's rule says. So the server decides it, not the client. One gap: both seeded anchor check-ins are `REALIGN_TEAM`, not `HELP_TEAM_UNDERSTAND`, so the five sections from decision 114 ("What you're carrying", "How I'll work with your team", the four lenses, ideas, "This week") are served to nobody on this computer, the lead included. Their wall is only proven by `the-anchor-sections-on-the-board.spec.ts`, not on screen.
+- **The notes for the next check-in:** Esther added a note at each width. `GET /grounds/f9ad…/my-notes` served it to Esther only. Tendai (the lead) was served an empty list, and Naomi (an admin) was refused with 403. Esther then deleted it, after "Delete this note?", and the list came back empty.
+- **People:** `GET /users` gives every row a `displayName`, and none is an address. `GET /users/colleagues` gives every row a name, and none is an address. Esther and Tendai are refused `GET /users` (403).
+- **Other rules:** `theJudgement` is null for Esther on the sales board. Naomi, as an admin, is served the "what to ask each person" coaching and never Tendai's own ("yours" is null). In Ask, Esther is told that Kwesi's words open when the report is shared, and she gets nothing about Lindiwe, about Tendai's private notes, or about how her answers were rated.
+
+**1. The browser checks:** `the-prototype-count-of-buttons`, `the-page-is-cream`, `nothing-overlaps-at-in-between-widths` and `the-feedback-trigger-clears-start` all passed, 59 of 59, with no rerun. The nine boards already known to have too many buttons (gov, loans, matter and mvnext as lead and participant, and mvq4 as lead) are still known gaps marked `test.fail`, and they still fail as expected.
+
+**2. The sweep specs, one file at a time with 70-second pauses:**
+- **Passed (22 files):**
+  - google-sign-in (10), a-remaining-widths (10), a1-password-choice-still-emails (1), a1-same-domain (1), a1-sign-up (4);
+  - a2-people (2), a3-approve-waiting (1), a4-suites (2), a5-billing (2), a6-company (4), a7-whatsapp-backoffice (4);
+  - l1-sales (1, the real model, 4.1 minutes);
+  - l5-approvals (1). It first failed because `SWEEP_OUT` was not set, and then because Grace and Daniel had no kept sign-in. It passed once both were in place, after `privacy-0-sign-everyone-in`.
+  - l7-ask (1). It first failed because `SWEEP_OUT` was not set, and passed on the rerun.
+  - l8-give-it-more-time (1), m1-join-390 (1);
+  - situations-flows (5), situations-people-invite (4), situations-phone-numbers (1);
+  - fixed-screenshots (5), more-fixed-screenshots (6).
+- **Failed (1):** situations-orgs-tabs-slow. Its first test, "someone in two organisations", failed twice, at `sign-in-by-email.ts:143`, with "No email with a /verify-email…/ link reached amani.u8@example.test within 40 seconds." The page said "Check your email". The other two tests did not run. By hand, a minute later, Amani's sign-in link arrived at once, and she is listed in the second organisation. So this is most likely the five-a-minute limit inside the spec's own sign-up, invite and sign-in sequence, not a product fault. It is not logged as a bug.
+- **Not runnable (2):**
+  - l8-end-or-extend. Its check-in to end was already ended in an earlier run, on 7 October, and the page now shows "How this ended", so there is nothing left to fill in at line 39.
+  - m2-attachments. Amani has no open session on "Check how the same role is going" until Thursday 15 October, so the "Add a photo, a document…" button is not drawn (line 42).
+- The screenshots these specs re-take were put back, not committed.
+
+**3. The journeys by hand, at 1440 and 390:**
+- **Admin (Naomi):** Today, People, Suites, Plan and billing and the Company page all draw and read as sentences. People shows names with the address underneath, and no address in place of a name. Nobody is held for a seat, so the no-seat section correctly does not show. But see B-055: the page says "8 people, on the free plan, which is for up to 5." and never says who is over the plan. Billing says "Starter" only as a plan to move to, never as the free plan's name.
+- **Lead (Tendai):**
+  - Today shows the leave and spending link. "Begin the last check-in" is back on "My work", and the confirm and Cancel both work. It was not pressed.
+  - The board and the 390 layout are fine.
+  - Failed on B-053. The new header line contradicts itself: "Session 1 of 12. … Nobody has checked in yet. Waiting for the first check-in." That is shown after Tendai has finished session 1.
+  - People and setup, the colleague picker, failed on B-054. It prints "MEMBER" and "LEAD" under each name.
+  - The day check-ins land on could not be checked, because no Kijani check-in has a `cadenceAnchorDay`, so "Every week." is all it can say.
+  - B-056: "once all 1 are in".
+- **Team member (Esther):**
+  - Today is fine.
+  - In the check-in, the message was sent and answered, and she left to Today and came back. The answer to "What did I say I would do about the three credit files?" ignores her "I will take the three credit files to Fatou Diallo on Monday". That is already the engine's, in requests 179 and 180.
+  - The note was added and deleted at both widths.
+  - The leave form draws, and Send stays off until there are dates. It was not sent.
+  - Ask is private and holds.
+- **Google sign-in:** google-sign-in.spec.ts passed 10 of 10. With the real `GET /auth/methods`, which answers `google:false`, `/auth` shows no Google button, and no "Google" anywhere, at 1440 and 390.
+
+**4. Console and failed requests:** nothing new. Every page in every role and width had no page errors. The only failed requests are the known ones from B-002 and S2: `404 GET /suites/time/mine` (the time sheets suite is off in Kijani), all four `/suites/*/mine` reads and `/suites/queue` in organisations with every suite off, and `400 POST /entry/commit` on a first visit.
+
+**New bugs:** 4, all in `docs/bug-log-screens.md` with screenshots.
+- **Wrong information:** 1, B-053, the screens'.
+- **Confusing:** 3. B-054 and B-056 are the screens'. B-055 is the engine's.
+- **Privacy:** none.
+
+**Ready for the pull request?** Not quite. Privacy holds everywhere it could be checked. But B-053 is a regression from a33d198d: the line every lead reads at the top of every tab now says nobody has checked in when they have. It and B-054 (from 96f60a61) are small screen fixes, and they should be fixed first.
+
 ## The user journey sweep, in progress (7 October, afternoon)
 
 The sweep follows Hafsah's `docs/user-journey-tests.md`. The bug log is `docs/bug-log-screens.md`, the screenshots are in `docs/bug-log-screens/`, and the journeys that can be run again are in `e2e/sweep/`.
@@ -7979,3 +8145,190 @@ All 503 board and privacy tests pass. On the running product, a participant neve
 - The board's one-off classes were not yet replaced. The review will list them, and the fixes will do it.
 
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
+
+## Three things live could do that ours could not, restored, and B-050 fixed (8 October 2026)
+
+`docs/nothing-removed-screens.md`'s first table named three things the audit found removed with no
+decision, the API still supporting each. All three are restored, each in the prototype's design and
+wording, each with a test that failed before and passes after, each pictured at 1440 and 390 against
+the real local client and API:
+
+- **Your notes for your next check-in**, listed under "Waiting for your next check-in" with a way to
+  delete one, with a confirm step ("Delete this note?" / "Yes, delete it" / "Keep it") rather than
+  live's one-click delete. Only the viewer's own notes, ever. `c1f6cab5`.
+- **The day check-ins land on**, at setup: a weekday picker for a weekly or fortnightly rhythm, a day
+  of the month for a monthly one, in `TheSetup.tsx`'s "How often" section. **Not restored on an
+  existing check-in**: `PATCH /grounds/:id` does not accept `cadenceAnchorDay` and would refuse it
+  outright, and `GET /grounds/:id` does not appear to serve the field either - request 194.
+  `0be58c81`, `7a8f2ff5`.
+- **A name for the Slack or Teams channel**, when connecting it on `/settings/connections`, sent only
+  when typed so an existing caller is unchanged. `b654f2bf`.
+
+Also fixed, from the bug log: **B-050**, `/org-new?naming=1` said "Create an organisation", "You'll
+be its owner" and "Create it" for a step that only names an organisation the server had already made
+for a new Google sign-up. It now says "Your organisation is ready", "What should it be called?" and
+"Save the name". Proven in `OrgNewPage.spec.tsx` and in the real end-to-end sweep,
+`e2e/sweep/google-sign-in.spec.ts`, run against the real local client and API. `01bb27da`.
+
+All three restorations and the fix are marked in `docs/nothing-removed-screens.md` and
+`docs/bug-log-screens.md`. `client/`: `npx tsc --noEmit -p .` is clean and the full `npx vitest run`
+is green, 712 files and 4,723 tests (up from 4,710, the new tests this work added).
+
+## Decision 114: the anchor is a scenario, not its own screen (8 October 2026)
+
+Picked up interrupted work already underway on this branch. Finished and verified it:
+
+- **`/start/team` is now only a redirect** to `/start?scenario=HELP_TEAM_UNDERSTAND`, keeping the
+  rest of the query string (a `?source=` mark, say) and replacing a stray `scenario` already on the
+  address, since this door only ever means the one scenario. `AnchorLandingPage.tsx` (its own front
+  door, its switch check, and its sessionStorage hand-off to a fresh page load) is deleted.
+  `EntryChatPage.tsx` now makes the one call that page used to make, `GET /entry/anchor-start`,
+  itself, on a fresh `?scenario=HELP_TEAM_UNDERSTAND` arrival. `GET /entry/anchor-available` is no
+  longer called from the client at all - a 404 from `anchor-start` already says the switch is off.
+- **The set-up screen's `TheLeadsReveal`** is drawn whenever the engine sends a `leadsReveal`, for
+  any scenario, with no `isAnchorDraft()` gate in the UI at all - the same rule `IdeaOffer` and
+  `RequestOffer` already follow on the check-in page.
+- **The board** already drew `TheMonthBoard` and `TheIdeasFromYourTeam` as ordinary sections of the
+  normal `BoardPage.tsx`, gated on `anchorScenarioOn`/`viewerRunsThisCheckIn` rather than a separate
+  page; left that gate as it is rather than widen it on a guess, since `the-month-board.spec.tsx`
+  pins it on purpose. Request 195 asks the engine for the exact section names the switchboard will
+  use, so this gate can retire in favour of the normal `b.sections.includes(...)` mechanism every
+  other kind of work already uses.
+- **`FillsInAsYouTalk`, the invitation page and the Done page** keep their anchor-specific branches
+  (`anchorItems`, `anchorInvitation`): each is already keyed on a field the engine serves only for an
+  anchor draft, not a UI-only duplicate of something served the ordinary way, so decision 114 does
+  not ask for these to be removed yet - they are waiting on the engine the same way request 195 says.
+
+**A real bug, found screenshotting the fix, not reading the code:** `TheLeadsReveal` crashed the
+whole set-up screen to `PageCrash` whenever a served `leadsReveal` was missing any of its three list
+fields entirely (not an empty array) - genuinely possible today, since the engine's own model step
+for filling them is unfinished. Fixed all three (`reveal.x ?? []`), B-051 in `bug-log-screens.md`,
+pinned by `TheLeadsReveal.spec.tsx`. The first screenshot of the fixed set-up screen still showed the
+crash, because the savecard is an overlay behind "Invite and finish", not the page itself - clicking
+through (both in `e2e/anchor-shots.local.mjs` and by hand) is what actually proves the reveal draws.
+
+Fresh screenshots of the anchor's start, set-up, board (lead and participant) and check-in, at 1440
+and 390: `docs/bug-log-screens/anchor-*.png`. `client/`: `npx tsc --noEmit -p .` is clean; the full
+`npx vitest run` is green. Test count is down slightly from the 4,723 baseline (3 spec files for the
+deleted `AnchorLandingPage.tsx` and its switch are gone, replaced by fewer, more targeted specs for
+the redirect and the inline `anchor-start` call) - nothing a person could do is lost; see the new
+`client/src/the-anchor-link-keeps-working.spec.tsx` and the updated
+`the-anchor-arrival-opens-directly.spec.tsx`.
+
+Request 195 (`docs/requests-to-engine.md`) is the one open item: the board sections through the
+switchboard, and the entry chat's remaining questions through the normal onboarding payload.
+
+## Decision 114, the rest of it: the engine's new ordinary routes are drawn (8 October 2026, later)
+
+The engine answered request 195 in two commits (`dc6aa2af`, `b4b3751c`) and this finishes the
+screens' side of both, route by route, keeping everything request 195 named as "waiting".
+
+- **The entry chat's opening.** `EntryChatPage.tsx` now also calls `POST /entry/opener` (like any
+  scenario) alongside `GET /entry/anchor-start`, and draws the opener's own `reply` - the hook's two
+  sentences, then "Tell me what you are trying to get across." and the first question, in one piece -
+  as the intro turn. `anchor-start` stays, for `groundLabel`, `source` and `thePeopleStep`, none of
+  which the opener serves; its own `firstQuestion` is no longer read (the opener's reply already ends
+  in it, and is richer), but the session-carried question and `THE_ANCHOR_FIRST_QUESTION` stay
+  underneath as a fallback for if the opener call itself fails - never removed outright, since a
+  dropped request must not leave the lead looking at a blank chat.
+- **The invitation.** `InvitePage.tsx` reads the ordinary `invitationWords` first, falling back to
+  the older `anchorInvitation` only for a reply that has not moved across yet - kept rather than
+  deleted, since both are populated identically today and there is nothing to gain by risking the
+  one case where they are not.
+- **The board.** `whatYouAreCarrying`, `howGroundworkWillWork` and `weeklyInsight` - the three
+  sections with no existing UI - are drawn by a new `TheAnchorBoardSections.tsx`, gated on
+  `b.sections.includes(...)`, the same mechanism every other kind of work's sections already use.
+  `ideasFromTheTeam` is drawn through the existing `TheIdeasFromYourTeam`, read first ahead of the
+  older `ideasFromYourTeam`. `theMonthBoard` and `TheIdeasFromYourTeam`'s own positioning no longer
+  check `anchorScenarioOn`/`viewerRunsThisCheckIn` at all - decision 114's "who reads a section is
+  decided by the server" taken literally: the field's own presence on the payload is now the whole
+  signal. `theFourLenses` and `peopleHelpingTheTeamMove` are deliberately not drawn a second time:
+  `theMonthBoard`, still served alongside the new fields, already draws the same lenses and the same
+  people, and drawing both would duplicate them. `recommendations` is left to the existing
+  `recommendedCheckInsApi` listing, which it would only duplicate.
+- `FillsInAsYouTalk`'s `anchorItems` and `EndingPage.tsx`'s `anchorScenarioOn` are untouched: neither
+  is served by an ordinary route yet (`anchorItems` is assembled from the onboarding extraction, not
+  a GET; `theEndOfMonthRead` is still on the "kept for now" list), so decision 114 does not ask for
+  either to change yet.
+- `the-month-board.spec.tsx` updated: the two tests that handed the lead a payload combination the
+  real backend cannot produce (`theMonthBoard` served with `anchorScenarioOn: false`, or served to a
+  colleague) are gone, replaced by the realistic shape of each reader's own payload - the privacy
+  intent (a colleague never reads the lead's board) is unchanged, now checked by the field's absence
+  rather than by a client-side flag.
+- New specs: `the-anchor-opener-is-drawn.spec.tsx`, `InvitePage.invitationWords.spec.tsx`,
+  `the-anchors-new-sections.spec.tsx`.
+- Request 196 (`docs/requests-to-engine.md`) answers the engine's own question, "which of the kept
+  ones you still call."
+- Fresh `anchor-start-{1440,390}.png`: the opener's full text now shows live, at both widths. While
+  retaking them, `e2e/anchor-shots.local.mjs`'s `shot()` was found reusing one browser page across
+  both widths, so the second (390) capture inherited `gw-anchor-start-confirmed` from the first and
+  fell back to the shorter remembered question rather than a fresh opener call - fixed by clearing
+  `sessionStorage` before each per-width navigation. `anchor-setup/board-lead/board-participant/
+  checkin-*.png` are byte-identical to before: the one anchor check-in in the local seed predates
+  scenario tagging (`scenario: REALIGN_TEAM`, `startedFrom: 'anchor'`), so it draws none of the new
+  sections and keeps rendering exactly as it did - proven live, not only by the specs above.
+  `invitation-*.png` was not retaken: no seeded check-in has `scenario: HELP_TEAM_UNDERSTAND` to
+  generate a real invite link from, and building one from scratch was out of scope for this pass;
+  `InvitePage.invitationWords.spec.tsx` exercises the exact payload shape the engine now serves
+  instead.
+- `client/`: `npx tsc --noEmit -p .` clean; the full `npx vitest run` is green, 717 files and 4,733
+  tests (up from 4,725).
+
+## 8 October (night): the lead's daily nudge, and the back office funnel for people
+
+From the engine's answer of 8 October night (`docs/answers-from-engine.md`) and decision 120.
+
+- **Today's own link for the lead's daily nudge, `GET /today/outstanding`.** Three more lists,
+  "Needs you", "Overdue on your team" and "Risks", every sentence already worded by the server, each
+  heading left out while its own list is empty. `null` for anybody who is not a lead, or who has
+  nothing outstanding, so a member's Today is unaffected (checked live as esther@kijani.test: no new
+  heading appears). A sentence "Needs you" shares, in whole or in part, with "What needs you" above
+  it is left out, so nothing is said twice - `outstanding-not-already-shown.ts`, its own spec, and
+  four new tests in `TodayPage.spec.tsx` (all three lists; one heading left out; a member sees
+  nothing; the shared sentence is said once). Built in `TodayPage.tsx`, `api/today.ts`.
+- **The back office funnel: people, not only check-ins.** `GET /prompts/platform-funnel`'s
+  `activation` now carries `participants`, counts only - no name and no address. Drawn on the
+  Drop-offs/Usage tab (`AdminPage.tsx`, `ParticipantsSection`) beside the check-in funnel built in
+  5bdfc442: "How far people get" as a funnel and "Where the people who stopped are standing" as
+  counts, with the engine's own suggested words for each row. The whole section draws nothing when
+  `participants` is missing, checked with a served payload in
+  `activation-funnel-on-the-usage-tab.spec.tsx` (two new tests).
+- **A WhatsApp switch in Settings (item 3): nothing drawn, noted as waiting.** The engine side
+  (`WhatsAppService.stopOrResume`) is not built yet.
+- **Proven live** as tendai@kijani.test (lead) and esther@kijani.test (member),
+  `e2e/sweep/today-outstanding.spec.ts`, both pass. Kijani's seed has nothing outstanding for
+  Tendai, so the three new lists do not appear for her either - correct, not a fault, since the
+  seeding script that would put something outstanding into a check-in
+  (`api/journey/sweep/put-what-is-outstanding-in.ts`) only ever touches a database named
+  `gw_sweep_a`/`gw_sweep_b` (a hard safety check in `the-test-bed.ts`), never `groundwork_dev`, so it
+  was read but not run against the local dev database. Screenshots:
+  `today-outstanding-lead-{1440,390}.png` (committed); esther's sign-in state was not written to
+  disk.
+- `client/`: `npx tsc --noEmit -p .` clean; the full `npx vitest run` is green, 725 files and 4,790
+  tests (up from 4,733).
+
+## 8 October (late): proven on the test bed
+
+Run on the engine's test bed, copy b (`gw_sweep_b`, API 3202, client 5174), reset fresh, with
+`put-what-is-outstanding-in.ts` run on it. "Sales team, Q4" (Msingi Foods) was made an anchor check-in
+in that database only (scenario `HELP_TEAM_UNDERSTAND`, started 35 days ago, `release.anchorScenario`
+on). Read as Wairimu Njoroge (lead), Amani Wekesa (member) and Grace Achieng (admin), from the API and
+on screen at 1440 and 390. No console error and no failed request on the board or the ending page; on
+Today only the known `404 /suites/time/mine` (B-002).
+
+- **Privacy holds.** Amani's board payload carries none of the lead's sections (only "How I'll work
+  with your team" and "Ideas from your team"), no month board or end-of-month read, no aims
+  (`objectives` is empty), no brief ("forty more shops" appears nowhere), and `theJudgement` is null.
+  His ending page shows only the outcomes. Grace reads "How I'll work with your team" and none of the
+  lead's own sections.
+- **The anchor, lead.** Every section the record can fill is drawn, in order, with the old components'
+  sentences intact; "People helping the team move" and "Groundwork recommends" are rightly left out
+  because nothing fills them. Wording problems: B-068 (Wairimu reads "waiting on Wairimu"), B-069
+  ("Week 4 of the month", "3/6 active · ..."), B-070 (lenses and reveal say no promise is open while
+  four are late), B-071 ("You decides which one it is", screens), B-072, B-075, B-076.
+- **Today's outstanding lists.** All three lists draw for both leads, with plain sentences, and a
+  member gets `null` and sees none. But things are said twice beside "What needs you" (B-073,
+  screens), and one tense is wrong (B-074).
+- The bed's README needs two fixes to run as written (request 203). Screenshots:
+  `docs/bug-log-screens/anchor-*-{lead,member,admin}-{1440,390}.png` and
+  `today-outstanding-{lead,lead-baraka,member}-{1440,390}.png`.

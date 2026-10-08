@@ -132,4 +132,35 @@ describe('Ask to spend money', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     expect(await screen.findByText('Give an amount of more than nothing.')).toBeInTheDocument()
   })
+
+  /*
+   * RESTORED (8 October, nothing-removed audit S3): A 5xx OR A NETWORK FAULT IS NOT A REFUSAL. Any
+   * failure of `GET /suites/spend/form` used to hide the form behind an error note, with no way
+   * back short of reloading the page - even a passing server fault that says nothing about whether
+   * this reader may ask to spend money. The form stays up for it now, with a "Try again".
+   */
+  it('on a 5xx loading the form, shows the form with a "Try again", not just an error note', async () => {
+    ;(fileARequestApi.spendForm as any).mockRejectedValue(refusal(500))
+    open()
+    await screen.findByText('That did not load, and nothing has changed.')
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Amount')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument()
+  })
+
+  it('on a network fault loading the form, shows the form with a "Try again", not just an error note', async () => {
+    ;(fileARequestApi.spendForm as any).mockRejectedValue(new Error('Network Error'))
+    open()
+    await screen.findByText('That did not load, and nothing has changed.')
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Amount')).toBeInTheDocument()
+  })
+
+  it('"Try again" asks for the form again', async () => {
+    ;(fileARequestApi.spendForm as any).mockRejectedValueOnce(refusal(500)).mockResolvedValueOnce({ currency: null, categoryCalled: 'category', categories: [] })
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
+    await waitFor(() => expect(screen.queryByText('That did not load, and nothing has changed.')).toBeNull())
+    expect(fileARequestApi.spendForm).toHaveBeenCalledTimes(2)
+  })
 })

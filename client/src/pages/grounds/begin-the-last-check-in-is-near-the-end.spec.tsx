@@ -6,13 +6,16 @@ import { GroundAdminPage } from './GroundAdminPage'
 import { groundsApi } from '@/api/grounds'
 
 /**
- * FAULT 4 (LIVE RE-WALK): "BEGIN THE LAST CHECK-IN" OFFERED IN SESSION 1 OF 6.
+ * RESTORED (8 October, nothing-removed audit S1): "BEGIN THE LAST CHECK-IN" AT ANY TIME WHILE THE
+ * CHECK-IN RUNS.
  *
- * My work's Sessions tab offered this red, wide button - ending the whole engagement - with five
- * more sessions still to come, and nothing on screen saying that was early. It now shows only once
- * the check-in is near its end: its last session is the next one (`sessionsDone >= plannedSessions
- * - 1`, the same rule the board already uses for its own ending control, `whereTheRunIs` in
- * BoardPage.tsx).
+ * This file used to prove the opposite: that the button was gated on `nearTheEnd` (its last
+ * session is the next one). That gate was itself fault 4 from the live re-walk - live showed this
+ * button to the lead throughout the whole run, including on a check-in with no planned number of
+ * sessions, gated only on the check-in's status. No decision of Hafsah's ever asked for the
+ * `nearTheEnd` gate; the audit found it loses a real thing a lead could do on live (close early
+ * with a final conversation, on any check-in, at any point), so it is removed and this spec now
+ * proves the restored behaviour instead of the fault.
  */
 vi.mock('@/stores/auth', () => ({
   useAuthStore: (sel: any) => sel({ user: { id: 'u-lead', role: 'MEMBER', email: 'lead@x.test' }, isAuthenticated: true }),
@@ -25,9 +28,9 @@ vi.mock('@/api/conversation', () => ({ conversationApi: { remind: vi.fn() } }))
 vi.mock('@/api/billing', () => ({ billingApi: { status: vi.fn().mockResolvedValue(null), getContributorCodeShareCard: vi.fn() } }))
 vi.mock('@/api/grounds', () => ({ groundsApi: { get: vi.fn() } }))
 
-/* MONTHLY, 180 days: 6 planned sessions (timelineDays / cadence days = 180 / 30). `sessionsDone`
-   completed sessions among them, so `doneOf` completed rows exist for every participant. */
-function ground(doneOf: number) {
+/* MONTHLY, 180 days: 6 planned sessions (timelineDays / cadence days = 180 / 30). `doneOf`
+   completed sessions exist for every participant. */
+function ground(doneOf: number, overrides: Record<string, any> = {}) {
   const participants = [
     { id: 'p-lead', userId: 'u-lead', email: 'lead@x.test', partyType: 'INITIATOR', accepted: true },
     { id: 'p-a', userId: 'u-a', email: 'a@x.test', partyType: 'PARTICIPANT', accepted: true },
@@ -45,6 +48,7 @@ function ground(doneOf: number) {
     checkIns,
     roundCompletions: Array.from({ length: doneOf }, (_, i) => ({ sessionNumber: i + 1 })),
     boardRenders: true,
+    ...overrides,
   }
 }
 
@@ -61,13 +65,12 @@ function renderPage() {
 
 beforeEach(() => { vi.clearAllMocks() })
 
-describe('"Begin the last check-in" only once the check-in is near its end', () => {
-  it('is not offered in session 1 of 6, five sessions from the end', async () => {
+describe('"Begin the last check-in" is offered throughout the run, as live had it', () => {
+  it('is offered in session 1 of 6, five sessions from the end', async () => {
     (groundsApi.get as any).mockResolvedValue(ground(0))
     renderPage()
     await waitFor(() => expect(screen.getAllByText(/Sales team, Q3/i).length).toBeGreaterThan(0))
-    await screen.findByText('People')
-    expect(screen.queryByText('Begin the last check-in')).toBeNull()
+    expect(await screen.findByText('Begin the last check-in')).toBeTruthy()
   })
 
   it('is offered once session 6 - the last one - is next', async () => {
@@ -75,5 +78,20 @@ describe('"Begin the last check-in" only once the check-in is near its end', () 
     renderPage()
     await waitFor(() => expect(screen.getAllByText(/Sales team, Q3/i).length).toBeGreaterThan(0))
     expect(await screen.findByText('Begin the last check-in')).toBeTruthy()
+  })
+
+  it('is offered on a check-in with no planned number of sessions', async () => {
+    (groundsApi.get as any).mockResolvedValue(ground(0, { timelineDays: null }))
+    renderPage()
+    await waitFor(() => expect(screen.getAllByText(/Sales team, Q3/i).length).toBeGreaterThan(0))
+    expect(await screen.findByText('Begin the last check-in')).toBeTruthy()
+  })
+
+  it('is not offered once the check-in has closed', async () => {
+    (groundsApi.get as any).mockResolvedValue(ground(0, { status: 'CLOSED' }))
+    renderPage()
+    await waitFor(() => expect(screen.getAllByText(/Sales team, Q3/i).length).toBeGreaterThan(0))
+    await screen.findByText('People')
+    expect(screen.queryByText('Begin the last check-in')).toBeNull()
   })
 })

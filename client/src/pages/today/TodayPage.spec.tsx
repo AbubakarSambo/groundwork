@@ -12,7 +12,7 @@ import { useAuthStore } from '@/stores/auth'
  * reader (GET /today, see api/src/modules/grounds/what-needs-you.spec.ts for what each reader is
  * given). Wording from today-lead.txt, today-admin.txt and today-participant-with-groundwork-message.txt.
  */
-vi.mock('@/api/today', () => ({ todayApi: { get: vi.fn(), everywhere: vi.fn() } }))
+vi.mock('@/api/today', () => ({ todayApi: { get: vi.fn(), everywhere: vi.fn(), outstanding: vi.fn().mockResolvedValue(null) } }))
 import { todayApi } from '@/api/today'
 
 const MORNING = new Date(2026, 8, 23, 9, 0)
@@ -61,6 +61,9 @@ beforeEach(() => {
   vi.restoreAllMocks()
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(MORNING)
+  /* Reset between tests: a test that gives the lead's daily nudge its own outstanding items must
+     not leak into the next one, which expects the server's ordinary "nothing outstanding" (null). */
+  ;(todayApi.outstanding as any).mockReset().mockResolvedValue(null)
 })
 afterEach(() => { vi.useRealTimers() })
 
@@ -128,6 +131,64 @@ describe('Today, as the lead', () => {
     open(WAIRIMU, LEAD_READ)
     await screen.findByText('3 things, most important first')
     expect(document.body.textContent).not.toMatch(/You’re an admin|going$|Get .* going/)
+  })
+})
+
+/**
+ * THE LEAD'S DAILY NUDGE'S OWN LINK (decision 120, GET /today/outstanding): "Needs you", "Overdue
+ * on your team" and "Risks", every sentence already worded by the server.
+ */
+describe('Today: the lead’s daily nudge, "to see everything"', () => {
+  it('draws all three lists, in the order served, under their own headings', async () => {
+    ;(todayApi.outstanding as any).mockResolvedValue({
+      needsYou: ['Kofi is waiting on you for the pricing for Q4 since Thursday 8 October.'],
+      overdueOnYourTeam: ['Omar committed to “send the price list” by Tuesday 6 October, and it is six days late.'],
+      risks: ['Bisi has been waiting on Omar for the price list since Monday 21 September.'],
+    })
+    open(WAIRIMU, LEAD_READ)
+    expect(await screen.findByRole('heading', { name: 'Needs you' })).toBeTruthy()
+    expect(screen.getByText('Kofi is waiting on you for the pricing for Q4 since Thursday 8 October.')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Overdue on your team' })).toBeTruthy()
+    expect(screen.getByText('Omar committed to “send the price list” by Tuesday 6 October, and it is six days late.')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Risks' })).toBeTruthy()
+    expect(screen.getByText('Bisi has been waiting on Omar for the price list since Monday 21 September.')).toBeTruthy()
+  })
+
+  it('leaves out a heading whose list is empty', async () => {
+    ;(todayApi.outstanding as any).mockResolvedValue({ needsYou: [], overdueOnYourTeam: ['Omar is six days late.'], risks: [] })
+    open(WAIRIMU, LEAD_READ)
+    expect(await screen.findByRole('heading', { name: 'Overdue on your team' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Needs you' })).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Risks' })).toBeNull()
+  })
+
+  it('draws nothing for a member, since the server gives her null', async () => {
+    ;(todayApi.outstanding as any).mockResolvedValue(null)
+    open(MIRIAM, PARTICIPANT_READ)
+    await screen.findByText('Wednesday 23 September. Your check-in for Sales team, Q3 is open.')
+    expect(screen.queryByRole('heading', { name: 'Needs you' })).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Overdue on your team' })).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Risks' })).toBeNull()
+  })
+
+  it('does not say twice, under "Needs you", a sentence "What needs you" already says', async () => {
+    ;(todayApi.outstanding as any).mockResolvedValue({
+      needsYou: [
+        'Decide whether a price range counts as a budget',
+        'Kofi is waiting on you for the pricing for Q4 since Thursday 8 October.',
+      ],
+      overdueOnYourTeam: [],
+      risks: [],
+    })
+    open(WAIRIMU, {
+      ...LEAD_READ,
+      needs: [
+        { key: 'd', kind: 'decide', title: 'Decide whether a price range counts as a budget', detail: 'Brian and Miriam both raised it.', action: { label: 'Decide', to: '/x' }, groundId: 'g', organizationId: 'o' },
+      ],
+    })
+    expect(await screen.findByRole('heading', { name: 'Needs you' })).toBeTruthy()
+    expect(screen.getByText('Kofi is waiting on you for the pricing for Q4 since Thursday 8 October.')).toBeTruthy()
+    expect(screen.getAllByText('Decide whether a price range counts as a budget')).toHaveLength(1)
   })
 })
 

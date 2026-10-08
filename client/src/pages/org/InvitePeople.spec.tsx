@@ -56,6 +56,35 @@ describe('invite people (A4 people.txt)', () => {
     expect(screen.queryByText(/0 more people/)).toBeNull()
   })
 
+  /*
+   * RESTORED (8 October, night note item 4, B-128). Each row of the preview now carries the name
+   * read beside the address, when one was typed - this used to show only the address, with the
+   * name read nowhere even though the invitation itself begins "Hi Дмитрий,".
+   */
+  it('shows the name read beside each address, when one was typed', async () => {
+    vi.spyOn(apiClient, 'post').mockResolvedValue({
+      data: {
+        preview: true, seatsLeft: 70,
+        rows: [
+          { email: 'p01@fieldnote.test', name: 'Дмитрий Иванов', result: 'invited' },
+          { email: 'ada@x.com', name: 'Ada Obi', result: 'invited' },
+          { email: 'no-name@x.com', result: 'invited' },
+        ],
+        summary: '3 people will be invited.',
+      },
+    } as any)
+    wrap(<InvitePeople />)
+    fireEvent.change(
+      screen.getByLabelText('Write one person on each line, with their name and email. Or paste a list from a spreadsheet.'),
+      { target: { value: 'Дмитрий Иванов <p01@fieldnote.test>\nAda Obi, ada@x.com\nno-name@x.com' } },
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Send their invitations' }))
+    expect(await screen.findByText('Дмитрий Иванов, p01@fieldnote.test')).toBeTruthy()
+    expect(screen.getByText('Ada Obi, ada@x.com')).toBeTruthy()
+    expect(screen.getByText('no-name@x.com')).toBeTruthy()
+    expect(screen.queryByText(/^no-name@x\.com,/)).toBeNull()
+  })
+
   it('offers the three roles an invitation can give, and never a guest', () => {
     wrap(<InvitePeople />)
     const options = Array.from((screen.getByLabelText('Role') as HTMLSelectElement).options).map((o) => o.textContent)

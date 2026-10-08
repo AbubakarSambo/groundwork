@@ -162,4 +162,36 @@ describe('Request leave', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     expect(await screen.findByText('The end date is before the start date.')).toBeInTheDocument()
   })
+
+  /*
+   * RESTORED (8 October, nothing-removed audit S3): A 5xx OR A NETWORK FAULT IS NOT A REFUSAL. Any
+   * failure of `GET /suites/leave/form` used to hide the form behind an error note, with no way
+   * back short of reloading the page - even a passing server fault that says nothing about whether
+   * this reader may ask for leave. The form stays up for it now, with a "Try again".
+   */
+  it('on a 5xx loading the form, shows the form with a "Try again", not just an error note', async () => {
+    ;(fileARequestApi.leaveForm as any).mockRejectedValue(refusal(500))
+    open()
+    await screen.findByText('That did not load, and nothing has changed.')
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Start date')).toBeInTheDocument()
+    expect(screen.getByLabelText('End date')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument()
+  })
+
+  it('on a network fault loading the form, shows the form with a "Try again", not just an error note', async () => {
+    ;(fileARequestApi.leaveForm as any).mockRejectedValue(new Error('Network Error'))
+    open()
+    await screen.findByText('That did not load, and nothing has changed.')
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Start date')).toBeInTheDocument()
+  })
+
+  it('"Try again" asks for the form again', async () => {
+    ;(fileARequestApi.leaveForm as any).mockRejectedValueOnce(refusal(500)).mockResolvedValueOnce({ kinds: [], standIns: [] })
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
+    await waitFor(() => expect(screen.queryByText('That did not load, and nothing has changed.')).toBeNull())
+    expect(fileARequestApi.leaveForm).toHaveBeenCalledTimes(2)
+  })
 })

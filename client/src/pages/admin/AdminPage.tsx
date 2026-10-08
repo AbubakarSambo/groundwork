@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { promptsApi, UsageFunnelData, PlatformDashboardData, OrgListItem, UsageStatsData, FeedbackSummaryData, PANEL_RANGES, type PanelRange, type Rate } from '@/api/prompts'
+import { promptsApi, UsageFunnelData, PlatformDashboardData, OrgListItem, UsageStatsData, FeedbackSummaryData, PANEL_RANGES, type PanelRange, type Rate, type ActivationFunnel, type ActivationStage, type ActivationNowBucket, type ActivationEmailOutcome, type ParticipantActivation, type ParticipantReachedStep, type ParticipantStuckBucket } from '@/api/prompts'
 import { adminApi, type PricingPlanRow, type InboundMessage, type CallRequestRow, type CoachingBatch } from '@/api/admin'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
@@ -901,7 +901,10 @@ function SystemTab({ dash }: { dash: PlatformDashboardData }) {
 
 // ── Drop-offs tab ─────────────────────────────────────────────────────────────
 
-function DropoffsTab({ data }: { data: UsageFunnelData }) {
+/* Exported so the activation funnel (a served payload's own section of this tab) can be rendered
+   and checked on its own, without standing up the whole back-office page and its dozen other
+   queries - see activation-funnel-on-the-usage-tab.spec.tsx. */
+export function DropoffsTab({ data }: { data: UsageFunnelData }) {
   const sessions = data.funnelBySession
   let lastNonZero = 0
   for (let i = 0; i < sessions.length; i++) { if (sessions[i].completed > 0) lastNonZero = i }
@@ -910,6 +913,9 @@ function DropoffsTab({ data }: { data: UsageFunnelData }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+
+      <ActivationSection activation={data.activation} />
+      <ParticipantsSection participants={data.activation?.participants} />
 
       <section>
         <div style={SL}>Session retention</div>
@@ -1001,6 +1007,149 @@ function DropoffsTab({ data }: { data: UsageFunnelData }) {
         </div>
       </section>
     </div>
+  )
+}
+
+/**
+ * THE ACTIVATION FUNNEL (docs/answers-from-engine.md, 8 October, "the engagement work", point 1;
+ * decision 109). Staff-only, counts over customers' check-ins only, never a person or a word
+ * anybody said. `activation` is null when it could not be read - this whole section draws nothing
+ * then, and the rest of the Drop-offs tab is unaffected.
+ */
+const ACTIVATION_STAGE_LABELS: Record<ActivationStage, string> = {
+  created: 'Created',
+  peopleAdded: 'Somebody besides the lead was added',
+  firstResponse: 'Somebody besides the lead finished a session',
+  enoughToReport: 'A report was made',
+  firstInsight: 'The report went out',
+  leadActed: 'The lead acted on it',
+  secondRound: 'A second round finished',
+}
+const ACTIVATION_STAGE_ORDER: ActivationStage[] = ['created', 'peopleAdded', 'firstResponse', 'enoughToReport', 'firstInsight', 'leadActed', 'secondRound']
+
+const ACTIVATION_NOW_LABELS: Record<ActivationNowBucket, string> = {
+  test: 'Test (a week old or more, nobody but the lead ever added)',
+  abandonedBeforeValue: 'Abandoned before a report (over a fortnight old, nothing moving for a fortnight)',
+  abandonedAfterValue: 'Abandoned after the report (the report went out over a fortnight ago, nothing moved since)',
+  active: 'Active (a session started or finished in the last fortnight)',
+}
+const ACTIVATION_NOW_ORDER: ActivationNowBucket[] = ['test', 'abandonedBeforeValue', 'abandonedAfterValue', 'active']
+
+/* The engine's own suggested words (docs/answers-from-engine.md): the last two were never
+   delivered, so they must not be drawn as mail nobody answered. */
+const ACTIVATION_EMAIL_LABELS: Record<ActivationEmailOutcome, string> = {
+  delivered: 'Sent',
+  failed: 'Could not be sent',
+  held: 'Kept for the morning',
+  notSentOnPurpose: 'Not sent, because the person asked us not to or had already had their one for the day',
+}
+const ACTIVATION_EMAIL_ORDER: ActivationEmailOutcome[] = ['delivered', 'failed', 'held', 'notSentOnPurpose']
+
+function ActivationSection({ activation }: { activation: ActivationFunnel | null }) {
+  if (!activation) return null
+  const top = activation.reached.created || 1
+
+  return (
+    <>
+      <section>
+        <div style={SL}>How far check-ins get</div>
+        <div style={{ ...C, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {ACTIVATION_STAGE_ORDER.map((stage) => (
+            <div key={stage} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', minWidth: 36, textAlign: 'right', flexShrink: 0 }}>{activation.reached[stage]}</div>
+              <Bar pct={top > 0 ? (activation.reached[stage] / top) * 100 : 0} />
+              <div style={{ fontSize: 12, color: 'var(--gw-text)', minWidth: 230, flexShrink: 0 }}>{ACTIVATION_STAGE_LABELS[stage]}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <div style={SL}>Where check-ins stand now</div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          {ACTIVATION_NOW_ORDER.map((bucket) => (
+            <Stat key={bucket} val={activation.now[bucket]} label={ACTIVATION_NOW_LABELS[bucket]} />
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <div style={SL}>Leads who came back</div>
+        <div style={{ ...C, display: 'inline-block' }}>
+          <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--gw-navy)' }}>{activation.leadsWhoCameBack}</div>
+          <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 2 }}>leads with a second check-in</div>
+        </div>
+      </section>
+
+      <section>
+        <div style={SL}>Mail Groundwork decided to send</div>
+        <div style={{ ...C, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {ACTIVATION_EMAIL_ORDER.map((outcome) => (
+            <div key={outcome} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+              <div style={{ fontSize: 12, color: 'var(--gw-text)' }}>{ACTIVATION_EMAIL_LABELS[outcome]}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)' }}>{activation.emails[outcome].toLocaleString()}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+    </>
+  )
+}
+
+/**
+ * THE BACK OFFICE FUNNEL: PEOPLE, NOT ONLY CHECK-INS (docs/answers-from-engine.md, 8 October, point
+ * 2; beside the check-in funnel built in 5bdfc442). Staff-only, counts only - no name and no
+ * address is served. `participants` is missing on a server that has not shipped it yet, so this
+ * whole part of the tab draws nothing then, and the rest of the Drop-offs tab is unaffected.
+ */
+const PARTICIPANT_REACHED_LABELS: Record<ParticipantReachedStep, string> = {
+  added: 'Added to a check-in',
+  invited: 'Sent an invitation',
+  reached: 'The invitation arrived',
+  verified: 'Opened it and signed in',
+  engaged: 'Started a check-in',
+  inAHabit: 'Finished two or more, the latest in the last two weeks',
+}
+const PARTICIPANT_REACHED_ORDER: ParticipantReachedStep[] = ['added', 'invited', 'reached', 'verified', 'engaged', 'inAHabit']
+
+const PARTICIPANT_STUCK_LABELS: Record<ParticipantStuckBucket, string> = {
+  notInvited: 'Added and never sent an invitation',
+  invitedNotVerified: 'Invited and has not signed in',
+  verifiedNeverStarted: 'Signed in and has not started',
+  startedNotFinished: 'Started and not finished',
+  answeredOnceNotReturned: 'Answered once and has not come back',
+  wentQuiet: 'Answered twice or more and has gone quiet',
+}
+const PARTICIPANT_STUCK_ORDER: ParticipantStuckBucket[] = ['notInvited', 'invitedNotVerified', 'verifiedNeverStarted', 'startedNotFinished', 'answeredOnceNotReturned', 'wentQuiet']
+
+function ParticipantsSection({ participants }: { participants: ParticipantActivation | undefined }) {
+  if (!participants) return null
+  const top = participants.reached.added || 1
+
+  return (
+    <>
+      <section>
+        <div style={SL}>How far people get</div>
+        <div style={{ ...C, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {PARTICIPANT_REACHED_ORDER.map((step) => (
+            <div key={step} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', minWidth: 36, textAlign: 'right', flexShrink: 0 }}>{participants.reached[step]}</div>
+              <Bar pct={top > 0 ? (participants.reached[step] / top) * 100 : 0} />
+              <div style={{ fontSize: 12, color: 'var(--gw-text)', minWidth: 260, flexShrink: 0 }}>{PARTICIPANT_REACHED_LABELS[step]}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <div style={SL}>Where the people who stopped are standing</div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          {PARTICIPANT_STUCK_ORDER.map((bucket) => (
+            <Stat key={bucket} val={participants.stuck[bucket]} label={PARTICIPANT_STUCK_LABELS[bucket]} />
+          ))}
+        </div>
+      </section>
+    </>
   )
 }
 

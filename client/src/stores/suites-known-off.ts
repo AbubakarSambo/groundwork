@@ -15,9 +15,26 @@ import { create } from 'zustand'
 interface SuitesKnownOffStore {
   off: boolean
   setOff: () => void
+  /**
+   * RESTORED (8 October, nothing-removed audit S2): "off" PER SUITE, NOT ACROSS ALL THREE.
+   *
+   * `off`/`setOff` above answer one question only - the queue read, which is a single request - so
+   * they stay as they were for AppShell and QueuePage. Today's "Your own leave and spending
+   * requests" link asks three separate questions (leave, spending, hours), and B-002's fix
+   * (`f0c84389`) wired all three to that single flag: one 404, from a suite that really is off,
+   * marked every suite off for the rest of the session, so an organisation with leave on and time
+   * sheets off lost the link once the cached "leave is on" answer went stale - a suite that was
+   * never asked about again read as off along with the one that genuinely was. `offByKey` answers
+   * per suite instead, so a suite that has not yet 404'd keeps asking normally, and only the ones
+   * that have already said no stop repeating a call that cannot succeed.
+   */
+  offByKey: Record<string, boolean>
+  setKeyOff: (key: string) => void
 }
 
 export const useSuitesKnownOffStore = create<SuitesKnownOffStore>((set) => ({
   off: false,
   setOff: () => set({ off: true }),
+  offByKey: {},
+  setKeyOff: (key) => set((s) => ({ offByKey: { ...s.offByKey, [key]: true } })),
 }))

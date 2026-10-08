@@ -259,6 +259,20 @@ export interface Ground {
   commitments?: { id: string; participantId: string | null; text: string; whenSaid: string | null; explicit: boolean; status: string; settledAt?: string | null }[]
   checkIns?: CheckInSummary[]
   signals?: GroundSignal[]
+  /**
+   * THE CHECK-IN'S OWN CLOCK (B-112, night note item 5). The same count the board already uses
+   * (request 101 f): `currentSession`/`plannedSessions` are the open round, capped at the plan;
+   * `says` is the prototype's own header sentence ("Session 2 of 12."); `whileOpen` is a second,
+   * true sentence for when a later session has started for some people while an earlier one is
+   * still open for others ("Session 3 has started for some people, while session 2 is still
+   * open."), and null otherwise. Both are kept as two sentences on purpose - draw them together.
+   */
+  sessionClock?: {
+    currentSession: number
+    plannedSessions: number | null
+    says: string
+    whileOpen: string | null
+  }
   report?: { id: string; releasedAt: string | null; releasedSessions?: number[] | null; createdAt?: string } | null
   sessionProgress?: {
     sessionNumber: number

@@ -44,8 +44,12 @@ describe('going back to the cards', () => {
      * switch confirmed on - so the ordinary picker still opens on exactly `THE_OPENING_QUESTION`,
      * the one this test is really guarding, and an anchor arrival opens on the engine's served
      * question or the plan's own fallback instead. Still one definition, not two independent ones.
+     *
+     * Updated again for decision 114: the anchor's opening now comes from `POST /entry/opener`
+     * (`anchorOpenerQuery`), the same route any scenario's opening would, with the session-carried
+     * question and the plan's own wording kept underneath it only for when that call itself fails.
      */
-    expect(SRC).toContain('const INTRO = anchorConversationOpensDirectly() ? (takeTheServedFirstQuestion() ?? THE_ANCHOR_FIRST_QUESTION) : THE_OPENING_QUESTION')
+    expect(SRC).toContain("const INTRO = anchorConversationOpensDirectly()\n      ? (anchorOpenerQuery.data?.reply || takeTheServedFirstQuestion() || THE_ANCHOR_FIRST_QUESTION)\n      : THE_OPENING_QUESTION")
   })
 
   it('clears what is about the situation', () => {

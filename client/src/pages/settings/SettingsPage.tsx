@@ -64,6 +64,17 @@ function ChangePassword({ email }: { email?: string | null }) {
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const setAuth = useAuthStore(s => s.setAuth)
+  /*
+   * "You can also sign in with Google" is only true where this deployment has Google configured
+   * (authApi.methods, the same gate AuthPage and GoogleFailedPage use). Saying it when Google is
+   * off would promise a button that does not exist anywhere else in the product.
+   */
+  const { data: methods } = useQuery({
+    queryKey: ['auth-methods'],
+    queryFn: authApi.methods,
+    staleTime: 10 * 60 * 1000,
+    retry: false,
+  })
 
   const change = useMutation({
     mutationFn: async () => {
@@ -84,7 +95,7 @@ function ChangePassword({ email }: { email?: string | null }) {
   const met = rules.every(r => r.met)
 
   return (
-    <Section heading="Password" note="You can also sign in with Google or an email link">
+    <Section heading="Password" note={methods?.google ? 'You can also sign in with Google or an email link' : 'You can also sign in with an email link'}>
       <Panel>
         {!open ? (
           <Button kind="primary" onClick={() => setOpen(true)}>Change password</Button>

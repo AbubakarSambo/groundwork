@@ -67,12 +67,21 @@ describe('every arrival uses the same shell', () => {
     })
   }
 
-  it('and Arrival itself still carries the header, for the step of the join flow still on it', () => {
-    const shell = strip(readFileSync(join(__dirname, 'Arrival.tsx'), 'utf8'))
-    expect(shell).toMatch(/className="gw-hdr"/)
-    expect(shell).toMatch(/<GroundworkLogo \/>/)
-    expect(strip(readFileSync(join(__dirname, '../../pages/join/JoinConfirmPage.tsx'), 'utf8')))
-      .toMatch(/from '@\/components\/gw\/Arrival'/)
+  /*
+   * B-047: `JoinConfirmPage.tsx` was the one page still rendering inside `Arrival`'s header band
+   * (`gw-hdr`/`GroundworkLogo`) - a left-aligned, full-width bar with "GROUNDWORK" in small
+   * letter-spaced capitals, the one refusal screen in the whole page audit that did not centre a
+   * card on the cream page with the plain inline `Mark`, the way `/join`'s own `LinkProblem` (the
+   * same component, for the same failure) already does. It now renders inside `Page narrow` +
+   * `Mark`, completing the migration this file already describes for the other three arrivals, so
+   * nothing in the app imports `Arrival` any more.
+   */
+  it('JoinConfirmPage now renders inside the same shared shell, not Arrival’s own header', () => {
+    const code = strip(readFileSync(join(__dirname, '../../pages/join/JoinConfirmPage.tsx'), 'utf8'))
+    expect(code).not.toMatch(/from '@\/components\/gw\/Arrival'/)
+    expect(code).toMatch(/import \{[^}]*\bPage\b[^}]*\bMark\b[^}]*\} from '@\/components\/gw\/ui'/)
+    expect(code).toMatch(/<Page narrow>/)
+    expect(code).toMatch(/<Mark/)
   })
 })
 

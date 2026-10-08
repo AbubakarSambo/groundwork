@@ -15,9 +15,17 @@ import { yourRequestsApi } from '@/api/suites'
  *
  * `stores/suites-known-off.ts` already exists to fix exactly this for the sidebar's queue read
  * (screen fault 11, AppShell.tsx): there is nowhere cheap to ask first, so the first 404 is
- * remembered for the rest of the session instead of asked again. These three reads now share it.
+ * remembered instead of asked again. These three reads now share the per-suite form of it,
+ * `offByKey`.
+ *
+ * UPDATED (8 October, nothing-removed audit S2): the first fix remembered one shared flag for all
+ * three reads, so a single 404 (from a suite that really was off) also silenced the other two for
+ * the rest of the session once their own cached "on" answers went stale - taking away the link
+ * entirely for an organisation with, say, leave on and time sheets off. This file's first test used
+ * to prove that shared behaviour; it now proves the per-suite version (`offByKey`), and a second
+ * test below proves the restored case: one suite 404s, the other two keep asking normally.
  */
-vi.mock('@/api/today', () => ({ todayApi: { get: vi.fn().mockResolvedValue({ count: 0, line: '', needs: [], comingUp: [] }) } }))
+vi.mock('@/api/today', () => ({ todayApi: { get: vi.fn().mockResolvedValue({ count: 0, line: '', needs: [], comingUp: [] }), outstanding: vi.fn().mockResolvedValue(null) } }))
 vi.mock('@/api/suites', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/api/suites')>()
   return { ...actual, yourRequestsApi: { leave: vi.fn(), spending: vi.fn(), hours: vi.fn() } }
@@ -37,18 +45,18 @@ function mount() {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  useSuitesKnownOffStore.setState({ off: false })
+  useSuitesKnownOffStore.setState({ off: false, offByKey: {} })
   ;(todayApi.get as any).mockResolvedValue({ count: 0, line: '', needs: [], comingUp: [] })
 })
 
-describe('"your requests" reads, once an organisation has already said every suite is off', () => {
-  it('remembers a 404 from any of the three and stops asking again this session', async () => {
+describe('"your requests" reads, once an organisation has already said a suite is off', () => {
+  it('remembers a 404 from each of the three and stops asking again this session', async () => {
     ;(yourRequestsApi.leave as any).mockRejectedValue({ response: { status: 404 } })
     ;(yourRequestsApi.spending as any).mockRejectedValue({ response: { status: 404 } })
     ;(yourRequestsApi.hours as any).mockRejectedValue({ response: { status: 404 } })
     const { unmount } = mount()
     await waitFor(() => expect(yourRequestsApi.leave).toHaveBeenCalledTimes(1))
-    await waitFor(() => expect(useSuitesKnownOffStore.getState().off).toBe(true))
+    await waitFor(() => expect(useSuitesKnownOffStore.getState().offByKey).toEqual({ leave: true, spending: true, hours: true }))
     unmount()
 
     /* A later visit to the page, after the cache (or the page itself) has gone - the store already
@@ -66,6 +74,29 @@ describe('"your requests" reads, once an organisation has already said every sui
     ;(yourRequestsApi.hours as any).mockResolvedValue({ weeks: [], standing: null })
     mount()
     await waitFor(() => expect(yourRequestsApi.leave).toHaveBeenCalled())
-    expect(useSuitesKnownOffStore.getState().off).toBe(false)
+    expect(useSuitesKnownOffStore.getState().offByKey).toEqual({})
+  })
+
+  /**
+   * RESTORED (8 October, nothing-removed audit S2): A SUITE THAT HAS NOT 404'D KEEPS ASKING, EVEN
+   * WHILE ANOTHER ALREADY HAS. Before this fix, one 404 (time sheets, here) marked every suite off
+   * for the rest of the session, so leave stopped being asked about even though it was never told
+   * no - and once its own cached "on" answer went stale, the link would have disappeared for an
+   * organisation that still has leave switched on.
+   */
+  it('keeps asking a suite that has not 404d, even once another has', async () => {
+    ;(yourRequestsApi.leave as any).mockResolvedValue({ waiting: [], approved: [], daysLeftSaid: null, requests: [] })
+    ;(yourRequestsApi.spending as any).mockResolvedValue({ waiting: [], approved: [] })
+    ;(yourRequestsApi.hours as any).mockRejectedValue({ response: { status: 404 } })
+    const { unmount } = mount()
+    await waitFor(() => expect(yourRequestsApi.hours).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(useSuitesKnownOffStore.getState().offByKey).toEqual({ hours: true }))
+    unmount()
+
+    /* A later visit: hours stays silenced, but leave and spending - never told no - ask again. */
+    mount()
+    await waitFor(() => expect(yourRequestsApi.leave).toHaveBeenCalledTimes(2))
+    expect(yourRequestsApi.spending).toHaveBeenCalledTimes(2)
+    expect(yourRequestsApi.hours).toHaveBeenCalledTimes(1)
   })
 })

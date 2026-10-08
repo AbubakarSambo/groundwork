@@ -155,9 +155,14 @@ describe('every page is painted with the page colour, not the card fill', () => 
      * {{ minHeight: '100vh', ..., background: 'var(--gw-page)' }}>`) is gone too, replaced by
      * `AuthCard`, the same shared card its sibling `StopRemindersPage.tsx` already draws from. The
      * floor drops again, by that one file, to 12.
+     *
+     * B-047: `Arrival.tsx` itself (its own `background: 'var(--gw-page)'` full-page wrapper) is
+     * deleted - its last caller, `JoinConfirmPage.tsx`, moved onto `Page narrow` + `Mark`
+     * (`components/gw/ui`), the shared part this count is steadily moving every page onto. The
+     * floor drops again, by that one file, to 11.
      */
     const onThePage = files.filter(f => /background: 'var\(--gw-page\)'/.test(readFileSync(f, 'utf8')))
-    expect(onThePage.length).toBeGreaterThan(12)
+    expect(onThePage.length).toBeGreaterThan(11)
   })
 })
 

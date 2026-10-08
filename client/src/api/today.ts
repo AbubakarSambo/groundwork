@@ -32,9 +32,23 @@ export interface WhatNeedsYou {
   comingUp: ComingUp[]
 }
 
+/**
+ * WHAT IS OUTSTANDING FOR A LEAD (decision 120, GET /today/outstanding). The page the lead's daily
+ * nudge links to, "to see everything". Each array holds whole sentences, already worded by the
+ * server, in the order they should be read. `null` for anybody who is not a lead, or who has
+ * nothing outstanding.
+ */
+export interface Outstanding {
+  needsYou: string[]
+  overdueOnYourTeam: string[]
+  risks: string[]
+}
+
 export const todayApi = {
   get: (): Promise<WhatNeedsYou> => apiClient.get<WhatNeedsYou>('/today').then(r => r.data),
   /** How many things need you in each organisation you belong to: "3 new" on "Choose an organisation". */
   everywhere: (): Promise<{ organizationId: string; count: number }[]> =>
     apiClient.get<{ organizationId: string; count: number }[]>('/today/everywhere').then(r => (Array.isArray(r.data) ? r.data : [])),
+  outstanding: (): Promise<Outstanding | null> =>
+    apiClient.get<{ outstanding: Outstanding | null }>('/today/outstanding').then(r => r.data.outstanding ?? null),
 }

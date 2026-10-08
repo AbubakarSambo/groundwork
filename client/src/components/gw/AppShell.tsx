@@ -674,8 +674,19 @@ export function AppSidebar() {
   const [entryRenameVal, setEntryRenameVal] = useState('')
   const entryRenameRef = useRef<HTMLInputElement>(null)
 
-  const fullName = user?.firstName ? `${user.firstName} ${user.lastName ?? ''}`.trim() : user?.email ?? ''
-  const initials = user ? (((user.firstName?.[0] ?? '') + (user.lastName?.[0] ?? '')) || user.email?.[0] || 'U').toUpperCase() : 'U'
+  /*
+   * B-066: YOUR OWN MENU SHOWING YOUR OWN ADDRESS WHERE YOUR NAME GOES. E1 on Riverbank Trading's
+   * old data (docs/existing-users-check.md) found a member with no name yet, signed in as
+   * themselves, reading "F" and "fo4@riverbank.test" in their own account menu - the one place
+   * nobody needs telling apart from anybody else, because it is always them. "You" is the same word
+   * every other screen already uses for the reader's own row (a-colleague.ts), and the subtitle says
+   * what to do about it rather than showing the address back to them.
+   */
+  const hasOwnName = !!user?.firstName?.trim()
+  const fullName = hasOwnName ? `${user!.firstName} ${user!.lastName ?? ''}`.trim() : 'You'
+  const meSubtitle = hasOwnName ? 'Settings, help, sign out' : 'Add your name'
+  /* A plain neutral mark, never initials made from the reader's own address. */
+  const initials = user ? (hasOwnName ? (((user.firstName?.[0] ?? '') + (user.lastName?.[0] ?? '')).toUpperCase() || 'U') : '•') : 'U'
   /*
    * NEVER A NAME THAT ISN'T THE ORGANISATION'S OWN (U.8 review, Hafsah's instruction of 27
    * September). "Your organisation" read as if it were the name, on a placeholder profile a join
@@ -1150,16 +1161,16 @@ export function AppSidebar() {
                 onClick={() => { setMeOpen(v => !v); setOrgOpen(false) }}
                 aria-haspopup="true"
                 aria-expanded={meOpen}
-                title={collapsed ? `${fullName}. Settings, help, sign out` : undefined}
+                title={collapsed ? `${fullName}. ${meSubtitle}` : undefined}
               >
                 <span className="gw-rl-av" aria-hidden>{initials}</span>
                 {!collapsed && (
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <b className="gw-rl-org-name">{fullName}</b>
-                    <span className="gw-rl-org-role">Settings, help, sign out</span>
+                    <span className="gw-rl-org-role">{meSubtitle}</span>
                   </span>
                 )}
-                {collapsed && <span className="gw-sr-only">{fullName}. Settings, help, sign out</span>}
+                {collapsed && <span className="gw-sr-only">{fullName}. {meSubtitle}</span>}
               </button>
               {meOpen && (
                 <div className="gw-rl-menu gw-rl-menu-me" style={{ left: collapsed ? 70 : 10 }}>
@@ -1443,7 +1454,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
    * it inside the customer's rail would put "New check-in" next to the funding
    * pipeline — two different companies' navigation on one screen.
    */
-  const CHROMELESS_PREFIXES = ['/admin', '/ops']
+  /**
+   * B-048: `/preview/reports` is the same kind of page - "a Groundwork tool", behind the same
+   * `RequirePlatformAdmin` gate as `/admin/*` (App.tsx's own comment on that route) - but it was
+   * missing from this list, so the identical "This part is for Groundwork staff" refusal rendered
+   * with the customer's sidebar there and without it on every `/admin/*` page: one sentence, two
+   * different templates, depending only on which of our own addresses happened to show it.
+   */
+  const CHROMELESS_PREFIXES = ['/admin', '/ops', '/preview']
   const isBackOffice = CHROMELESS_PREFIXES.some(
     p => location.pathname === p || location.pathname.startsWith(`${p}/`),
   )

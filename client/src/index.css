@@ -1708,14 +1708,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 .gw-org-rows-foot { text-align: center; margin: 20px 0 0; }
 .gw-rl-menu-join { color: var(--gw-navy); font-weight: 700; }
 
-/* The invitation's page (A3, join-invite.jpg; U.3 review): the cream page, the small mark, one narrow
-   column, a serif heading and a beige note. Built by Arrival's `plain`. */
-.gw-arrival-plain { min-height: 100vh; background: var(--gw-page); padding: 56px 16px 48px; }
-.gw-arrival-plain-col { max-width: 360px; margin: 0 auto; }
-.gw-arrival-plain-col .gw-ttl { font-family: var(--gw-font-name); font-size: 28px; line-height: 1.25; font-weight: 500; letter-spacing: 0; margin: 22px 0 8px; }
-.gw-arrival-plain-col .gw-sub-t { font-size: 16px; line-height: 1.5; margin-bottom: 8px; }
 .gw-invite-note { background: #F6EFE4; color: var(--gw-text); border-radius: 8px; padding: 12px 14px; font-size: 14.5px; line-height: 1.5; margin: 0 0 18px; }
-@media (max-width: 640px) { .gw-arrival-plain { padding-top: 28px; } }
 
 /* The invitation's facts (A3, join-invite.txt): "What it asks", "Who sees your answers". */
 .gw-invite-facts { background: #fff; border: 1px solid var(--gw-border); border-radius: 10px; padding: 16px 20px; margin-bottom: 16px; display: grid; gap: 14px; }

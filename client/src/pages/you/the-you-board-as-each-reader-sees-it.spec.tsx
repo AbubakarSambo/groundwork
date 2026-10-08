@@ -182,6 +182,18 @@ describe('Grace, an admin in no check-in, reads her own', () => {
   })
 })
 
+describe('Grace, an admin who runs check-ins but has never been one’s own subject (B-043)', () => {
+  it('does not print the "Your board" heading with nothing under it', async () => {
+    open(GRACE, {
+      ...EMPTY,
+      checkIns: [{ id: 's', label: 'Sales team, Q3', youRunIt: true, line: 'You run this check-in. You have finished 38 sessions.', to: '/grounds/s' }],
+    })
+    await screen.findByRole('heading', { name: 'Your work in each' })
+    expect(screen.queryByRole('heading', { name: 'Your board' })).not.toBeInTheDocument()
+    expect(screen.queryByText('You are not in any check-in yet.')).not.toBeInTheDocument()
+  })
+})
+
 describe('when the engine serves its own parts (request 14)', () => {
   it('draws each one in the prototype’s words', async () => {
     open(MIRIAM, {

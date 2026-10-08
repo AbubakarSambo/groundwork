@@ -33,8 +33,14 @@ describe('the report bench is ours, not a customer\'s', () => {
     /*
      * A gate plus a link is a gate somebody trips over: a customer following a link into a refusal
      * reads it as the product being broken. The only way here is typing the address.
+     *
+     * B-048 added '/preview' to AppShell's own CHROMELESS_PREFIXES, so the identical staff-only
+     * refusal renders the same way (no customer sidebar) on `/preview/reports` as it already does
+     * on every `/admin/*` page - that line names the address to withhold the rail from, which is
+     * the opposite of linking to it. The check below still proves nobody can click their way here:
+     * no navigation item's `to`/`href` names it.
      */
     const NAV = strip(readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'AppShell.tsx'), 'utf8'))
-    expect(NAV).not.toContain('/preview')
+    expect(NAV).not.toMatch(/(?:to|href)=(?:"|\{`)\/preview/)
   })
 })

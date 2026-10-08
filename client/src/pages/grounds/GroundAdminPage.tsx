@@ -48,7 +48,7 @@ import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-
 import { copy } from '@/components/gw/copying-can-fail'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { SendTheReportToEveryone } from '@/components/gw/SendTheReportToEveryone'
-import { howManyHaveNotAnsweredYet } from '@/lib/a-number-up-to-ten-in-words'
+import { howManyHaveNotAnsweredYet, numberUpToTenInWords } from '@/lib/a-number-up-to-ten-in-words'
 
 /**
  * THE THIRD COPY OF THE SITUATION NAMES, DELETED.
@@ -1145,14 +1145,6 @@ export function GroundAdminPage() {
   )
   const sessionsDone = openRoundFromRule - 1
   /**
-   * NEAR ITS END: ITS LAST SESSION IS THE NEXT ONE (fault 4, live re-walk). The same rule the
-   * board already uses for "It's yours to decide how this ends" (BoardPage.tsx's `whereTheRunIs`,
-   * `done >= planned - 1`) - here, `sessionsDone` is that `done`, and `plannedSessions` that
-   * `planned`. With no plan at all, a check-in is never "near its end" by this rule; it can only
-   * be ended early, which the button already allows either way, right below.
-   */
-  const nearTheEnd = plannedSessions != null && plannedSessions > 0 && sessionsDone >= plannedSessions - 1
-  /**
    * HOW MANY SESSIONS *YOU* HAVE FINISHED, which is not the same number.
    *
    * `sessionsDone` is the round EVERYONE has finished - the person furthest behind sets the pace,
@@ -1206,6 +1198,21 @@ export function GroundAdminPage() {
     (c: any) => c.sessionNumber === openRound && c.status === 'COMPLETED',
   ).length
   /**
+   * B-053: ONE SESSION, NAMED ONCE. `ground.sessionClock` (when the server sends it) already names
+   * the round its own sentences are about - `says` read "Session 1 of 12." the moment the server's
+   * own count disagreed with this page's `openRound` (a lead who does not check in herself holds
+   * `openRound` at 1 after finishing session 1, because she is excluded from who-checks-in, while
+   * the clock's own round is the one `says` is about). Counting "who has checked in" against this
+   * page's own `openRound` then read a different session than the one just named - "Session 1 of
+   * 12. ... Nobody has checked in yet. Waiting for the first check-in." over a finished session 1.
+   * Whenever the server sends a clock, its own round is the one every count after `says` is about;
+   * `openRound` is kept only as the fallback for a ground the server has not given one.
+   */
+  const clockRound = ground.sessionClock?.currentSession ?? openRound
+  const clockRoundDone = (ground.checkIns ?? []).filter(
+    (c: any) => c.sessionNumber === clockRound && c.status === 'COMPLETED',
+  ).length
+  /**
    * WHY THE SESSION NUMBER JUST WENT DOWN.
    *
    * Walked twice on a real check-in. Header read "Session 2 of 3, 0 of 1 checked in for session 2".
@@ -1221,10 +1228,41 @@ export function GroundAdminPage() {
    * a fact about arithmetic that nobody can be expected to reconstruct, and it takes one sentence to
    * say. Shown only when it has actually happened: somebody here has finished more sessions than the
    * open round, which cannot be true unless the round moved back under them.
+   *
+   * B-064: THE ARITHMETIC ALONE IS NOT EVIDENCE SOMEBODY WAS ADDED. E1 on Riverbank Trading's old
+   * data (docs/existing-users-check.md) found "It went back to session 2, because somebody new was
+   * added." on check-ins where nobody had been added - the old data simply carried one person much
+   * further than another (session 20 against session 2), because it was put in with each person's
+   * own stray session numbers rather than everybody starting together. The arithmetic condition
+   * above is still necessary (it is what "went back" even means), but it is not sufficient: it is
+   * also true of two people who have always been in the check-in and have simply answered a very
+   * different number of times. The server does not send a "this person was added after the round
+   * opened" flag (request 201 asks for one), so this reads the nearest honest signal already on the
+   * page: `createdAt`, when every non-managing participant has one. Only when somebody who is BEHIND
+   * joined the check-in later than somebody who is AHEAD could they plausibly be the newcomer the
+   * sentence is about; when the data gives no such evidence (old imports often give everybody the
+   * same `createdAt`, or none at all), the sentence is dropped rather than guessed.
    */
-  const roundWentBack = (ground.participants ?? []).some((p: any) =>
-    (ground.checkIns ?? []).filter((c: any) => c.participantId === p.id && c.status === 'COMPLETED').length > openRound,
-  )
+  const roundWentBack = (() => {
+    const parties = (ground.participants ?? []).filter((p: any) => !p.managingOnly)
+    const doneCountOf = (p: any) =>
+      (ground.checkIns ?? []).filter((c: any) => c.participantId === p.id && c.status === 'COMPLETED').length
+    const joinedAt = (p: any): number | null => {
+      const t = p?.createdAt ? new Date(p.createdAt).getTime() : NaN
+      return Number.isFinite(t) ? t : null
+    }
+    const ahead = parties.filter((p: any) => doneCountOf(p) > openRound)
+    if (!ahead.length) return false
+    const behind = parties.filter((p: any) => doneCountOf(p) <= openRound)
+    return ahead.some((a: any) => {
+      const whenAheadJoined = joinedAt(a)
+      if (whenAheadJoined == null) return false
+      return behind.some((b: any) => {
+        const whenBehindJoined = joinedAt(b)
+        return whenBehindJoined != null && whenBehindJoined > whenAheadJoined
+      })
+    })
+  })()
   /**
    * The report has three states worth telling apart, and only the last is good
    * news. "Waiting" is not a failure and does not get a warning colour - it is
@@ -1259,7 +1297,9 @@ export function GroundAdminPage() {
    * open round is among them. `roundDone` stays, because "1 of 4 checked in" is a count worth
    * printing and is not the same claim as "the round has closed".
    */
-  const everyoneIn = ((ground as any).roundCompletions ?? []).some((r: any) => r.sessionNumber === openRound)
+  /* B-053: named against `clockRound`, the same session `ground.sessionClock.says` (when sent) is about -
+     see the comment beside `clockRound`'s own declaration. */
+  const everyoneIn = ((ground as any).roundCompletions ?? []).some((r: any) => r.sessionNumber === clockRound)
   /*
    * NOTHING IS BEING WRITTEN UNTIL SOMEBODY HAS CHECKED IN. Hafsah, 21 Sep 2026, on her own ground: "0 of
    * 1 checked in for session 1 · report being written", after the setup conversation and before any
@@ -1294,7 +1334,7 @@ export function GroundAdminPage() {
       : (ground as any).status === 'REPORT_READY'
         ? 'the report is ready. It has not been shared yet'
         : (ground as any).report
-          ? (everyoneIn ? 'everyone is in, report on its way' : roundDone > 0 ? 'report being written' : 'waiting for the first check-in')
+          ? (everyoneIn ? 'everyone is in, report on its way' : clockRoundDone > 0 ? 'report being written' : 'waiting for the first check-in')
           : 'no report yet'
   // contact-visibility toggle state (default: hidden). true = peers cannot see each other's email.
   /**
@@ -1640,7 +1680,19 @@ export function GroundAdminPage() {
             /* PROGRESS IS COUNTED IN SESSIONS, NOT DAYS. A ground eight sessions into twelve read
                "90 days remaining", which is arithmetically true and useless, because the work is
                measured in check-ins, not the calendar. */
-            if (plannedSessions != null) parts.push(`Session ${Math.min(sessionsDone + 1, plannedSessions)} of ${plannedSessions}.`)
+            /*
+             * DRAWN FROM THE SERVER'S OWN CLOCK (8 October, night note item 5, B-112). `GET
+             * /grounds/:id` now serves `sessionClock`, the board's own count (request 101 f) -
+             * `says` ("Session 2 of 12.") is read first, so the report tab and this header can no
+             * longer disagree about which session is open. `whileOpen` ("Session 3 has started
+             * for some people, while session 2 is still open.") is a second, true sentence this
+             * page could not say at all before: a later session can start for some people while an
+             * earlier one is still open for others, and both facts matter. The old client-side
+             * count stays only as the fallback for a server that does not send it yet.
+             */
+            if (ground.sessionClock?.says) parts.push(ground.sessionClock.says)
+            else if (plannedSessions != null) parts.push(`Session ${Math.min(sessionsDone + 1, plannedSessions)} of ${plannedSessions}.`)
+            if (ground.sessionClock?.whileOpen) parts.push(ground.sessionClock.whileOpen)
             /* THE DAY IT ENDS, ON EVERY CHECK-IN THAT HAS ONE, unless the days-left sentence is about to say the same thing more urgently. */
             if (ground.endsOn && !(ground.daysLeft != null && ground.daysLeft <= 3)) parts.push(`It ends on ${whenItWas(ground.endsOn, 'full')}.`)
             if (ground.daysLeft != null && ground.daysLeft <= 3) parts.push(ground.daysLeft === 0 ? 'It is due today.' : `${ground.daysLeft} day${ground.daysLeft === 1 ? '' : 's'} remain.`)
@@ -1651,7 +1703,14 @@ export function GroundAdminPage() {
               "session" appears in 159 visible strings and "round" in 25.
             */
             if ((ground.participants ?? []).length > 0) {
-              const total = whoIsInRound((ground.participants ?? []) as any[], openRound, (ground as any).scenario).length
+              /*
+               * B-053: COUNTED AGAINST `clockRound`, NOT `openRound` - the same session
+               * `ground.sessionClock.says` just named. Counting this page's own open round instead
+               * read "Session 1 of 12. ... Nobody has checked in yet. Waiting for the first
+               * check-in." over a session everybody had already finished, because `says` and this
+               * count were two different sessions' worth of true. See `clockRound`'s own comment.
+               */
+              const total = whoIsInRound((ground.participants ?? []) as any[], clockRound, (ground as any).scenario).length
               /*
                * REQUEST 174, ITEM 2 (report tab, fault b): "0 of 1 people have checked in" is not a
                * sentence anybody writes - nobody says "zero people" where "nobody" is the plain
@@ -1659,7 +1718,7 @@ export function GroundAdminPage() {
                * not a one-member "people".
                */
               parts.push(
-                howManyCheckedInSentence(roundDone, total, openRound),
+                howManyCheckedInSentence(clockRoundDone, total, clockRound),
               )
             }
             if (roundWentBack) parts.push(`It went back to session ${openRound}, because somebody new was added. Nothing anybody wrote is lost.`)
@@ -2374,6 +2433,19 @@ export function GroundAdminPage() {
                * clauses is also gone, in favour of a full sentence.
                */
               const releasedAt = (ground as any).report?.releasedAt as string | null | undefined
+              /*
+               * B-056: "ONCE ALL 1 ARE IN" IS NOT ENGLISH. With one person on the check-in, this
+               * read "once all 1 are in", a bare digit standing in for a number that was never
+               * plural in the first place. With one person it now says it plainly - "once you have
+               * checked in" when the reader is that one person, "once they are in" when she is not
+               * (the lead can view a check-in that is not her own) - and with more than one, the
+               * count is said in words, the way every other small number on this page already is.
+               */
+              const total = ground.participants.length
+              const theOnlyParticipant = total === 1 ? ground.participants[0] : null
+              const onceEverybodyIsIn = total === 1
+                ? (theOnlyParticipant?.userId === user?.id ? 'you have checked in' : 'they are in')
+                : `all ${numberUpToTenInWords(total)} people are in`
               return (
                 <Callout tone="info">
                   <span className="gwui-switch-row">
@@ -2381,7 +2453,7 @@ export function GroundAdminPage() {
                       {releasedAt
                         ? `This report was already shared, on ${whenItWas(releasedAt, 'day')}, before everybody had checked in.`
                         : <>The picture builds as each person answers, and you can read what it has so far.
-                            It is only released to everybody once all {ground.participants.length} are in.</>}
+                            It is only released to everybody once {onceEverybodyIsIn}.</>}
                     </span>
                     <Button kind="quiet" size="small" onClick={() => setTab('report')}>
                       {releasedAt ? 'Read it' : 'Read it so far'}
@@ -2468,13 +2540,15 @@ export function GroundAdminPage() {
               where somebody is added - which is also where it can be said BEFORE an address is
               typed rather than after the button is pressed.
 
-              FAULT 4 (LIVE RE-WALK): NOT UNTIL IT IS NEAR ITS END. My work offered "Begin the last
-              check-in" in session 1 of 6, with five more sessions still to come - a red button for
-              ending the whole engagement, beside nothing saying it was early to do so. Gated on
-              `nearTheEnd` now (defined above, beside `sessionsDone`): the same "its last session is
-              the next one" rule the board already uses for its own ending control.
+              RESTORED (8 October, nothing-removed audit S1): live showed this at any time while
+              the check-in ran, including a check-in with no planned number of sessions, gating only
+              on status. Gating on `nearTheEnd` (fault 4, live re-walk) hid the button for five
+              sessions out of six and removed it entirely from an open-ended check-in - live had
+              neither restriction, and nothing else calls `beginClosingSession`, so there was no
+              other way to close early. No decision of Hafsah's covers taking that away, so it is
+              shown again in every case live did: gated on status alone.
             */}
-            {isInitiator && nearTheEnd && !['RESOLVED', 'CLOSED', 'STALLED', 'AWAITING_LEAD'].includes(ground.status) && (
+            {isInitiator && !['RESOLVED', 'CLOSED', 'STALLED', 'AWAITING_LEAD'].includes(ground.status) && (
               confirmClosing ? (
                 <Stack gap={10}>
                   {/* GROUP 3'S REVIEW, BATCH A FAULT 6: "SESSION" IS INTERNAL JARGON HERE; THE
@@ -2619,6 +2693,7 @@ export function GroundAdminPage() {
               boardRenders={!!(ground as any).boardRenders}
               onOpenBoard={() => navigate(`/grounds/${ground.id}/board`)}
               onOpenSession={(n: number) => navigate(`/grounds/${ground.id}/session/${n}`)}
+              onOpenWeek={() => navigate(`/grounds/${ground.id}/report/week`)}
             />
 
             {/*

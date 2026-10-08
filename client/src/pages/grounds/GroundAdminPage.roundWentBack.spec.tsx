@@ -15,6 +15,18 @@ import { groundsApi } from '@/api/grounds'
  * only true when somebody has finished MORE sessions than the round that is currently open,
  * which can only happen if the round genuinely moved back under them (a new, undone participant
  * pulled the open round down after the others had already gone further).
+ *
+ * B-064, DECISION TO REQUIRE EVIDENCE OF AN ACTUAL ADDITION: the arithmetic above is still
+ * necessary but, on its own, is also true of two people who have ALWAYS been in the check-in and
+ * have simply answered very different numbers of times - exactly what E1 on Riverbank Trading's
+ * old data found (docs/existing-users-check.md): "It went back to session 2, because somebody new
+ * was added." on a check-in where nobody had been added; the old data just carried one person's
+ * session count much further than another's. `roundWentBack` now also asks whether somebody who is
+ * behind joined the check-in LATER than somebody who is ahead (`createdAt`), which is the nearest
+ * honest evidence already on the page that a newcomer, rather than old data, caused the gap. The
+ * second test below now gives `p-b` a later `createdAt` than `p-a`, so it keeps testing a genuine
+ * addition; a third test pins the old-data case the bug found, where nobody's `createdAt` says a
+ * later join happened.
  */
 vi.mock('@/stores/auth', () => ({
   useAuthStore: (sel: any) => sel({ user: { id: 'u-lead', role: 'MEMBER', email: 'lead@x.test' }, isAuthenticated: true }),
@@ -72,8 +84,12 @@ describe('the "went back" sentence only appears when the round truly moved back'
 
   it('shows it when a newly added, undone person pulls the open round back under somebody further ahead', async () => {
     const g = baseGround()
-    // p-a has already finished sessions 1 and 2 (two completed sessions). p-b has finished
-    // nothing, which pulls the open round back down to session 1 - behind what p-a already did.
+    // p-a has already finished sessions 1 and 2 (two completed sessions), and joined back in
+    // January. p-b has finished nothing and joined in October - after p-a was already ahead -
+    // which is the actual evidence that p-b is the newcomer who pulled the open round back.
+    g.participants = g.participants.map((p: any) =>
+      p.id === 'p-a' ? { ...p, createdAt: '2026-01-05' } : p.id === 'p-b' ? { ...p, createdAt: '2026-10-01' } : p,
+    )
     g.checkIns = [
       { id: 'c1', sessionNumber: 1, status: 'COMPLETED', participantId: 'p-a', completedAt: '2026-09-01' },
       { id: 'c2', sessionNumber: 2, status: 'COMPLETED', participantId: 'p-a', completedAt: '2026-09-08' },
@@ -82,5 +98,36 @@ describe('the "went back" sentence only appears when the round truly moved back'
     renderPage()
     await waitFor(() => expect(screen.getAllByText(/Amara - Onboarding/i).length).toBeGreaterThan(0))
     expect(await screen.findByText(/It went back to session 1, because somebody new was added\. Nothing anybody wrote is lost\./i)).toBeTruthy()
+  })
+
+  /**
+   * B-064: OLD DATA, NOT A NEW ADDITION. Riverbank Trading's imported check-ins gave every
+   * participant the same `createdAt` (the migration ran once, for everybody, on release day), yet
+   * one person's stray session numbers put them far ahead of another. Nobody was added after the
+   * round opened, so the sentence must not guess that somebody was.
+   */
+  it('does not show it when the gap is old data, not a later join - everybody has the same createdAt', async () => {
+    const g = baseGround()
+    g.participants = g.participants.map((p: any) => ({ ...p, createdAt: '2026-10-08' }))
+    g.checkIns = [
+      { id: 'c1', sessionNumber: 1, status: 'COMPLETED', participantId: 'p-a', completedAt: '2026-06-01' },
+      { id: 'c2', sessionNumber: 2, status: 'COMPLETED', participantId: 'p-a', completedAt: '2026-06-08' },
+    ]
+    ;(groundsApi.get as any).mockResolvedValue(g)
+    renderPage()
+    await waitFor(() => expect(screen.getAllByText(/Amara - Onboarding/i).length).toBeGreaterThan(0))
+    expect(screen.queryByText(/It went back to session/i)).toBeNull()
+  })
+
+  it('does not show it when nobody has a createdAt at all - there is no evidence either way', async () => {
+    const g = baseGround()
+    g.checkIns = [
+      { id: 'c1', sessionNumber: 1, status: 'COMPLETED', participantId: 'p-a', completedAt: '2026-06-01' },
+      { id: 'c2', sessionNumber: 2, status: 'COMPLETED', participantId: 'p-a', completedAt: '2026-06-08' },
+    ]
+    ;(groundsApi.get as any).mockResolvedValue(g)
+    renderPage()
+    await waitFor(() => expect(screen.getAllByText(/Amara - Onboarding/i).length).toBeGreaterThan(0))
+    expect(screen.queryByText(/It went back to session/i)).toBeNull()
   })
 })

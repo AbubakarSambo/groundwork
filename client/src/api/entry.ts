@@ -187,8 +187,15 @@ export interface OnboardResult {
 // ── Entry API ─────────────────────────────────────────────────────────────────
 
 export const entryApi = {
-  opener: (scenario?: string) =>
-    apiClient.post<{ reply: string }>('/entry/opener', { scenario }).then(r => r.data),
+  /**
+   * `POST /entry/opener`: `reply` is the opening words, as before. `source` and `thePeopleStep`
+   * ride on the same call for a scenario that has its own (today the anchor's, with its switch on)
+   * and are absent for every other - request 196, docs/answers-from-engine.md, "8 October (later):
+   * the anchor through the ordinary routes, route by route". `source` is not read by any caller yet
+   * (nothing used it off `/entry/anchor-start` either); `thePeopleStep` is, by `EntryChatPage.tsx`.
+   */
+  opener: (scenario?: string, source?: string) =>
+    apiClient.post<{ reply: string; source?: string; thePeopleStep?: ThePeopleStepRules }>('/entry/opener', { scenario, source }).then(r => r.data),
 
   // Supports two call forms:
   //   new: entryApi.chat(mode, messages)       → posts { mode, messages }
@@ -285,6 +292,9 @@ export const entryApi = {
     checkInBy?: string
     inviteNote?: string
     cadenceChosen?: boolean
+    /** RESTORED (nothing-removed-screens.md item 2): the day check-ins land on - a weekday (0 =
+        Sunday) for WEEKLY/FORTNIGHTLY, a day of the month for MONTHLY. Omit to leave it unset. */
+    cadenceAnchorDay?: number
     history: ChatTurn[]
     report?: EntryReport | null
     /** A colleague picked from the list is sent by `colleagueId`, never by address (U.4). */
@@ -328,27 +338,24 @@ export const entryApi = {
 }
 
 /**
- * THE ANCHOR SCENARIO'S FRONT DOOR CALLS (plan pieces 1 and 2; docs/answers-from-engine.md,
- * "Request 144 (1)" and "Request 144 (2) and (3)"). Both are open to a visitor who is not signed in.
+ * THE ANCHOR SCENARIO'S OWN START CALL (decision 114, docs/decisions-merged.md;
+ * docs/answers-from-engine.md, "8 October: decision 114, the anchor changes no screen").
+ *
+ * `GET /entry/anchor-available` is no longer called from the client: it used to be the public
+ * signal `AnchorLandingPage.tsx` asked before showing itself at all, and that page is gone - the
+ * anchor now opens from the ordinary entry chat like any scenario, and a 404 from `start` below
+ * already says the switch is off, which is the only thing `anchor-available` ever answered.
  */
 export const entryAnchorApi = {
   /**
-   * `GET /entry/anchor-available`: the one public signal of whether `release.anchorScenario` is on.
-   * Answers only `{ available }`, cached by the server for 30 seconds. This is the call the landing
-   * page asks before it decides whether to show itself at all, replacing the old stub that could
-   * only ever answer false (`anchor-scenario-is-on.ts`).
-   */
-  available: (): Promise<{ available: boolean }> =>
-    apiClient.get('/entry/anchor-available').then(r => r.data),
-
-  /**
-   * `GET /entry/anchor-start?source=<mark>`: called once on arrival at `/start/team`. With the
-   * switch on it answers the situation key (`HELP_TEAM_UNDERSTAND`), a label for the ground, the
-   * source mark read back exactly as sent (or `null`), and `thePeopleStep`
-   * (docs/answers-from-engine.md, "Request 149 (2 of 6)") - the people step's own heading, intro,
-   * context label, button and limit sentence, carried from here through to the entry chat's people
-   * step rather than read off the fixed `ANCHOR_PEOPLE_STEP_RULES`. With the switch off it answers
-   * 404 - the caller is expected to show the engine's own sentence rather than invent one.
+   * `GET /entry/anchor-start?source=<mark>`: called once, by `EntryChatPage.tsx`, on a fresh
+   * arrival with `?scenario=HELP_TEAM_UNDERSTAND` in the address. With the switch on it answers the
+   * situation key (`HELP_TEAM_UNDERSTAND`), a label for the ground, the source mark read back
+   * exactly as sent (or `null`), and `thePeopleStep` (docs/answers-from-engine.md, "Request 149 (2
+   * of 6)") - the people step's own heading, intro, context label, button and limit sentence,
+   * carried straight into the entry chat's people step rather than read off the fixed
+   * `ANCHOR_PEOPLE_STEP_RULES`. With the switch off it answers 404 - the caller falls back to
+   * today's ordinary door rather than show a sentence of its own.
    *
    * `firstQuestion` (request 163, item 9): the engine's own opening line for the anchor
    * conversation, "What's happening right now that makes you wish your team saw more of what you

@@ -12,17 +12,18 @@ import type { Cadence } from '@/components/gw/when-the-check-ins-land'
  */
 const TODAY = new Date(2026, 5, 30)
 
-function Harness({ start = '', end = '', cadence = 'FORTNIGHTLY' as Cadence, chosen = false, days = [] as number[] }) {
+function Harness({ start = '', end = '', cadence = 'FORTNIGHTLY' as Cadence, chosen = false, days = [] as number[], anchorDay = null as number | null }) {
   const [c, setC] = useState<Cadence>(cadence)
   const [picked, setPicked] = useState(chosen)
   const [wd, setWd] = useState<number[]>(days)
   const [s, setS] = useState(start)
   const [e, setE] = useState(end)
+  const [ad, setAd] = useState<number | null>(anchorDay)
   return (
     <>
-      <TheSetup cadence={c} cadenceChosen={picked} onCadence={(x) => { setC(x); setPicked(true) }} anchorDay={null}
+      <TheSetup cadence={c} cadenceChosen={picked} onCadence={(x) => { setC(x); setPicked(true) }} anchorDay={ad} onAnchorDay={setAd}
         workingDays={wd} daysPicker={<WhichDaysTheyWork value={wd} onChange={setWd} />} startsOn={s} onStartsOn={setS} endsOn={e} onEndsOn={setE} today={TODAY} />
-      <output data-testid="saved">{JSON.stringify({ c, s, e, wd })}</output>
+      <output data-testid="saved">{JSON.stringify({ c, s, e, wd, ad })}</output>
     </>
   )
 }
@@ -114,19 +115,52 @@ describe('counting the days (U.6 review)', () => {
   })
 })
 
-describe('one day picker (U.6 review)', () => {
-  /* Read live: "On which day?" said Saturday, "On which days" said weekdays only, and weekly came
-     out fortnightly. There is one picker now, the same as on the check-in's own Setup. */
-  it('a weekly rhythm offers "On which days" and nothing else about days', () => {
+describe('which day it lands on (nothing-removed-screens.md item 2)', () => {
+  /*
+   * RESTORED: live offered "On which day?" for a weekly or fortnightly rhythm, sent as
+   * `cadenceAnchorDay`. It was removed here (U.6 review, "one day picker") out of concern that a
+   * second, disconnected picker could say Saturday while "On which days" said weekdays only and the
+   * two together turned a weekly rhythm into a fortnightly one - but `whenTheCheckInsLand` already
+   * folds an anchor day and the working days together correctly (it lands on the anchor day, then
+   * moves forward to the next working day), so restoring the picker does not reintroduce that bug.
+   */
+  it('a weekly rhythm offers both "On which days" and which day it lands on', () => {
     render(<Harness cadence="WEEKLY" chosen />)
     expect(screen.getAllByRole('region', { name: 'On which days' })).toHaveLength(1)
-    expect(document.body.textContent).not.toContain('On which day?')
-    expect(screen.queryByRole('combobox')).toBeNull()
+    expect(screen.getByText('Which day of the week should check-ins open? (optional)')).toBeTruthy()
+    for (const label of ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']) {
+      expect(screen.getByRole('button', { name: label })).toBeTruthy()
+    }
   })
-  it('and so does a monthly one', () => {
+
+  it('picking a weekday saves it, and picking it again clears it', () => {
+    render(<Harness cadence="WEEKLY" chosen />)
+    fireEvent.click(screen.getByRole('button', { name: 'Mon' }))
+    expect(saved().ad).toBe(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Mon' }))
+    expect(saved().ad).toBeNull()
+  })
+
+  it('a monthly rhythm offers a day of the month, not a weekday', () => {
     render(<Harness cadence="MONTHLY" chosen />)
-    expect(document.body.textContent).not.toContain('On which day of the month?')
-    expect(screen.queryByRole('combobox')).toBeNull()
+    expect(screen.getByText('Which day of the month should check-ins open? (optional)')).toBeTruthy()
+    const select = screen.getByRole('combobox') as HTMLSelectElement
+    fireEvent.change(select, { target: { value: '15' } })
+    expect(saved().ad).toBe(15)
+    expect(screen.queryByRole('button', { name: 'Mon' })).toBeNull()
+  })
+
+  it('a check-in once, or when I choose, offers neither', () => {
+    render(<Harness cadence="ONE_TIME" chosen start="2026-07-01" />)
+    expect(document.body.textContent).not.toContain('Which day of the week')
+    expect(document.body.textContent).not.toContain('Which day of the month')
+  })
+
+  it('changing the rhythm clears a day picked for the one before it', () => {
+    render(<Harness cadence="MONTHLY" chosen anchorDay={15} />)
+    expect(saved().ad).toBe(15)
+    fireEvent.click(screen.getByRole('button', { name: 'Every week' }))
+    expect(saved().ad).toBeNull()
   })
 })
 

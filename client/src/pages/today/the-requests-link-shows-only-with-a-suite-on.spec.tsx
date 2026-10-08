@@ -12,7 +12,7 @@ import { useSuitesKnownOffStore } from '@/stores/suites-known-off'
  * spending requests", and with both suites off (almost every existing client) it opened a page that
  * only says the suite is off. It shows now only when either list answers.
  */
-vi.mock('@/api/today', () => ({ todayApi: { get: vi.fn().mockResolvedValue({ count: 0, line: 'Nothing needs you right now.', needs: [], comingUp: [] }), everywhere: vi.fn() } }))
+vi.mock('@/api/today', () => ({ todayApi: { get: vi.fn().mockResolvedValue({ count: 0, line: 'Nothing needs you right now.', needs: [], comingUp: [] }), everywhere: vi.fn(), outstanding: vi.fn().mockResolvedValue(null) } }))
 vi.mock('@/api/suites', async (orig) => {
   const real: any = await orig()
   return {
@@ -38,7 +38,7 @@ const off = () => Promise.reject(Object.assign(new Error('off'), { response: { s
  * 404 in one test here would otherwise silence the queries in the next one. Reset between tests,
  * the same way suites-known-off.spec.tsx already resets it for AppShell.
  */
-beforeEach(() => { useSuitesKnownOffStore.setState({ off: false }) })
+beforeEach(() => { useSuitesKnownOffStore.setState({ off: false, offByKey: {} }) })
 
 describe('"Your own leave and spending requests" on Today', () => {
   it('is not offered when all three are off', async () => {

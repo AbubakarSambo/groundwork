@@ -289,6 +289,54 @@ describe('the save card, already signed in', () => {
   })
 })
 
+/*
+ * RESTORED (nothing-removed-screens.md item 2): live let a lead say which day a weekly or monthly
+ * check-in lands on (`cadenceAnchorDay`), sent all the way to `entryApi.commit`. This had been fixed
+ * at `null` with no control on screen to change it. Proven end to end: picking a day in `TheSetup`'s
+ * own "How often" section and saving really puts it on the commit payload the server receives.
+ */
+describe('which day it lands on, end to end (nothing-removed-screens.md item 2)', () => {
+  it('picking a weekday in setup sends it as cadenceAnchorDay on save', async () => {
+    authedUser = { id: 'u1', email: 'amina@suites.test' }
+    const { entryApi } = await import('@/api/entry')
+    seedClosedSession({ cadence: 'WEEKLY', cadenceChosen: true })
+    renderPage()
+    fireEvent.click(await screen.findByText(/Invite and finish/))
+    const mon = await screen.findByRole('button', { name: 'Mon' })
+    fireEvent.click(mon)
+    fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
+    await waitFor(() => expect(entryApi.commit).toHaveBeenCalled())
+    const payload = vi.mocked(entryApi.commit).mock.calls[0][0]
+    expect(payload.cadenceAnchorDay).toBe(1)
+  })
+
+  it('picking a day of the month for a monthly check-in sends it the same way', async () => {
+    authedUser = { id: 'u1', email: 'amina@suites.test' }
+    const { entryApi } = await import('@/api/entry')
+    seedClosedSession({ cadence: 'MONTHLY', cadenceChosen: true })
+    renderPage()
+    fireEvent.click(await screen.findByText(/Invite and finish/))
+    const select = await screen.findByRole('combobox')
+    fireEvent.change(select, { target: { value: '15' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
+    await waitFor(() => expect(entryApi.commit).toHaveBeenCalled())
+    const payload = vi.mocked(entryApi.commit).mock.calls[0][0]
+    expect(payload.cadenceAnchorDay).toBe(15)
+  })
+
+  it('sends nothing when no day was picked', async () => {
+    authedUser = { id: 'u1', email: 'amina@suites.test' }
+    const { entryApi } = await import('@/api/entry')
+    seedClosedSession({ cadence: 'WEEKLY', cadenceChosen: true })
+    renderPage()
+    fireEvent.click(await screen.findByText(/Invite and finish/))
+    fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
+    await waitFor(() => expect(entryApi.commit).toHaveBeenCalled())
+    const payload = vi.mocked(entryApi.commit).mock.calls[0][0]
+    expect(payload.cadenceAnchorDay).toBeUndefined()
+  })
+})
+
 describe('changing how many sessions a check-in runs (fault 2, live walk, 6 October 2026)', () => {
   /*
    * ONCE OPENED, THE ONLY CONTROL FOR HOW MANY SESSIONS A CHECK-IN RUNS WAS A BARE "sessions:" -

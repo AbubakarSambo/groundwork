@@ -25,9 +25,13 @@ describe('the confirm walk’s three sentences', () => {
     expect(numberUpToTenInWords(1)).toBe('one')
     expect(numberUpToTenInWords(2)).toBe('two')
     /* The engine's F-18 made this one shared sentence (lib/how-many-checked-in.ts), and the page
-       calls it; the words now live there, so this reads the sentence it gives. */
+       calls it; the words now live there, so this reads the sentence it gives.
+       UPDATED (B-053): the count is now taken against `clockRound`/`clockRoundDone`, the same
+       session `ground.sessionClock.says` names, not the page's own `openRound` - see
+       GroundAdminPage.oneSessionNamedOnce.spec.tsx for why (the two used to count different
+       sessions). The shared sentence itself, and its wording, are unchanged. */
     const src = read('GroundAdminPage.tsx')
-    expect(src).toContain('howManyCheckedInSentence(roundDone, total, openRound)')
+    expect(src).toContain('howManyCheckedInSentence(clockRoundDone, total, clockRound)')
     expect(howManyCheckedInSentence(2, 3, 1)).toBe('Two of the three people have checked in for session 1.')
     expect(src).not.toMatch(/\$\{roundDone\} of \$\{total\} \$\{roundDone === 1 \? 'person has'/)
   })

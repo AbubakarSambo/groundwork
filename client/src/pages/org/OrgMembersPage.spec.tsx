@@ -121,6 +121,44 @@ describe('everyone at Baridi', () => {
     expect(peter.getByText('No team')).toBeTruthy()
   })
 
+  /*
+   * RESTORED (8 October, decision 115, night note item 1). `GET /users` now carries `displayName`
+   * on every row, and seven of twelve people at one real organisation (Riverbank Trading) had no
+   * name on record. Before this fix, a person with no firstName/lastName read by their raw email
+   * address in the People list; the server's own placeholder sentence is drawn now instead.
+   */
+  it('reads the server\'s displayName for a person with no name, never their address', async () => {
+    vi.spyOn(apiClient, 'get').mockImplementation(async (url: string) => {
+      if (url.startsWith('/users?')) {
+        const noName = {
+          id: 'noname', email: 'p07@fieldnote.test', firstName: null, lastName: null,
+          displayName: 'Someone who has not given a name yet',
+          role: 'MEMBER', isEmailVerified: true, state: 'signed in', checkInsOn: 0, checkInsAnswered: 0,
+          level: null, team: null, reportsTo: null, checkIns: [],
+        }
+        return { data: { data: [...people, noName], meta: { total: people.length + 1 } } } as any
+      }
+      if (url === '/users/organization/owner') return { data: { ownerUserId: 'amani' } } as any
+      if (url === '/billing/status') return { data: { people: { count: 27, cap: 100 }, subscription: { plan: 'GROWTH' } } } as any
+      if (url === '/users/organization/check-ins') return { data: { whoMayOpen: 'NAMED_LEADS', needsApproval: false } } as any
+      if (url === '/users/organization/joining') return { data: { on: false, domain: 'baridi.co.ke', whyNot: null } } as any
+      if (url === '/users/organization/invite-link') return { data: { on: false, code: null } } as any
+      return { data: [] } as any
+    })
+    vi.spyOn(authApi, 'whoIsWaiting').mockResolvedValue([] as any)
+    vi.spyOn(authApi, 'waitingForASeat').mockResolvedValue([] as any)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={['/org/members']}>
+          <Routes><Route path="/org/members" element={<OrgMembersPage />} /></Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    expect(await screen.findByText('Someone who has not given a name yet', { selector: '.gwui-person-name' })).toBeTruthy()
+    expect(screen.queryByText('p07@fieldnote.test', { selector: '.gwui-person-name' })).toBeNull()
+  })
+
   it('shows no label on anybody: no score, no rating, nothing but what they are and where they got to', async () => {
     const { container } = open()
     await screen.findByText('Miriam Wanjiku', { selector: '.gwui-person-name' })
@@ -494,6 +532,34 @@ describe('the people with no seat say who added them', () => {
     expect(await screen.findByText(/^Nadia Owino added tom@baridi\.co\.ke, and your plan is full/)).toBeTruthy()
     expect(screen.getByText('Added by Nadia Owino for Sales team, Q3.')).toBeTruthy()
     expect(screen.queryByText(/A lead added them/)).toBeNull()
+  })
+})
+
+/*
+ * RESTORED (8 October, night note item 3, B-129). A paste can now keep people with no seat as a
+ * bare invitation (`kind: 'INVITATION'`), never added to any check-in - `forCheckIn` is null for
+ * them. The row used to build its own title, "<email> is on a check-in but has no seat", which was
+ * false for this kind: they were never added to one. The server's own `saying` is read instead, and
+ * it is true for either kind.
+ */
+describe('a bare invitation kept with no seat (not added to any check-in)', () => {
+  it('reads the server\'s own sentence, never "is on a check-in but has no seat"', async () => {
+    open()
+    ;(apiClient.get as any).mockImplementation(async (url: string) => {
+      if (url.startsWith('/users?')) return { data: { data: people, meta: { total: people.length } } }
+      if (url === '/users/organization/owner') return { data: { ownerUserId: 'amani' } }
+      if (url === '/billing/status') return { data: { people: { count: 27, cap: 100 }, subscription: { plan: 'GROWTH' } } }
+      return { data: {} }
+    })
+    vi.spyOn(authApi, 'waitingForASeat').mockResolvedValue([{
+      id: 'invite:p07@fieldnote.test', kind: 'INVITATION', email: 'p07@fieldnote.test', name: 'Дмитрий Иванов',
+      addedBy: 'Wairimu Kamau', forCheckIn: null, waitingSince: new Date().toISOString(),
+      saying: 'Дмитрий Иванов has no seat on your plan, so the invitation is kept and will go out when there is room.',
+    }] as any)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(<QueryClientProvider client={qc}><MemoryRouter><OrgMembersPage /></MemoryRouter></QueryClientProvider>)
+    expect(await screen.findByText('Дмитрий Иванов has no seat on your plan, so the invitation is kept and will go out when there is room.')).toBeTruthy()
+    expect(screen.queryByText(/is on a check-in but has no seat/)).toBeNull()
   })
 })
 

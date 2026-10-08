@@ -162,7 +162,7 @@ export function CheckInPeopleAndSetup(props: {
   viewerIsAParty: boolean
   mySessionsDone: number
   plannedSessions: number | null
-  colleagues?: { id: string; name: string }[]
+  colleagues?: { id: string; name: string; role?: string; team?: string | null }[]
   addingMany: boolean
   addManyParticipants: (picked: { id: string; name: string }[]) => void
   newParticipantEmail: string; setNewParticipantEmail: (v: string) => void

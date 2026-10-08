@@ -7,8 +7,15 @@ import EndingPage from './EndingPage'
 /**
  * ITEM 3: THE END-OF-MONTH READ'S FOUR CONTINUE OPTIONS, EACH GOING WHERE THE ANSWER SAYS
  * (docs/answers-from-engine.md, "Request 149 (6 of 6)", "Answer (3)"). Before this, every option
- * navigated to the same `/billing` route regardless of its key. The fixture's words and keys are
- * exactly as the engine serves `continueOptions` (TheEndOfMonthRead.spec.tsx's own fixture).
+ * navigated to the same `/billing` route regardless of its key.
+ *
+ * UPDATED FOR DECISION 114 (8 October evening): the read is now the `theEndOfTheMonth` section
+ * named by the switchboard, not the older `theEndOfMonthRead` field - the fixture's shape matches
+ * `api/src/modules/board/the-anchor-sections-on-the-board.ts`'s own `theEndOfTheMonth`, built from
+ * `parts` rather than named arrays. The last test ("draws nothing... who may not run this
+ * check-in") is rewritten the same way `the-month-board.spec.tsx` already was: the server decides
+ * who reads a section, so the realistic payload for that reader simply omits the field, rather than
+ * this page re-checking `canEditFrame` on a payload that would never really carry both together.
  */
 
 const mockNavigate = vi.fn()
@@ -24,16 +31,13 @@ vi.mock('@/api/suggestions', () => ({
 }))
 vi.mock('@/api/resolution', () => ({ resolutionApi: { get: vi.fn().mockResolvedValue(null), propose: vi.fn() } }))
 
-const theEndOfMonthRead = {
+const theEndOfTheMonth = {
+  heading: 'You wanted your team to understand...',
   yourOwnWords: 'Everyone is delivering their own piece but nobody seems to understand what it takes to keep this company moving.',
-  whatWeFound: ['The team saw their own work, but not how it connected to the wider outcome.'],
-  whatTheyNowUnderstandDifferently: [],
-  whatTheyAreDoingDifferently: [],
-  whatYourTeamContributed: [],
-  peopleWhoHelpedMoveTheThinking: [],
-  whatYouChangedAsALead: [],
-  whatIsStillStuck: [],
-  whatShouldHappenNext: [],
+  parts: [
+    { heading: 'What we found', items: ['The team saw their own work, but not how it connected to the wider outcome.'] },
+  ],
+  people: [],
   reveal: {
     projectsThatCouldHaveTheirOwnGround: 1,
     sharedObjectivesWorthTracking: 0,
@@ -72,8 +76,8 @@ describe('EndingPage, the four continue options', () => {
     mockNavigate.mockReset()
     mockBoardGet.mockReset()
     mockBoardGet.mockResolvedValue({
-      groundId: 'g1', renders: true, canEditFrame: true, anchorScenarioOn: true,
-      theEndOfMonthRead,
+      groundId: 'g1', renders: true,
+      theEndOfTheMonth,
     })
   })
 
@@ -98,10 +102,10 @@ describe('EndingPage, the four continue options', () => {
   })
 
   it('draws nothing from the end-of-month read for someone who may not run this check-in', async () => {
-    mockBoardGet.mockResolvedValue({
-      groundId: 'g1', renders: true, canEditFrame: false, anchorScenarioOn: true,
-      theEndOfMonthRead,
-    })
+    /* The realistic shape of a reader who may not run this check-in: the server never fills
+       `theEndOfTheMonth` for them at all, rather than filling it and relying on this page to hide
+       it (decision 114, "who reads a section is decided by the server"). */
+    mockBoardGet.mockResolvedValue({ groundId: 'g1', renders: true })
     renderPage()
     await waitFor(() => expect(screen.getByText('Help my team understand')).toBeTruthy())
     expect(screen.queryByText('Keep this check-in running')).toBeNull()

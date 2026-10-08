@@ -16,7 +16,7 @@ export function WelcomePage() {
   const navigate = useNavigate()
   const setAuth = useAuthStore(s => s.setAuth)
   const [problem, setProblem] = useState('')
-  const { data } = useQuery({ queryKey: ['where-can-i-join'], queryFn: authApi.whereCanIJoin, retry: false })
+  const { data, isSuccess } = useQuery({ queryKey: ['where-can-i-join'], queryFn: authApi.whereCanIJoin, retry: false })
 
   const join = useMutation({
     mutationFn: (organizationId: string) => authApi.joinByDomain(organizationId),
@@ -36,6 +36,7 @@ export function WelcomePage() {
       onJoin={id => join.mutate(id)}
       onJoinAsAGuest={path => navigate(path)}
       create={{ to: '/org-new' }}
+      settled={isSuccess}
     />
   )
 }

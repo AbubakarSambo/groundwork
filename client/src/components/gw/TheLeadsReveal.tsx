@@ -58,7 +58,16 @@ export function TheLeadsReveal({ reveal }: { reveal: TheLeadsRevealShape | null 
           </Panel>
         )}
 
-        {reveal.whatMeaningfulChangeWouldLookLike.length > 0 && (
+        {/*
+          BUG FOUND WHILE SCREENSHOTTING THE ANCHOR'S SET-UP SCREEN (decision 114 work, 8 October
+          2026): `TheLeadsReveal` crashed the whole set-up screen - not just this panel - whenever
+          a served `leadsReveal` carried neither of these two lists, which the type says is always
+          an array but a real, partially-filled reveal (the seven items are pulled from the lead's
+          words by a model step the engine has not finished, per the comment above) can still send
+          without. `?? []` makes the two lists behave exactly like every other optional field this
+          component already reads with its own `reveal.x &&` guard.
+        */}
+        {(reveal.whatMeaningfulChangeWouldLookLike ?? []).length > 0 && (
           <Panel heading="What meaningful change would look like">
             <Stack gap={6}>
               {reveal.whatMeaningfulChangeWouldLookLike.map((s, i) => (
@@ -68,7 +77,7 @@ export function TheLeadsReveal({ reveal }: { reveal: TheLeadsRevealShape | null 
           </Panel>
         )}
 
-        {reveal.whatGroundworkWillExplore.length > 0 && (
+        {(reveal.whatGroundworkWillExplore ?? []).length > 0 && (
           <Panel heading="What Groundwork will explore">
             <Stack gap={6}>
               {reveal.whatGroundworkWillExplore.map((s, i) => (
@@ -79,7 +88,14 @@ export function TheLeadsReveal({ reveal }: { reveal: TheLeadsRevealShape | null 
         )}
       </Stack>
 
-      {reveal.howIWillWorkWithYourTeam.length > 0 && (
+      {/*
+        THE SAME BUG, A THIRD FIELD (decision 114 work, 8 October 2026): found re-taking the
+        set-up screenshot after the first fix above - a served `leadsReveal` with no
+        `howIWillWorkWithYourTeam` at all (the model step that fills the seven items and this list
+        is still unfinished on the engine's side, per the file's own top comment) crashed this
+        panel's own `.length` read the same way the two lists above did. Same `?? []` fix.
+      */}
+      {(reveal.howIWillWorkWithYourTeam ?? []).length > 0 && (
         <Section heading="How I'll work with your team">
           <Stack gap={12}>
             {reveal.howIWillWorkWithYourTeam.map((item) => (

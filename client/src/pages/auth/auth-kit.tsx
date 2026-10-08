@@ -23,8 +23,9 @@ import { todaysPasswordRules } from './password-rules'
  * rewritten on its own.
  */
 
-/** The mark and the name, top-left of every account screen. `Arrival.tsx` still imports this by
-    name for the pages this task does not touch, so the export stays. */
+/** The mark and the name, top-left of every account screen. A thin wrapper over `Mark` now that
+    `Arrival.tsx` (B-047's last importer) is gone; kept under its old name in case another file in
+    this group still reaches for it. */
 export function AuthBrand() {
   return <Mark />
 }

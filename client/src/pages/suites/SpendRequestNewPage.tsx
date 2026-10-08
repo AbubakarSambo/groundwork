@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { fileARequestApi } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
-import { whatFilingARequestSays } from '@/lib/file-a-request-error'
+import { whatFilingARequestSays, isARefusalToLoadTheForm } from '@/lib/file-a-request-error'
 import { Page, PageTitle, Panel, FieldLabel, TextField, Select, Button, Note } from '@/components/gw/ui'
 
 /**
@@ -40,7 +40,12 @@ export function SpendRequestNewPage() {
   const [problem, setProblem] = useState<string | null>(null)
 
   const form = useQuery({ queryKey: ['spend-form'], queryFn: fileARequestApi.spendForm, retry: false })
-  const offSentence = form.isError ? whatFilingARequestSays(form.error, user?.organizationName) : null
+  /* RESTORED (8 October, nothing-removed audit S3): only a genuine refusal (a 4xx) hides the form.
+     A 5xx or a network failure is a passing fault, not a "no", so the form stays reachable and a
+     "Try again" is offered instead of leaving the page with nothing to do but reload it. */
+  const loadRefused = form.isError && isARefusalToLoadTheForm(form.error)
+  const offSentence = loadRefused ? whatFilingARequestSays(form.error, user?.organizationName) : null
+  const loadFailed = form.isError && !loadRefused
 
   const send = useMutation({
     mutationFn: () => fileARequestApi.spending({ amount: Number(amount), what: what.trim(), ...(category ? { category } : {}) }),
@@ -67,6 +72,12 @@ export function SpendRequestNewPage() {
           <Note tone="error">{offSentence}</Note>
         ) : (
           <form className="gwui-suite-ask-alone" onSubmit={e => { e.preventDefault(); if (canSend) send.mutate() }}>
+            {loadFailed && (
+              <Note tone="error">
+                That did not load, and nothing has changed.{' '}
+                <Button kind="quiet" onClick={() => form.refetch()}>Try again</Button>
+              </Note>
+            )}
             <div className="gwui-suite-q">
               <FieldLabel htmlFor="spend-amount">{form.data?.currency ? `Amount (${form.data.currency})` : 'Amount'}</FieldLabel>
               <TextField id="spend-amount" type="number" min={0} step="any" value={amount} onChange={e => setAmount(e.target.value)} />

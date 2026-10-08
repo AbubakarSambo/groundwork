@@ -128,6 +128,28 @@ export async function mailMark(): Promise<number> {
   return mail.length;
 }
 
+/** Quoted-printable, decoded enough to read the wording: soft line breaks removed, `=XX` bytes restored. */
+function decoded(raw: string): string {
+  return raw.replace(/=\r\n/g, '').replace(/=([0-9A-Fa-f]{2})/g, (_, h) => String.fromCharCode(parseInt(h, 16)));
+}
+
+/**
+ * The newest whole message sent to this address since `since`, decoded enough to check its
+ * wording against the prototype (for example, that an invitation says why it matters to the
+ * person, not only that a link exists). For the link itself, use `linkSentTo`.
+ */
+export async function textSentTo(page: Page, email: string, since: number): Promise<string> {
+  await startCatcher();
+  for (let t = 0; t < 80; t++) {
+    for (let i = mail.length - 1; i >= since; i--) {
+      if (!mail[i].toLowerCase().includes(email.toLowerCase())) continue;
+      return decoded(mail[i]);
+    }
+    await page.waitForTimeout(500);
+  }
+  throw new Error(`No email reached ${email} within 40 seconds.`);
+}
+
 /** The newest link to the app in a message sent to this address since `since`, matching `pattern`. */
 export async function linkSentTo(page: Page, email: string, pattern: RegExp, since: number): Promise<string> {
   await startCatcher();

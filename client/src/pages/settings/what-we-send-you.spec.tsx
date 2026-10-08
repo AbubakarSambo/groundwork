@@ -21,6 +21,7 @@ vi.mock('@/api/auth', () => ({
     leaveOrg: vi.fn(async () => ({})),
     requestPasswordSetup: vi.fn(async () => ({ token: 't' })),
     setPassword: vi.fn(async () => ({ user: {}, accessToken: 'a' })),
+    methods: vi.fn(async () => ({ magicLink: true, google: false })),
   },
 }))
 vi.mock('@/api/my-data', () => ({
