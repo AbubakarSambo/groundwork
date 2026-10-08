@@ -1,5 +1,6 @@
 import { sendTheLeadsDailyNudges, theWindowForm, theTemplateParagraph, theNudgeParts, theNudgeSubject, atMostThreeLines, type WhatIsOutstanding } from './the-leads-daily-nudge';
 import { TEMPLATES, A_TEMPLATE_BODY_LIMIT, OUTSIDE_THE_WINDOW } from '../whatsapp/a-message-outside-the-window';
+import { theFirstContactLine, ITS_OWN_WORDS_AT_MOST } from '../whatsapp/the-first-message-to-a-number';
 
 /**
  * THE LEAD'S DAILY NUDGE (decision 120). Read as Wairimu reads it at seven in the morning in Lagos, on her phone and by email.
@@ -81,10 +82,10 @@ describe('what Wairimu reads on her phone, outside the 24 hours (the template, o
     expect(params[2]).toBe('https://myground.work/today');
     expect(params[1]).toBe(
       'These need you. Amina’s leave from Wednesday 14 October to Friday 16 October is waiting for you to approve or decline. '.replace('’', "'")
-      + 'You committed to “write up the Kisumu visit” in \u201cSales team, Q3\u201d by Friday 9 October, and it is three days late. '
-      + 'These are overdue on your team. Omar committed to “send the price list” in “Sales team, Q3” by Tuesday 6 October, and it is six days late. '
-      + 'Bisi committed to “call the Naivas buyer” in “Sales team, Q3” by Saturday 10 October, and it is two days late. '
-      + 'Kofi committed to “update the pipeline sheet” in “Sales team, Q3” by Sunday 11 October, and it is one day late.',
+      + 'You committed to “write up the Kisumu visit” by Friday 9 October, and it is three days late. '
+      + 'These are overdue on your team. Omar committed to “send the price list” by Tuesday 6 October, and it is six days late. '
+      + 'Bisi committed to “call the Naivas buyer” by Saturday 10 October, and it is two days late. '
+      + 'Kofi committed to “update the pipeline sheet” by Sunday 11 October, and it is one day late.',
     );
   });
 
@@ -128,11 +129,11 @@ describe('what Wairimu reads on her phone, inside the 24 hours (an ordinary mess
       'Good morning Wairimu. Here is what is outstanding today.\n\n'
       + 'Needs you\n'
       + "Amina's leave from Wednesday 14 October to Friday 16 October is waiting for you to approve or decline.\n"
-      + 'You committed to “write up the Kisumu visit” in “Sales team, Q3” by Friday 9 October, and it is three days late.\n\n'
+      + 'You committed to “write up the Kisumu visit” by Friday 9 October, and it is three days late.\n\n'
       + 'Overdue on your team\n'
-      + 'Omar committed to “send the price list” in “Sales team, Q3” by Tuesday 6 October, and it is six days late.\n'
-      + 'Bisi committed to “call the Naivas buyer” in “Sales team, Q3” by Saturday 10 October, and it is two days late.\n'
-      + 'Kofi committed to “update the pipeline sheet” in “Sales team, Q3” by Sunday 11 October, and it is one day late.\n\n'
+      + 'Omar committed to “send the price list” by Tuesday 6 October, and it is six days late.\n'
+      + 'Bisi committed to “call the Naivas buyer” by Saturday 10 October, and it is two days late.\n'
+      + 'Kofi committed to “update the pipeline sheet” by Sunday 11 October, and it is one day late.\n\n'
       + 'You can see everything here https://myground.work/today',
     );
   });
@@ -157,6 +158,15 @@ describe('who gets it, and how', () => {
     expect(parts.needsYou).toHaveLength(2);
     expect(parts.overdueOnYourTeam).toHaveLength(3);
     expect(parts.risks).toEqual([]);
+  });
+
+  it('the check-in is named on a line only when she is told about more than one: by email she is (the plan is in the app), on her phone she is not', async () => {
+    const byEmail = aMorning({ phone: null });
+    await byEmail.run();
+    expect(byEmail.mails[0][2].needsYou[1]).toBe('You committed to \u201cwrite up the Kisumu visit\u201d in \u201cSales team, Q3\u201d by Friday 9 October, and it is three days late.');
+    const onPhone = aMorning();
+    await onPhone.run();
+    expect(onPhone.whats[0].text).not.toContain('in \u201cSales team, Q3\u201d by');
   });
 
   it('a lead whose organisation never turned WhatsApp on gets it by email', async () => {

@@ -4,6 +4,7 @@ import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 import { keptOffThePhone } from '../whatsapp/a-check-in-kept-off-the-phone';
 import { organisationsThatTurnedWhatsAppOn } from '../whatsapp/only-where-whatsapp-is-turned-on';
 import { A_TEMPLATE_BODY_LIMIT, TEMPLATES, oneLine } from '../whatsapp/a-message-outside-the-window';
+import { ITS_OWN_WORDS_AT_MOST } from '../whatsapp/the-first-message-to-a-number';
 import { whatWaitsForYouToDecide, type TheBoards } from '../suites/what-waits-for-you-to-decide';
 import { whatWaitsInASentence } from '../whatsapp/the-leads-daily-summary';
 import { theirApprovedLeave, fallsInLeave, whoOnACheckInIsAway } from '../suites/who-is-away';
@@ -56,6 +57,18 @@ export interface AThingOutstanding {
   text: string;
   late?: number;
   keptInTheApp?: boolean;
+  /** The check-in it is about. Said (" in \u201cSales team, Q3\u201d" at the {in} mark) only when the lead is being told about more than one. */
+  place?: string;
+}
+
+const THE_PLACE_MARK = '{in}';
+
+/** Puts the check-in's name where {in} stands when, and only when, the things told are about more than one check-in. */
+export function withPlacesWhereTheyTellApart(o: WhatIsOutstanding): WhatIsOutstanding {
+  const all = [...o.needsYou, ...o.overdueOnYourTeam, ...o.risks];
+  const several = new Set(all.map((t) => t.place).filter(Boolean)).size > 1;
+  const say = (t: AThingOutstanding): AThingOutstanding => ({ ...t, text: t.text.split(THE_PLACE_MARK).join(several && t.place ? ` in ${quoted(t.place)}` : '') });
+  return { needsYou: o.needsYou.map(say), overdueOnYourTeam: o.overdueOnYourTeam.map(say), risks: o.risks.map(say) };
 }
 
 export interface WhatIsOutstanding {
@@ -75,7 +88,7 @@ export const theseForAPhone = (o: WhatIsOutstanding): WhatIsOutstanding => ({
 
 /** At most three lines. When there are more, the third says how many are not listed. */
 export function atMostThreeLines(things: AThingOutstanding[]): string[] {
-  const lines = things.map((t) => sentence(t.text));
+  const lines = things.map((t) => sentence(t.text.split(THE_PLACE_MARK).join('')));
   if (lines.length <= AT_MOST) return lines;
   const left = lines.length - (AT_MOST - 1);
   return [...lines.slice(0, AT_MOST - 1), `${capital(aNumberInWords(left))} more are not listed here.`];
@@ -128,7 +141,8 @@ export function theTemplateParagraph(firstName: string | null | undefined, o: Wh
   const first = firstName?.trim() || 'there';
   const fixed = body.replace(/\{\{\d+\}\}/g, '').length + oneLine(first).length + oneLine(link).length;
   const more = 'There is more, and the link shows all of it.';
-  const room = A_TEMPLATE_BODY_LIMIT - fixed - 8;
+  /* The whole message must fit inside Meta's 1,024 characters, and also inside the 800 the very first message to a number may carry (decision 106 item 2), or its end, with the link, would be cut. */
+  const room = Math.min(A_TEMPLATE_BODY_LIMIT, ITS_OWN_WORDS_AT_MOST) - fixed - 4;
   const p = theNudgeParts(o);
   const lead: Record<keyof TheNudgeParts, string> = { needsYou: 'These need you.', overdueOnYourTeam: 'These are overdue on your team.', risks: 'These are risks.' };
   const pieces: string[] = [];
@@ -137,6 +151,8 @@ export function theTemplateParagraph(firstName: string | null | undefined, o: Wh
   outer: for (const key of ['needsYou', 'overdueOnYourTeam', 'risks'] as const) {
     let opened = false;
     for (const line of p[key]) {
+      /* "Three more are not listed here" is for the message with lines; this one has its own closing sentence. */
+      if (/ more are not listed here\.$/.test(line)) { left = true; continue; }
       const add = `${opened ? '' : `${lead[key]} `}${oneLine(line)}`;
       /* Keep room for the closing sentence whenever something has to be left out. */
       if (used + add.length + 1 > room - more.length - 1) { left = true; break outer; }
@@ -145,9 +161,7 @@ export function theTemplateParagraph(firstName: string | null | undefined, o: Wh
       opened = true;
     }
   }
-  /* If a section was cut short or skipped, say so. */
-  const everything = pieces.length === (['needsYou', 'overdueOnYourTeam', 'risks'] as const).reduce((n, k) => n + p[k].length, 0);
-  const paragraph = oneLine([...pieces, ...(left || !everything ? [more] : [])].join(' '));
+  const paragraph = [...pieces, ...(left ? [more] : [])].join(' ');
   const params = [first, paragraph, link];
   return { params, text: body.replace(/\{\{(\d+)\}\}/g, (_m, n) => params[Number(n) - 1] ?? '') };
 }
@@ -184,9 +198,7 @@ export async function whatIsOutstandingFor(
   const today = theDayIn('Africa/Lagos', now);
   const grounds = lead.grounds.filter((g) => !isEvaluationCheckIn(g.scenario));
   const ids = grounds.map((g) => g.id);
-  const several = grounds.length > 1;
   const labelOf = new Map(grounds.map((g) => [g.id, g.label]));
-  const where = (groundId: string) => (several ? ` in ${quoted(labelOf.get(groundId) ?? '')}` : '');
   const kept = (groundId: string) => keptOffThePhone(grounds.find((g) => g.id === groundId));
 
   /* NEEDS YOU, first: what waits for her to approve. */
@@ -216,16 +228,14 @@ export async function whatIsOutstandingFor(
     },
     select: { text: true, dueDate: true, groundId: true, authoredBy: true, seenBySubject: true, participantId: true, participant: { select: { ground: { select: { id: true, label: true, scenario: true, overWhatsApp: true } }, ...PERSON } } },
   }).catch(() => []);
-  const severalOwn = new Set(promises.map((p) => p.groundId)).size > 1 || several;
   for (const pr of promises) {
     const g = pr.participant?.ground;
     if (!g || isEvaluationCheckIn(g.scenario) || !pr.text?.trim()) continue;
     const late = daysLate(pr.dueDate, today);
     if (late < 1) continue;
-    const place = severalOwn ? ` in ${quoted(g.label ?? '')}` : '';
-    const text = (who: string) => `${who} committed to ${quoted(pr.text.trim())}${place} by ${theDay(pr.dueDate)}, and it is ${lateWords(late)}.`;
-    if (pr.participant?.userId === lead.userId) out.needsYou.push({ text: text('You'), late, keptInTheApp: keptOffThePhone(g) });
-    else if (ids.includes(pr.groundId) && letIn(pr.participant) && (pr.authoredBy === 'self' || pr.seenBySubject)) out.overdueOnYourTeam.push({ text: text(nameToCall(pr.participant)), late, keptInTheApp: keptOffThePhone(g) });
+    const text = (who: string) => `${who} committed to ${quoted(pr.text.trim())}${THE_PLACE_MARK} by ${theDay(pr.dueDate)}, and it is ${lateWords(late)}.`;
+    if (pr.participant?.userId === lead.userId) out.needsYou.push({ text: text('You'), late, keptInTheApp: keptOffThePhone(g), place: g.label });
+    else if (ids.includes(pr.groundId) && letIn(pr.participant) && (pr.authoredBy === 'self' || pr.seenBySubject)) out.overdueOnYourTeam.push({ text: text(nameToCall(pr.participant)), late, keptInTheApp: keptOffThePhone(g), place: g.label });
   }
 
   /* Waits on her people's work: open, named, in her check-ins. */
@@ -253,14 +263,14 @@ export async function whatIsOutstandingFor(
     /* A decision she owes: somebody is waiting for her to decide it. */
     if (onHer && w.blockerKind === 'DECISION') {
       const since = `since ${theDay(w.createdAt)}`;
-      out.needsYou.push({ text: `${saidWait(w, 'is')} ${since}.`, late: late > 0 ? late : 0, keptInTheApp: kept(w.groundId) });
+      out.needsYou.push({ text: `${saidWait(w, 'is')}${THE_PLACE_MARK} ${since}.`, late: late > 0 ? late : 0, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId) });
       counted.add(w.id);
       continue;
     }
     if (late < 1) continue;
-    const text = `${saidWait(w, 'is')}, which was due on ${theDay(w.dueOn)} and is ${lateWords(late)}.`;
-    if (onHer) out.needsYou.push({ text, late, keptInTheApp: kept(w.groundId) });
-    else if (w.onParticipant && letIn(w.onParticipant)) out.overdueOnYourTeam.push({ text, late, keptInTheApp: kept(w.groundId) });
+    const text = `${saidWait(w, 'is')}${THE_PLACE_MARK}, which was due on ${theDay(w.dueOn)} and is ${lateWords(late)}.`;
+    if (onHer) out.needsYou.push({ text, late, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId) });
+    else if (w.onParticipant && letIn(w.onParticipant)) out.overdueOnYourTeam.push({ text, late, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId) });
     else continue;
     counted.add(w.id);
   }
@@ -296,7 +306,7 @@ export async function whatIsOutstandingFor(
       );
       if (stands?.word !== 'Behind' && stands?.word !== 'Over limit') continue;
       const is = stands.word === 'Behind' ? 'is behind' : 'is over its limit';
-      out.risks.push({ text: `The target ${quoted(o.name.trim())}${where(g.id) || ` in ${quoted(g.label)}`} ${is}. ${sentence(stands.says)}`, late: 1_000_000, keptInTheApp: keptOffThePhone(g) });
+      out.risks.push({ text: `The target ${quoted(o.name.trim())} in ${quoted(g.label)} ${is}. ${sentence(stands.says)}`, late: 1_000_000, keptInTheApp: keptOffThePhone(g), place: g.label });
     }
   }
   /* A wait that has gone on too long, the oldest first, if it is not already said as overdue. */
@@ -306,7 +316,7 @@ export async function whatIsOutstandingFor(
   for (const w of tooLong) {
     const hasName = w.onParticipant || (w.onLabel ?? '').trim() || w.namedTheThing;
     if (!hasName) continue;
-    out.risks.push({ text: `${saidWait(w, 'has been')} since ${theDay(w.createdAt)}.`, keptInTheApp: kept(w.groundId) });
+    out.risks.push({ text: `${saidWait(w, 'has been')}${THE_PLACE_MARK} since ${theDay(w.createdAt)}.`, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId) });
   }
   /* A check-in where people have gone quiet. Not about a check-in that began before the engagement messages did. */
   if (deps.release) {
@@ -379,14 +389,15 @@ export async function sendTheLeadsDailyNudges(deps: TheNudgeDoors, now: Date = n
       const user = await prisma.user.findUnique({ where: { id: lead.userId }, select: { firstName: true, email: true, phoneNumber: true, deletedAt: true, isActive: true } });
       if (!user || user.deletedAt || user.isActive === false) continue;
       if (fallsInLeave(now, await theirApprovedLeave(prisma, lead.userId, lead.organizationId))) continue;
-      const outstanding = await whatIsOutstandingFor(prisma, lead, { boards: deps.boards, release }, now);
-      if (!theseAreOutstanding(outstanding)) continue;
+      const found = await whatIsOutstandingFor(prisma, lead, { boards: deps.boards, release }, now);
+      if (!theseAreOutstanding(found)) continue;
+      const outstanding = withPlacesWhereTheyTellApart(found);
 
       /* On WhatsApp when there is a number and WhatsApp is on for them, and they have not said stop. */
       const entry = await theirRosterEntry(prisma, lead.organizationId, lead.userId, { phone: true }).catch(() => null);
       const phone: string | null = entry?.phone ?? user.phoneNumber ?? null;
       const stopped = phone && deps.whatsapp.hasSaidStop ? await deps.whatsapp.hasSaidStop(phone).catch(() => false) : false;
-      const phoneFacts = theseForAPhone(outstanding);
+      const phoneFacts = withPlacesWhereTheyTellApart(theseForAPhone(found));
       if (phone && !stopped && turnedOn.has(lead.organizationId) && theseAreOutstanding(phoneFacts)) {
         const template = theTemplateParagraph(user.firstName, phoneFacts, link);
         const window = theWindowForm(user.firstName, phoneFacts, link);
