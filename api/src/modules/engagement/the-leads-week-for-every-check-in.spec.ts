@@ -76,14 +76,20 @@ describe('a 12-person Ground that is not the anchor\'s, as the lead reads her Fr
     expect(m.linkUrl).toBe('https://app.test/grounds/g1/board');
   });
 
-  it('names a next check-in only when it is a different one and the record gives the reason', async () => {
+  it('names a next check-in only when it is a different one, the record gives the reason, and a report has gone out for the reasons to say "since the report"', async () => {
     const w = aFriday({ done: 0, waiting: 3 });
+    w.prisma.report = { findFirst: async () => ({ id: 'r1' }) };
     await send(w, { anchorIsOn: false, weeklyReport: async () => null });
     const next = w.sent[0].lines.find((l: string) => l.startsWith('Here is something worth doing next.'));
     expect(next).toBe('Here is something worth doing next. Groundwork suggests a check-in for work that has gone off track, because three handoffs are still waiting and nothing has been marked done or cleared since the report.');
     const quiet = aFriday();
+    quiet.prisma.report = { findFirst: async () => ({ id: 'r1' }) };
     await send(quiet);
     expect(quiet.sent[0].lines.join(' ')).not.toContain('worth doing next');
+    /* Found on the test bed: with no report yet, the reasons would have said "since the report" about a report that does not exist. */
+    const noReport = aFriday({ done: 0, waiting: 3 });
+    await send(noReport, { anchorIsOn: false, weeklyReport: async () => null });
+    expect(noReport.sent[0].lines.join(' ')).not.toContain('worth doing next');
   });
 
   it('says nothing of what it has no sentence for: no weekly report, no reminders, no things to do', async () => {
@@ -136,6 +142,13 @@ describe('the lead\'s own weekly report is used only for this week', () => {
   it('this week\'s moved and to-do sentences are used, and "nothing was marked done" is not a thing that moved', () => {
     const says = whatTheLeadsWeeklyReportSays({ weekStart: '2026-10-05', whatChanged: { moved: ['Nothing was marked as done this week yet.'] }, forNextWeek: [{ do: 'Ask James.', why: 'He is blocked.' }] }, NOW);
     expect(says).toEqual({ moved: [], toDo: [{ do: 'Ask James.', why: 'He is blocked.' }] });
+  });
+  it('keeps the reason and drops what the person said would change, which is their voice and not Groundwork\'s (found on the test bed)', () => {
+    const says = whatTheLeadsWeeklyReportSays({
+      weekStart: '2026-10-05',
+      forNextWeek: [{ do: 'Decide what to do about the distributor price list.', why: 'Chidi Okeke cannot move until it is settled, and it is waiting on Vera. Once it is settled, I can quote.' }],
+    }, NOW);
+    expect(says!.toDo).toEqual([{ do: 'Decide what to do about the distributor price list.', why: 'Chidi Okeke cannot move until it is settled, and it is waiting on Vera.' }]);
   });
   it('a report kept in an earlier week says nothing about this one', () => {
     expect(whatTheLeadsWeeklyReportSays({ weekStart: '2026-09-21', whatChanged: { moved: ['Abigail finished it.'] } }, NOW)).toBeNull();

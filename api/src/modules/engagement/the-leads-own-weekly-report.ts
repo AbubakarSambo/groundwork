@@ -20,6 +20,9 @@ export function whatTheLeadsWeeklyReportSays(read: TheWeeklyReportAsServed | nul
   const started = new Date(`${read.weekStart}T00:00:00Z`).getTime();
   if (!Number.isFinite(started) || now.getTime() - started >= 7 * DAY) return null;
   const moved = (read.whatChanged?.moved ?? []).map((s) => String(s ?? '').trim()).filter((s) => s && s !== NOTHING_MOVED);
-  const toDo = (read.forNextWeek ?? []).map((t) => ({ do: String(t.do ?? '').trim(), why: String(t.why ?? '').trim() })).filter((t) => t.do);
+  /* ONLY THE FIRST SENTENCE OF WHY. The report joins what only the lead can settle with what the person said would change ("Once it is settled, I can quote."), which is
+     the person's voice, and in a letter where "I" is Groundwork it would read as Groundwork's. The first sentence is the reason, in the report's voice. */
+  const firstSentence = (t: string) => (t.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? t).trim();
+  const toDo = (read.forNextWeek ?? []).map((t) => ({ do: String(t.do ?? '').trim(), why: firstSentence(String(t.why ?? '').trim()) })).filter((t) => t.do);
   return moved.length || toDo.length ? { moved, toDo } : null;
 }

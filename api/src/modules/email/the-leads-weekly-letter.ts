@@ -282,7 +282,9 @@ export async function sendTheLeadsWeeklyLetters(
           /* One real next check-in, only where it is a different one and the record gives a reason. */
           const open = await prisma.groundCommitment.count({ where: { groundId: g.id, status: 'UNKNOWN' } }).catch(() => 0);
           const next = theNextCheckInFor({ scenario: g.scenario ?? null, done: w.done, cleared: 0, waiting: w.waiting, open: open as number });
-          if (next.kind === 'another' && w.checkedIn > 0) w.next = theSuggestionSaid(next);
+          /* The reasons say "since the report", so only where a report has gone out. */
+          const reported = await prisma.report?.findFirst?.({ where: { groundId: g.id, releasedAt: { not: null } }, select: { id: true } }).catch(() => null);
+          if (next.kind === 'another' && w.checkedIn > 0 && reported) w.next = theSuggestionSaid(next);
         }
         weeks.push(w);
       }
