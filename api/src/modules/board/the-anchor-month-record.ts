@@ -54,7 +54,7 @@ export async function readTheMonthRecord(prisma: any, groundId: string, openRoun
     prisma.groundCommitment.findMany({ where: { groundId }, select: { participantId: true, status: true, text: true, source: true, explicit: true, settledAt: true, settledBy: true, updatedAt: true, statedInSession: true } }),
     prisma.groundDependency.findMany({ where: { groundId }, select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, status: true } }),
     prisma.recommendation.findMany({ where: { subjectExternalId: `check-in:${groundId}`, kind: { in: Object.keys(THE_ANCHOR_OFFERS) }, state: { in: ['PROPOSED', 'ACCEPTED'] } }, select: { kind: true } }),
-    prisma.ground.findUnique({ where: { id: groundId }, select: { startsAt: true, createdAt: true } }),
+    prisma.ground.findUnique({ where: { id: groundId }, select: { startsAt: true, createdAt: true, initiatorId: true } }),
   ]);
   /* Ideas, only after the yes: kind `idea`, never `idea-offered` (piece 19, ideas-from-the-team). */
   const ideaRows = ((await prisma.workItem?.findMany?.({ where: { groundId, kind: 'idea' }, orderBy: { createdAt: 'asc' }, select: { id: true, name: true, ownerParticipantId: true, kind: true } })?.catch?.(() => [])) ?? []) as any[];
@@ -63,6 +63,7 @@ export async function readTheMonthRecord(prisma: any, groundId: string, openRoun
   const real = (finished as any[]).filter((c) => c.status === CheckInStatus.COMPLETED && !c.isSetup && ids.has(c.participantId));
   const checkedInIds = new Set(real.map((c) => c.participantId));
   const answeredNow = new Set(real.filter((c) => c.sessionNumber === openRound).map((c) => c.participantId));
+  const theLeadsRow: string | null = (ground as any)?.initiatorId ? ((people as any[]).find((p) => p.userId && p.userId === (ground as any).initiatorId)?.id ?? null) : null;
   const firstName = (id: string | null) => {
     const p = (people as any[]).find((x) => x.id === id);
     return p ? theFirstNameOfAParticipant(p) ?? null : null;
@@ -83,7 +84,9 @@ export async function readTheMonthRecord(prisma: any, groundId: string, openRoun
     saidWhatTheyWillDoThisRound: new Set(mine.filter((c) => c.statedInSession === openRound).map((c) => c.participantId)).size,
     commitmentsDone: mine.filter((c) => c.status === 'DONE').length,
     commitmentsOpen: mine.filter((c) => c.status === 'UNKNOWN').length,
-    waiting: open.map((d) => ({ from: firstName(d.fromParticipantId) ?? 'Someone', on: d.onParticipantId ? firstName(d.onParticipantId) : (d.onLabel ?? null), what: d.what ?? null })),
+    /* The month record is read by the lead alone (the month board, the end of the month, the weekly insight), so a wait on her is
+       a wait on "you", never on her own name (release check, 9 October: "Lerato is waiting on Baraka for labels" said to Baraka). */
+    waiting: open.map((d) => ({ from: firstName(d.fromParticipantId) ?? 'Someone', on: d.onParticipantId ? (theLeadsRow && d.onParticipantId === theLeadsRow ? 'you' : firstName(d.onParticipantId)) : (d.onLabel ?? null), what: d.what ?? null })),
     handoffsCleared: (handoffs as any[]).length - stillOpen.length,
     offers: byKind,
     startedOn,
