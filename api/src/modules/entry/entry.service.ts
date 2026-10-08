@@ -648,6 +648,17 @@ export class EntryService {
     return (this.anchorDoor ??= new TheAnchorDoor(this.prisma));
   }
 
+  /** The anchor's size, said to billing and waited for (see commit). Never throws. */
+  private async theAnchorSaysTheTeamsSize(organizationId: string): Promise<void> {
+    try {
+      const events: any = this.events;
+      if (typeof events?.emitAsync !== 'function') return;
+      await events.emitAsync(GroundworkEvents.ORG_SIZE_SAID, { organizationId, said: 'fewer', line: 20 });
+    } catch (err: any) {
+      this.logger.warn(`The anchor's team size was not said to billing for ${organizationId}: ${err?.message}`);
+    }
+  }
+
   /** Request 148 (1): the draft a new check-in starts from, out of a recommendation the lead said yes to. Writes nothing. */
   draftFromSetUp(organizationId: string, leadUserId: string, setUp: ASetUpToStartFrom) {
     return draftFromASetUp(this.prisma, organizationId, leadUserId, setUp);
@@ -2373,6 +2384,15 @@ from finishing at all.`;
      * and she is not counted among the people who check in; the month has an end, whatever the page sent; and the weeks are weekly.
      */
     const theAnchorIsOn = dto.scenario === ANCHOR_ENTRY_SCENARIO && (await theAnchorScenarioIsOn(this.prisma));
+    /*
+     * THE ANCHOR'S LEAD HAS SAID HER TEAM'S SIZE (release check, 8 October 2026). The anchor is a group of up to 20 people,
+     * the lead included, which is the free trial's own question ("fewer than 20?"), so it is asked of billing here, before the
+     * check-in is made, and waited for. Without it a lead who left the organisation name blank on the sign-up form was never
+     * given the month, and her check-in was refused for ever with "Your organisation has no plan yet" (seen on test bed copy a);
+     * the anchor's own month is given only after a check-in exists, so it could never help her. Billing still decides: the
+     * trial must be on, and the team really under its size, and an organisation that already had it or pays is left alone.
+     */
+    if (theAnchorIsOn) await this.theAnchorSaysTheTeamsSize(organizationId);
     const theMonthEnds = theAnchorIsOn ? new Date((dto.checkInBy ? new Date(dto.checkInBy).getTime() : Date.now()) + 30 * 86_400_000).toISOString() : undefined;
     const ground = await this.grounds.create(organizationId, initiatorId, {
       label,
