@@ -335,7 +335,10 @@ export async function whatIsOutstandingFor(
       const q = theQuietIn(rows, g.label, lead.userId, now, deps.release, new Set([...(away as Map<string, unknown>).keys()]));
       const n = q ? quietIn(q) : 0;
       if (!q || n < 1) continue;
-      out.risks.push({ text: `${capital(aNumberInWords(n))} of the ${aNumberInWords(q.ofHowMany)} ${q.ofHowMany === 1 ? 'person' : 'people'} in ${quoted(g.label)} ${n === 1 ? 'has' : 'have'} not answered the latest check-in for more than a week.`, keptInTheApp: keptOffThePhone(g) });
+      const who = n >= q.ofHowMany
+        ? (q.ofHowMany === 1 ? 'The one person who can answer' : q.ofHowMany === 2 ? 'Both people' : `All ${aNumberInWords(q.ofHowMany)} people`)
+        : `${capital(aNumberInWords(n))} of the ${aNumberInWords(q.ofHowMany)} people`;
+      out.risks.push({ text: `${who} in ${quoted(g.label)} ${n === 1 ? 'has' : 'have'} not answered the latest check-in for more than a week.`, keptInTheApp: keptOffThePhone(g) });
     }
   }
 

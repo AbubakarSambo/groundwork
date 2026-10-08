@@ -231,7 +231,7 @@ describe('the risks', () => {
     const risks: string[] = m.mails[0][2].risks;
     expect(risks[0]).toMatch(/^The target “25 shops signed” in “Sales team, Q3” is behind\. /);
     expect(risks).toContain('Bisi has been waiting on Omar for the price list since Monday 21 September.');
-    expect(risks).toContain('Three of the three people in “Sales team, Q3” have not answered the latest check-in for more than a week.');
+    expect(risks).toContain('All three people in “Sales team, Q3” have not answered the latest check-in for more than a week.');
     expect(m.mails[0][1]).toBe('One risk is open'.replace('One risk is open', 'Three risks are open'));
   });
 
@@ -284,6 +284,16 @@ describe('a commitment stored in the person\'s own first-person words is said as
       'Bisi said \u201cNext I will pick up the export bug\u201d by Wednesday 7 October, and it is five days late.',
       'Kofi committed to \u201csend the supplier list\u201d by Thursday 8 October, and it is four days late.',
     ]);
+  });
+});
+
+describe('a check-in about one person\'s performance, promotion or renewal is never in it', () => {
+  it('a late commitment in a performance plan is not told to the lead, by email or on her phone', async () => {
+    const m = aMorning({ phone: null, waiting: false, promises: [promise({ text: 'keep the plan notes', dueDate: day('2026-10-05'), groundId: 'g-pip', participantId: 'p-femi', participant: { ...PEOPLE['p-femi'], ground: { ...PLAN, scenario: 'PIP' } } })] });
+    m.prisma.ground.findMany = jest.fn(async () => [SALES, { ...PLAN, scenario: 'PIP' }]);
+    expect(await m.run()).toEqual({ tried: 0 });
+    expect(m.mails).toEqual([]);
+    expect(m.whats).toEqual([]);
   });
 });
 
