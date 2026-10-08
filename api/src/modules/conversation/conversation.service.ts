@@ -3801,7 +3801,7 @@ export class ConversationService {
       this.hasOtherPartyCheckedIn(checkIn.groundId, checkIn.participantId),
       this.prisma.adminProfile.findUnique({ where: { userId: ground.initiatorId }, select: { signals: true } }).catch(() => null),
     ]);
-    const groundState = await this.buildGroundState(checkIn.groundId, otherPartyCheckedIn, aCheckInStartedFromTheAnchor(ground));
+    const groundState = await this.buildGroundState(checkIn.groundId, otherPartyCheckedIn, aCheckInStartedFromTheAnchor(ground) && (await theAnchorScenarioIsOn(this.prisma)) === true);
     const leadSignals = Array.isArray(initiatorProfile?.signals) ? (initiatorProfile!.signals as string[]) : null;
 
     // Session-1-only DB override for this scenario+party's pack (PromptVersion
@@ -8102,7 +8102,7 @@ ${told}` : '';
     });
     if (!row) return;
     /* A person on the lead's team in an anchor check-in: what they name in passing counts as given (see THE_ANCHOR_GIVES_IT_PASSING_WEIGHT). */
-    const anAnchorMember = aCheckInStartedFromTheAnchor((row as any).ground) && (row as any).participant?.partyType !== PartyType.INITIATOR;
+    const anAnchorMember = aCheckInStartedFromTheAnchor((row as any).ground) && (row as any).participant?.partyType !== PartyType.INITIATOR && (await theAnchorScenarioIsOn(this.prisma)) === true;
     const before: WhatWeHave = ((row as any).whatWeHave as WhatWeHave) ?? nothingYet();
 
     /*

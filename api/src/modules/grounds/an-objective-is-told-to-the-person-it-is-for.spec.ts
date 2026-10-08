@@ -36,7 +36,7 @@ describe('an objective is told to the person it is for in words that are theirs'
   });
 
   it('the page a person reads is told who is reading', () => {
-    const service = readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8');
+    const service = readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(service).toContain('described: describeObjective(shaped, { isThePerson: isSelf,');
   });
 });

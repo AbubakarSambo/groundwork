@@ -6,7 +6,8 @@ import { join } from 'path';
  * sign-in is called a sign-in. Each of these was read by a person: a line on the ending page, the answer to a correction, a reminder mail, the
  * refusal in a person's own export and the refusal when a check-in could not be opened in their name.
  */
-const read = (p: string) => readFileSync(join(__dirname, '..', p), 'utf8');
+const withoutComments = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const read = (p: string) => withoutComments(readFileSync(join(__dirname, '..', p), 'utf8'));
 
 describe('text the engine serves does not say "account"', () => {
   it('the ending page says what you said, not your account', () => {

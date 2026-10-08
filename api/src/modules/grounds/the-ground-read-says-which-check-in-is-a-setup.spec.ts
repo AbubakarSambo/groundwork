@@ -8,7 +8,7 @@ import { join } from 'path';
  * the lead read "1 of 4 sessions are done." on the first day.
  */
 describe('the ground read serves isSetup on every check-in row', () => {
-  const service = readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8');
+  const service = readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   it('selects it in both reads that serve the rows', () => {
     const selects = [...service.matchAll(/const CHECKIN_SELECT = \{([^}]*)\}/g)].map((m) => m[1]);
     expect(selects.length).toBeGreaterThan(0);
