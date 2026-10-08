@@ -489,7 +489,7 @@ function MakeAnAppeal({ r, says }: { r: ReviewForThePerson; says: string }) {
               <TextArea id="rv-appeal-why" rows={4} value={why} onChange={e => setWhy(e.target.value)} maxLength={2000} />
             </div>
             <div className="gwui-edge-acts">
-              <Button type="submit" size="small" disabled={!why.trim() || appeal.isPending}>Send my appeal</Button>
+              <Button kind="secondary" type="submit" size="small" disabled={!why.trim() || appeal.isPending}>Send my appeal</Button>
               <Button kind="quiet" size="small" onClick={() => { setAsking(false); setProblem(null) }}>Cancel</Button>
             </div>
             {problem && <Note tone="error">{problem}</Note>}
@@ -515,7 +515,7 @@ function YourAppealSection({ r, a }: { r: ReviewForThePerson; a: YourAppeal }) {
       <h3 className="gwui-panel-heading">Your reasons</h3>
       <p className="gwui-quoted-text">“{a.yourReasons}”</p>
       {a.additions.map((x, i) => <p key={i} className="gwui-quoted-text">“{x.said}”</p>)}
-      {decided && a.reasons && (
+      {decided && a.reasons && a.reasons !== r.decision?.reasons && (
         <>
           <h3 className="gwui-panel-heading">{a.decidedByFirstName ? `${a.decidedByFirstName}’s reasons` : 'The reasons'}</h3>
           <p className="gwui-panel-text">{a.reasons}</p>
@@ -559,9 +559,9 @@ function AnAppealForAnotherReader({ r, a }: { r: ReviewForTheWriter; a: AppealFo
           {(a.additions ?? []).map((x, i) => <p key={i} className="gwui-quoted-text">“{x.said}”</p>)}
         </>
       )}
-      {decided && a.reasons && (
+      {decided && a.reasons && a.reasons !== r.decision?.reasons && (
         <>
-          <h3 className="gwui-panel-heading">{a.decidedByFirstName ? `${a.decidedByFirstName}’s reasons` : 'The reasons'}</h3>
+          <h3 className="gwui-panel-heading">The reasons for the outcome of the appeal</h3>
           <p className="gwui-panel-text">{a.reasons}</p>
         </>
       )}
@@ -583,7 +583,7 @@ function AnAppealForAnotherReader({ r, a }: { r: ReviewForTheWriter; a: AppealFo
             <FieldLabel htmlFor="rv-appeal-reasons">Your reasons, in a sentence or two</FieldLabel>
             <TextArea id="rv-appeal-reasons" rows={3} value={reasons} onChange={e => setReasons(e.target.value)} maxLength={2000} />
           </div>
-          <div><Button type="submit" disabled={!ready || decide.isPending}>Save my decision on the appeal</Button></div>
+          <div><Button kind="secondary" type="submit" disabled={!ready || decide.isPending}>Save my decision on the appeal</Button></div>
           {problem && <Note tone="error">{problem}</Note>}
         </form>
       )}
