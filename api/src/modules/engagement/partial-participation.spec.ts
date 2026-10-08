@@ -85,13 +85,15 @@ describe('when the lead has not checked in herself either', () => {
     const body = text(sent[0].html);
     expect(body).toContain('Amani has checked in so far, one of the nine people in it.');
     expect(body).toContain('Seven people have not checked in yet.');
-    expect(body).toContain('You have not checked in yet either.');
+    expect(body).toContain('Your own check-in is still open too.');
+    expect(body).not.toContain('either');
   });
 
+  /* Changed 8 October: it read "You have not checked in yet either", which a lead who answered the questions while setting up from a plan could not square with what she had done. It now says only that her own check-in is open. */
   it('is said only when she is one of the people counted and has not answered', () => {
     const base = { answered: ['Amani'], ofHowMany: 9 };
-    expect(thePartialPicture('Q4', { ...base, youAreStillToAnswer: true }, { names: [], count: 7 }).lines).toContain('You have not checked in yet either.');
-    expect(thePartialPicture('Q4', { ...base }, { names: [], count: 7 }).lines.join(' ')).not.toContain('either');
-    expect(thePartialPicture('Q4', { answered: ['you', 'Amani'], ofHowMany: 9 }, { names: [], count: 7 }).lines.join(' ')).not.toContain('either');
+    expect(thePartialPicture('Q4', { ...base, youAreStillToAnswer: true }, { names: [], count: 7 }).lines).toContain('Your own check-in is still open too.');
+    expect(thePartialPicture('Q4', { ...base }, { names: [], count: 7 }).lines.join(' ')).not.toContain('Your own check-in is still open');
+    expect(thePartialPicture('Q4', { answered: ['you', 'Amani'], ofHowMany: 9 }, { names: [], count: 7 }).lines.join(' ')).not.toContain('Your own check-in is still open');
   });
 });

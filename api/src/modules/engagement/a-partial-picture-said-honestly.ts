@@ -23,9 +23,11 @@ export function thePartialPicture(label: string, progress: { answered: string[];
       `${who} ${isHave} checked in so far, ${aNumberInWords(n)} of the ${aNumberInWords(of)} people in it.`,
       "That is not yet the whole team's view, so Groundwork has not drawn any conclusion about the team from it.",
       ...(left && left.count > 0 ? [haveNotCheckedInSaid(left)] : []),
+      /* SAID AS WHAT IS TRUE OF HER CHECK-IN, NOT AS WHAT SHE HAS DONE (8 October): a lead who answered the questions while setting it up, from a plan, was told "You have
+         not checked in yet either", which read as though she had said nothing. Her own check-in being open is true however she got here. */
       /* The people left to check in are counted without the lead, who is reading this. When she is one of the people counted and has not answered, the counts only add up
          if she is told so: "one of the nine" and "seven have not" leaves one person nobody mentions. */
-      ...(progress.youAreStillToAnswer ? ['You have not checked in yet either.'] : []),
+      ...(progress.youAreStillToAnswer ? ['Your own check-in is still open too.'] : []),
       'The shared picture is made once everyone is in.',
     ],
   };
