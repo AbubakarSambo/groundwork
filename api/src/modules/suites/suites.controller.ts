@@ -189,6 +189,12 @@ export class SuitesController {
     return this.suites.forReader({ userId: user.id, organizationId: user.organizationId });
   }
 
+  @Get('mine')
+  @ApiOperation({ summary: 'Which of leave, spending and hours are switched on for you, in one call: three yes-or-no answers and a sentence. A suite that is off is a no here, never an error, so one suite being off never hides another.' })
+  whichAreOnForYou(@CurrentUser() user: CurrentUserData) {
+    return this.suites.forYourRequests({ userId: user.id, organizationId: user.organizationId });
+  }
+
   @Get('onboard/board')
   @ApiOperation({ summary: 'The onboarding board, while the suite is on, for an admin or the lead of the team' })
   onboardingBoard(@CurrentUser() user: CurrentUserData) {

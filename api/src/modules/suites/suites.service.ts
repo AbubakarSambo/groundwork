@@ -636,6 +636,30 @@ export class SuitesService {
     };
   }
 
+  /**
+   * WHICH OF THE REQUEST SUITES ARE ON FOR THIS PERSON, IN ONE CALL (S2 of the nothing-removed audit).
+   *
+   * Today's link to "Your own leave and spending requests" asked three routes, one for each suite, and took a single 404
+   * (one suite off) to mean all three were off, so a person in an organisation with leave on and spending off lost the link.
+   * This answers for all three at once and never refuses a person who is in the organisation: a suite that is off is a
+   * `false`, not an error. Somebody who is not in the organisation (a guest, or no one) has none, and is not refused either,
+   * so a page can ask without a refusal ever hiding something that is on. Only yes or no for each suite; nothing of its answers.
+   */
+  async forYourRequests(reader: Reader): Promise<{ leave: boolean; spend: boolean; time: boolean; any: boolean; says: string }> {
+    const role = await this.roleOf(reader);
+    const rows = role && role !== 'GUEST' ? await this.rows(reader.organizationId) : new Map<string, { isOn: boolean }>();
+    const on = (key: string) => rows.get(key)?.isOn === true;
+    const out = { leave: on('leave'), spend: on('spend'), time: on('time') };
+    const any = out.leave || out.spend || out.time;
+    return {
+      ...out,
+      any,
+      says: any
+        ? 'These are the requests you can make in your organisation.'
+        : 'No requests for leave, spending or hours are switched on in your organisation yet. An admin switches them on under Suites.',
+    };
+  }
+
   private async roleOf(reader: Reader): Promise<string | null> {
     const m = await this.prisma.organizationMembership.findUnique({
       where: { userId_organizationId: { userId: reader.userId, organizationId: reader.organizationId } },
