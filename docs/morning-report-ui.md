@@ -8007,3 +8007,47 @@ for a new Google sign-up. It now says "Your organisation is ready", "What should
 All three restorations and the fix are marked in `docs/nothing-removed-screens.md` and
 `docs/bug-log-screens.md`. `client/`: `npx tsc --noEmit -p .` is clean and the full `npx vitest run`
 is green, 712 files and 4,723 tests (up from 4,710, the new tests this work added).
+
+## Decision 114: the anchor is a scenario, not its own screen (8 October 2026)
+
+Picked up interrupted work already underway on this branch. Finished and verified it:
+
+- **`/start/team` is now only a redirect** to `/start?scenario=HELP_TEAM_UNDERSTAND`, keeping the
+  rest of the query string (a `?source=` mark, say) and replacing a stray `scenario` already on the
+  address, since this door only ever means the one scenario. `AnchorLandingPage.tsx` (its own front
+  door, its switch check, and its sessionStorage hand-off to a fresh page load) is deleted.
+  `EntryChatPage.tsx` now makes the one call that page used to make, `GET /entry/anchor-start`,
+  itself, on a fresh `?scenario=HELP_TEAM_UNDERSTAND` arrival. `GET /entry/anchor-available` is no
+  longer called from the client at all - a 404 from `anchor-start` already says the switch is off.
+- **The set-up screen's `TheLeadsReveal`** is drawn whenever the engine sends a `leadsReveal`, for
+  any scenario, with no `isAnchorDraft()` gate in the UI at all - the same rule `IdeaOffer` and
+  `RequestOffer` already follow on the check-in page.
+- **The board** already drew `TheMonthBoard` and `TheIdeasFromYourTeam` as ordinary sections of the
+  normal `BoardPage.tsx`, gated on `anchorScenarioOn`/`viewerRunsThisCheckIn` rather than a separate
+  page; left that gate as it is rather than widen it on a guess, since `the-month-board.spec.tsx`
+  pins it on purpose. Request 195 asks the engine for the exact section names the switchboard will
+  use, so this gate can retire in favour of the normal `b.sections.includes(...)` mechanism every
+  other kind of work already uses.
+- **`FillsInAsYouTalk`, the invitation page and the Done page** keep their anchor-specific branches
+  (`anchorItems`, `anchorInvitation`): each is already keyed on a field the engine serves only for an
+  anchor draft, not a UI-only duplicate of something served the ordinary way, so decision 114 does
+  not ask for these to be removed yet - they are waiting on the engine the same way request 195 says.
+
+**A real bug, found screenshotting the fix, not reading the code:** `TheLeadsReveal` crashed the
+whole set-up screen to `PageCrash` whenever a served `leadsReveal` was missing any of its three list
+fields entirely (not an empty array) - genuinely possible today, since the engine's own model step
+for filling them is unfinished. Fixed all three (`reveal.x ?? []`), B-051 in `bug-log-screens.md`,
+pinned by `TheLeadsReveal.spec.tsx`. The first screenshot of the fixed set-up screen still showed the
+crash, because the savecard is an overlay behind "Invite and finish", not the page itself - clicking
+through (both in `e2e/anchor-shots.local.mjs` and by hand) is what actually proves the reveal draws.
+
+Fresh screenshots of the anchor's start, set-up, board (lead and participant) and check-in, at 1440
+and 390: `docs/bug-log-screens/anchor-*.png`. `client/`: `npx tsc --noEmit -p .` is clean; the full
+`npx vitest run` is green. Test count is down slightly from the 4,723 baseline (3 spec files for the
+deleted `AnchorLandingPage.tsx` and its switch are gone, replaced by fewer, more targeted specs for
+the redirect and the inline `anchor-start` call) - nothing a person could do is lost; see the new
+`client/src/the-anchor-link-keeps-working.spec.tsx` and the updated
+`the-anchor-arrival-opens-directly.spec.tsx`.
+
+Request 195 (`docs/requests-to-engine.md`) is the one open item: the board sections through the
+switchboard, and the entry chat's remaining questions through the normal onboarding payload.
