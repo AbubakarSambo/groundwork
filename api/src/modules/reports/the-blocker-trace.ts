@@ -77,7 +77,7 @@ export function theTraceForThisReader(
   const mayRead = (s: AStoredStep): boolean => {
     const g = mayOpen.get(s.groundId);
     if (!g || !(g.label ?? '').trim()) return false;
-    const runsIt = (!!g.initiatorId && g.initiatorId === reader.userId) || reader.role === 'ADMIN';
+    const runsIt = (!!g.initiatorId && g.initiatorId === reader.userId) || (reader.role === 'ADMIN' && !g.readersParticipantId);
     if (runsIt || peersAreNamedOn(g as any, { participantId: g.readersParticipantId })) return true;
     return !!g.readersParticipantId && s.personId === g.readersParticipantId;
   };

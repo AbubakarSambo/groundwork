@@ -107,7 +107,7 @@ export function askedOfYou(
   const items: SomethingAskedOfYou[] = kept.map((r) => {
     const g = r.ground ?? null;
     const youRunIt = !!g?.initiatorId && g.initiatorId === reader.userId;
-    const mayName = youRunIt || reader.role === 'ADMIN' || peersAreNamedOn(g as any, theReaderBySignIn(g as any, reader.userId));
+    const mayName = youRunIt || (reader.role === 'ADMIN' && !((g as any)?.participants ?? []).some((p: any) => p.userId === reader.userId)) || peersAreNamedOn(g as any, theReaderBySignIn(g as any, reader.userId));
     return {
       id: r.id,
       who: mayName ? nameOf(r.fromParticipant) : null,

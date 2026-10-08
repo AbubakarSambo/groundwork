@@ -226,8 +226,9 @@ export class WhatNeedsYouService {
     /* A net: no address stands in for a name in any sentence on Today (week 12c). */
     const called = new Map<string, string>();
     for (const g of here as any[]) {
-      const runsIt = g.initiatorId === userId || role === 'ADMIN';
       const me = (g.participants ?? []).find((p: any) => p.userId === userId);
+      /* An admin who takes part in it reads it as a person in it does (decision 121, item 7). */
+      const runsIt = g.initiatorId === userId || (role === 'ADMIN' && !me);
       for (const [k, v] of whatEachLabelIsCalled(g.participants ?? [], { viewerParticipantId: me?.id ?? null, viewerIsLead: runsIt, peersAreNamed: runsIt || peersAreNamedOn(g, { participantId: me?.id ?? null }) })) if (k[0] === '@' || k[0] === '~') called.set(k, v);
     }
     return called.size ? withoutInternalLabelsIn(told, called) : told;

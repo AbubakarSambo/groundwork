@@ -50,7 +50,7 @@ export interface CheckInInView {
   scenario: GroundScenario | null | undefined;
   initiatorId: string | null;
   createdByUserId?: string | null;
-  participants?: { userId: string | null; email?: string | null }[];
+  participants?: { userId: string | null; email?: string | null; managingOnly?: boolean | null }[];
   /** The department of the Person linked to the lead who runs it, when known. */
   leadDepartment?: string | null;
   /**
@@ -65,7 +65,7 @@ export interface CheckInInView {
 export const WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS = {
   scenario: true,
   createdByUserId: true,
-  participants: { select: { userId: true, email: true } },
+  participants: { select: { userId: true, email: true, managingOnly: true } },
   /* Decision 75, item 2: the admin asked to approve it reads it. */
   status: true,
   approvedById: true,
@@ -107,8 +107,24 @@ export function runsOrSetItUp(
  */
 export function adminsThisOrg(viewer: Viewer | null | undefined, checkIn: CheckInInView): boolean {
   if (!adminsTheOrg(viewer, checkIn.organizationId)) return false;
+  /* An admin who takes part in it is, inside it, a person who takes part (decision 121, item 7), unless she also runs it or set it up. */
+  if (takesPartWithoutRunningIt(viewer?.userId, checkIn)) return false;
   if (checkIn.scenario !== undefined && !isEvaluationCheckIn(checkIn.scenario)) return true;
   return runsOrSetItUp(viewer?.userId, checkIn);
+}
+
+/**
+ * AN ADMIN WHO TAKES PART IN A CHECK-IN IS TREATED LIKE ANY PARTICIPANT INSIDE IT (decision 121, item 7). She reads what a person who takes part reads: no
+ * brief, aims, private notes or lead-only sections. Unless she is also the one who runs it (its lead) or set it up, in which case nothing changes. She
+ * keeps her admin role everywhere else: other check-ins, suites, People and settings, because this looks only at the check-in in front of her.
+ */
+export function takesPartWithoutRunningIt(
+  userId: string | null | undefined,
+  checkIn: { initiatorId?: string | null; createdByUserId?: string | null; participants?: { userId: string | null; managingOnly?: boolean | null }[] },
+): boolean {
+  if (!userId || runsOrSetItUp(userId, checkIn)) return false;
+  /* Managing only is not checking in: that row is not taking part. */
+  return (checkIn.participants ?? []).some((p) => p.userId === userId && !p.managingOnly);
 }
 
 /**

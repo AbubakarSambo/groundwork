@@ -1600,7 +1600,7 @@ export class GroundsService {
           checkIns: allCheckIns, dependencies: allDependencies, reportRounds: _rounds, ...safe
         } = rest;
         /* Whoever runs it: the lead, or an admin of the organisation it belongs to. Same test as get(). */
-        const runsIt = isInitiator || (userRole === 'ADMIN' && g.organizationId === organizationId);
+        const runsIt = isInitiator || (userRole === 'ADMIN' && g.organizationId === organizationId && !((g as any).participants ?? []).some((p: any) => p.userId === userId));
         const hideContact = !!(rest as any).restrictExternalVisibility;
         /*
          * AND THE PEER RULE, THE SAME ONE get() APPLIES (U.5 review). Where people are not named to

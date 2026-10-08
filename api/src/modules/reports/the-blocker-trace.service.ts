@@ -147,7 +147,7 @@ export class TheBlockerTraceService {
     text: T,
   ): T {
     const me = g.participants.find((p) => p.userId === reader.userId) ?? null;
-    const viewerIsLead = (!!g.initiatorId && g.initiatorId === reader.userId) || reader.role === 'ADMIN';
+    const viewerIsLead = (!!g.initiatorId && g.initiatorId === reader.userId) || (reader.role === 'ADMIN' && !me);
     const shared = askTheReportsDoor(
       this.reports,
       { scenario: g.scenario, peersVisibleToEachOther: g.peersVisibleToEachOther, initiatorId: g.initiatorId, participants: g.participants, report: { ...text, sharedAs: g.report?.sharedAs ?? null } },

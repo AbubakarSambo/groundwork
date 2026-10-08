@@ -204,7 +204,8 @@ export function whatNeedsYou(
     const over = isOver(g);
     const me = (g.participants ?? []).find((p) => p.userId && p.userId === reader.userId) ?? null;
     const iRunIt = !!g.initiatorId && g.initiatorId === reader.userId;
-    const mayName = iRunIt || (isAdmin && g.organizationId === reader.organizationId);
+    /* An admin who takes part in it reads it as a person in it does (decision 121, item 7). */
+    const mayName = iRunIt || (isAdmin && g.organizationId === reader.organizationId && !me);
     const sessions = sessionsOf(g);
     const base = { groundId: g.id, organizationId: g.organizationId, ...(g.label?.trim() ? { checkInLabel: g.label.trim() } : {}) };
     /* THE TEAM'S ROUND, from the one clock the board and the list read (request 97a). Only where the row
