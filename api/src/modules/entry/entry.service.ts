@@ -73,6 +73,7 @@ import { PromptsService } from '../prompts';
 import { theAnchorGuidance, theChallengeWasUsed, theHopeWasAskedAndAnswered, ANCHOR_ENTRY_SCENARIO } from '../conversation/the-anchor-lead-conversation';
 import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
+import { isTheAnchorScenario, THE_ANCHOR_OPENING_TEXT } from './the-anchor-scenario-content';
 import { TheAnchorDoor, THE_ANCHOR_GROUND_LABEL } from './the-anchor-door';
 import { THE_EXTRACTION_SYSTEM, THE_EXTRACTION_TOOL, THE_CLOSING_REMINDER, allSevenAreHeard, theChallengeIsDue, theReadTheScreenAlreadyKnows, whatHasBeenHeard, whatTheConversationHasHeard, type TheSevenItems } from './the-anchor-setup';
 import { theLeadsReveal } from './the-anchor-reveal';
@@ -664,7 +665,9 @@ export class EntryService {
     return out;
   }
 
-  opener(scenario?: string): string {
+  async opener(scenario?: string): Promise<string> {
+    /* The anchor's opening is its scenario's content, served here like any scenario's, and only while its switch is on (decision 114). */
+    if (isTheAnchorScenario(scenario) && (await theAnchorScenarioIsOn(this.prisma))) return THE_ANCHOR_OPENING_TEXT;
     if (scenario && SCENARIO_OPENERS[scenario]) return SCENARIO_OPENERS[scenario];
     return DEFAULT_OPENER;
   }
