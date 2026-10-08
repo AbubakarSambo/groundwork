@@ -7,6 +7,7 @@ import { theRecordsClock, theDayItBegan, wholeDaysTo } from '../board/a-wait-is-
 import { THE_REPORT_IN_SIMPLER_WORDS } from '../grounds/what-is-sent-in-simpler-words';
 import { aWaitOnOneself } from '../board/a-thing-is-not-somebody';
 import { notToldYet, withoutGoalsNotToldIn } from '../grounds/a-goal-not-told-stays-with-the-lead';
+import { aCheckInStartedFromTheAnchor } from '../conversation/the-anchor-weekly-check-in';
 import { theWordsOfWhatTheLeadHasNotToldThemAbout, theyRunThisCheckIn } from '../board/an-untold-goal-is-not-a-board-objective';
 import { onceAcrossCopies, theHour, theWeek } from '../prisma/once-across-copies';
 import { theJudgementWithItsConversationPoints } from './the-judgement-and-a-goal-not-told';
@@ -6962,7 +6963,7 @@ happened, and what is in the way.`;
     const ground = await (this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
-        initiatorId: true, organizationId: true, createdByUserId: true, whoSeesTargets: true, scenario: true, peersVisibleToEachOther: true,
+        initiatorId: true, organizationId: true, createdByUserId: true, whoSeesTargets: true, scenario: true, startedFrom: true, peersVisibleToEachOther: true,
         participants: { select: { id: true, userId: true, partyType: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, roleAsDescribed: true, remitAsGiven: true, user: { select: { firstName: true, lastName: true } } } },
         objectives: { select: { name: true, ownerParticipantId: true, target: true } },
         report: { select: { sharedAs: true } },
@@ -7001,6 +7002,16 @@ happened, and what is in the way.`;
       }) ?? Promise.resolve([])).catch(() => []);
       /* And the objectives the engine wrote from them, in its own words (decisions 48 and 56). */
       served = withoutGoalsNotToldIn(served, theWordsOfWhatTheLeadHasNotToldThemAbout(ground.objectives ?? [], notTold as any[], ground.participants ?? [], false));
+      /*
+       * IN AN ANCHOR CHECK-IN, NONE OF THE LEAD'S AIMS, for anybody who does not run it (decision 96, item 8; release check, 8 October
+       * 2026). Her aims are made from what she said she is seeing today, which stays hers. The model was already kept from them
+       * (4eb427e2), but the session report's shared picture quoted one to Juma on test bed copy a: "The objective, in the lead's own
+       * words, is "The team checks orders before baking to reduce the 20 percent of bread that gets thrown away"". The same wall as
+       * a goal not told, through the same door, so the lead's words and their numbers are in no sentence a team member reads.
+       */
+      if (aCheckInStartedFromTheAnchor(ground)) {
+        served = withoutGoalsNotToldIn(served, (ground.objectives ?? []).map((o: any) => String(o?.name ?? '')).filter((n: string) => n.trim()));
+      }
       /* A line of the picture whose only sentence was the goal is not left as a line with no words. */
       if (Array.isArray((served as any).sharedPictureLines)) {
         served = { ...(served as any), sharedPictureLines: (served as any).sharedPictureLines.filter((l: any) => !(l && typeof l.text === 'string' && !l.text.trim())) };
