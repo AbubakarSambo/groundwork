@@ -100,3 +100,50 @@ describe('Naomi, an admin on Tendai\'s check-in, is not offered setup changes th
     expect(screen.queryAllByRole('button', { name: 'Change' }).length).toBeGreaterThan(0)
   })
 })
+
+/**
+ * A TEST PER CONTROL (decision 119, H10), checked against the one flag that gates every one of
+ * them - `canEditRunOrAdmin`, read from the server's `mayChangeSetup` - so none of the setup
+ * controls H10 names can drift from the others: the name, how often it runs, the days it works on,
+ * the start date, where people answer (WhatsApp), who sees targets, and whether people here can
+ * confirm each other's work. "Use simpler words" is covered the same way, inside `editingSimplerWords`.
+ */
+describe('every H10 control asks the same question, for each kind of reader', () => {
+  it('Tendai, who leads it, is offered every one of them', async () => {
+    renderWith({
+      ground: ground({ mayChangeSetup: true }),
+      isInitiator: true, isOrgAdmin: false, user: { id: 'u-tendai' },
+    })
+    await waitFor(() => expect(screen.getByText("Tendai's check-in")).toBeTruthy())
+    expect(screen.queryAllByRole('button', { name: 'Change' }).length).toBeGreaterThan(0)
+    expect(screen.getByRole('switch', { name: 'Targets' })).not.toBeDisabled()
+    expect(screen.getByRole('switch', { name: "Who can confirm each other's work" })).not.toBeDisabled()
+  })
+
+  it('Naomi, an admin who does not lead it, is offered none of them while Tendai is still here', async () => {
+    renderWith({ ground: ground({ mayChangeSetup: false }) })
+    await waitFor(() => expect(screen.getByText("Tendai's check-in")).toBeTruthy())
+    expect(screen.queryAllByRole('button', { name: 'Change' }).length).toBe(0)
+    expect(screen.getByRole('switch', { name: 'Targets' })).toBeDisabled()
+    expect(screen.getByRole('switch', { name: "Who can confirm each other's work" })).toBeDisabled()
+  })
+
+  it('Naomi is offered every one of them once the server says Tendai has left', async () => {
+    renderWith({ ground: ground({ mayChangeSetup: true }) })
+    await waitFor(() => expect(screen.getByText("Tendai's check-in")).toBeTruthy())
+    expect(screen.queryAllByRole('button', { name: 'Change' }).length).toBeGreaterThan(0)
+    expect(screen.getByRole('switch', { name: 'Targets' })).not.toBeDisabled()
+    expect(screen.getByRole('switch', { name: "Who can confirm each other's work" })).not.toBeDisabled()
+  })
+
+  it('a member, in this check-in but not running it, is offered none of them - the server never grants a mere party mayChangeSetup', async () => {
+    renderWith({
+      ground: ground({ mayChangeSetup: false }),
+      isInitiator: false, isOrgAdmin: false, viewerIsAParty: true, user: { id: 'u-someone-else' },
+    })
+    await waitFor(() => expect(screen.getByText("Tendai's check-in")).toBeTruthy())
+    expect(screen.queryAllByRole('button', { name: 'Change' }).length).toBe(0)
+    expect(screen.getByRole('switch', { name: 'Targets' })).toBeDisabled()
+    expect(screen.getByRole('switch', { name: "Who can confirm each other's work" })).toBeDisabled()
+  })
+})
