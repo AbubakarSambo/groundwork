@@ -293,7 +293,11 @@ export default function SessionReportPage() {
                   ? 'The link may be out of date. Your check-ins page lists the sessions that are.'
                   : 'Nothing is wrong with the report - the request did not get through. Try again.'}
             </Note>
-            {(error as any)?.response?.status === 404 && (
+            {/* B-111: a 403 here left nothing to press but the page's own top-of-page browser-back
+                link - "There is nothing this page can usefully offer" (above) is true of "Start a
+                new check-in"/"Copy the link", which promise something false, but not of a plain
+                way back to the list, which promises nothing. Every small state needs a way on. */}
+            {((error as any)?.response?.status === 404 || (error as any)?.response?.status === 403) && (
               <a href="/grounds" className="gwui-plain-link">Back to check-ins</a>
             )}
             {!((error as any)?.response?.status === 403 || (error as any)?.response?.status === 404) && (
