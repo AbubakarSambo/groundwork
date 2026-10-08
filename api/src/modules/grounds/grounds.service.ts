@@ -2386,7 +2386,7 @@ export class GroundsService {
             /** 'none' | 'proposed' | 'accepted' | 'their own'. */
             state: objectiveState(shaped),
             /** The one string anything showing this should print, so the caveat cannot be dropped. */
-            described: describeObjective(shaped),
+            described: describeObjective(shaped, { isThePerson: isSelf, theirName: theFirstNameOfAParticipant(p) || null, theLeadsName: leadFirstName || null }),
             /** False on a proposal and on an absence, and nothing downstream may read against it. */
             mayBeReadAgainst: mayBeReadAgainst(shaped),
             /**

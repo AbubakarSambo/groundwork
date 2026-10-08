@@ -87,17 +87,53 @@ export function mayBeReadAgainst(o: PersonObjective | null | undefined): boolean
  * "your manager has suggested X and you have not replied" are different
  * statements and the difference is the whole point.
  */
-export function describeObjective(o: PersonObjective | null | undefined): string {
-  switch (objectiveState(o)) {
-    case 'their own':
-      return `${o!.text} (in their own words)`;
-    case 'accepted':
-      return `${o!.text} (proposed by the person leading this, and left as it stands)`;
-    case 'proposed':
-      return `${o!.text} (proposed, and not yet seen by the person it is for)`;
-    case 'none':
-      return 'Nobody has said what success looks like for this person.';
+export function describeObjective(
+  o: PersonObjective | null | undefined,
+  /**
+   * WHO IS READING IT. The suffix used to speak about "the person it is for" to that very person ("proposed, and not yet seen by the person it is
+   * for", on Juma's own page; final check of the anchor, 8 October). Said to the person it is for, it says who suggested it and what is theirs to
+   * do; said to anybody else, it names the person. With no reader given the words are exactly what they were.
+   */
+  reader?: { isThePerson: boolean; theirName?: string | null; theLeadsName?: string | null },
+): string {
+  const state = objectiveState(o);
+  if (!reader) {
+    switch (state) {
+      case 'their own':
+        return `${o!.text} (in their own words)`;
+      case 'accepted':
+        return `${o!.text} (proposed by the person leading this, and left as it stands)`;
+      case 'proposed':
+        return `${o!.text} (proposed, and not yet seen by the person it is for)`;
+      case 'none':
+        return 'Nobody has said what success looks like for this person.';
+    }
   }
+  const lead = reader!.theLeadsName?.trim() || 'the person leading this';
+  const them = reader!.theirName?.trim() || 'the person it is for';
+  if (reader!.isThePerson) {
+    switch (state) {
+      case 'their own':
+        return `${o!.text} (in your own words)`;
+      case 'accepted':
+        return `${o!.text} (suggested by ${lead}, and you left it as it stands)`;
+      case 'proposed':
+        return `${o!.text} (suggested by ${lead}, and you have not answered it yet)`;
+      case 'none':
+        return 'Nobody has said what success looks like for you.';
+    }
+  }
+  switch (state) {
+    case 'their own':
+      return `${o!.text} (in ${them === 'the person it is for' ? 'their' : `${them}'s`} own words)`;
+    case 'accepted':
+      return `${o!.text} (proposed by ${lead}, and left as it stands)`;
+    case 'proposed':
+      return `${o!.text} (proposed, and ${them === 'the person it is for' ? 'they have' : `${them} has`} not seen it yet)`;
+    case 'none':
+      return `Nobody has said what success looks like for ${them === 'the person it is for' ? 'this person' : them}.`;
+  }
+  return '';
 }
 
 /**
