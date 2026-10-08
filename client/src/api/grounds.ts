@@ -137,6 +137,15 @@ export const groundsApi = {
     apiClient.get<Ground>(`/grounds/${id}`, { skipNotFoundToast: true, skipForbiddenToast: true } as any).then(r => r.data),
 
   /**
+   * The one finding the shared picture names as still open, in a whole sentence, as this reader is served it (request 198). `finding` is null
+   * until the picture is released to this reader, and the call is refused for somebody with no right to the check-in.
+   */
+  finding: (id: string) =>
+    apiClient.get<{ groundId: string; label: string; sessionNumber: number | null; finding: string | null; moreStillOpen: number; conversationWorthHaving: string | null }>(
+      `/grounds/${id}/report/finding`, { skipNotFoundToast: true, skipForbiddenToast: true } as any,
+    ).then(r => r.data),
+
+  /**
    * Whether the parties can see each other at all - who else is here, and how each is doing.
    * Separate from hiding email addresses. W14-4.
    *

@@ -17,10 +17,9 @@ import { useAskStore } from '@/stores/ask'
  * "I CAN HELP YOU DO THAT" (docs/answers-from-engine.md, 8 October, point 3 of "the engagement
  * work"): `/chat?about=<check-in id>` opens Ask with a question already put, so a first-insight
  * mail can hand a lead straight into the conversation worth having rather than an empty box.
- * There is no server route today that serves the actual finding for an arbitrary check-in (that
- * sentence is written only inside the mail itself, server-side) - so, per the engine's own answer,
- * this opens with a neutral question naming the check-in, and the screens have asked for the real
- * sentence in docs/requests-to-engine.md. `about` is read once; a second visit with the same
+ * The real finding is read from GET /grounds/:id/report/finding (request 198), the same sentence the
+ * mail's subject says. Where the reader has none yet (the picture is not released to them, or it names
+ * nothing open), the question stays the neutral one naming the check-in. `about` is read once; a second visit with the same
  * query string (the browser back button) does not ask it again, because `pendingMessage` already
  * carries whatever the panel is showing by then.
  */
@@ -38,13 +37,24 @@ export function AskPage() {
     enabled: !!about,
     retry: false,
   })
+  /* The real finding (request 198), when the shared picture has one for this reader. Without it the question stays the neutral one. */
+  const { data: found, isFetched: foundFetched } = useQuery({
+    queryKey: ['ask-about-finding', about],
+    queryFn: () => groundsApi.finding(about!),
+    enabled: !!about,
+    retry: false,
+  })
 
   useEffect(() => {
-    if (!about || askedAboutRef.current === about || !isFetched) return
+    if (!about || askedAboutRef.current === about || !isFetched || !foundFetched) return
     askedAboutRef.current = about
+    if (found?.finding) {
+      showWith(`Help me with what the shared picture found about ${found.label || ground?.label || 'this conversation'}. ${found.finding}`)
+      return
+    }
     const name = ground?.label ? `the conversation about ${ground.label}` : 'this conversation'
     showWith(`Help me prepare for ${name}.`)
-  }, [about, isFetched, ground, showWith])
+  }, [about, isFetched, foundFetched, ground, found, showWith])
 
   return (
     <div style={{ maxWidth: 680, margin: '0 auto', padding: '24px 16px 16px', display: 'flex', flexDirection: 'column', gap: 16, height: 'calc(100dvh - var(--gw-bottom-nav, 0px))', boxSizing: 'border-box' }}>

@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 
-vi.mock('@/api/grounds', () => ({ groundsApi: { get: vi.fn() } }))
+vi.mock('@/api/grounds', () => ({ groundsApi: { get: vi.fn(), finding: vi.fn() } }))
 vi.mock('@/components/gw/AskGroundwork', () => ({
   AskGroundwork: ({ initialMessage }: { initialMessage?: string | null }) => (
     <div data-testid="ask-box">{initialMessage ?? '(nothing asked yet)'}</div>
@@ -39,6 +39,8 @@ function renderAsk(entry: string) {
 describe('ask opened with a question already put', () => {
   beforeEach(() => {
     vi.mocked(groundsApi.get).mockReset()
+    vi.mocked(groundsApi.finding).mockReset()
+    vi.mocked(groundsApi.finding).mockResolvedValue({ groundId: 'g1', label: '', sessionNumber: null, finding: null, moreStillOpen: 0, conversationWorthHaving: null })
   })
 
   it('asks a neutral question naming the check-in, once the check-in is read', async () => {
@@ -46,6 +48,14 @@ describe('ask opened with a question already put', () => {
     renderAsk('/chat?about=g1')
     expect(await screen.findByText('Help me prepare for the conversation about Q4 priorities.')).toBeTruthy()
     expect(groundsApi.get).toHaveBeenCalledWith('g1')
+  })
+
+  it('asks about the real finding when the shared picture has one for this reader', async () => {
+    vi.mocked(groundsApi.get).mockResolvedValue({ id: 'g1', label: 'Kenya launch' } as any)
+    vi.mocked(groundsApi.finding).mockResolvedValue({ groundId: 'g1', label: 'Kenya launch', sessionNumber: 1, finding: 'Who owns the next step with the distributor is not agreed upon by the team.', moreStillOpen: 0, conversationWorthHaving: null })
+    renderAsk('/chat?about=g1')
+    expect(await screen.findByText('Help me with what the shared picture found about Kenya launch. Who owns the next step with the distributor is not agreed upon by the team.')).toBeTruthy()
+    expect(groundsApi.finding).toHaveBeenCalledWith('g1')
   })
 
   it('falls back to a neutral question with no name when the check-in cannot be read', async () => {
