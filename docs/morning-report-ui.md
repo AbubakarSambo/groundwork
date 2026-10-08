@@ -14,7 +14,7 @@ Hafsah set the next pull request's contents. This is the screens' half of each p
    - The back office funnels count check-ins and people.
    - Ask can be opened with a question already put (`/chat?about=`).
    - The newly invited person's journey was proven in the browser: one tap, no password, straight onto the first question, and picking up where they left off.
-   - Waiting on the engine: request 198 (the real "difference" sentence, and the Friday letter facts), request 199 (choosing how often and by which channel, which Hafsah may defer), the WhatsApp switch in Settings (no route yet), and request 205 (ids beside Today's sentences).
+   - Waiting on the engine: request 198 (the real "difference" sentence, and the Friday letter facts), request 199 (choosing how often and by which channel), which Hafsah has deferred: no choices for now, the WhatsApp switch in Settings (no route yet), and request 205 (ids beside Today's sentences).
 2. **The anchor through the normal flow (decision 114): screens done.**
    - `/start/team` is a redirect.
    - The opening comes from `/entry/opener`, and every month part is an ordinary board section.

@@ -131,3 +131,7 @@ workspace, not a product question. If the engine's answer to request 199 propose
 (for example, daily vs weekly, email vs WhatsApp), that proposal should come back through
 `docs/decisions-merged.md` before screens are built against it, since "what notification choices
 exist" is a product decision nobody has made yet.
+
+## Deferred by Hafsah, 8 October
+
+Request 199, letting people choose how often and by which channel Groundwork writes to them, is deferred. Hafsah wants no choices for now. Settings keeps its single switch for the email Groundwork decides to send (decision 109), and stopping on WhatsApp stays by replying "stop" or "not now". The screens will build nothing for item J until she says otherwise.
