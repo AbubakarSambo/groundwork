@@ -32,7 +32,7 @@ describe('the organisation handler', () => {
   });
   it('keeps a short first answer and drops only a greeting, matched by a list', () => {
     expect(org).not.toMatch(/text\.length <= 12/);
-    expect(org).toMatch(/if \(A_GREETING_ALONE\.test\(text\)( \|\| beginning)?\) \{ await say\(reply\); return; \}/);
+    expect(org).toMatch(/if \((?:A_GREETING_ALONE\.test\(text\)|isAGreetingOrARequestToStart\(text\))( \|\| beginning)?\) \{ await say\(reply\); return; \}/);
   });
   it('matches finish before the status and answers honestly on a session not yet opened', () => {
     const finishOnNotStarted = org.indexOf("A_FINISH_WORD.test(text) && current.status === 'NOT_STARTED'");

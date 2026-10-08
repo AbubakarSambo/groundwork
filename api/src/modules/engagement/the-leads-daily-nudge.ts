@@ -65,12 +65,19 @@ export interface AThingOutstanding {
 }
 
 const THE_PLACE_MARK = '{in}';
+/** The same, at the front of a sentence ("In \u201cRenewal push\u201d, Pia said ..."). */
+const THE_PLACE_FIRST = '{In}';
 
 /** Puts the check-in's name where {in} stands when, and only when, the things told are about more than one check-in. */
 export function withPlacesWhereTheyTellApart(o: WhatIsOutstanding): WhatIsOutstanding {
   const all = [...o.needsYou, ...o.overdueOnYourTeam, ...o.risks];
   const several = new Set(all.map((t) => t.place).filter(Boolean)).size > 1;
-  const say = (t: AThingOutstanding): AThingOutstanding => ({ ...t, text: t.text.split(THE_PLACE_MARK).join(several && t.place ? ` in ${quoted(t.place)}` : '') });
+  const say = (t: AThingOutstanding): AThingOutstanding => {
+    const named = several && t.place;
+    /* At the front, "You" is "you" after the name of the check-in. */
+    const text = t.text.replace(THE_PLACE_FIRST + 'You ', named ? `In ${quoted(t.place!)}, you ` : 'You ').split(THE_PLACE_FIRST).join(named ? `In ${quoted(t.place!)}, ` : '');
+    return { ...t, text: text.split(THE_PLACE_MARK).join(named ? ` in ${quoted(t.place!)}` : '') };
+  };
   return { needsYou: o.needsYou.map(say), overdueOnYourTeam: o.overdueOnYourTeam.map(say), risks: o.risks.map(say) };
 }
 
@@ -91,7 +98,7 @@ export const theseForAPhone = (o: WhatIsOutstanding): WhatIsOutstanding => ({
 
 /** At most three lines. When there are more, the third says how many are not listed. */
 export function atMostThreeLines(things: AThingOutstanding[]): string[] {
-  const lines = things.map((t) => sentence(t.text.split(THE_PLACE_MARK).join('')));
+  const lines = things.map((t) => sentence(t.text.split(THE_PLACE_FIRST).join('').split(THE_PLACE_MARK).join('')));
   if (lines.length <= AT_MOST) return lines;
   const left = lines.length - (AT_MOST - 1);
   return [...lines.slice(0, AT_MOST - 1), `${capital(aNumberInWords(left))} more are not listed here.`];
@@ -266,7 +273,7 @@ export async function whatIsOutstandingFor(
     if (!g || isEvaluationCheckIn(g.scenario) || !pr.text?.trim()) continue;
     const late = daysLate(pr.dueDate, today);
     if (late < 1) continue;
-    const text = (who: string) => `${theyCommitted(who, pr.text)}${THE_PLACE_MARK} by ${theDay(pr.dueDate)}, and it is ${lateWords(late)}.`;
+    const text = (who: string) => `${THE_PLACE_FIRST}${theyCommitted(who, pr.text)}. That was due by ${theDay(pr.dueDate)} and is ${lateWords(late)}.`;
     /* "Someone" is the word for a person nobody has a name for (decision 115): a lead cannot act on it, so it is not told. */
     if (pr.participant?.userId !== lead.userId && nameToCall(pr.participant) === SOMEONE) continue;
     if (pr.participant?.userId === lead.userId) out.needsYou.push({ text: text('You'), late, group: 2, keptInTheApp: keptOffThePhone(g), place: g.label });
@@ -358,7 +365,7 @@ export async function whatIsOutstandingFor(
     for (const g of grounds) {
       const rows: any[] = await prisma.checkIn.findMany({
         where: { groundId: g.id },
-        select: { participantId: true, sessionNumber: true, status: true, createdAt: true, availableFrom: true, participant: { select: { userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } } },
+        select: { participantId: true, sessionNumber: true, status: true, createdAt: true, availableFrom: true, participant: { select: { userId: true, managingOnly: true, leftAt: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } } },
       }).catch(() => []);
       const away = await Promise.resolve(whoOnACheckInIsAway(prisma, g.id, now)).catch(() => new Map());
       const q = theQuietIn(rows, g.label, lead.userId, now, deps.release, new Set([...(away as Map<string, unknown>).keys()]));
@@ -367,7 +374,7 @@ export async function whatIsOutstandingFor(
       const who = n >= q.ofHowMany
         ? (q.ofHowMany === 1 ? 'The one person who can answer' : q.ofHowMany === 2 ? 'Both people' : `All ${aNumberInWords(q.ofHowMany)} people`)
         : `${capital(aNumberInWords(n))} of the ${aNumberInWords(q.ofHowMany)} people`;
-      out.risks.push({ text: `${who} in ${quoted(g.label)} ${n === 1 ? 'has' : 'have'} not answered the latest check-in for more than a week.`, keptInTheApp: keptOffThePhone(g) });
+      out.risks.push({ text: `${who} in ${quoted(g.label)} ${n === 1 ? 'has' : 'have'} not answered a check-in for more than a week.`, keptInTheApp: keptOffThePhone(g) });
     }
   }
 

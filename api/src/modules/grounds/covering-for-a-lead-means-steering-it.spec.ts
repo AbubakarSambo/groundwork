@@ -75,10 +75,13 @@ describe('covering for a lead means being able to steer it', () => {
    * the schedule check left both strings sitting there, so it stayed green while an org admin was
    * refused again. The declaration is not the decision.
    */
-  it('and the schedule gate itself lets them through', () => {
+  it('and the schedule gate itself goes through the one setup rule', () => {
+    /* Changed 8 October 2026 (decision 119, H10): an admin changes the schedule only once the lead has left,
+       so the gate goes through the one setup rule rather than `isOrgAdmin`. */
     expect(body('updateTimeline')).toContain(
-      "if (changesTheSchedule && ground.initiatorId !== requestingUserId && !isOrgAdmin)",
+      "if (changesTheSchedule && ground.initiatorId !== requestingUserId) {",
     );
+    expect(body('updateTimeline')).toContain('await this.mayConfirmSetupOn(ground, requestingUserId);');
   });
 
   /**

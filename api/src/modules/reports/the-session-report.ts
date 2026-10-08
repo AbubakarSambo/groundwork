@@ -334,9 +334,12 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
    * WHERE THINGS STAND. The one line the site promises every report carries, and the only place
    * a number is allowed to stand on its own - because both halves of it are countable.
    */
+  /* ONE TRUE STATEMENT ABOUT WHO HAS ANSWERED (B-118). When the count of people is known it decides, here and in the Differences tile alike: a round closed half-done said
+     "Not everyone has answered" in one sentence and "Everybody has answered" in the next. Closed or not decides only when nobody passed a count. */
+  const everyoneHasAnswered = input.peopleInAll ? input.answeredThisSession.length >= input.peopleInAll : input.closed;
   const standing =
     agreed === 0 && stillOpen === 0
-      ? input.closed
+      ? everyoneHasAnswered
         ? 'Everybody has answered and this has not yet named anything they agree or differ on.'
         : 'Not everyone has answered yet, so there is nothing to agree or differ with.'
       : `${agreed} settled, ${stillOpen} still open.`;

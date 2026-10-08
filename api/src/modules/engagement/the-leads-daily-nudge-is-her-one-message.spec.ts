@@ -8,7 +8,7 @@ import { ROUTINE_EMAILS } from './one-routine-message-a-day';
  * Wairimu has an address and a number. The nudge is one routine message: after it, the "has not started" email and the "what is new" email are held for another day.
  * If a WhatsApp message already went to her today, the nudge by email is not sent. And the nudge is a message we decide to send, so the stop link turns it off.
  */
-const PARTS = { needsYou: ['Amina\'s leave from Wednesday 14 October to Friday 16 October is waiting for you to approve or decline.'], overdueOnYourTeam: ['Omar committed to “send the price list” by Tuesday 6 October, and it is six days late.'], risks: [] as string[] };
+const PARTS = { needsYou: ['Amina\'s leave from Wednesday 14 October to Friday 16 October is waiting for you to approve or decline.'], overdueOnYourTeam: ['Omar committed to “send the price list”. That was due by Tuesday 6 October and is six days late.'], risks: [] as string[] };
 
 function world(opts: { whatsAppToday?: boolean } = {}) {
   const notifications: any[] = [];

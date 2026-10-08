@@ -28,7 +28,7 @@ import { whenItIsDue } from '../whatsapp/what-goes-to-a-phone';
 import { formsOfTheSameNumber } from '../whatsapp/a-number-whatsapp-can-reach';
 import { theCheckInIsCompleteSaying, enoughToCloseSaying } from '../grounds/what-is-sent-in-simpler-words';
 import { AnOpenCheckIn, whatTheFileIsCalled, sessionHeader, whichOneRows, whichOneAsText, pickedOne, pickedFromText, whatArrived, reportAsText, nothingToReadYet, THANKS_YOUR_ANSWER_IS_IN, reportAsTemplateBlanks, LANGUAGES_WE_CONVERSE_IN, A_FINISH_WORD, A_GREETING_ALONE, A_NOT_NOW, NOT_NOW_SAYING,
-  NOT_ENOUGH_YET_TO_FINISH, isAnAskWord, A_BACK_WORD, A_WISH_TO_CARRY_ON_THE_CHECK_IN, A_SWITCH_WORD, A_YES, A_NO, THE_WORDS, NOW_ASKING, ASKING_NEEDS_A_ROSTER_ENTRY, ASK_READS_WORDS,
+  NOT_ENOUGH_YET_TO_FINISH, isAnAskWord, A_BACK_WORD, A_WISH_TO_CARRY_ON_THE_CHECK_IN, isAGreetingOrARequestToStart, A_SWITCH_WORD, A_YES, A_NO, THE_WORDS, NOW_ASKING, ASKING_NEEDS_A_ROSTER_ENTRY, ASK_READS_WORDS,
   ONLY_ONE_OPEN, NONE_OPEN, BACK_IN, BACK_TO_NOTHING, ASKING, isAsking, wasIn, namedCheckIn, looksLikeARequest, shallITreatThisAs, YES_OR_NO, HELD_WORDS_PUT_IN, heldWordsNotPut, type ARequest,
 } from './a-whatsapp-message-is-routed';
 import { A_STOP_WORD, A_START_WORD, STOPPED_SAYING, RESUMED_SAYING, UNKNOWN_NUMBER_SAYING } from '../whatsapp/a-message-outside-the-window';
@@ -450,7 +450,7 @@ export class WhatsAppForAnOrganisationService {
        * Whoever decides it asked them, and their reply here would have gone into the check-in. Asked
        * once for each question, never for a greeting, "finish" or the first word that starts a check-in.
        */
-      if (!beginning && !A_FINISH_WORD.test(text) && !A_GREETING_ALONE.test(text)) {
+      if (!beginning && !A_FINISH_WORD.test(text) && !isAGreetingOrARequestToStart(text)) {
         const q = await this.aQuestionWaitsFor(organizationId, who.personId);
         if (q && thread?.questionAskedAbout !== q.id) {
           await this.askAboutTheAnswer(organizationId, from, text, q.id);
@@ -507,7 +507,7 @@ export class WhatsAppForAnOrganisationService {
         /* A short first answer is still an answer. "Not much yet", "It's blocked", "Behind again" are
            twelve characters or fewer and were thrown away. Only a greeting and nothing else is not
            handed in - matched by a list, not by a length. */
-        if (A_GREETING_ALONE.test(text) || beginning) { await say(reply); return; }
+        if (isAGreetingOrARequestToStart(text) || beginning) { await say(reply); return; }
       }
       const r = await this.conversation.sendMessage(current.id, userId!, text, { door: 'whatsapp' });
       reply = reply ? `${reply}\n\n${r.reply}` : r.reply;

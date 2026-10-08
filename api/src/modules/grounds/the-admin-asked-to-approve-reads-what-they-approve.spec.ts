@@ -142,7 +142,7 @@ describe.each(SCENARIOS)('%s waiting for an admin to accept it', (_l, scenario) 
 
   it('the admin asked to approve it cannot change its setup', async () => {
     await expect(groundsService(scenario, st).setPeerVisibility('g1', APPROVER, true))
-      .rejects.toThrow('Only the lead of this check-in, or an admin in this organisation, can change this.');
+      .rejects.toThrow('Only the person who runs this check-in can change how it is set up. An admin can only do that once that person has left the organisation. Nothing was changed.');
   });
 });
 
