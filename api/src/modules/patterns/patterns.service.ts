@@ -134,7 +134,8 @@ export class PatternsService {
 
     const [turns, records, statedGoalRows] = await Promise.all([
       this.prisma.conversationTurn.findMany({ where: { checkInId }, orderBy: { createdAt: 'asc' } }),
-      this.prisma.recordEntry.findMany({ where: { checkInId } }),
+      /* In the order they were written, so two readings of one check-in are given the same text (9 Oct 2026). */
+      this.prisma.recordEntry.findMany({ where: { checkInId }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] }),
       /* What they said this was for, in earlier periods. See against-the-goal-they-stated. */
       this.prisma.recordEntry.findMany({
         where: { participantId: checkIn.participantId, disputedAt: null, type: 'SUCCESS_DEFINITION' as any, checkIn: { sessionNumber: { lt: checkIn.sessionNumber } } },
@@ -198,6 +199,7 @@ export class PatternsService {
           participantId: checkIn.participantId,
           lastPeriodNumber: { gte: period - HOW_FAR_BACK, lte: period - 1 },
         },
+        orderBy: [{ lastPeriodNumber: 'asc' }, { code: 'asc' }],
         select: { code: true, observationText: true, lastPeriodNumber: true },
       })
       .catch(() => [] as { code: string; observationText: string | null; lastPeriodNumber: number | null }[]);
