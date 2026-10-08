@@ -38,9 +38,9 @@ describe('changing when a check-in starts', () => {
     expect(updateTimeline).toContain('startsAt?: string');
   });
 
-  it('is the lead\'s or an org admin\'s, like every other change to the schedule', () => {
+  it('is the lead\'s, or an admin\'s once the lead has left (decision 119, H10), like every other change to the schedule', () => {
     const block = updateTimeline.slice(updateTimeline.indexOf('if (dto.startsAt !== undefined) {'));
-    expect(block).toContain('ground.initiatorId !== requestingUserId && !isOrgAdmin');
+    expect(block).toContain('ground.initiatorId !== requestingUserId) await this.mayConfirmSetupOn(ground, requestingUserId)');
   });
 
   it('is refused once anybody has answered, with the reason', () => {

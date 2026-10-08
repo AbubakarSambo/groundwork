@@ -91,7 +91,7 @@ describe('the kind of work, read at setup (request 76)', () => {
     const g: any = { initiatorId: 'lead', organizationId: 'org1' };
     const { svc } = build(g, null);
     await expect(svc.setKindOfWork('g1', 'someone-else', { kind: 'sales org' })).rejects.toThrow(
-      'Only the lead of this check-in, or an admin in this organisation, can change this.',
+      'Only the person who runs this check-in can change how it is set up. An admin can only do that once that person has left the organisation. Nothing was changed.',
     );
   });
 });

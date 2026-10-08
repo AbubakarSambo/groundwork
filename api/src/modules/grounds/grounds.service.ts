@@ -458,7 +458,12 @@ export class GroundsService {
         : Promise.resolve(null),
       this.prisma.user.findUnique({ where: { id: requestingUserId }, select: { role: true, organizationId: true, firstName: true, lastName: true } }),
     ]);
-    const decision = whoMayConfirmSetup(requestingUserId, checkIn, { lead, confirmer, organizationId: confirmer?.organizationId });
+    /* A lead whose account says nothing either way counts as present: nobody is let in on a guess. */
+    const decision = whoMayConfirmSetup(requestingUserId, checkIn, {
+      lead: lead ? { ...lead, isActive: (lead as any).isActive !== false } : null,
+      confirmer,
+      organizationId: confirmer?.organizationId,
+    });
     if (!decision.allowed) throw new ForbiddenException(onlyTheLeadConfirmsSetup([lead?.firstName, lead?.lastName].filter(Boolean).join(' ')));
     return decision;
   }
@@ -5266,6 +5271,11 @@ export class GroundsService {
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
     });
+    if (verb === 'change') {
+      /* Decision 119, H10: changing it is the lead's, and an admin's only once the lead has left. */
+      await this.mayConfirmSetupOn(ground, requestingUserId);
+      return;
+    }
     if (ground.initiatorId !== requestingUserId && !adminsThisOrg({ ...viewer, userId: requestingUserId }, ground)) {
       throw new ForbiddenException(
         `Only the lead of this check-in, or an admin in this organisation, can ${verb} this.`,
@@ -5423,16 +5433,8 @@ export class GroundsService {
     });
     if (!ground) throw new NotFoundException('Check-in not found');
 
-    const viewer = await this.prisma.user.findUnique({
-      where: { id: requestingUserId },
-      select: { role: true, organizationId: true },
-    });
-    const isOrgAdmin = adminsThisOrg({ ...viewer, userId: requestingUserId }, ground);
-    if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
-      throw new ForbiddenException(
-        'Only the lead of this check-in, or an admin in this organisation, can change this.',
-      );
-    }
+    /* Decision 119, H10: the lead, or an admin once the lead has left. */
+    await this.mayConfirmSetupOn(ground, requestingUserId);
 
     return this.prisma.ground.update({
       where: { id: groundId },
@@ -5467,16 +5469,8 @@ export class GroundsService {
     });
     if (!ground) throw new NotFoundException('Check-in not found');
 
-    const viewer = await this.prisma.user.findUnique({
-      where: { id: requestingUserId },
-      select: { role: true, organizationId: true },
-    });
-    const isOrgAdmin = adminsThisOrg({ ...viewer, userId: requestingUserId }, ground);
-    if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
-      throw new ForbiddenException(
-        'Only the lead of this check-in, or an admin in this organisation, can change this.',
-      );
-    }
+    /* Decision 119, H10: the lead, or an admin once the lead has left. */
+    await this.mayConfirmSetupOn(ground, requestingUserId);
 
     return this.prisma.ground.update({
       where: { id: groundId },
@@ -6710,10 +6704,9 @@ export class GroundsService {
      * It changes the schedule, so it is the lead's call like the rhythm itself.
      */
     const changesTheSchedule = requestedDays !== undefined || dto.cadence !== undefined || dto.workingDays !== undefined;
-    if (changesTheSchedule && ground.initiatorId !== requestingUserId && !isOrgAdmin) {
-      throw new ForbiddenException(
-        'Only the lead of this check-in, or an admin in your organisation, can change how long it runs or how often people check in. Ask them if it needs to change.',
-      );
+    if (changesTheSchedule && ground.initiatorId !== requestingUserId) {
+      /* Decision 119, H10: an admin only once the lead has left. */
+      await this.mayConfirmSetupOn(ground, requestingUserId);
     }
 
     /**
@@ -6734,11 +6727,7 @@ export class GroundsService {
            every list it appears in, and silently keeping the old one teaches nothing. */
         throw new BadRequestException('A check-in needs a name. Type one, or leave the name as it is.');
       }
-      if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
-        throw new ForbiddenException(
-          'Only the lead of this check-in, or an admin in your organisation, can rename it',
-        );
-      }
+      if (ground.initiatorId !== requestingUserId) await this.mayConfirmSetupOn(ground, requestingUserId);
     }
 
     // MODE IS IMMUTABLE. If a ground could flip from private to shared, someone
@@ -6781,11 +6770,7 @@ export class GroundsService {
      * schedule.
      */
     if (dto.startsAt !== undefined) {
-      if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
-        throw new ForbiddenException(
-          'Only the lead of this check-in, or an admin in your organisation, can change when it starts.',
-        );
-      }
+      if (ground.initiatorId !== requestingUserId) await this.mayConfirmSetupOn(ground, requestingUserId);
       const answered = await this.prisma.checkIn.count({
         where: { groundId, status: CheckInStatus.COMPLETED },
       });
