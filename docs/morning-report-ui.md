@@ -8306,3 +8306,29 @@ From the engine's answer of 8 October night (`docs/answers-from-engine.md`) and 
   disk.
 - `client/`: `npx tsc --noEmit -p .` clean; the full `npx vitest run` is green, 725 files and 4,790
   tests (up from 4,733).
+
+## 8 October (late): proven on the test bed
+
+Run on the engine's test bed, copy b (`gw_sweep_b`, API 3202, client 5174), reset fresh, with
+`put-what-is-outstanding-in.ts` run on it. "Sales team, Q4" (Msingi Foods) was made an anchor check-in
+in that database only (scenario `HELP_TEAM_UNDERSTAND`, started 35 days ago, `release.anchorScenario`
+on). Read as Wairimu Njoroge (lead), Amani Wekesa (member) and Grace Achieng (admin), from the API and
+on screen at 1440 and 390. No console error and no failed request on the board or the ending page; on
+Today only the known `404 /suites/time/mine` (B-002).
+
+- **Privacy holds.** Amani's board payload carries none of the lead's sections (only "How I'll work
+  with your team" and "Ideas from your team"), no month board or end-of-month read, no aims
+  (`objectives` is empty), no brief ("forty more shops" appears nowhere), and `theJudgement` is null.
+  His ending page shows only the outcomes. Grace reads "How I'll work with your team" and none of the
+  lead's own sections.
+- **The anchor, lead.** Every section the record can fill is drawn, in order, with the old components'
+  sentences intact; "People helping the team move" and "Groundwork recommends" are rightly left out
+  because nothing fills them. Wording problems: B-068 (Wairimu reads "waiting on Wairimu"), B-069
+  ("Week 4 of the month", "3/6 active · ..."), B-070 (lenses and reveal say no promise is open while
+  four are late), B-071 ("You decides which one it is", screens), B-072, B-075, B-076.
+- **Today's outstanding lists.** All three lists draw for both leads, with plain sentences, and a
+  member gets `null` and sees none. But things are said twice beside "What needs you" (B-073,
+  screens), and one tense is wrong (B-074).
+- The bed's README needs two fixes to run as written (request 203). Screenshots:
+  `docs/bug-log-screens/anchor-*-{lead,member,admin}-{1440,390}.png` and
+  `today-outstanding-{lead,lead-baraka,member}-{1440,390}.png`.
