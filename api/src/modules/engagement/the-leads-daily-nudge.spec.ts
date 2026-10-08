@@ -84,10 +84,11 @@ describe('what Wairimu reads on her phone, outside the 24 hours (the template, o
     expect(params[2]).toBe('https://myground.work/today');
     expect(params[1]).toBe(
       'These need you. Amina’s leave from Wednesday 14 October to Friday 16 October is waiting for you to approve or decline. '.replace('’', "'")
-      + 'You committed to “write up the Kisumu visit” by Friday 9 October, and it is three days late. '
-      + 'These are overdue on your team. Omar committed to “send the price list” by Tuesday 6 October, and it is six days late. '
-      + 'Bisi committed to “call the Naivas buyer” by Saturday 10 October, and it is two days late. '
-      + 'Kofi committed to “update the pipeline sheet” by Sunday 11 October, and it is one day late.',
+      + 'You committed to “write up the Kisumu visit”. That was due by Friday 9 October and is three days late. '
+      + 'These are overdue on your team. Omar committed to “send the price list”. That was due by Tuesday 6 October and is six days late. '
+      + 'Bisi committed to “call the Naivas buyer”. That was due by Saturday 10 October and is two days late. '
+      /* The sentences are longer since 8 October (the due day is its own sentence), so the fourth no longer fits in Meta's limit and the paragraph says there is more. */
+      + 'There is more, and the link shows all of it.',
     );
   });
 
@@ -112,7 +113,7 @@ describe('what Wairimu reads on her phone, outside the 24 hours (the template, o
   it('leaves out whole sentences that do not fit, never cuts one in the middle, and says there is more', () => {
     const many = (n: number): WhatIsOutstanding => ({
       needsYou: [],
-      overdueOnYourTeam: Array.from({ length: n }, (_x, i) => ({ text: `Person${i} committed to “${'do a very long piece of work '.repeat(6).trim()}” by Tuesday 6 October, and it is ${i + 1} days late.`, late: n - i })),
+      overdueOnYourTeam: Array.from({ length: n }, (_x, i) => ({ text: `Person${i} committed to “${'do a very long piece of work '.repeat(6).trim()}”. That was due by Tuesday 6 October and is ${i + 1} days late.`, late: n - i })),
       risks: Array.from({ length: n }, (_x, i) => ({ text: `The target “${'a long target name '.repeat(8).trim()} ${i}” is behind.` })),
     });
     const { params, text } = theTemplateParagraph('Wairimu', many(6), 'https://myground.work/today');
@@ -131,11 +132,11 @@ describe('what Wairimu reads on her phone, inside the 24 hours (an ordinary mess
       'Good morning Wairimu. Here is what is outstanding today.\n\n'
       + 'Needs you\n'
       + "Amina's leave from Wednesday 14 October to Friday 16 October is waiting for you to approve or decline.\n"
-      + 'You committed to “write up the Kisumu visit” by Friday 9 October, and it is three days late.\n\n'
+      + 'You committed to “write up the Kisumu visit”. That was due by Friday 9 October and is three days late.\n\n'
       + 'Overdue on your team\n'
-      + 'Omar committed to “send the price list” by Tuesday 6 October, and it is six days late.\n'
-      + 'Bisi committed to “call the Naivas buyer” by Saturday 10 October, and it is two days late.\n'
-      + 'Kofi committed to “update the pipeline sheet” by Sunday 11 October, and it is one day late.\n\n'
+      + 'Omar committed to “send the price list”. That was due by Tuesday 6 October and is six days late.\n'
+      + 'Bisi committed to “call the Naivas buyer”. That was due by Saturday 10 October and is two days late.\n'
+      + 'Kofi committed to “update the pipeline sheet”. That was due by Sunday 11 October and is one day late.\n\n'
       + 'You can see everything here https://myground.work/today',
     );
   });
@@ -165,10 +166,10 @@ describe('who gets it, and how', () => {
   it('the check-in is named on a line only when she is told about more than one: by email she is (the plan is in the app), on her phone she is not', async () => {
     const byEmail = aMorning({ phone: null });
     await byEmail.run();
-    expect(byEmail.mails[0][2].needsYou[1]).toBe('You committed to \u201cwrite up the Kisumu visit\u201d in \u201cSales team, Q3\u201d by Friday 9 October, and it is three days late.');
+    expect(byEmail.mails[0][2].needsYou[1]).toBe('In \u201cSales team, Q3\u201d, you committed to \u201cwrite up the Kisumu visit\u201d. That was due by Friday 9 October and is three days late.');
     const onPhone = aMorning();
     await onPhone.run();
-    expect(onPhone.whats[0].text).not.toContain('in \u201cSales team, Q3\u201d by');
+    expect(onPhone.whats[0].text).not.toContain('In \u201cSales team, Q3\u201d, you');
   });
 
   it('a lead whose organisation never turned WhatsApp on gets it by email', async () => {
@@ -266,7 +267,7 @@ describe('in "Needs you", what waits for her to approve comes first, then a deci
     const needs: string[] = m.mails[0][2].needsYou;
     expect(needs[0]).toMatch(/waiting for you to approve or decline\.$/);
     expect(needs[1]).toMatch(/^Kofi is waiting on you for the pricing for Q4/);
-    expect(needs[2]).toMatch(/^You committed to/);
+    expect(needs[2]).toMatch(/^(In “[^”]*”, you|You) committed to/);
   });
 });
 
@@ -280,7 +281,7 @@ describe('a commitment stored in the person\'s own first-person words is said as
       ],
     });
     await m.run();
-    expect(m.mails[0][2].overdueOnYourTeam).toEqual(['Omar said \u201cIf I don\'t hear back by Friday, I will re-escalate to the Head of Credit\u201d by Tuesday 6 October, and it is six days late.']);
+    expect(m.mails[0][2].overdueOnYourTeam).toEqual(['Omar said \u201cIf I don\'t hear back by Friday, I will re-escalate to the Head of Credit\u201d. That was due by Tuesday 6 October and is six days late.']);
   });
 
   it('"said" for "I will chase legal on Monday", "committed to" for "send the supplier list"', async () => {
@@ -294,10 +295,29 @@ describe('a commitment stored in the person\'s own first-person words is said as
     });
     await m.run();
     expect(m.mails[0][2].overdueOnYourTeam).toEqual([
-      'Omar said \u201cI will chase legal on Monday\u201d by Tuesday 6 October, and it is six days late.',
-      'Bisi said \u201cNext I will pick up the export bug\u201d by Wednesday 7 October, and it is five days late.',
-      'Kofi committed to \u201csend the supplier list\u201d by Thursday 8 October, and it is four days late.',
+      'Omar said \u201cI will chase legal on Monday\u201d. That was due by Tuesday 6 October and is six days late.',
+      'Bisi said \u201cNext I will pick up the export bug\u201d. That was due by Wednesday 7 October and is five days late.',
+      'Kofi committed to \u201csend the supplier list\u201d. That was due by Thursday 8 October and is four days late.',
     ]);
+  });
+});
+
+describe('a late commitment names its check-in first, then says what was due (8 October 2026)', () => {
+  it('"In \u201cRenewal push\u201d, Pia said ... That was due by Saturday 11 July and is 93 days late."', async () => {
+    const RENEWAL = { ...SALES, id: 'g-renewal', label: 'Renewal push' };
+    const PIA = { id: 'p-pia', groundId: 'g-renewal', ...person('u-pia', 'Pia') };
+    const m = aMorning({
+      phone: null, waiting: false,
+      promises: [
+        promise({ text: 'I will chase legal on Monday', dueDate: day('2026-07-11'), groundId: 'g-renewal', participantId: 'p-pia', participant: { ...PIA, ground: RENEWAL } }),
+        promise({ text: 'send the price list', dueDate: day('2026-10-06') }),
+      ],
+    });
+    m.prisma.ground.findMany = jest.fn(async () => [SALES, RENEWAL]);
+    const was = m.prisma.groundParticipant.findMany;
+    m.prisma.groundParticipant.findMany = jest.fn(async (a: any) => (a.where.userId ? [PEOPLE['p-wairimu']] : [...(await was(a)), ...(a.where.groundId.in.includes('g-renewal') ? [PIA] : [])]));
+    await m.run();
+    expect(m.mails[0][2].overdueOnYourTeam[0]).toBe('In \u201cRenewal push\u201d, Pia said \u201cI will chase legal on Monday\u201d. That was due by Saturday 11 July and is 93 days late.');
   });
 });
 
@@ -348,7 +368,7 @@ describe('the page the link goes to shows everything, in the same sentences', ()
     const m = aMorning({ phone: null });
     const boards: any = { leave: { board: async () => ({ waiting: [] }) } };
     const all = await everythingOutstandingFor(m.prisma, { userId: 'u-wairimu', organizationId: 'org-1' }, { boards }, NOW);
-    expect(all?.needsYou).toEqual(['You committed to \u201cwrite up the Kisumu visit\u201d in \u201cSales team, Q3\u201d by Friday 9 October, and it is three days late.']);
+    expect(all?.needsYou).toEqual(['In \u201cSales team, Q3\u201d, you committed to \u201cwrite up the Kisumu visit\u201d. That was due by Friday 9 October and is three days late.']);
     expect(all?.overdueOnYourTeam).toHaveLength(4);
     expect(all?.overdueOnYourTeam.join(' ')).toContain('keep the plan notes');
     expect(JSON.stringify(all)).not.toMatch(/more are not listed here|Mombasa|Juma/);
