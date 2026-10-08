@@ -42,7 +42,9 @@
  * they are for the one reader this ruling is about.
  */
 
+import { GroundScenario } from '@prisma/client';
 import { quotationsIn, theRecordsWordsFor } from './a-quote-is-what-they-said';
+import { isEvaluationCheckIn } from './is-this-an-evaluation-check-in';
 
 /**
  * THE SENTENCE THAT TAKES THE PLACE OF A SIDE'S WORDS. It says "and the decision with its reasons" only where a decision
@@ -56,15 +58,18 @@ const THE_FACTS_ONLY = (aDecisionIsBelow = false) => `A colleague's own words ar
 const THE_FACTS_ONLY_LEAD = (aDecisionIsBelow = false) => `The words your lead used are not shown to you here. ${BELOW(aDecisionIsBelow)}`;
 
 /**
- * THE NEW HIRE READS THE LEAD'S OWN WORDS AND ROW (request 124, Hafsah's answer of 3 October, decision 88; decision 3, "Nobody is
- * special because of their title"; decision 4, "what people say in check-ins can be shown word for word to the people in that
- * check-in"). On an onboarding check-in that reaches a verdict (a new hire's first 90 days), the person it is about reads what
- * their lead said and the lead's row, word for word. A colleague's words stay with the manager (decision 17), and the lead's
- * private notes and own report stay private. Every other evaluation check-in (a plan, a promotion, a renewal) is unchanged.
+ * THE PERSON REVIEWED READS THE MANAGER'S OWN WORDS AND ROW (decision 117, D16, Hafsah, 8 October; decision 3, "Nobody is special
+ * because of their title"; decision 6, the person sees the facts and the decision with its reasons; decision 4, what people say in
+ * check-ins can be shown word for word to the people in that check-in). On an evaluation check-in (a plan, a promotion, a renewal,
+ * or a new person's first 90 days) the person it is about reads what the manager said and the manager's row, word for word. Only a
+ * COLLEAGUE'S exact words stay hidden from them (decision 17), and the lead's private notes and own report stay private.
+ * This was first the new hire's alone (request 124); the 30 September ruling had taken it from the others, and decision 117 puts it back.
  */
-export function theNewHireReadsTheLeadsWords(scenario: string | null | undefined): boolean {
-  return scenario === 'NEW_HIRE';
+export function thePersonReviewedReadsTheManagersWords(scenario: string | null | undefined): boolean {
+  return !!scenario && isEvaluationCheckIn(scenario as GroundScenario);
 }
+/** The old name, kept so nothing that still says it breaks. */
+export const theNewHireReadsTheLeadsWords = thePersonReviewedReadsTheManagersWords;
 
 /* A generic, plain sentence for the one case there is no way to keep the rest of a sentence
    grammatical once a colleague's quoted words come out of it. */

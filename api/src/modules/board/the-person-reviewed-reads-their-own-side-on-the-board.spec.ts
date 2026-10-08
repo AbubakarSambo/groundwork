@@ -55,8 +55,8 @@ describe('Where people differ, on a renewal, as the person reviewed reads it', (
     const theLead = sides.find((p: any) => p.who !== 'You' && !/colleague/i.test(p.who));
     /* Changed 3 October (request 124): no decision has been made on this record, so no decision is said to be below. */
     expect(theColleague.view).toBe("A colleague's own words are not shown to you here. What was found is below.");
-    expect(theLead.view).toBe('The words your lead used are not shown to you here. What was found is below.');
-    expect(theLead.view).not.toMatch(/colleague/i);
+    /* Changed 8 October (decision 117, D16): the person reviewed reads the lead's own words; only a colleague's are hidden. */
+    expect(theLead.view).toBe('We agreed 98% on-time delivery.');
   });
 
   it('Amina, who runs it, reads every side and every quote as they were found', async () => {

@@ -35,14 +35,15 @@ describe('request 124 (2): a decision is said to be below only when there is one
   it('Rukia, with no decision made, reads that what was found is below, and nothing about a decision', async () => {
     const views = await said(base, RUKIA);
     expect(views).toContain("A colleague's own words are not shown to you here. What was found is below.");
-    expect(views).toContain('The words your lead used are not shown to you here. What was found is below.');
+    /* Changed 8 October (decision 117, D16): the lead's words are read word for word, so only the colleague's side carries the sentence. */
+    expect(views).toContain('We agreed 98% on-time delivery.');
     expect(views.join(' ')).not.toMatch(/decision/);
   });
 
   it('Rukia, with a decision made, reads that the decision and its reasons are below', async () => {
     const views = await said(decided, RUKIA);
     expect(views).toContain("A colleague's own words are not shown to you here. What was found, and the decision with its reasons, are below.");
-    expect(views).toContain('The words your lead used are not shown to you here. What was found, and the decision with its reasons, are below.');
+    expect(views).toContain('We agreed 98% on-time delivery.');
   });
 
   it('Amina and the colleague read no such sentence either way', async () => {
