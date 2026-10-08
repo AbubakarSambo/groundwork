@@ -59,7 +59,20 @@ export function theFirstSentenceThatFits(s: string | null | undefined, max = A_T
   if (!t) return null;
   /* The end of a sentence, with a closing quotation mark or bracket that belongs to it. */
   const m = t.match(/^(.+?[.!?]+["'”’)\]]*)(?:\s|$)/);
-  const first = (m ? m[1] : t).trim();
+  let first = (m ? m[1] : t).trim();
+  /*
+   * A SENTENCE IS NOT CUT INSIDE A QUOTATION. 'You said, "Two shops owe us. I never ask."' was cut at the full stop inside the quote, which left
+   * 'You said, "Two shops owe us.' with its quotation mark open and the next sentence running on from it (final check of the anchor, 8 October).
+   * When the cut leaves a quotation open, the sentence runs on to the mark that closes it.
+   */
+  const marks = (x: string) => (x.match(/"/g) ?? []).length;
+  if (m && marks(first) % 2 === 1) {
+    const close = t.indexOf('"', first.length);
+    if (close !== -1) {
+      const after = t.slice(close + 1).match(/^[.!?]*/)?.[0] ?? '';
+      first = t.slice(0, close + 1 + after.length).trim();
+    }
+  }
   return first.length <= max ? first : null;
 }
 
