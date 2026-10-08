@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { InvitePage, theInvitation, whereAndUntil } from './InvitePage'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 /**
  * THE INVITATION, AS THE PROTOTYPE HAS IT (A3, join-invite.txt, U.3).
@@ -62,7 +63,7 @@ describe('the invitation a participant reads', () => {
     expect(await screen.findByRole('heading', { name: 'Wairimu invited you to “Sales team, Q3”' })).toBeTruthy()
     const text = document.body.textContent ?? ''
     const order = [
-      'Baridi Appliances, until 30 September.',
+      'This runs at Baridi Appliances until 30 September.',
       'The people in this check-in, including your manager, can see what you say in it.',
       'What it asks',
       'A short check-in each weekday.',
@@ -141,12 +142,27 @@ describe('the two lines built from the record', () => {
     expect(theInvitation({ ...PREVIEW, leadFirstName: null })).toBe('Wairimu Kamau invited you to “Sales team, Q3”')
   })
 
+  /*
+   * B-088: "Baridi Appliances, until 30 September." joined two pieces with a comma, which is not a
+   * sentence - changed to "This runs at Baridi Appliances until 30 September." The same fix forces
+   * nothing about which timezone the date reads in any more (it used to force UTC here alone),
+   * which is the other half of B-088: a check-in's own page and this invitation disagreed about
+   * its end date because this was the one place that chose its own timezone instead of reading the
+   * same way everything else on the product already does.
+   */
   it('says the organisation and the end date, or whichever there is', () => {
-    expect(whereAndUntil(PREVIEW)).toBe('Baridi Appliances, until 30 September.')
+    expect(whereAndUntil(PREVIEW)).toBe('This runs at Baridi Appliances until 30 September.')
     /* U.3 review: each alone is a full sentence. These read "Baridi Appliances." and "Until 30
        September." before, which are not sentences. */
     expect(whereAndUntil({ organisationName: 'Baridi Appliances', endsAt: null })).toBe('A check-in at Baridi Appliances.')
     expect(whereAndUntil({ organisationName: null, endsAt: '2026-09-30T00:00:00.000Z' })).toBe('It runs until 30 September.')
+  })
+
+  it('B-088: reads the same end date as whenItWas renders everywhere else, with nothing of its own imposed', () => {
+    const endsAt = '2026-11-08T00:00:00.000Z'
+    expect(whereAndUntil({ organisationName: 'Msingi Foods', endsAt })).toBe(
+      `This runs at Msingi Foods until ${whenItWas(endsAt, 'dayAndMonthLong')}.`,
+    )
   })
 })
 
