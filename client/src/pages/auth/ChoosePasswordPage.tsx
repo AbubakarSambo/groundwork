@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { aRealOrganisationName } from '@/lib/ask-name'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { authApi } from '@/api/auth'
@@ -62,7 +63,8 @@ export function ChoosePasswordPage() {
    * genuinely nothing server-side to read the organisation from before a password exists, so that
    * path keeps its plain, unnamed title.
    */
-  const signedInOrgName = useAuthStore(s => s.user?.organizationName ?? null)
+  /* A made-up workspace name is not said as the organisation (release check, 9 October). */
+  const signedInOrgName = aRealOrganisationName(useAuthStore(s => s.user?.organizationName ?? null))
 
   /**
    * Which of the two links they opened. The endpoints are genuinely different -
