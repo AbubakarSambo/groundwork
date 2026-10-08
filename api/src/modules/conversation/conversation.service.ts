@@ -638,6 +638,16 @@ export class ConversationService {
   }
 
   /**
+   * IN AN ANCHOR CHECK-IN, WHAT THE LEAD SAID IN HER OWN CONVERSATION IS NOT GIVEN TO THE MODEL FOR SOMEBODY ON HER TEAM (decision 96, item 8).
+   * Her brief, and the aims her words made, were handed to a team member's model as the situation, and the model said one of them to a team
+   * member: "That connects directly to Wairimu's aim for the team to understand that a crate left in the sun for twenty minutes is a spoiled
+   * order." (anchor walk, 8 October). Stripped here, in code, at the read; the team member's words name only what they have been told.
+   */
+  private theLeadsOwnWordsStayHers(ground: unknown, checkIn: { participant?: { partyType?: string | null } | null }): boolean {
+    return checkIn.participant?.partyType !== PartyType.INITIATOR && aCheckInStartedFromTheAnchor(ground as any);
+  }
+
+  /**
    * AND THE BRIEF, WITHOUT A COLLEAGUE'S HIDDEN TARGET (29 September 2026). The lead's setup words go
    * to every person's check-in as the situation, and they can say "Kwame Mensah should reach
    * seventeen approved facilities". Where people see only their own targets, that sentence is not
@@ -4334,12 +4344,12 @@ export class ConversationService {
       // Never reached the model before - see the comment on PromptContext.cadence.
       cadence: (ground as any).cadence ?? null,
       /* The brief without a sentence giving a colleague's hidden target, in figures or in words. */
-      adminBrief: this.theBriefThisPersonMayBeGiven(ground as any, checkIn as any),
+      adminBrief: this.theLeadsOwnWordsStayHers(ground, checkIn) ? null : this.theBriefThisPersonMayBeGiven(ground as any, checkIn as any),
       /* ONLY THE TARGETS THIS PERSON MAY SEE (week 0). Every target went in, so on a check-in where
          people see only their own, each person's model was given everybody's numbers and could say
          them back. The same rule the brief on their screen uses. */
       /* And each one as a sentence about whoever set it, "you" for this person (decision 69). */
-      objectives: this.theTargetsAsSentences(this.theTargetsThisPersonMaySee(ground as any, checkIn as any, untoldHere) as any[], ground as any, checkIn.participantId),
+      objectives: this.theLeadsOwnWordsStayHers(ground, checkIn) ? [] : this.theTargetsAsSentences(this.theTargetsThisPersonMaySee(ground as any, checkIn as any, untoldHere) as any[], ground as any, checkIn.participantId),
       /* The same: never the lead's words about this person, in this person's own session (request 36). */
       priorContext: aRoleInTheirOwnWords(checkIn.participant as any),
       priorSession,
@@ -5673,12 +5683,14 @@ ${told}` : '';
       orderBy: { createdAt: 'asc' },
       take: 5,
     }) ?? Promise.resolve([])).catch(() => [] as { text: string; whenSaid: string | null }[]);
-    /* What this person has been told the check-in is for (what a participant is told about it, never the lead's own brief), then the aims they may see. */
+    /*
+     * What this person has been told the check-in is for (what a participant is told about it, never the lead's own brief). And NO aim of the
+     * lead's: in an anchor check-in every aim on the check-in came out of her own conversation, which is hers alone until she says so (decision 96,
+     * item 8). The weekly words took "the aims they may see" and the model said it to a team member: "That connects directly to Wairimu's aim for
+     * the team to understand that a crate left in the sun for twenty minutes is a spoiled order." (anchor walk, 8 October).
+     */
     const toldAboutIt = this.briefFor(ground, { participantId: checkIn.participantId, isLead: false }, untoldHere)?.says?.trim() || null;
-    const aims = [
-      toldAboutIt,
-      ...this.theTargetsThisPersonMaySee(ground, { participantId: checkIn.participantId, participant: checkIn.participant }, untoldHere).map((o: any) => String(o.name ?? '').trim()),
-    ]
+    const aims = [toldAboutIt]
       .filter((a): a is string => !!a)
       .slice(0, 6);
     const block = whatTheyToldYouBefore({

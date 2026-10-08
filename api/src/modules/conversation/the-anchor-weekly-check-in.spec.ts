@@ -95,10 +95,14 @@ describe('anchor piece 15: the weekly check-in, as the model reads it', () => {
     expect(prompt).toContain(`- ${THEIR_PROMISE} (this week)`);
   });
 
-  it('names only the aims this person has been told, never a colleague\'s number', async () => {
-    const prompt = await aWorld({ startedFrom: 'anchor', switchOn: true }).compose();
-    expect(prompt).toContain('- District reports reach the donor on time');
-    expect(prompt).not.toContain('Ngozi owns the Kano target');
+  /* Changed 8 October (anchor walk): this test pinned the old rule, that the weekly words name the aims on the check-in. Every aim on an anchor check-in came out of the lead's own conversation, which is hers alone until she says so (decision 96, item 8), and the model said one to a team member. The member's words now name only what they were told. */
+  it('names none of the lead\'s aims, and never a colleague\'s number', async () => {
+    for (const w of [{ startedFrom: 'anchor' }, { scenario: GroundScenario.HELP_TEAM_UNDERSTAND }] as World[]) {
+      const prompt = await aWorld({ ...w, switchOn: true }).compose();
+      expect(prompt).not.toContain('District reports reach the donor on time');
+      expect(prompt).not.toContain('Ngozi owns the Kano target');
+      expect(prompt).toContain('- This check-in is about why the quarterly donor reports matter for the programme team.');
+    }
   });
 
   it('names the wider aim as this person has been told it, and never the lead\'s own brief', async () => {
@@ -106,6 +110,15 @@ describe('anchor piece 15: the weekly check-in, as the model reads it', () => {
     expect(prompt).toContain('- This check-in is about why the quarterly donor reports matter for the programme team.');
     const block = prompt.slice(prompt.indexOf('# What this person has told you before'));
     expect(block.slice(0, block.indexOf('\n\n#', 10) > 0 ? block.indexOf('\n\n#', 10) : undefined)).not.toContain('Amina will review everyone in March');
+  });
+
+  it('hands the model none of the lead\'s brief and none of her aims for a team member, and still hands the lead her own', async () => {
+    const member = await aWorld({ startedFrom: 'anchor', switchOn: true }).compose();
+    expect(member).toMatch(/^ADMIN_BRIEF: none provided$/m);
+    expect(member).toMatch(/^OBJECTIVES: none stated$/m);
+    expect(member).not.toMatch(/Amina will review everyone in March|District reports reach the donor/);
+    const lead = await aWorld({ startedFrom: 'anchor', switchOn: true, asTheLead: true }).compose();
+    expect(lead).toContain('Amina will review everyone in March');
   });
 
   it('ends on the short reminder, read last', async () => {
@@ -216,6 +229,10 @@ describe('with the anchor in play or not, every other prompt is byte for byte wh
   it('an anchor check-in with the switch off reads exactly what a check-in that is not an anchor one reads', async () => {
     const plain = await aWorld({ switchOn: false }).compose();
     const anchorOff = await aWorld({ startedFrom: 'anchor', switchOn: false }).compose();
-    expect(anchorOff).toBe(plain);
+    /* Changed 8 October (anchor walk): the lead's own brief and aims are never handed to a team member's model on an anchor check-in, with the switch on or off (decision 96, item 8: the wall is about who may read her words, not about the switch). That is the one difference. */
+    expect(anchorOff).not.toContain('Amina will review everyone in March');
+    expect(anchorOff).not.toContain('District reports reach the donor on time');
+    const without = (t: string) => t.replace(/^OBJECTIVES: .*$/m, 'OBJECTIVES: none stated').replace(/^ADMIN_BRIEF: .*$/m, 'ADMIN_BRIEF: none provided').replace(/^ +Amina wrote this about the situation: .*\n/m, '').replace(/^ADMIN_BRIEF_ATTRIBUTION: .*\n/m, '');
+    expect(without(anchorOff)).toBe(without(plain));
   });
 });
