@@ -73,8 +73,13 @@ const stamp = Date.now();
   const off = await call('/ask', T.wanjiru, 'POST', { message: 'decision: we will drop the pilot', groundId: g0.id });
   console.log(`    With the switch OFF, Wanjiru asks Ask Groundwork to add a decision and reads: ${said(off)}`);
   check('With the switch off Ask does not take context, and the old chat still answers', !/added|Is that right/i.test(said(off)) && (await call(`/grounds/${g0.id}/context-chat`, T.wanjiru, 'POST', { history: [] })).status === 201, said(off));
-  await prisma.platformSetting.update({ where: { key: 'release.contextInAskGroundwork' }, data: { value: { on: true } as any } });
-  console.log('  The switch is now ON in this local database. The old chat is left exactly as it was.');
+  /* Context is in Ask by default now (a missing row reads on), so the row is DELETED, not written: this is the product as shipped. */
+  await prisma.platformSetting.delete({ where: { key: 'release.contextInAskGroundwork' } });
+  console.log('  The row is gone, so the switch reads its default, which is ON. The old chat is left exactly as it was.');
+  const readAsk = async (t: string) => (await call('/ask', t)).data;
+  const askRead = { wanjiru: await readAsk(T.wanjiru), miriam: await readAsk(T.miriam), grace: await readAsk(T.grace) };
+  console.log(`    GET /ask as Wanjiru (leads Tana): addsContext ${askRead.wanjiru?.addsContext}, line "${askRead.wanjiru?.addLine}", oldContextChatIsOpen ${askRead.wanjiru?.oldContextChatIsOpen}\n    as Miriam (in the check-in): addsContext ${askRead.miriam?.addsContext}; as Grace (admin, lead still here): addsContext ${askRead.grace?.addsContext}`);
+  check('With no row the switch reads ON: Wanjiru is served addsContext true and the line about adding context; Miriam and Grace (the lead is still here) are served false', askRead.wanjiru?.addsContext === true && /add context or documents/.test(askRead.wanjiru?.addLine ?? '') && askRead.miriam?.addsContext === false && askRead.grace?.addsContext === false, JSON.stringify(askRead).slice(0, 400));
 
   const oldYes = async (groundId: string, token: string, said1: string) => {
     const first = await call(`/grounds/${groundId}/context-chat`, token, 'POST', { history: [{ role: 'user', content: said1 }] });
@@ -197,6 +202,25 @@ const stamp = Date.now();
   const mAsk = await call('/ask', T.miriam, 'POST', { message: 'decision: we will drop the pilot', groundId: who.ask.id, openedFrom: 'check_in_setup' });
   console.log(`    Miriam, in the check-in. Old chat: ${mOld.status}; Ask: ${mAsk.status} ${said(mAsk).slice(0, 200)}`);
   check('A person in the check-in is refused the old chat, and Ask writes nothing for her', mOld.status === 403 && !proposalOf(mAsk) && (await snapshot(who.ask.id)).length === 0, `${mOld.status} ${said(mAsk)}`);
+
+  console.log('\n==================== 8. THE OLD CHAT SWITCHED OFF: ONE SENTENCE THAT POINTS TO ASK ====================');
+  const sw = await pair('Switched off');
+  await prisma.platformSetting.upsert({ where: { key: 'release.oldContextChat' }, create: { key: 'release.oldContextChat', value: { on: false } as any, updatedBy: 'ctx-journey' }, update: { value: { on: false } as any } });
+  const gone = await call(`/grounds/${sw.old.id}/context-chat`, T.wanjiru, 'POST', { history: [] });
+  const goneConfirm = await call(`/grounds/${sw.old.id}/context-chat/confirm`, T.wanjiru, 'POST', { said: 'decision: we will drop the pilot', history: [] });
+  const goneDecline = await call(`/grounds/${sw.old.id}/context-chat/decline`, T.wanjiru, 'POST', { offerId: 'none' });
+  const theWords = gone.data?.message ?? gone.text;
+  console.log(`    The old chat, switched off, answers ${gone.status}: ${theWords}\n    Its confirm: ${goneConfirm.status}; its decline: ${goneDecline.status}`);
+  check('The three routes of the old chat answer 410 with one sentence that names Ask for the organisation', gone.status === 410 && goneConfirm.status === 410 && goneDecline.status === 410 && /^Setting up a check-in now happens in Ask Tana \d+, so open Ask Tana \d+ from this check-in's Context and resources page and say what you want to add\.$/.test(String(theWords)), String(theWords));
+  const swAsk = await askYes(sw.ask.id, T.wanjiru, 'decision: we will drop the pilot');
+  const swSnap = await snapshot(sw.ask.id);
+  console.log(`    Through Ask, with the old chat off: ${said(swAsk.first)} ... after yes: ${swAsk.done ? said(swAsk.done) : '(no yes asked)'}`);
+  check('Ask still takes the same line and writes the same row (DECISION, everyone reads it) with the old chat off', !!swAsk.p && swSnap.length === 1 && /^DECISION \| EVERYONE \| we will drop the pilot/.test(swSnap[0]), swSnap.join(' / '));
+  const offRead = await readAsk(T.wanjiru);
+  check('GET /ask tells the screens the old chat is off, and still that Ask adds context', offRead?.oldContextChatIsOpen === false && offRead?.addsContext === true, JSON.stringify(offRead).slice(0, 300));
+  await prisma.platformSetting.delete({ where: { key: 'release.oldContextChat' } });
+  const back = await call(`/grounds/${sw.old.id}/context-chat`, T.wanjiru, 'POST', { history: [] });
+  check('With the row gone the old chat answers again', back.status < 300, `${back.status}`);
 
   const failed = checks.filter((c) => !c.ok);
   console.log(`\n${checks.length - failed.length} of ${checks.length} checks passed.${failed.length ? `\nFAILED:\n${failed.map((x) => '  ' + x.what).join('\n')}` : ''}`);
