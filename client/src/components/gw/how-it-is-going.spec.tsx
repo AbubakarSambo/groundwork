@@ -32,6 +32,18 @@ describe('HowItIsGoing: the sessions line', () => {
     render(<HowItIsGoing glance={glance({ roundsDone: 1, roundsPlanned: 1 })} />)
     expect(screen.getByText('One session is done.')).toBeTruthy()
   })
+
+  /**
+   * B-057: E1 on Riverbank Trading's old data (docs/existing-users-check.md) found this reading
+   * "9 sessions are done." on a check-in planned for 8 - old data had given one person more
+   * completed sessions than the check-in's own plan. A count can never say more is done than the
+   * plan allows.
+   */
+  it('clamps to the planned total, rather than reading more sessions done than the check-in is planned for', () => {
+    render(<HowItIsGoing glance={glance({ roundsDone: 9, roundsPlanned: 8 })} />)
+    expect(screen.getByText('8 sessions are done.')).toBeTruthy()
+    expect(screen.queryByText(/9 sessions/)).toBeNull()
+  })
 })
 
 describe('HowItIsGoing: "answered this session", read naturally', () => {
