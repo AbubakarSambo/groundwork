@@ -28,6 +28,20 @@ export class ReportsController {
   }
 
   /**
+   * THE ONE FINDING OF THIS CHECK-IN, in one sentence (screens request 198): what the first-insight mail's subject says, for Ask to be asked about. Only to
+   * whoever may read this check-in's report, and only once its picture is released to them; `finding` is null otherwise.
+   */
+  @Get('finding')
+  @ApiOperation({ summary: 'The one finding the shared picture names as still open, as this reader is served it' })
+  async finding(
+    @Param('groundId') groundId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('organizationId') organizationId: string,
+  ) {
+    return this.reports.theFindingOf(groundId, userId, organizationId);
+  }
+
+  /**
    * WHAT THIS REPORT SAID AT THE END OF EACH ROUND.
    *
    * The report at the top of the page is always the current one. This is what it said when each

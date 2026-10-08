@@ -18,6 +18,8 @@ import { isAWholeSentence } from '../reports/what-people-said-differently-about'
  * still open for the LEAD only; everybody else's subject stays the count (decision 109 item 3).
  */
 export interface TheInsight {
+  /** True where the report names something still open, so there is a finding a person can be helped with. */
+  hasAFinding?: boolean;
   /** The lead's subject. Null where the report names nothing still open, and the subject is what it was. */
   subjectForTheLead: string | null;
   /** The sentences the mail opens with, in order. */
@@ -105,6 +107,7 @@ export function theFirstInsight(report: any, label: string, reader: { isTheLead:
   }
 
   return {
+    hasAFinding: open.length > 0,
     subjectForTheLead: reader.isTheLead && open.length ? aSubjectThatFits(firstOpenSaid(cutLabel(label, 40), open, false), `The shared picture for "${cutLabel(label, 40)}" found ${aNumberInWords(open.length)} ${open.length === 1 ? 'difference' : 'differences'} still open`) : null,
     lines,
   };
@@ -122,4 +125,20 @@ export function theFirstOpenDifference(report: any): string | null {
     if (x) return isAWholeSentence(x) ? lowerFirstOfAClause(x) : `the people differ on "${x}"`;
   }
   return null;
+}
+
+/**
+ * THE ONE FINDING, ON ITS OWN (screens request 198). The first thing the served report names as still open, said as a whole sentence that stands without the
+ * mail around it: a sentence the report wrote is itself with a capital and a full stop, and a phrase is "The people in "X" differ on "T"." It is the same
+ * finding the first-insight mail's subject says, from the same report as the reader is served it, so it carries the same walls. Null where nothing is open
+ * or the reader's picture is still withheld.
+ */
+export function theFindingOnItsOwn(report: any, label: string): { finding: string; moreStillOpen: number; conversationWorthHaving: string | null } | null {
+  if (!report?.whereThingsStand || report?.withheldUntilYouAnswer) return null;
+  const open: string[] = (Array.isArray(report.whereThingsStand.open) ? report.whereThingsStand.open : []).map(anOpenThing).filter((t: string | null): t is string => !!t);
+  if (!open.length) return null;
+  const first = open[0];
+  const finding = isAWholeSentence(first) ? `${capital(first)}.` : `The people in "${cutLabel(label, 60)}" differ on "${first}".`;
+  const question = String(report.theConversationWorthHaving ?? '').replace(/\s+/g, ' ').trim();
+  return { finding, moreStillOpen: open.length - 1, conversationWorthHaving: question || null };
 }

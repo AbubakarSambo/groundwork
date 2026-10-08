@@ -1,7 +1,7 @@
 import { theOpenSession } from '../engagement/heres-what-is-new';
 import { aNumberInWords } from '../engagement/a-number-in-words';
 import { theSharedPictureSubject } from '../engagement/the-leads-subjects-carry-the-facts';
-import { theFirstInsight } from '../engagement/the-first-insight';
+import { theFirstInsight, theFindingOnItsOwn } from '../engagement/the-first-insight';
 import { theFactsOfTheWeek, theWeekOf } from '../email/the-leads-weekly-letter';
 import { theRecordsClock, theDayItBegan, wholeDaysTo } from '../board/a-wait-is-dated-not-counted';
 import { THE_REPORT_IN_SIMPLER_WORDS } from '../grounds/what-is-sent-in-simpler-words';
@@ -5185,6 +5185,25 @@ happened, and what is in the way.`;
     /* As if released: this goes out at the moment of release, before it is stamped, and a participant's own read of the team's picture is withheld until then. */
     const report = await this.sessionReport(ground.id, sessionNumber, p.userId, ground.organizationId, true);
     return theFirstInsight(report, ground.label, { isTheLead: p.userId === ground.initiatorId, simplerWords: ground.simplerWords });
+  }
+
+  /**
+   * THE ONE FINDING OF A CHECK-IN, for Ask when it is opened about that check-in (screens request 198). It is the finding the first-insight mail's subject says,
+   * read from the report AS THIS READER IS SERVED IT (sessionReport), so every wall that report has holds here: a person who may not read the check-in is told
+   * it does not exist, a participant reads nothing until the picture is released to them, and a colleague's words never come with it, because only the report's
+   * own sentence about what is still open does. Nothing is built or worded here, and opening it writes nothing.
+   */
+  async theFindingOf(groundId: string, userId: string, organizationId?: string) {
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { label: true, report: { select: { releasedAt: true, releasedSessions: true } } } });
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    const held = ((await this.prisma.checkIn.aggregate({ where: { groundId }, _max: { sessionNumber: true } }).catch(() => null)) as any)?._max?.sessionNumber ?? 1;
+    const session = theLatestReleasedSession(ground.report as any, held);
+    /* Whoever may not read this check-in is refused here, released or not, so the answer never tells a stranger anything. */
+    const report = await this.sessionReport(groundId, session ?? 1, userId, organizationId);
+    const none = { groundId, label: ground.label, sessionNumber: session, finding: null, moreStillOpen: 0, conversationWorthHaving: null };
+    if (!session) return none;
+    const found = theFindingOnItsOwn(report, ground.label);
+    return found ? { ...none, ...found } : none;
   }
 
   private async theReportReadySubject(ground: { id: string; label: string; initiatorId: string }, p: { userId: string | null }): Promise<string | undefined> {
