@@ -11,39 +11,14 @@ import { KINDS_OFFERED_AT_RELEASE, theBoardKindsOffered, aKindMayBeGiven, contex
 const settings = (rows: Record<string, unknown>) => ({ platformSetting: { findUnique: jest.fn(async ({ where }: any) => (where.key in rows ? { value: rows[where.key] } : null)) } });
 
 describe('the anchor scenario switch (piece 0 of docs/anchor-scenario-plan.md)', () => {
-  it('is OFF with no row (Hafsah, 8 October: it follows in the next pull request), and on only when the row says so', async () => {
-    expect(await theAnchorScenarioIsOn(settings({}))).toBe(false);
-    for (const bad of ['yes', 1, { on: 'true' }, { on: false }, false, null, {}]) {
-      expect(await theAnchorScenarioIsOn(settings({ 'release.anchorScenario': bad }))).toBe(false);
-    }
+  it('is ON with no row (the anchor now uses the normal flow, decision 114), and off only when the row says so', async () => {
+    expect(await theAnchorScenarioIsOn(settings({}))).toBe(true);
     expect(await theAnchorScenarioIsOn(settings({ 'release.anchorScenario': { on: true } }))).toBe(true);
-    expect(await theAnchorScenarioIsOn(settings({ 'release.anchorScenario': true }))).toBe(true);
+    expect(await theAnchorScenarioIsOn(settings({ 'release.anchorScenario': { on: false } }))).toBe(false);
+    expect(await theAnchorScenarioIsOn(settings({ 'release.anchorScenario': false }))).toBe(false);
   });
-  it('is off when the row cannot be read', async () => {
+  it('is off when the row cannot be read, so a database fault never starts one', async () => {
     expect(await theAnchorScenarioIsOn({ platformSetting: { findUnique: async () => { throw new Error('down'); } } })).toBe(false);
-  });
-});
-
-describe('Context in Ask, and the old context chat', () => {
-  it('Context in Ask: a missing row reads on, { on: false } switches it off, and a row that cannot be read reads off', async () => {
-    expect(await contextIsInAskGroundwork(settings({}))).toBe(true);
-    expect(await contextIsInAskGroundwork(settings({ 'release.contextInAskGroundwork': { on: true } }))).toBe(true);
-    expect(await contextIsInAskGroundwork(settings({ 'release.contextInAskGroundwork': true }))).toBe(true);
-    expect(await contextIsInAskGroundwork(settings({ 'release.contextInAskGroundwork': { on: false } }))).toBe(false);
-    expect(await contextIsInAskGroundwork(settings({ 'release.contextInAskGroundwork': false }))).toBe(false);
-    for (const bad of ['yes', 1, { on: 'true' }, {}, null]) {
-      expect(await contextIsInAskGroundwork(settings({ 'release.contextInAskGroundwork': bad }))).toBe(false);
-    }
-    expect(await contextIsInAskGroundwork({ platformSetting: { findUnique: async () => { throw new Error('down'); } } })).toBe(false);
-    expect(await contextIsInAskGroundwork({})).toBe(false);
-  });
-  it('the old context chat: open with no row, shut by { on: false }, and open again when the row cannot be read', async () => {
-    expect(await theOldContextChatIsOpen(settings({}))).toBe(true);
-    expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': { on: true } }))).toBe(true);
-    expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': { on: false } }))).toBe(false);
-    expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': false }))).toBe(false);
-    expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': 'junk' }))).toBe(true);
-    expect(await theOldContextChatIsOpen({ platformSetting: { findUnique: async () => { throw new Error('down'); } } })).toBe(true);
   });
 });
 

@@ -10,7 +10,7 @@
  *  - `release.contextInAskGroundwork`   { "on": false }       the setup and context lanes in Ask Groundwork (ON when the row is missing, from the pull request that moved Context into Ask)
  *  - `release.oldContextChat`           { "on": false }       the old context chat on the check-in page (ON when the row is missing; off sends people to Ask)
  *  - `release.planAndBillingNewParts`   { "on": false }       the WhatsApp add-on's price, use and limit
- *  - `release.anchorScenario`           { "on": false }       whether a new anchor check-in can be started (off when the row is missing)
+ *  - `release.anchorScenario`           { "on": true }        whether a new anchor check-in can be started (on when the row is missing)
  *
  * A bad or unreadable row reads as the default, never as "everything on".
  */
@@ -135,19 +135,19 @@ export const theRequestOfferIsShown = async (prisma: Reader) => {
 };
 
 /**
- * Whether a NEW anchor check-in can be started (docs/anchor-scenario-plan.md, section 3). OFF at release
- * (Hafsah, 8 October: its separate screens contradict decision 114, that the anchor uses the normal
- * flow; it follows in the next pull request). On only when the row says `{ "on": true }`; a missing,
- * broken or unreadable row reads as off. Every later anchor piece calls this one function and nothing
- * else. A check-in already started as an anchor one keeps behaving as one when this is turned off, so
- * the caller asks this only for something new.
+ * Whether a NEW anchor check-in can be started (docs/anchor-scenario-plan.md, section 3). ON (Hafsah, next
+ * pull request, piece 2): the anchor now uses the normal entry chat, board and reports (decision 114), and the
+ * screens draw its sections through the normal pages. A missing row reads as on; `{ "on": false }` (or `false`)
+ * switches it off; a row that cannot be read reads as off, so a database fault never starts one. A check-in
+ * already started as an anchor one keeps behaving as one when this is turned off.
  */
 export const theAnchorScenarioIsOn = async (prisma: Reader): Promise<boolean> => {
   const read = await theRowOrAFault(prisma, ANCHOR_SCENARIO_KEY);
-  if (read.fault || read.row == null) return false;
+  if (read.fault) return false;
+  if (read.row == null) return true;
   const v = read.row.value as { on?: unknown } | boolean | null | undefined;
   if (typeof v === 'boolean') return v;
-  return v?.on === true;
+  return v?.on !== false;
 };
 export const theHalfwayMessagesAreOn = async (prisma: Reader): Promise<boolean> => {
   /* A row that is missing reads as on; a row that cannot be READ reads as off, so a database fault never sends a message. */
