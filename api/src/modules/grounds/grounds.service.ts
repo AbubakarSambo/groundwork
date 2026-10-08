@@ -1660,6 +1660,23 @@ export class GroundsService {
            */
           brief: runsIt ? ((safe as any).brief ?? null) : whatSomeoneWhoDoesNotRunItReads(safe as any),
           participants,
+          /*
+           * WHAT THE ROOM IS ABOUT, AS THIS READER MAY READ IT (decision 121, item 5). It went out raw in `safe`, every place and thing
+           * with the id of the person who named it, so a member where people do not see each other read where a colleague works. The
+           * check-in's own read applies this wall (board/the-room-for-this-reader); the list now applies the same one.
+           */
+          ...((safe as any).whatTheRoomIsAbout
+            ? {
+                whatTheRoomIsAbout: theRoomForThisReader((safe as any).whatTheRoomIsAbout, {
+                  participants: (allParticipants ?? []) as any[],
+                  me: myRowHere ?? null,
+                  initiatorId: (rest as any).initiatorId ?? g.initiatorId ?? null,
+                  viewerRunsIt: runsIt,
+                  wallOffTheOthers: hidePeers,
+                  evaluation: isEvaluationCheckIn((rest as any).scenario),
+                }),
+              }
+            : {}),
           checkIns: checkInsShown,
           dependencies: dependenciesShown,
           peersVisibleEffective,
