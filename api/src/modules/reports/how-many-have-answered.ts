@@ -45,12 +45,16 @@ export interface SomebodyWhoMightAnswer {
    */
   notLetIn?: boolean;
   user?: { awaitingOrgApproval?: boolean | null } | null;
-  /** This session's rows for them, whatever the state. */
-  checkIns?: { status: string; sessionNumber?: number }[];
+  /** This session's rows for them, whatever the state. With `closedReason` and their person turns, a session the clock closed with nothing said is told apart. */
+  checkIns?: { status: string; sessionNumber?: number; closedReason?: string | null; turns?: unknown[] | null }[];
 }
 
+/* A session the clock closed where the person said nothing is not an answer (57e7f40e5): the same rule as the query below, over rows in hand. */
 const theyAnswered = (p: SomebodyWhoMightAnswer, sessionNumber: number): boolean =>
-  (p.checkIns ?? []).some((c) => (c.sessionNumber ?? sessionNumber) === sessionNumber && (AN_ANSWER as string[]).includes(c.status));
+  (p.checkIns ?? []).some((c) => (c.sessionNumber ?? sessionNumber) === sessionNumber && (AN_ANSWER as string[]).includes(c.status) && !wasAQuietClose(c));
+/* ...and it is closed, so nobody waits on them for it either. */
+const theClockClosedIt = (p: SomebodyWhoMightAnswer, sessionNumber: number): boolean =>
+  (p.checkIns ?? []).some((c) => (c.sessionNumber ?? sessionNumber) === sessionNumber && (AN_ANSWER as string[]).includes(c.status) && wasAQuietClose(c));
 
 /**
  * WHO THIS SESSION WAITS ON. The release rule, as a predicate over rows.
@@ -122,7 +126,7 @@ export function howManyOfThemAnswered<T extends SomebodyWhoMightAnswer>(
   return {
     answered: answered.length,
     expected: expected.length,
-    waitingOn: expected.filter((p) => !theyAnswered(p, sessionNumber)).map((p) => p.id),
+    waitingOn: expected.filter((p) => !theyAnswered(p, sessionNumber) && !theClockClosedIt(p, sessionNumber)).map((p) => p.id),
   };
 }
 export interface HowManyHaveAnswered {

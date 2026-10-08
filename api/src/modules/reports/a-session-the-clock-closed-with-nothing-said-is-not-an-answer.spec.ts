@@ -2,6 +2,7 @@ import { howManyHaveAnswered } from './how-many-have-answered';
 import { recordRoundCompletion } from '../grounds/round-completion';
 import { ReportsService } from './reports.service';
 import { theCountSaidRight, howManyAnsweredInWords } from './the-picture-in-plain-sentences';
+import { atAGlance } from '../grounds/what-a-manager-needs-at-a-glance';
 
 /**
  * A SESSION THE CLOCK CLOSED WHERE THE PERSON SAID NOTHING IS NOT AN ANSWER (final check, 9 October).
@@ -34,6 +35,25 @@ describe('the count of who has answered', () => {
     expect(howManyAnsweredInWords(r.answered, r.expected)).toBe('Two of the three people have answered so far.');
     /* The model's own "All three people have answered." is replaced by that count. */
     expect(theCountSaidRight('All three people have answered. Two see it the same way.', r.answered, r.expected)).toBe('Two of the three people have answered so far. Two see it the same way.');
+  });
+});
+
+describe('the count the board, the check-in list and Today read', () => {
+  /* Found on test bed copy a, 9 October: Today read "In Sales team, Q4, 4 of 6 have checked in for the second check-in" with Zawadi, whom the clock
+     closed on with nothing said, counted among the four. The glance counts from rows in hand, so it reads the close reason and the person's turns too. */
+  it('reads three of six, not four, when the clock closed one session with nothing said', () => {
+    const people = ['w', 'a', 'c', 'z', 'j', 'n'].map((id) => ({ id, userId: `u-${id}` }));
+    const glance = atAGlance({
+      roundsDone: 1, roundsPlanned: 12, people, sessionNumber: 2, scenario: 'GOAL_ALIGNMENT', dependencies: [],
+      thisRound: [
+        { participantId: 'w', ...said }, { participantId: 'a', ...said }, { participantId: 'c', ...said },
+        { participantId: 'z', ...quiet }, { participantId: 'j', status: 'IN_PROGRESS' }, { participantId: 'n', status: 'NOT_STARTED' },
+      ] as any,
+    });
+    expect(glance.progress.answeredThisRound).toBe(3);
+    expect(glance.progress.ofPeople).toBe(6);
+    /* Closed, so not waited on or chased either. */
+    expect(glance.progress.waitingOn).toEqual(['j', 'n']);
   });
 });
 
