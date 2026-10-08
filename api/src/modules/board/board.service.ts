@@ -362,7 +362,7 @@ export class BoardService {
         /* participantId too: the glance counts who has answered this round by it, and without it the board read
            "0 of 2 answered this round" to a woman who had just answered (Hafsah, 21 Sep 2026). */
         checkIns: { select: { sessionNumber: true, status: true, isSetup: true, completedAt: true, participantId: true, availableFrom: true } },
-        reportRounds: { select: { sharedPicture: true }, orderBy: { sessionNumber: 'desc' }, take: 1 },
+        reportRounds: { select: { sharedPicture: true, sessionNumber: true }, orderBy: { sessionNumber: 'desc' }, take: 1 },
         poll: { include: { options: { orderBy: { sortOrder: 'asc' } } } },
       },
     });
@@ -812,6 +812,8 @@ export class BoardService {
         timelineDays: (ground as any).runsUntilEnded ? null : (ground as any).timelineDays ?? null,
         cadence: (ground as any).cadence ?? null,
         scenario: (ground as any).scenario ?? null,
+        /* Whoever runs it reads the story's count as the record has it now, the same as the active line beside it (the count is the product's own arithmetic). */
+        storyRound: isInitiator || isSetupAdmin || adminHere ? ((ground as any).reportRounds?.[0]?.sessionNumber ?? null) : null,
         /*
          * NEVER A RUN OF THE LEAD'S PRIVATE DESCRIPTION OF ANYONE, FOR A READER WHO IS NOT THE LEAD
          * (decision 30). The read-side net: see withoutTheLeadsDescriptionOfAnyone and the same
