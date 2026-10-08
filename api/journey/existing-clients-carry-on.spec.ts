@@ -269,6 +269,14 @@ async function releaseNight(): Promise<Outcome> {
         ['every 15 minutes: closing warnings', () => cron.fireSessionClosingWarnings()],
         ['every 30 minutes: stale check-ins', () => cron.autoCloseStaleCheckIns()],
         ['every night again, to see a second night changes nothing: the warning', () => cron.warnBeforeTimeRunsOut()],
+        /* The engagement messages (decision 109), each as its own job runs. Existing check-ins may be told one thing, once ("here is what is new"); everything else
+           is gated by the release moment, by the check-in's state or by something having happened this week, and says nothing about check-ins like A to F. */
+        ['06:30 Lagos "here is what is new"', () => cron.sendHeresWhatIsNewInner()],
+        ['10:30 Lagos invited and nobody started', () => cron.sendWhatGroundworkIsDoingInner()],
+        ['Tuesday: a test check-in moves on', () => cron.sendTheTestCheckInMessagesInner()],
+        ['11:00 Lagos the follow-up after a report', () => cron.sendTheReportFollowUpsInner()],
+        ['Wednesday: who has gone quiet', () => cron.sendWhoHasGoneQuietInner()],
+        ['Friday: the lead\'s weekly letter', () => cron.sendTheLeadsWeeklyLettersInner()],
       ];
       for (const [name, run] of jobs) {
         try { await run(); } catch (e: any) { errors.push(`${name}: ${e?.message ?? e}`); }
@@ -353,10 +361,20 @@ describe('release night, for a check-in that already exists', () => {
     }
   }));
 
-  it('emails nobody, messages nobody and announces nothing for a check-in that is open, late, near its end or past its end (A to E)', needsTheDatabase((o) => {
+  it('emails nobody, messages nobody and announces nothing for a check-in that is open, late, near its end or past its end (A to E), except the one "here is what is new" (decision 109 item 2)', needsTheDatabase((o) => {
     const said = ['A', 'B', 'C', 'D', 'E'].flatMap((k) => aboutIt(o, o.seeded[k]).map((c) => `${k}: ${c.method}`));
-    // Phones: see the finding about WhatsApp. Everything else must be silent.
-    expect(said.filter((s) => !s.includes('whatsapp.'))).toEqual([]);
+    // Phones: see the finding about WhatsApp. Everything else must be silent, but for the one email decision 109 gives an existing client's lead.
+    expect(said.filter((s) => !s.includes('whatsapp.') && !s.endsWith('email.sendHeresWhatIsNew'))).toEqual([]);
+  }));
+
+  it('sends no engagement message about a check-in made before the release, beyond that one "what is new" email, and never about the stalled one (A to F)', needsTheDatabase((o) => {
+    const engagement = ['sendTheLeadsWeeklyLetter', 'sendWhoHasGoneQuiet', 'sendTheReportFollowUp', 'sendTestCheckInMovesOn', 'sendWaitingOnThePeople', 'sendLeadFirstCheckIn', 'sendYourWeek'];
+    const said = ['A', 'B', 'C', 'D', 'E', 'F'].flatMap((k) => aboutIt(o, o.seeded[k]).filter((c) => engagement.some((m) => c.method === `email.${m}`)).map((c) => `${k}: ${c.method}`));
+    expect(said).toEqual([]);
+    /* And the one "what is new" does not mention the stalled check-in (F). It was sent, so the engagement jobs did run: this is not a silence from jobs that never started. */
+    const news = o.calls.filter((c) => c.method === 'email.sendHeresWhatIsNew');
+    expect(news.length).toBeGreaterThan(0);
+    expect(news.filter((c) => c.text.includes(o.seeded.F.label))).toEqual([]);
   }));
 
   it('does not email the lead that time is running out, for a check-in already in its last week or past its end (D and E)', needsTheDatabase((o) => {
