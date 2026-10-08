@@ -81,6 +81,16 @@ export function aGroundIsTheAnchors(ground: { startedFrom?: string | null; scena
 }
 /** The same as a filter on the ground table. */
 export const WHERE_A_GROUND_IS_THE_ANCHORS = { OR: [{ startedFrom: STARTED_FROM_THE_ANCHOR }, { scenario: THE_ANCHOR_SCENARIO_VALUE }] };
+/**
+ * The opposite, as a filter. Written out and not as `NOT: {...}`, because a null `startedFrom` (every check-in that did not come in by the anchor link) makes
+ * `NOT (startedFrom = x OR scenario = y)` unknown in SQL, and a row for which it is unknown is left out, which would leave out nearly every check-in.
+ */
+export const WHERE_A_GROUND_IS_NOT_THE_ANCHORS = {
+  AND: [
+    { OR: [{ startedFrom: null }, { startedFrom: { not: STARTED_FROM_THE_ANCHOR } }] },
+    { scenario: { not: THE_ANCHOR_SCENARIO_VALUE } },
+  ],
+};
 
 /** Whether the check-in with this id was started from the anchor link: read from its row, for a caller that was not handed it. */
 export async function theCheckInWasStartedFromTheAnchor(prisma: any, id: string): Promise<boolean> {

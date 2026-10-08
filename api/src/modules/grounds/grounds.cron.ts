@@ -30,6 +30,9 @@ import { theirTimeZone } from '../whatsapp/the-persons-own-time-zone';
 import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
 import { sendWhoHasGoneQuiet as sendWhoHasGoneQuietToLeads } from '../engagement/who-has-gone-quiet';
 import { sendTheReportFollowUps } from '../engagement/the-report-follow-up';
+import { whatTheLeadsWeeklyReportSays } from '../engagement/the-leads-own-weekly-report';
+import { TheWeeklyReportService } from '../reports/the-weekly-report.service';
+import { ModuleRef } from '@nestjs/core';
 import { sendHeresWhatIsNew as sendHeresWhatIsNewToLeads } from '../engagement/heres-what-is-new';
 import { theEngagementMoment } from '../engagement/the-engagement-release-moment';
 import { sendTheParticipantsWeeks } from '../engagement/the-participants-week';
@@ -113,6 +116,8 @@ export class GroundsCron implements OnApplicationBootstrap {
     @Optional() private spending?: SpendingService,
     /* The You board, read for each person's own week by email (decision 109). Optional and last for the same reason. */
     @Optional() private yourBoard?: YourBoardService,
+    /* Finds the weekly report's service for the lead's weekly letter, without importing the module that imports this one. Optional and last for the same reason. */
+    @Optional() private moduleRef?: ModuleRef,
   ) {}
 
   /**
@@ -921,6 +926,18 @@ export class GroundsCron implements OnApplicationBootstrap {
   }
 
   /**
+   * The lead's own weekly report for one check-in, as she is served it, or null. The service is looked up when it is needed and not injected, because the
+   * reports module already imports this one and a module cannot import the one that imports it. It is read, never built: opening it rebuilds nothing.
+   */
+  private async theLeadsOwnWeeklyReport(g: { id: string; initiatorId: string }, now: Date) {
+    const weekly = this.moduleRef?.get(TheWeeklyReportService, { strict: false });
+    if (!weekly) return null;
+    const lead = await this.prisma.user.findUnique({ where: { id: g.initiatorId }, select: { role: true, organizationId: true } }).catch(() => null);
+    const read = await weekly.read(g.id, { userId: g.initiatorId, role: (lead as any)?.role ?? null, organizationId: (lead as any)?.organizationId ?? null }, now).catch(() => null);
+    return whatTheLeadsWeeklyReportSays(read as any, now);
+  }
+
+  /**
    * THE LEAD'S WEEKLY LETTER BY EMAIL (anchor piece 29), Friday at three in the afternoon in Lagos, only
    * while the anchor switch is on. One letter per lead, from the past seven days of the check-ins they
    * started from the anchor link. What it says and never says is in email/the-leads-weekly-letter.ts.
@@ -931,9 +948,13 @@ export class GroundsCron implements OnApplicationBootstrap {
   }
 
   async sendTheLeadsWeeklyLettersInner(now: Date = new Date()): Promise<{ tried: number }> {
-    if (!(await theAnchorScenarioIsOn(this.prisma))) return { tried: 0 };
+    /* Every lead's check-ins, not the anchor's alone (engagement spec section 24). The anchor's own are kept only while its switch is on. */
+    const anchorIsOn = await theAnchorScenarioIsOn(this.prisma);
     const result = await sendTheLeadsWeeklyLetters(
-      { prisma: this.prisma, email: this.email, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
+      {
+        prisma: this.prisma, email: this.email, frontendUrl: this.config.get<string>('resend.frontendUrl') || '',
+        everyCheckIn: { anchorIsOn, weeklyReport: (g, at) => this.theLeadsOwnWeeklyReport(g, at) },
+      },
       now,
     ).catch((err: any) => { this.logger.warn(`The leads' weekly letters could not be sent: ${err?.message}`); return { tried: 0 }; });
     if (result.tried) this.logger.log(`Email: ${result.tried} weekly lead letter(s) tried.`);

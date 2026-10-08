@@ -4,7 +4,8 @@ import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 
-import { WHERE_A_GROUND_IS_THE_ANCHORS } from '../conversation/the-anchor-weekly-check-in';
+import { WHERE_A_GROUND_IS_THE_ANCHORS, WHERE_A_GROUND_IS_NOT_THE_ANCHORS } from '../conversation/the-anchor-weekly-check-in';
+import { theNextCheckInFor, theSuggestionSaid } from '../engagement/the-next-check-in-from-what-happened';
 
 /**
  * THE LEAD'S WEEKLY LETTER (docs/anchor-scenario-plan.md, piece 29; the prototype's "one weekly letter",
@@ -52,6 +53,19 @@ export interface AWeekInOneCheckIn {
   checkedInIds?: string[];
   /** Whom open handoffs wait on inside this check-in, and how many each. The lead herself is 'you'. */
   waitingOn?: { name: string; count: number }[];
+  /**
+   * THE REST OF THE SPEC'S WEEKLY LETTER (engagement spec section 24), for a check-in of any kind. Each is absent when it has nothing to say, and a letter built
+   * without them is the letter it always was.
+   *
+   * What moved this week, in the sentences of the lead's own weekly report (served to her by the wrapper that swaps names in), at most three.
+   */
+  moved?: string[];
+  /** What to do this week, from the same report's "for you to do next week" (what only the lead can settle), at most three. */
+  toDo?: { do: string; why: string }[];
+  /** People who did not check in and were really sent a reminder this week by Groundwork (the participant row's `lastNudgedAt`, set only when one went). */
+  reminded?: string[];
+  /** One real next check-in, said in a sentence, only where it is a different one and the record gives a reason. */
+  next?: string | null;
 }
 
 const aName = (n: string) => n;
@@ -135,15 +149,43 @@ export interface TheLetter {
   groundId: string | null;
 }
 
-/** The whole letter. Null when no check-in has anybody who can answer, so there is nothing to say. */
-export function theLeadsLetter(weeks: AWeekInOneCheckIn[]): TheLetter | null {
-  const counted = weeks.filter((w) => w.ofHowMany > 0);
+/** Something happened this week that a lead would want to read: somebody checked in, or something was settled. */
+/* A lead alone in her own check-in has no team to write to about. */
+export const somethingUsefulHappened = (w: AWeekInOneCheckIn): boolean => w.ofHowMany >= 2 && (w.checkedIn > 0 || w.done > 0 || (w.moved?.length ?? 0) > 0);
+
+/** The sentences after the week's counts, for one check-in: what moved, what Groundwork is already doing, what to do, and what to start next. */
+export function theRestOfTheWeekIn(w: AWeekInOneCheckIn, roomForToDo: number): string[] {
+  const out: string[] = [];
+  if (w.moved?.length) out.push(`Here is what moved this week. ${w.moved.slice(0, 3).join(' ')}`);
+  const reminded = (w.reminded ?? []).filter(aNameToList).filter((n) => w.notYet.includes(n));
+  if (reminded.length) out.push(`I have already sent reminders to ${listed(reminded)} this week.`);
+  const todo = (w.toDo ?? []).slice(0, Math.max(0, roomForToDo));
+  if (todo.length) {
+    out.push('Here is what I would do this week.');
+    for (const t of todo) out.push(`${t.do.trim()}${t.why?.trim() ? ` ${t.why.trim()}` : ''}`);
+  }
+  if (w.next) out.push(`Here is something worth doing next. ${w.next}`);
+  return out;
+}
+
+/**
+ * The whole letter. Null when no check-in has anybody who can answer, so there is nothing to say.
+ * `onlyWhenSomethingHappened`: a quiet week is not written about (spec section 26, "if nothing useful happened, send nothing"). It is on for every check-in
+ * that is not the anchor's; the anchor's letter keeps saying "Nobody has checked in this week."
+ */
+export function theLeadsLetter(weeks: AWeekInOneCheckIn[], opts: { onlyWhenSomethingHappened?: boolean } = {}): TheLetter | null {
+  const counted = weeks.filter((w) => w.ofHowMany > 0).filter((w) => !opts.onlyWhenSomethingHappened || somethingUsefulHappened(w));
   if (!counted.length) return null;
   const moving = counted.some((w) => w.saidWhatNext > 0 || w.done > 0);
   const lines = [moving ? 'Your team is starting to move.' : "Here is your team's week."];
+  /* Three recommendations at most, over the whole letter (spec section 24). */
+  let room = 3;
   for (const w of counted) {
     if (counted.length > 1) lines.push(`"${w.label}"`);
     lines.push(theWeekInSentences(w).join(' '));
+    const rest = theRestOfTheWeekIn(w, room);
+    room -= Math.min(room, (w.toDo ?? []).length);
+    lines.push(...rest);
   }
   return { subject: theSubjectFor(counted), lines, linkLabel: THE_LINK_SAYS, linkPath: counted.length === 1 ? 'board' : 'grounds', groundId: counted.length === 1 ? counted[0].groundId : null };
 }
@@ -158,7 +200,7 @@ const WEEK = 7 * 86_400_000;
 export async function theWeekOf(prisma: any, g: { id: string; label: string; initiatorId: string }, now: Date): Promise<AWeekInOneCheckIn> {
   const since = new Date(now.getTime() - WEEK);
   const [people, finished, saidNext, done, waiting, doneRows, waitingRows] = await Promise.all([
-    prisma.groundParticipant.findMany({ where: { groundId: g.id }, select: { id: true, userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } }),
+    prisma.groundParticipant.findMany({ where: { groundId: g.id }, select: { id: true, userId: true, managingOnly: true, nameGiven: true, lastNudgedAt: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } }),
     prisma.checkIn.findMany({ where: { groundId: g.id, status: CheckInStatus.COMPLETED, completedAt: { gte: since, lte: now } }, select: { participantId: true } }),
     prisma.groundCommitment.findMany({ where: { groundId: g.id, participantId: { not: null }, createdAt: { gte: since, lte: now } }, select: { participantId: true } }),
     prisma.groundCommitment.count({ where: { groundId: g.id, status: 'DONE', settledAt: { gte: since, lte: now } } }),
@@ -188,8 +230,13 @@ export async function theWeekOf(prisma: any, g: { id: string; label: string; ini
   /* Only rows that really are what was asked for: the filter is in the query, and checked again here. */
   const closedBy = tally((doneRows as any[]).filter((r) => r.status === 'DONE').map((r) => r.participantId));
   const waitingOn = tally((waitingRows as any[]).filter((r) => r.status !== 'CLEARED').map((r) => r.onParticipantId));
+  /* Reminders Groundwork really sent this week to people who still have not checked in: `lastNudgedAt` is set only when a reminder went. */
+  const reminded = counted
+    .filter((p) => !finishedIds.has(p.id) && p.userId !== g.initiatorId && p.lastNudgedAt && new Date(p.lastNudgedAt) >= since && new Date(p.lastNudgedAt) <= now)
+    .map((p) => nameToCall(p))
+    .filter((n: string) => !!n);
   const saidNextBy = new Set((saidNext as any[]).map((r) => r.participantId).filter((id: string) => countedIds.has(id)));
-  return { groundId: g.id, label: g.label, ofHowMany: counted.length, checkedIn: finishedIds.size, answerableIds: counted.map((p) => p.userId ?? p.id), checkedInIds: counted.filter((p) => finishedIds.has(p.id)).map((p) => p.userId ?? p.id), notYet, saidWhatNext: saidNextBy.size, done: done as number, waiting: waiting as number, closedBy, waitingOn };
+  return { groundId: g.id, label: g.label, ofHowMany: counted.length, checkedIn: finishedIds.size, answerableIds: counted.map((p) => p.userId ?? p.id), checkedInIds: counted.filter((p) => finishedIds.has(p.id)).map((p) => p.userId ?? p.id), notYet, saidWhatNext: saidNextBy.size, done: done as number, waiting: waiting as number, closedBy, waitingOn, ...(reminded.length ? { reminded } : {}) };
 }
 
 /**
@@ -197,16 +244,26 @@ export async function theWeekOf(prisma: any, g: { id: string; label: string; ini
  * sender decides whether it may go (stop link, quiet hours, a bounced address). Returns how many were tried.
  */
 export async function sendTheLeadsWeeklyLetters(
-  deps: { prisma: any; email: { sendTheLeadsWeeklyLetter: (to: string, subject: string, lines: string[], linkLabel: string, linkUrl: string) => Promise<unknown> }; frontendUrl: string },
+  deps: {
+    prisma: any; email: { sendTheLeadsWeeklyLetter: (to: string, subject: string, lines: string[], linkLabel: string, linkUrl: string) => Promise<unknown> }; frontendUrl: string;
+    /**
+     * EVERY LEAD'S CHECK-INS, NOT ONLY THE ANCHOR'S (engagement spec section 24; decision 117, the anchor follows through the normal flow). Given, the letter is
+     * made for each check-in that is still going and whose lead has something useful to read, whatever it was started from, with the anchor's own kept only while
+     * its switch is on. `weeklyReport` reads the lead's own weekly report as she is served it (what moved, what to do), and may be absent.
+     */
+    everyCheckIn?: { anchorIsOn: boolean; weeklyReport?: (g: { id: string; initiatorId: string }, now: Date) => Promise<{ moved: string[]; toDo: { do: string; why: string }[] } | null> };
+  },
   now: Date = new Date(),
 ): Promise<{ tried: number }> {
   const { prisma } = deps;
+  const every = deps.everyCheckIn;
+  const kind = every ? (every.anchorIsOn ? {} : WHERE_A_GROUND_IS_NOT_THE_ANCHORS) : WHERE_A_GROUND_IS_THE_ANCHORS;
   const grounds: any[] = await everyRowAPageAtATime((page: any) => prisma.ground.findMany({
-    where: { ...WHERE_A_GROUND_IS_THE_ANCHORS, status: { notIn: TERMINAL } },
-    select: { id: true, label: true, initiatorId: true },
+    where: { ...kind, status: { notIn: TERMINAL } },
+    select: { id: true, label: true, initiatorId: true, ...(every ? { scenario: true } : {}) },
     ...page,
   }), 1000);
-  const byLead = new Map<string, { id: string; label: string; initiatorId: string }[]>();
+  const byLead = new Map<string, { id: string; label: string; initiatorId: string; scenario?: string | null }[]>();
   for (const g of grounds) byLead.set(g.initiatorId, [...(byLead.get(g.initiatorId) ?? []), g]);
 
   const base = (deps.frontendUrl || '').replace(/\/$/, '');
@@ -216,8 +273,20 @@ export async function sendTheLeadsWeeklyLetters(
       const user = await prisma.user.findUnique({ where: { id: leadId }, select: { email: true, deletedAt: true } });
       if (!user?.email || user.deletedAt) continue;
       const weeks: AWeekInOneCheckIn[] = [];
-      for (const g of theirs) weeks.push(await theWeekOf(prisma, g, now));
-      const letter = theLeadsLetter(weeks);
+      for (const g of theirs) {
+        const w = await theWeekOf(prisma, g, now);
+        if (every) {
+          const report = await every.weeklyReport?.(g, now).catch(() => null);
+          if (report?.moved.length) w.moved = report.moved;
+          if (report?.toDo.length) w.toDo = report.toDo;
+          /* One real next check-in, only where it is a different one and the record gives a reason. */
+          const open = await prisma.groundCommitment.count({ where: { groundId: g.id, status: 'UNKNOWN' } }).catch(() => 0);
+          const next = theNextCheckInFor({ scenario: g.scenario ?? null, done: w.done, cleared: 0, waiting: w.waiting, open: open as number });
+          if (next.kind === 'another' && w.checkedIn > 0) w.next = theSuggestionSaid(next);
+        }
+        weeks.push(w);
+      }
+      const letter = theLeadsLetter(weeks, every ? { onlyWhenSomethingHappened: true } : {});
       if (!letter) continue;
       const linkUrl = letter.linkPath === 'board' ? `${base}/grounds/${letter.groundId}/board` : `${base}/grounds`;
       await deps.email.sendTheLeadsWeeklyLetter(user.email, letter.subject, letter.lines, letter.linkLabel, linkUrl);
