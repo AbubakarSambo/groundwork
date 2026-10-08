@@ -2742,6 +2742,8 @@ export class GroundsService {
       ).shown.filter((o: any) => !objectivesNotToldHere.has(o.id)).map((o: any) => ({
         ...o,
         notSettled: whatIsNotSettledAbout({ name: o.name, target: o.target }, notSettledSaid),
+        /* Whoever runs the check-in is told which targets are kept from the people until the lead tells them, so the page does not say "seen by everyone" of one. Absent for everybody else. */
+        ...(viewerRunsIt && !withoutWhatTheLeadHasNotToldThemAbout([o], objectiveRowsAsStored as any[], (ground.participants ?? []) as any[], false).kept.length ? { notToldYet: true } : {}),
       })),
       /*
        * THE REPORT RIDES ALONG IN `rest`, AND IT IS REPORT TEXT WHEREVER IT IS READ.
