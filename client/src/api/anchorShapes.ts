@@ -162,6 +162,28 @@ export type TheEndOfMonthRead = {
 }
 
 /* ------------------------------------------------------------------------------------------------
+ * THE ANCHOR'S SECTIONS, ON THE ORDINARY BOARD, NAMED BY THE SWITCHBOARD (decision 114;
+ * docs/answers-from-engine.md, "8 October (later): the anchor through the ordinary routes, route
+ * by route"; mirrors `api/src/modules/board/the-anchor-sections-on-the-board.ts`, read only). Each
+ * is carried on the ordinary board payload under its own name, drawn by `BoardPage.tsx` the way it
+ * draws any other section - gated by `b.sections.includes(...)`, the same mechanism every other
+ * kind of work's sections already use. A lead-only one (`whatYouAreCarrying`, `theFourLenses`,
+ * `peopleHelpingTheTeamMove`, `recommendations`, `weeklyInsight`) is served to whoever runs the
+ * check-in alone and absent for everybody else; `howGroundworkWillWork` and `ideasFromTheTeam` are
+ * for everybody in the check-in. WHO READS WHAT IS DECIDED BY THE SERVER: a section's absence from
+ * the payload is what keeps it off another reader's screen, never a client-side check.
+ * ---------------------------------------------------------------------------------------------- */
+export type TheAnchorBoardSections = {
+  whatYouAreCarrying?: { heading: string; text: string }
+  howGroundworkWillWork?: { heading: string; ways: TheWayGroundworkWillHelp[] }
+  theFourLenses?: { heading: string; question: string; lenses: TheLens[] }
+  ideasFromTheTeam?: TheIdeasFromYourTeam
+  peopleHelpingTheTeamMove?: { heading: string; people: APersonHelpingThingsMove[] }
+  recommendations?: { heading: string; offers: import('./recommendedCheckIns').AnOfferTheLeadReads[] }
+  weeklyInsight?: { heading: string; text: string }
+}
+
+/* ------------------------------------------------------------------------------------------------
  * PIECE 19 AND 20. "IDEAS FROM YOUR TEAM" (section 18; plan section 5 row 7; decision 96, item 10).
  * Served on the board read as `BoardPresent.ideasFromYourTeam`, to everyone in that check-in, and
  * only after the person said yes to capturing the idea for the team. Before the yes nothing exists

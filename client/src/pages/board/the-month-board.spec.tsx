@@ -10,9 +10,20 @@ import type { TheMonthBoard } from '@/api/anchorShapes'
 
 /**
  * PIECES 12, 13 AND 20: THE MONTH BOARD, "Are we moving together?" (anchor plan section 5, row 6;
- * docs/answers-from-engine.md, "Request 147", `TheMonthBoard`). Lead only, drawn only while
- * `anchorScenarioOn` is served true and `theMonthBoard` itself is present - nothing drawn otherwise,
- * and nothing drawn for a colleague even when both are true.
+ * docs/answers-from-engine.md, "Request 147", `TheMonthBoard`). Lead only.
+ *
+ * UPDATED FOR DECISION 114 (docs/decisions-merged.md; docs/answers-from-engine.md, "8 October
+ * (later): the anchor through the ordinary routes, route by route"): "who reads a section is now
+ * decided by the server." `BoardPage.tsx` no longer gates `theMonthBoard` on `anchorScenarioOn` or
+ * `viewerRunsThisCheckIn` - it draws whatever `theMonthBoard` the payload itself carries, trusting
+ * that the engine only ever fills the field for whoever runs the check-in, and only while the
+ * anchor switch is on (`the-anchor-board-parts.ts`). So the two old tests that handed the lead a
+ * `theMonthBoard` alongside `anchorScenarioOn: false`, or handed a colleague one at all, are gone -
+ * that combination cannot happen on a real payload, which is exactly the point of trusting it
+ * rather than re-checking it on screen - and are replaced below by the realistic shape of each
+ * reader's own payload: the field simply absent when it is not theirs to read. The privacy intent
+ * is unchanged: a colleague's own payload never carries `theMonthBoard`, and the page draws nothing
+ * when it is not there.
  */
 vi.mock('@/api/board', () => ({ boardApi: { get: vi.fn() } }))
 vi.mock('@/api/grounds', () => ({ groundsApi: { get: vi.fn() } }))
@@ -79,23 +90,15 @@ beforeEach(() => {
 })
 
 describe('the month board, for the lead', () => {
-  it('draws nothing when the switch is off, even with the field served', async () => {
-    ;(boardApi.get as any).mockResolvedValue(board({ anchorScenarioOn: false, theMonthBoard: monthBoardFixture }))
+  it('draws nothing when the field is not served (the switch off, or any other check-in)', async () => {
+    ;(boardApi.get as any).mockResolvedValue(board({ anchorScenarioOn: false }))
     ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u1', participants: [] })
     renderBoard()
     await screen.findByRole('heading', { name: 'Help my team understand' })
     expect(screen.queryByText('Are we moving together?')).toBeNull()
   })
 
-  it('draws nothing when the switch is on but the field is not served', async () => {
-    ;(boardApi.get as any).mockResolvedValue(board({ anchorScenarioOn: true }))
-    ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u1', participants: [] })
-    renderBoard()
-    await screen.findByRole('heading', { name: 'Help my team understand' })
-    expect(screen.queryByText('Are we moving together?')).toBeNull()
-  })
-
-  it("draws the engine's own month board when both are true", async () => {
+  it("draws the engine's own month board whenever the payload carries it", async () => {
     ;(boardApi.get as any).mockResolvedValue(board({ anchorScenarioOn: true, theMonthBoard: monthBoardFixture }))
     ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u1', participants: [] })
     renderBoard()
@@ -110,8 +113,11 @@ describe('the month board, for a participant, not the lead', () => {
     currentUser = { id: 'u2', firstName: 'Kennedy', role: 'MEMBER' }
   })
 
-  it('draws nothing, even when both are true', async () => {
-    ;(boardApi.get as any).mockResolvedValue(board({ anchorScenarioOn: true, theMonthBoard: monthBoardFixture }))
+  it('draws nothing: a colleague’s own payload never carries theMonthBoard, which the server alone decides', async () => {
+    /* The realistic shape of a colleague's own board answer (the-anchor-board-parts.ts: `theMonthBoard`
+       is only ever set on the lead's own parts) - the privacy intent this spec has always pinned,
+       now checked against the payload itself rather than against a client-side reader flag. */
+    ;(boardApi.get as any).mockResolvedValue(board({ anchorScenarioOn: true }))
     ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u1', participants: [] })
     renderBoard()
     await screen.findByRole('heading', { name: 'Help my team understand' })

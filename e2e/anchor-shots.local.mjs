@@ -10,6 +10,19 @@ const HEIGHT = { 1440: 900, 390: 844 };
 async function shot(page, url, name, opts = {}) {
   for (const w of WIDTHS) {
     await page.setViewportSize({ width: w, height: HEIGHT[w] });
+    /*
+     * DECISION 114: `shot()` reuses one `page` across both widths, so the SECOND `goto` carries
+     * over whatever the first navigation left in `sessionStorage` - for the anchor's own entry
+     * chat, that is `gw-anchor-start-confirmed`. Once set, the page skips re-asking `/entry/opener`
+     * and `/entry/anchor-start` (both gated on the flag being unset) and falls back to whatever
+     * first question an earlier run remembered, which is real behaviour (a second navigation in the
+     * same tab) but not what this screenshot is for: two FRESH arrivals, one per width, each
+     * drawing the engine's own opener reply. Cleared before each navigation so both widths show the
+     * same, fresh-arrival screen - caught re-taking these shots for decision 114, when the 390
+     * capture kept showing the plan's own short fallback question instead of the served opener text
+     * the 1440 capture already had.
+     */
+    await page.evaluate(() => { try { sessionStorage.clear() } catch { /* best effort */ } }).catch(() => {});
     await page.goto(url, { waitUntil: 'networkidle' });
     if (opts.waitFor) await page.waitForSelector(opts.waitFor, { timeout: 15000 }).catch(() => {});
     await page.waitForTimeout(opts.settle ?? 500);

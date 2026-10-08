@@ -42,6 +42,7 @@ import { WhatToProbeThemOn } from '@/components/gw/WhatToProbeThemOn'
 import { recommendedCheckInsApi, type AnOfferTheLeadReads } from '@/api/recommendedCheckIns'
 import { TheMonthBoard } from '@/components/gw/TheMonthBoard'
 import { TheIdeasFromYourTeam } from '@/components/gw/TheIdeasFromYourTeam'
+import { TheAnchorBoardSections } from '@/components/gw/TheAnchorBoardSections'
 
 /**
  * WHO A ROW ON THE BOARD IS, WHERE THE SERVER HAS NO NAME TO GIVE. Request 36.
@@ -1033,27 +1034,37 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   /** Whether this check-in was itself started as the anchor scenario - read once, for every reader. */
   const anchorScenarioOn = !!(data as any)?.anchorScenarioOn
   const anchorRecommendationsOn = viewerRunsThisCheckIn && anchorScenarioOn
+  /**
+   * THE SWITCHBOARD'S OWN SECTION LIST, READ OFF THE RAW ANSWER (decision 114;
+   * docs/answers-from-engine.md, "8 October (later): the anchor through the ordinary routes, route
+   * by route"). `sections` names which sections this scenario carries at all - the same for every
+   * reader of one check-in - read here, ahead of `b`/`has` below, because these hooks have to sit
+   * above every early return (the same reason `anchorScenarioOn` already reads raw `data`).
+   */
+  const sectionsServed: string[] = (data as any)?.sections ?? []
+  const hasSectionServed = (s: string) => sectionsServed.includes(s)
 
   /**
    * PIECES 12, 13 AND 20: THE MONTH BOARD, "Are we moving together?" (section 24;
-   * docs/answers-from-engine.md, "Request 149 (5 of 6)", `TheMonthBoard`). Lead only, and only
-   * while the anchor switch is on - the same two gates `anchorRecommendationsOn` already uses, read
-   * off the raw board answer rather than `b` for the same reason (these hooks must sit above every
-   * early return below). `theMonthBoardForTheLead` is `undefined` for anybody else, or for a board
-   * the engine does not serve it on, and the component below draws nothing then.
+   * docs/answers-from-engine.md, "Request 149 (5 of 6)", `TheMonthBoard`). DECISION 114: "who reads
+   * a section is now decided by the server" - the engine only ever fills `theMonthBoard` for
+   * whoever runs the check-in, and only while the anchor switch is on (the-anchor-board-parts.ts),
+   * so the field's own presence already is the privacy decision. No `viewerRunsThisCheckIn` or
+   * `anchorScenarioOn` check here any more: trusting the payload is what "decided by the server"
+   * means, the same as every other section on this board already works. `theMonthBoardForTheLead`
+   * is `undefined` whenever the field was not served, and the component below draws nothing then.
    */
-  const theMonthBoardForTheLead = viewerRunsThisCheckIn && anchorScenarioOn
-    ? (data as any)?.theMonthBoard
-    : undefined
+  const theMonthBoardForTheLead = (data as any)?.theMonthBoard
 
   /**
    * PIECE 19/20, "IDEAS FROM YOUR TEAM" (plan section 5, row 7; docs/answers-from-engine.md,
-   * "Request 149, missing (1)"). To everyone in the check-in, not the lead alone - no
-   * `viewerRunsThisCheckIn` gate, unlike the month board above. The engine is itself the one that
-   * decides who this is served to (shape only today, so `ideasFromYourTeam` is undefined on every
-   * board), so this reads the raw answer directly rather than adding a reader check here.
+   * "Request 149, missing (1)"; decision 114's `ideasFromTheTeam`, the same shape named by the
+   * switchboard). To everyone in the check-in, not the lead alone - no `viewerRunsThisCheckIn`
+   * gate, and (decision 114) no `anchorScenarioOn` gate either: the new field is read first, the
+   * older one only as a fallback for a caller the server has not moved across yet, and the engine
+   * is itself the one that decides who either is served to.
    */
-  const ideasFromYourTeam = (data as any)?.ideasFromYourTeam
+  const ideasFromYourTeam = (data as any)?.ideasFromTheTeam ?? (data as any)?.ideasFromYourTeam
   const { data: recommended } = useQuery({
     queryKey: ['recommended-check-ins', id],
     queryFn: () => recommendedCheckInsApi.list(id!),
@@ -1601,6 +1612,25 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     { key: 'settings', label: 'People and setup', to: `/grounds/${id}?tab=settings` },
   ]
   const has = (s: string) => b.sections.includes(s as any)
+  /**
+   * THE ANCHOR'S REMAINING SECTIONS, NAMED BY THE SWITCHBOARD (decision 114;
+   * docs/answers-from-engine.md, "8 October (later): the anchor through the ordinary routes, route
+   * by route"). Gated with the same `has(...)` every other kind of work's own sections already use -
+   * WHO READS WHAT IS DECIDED BY THE SERVER, so there is no reader check here either. `theFourLenses`
+   * and `peopleHelpingTheTeamMove` are left out of what is handed to `TheAnchorBoardSections`: while
+   * `theMonthBoard` is still also served (the engine's "kept for now" list), it already draws the
+   * same lenses and the same people in its own blocks, just above, and drawing both would duplicate
+   * them on screen for the same reader. `ideasFromTheTeam` is not here either - it is the same shape
+   * `ideasFromYourTeam` above already draws through the existing `TheIdeasFromYourTeam`. `recommend
+   * ations` is not drawn here: the lead already reads "Groundwork recommends" through the dedicated
+   * `recommendedCheckInsApi` listing and its own yes/not-now handling (`recommendedOffers`, below),
+   * which this would only duplicate.
+   */
+  const theAnchorSections = {
+    whatYouAreCarrying: has('whatYouAreCarrying') ? (b as any).whatYouAreCarrying : undefined,
+    howGroundworkWillWork: has('howGroundworkWillWork') ? (b as any).howGroundworkWillWork : undefined,
+    weeklyInsight: has('weeklyInsight') ? (b as any).weeklyInsight : undefined,
+  }
   /* Said once, at the top - and the divergence card below stays short rather than repeating it. */
   /*
    * ITEM D, CHECKED AND DELIBERATELY LEFT AS IT WAS. `whoIsInRound` answers a different question
@@ -2567,7 +2597,27 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           sees no change at all: the ideas block below is still the first thing in this region for
           them, open exactly where it was.
         */}
+        {/*
+          THE ANCHOR'S REMAINING SECTIONS, AHEAD OF THE MONTH BOARD (docs/anchor-scenario.md: "What
+          you're carrying" and "How I'll work with your team" are sections 11 and 12, read before
+          "Are we moving together?", section 24). `whatYouAreCarrying` draws for the lead only;
+          `howGroundworkWillWork` for everybody in the check-in - each is `undefined`, and draws
+          nothing, for a reader the server did not serve it to.
+        */}
+        <TheAnchorBoardSections sections={{ whatYouAreCarrying: theAnchorSections.whatYouAreCarrying, howGroundworkWillWork: theAnchorSections.howGroundworkWillWork }} />
+
         {theMonthBoardForTheLead && <TheMonthBoard monthBoard={theMonthBoardForTheLead} />}
+
+        {/*
+          THE WEEKLY INSIGHT'S OWN BOARD SECTION (docs/anchor-scenario.md section 23, "the fuller
+          weekly summary"), said beside the month board rather than only on WhatsApp. Lead only;
+          drawn from the same `theAnchorSections` as above.
+        */}
+        {theAnchorSections.weeklyInsight && (
+          <Section heading={theAnchorSections.weeklyInsight.heading}>
+            <Note tone="muted">{theAnchorSections.weeklyInsight.text}</Note>
+          </Section>
+        )}
 
         {/*
           FAULT 4 (live walk, 6 October 2026): FOR AN ANCHOR CHECK-IN, "IDEAS FROM YOUR TEAM" SITS
@@ -2578,10 +2628,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           same bug, same fix: draw it here, before the fold, for an anchor check-in only. Every other
           check-in keeps drawing it exactly where it always has, inside `MaybeFolded`, below.
         */}
-        {/* Open, never folded, for every reader it is served to: `anchorScenarioOn` reaches the lead
-            only, so a member's ideas stayed in the fold (anchor walk, 6 October). The ideas
-            themselves are served only on an anchor check-in, so their presence is the signal. */}
-        {(anchorScenarioOn || !!ideasFromYourTeam) && <TheIdeasFromYourTeam ideasFromYourTeam={ideasFromYourTeam} />}
+        {/* Open, never folded, for every reader it is served to (anchor walk, 6 October). DECISION
+            114: positioned by the switchboard's own section list (`hasSectionServed`), not a
+            scenario flag - the same "who reads a section is decided by the server" rule as above;
+            the ideas themselves are also served only on such a check-in, so their presence alone
+            would already say the same thing, but the section list is the one mechanism every other
+            kind of work's own sections already use. */}
+        {(hasSectionServed('ideasFromTheTeam') || !!ideasFromYourTeam) && <TheIdeasFromYourTeam ideasFromYourTeam={ideasFromYourTeam} />}
 
         <MaybeFolded fold={participantFoldsWhole}>
 
@@ -2596,7 +2649,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           draws nothing while `ideasFromYourTeam` is undefined. Not drawn here for an anchor
           check-in (fault 4) - it already drew above, before the fold.
         */}
-        {!anchorScenarioOn && !ideasFromYourTeam && <TheIdeasFromYourTeam ideasFromYourTeam={ideasFromYourTeam} />}
+        {!hasSectionServed('ideasFromTheTeam') && !ideasFromYourTeam && <TheIdeasFromYourTeam ideasFromYourTeam={ideasFromYourTeam} />}
 
         {/*
           THE HEADLINE QUESTION, WITH ITS ANSWER AND ITS BAR (request 108 a; board-as-lead.txt:

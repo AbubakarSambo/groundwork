@@ -1,11 +1,21 @@
 import { apiClient } from './client'
 import type { ServedPattern } from './patterns'
-import type { TheMonthBoard, TheEndOfMonthRead, TheActiveLine, TheIdeasFromYourTeam } from './anchorShapes'
+import type { TheMonthBoard, TheEndOfMonthRead, TheActiveLine, TheIdeasFromYourTeam, TheAnchorBoardSections } from './anchorShapes'
 
 export type BoardSection =
   | 'phaseSpine' | 'quickRead' | 'objectives' | 'startingState' | 'divergence'
   | 'whatTheRoomIsAbout' | 'whoOwnsWhat' | 'dependencies' | 'checkInGrid' | 'contribution' | 'coverage'
   | 'cascade' | 'hiddenContributors' | 'patterns' | 'decisions' | 'poll'
+  /* The anchor scenario's own sections (decision 114; docs/anchor-scenario.md sections 11, 12, 18, 19,
+     23, 24), named by the switchboard for that scenario alone (api/src/modules/board/board-families.ts,
+     SCENARIO_SECTIONS_ADDED) and drawn by the ordinary board page like any other section. */
+  | 'whatYouAreCarrying'
+  | 'howGroundworkWillWork'
+  | 'theFourLenses'
+  | 'ideasFromTheTeam'
+  | 'peopleHelpingTheTeamMove'
+  | 'recommendations'
+  | 'weeklyInsight'
 
 export type BoardFamily = 'DELIVERY' | 'COHORT' | 'ONBOARDING' | 'EVALUATION' | 'SENSING' | 'AGREEMENT' | 'RECURRING' | 'SNAPSHOT' | 'UPDATE'
 export type CoverageVariant = 'text' | 'bar'
@@ -816,7 +826,7 @@ export type BoardPresent = {
     wouldClearItSays: string
     holdingUp: string | null
   }[]
-}
+} & TheAnchorBoardSections
 
 export type BoardResponse = BoardAbsent | BoardWithheld | BoardPresent
 
