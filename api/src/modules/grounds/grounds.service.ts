@@ -1470,6 +1470,29 @@ export class GroundsService {
     }
     /* NOBODY HELD FOR A SEAT READS ANYTHING OF THE CHECK-IN, AND THIS LIST FEEDS TODAY AND YOU (second review, new leak A; row 5). */
     const heldForASeat = await theCheckInsHeldForASeat(this.prisma as any, [...orgGrounds, ...participantGrounds].map((g: any) => g.id), userId);
+    /* WHETHER EACH LEAD HAS LEFT, FOR AN ADMIN WHO DOES NOT RUN THE CHECK-IN (request 206, decision 119 H10). Worked out as get() does it:
+       the lead's account is read only for a reader who is an admin of that organisation and not the lead, and a lead whose account says
+       nothing either way is counted as present. One read for the whole list. */
+    const adminLeadIds = new Set<string>();
+    const mayAdminHere = (g: any) => !!userId && g.initiatorId !== userId && adminsThisOrg({ role: userRole, organizationId, userId } as any, g);
+    for (const g of [...orgGrounds, ...participantGrounds] as any[]) {
+      if (g.initiatorId && g.organizationId === organizationId && mayAdminHere(g)) adminLeadIds.add(g.initiatorId);
+    }
+    const leadAccounts = new Map<string, any>();
+    if (adminLeadIds.size) {
+      const found = await (this.prisma as any).user.findMany({ where: { id: { in: [...adminLeadIds] } }, select: { id: true, isActive: true, firstName: true, lastName: true } }).catch(() => []);
+      for (const l of found ?? []) leadAccounts.set(l.id, l);
+    }
+    const setupFor = (g: any) => {
+      if (userId && g.initiatorId === userId) return { leadHasLeft: false, mayChangeSetup: true };
+      const lead = g.initiatorId && g.organizationId === organizationId && mayAdminHere(g) ? leadAccounts.get(g.initiatorId) : null;
+      if (!lead) return { leadHasLeft: false, mayChangeSetup: false };
+      const leadState = { ...lead, isActive: lead.isActive !== false };
+      return {
+        leadHasLeft: !leadState.isActive,
+        mayChangeSetup: whoMayConfirmSetup(userId, g, { lead: leadState, confirmer: { role: userRole, organizationId } as any, organizationId: g.organizationId ?? null }).allowed,
+      };
+    };
     return [...orgGrounds, ...participantGrounds]
       .filter((g: any) => !heldForASeat.has(g.id))
       .map(g => {
@@ -1685,6 +1708,7 @@ export class GroundsService {
           ...(runsIt ? { joinToken } : {}),
           report: fullReport ? { releasedAt: fullReport.releasedAt ?? null, releasedSessions: releasedSessionsOf(fullReport as any) ?? [] } : null,
           alignment, overdue, checkInsToday, roundsDone, lastActivity, reportWaitingForMe, otherOrgName,
+          ...setupFor(g),
           /*
            * WHO IS WAITING TO BE LET IN, APART FROM "N OF M" (decision 77). Only whoever runs it, or an admin
            * here, reads it; never a person who checks in.
