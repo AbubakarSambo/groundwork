@@ -81,7 +81,7 @@ describe('Wairimu, who runs it, on the ending page', () => {
     )).toBeTruthy()
     expect(screen.getByText('What Kwame sees now')).toBeTruthy()
     expect(screen.getByText(
-      '“These are the outcomes this check-in can reach. Wairimu decides which one it is. Your account is kept either way, and you can still correct or add to it.”',
+      '“These are the outcomes this check-in can reach. Wairimu decides which one it is. Your words are kept either way, and you can still correct or add to them.”',
     )).toBeTruthy()
     expect(container.textContent).not.toMatch(LABELS_ON_PEOPLE)
   })
@@ -101,7 +101,7 @@ describe('Kwame, the person it is about', () => {
   it('reads the outcomes and who decides, and is never handed a button to decide it', async () => {
     const { container } = renderAs('kwame', false)
     expect(await screen.findByText(
-      'These are the outcomes this check-in can reach. Wairimu decides which one it is. Your account is kept either way, and you can still correct or add to it.',
+      'These are the outcomes this check-in can reach. Wairimu decides which one it is. Your words are kept either way, and you can still correct or add to them.',
     )).toBeTruthy()
     expect(screen.getByText('Keep the hire')).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Keep the hire/ })).toBeNull()
@@ -118,7 +118,7 @@ describe('Kwame, the person it is about', () => {
     expect(screen.getByText('Wairimu decided this on 30 September.')).toBeTruthy()
     expect(screen.getByText('Wairimu’s reason')).toBeTruthy()
     expect(screen.getByText(REASON)).toBeTruthy()
-    expect(screen.getByText('Your account is kept, and you can still correct it.')).toBeTruthy()
+    expect(screen.getByText('Your words are kept, and you can still correct them.')).toBeTruthy()
     expect(container.textContent).not.toMatch(LABELS_ON_PEOPLE)
   })
 })
@@ -234,7 +234,7 @@ describe('B-071: the lead reads what Amani sees, and it is never "You decides"',
     )
     expect(await screen.findByText('What Kwame sees now')).toBeTruthy()
     expect(screen.getByText(
-      '“These are the outcomes this check-in can reach. Wairimu Njoroge decides which one it is. Your account is kept either way, and you can still correct or add to it.”',
+      '“These are the outcomes this check-in can reach. Wairimu Njoroge decides which one it is. Your words are kept either way, and you can still correct or add to them.”',
     )).toBeTruthy()
     expect(screen.queryByText(/You decides|You decide which one it is/)).toBeNull()
   })
@@ -251,7 +251,7 @@ describe('B-071: the lead reads what Amani sees, and it is never "You decides"',
     )
     expect(await screen.findByText('What Kwame sees now')).toBeTruthy()
     expect(screen.getByText(
-      '“These are the outcomes this check-in can reach. Whoever runs it decides which one it is. Your account is kept either way, and you can still correct or add to it.”',
+      '“These are the outcomes this check-in can reach. Whoever runs it decides which one it is. Your words are kept either way, and you can still correct or add to them.”',
     )).toBeTruthy()
     expect(screen.queryByText(/You decides|You decide which one it is/)).toBeNull()
   })

@@ -203,3 +203,30 @@ describe('somebody with no name, whose email this reader may not see', () => {
     expect(document.body.textContent).not.toMatch(/A colleague/)
   })
 })
+
+/**
+ * IN AN ANCHOR CHECK-IN THE LEAD WHO ONLY MANAGES IS NOT COUNTED AND NOT "CHECKING IN" (screens' item a, 8 October).
+ * Before: "1 person. 1 is checking in." and "Checking in" on her own row.
+ */
+describe('an anchor check-in with a lead who only manages', () => {
+  const anchor = (scenario: string) => ({
+    scenario,
+    initiatorId: 'lead-1',
+    createdAt: '2026-09-27T09:00:00.000Z',
+    participants: [
+      { id: 'p-lead', userId: 'lead-1', email: 'baraka@example.test', invitedAt: null, managingOnly: true },
+      { id: 'p-kito', userId: 'u-kito', email: 'kito@example.test', user: { firstName: 'Kito', lastName: 'Mwangi' }, invitedAt: '2026-09-28T09:00:00.000Z', managingOnly: false },
+    ],
+  })
+  const draw = (scenario: string) => render(<MemoryRouter><WhosInItRoster {...baseProps()} ground={anchor(scenario)} notOpenYet={false} /></MemoryRouter>)
+
+  it('counts one person, one checking in, and shows "Checking in" once', () => {
+    const { container } = draw('HELP_TEAM_UNDERSTAND')
+    expect(container.textContent).toContain('1 person. 1 is checking in.')
+    expect(screen.getAllByText('Checking in')).toHaveLength(1)
+  })
+  it('counts both in any other check-in', () => {
+    const { container } = draw('OKR_ALIGNMENT')
+    expect(container.textContent).toContain('2 people. 2 are checking in.')
+  })
+})

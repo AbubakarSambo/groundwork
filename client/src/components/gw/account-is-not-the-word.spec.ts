@@ -89,6 +89,10 @@ const THE_WRONG_SENSE = [
    * one that carries the wrong sense and no wider.
    */
   'account is on record',
+  /* Screens item d (8 October): sign-in and keeping what was said, said without the word. */
+  'Your account is kept',
+  'You make your account',
+  'For your account at',
   'On record: your account',
   "everybody's accounts",
   'their own account',

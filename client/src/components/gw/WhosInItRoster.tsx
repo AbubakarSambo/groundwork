@@ -85,8 +85,12 @@ export function WhosInItRoster({
   viewerIsTheLead?: boolean
 }) {
   const participants: any[] = ground.participants ?? []
-  const checkingIn = participants.filter((p) => p.userId && p.inviteDeliveryStatus !== 'BOUNCED' && !p.awaitingSeat && !p.user?.awaitingOrgApproval).length
-  const needSomething = participants.length - checkingIn
+  /* IN AN ANCHOR CHECK-IN THE LEAD WHO ONLY MANAGES DOES NOT CHECK IN (engine's note, 8 October): she is left out of the count and out of "Checking in". */
+  const leavesOutTheManager = ground.scenario === 'HELP_TEAM_UNDERSTAND'
+  const isNotCounted = (p: any) => leavesOutTheManager && p.managingOnly === true
+  const counted = participants.filter((p) => !isNotCounted(p))
+  const checkingIn = counted.filter((p) => p.userId && p.inviteDeliveryStatus !== 'BOUNCED' && !p.awaitingSeat && !p.user?.awaitingOrgApproval).length
+  const needSomething = counted.length - checkingIn
 
   const seats = billingStatus?.people
   const seatsFull = seats?.cap != null && seats?.count != null && seats.count >= seats.cap
@@ -94,7 +98,7 @@ export function WhosInItRoster({
   return (
     <div>
       <p className="gwui-panel-text" style={{ fontWeight: 700 }}>
-        {participants.length} {participants.length === 1 ? 'person' : 'people'}.
+        {counted.length} {counted.length === 1 ? 'person' : 'people'}.
         {/* FAULT H (reviewer, third round): a semicolon joined two separate counts into one
             clipped clause. Two plain sentences instead. */}
         {' '}{checkingIn} {checkingIn === 1 ? 'is' : 'are'} checking in.{needSomething > 0 ? ` ${needSomething} ${needSomething === 1 ? 'needs' : 'need'} something before they can start.` : ''}
@@ -281,7 +285,8 @@ export function WhosInItRoster({
 
           let statusText = 'Checking in'
           let tone: TagTone = 'proven'
-          if (bounced) { statusText = 'The email bounced'; tone = 'concern' }
+          if (isNotCounted(p)) { statusText = 'Runs it'; tone = 'plain' }
+          else if (bounced) { statusText = 'The email bounced'; tone = 'concern' }
           else if (waitingForSeat) { statusText = 'Waiting for a seat'; tone = 'attention' }
           else if (notLetIn) { statusText = 'Not let in'; tone = 'concern' }
           else if (waitingForAdmin) { statusText = 'Waiting for an admin'; tone = 'attention' }

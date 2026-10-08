@@ -132,8 +132,8 @@ function AReviewRow({ n }: { n: NextReview }) {
     <tr>
       <th scope="row"><span className="gwui-record-table-label" aria-hidden="true">Person</span>{n.name}</th>
       <td>
-        {n.writtenWith && <span className="gwui-record-table-label" aria-hidden="true">Written with</span>}
-        {n.writtenWith ?? ''}
+        {(n.writtenWithSays ?? n.writtenWith) && <span className="gwui-record-table-label" aria-hidden="true">Written with</span>}
+        {n.writtenWithSays ?? n.writtenWith ?? ''}
       </td>
       <td>
         {n.standsSays}

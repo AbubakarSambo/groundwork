@@ -1652,6 +1652,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * for two different counting rules to disagree about. See the morning report.
    */
   const onlyOnePersonHere = (b.participants ?? []).filter(p => !p.managingOnly).length < 2
+  /* A lead who does not check in is not the one person on this board, so she is never told "You have answered this session." */
+  const viewerChecksIn = (b.participants ?? []).some((p) => p.id === b.myParticipantId && !p.managingOnly)
   /* The reader's own name, as this board already resolves it, so "who sees this differently" can say "You". */
   const myName = b.myParticipantId ? (b.participants ?? []).find((p) => p.id === b.myParticipantId)?.name ?? null : null
 
@@ -2673,7 +2675,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         {(b as any).headline && (
           <Stack gap={12}>
-            <HeadlineSection headline={(b as any).headline} objectives={b.objectives} glance={(b as any).howItIsGoing?.glance ?? null} waitingToBeLetIn={b.waitingToBeLetIn ?? null} targetsFromObjectivesWhenNoBars={layoutFor(kindOfWorkKey)?.targetsBesideHeadlineFromObjectives} readerIsTheOnlyPerson={viewerRunsThisCheckIn && onlyOnePersonHere} />
+            <HeadlineSection headline={(b as any).headline} objectives={b.objectives} glance={(b as any).howItIsGoing?.glance ?? null} waitingToBeLetIn={b.waitingToBeLetIn ?? null} targetsFromObjectivesWhenNoBars={layoutFor(kindOfWorkKey)?.targetsBesideHeadlineFromObjectives} readerIsTheOnlyPerson={viewerRunsThisCheckIn && onlyOnePersonHere && viewerChecksIn} />
           </Stack>
         )}
 
@@ -2716,7 +2718,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {(b as any).howItIsGoing?.glance && !((b as any).headline && !(b as any).headline.answer) && (
           <div className="gwui-mt-16">
-            <HowItIsGoing glance={(b as any).howItIsGoing.glance} waitingToBeLetIn={b.waitingToBeLetIn ?? null} readerIsTheOnlyPerson={viewerRunsThisCheckIn && onlyOnePersonHere} />
+            <HowItIsGoing glance={(b as any).howItIsGoing.glance} waitingToBeLetIn={b.waitingToBeLetIn ?? null} readerIsTheOnlyPerson={viewerRunsThisCheckIn && onlyOnePersonHere && viewerChecksIn} />
           </div>
         )}
 
@@ -2894,7 +2896,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         {onlyOnePersonHere && kindOfWorkKey !== "founder's own check-in" && (
           <div role="status" className="gwui-rule-amber gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14 gwui-mt-12 gwui-fs-15 gwui-ink-amber" style={{background: 'var(--gw-amber-bg)', borderRadius: 12, lineHeight: 1.6}}>
-            This board compares accounts, and there is one person on this check-in.{' '}
+            This board compares what people said, and there is one person on this check-in.{' '}
             {b.canEditFrame ? 'Add somebody and it will build from the next round.' : 'It will build once the person running this check-in adds somebody.'}
           </div>
         )}

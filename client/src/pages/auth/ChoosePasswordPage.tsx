@@ -181,7 +181,7 @@ export function ChoosePasswordPage() {
     /* Screen fault 5: name the organisation when the signed-in session already carries one,
        rather than a page that never says whose account this is or what it is for. */
     ? signedInOrgName
-      ? `For your account at ${signedInOrgName}. You can keep using email links too.`
+      ? `For signing in at ${signedInOrgName}. You can keep using email links too.`
       : 'For signing in without an email link. You can keep using links too.'
     /* True: saving a new password raises the account's token epoch, which ends every other session. */
     : forAddress

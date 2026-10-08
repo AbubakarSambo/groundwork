@@ -57,6 +57,8 @@ import { CareFeeStatus, GroundStatus, BillingEventType, BillingEventStatus, User
 import { UsageService } from '../usage/usage.service';
 import * as crypto from 'crypto';
 import { seatsIn } from '../../common/seats';
+import { theEngagementMoment } from '../engagement/the-engagement-release-moment';
+import { theOverThePlan, theOverThePlanSentence, howManyAreOverThePlan } from '../../common/over-the-plan';
 import { isSubscribed, isCovered, whatCoversThem, ACTIVE, type SubscriptionStatus } from '../../common/subscription';
 
 /**
@@ -331,6 +333,21 @@ export class BillingService {
    */
   async seatsTaken(organizationId: string): Promise<number> {
     return this.prisma.user.count({ where: seatsIn(organizationId) });
+  }
+
+  /**
+   * WHO IS WAITING FOR A SEAT (request 197): the people added after the release when the plan is full, and how many. Everyone who had an account at release keeps it.
+   * The same answer for the People list, Plan and billing and the refusal of new participation (common/over-the-plan.ts).
+   */
+  async whoIsOverThePlan(organizationId: string): Promise<{ over: number; held: Set<string>; saying: string | null }> {
+    const cap = await this.seatsIncludedFor(organizationId);
+    if (cap === null || cap === undefined) return { over: 0, held: new Set(), saying: null };
+    const taken = await this.seatsTaken(organizationId);
+    if (!howManyAreOverThePlan(taken, cap)) return { over: 0, held: new Set(), saying: null };
+    /* Unreadable moment means nobody is held, never a guess: existing people are never held. */
+    const since = await theEngagementMoment(this.prisma).catch(() => null);
+    const { over, held } = await theOverThePlan(this.prisma, organizationId, seatsIn(organizationId), cap, since);
+    return { over, held, saying: theOverThePlanSentence(over) };
   }
 
   async seatsLeft(organizationId: string): Promise<number | null> {
@@ -912,6 +929,8 @@ export class BillingService {
       freeExtensionUsed: boolean;
     };
     people: { count: number; cap: number | null };
+    /** Request 197: the one sentence People says too, when more people have accounts than the plan covers; null otherwise. */
+    overThePlanSays: string | null;
     /**
      * True when nothing covers the organisation and the free plan applies to it. False when it has no
      * plan and the free plan has stopped for it (the free trial's switch is on and it is new).
@@ -1031,6 +1050,7 @@ export class BillingService {
        * and showing no ceiling to the only people who have one is how person six got added.
        */
       people: { count: peopleCount, cap: peopleCap },
+      overThePlanSays: (await this.whoIsOverThePlan(organizationId).catch(() => null))?.saying ?? null,
       onTheFreePlan,
       /* Said plainly, with the day it ends, because a free run nobody can see ends as a surprise. */
       onTheHouse: covers.covers === 'on the house' && covers.until && org.freePlan

@@ -102,6 +102,23 @@ export function anchorDaySentence(cadence: GroundCadence, anchorDay: number | nu
   return ''
 }
 
+/**
+ * HOW MANY OF THEIR OWN SESSIONS A PERSON HAS DONE (screens item c, 8 October). The set-up conversation is a check-in row with
+ * `isSetup: true`; it is not a session, so it is never counted ("1 of 4 sessions are done" on day one). Distinct session numbers, so a
+ * session answered and then corrected counts once.
+ */
+export function sessionsDoneBy(
+  checkIns: { status?: string; isSetup?: boolean; participantId?: string; sessionNumber?: number | null }[],
+  participants: { id: string; userId?: string | null }[],
+  userId: string | null | undefined,
+): number {
+  return new Set(
+    checkIns
+      .filter((c) => c.status === 'COMPLETED' && !c.isSetup && participants.some((p) => p.id === c.participantId && p.userId === userId))
+      .map((c) => c.sessionNumber ?? 0),
+  ).size
+}
+
 export function yourSessionsSentence(done: number, planned: number | null): string {
   if (planned == null) return `${done} session${done === 1 ? '' : 's'} done so far.`
   /* B-012: "9 of 6 sessions are done" is not a possible count. However it is counted, how many are

@@ -11315,6 +11315,8 @@ ${told}` : '';
     const checkIn = await this.loadOwnedCheckIn(checkInId, who);
     /* NEW PARTICIPATION STOPS FOR SOMEBODY HELD FOR A SEAT (decision 110, B3): no new session, and no answer to one. What they have already said and their own report stay theirs to read, through the readers above. */
     if ((checkIn as any).participant?.awaitingSeat === true) throw new ForbiddenException(HELD_FOR_A_SEAT);
+    /* AND FOR THE PEOPLE OVER THE PLAN, picked by the one rule People and Plan and billing use (request 197, common/over-the-plan.ts). */
+    if (await this.isHeldOverThePlan(checkIn)) throw new ForbiddenException(HELD_FOR_A_SEAT);
     if (checkIn.status === CheckInStatus.COMPLETED) {
       throw new BadRequestException('You have already finished this check-in, so there is nothing more to add.');
     }
@@ -11322,6 +11324,18 @@ ${told}` : '';
       throw new BadRequestException('You declined this session, and that is recorded. The next one is yours to take part in.');
     }
     return checkIn;
+  }
+
+  private async isHeldOverThePlan(checkIn: { groundId?: string | null; participant?: { userId?: string | null } | null }): Promise<boolean> {
+    const userId = checkIn.participant?.userId;
+    if (!userId || !checkIn.groundId || typeof (this.billing as any)?.whoIsOverThePlan !== 'function') return false;
+    try {
+      const ground = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { organizationId: true } });
+      if (!ground?.organizationId) return false;
+      return (await this.billing.whoIsOverThePlan(ground.organizationId)).held.has(userId);
+    } catch {
+      return false;
+    }
   }
 
   private async loadOwnedCheckIn(checkInId: string, who: WhoIsAsking) {

@@ -461,7 +461,11 @@ export class UsersService {
       }),
       this.prisma.organizationMembership.count({ where: inThisOrganisation }),
     ]);
-    const users = rows.map((r) => ({ ...r.user, role: r.role as string, heldForASeat: !!r.heldForASeat }));
+    /* Over the plan: the most recently added, never an admin or anyone who runs a check-in (request 197, common/over-the-plan.ts). */
+    const overThePlan = typeof (this.billing as any)?.whoIsOverThePlan === 'function'
+      ? await this.billing.whoIsOverThePlan(organizationId).catch(() => ({ over: 0, held: new Set<string>(), saying: null as string | null }))
+      : { over: 0, held: new Set<string>(), saying: null as string | null };
+    const users = rows.map((r) => ({ ...r.user, role: r.role as string, heldForASeat: !!r.heldForASeat || overThePlan.held.has(r.user.id) }));
 
     /*
      * WHERE EACH PERSON ACTUALLY GOT TO, which is the only question an admin has at any scale
@@ -707,6 +711,8 @@ export class UsersService {
         ...namedFor(theirCheckIns.get(u.id) ?? []),
       })), ...heldRows.map(({ checkIns, ...h }) => ({ ...h, ...namedFor(checkIns) }))],
       meta: { page, limit, total: total + heldRows.length, totalPages: Math.ceil((total + heldRows.length) / limit) },
+      /* One sentence, the same one Plan and billing says; null when nobody is over the plan. */
+      overThePlanSays: overThePlan.saying,
     };
   }
 

@@ -335,7 +335,7 @@ It was drawn from `docs/morning-report.md`, `docs/weekly-plan.md`, `docs/run-log
 - Recommendation: one email that names the person and the check-in; once a day for the paused notice; its own subject for the limit; Hafsah picks the minutes.
 
 **U5. Context in Ask Groundwork is on, and the old context chat still answers until the screens stop drawing it.**
-- Where: `release.contextInAskGroundwork` is on (a missing row reads on) and `GET /ask` serves `addsContext` and `oldContextChatIsOpen`. Switching the old chat off is `release.oldContextChat` written `{"on": false}`, which needs the screens to stop drawing it on the Context and resources page (they read `oldContextChatIsOpen`), and request 92's five live checks again. The plan page's own promise still names only goals, roles and commitments, though it reads seven kinds.
+- Where: `release.contextInAskGroundwork` is on (a missing row reads on) and `GET /ask` serves `addsContext` and `oldContextChatIsOpen`. The old chat is off by default since 8 October (a missing row reads off; `{"on": true}` keeps it open), and the Context and resources page reads `oldContextChatIsOpen` and does not draw it. The plan page's own promise still names only goals, roles and commitments, though it reads seven kinds.
 - Who: leads.
 - Why it was left: proved side by side on 6 October, waiting on the screens and on Hafsah.
 - Recommendation: the screens hide the old chat when `oldContextChatIsOpen` is false, then Hafsah writes the row.

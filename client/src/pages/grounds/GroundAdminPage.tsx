@@ -41,7 +41,7 @@ import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { CheckInHeader } from '@/components/gw/ui/CheckInHeader'
 import { Page } from '@/components/gw/ui/Page'
 import { billingApi } from '@/api/billing'
-import { CheckInPeopleAndSetup } from './CheckInPeopleAndSetup'
+import { CheckInPeopleAndSetup, sessionsDoneBy } from './CheckInPeopleAndSetup'
 import { whoIsInRound } from '@/lib/who-is-in-this-round'
 import { whoWasNotInvited, rememberWhoWasNotInvited, thatIsDealtWith, whatToSayAboutThem, type NotInvited } from './who-was-not-invited'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
@@ -215,6 +215,14 @@ export function GroundAdminPage() {
      day - see WhichDaysTheyWork. This is the only place the rhythm can be changed after creation,
      and it carried no way to say "not at the weekend". */
   const [workingDaysDraft, setWorkingDaysDraft] = useState<number[]>([])
+  /*
+   * REQUEST 194 (8 October 2026): THE DAY CHECK-INS LAND ON, EDITABLE FROM "PEOPLE AND SETUP". The
+   * same `cadenceAnchorDay` setup already offers while a check-in is being created
+   * (TheSetup.tsx) - 0 to 6 for a weekly or fortnightly rhythm, 1 to 31 for a monthly one, `null` to
+   * clear it - now editable afterwards too, through `PATCH /grounds/:id`, by whoever `mayChangeSetup`
+   * says may change this check-in's setup.
+   */
+  const [anchorDayDraft, setAnchorDayDraft] = useState<number | null>(null)
   const [groundScenario, setGroundScenario] = useState('')
   const [showReleaseConfirm, setShowReleaseConfirm] = useState(false)
   const [newParticipantEmail, setNewParticipantEmail] = useState('')
@@ -1017,6 +1025,7 @@ export function GroundAdminPage() {
     /* Seeded like the rest: an empty picker on a check-in that already skips weekends would offer
        to put it back on Sundays by pressing save. */
     if (Array.isArray(ground?.workingDays)) setWorkingDaysDraft(ground.workingDays as number[])
+    setAnchorDayDraft(((ground as any)?.cadenceAnchorDay ?? null) as number | null)
     if (ground?.scenario) setGroundScenario(prev => prev || ground.scenario)
     /* Seeded from the record for the same reason as the two above: an empty date control on a
        check-in that HAS a start date would offer to clear it by pressing save. */
@@ -1036,6 +1045,7 @@ export function GroundAdminPage() {
     timelineDaysDraft !== ground.timelineDays
     || cadenceDraft !== ground.cadence
     || !sameDays(workingDaysDraft, (ground as { workingDays?: number[] }).workingDays)
+    || anchorDayDraft !== (((ground as any)?.cadenceAnchorDay ?? null) as number | null)
   )
 
   // Was the bare words "Ground not found." with nothing to press. W8-65.
@@ -1168,15 +1178,11 @@ export function GroundAdminPage() {
    * `yourSessionsSentence` also clamps to the planned total so this can never again read more done
    * than the check-in has.
    */
-  const mySessionsDone = new Set(
-    ((ground?.checkIns ?? []) as any[])
-      .filter((c) => c.status === 'COMPLETED' && (ground?.participants ?? []).some((p: any) => p.id === c.participantId && p.userId === user?.id))
-      .map((c) => c.sessionNumber ?? 0),
-  ).size
+  const mySessionsDone = sessionsDoneBy((ground?.checkIns ?? []) as any[], (ground?.participants ?? []) as any[], user?.id)
   /* One dot per session of mine. The same read the party's page makes - the two views of a check-in
      have to move together, which is what the-two-views-are-a-pair protects. */
   const mySessionDots = ((ground?.checkIns ?? []) as any[])
-    .filter((c) => (ground?.participants ?? []).some((p: any) => p.id === c.participantId && p.userId === user?.id))
+    .filter((c) => !c.isSetup && (ground?.participants ?? []).some((p: any) => p.id === c.participantId && p.userId === user?.id))
     .sort((a, b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0))
     .map((c) => ({
       sessionNumber: c.sessionNumber ?? 0,
@@ -2812,6 +2818,7 @@ export function GroundAdminPage() {
             timelineDaysDraft={timelineDaysDraft} setTimelineDaysDraft={setTimelineDaysDraft}
             cadenceDraft={cadenceDraft} setCadenceDraft={setCadenceDraft}
             workingDaysDraft={workingDaysDraft} setWorkingDaysDraft={setWorkingDaysDraft}
+            anchorDayDraft={anchorDayDraft} setAnchorDayDraft={setAnchorDayDraft}
             theTimeframeChanged={theTimeframeChanged}
             saveSetup={saveSetup}
             groundLabel={groundLabel} setGroundLabel={setGroundLabel}

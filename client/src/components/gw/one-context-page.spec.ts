@@ -110,6 +110,6 @@ describe('the way in is on the page it points at', () => {
     // hasChat is true exactly where ContextChat is rendered: the lead, with context on.
     /* `isTheLead`, not `isLead`: the conversation is the lead's own, and an admin reads the page. */
     expect(CONTEXT).toMatch(/onChangeInChat=\{isTheLead && contextEnabled \?/)
-    expect(CONTEXT).toMatch(/\{contextEnabled && isTheLead && <ContextChat/)
+    expect(CONTEXT).toMatch(/\{contextEnabled && isTheLead && oldChatIsOpen && <ContextChat/)
   })
 })

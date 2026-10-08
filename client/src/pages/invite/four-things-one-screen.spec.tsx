@@ -69,7 +69,7 @@ describe('the invitation a participant reads', () => {
       'Who sees your answers',
       'You see your own report straight away. Wairimu shares a team report',
       'Answer today’s check-in now',
-      'About two minutes. You make your account afterwards.',
+      'About two minutes. You choose how you sign in afterwards.',
       'What happens to what you write',
     ].map(t => text.replace(/\s+/g, ' ').indexOf(t))
     expect(order.every(i => i > -1)).toBe(true)
@@ -203,29 +203,29 @@ describe('what the lead wrote about the person is not on their invitation (U.6 r
 
 
 describe('a check-in that opens later (U.6 review)', () => {
-  /* Read live: "Answer today’s check-in now / About two minutes. You make your account afterwards."
+  /* Read live: "Answer today’s check-in now / About two minutes. You choose how you sign in afterwards."
      on an invitation to a check-in that opens on 5 October. */
   it('says when the first check-in opens, and offers nothing to answer now', async () => {
     open({ ...PREVIEW, opensOn: '2099-10-05T00:00:00.000Z' })
     expect(await screen.findByText('Your first check-in opens on Monday 5 October.')).toBeTruthy()
     const text = document.body.textContent ?? ''
     expect(text).not.toContain('Answer today’s check-in now')
-    expect(text).not.toContain('You make your account afterwards')
+    expect(text).not.toContain('You choose how you sign in afterwards')
   })
 
   it('and one that is open offers to answer now, as before', async () => {
     open({ ...PREVIEW, opensOn: null })
     expect(await screen.findByText('Answer today’s check-in now')).toBeTruthy()
-    expect(document.body.textContent).toContain('About two minutes. You make your account afterwards.')
+    expect(document.body.textContent).toContain('About two minutes. You choose how you sign in afterwards.')
   })
 })
 
-describe('"You make your account afterwards" (U.6 review)', () => {
+describe('"You choose how you sign in afterwards" (U.6 review)', () => {
   it('is not said to someone already signed in', async () => {
     authState.isAuthenticated = true
     open({ ...PREVIEW, opensOn: null })
     expect(await screen.findByText('About two minutes.')).toBeTruthy()
-    expect(document.body.textContent).not.toContain('You make your account afterwards')
+    expect(document.body.textContent).not.toContain('You choose how you sign in afterwards')
     authState.isAuthenticated = false
   })
 })
