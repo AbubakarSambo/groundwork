@@ -179,7 +179,7 @@ export class AlignmentService {
         data: { state: 'explained', accountedForBy: said.accountedForBy, accountedAt: new Date(), ruledOut },
         select: { id: true, state: true },
       });
-      return { ...updated, ask: null, said: 'Noted, and it stays on the record with your account of it.' };
+      return { ...updated, ask: null, said: 'Noted, and it stays on the record with what you said.' };
     }
 
     const asFigure = {

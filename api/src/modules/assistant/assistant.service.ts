@@ -2634,7 +2634,7 @@ export class AssistantService {
     if (!me?.linkedUserId) {
       return rules(
         'start_a_check_in',
-        text('I could not open it in your name - your account is not linked yet, and a check-in has to belong to somebody. Nothing was sent.'),
+        text('I could not open it in your name, because your sign-in is not linked to a person here yet, and a check-in has to belong to somebody. Nothing was sent.'),
       );
     }
 

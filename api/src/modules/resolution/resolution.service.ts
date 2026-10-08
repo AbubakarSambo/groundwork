@@ -108,7 +108,7 @@ export class ResolutionService {
      */
     if (!closingNeedsEveryone(ground.scenario) && participant.partyType !== PartyType.INITIATOR) {
       throw new ForbiddenException(
-        'In this check-in, the lead decides how it ends. Your account and your corrections stand on the record beside theirs.',
+        'In this check-in, the lead decides how it ends. What you said and your corrections stand on the record beside theirs.',
       );
     }
 
@@ -235,7 +235,7 @@ export class ResolutionService {
      */
     if (!closingNeedsEveryone(ground.scenario) && participant.partyType !== PartyType.INITIATOR) {
       throw new ForbiddenException(
-        'In this check-in, the lead decides how it ends. Your account and your corrections stand on the record beside theirs.',
+        'In this check-in, the lead decides how it ends. What you said and your corrections stand on the record beside theirs.',
       );
     }
 
