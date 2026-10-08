@@ -164,7 +164,14 @@ export function OrgMembersPage() {
               <EdgeRow
                 key={person.id}
                 kind="concern"
-                title={`${person.email} is on ${person.forCheckIn ?? 'a check-in'} but has no seat`}
+                /*
+                 * NIGHT NOTE ITEM 3 (B-129): `saying` IS THE SERVER'S OWN SENTENCE, TRUE FOR EITHER
+                 * KIND. Built here, "... is on a check-in but has no seat" was wrong for a bare
+                 * invitation (`kind: 'INVITATION'`) kept by a paste - never added to any check-in at
+                 * all, so `forCheckIn` is null for them. `saying` is read first; the old sentence
+                 * stays only as the fallback for an older server that does not send it.
+                 */
+                title={person.saying ?? `${person.name?.trim() || person.email} is on ${person.forCheckIn ?? 'a check-in'} but has no seat`}
                 detail={(
                   <>
                     <p className="gwui-panel-text-muted">

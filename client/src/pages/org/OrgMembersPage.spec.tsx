@@ -535,6 +535,34 @@ describe('the people with no seat say who added them', () => {
   })
 })
 
+/*
+ * RESTORED (8 October, night note item 3, B-129). A paste can now keep people with no seat as a
+ * bare invitation (`kind: 'INVITATION'`), never added to any check-in - `forCheckIn` is null for
+ * them. The row used to build its own title, "<email> is on a check-in but has no seat", which was
+ * false for this kind: they were never added to one. The server's own `saying` is read instead, and
+ * it is true for either kind.
+ */
+describe('a bare invitation kept with no seat (not added to any check-in)', () => {
+  it('reads the server\'s own sentence, never "is on a check-in but has no seat"', async () => {
+    open()
+    ;(apiClient.get as any).mockImplementation(async (url: string) => {
+      if (url.startsWith('/users?')) return { data: { data: people, meta: { total: people.length } } }
+      if (url === '/users/organization/owner') return { data: { ownerUserId: 'amani' } }
+      if (url === '/billing/status') return { data: { people: { count: 27, cap: 100 }, subscription: { plan: 'GROWTH' } } }
+      return { data: {} }
+    })
+    vi.spyOn(authApi, 'waitingForASeat').mockResolvedValue([{
+      id: 'invite:p07@fieldnote.test', kind: 'INVITATION', email: 'p07@fieldnote.test', name: 'Дмитрий Иванов',
+      addedBy: 'Wairimu Kamau', forCheckIn: null, waitingSince: new Date().toISOString(),
+      saying: 'Дмитрий Иванов has no seat on your plan, so the invitation is kept and will go out when there is room.',
+    }] as any)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(<QueryClientProvider client={qc}><MemoryRouter><OrgMembersPage /></MemoryRouter></QueryClientProvider>)
+    expect(await screen.findByText('Дмитрий Иванов has no seat on your plan, so the invitation is kept and will go out when there is room.')).toBeTruthy()
+    expect(screen.queryByText(/is on a check-in but has no seat/)).toBeNull()
+  })
+})
+
 describe('somebody who left (U.4 fourth review)', () => {
   it('is not listed, and is in no filter\'s count', async () => {
     const pendo = { id: 'pendo', email: 'pendo@baridi.co.ke', firstName: 'Pendo', lastName: 'Mwita', role: 'MEMBER', isActive: false, isEmailVerified: true, state: 'signed in', checkInsOn: 0, checkInsAnswered: 0, level: null, team: null, reportsTo: null, checkIns: [] }
