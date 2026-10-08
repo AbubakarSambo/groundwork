@@ -2135,8 +2135,14 @@ export function EntryChatPage() {
     },
     onError: (_err, msgs) => {
       setLoading(false)
+      /* B-052: `msgs` is `[...history, userTurn]`, so the turn that failed stays on screen as a
+         sent message rather than vanishing - and `send()` already called `persistCheckin` with it
+         before this mutation ran, so it survives a reload too. The toast used to say only "Message
+         failed. Try again.", a clipped label that never told the reader their words were safe (the
+         prototype's own "Not saved" state, states.txt, always pairs the failure with that). Said
+         plainly and truthfully here, the same way ChatPage's own failed-send toast already does. */
       setHistory(msgs)
-      toast.error('Message failed. Try again.')
+      toast.error('That did not send. What you wrote is still here, try again.')
     },
   })
 
