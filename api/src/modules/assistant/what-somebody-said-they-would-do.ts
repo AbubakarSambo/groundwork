@@ -1,3 +1,4 @@
+import { aPromiseInsideASentence } from '../conversation/a-promise-inside-a-sentence';
 /**
  * WHEN A COMMITMENT HAS SLIPPED, AND WHEN IT IS ANYBODY'S BUSINESS TO SAY SO.
  *
@@ -83,6 +84,5 @@ export function slippedOpening(c: CommitmentLike): { line: string; source: strin
 }
 
 function lowerFirst(s: string): string {
-  const t = s.trim().replace(/^I (?:will|'ll)\s+/i, '');
-  return t.charAt(0).toLowerCase() + t.slice(1);
+  return aPromiseInsideASentence(s);
 }

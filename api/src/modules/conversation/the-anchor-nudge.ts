@@ -1,6 +1,7 @@
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { aGroundIsTheAnchors } from './the-anchor-weekly-check-in';
 import { inOurVoice } from '../reports/what-the-record-shows-over-time';
+import { aPromiseInsideASentence } from './a-promise-inside-a-sentence';
 
 /**
  * THE ANCHOR'S NUDGE (anchor piece 30; section 26; decision 105 item 3).
@@ -20,7 +21,8 @@ export const IT_HAS_BEEN_A_FEW_DAYS = "It's been a few days since we spoke. What
 
 /** The line, from their own open promise said in "you", or the plain one where there is none. */
 export function theAnchorNudgeLine(theirOwnPromise: string | null | undefined): string {
-  const what = String(theirOwnPromise ?? '').trim().replace(/[.!?]+$/, '');
+  /* However the words reached here, they are put into the sentence the same way: without their own "You will", and in lower case. */
+  const what = aPromiseInsideASentence(String(theirOwnPromise ?? '').trim().replace(/[.!?]+$/, ''));
   return what ? `You mentioned you would ${what}. I'd love to hear how it went.` : IT_HAS_BEEN_A_FEW_DAYS;
 }
 
