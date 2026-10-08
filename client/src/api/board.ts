@@ -941,7 +941,15 @@ export const boardApi = {
     apiClient
       .get<BoardResponse>(`/grounds/${groundId}/board`, {
         params: coverage ? { coverage } : undefined,
+        /* B-110 (GW-PRI-04): the page already says GroundGone's one sentence for both a 404 and a
+           403 (see BoardPage.tsx). Without skipForbiddenToast, the client's own axios layer raised
+           a second, DIFFERENT message on top of it for a 403 only - "That one is not yours to
+           open... whoever runs this check-in can let you in" - which tells a stranger holding a
+           stale link exactly what GroundGone is written not to: that something real sits behind
+           it. skipNotFoundToast already did the equivalent for 404; this closes the same door for
+           403. */
         skipNotFoundToast: true,
+        skipForbiddenToast: true,
       } as any)
       .then((r) => r.data),
 

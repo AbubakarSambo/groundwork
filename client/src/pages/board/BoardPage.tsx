@@ -1207,8 +1207,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     const why = whyYouCannotSeeThis(what)
     /* A 404 is the prototype's own "a check-in that's gone" (F4-small-states/c-gone-board): the
        board's address, with the sidebar, and the same words whether the check-in was ended,
-       removed, or was never this reader's (GW-PRI-04: the server answers all of them alike). */
-    if (what.status === 404) return <GroundGone />
+       removed, or was never this reader's (GW-PRI-04: the server answers all of them alike).
+       B-110: a 403 must read identically - GW-PRI-04 exists precisely so a stranger holding a
+       stale link cannot tell "this never existed" from "this exists, you're just not on it"
+       apart. This branch used to fall through to `why.say`'s 403 sentence instead, which does
+       exactly that ("This record belongs to a check-in you are not part of."). Same screen,
+       both codes. */
+    if (what.status === 404 || what.status === 403) return <GroundGone />
     /* The prototype's connection words only when it was the connection: no answer came back at all.
        A server error keeps its own true sentence, with Try again still offered (U.20 review). */
     const theConnection = what.status === undefined

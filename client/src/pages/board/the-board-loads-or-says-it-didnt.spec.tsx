@@ -53,11 +53,12 @@ describe('when the board fails to load', () => {
     expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy()
   })
 
-  it('a check-in that is not this reader’s keeps its own true sentence, not the connection wording', async () => {
+  it('a 403 reads exactly like a 404 - B-110, GW-PRI-04: a stranger with a stale link must not be able to tell "never existed" from "exists, not yours"', async () => {
     ;(boardApi.get as any).mockRejectedValue(Object.assign(new Error('forbidden'), { response: { status: 403 } }))
-    const { container } = renderBoard()
-    await waitFor(() => expect(container.textContent).toContain('This board could not be loaded.'))
-    expect(screen.getByText('This record belongs to a check-in you are not part of.')).toBeTruthy()
+    renderBoard()
+    expect(await screen.findByRole('heading', { name: 'This check-in isn’t available any more' })).toBeTruthy()
+    expect(screen.getByText(/Whoever ran it ended it or removed it\. What you wrote is kept in your own history\./)).toBeTruthy()
+    expect(screen.queryByText('This record belongs to a check-in you are not part of.')).toBeNull()
     expect(screen.queryByText(/usually the connection/)).toBeNull()
     expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
   })

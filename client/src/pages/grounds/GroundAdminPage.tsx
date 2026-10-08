@@ -278,11 +278,15 @@ export function GroundAdminPage() {
   })
 
   /*
-   * A check-in that is genuinely gone answers 404. Anything else - a dropped connection, a token
-   * being refreshed, a cold server - is a failure to load, and telling somebody their check-in does
-   * not exist because their wifi blinked is the wrong sentence at the worst moment.
+   * A check-in that is genuinely gone answers 404 - OR 403: B-110 (GW-PRI-04). The two have to
+   * read the same, because the only other true sentence for a 403 here ("you are not part of
+   * this check-in") tells a stranger holding a stale link that something real sits behind it,
+   * which is exactly what the 404 wording is written not to say. Anything else - a dropped
+   * connection, a token being refreshed, a cold server - is a failure to load, and telling
+   * somebody their check-in does not exist because their wifi blinked is the wrong sentence at
+   * the worst moment.
    */
-  const definitelyGone = isError && (error as any)?.response?.status === 404
+  const definitelyGone = isError && [404, 403].includes((error as any)?.response?.status)
 
   /* THE CHECK-IN'S LIVE REPORT QUERY WENT WITH THE BODY THAT RENDERED IT. Each session's report
      is fetched by the page that shows it, from `/report/session/:n`, which is the only call that
