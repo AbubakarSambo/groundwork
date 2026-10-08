@@ -42,6 +42,7 @@ export function TheEndCard({
   leadName,
   nextOpens,
   othersCanSeeWhatYouSay,
+  whoReadsIt,
   finishing,
   whileFinishing,
   onFinish,
@@ -60,6 +61,12 @@ export function TheEndCard({
    * not loaded yet, in which case neither sentence is shown rather than guessing.
    */
   othersCanSeeWhatYouSay?: boolean
+  /**
+   * The first name of the person who runs this check-in, when that is not the reader (release check, 8 October 2026).
+   * Where nobody else answers, the reader is still not alone: the lead reads what they said, word for word. On the
+   * anchor, where the lead never answers, Juma was told "what you said today stays yours alone" while Amina read it.
+   */
+  whoReadsIt?: string | null
   finishing: boolean
   /** What to show while finishing, which takes about half a minute. */
   whileFinishing?: React.ReactNode
@@ -125,7 +132,9 @@ export function TheEndCard({
         <p className="gwui-ci-endcard-body">
           {othersCanSeeWhatYouSay
             ? 'Your team will see what you said today, and a short summary of what moved.'
-            : 'Nobody else answers this check-in, so what you said today stays yours alone.'}
+            : whoReadsIt
+              ? `Nobody else answers this check-in, but ${whoReadsIt} runs it and reads what you said today.`
+              : 'Nobody else answers this check-in, so what you said today stays yours alone.'}
         </p>
       )}
 

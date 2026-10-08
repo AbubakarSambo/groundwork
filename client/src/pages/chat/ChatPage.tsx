@@ -31,7 +31,7 @@ import type { TheIdeaOfferInTheCheckIn, TheRequestOfferInTheCheckIn, TheRequestT
 import { TheEndCard } from '@/components/gw/checkin/TheEndCard'
 import { Note } from '@/components/gw/ui/NoteEmpty'
 import { TheDonePage, type WhatChanged } from '@/components/gw/checkin/TheDonePage'
-import { whenTheNextOneOpens, whoElseAnswers } from '@/lib/what-the-end-of-a-check-in-can-say'
+import { whenTheNextOneOpens, whoElseAnswers, whoRunsThis } from '@/lib/what-the-end-of-a-check-in-can-say'
 import { firstWordOfAName } from '@/lib/the-first-word-of-a-name'
 import { toast } from 'sonner'
 import { useCheckInFocusStore } from '@/stores/check-in-focus'
@@ -1625,6 +1625,7 @@ export function ChatPage() {
               leadName={whoElseAnswers(ground.data as any)}
               nextOpens={whenTheNextOneOpens(myStatus.data?.checkIns, checkInId)}
               othersCanSeeWhatYouSay={(ground.data as any)?.aTeamReportComes}
+              whoReadsIt={(ground.data as any)?.viewerIsInitiator ? null : whoRunsThis(ground.data as any)}
               finishing={complete.isPending}
               /*
                 HALF A MINUTE OF "SAVING…" READS AS A HANG. W8-16. Completing runs two model calls
