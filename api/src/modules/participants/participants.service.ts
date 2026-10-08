@@ -141,7 +141,7 @@ export class ParticipantsService {
       nameGiven: (participant as any).nameGiven ?? null,
       yourNumberIsSeenBy,
       /* The anchor scenario's own invitation, only for a check-in started from the anchor link and only while the switch is on (request 149). Nothing else about this answer changes. */
-      ...((ground as any).startedFrom === STARTED_FROM_THE_ANCHOR && (await theAnchorScenarioIsOn(this.prisma))
+      ...(((ground as any).startedFrom === STARTED_FROM_THE_ANCHOR || (ground as any).scenario === THE_ANCHOR_SCENARIO_KEY) && (await theAnchorScenarioIsOn(this.prisma))
         ? { anchorInvitation: theAnchorInvitation(leadFirst) }
         : {}),
       /* The same words, as the ordinary invitation read of a scenario that has its own (decision 114): drawn like any scenario's, no anchor branch. Absent for the rest. */
