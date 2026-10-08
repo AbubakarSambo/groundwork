@@ -126,6 +126,16 @@ describe('the anchor reads what the person just said, and follows it up before i
     expect(THE_BASELINE_READ_TOOL.input_schema.required).not.toContain('followUp');
   });
 
+  it('does not hand the same subject over twice: the read is told what it has already handed over', async () => {
+    const w = worldReading({ turns: [{ role: 'AI', content: 'What are you working on right now?' }], answer: KOFI }, { learned: { workingOn: true }, follow: { followUp: { kind: 'duty', about: 'asking shops for payment' } } });
+    await w.service.sendMessage('ci2', 'user-1', KOFI);
+    await w.service.sendMessage('ci2', 'user-1', 'I only deliver the crates.');
+    const systems = w.extract.mock.calls.filter((c: any[]) => c[2]?.name === 'what_the_person_has_told_us').map((c: any[]) => c[0] as string);
+    expect(systems[0]).not.toContain('already asked about these');
+    expect(systems[1]).toContain('Groundwork has already asked about these');
+    expect(systems[1]).toContain('asking shops for payment');
+  });
+
   it('keeps only a known kind and a short plain subject from the read', () => {
     expect(theFollowUpFrom({ followUp: { kind: 'blocker', about: ' two shops  owe us ' } })).toEqual({ kind: 'blocker', about: 'two shops owe us' });
     expect(theFollowUpFrom({ followUp: { kind: 'opinion', about: 'x' } })).toBeNull();

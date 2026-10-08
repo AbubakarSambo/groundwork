@@ -82,6 +82,17 @@ export function theFollowUpFrom(read: unknown): WhatToFollowUp | null {
   return { kind: f.kind, about };
 }
 
+/**
+ * WHAT HAS ALREADY BEEN FOLLOWED UP IS NOT FOLLOWED UP AGAIN (found on the test bed: a duty Juma named was asked about on three turns running).
+ * The read is told, in its own words, which subjects it has already handed over, and is to leave them out.
+ */
+export function withWhatWasAlreadyFollowedUp(system: string, done: string[]): string {
+  const list = done.filter(Boolean);
+  return list.length
+    ? `${system}\n\nGroundwork has already asked about these, so leave them out of followUp unless the latest answer names something clearly different: ${list.join('; ')}.`
+    : system;
+}
+
 export const everythingIsLearned = (l: WhatIsLearned) => THE_NINE.every((n) => l[n.key]);
 
 /**

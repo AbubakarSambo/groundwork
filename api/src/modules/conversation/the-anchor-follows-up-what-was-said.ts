@@ -8,7 +8,7 @@
  *
  * Used only for a person on the lead's team in an anchor check-in, from their second session. Every other check-in is unchanged.
  */
-import { theFollowUpFrom, whatTheyJustSaidComesFirst, type WhatToFollowUp } from './the-baseline-so-far';
+import { theFollowUpFrom, whatTheyJustSaidComesFirst, withWhatWasAlreadyFollowedUp, type WhatToFollowUp } from './the-baseline-so-far';
 
 export const THE_WEEKLY_FOLLOW_UP_SYSTEM = `You are reading a conversation between Groundwork and a person on a lead's team. Look only at the person's LATEST answer.
 
@@ -59,13 +59,14 @@ export async function whatToFollowUpInTheWeekly(
   anthropic: { extract: (system: string, history: any[], tool: any, opts?: any) => Promise<any> } | undefined,
   turns: { role: 'AI' | 'PERSON'; content: string }[],
   warn?: (m: string) => void,
+  alreadyFollowedUp: string[] = [],
 ): Promise<WhatToFollowUp | null> {
   if (!anthropic?.extract || !turns.some((t) => t.role === 'PERSON' && t.content.trim())) return null;
   const history = turns.map((t) => ({ role: t.role === 'AI' ? 'assistant' as const : 'user' as const, content: t.content }));
   while (history.length && history[history.length - 1].role === 'assistant') history.pop();
   if (!history.length) return null;
   try {
-    return theFollowUpFrom(await anthropic.extract(THE_WEEKLY_FOLLOW_UP_SYSTEM, history, THE_WEEKLY_FOLLOW_UP_TOOL, { fast: true }));
+    return theFollowUpFrom(await anthropic.extract(withWhatWasAlreadyFollowedUp(THE_WEEKLY_FOLLOW_UP_SYSTEM, alreadyFollowedUp), history, THE_WEEKLY_FOLLOW_UP_TOOL, { fast: true }));
   } catch (err: any) {
     warn?.(`The weekly check-in could not read what to follow up: ${err?.message}`);
     return null;

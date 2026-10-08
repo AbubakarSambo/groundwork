@@ -81,7 +81,7 @@ export const DECLINED_TO_TAKE_PART = 'declined';
 import { mirrorCommitment } from '../assistant/a-commitment-carries-past-the-ground';
 import { STARTED_FROM_THE_ANCHOR, aCheckInStartedFromTheAnchor, theAnchorMarkOf, theAnchorParticipantGuidance, whatTheyToldYouBefore, withoutAnAnnouncedAngle } from './the-anchor-weekly-check-in';
 import { theAnchorBaselineGuidance } from './the-anchor-baseline';
-import { withoutAnExampleAnswer, THE_BASELINE_CLOSING_REMINDER, THE_BASELINE_FINISH_REMINDER, THE_BASELINE_FOLLOW_UP_REMINDER, THE_BASELINE_READ_SYSTEM, THE_BASELINE_READ_TOOL, everythingIsLearned, whatIsLearnedFrom, theFollowUpFrom, whatTheBaselineHasLearned, whatTheyJustSaidComesFirst, type WhatIsLearned, type WhatToFollowUp } from './the-baseline-so-far';
+import { withoutAnExampleAnswer, THE_BASELINE_CLOSING_REMINDER, THE_BASELINE_FINISH_REMINDER, THE_BASELINE_FOLLOW_UP_REMINDER, THE_BASELINE_READ_SYSTEM, THE_BASELINE_READ_TOOL, everythingIsLearned, whatIsLearnedFrom, theFollowUpFrom, whatTheBaselineHasLearned, whatTheyJustSaidComesFirst, withWhatWasAlreadyFollowedUp, type WhatIsLearned, type WhatToFollowUp } from './the-baseline-so-far';
 import { THE_ANCHOR_GIVES_IT_PASSING_WEIGHT, THE_WEEKLY_FINISH_REMINDER, THE_WEEKLY_FOLLOW_UP_REMINDER, whatToFollowUpInTheWeekly } from './the-anchor-follows-up-what-was-said';
 import { whatTheAnswerAgreedTo, hasAlreadyOffered, whatHappenedToTheOffer, weSayAboutTheOffer, whatIsStillOwedToThem, withoutTheSecondTellingOfIt, isAnOfferToWriteItDown, whatTheyJustSaidMayBeTheirOwnStep, YOU_HAVE_ALREADY_OFFERED } from './giving-the-person-agency';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
@@ -5597,13 +5597,13 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * WHICH OF THE NINE THE PERSON HAS TOLD US, from their own words, by one fast read. Nothing when there is nothing to read yet or the read fails:
    * the baseline then runs on its own words, as before.
    */
-  private async whatTheBaselineHasLearnedSoFar(turns: { role: 'AI' | 'PERSON'; content: string }[]): Promise<{ learned: WhatIsLearned; followUp: WhatToFollowUp | null } | null> {
+  private async whatTheBaselineHasLearnedSoFar(checkInId: string, turns: { role: 'AI' | 'PERSON'; content: string }[]): Promise<{ learned: WhatIsLearned; followUp: WhatToFollowUp | null } | null> {
     if (!turns.some((t) => t.role === 'PERSON' && t.content.trim())) return null;
     const history = turns.map((t) => ({ role: t.role === 'AI' ? 'assistant' as const : 'user' as const, content: t.content }));
     while (history.length && history[history.length - 1].role === 'assistant') history.pop();
     if (!history.length) return null;
     try {
-      const read = await this.anthropic.extract<Record<string, any>>(THE_BASELINE_READ_SYSTEM, history, THE_BASELINE_READ_TOOL, { fast: true });
+      const read = await this.anthropic.extract<Record<string, any>>(withWhatWasAlreadyFollowedUp(THE_BASELINE_READ_SYSTEM, this.followedUp(checkInId)), history, THE_BASELINE_READ_TOOL, { fast: true });
       return { learned: whatIsLearnedFrom(read), followUp: theFollowUpFrom(read) };
     } catch (err: any) {
       this.logger.warn(`The baseline could not count what it has learned: ${err?.message}`);
@@ -5669,14 +5669,14 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
 ${told}` : '';
       /* What has been learned so far, counted from the person's own words, and the closing once all nine are. */
-      const read = await this.whatTheBaselineHasLearnedSoFar(turnsThisSession);
+      const read = await this.whatTheBaselineHasLearnedSoFar(checkIn.id, turnsThisSession);
       const learned = read?.learned ?? null;
       const closes = !!learned && everythingIsLearned(learned);
       /* "Finish" closes it as it closes any other check-in: once there are enough answers. Below that, the plain sentence was already given before this point. */
       const finishes = askedToFinish([latestMessage]) && !tooFewAnswersToFinish(this.answersIn(turnsThisSession), false, ground?.scenario ?? null);
       /* What they just said comes first, unless it is the close. */
       const followUp = closes || finishes ? null : read?.followUp ?? null;
-      if (followUp) this.logger.log(`Check-in ${checkIn.id}: they just named ${followUp.kind === 'duty' ? 'a duty' : `a ${followUp.kind}`} (${followUp.about}); it is asked about first.`);
+      if (followUp) { this.logger.log(`Check-in ${checkIn.id}: they just named ${followUp.kind === 'duty' ? 'a duty' : `a ${followUp.kind}`} (${followUp.about}); it is asked about first.`); this.followedUp(checkIn.id, followUp.about); }
       return {
         text: baseline.text,
         block: [aboutIt, learned ? whatTheBaselineHasLearned(learned, followUp) : (followUp ? whatTheyJustSaidComesFirst(followUp) : '')].filter(Boolean).join('\n\n'),
@@ -5735,8 +5735,8 @@ ${told}` : '';
       return { text: guidance.text, block, last: THE_WEEKLY_FINISH_REMINDER, promptVersionId: guidance.promptVersionId, agreed, closing: true };
     }
     /* What they just said comes first, and the lead's fields wait behind it. Not while an offer is being answered. */
-    const followUp = agreed ? null : await whatToFollowUpInTheWeekly(this.anthropic as any, turnsThisSession, (m) => this.logger.warn(m));
-    if (followUp) this.logger.log(`Check-in ${checkIn.id}: they just named ${followUp.kind === 'duty' ? 'a duty' : `a ${followUp.kind}`} (${followUp.about}); it is asked about first.`);
+    const followUp = agreed ? null : await whatToFollowUpInTheWeekly(this.anthropic as any, turnsThisSession, (m) => this.logger.warn(m), this.followedUp(checkIn.id));
+    if (followUp) { this.logger.log(`Check-in ${checkIn.id}: they just named ${followUp.kind === 'duty' ? 'a duty' : `a ${followUp.kind}`} (${followUp.about}); it is asked about first.`); this.followedUp(checkIn.id, followUp.about); }
     return {
       text: guidance.text,
       block: [block, followUp ? whatTheyJustSaidComesFirst(followUp) : ''].filter(Boolean).join('\n\n'),
@@ -5752,6 +5752,15 @@ ${told}` : '';
    */
   private theTurnWasToldToClose(checkInId: string): boolean {
     return !!this.anchorWeekForThisTurn.get(checkInId)?.closing;
+  }
+
+  /** The subjects already followed up in this check-in, kept for the life of the process (a restart forgets them, which costs at most one repeat). */
+  private _followedUp?: Map<string, string[]>;
+  private followedUp(checkInId: string, add?: string): string[] {
+    const m = (this._followedUp ??= new Map());
+    const list = m.get(checkInId) ?? [];
+    if (add && !list.includes(add)) { list.push(add); m.set(checkInId, list.slice(-8)); }
+    return list;
   }
 
   /** How many answers the person has given in this session. */
