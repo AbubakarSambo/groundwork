@@ -467,7 +467,7 @@ export async function sendTheLeadsDailyNudges(deps: TheNudgeDoors, now: Date = n
         /* Not sent for a reason that means the phone cannot be used today: she is owed it by email instead. Held back by a rule of the day (one a day, "not now") means nothing more today. */
         if (!WHEN_THE_PHONE_CANNOT_BE_USED.test(String(result?.error ?? ''))) { tried++; continue; }
       }
-      if (!user.email || (await isAlreadyHeld(prisma, NUDGE_SENDER, user.email))) continue;
+      if (await isAlreadyHeld(prisma, NUDGE_SENDER, user.email)) continue;
       const went = await deps.email.sendTheLeadsDailyNudge(user.email, theNudgeSubject(outstanding), theNudgeParts(outstanding), user.firstName, 'See everything', link);
       if (went !== 'suppressed') tried++;
     } catch {
