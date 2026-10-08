@@ -6899,3 +6899,36 @@ The engine's part is done and pushed (anchor conversation, finish, wording). The
 **Also done tonight, on the engine side (no screen change):** the lead's board story reads the record's own count while the next report is being written, so it agrees with the active line; "What's still stuck" lists a wait once when the same person waits on the same other person for the same thing in other words; a name Groundwork makes up for an organisation ("Wanjiru's workspace") is never said as the organisation, so Ask reads "Ask Groundwork" until a real name is given, and the invitation to a team reads "Your team has added you to Groundwork." in its place; a person's promise is joined into a sentence without its own "You will" and without a capital in the middle; and a reply that already asks the person to do something is not given "What else should I know?".
 
 **Not answered tonight, and why.** Request 197 (who is over the plan, and which rows are held) needs a rule for who is held that nobody has decided, and Hafsah has to decide it. Request 198 (a route for the one-sentence difference, and the Friday letter facts on Today) and request 199 (how often and by which channel) are new routes and a product choice, and are not built. Requests 94 to 157 marked Open in the screens' copy were not read again tonight: the answers already in this file for them stand until the screens close the rows.
+
+## From the engine workspace, 8 October (late night): request 198 done, both pieces
+
+**198 (a), done. The route is `GET /grounds/:groundId/report/finding`.** It serves the one finding the first-insight mail's subject says, read from the report as the asking person is served it (`sessionReport`), so every wall that report has holds. It returns:
+
+```
+{ groundId, label, sessionNumber, finding, moreStillOpen, conversationWorthHaving }
+```
+
+- `finding` is one whole sentence, for example "Who owns the next step with the distributor is not agreed upon by the team." Where the report names a difference as a phrase, it is "The people in "Okr alignment" differ on "Individual sales targets"." It is `null` when nothing is open, when no session has been released yet (this is true for the lead too), and when a participant's picture is still withheld until they answer.
+- `moreStillOpen` is how many other differences are open. `conversationWorthHaving` is the report's own sentence for the conversation worth having, or `null`.
+- Nothing else comes with it: no position, no one's words, no "what I would do" (that is the lead's, in the mail).
+- A person with no right to the check-in (another organisation, or a member who is not in it) gets `404`, released or not. An admin who is not in the check-in reads it as they read the report. Opening it builds nothing.
+
+The client now uses it: `groundsApi.finding(id)` in `client/src/api/grounds.ts`, and `AskPage.tsx` asks "Help me with what the shared picture found about <check-in name>. <finding>" when there is one, and keeps the neutral question when there is not. That was a small edit in the screens' files, with its spec; please keep it when you merge.
+
+**The first-insight mail now links to it.** For the lead (and for a participant only when the report served to them names a finding, and only when they sign in with a password), the main link is `/chat?about=<check-in id>`, and it says "I can help you do that" for the lead and "I can help you talk it through" for a participant. The shared picture stays as a second, plain link under it that says "Read the shared picture". I kept it because the Ask page does not show the report, and a lead would otherwise lose the way to it. A person who comes in on an invite link has no Ask to go to, so their mail is the one it was.
+
+**198 (b), done. `GET /today` carries `forTheLead` for a lead, and the key is absent for everybody else.** It is built from the same functions the mail uses, so the two cannot disagree:
+
+```
+forTheLead: {
+  nobodyHasStarted: [{ groundId, label, subject, lines, linkLabel, to }],
+  whatIWouldDoThisWeek: [{ groundId, label, lines }]
+}
+```
+
+- `nobodyHasStarted` comes from `theWaitingWords` (the facts behind it are now one function, `whoIsWaitedOn`, which the first-reminder mail also reads). For example the subject is "Nobody has started "Distributor review" yet, and Groundwork is following up", with the mail's four sentences in `lines`, and `linkLabel` "See who has started" going to `to` (`/grounds/<id>`). It appears from the first reminder day until the reminders are over, only for a check-in made after the engagement messages began, and not where the lead stopped the reminders.
+- `whatIWouldDoThisWeek` comes from the Friday letter's `theRestOfTheWeekIn` over the weekly report's own "for you to do next week". `lines` is "Here is what I would do this week." and then each thing with its reason. It is only this week's report, and only for a check-in she runs.
+- A sentence that is already on Today's cards, or on the page `GET /today/outstanding` serves, is left out, so nothing is said twice. A lead with nothing to add has no `forTheLead` key at all.
+- A participant, and an admin who does not run the check-in, get no key, and the weekly report is not even opened for them.
+
+Walked on test bed copy a: Baraka (lead) read the "Nobody has started" block three days after inviting Kito and Lerato, with the subject the first-reminder mail also has (the mail itself was held that day by the one-message-a-day rule, as it should be). Kito (member) and Grace (admin not in it) got no key. For the finding, a lead and two members read the same sentence on "Okr alignment", an admin not in "Night rota" got `finding: null`, and a member not in it got `404`.
