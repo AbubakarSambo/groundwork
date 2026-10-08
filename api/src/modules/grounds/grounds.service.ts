@@ -1480,7 +1480,7 @@ export class GroundsService {
     }
     const leadAccounts = new Map<string, any>();
     if (adminLeadIds.size) {
-      const found = await (this.prisma as any).user.findMany({ where: { id: { in: [...adminLeadIds] } }, select: { id: true, isActive: true, firstName: true, lastName: true } }).catch(() => []);
+      const found = await Promise.resolve((this.prisma as any).user?.findMany?.({ where: { id: { in: [...adminLeadIds] } }, select: { id: true, isActive: true, firstName: true, lastName: true } })).catch(() => []);
       for (const l of found ?? []) leadAccounts.set(l.id, l);
     }
     const setupFor = (g: any) => {
