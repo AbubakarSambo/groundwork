@@ -300,11 +300,30 @@ export function GroundAdminPage() {
    * Yours only. Somebody else's session is theirs until the shared report releases, which is the
    * same wall the session grid keeps - and the reason this reads `userId === user?.id` rather than
    * "everybody on the check-in".
+   *
+   * B-100: A SET-UP ROW IS NOT A SESSION, HERE EITHER. `sessionsDoneBy`, `mySessionDots` and the
+   * session grid (`!c.isSetup`) all already leave the set-up conversation out, but this list fed
+   * "Your reports" straight from the raw check-ins, so a lead who only manages read "Session 1,
+   * your own" with a report to read even though "Your check-ins" on the very same page said
+   * "Nothing on record yet" and the stat tile above it said she does not check in herself. One
+   * rule, here too.
    */
   const mySessions = ((ground as any)?.checkIns ?? [])
-    .filter((c: any) => c.status === 'COMPLETED')
+    .filter((c: any) => c.status === 'COMPLETED' && !c.isSetup)
     .filter((c: any) => ((ground as any)?.participants ?? []).some((p: any) => p.id === c.participantId && p.userId === user?.id))
     .sort((a: any, b: any) => (b.sessionNumber ?? 0) - (a.sessionNumber ?? 0))
+
+  /**
+   * EVERYONE WHO ACTUALLY CHECKS IN ON THIS GROUND.
+   *
+   * B-100: A LEAD WHO ONLY MANAGES IS NOT SOMEONE WHO CHECKS IN, AND THE CHECK-IN TAB'S OWN
+   * ROSTER AND "ONCE EVERYBODY IS IN" LINE STILL COUNTED HER. "Your sessions" (B-080) already
+   * leaves her out, but the People list on the Check-ins tab still listed her own row with "Not
+   * started" and "Copy check-in link", and the total it counted against ("once all three people
+   * are in") still carried her, when only the two who answer were ever going to. The same
+   * `managingOnly` exclusion `rail-attention.ts`/`WhosInItRoster.tsx` already apply, here too.
+   */
+  const participantsWhoCheckIn = ((ground as any)?.participants ?? []).filter((p: any) => !p.managingOnly)
 
   /*
    * EVERYBODY ON THIS PAGE, NAMED ONCE (request 36). Their name, else the address the lead typed,
@@ -2024,7 +2043,7 @@ export function GroundAdminPage() {
               })()}
               <SubHeading>People</SubHeading>
               <Stack gap={10}>
-                {ground.participants.map((p: any) => {
+                {participantsWhoCheckIn.map((p: any) => {
                   const myCheckIn = ground.checkIns?.find(c => c.participantId === p.id)
                   /**
                    * EVERY SESSION THIS PERSON HAS, NOT THE FIRST ONE FOUND.
@@ -2438,7 +2457,9 @@ export function GroundAdminPage() {
               What is left is the one thing this spot can usefully do: get to the report.
             */}
             {(() => {
-              const pending = ground.participants.filter((p: any) => {
+              /* B-100: a lead who only manages is never going to answer, so she is not "pending"
+                 one either - the same `participantsWhoCheckIn` the roster above now uses. */
+              const pending = participantsWhoCheckIn.filter((p: any) => {
                 const ci = ground.checkIns?.find((c: any) => c.participantId === p.id)
                 return !ci || ci.status !== 'COMPLETED'
               })
@@ -2460,8 +2481,8 @@ export function GroundAdminPage() {
                * (the lead can view a check-in that is not her own) - and with more than one, the
                * count is said in words, the way every other small number on this page already is.
                */
-              const total = ground.participants.length
-              const theOnlyParticipant = total === 1 ? ground.participants[0] : null
+              const total = participantsWhoCheckIn.length
+              const theOnlyParticipant = total === 1 ? participantsWhoCheckIn[0] : null
               const onceEverybodyIsIn = total === 1
                 ? (theOnlyParticipant?.userId === user?.id ? 'you have checked in' : 'they are in')
                 : `all ${numberUpToTenInWords(total)} people are in`
