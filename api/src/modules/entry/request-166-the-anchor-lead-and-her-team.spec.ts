@@ -200,9 +200,9 @@ describe('the situation the saved check-in keeps', () => {
 });
 
 describe('the invitation a person on the team reads', () => {
-  function anEmail(startedFrom: string | null, switchOn = true) {
+  function anEmail(startedFrom: string | null, switchOn = true, scenario = 'HELP_TEAM_UNDERSTAND') {
     const prisma: any = {
-      ground: { findUnique: jest.fn(async () => ({ startedFrom, scenario: 'HELP_TEAM_UNDERSTAND', peersVisibleToEachOther: null, organization: { name: 'Sokoni Fresh' }, organizationId: 'org-1', overWhatsApp: null })) },
+      ground: { findUnique: jest.fn(async () => ({ startedFrom, scenario, peersVisibleToEachOther: null, organization: { name: 'Sokoni Fresh' }, organizationId: 'org-1', overWhatsApp: null })) },
       groundParticipant: { findUnique: jest.fn(async () => null) },
       platformSetting: { findUnique: jest.fn(async () => (switchOn ? { value: { on: true } } : { value: { on: false } })) },
     };
@@ -241,11 +241,18 @@ describe('the invitation a person on the team reads', () => {
   });
 
   it('is the ordinary invitation for any other check-in, and for an anchor one while the switch is off', async () => {
-    for (const [from, on] of [[null, true], ['anchor', false]] as const) {
-      const { svc, sent } = anEmail(from, on);
-      await svc.sendTheInviteThisGroundSends(theCheckIn, 'amani@sokoni.test', 'Rukia', 'tok', undefined, { kind: 'PARTICIPANT_INVITE', groundId: 'g1' });
+    /* Changed 8 October (decision 114): the first case used the anchor's own scenario as its "other check-in" with no startedFrom, and that is now the anchor's (a scenario like the others). It uses another scenario. */
+    for (const [from, on, scenario] of [[null, true, 'NEW_PROJECT'], ['anchor', false, 'HELP_TEAM_UNDERSTAND']] as const) {
+      const { svc, sent } = anEmail(from, on, scenario);
+      await svc.sendTheInviteThisGroundSends({ ...theCheckIn, scenario }, 'amani@sokoni.test', 'Rukia', 'tok', undefined, { kind: 'PARTICIPANT_INVITE', groundId: 'g1' });
       expect(plain(sent[0].html)).toContain('would like to know what you are seeing in');
     }
+  });
+
+  it('is the anchor\'s own invitation for a check-in with its scenario that the link did not start (decision 114)', async () => {
+    const { svc, sent } = anEmail(null, true);
+    await svc.sendTheInviteThisGroundSends(theCheckIn, 'amani@sokoni.test', 'Rukia', 'tok', undefined, { kind: 'PARTICIPANT_INVITE', groundId: 'g1' });
+    expect(plain(sent[0].html)).toContain('Rukia is trying a different way to help the team get on the same page.');
   });
 
   it('does not call the lead "Your" when the caller did not know her name', async () => {
