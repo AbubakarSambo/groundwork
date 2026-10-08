@@ -130,12 +130,19 @@ describe('the pin and the rename pencil on a sidebar row', () => {
     expect(CSS).toMatch(/@media \(hover: hover\) \{\s*\.gw-ci-row\.keeps-room \{ padding-right: calc\(var\(--gw-acts-w, 64px\) \+ 8px\); \}/)
   })
 
-  it('as drawn: an admin\'s row with no badge keeps 64px for the pin and pencil; a row saying "Your turn" does not need to', () => {
+  it('as drawn: a lead\'s own row with no badge keeps 64px for the pin and pencil; a row saying "Your turn" does not need to', () => {
+    /*
+     * UPDATED FOR DECISION 119, H10 (8 October 2026). This used to make "Coamana growth" a check-in
+     * u-sahar merely administered (initiatorId: 'u-lead'), to show an admin's row keeping room for
+     * both buttons. H10 means an admin who does not run a check-in is no longer shown the pencil at
+     * all while its lead is still here (see who-may-rename-a-check-in.ts), so that row would now
+     * reserve only 32px, not the 64px this test is about. Made u-sahar the lead of her own row
+     * instead - the layout question (two 32px buttons reserve 64px together) is unchanged by H10;
+     * only who gets to see both is.
+     */
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } })
     qc.setQueryData(['grounds'], [
-      /* An admin is offered the pencil on somebody else's check-in only when the server says she may change its set-up
-         (decision 119, H10: the lead has left), so this row carries that answer. */
-      { id: 'g1', label: 'Coamana growth, Q3 paying customers', status: 'AWAITING_PARTIES', initiatorId: 'u-lead', mayChangeSetup: true, participants: [], checkIns: [] },
+      { id: 'g1', label: 'Coamana growth, Q3 paying customers', status: 'AWAITING_PARTIES', initiatorId: 'u-sahar', participants: [], checkIns: [] },
       { id: 'g2', label: 'Leadership, Q3', status: 'AWAITING_PARTIES', initiatorId: 'u-x', participants: [{ id: 'p', userId: 'u-sahar' }], checkIns: [{ participantId: 'p', sessionNumber: 1, status: 'IN_PROGRESS' }] },
     ])
     qc.setQueryData(['my-organizations'], [])
