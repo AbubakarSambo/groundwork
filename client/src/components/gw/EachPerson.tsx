@@ -222,8 +222,11 @@ export function EachPerson({
                         check-in's own lead, who does have it, reads that second half now.
                       */
                       <Empty>
-                        {isTheLead
+                        {/* Release check, 9 October: with the old context chat off there is no conversation on this page to name. */}
+                        {isTheLead && onChangeInChat
                           ? <>Nothing yet. It comes from your own check-in, or from the conversation on this page.</>
+                          : isTheLead
+                          ? <>Nothing yet. It comes from your own check-in.</>
                           : <>Nothing yet. It comes from {leadsOwn} own check-in.</>}
                       </Empty>
                     )}

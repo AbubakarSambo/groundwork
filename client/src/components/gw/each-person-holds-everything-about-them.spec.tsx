@@ -116,8 +116,16 @@ describe('each person holds everything about them', () => {
   })
 
   it('the check-in’s own lead, who does have the conversation, reads the longer sentence', () => {
-    render(<EachPerson groundId="g1" people={[people[1]] as any} targets={[]} toDos={[]} files={[]} asks={{}} viewerUserId="u-wanjiru" isLead isTheLead leadFirstName="Wanjiru" />)
+    /* The conversation is there only when the page passes its handler (release check, 9 October). */
+    render(<EachPerson groundId="g1" people={[people[1]] as any} targets={[]} toDos={[]} files={[]} asks={{}} viewerUserId="u-wanjiru" isLead isTheLead leadFirstName="Wanjiru" onChangeInChat={() => {}} />)
     fireEvent.click(screen.getByText('Miriam'))
     expect(screen.getByText('Nothing yet. It comes from your own check-in, or from the conversation on this page.')).toBeTruthy()
+  })
+
+  it('with the old context chat off, the lead reads no conversation and no "Change this in the chat" (release check, 9 October)', () => {
+    render(<EachPerson groundId="g1" people={[people[1]] as any} targets={[]} toDos={[]} files={[]} asks={{}} viewerUserId="u-wanjiru" isLead isTheLead leadFirstName="Wanjiru" />)
+    fireEvent.click(screen.getByText('Miriam'))
+    expect(screen.getByText('Nothing yet. It comes from your own check-in.')).toBeTruthy()
+    expect(screen.queryByText('Change this in the chat')).toBeNull()
   })
 })

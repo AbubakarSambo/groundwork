@@ -51,3 +51,12 @@ describe('the old context chat on the Context and resources page', () => {
     await waitFor(() => expect(screen.queryByText('The old context chat')).toBeTruthy())
   })
 })
+
+describe('the people cards do not point at the old context chat while it is off (release check, 9 October)', () => {
+  it('passes "Change this in the chat" only while the old chat is open', async () => {
+    const { readFileSync } = await import('fs')
+    const { resolve } = await import('path')
+    const source = readFileSync(resolve(__dirname, 'ContextPage.tsx'), 'utf8')
+    expect(source).toContain('onChangeInChat={isTheLead && contextEnabled && oldChatIsOpen ? changeThisInTheChat : undefined}')
+  })
+})

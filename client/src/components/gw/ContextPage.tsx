@@ -677,7 +677,7 @@ export function ContextPage({
               isLead={isLead}
               isTheLead={isTheLead}
               leadFirstName={theLeadMidSentence}
-              onChangeInChat={isTheLead && contextEnabled ? changeThisInTheChat : undefined}
+              onChangeInChat={isTheLead && contextEnabled && oldChatIsOpen ? changeThisInTheChat : undefined}
               /*
                 ATTACHING AGAINST THE THING THEY PROMISED, not into a general pile. The line they
                 pressed becomes what the check-in is told to look for in the file, so the promise and
