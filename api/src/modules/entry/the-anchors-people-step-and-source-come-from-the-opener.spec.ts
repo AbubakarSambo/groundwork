@@ -1,0 +1,35 @@
+import { EntryService } from './entry.service';
+import { THE_PEOPLE_STEP_RULES } from './the-anchor-people-step';
+
+/**
+ * DECISION 114: THE PEOPLE STEP'S WORDS AND LIMIT OF 20, AND THE LINK'S SOURCE MARK, COME OUT OF THE ORDINARY OPENER ROUTE.
+ * `POST /entry/opener` carries `thePeopleStep` for a scenario that has its own (the anchor's, with the switch on) and `source`
+ * when the link had one. Every other scenario, and the anchor with the switch off, is exactly what it was.
+ */
+const entry = (on: boolean) => new EntryService({} as any, { platformSetting: { findUnique: jest.fn(async () => ({ value: { on } })) } } as any, {} as any, {} as any, {} as any, {} as any, { emit: jest.fn() } as any);
+
+describe('what the opener carries beside its words', () => {
+  it('for the anchor, with the switch on: the people step, in Hafsah\'s words, and the cleaned source mark', async () => {
+    const r = await entry(true).openerWithItsRules('Help my team understand', ' Founders-WhatsApp ');
+    expect(r.source).toBe('founders-whatsapp');
+    expect(r.thePeopleStep).toEqual(THE_PEOPLE_STEP_RULES);
+    expect(r.thePeopleStep).toMatchObject({
+      limit: 20, mayAdd: 19, heading: 'Who needs to be part of this?',
+      limitSentence: 'This one-month Groundwork holds 20 people, and you are one of them, so you can add 19 more.',
+    });
+    expect(r.reply).toMatch(/one to one/);
+  });
+
+  it('a source that is not a short word is dropped, never kept', async () => {
+    for (const bad of ['<script>', 'a b', 'x'.repeat(60), '']) expect('source' in (await entry(true).openerWithItsRules('HELP_TEAM_UNDERSTAND', bad))).toBe(false);
+  });
+
+  it('with the switch off, or for another scenario, there is no people step; the words are the ordinary opener\'s', async () => {
+    const off = await entry(false).openerWithItsRules('Help my team understand');
+    expect('thePeopleStep' in off).toBe(false);
+    expect(off.reply).toBe(await entry(false).opener(undefined));
+    const other = await entry(true).openerWithItsRules('New hire');
+    expect('thePeopleStep' in other).toBe(false);
+    expect(other.reply).toMatch(/^You are setting up a new hire situation/);
+  });
+});

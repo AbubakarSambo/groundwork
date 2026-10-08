@@ -6613,7 +6613,7 @@ The anchor switch is still off by default, and nothing was removed. Every anchor
    >
    > Tell me what you are trying to get across. What's happening right now that makes you wish your team saw more of what you see?
 
-   Still only from `anchor-start`: the source mark of the link (`?source=`) and `thePeopleStep` (the people step's words and the limit of 20). Keep calling it for those two until they have moved; they will be served on the ordinary routes next.
+   The same call now also carries the other two things `anchor-start` held (8 October, later). Send the link's mark with it: `{ "scenario": "Help my team understand", "source": "founders-whatsapp" }`. The reply is `{ reply, source?, thePeopleStep? }`. `source` is the mark cleaned (letters, digits, dashes and underscores, up to 40; anything else is dropped and `source` is left out), for you to keep in the draft as before. `thePeopleStep` is `{ limit: 20, theLeadCounts: true, mayAdd: 19, heading, intro, contextLabel, button, limitSentence }`, the people step's words and limit, and is present only for a scenario that has its own (the anchor's, with the switch on); for every other scenario, and with the switch off, it is absent and you draw the ordinary people step. The server still holds the limit when the people are committed. You no longer need `GET /entry/anchor-start`; it still answers until you have moved.
 2. `GET /entry/anchor-available`: keep it only to decide whether to offer the "Help my team understand" card in the ordinary picker. It is not a page of its own.
 
 **The invitation**

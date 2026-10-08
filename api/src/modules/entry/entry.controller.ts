@@ -133,6 +133,12 @@ class EntryOpenerDto {
   @IsString()
   @MaxLength(120)
   scenario?: string;
+
+  /** Where the link that brought the visitor was shared (the `?source=` on it). A short word; anything else is dropped. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  source?: string;
 }
 
 /** classify-intent took an inline type, which the validation pipe cannot see, so `description` was unbounded. */
@@ -581,7 +587,7 @@ export class EntryController {
   @Post('opener')
   @Throttle({ global: { limit: 30, ttl: 60000 } })
   async opener(@Body() dto: EntryOpenerDto) {
-    return { reply: await this.service.opener(dto.scenario) };
+    return this.service.openerWithItsRules(dto.scenario, dto.source);
   }
 
   @Public()

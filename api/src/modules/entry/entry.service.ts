@@ -1,6 +1,6 @@
 import { waitNoLongerThan, HOW_LONG_THE_SAVE_WAITS_FOR_THE_READING_MS } from './a-slow-reading-does-not-hold-the-save';
 import { tooManyPeopleFor } from './how-many-people-one-check-in-holds';
-import { tooManyForTheAnchor } from './the-anchor-people-step';
+import { tooManyForTheAnchor, THE_PEOPLE_STEP_RULES } from './the-anchor-people-step';
 import { theAddressOfAColleague, NOT_SOMEONE_HERE } from '../../common/colleagues';
 import { theyJustPastedSomething, withoutAskingForWhatTheyGave } from './they-just-gave-you-that';
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
@@ -74,10 +74,10 @@ import { theAnchorGuidance, theChallengeWasUsed, theHopeWasAskedAndAnswered, ANC
 import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { isTheAnchorScenario, THE_ANCHOR_OPENING_TEXT } from './the-anchor-scenario-content';
-import { TheAnchorDoor, THE_ANCHOR_GROUND_LABEL } from './the-anchor-door';
+import { TheAnchorDoor, THE_ANCHOR_GROUND_LABEL, aSourceMark } from './the-anchor-door';
 import { THE_EXTRACTION_SYSTEM, THE_EXTRACTION_TOOL, THE_CLOSING_REMINDER, allSevenAreHeard, theChallengeIsDue, theReadTheScreenAlreadyKnows, whatHasBeenHeard, whatTheConversationHasHeard, type TheSevenItems } from './the-anchor-setup';
 import { theLeadsReveal } from './the-anchor-reveal';
-import type { TheLeadsReveal } from './the-anchor-served-shapes';
+import type { TheLeadsReveal, ThePeopleStepRules } from './the-anchor-served-shapes';
 import { draftFromASetUp, type ASetUpToStartFrom } from './a-set-up-can-start-from-a-recommendation';
 import { theClassifierPrompt, readTheClassification } from './which-situation-this-is';
 import { isAReplayRatherThanASecondSetup } from './a-second-setup-is-a-second-check-in';
@@ -670,6 +670,18 @@ export class EntryService {
     if (isTheAnchorScenario(scenario) && (await theAnchorScenarioIsOn(this.prisma))) return THE_ANCHOR_OPENING_TEXT;
     if (scenario && SCENARIO_OPENERS[scenario]) return SCENARIO_OPENERS[scenario];
     return DEFAULT_OPENER;
+  }
+
+  /**
+   * THE OPENER, WITH WHAT GOES WITH IT (decision 114). `reply` is the opening, as before. `source` is the mark of the link the visitor came
+   * by, cleaned, when there is one. `thePeopleStep` is the people step's words and limit for a scenario that has its own (today the
+   * anchor's, only with its switch on) and absent for every other, so the people step is drawn from what the server says, as for any scenario.
+   */
+  async openerWithItsRules(scenario?: string, source?: string): Promise<{ reply: string; source?: string; thePeopleStep?: ThePeopleStepRules }> {
+    const reply = await this.opener(scenario);
+    const mark = aSourceMark(source);
+    const has = isTheAnchorScenario(scenario) && (await theAnchorScenarioIsOn(this.prisma));
+    return { reply, ...(mark ? { source: mark } : {}), ...(has ? { thePeopleStep: { ...THE_PEOPLE_STEP_RULES } } : {}) };
   }
 
   async faq(question: string): Promise<string> {
