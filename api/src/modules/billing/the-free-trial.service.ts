@@ -1,3 +1,4 @@
+import { WHERE_A_GROUND_IS_THE_ANCHORS } from '../conversation/the-anchor-weekly-check-in';
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { SubscriptionPlan } from '@prisma/client';
@@ -195,7 +196,7 @@ export class TheFreeTrialService {
     if (!anchor) return null;
     const plan = await this.thePlanItCovers(anchor.people + 1);
     if (!plan || org.freePlan !== plan) return null;
-    const starts = ((await (this.prisma as any).ground?.findMany?.({ where: { organizationId, startedFrom: 'anchor' }, select: { createdAt: true } })?.catch?.(() => [])) ?? []) as { createdAt: Date }[];
+    const starts = ((await (this.prisma as any).ground?.findMany?.({ where: { organizationId, ...WHERE_A_GROUND_IS_THE_ANCHORS }, select: { createdAt: true } })?.catch?.(() => [])) ?? []) as { createdAt: Date }[];
     const A_DAY = 24 * 60 * 60 * 1000;
     const match = starts.find((g) => Math.abs(aFreeRunEndsOn(new Date(g.createdAt), anchor.months).getTime() - ends.getTime()) <= A_DAY);
     return match ? { startedOn: new Date(match.createdAt) } : null;

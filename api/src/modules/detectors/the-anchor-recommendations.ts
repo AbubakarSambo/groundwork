@@ -1,3 +1,4 @@
+import { aGroundIsTheAnchors } from '../conversation/the-anchor-weekly-check-in';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
 
 /**
@@ -162,10 +163,10 @@ interface Reader {
   recommendation: any;
 }
 
-/** Reads one check-in's record. Refuses anything not started from the anchor. */
+/** Reads one check-in's record. Refuses anything that is not the anchor's, by how it was started or by its scenario (decision 114). */
 export async function theRecordOf(prisma: Reader, groundId: string): Promise<{ organizationId: string; leadId: string; record: TheRecordOfOneCheckIn } | null> {
-  const ground = await prisma.ground.findUnique({ where: { id: groundId }, select: { id: true, organizationId: true, initiatorId: true, startedFrom: true } });
-  if (!ground || ground.startedFrom !== 'anchor') return null;
+  const ground = await prisma.ground.findUnique({ where: { id: groundId }, select: { id: true, organizationId: true, initiatorId: true, startedFrom: true, scenario: true } });
+  if (!ground || !aGroundIsTheAnchors(ground as any)) return null;
   const [participants, handoffs, aims, commitments] = await Promise.all([
     prisma.groundParticipant.findMany({ where: { groundId }, select: { id: true, userId: true, nameGiven: true, managingOnly: true, user: { select: { firstName: true, lastName: true } } } }),
     prisma.groundDependency.findMany({ where: { groundId, status: { not: 'CLEARED' } }, select: { fromParticipantId: true, onParticipantId: true } }),
@@ -241,8 +242,8 @@ export async function theLeadAnswers(
   prisma: Reader,
   args: { groundId: string; offerId: string; leadUserId: string; yes: boolean },
 ): Promise<{ ok: true; state: 'ACCEPTED' | 'DECLINED'; setUp?: WhatToSetUp } | { ok: false }> {
-  const ground = await prisma.ground.findUnique({ where: { id: args.groundId }, select: { organizationId: true, initiatorId: true, startedFrom: true } });
-  if (!ground || ground.startedFrom !== 'anchor' || ground.initiatorId !== args.leadUserId) return { ok: false };
+  const ground = await prisma.ground.findUnique({ where: { id: args.groundId }, select: { organizationId: true, initiatorId: true, startedFrom: true, scenario: true } });
+  if (!ground || !aGroundIsTheAnchors(ground as any) || ground.initiatorId !== args.leadUserId) return { ok: false };
   const row = await prisma.recommendation.findFirst({
     where: { id: args.offerId, organizationId: ground.organizationId, subjectExternalId: theSubjectOf(args.groundId), kind: { in: [...ANCHOR_KINDS] }, state: 'PROPOSED' },
   });

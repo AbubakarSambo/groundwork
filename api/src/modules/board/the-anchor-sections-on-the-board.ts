@@ -32,6 +32,9 @@ export type AnchorBoardSections = {
   whereTheMonthIs?: { heading: string; weekOfTheMonth: 1 | 2 | 3 | 4; text: string };
   whatIsMoving?: { heading: string; items: string[] };
   whatIsStillInTheWay?: { heading: string; items: string[] };
+  whatTheTeamIsContributing?: { heading: string; items: string[] };
+  wherePerspectivesDiffer?: { heading: string; items: string[] };
+  whatGroundworkIsWorkingOnNext?: { heading: string; items: string[] };
   /** The end-of-month read, from the lead's own words down to what should happen next, the reveal and the ways to carry on. The lead's. */
   theEndOfTheMonth?: { heading: string; yourOwnWords: string; parts: { heading: string; items: string[] }[]; people: { name: string; sentence: string }[]; reveal: TheEndOfMonthRead['reveal']; revealSaid: TheEndOfMonthRead['revealSaid']; continueOptions: TheEndOfMonthRead['continueOptions'] };
 };
@@ -64,6 +67,9 @@ export function theAnchorSections(input: {
   if (has('whereTheMonthIs') && input.monthBoard) out.whereTheMonthIs = { heading: 'Where the month is', weekOfTheMonth: input.monthBoard.weekOfTheMonth, text: input.monthBoard.weekSaid };
   if (has('whatIsMoving') && input.monthBoard?.whatIsMoving?.length) out.whatIsMoving = { heading: "What's moving", items: input.monthBoard.whatIsMoving };
   if (has('whatIsStillInTheWay') && input.monthBoard?.whatIsStillGettingInTheWay?.length) out.whatIsStillInTheWay = { heading: "What's still getting in the way", items: input.monthBoard.whatIsStillGettingInTheWay };
+  if (has('whatTheTeamIsContributing') && input.monthBoard?.whatTheTeamIsContributing?.length) out.whatTheTeamIsContributing = { heading: 'What the team is contributing', items: input.monthBoard.whatTheTeamIsContributing };
+  if (has('wherePerspectivesDiffer') && input.monthBoard?.wherePerspectivesDiffer?.length) out.wherePerspectivesDiffer = { heading: 'Where perspectives differ', items: input.monthBoard.wherePerspectivesDiffer };
+  if (has('whatGroundworkIsWorkingOnNext') && input.monthBoard?.whatGroundworkIsWorkingOnNext?.length) out.whatGroundworkIsWorkingOnNext = { heading: 'What Groundwork is working on next', items: input.monthBoard.whatGroundworkIsWorkingOnNext };
   if (has('theEndOfTheMonth') && input.endOfMonth) {
     const e = input.endOfMonth;
     out.theEndOfTheMonth = {

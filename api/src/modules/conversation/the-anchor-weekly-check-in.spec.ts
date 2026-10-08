@@ -204,7 +204,8 @@ describe('anchor piece 15: who it is for, and who it is not for', () => {
 });
 
 describe('with the anchor in play or not, every other prompt is byte for byte what it was', () => {
-  const every = Object.values(GroundScenario);
+  /* The anchor's own scenario is left out: by decision 114 a check-in with it IS the anchor's, so it reads the anchor's words with the switch on. */
+  const every = Object.values(GroundScenario).filter((s) => s !== GroundScenario.HELP_TEAM_UNDERSTAND);
   it.each(every.map((s) => [s, s]))('the second-session prompt for %s is the same with the switch off or on, when the check-in is not an anchor one', async (_n, scenario) => {
     const off = await aWorld({ scenario, switchOn: false }).compose();
     const on = await aWorld({ scenario, switchOn: true }).compose();

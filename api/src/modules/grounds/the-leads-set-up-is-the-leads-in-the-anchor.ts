@@ -11,8 +11,9 @@
  */
 export const STARTED_FROM_THE_ANCHOR_WORD = 'anchor';
 
-export function withoutTheLeadsSetUpForAMember<T extends Record<string, any>>(page: T, opts: { startedFrom?: string | null; runsIt: boolean }): T {
-  if (opts.runsIt || opts.startedFrom !== STARTED_FROM_THE_ANCHOR_WORD) return page;
+export function withoutTheLeadsSetUpForAMember<T extends Record<string, any>>(page: T, opts: { startedFrom?: string | null; scenario?: unknown; runsIt: boolean }): T {
+  /* By how it was started or by its scenario (decision 114): a check-in made through the ordinary set-up with the anchor's scenario has the same wall. */
+  if (opts.runsIt || (opts.startedFrom !== STARTED_FROM_THE_ANCHOR_WORD && opts.scenario !== 'HELP_TEAM_UNDERSTAND')) return page;
   const out: Record<string, any> = { ...page, objectives: [] };
   for (const key of ['subjectsToCover', 'whatACompleteAnswerHolds'] as const) if (key in out) out[key] = null;
   return out as T;

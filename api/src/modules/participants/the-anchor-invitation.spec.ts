@@ -6,12 +6,12 @@ import { THE_SHAPES_KEYS } from '../entry/the-anchor-served-shapes';
  * Request 149: the anchor's invitation, served on the invitation preview for a check-in started from the anchor link, with the switch on.
  * Decision 96: "one to one", not "privately" (item 1); and "has shared" only when the lead has shared (item 8).
  */
-function preview(opts: { startedFrom: string | null; on: boolean; invitee?: { email: string; remitAsGiven?: string } }) {
+function preview(opts: { startedFrom: string | null; scenario?: string; on: boolean; invitee?: { email: string; remitAsGiven?: string } }) {
   const invitee = opts.invitee ?? { email: 'amani.wekesa@x.test' };
   const row = { id: 'p1', groundId: 'g1', inviteToken: 'tok', userId: null, awaitingSeat: false, startsAt: null, inviteTokenExpiresAt: new Date(Date.now() + 5 * 86400000), roleAsDescribed: 'Her sales manager, who is not meeting targets', ...invitee };
   const prisma: any = {
     groundParticipant: { findUnique: jest.fn(async () => row) },
-    ground: { findUnique: jest.fn(async () => ({ id: 'g1', label: 'Help my team understand', scenario: 'HELP_TEAM_UNDERSTAND', startedFrom: opts.startedFrom, cadence: 'WEEKLY', cadenceAnchorDay: null, workingDays: [], endsAt: null, startsAt: null, whoSeesTargets: 'THEIR_OWN', initiator: { firstName: 'Hafsah', lastName: 'Jumare' }, organization: { name: 'Coamana' }, objectives: [] })) },
+    ground: { findUnique: jest.fn(async () => ({ id: 'g1', label: 'Help my team understand', scenario: opts.scenario ?? 'HELP_TEAM_UNDERSTAND', startedFrom: opts.startedFrom, cadence: 'WEEKLY', cadenceAnchorDay: null, workingDays: [], endsAt: null, startsAt: null, whoSeesTargets: 'THEIR_OWN', initiator: { firstName: 'Hafsah', lastName: 'Jumare' }, organization: { name: 'Coamana' }, objectives: [] })) },
     checkIn: { count: jest.fn(async () => 0) },
     personObjective: { findMany: jest.fn(async () => []) },
     platformSetting: { findUnique: jest.fn(async () => (opts.on ? { value: { on: true } } : { value: { on: false } })) },
@@ -56,8 +56,15 @@ describe('the anchor invitation, as the invited person reads it', () => {
     expect('anchorInvitation' in p).toBe(false);
   });
 
-  it('serves nothing for a check-in that did not start from the anchor, switch on', async () => {
-    const p = await preview({ startedFrom: null, on: true });
+  it('serves nothing for a check-in that is not the anchor\'s, switch on', async () => {
+    const p = await preview({ startedFrom: null, scenario: 'OKR_ALIGNMENT', on: true });
     expect('anchorInvitation' in p).toBe(false);
+    expect('invitationWords' in p).toBe(false);
+  });
+
+  it('is served for a check-in with the anchor\'s scenario even when the link did not start it (decision 114), the same words under both names', async () => {
+    const p = await preview({ startedFrom: null, on: true });
+    expect(p.anchorInvitation).toEqual(WORDS);
+    expect(p.invitationWords).toEqual(WORDS);
   });
 });

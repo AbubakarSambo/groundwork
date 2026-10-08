@@ -14,7 +14,7 @@ import { join } from 'path';
 const GROUND = 'g-anchor';
 const LEAD = 'u-wairimu';
 
-function aWorld(opts: { switchOn?: boolean; startedFrom?: string | null } = {}) {
+function aWorld(opts: { switchOn?: boolean; startedFrom?: string | null; scenario?: string } = {}) {
   const switchOn = opts.switchOn ?? true;
   const person = (id: string, userId: string | null, first: string | null, email: string) => ({ id, userId, nameGiven: null, managingOnly: false, email, user: first ? { firstName: first, lastName: null } : null });
   const participants = [
@@ -26,7 +26,7 @@ function aWorld(opts: { switchOn?: boolean; startedFrom?: string | null } = {}) 
   const prisma: any = {
     platformSetting: { findUnique: jest.fn(async () => (switchOn ? { value: { on: true } } : { value: { on: false } })) },
     ground: {
-      findUnique: jest.fn(async () => ({ id: GROUND, organizationId: 'org-1', initiatorId: LEAD, startedFrom: opts.startedFrom === undefined ? 'anchor' : opts.startedFrom })),
+      findUnique: jest.fn(async () => ({ id: GROUND, organizationId: 'org-1', initiatorId: LEAD, startedFrom: opts.startedFrom === undefined ? 'anchor' : opts.startedFrom, scenario: opts.scenario ?? 'NEW_PROJECT' })),
       create: jest.fn(async () => { created.push('ground'); }),
     },
     groundParticipant: {
@@ -54,6 +54,18 @@ function aWorld(opts: { switchOn?: boolean; startedFrom?: string | null } = {}) 
   prisma.recommendation.findFirst = jest.fn(async (args: any) => (args.where.id ? rows.find((r) => r.id === args.where.id && r.state === args.where.state && r.subjectExternalId === args.where.subjectExternalId) ?? null : looked(args)));
   return { prisma, rows, created, service: new RecommendedCheckInsService(prisma) };
 }
+
+describe('recommended check-ins, for a check-in with the anchor\'s scenario (decision 114)', () => {
+  it('are found and offered when startedFrom is empty but the scenario is the anchor\'s, and not for another scenario', async () => {
+    const byScenario = aWorld({ startedFrom: null, scenario: 'HELP_TEAM_UNDERSTAND' });
+    await byScenario.service.onCheckInCompleted({ groundId: GROUND });
+    expect((await byScenario.service.forTheLead(GROUND, LEAD)).offers).toHaveLength(3);
+    const plain = aWorld({ startedFrom: null, scenario: 'OKR_ALIGNMENT' });
+    await plain.service.onCheckInCompleted({ groundId: GROUND });
+    expect((await plain.service.forTheLead(GROUND, LEAD)).offers).toEqual([]);
+    expect(plain.rows).toEqual([]);
+  });
+});
 
 describe('recommended check-ins, as the lead reads them', () => {
   it('offers the three kinds, in the scenario\'s words, from this check-in\'s own record', async () => {

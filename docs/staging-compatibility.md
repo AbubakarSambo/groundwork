@@ -235,3 +235,8 @@ Nothing is left over from the first checks. The migrations on top of the live li
 `gw_compat_scratch`, on this Mac only. Nothing else was created.
 
 Also on this Mac only: `gw_compat_from_live_base_1313`, from the check on 5 October with data, and `gw_compat_oct5b`, from the check in section 7. The safety guard does not allow `dropdb`, so they are left for you to remove when you want.
+
+
+## 10. Where staging stands, 8 October
+
+Staging (`59533562`) includes #322, merged on 6 October as `be66ae20`. That merge took #322's branch as it stood at `b9886fa5`. The seven privacy and security fixes pushed to `groundwork-rebuild` afterwards (`9829bc92`, `c992b920`, `9c8e275a`, `ff28e5d5`, `b8e9d86a`, `18b626d3`, `0e636864`) are not in staging. Their originals are on `wip/release` and `wip/release-322`, so they reach staging with pull request #324. Abubakar has pushed nothing to staging since `59533562`, so `wip/live-base` equals staging and there was nothing new to merge. Our branch already contains `be66ae20`.

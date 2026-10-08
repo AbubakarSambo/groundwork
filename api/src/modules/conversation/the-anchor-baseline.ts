@@ -63,7 +63,7 @@ export type TheAnchorBaselineGuidance = { text: string; last: string; promptVers
 export async function theAnchorBaselineGuidance(
   switchIsOn: () => Promise<boolean>,
   prompts: Pick<PromptsService, 'getActive'> | undefined,
-  who: { ground: { startedFrom?: string | null } | null | undefined; isTheLead: boolean; sessionNumber: number },
+  who: { ground: { startedFrom?: string | null; scenario?: unknown } | null | undefined; isTheLead: boolean; sessionNumber: number },
 ): Promise<TheAnchorBaselineGuidance | null> {
   if (!aCheckInStartedFromTheAnchor(who.ground)) return null;
   if (who.isTheLead || who.sessionNumber !== 1) return null;

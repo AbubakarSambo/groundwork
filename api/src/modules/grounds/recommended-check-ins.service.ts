@@ -1,3 +1,4 @@
+import { aGroundIsTheAnchors } from '../conversation/the-anchor-weekly-check-in';
 import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
@@ -29,7 +30,7 @@ export class RecommendedCheckInsService {
   }
 
   private async theLeadsGround(groundId: string, userId: string) {
-    const g = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true, initiatorId: true, startedFrom: true } });
+    const g = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true, initiatorId: true, startedFrom: true, scenario: true } });
     if (!g) throw new NotFoundException('Check-in not found');
     if (g.initiatorId !== userId) throw new ForbiddenException('Only the person who set this check-in up can read what Groundwork recommends.');
     return g;
@@ -37,7 +38,7 @@ export class RecommendedCheckInsService {
 
   async forTheLead(groundId: string, userId: string): Promise<{ offers: AnOfferTheLeadReads[] }> {
     const g = await this.theLeadsGround(groundId, userId);
-    if (g.startedFrom !== 'anchor' || !(await theAnchorScenarioIsOn(this.prisma))) return { offers: [] };
+    if (!aGroundIsTheAnchors(g as any) || !(await theAnchorScenarioIsOn(this.prisma))) return { offers: [] };
     return { offers: await theOffersWaiting(this.prisma as any, groundId, g.organizationId) };
   }
 

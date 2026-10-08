@@ -29,7 +29,7 @@ import { whatTheTeamGets, whatTheLeadGets, THE_TEAM_BUTTON, THE_LEAD_BUTTON } fr
 import { thePartialPicture } from '../engagement/a-partial-picture-said-honestly';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { theAnchorInvitation } from '../entry/the-anchor-people-step';
-import { STARTED_FROM_THE_ANCHOR, theCheckInWasStartedFromTheAnchor } from '../conversation/the-anchor-weekly-check-in';
+import { aCheckInStartedFromTheAnchor, theCheckInWasStartedFromTheAnchor } from '../conversation/the-anchor-weekly-check-in';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 
 /**
@@ -1166,7 +1166,7 @@ export class EmailService implements OnModuleInit {
     by: string | null = null,
   ): Promise<{ devUrl?: string }> {
     /* A check-in started from the anchor link, with the anchor on, is invited in the anchor's own words. */
-    if (await this.isAnAnchorCheckIn(theCheckIn as { startedFrom?: string | null }, context)) {
+    if (await this.isAnAnchorCheckIn(theCheckIn as { startedFrom?: string | null; scenario?: unknown }, context)) {
       return this.sendTheAnchorInvitation(email, leadName, theCheckIn.label, this.buildInviteUrl(token), context);
     }
     const theOneLine = theCheckIn.scenario === 'TEAM_UPDATES' ? theCheckIn.brief?.trim() : '';
@@ -1179,10 +1179,10 @@ export class EmailService implements OnModuleInit {
   }
 
   /** Whether this invitation is for a check-in the anchor link started, with the anchor on. Read from the row when the caller did not pass it. */
-  private async isAnAnchorCheckIn(theCheckIn: { startedFrom?: string | null }, context?: DeliveryContext): Promise<boolean> {
+  private async isAnAnchorCheckIn(theCheckIn: { startedFrom?: string | null; scenario?: unknown }, context?: DeliveryContext): Promise<boolean> {
     try {
       const started = theCheckIn.startedFrom !== undefined
-        ? theCheckIn.startedFrom === STARTED_FROM_THE_ANCHOR
+        ? aCheckInStartedFromTheAnchor(theCheckIn)
         : !!context?.groundId && (await theCheckInWasStartedFromTheAnchor(this.prisma, context.groundId));
       return started && (await theAnchorScenarioIsOn(this.prisma)) === true;
     } catch {

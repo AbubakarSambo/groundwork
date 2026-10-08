@@ -101,3 +101,40 @@ describe('the month sections, as each reader reads the ordinary board', () => {
     for (const k of NEW) expect(k in other).toBe(false);
   });
 });
+
+/* The last three parts the month board held alone (decision 114): what the team is contributing, where perspectives differ, what Groundwork is working on next. */
+const LAST = ['whatTheTeamIsContributing', 'wherePerspectivesDiffer', 'whatGroundworkIsWorkingOnNext'];
+
+describe('the month board\'s last three parts are sections too', () => {
+  it('the switchboard names them for the anchor only, and they are the lead\'s', () => {
+    for (const k of LAST) {
+      expect(sectionsFor(GroundScenario.HELP_TEAM_UNDERSTAND)).toContain(k);
+      expect(sectionsFor(GroundScenario.NEW_PROJECT)).not.toContain(k);
+      expect(ANCHOR_SECTIONS_FOR_THE_LEAD).toContain(k);
+    }
+  });
+
+  it('Amina reads each with a heading and plain sentences, the same as the old field says', async () => {
+    const b: any = await boardAs(anchor({ completedOn: '2026-09-15T10:00:00Z' }), ...AMINA);
+    expect(b.whatTheTeamIsContributing).toEqual({ heading: 'What the team is contributing', items: b.theMonthBoard.whatTheTeamIsContributing });
+    expect(b.wherePerspectivesDiffer).toEqual({ heading: 'Where perspectives differ', items: b.theMonthBoard.wherePerspectivesDiffer });
+    expect(b.whatGroundworkIsWorkingOnNext).toEqual({ heading: 'What Groundwork is working on next', items: b.theMonthBoard.whatGroundworkIsWorkingOnNext });
+    for (const k of LAST) expect(b[k].items.every((x: string) => /[.]$/.test(x) && x.length > 20)).toBe(true);
+    expect(whatIsWrongForThisReader('the lead', b)).toEqual([]);
+  });
+
+  it('Rukia and an admin who only reads are served none of them; nor with the switch off or in another scenario', async () => {
+    for (const who of [RUKIA, JUMA]) {
+      const b: any = await boardAs(anchor(), who[0] as string, who[1] as string);
+      for (const k of LAST) expect(k in b).toBe(false);
+    }
+    const off: any = await boardAs(anchor({ on: false }), ...AMINA);
+    for (const k of LAST) expect(k in off).toBe(false);
+    expect(whatIsWrongForThisReader('a person in it', { whatGroundworkIsWorkingOnNext: { items: [] } })).not.toEqual([]);
+  });
+
+  it('once the check-in has ended, Groundwork says it is not asking anyone for more, and nothing about this week', async () => {
+    const b: any = await boardAs(anchor({ status: 'CLOSED' }), ...AMINA);
+    expect(b.whatGroundworkIsWorkingOnNext.items).toEqual(['Groundwork is not asking anyone for more.']);
+  });
+});
