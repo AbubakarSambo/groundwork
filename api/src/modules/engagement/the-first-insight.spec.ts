@@ -167,3 +167,40 @@ describe('the words themselves', () => {
     for (const l of [i.subjectForTheLead!, ...i.lines]) expect(l).not.toMatch(/ [:–—-] |→|;/);
   });
 });
+
+describe('"I can help you do that": the way into Ask about the finding (screens request 198)', () => {
+  const links = (html: string) => [...html.matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => ({ href: m[1], says: m[2].trim() }));
+
+  it('the lead\'s main link is Ask about this check-in, and the shared picture is still one plain link away', async () => {
+    const w = world(() => SERVED());
+    await w.service.tellThemTheReportIsReady('g1', 1);
+    const l = links(to(w.sent, 'wairimu@x.test').html);
+    expect(l[0]).toEqual({ href: 'https://app.test/chat?about=g1', says: 'I can help you do that' });
+    expect(l[1]).toEqual({ href: 'https://app.test/grounds/g1/session/1', says: 'Read the shared picture' });
+  });
+
+  it('a participant is given it where the report served to them names a finding, in words that are theirs', async () => {
+    const w = world(() => SERVED());
+    await w.service.tellThemTheReportIsReady('g1', 1);
+    const l = links(to(w.sent, 'abigail@x.test').html);
+    expect(l[0]).toEqual({ href: 'https://app.test/chat?about=g1', says: 'I can help you talk it through' });
+    expect(text(to(w.sent, 'abigail@x.test').html)).not.toContain('I can help you do that');
+  });
+
+  it('a person with no account is sent the notice it always was, with no way into Ask', async () => {
+    const w = world(() => SERVED());
+    await w.service.tellThemTheReportIsReady('g1', 1);
+    expect(to(w.sent, 'omar@x.test').html).not.toContain('chat?about');
+    expect(links(to(w.sent, 'omar@x.test').html)[0].says).toBe('Read the shared picture →');
+  });
+
+  it('with nothing open, or a picture still withheld, the link is the one it always was', async () => {
+    const none = world(() => SERVED({ stand: { agreed: 0, stillOpen: 0, settled: [], open: [], openWithReasons: [] }, top: { theConversationWorthHaving: null } }));
+    await none.service.tellThemTheReportIsReady('g1', 1);
+    expect(links(to(none.sent, 'wairimu@x.test').html)[0].says).toBe('Read the shared picture →');
+    const held = world((u) => (u === 'u-abi' ? { sessionNumber: 1, withheldUntilYouAnswer: true } : SERVED()));
+    await held.service.tellThemTheReportIsReady('g1', 1);
+    expect(links(to(held.sent, 'abigail@x.test').html)[0].says).toBe('Read the shared picture →');
+    expect(to(held.sent, 'abigail@x.test').html).not.toContain('chat?about');
+  });
+});

@@ -22,7 +22,8 @@ describe('the report-ready mail', () => {
     /* Changed under decision 109: the call also carries the subject, a fact about who checked in (theReportReadySubject). */
     /* Changed again on 8 October (engagement spec section 7): the call also carries the finding read for that person (theInsightFor), and the lead's subject is the
        finding where there is one. The link, the sentence naming who shared it and the check-in are the same. */
-    expect(tell).toMatch(/sendReportReady\(p\.email, ground\.label, linkFor\(p\), sharedByAnAdminSentence, ground\.id, subject, insight\?\.lines\)/);
+    /* Changed again on 8 October (request 198): the call also carries the way into Ask about the finding, `chat`, only where there is a finding and the person signs in with a password. */
+    expect(tell).toMatch(/sendReportReady\(p\.email, ground\.label, linkFor\(p\), sharedByAnAdminSentence, ground\.id, subject, insight\?\.lines, chat\)/);
     expect(tell).toMatch(/await this\.theReportReadySubject\(ground, p\)/);
     /* And release() sends through it, not on its own. */
     const release = reports.slice(reports.indexOf('async release('), reports.indexOf('async tellThemTheReportIsReady('));

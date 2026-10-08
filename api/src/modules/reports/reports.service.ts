@@ -5267,7 +5267,12 @@ happened, and what is in the way.`;
           /* The finding itself, as this reader is served the report (spec section 7). Where it cannot be read, the notice goes as it always did. */
           const insight = await this.theInsightFor(ground, p, sessionNumber).catch(() => null);
           const subject = (insight?.subjectForTheLead) ?? await this.theReportReadySubject(ground, p).catch(() => undefined);
-          await this.email.sendReportReady(p.email, ground.label, linkFor(p), sharedByAnAdminSentence, ground.id, subject, insight?.lines);
+          /* WHERE THERE IS A FINDING, "I CAN HELP YOU DO THAT" (request 198): a way into Ask about this check-in, for the lead, and for a participant only where the report served to them names one. */
+          /* Only for somebody who signs in with a password: a person who comes in on an invite link is taken only to the report (the invite page honours no other path). */
+          const chat = insight?.hasAFinding && p.user?.passwordHash
+            ? { url: `${frontend}/chat?about=${groundId}`, label: p.userId === ground.initiatorId ? 'I can help you do that' : 'I can help you talk it through' }
+            : undefined;
+          await this.email.sendReportReady(p.email, ground.label, linkFor(p), sharedByAnAdminSentence, ground.id, subject, insight?.lines, chat);
         }
       } catch (err: any) {
         failed += 1;
