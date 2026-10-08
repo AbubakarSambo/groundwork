@@ -27,7 +27,7 @@ import { whoSeesWhatYouSayIn } from './who-sees-what-you-say';
  * have answered, what is new, or what to do next. Those leave it off.
  */
 export const NOT_ABOUT_ONE_CHECK_INS_ANSWERS: ReadonlySet<string> = new Set([
-  'sendYourWeek', 'sendHeresWhatIsNew', 'sendTestCheckInMovesOn', 'sendLeadFirstCheckIn', 'sendTheReportFollowUp', 'sendWhoHasGoneQuiet', 'sendWaitingOnThePeople', 'sendTheLeadsWeeklyLetter',
+  'sendYourWeek', 'sendHeresWhatIsNew', 'sendTestCheckInMovesOn', 'sendLeadFirstCheckIn', 'sendTheReportFollowUp', 'sendWhoHasGoneQuiet', 'sendWaitingOnThePeople', 'sendTheLeadsWeeklyLetter', 'sendTheLeadsDailyNudge',
 ]);
 
 /**

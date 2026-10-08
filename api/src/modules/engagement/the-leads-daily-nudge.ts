@@ -1,0 +1,407 @@
+import { DependencyStatus, GroundStatus } from '@prisma/client';
+import { A_GROUND_NO_MESSAGE_IS_ABOUT, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
+import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
+import { keptOffThePhone } from '../whatsapp/a-check-in-kept-off-the-phone';
+import { organisationsThatTurnedWhatsAppOn } from '../whatsapp/only-where-whatsapp-is-turned-on';
+import { A_TEMPLATE_BODY_LIMIT, TEMPLATES, oneLine } from '../whatsapp/a-message-outside-the-window';
+import { whatWaitsForYouToDecide, type TheBoards } from '../suites/what-waits-for-you-to-decide';
+import { whatWaitsInASentence } from '../whatsapp/the-leads-daily-summary';
+import { theirApprovedLeave, fallsInLeave, whoOnACheckInIsAway } from '../suites/who-is-away';
+import { theirRosterEntry } from '../suites/a-roster-entry-and-its-sign-in';
+import { isAWorkingDay } from '../grounds/which-days-this-team-works';
+import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
+import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
+import { theDayIn } from '../grounds/when-a-handoff-is-due';
+import { totalSessionsFor } from '../grounds/session-count';
+import { whereThisTargetStands, theDirectionToReadIn } from '../board/the-headline-and-where-each-target-stands';
+import { asADirection, theDayItIsDue } from '../board/an-aim-or-a-limit';
+import { aDateOnly } from '../board/the-day-in-words';
+import { blockerHasSubstance, dedupeDependencies } from '../board/reads';
+import { oneBlockerPerThingWaitedOn } from '../board/a-blocker-with-nothing-in-it-is-the-same-blocker';
+import { theWaitSaid } from '../board/a-wait-said-in-full';
+import { ESCALATE_AFTER_DAYS } from '../webhooks/a-handoff-that-has-sat-too-long';
+import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
+import { nameToCall } from './a-name-to-call-them';
+import { aNumberInWords } from './a-number-in-words';
+import { theEngagementMoment } from './the-engagement-release-moment';
+import { theQuietIn, quietIn } from './who-has-gone-quiet';
+import { isAlreadyHeld } from './a-message-sent-once';
+
+/**
+ * THE LEAD'S DAILY NUDGE ABOUT WHAT IS OUTSTANDING (decision 120).
+ *
+ * Every lead, automatically, with no setting. Once each morning, and only when something is outstanding. On WhatsApp if the lead has a number and WhatsApp is on for
+ * them, otherwise by email. It is the lead's one routine message that day and it never adds a second: it takes the place of the WhatsApp daily summary, and because it goes
+ * early in the morning the one-a-day rule (decision 109 item 6) holds back the "has not started" email and the other routine mail that day. Approvals that go straight
+ * away are a separate message by decision 92 and stay one.
+ *
+ * Three parts, most important first, at most three lines each, then a link to see everything:
+ *   "Needs you": what waits for the lead to approve, a decision she owes, and her own commitments that are overdue.
+ *   "Overdue on your team": who, what and how late, the most overdue first.
+ *   "Risks": a target that is behind, a wait that has gone on too long, a check-in where people have gone quiet.
+ * Only what the lead may read, as a plain fact about one thing, never a comparison between people and never a label on a person. Nothing a person said in a check-in
+ * that is kept in the app goes to a phone. When nothing is outstanding, nothing is sent.
+ */
+export const NUDGE_SENDER = 'sendTheLeadsDailyNudge';
+export const NUDGE_KIND = 'lead-summary';
+const DAY = 86_400_000;
+const AT_MOST = 3;
+
+const capital = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
+const quoted = (x: string) => `“${x.replace(/[.\s]+$/, '')}”`;
+const sentence = (s: string) => (/[.!?]$/.test(s.trim()) ? s.trim() : `${s.trim()}.`);
+
+/** One thing that is outstanding, said as a full sentence. `late` orders the overdue ones; `keptInTheApp` keeps it off a phone. */
+export interface AThingOutstanding {
+  text: string;
+  late?: number;
+  keptInTheApp?: boolean;
+}
+
+export interface WhatIsOutstanding {
+  needsYou: AThingOutstanding[];
+  overdueOnYourTeam: AThingOutstanding[];
+  risks: AThingOutstanding[];
+}
+
+export const theseAreOutstanding = (o: WhatIsOutstanding): boolean => o.needsYou.length + o.overdueOnYourTeam.length + o.risks.length > 0;
+
+/** The same facts without anything from a check-in kept in the app: what a phone may be given. */
+export const theseForAPhone = (o: WhatIsOutstanding): WhatIsOutstanding => ({
+  needsYou: o.needsYou.filter((t) => !t.keptInTheApp),
+  overdueOnYourTeam: o.overdueOnYourTeam.filter((t) => !t.keptInTheApp),
+  risks: o.risks.filter((t) => !t.keptInTheApp),
+});
+
+/** At most three lines. When there are more, the third says how many are not listed. */
+export function atMostThreeLines(things: AThingOutstanding[]): string[] {
+  const lines = things.map((t) => sentence(t.text));
+  if (lines.length <= AT_MOST) return lines;
+  const left = lines.length - (AT_MOST - 1);
+  return [...lines.slice(0, AT_MOST - 1), `${capital(aNumberInWords(left))} more are not listed here.`];
+}
+
+export interface TheNudgeParts {
+  needsYou: string[];
+  overdueOnYourTeam: string[];
+  risks: string[];
+}
+
+export const theNudgeParts = (o: WhatIsOutstanding): TheNudgeParts => ({
+  needsYou: atMostThreeLines(o.needsYou),
+  overdueOnYourTeam: atMostThreeLines(o.overdueOnYourTeam),
+  risks: atMostThreeLines(o.risks),
+});
+
+const HEADINGS = { needsYou: 'Needs you', overdueOnYourTeam: 'Overdue on your team', risks: 'Risks' } as const;
+
+/** The email's subject: how many things, in each part, as a plain fact. */
+export function theNudgeSubject(o: WhatIsOutstanding): string {
+  const bits: string[] = [];
+  const n = o.needsYou.length;
+  const t = o.overdueOnYourTeam.length;
+  const r = o.risks.length;
+  if (n) bits.push(`${aNumberInWords(n)} ${n === 1 ? 'thing needs' : 'things need'} you`);
+  if (t) bits.push(`${aNumberInWords(t)} ${t === 1 ? 'is' : 'are'} overdue on your team`);
+  if (r) bits.push(`${aNumberInWords(r)} ${r === 1 ? 'risk is' : 'risks are'} open`);
+  const joined = bits.length < 2 ? bits.join('') : `${bits.slice(0, -1).join(', ')} and ${bits[bits.length - 1]}`;
+  return capital(joined);
+}
+
+/**
+ * The message as an ordinary WhatsApp message, for a lead who wrote to Groundwork in the last 24 hours: each part on its own, each line on its own line.
+ */
+export function theWindowForm(firstName: string | null | undefined, o: WhatIsOutstanding, link: string): string {
+  const p = theNudgeParts(o);
+  const blocks: string[] = [`Good morning ${firstName?.trim() || 'there'}. Here is what is outstanding today.`];
+  for (const key of ['needsYou', 'overdueOnYourTeam', 'risks'] as const) if (p[key].length) blocks.push([HEADINGS[key], ...p[key]].join('\n'));
+  blocks.push(`You can see everything here ${link}`);
+  return blocks.join('\n\n');
+}
+
+/**
+ * {{2}} of `lead_daily_summary`, unchanged as a template: ONE paragraph with no line break, in whole sentences, most important first, short enough that the whole message
+ * fits in the 1,024 characters Meta allows. What does not fit is left out whole, never cut in the middle, and the last sentence says there is more.
+ */
+export function theTemplateParagraph(firstName: string | null | undefined, o: WhatIsOutstanding, link: string): { params: string[]; text: string } {
+  const body = TEMPLATES[NUDGE_KIND].body;
+  const first = firstName?.trim() || 'there';
+  const fixed = body.replace(/\{\{\d+\}\}/g, '').length + oneLine(first).length + oneLine(link).length;
+  const more = 'There is more, and the link shows all of it.';
+  const room = A_TEMPLATE_BODY_LIMIT - fixed - 8;
+  const p = theNudgeParts(o);
+  const lead: Record<keyof TheNudgeParts, string> = { needsYou: 'These need you.', overdueOnYourTeam: 'These are overdue on your team.', risks: 'These are risks.' };
+  const pieces: string[] = [];
+  let used = 0;
+  let left = false;
+  outer: for (const key of ['needsYou', 'overdueOnYourTeam', 'risks'] as const) {
+    let opened = false;
+    for (const line of p[key]) {
+      const add = `${opened ? '' : `${lead[key]} `}${oneLine(line)}`;
+      /* Keep room for the closing sentence whenever something has to be left out. */
+      if (used + add.length + 1 > room - more.length - 1) { left = true; break outer; }
+      pieces.push(add);
+      used += add.length + 1;
+      opened = true;
+    }
+  }
+  /* If a section was cut short or skipped, say so. */
+  const everything = pieces.length === (['needsYou', 'overdueOnYourTeam', 'risks'] as const).reduce((n, k) => n + p[k].length, 0);
+  const paragraph = oneLine([...pieces, ...(left || !everything ? [more] : [])].join(' '));
+  const params = [first, paragraph, link];
+  return { params, text: body.replace(/\{\{(\d+)\}\}/g, (_m, n) => params[Number(n) - 1] ?? '') };
+}
+
+const lateWords = (n: number) => (n === 1 ? 'one day late' : `${aNumberInWords(n)} days late`);
+
+/** The days between a day that has passed and today in Lagos. Zero or less is not late. */
+const daysLate = (due: Date | string | null | undefined, today: Date): number => {
+  const d = aDateOnly(due);
+  return d ? Math.round((today.getTime() - d.getTime()) / DAY) : 0;
+};
+const theDay = (d: Date | string) => whenItWas(aDateOnly(d) ?? new Date(d), 'weekdayAndDay');
+
+const TERMINAL: GroundStatus[] = A_GROUND_NO_MESSAGE_IS_ABOUT;
+const HELD: GroundStatus[] = A_GROUND_IS_HELD;
+const OPEN_WAIT = [DependencyStatus.BLOCKING, DependencyStatus.WAITING];
+
+const PERSON = {
+  userId: true, email: true, nameGiven: true, managingOnly: true, leftAt: true,
+  user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } },
+};
+
+/**
+ * EVERYTHING OUTSTANDING FOR ONE LEAD, from the record, as sentences. Reads only check-ins she runs (and her own commitments), never a check-in about one person's
+ * performance, promotion or renewal. A promise a lead wrote for somebody who has not been told is not counted as theirs.
+ */
+export async function whatIsOutstandingFor(
+  prisma: any,
+  lead: { userId: string; organizationId: string; grounds: { id: string; label: string; scenario: any; overWhatsApp: boolean | null; timelineDays: number | null; cadence: any }[] },
+  deps: { boards: TheBoards; release: Date | null },
+  now: Date,
+): Promise<WhatIsOutstanding> {
+  const out: WhatIsOutstanding = { needsYou: [], overdueOnYourTeam: [], risks: [] };
+  const today = theDayIn('Africa/Lagos', now);
+  const grounds = lead.grounds.filter((g) => !isEvaluationCheckIn(g.scenario));
+  const ids = grounds.map((g) => g.id);
+  const several = grounds.length > 1;
+  const labelOf = new Map(grounds.map((g) => [g.id, g.label]));
+  const where = (groundId: string) => (several ? ` in ${quoted(labelOf.get(groundId) ?? '')}` : '');
+  const kept = (groundId: string) => keptOffThePhone(grounds.find((g) => g.id === groundId));
+
+  /* NEEDS YOU, first: what waits for her to approve. */
+  const waiting = await whatWaitsForYouToDecide({ userId: lead.userId, organizationId: lead.organizationId }, deps.boards).catch(() => []);
+  const approvals = whatWaitsInASentence(waiting);
+  if (approvals) out.needsYou.push({ text: approvals });
+
+  /* Who is on her check-ins, and what is open on each of them. */
+  const mine = ids.length
+    ? await prisma.groundParticipant.findMany({ where: { groundId: { in: ids }, partyType: { not: 'INITIATOR' }, leftAt: null }, select: { id: true, groundId: true, ...PERSON } }).catch(() => [])
+    : [];
+  const people = new Map<string, any>((mine as any[]).map((p) => [p.id, p]));
+  const letIn = (p: any) => !!p && !p.managingOnly && !p.leftAt && !isNotLetInYet(p);
+  const herself = ids.length
+    ? await prisma.groundParticipant.findMany({ where: { groundId: { in: ids }, userId: lead.userId }, select: { id: true, groundId: true } }).catch(() => [])
+    : [];
+  const hers = new Set<string>((herself as any[]).map((p) => p.id));
+
+  /* WHAT HAS NO DAY IS NEVER LATE. Promises with a real date that has passed, hers first. */
+  const promises: any[] = await prisma.personObjective.findMany({
+    where: {
+      status: 'OPEN', kind: { in: ['COMMITMENT', 'TODO'] }, dueDate: { lt: today },
+      OR: [
+        { participant: { userId: lead.userId, ground: { status: { notIn: [...TERMINAL, ...HELD] }, organizationId: lead.organizationId } } },
+        ...(ids.length ? [{ groundId: { in: ids } }] : []),
+      ],
+    },
+    select: { text: true, dueDate: true, groundId: true, authoredBy: true, seenBySubject: true, participantId: true, participant: { select: { ground: { select: { id: true, label: true, scenario: true, overWhatsApp: true } }, ...PERSON } } },
+  }).catch(() => []);
+  const severalOwn = new Set(promises.map((p) => p.groundId)).size > 1 || several;
+  for (const pr of promises) {
+    const g = pr.participant?.ground;
+    if (!g || isEvaluationCheckIn(g.scenario) || !pr.text?.trim()) continue;
+    const late = daysLate(pr.dueDate, today);
+    if (late < 1) continue;
+    const place = severalOwn ? ` in ${quoted(g.label ?? '')}` : '';
+    const text = (who: string) => `${who} committed to ${quoted(pr.text.trim())}${place} by ${theDay(pr.dueDate)}, and it is ${lateWords(late)}.`;
+    if (pr.participant?.userId === lead.userId) out.needsYou.push({ text: text('You'), late, keptInTheApp: keptOffThePhone(g) });
+    else if (ids.includes(pr.groundId) && letIn(pr.participant) && (pr.authoredBy === 'self' || pr.seenBySubject)) out.overdueOnYourTeam.push({ text: text(nameToCall(pr.participant)), late, keptInTheApp: keptOffThePhone(g) });
+  }
+
+  /* Waits on her people's work: open, named, in her check-ins. */
+  const waits: any[] = ids.length
+    ? await prisma.groundDependency.findMany({
+        where: { groundId: { in: ids }, status: { in: OPEN_WAIT }, clearedAt: null },
+        select: {
+          id: true, groundId: true, what: true, namedTheThing: true, onLabel: true, status: true, createdAt: true, dueOn: true, blockerKind: true, fromParticipantId: true, onParticipantId: true,
+          fromParticipant: { select: PERSON }, onParticipant: { select: PERSON },
+        },
+      }).catch(() => [])
+    : [];
+  const real = oneBlockerPerThingWaitedOn(dedupeDependencies(waits as any)).filter(blockerHasSubstance) as any[];
+  const saidWait = (w: any, isAre: string): string => {
+    const from = hers.has(w.fromParticipantId) ? 'You' : nameToCall(w.fromParticipant);
+    const on = hers.has(w.onParticipantId) ? 'you' : w.onParticipant ? nameToCall(w.onParticipant) : (w.onLabel ?? '').trim();
+    const verb = from === 'You' ? (isAre === 'has been' ? 'have been' : 'are') : isAre;
+    return theWaitSaid(from, verb, on, w.what).replace(/\.$/, '');
+  };
+  const counted = new Set<string>();
+  for (const w of real) {
+    if (!letIn(w.fromParticipant) && !hers.has(w.fromParticipantId)) continue;
+    const onHer = hers.has(w.onParticipantId);
+    const late = daysLate(w.dueOn, today);
+    /* A decision she owes: somebody is waiting for her to decide it. */
+    if (onHer && w.blockerKind === 'DECISION') {
+      const since = `since ${theDay(w.createdAt)}`;
+      out.needsYou.push({ text: `${saidWait(w, 'is')} ${since}.`, late: late > 0 ? late : 0, keptInTheApp: kept(w.groundId) });
+      counted.add(w.id);
+      continue;
+    }
+    if (late < 1) continue;
+    const text = `${saidWait(w, 'is')}, which was due on ${theDay(w.dueOn)} and is ${lateWords(late)}.`;
+    if (onHer) out.needsYou.push({ text, late, keptInTheApp: kept(w.groundId) });
+    else if (w.onParticipant && letIn(w.onParticipant)) out.overdueOnYourTeam.push({ text, late, keptInTheApp: kept(w.groundId) });
+    else continue;
+    counted.add(w.id);
+  }
+  /* A decision that is hers in the plan: owned by her, with its day gone by and not done. */
+  const entry = await theirRosterEntry(prisma, lead.organizationId, lead.userId, { externalId: true }).catch(() => null);
+  if (entry?.externalId) {
+    const decisions: any[] = await prisma.subject.findMany({
+      where: { organizationId: lead.organizationId, type: 'DECISION', ownerExternalId: entry.externalId, sourceDeletedAt: null, dueDate: { lt: today } },
+      select: { title: true, dueDate: true, status: true },
+    }).catch(() => []);
+    for (const d of decisions) {
+      if (/^(done|decided|closed|complete|completed|met|dropped|cancelled|canceled)$/i.test((d.status ?? '').trim()) || !d.title?.trim()) continue;
+      const late = daysLate(d.dueDate, today);
+      if (late < 1) continue;
+      out.needsYou.push({ text: `The decision ${quoted(d.title.trim())} is yours, and it was due on ${theDay(d.dueDate)}, so it is ${lateWords(late)}.`, late });
+    }
+  }
+
+  /* RISKS. A target that is behind: only a team target, read the way the board reads it, and only with a number. */
+  for (const g of grounds) {
+    const objectives: any[] = await prisma.groundObjective.findMany({ where: { groundId: g.id, ownerParticipantId: null, isADecisionAboutAPerson: false }, select: { id: true, name: true, target: true, count: true, direction: true, dueOn: true } }).catch(() => []);
+    if (!objectives.length) continue;
+    const snaps: any[] = await prisma.groundObjectiveSnapshot.findMany({ where: { groundId: g.id }, select: { objectiveId: true, sessionNumber: true, count: true } }).catch(() => []);
+    const planned = totalSessionsFor(g.timelineDays, g.cadence) ?? null;
+    for (const o of objectives) {
+      if (typeof o.target !== 'number' || !o.name?.trim()) continue;
+      const counts = snaps.filter((s) => s.objectiveId === o.id && typeof s.sessionNumber === 'number');
+      const first = [...counts].sort((a, b) => a.sessionNumber - b.sessionNumber)[0];
+      const direction = theDirectionToReadIn(asADirection(o.direction), o.name);
+      const stands = whereThisTargetStands(
+        { id: o.id, target: o.target, count: o.count ?? 0, start: first?.count ?? null, direction, journeyDirection: 'unknown', notSettled: null, dueDay: theDayItIsDue(o.dueOn, now), isPast: !!o.dueOn && daysLate(o.dueOn, today) >= 1 },
+        counts, planned,
+      );
+      if (stands?.word !== 'Behind' && stands?.word !== 'Over limit') continue;
+      const is = stands.word === 'Behind' ? 'is behind' : 'is over its limit';
+      out.risks.push({ text: `The target ${quoted(o.name.trim())}${where(g.id) || ` in ${quoted(g.label)}`} ${is}. ${sentence(stands.says)}`, late: 1_000_000, keptInTheApp: keptOffThePhone(g) });
+    }
+  }
+  /* A wait that has gone on too long, the oldest first, if it is not already said as overdue. */
+  const tooLong = real
+    .filter((w) => !counted.has(w.id) && letIn(w.fromParticipant) && Math.floor((now.getTime() - new Date(w.createdAt).getTime()) / DAY) >= ESCALATE_AFTER_DAYS)
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  for (const w of tooLong) {
+    const hasName = w.onParticipant || (w.onLabel ?? '').trim() || w.namedTheThing;
+    if (!hasName) continue;
+    out.risks.push({ text: `${saidWait(w, 'has been')} since ${theDay(w.createdAt)}.`, keptInTheApp: kept(w.groundId) });
+  }
+  /* A check-in where people have gone quiet. Not about a check-in that began before the engagement messages did. */
+  if (deps.release) {
+    for (const g of grounds) {
+      const rows: any[] = await prisma.checkIn.findMany({
+        where: { groundId: g.id },
+        select: { participantId: true, sessionNumber: true, status: true, createdAt: true, availableFrom: true, participant: { select: { userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } } },
+      }).catch(() => []);
+      const away = await Promise.resolve(whoOnACheckInIsAway(prisma, g.id, now)).catch(() => new Map());
+      const q = theQuietIn(rows, g.label, lead.userId, now, deps.release, new Set([...(away as Map<string, unknown>).keys()]));
+      const n = q ? quietIn(q) : 0;
+      if (!q || n < 1) continue;
+      out.risks.push({ text: `${capital(aNumberInWords(n))} of the ${aNumberInWords(q.ofHowMany)} ${q.ofHowMany === 1 ? 'person' : 'people'} in ${quoted(g.label)} ${n === 1 ? 'has' : 'have'} not answered the latest check-in for more than a week.`, keptInTheApp: keptOffThePhone(g) });
+    }
+  }
+
+  /* Most important first within a part: the most overdue first, then as found. */
+  const byLate = (a: AThingOutstanding, b: AThingOutstanding) => (b.late ?? 0) - (a.late ?? 0);
+  const approvalFirst = (list: AThingOutstanding[]) => (list.length && approvals && list[0].text === approvals ? [list[0], ...list.slice(1).sort(byLate)] : [...list].sort(byLate));
+  out.needsYou = approvalFirst(out.needsYou);
+  out.overdueOnYourTeam.sort(byLate);
+  return out;
+}
+
+/** Each lead, from every check-in that is running: who runs what. */
+async function theLeadsAndTheirCheckIns(prisma: any) {
+  const grounds: any[] = await everyRowAPageAtATime((page: any) => prisma.ground.findMany({
+    where: { status: { notIn: [...TERMINAL, ...HELD, GroundStatus.AWAITING_APPROVAL] } },
+    select: { id: true, label: true, scenario: true, organizationId: true, overWhatsApp: true, initiatorId: true, timelineDays: true, cadence: true, workingDays: true },
+    orderBy: { id: 'asc' },
+    ...page,
+  }), 1000);
+  const byLead = new Map<string, { userId: string; organizationId: string; grounds: any[] }>();
+  for (const g of grounds) {
+    const key = `${g.organizationId}|${g.initiatorId}`;
+    const lead: { userId: string; organizationId: string; grounds: any[] } = byLead.get(key) ?? { userId: g.initiatorId, organizationId: g.organizationId, grounds: [] };
+    lead.grounds.push(g);
+    byLead.set(key, lead);
+  }
+  return [...byLead.values()];
+}
+
+export interface TheNudgeDoors {
+  prisma: any;
+  whatsapp: { sendFor: (organizationId: string, phone: string, text: string, ctx: { kind: string; params: string[] }) => Promise<any>; isEnabled(): Promise<boolean>; hasSaidStop?: (phone: string) => Promise<boolean> };
+  email: { sendTheLeadsDailyNudge: (to: string, subject: string, parts: TheNudgeParts, firstName: string | null | undefined, linkLabel: string, linkUrl: string) => Promise<'sent' | 'held' | 'suppressed' | unknown> };
+  boards: TheBoards;
+  frontendUrl: string;
+}
+
+/** Why a message to a phone did not go, in the cases where the lead is still owed her nudge, by email. */
+const WHEN_THE_PHONE_CANNOT_BE_USED = /Outside the 24-hour service window|first message to this number|said STOP|not approved/i;
+
+/**
+ * THE MORNING SWEEP. One message a lead, by the channel decision 120 names. Returns how many were tried (sent, held for the morning or refused by a rule).
+ * A lead on approved leave, with nothing outstanding, or whose sign-in is gone gets nothing.
+ */
+export async function sendTheLeadsDailyNudges(deps: TheNudgeDoors, now: Date = new Date()): Promise<{ tried: number }> {
+  const { prisma } = deps;
+  const release = await theEngagementMoment(prisma, now).catch(() => null);
+  const leads = await theLeadsAndTheirCheckIns(prisma);
+  const turnedOn = await organisationsThatTurnedWhatsAppOn(prisma, deps.whatsapp as any, leads.map((l) => l.organizationId));
+  const base = (deps.frontendUrl || '').replace(/\/$/, '');
+  const link = `${base}/today`;
+  let tried = 0;
+  for (const lead of leads) {
+    try {
+      /* A team that said which days it works is not nudged on the others. */
+      if (lead.grounds.every((g) => (g.workingDays ?? []).length > 0 && !isAWorkingDay(now, g.workingDays))) continue;
+      const user = await prisma.user.findUnique({ where: { id: lead.userId }, select: { firstName: true, email: true, phoneNumber: true, deletedAt: true, isActive: true } });
+      if (!user || user.deletedAt || user.isActive === false) continue;
+      if (fallsInLeave(now, await theirApprovedLeave(prisma, lead.userId, lead.organizationId))) continue;
+      const outstanding = await whatIsOutstandingFor(prisma, lead, { boards: deps.boards, release }, now);
+      if (!theseAreOutstanding(outstanding)) continue;
+
+      /* On WhatsApp when there is a number and WhatsApp is on for them, and they have not said stop. */
+      const entry = await theirRosterEntry(prisma, lead.organizationId, lead.userId, { phone: true }).catch(() => null);
+      const phone: string | null = entry?.phone ?? user.phoneNumber ?? null;
+      const stopped = phone && deps.whatsapp.hasSaidStop ? await deps.whatsapp.hasSaidStop(phone).catch(() => false) : false;
+      const phoneFacts = theseForAPhone(outstanding);
+      if (phone && !stopped && turnedOn.has(lead.organizationId) && theseAreOutstanding(phoneFacts)) {
+        const template = theTemplateParagraph(user.firstName, phoneFacts, link);
+        const window = theWindowForm(user.firstName, phoneFacts, link);
+        /* The words a person reads inside the 24 hours are the window form; outside it, the template with its one paragraph. */
+        const result: any = await deps.whatsapp.sendFor(lead.organizationId, phone, window, { kind: NUDGE_KIND, params: template.params });
+        if (result?.sent !== false) { tried++; continue; }
+        /* Not sent for a reason that means the phone cannot be used today: she is owed it by email instead. Held back by a rule of the day (one a day, "not now") means nothing more today. */
+        if (!WHEN_THE_PHONE_CANNOT_BE_USED.test(String(result?.error ?? ''))) { tried++; continue; }
+      }
+      if (!user.email || (await isAlreadyHeld(prisma, NUDGE_SENDER, user.email))) continue;
+      const went = await deps.email.sendTheLeadsDailyNudge(user.email, theNudgeSubject(outstanding), theNudgeParts(outstanding), user.firstName, 'See everything', link);
+      if (went !== 'suppressed') tried++;
+    } catch {
+      /* One lead's nudge that could not be put together never stops the others. */
+    }
+  }
+  return { tried };
+}

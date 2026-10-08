@@ -5,7 +5,7 @@ import { LeaveBoardService } from '../suites/the-leave-board.service';
 import { TimeSheetsService } from '../suites/the-time-sheets.service';
 import { SpendingService } from '../suites/the-spending.service';
 import { organisationsThatTurnedWhatsAppOn } from '../whatsapp/only-where-whatsapp-is-turned-on';
-import { sendTheLeadsDailySummaries } from '../whatsapp/the-leads-daily-summary';
+import { sendTheLeadsDailyNudges } from '../engagement/the-leads-daily-nudge';
 import { sendTheAnchorWeeklyInsights } from '../whatsapp/the-anchor-weekly-insight';
 import { sendTheLeadsWeeklyLetters } from '../email/the-leads-weekly-letter';
 import { theAnchorScenarioIsOn, theHalfwayMessagesAreOn } from '../admin/what-is-hidden-at-release';
@@ -891,24 +891,27 @@ export class GroundsCron implements OnApplicationBootstrap {
   }
 
   /**
-   * THE LEAD'S DAILY SUMMARY ON WHATSAPP (decision 82, item 9), at seven in the morning in Lagos, an
-   * hour and a half before the reminders, so it is the lead's one message of the day. What it says,
-   * and what it never says, is in whatsapp/the-leads-daily-summary.ts; how often, STOP, "Not now",
-   * the 24 hours and the template are the sender's.
+   * THE LEAD'S DAILY NUDGE (decision 120), at seven in the morning in Lagos, an hour and a half before the reminders, so it is the lead's one message of the day. It takes the
+   * place of the WhatsApp daily summary of decision 82 item 9: the same hour, the same kind of message, the same limits (once a day, "not now", the 24 hours, the template),
+   * with what is outstanding in place of the counts. What it says and never says is in engagement/the-leads-daily-nudge.ts.
    */
   @Cron('0 7 * * *', { timeZone: 'Africa/Lagos' })
-  async sendTheLeadsDailySummaries() {
-    await onceAcrossCopies(this.prisma, 'lead-daily-summary', theDay(), () => this.sendTheLeadsDailySummariesInner());
+  async sendTheLeadsDailyNudges() {
+    await onceAcrossCopies(this.prisma, 'lead-daily-summary', theDay(), () => this.sendTheLeadsDailyNudgesInner());
   }
 
-  async sendTheLeadsDailySummariesInner(now: Date = new Date()): Promise<{ tried: number }> {
-    const result = await sendTheLeadsDailySummaries(
-      { prisma: this.prisma, whatsapp: this.whatsapp, boards: { leave: this.leave, timeSheets: this.timeSheets, spending: this.spending }, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
+  async sendTheLeadsDailyNudgesInner(now: Date = new Date()): Promise<{ tried: number }> {
+    const result = await sendTheLeadsDailyNudges(
+      { prisma: this.prisma, whatsapp: this.whatsapp as any, email: this.email as any, boards: { leave: this.leave, timeSheets: this.timeSheets, spending: this.spending }, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
       now,
-    ).catch((err: any) => { this.logger.warn(`The leads' daily summaries could not be sent: ${err?.message}`); return { tried: 0 }; });
-    if (result.tried) this.logger.log(`WhatsApp: ${result.tried} lead summary message(s) tried.`);
+    ).catch((err: any) => { this.logger.warn(`The leads' daily nudges could not be sent: ${err?.message}`); return { tried: 0 }; });
+    if (result.tried) this.logger.log(`Lead daily nudge: ${result.tried} tried.`);
     return result;
   }
+
+  /** The old name of the job, kept so the journeys and the test bed that call it by that name still run the one morning job. */
+  async sendTheLeadsDailySummaries() { return this.sendTheLeadsDailyNudges(); }
+  async sendTheLeadsDailySummariesInner(now: Date = new Date()) { return this.sendTheLeadsDailyNudgesInner(now); }
 
   /**
    * THE ANCHOR'S WEEKLY INSIGHT ON WHATSAPP (anchor piece 28), Friday at half past six in the morning in Lagos, before
