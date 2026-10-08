@@ -113,6 +113,21 @@ describe('the anchor month and the regular trial', () => {
     expect(org.freeTrialStartedAt).toEqual(new Date('2026-10-20T10:00:00Z'));
   });
 
+  it('decision 114: the month an anchor check-in started is found by its scenario as well as by its link, and a regular check-in does not count', async () => {
+    const asked: any[] = [];
+    const org = anAnchorMonth();
+    const pricing: any = { getFreeTrial: jest.fn(async () => ({ on: true, teamsUnder: 20, months: 1 })), getAnchorTrial: jest.fn(async () => ({ on: true, months: 1, people: 20 })), listPlans: jest.fn(async () => PLANS) };
+    const rows = [{ startedFrom: null, scenario: 'HELP_TEAM_UNDERSTAND', createdAt: NOW }, { startedFrom: null, scenario: 'OKR_ALIGNMENT', createdAt: new Date('2026-09-01T10:00:00Z') }];
+    const prisma: any = {
+      organization: { findUnique: jest.fn(async () => org), updateMany: jest.fn(async (q: any) => { Object.assign(org, q.data); return { count: 1 }; }) },
+      user: { count: jest.fn(async () => 4) },
+      ground: { findMany: jest.fn(async (a: any) => { asked.push(a.where); return rows.filter((r) => a.where.OR.some((c: any) => Object.entries(c).every(([k, v]) => (r as any)[k] === v))); }) },
+    };
+    const got: any = await new TheFreeTrialService(prisma, pricing).grantIfItApplies('org-baridi', 'fewer', new Date('2026-10-20T10:00:00Z'));
+    expect(got.granted).toBe(true);
+    expect(asked[0].OR).toEqual([{ startedFrom: 'anchor' }, { scenario: 'HELP_TEAM_UNDERSTAND' }]);
+  });
+
   it('fault 1: once the anchor month has ended, a later answer gives no second free run', async () => {
     const org = anAnchorMonth();
     expect(await later(org, new Date('2026-11-20T10:00:00Z'))).toEqual({ granted: false, why: 'it has a free run of its own' });
