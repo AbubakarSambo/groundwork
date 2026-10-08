@@ -73,7 +73,7 @@ describe('a control is offered only to whoever can use it', () => {
     /* And the rule itself still asks that question, rather than having become something else. */
     const rule = readFileSync(join(__dirname, 'lib/who-may-rename-a-check-in.ts'), 'utf8')
     expect(rule).toMatch(/checkIn\.initiatorId === viewer\.id/)
-    expect(rule).toMatch(/viewer\.role === 'ADMIN'/)
+    expect(rule).toMatch(/checkIn\.mayChangeSetup/)
   })
 
   it('and the server refuses the same people, so the two cannot drift apart', () => {
@@ -81,7 +81,11 @@ describe('a control is offered only to whoever can use it', () => {
       join(__dirname, '../../api/src/modules/grounds/grounds.service.ts'),
       'utf8',
     )
-    expect(service).toMatch(/can rename it/)
-    expect(service).toMatch(/ground\.initiatorId !== requestingUserId && !isOrgAdmin/)
+    /* Decision 119, H10: renaming is part of the set-up, so the server lets the lead through and sends
+       anybody else to the set-up rule (an admin only once the lead has left). The rail asks the same. */
+    expect(service).toMatch(/if \(dto\.label !== undefined\) \{[\s\S]{0,600}?if \(ground\.initiatorId !== requestingUserId\) await this\.mayConfirmSetupOn\(ground, requestingUserId\)/)
+    const rule = readFileSync(join(__dirname, 'lib/who-may-rename-a-check-in.ts'), 'utf8')
+    expect(rule).toMatch(/mayChangeSetup/)
+    expect(rule).not.toMatch(/viewer\.role === 'ADMIN'/)
   })
 })

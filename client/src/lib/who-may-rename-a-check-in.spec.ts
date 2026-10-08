@@ -24,8 +24,15 @@ describe('who may rename a check-in', () => {
     expect(mayRenameACheckIn(CHECK_IN, { id: 'u-lead', role: 'MEMBER' })).toBe(true)
   })
 
-  it('an admin in the organisation may, as the server allows', () => {
-    expect(mayRenameACheckIn(CHECK_IN, { id: 'u-other', role: 'ADMIN' })).toBe(true)
+  it('an admin who does not lead it may not while the lead is still there, because the server refuses them (decision 119, H10)', () => {
+    /* Before this, the rail offered every admin the pencil and the server answered "Only <lead>, who
+       runs this check-in, can change how it is set up". */
+    expect(mayRenameACheckIn(CHECK_IN, { id: 'u-other', role: 'ADMIN' })).toBe(false)
+    expect(mayRenameACheckIn({ ...CHECK_IN, mayChangeSetup: false }, { id: 'u-other', role: 'ADMIN' })).toBe(false)
+  })
+
+  it('an admin may once the server says they may change the set-up (the lead has left)', () => {
+    expect(mayRenameACheckIn({ ...CHECK_IN, mayChangeSetup: true }, { id: 'u-other', role: 'ADMIN' })).toBe(true)
   })
 
   it('a party who does not lead it may not - this is the one the audit found', () => {
