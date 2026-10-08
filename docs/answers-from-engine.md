@@ -6785,3 +6785,78 @@ Today a person can stop messages on WhatsApp only by writing "stop" or "not now"
 ### 4. Nothing for the screens in the catch-up message
 
 A person who has a number that Groundwork has never got a WhatsApp message through to, and who has an open check-in they have not started, now gets the opening notice's own words once, as a message on their phone. There is no screen for it and no setting; it follows the organisation's WhatsApp switch, the person's "stop" and the lead's choice to stop the chasing. It is described in `docs/whatsapp-templates.md` under `checkin_open`.
+
+## From the engine workspace, 8 October (late): pieces 5, 6 and 7 of the next pull request
+
+Everything below was run on test bed copy a (one API on port 3201, a fresh database) as the people named, and the sentences are pasted from what the API answered. Nothing was sent to anybody.
+
+### Piece 5: the three restored screens (S1 to S3), request 194, and the four removals
+
+The screens workspace has already restored S1, S2 and S3 on its own branch (`b608015f`, `66234d6b`, `6fe2dfe5`). The engine's part is that each one has what it needs, and one thing is new for S2.
+
+**S1, "Begin the last check-in" (`POST /grounds/:id/closing-session`).** The route is unchanged and matches live line for line. It works for the lead whatever the length, an open-ended check-in included. Tried on "Sales team, Q4" after it was made to run until the lead ends it (`timelineDays` is then `null` and `runsUntilEnded` is `true`):
+
+- Wairimu, the lead: `201 { "groundId": "...", "closingSession": true, "participantsFlagged": 6 }`. Each person who took part has their next session marked final (`checkIns[].isFinal` is `true` on the ground read, so a screen can say the last check-in has begun). Pressing it again gives the same answer and makes nothing new.
+- Amani, who takes part: `403` "Only the person who runs this check-in can begin the last check-in, so ask them to." Grace, an admin who is not the lead, reads the same.
+- A check-in that is not there: `404` "That check-in could not be found, so go back to your check-ins and open it from the list."
+
+New spec `grounds/the-lead-can-begin-the-last-check-in-on-an-open-ended-one.spec.ts`. The server needed no change.
+
+**S2, Today's link to your own requests.** New, optional for the screens now that they key "off" per suite: `GET /suites/mine`, one call for every signed-in person, never an error for a suite that is off.
+
+```json
+{ "leave": true, "spend": true, "time": false, "any": true, "says": "These are the requests you can make in your organisation." }
+```
+
+When none is on: `any` is `false` and `says` is "No requests for leave, spending or hours are switched on in your organisation yet. An admin switches them on under Suites." A guest, or somebody who is not in the organisation, is answered with all three `false`, not refused. Yes or no for each and the sentence, nothing from the suites' answers. Read as Amani (Msingi: leave and spending on, hours off) and as Grace the same; as Musa (Lakeview: nothing on), Ruth (Fieldnote, new) and Dov the `false` answer. The link shows when `any` is `true`. Spec `suites/your-requests-link-needs-one-answer.spec.ts`.
+
+**S3, the request forms.** What the forms answer: `GET /suites/leave/form` and `/suites/spend/form` answer 200 with the choices, 404 with "The leave suite is not switched on. An admin switches it on under Suites." where the suite is off, 403 for a guest. A 5xx is a real fault only, and is one of two plain sentences: "Groundwork cannot reach its records for a moment. Nothing was changed. Please try again in a minute." (503) or "Something went wrong on our side. Please try again in a minute, and if it happens again, tell us." (500). Everything a person can type wrong is a 400 with a sentence: an amount of nothing, less than nothing or too large "Give an amount of more than nothing."; no purpose "Say what the money is for."; a category nobody set "Choose one of the categories your organisation has set."; days off the calendar or the wrong way round "Give a first and a last day, with the last day on or after the first."; days over a month ago "Those days ended more than a month ago, so they cannot be asked for now. Give days from the last month onwards." One fault was found and fixed: if the sentence that tells the person "I have sent your request..." failed to build after the request was already recorded, the form got a 500 and the person would send it again. It now answers with the id and "Your request has been sent. You can see where it is under your requests." Spec `suites/the-request-forms-fail-only-on-a-real-fault.spec.ts`.
+
+Seen and left for Hafsah: a leave request for the year 9999 is accepted. There is a limit on how far back a request can reach (a month) and none on how far ahead.
+
+**Request 194, answered.** `PATCH /grounds/:id` now accepts `cadenceAnchorDay`: 0 to 6 (Sunday to Saturday) on a weekly or fortnightly check-in, 1 to 31 on a monthly one, `null` to clear it. A number that means nothing for the rhythm is refused: "Choose a day of the week for the check-ins to land on, from Sunday to Saturday.", "Choose a day of the month for the check-ins to land on, from the 1st to the 31st.", and for a daily, one-time or as-you-decide rhythm "A check-in that happens every day, once, or when you decide has no day to land on, so choose a weekly, fortnightly or monthly rhythm first." It is the lead's, or an admin's once the lead has left (decision 119, H10); a member reads "Only Wairimu Njoroge, who runs this check-in, can change how it is set up. An admin can only do that once Wairimu has left the organisation. Nothing was changed." It applies from the next session that is made; a session already made keeps its date, so word it "from the next check-in on". Changing a weekly rhythm to a monthly one with no new day clears the old weekday (a Monday, 1, would otherwise be read as the 1st). `GET /grounds/:id` already served `cadenceAnchorDay` (it is a column of the check-in the read passes on; the screens' note said it did not): Wairimu and Amani both read `1` after the change. Spec `grounds/the-day-check-ins-land-on-can-be-changed.spec.ts`.
+
+**The four removals (the screens' table 2), answered.** All four stay removed (decision 119 and the rules they came from). What the engine does for each: (1) the "I have read this" sign-off: the three `setup-sign-offs` routes are still there and unused; nothing to serve. (2) "See the counts behind this": `theTable` is not served to anybody, as the screens' note says. (3) The coverage bar: the engine sends `coverage.pct` to the readers who may read it; the rule that a lead never sees how a person's answers were rated is why a person's own bar carries no confidence figure. Whether the bar is drawn at all under a person is the screens' call and Hafsah's, and nothing new is needed from the engine. (4) An admin rewriting the brief and the other setup changes: the server now refuses it the same as the screen does (decision 119, H10), spec `an-admin-changes-the-setup-only-once-the-lead-has-left.spec.ts` (now also covers the day check-ins land on).
+
+### Piece 6: small states and error pages, the engine's side
+
+Every refusal, not-found and failure the screens' routes serve is now plain sentences that say what happened and what to do next. Two changes, both for every reader at once.
+
+1. **The door every error passes (the global filter).** The framework's own defaults, a crash's own words, and the pipe's field list used to reach people. As each person now reads them:
+   - A route that is not there (was "Cannot GET /api/v1/nothing-here"): "That page or action is not there, so go back and start again from Today."
+   - No sign-in, or one that has run out (was "Unauthorized"): "Your sign-in has run out, so sign in again."
+   - A refusal with no words of its own (was "Forbidden resource"): "You are not allowed to do that here, so ask an admin of your organisation if you need it."
+   - A crash in our code (was the crash's own message, for example "Cannot read properties of undefined"): "Something went wrong on our side. Please try again in a minute, and if it happens again, tell us." The detail goes to the log only.
+   - A form with fields that did not validate (was "The request did not validate: name must be a string"): "Something you sent could not be used, so check what you typed and try again." The list still travels in `errors` for a machine.
+   - A body that is not JSON (was "Unexpected end of JSON input."): "That could not be done as it was sent, so check what you typed and try again." Too large: 413 "That is too large to send, so choose something smaller and try again."
+   - The database refusing a duplicate (was "Something with that name or key already exists."): "That is already taken, so choose a different one."
+   - Any other message is made a sentence (capital, full stop) and left word for word. The developer API (published surfaces) keeps its field names and its own shape.
+2. **About 350 refusals written in a few clipped words are sentences.** The ones people meet most: "Check-in not found" (97 places) is "That check-in could not be found, so go back to your check-ins and open it from the list."; "You are not a participant in this check-in" is "You are not one of the people in this check-in, so ask whoever runs it to add you."; "User not found" is "We could not find that sign-in, so sign in again and try once more."; "Document not found" is "That document could not be found, so refresh the page to see what is there now."; "messages required" is "There was nothing to send, so write a message and try again."; "Email already registered" is "That email address already has a sign-in, so sign in with it instead."; "This check-in has already ended" is "This check-in has already ended, so there is nothing more to change."; 20 sentences joined by a dash are two clauses joined by "so" or "because". Same statuses, and the privacy is unchanged: a stranger and a person with no part still read the same "could not be found". New guard `every-refusal-a-person-can-read-is-a-sentence.spec.ts` fails the next refusal that is not a sentence.
+
+Walked on the bed with 1,060 calls as a new admin, a member, a lead, an admin and a member of an existing client, across 244 write routes and 149 read routes (bogus ids, empty bodies): no 5xx, and every refusal a sentence. (The walk also called a "turn off my own sign-in" route on five test people on the bed's own database; they were turned back on.)
+
+**What is the screens' (not changed here):**
+
+- The empty states and the three small pages ("That link didn't work", "Something broke on this page", "Nothing is at this address", "This check-in isn't available any more") are drawn by the screens from `F4-small-states`. No screen has asked the engine for an empty-state sentence, and the engine serves empty lists as empty lists with their counts. If a screen wants a sentence for an empty list that only the engine knows, ask for it by name.
+- The staff pages say "Platform admin access required." themselves, in `AdminDashboardPage.tsx`, `AdminPage.tsx`, `PromptVersioningPage.tsx` and `PromptTestPage.tsx`. The engine now says "This part is for Groundwork staff." for the same refusal.
+- `MagicVerifyPage.tsx` matches on the words `COMMIT_IN_PROGRESS` and `NO_ENTRY_SESSION` in the message. They stay as they are, so the page keeps working, and the body now also carries `code` with the same word. When the page reads `code` instead, tell the engine and the message can become a sentence ("Your check-in is being set up right now, so wait a moment and try again." and "We could not find the conversation you started, so start again from the beginning.").
+- Two client specs read the engine's source for a sentence and were updated to the new words: `api/what-we-charge-is-what-we-show.spec.ts` ("That plan does not exist") and `pages/grounds/no-report-yet-is-not-an-error.spec.ts` ("That check-in could not be found, so go back to your check-ins and open it from the list."). Please keep them when you merge.
+- Where a screen shows a fixed sentence of its own beside an engine refusal, the two should not say the same thing twice.
+
+### Piece 7: Context and resources through Ask, with the old context chat switchable
+
+**What is on.** `release.contextInAskGroundwork` is on by default: a missing row reads on, `{ "on": false }` switches it off, a row that cannot be read reads off. Ask does for the lead everything the old chat did, proved again side by side on the bed, 18 of 18 (`api/journey/context-through-ask-side-by-side-with-the-old-chat.ts`, results in `docs/run-log.md`): a line of context (the same row), a private note about Miriam (the same row, and she reads none of it), a paste of plan and notes (the same kinds for the same people), a short question for a person (said back word for word and kept only on a yes), a document (said back, rows after the yes), the yes before anything is kept, and who may: Grace, an admin, is refused while the lead is there and may once the lead has left; Miriam, who is in the check-in, is refused.
+
+**Request 169, answered: `GET /ask` serves two new fields.**
+
+```json
+{ "addsContext": true, "oldContextChatIsOpen": true, "addLine": "You can also add context or documents to your check-ins here.", "...": "..." }
+```
+
+`addsContext` is `true` only while Context is in Ask and the reader runs a check-in that has not ended, or is an admin of the organisation and the lead of one has left. Read as Wanjiru (leads the check-in): `true`. Miriam (takes part): `false`. Grace (admin, the lead still there): `false`. A guest: `false`. Show "Add context with Ask <organisation name>" when it is `true`, opening Ask with `{ message: "", groundId, openedFrom: "check_in_setup" }` as now.
+
+**The old chat is switched off by a setting, and it is still on.** `release.oldContextChat`, written `{ "on": false }`, makes the three routes of the old chat (`POST /grounds/:id/context-chat`, `.../confirm`, `.../decline`) answer `410` with one sentence: "Setting up a check-in now happens in Ask Baridi, so open Ask Baridi from this check-in's Context and resources page and say what you want to add." (named for the person's organisation; "Ask Groundwork" where it has no name). Ask's own setup lane is not stopped by it. A missing row, or one that cannot be read, leaves the old chat on.
+
+**Why it is not switched off yet, and exactly what to do.** `ContextPage.tsx` draws the old `<ContextChat>` box (line 448, `contextEnabled && isTheLead`) under the new "Add context with Ask" button, and the screens' note in request 200 says they will say here when it can go. Switching it off now would leave the lead a box she can type in and a refusal when she does. So: hide `<ContextChat>` when `GET /ask` serves `oldContextChatIsOpen: false` (and, once you are ready, stop drawing it altogether), then say so here and Hafsah writes the row, or the default changes in one place (`theOldContextChatIsOpen`). The earlier `contextEnabled` flag on the ground read is a different thing (whether documents are shared with the check-in) and is not changed.
+
+One more for you: the old chat and Ask ask "How long should this run?" of a check-in that already has a length when the lead never chose it (`timelineStated` is false for every check-in made before that column, by the migration's own design: "a ground running on a default it never chose"). That is request 201's B-065; it is intended, and it stops once she answers.
