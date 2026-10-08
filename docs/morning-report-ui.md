@@ -4,6 +4,60 @@ This is the report from the screens workspace, on the branch `wip/prototype-ui`.
 workspace writes its own report in `docs/morning-report.md`, so the two computers never edit the
 same file.
 
+## 8 October, final browser run
+
+The reviewer's last run in a real browser before the pull request, at c05a396e, on this computer (client 5173, API 3000, localhost only). Nothing in `api/` or `client/` was changed. Every screen below was read as the person it is for, at 1440 and 390, with the console and every 4xx/5xx response watched, and the privacy checks were read from the network responses, not only from the screen.
+
+**Privacy, first: nothing private reached the wrong person.**
+- **The anchor's board, by role, from `GET /grounds/:id/board`:** on both anchor check-ins in the seeds (Sokoni Fresh, `ecdb18b1` live and `54e38fa0` ended), Rukia (the lead) is served `activeLine`, `theMonthBoard` and `theEndOfMonthRead`. Amani and Baraka (members) are served none of the lead-only parts, only their own `yourPartInMovingThings`, `aNudgeForYou` and `ideasFromYourTeam`, and `theJudgement` is null for them. Grace (an admin in neither) is served only `activeLine`, as the server's rule says. So the server decides it, not the client. One gap: both seeded anchor check-ins are `REALIGN_TEAM`, not `HELP_TEAM_UNDERSTAND`, so the five sections from decision 114 ("What you're carrying", "How I'll work with your team", the four lenses, ideas, "This week") are served to nobody on this computer, the lead included. Their wall is only proven by `the-anchor-sections-on-the-board.spec.ts`, not on screen.
+- **The notes for the next check-in:** Esther added a note at each width. `GET /grounds/f9ad…/my-notes` served it to Esther only. Tendai (the lead) was served an empty list, and Naomi (an admin) was refused with 403. Esther then deleted it, after "Delete this note?", and the list came back empty.
+- **People:** `GET /users` gives every row a `displayName`, and none is an address. `GET /users/colleagues` gives every row a name, and none is an address. Esther and Tendai are refused `GET /users` (403).
+- **Other rules:** `theJudgement` is null for Esther on the sales board. Naomi, as an admin, is served the "what to ask each person" coaching and never Tendai's own ("yours" is null). In Ask, Esther is told that Kwesi's words open when the report is shared, and she gets nothing about Lindiwe, about Tendai's private notes, or about how her answers were rated.
+
+**1. The browser checks:** `the-prototype-count-of-buttons`, `the-page-is-cream`, `nothing-overlaps-at-in-between-widths` and `the-feedback-trigger-clears-start` all passed, 59 of 59, with no rerun. The nine boards already known to have too many buttons (gov, loans, matter and mvnext as lead and participant, and mvq4 as lead) are still known gaps marked `test.fail`, and they still fail as expected.
+
+**2. The sweep specs, one file at a time with 70-second pauses:**
+- **Passed (22 files):**
+  - google-sign-in (10), a-remaining-widths (10), a1-password-choice-still-emails (1), a1-same-domain (1), a1-sign-up (4);
+  - a2-people (2), a3-approve-waiting (1), a4-suites (2), a5-billing (2), a6-company (4), a7-whatsapp-backoffice (4);
+  - l1-sales (1, the real model, 4.1 minutes);
+  - l5-approvals (1). It first failed because `SWEEP_OUT` was not set, and then because Grace and Daniel had no kept sign-in. It passed once both were in place, after `privacy-0-sign-everyone-in`.
+  - l7-ask (1). It first failed because `SWEEP_OUT` was not set, and passed on the rerun.
+  - l8-give-it-more-time (1), m1-join-390 (1);
+  - situations-flows (5), situations-people-invite (4), situations-phone-numbers (1);
+  - fixed-screenshots (5), more-fixed-screenshots (6).
+- **Failed (1):** situations-orgs-tabs-slow. Its first test, "someone in two organisations", failed twice, at `sign-in-by-email.ts:143`, with "No email with a /verify-email…/ link reached amani.u8@example.test within 40 seconds." The page said "Check your email". The other two tests did not run. By hand, a minute later, Amani's sign-in link arrived at once, and she is listed in the second organisation. So this is most likely the five-a-minute limit inside the spec's own sign-up, invite and sign-in sequence, not a product fault. It is not logged as a bug.
+- **Not runnable (2):**
+  - l8-end-or-extend. Its check-in to end was already ended in an earlier run, on 7 October, and the page now shows "How this ended", so there is nothing left to fill in at line 39.
+  - m2-attachments. Amani has no open session on "Check how the same role is going" until Thursday 15 October, so the "Add a photo, a document…" button is not drawn (line 42).
+- The screenshots these specs re-take were put back, not committed.
+
+**3. The journeys by hand, at 1440 and 390:**
+- **Admin (Naomi):** Today, People, Suites, Plan and billing and the Company page all draw and read as sentences. People shows names with the address underneath, and no address in place of a name. Nobody is held for a seat, so the no-seat section correctly does not show. But see B-055: the page says "8 people, on the free plan, which is for up to 5." and never says who is over the plan. Billing says "Starter" only as a plan to move to, never as the free plan's name.
+- **Lead (Tendai):**
+  - Today shows the leave and spending link. "Begin the last check-in" is back on "My work", and the confirm and Cancel both work. It was not pressed.
+  - The board and the 390 layout are fine.
+  - Failed on B-053. The new header line contradicts itself: "Session 1 of 12. … Nobody has checked in yet. Waiting for the first check-in." That is shown after Tendai has finished session 1.
+  - People and setup, the colleague picker, failed on B-054. It prints "MEMBER" and "LEAD" under each name.
+  - The day check-ins land on could not be checked, because no Kijani check-in has a `cadenceAnchorDay`, so "Every week." is all it can say.
+  - B-056: "once all 1 are in".
+- **Team member (Esther):**
+  - Today is fine.
+  - In the check-in, the message was sent and answered, and she left to Today and came back. The answer to "What did I say I would do about the three credit files?" ignores her "I will take the three credit files to Fatou Diallo on Monday". That is already the engine's, in requests 179 and 180.
+  - The note was added and deleted at both widths.
+  - The leave form draws, and Send stays off until there are dates. It was not sent.
+  - Ask is private and holds.
+- **Google sign-in:** google-sign-in.spec.ts passed 10 of 10. With the real `GET /auth/methods`, which answers `google:false`, `/auth` shows no Google button, and no "Google" anywhere, at 1440 and 390.
+
+**4. Console and failed requests:** nothing new. Every page in every role and width had no page errors. The only failed requests are the known ones from B-002 and S2: `404 GET /suites/time/mine` (the time sheets suite is off in Kijani), all four `/suites/*/mine` reads and `/suites/queue` in organisations with every suite off, and `400 POST /entry/commit` on a first visit.
+
+**New bugs:** 4, all in `docs/bug-log-screens.md` with screenshots.
+- **Wrong information:** 1, B-053, the screens'.
+- **Confusing:** 3. B-054 and B-056 are the screens'. B-055 is the engine's.
+- **Privacy:** none.
+
+**Ready for the pull request?** Not quite. Privacy holds everywhere it could be checked. But B-053 is a regression from a33d198d: the line every lead reads at the top of every tab now says nobody has checked in when they have. It and B-054 (from 96f60a61) are small screen fixes, and they should be fixed first.
+
 ## The user journey sweep, in progress (7 October, afternoon)
 
 The sweep follows Hafsah's `docs/user-journey-tests.md`. The bug log is `docs/bug-log-screens.md`, the screenshots are in `docs/bug-log-screens/`, and the journeys that can be run again are in `e2e/sweep/`.
