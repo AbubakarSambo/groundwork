@@ -26,7 +26,7 @@ describe('the days a team works, after the check-in exists', () => {
 
   /* Changing when a check-in may open is the lead's call, like the rhythm itself. */
   it('and changing them is the lead\'s call', () => {
-    expect(SERVICE).toMatch(/const changesTheSchedule = requestedDays !== undefined \|\| dto\.cadence !== undefined \|\| dto\.workingDays !== undefined;/);
+    expect(SERVICE).toMatch(/const changesTheSchedule = requestedDays !== undefined \|\| dto\.cadence !== undefined \|\| dto\.workingDays !== undefined \|\| dto\.cadenceAnchorDay !== undefined;/);
   });
 
   it('and the change is on the record like every other schedule change', () => {
