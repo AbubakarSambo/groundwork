@@ -131,6 +131,18 @@ class UpdateTimelineDto {
   @Max(6, { each: true })
   workingDays?: number[];
 
+  /**
+   * THE DAY THE CHECK-INS LAND ON (request 194): a weekday for a weekly or fortnightly check-in (0 is Sunday), a day of the month for a monthly one.
+   * Live let a lead say "every Monday" at setup and nowhere afterwards. `null` clears it, so the check-in lands wherever the rhythm puts it. It
+   * applies from the next session that is made; a session already made keeps its date.
+   */
+  @ApiPropertyOptional({ nullable: true, minimum: 0, maximum: 31, description: 'Weekly or fortnightly: 0 = Sunday to 6 = Saturday. Monthly: 1 to 31. Null clears it.' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(31)
+  cadenceAnchorDay?: number | null;
+
   @ApiPropertyOptional({ description: 'Append a context note to this ground' })
   @IsOptional()
   contextNote?: string;

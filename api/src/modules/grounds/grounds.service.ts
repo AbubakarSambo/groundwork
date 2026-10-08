@@ -6664,7 +6664,7 @@ export class GroundsService {
   async updateTimeline(
     groundId: string,
     requestingUserId: string,
-    dto: { label?: string; timelineDays?: number; timelineWeeks?: number; runsUntilEnded?: boolean; cadence?: string; contextNote?: string; startsAt?: string; brief?: string; workingDays?: number[] },
+    dto: { label?: string; timelineDays?: number; timelineWeeks?: number; runsUntilEnded?: boolean; cadence?: string; contextNote?: string; startsAt?: string; brief?: string; workingDays?: number[]; cadenceAnchorDay?: number | null },
   ) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
     if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
@@ -6716,7 +6716,7 @@ export class GroundsService {
      *
      * It changes the schedule, so it is the lead's call like the rhythm itself.
      */
-    const changesTheSchedule = requestedDays !== undefined || dto.cadence !== undefined || dto.workingDays !== undefined;
+    const changesTheSchedule = requestedDays !== undefined || dto.cadence !== undefined || dto.workingDays !== undefined || dto.cadenceAnchorDay !== undefined;
     if (changesTheSchedule && ground.initiatorId !== requestingUserId) {
       /* Decision 119, H10: an admin only once the lead has left. */
       await this.mayConfirmSetupOn(ground, requestingUserId);
@@ -6828,6 +6828,22 @@ export class GroundsService {
       }
     }
 
+    /*
+     * THE DAY IT LANDS ON (request 194): a weekday (0 to 6) for weekly and fortnightly, a day of the month (1 to 31) for monthly, or null to clear it.
+     * Refused with a sentence where the number means nothing for the rhythm, rather than stored and ignored: a control that agrees with you and changes nothing.
+     */
+    const theRhythm = (dto.cadence as Cadence | undefined) ?? ground.cadence;
+    if (dto.cadenceAnchorDay !== undefined && dto.cadenceAnchorDay !== null) {
+      const day = dto.cadenceAnchorDay;
+      if (theRhythm === Cadence.WEEKLY || theRhythm === Cadence.FORTNIGHTLY) {
+        if (!Number.isInteger(day) || day < 0 || day > 6) throw new BadRequestException('Choose a day of the week for the check-ins to land on, from Sunday to Saturday.');
+      } else if (theRhythm === Cadence.MONTHLY) {
+        if (!Number.isInteger(day) || day < 1 || day > 31) throw new BadRequestException('Choose a day of the month for the check-ins to land on, from the 1st to the 31st.');
+      } else {
+        throw new BadRequestException('A check-in that happens every day, once, or when you decide has no day to land on, so choose a weekly, fortnightly or monthly rhythm first.');
+      }
+    }
+
     // Parse existing audit log - migrate legacy array format to structured object.
     const rawLog = ground.groundAuditLog;
     const auditData: { timeline: object[]; contextNotes: string[]; briefChangedBy?: { userId: string; at: string; byAnAdminSentence?: string } } =
@@ -6857,7 +6873,7 @@ export class GroundsService {
       };
     }
 
-    if (requestedDays !== undefined || dto.cadence !== undefined || dto.workingDays !== undefined) {
+    if (requestedDays !== undefined || dto.cadence !== undefined || dto.workingDays !== undefined || dto.cadenceAnchorDay !== undefined) {
       auditData.timeline.push({
         changedAt: new Date().toISOString(),
         changedBy: requestingUserId,
@@ -6868,6 +6884,7 @@ export class GroundsService {
           ...(dto.workingDays !== undefined && {
             workingDays: { from: (ground as any).workingDays ?? [], to: workingDaysOf(dto.workingDays) },
           }),
+          ...(dto.cadenceAnchorDay !== undefined && { cadenceAnchorDay: { from: (ground as any).cadenceAnchorDay ?? null, to: dto.cadenceAnchorDay } }),
         },
       });
     }
@@ -6984,6 +7001,9 @@ export class GroundsService {
         /* Normalised on the way in: seven days listed is the same instruction as saying nothing,
            and junk from an old client must not make a check-in unschedulable. */
         ...(dto.workingDays !== undefined && { workingDays: workingDaysOf(dto.workingDays) }),
+        ...(dto.cadenceAnchorDay !== undefined && { cadenceAnchorDay: dto.cadenceAnchorDay }),
+        /* Moving between a weekly kind of rhythm and a monthly one with no new day said would leave a Monday (1) to be read as the 1st of the month. It is cleared. */
+        ...(dto.cadence !== undefined && dto.cadenceAnchorDay === undefined && (ground as any).cadenceAnchorDay != null && theKindOfDayItLandsOn(dto.cadence as Cadence) !== theKindOfDayItLandsOn(ground.cadence) && { cadenceAnchorDay: null }),
         ...(requestedLabel !== undefined && { label: requestedLabel }),
         ...(dto.brief !== undefined && { brief: dto.brief.trim() || null }),
         /*
@@ -8259,6 +8279,11 @@ export class GroundsService {
  * HOW LONG A NEW CHECK-IN RUNS (U.6 review): what they said, else the end they chose, else the
  * situation's usual length. See timelineDaysForAChosenEnd.
  */
+/** Whether a rhythm lands on a weekday, on a day of the month, or on no chosen day at all. */
+function theKindOfDayItLandsOn(c: Cadence): 'weekday' | 'month' | 'none' {
+  return c === Cadence.MONTHLY ? 'month' : c === Cadence.WEEKLY || c === Cadence.FORTNIGHTLY ? 'weekday' : 'none';
+}
+
 function howLongItRuns(dto: { runsUntilEnded?: boolean; timelineDays?: number; endsAt?: string | Date | null; startsAt?: string | Date | null; cadence?: any; scenario: any; workingDays?: number[] | null }): number {
   /* No planned length. Zero is what every reader of the length already reads as "no end". */
   if (dto.runsUntilEnded === true) return 0;

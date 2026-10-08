@@ -43,6 +43,7 @@ const writers: Array<[string, (s: any, who: string) => Promise<any>]> = [
   ['the rhythm', (s, who) => s.updateTimeline('g1', who, { cadence: 'WEEKLY' })],
   ['the timeline', (s, who) => s.updateTimeline('g1', who, { timelineWeeks: 8 })],
   ['the start date', (s, who) => s.updateTimeline('g1', who, { startsAt: '2026-11-01' })],
+  ['the day check-ins land on (request 194)', (s, who) => s.updateTimeline('g1', who, { cadenceAnchorDay: 1 })],
 ];
 
 describe.each(writers)('H10: changing %s', (_name, write) => {
