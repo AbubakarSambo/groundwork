@@ -129,6 +129,7 @@ import { mayCoach } from './participation-timeline';
 import { theirApprovedLeave } from '../suites/who-is-away';
 import { aNewIdeaIn, afterTheirTurn, anIdeaReadBackAsAPromise, withoutAskingWhatToCapture, anAnswerToTheIdeaOffer, ANSWERED_THE_IDEA_OFFER } from './ideas-from-the-team';
 import { theSumsOnlyARequestSaid, whereARequestInAnOrdinaryCheckInGoes } from './a-request-in-an-ordinary-check-in-goes-to-ask';
+import { withoutARatingOfWhatHappened } from './the-anchor-does-not-rate-what-happened';
 import { aRequestAfterTheirTurn, theyAreAnsweringAnOffer, withoutACannotApprove, withoutAPromiseToPassItOn } from './a-request-offered-in-the-check-in';
 import { stillAsking } from './one-question-per-turn';
 import { oneThingAsked, wouldLeaveAQuestionOut, asksMoreThanOneThing, withTheOneMoreLine, ASK_ONE_THING } from './a-turn-asks-one-thing';
@@ -3105,6 +3106,14 @@ export class ConversationService {
       if (kept.cut.length) {
         this.logger?.warn?.(`Check-in ${checkIn.id}: took off a promise to pass a request on: ${JSON.stringify(kept.cut)}`);
         if (kept.text) answer.reply = kept.text;
+      }
+    }
+    /* In an anchor check-in, for somebody on the lead's team, what happened is said and never rated (the weekly words forbid it; the model sometimes does not obey). */
+    if (startedFrom === STARTED_FROM_THE_ANCHOR && (checkIn as any).participant?.partyType !== PartyType.INITIATOR) {
+      const said = withoutARatingOfWhatHappened(answer.reply);
+      if (said.cut.length) {
+        this.logger?.warn?.(`Check-in ${checkIn.id}: took off a rating of what they did: ${JSON.stringify(said.cut)}`);
+        answer.reply = said.text;
       }
     }
     if (request.sayFirst) answer.reply = [request.sayFirst, answer.reply].filter(Boolean).join('\n\n');

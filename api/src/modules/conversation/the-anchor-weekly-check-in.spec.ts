@@ -25,7 +25,7 @@ const COLLEAGUE = { id: 'p2', groundId: 'g1', partyType: PartyType.PARTICIPANT, 
 const THEIR_WORDS = 'I sent the district data to the programme office on Tuesday.';
 const THEIR_PROMISE = 'I will ask Ngozi for the Kano attendance sheets';
 
-type World = { turns?: { role: string; content: string }[]; answer?: string; startedFrom?: string | null; switchOn?: boolean; sessionNumber?: number; asTheLead?: boolean; scenario?: GroundScenario; stored?: { id: string; content: string } | null };
+type World = { modelSays?: string; turns?: { role: string; content: string }[]; answer?: string; startedFrom?: string | null; switchOn?: boolean; sessionNumber?: number; asTheLead?: boolean; scenario?: GroundScenario; stored?: { id: string; content: string } | null };
 
 function aWorld(w: World = {}) {
   const sessionNumber = w.sessionNumber ?? 2;
@@ -69,11 +69,12 @@ function aWorld(w: World = {}) {
   const promptStore: any = { getActiveContent: jest.fn(async (k: string) => (k === 'system' ? 'SYS' : null)), getActive };
   const nothing: any = { get: () => undefined };
   const seen: string[] = [];
-  const respond = jest.fn(async (system: string) => { seen.push(system); return 'Thank you. What is taking most of your attention now?'; });
+  const respond = jest.fn(async (system: string) => { seen.push(system); return w.modelSays ?? 'Thank you. What is taking most of your attention now?'; });
   const service = new ConversationService(prisma, promptStore, { respond } as any, new ConversationContextService(prisma), nothing, nothing, nothing, nothing, nothing, nothing);
   /* A real turn of the person's check-in, through sendMessage; what is read is the prompt the model was handed. */
   const compose = async () => { await service.sendMessage('ci2', 'user-1', w.answer ?? 'It is moving slowly.'); return seen[0] ?? ''; };
-  return { service, checkIn, compose, seen, seed, version: () => (service as any).anchorVersionForThisTurn.get('ci2') };
+  const reply = async () => ((await service.sendMessage('ci2', 'user-1', w.answer ?? 'It is moving slowly.')) as any).reply as string;
+  return { service, checkIn, compose, reply, seen, seed, version: () => (service as any).anchorVersionForThisTurn.get('ci2') };
 }
 
 describe('anchor piece 15: the weekly check-in, as the model reads it', () => {
@@ -119,6 +120,13 @@ describe('anchor piece 15: the weekly check-in, as the model reads it', () => {
     expect(member).not.toMatch(/Amina will review everyone in March|District reports reach the donor/);
     const lead = await aWorld({ startedFrom: 'anchor', switchOn: true, asTheLead: true }).compose();
     expect(lead).toContain('Amina will review everyone in March');
+  });
+
+  it('takes a rating of what they did off the reply for a team member, and not for the lead', async () => {
+    const modelSays = 'You finished the route plan, which is progress. What do you think could happen next?';
+    expect(await aWorld({ startedFrom: 'anchor', switchOn: true, modelSays }).reply()).toBe('You finished the route plan. What do you think could happen next?');
+    expect(await aWorld({ startedFrom: 'anchor', switchOn: true, asTheLead: true, modelSays }).reply()).toContain('which is progress');
+    expect(await aWorld({ switchOn: true, modelSays }).reply()).toContain('which is progress');
   });
 
   it('ends on the short reminder, read last', async () => {
