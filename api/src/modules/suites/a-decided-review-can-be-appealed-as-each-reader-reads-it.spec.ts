@@ -133,7 +133,7 @@ describe('Imani appeals, and Grace, an admin who did not decide it, decides', ()
     const grace: any = await svc.one(as('u-grace'), 'r-imani');
     expect(grace.appeal).toMatchObject({
       reader: 'admin', stands: 'with-an-admin', theirReasons: BIG_WORDS, mayDecide: true, personFirstName: 'Imani',
-      says: "Imani appealed Baraka's decision on 8 October. You are an admin who did not decide this review, so you decide the appeal. Imani and Baraka both read your reasons.",
+      says: "Imani appealed Baraka's decision on 8 October. You are an admin who did not decide this review, so you decide the appeal. Imani and Baraka both read your reasons. If you change the decision, your reasons become the reasons for the new decision, and everyone who may read the review reads them.",
     });
     expect(grace.theirView).toBe('I think I am ready for more.');
 

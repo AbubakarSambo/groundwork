@@ -31,7 +31,9 @@ export type WhatHappened = 'asked' | 'told' | 'approved' | 'declined' | 'escalat
    * An appeal of a decided review, and its decision (decision 113). Kept for the record of who did what, and said to nobody in a
    * history: only the person, the admin who decides it and the reviewer may read that there was an appeal, and they read it on the review.
    */
-  | 'appealed' | 'appeal-decided';
+  | 'appealed' | 'appeal-decided'
+  /* An admin was told an appeal waits for them, so an admin added later is told once and nobody twice. Said to nobody in a history. */
+  | 'appeal-told';
 
 export interface ARecord {
   organizationId: string;

@@ -18,6 +18,7 @@ import { SuggestionsModule } from '../suggestions/suggestions.module';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { AReviewToldOnWhatsApp } from './a-review-told-on-whatsapp.service';
 import { AReviewAppealToldService } from './a-review-appeal-told.service';
+import { AnAppealWaitsForANewAdmin } from './an-appeal-waits-for-a-new-admin';
 import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
 import { ARequestWaitsTooLongCron } from './a-request-waits-too-long.cron';
 import { SpendingForFinanceService } from './the-spending-for-finance.service';
@@ -29,7 +30,7 @@ import { DecisionsInABatchService } from './the-decisions-in-a-batch.service';
 @Module({
   imports: [SuggestionsModule],
   controllers: [SuitesController],
-  providers: [SuitesService, OnboardingBoardService, LeaveBoardService, TimeSheetsService, ReviewsService, LeavingBoardService, RoleMapService, SpendingService, TodosService, CustomersService, EquipmentService, CustomerStandingService, AnthropicService, ReviewsProposedService, ReviewsProposedCron, ARequestToldOnWhatsApp, AReviewToldOnWhatsApp, AReviewAppealToldService, ARequestWaitsTooLongCron, SpendingForFinanceService, ARequestFiledFromItsForm, ApprovalsQueueService, TheApproversSummaryCron, DecisionsInABatchService],
+  providers: [SuitesService, OnboardingBoardService, LeaveBoardService, TimeSheetsService, ReviewsService, LeavingBoardService, RoleMapService, SpendingService, TodosService, CustomersService, EquipmentService, CustomerStandingService, AnthropicService, ReviewsProposedService, ReviewsProposedCron, ARequestToldOnWhatsApp, AReviewToldOnWhatsApp, AReviewAppealToldService, AnAppealWaitsForANewAdmin, ARequestWaitsTooLongCron, SpendingForFinanceService, ARequestFiledFromItsForm, ApprovalsQueueService, TheApproversSummaryCron, DecisionsInABatchService],
   exports: [SuitesService, LeaveBoardService, TimeSheetsService, ReviewsService, ReviewsProposedService, SpendingService, EquipmentService, ARequestToldOnWhatsApp, SpendingForFinanceService, ApprovalsQueueService],
 })
 export class SuitesModule {}

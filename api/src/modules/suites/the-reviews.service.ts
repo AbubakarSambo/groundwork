@@ -107,7 +107,8 @@ export interface AppealForTheAdmin {
   says: string;
   personFirstName: string;
   appealedOn: string;
-  theirReasons: string;
+  /** The person's reasons: for an admin who may decide it while it waits, and once decided for the admin who decided it. Null for any other admin. */
+  theirReasons: string | null;
   additions: { said: string; on: string }[];
   mayDecide: boolean;
   outcome: 'stands' | 'changed' | null;
@@ -518,6 +519,8 @@ export class ReviewsService {
     const answers = await this.suiteAnswers(reader.organizationId);
     const { row, person } = await this.theReview(reader, id);
     if (!(await this.writes(reader, await this.roleOf(reader), person, answers.writer))) throw new ForbiddenException(REVIEW_REFUSED.onlyTheWriter);
+    /* Once appealed, the admin who decides the appeal reads the review as it was when the person appealed it (decision 113). */
+    if (wasAppealed(row as any)) throw new BadRequestException(APPEAL_REFUSED.wordsKept);
     const text = (words ?? '').trim();
     if (!text) throw new BadRequestException(REVIEW_REFUSED.writeSomething);
     await this.prisma.performanceReview.update({ where: { id: row.id }, data: { managersWords: text.slice(0, 4000), managersWordsById: reader.userId, managersWordsAt: new Date() } });
@@ -604,7 +607,7 @@ export class ReviewsService {
     try {
       if (admins.length) {
         const reviewerFirst = await this.firstNameOf(reviewerId, directory);
-        for (const a of admins) await this.appealTold?.toAnAdmin(reader.organizationId, row.id, a, personFirst, reviewerFirst);
+        for (const a of admins) await this.toldAnAdmin(reader.organizationId, row.id, a, personFirst, reviewerFirst);
       } else if (reviewerId) {
         /* Nobody else can decide it: it is saved and stays open, and the reviewer is asked to add a second admin. */
         await this.prisma.performanceReview.update({ where: { id: row.id }, data: { appealAskedForAdminAt: new Date() } });
@@ -689,6 +692,56 @@ export class ReviewsService {
     return out;
   }
 
+  /**
+   * AN ADMIN ADDED AFTER THE APPEAL IS TOLD IT WAITS FOR THEM, ONCE (decision 113). When the person appealed, only the admins
+   * there then were told; with none other than the reviewer, the reviewer was asked to add one. Whoever becomes an admin later,
+   * and is not the reviewer or the person, is told the same as they would have been (by email, and on WhatsApp where it is on),
+   * with no word of the review or the reasons. Run when somebody is made an admin, and every hour for the other ways an admin
+   * appears. Each admin told is kept as 'appeal-told', which no history says, so nobody is told twice.
+   */
+  async tellNewAdminsOfOpenAppeals(organizationId: string): Promise<{ told: number }> {
+    if (!this.appealTold) return { told: 0 };
+    /* With the reviews suite off, nobody could open the appeal, so nobody is told; they are told once it is on again. */
+    if (!(await this.suiteAnswers(organizationId).then(() => true, () => false))) return { told: 0 };
+    const rows = await this.prisma.performanceReview.findMany({ where: { organizationId, appealedAt: { not: null }, appealOutcome: null } });
+    const open = rows.filter((r: any) => wasAppealed(r) && !wasAppealDecided(r));
+    if (!open.length) return { told: 0 };
+    const directory = await this.directory(organizationId);
+    let told = 0;
+    for (const r of open as any[]) {
+      const person = directory.get(r.personExternalId);
+      if (!person) continue;
+      const admins = await this.admins(organizationId, [r.decidedById, person.userId]);
+      if (!admins.length) continue;
+      const already: any[] = (await (this.prisma as any).suiteEvent?.findMany?.({
+        where: { organizationId, suite: 'reviews', ref: r.id, kind: 'appeal-told' }, select: { toUserId: true },
+      }).catch(() => [])) ?? [];
+      const toldBefore = new Set(already.map((e) => e.toUserId).filter(Boolean));
+      const reviewerFirst = await this.firstNameOf(r.decidedById ?? null, directory);
+      for (const a of admins) {
+        if (toldBefore.has(a)) continue;
+        await this.toldAnAdmin(organizationId, r.id, a, this.firstOf(person), reviewerFirst);
+        told += 1;
+      }
+    }
+    return { told };
+  }
+
+  /** The organisations with an appeal still open, for the hourly sweep. */
+  async organisationsWithAnOpenAppeal(): Promise<string[]> {
+    const rows: any[] = (await (this.prisma.performanceReview as any).findMany({
+      where: { appealedAt: { not: null }, appealOutcome: null }, select: { organizationId: true }, distinct: ['organizationId'],
+    }).catch(() => [])) ?? [];
+    return [...new Set(rows.map((r) => r.organizationId as string))];
+  }
+
+  /** Tells one admin an appeal waits for them, and keeps that they were told (never in a history). */
+  private async toldAnAdmin(organizationId: string, reviewId: string, adminUserId: string, personFirst: string, reviewerFirst: string | null): Promise<void> {
+    if (!this.appealTold) return;
+    await this.appealTold.toAnAdmin(organizationId, reviewId, adminUserId, personFirst, reviewerFirst).catch(() => undefined);
+    await recordIt(this.prisma, { organizationId, suite: 'reviews', ref: reviewId, kind: 'appeal-told', toUserId: adminUserId, basis: { row: 'performance_reviews', id: reviewId } });
+  }
+
   /** The admins of an organisation, except these, and except sign-ins that have been deleted. */
   private async admins(organizationId: string, except: (string | null | undefined)[]): Promise<string[]> {
     const ms = await (this.prisma.organizationMembership as any).findMany({ where: { organizationId, role: 'ADMIN' }, select: { userId: true } }).catch(() => []);
@@ -732,9 +785,12 @@ export class ReviewsService {
     }
     if (role === 'ADMIN' && person.userId !== reader.userId) {
       const reviewerFirst = await this.firstNameOf(row.decidedById ?? null, directory);
+      /* The person's reasons go to an admin who may decide it; once decided, only to the admin who did (decision 113). */
+      const readsTheReasons = stands !== 'decided' || row.appealDecidedById === reader.userId;
       return {
         reader: 'admin', stands, says: theAdminReadsSaid(stands, personFirst, reviewerFirst, appealedOn, decider, outcome), personFirstName: personFirst, appealedOn,
-        theirReasons: row.appeal, additions: theAdditions(row).map((a) => ({ said: a.said, on: a.at ? aDaySaid(a.at) : '' })),
+        theirReasons: readsTheReasons ? row.appeal : null,
+        additions: readsTheReasons ? theAdditions(row).map((a) => ({ said: a.said, on: a.at ? aDaySaid(a.at) : '' })) : [],
         mayDecide: stands !== 'decided', outcome, decidedByFirstName: decider, reasons, decisionWas: was,
       };
     }

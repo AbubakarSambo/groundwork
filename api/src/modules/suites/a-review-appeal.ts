@@ -35,6 +35,7 @@ export const APPEAL_REFUSED = {
   sayWhyToBoth: 'Say why. The person and the reviewer both read your reasons.',
   sayWhatItIsNow: 'Say what the decision is now.',
   appealedAlready: 'This decision has been appealed, so an admin other than you decides it now.',
+  wordsKept: 'This decision has been appealed, so the review stays as it was when it was appealed. An admin other than you decides the appeal.',
 };
 
 /** Where an appeal stands. */
@@ -116,7 +117,7 @@ export function theAdminReadsSaid(stands: AppealStands, personFirstName: string,
       ? `${personFirstName} appealed the decision on ${appealedOn}. ${who}, an admin, read the appeal and changed the decision.`
       : `${personFirstName} appealed the decision on ${appealedOn}. ${who}, an admin, read the appeal, and the decision stands.`;
   }
-  return `${personFirstName} appealed ${reviewer}'s decision on ${appealedOn}. You are an admin who did not decide this review, so you decide the appeal. ${personFirstName} and ${reviewer} both read your reasons.`;
+  return `${personFirstName} appealed ${reviewer}'s decision on ${appealedOn}. You are an admin who did not decide this review, so you decide the appeal. ${personFirstName} and ${reviewer} both read your reasons. If you change the decision, your reasons become the reasons for the new decision, and everyone who may read the review reads them.`;
 }
 
 // -- The messages, to the people who need them. Full sentences; never a word of the review or the reasons.

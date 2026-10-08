@@ -3,7 +3,7 @@ import { Injectable, Logger, Inject, forwardRef, NotFoundException, ConflictExce
 import { alreadyOpen, Subject } from './what-a-call-is-about';
 import * as crypto from 'crypto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { GroundworkEvents, CallAskedEvent, OrgSizeSaidEvent } from '../../common/events';
+import { GroundworkEvents, CallAskedEvent, OrgSizeSaidEvent, AdminMadeEvent } from '../../common/events';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
@@ -899,6 +899,8 @@ export class UsersService {
     });
     /* The roster entry follows the sign-in (decision 106 item 3). */
     if (phoneNumber !== undefined) await aSignInsNumberChanged(this.prisma, id, phoneNumber);
+    /* A new admin may be the one an appeal of a review waits for (decision 113); the reviews suite tells them. */
+    if (dto.role === 'ADMIN') this.events?.emit?.(GroundworkEvents.ADMIN_MADE, { organizationId, userId: id } satisfies AdminMadeEvent);
     return done;
   }
 
