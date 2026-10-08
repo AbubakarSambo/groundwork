@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { fileARequestApi } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
-import { whatFilingARequestSays } from '@/lib/file-a-request-error'
+import { whatFilingARequestSays, isARefusalToLoadTheForm } from '@/lib/file-a-request-error'
 import { Page, PageTitle, Panel, FieldLabel, TextField, Select, Button, Note } from '@/components/gw/ui'
 
 /**
@@ -43,8 +43,13 @@ export function LeaveRequestNewPage() {
 
   const form = useQuery({ queryKey: ['leave-form'], queryFn: fileARequestApi.leaveForm, retry: false })
   /* With the suite off (or this reader refused for some other reason), the read fails and its own
-     message is what the board already uses - read the same way a failed send is. */
-  const offSentence = form.isError ? whatFilingARequestSays(form.error, user?.organizationName) : null
+     message is what the board already uses - read the same way a failed send is.
+     RESTORED (8 October, nothing-removed audit S3): only a genuine refusal (a 4xx) hides the form.
+     A 5xx or a network failure is a passing fault, not a "no", so the form stays reachable and a
+     "Try again" is offered instead of leaving the page with nothing to do but reload it. */
+  const loadRefused = form.isError && isARefusalToLoadTheForm(form.error)
+  const offSentence = loadRefused ? whatFilingARequestSays(form.error, user?.organizationName) : null
+  const loadFailed = form.isError && !loadRefused
   const standInMatch = form.data?.standIns.find(p => p.name.trim().toLowerCase() === standInQuery.trim().toLowerCase())
   const standInUserId = standInMatch?.userId ?? ''
 
@@ -72,6 +77,12 @@ export function LeaveRequestNewPage() {
           <Note tone="error">{offSentence}</Note>
         ) : (
           <form className="gwui-suite-ask-alone" onSubmit={e => { e.preventDefault(); if (canSend) send.mutate() }}>
+            {loadFailed && (
+              <Note tone="error">
+                That did not load, and nothing has changed.{' '}
+                <Button kind="quiet" onClick={() => form.refetch()}>Try again</Button>
+              </Note>
+            )}
             <div className="gwui-suite-q">
               <FieldLabel htmlFor="leave-starts">Start date</FieldLabel>
               <TextField id="leave-starts" type="date" value={startsOn} onChange={e => setStartsOn(e.target.value)} />
