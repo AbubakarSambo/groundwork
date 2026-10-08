@@ -65,19 +65,28 @@ export function TodayPage() {
    * (almost every brand-new one), a real failed request each, every time the 60-second cache went
    * stale - the same "screen fault 11" `stores/suites-known-off.ts` already exists to fix for the
    * queue read (AppShell.tsx). There is nowhere cheap to ask first, so the same remembered answer
-   * is read and written here too: once this session already knows every suite is off, these three
-   * stop asking until the page is reloaded.
+   * is read and written here too: once this session already knows a suite is off, that one stops
+   * asking until the page is reloaded.
+   *
+   * RESTORED (8 October, nothing-removed audit S2): PER SUITE, NOT ACROSS ALL THREE. B-002's first
+   * fix shared one flag for all three reads, so a single 404 from a suite that really was off (say
+   * time sheets) also silenced leave and spending for the rest of the session, once their own
+   * cached "on" answers went stale - losing the link entirely for an organisation with leave on and
+   * time sheets off. `offByKey` remembers each suite on its own, so a suite that has not 404'd
+   * keeps asking normally, and the link still hides only once every suite has actually said no.
    */
-  const suitesKnownOff = useSuitesKnownOffStore(s => s.off)
-  const setSuitesKnownOff = useSuitesKnownOffStore(s => s.setOff)
-  const yourLeave = useQuery({ queryKey: ['your-leave'], queryFn: yourRequestsApi.leave, enabled: !!user && !suitesKnownOff, retry: false, staleTime: 60_000 })
-  const yourSpending = useQuery({ queryKey: ['your-spending'], queryFn: yourRequestsApi.spending, enabled: !!user && !suitesKnownOff, retry: false, staleTime: 60_000 })
-  const yourHours = useQuery({ queryKey: ['your-hours'], queryFn: yourRequestsApi.hours, enabled: !!user && !suitesKnownOff, retry: false, staleTime: 60_000 })
+  const offByKey = useSuitesKnownOffStore(s => s.offByKey)
+  const setKeyOff = useSuitesKnownOffStore(s => s.setKeyOff)
+  const yourLeave = useQuery({ queryKey: ['your-leave'], queryFn: yourRequestsApi.leave, enabled: !!user && !offByKey.leave, retry: false, staleTime: 60_000 })
+  const yourSpending = useQuery({ queryKey: ['your-spending'], queryFn: yourRequestsApi.spending, enabled: !!user && !offByKey.spending, retry: false, staleTime: 60_000 })
+  const yourHours = useQuery({ queryKey: ['your-hours'], queryFn: yourRequestsApi.hours, enabled: !!user && !offByKey.hours, retry: false, staleTime: 60_000 })
   useEffect(() => {
     const notFound = (q: { isError: boolean; error: unknown }) => q.isError && (q.error as any)?.response?.status === 404
-    if (notFound(yourLeave) || notFound(yourSpending) || notFound(yourHours)) setSuitesKnownOff()
+    if (notFound(yourLeave)) setKeyOff('leave')
+    if (notFound(yourSpending)) setKeyOff('spending')
+    if (notFound(yourHours)) setKeyOff('hours')
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [yourLeave.isError, yourSpending.isError, yourHours.isError, setSuitesKnownOff])
+  }, [yourLeave.isError, yourSpending.isError, yourHours.isError, setKeyOff])
   const aSuiteIsOnForYou = yourLeave.isSuccess || yourSpending.isSuccess || yourHours.isSuccess
   const requestsLinkLabel = yourHours.isSuccess ? 'Your own requests' : 'Your own leave and spending requests'
   const grounds = useQuery({ queryKey: ['grounds'], queryFn: groundsApi.list, enabled: !!user && params.get('welcome') === '1', staleTime: 30_000 })

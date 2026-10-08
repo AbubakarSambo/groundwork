@@ -38,7 +38,7 @@ const off = () => Promise.reject(Object.assign(new Error('off'), { response: { s
  * 404 in one test here would otherwise silence the queries in the next one. Reset between tests,
  * the same way suites-known-off.spec.tsx already resets it for AppShell.
  */
-beforeEach(() => { useSuitesKnownOffStore.setState({ off: false }) })
+beforeEach(() => { useSuitesKnownOffStore.setState({ off: false, offByKey: {} }) })
 
 describe('"Your own leave and spending requests" on Today', () => {
   it('is not offered when all three are off', async () => {
