@@ -58,7 +58,9 @@ const A_DATE = /\b(?:mon|tues?|wed(?:nes)?|thu(?:rs)?|fri|sat(?:ur)?|sun)(?:day)
 const A_NEXT_STEP = /\b(?:will|i'll|we'll|going to|plan(?:s|ning)? to|next step|follow(?:ing)? up|call(?:ing)? (?:them|him|her|back)|send(?:ing)?|book(?:ing)?|meet(?:ing)? (?:on|with)|confirm(?:ing)?|to do)\b/i;
 
 /** Capitalised words that are not the start of a sentence, in runs ("Green Mart", "Nyama Choma Palace"). */
-export function thingsNamedIn(text: string): string[] {
+export function thingsNamedIn(raw: string): string[] {
+  /* The reader's own notes on a line ("[INFERRED: from context]", "[VERIFIABILITY:LOW]") are not words anybody said: "INFERRED" was read as a name (anchor walk, 8 October). */
+  const text = (raw ?? '').replace(/\s*\[(?:INFERRED|VERIFIABILITY)[^\]]*\]/gi, '');
   const out: string[] = [];
   const re = /(?<![A-Za-z'’])([A-Z][A-Za-z0-9&'’-]+(?:\s+[A-Z][A-Za-z0-9&'’-]+)*)/g;
   let m: RegExpExecArray | null;
