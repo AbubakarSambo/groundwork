@@ -17,6 +17,10 @@ export function numberUpToTenInWords(n: number): string {
  * product: numbers in words, and "has" for one person, "have" for more than one.
  */
 export function howManyHaveNotAnsweredYet(outstanding: number, total: number): string {
+  /* Everybody still out reads as a sentence, never "Two of the two have not answered yet." (release check, 9 October). */
+  if (outstanding === total && total >= 2) {
+    return total === 2 ? 'Neither of the two has answered yet.' : `None of the ${numberUpToTenInWords(total)} has answered yet.`
+  }
   const word = numberUpToTenInWords(outstanding)
   const capped = word.charAt(0).toUpperCase() + word.slice(1)
   const verb = outstanding === 1 ? 'has' : 'have'
