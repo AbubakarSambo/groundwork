@@ -71,7 +71,7 @@ export function theTeamWords(firstName: string | null | undefined, c: AQuietChec
       `Hello ${firstName?.trim() || 'there'}. ${capital(aNumberInWords(n))} of the ${aNumberInWords(c.ofHowMany)} people on "${c.label}" have not answered the latest check-in, which opened more than a week ago.`,
       `${capital(theKinds(c))}.`,
       ...(done ? [`${done}.`] : []),
-      'Most of the team has not answered, so this looks like something about the team rather than about each person. Groundwork has not changed or shortened the check-in.',
+      'Most of the team has not answered, so this is a pattern across the team and not about one person. Groundwork has not changed or shortened the check-in.',
       'If you want to know what is in the way, asking one of them directly is the quickest way to find out.',
     ],
     linkLabel: 'See who has answered',
