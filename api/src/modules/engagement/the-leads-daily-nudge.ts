@@ -65,6 +65,12 @@ export interface AThingOutstanding {
   /** The check-in it comes from, and how many days past its day it is, so a long-overdue item can be left out for a check-in made before the release (decision 121, item 6). */
   groundId?: string;
   daysOverdue?: number;
+  /**
+   * WHAT IT IS ABOUT, for a screen to match it against its own rows by the thing and not by its words (request 205). `kind` is one of
+   * `wait`, `decision`, `promise`, `requests`, `plan-decision`, `target`, `quiet`; `ids` are the ids of the records it is about (a wait's or a
+   * promise's own id, or `leave:<id>`, `hours:<ref>`, `spend:<id>` for each request that waits for her).
+   */
+  about?: { kind: string; ids: string[] };
 }
 
 const THE_PLACE_MARK = '{in}';
@@ -83,6 +89,8 @@ export function withPlacesWhereTheyTellApart(o: WhatIsOutstanding): WhatIsOutsta
   };
   return { needsYou: o.needsYou.map(say), overdueOnYourTeam: o.overdueOnYourTeam.map(say), risks: o.risks.map(say) };
 }
+
+export interface TheAbout { kind: string; ids: string[]; groundId?: string }
 
 export interface WhatIsOutstanding {
   needsYou: AThingOutstanding[];
@@ -267,7 +275,7 @@ export async function whatIsOutstandingFor(
   /* NEEDS YOU, first: what waits for her to approve. */
   const waiting = await whatWaitsForYouToDecide({ userId: lead.userId, organizationId: lead.organizationId }, deps.boards).catch(() => []);
   const approvals = whatWaitsInASentence(waiting);
-  if (approvals) out.needsYou.push({ text: approvals, group: 0 });
+  if (approvals) out.needsYou.push({ text: approvals, group: 0, about: { kind: 'requests', ids: waiting.map((w) => `${w.kind}:${w.ref}`) } });
 
   /* Who is on her check-ins, and what is open on each of them. */
   const mine = ids.length
@@ -289,7 +297,7 @@ export async function whatIsOutstandingFor(
         ...(ids.length ? [{ groundId: { in: ids } }] : []),
       ],
     },
-    select: { text: true, dueDate: true, groundId: true, authoredBy: true, seenBySubject: true, participantId: true, participant: { select: { ground: { select: { id: true, label: true, scenario: true, overWhatsApp: true } }, ...PERSON } } },
+    select: { id: true, text: true, dueDate: true, groundId: true, authoredBy: true, seenBySubject: true, participantId: true, participant: { select: { ground: { select: { id: true, label: true, scenario: true, overWhatsApp: true } }, ...PERSON } } },
   }).catch(() => []);
   for (const pr of promises) {
     const g = pr.participant?.ground;
@@ -299,8 +307,8 @@ export async function whatIsOutstandingFor(
     const text = (who: string) => `${THE_PLACE_FIRST}${theyCommitted(who, pr.text)}. That was due by ${theDay(pr.dueDate)} and is ${lateWords(late)}.`;
     /* "Someone" is the word for a person nobody has a name for (decision 115): a lead cannot act on it, so it is not told. */
     if (pr.participant?.userId !== lead.userId && nameToCall(pr.participant) === SOMEONE) continue;
-    if (pr.participant?.userId === lead.userId) out.needsYou.push({ text: text('You'), late, group: 2, keptInTheApp: keptOffThePhone(g), place: g.label, groundId: g.id, daysOverdue: late });
-    else if (ids.includes(pr.groundId) && letIn(pr.participant) && (pr.authoredBy === 'self' || pr.seenBySubject)) out.overdueOnYourTeam.push({ text: text(nameToCall(pr.participant)), late, keptInTheApp: keptOffThePhone(g), place: g.label, groundId: g.id, daysOverdue: late });
+    if (pr.participant?.userId === lead.userId) out.needsYou.push({ text: text('You'), late, group: 2, keptInTheApp: keptOffThePhone(g), place: g.label, groundId: g.id, daysOverdue: late, about: { kind: 'promise', ids: [pr.id] } });
+    else if (ids.includes(pr.groundId) && letIn(pr.participant) && (pr.authoredBy === 'self' || pr.seenBySubject)) out.overdueOnYourTeam.push({ text: text(nameToCall(pr.participant)), late, keptInTheApp: keptOffThePhone(g), place: g.label, groundId: g.id, daysOverdue: late, about: { kind: 'promise', ids: [pr.id] } });
   }
 
   /* Waits on her people's work: open, named, in her check-ins. */
@@ -330,14 +338,14 @@ export async function whatIsOutstandingFor(
     /* A decision she owes: somebody is waiting for her to decide it. */
     if (onHer && w.blockerKind === 'DECISION') {
       const since = `since ${theDay(w.createdAt)}`;
-      out.needsYou.push({ text: `${saidWait(w, 'is')}${THE_PLACE_MARK} ${since}.`, late: late > 0 ? late : 0, group: 1, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId), groundId: w.groundId, daysOverdue: Math.max(0, late) });
+      out.needsYou.push({ text: `${saidWait(w, 'is')}${THE_PLACE_MARK} ${since}.`, late: late > 0 ? late : 0, group: 1, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId), groundId: w.groundId, daysOverdue: Math.max(0, late), about: { kind: 'decision', ids: [w.id] } });
       counted.add(w.id);
       continue;
     }
     if (late < 1) continue;
     const text = `${saidWait(w, 'is')}${THE_PLACE_MARK}, which was due on ${theDay(w.dueOn)} and is ${lateWords(late)}.`;
-    if (onHer) out.needsYou.push({ text, late, group: 2, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId), groundId: w.groundId, daysOverdue: late });
-    else if (w.onParticipant && letIn(w.onParticipant)) out.overdueOnYourTeam.push({ text, late, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId), groundId: w.groundId, daysOverdue: late });
+    if (onHer) out.needsYou.push({ text, late, group: 2, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId), groundId: w.groundId, daysOverdue: late, about: { kind: 'wait', ids: [w.id] } });
+    else if (w.onParticipant && letIn(w.onParticipant)) out.overdueOnYourTeam.push({ text, late, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId), groundId: w.groundId, daysOverdue: late, about: { kind: 'wait', ids: [w.id] } });
     else continue;
     counted.add(w.id);
   }
@@ -346,13 +354,13 @@ export async function whatIsOutstandingFor(
   if (entry?.externalId) {
     const decisions: any[] = await prisma.subject.findMany({
       where: { organizationId: lead.organizationId, type: 'DECISION', ownerExternalId: entry.externalId, sourceDeletedAt: null, dueDate: { lt: today } },
-      select: { title: true, dueDate: true, status: true },
+      select: { id: true, title: true, dueDate: true, status: true },
     }).catch(() => []);
     for (const d of decisions) {
       if (/^(done|decided|closed|complete|completed|met|dropped|cancelled|canceled)$/i.test((d.status ?? '').trim()) || !d.title?.trim()) continue;
       const late = daysLate(d.dueDate, today);
       if (late < 1) continue;
-      out.needsYou.push({ text: `The decision ${quoted(d.title.trim())} is yours, and it was due on ${theDay(d.dueDate)}, so it is ${lateWords(late)}.`, late, group: 1 });
+      out.needsYou.push({ text: `The decision ${quoted(d.title.trim())} is yours, and it was due on ${theDay(d.dueDate)}, so it is ${lateWords(late)}.`, late, group: 1, about: { kind: 'plan-decision', ids: [d.id].filter(Boolean) } });
     }
   }
 
@@ -373,7 +381,7 @@ export async function whatIsOutstandingFor(
       );
       if (stands?.word !== 'Behind' && stands?.word !== 'Over limit') continue;
       const is = stands.word === 'Behind' ? 'is behind' : 'is over its limit';
-      out.risks.push({ text: `The target ${quoted(o.name.trim())} in ${quoted(g.label)} ${is}. ${sentence(stands.says)}`, late: 1_000_000, keptInTheApp: keptOffThePhone(g), place: g.label, groundId: g.id, daysOverdue: o.dueOn ? Math.max(0, daysLate(o.dueOn, today)) : 0 });
+      out.risks.push({ text: `The target ${quoted(o.name.trim())} in ${quoted(g.label)} ${is}. ${sentence(stands.says)}`, late: 1_000_000, keptInTheApp: keptOffThePhone(g), place: g.label, groundId: g.id, daysOverdue: o.dueOn ? Math.max(0, daysLate(o.dueOn, today)) : 0, about: { kind: 'target', ids: [o.id] } });
     }
   }
   /* A wait that has gone on too long, the oldest first, if it is not already said as overdue. */
@@ -381,7 +389,7 @@ export async function whatIsOutstandingFor(
     .filter((w) => !counted.has(w.id) && aWaitReadsAsASentence(w) && letIn(w.fromParticipant) && (hers.has(w.fromParticipantId) || nameToCall(w.fromParticipant) !== SOMEONE) && !(w.onParticipant && !hers.has(w.onParticipantId) && nameToCall(w.onParticipant) === SOMEONE) && Math.floor((now.getTime() - new Date(w.createdAt).getTime()) / DAY) >= ESCALATE_AFTER_DAYS)
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   for (const w of tooLong) {
-    out.risks.push({ text: `${saidWait(w, 'has been')}${THE_PLACE_MARK} since ${theDay(w.createdAt)}.`, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId) });
+    out.risks.push({ text: `${saidWait(w, 'has been')}${THE_PLACE_MARK} since ${theDay(w.createdAt)}.`, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId), groundId: w.groundId, about: { kind: 'wait', ids: [w.id] } });
   }
   /* A check-in where people have gone quiet. Not about a check-in that began before the engagement messages did. */
   if (deps.release) {
@@ -397,7 +405,7 @@ export async function whatIsOutstandingFor(
       const who = n >= q.ofHowMany
         ? (q.ofHowMany === 1 ? 'The one person who can answer' : q.ofHowMany === 2 ? 'Both people' : `All ${aNumberInWords(q.ofHowMany)} people`)
         : `${capital(aNumberInWords(n))} of the ${aNumberInWords(q.ofHowMany)} people`;
-      out.risks.push({ text: `${who} in ${quoted(g.label)} ${n === 1 ? 'has' : 'have'} not answered a check-in for more than a week.`, keptInTheApp: keptOffThePhone(g) });
+      out.risks.push({ text: `${who} in ${quoted(g.label)} ${n === 1 ? 'has' : 'have'} not answered a check-in for more than a week.`, keptInTheApp: keptOffThePhone(g), groundId: g.id, about: { kind: 'quiet', ids: [g.id] } });
     }
   }
 
@@ -417,7 +425,7 @@ export async function everythingOutstandingFor(
   reader: { userId: string; organizationId: string },
   deps: { boards: TheBoards },
   now: Date = new Date(),
-): Promise<{ needsYou: string[]; overdueOnYourTeam: string[]; risks: string[] } | null> {
+): Promise<{ needsYou: string[]; overdueOnYourTeam: string[]; risks: string[]; about: { needsYou: TheAbout[]; overdueOnYourTeam: TheAbout[]; risks: TheAbout[] } } | null> {
   const grounds: any[] = await prisma.ground.findMany({
     where: { initiatorId: reader.userId, organizationId: reader.organizationId, status: { notIn: [...TERMINAL, ...HELD, GroundStatus.AWAITING_APPROVAL] } },
     select: { id: true, label: true, scenario: true, organizationId: true, overWhatsApp: true, initiatorId: true, timelineDays: true, cadence: true },
@@ -428,7 +436,9 @@ export async function everythingOutstandingFor(
   if (!theseAreOutstanding(found)) return null;
   const said = withPlacesWhereTheyTellApart(found);
   const lines = (things: AThingOutstanding[]) => things.map((t) => sentence(t.text));
-  return { needsYou: lines(said.needsYou), overdueOnYourTeam: lines(said.overdueOnYourTeam), risks: lines(said.risks) };
+  /* One entry for each sentence, in the same order: what it is about, so Today can match a sentence to its own row by the thing and not by the words (request 205). */
+  const about = (things: AThingOutstanding[]): TheAbout[] => things.map((t) => ({ kind: t.about?.kind ?? 'other', ids: t.about?.ids ?? [], ...(t.groundId ? { groundId: t.groundId } : {}) }));
+  return { needsYou: lines(said.needsYou), overdueOnYourTeam: lines(said.overdueOnYourTeam), risks: lines(said.risks), about: { needsYou: about(said.needsYou), overdueOnYourTeam: about(said.overdueOnYourTeam), risks: about(said.risks) } };
 }
 
 /** Each lead, from every check-in that is running: who runs what. */

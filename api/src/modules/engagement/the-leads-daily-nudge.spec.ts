@@ -25,7 +25,8 @@ const PEOPLE: Record<string, any> = {
 const SALES = { id: 'g-sales', label: 'Sales team, Q3', scenario: 'ALIGNMENT', overWhatsApp: null, organizationId: 'org-1', initiatorId: 'u-wairimu', timelineDays: 84, cadence: 'WEEKLY', workingDays: [] };
 const PLAN = { id: 'g-pip', label: 'Performance plan, Femi', scenario: 'ALIGNMENT', overWhatsApp: false, organizationId: 'org-1', initiatorId: 'u-wairimu', timelineDays: 30, cadence: 'WEEKLY', workingDays: [] };
 
-const promise = (over: any) => ({ text: 'send the price list', dueDate: day('2026-10-06'), groundId: 'g-sales', authoredBy: 'self', seenBySubject: true, participantId: 'p-omar', participant: { ...PEOPLE['p-omar'], ground: SALES }, ...over });
+let promiseCount = 0;
+const promise = (over: any) => ({ id: `pr-${++promiseCount}`, text: 'send the price list', dueDate: day('2026-10-06'), groundId: 'g-sales', authoredBy: 'self', seenBySubject: true, participantId: 'p-omar', participant: { ...PEOPLE['p-omar'], ground: SALES }, ...over });
 
 interface Opts { phone?: string | null; whatsappOn?: boolean; promises?: any[]; waits?: any[]; objectives?: any[]; snapshots?: any[]; waiting?: boolean; onLeave?: boolean; stopped?: boolean; quiet?: boolean; quietRows?: any[]; sendResult?: any; held?: boolean; weekend?: boolean }
 
@@ -398,6 +399,16 @@ describe('the page the link goes to shows everything, in the same sentences', ()
     /* And the nudge's email says the same things in fewer lines. */
     await m.run();
     expect(m.mails[0][2].overdueOnYourTeam[0]).toBe(all?.overdueOnYourTeam[0]);
+  });
+  it('says what each sentence is about, in the same order, so Today can match it to its own row by the thing and not by the words (request 205)', async () => {
+    const m = aMorning({ phone: null });
+    const boards: any = { leave: { board: async () => ({ waiting: [] }) } };
+    const all: any = await everythingOutstandingFor(m.prisma, { userId: 'u-wairimu', organizationId: 'org-1' }, { boards }, NOW);
+    expect(all.about.needsYou).toHaveLength(all.needsYou.length);
+    expect(all.about.overdueOnYourTeam).toHaveLength(all.overdueOnYourTeam.length);
+    expect(all.about.risks).toHaveLength(all.risks.length);
+    expect(all.about.needsYou[0]).toMatchObject({ kind: 'promise', ids: [expect.stringMatching(/^pr-/)], groundId: 'g-sales' });
+    expect(all.about.overdueOnYourTeam.every((a: any) => a.kind === 'promise' && a.ids.length === 1)).toBe(true);
   });
   it('says nothing, rather than an empty page, when nothing is outstanding', async () => {
     const m = aMorning({ promises: [], waiting: false });

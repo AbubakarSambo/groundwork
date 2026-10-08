@@ -238,7 +238,7 @@ export class WhatNeedsYouService {
    * EVERYTHING THAT IS OUTSTANDING FOR A LEAD, the page the daily nudge's link goes to (decision 120): what needs her, what is overdue on her team and the risks, every one
    * of them and not three, in the nudge's own sentences. Only her own check-ins; null for somebody who runs none, and when nothing is outstanding.
    */
-  async outstanding(userId: string, organizationId: string): Promise<{ needsYou: string[]; overdueOnYourTeam: string[]; risks: string[] } | null> {
+  async outstanding(userId: string, organizationId: string): Promise<{ needsYou: string[]; overdueOnYourTeam: string[]; risks: string[]; about: { needsYou: any[]; overdueOnYourTeam: any[]; risks: any[] } } | null> {
     return everythingOutstandingFor(this.prisma as any, { userId, organizationId }, { boards: { leave: this.leave as any, timeSheets: this.time as any, spending: this.spend as any } })
       .catch(() => null);
   }
