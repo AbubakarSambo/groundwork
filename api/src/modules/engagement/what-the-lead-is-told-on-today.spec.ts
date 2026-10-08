@@ -42,7 +42,10 @@ describe('Baraka, who leads the check-in', () => {
     const got = (await world().today('u-lead')).forTheLead!;
     const mail = theWaitingWords('Baraka', { label: 'Distributor review', invited: ['Kito', 'Lerato'], invitedOn: INVITED, reminded: ['Kito'], remindingAgainOn: [new Date(INVITED.getTime() + 7 * 86_400_000), new Date(INVITED.getTime() + 14 * 86_400_000)] });
     expect(got.nobodyHasStarted).toHaveLength(1);
-    expect(got.nobodyHasStarted[0]).toMatchObject({ groundId: 'g1', label: 'Distributor review', subject: mail.subject, lines: mail.lines, linkLabel: 'See who has started', to: '/grounds/g1' });
+    /* The mail's own sentences, except that Today has already greeted her, so the card does not open "Hello Baraka." (test bed copy a, 9 October). */
+    expect(mail.lines[0].startsWith('Hello Baraka. ')).toBe(true);
+    expect(got.nobodyHasStarted[0]).toMatchObject({ groundId: 'g1', label: 'Distributor review', subject: mail.subject, lines: [mail.lines[0].slice('Hello Baraka. '.length), ...mail.lines.slice(1)], linkLabel: 'See who has started', to: '/grounds/g1' });
+    expect(got.nobodyHasStarted[0].lines[0]).toMatch(/^Kito and Lerato were invited to "Distributor review" on /);
     expect(got.nobodyHasStarted[0].subject).toBe('Nobody has started "Distributor review" yet, and Groundwork is following up');
   });
 
