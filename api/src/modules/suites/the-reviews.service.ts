@@ -54,6 +54,8 @@ export interface NextReview {
   dueId: string;
   name: string;
   writtenWith: string | null;
+  /** What the "Written with" cell reads: the name, or "Any admin" where any admin may write it. Never blank. */
+  writtenWithSays: string;
   dueOn: Day;
   /** 'not-yet' while a check-in that decides something about the person is still open (where-a-review-stands.ts). */
   stands: Stands;
@@ -345,6 +347,7 @@ export class ReviewsService {
         dueId: d.id,
         name: this.nameOf(p),
         writtenWith,
+        writtenWithSays: writtenWith ?? 'Any admin',
         dueOn: dayOf(d.dueOn),
         stands,
         standsSays: whereItStandsSaid({

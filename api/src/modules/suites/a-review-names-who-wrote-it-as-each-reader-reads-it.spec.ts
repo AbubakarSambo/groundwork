@@ -86,6 +86,13 @@ describe('the organisation answered "An admin", and Grace starts Aisha’s revie
     }
   });
 
+  it('and the cell the board draws is never blank: it reads "Any admin"', async () => {
+    const { svc, as } = setup('An admin');
+    for (const u of ['u-grace', 'u-wairimu']) {
+      expect((await svc.board(as(u), TODAY)).next.map((x) => [x.name, x.writtenWithSays, x.standsSays])).toEqual([['Aisha Otieno', 'Any admin', expect.stringMatching(/^Ready to start/)]]);
+    }
+  });
+
   it('Aisha reads that Grace started it, in the app, on Today and on WhatsApp', async () => {
     const { svc, sent, as } = setup('An admin');
     await svc.start(as('u-grace'), 'd-aisha');
