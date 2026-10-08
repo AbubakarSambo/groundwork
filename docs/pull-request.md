@@ -40,7 +40,19 @@ Each is one row in `platform_settings`; the full table is `docs/deploy.md`, sect
 
 ## Every result
 
-RESULTS_PENDING
+All from 9 October, on the final commit of this branch.
+
+| Check | Result |
+| --- | --- |
+| API tests | All 19,279 pass, in 1,970 suites (2 skipped on purpose: live journeys). |
+| Client tests | All 4,831 pass, in 734 files. |
+| Typechecks | The API and the client are clean. |
+| Production start | `npm run check:production-start` passes: it builds, starts, `/health` says ok, `/embed.js` answers. |
+| Migrations | On an empty database, all 367 apply. On a database built to live's own schema with existing-client rows, the new ones apply and every row is unchanged except the platform admin flag for hjumare@gmail.com, which is intended. |
+| Browser journeys | Sign-up (including a blank organisation name, which gets the trial) and sign-in, Google up to Google's own screen, the admin's People and Plan and billing with the over-the-plan sentence, the lead's set-up, a member joining and checking in, leave and spending, a review and its appeal as the person, the reviewer and a second admin, Ask with context added from the check-in, the Company page, and Today with the outstanding lists and "From Groundwork". All pass after the fixes the checks made. |
+| The anchor | Walked end to end with the real model from the normal entry chat: the lead's set-up and summary, the invitation, two members' first and second check-ins with "finish", the lead's board and its sections, the month's end and the ending. |
+| Privacy sweep | 28 readers across three organisations, then a second sweep of the changed parts. No reader can open anything they should not: transcripts reach only their owner; no lead-only field reaches a member; no comparison between people; ratings only to the person they are about; decision 40 holds; no email address where a name goes; the appeal's reasons never reach the reviewer, a lead or a colleague; a quiet clock-closed person gets no picture and no "ready" mail. |
+| Existing users | The carry-on check passes 12 of 12. A week on the clock: nobody existing got more than one routine message a day, nobody existing was held for a seat, and nothing they had was lost. |
 
 ## Still being polished, for the pull request after
 
