@@ -1209,8 +1209,17 @@ export function GroundAdminPage() {
    * `openRound` is kept only as the fallback for a ground the server has not given one.
    */
   const clockRound = ground.sessionClock?.currentSession ?? openRound
+  /*
+   * COUNTED AMONG THE PEOPLE IN THE SESSION, THE SAME PEOPLE THE TOTAL COUNTS (release check, 8 October 2026). The anchor's
+   * lead does not check in (her row is managing only), but her set-up conversation is stored as a finished check-in for
+   * session 1. Counted here, her first screen read "One of the zero people has checked in for session 1." A finished
+   * check-in counts only when its person is one of `whoIsInRound`; one with no person on it is counted as before.
+   */
+  const inClockRound = new Set(
+    whoIsInRound((ground.participants ?? []) as any[], clockRound, (ground as any).scenario).map((p: any) => p.id),
+  )
   const clockRoundDone = (ground.checkIns ?? []).filter(
-    (c: any) => c.sessionNumber === clockRound && c.status === 'COMPLETED',
+    (c: any) => c.sessionNumber === clockRound && c.status === 'COMPLETED' && (c.participantId == null || inClockRound.has(c.participantId)),
   ).length
   /**
    * WHY THE SESSION NUMBER JUST WENT DOWN.
