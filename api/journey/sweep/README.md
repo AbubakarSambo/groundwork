@@ -54,6 +54,8 @@ from the day the copy was made.
 SWEEP=a api/journey/sweep/bed.sh up
 ```
 
+The mail catcher is a small Python program and needs one library, installed once with `pip install aiosmtpd`. Without it the catcher stops at once and `bed.sh up` waits for it for ever.
+
 This starts the mail catcher, the WhatsApp recorder and the API (from `api/dist`, so run `cd api && npx
 nest build` first after any code change). It prints what is running. Run it again and it only starts what
 is not running. `SWEEP=a api/journey/sweep/bed.sh status` shows it, and `... down` stops it. The database
@@ -70,6 +72,8 @@ VITE_PROXY_TARGET=http://127.0.0.1:3201 npm run dev -- --port 5173      # copy b
 ```
 
 Links in the emails point at that port, so a link in a mail opens your copy.
+
+The client's dev proxy always sends the origin `http://localhost:5173` to the API, whichever port the client itself runs on, so the bed's API allows both its own client address and `http://localhost:5173`. Copy b's client therefore works as written above.
 
 ## 3. The helpers
 

@@ -73,7 +73,7 @@ export async function bedUp(bed: TheBed, o: { api?: boolean; realScheduler?: boo
       ...process.env,
       /* Where it points. These override anything in api/.env, which is read last and never wins over the real environment. */
       DATABASE_URL: bed.databaseUrl, PORT: String(bed.apiPort), NODE_ENV: 'development',
-      FRONTEND_URL: bed.client, CORS_ORIGINS: bed.client, STRIPE_CALLBACK_URL: `${bed.client}/billing/callback`,
+      FRONTEND_URL: bed.client, CORS_ORIGINS: [...new Set([bed.client, 'http://localhost:5173'])].join(','), /* the client's dev proxy always presents localhost:5173, whichever port copy b's client runs on (request 203) */ STRIPE_CALLBACK_URL: `${bed.client}/billing/callback`,
       /* Nothing leaves this computer: mail goes to the catcher, WhatsApp to the recorder. */
       EMAIL_SENDS_FOR_REAL: 'false', RESEND_API_KEY: '', MAIL_CATCHER_PORT: String(bed.mailSmtpPort),
       WHATSAPP_GRAPH_BASE_URL: `${bed.recorder}/graph`, WHATSAPP_APPROVED_TEMPLATES: approvedTemplateNames(),
