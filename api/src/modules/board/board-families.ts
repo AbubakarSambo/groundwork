@@ -214,6 +214,9 @@ export type BoardSection =
   | 'whereTheMonthIs'
   | 'whatIsMoving'
   | 'whatIsStillInTheWay'
+  | 'whatTheTeamIsContributing'
+  | 'wherePerspectivesDiffer'
+  | 'whatGroundworkIsWorkingOnNext'
   | 'theEndOfTheMonth';
 
 /**
@@ -465,7 +468,7 @@ export function sectionsForARunOf(scenario: GroundScenario, roundsPlanned: numbe
  * scenario with no row here has exactly its family's sections.
  */
 export const SCENARIO_SECTIONS_ADDED: Partial<Record<GroundScenario, BoardSection[]>> = {
-  HELP_TEAM_UNDERSTAND: ['whatYouAreCarrying', 'howGroundworkWillWork', 'theFourLenses', 'ideasFromTheTeam', 'peopleHelpingTheTeamMove', 'recommendations', 'weeklyInsight', 'whereTheMonthIs', 'whatIsMoving', 'whatIsStillInTheWay', 'theEndOfTheMonth'],
+  HELP_TEAM_UNDERSTAND: ['whatYouAreCarrying', 'howGroundworkWillWork', 'theFourLenses', 'ideasFromTheTeam', 'peopleHelpingTheTeamMove', 'recommendations', 'weeklyInsight', 'whereTheMonthIs', 'whatIsMoving', 'whatIsStillInTheWay', 'whatTheTeamIsContributing', 'wherePerspectivesDiffer', 'whatGroundworkIsWorkingOnNext', 'theEndOfTheMonth'],
 };
 
 export function sectionsFor(scenario: GroundScenario): BoardSection[] {
