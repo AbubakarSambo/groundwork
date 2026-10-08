@@ -49,3 +49,36 @@ describe('James, who answered and said he was waiting', () => {
     expect(await theNudgeLineFor(world([]), ground, AFTER, 'p-james')).toBeNull();
   });
 });
+
+/**
+ * VALUE FIRST, THEN ASK, WHEN THE WAIT HAS CLEARED (engagement spec section 17), AS JAMES READS IT.
+ * He said he was waiting for the implementation date, and answered. Since then it was cleared. He ignores the next session, and is told so before he is asked.
+ */
+describe('James, whose wait has cleared since he last answered', () => {
+  const LAST = new Date('2026-10-06T10:00:00Z');
+  function cleared(rows: any[], answered: Date | null = LAST) {
+    const w = world([]);
+    w.checkIn = { findFirst: jest.fn(async () => (answered ? { completedAt: answered } : null)) };
+    w.groundDependency = { findMany: jest.fn(async ({ where }: any) => (where.status === 'CLEARED' ? rows : [])) };
+    return w;
+  }
+  it('is told it has cleared, and that his check-in is open when he is ready', async () => {
+    const line = await theNudgeLineFor(cleared([{ what: 'the implementation date.', fromParticipantId: 'p-james' }]), ground, AFTER, 'p-james');
+    expect(line).toBe('You said you were waiting for "the implementation date". That has now been cleared. Your check-in is open when you are ready to tell me what changed.');
+  });
+  it('asks only for his own, cleared after his last answer', async () => {
+    const w = cleared([{ what: 'the implementation date.', fromParticipantId: 'p-james' }]);
+    await theNudgeLineFor(w, ground, AFTER, 'p-james');
+    expect(w.groundDependency.findMany.mock.calls[0][0].where).toEqual({ groundId: 'g1', fromParticipantId: 'p-james', status: 'CLEARED', clearedAt: { gt: LAST } });
+    expect(await theNudgeLineFor(cleared([{ what: 'the budget.', fromParticipantId: 'p-lucy' }]), ground, AFTER, 'p-james')).toBeNull();
+  });
+  it('his own promise still comes first, and a person who has not answered yet is told nothing of the kind', async () => {
+    const withPromise = cleared([{ what: 'the implementation date.', fromParticipantId: 'p-james' }]);
+    withPromise.groundCommitment = { findMany: jest.fn(async () => [{ text: 'I will send the plan', explicit: true, participantId: 'p-james', source: 'CHECK_IN', status: 'UNKNOWN' }]) };
+    expect(await theNudgeLineFor(withPromise, ground, AFTER, 'p-james')).toBe("You mentioned you would send the plan. I'd love to hear how it went.");
+    expect(await theNudgeLineFor(cleared([{ what: 'the implementation date.', fromParticipantId: 'p-james' }], null), ground, AFTER, 'p-james')).toBeNull();
+  });
+  it('and not for a session that began before the release', async () => {
+    expect(await theNudgeLineFor(cleared([{ what: 'the implementation date.', fromParticipantId: 'p-james' }]), ground, BEFORE, 'p-james')).toBeNull();
+  });
+});

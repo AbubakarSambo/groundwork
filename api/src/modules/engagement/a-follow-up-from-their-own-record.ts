@@ -51,6 +51,12 @@ export async function theNudgeLineFor(
   if (aGroundIsTheAnchors(ground)) return theAnchorNudgeFor(prisma, ground, participantId);
   const promise = await theirPromiseToFollowUp(prisma, ground, sessionBeganAt, participantId);
   if (promise) return theAnchorNudgeLine(promise);
+  /* NO PROMISE, BUT SOMETHING THEY WERE WAITING FOR HAS CLEARED SINCE THEY LAST ANSWERED (engagement spec section 17, "value first, then ask"): "You said you were waiting on
+     Lucy for budget approval. That approval is now complete." Their own wait, cleared, and said to them first. */
+  if (await beganAfterTheRelease(prisma, sessionBeganAt)) {
+    const cleared = await theirWaitThatHasCleared(prisma, ground.id, participantId);
+    if (cleared) return `You said you were waiting for "${cleared}". That has now been cleared. Your check-in is open when you are ready to tell me what changed.`;
+  }
   /* NO PROMISE, BUT A WAIT OF THEIR OWN (engagement spec sections 17 and 18, journey 8): what they said they were waiting for, still waiting. Their own words, said
      back to them, and a question that helps them act. It is by email only: the WhatsApp template says "last time you said you would", which a wait is not. */
   if (!(await beganAfterTheRelease(prisma, sessionBeganAt))) return null;
@@ -63,6 +69,20 @@ export async function theirOwnLastOpenWait(prisma: any, groundId: string, partic
   const rows = ((await prisma.groundDependency?.findMany?.({
     where: { groundId, fromParticipantId: participantId, status: { in: ['WAITING', 'BLOCKING'] }, clearedAt: null },
     orderBy: { createdAt: 'desc' },
+    select: { what: true, fromParticipantId: true },
+  })?.catch?.(() => [])) ?? []) as any[];
+  const mine = rows.find((d) => d.fromParticipantId === participantId && String(d.what ?? '').trim());
+  return mine ? String(mine.what).trim().replace(/[.!?]+$/, '') : null;
+}
+
+/** What they said they were waiting for that has been cleared since the last time they answered here: their own wait, in their own words. Null where there is none, or they have not answered yet. */
+export async function theirWaitThatHasCleared(prisma: any, groundId: string, participantId: string): Promise<string | null> {
+  const last = await Promise.resolve(prisma.checkIn?.findFirst?.({ where: { participantId, status: 'COMPLETED' }, orderBy: { completedAt: 'desc' }, select: { completedAt: true } })).catch(() => null);
+  const since: Date | null = (last as any)?.completedAt ?? null;
+  if (!since) return null;
+  const rows = ((await prisma.groundDependency?.findMany?.({
+    where: { groundId, fromParticipantId: participantId, status: 'CLEARED', clearedAt: { gt: since } },
+    orderBy: { clearedAt: 'desc' },
     select: { what: true, fromParticipantId: true },
   })?.catch?.(() => [])) ?? []) as any[];
   const mine = rows.find((d) => d.fromParticipantId === participantId && String(d.what ?? '').trim());
