@@ -43,6 +43,12 @@ export interface AskPage {
    * page. Absent today, so that button stays hidden everywhere until the engine serves it.
    */
   addsContext?: boolean
+  /**
+   * THE OLD CONTEXT CHAT IS OPEN (8 October, answers-from-engine.md, "what the anchor's final check needs", item 6). False means the check-in
+   * page's own context chat is switched off on the server (its routes answer with a sentence that sends the person to Ask), so the page must
+   * not draw it. Absent from an older server, which still has it.
+   */
+  oldContextChatIsOpen?: boolean
 }
 
 export type TextBlock = { type: 'text'; body: string }

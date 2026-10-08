@@ -121,6 +121,8 @@ export function ContextPage({
   const showForCheckInSetup = useAskStore((s) => s.showForCheckInSetup)
   const canAddContextWithAsk = mayRewriteTheBrief && askPage.data?.addsContext === true
   const contextEnabled = (ground as any)?.contextEnabled === true
+  /* The old context chat is drawn only while the server says it is open; while Ask's answer is still loading it is not drawn, so it never flashes and goes. */
+  const oldChatIsOpen = !askPage.isLoading && askPage.data?.oldContextChatIsOpen !== false
   const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === viewerUserId)
 
   /*
@@ -445,11 +447,11 @@ export function ContextPage({
             )}
             <div id="gw-context-chat">
               {/* The lead's own conversation about their own check-in. An admin reads the page. */}
-              {contextEnabled && isTheLead && <ContextChat groundId={id!} />}
+              {contextEnabled && isTheLead && oldChatIsOpen && <ContextChat groundId={id!} />}
               {/* THIS IS SETUP, NOT THE CHECK-IN. Hafsah, 21 Sep 2026: she finished the context conversation on
                   her own ground and waited for the first report. Nothing here writes a report; check-ins do,
                   and hers was still "Not started" on the Sessions tab. Said once, under the conversation. */}
-              {contextEnabled && isTheLead && (
+              {contextEnabled && isTheLead && oldChatIsOpen && (
                 <Note>
                   {/* GROUP 3'S REVIEW, BATCH A FAULT 6: "IT IS NOT YOUR CHECK-IN: THE REPORT..." JOINED TWO SENTENCES WITH A COLON. */}
                   This conversation sets the context. It is not your check-in. The report is written from check-ins, and yours is on the{' '}
