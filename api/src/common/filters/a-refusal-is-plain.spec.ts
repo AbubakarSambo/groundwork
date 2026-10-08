@@ -72,6 +72,12 @@ describe('a request that could not be read is the sender\'s, with a sentence for
     expect(out.body.message).toBe('That could not be done as it was sent, so check what you typed and try again.');
     expect(JSON.stringify(out.body)).not.toMatch(/Unexpected token|position 41|JSON/);
   });
+  it('and so is the same fault when Nest has already wrapped it as a 400 (what the running API does)', () => {
+    for (const raw of ['Unexpected end of JSON input', 'Unexpected token } in JSON at position 41', "Expected ',' or '}' after property value in JSON at position 12"]) {
+      const out = respond(new BadRequestException(raw));
+      expect(out.body.message).toBe('That could not be done as it was sent, so check what you typed and try again.');
+    }
+  });
   it('a body that is too large is a 413 and says so', () => {
     const out = respond(parser('entity.too.large', 413, 'request entity too large'));
     expect(out.status).toBe(413);

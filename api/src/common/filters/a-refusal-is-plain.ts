@@ -66,6 +66,8 @@ export function aPlainRefusal(status: number, message: string, how: HowItFailed 
   const m = (message ?? '').trim();
   if (!m) return status >= 500 ? SOMETHING_WENT_WRONG : BY_DEFAULT[statusWord(status)] ?? SOMETHING_YOU_SENT_COULD_NOT_BE_USED;
   if (/^Cannot (GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS) /.test(m)) return NOTHING_AT_THAT_ADDRESS;
+  /* The parser's own words for a body that is not JSON ("Unexpected end of JSON input", "Unexpected token } in JSON at position 41"). */
+  if (status === 400 && (/\bJSON\b/.test(m) || /^Unexpected (token|end|non-whitespace)/i.test(m))) return BY_DEFAULT['bad request'];
   const plain = BY_DEFAULT[m.toLowerCase().replace(/\.$/, '')];
   if (plain) return plain;
   return asASentence(m);
