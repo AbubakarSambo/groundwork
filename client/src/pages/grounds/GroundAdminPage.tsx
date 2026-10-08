@@ -48,7 +48,7 @@ import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-
 import { copy } from '@/components/gw/copying-can-fail'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { SendTheReportToEveryone } from '@/components/gw/SendTheReportToEveryone'
-import { howManyHaveNotAnsweredYet } from '@/lib/a-number-up-to-ten-in-words'
+import { howManyHaveNotAnsweredYet, numberUpToTenInWords } from '@/lib/a-number-up-to-ten-in-words'
 
 /**
  * THE THIRD COPY OF THE SITUATION NAMES, DELETED.
@@ -1198,6 +1198,21 @@ export function GroundAdminPage() {
     (c: any) => c.sessionNumber === openRound && c.status === 'COMPLETED',
   ).length
   /**
+   * B-053: ONE SESSION, NAMED ONCE. `ground.sessionClock` (when the server sends it) already names
+   * the round its own sentences are about - `says` read "Session 1 of 12." the moment the server's
+   * own count disagreed with this page's `openRound` (a lead who does not check in herself holds
+   * `openRound` at 1 after finishing session 1, because she is excluded from who-checks-in, while
+   * the clock's own round is the one `says` is about). Counting "who has checked in" against this
+   * page's own `openRound` then read a different session than the one just named - "Session 1 of
+   * 12. ... Nobody has checked in yet. Waiting for the first check-in." over a finished session 1.
+   * Whenever the server sends a clock, its own round is the one every count after `says` is about;
+   * `openRound` is kept only as the fallback for a ground the server has not given one.
+   */
+  const clockRound = ground.sessionClock?.currentSession ?? openRound
+  const clockRoundDone = (ground.checkIns ?? []).filter(
+    (c: any) => c.sessionNumber === clockRound && c.status === 'COMPLETED',
+  ).length
+  /**
    * WHY THE SESSION NUMBER JUST WENT DOWN.
    *
    * Walked twice on a real check-in. Header read "Session 2 of 3, 0 of 1 checked in for session 2".
@@ -1251,7 +1266,9 @@ export function GroundAdminPage() {
    * open round is among them. `roundDone` stays, because "1 of 4 checked in" is a count worth
    * printing and is not the same claim as "the round has closed".
    */
-  const everyoneIn = ((ground as any).roundCompletions ?? []).some((r: any) => r.sessionNumber === openRound)
+  /* B-053: named against `clockRound`, the same session `ground.sessionClock.says` (when sent) is about -
+     see the comment beside `clockRound`'s own declaration. */
+  const everyoneIn = ((ground as any).roundCompletions ?? []).some((r: any) => r.sessionNumber === clockRound)
   /*
    * NOTHING IS BEING WRITTEN UNTIL SOMEBODY HAS CHECKED IN. Hafsah, 21 Sep 2026, on her own ground: "0 of
    * 1 checked in for session 1 · report being written", after the setup conversation and before any
@@ -1286,7 +1303,7 @@ export function GroundAdminPage() {
       : (ground as any).status === 'REPORT_READY'
         ? 'the report is ready. It has not been shared yet'
         : (ground as any).report
-          ? (everyoneIn ? 'everyone is in, report on its way' : roundDone > 0 ? 'report being written' : 'waiting for the first check-in')
+          ? (everyoneIn ? 'everyone is in, report on its way' : clockRoundDone > 0 ? 'report being written' : 'waiting for the first check-in')
           : 'no report yet'
   // contact-visibility toggle state (default: hidden). true = peers cannot see each other's email.
   /**
@@ -1655,7 +1672,14 @@ export function GroundAdminPage() {
               "session" appears in 159 visible strings and "round" in 25.
             */
             if ((ground.participants ?? []).length > 0) {
-              const total = whoIsInRound((ground.participants ?? []) as any[], openRound, (ground as any).scenario).length
+              /*
+               * B-053: COUNTED AGAINST `clockRound`, NOT `openRound` - the same session
+               * `ground.sessionClock.says` just named. Counting this page's own open round instead
+               * read "Session 1 of 12. ... Nobody has checked in yet. Waiting for the first
+               * check-in." over a session everybody had already finished, because `says` and this
+               * count were two different sessions' worth of true. See `clockRound`'s own comment.
+               */
+              const total = whoIsInRound((ground.participants ?? []) as any[], clockRound, (ground as any).scenario).length
               /*
                * REQUEST 174, ITEM 2 (report tab, fault b): "0 of 1 people have checked in" is not a
                * sentence anybody writes - nobody says "zero people" where "nobody" is the plain
@@ -1663,7 +1687,7 @@ export function GroundAdminPage() {
                * not a one-member "people".
                */
               parts.push(
-                howManyCheckedInSentence(roundDone, total, openRound),
+                howManyCheckedInSentence(clockRoundDone, total, clockRound),
               )
             }
             if (roundWentBack) parts.push(`It went back to session ${openRound}, because somebody new was added. Nothing anybody wrote is lost.`)
@@ -2378,6 +2402,19 @@ export function GroundAdminPage() {
                * clauses is also gone, in favour of a full sentence.
                */
               const releasedAt = (ground as any).report?.releasedAt as string | null | undefined
+              /*
+               * B-056: "ONCE ALL 1 ARE IN" IS NOT ENGLISH. With one person on the check-in, this
+               * read "once all 1 are in", a bare digit standing in for a number that was never
+               * plural in the first place. With one person it now says it plainly - "once you have
+               * checked in" when the reader is that one person, "once they are in" when she is not
+               * (the lead can view a check-in that is not her own) - and with more than one, the
+               * count is said in words, the way every other small number on this page already is.
+               */
+              const total = ground.participants.length
+              const theOnlyParticipant = total === 1 ? ground.participants[0] : null
+              const onceEverybodyIsIn = total === 1
+                ? (theOnlyParticipant?.userId === user?.id ? 'you have checked in' : 'they are in')
+                : `all ${numberUpToTenInWords(total)} people are in`
               return (
                 <Callout tone="info">
                   <span className="gwui-switch-row">
@@ -2385,7 +2422,7 @@ export function GroundAdminPage() {
                       {releasedAt
                         ? `This report was already shared, on ${whenItWas(releasedAt, 'day')}, before everybody had checked in.`
                         : <>The picture builds as each person answers, and you can read what it has so far.
-                            It is only released to everybody once all {ground.participants.length} are in.</>}
+                            It is only released to everybody once {onceEverybodyIsIn}.</>}
                     </span>
                     <Button kind="quiet" size="small" onClick={() => setTab('report')}>
                       {releasedAt ? 'Read it' : 'Read it so far'}
