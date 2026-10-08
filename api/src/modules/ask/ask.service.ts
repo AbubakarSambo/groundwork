@@ -1,5 +1,5 @@
 import { askName, askNameOf, askFirstWelcome, ASK_CAPTION, ASK_ADD_LINE, askStarters, askStartersFor } from '../assistant/ask-name';
-import { contextIsInAskGroundwork } from '../admin/what-is-hidden-at-release';
+import { contextIsInAskGroundwork, theOldContextChatIsOpen } from '../admin/what-is-hidden-at-release';
 import { whatWasSaid } from '../assistant/what-was-said-is-what-is-kept';
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -298,7 +298,39 @@ export class AskService {
           contextIsHere,
         })
       : [];
-    return { ...shown, askName: name, caption: ASK_CAPTION, addLine: contextIsHere ? ASK_ADD_LINE : null, welcome, starters };
+    /* WHETHER "ADD CONTEXT WITH ASK" IS ONE OF THE THINGS THIS READER CAN DO (request 169). True only while Context is in Ask and the
+       reader may confirm setup on at least one check-in: their own, or, for an admin, one whose lead has left. The screens draw the button from this. */
+    const addsContext = shown.canAsk && contextIsHere ? await this.theyMayAddContext(asker) : false;
+    /* Whether the old context chat on the check-in page still answers (release.oldContextChat). The screens stop drawing it when this is false. */
+    const oldContextChatIsOpen = await theOldContextChatIsOpen(this.prisma);
+    return { ...shown, askName: name, caption: ASK_CAPTION, addLine: contextIsHere ? ASK_ADD_LINE : null, addsContext, oldContextChatIsOpen, welcome, starters };
+  }
+
+  /**
+   * MAY THIS READER SET UP AT LEAST ONE CHECK-IN? The same rule every setup writer asks (decisions 63 and 72): the person who runs a
+   * check-in that has not ended, or an admin of the organisation once the lead of one has left. Never a guess: a read that fails says no.
+   */
+  private async theyMayAddContext(asker: Asker): Promise<boolean> {
+    try {
+      const own = await this.prisma.ground.findFirst({
+        where: { organizationId: asker.organizationId, initiatorId: asker.userId, status: { notIn: A_GROUND_IS_OVER } },
+        select: { id: true },
+      });
+      if (own) return true;
+      const viewer = await this.prisma.user.findUnique({ where: { id: asker.userId }, select: { role: true, organizationId: true } });
+      if (viewer?.role !== 'ADMIN' || viewer.organizationId !== asker.organizationId) return false;
+      const left = await this.prisma.ground.findMany({
+        where: { organizationId: asker.organizationId, status: { notIn: A_GROUND_IS_OVER }, initiator: { isActive: false } },
+        select: { id: true },
+        take: 20,
+      });
+      for (const g of left) {
+        if (await this.grounds.mayOpenSetupChatFor(g.id, asker.userId, asker.organizationId).catch(() => false)) return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
   }
 
   private async forReaderBare(asker: Asker, askedFor: string | null) {

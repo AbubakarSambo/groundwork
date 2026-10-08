@@ -22,7 +22,7 @@ function ask(who: Who, suitesOn: string[], contextOn = false) {
     organization: { findUnique: jest.fn(async () => ({ name: 'Baridi' })) },
     organizationSuite: { findMany: jest.fn(async () => suitesOn.map((suite) => ({ suite }))) },
     assistantTurn: { findMany: jest.fn(async () => []) },
-    platformSetting: { findUnique: jest.fn(async ({ where }: any) => (contextOn && where.key === 'release.contextInAskGroundwork' ? { value: { on: true } } : null)) },
+    platformSetting: { findUnique: jest.fn(async ({ where }: any) => (where.key === 'release.contextInAskGroundwork' ? { value: { on: contextOn } } : null)) },
     ground: { findMany: jest.fn(async () => mine.map((g) => ({ id: g.id, label: g.label, initiatorId: g.initiatorId, createdByUserId: null }))) },
     groundParticipant: { findMany: jest.fn(async () => mine.filter((g) => g.initiatorId !== who.userId).map((g) => ({ groundId: g.id, managingOnly: !!g.managingOnly }))) },
   };

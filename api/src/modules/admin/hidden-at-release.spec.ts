@@ -2,7 +2,7 @@ import { GroundsService } from '../grounds/grounds.service';
 import { AssistantService } from '../assistant/assistant.service';
 import { WhatsAppAddOnService } from '../billing/whatsapp-add-on.service';
 import { SCENARIO_FAMILY, BoardFamily } from '../board/board-families';
-import { KINDS_OFFERED_AT_RELEASE, theBoardKindsOffered, aKindMayBeGiven, contextIsInAskGroundwork, theNewBillingPartsAreShown, theAnchorScenarioIsOn } from './what-is-hidden-at-release';
+import { KINDS_OFFERED_AT_RELEASE, theBoardKindsOffered, aKindMayBeGiven, contextIsInAskGroundwork, theNewBillingPartsAreShown, theAnchorScenarioIsOn, theOldContextChatIsOpen } from './what-is-hidden-at-release';
 
 /**
  * WHAT THE RELEASE HIDES (decisions 78, 88 and 90): a hidden thing is not offered to anything NEW,
@@ -24,16 +24,40 @@ describe('the anchor scenario switch (piece 0 of docs/anchor-scenario-plan.md)',
   });
 });
 
+describe('Context in Ask, and the old context chat', () => {
+  it('Context in Ask: a missing row reads on, { on: false } switches it off, and a row that cannot be read reads off', async () => {
+    expect(await contextIsInAskGroundwork(settings({}))).toBe(true);
+    expect(await contextIsInAskGroundwork(settings({ 'release.contextInAskGroundwork': { on: true } }))).toBe(true);
+    expect(await contextIsInAskGroundwork(settings({ 'release.contextInAskGroundwork': true }))).toBe(true);
+    expect(await contextIsInAskGroundwork(settings({ 'release.contextInAskGroundwork': { on: false } }))).toBe(false);
+    expect(await contextIsInAskGroundwork(settings({ 'release.contextInAskGroundwork': false }))).toBe(false);
+    for (const bad of ['yes', 1, { on: 'true' }, {}, null]) {
+      expect(await contextIsInAskGroundwork(settings({ 'release.contextInAskGroundwork': bad }))).toBe(false);
+    }
+    expect(await contextIsInAskGroundwork({ platformSetting: { findUnique: async () => { throw new Error('down'); } } })).toBe(false);
+    expect(await contextIsInAskGroundwork({})).toBe(false);
+  });
+  it('the old context chat: open with no row, shut by { on: false }, and open again when the row cannot be read', async () => {
+    expect(await theOldContextChatIsOpen(settings({}))).toBe(true);
+    expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': { on: true } }))).toBe(true);
+    expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': { on: false } }))).toBe(false);
+    expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': false }))).toBe(false);
+    expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': 'junk' }))).toBe(true);
+    expect(await theOldContextChatIsOpen({ platformSetting: { findUnique: async () => { throw new Error('down'); } } })).toBe(true);
+  });
+});
+
 describe('the three settings, with no row at all', () => {
-  it('offer sales and engineering of the eleven kinds, and keep the context and billing parts off', async () => {
+  it('offer sales and engineering of the eleven kinds, keep the billing parts off, and have Context in Ask (on since it moved there)', async () => {
     const p = settings({});
     expect(await theBoardKindsOffered(p)).toEqual(['sales org', 'engineering release']);
-    expect(await contextIsInAskGroundwork(p)).toBe(false);
+    expect(await contextIsInAskGroundwork(p)).toBe(true);
     expect(await theNewBillingPartsAreShown(p)).toBe(false);
   });
   it('read a broken row as the default, never as everything on', async () => {
     const p = settings({ 'release.boardKindsOffered': 'nonsense', 'release.contextInAskGroundwork': 'yes', 'release.planAndBillingNewParts': { on: 'true' } });
     expect(await theBoardKindsOffered(p)).toEqual(['sales org', 'engineering release']);
+    /* A context row nobody can read fails closed: off, not on by guesswork. */
     expect(await contextIsInAskGroundwork(p)).toBe(false);
     expect(await theNewBillingPartsAreShown(p)).toBe(false);
   });
@@ -109,7 +133,7 @@ describe('the Context tab\'s move to Ask Groundwork', () => {
   function assistant(on: boolean) {
     const contextChat = jest.fn(async () => ({ reply: 'How long does this check-in run for?', gaps: ['duration'], done: false, proposal: null }));
     const prisma: any = {
-      ...settings(on ? { 'release.contextInAskGroundwork': { on: true } } : {}),
+      ...settings({ 'release.contextInAskGroundwork': { on } }),
       person: { findFirst: jest.fn(async () => ({ id: 'p1', externalId: 'u-1', active: true, linkedUserId: 'lead-1' })) },
       user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'org-a' })) },
       ground: { findMany: jest.fn(async () => [{ id: 'g1', label: 'Q4 sales', initiatorId: 'lead-1', organizationId: 'org-a', scenario: 'NEW_PROJECT' }]) },

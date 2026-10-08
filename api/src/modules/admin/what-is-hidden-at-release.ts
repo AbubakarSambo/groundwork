@@ -7,7 +7,8 @@
  * OFFERED to something new.
  *
  *  - `release.boardKindsOffered`        { "kinds": [ ... ] }  the kinds of work a NEW check-in may be given
- *  - `release.contextInAskGroundwork`   { "on": false }       the setup and context lanes in Ask Groundwork
+ *  - `release.contextInAskGroundwork`   { "on": false }       the setup and context lanes in Ask Groundwork (ON when the row is missing, from the pull request that moved Context into Ask)
+ *  - `release.oldContextChat`           { "on": false }       the old context chat on the check-in page (ON when the row is missing; off sends people to Ask)
  *  - `release.planAndBillingNewParts`   { "on": false }       the WhatsApp add-on's price, use and limit
  *  - `release.anchorScenario`           { "on": false }       whether a new anchor check-in can be started (off when the row is missing)
  *
@@ -17,6 +18,7 @@ import { KINDS_OF_WORK, type KindOfWork } from '../board/the-kind-of-work';
 
 export const BOARD_KINDS_OFFERED_KEY = 'release.boardKindsOffered';
 export const CONTEXT_IN_ASK_GROUNDWORK_KEY = 'release.contextInAskGroundwork';
+export const OLD_CONTEXT_CHAT_KEY = 'release.oldContextChat';
 export const PLAN_AND_BILLING_NEW_PARTS_KEY = 'release.planAndBillingNewParts';
 export const ANCHOR_SCENARIO_KEY = 'release.anchorScenario';
 export const REQUEST_OFFER_IN_THE_CHECK_IN_KEY = 'release.requestOfferInTheCheckIn';
@@ -87,8 +89,35 @@ async function aSwitch(prisma: Reader, key: string): Promise<boolean> {
   return v?.on === true;
 }
 
-/** Off unless Hafsah has written `{ "on": true }`. */
-export const contextIsInAskGroundwork = (prisma: Reader) => aSwitch(prisma, CONTEXT_IN_ASK_GROUNDWORK_KEY);
+/**
+ * CONTEXT AND RESOURCES ARE DONE THROUGH ASK (decision 50, request 169, the pull request that moved them there).
+ * ON when the row is missing. `{ "on": false }` switches it off. A row that cannot be read, or holds something that is neither a
+ * true-or-false nor `{ on: true or false }`, reads as OFF: it fails closed, so a broken row never opens a door by guesswork.
+ * (This was OFF unless the row said `{ "on": true }` until Context moved into Ask.)
+ */
+export const contextIsInAskGroundwork = async (prisma: Reader): Promise<boolean> => {
+  const read = await theRowOrAFault(prisma, CONTEXT_IN_ASK_GROUNDWORK_KEY);
+  if (read.fault) return false;
+  if (read.row == null) return true;
+  const v = read.row.value as { on?: unknown } | boolean | null | undefined;
+  if (typeof v === 'boolean') return v;
+  if (v && typeof v === 'object' && typeof (v as { on?: unknown }).on === 'boolean') return (v as { on: boolean }).on;
+  return false;
+};
+
+/**
+ * THE OLD CONTEXT CHAT ON THE CHECK-IN PAGE (`POST /grounds/:id/context-chat` and its confirm and decline).
+ * ON when the row is missing: nobody loses it until the screens stop drawing it. `{ "on": false }` switches it off, and its routes then
+ * answer with one sentence that sends the person to Ask. A row that cannot be read keeps it ON, because the safe side of this switch is that
+ * a lead can still set up her check-in. Ask's own setup lane calls the same two methods in the engine and is not touched by this switch.
+ */
+export const theOldContextChatIsOpen = async (prisma: Reader): Promise<boolean> => {
+  const read = await theRowOrAFault(prisma, OLD_CONTEXT_CHAT_KEY);
+  if (read.fault || read.row == null) return true;
+  const v = read.row.value as { on?: unknown } | boolean | null | undefined;
+  if (typeof v === 'boolean') return v;
+  return !(v && typeof v === 'object' && (v as { on?: unknown }).on === false);
+};
 export const theNewBillingPartsAreShown = (prisma: Reader) => aSwitch(prisma, PLAN_AND_BILLING_NEW_PARTS_KEY);
 
 /**

@@ -200,10 +200,10 @@ function fixture(opts: { leakyReport?: boolean; contextInAsk?: boolean; suitesOn
       : r.id === where.id)) ?? null, select)),
   });
   const prisma: any = Object.fromEntries(Object.keys(db).map((k) => [k, table(k)]));
-  /* `release.contextInAskGroundwork` is off as shipped: the line about adding context is read only when it is on. */
+  /* The line about adding context is read only while `release.contextInAskGroundwork` is on. It is on as shipped now (a missing row reads on); these tests say it explicitly either way, `{ on: false }` for the hidden state they were written about. */
   /* Leave and spending are switched on unless a test says otherwise: Ask offers to file them only where they are on. */
   prisma.organizationSuite = { findMany: jest.fn(async () => (opts.suitesOn ?? ['leave', 'spend']).map((suite: string) => ({ suite }))) };
-  prisma.platformSetting = { findUnique: jest.fn(async ({ where }: any) => (opts.contextInAsk && where.key === 'release.contextInAskGroundwork' ? { value: { on: true } } : null)) };
+  prisma.platformSetting = { findUnique: jest.fn(async ({ where }: any) => (where.key === 'release.contextInAskGroundwork' ? { value: { on: !!opts.contextInAsk } } : null)) };
   prisma.subject = { findMany: jest.fn(async () => []), count: jest.fn(async () => 0) };
   prisma.detectionQuietPeriod = { findMany: jest.fn(async () => []) };
 
@@ -264,8 +264,11 @@ function fixture(opts: { leakyReport?: boolean; contextInAsk?: boolean; suitesOn
 const BARIDI_ASK = {
   askName: 'Ask Baridi',
   caption: 'Ask about the company, your work or your check-ins.',
-  /* Left out while `release.contextInAskGroundwork` is off, which is how it ships. */
+  /* Left out while `release.contextInAskGroundwork` is off (these tests switch it off with { on: false }). */
   addLine: null,
+  /* Request 169: whether Ask can add context for this reader. False while it is off here, and for everyone who runs no check-in. The old chat answers unless its own switch says off. */
+  addsContext: false,
+  oldContextChatIsOpen: true,
   /* Decision 101: four of the five need a check-in, so a reader with none is left with the one
      that does not. One true starter rather than four invented ones. */
   starters: ["What are the company's priorities right now?", 'Ask for leave, or to spend money.'],
