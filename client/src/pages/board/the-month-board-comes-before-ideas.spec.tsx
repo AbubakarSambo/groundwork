@@ -6,15 +6,19 @@ import { BoardPage } from './BoardPage'
 import { boardApi } from '@/api/board'
 import { groundsApi } from '@/api/grounds'
 import { recommendedCheckInsApi } from '@/api/recommendedCheckIns'
-import type { TheMonthBoard, TheIdeasFromYourTeam } from '@/api/anchorShapes'
+import type { TheIdeasFromYourTeam } from '@/api/anchorShapes'
 
 /**
  * FAULT 4 (live walk, 6 October 2026): FOR THE LEAD, "ARE WE MOVING TOGETHER?" COMES BEFORE
  * "IDEAS FROM YOUR TEAM".
  *
- * Section 24 makes the month board the lead's top question; the walk found "Ideas from your
- * team" sitting above it instead. For a member, who never gets a month board
- * (`theMonthBoardForTheLead` is lead-only), the ideas block stays exactly where it was.
+ * Section 24 makes the month's own sections the lead's top question; the walk found "Ideas from
+ * your team" sitting above it instead. For a member, who never gets the month's sections, the ideas
+ * block stays exactly where it was.
+ *
+ * UPDATED FOR DECISION 114 (8 October evening): `theMonthBoard` is retired from this page, so the
+ * fixture is now the `theFourLenses` section the switchboard names, carried directly on the board
+ * payload and gated by `sections`, the same move already made in the-month-board.spec.tsx.
  */
 vi.mock('@/api/board', () => ({ boardApi: { get: vi.fn() } }))
 vi.mock('@/api/grounds', () => ({ groundsApi: { get: vi.fn() } }))
@@ -27,19 +31,12 @@ vi.mock('@/stores/auth', () => ({
   useAuthStore: (sel: any) => sel({ user: currentUser }),
 }))
 
-const monthBoardFixture: TheMonthBoard = {
+const theFourLenses = {
+  heading: 'The four lenses',
   question: 'Are we moving together?',
-  weekOfTheMonth: 2,
-  weekSaid: 'Week 2 of the month',
   lenses: [
     { key: 'understanding', heading: 'Understanding', question: 'Do people see the bigger picture?', reading: 'Most of the team now connects their own work to the wider outcome.' },
   ],
-  whatIsMoving: ['Omar connected a project delay to a renewal risk.'],
-  whatTheTeamIsContributing: [],
-  peopleHelpingThingsMove: [],
-  wherePerspectivesDiffer: [],
-  whatIsStillGettingInTheWay: [],
-  whatGroundworkIsWorkingOnNext: [],
 }
 
 const ideasFixture: TheIdeasFromYourTeam = {
@@ -50,12 +47,12 @@ const ideasFixture: TheIdeasFromYourTeam = {
   whenThereAreNone: 'No idea from your team has been captured yet.',
 }
 
-const board = (opts?: { anchorScenarioOn?: boolean; theMonthBoard?: TheMonthBoard; ideasFromYourTeam?: TheIdeasFromYourTeam }) => ({
+const board = (opts?: { withMonthSections?: boolean; ideasFromYourTeam?: TheIdeasFromYourTeam }) => ({
   groundId: 'g1',
   renders: true,
   mode: 'SHARED',
   family: 'UPDATE',
-  sections: [],
+  sections: opts?.withMonthSections ? ['theFourLenses'] : [],
   title: 'Help my team understand',
   scenario: null,
   coverageVariant: 'NONE',
@@ -63,8 +60,8 @@ const board = (opts?: { anchorScenarioOn?: boolean; theMonthBoard?: TheMonthBoar
   canEditFrame: false,
   readOnlyNote: '',
   eachPerson: [],
-  anchorScenarioOn: opts?.anchorScenarioOn ?? false,
-  ...(opts?.theMonthBoard ? { theMonthBoard: opts.theMonthBoard } : {}),
+  anchorScenarioOn: true,
+  ...(opts?.withMonthSections ? { theFourLenses } : {}),
   ...(opts?.ideasFromYourTeam ? { ideasFromYourTeam: opts.ideasFromYourTeam } : {}),
   participants: [
     { id: 'p1', name: 'Hafsah', role: null, managingOnly: false, signedOffAt: null },
@@ -90,8 +87,8 @@ beforeEach(() => {
 })
 
 describe('the board order, for the lead', () => {
-  it('reads the month board before Ideas from your team', async () => {
-    ;(boardApi.get as any).mockResolvedValue(board({ anchorScenarioOn: true, theMonthBoard: monthBoardFixture, ideasFromYourTeam: ideasFixture }))
+  it('reads the month section before Ideas from your team', async () => {
+    ;(boardApi.get as any).mockResolvedValue(board({ withMonthSections: true, ideasFromYourTeam: ideasFixture }))
     ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u1', participants: [] })
     renderBoard()
     await screen.findByText('Are we moving together?')
@@ -106,8 +103,8 @@ describe('the board order, for the lead', () => {
 describe('the board order, for a member', () => {
   beforeEach(() => { currentUser = { id: 'u2', firstName: 'Kennedy', role: 'MEMBER' } })
 
-  it('leaves Ideas from your team exactly where it was, with no month board to move around', async () => {
-    ;(boardApi.get as any).mockResolvedValue(board({ anchorScenarioOn: true, ideasFromYourTeam: ideasFixture }))
+  it('leaves Ideas from your team exactly where it was, with no month section to move around', async () => {
+    ;(boardApi.get as any).mockResolvedValue(board({ withMonthSections: false, ideasFromYourTeam: ideasFixture }))
     ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u1', participants: [] })
     renderBoard()
     expect(screen.queryByText('Are we moving together?')).toBeNull()
