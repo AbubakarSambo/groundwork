@@ -31,6 +31,8 @@ async function theAnchorPartsOnly(args: {
   readerIsTheLead: boolean;
   /** The record's own clock: when the board last changed. Never the moment it is read. */
   clock: Date | null;
+  /** Whether the sweep has written the month's end on the record (decision 121, item 2). */
+  monthEnded?: boolean;
   /** The board as this reader is served it, for the differences between accounts. */
   served: { divergence?: { items?: { topic?: string; whoSeesIt?: string }[] } };
   /** What keeps coming up, as questions the lead is already served. */
@@ -65,7 +67,7 @@ async function theAnchorPartsOnly(args: {
     parts.theMonthBoard = theMonthBoard({ record, clock: args.clock, differences, patterns: args.patterns, ended });
     parts.ideasFromYourTeam = theIdeasFromYourTeam(record.ideas ?? [], args.readerParticipantId ?? null, (pid) => (record.ideas ?? []).find((i) => i.ownerParticipantId === pid)?.raisedBy ?? null);
     /* The month's end: twenty-eight days of the record's own clock, or the check-in has ended. Needs her own first words to begin with. */
-    if (theMonthIsOver(record.startedOn, args.clock, ended)) {
+    if (theMonthIsOver(record.startedOn, args.clock, ended || !!args.monthEnded)) {
       const herWords = await herOwnWords(prisma, ground.id, ground.initiatorId ?? null);
       if (herWords) parts.theEndOfMonthRead = theEndOfMonthRead({ herWords, record, differences, patterns: args.patterns });
     }

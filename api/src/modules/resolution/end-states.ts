@@ -57,11 +57,13 @@ export const END_STATES: Record<GroundScenario, { value: string; label: string; 
     { value: 'END', label: 'The work with the adviser ends.' },
     { value: 'NOT_YET', label: 'It is not decided yet, and what is missing is named so it can be looked at again.' },
   ],
+  /* The anchor's own endings (decision 121, item 2): the four ways the month goes on, from the end-of-month page, and the one where it ends here. */
   HELP_TEAM_UNDERSTAND: [
-    { value: 'COMPLETE', label: 'The project is complete.' },
-    { value: 'CONTINUE', label: 'The project carries on.' },
-    { value: 'DESCOPE', label: 'The project carries on with less in it.' },
-    { value: 'STOP', label: 'The project stops.' },
+    { value: 'KEEP_RUNNING', label: 'The check-in keeps running, so the team keeps being asked.' },
+    { value: 'START_RECOMMENDED', label: 'The check-ins Groundwork recommended are started.' },
+    { value: 'TURN_ON_SUITES', label: 'The suites that fit the work the team is already doing are turned on.' },
+    { value: 'CONTINUE_FOR_THE_TEAM', label: 'Groundwork carries on for the team.' },
+    { value: 'ENDS_HERE', label: 'The check-in ends here, and what the month found stays in the record.' },
   ],
   NEW_PROJECT: [
     { value: 'COMPLETE', label: 'The project is complete.' },
@@ -278,7 +280,7 @@ function asReadBy(scenario: GroundScenario | string | null | undefined, o: { val
 export function theEndingSaid(scenario: GroundScenario | string | null | undefined, value: string | null | undefined, who?: TheEndingIsAbout | null): string | null {
   if (!value) return null;
   const mine = scenario ? END_STATES[scenario as GroundScenario] : undefined;
-  const found = (mine ?? []).find((o) => o.value === value);
+  const found = (mine ?? []).find((o) => o.value === value) ?? (scenario === 'HELP_TEAM_UNDERSTAND' ? ONCE_OFFERED_BY_THE_ANCHOR.map(([v, label]) => ({ value: v, label })).find((o) => o.value === value) : undefined);
   return found ? asReadBy(scenario, found, who).label : null;
 }
 
@@ -300,6 +302,17 @@ export function endStatesFor(scenario: GroundScenario, who?: TheEndingIsAbout | 
 export function isValidEndState(scenario: GroundScenario, value: string): boolean {
   return endStatesFor(scenario).some((o) => o.value === value);
 }
+
+/**
+ * THE ENDINGS THIS KIND OF CHECK-IN USED TO OFFER, still read where one was already chosen (decision 121, item 2). The anchor's
+ * check-ins used to be offered a project's four endings, so an ending already written with one of them still says what it said.
+ */
+const ONCE_OFFERED_BY_THE_ANCHOR: [string, string][] = [
+  ['COMPLETE', 'The project is complete.'],
+  ['CONTINUE', 'The project carries on.'],
+  ['DESCOPE', 'The project carries on with less in it.'],
+  ['STOP', 'The project stops.'],
+];
 
 /**
  * OUTCOMES THAT ONLY MEAN SOMETHING IF THERE WAS AN OBJECTIVE.

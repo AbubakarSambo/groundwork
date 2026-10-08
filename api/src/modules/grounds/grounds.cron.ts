@@ -27,6 +27,7 @@ import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { keptOffThePhone } from '../whatsapp/a-check-in-kept-off-the-phone';
 import { whatToSendThisMorning, whichChase, whenItIsDue, itIsOverdue, itIsDueTomorrow, theTeamIsAlmostIn, yourViewMatters, itOpensSoon, MORNING_ORDER, itFollowsUpTheirPromise, theCheckInIsStillOpen } from '../whatsapp/what-goes-to-a-phone';
 import { theirTimeZone } from '../whatsapp/the-persons-own-time-zone';
+import { endTheMonthsThatHaveEnded } from '../board/the-anchor-month-end-event';
 import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
 import { sendWhoHasGoneQuiet as sendWhoHasGoneQuietToLeads } from '../engagement/who-has-gone-quiet';
 import { sendTheReportFollowUps } from '../engagement/the-report-follow-up';
@@ -293,6 +294,22 @@ export class GroundsCron implements OnApplicationBootstrap {
       }
       if (warned) this.logger.log(`Warned ${warned} lead(s) that a check-in is about to run out of time.`);
     }));
+  }
+
+  /**
+   * THE ANCHOR'S MONTH END (decision 121, item 2). Half an hour after the stall sweep, so a check-in that has just been stalled is
+   * caught the same night. Writes the event once for each anchor check-in whose month is over, and only while the anchor switch is on.
+   */
+  @Cron('30 3 * * *', { timeZone: 'UTC' })
+  async endTheAnchorMonths() {
+    await onceAcrossCopies(this.prisma, 'anchor-month-end', theDay(), () => this.endTheAnchorMonthsInner());
+  }
+
+  async endTheAnchorMonthsInner(now: Date = new Date()): Promise<{ ended: string[] }> {
+    if (!(await theAnchorScenarioIsOn(this.prisma))) return { ended: [] };
+    const result = await endTheMonthsThatHaveEnded(this.prisma, now).catch((err: any) => { this.logger.warn(`The anchor's month end could not be written: ${err?.message}`); return { ended: [] as string[] }; });
+    if (result.ended.length) this.logger.log(`The month ended for ${result.ended.length} anchor check-in(s).`);
+    return result;
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_3AM, { timeZone: 'UTC' })

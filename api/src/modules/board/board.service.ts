@@ -18,6 +18,7 @@ import { howARecordIsKnown, theRecordsMark, whatHappensNext } from './what-happe
 import { whereThisTargetStands, theHeadlineQuestion, theDirectionToReadIn, type ATeamAim } from './the-headline-and-where-each-target-stands';
 import { whereThisIsHeading } from './where-this-is-heading';
 import { whoTheEndingIsAbout } from '../resolution/who-the-ending-is-about';
+import { theMonthEndedOn } from './the-anchor-month-end-event';
 import { deadlineOf } from '../grounds/when-the-clock-starts';
 import { theWorkByArea, reportedAgainstTheRules } from './the-work-by-area-and-by-stage';
 import { toCloseTheGap } from './to-close-the-gap';
@@ -943,6 +944,7 @@ export class BoardService {
           select: { createdAt: true },
         })?.catch?.(() => []) ?? [],
         decidedAt: (ground as any).closedAt ?? null,
+        monthEndedAt: theMonthEndedOn((ground as any).groundAuditLog),
       }),
       participants: ground.participants.map((p) => ({
         id: p.id,
@@ -2972,7 +2974,7 @@ export class BoardService {
       /* The anchor scenario's own parts (request 149), added after every wall above: only whoever runs an anchor check-in, only with the switch on. */
       const roundOpensAt = (checkIns as any[]).filter((c) => c.sessionNumber === openRound).map((c) => c.availableFrom ?? c.startedAt).filter(Boolean).sort((a: Date, b: Date) => a.getTime() - b.getTime())[0] ?? null;
       /* In an anchor check-in the lead's own aim is hers alone: a member reads no objectives on the board either (decision 96, item 8; known issue P13). */
-      return withoutTheLeadsSetUpForAMember({ ...asServed, ...(await theAnchorBoardParts({ prisma: this.prisma, ground: ground as any, readerRunsIt: runsThisGround, openRound, roundOpenedAt: roundOpensAt, readerIsTheLead: isInitiator, clock: recordsClock, served: asServed as any, patterns: patternQuestions, readerParticipantId: me?.id ?? null })) }, { startedFrom: (ground as any).startedFrom ?? null, scenario: (ground as any).scenario ?? null, runsIt: runsThisGround });
+      return withoutTheLeadsSetUpForAMember({ ...asServed, ...(await theAnchorBoardParts({ prisma: this.prisma, ground: ground as any, readerRunsIt: runsThisGround, openRound, roundOpenedAt: roundOpensAt, readerIsTheLead: isInitiator, clock: recordsClock, monthEnded: !!theMonthEndedOn((ground as any).groundAuditLog), served: asServed as any, patterns: patternQuestions, readerParticipantId: me?.id ?? null })) }, { startedFrom: (ground as any).startedFrom ?? null, scenario: (ground as any).scenario ?? null, runsIt: runsThisGround });
     }
   }
 
