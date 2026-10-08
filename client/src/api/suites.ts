@@ -137,6 +137,8 @@ export interface NextReview {
   dueId: string
   name: string
   writtenWith: string | null
+  /** What the Written with cell says, always a sentence-ready phrase: the name, or "Any admin" when nobody in particular writes it. */
+  writtenWithSays?: string
   dueOn: string
   /** 'not-yet' while a check-in that decides something about the person is still open. */
   stands: 'ready' | 'started' | 'decided' | 'not-yet'

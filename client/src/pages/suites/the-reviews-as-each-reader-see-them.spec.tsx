@@ -375,3 +375,13 @@ describe('one review', () => {
     expect(own.value).toBe('')
   })
 })
+
+
+/* Screens item e: nobody in particular writes it, and the cell says so instead of staying blank. */
+describe('the Written with cell when no one is named', () => {
+  it('says what the server says, "Any admin"', async () => {
+    ;(reviewsApi.board as any).mockResolvedValue({ every: 'Every 6 months', next: [{ ...BOARD.next[1], writtenWith: null, writtenWithSays: 'Any admin' }] })
+    open(GRACE, '/suite/reviews')
+    expect(await screen.findByText('Any admin')).toBeTruthy()
+  })
+})
