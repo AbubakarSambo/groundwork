@@ -231,6 +231,9 @@ export interface ReviewForTheWriter {
   briefing?: ABriefing
   /** Null unless this reader is an admin who may decide the appeal, or the reviewer. */
   appeal?: AppealForAnotherReader | null
+  /** Who made the decision as it stands now (after an appeal changed it, the admin who changed it). Null until decided. */
+  decidedByYou?: boolean | null
+  decidedByFirstName?: string | null
 }
 export interface ReviewForThePerson {
   reader: 'person'

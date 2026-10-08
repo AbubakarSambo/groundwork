@@ -215,6 +215,22 @@ describe('Imani appeals, and Grace, an admin who did not decide it, decides', ()
     expect((await stands.svc.mine(stands.as('u-imani')))[0].says).toBe('Baraka has decided your review. You can read the decision and the reasons.');
   });
 
+  /* Found on test bed copy a, 9 October: the admin deciding the appeal read the reviewer's decision as "Your decision", and once the
+     appeal changed it the reviewer read the admin's decision as her own. Each reader is told who made the decision as it stands now. */
+  it('each reader is told who made the decision as it stands, before and after the appeal changes it', async () => {
+    const { svc, as } = setup();
+    await svc.appeal(as('u-imani'), 'r-imani', BIG_WORDS);
+    const before: any = await svc.one(as('u-grace'), 'r-imani');
+    expect([before.decidedByYou, before.decidedByFirstName]).toEqual([false, 'Baraka']);
+    const baraka: any = await svc.one(as('u-baraka'), 'r-imani');
+    expect([baraka.decidedByYou, baraka.decidedByFirstName]).toEqual([true, 'Baraka']);
+    await svc.decideTheAppeal(as('u-grace'), 'r-imani', { outcome: 'changed', decision: 'Imani moves up one level in January.', reasons: 'Her Karen work came in after the draft was written.' });
+    const after: any = await svc.one(as('u-baraka'), 'r-imani');
+    expect([after.decidedByYou, after.decidedByFirstName]).toEqual([false, 'Grace']);
+    const grace: any = await svc.one(as('u-grace'), 'r-imani');
+    expect([grace.decidedByYou, grace.decidedByFirstName]).toEqual([true, 'Grace']);
+  });
+
   it('Grace sees it in her list; nobody else is served that list', async () => {
     const { svc, as } = setup();
     await svc.appeal(as('u-imani'), 'r-imani', BIG_WORDS);

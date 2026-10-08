@@ -182,6 +182,12 @@ export interface ForTheWriter {
   managersWordsById: string | null;
   theirView: string | null;
   decision: { says: string; reasons: string } | null;
+  /**
+   * Who made the decision as it stands now, so the screen says "Your decision" only to that person. Once an appeal has
+   * changed it, it is the admin who changed it, not the reviewer (decision 113). Both null until it is decided.
+   */
+  decidedByYou: boolean | null;
+  decidedByFirstName: string | null;
   mayWrite: boolean;
   /**
    * Groundwork's suggestion about this person, when one was reached on a check-in this reader runs,
@@ -500,6 +506,8 @@ export class ReviewsService {
     const record = await this.theRecordServed(row, person, reader.userId, writerId, writerFirst);
     const briefing = await this.theBriefing(row, person, reader.userId, writes, theOneWhoDecidesSaid(writerFirst, named.anAdmin), record);
     /* The writer, and (decision 93, row 17) an admin; the suggestion service itself reads only a check-in the admin has access to. A lead who does not write it reads none. */
+    /* Whoever made the decision as it stands now: the admin who changed it on appeal, or else whoever decided it. */
+    const decidedNowId: string | null = (row as any).appealOutcome === 'changed' && (row as any).appealDecidedById ? (row as any).appealDecidedById : ((row as any).decidedById ?? null);
     const suggestion = (writes || role === 'ADMIN') && person.userId && this.suggestions
       ? await this.suggestions.latestForTheLeadAbout(person.userId, reader).catch(() => null)
       : null;
@@ -509,7 +517,10 @@ export class ReviewsService {
       writtenWith: await this.fullNameOf(writerId, directory), writtenWithFirstName: writerFirst,
       dueOn, noticed: this.noticedOf(row.noticed, writes),
       record,
-      managersWords: row.managersWords ?? null, managersWordsById: wordsById, theirView: row.theirView ?? null, decision, mayWrite: writes, suggestion,
+      managersWords: row.managersWords ?? null, managersWordsById: wordsById, theirView: row.theirView ?? null, decision,
+      decidedByYou: decision ? decidedNowId === reader.userId : null,
+      decidedByFirstName: decision ? await this.firstNameOf(decidedNowId, directory) : null,
+      mayWrite: writes, suggestion,
       /* The writer reads it as "you"; an admin and a lead of the team who does not write it read it too, with the writer named (decision 93, row 16). */
       recognise: recognising && theWriterMayReadIt({ theirView: row.theirView ?? null, startedAt: (row as any).startedAt })
         ? (writes ? recogniseForTheWriter(this.firstOf(person), recognising) : recogniseForAnotherReader(this.firstOf(person), recognising, startedByFirst))

@@ -94,7 +94,12 @@ function TheReview({ r, myUserId }: { r: AReview; myUserId: string | null }) {
   const person = r.reader === 'person'
   const writer = r.reader === 'writer'
   const manager = r.writtenWithFirstName
-  const footer = !manager
+  /* A decision somebody else made, for a reader who is not the person: after an appeal changed it, it is the admin's, not the reviewer's. */
+  const someoneElseDecided = !person && !!r.decision && r.decidedByYou === false
+  const decidedBy = !person ? r.decidedByFirstName ?? null : null
+  const footer = someoneElseDecided
+    ? (decidedBy ? `No scores. ${decidedBy} decided, and ${r.firstName} reads the decision and the reasons.` : 'No scores.')
+    : !manager
     ? 'No scores.'
     : person ? `No scores. You and ${manager} talk it through, and ${manager} decides.`
       : writer ? `No scores. You and ${r.firstName} talk it through, and you decide.`
@@ -408,12 +413,15 @@ function Decision({ r }: { r: AReview }) {
   const suggestion = r.reader !== 'person' ? r.recognise ?? null : null
 
   if (r.decision) {
+    /* "Your decision" only to whoever made it as it stands now: never to the reviewer once an admin changed it on appeal, nor to another admin (decision 113). */
+    const by = r.reader !== 'person' ? r.decidedByFirstName ?? null : null
+    const mine = r.reader === 'writer' && r.decidedByYou !== false
     return (
-      <Section heading={writer ? 'Your decision' : 'The decision'}>
+      <Section heading={mine ? 'Your decision' : by ? `${by}’s decision` : 'The decision'}>
         <p className="gwui-panel-text">{r.decision.says}</p>
-        <h3 className="gwui-panel-heading">{writer ? 'Your reasons' : 'The reasons'}</h3>
+        <h3 className="gwui-panel-heading">{mine ? 'Your reasons' : by ? `${by}’s reasons` : 'The reasons'}</h3>
         <p className="gwui-panel-text">{r.decision.reasons}</p>
-        {writer && <p className="gwui-panel-text-muted">{r.firstName} sees your decision and your reasons.</p>}
+        {mine && <p className="gwui-panel-text-muted">{r.firstName} sees your decision and your reasons.</p>}
       </Section>
     )
   }
