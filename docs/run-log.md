@@ -1369,3 +1369,18 @@ Not seen rendered on the bed: the follow-up that names the finding, and the valu
 **Refusals as people read them.** About 2,260 calls (149 read routes and 244 write routes, with made-up ids and empty bodies) as a new admin, a member, a lead, an admin and a member of an existing client: no 5xx, and every refusal one sentence. A broken body, a body that is too large, a route that does not exist and a missing sign-in each read as the sentences in `docs/answers-from-engine.md`, piece 6.
 
 **The existing users' check.** `journey/existing-clients-carry-on.spec.ts` against the local copy of the existing clients' database: 12 of 12 pass.
+
+## The anchor, engine side, walked again on the test bed (8 October, night)
+
+**How it was run.** Test bed copy a (fresh `reset.sh a`, one API on port 3201 built from `api/dist` at each commit, the real model, one jest at a time). Ruth (the lead, her own organisation) set up "Help my team understand" with Juma and Kofi; both members accepted, answered session 1, the clock was moved seven days, and both opened session 2. Typed by hand. The bed is stopped.
+
+| Reader | What was read | Result |
+| --- | --- | --- |
+| Kofi, session 1 | After "The fridge in van 2 has been broken for two weeks so I lose about 3 crates of mangoes a trip. I told the yard manager on 1 October but nothing happened." Groundwork asked "What has the yard manager said since you reported it?" (before: "What are you responsible for in your role?"). | Pass |
+| Juma, session 1 | After "Two shops on my round owe us for three weeks but I never ask, I thought the office does that." Groundwork asked "What happened when you found out they hadn't?" (before: "What are you responsible for?"). The same duty was asked about on three turns running until the read was told what it had already handed over. | Pass, after one fix |
+| Kofi and Juma, "finish" | Below five answers: "I need a little more from you before this check-in can close. Please answer one or two more questions, then write "finish" again." With enough said, the check-in closed. Before: another question, and then "What else should I know?" added by the product to the closing words. | Pass, after two fixes |
+| Juma, session 2 | Opened "Last time you mentioned that two shops on your round had owed money for three weeks and that you never asked. What moved since we last spoke?" A blocker, then a promise, were each followed up, and "finish" closed it. Before the count was fixed the opener told Kofi "Three out of three people have submitted what they said" for a team of two. | Pass, after one fix |
+| Juma, the page he reads | "(suggested by Ruth, and you have not answered it yet)" beside what Ruth asked of him. Ruth reads "(proposed, and Juma has not seen it yet)". | Pass |
+| Ruth, the board | "Groundwork has heard from both people." (before: "all two people"). | Pass |
+
+**The existing users' check.** `journey/existing-clients-carry-on.spec.ts`, pointed at the local copy of the existing clients' database: 12 of 12 pass. The whole API suite: 19,141 passed, 2 failed (both caused by this work and fixed in `a4cce26a`), 2 skipped.
