@@ -156,6 +156,24 @@ export class AuthService {
     }
   }
 
+  /**
+   * A TEAM NAMED ON THE SIGN-UP FORM HAS ITS TRIAL BEFORE THE LINK ANSWERS (release check, 8 October 2026). The month was
+   * given by a listener of the sign-up event, which is sent from inside the transaction that makes the organisation, so
+   * it landed a moment after this answer. The page then saved the check-in it was holding at once, and that save was
+   * refused with "Your organisation has no plan yet" (seen on the test bed: the refusal at 15:48:29.136, the month
+   * written at 15:48:29.21). This waits for the same rule, after the organisation exists: the form promises the month to
+   * teams of fewer than 20, and billing still checks that against who is really there. Never throws.
+   */
+  private async theTrialIsGivenBeforeTheyGoOn(organizationId: string): Promise<void> {
+    try {
+      const events: any = this.events;
+      if (typeof events?.emitAsync !== 'function') return;
+      await events.emitAsync(GroundworkEvents.ORG_SIZE_SAID, { organizationId, said: 'fewer', line: 20 } satisfies OrgSizeSaidEvent);
+    } catch (err: any) {
+      this.logger.warn(`The trial for ${organizationId} was not in place before the link answered: ${err?.message}`);
+    }
+  }
+
   /** The back office hears about every new organisation. Best-effort; a sign-up never fails on it. */
   private signedUp(org: { id: string; name: string }, adminEmail: string, namedOnTheForm = false) {
     try {
@@ -583,6 +601,9 @@ export class AuthService {
         await tx.pendingSignup.delete({ where: { id: pending.id } });
         return u;
       });
+
+      /* Named on the form: the trial is in place before the page saves the check-in it was holding. */
+      if (!onlySuggested && pending.orgName?.trim()) await this.theTrialIsGivenBeforeTheyGoOn(created.organizationId);
 
       /* This link has just made the account and its organisation (U.2). */
       /* Chosen on "Where do you work?": on to the new organisation's Today, not back to where they came from. */
