@@ -37,6 +37,22 @@ export class ReportsListener {
     @Optional() private weekly?: TheWeeklyReportService,
   ) {}
 
+  /**
+   * FOUND IN THE ANCHOR WALK (8 October). A lead who set the anchor up in the entry chat has her set-up saved as finished, and her words are hers
+   * alone, so nothing of them is on the record. The finish still announced a session, the report was written from no account at all, and the
+   * model made one up: two "differences" about bank statements and a credit committee, with a person called "Participant", which reached the
+   * lead's board until the first real answers came in. A set-up with nothing on the record yet has nothing to write a report from, so none is written.
+   */
+  private async thereIsNothingToWriteAReportFrom(event: CheckInCompletedEvent): Promise<boolean> {
+    try {
+      const row = await this.prisma.checkIn.findUnique({ where: { id: event.checkInId }, select: { isSetup: true } });
+      if (!row?.isSetup) return false;
+      return (await this.prisma.recordEntry.count({ where: { participant: { groundId: event.groundId } } })) === 0;
+    } catch {
+      return false;
+    }
+  }
+
   @OnEvent(GroundworkEvents.CHECK_IN_COMPLETED)
   async onCheckInCompleted(event: CheckInCompletedEvent) {
     // Notify the admin when any participant checks in (best-effort, never blocks report flow)
@@ -51,6 +67,9 @@ export class ReportsListener {
     this.notifyOnLateCorrection(event).catch((err: any) =>
       this.logger.warn(`Late-correction notification failed for ground ${event.groundId}: ${err.message}`),
     );
+
+    /* A set-up conversation alone is no account: with nothing on the record from anyone, a report would be written from nothing. */
+    if (await this.thereIsNothingToWriteAReportFrom(event)) return;
 
     try {
       const sessionNumber = event.sessionNumber;
