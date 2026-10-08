@@ -823,7 +823,7 @@ export class EntryService {
     /* Decision 35: a bank or card number typed here is hidden before it is kept or read by a model. See documents/bank-details-are-never-kept. */
     messages = withoutBankDetailsAnywhere(messages);
     soFar = withoutBankDetailsAnywhere(soFar);
-    if (!messages || messages.length === 0) throw new BadRequestException('messages required');
+    if (!messages || messages.length === 0) throw new BadRequestException('There was nothing to send, so write a message and try again.');
 
     /*
      * THE ANCHOR LEAD'S OWN CONVERSATION, ONLY WITH THE SWITCH ON. With it off, the anchor's key is ignored here exactly as it was
@@ -1490,7 +1490,7 @@ from finishing at all.`;
   async chat(messages: ChatTurn[], scenario?: string, groundLabel?: string, onDelta?: (text: string) => void, peopleNamed?: string[], alreadySaid?: string[]): Promise<{ reply: string; closed: boolean; promptVersionId?: string | null }> {
     /* Decision 35: a bank or card number typed here is hidden before it is kept or read by a model. See documents/bank-details-are-never-kept. */
     messages = withoutBankDetailsAnywhere(messages);
-    if (!messages || messages.length === 0) throw new BadRequestException('messages required');
+    if (!messages || messages.length === 0) throw new BadRequestException('There was nothing to send, so write a message and try again.');
 
     const lastUser = [...messages].reverse().find(m => m.role === 'user');
     // Only route to FAQ on the very first user message (conversationStarted guard)
@@ -1760,7 +1760,7 @@ from finishing at all.`;
 
   async report(messages: ChatTurn[], scenario?: string, groundLabel?: string, anchorItems?: Record<string, unknown>, peopleNamed?: string[]): Promise<EntryReport | null> {
     messages = withoutBankDetailsAnywhere(messages);
-    if (!messages || messages.length === 0) throw new BadRequestException('messages required');
+    if (!messages || messages.length === 0) throw new BadRequestException('There was nothing to send, so write a message and try again.');
 
     const mapped = await theSituationForThisDoor(this.prisma, scenario);
     const systemPrompt = buildEntrySystemPrompt(mapped, groundLabel || scenario || '');
@@ -1768,7 +1768,7 @@ from finishing at all.`;
     // Anthropic requires the conversation to end with a user message
     const trimmed = [...messages];
     while (trimmed.length && trimmed[trimmed.length - 1].role === 'assistant') trimmed.pop();
-    if (!trimmed.length) throw new BadRequestException('no user messages in history');
+    if (!trimmed.length) throw new BadRequestException('There is nothing from you in this conversation yet, so write a message first.');
 
     /*
      * WHO SETUP ALREADY NAMED, PUT IN FRONT OF THE READ.
@@ -2171,7 +2171,8 @@ from finishing at all.`;
       if (!d?.consumedAt) break; // winner failed and un-claimed; caller should retry
       await new Promise((r) => setTimeout(r, 500));
     }
-    throw new BadRequestException('COMMIT_IN_PROGRESS');
+    /* The screens read this token, not a sentence, and say their own words for it (MagicVerifyPage); `code` carries it for when they read that instead. */
+    throw new BadRequestException({ message: 'COMMIT_IN_PROGRESS', code: 'COMMIT_IN_PROGRESS' });
   }
 
   private async commitInner(
@@ -2197,7 +2198,7 @@ from finishing at all.`;
     const nothingToBuildFrom =
       (!dto.history || dto.history.length === 0) && !dto.lead && !dto.brief?.trim();
     if (nothingToBuildFrom) {
-      throw new BadRequestException('NO_ENTRY_SESSION');
+      throw new BadRequestException({ message: 'NO_ENTRY_SESSION', code: 'NO_ENTRY_SESSION' });
     }
 
     /*
@@ -2451,7 +2452,7 @@ from finishing at all.`;
         .updateMany({ where: { groundId: ground.id, userId: initiatorId, partyType: PartyType.INITIATOR }, data: { roleAsDescribed: setterRole } })
         .catch((err) => this.logger.warn(`Could not save the setter's role on ${ground.id}: ${err.message}`));
     }
-    if (!participant) throw new BadRequestException('Participant not found after creating a check-in');
+    if (!participant) throw new BadRequestException('The check-in was made but your place in it was not, so try again in a minute.');
 
     /*
      * WHAT THEY TYPED IN SETUP, KEPT FOR THEM (U.7 re-check). The Context page showed the brief, which
@@ -2479,7 +2480,7 @@ from finishing at all.`;
     const checkIn = await this.prisma.checkIn.findFirst({
       where: { groundId: ground.id, participantId: participant.id, sessionNumber: 1 },
     });
-    if (!checkIn) throw new BadRequestException('Session 1 check-in not found');
+    if (!checkIn) throw new BadRequestException('The first session of this check-in could not be found, so try again in a minute.');
 
     /*
      * IN THE ANCHOR, HER SET-UP CONVERSATION IS HER PART, SO IT IS SAVED AS DONE (requests 167 item 2 and 168 item 3).
@@ -2752,9 +2753,9 @@ from finishing at all.`;
    * which previously lived only in localStorage and were lost cross-browser. */
   async patchDraft(draftToken: string, payload: Record<string, any>): Promise<{ ok: true }> {
     payload = withoutBankDetailsAnywhere(payload);
-    if (!draftToken || typeof draftToken !== 'string') throw new BadRequestException('draftToken required');
-    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new BadRequestException('payload must be an object');
-    if (JSON.stringify(payload).length > 200_000) throw new BadRequestException('payload too large');
+    if (!draftToken || typeof draftToken !== 'string') throw new BadRequestException('This draft has lost its place, so start the draft again.');
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new BadRequestException('That draft could not be read, so start it again.');
+    if (JSON.stringify(payload).length > 200_000) throw new BadRequestException('That draft is too long to keep, so shorten it and try again.');
 
     /**
      * The draft may still be a PENDING SIGNUP, with no user behind it yet.
@@ -2843,7 +2844,7 @@ from finishing at all.`;
     department?: string;
     trapFilled?: boolean;
   }): Promise<WhatWeSay> {
-    if (!dto.joinToken?.trim()) throw new BadRequestException('A join link is required.');
+    if (!dto.joinToken?.trim()) throw new BadRequestException('Open the link you were sent to join, because this page needs it.');
     if (!dto.email?.trim()) throw new BadRequestException('An email is required to join.');
     /* The most publicly exposed form in the product, and every submission mails a typed address. A filled
        honeypot is answered exactly like success - telling a bot it was caught is telling it what to change -

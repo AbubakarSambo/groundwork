@@ -679,7 +679,7 @@ export class EntryCommitController {
 
   @Post('commit')
   async commit(@CurrentUser() user: CurrentUserData, @Body() dto: EntryCommitDto) {
-    if (!user?.organizationId) throw new UnauthorizedException('Account not linked to an organisation');
+    if (!user?.organizationId) throw new UnauthorizedException('Your sign-in is not connected to an organisation yet, so ask the person who invited you to add you.');
     return this.service.commit(user.organizationId, user.id, dto);
   }
 
@@ -691,7 +691,7 @@ export class EntryCommitController {
   @Post('draft-from-set-up')
   @Throttle({ global: { limit: 20, ttl: 60_000 } })
   async draftFromSetUp(@CurrentUser() user: CurrentUserData, @Body() dto: EntryDraftFromSetUpDto) {
-    if (!user?.organizationId) throw new UnauthorizedException('Account not linked to an organisation');
+    if (!user?.organizationId) throw new UnauthorizedException('Your sign-in is not connected to an organisation yet, so ask the person who invited you to add you.');
     return this.service.draftFromSetUp(user.organizationId, user.id, dto.setUp as any);
   }
 

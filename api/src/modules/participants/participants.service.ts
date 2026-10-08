@@ -76,7 +76,7 @@ export class ParticipantsService {
         objectives: { select: { id: true, name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true } },
       },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /* The person this link is for has not been told a goal the lead has set and not said: it is not a share of theirs to speak of (decisions 48 and 56). */
     const goalsNotToldYet: any[] = await ((this.prisma as any).personObjective?.findMany?.({
       where: { groundId: participant.groundId, participantId: participant.id, awareness: 'NOT_TOLD' },
@@ -159,7 +159,7 @@ export class ParticipantsService {
   async accept(token: string, names?: { firstName?: string; lastName?: string }, returningUserId?: string | null) {
     const participant = await this.loadByToken(token);
     const ground = await this.prisma.ground.findUnique({ where: { id: participant.groundId } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /*
      * HELD FOR A SEAT (U.4 re-review): not offered the check-in until a seat is freed and the
      * invitation is sent, even with the link in hand (the lead can copy it). Nothing is created.
@@ -538,11 +538,11 @@ export class ParticipantsService {
       where: { id: participantId },
       include: { ground: { include: { participants: { where: { partyType: 'INITIATOR' } } } } },
     });
-    if (!participant) throw new NotFoundException('Participant not found');
+    if (!participant) throw new NotFoundException('That person is not in this check-in, so check the name and try again.');
 
     const isOwner = participant.userId === userId;
     const isInitiator = participant.ground.participants.some((p) => p.userId === userId);
-    if (!isOwner && !isInitiator) throw new NotFoundException('Participant not found');
+    if (!isOwner && !isInitiator) throw new NotFoundException('That person is not in this check-in, so check the name and try again.');
 
     const now = new Date();
 
@@ -579,11 +579,11 @@ export class ParticipantsService {
       where: { id: participantId },
       include: { ground: { include: { participants: { where: { partyType: 'INITIATOR' } } } } },
     });
-    if (!participant) throw new NotFoundException('Participant not found');
+    if (!participant) throw new NotFoundException('That person is not in this check-in, so check the name and try again.');
 
     const isOwner = participant.userId === userId;
     const isInitiator = participant.ground.participants.some((p) => p.userId === userId);
-    if (!isOwner && !isInitiator) throw new NotFoundException('Participant not found');
+    if (!isOwner && !isInitiator) throw new NotFoundException('That person is not in this check-in, so check the name and try again.');
 
     const updated = await this.prisma.groundParticipant.update({
       where: { id: participantId },
@@ -636,12 +636,12 @@ export class ParticipantsService {
       where: { id: participantId },
       include: { ground: { include: { participants: { where: { partyType: 'INITIATOR' } } } } },
     });
-    if (!participant) throw new NotFoundException('Participant not found');
+    if (!participant) throw new NotFoundException('That person is not in this check-in, so check the name and try again.');
 
     const isInitiator = participant.ground.participants.some((p) => p.userId === actingUserId);
-    if (!isInitiator) throw new NotFoundException('Participant not found');
+    if (!isInitiator) throw new NotFoundException('That person is not in this check-in, so check the name and try again.');
     if (participant.userId) {
-      throw new BadRequestException('This person has already joined - their email cannot be changed. Remove and re-invite them instead.');
+      throw new BadRequestException('This person has already joined, so their email address cannot be changed. Remove them and invite them again instead.');
     }
 
     const email = newEmail.trim().toLowerCase();

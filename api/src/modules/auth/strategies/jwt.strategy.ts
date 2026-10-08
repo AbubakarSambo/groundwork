@@ -36,7 +36,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
 
     if (!user || !user.isActive || user.deletedAt) {
-      throw new UnauthorizedException('User not found or inactive');
+      throw new UnauthorizedException('Your sign-in is no longer active, so sign in again.');
     }
     /*
      * A TOKEN ASSERTS A FACT THAT WAS TRUE WHEN IT WAS MINTED. A password reset bumps the epoch;

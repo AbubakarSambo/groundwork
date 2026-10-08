@@ -31,7 +31,7 @@ export class RecommendedCheckInsService {
 
   private async theLeadsGround(groundId: string, userId: string) {
     const g = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true, initiatorId: true, startedFrom: true, scenario: true } });
-    if (!g) throw new NotFoundException('Check-in not found');
+    if (!g) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     if (g.initiatorId !== userId) throw new ForbiddenException('Only the person who set this check-in up can read what Groundwork recommends.');
     return g;
   }

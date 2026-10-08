@@ -64,6 +64,24 @@ describe('a crash is never read in its own words', () => {
   });
 });
 
+describe('a request that could not be read is the sender\'s, with a sentence for a person', () => {
+  const parser = (type: string, status: number, message: string) => Object.assign(new SyntaxError(message), { type, status, statusCode: status });
+  it('a body that is not JSON is a 400, not a crash, and says nothing of the parser', () => {
+    const out = respond(parser('entity.parse.failed', 400, "Unexpected token } in JSON at position 41"));
+    expect(out.status).toBe(400);
+    expect(out.body.message).toBe('That could not be done as it was sent, so check what you typed and try again.');
+    expect(JSON.stringify(out.body)).not.toMatch(/Unexpected token|position 41|JSON/);
+  });
+  it('a body that is too large is a 413 and says so', () => {
+    const out = respond(parser('entity.too.large', 413, 'request entity too large'));
+    expect(out.status).toBe(413);
+    expect(out.body.message).toBe('That is too large to send, so choose something smaller and try again.');
+  });
+  it('a plain error with a type of its own is still our crash', () => {
+    expect(respond(Object.assign(new Error('boom'), { type: 'Other', status: 500 })).status).toBe(500);
+  });
+});
+
 describe('a list of fields that did not validate is one sentence for a person, and the list still travels for a machine', () => {
   it('on the screens\' routes', () => {
     const out = respond(new BadRequestException(['name must be a string', 'name should not be empty']));

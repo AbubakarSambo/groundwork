@@ -233,9 +233,9 @@ function fixture(opts: { leakyReport?: boolean; contextInAsk?: boolean; suitesOn
       const ground = db.ground.find((g) => g.id === groundId);
       const party = partyOf(groundId, userId);
       const isLead = ground?.initiatorId === userId;
-      if (!ground || (!party && !isLead)) throw new ForbiddenException('You are not a participant in this check-in');
+      if (!ground || (!party && !isLead)) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
       const row = STORED_REPORTS[groundId];
-      if (!row) throw new NotFoundException('Report not found');
+      if (!row) throw new NotFoundException('That report could not be found, so go back to the check-in and open it from there.');
       if (opts.leakyReport) return row;
       return {
         ...whatAParticipantMayRead(row, { isLead, participantId: party?.id ?? null }),
@@ -246,7 +246,7 @@ function fixture(opts: { leakyReport?: boolean; contextInAsk?: boolean; suitesOn
   const grounds = {
     getMyCheckinStatus: jest.fn(async (groundId: string, userId: string) => {
       const party = partyOf(groundId, userId);
-      if (!party) throw new ForbiddenException('You are not a participant in this check-in');
+      if (!party) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
       const checkIns = db.checkIn.filter((c) => c.participantId === party.id);
       return { participantId: party.id, partyType: null, checkIns, latestStatus: null, latestSessionNumber: null };
     }),

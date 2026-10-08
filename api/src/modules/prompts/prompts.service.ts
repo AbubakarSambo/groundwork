@@ -89,7 +89,7 @@ export class PromptsService implements OnModuleInit {
       where: { key, isActive: true },
       orderBy: { version: 'desc' },
     });
-    if (!prompt) throw new NotFoundException(`No active prompt for key "${key}"`);
+    if (!prompt) throw new NotFoundException('That prompt has no version in use yet, so choose a version to use.');
     return prompt;
   }
 
@@ -441,7 +441,7 @@ export class PromptsService implements OnModuleInit {
    */
   async activate(id: string, activatedBy: string = ACTIVATED_BY_HAND) {
     const target = await this.prisma.promptVersion.findUnique({ where: { id } });
-    if (!target) throw new NotFoundException('Prompt version not found');
+    if (!target) throw new NotFoundException('That version of the prompt could not be found, so refresh the page.');
 
     await this.prisma.$transaction([
       this.prisma.promptVersion.updateMany({ where: { key: target.key }, data: { isActive: false } }),
@@ -470,7 +470,7 @@ export class PromptsService implements OnModuleInit {
       where: { id: organizationId },
       select: { id: true, name: true, slug: true },
     });
-    if (!org) throw new NotFoundException('Organisation not found');
+    if (!org) throw new NotFoundException('We could not find that organisation, so sign in again and try once more.');
 
     const users = await this.prisma.user.findMany({
       where: { organizationId },
@@ -609,7 +609,7 @@ export class PromptsService implements OnModuleInit {
 
   /** Sandbox: send one message turn using a custom system prompt. Never persisted. */
   async testChat(systemPrompt: string, messages: ChatTurn[]): Promise<{ reply: string }> {
-    if (!messages || messages.length === 0) throw new BadRequestException('messages required');
+    if (!messages || messages.length === 0) throw new BadRequestException('There was nothing to send, so write a message and try again.');
     const reply = await this.anthropic.respond(systemPrompt, messages);
     return { reply };
   }

@@ -76,7 +76,7 @@ export class AgreementsService {
       where: { id: groundId, organizationId },
       select: { initiatorId: true },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     const why = whyThisIsNotYoursToSay('speaking for this side', {
       userId: who.userId,

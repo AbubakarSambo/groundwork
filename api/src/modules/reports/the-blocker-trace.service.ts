@@ -54,7 +54,7 @@ export class TheBlockerTraceService {
   ): Promise<{ traces: TheBlockerTraceAsRead[] }> {
     const list = ((await this.grounds.list(reader.organizationId, reader.userId, reader.email, reader.role)) ?? []) as any[];
     const openable = new Set(list.filter((g) => g.organizationId === reader.organizationId).map((g) => g.id));
-    if (!openable.has(groundId)) throw new NotFoundException('Check-in not found');
+    if (!openable.has(groundId)) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     const stored = (await this.prisma.blockerTrace.findMany({
       where: { organizationId: reader.organizationId, endGroundId: groundId },

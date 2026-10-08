@@ -1,6 +1,6 @@
 import { groundsAViewerMayList } from './who-may-read-this-check-in';
 
-/** B-126: Pia's list offered 'Hiring plan for next quarter', waiting for an admin to accept it, and opening it said 'Check-in not found'. */
+/** B-126: Pia's list offered 'Hiring plan for next quarter', waiting for an admin to accept it, and opening it said 'That check-in could not be found, so go back to your check-ins and open it from the list.'. */
 describe('what a member is offered in the list', () => {
   const where: any = groundsAViewerMayList('u-pia', { role: 'MEMBER', organizationId: 'o' } as any, 'o');
   it('leaves out a check-in still waiting for an admin, even where she is on its roster', () => {

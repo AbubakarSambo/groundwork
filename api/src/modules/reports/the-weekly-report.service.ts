@@ -290,11 +290,11 @@ export class TheWeeklyReportService {
         participants: { select: { id: true, userId: true, partyType: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, roleAsDescribed: true, user: { select: { firstName: true, lastName: true, email: true } } } },
       } as any,
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const viewer: Viewer = { userId: who.userId, role: who.role, organizationId: who.organizationId };
     const level = whatTheyMayRead(who.userId, viewer, ground);
     /* Somebody with no reach, and an admin who was not given access to an evaluation check-in, read nothing. */
-    if (!level) throw new NotFoundException('Check-in not found');
+    if (!level) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     const latest: any = week
       ? await this.prisma.weeklyReport.findUnique({ where: { groundId_weekStart: { groundId, weekStart: week } } })

@@ -14,6 +14,13 @@ import { aPlainRefusal } from './a-refusal-is-plain';
 /** What a person is told when the payment provider refuses, whatever it said. No key, no provider vocabulary, and the truth about the money. */
 export const PAYMENTS_ARE_NOT_AVAILABLE = 'Payments are not available right now. Nothing has been charged. Please try again later.';
 
+/** A request the body-parser could not read: not JSON, too large, or cut short. A 4xx from the sender's side, not a crash. */
+export function theRequestCouldNotBeRead(e: unknown): boolean {
+  const type = (e as { type?: unknown })?.type;
+  const status = (e as { status?: unknown; statusCode?: unknown })?.status ?? (e as { statusCode?: unknown })?.statusCode;
+  return typeof type === 'string' && /^(entity\.|request\.aborted|encoding\.unsupported|charset\.unsupported|stream\.)/.test(type) && typeof status === 'number' && status >= 400 && status < 500;
+}
+
 /** An error thrown by Stripe's library (its classes are all called Stripe...Error and carry a `type` of the same kind). */
 export function isAStripeError(e: unknown): boolean {
   const t = (e as any)?.type;
@@ -74,6 +81,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         code = typeof responseObj.code === 'string' ? responseObj.code : null;
         canContinue = typeof responseObj.canContinue === 'boolean' ? responseObj.canContinue : null;
       }
+    } else if (exception instanceof Error && theRequestCouldNotBeRead(exception)) {
+      /* The body-parser's own errors (a body that is not JSON, or is too big) carry the right status on the error itself. They are the sender's, not a fault of ours. */
+      status = (exception as { status?: number; statusCode?: number }).status ?? (exception as { statusCode?: number }).statusCode ?? HttpStatus.BAD_REQUEST;
+      message = status === HttpStatus.PAYLOAD_TOO_LARGE ? 'Payload too large' : 'Bad Request';
     } else if (exception instanceof Error) {
       /**
        * A PRISMA ERROR IS NOT A MESSAGE, AND IT IS NOT SAFE EITHER.

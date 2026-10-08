@@ -62,7 +62,7 @@ export class StripeService {
   get stripe(): Stripe {
     if (!this.client) {
       throw new ServiceUnavailableException(
-        'Billing is not set up on this deployment. STRIPE_SECRET_KEY is not configured, so nothing can be charged. Nothing was attempted and no card was touched.',
+        'Billing is not set up here yet, so nothing can be charged. Nothing was attempted and no card was touched.',
       );
     }
     return this.client;

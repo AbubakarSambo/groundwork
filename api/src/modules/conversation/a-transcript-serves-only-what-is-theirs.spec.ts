@@ -33,7 +33,7 @@ function transcriptFor(participant: any) {
   /* The real owner check, as it is: the check-in is theirs only if the participant's user is who asks. */
   service.loadOwnedCheckIn = jest.fn(async (id: string, who: string) => {
     const row = await prisma.checkIn.findUnique();
-    if (row.participant.userId !== who) throw new ForbiddenException('This check-in does not belong to you');
+    if (row.participant.userId !== who) throw new ForbiddenException('That check-in is not yours to open, so go back to your own check-ins.');
     return row;
   });
   service.briefFor = () => null;

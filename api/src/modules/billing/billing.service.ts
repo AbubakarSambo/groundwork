@@ -451,16 +451,16 @@ export class BillingService {
        one free extension could be spent onto any ground in the database. Resolved inside the caller's
        organisation first, exactly as purchaseSession does two methods up. */
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId }, select: { id: true, isFreeGround: true } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /* A free check-in has unlimited sessions - the same guard purchaseSession carries. Without it the
        organisation's one extension was spent on a check-in that never needed it, the person was told
        "Free session added", and the flag never resets. */
-    if (ground.isFreeGround) throw new ForbiddenException('This check-in has unlimited free sessions - nothing to extend.');
+    if (ground.isFreeGround) throw new ForbiddenException('This check-in already has unlimited free sessions, so there is nothing to extend.');
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
       select: { freeExtensionUsed: true, createdAt: true },
     });
-    if (!org) throw new NotFoundException('Organization not found');
+    if (!org) throw new NotFoundException('We could not find that organisation, so sign in again and try once more.');
     /* The free extension is part of the free plan: none for an organisation it no longer applies to. */
     if (!(await this.theFreePlanAppliesTo(org))) throw new ForbiddenException(NO_PLAN_TO_OPEN);
     if (org.freeExtensionUsed) throw new ForbiddenException('Your organisation has already used its one free extension. This does not reset; subscribing is the way to keep going.');
@@ -520,7 +520,7 @@ export class BillingService {
   async creditSession(groundId: string, reason: string, byUserId: string): Promise<{ groundId: string; sessionsBalance: number }> {
     if (!reason?.trim()) throw new BadRequestException('Say why the session is being credited; it goes on the ledger.');
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { id: true, organizationId: true } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const now = new Date();
     const [credited] = await this.prisma.$transaction([
       this.prisma.ground.update({ where: { id: groundId }, data: { sessionsBalance: { increment: 1 } }, select: { sessionsBalance: true } }),
@@ -584,10 +584,10 @@ export class BillingService {
       throw new ForbiddenException('Enterprise plans require contacting the support team.');
     }
     const org = await this.prisma.organization.findUnique({ where: { id: organizationId } });
-    if (!org) throw new NotFoundException('Organization not found');
+    if (!org) throw new NotFoundException('We could not find that organisation, so sign in again and try once more.');
 
     if (isSubscribed(org)) {
-      throw new ForbiddenException('Organization already has an active subscription - use the plan-change endpoint to switch plans.');
+      throw new ForbiddenException('This organisation already has a plan, so change the plan instead of buying a new one.');
     }
 
     const customerId = await this.stripe.ensureCustomer(org.id, org.email ?? undefined, org.stripeCustomerId);
@@ -641,9 +641,9 @@ export class BillingService {
       throw new ForbiddenException('Enterprise plans require contacting the support team.');
     }
     const org = await this.prisma.organization.findUnique({ where: { id: organizationId } });
-    if (!org) throw new NotFoundException('Organization not found');
+    if (!org) throw new NotFoundException('We could not find that organisation, so sign in again and try once more.');
     if (!org.subscriptionStripeId || org.subscriptionStatus !== ACTIVE) {
-      throw new ForbiddenException('No active subscription to change - subscribe first.');
+      throw new ForbiddenException('This organisation has no plan to change yet, so choose a plan first.');
     }
     if (org.subscriptionPlan === newPlan) {
       throw new ForbiddenException(`Already on the ${newPlan} plan.`);
@@ -955,7 +955,7 @@ export class BillingService {
         teamSizeLine: true,
       },
     });
-    if (!org) throw new NotFoundException('Organization not found');
+    if (!org) throw new NotFoundException('We could not find that organisation, so sign in again and try once more.');
 
     const peopleCount = await this.seatsTaken(organizationId);
     /**
@@ -1099,7 +1099,7 @@ export class BillingService {
       where: { id: organizationId },
       select: { careFeeSubscriptionId: true, email: true, name: true },
     });
-    if (!org) throw new NotFoundException('Organization not found');
+    if (!org) throw new NotFoundException('We could not find that organisation, so sign in again and try once more.');
 
     if (org.careFeeSubscriptionId) {
       await this.stripe.stripe.subscriptions.cancel(org.careFeeSubscriptionId).catch(() => null);
@@ -1142,7 +1142,7 @@ export class BillingService {
    */
   async createBillingPortalSession(organizationId: string): Promise<{ portalUrl: string }> {
     const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { stripeCustomerId: true } });
-    if (!org?.stripeCustomerId) throw new NotFoundException('No billing account set up for this organization');
+    if (!org?.stripeCustomerId) throw new NotFoundException('This organisation has no billing set up yet, so choose a plan first.');
     const base = this.config.get<string>('stripe.callbackUrl') || 'http://localhost:5173/billing/callback';
     const portalUrl = await this.stripe.createBillingPortalSession(org.stripeCustomerId, base);
     return { portalUrl };
@@ -1512,7 +1512,7 @@ export class BillingService {
    */
   async disableCode(codeId: string, callerOrgId: string): Promise<{ ok: boolean }> {
     const code = await this.prisma.contributorCode.findUnique({ where: { id: codeId } });
-    if (!code) throw new NotFoundException('Code not found');
+    if (!code) throw new NotFoundException('That code could not be found, so check it and try again.');
     if (code.organizationId !== callerOrgId) throw new ForbiddenException('Not authorised to disable this code.');
     await this.prisma.contributorCode.update({ where: { id: codeId }, data: { isActive: false } });
     this.logger.log(`Contributor code ${codeId} disabled by org ${callerOrgId}`);
@@ -1524,7 +1524,7 @@ export class BillingService {
    */
   async getPlatformAdminStats(callerUserId: string) {
     const caller = await this.prisma.user.findUnique({ where: { id: callerUserId }, select: { isPlatformAdmin: true } });
-    if (!caller?.isPlatformAdmin) throw new ForbiddenException('Platform admin access required.');
+    if (!caller?.isPlatformAdmin) throw new ForbiddenException('This part is for Groundwork staff.');
 
     const codes = await this.prisma.contributorCode.findMany({
       orderBy: { createdAt: 'desc' },

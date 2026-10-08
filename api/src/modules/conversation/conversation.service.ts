@@ -3728,7 +3728,7 @@ export class ConversationService {
         },
       },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /* The goals the lead has not told people about yet (decision 56): no target of theirs reaches this check-in. */
     const untoldHere = await this.untoldGoalsOn(checkIn.groundId);
 
@@ -6654,7 +6654,7 @@ ${told}` : '';
       where: { id: checkInId },
       include: { participant: { include: { user: { select: { awaitingOrgApproval: true, firstName: true, lastName: true } } } } },
     });
-    if (!checkIn) throw new NotFoundException('Check-in not found');
+    if (!checkIn) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     return this.finishTheSession(checkIn, 'the clock', { waitForTheCard: false });
   }
 
@@ -10647,7 +10647,7 @@ ${told}` : '';
       where: { id: entryId, participantId: checkIn.participantId },
       select: { id: true, disputedAt: true },
     });
-    if (!entry) throw new NotFoundException('That line is not on the record');
+    if (!entry) throw new NotFoundException('That line is not on the record, so go back to the report and choose another.');
     if (entry.disputedAt) return { id: entry.id, disputedAt: entry.disputedAt };
     const updated = await this.prisma.recordEntry.update({
       where: { id: entry.id },
@@ -10973,16 +10973,16 @@ ${told}` : '';
   async startClarificationSession(requestingUserId: string, groundId: string, inferenceId: string): Promise<{ checkInId: string }> {
     // Verify the inference exists on this ground's report
     const report = await this.prisma.report.findUnique({ where: { groundId }, select: { inferences: true } });
-    if (!report) throw new NotFoundException('Report not found for this check-in');
+    if (!report) throw new NotFoundException('This check-in has no report yet, so check again once the first check-in is done.');
     const inferenceList = (report.inferences ?? []) as Array<{ id: string; text: string; participantLabel: string; reason: string }>;
     const inference = inferenceList.find(i => i.id === inferenceId);
-    if (!inference) throw new NotFoundException('Inference not found');
+    if (!inference) throw new NotFoundException('That finding could not be found, so go back to the report and open it from there.');
 
     // Find the participant record for this user on this ground
     const participant = await this.prisma.groundParticipant.findFirst({
       where: { groundId, userId: requestingUserId },
     });
-    if (!participant) throw new ForbiddenException('You are not a participant on this check-in');
+    if (!participant) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
 
     // Find the next available session number for this participant
     const lastCheckIn = await this.prisma.checkIn.findFirst({
@@ -11033,13 +11033,13 @@ ${told}` : '';
     const participant = await this.prisma.groundParticipant.findFirst({
       where: { groundId, userId: requestingUserId },
     });
-    if (!participant) throw new ForbiddenException('You are not a participant on this check-in');
+    if (!participant) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
 
     const targetCheckIn = await this.prisma.checkIn.findUnique({
       where: { participantId_sessionNumber: { participantId: participant.id, sessionNumber: targetSessionNumber } },
     });
     if (!targetCheckIn || targetCheckIn.status !== CheckInStatus.COMPLETED) {
-      throw new NotFoundException('That session is not a completed check-in on this check-in');
+      throw new NotFoundException('That session has not been finished yet, so come back to it once it is done.');
     }
 
     // LOCKING: a session can be corrected only until the next one opens. If any
@@ -11056,7 +11056,7 @@ ${told}` : '';
     });
     if (laterStarted) {
       throw new BadRequestException(
-        `Session ${targetSessionNumber} can no longer be corrected - a later session has already started and is building on it.`,
+        `Session ${targetSessionNumber} can no longer be corrected, because a later session has already started and is building on it.`,
       );
     }
 
@@ -11141,7 +11141,7 @@ ${told}` : '';
         },
       },
     });
-    if (!ground) throw new ForbiddenException('Only the lead of this check-in can read what the accounts show');
+    if (!ground) throw new ForbiddenException('Only the person who runs this check-in can read this, so ask them.');
 
     const asks: WhatItAsks = { label: ground.label, scenario: ground.scenario as any, brief: ground.brief, objectives: ground.objectives };
 
@@ -11199,7 +11199,7 @@ ${told}` : '';
       where: { groundId, userId: requestingUserId },
       select: { id: true },
     });
-    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!participant) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
 
     const checkIns = await this.prisma.checkIn.findMany({
       where: { participantId: participant.id },
@@ -11256,7 +11256,7 @@ ${told}` : '';
     /* NEW PARTICIPATION STOPS FOR SOMEBODY HELD FOR A SEAT (decision 110, B3): no new session, and no answer to one. What they have already said and their own report stay theirs to read, through the readers above. */
     if ((checkIn as any).participant?.awaitingSeat === true) throw new ForbiddenException(HELD_FOR_A_SEAT);
     if (checkIn.status === CheckInStatus.COMPLETED) {
-      throw new BadRequestException('This check-in is already complete');
+      throw new BadRequestException('You have already finished this check-in, so there is nothing more to add.');
     }
     if (checkIn.status === CheckInStatus.DECLINED) {
       throw new BadRequestException('You declined this session, and that is recorded. The next one is yours to take part in.');
@@ -11274,7 +11274,7 @@ ${told}` : '';
        */
       include: { participant: { include: { user: { select: { awaitingOrgApproval: true, firstName: true, lastName: true } } } } },
     });
-    if (!checkIn) throw new NotFoundException('Check-in not found');
+    if (!checkIn) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /*
      * TWO WAYS TO BE THE PERSON WHOSE CHECK-IN THIS IS, AND THE SECOND ONE IS NOT A WEAKENING.
      *
@@ -11288,7 +11288,7 @@ ${told}` : '';
       : checkIn.participantId === who.theParticipant;
     if (!itIsTheirs) {
       // Never let one party read another party's conversation.
-      throw new ForbiddenException('This check-in does not belong to you');
+      throw new ForbiddenException('That check-in is not yours to open, so go back to your own check-ins.');
     }
     /**
      * AND NOT YET, IF THEY ARE STILL WAITING TO BE LET INTO THE ORGANISATION.

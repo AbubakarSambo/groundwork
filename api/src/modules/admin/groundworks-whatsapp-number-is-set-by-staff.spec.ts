@@ -227,7 +227,7 @@ describe('the sender and the webhook check use what was saved', () => {
     const res: any = { status: () => res, type: () => res, send: (b: any) => { sent.push(b); return res; } };
     await c.verify('subscribe', SAVED.verifyToken, 'challenge-123', res);
     expect(sent).toEqual(['challenge-123']);
-    await expect(c.verify('subscribe', SERVER['whatsapp.verifyToken'] as string, 'x', res)).rejects.toThrow('Webhook verification failed');
+    await expect(c.verify('subscribe', SERVER['whatsapp.verifyToken'] as string, 'x', res)).rejects.toThrow('That request could not be checked as coming from WhatsApp, so it was not accepted.');
   });
 });
 
@@ -266,7 +266,7 @@ describe('nothing saved means today\'s behaviour', () => {
     const result = await whatsapp.sendMessage('+2348012345678', 'Hello', { kind: 'reply' });
     expect(result).toEqual({ sent: false, error: 'WhatsApp is not configured on this deployment' });
     expect(fetched).toEqual([]);
-    await expect(whatsapp.verifySignature({ 'x-hub-signature-256': 'sha256=00' }, Buffer.from('{}'))).rejects.toThrow('WhatsApp webhook signature cannot be verified');
+    await expect(whatsapp.verifySignature({ 'x-hub-signature-256': 'sha256=00' }, Buffer.from('{}'))).rejects.toThrow('That message could not be checked as coming from WhatsApp, so it was not accepted.');
   });
 });
 

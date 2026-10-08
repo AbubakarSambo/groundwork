@@ -43,7 +43,7 @@ export class DraftsService {
     proposedMeasure?: string | null;
     proposedTarget?: string | null;
   }) {
-    if (!dto?.workingTitle?.trim()) throw new BadRequestException('A working title is needed to start - it can change.');
+    if (!dto?.workingTitle?.trim()) throw new BadRequestException('Give the check-in a working title to start, and you can change it later.');
 
     /* Whatever the last cycle left behind about this area, so the draft opens informed. */
     const grounded = await this.prisma.detectorResult.findMany({

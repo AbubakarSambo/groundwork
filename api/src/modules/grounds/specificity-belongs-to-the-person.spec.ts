@@ -28,7 +28,7 @@ describe('what my-specificity returns', () => {
   it('is still owner only', () => {
     // The one thing that must survive every change to this method.
     expect(METHOD).toContain("where: { groundId, userId }");
-    expect(METHOD).toContain("ForbiddenException('You are not a participant in this check-in')");
+    expect(METHOD).toContain("ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.')");
   });
 
   it('reads a direction, not just an average', () => {

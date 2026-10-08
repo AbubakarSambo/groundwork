@@ -58,20 +58,20 @@ export class RemindService {
       where: { id: checkInId },
       select: { groundId: true, sessionNumber: true },
     });
-    if (!checkIn) throw new NotFoundException('Check-in not found');
+    if (!checkIn) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     const ground = await this.prisma.ground.findUnique({
       where: { id: checkIn.groundId },
       select: { id: true, label: true, startedFrom: true, scenario: true },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     // Verify the requesting user is a party to this ground.
     const requesterLink = await this.prisma.groundParticipant.findFirst({
       where: { groundId: ground.id, userId: requestingUserId },
     });
     if (!requesterLink) {
-      throw new ForbiddenException('You are not a participant in this check-in');
+      throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
     }
 
     /* Whose name an invitation is sent in, if one is sent below. A re-invitation from "A founder"

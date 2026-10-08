@@ -8,7 +8,7 @@ describe('a join link with no code', () => {
     const prisma: any = { ground: { findUnique: jest.fn() } };
     const service: any = Object.create(GroundsService.prototype);
     service.prisma = prisma;
-    await expect(service.getJoinPreview(token as any)).rejects.toThrow(new NotFoundException('Join link not found'));
+    await expect(service.getJoinPreview(token as any)).rejects.toThrow(new NotFoundException('That join link does not work any more, so ask whoever runs the check-in for a new one.'));
     expect(prisma.ground.findUnique).not.toHaveBeenCalled();
   });
 });

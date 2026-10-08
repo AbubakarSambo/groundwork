@@ -124,7 +124,7 @@ export class WhatsAppAddOnService {
   /** Where this organisation stands with WhatsApp now. Throws only for an organisation that does not exist. */
   async standing(organizationId: string, now: Date = new Date()): Promise<WhatsAppStanding> {
     const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: ORG_FIELDS });
-    if (!org) throw new NotFoundException('Organization not found');
+    if (!org) throw new NotFoundException('We could not find that organisation, so sign in again and try once more.');
     const [trial, plans, use] = await Promise.all([
       this.pricing.getFreeTrial(),
       this.prisma.pricingPlan.findMany(),

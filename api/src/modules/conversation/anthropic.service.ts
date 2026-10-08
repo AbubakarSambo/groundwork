@@ -82,7 +82,7 @@ export async function tryAgainIfItIsJustBusy<T>(
 
 export function engineUnavailable(err: any): ServiceUnavailableException {
   return new ServiceUnavailableException(
-    'The conversation could not be reached just now, so this session cannot continue this minute. Nothing you have already said has been lost. Please try again shortly, and if it keeps happening tell the person who set this ground up - it is a problem on our side, not anything you did.',
+    'The conversation could not be reached just now, so this session cannot continue this minute. Nothing you have already said has been lost. Please try again shortly, and if it keeps happening tell the person who set this check-in up, because it is a problem on our side and not anything you did.',
   );
 }
 

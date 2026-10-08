@@ -226,7 +226,7 @@ export class PricingService {
   /** The seat cap for a plan, or null for unlimited. Throws for a plan with no row. */
   async memberCapFor(plan: SubscriptionPlan): Promise<number | null> {
     const row = await this.prisma.pricingPlan.findUnique({ where: { plan }, select: { memberCap: true } });
-    if (!row) throw new NotFoundException(`No plan configured for ${plan}`);
+    if (!row) throw new NotFoundException(`There is no ${String(plan).toLowerCase()} plan set up, so choose another plan.`);
     return row.memberCap;
   }
 
@@ -279,7 +279,7 @@ export class PricingService {
    */
   async getOrCreateWhatsAppAddOnPrice(plan: SubscriptionPlan): Promise<string> {
     const row = await this.prisma.pricingPlan.findUnique({ where: { plan } });
-    if (!row) throw new NotFoundException(`No price configured for plan ${plan}`);
+    if (!row) throw new NotFoundException(`There is no price set for the ${String(plan).toLowerCase()} plan yet, so choose another plan.`);
     if (row.whatsappAddOnStripePriceId) return row.whatsappAddOnStripePriceId;
     if (row.whatsappAddOnCents === null || row.whatsappAddOnCents === undefined) {
       throw new BadRequestException(`WhatsApp is not sold by itself on ${PLAN_LABELS[plan]}. This plan is arranged by contacting us.`);
@@ -299,7 +299,7 @@ export class PricingService {
   /** Returns a live Stripe Price id for the plan, creating one lazily if the DB amount changed. */
   async getOrCreateStripePrice(plan: SubscriptionPlan): Promise<string> {
     const row = await this.prisma.pricingPlan.findUnique({ where: { plan } });
-    if (!row) throw new NotFoundException(`No price configured for plan ${plan}`);
+    if (!row) throw new NotFoundException(`There is no price set for the ${String(plan).toLowerCase()} plan yet, so choose another plan.`);
     if (row.stripePriceId) return row.stripePriceId;
     /**
      * A contact-sales plan has no amount, and `unit_amount: null` would have created a Stripe

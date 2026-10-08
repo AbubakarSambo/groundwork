@@ -54,7 +54,7 @@ describe('who may add a participant', () => {
   it('names both permitted roles in the error, so a refusal is diagnosable', () => {
     // "Only the initiator can add a participant" told an admin nothing about why
     // she, the creator, was being refused.
-    expect(GUARD).toMatch(/Only the lead or the admin who set this check-in up/);
+    expect(GUARD).toMatch(/Only the person who runs this check-in, or the admin who set it up/);
   });
 
   it('keeps the organisation scope that does the real security work', () => {

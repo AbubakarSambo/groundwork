@@ -151,7 +151,7 @@ describe.each([
     /* Changed with request 78: an admin without access no longer reads a redacted copy; the check-in is not
        theirs to read at all, so the report is refused. The colleague's words still never reach them. */
     const service = makeService(makeGround(scenario), 'ADMIN');
-    await expect(service.sessionReport('g1', 1, 'user-admin', 'org-1')).rejects.toThrow('Report not found');
+    await expect(service.sessionReport('g1', 1, 'user-admin', 'org-1')).rejects.toThrow('That report could not be found, so go back to the check-in and open it from there.');
   });
 
   it('a colleague who gave a view reads what they read today - including the subject\'s own words', async () => {

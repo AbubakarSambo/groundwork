@@ -136,7 +136,7 @@ describe('the first message into a check-in that has not started', () => {
 
 /**
  * THE RELAY CAN BE CALLED WITH THE CREDENTIAL IT IS FOR (piece 5, A). The global session guard refused a machine token on this route
- * ("User not found or inactive"), so a customer's own system could never pass a message to us. The route takes the session guard off
+ * ("Your sign-in is no longer active, so sign in again."), so a customer's own system could never pass a message to us. The route takes the session guard off
  * and puts the machine-token guard, with its scope, in its place; a route that only did the first would be open.
  */
 import 'reflect-metadata';

@@ -50,7 +50,7 @@ export class WhatsAppController {
       res.status(200).type('text/plain').send(challenge);
       return;
     }
-    throw new ForbiddenException('Webhook verification failed');
+    throw new ForbiddenException('That request could not be checked as coming from WhatsApp, so it was not accepted.');
   }
 
   /**

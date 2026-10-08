@@ -23,25 +23,25 @@ export class OnlySomebodyInTheCheckInReadsIt implements CanActivate {
     const req = context.switchToHttp().getRequest();
     const userId: string | undefined = req.user?.id;
     const groundId: string | undefined = req.params?.groundId;
-    if (!userId || !groundId) throw new NotFoundException('Check-in not found');
+    if (!userId || !groundId) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: { organizationId: true, initiatorId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const viewer = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { role: true, organizationId: true, email: true, awaitingOrgApproval: true },
     });
-    if (!viewer || viewer.awaitingOrgApproval) throw new NotFoundException('Check-in not found');
+    if (!viewer || viewer.awaitingOrgApproval) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     const asViewer = { ...viewer, userId };
     const here =
       (ground.participants ?? []).some((p) => p.userId === userId) ||
       runsOrSetItUp(userId, ground as any) ||
       readsAsAnAdmin(asViewer, ground as any);
-    if (!here) throw new NotFoundException('Check-in not found');
+    if (!here) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /* Nobody held for a seat reads anything of the check-in (privacy row 5): the figures, claims and sides are the whole check-in's, not their own answers. */
     if (!runsOrSetItUp(userId, ground as any)) await refuseSomeoneHeldForASeat(this.prisma as any, groundId, userId);
     return true;

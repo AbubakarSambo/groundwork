@@ -29,7 +29,7 @@ describe('one note, shared on purpose', () => {
 
   it('refuses a note about one person, rather than publishing a judgement of them', () => {
     expect(body).toContain('if (note.participantId)');
-    expect(body).toContain('A note everyone reads is about the whole check-in, not about one person');
+    expect(body).toContain('A note everyone reads is about the whole check-in and not about one person');
   });
 
   /**

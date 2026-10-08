@@ -160,7 +160,7 @@ describe('behaviourally: a paused ground refuses on the route people actually us
 
   it('a stranger is refused for not owning the check-in, before the ground is even read', async () => {
     const { svc, prisma } = service(GroundStatus.PAUSED, CheckInStatus.IN_PROGRESS);
-    await expect(svc.sendMessage('ci', 'somebody-else', 'hello')).rejects.toThrow(/does not belong to you/);
+    await expect(svc.sendMessage('ci', 'somebody-else', 'hello')).rejects.toThrow(/not yours to open/);
     expect(prisma.ground.findUnique).not.toHaveBeenCalled();
   });
 });

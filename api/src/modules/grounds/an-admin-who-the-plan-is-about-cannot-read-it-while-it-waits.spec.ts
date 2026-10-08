@@ -69,7 +69,7 @@ function pageFor(userId: string, role: string, whoSeesTargets = 'THEIR_OWN', sce
 
 describe('a performance plan waiting for approval, about an admin', () => {
   it('Grace, whom it is about, cannot read it: it is not found for her', async () => {
-    await expect(pageFor('u-grace', 'ADMIN')).rejects.toThrow('Check-in not found');
+    await expect(pageFor('u-grace', 'ADMIN')).rejects.toThrow('That check-in could not be found, so go back to your check-ins and open it from the list.');
   });
 
   it('Hana, another admin, is asked to approve it and reads it', async () => {

@@ -1,5 +1,5 @@
 /**
- * "Report not found" was shown to people who had just finished answering. The 404 stays; the
+ * "That report could not be found, so go back to the check-in and open it from there." was shown to people who had just finished answering. The 404 stays; the
  * sentence has to say which of the three states this is.
  */
 import * as fs from 'fs';
@@ -42,7 +42,7 @@ describe('why there is no report yet', () => {
   });
 
   it('falls back to the bare answer when there are no parties to describe', () => {
-    expect(whyThereIsNoReportYet({ parties: [] })).toBe('Report not found');
+    expect(whyThereIsNoReportYet({ parties: [] })).toBe('That report could not be found, so go back to the check-in and open it from there.');
   });
 });
 
@@ -60,8 +60,8 @@ describe('and the report endpoint uses it', () => {
     // A stranger gets the bare sentence: the reason is only for somebody already on the check-in.
     const from = callSite;
     const around = src.slice(Math.max(0, from - 1200), from);
-    /* Changed for the second review's leak B: the stranger is now told "Check-in not found", the sentence every other route gives. */
-    expect(around).toContain("if (!mine) throw new NotFoundException('Check-in not found')");
+    /* Changed for the second review's leak B: the stranger is now told "That check-in could not be found, so go back to your check-ins and open it from the list.", the sentence every other route gives. */
+    expect(around).toContain("if (!mine) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.')");
   });
 
   it('is still a 404, because the shape is what protects a stranger', () => {

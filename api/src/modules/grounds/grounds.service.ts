@@ -663,7 +663,7 @@ export class GroundsService {
 
     const ground = await this.prisma.$transaction(async (tx) => {
       const initiator = await tx.user.findUnique({ where: { id: initiatorId } });
-      if (!initiator) throw new NotFoundException('The lead of this check-in could not be found');
+      if (!initiator) throw new NotFoundException('The person who runs this check-in could not be found, so check who is named and try again.');
 
       // Determine free-ground fields from the billing gate result.
       const isFreeGround = canCreate.freeReason !== undefined;
@@ -1039,14 +1039,14 @@ export class GroundsService {
    */
   async confirmLead(groundId: string, requestingUserId: string, edits?: { brief?: string; managingOnly?: boolean; remit?: string }) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
-    if (!ground) throw new NotFoundException('Check-in not found');
-    if (ground.initiatorId !== requestingUserId) throw new ForbiddenException('Only the named lead can confirm this check-in');
-    if (ground.status !== GroundStatus.AWAITING_LEAD) throw new BadRequestException('This check-in has already been confirmed');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    if (ground.initiatorId !== requestingUserId) throw new ForbiddenException('Only the person named to run this check-in can confirm it, so ask them to.');
+    if (ground.status !== GroundStatus.AWAITING_LEAD) throw new BadRequestException('This check-in is already confirmed, so there is nothing more to do.');
 
     const participant = await this.prisma.groundParticipant.findFirst({
       where: { groundId, userId: requestingUserId, partyType: PartyType.INITIATOR },
     });
-    if (!participant) throw new NotFoundException('Lead participant record not found');
+    if (!participant) throw new NotFoundException('The person who runs this check-in has no place in it yet, so contact us and we will put it right.');
 
     const managingOnly = edits?.managingOnly === true;
 
@@ -1212,12 +1212,12 @@ export class GroundsService {
   /** Public: resolve a ground-level join token → name + scenario for the join page. */
   async getJoinPreview(joinToken: string) {
     /* No code, or not a text (a wrong parameter name, or a list), is a link that was not found, not a fault in the database call (B-150). */
-    if (typeof joinToken !== 'string' || !joinToken.trim()) throw new NotFoundException('Join link not found');
+    if (typeof joinToken !== 'string' || !joinToken.trim()) throw new NotFoundException('That join link does not work any more, so ask whoever runs the check-in for a new one.');
     const ground = await this.prisma.ground.findUnique({
       where: { joinToken },
       include: { initiator: { select: { firstName: true } } },
     });
-    if (!ground) throw new NotFoundException('Join link not found');
+    if (!ground) throw new NotFoundException('That join link does not work any more, so ask whoever runs the check-in for a new one.');
     /**
      * A JOIN LINK INTO A FINISHED CHECK-IN IS A DOOR INTO AN EMPTY ROOM. The token has no expiry of
      * its own, so it outlived the check-in: a link shared in week one still signed people up in
@@ -1856,7 +1856,7 @@ export class GroundsService {
       }
     }
 
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /* Somebody already here, added by their address, is named by their membership (user journeys, F-7). */
     await withTheirNamesFromTheOrganisation(this.prisma as any, (ground as any).organizationId, (ground.participants ?? []) as any);
 
@@ -2993,7 +2993,7 @@ export class GroundsService {
         objectives: { select: { id: true } },
       },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /* Who is reading what this says back: a line about them says "you". */
     const reader = { participantId: ground.participants.find((p: any) => p.userId === requestingUserId)?.id ?? null };
     /*
@@ -4132,7 +4132,7 @@ export class GroundsService {
   /** A no to keeping something for the organisation: the offer is deleted and nothing is kept. */
   async declineContextOffer(groundId: string, requestingUserId: string, offerId: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true, initiatorId: true } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /* The same door as the conversation that made the offer (decisions 63 and 72). */
     await this.mayConfirmSetupOn(ground, requestingUserId);
     await dropWhatWasOffered(this.prisma, { organizationId: ground.organizationId, offerId, userId: requestingUserId });
@@ -4162,7 +4162,7 @@ export class GroundsService {
         objectives: { select: { id: true } },
       },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /*
      * DECISION 63: THE LEAD CONFIRMS, OR - ONLY ONCE THE LEAD HAS LEFT THE ORGANISATION - AN ADMIN
      * OF IT CAN, IN THEIR PLACE. Before this the lead was the only door here, with no way through at
@@ -4314,7 +4314,7 @@ export class GroundsService {
      */
     const lastAsked = [...(dto.history ?? [])].reverse().find((h) => h.role === 'assistant')?.content ?? '';
     if (/Which one\?\s*$/.test(lastAsked.trim()) && /^(yes|yep|yeah|ok|okay|sure|do it)\b[\s\S]{0,20}$/i.test((dto.said ?? '').trim())) {
-      throw new BadRequestException('Say which one - the number, or enough of the line to tell them apart - and I will change it.');
+      throw new BadRequestException('Say which one, by its number or by enough of the line to tell them apart, and I will change it.');
     }
 
     /*
@@ -4808,16 +4808,16 @@ export class GroundsService {
    */
   async shareLeadContext(groundId: string, requestingUserId: string, noteId: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, organizationId: true } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /* Decision 63: the lead, or - only once the lead has left the organisation - an admin standing
        in for them. Was any admin of the organisation, at any time; narrowed here. */
     const confirm = await this.mayConfirmSetupOn(ground, requestingUserId);
     const confirmedByAdminNote = confirm.as === 'admin' ? confirmedByAnAdminSentence(confirm.confirmedByName, confirm.leadName) : null;
     const note = await this.prisma.leadContextNote.findFirst({ where: { id: noteId, groundId }, select: { id: true, participantId: true, audience: true } });
-    if (!note) throw new NotFoundException('That note is not on this check-in');
+    if (!note) throw new NotFoundException('That note is no longer on this check-in, so refresh the page.');
     if (note.participantId) {
       throw new BadRequestException(
-        'A note everyone reads is about the whole check-in, not about one person. To say what you expect of somebody, say it in your own check-in - it is published with your name on it.',
+        'A note everyone reads is about the whole check-in and not about one person. To say what you expect of somebody, say it in your own check-in, where it is published with your name on it.',
       );
     }
     if (note.audience === ContextNoteAudience.EVERYONE) return { id: note.id, audience: note.audience, alreadyShared: true };
@@ -4850,7 +4850,7 @@ export class GroundsService {
       where: { id: itemId, groundId },
       select: { id: true, participantId: true, text: true },
     });
-    if (!row) throw new NotFoundException('That is not on this check-in');
+    if (!row) throw new NotFoundException('That is no longer part of this check-in, so refresh the page.');
     if (!row.participantId) {
       throw new BadRequestException('Nobody owns this one yet. Say whose it is in the conversation and they can move it.');
     }
@@ -4911,7 +4911,7 @@ export class GroundsService {
       where: { id: groundId },
       select: { initiatorId: true, organizationId: true, status: true, endState: true, scenario: true },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /* Decision 63: the lead, or - only once the lead has left the organisation - an admin standing
        in for them. Was any admin of the organisation, at any time; narrowed here. */
     const confirm = await this.mayConfirmSetupOn(ground, requestingUserId);
@@ -4954,13 +4954,13 @@ export class GroundsService {
   ) {
     if (typeof change?.text === 'string') change = { ...change, text: withoutBankDetails(change.text) };
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, organizationId: true } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /* Decision 63: the lead, or - only once the lead has left the organisation - an admin standing
        in for them. Was any admin of the organisation, at any time; narrowed here. */
     const confirm = await this.mayConfirmSetupOn(ground, requestingUserId);
     const confirmedByAdminNote = confirm.as === 'admin' ? confirmedByAnAdminSentence(confirm.confirmedByName, confirm.leadName) : null;
     const line = await this.prisma.groundContextItem.findFirst({ where: { id: itemId, groundId }, select: { id: true, kind: true } });
-    if (!line) throw new NotFoundException('That line is not on this check-in');
+    if (!line) throw new NotFoundException('That line is no longer part of this check-in, so refresh the page.');
     const aQuestion = line.kind === ContextItemKind.QUESTION_FOR_PERSON;
     /* A line about a person can never be shared, whoever asks - see what-this-check-in-knows. */
     if (change.audience === 'EVERYONE' && !mayBeShared(line.kind)) {
@@ -5014,7 +5014,7 @@ export class GroundsService {
   /** The lead's own questions, read by the lead or an admin in their organisation. */
   async questionsForPeople(groundId: string, requestingUserId: string): Promise<AQuestionForAPerson[]> {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const viewer = await this.prisma.user.findUnique({
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
@@ -5037,7 +5037,7 @@ export class GroundsService {
     said: { name: string; leadWords: string },
   ): Promise<{ participantId: string; who: string; exactQuestion: string }> {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /* Decisions 63 and 72: the lead, or an admin only once the lead has left, as at the yes that keeps it
        (keepAQuestionForAPerson). Was any admin of the organisation, at any time. */
     await this.mayConfirmSetupOn(ground, requestingUserId);
@@ -5067,7 +5067,7 @@ export class GroundsService {
     dto: { participantId: string; leadWords: string; exactQuestion: string },
   ) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, status: true, endState: true, scenario: true } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const confirm = await this.mayConfirmSetupOn(ground, requestingUserId);
     const refused = whyItRefuses(ground.status, ground.endState, confirm.as === 'lead' ? 'the lead' : 'anybody else', ground.scenario);
     if (refused) throw new BadRequestException(refused);
@@ -5107,7 +5107,7 @@ export class GroundsService {
     dto: { exactQuestion?: string | null } = {},
   ): Promise<AQuestionForAPerson & { say: string }> {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, status: true, endState: true, scenario: true } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /* Decision 63: the lead, or - only once the lead has left the organisation - an admin standing
        in for them. See mayConfirmSetupOn and who-may-confirm-setup.ts. */
     const confirm = await this.mayConfirmSetupOn(ground, requestingUserId);
@@ -5146,7 +5146,7 @@ export class GroundsService {
   /** Not now: the question is left out, and is asked of nobody. Kept rather than deleted, like every line. */
   async declineQuestionForPerson(groundId: string, requestingUserId: string, itemId: string): Promise<{ id: string; status: 'left out'; say: string }> {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /* Decision 63: the lead, or - only once the lead has left the organisation - an admin standing
        in for them. */
     const confirm = await this.mayConfirmSetupOn(ground, requestingUserId);
@@ -5170,7 +5170,7 @@ export class GroundsService {
       where: { id: groundId },
       select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /**
      * DECISION 63, 30 September 2026, NARROWS THIS: only the lead confirms setup changes, unless the
      * lead has left the organisation, in which case an admin can, in their place. This used to let
@@ -5185,10 +5185,10 @@ export class GroundsService {
     const confirm = await this.mayConfirmSetupOn(ground, requestingUserId);
     const confirmedByAdminNote = confirm.as === 'admin' ? confirmedByAnAdminSentence(confirm.confirmedByName, confirm.leadName) : null;
     const text = (dto.text ?? '').trim();
-    if (!text) throw new BadRequestException('Context note text is required');
+    if (!text) throw new BadRequestException('Write the note first, then add it.');
     if (dto.participantId) {
       const target = await this.prisma.groundParticipant.findFirst({ where: { id: dto.participantId, groundId } });
-      if (!target) throw new BadRequestException('That participant is not on this check-in');
+      if (!target) throw new BadRequestException('That person is not in this check-in, so choose someone who is.');
     }
 
     const audience = dto.audience === 'EVERYONE' ? ContextNoteAudience.EVERYONE : ContextNoteAudience.LEAD_ONLY;
@@ -5202,7 +5202,7 @@ export class GroundsService {
      */
     if (audience === ContextNoteAudience.EVERYONE && dto.participantId) {
       throw new BadRequestException(
-        'A note everyone reads is about the whole check-in, not about one person. To say what you expect of somebody, say it in your own check-in - it is published with your name on it. To note something only you should see, leave this note private.',
+        'A note everyone reads is about the whole check-in and not about one person. To say what you expect of somebody, say it in your own check-in, where it is published with your name on it. To note something only you should see, keep this note private.',
       );
     }
 
@@ -5220,9 +5220,9 @@ export class GroundsService {
    */
   async setExternalVisibility(groundId: string, requestingUserId: string, restrict: boolean) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     if (ground.initiatorId !== requestingUserId) {
-      throw new ForbiddenException('Only the lead of this check-in can change this setting');
+      throw new ForbiddenException('Only the person who runs this check-in can change this, so ask them to.');
     }
     return this.prisma.ground.update({
       where: { id: groundId },
@@ -5266,7 +5266,7 @@ export class GroundsService {
       where: { id: groundId },
       select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const viewer = await this.prisma.user.findUnique({
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
@@ -5431,7 +5431,7 @@ export class GroundsService {
       where: { id: groundId },
       select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     /* Decision 119, H10: the lead, or an admin once the lead has left. */
     await this.mayConfirmSetupOn(ground, requestingUserId);
@@ -5467,7 +5467,7 @@ export class GroundsService {
       where: { id: groundId },
       select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     /* Decision 119, H10: the lead, or an admin once the lead has left. */
     await this.mayConfirmSetupOn(ground, requestingUserId);
@@ -5665,7 +5665,7 @@ export class GroundsService {
     const heldForApproval = !!pending;
 
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     /**
      * NOBODY IS ADDED TO A GROUND THAT HAS ENDED, OR ONE THAT IS HELD.
@@ -5713,7 +5713,7 @@ export class GroundsService {
     const isInitiator = ground.initiatorId === initiatorId;
     const isSetupAdmin = !!ground.createdByUserId && ground.createdByUserId === initiatorId;
     if (!isInitiator && !isSetupAdmin) {
-      throw new ForbiddenException('Only the lead or the admin who set this check-in up can add a participant');
+      throw new ForbiddenException('Only the person who runs this check-in, or the admin who set it up, can add someone, so ask one of them.');
     }
 
     const initiator = await this.prisma.user.findUnique({ where: { id: initiatorId } });
@@ -5733,7 +5733,7 @@ export class GroundsService {
       where: { groundId, email: dto.email.toLowerCase() },
     });
     if (existing) {
-      if (existing.userId !== null) throw new BadRequestException('This email is already a participant on this check-in');
+      if (existing.userId !== null) throw new BadRequestException('That person is already in this check-in, so there is no need to add them again.');
       /* Somebody from another organisation is a guest here from now, not only once they click (U.4 review). */
       await aGuestHereIfTheyAreFromElsewhere(this.prisma as any, ground.organizationId, dto.email);
       /**
@@ -6126,7 +6126,7 @@ export class GroundsService {
    */
   async resendParticipantInvite(groundId: string, participantId: string, organizationId: string, userId: string, role: string): Promise<{ message: string }> {
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /*
      * ONLY WHOEVER RUNS THE CHECK-IN, OR AN ORGANISATION ADMIN (request 178). This checked the organisation and nothing else, so any member of it, a person in
      * the check-in, or a guest could make Groundwork send an invitation in the lead's name. The same two people may add a participant (the lead, or the
@@ -6138,7 +6138,7 @@ export class GroundsService {
     }
 
     const participant = await this.prisma.groundParticipant.findFirst({ where: { id: participantId, groundId }, include: { user: { select: { firstName: true } } } });
-    if (!participant) throw new NotFoundException('Participant not found');
+    if (!participant) throw new NotFoundException('That person is not in this check-in, so check the name and try again.');
     const theirName = ((participant as any).user?.firstName ?? (participant as any).nameGiven ?? '').toString().trim() || 'This person';
     /*
      * SOMEBODY WAITING FOR A SEAT GETS NO INVITATION (request 180 item 5). Their link leads to "This check-in cannot start for you yet",
@@ -6154,7 +6154,7 @@ export class GroundsService {
     const completedCheckIn = await this.prisma.checkIn.findFirst({
       where: { participantId, status: CheckInStatus.COMPLETED },
     });
-    if (completedCheckIn) throw new BadRequestException('This participant has already completed their check-in');
+    if (completedCheckIn) throw new BadRequestException('That person has already finished their check-in, so there is nothing more to send.');
 
     const token = participant.inviteToken ?? crypto.randomBytes(32).toString('hex');
     const inviteTokenExpiresAt = inviteExpiryFrom();
@@ -6191,15 +6191,15 @@ export class GroundsService {
    */
   async getParticipantInviteUrl(groundId: string, participantId: string, initiatorId: string): Promise<{ inviteUrl: string }> {
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, initiatorId } });
-    if (!ground) throw new ForbiddenException('You are not the lead of this check-in');
+    if (!ground) throw new ForbiddenException('Only the person who runs this check-in can do that, so ask them to.');
 
     const participant = await this.prisma.groundParticipant.findFirst({
       where: { id: participantId, groundId },
       select: { inviteToken: true, userId: true, nameGiven: true, user: { select: { firstName: true } } },
     });
-    if (!participant) throw new NotFoundException('Participant not found');
+    if (!participant) throw new NotFoundException('That person is not in this check-in, so check the name and try again.');
     if (participant.userId) throw new BadRequestException(`${participant.user?.firstName?.trim() || participant.nameGiven?.trim() || 'This person'} has already joined this check-in, so there is no invitation link to share.`);
-    if (!participant.inviteToken) throw new BadRequestException('No active invite token');
+    if (!participant.inviteToken) throw new BadRequestException('That invitation is no longer open, so ask whoever runs the check-in to send a new one.');
 
     return { inviteUrl: this.email.buildInviteUrl(participant.inviteToken) };
   }
@@ -6229,13 +6229,13 @@ export class GroundsService {
     initiatorId: string,
   ): Promise<{ checkInUrl: string }> {
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, initiatorId } });
-    if (!ground) throw new ForbiddenException('You are not the lead of this check-in');
+    if (!ground) throw new ForbiddenException('Only the person who runs this check-in can do that, so ask them to.');
 
     const participant = await this.prisma.groundParticipant.findFirst({
       where: { id: participantId, groundId },
       select: { id: true, userId: true },
     });
-    if (!participant) throw new NotFoundException('Participant not found');
+    if (!participant) throw new NotFoundException('That person is not in this check-in, so check the name and try again.');
     if (!participant.userId) {
       throw new BadRequestException(
         'They have not accepted their invite yet. Copy the invite link instead.',
@@ -6275,9 +6275,9 @@ export class GroundsService {
       where: { id: groundId, organizationId },
       include: { participants: true },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
-    if (ground.initiatorId !== userId) throw new ForbiddenException('Only the lead of this check-in can begin the closing session');
-    if (hasEnded(ground.status)) throw new BadRequestException('This check-in has already ended');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    if (ground.initiatorId !== userId) throw new ForbiddenException('Only the person who runs this check-in can begin the last check-in, so ask them to.');
+    if (hasEnded(ground.status)) throw new BadRequestException('This check-in has already ended, so there is nothing more to change.');
 
     /**
      * WHO GETS A CLOSING SESSION: THE PEOPLE WHO TOOK PART.
@@ -6331,7 +6331,7 @@ export class GroundsService {
 
   async activate(groundId: string, organizationId: string) {
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId }, include: { report: true } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /* Activating is not resuming, and it is not reopening. An ended ground stays ended; a held one is lifted by resumeGround, which knows what to go back to. */
     if (!mayChangeOnItsOwn(ground.status)) {
       throw new BadRequestException(
@@ -6365,14 +6365,14 @@ export class GroundsService {
       where: { id: groundId },
       include: { report: { select: { centralQuestion: true, releasedAt: true } } },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     const requesterLink = await this.prisma.groundParticipant.findFirst({
       where: { groundId, userId: requestingUserId },
     });
     const isInitiator = ground.initiatorId === requestingUserId;
     if (!isInitiator && !requesterLink) {
-      throw new ForbiddenException('Only the lead, or somebody taking part in this check-in, can request a mediator brief');
+      throw new ForbiddenException('Only the person who runs this check-in, or somebody in it, can ask for this, so ask one of them.');
     }
     /* Nobody held for a seat or waiting for the organisation reads anything of the check-in (privacy row 5). */
     if (!isInitiator) {
@@ -6450,13 +6450,13 @@ export class GroundsService {
       where: { id: groundId },
       select: { organizationId: true, initiatorId: true, scenario: true, createdByUserId: true, status: true, approvedById: true, participants: { select: { userId: true, email: true } } },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const user = await this.prisma.user.findUnique({
       where: { id: userId }, select: { role: true, organizationId: true, email: true },
     });
     const viewer = { ...user, department: user?.role === 'LEAD' ? await this.departmentOf(userId, ground.organizationId) : null };
     const leadDepartment = user?.role === 'LEAD' && ground.initiatorId ? await this.departmentOf(ground.initiatorId, ground.organizationId) : null;
-    if (!maySee(userId, { ...viewer, userId }, { ...ground, leadDepartment })) throw new NotFoundException('Check-in not found');
+    if (!maySee(userId, { ...viewer, userId }, { ...ground, leadDepartment })) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     return { ...ground, viewerRole: user?.role ?? null };
   }
 
@@ -6613,10 +6613,10 @@ export class GroundsService {
       },
     });
     /* NotFound rather than Forbidden for a stranger, as everywhere else here. */
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     if (ground.initiatorId !== requestingUserId) {
       const mine = ground.participants.some((p) => p.userId === requestingUserId);
-      if (!mine) throw new NotFoundException('Check-in not found');
+      if (!mine) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
       throw new ForbiddenException(
         'Only the person running this check-in can delete it. Your own account of it is yours, and deleting the whole thing would take everybody else\'s with it.',
       );
@@ -6638,7 +6638,7 @@ export class GroundsService {
           return named || (p as any)?.nameGiven?.trim() || 'a colleague';
         });
       throw new BadRequestException(
-        `${who.join(' and ')} ${who.length === 1 ? 'has' : 'have'} already given an account here, so this is not a test any more - deleting it would destroy what they wrote, and they cannot get it back. Close the check-in instead: everybody keeps their record.`,
+        `${who.join(' and ')} ${who.length === 1 ? 'has' : 'have'} already answered here, so this is not a test any more, and deleting it would destroy what they wrote with no way to get it back. Close the check-in instead, and everybody keeps their record.`,
       );
     }
 
@@ -6654,7 +6654,7 @@ export class GroundsService {
     dto: { label?: string; timelineDays?: number; timelineWeeks?: number; runsUntilEnded?: boolean; cadence?: string; contextNote?: string; startsAt?: string; brief?: string; workingDays?: number[] },
   ) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     const link = await this.prisma.groundParticipant.findFirst({
       where: { groundId, userId: requestingUserId },
@@ -6671,7 +6671,7 @@ export class GroundsService {
     });
     const isOrgAdmin = adminsThisOrg({ ...viewer, userId: requestingUserId }, { ...ground, participants: link ? [{ userId: requestingUserId }] : [] });
     if (!link && ground.initiatorId !== requestingUserId && !isOrgAdmin) {
-      throw new ForbiddenException('You are not a participant in this check-in');
+      throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
     }
 
     // HOW LONG THE GROUND RUNS IS THE LEAD'S CALL, NOT EVERY PARTY'S.
@@ -6789,7 +6789,7 @@ export class GroundsService {
     if (dto.cadence) {
       (dto as any).cadence = (dto.cadence as string).toUpperCase();
       if (!Object.values(Cadence).includes(dto.cadence as Cadence)) {
-        throw new BadRequestException(`Invalid cadence. Must be one of: ${Object.values(Cadence).join(', ')}`);
+        throw new BadRequestException(`That is not a rhythm Groundwork offers, so choose one of ${Object.values(Cadence).map((c) => c.toLowerCase().replace('_', ' ')).join(', ')}.`);
       }
 
       // ONE_TIME's whole guarantee is "a single check-in, full stop" - decided
@@ -6937,7 +6937,7 @@ export class GroundsService {
     const opensAgain = !!reopening && reopening.getTime() > Date.now();
     if (hasStalled(ground.status) && requestedDays !== undefined && !opensAgain) {
       throw new BadRequestException(
-        'That is not enough time to reopen this check-in - the new end date has already passed. Give it a date in the future and it opens again.',
+        'That is not enough time to reopen this check-in, because the new end date has already passed. Give it a date in the future and it opens again.',
       );
     }
 
@@ -7053,7 +7053,7 @@ export class GroundsService {
       where: { id: groundId, organizationId },
       select: { id: true, status: true, label: true, initiatorId: true },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     if (ground.status !== GroundStatus.AWAITING_APPROVAL) {
       // Already accepted, or never needed accepting. Either way there is nothing to do.
       return { id: ground.id, status: ground.status, alreadyDecided: true };
@@ -7131,7 +7131,7 @@ export class GroundsService {
       where: { id: groundId, organizationId },
       select: { id: true, status: true, label: true, initiatorId: true },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     if (ground.status !== GroundStatus.AWAITING_APPROVAL) {
       return { id: ground.id, status: ground.status, alreadyDecided: true };
     }
@@ -7174,7 +7174,7 @@ export class GroundsService {
       where: { id: groundId, ...(this.whatAnAdminMayList(organizationId, adminUserId) as any) },
       select: { id: true },
     });
-    if (!found) throw new NotFoundException('Check-in not found');
+    if (!found) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
   }
 
   /** What is waiting on an admin. Oldest first: the longest wait is the worst one. */
@@ -7209,7 +7209,7 @@ export class GroundsService {
       where: { groundId, userId },
       select: { id: true },
     });
-    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!participant) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
     const note = await this.prisma.participantNote.create({
       data: { groundId, participantId: participant.id, text: trimmed },
       select: { id: true, text: true, createdAt: true, carriedIntoCheckInId: true },
@@ -7223,7 +7223,7 @@ export class GroundsService {
       where: { groundId, userId },
       select: { id: true },
     });
-    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!participant) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
     return this.prisma.participantNote.findMany({
       where: { participantId: participant.id },
       orderBy: { createdAt: 'asc' },
@@ -7237,13 +7237,13 @@ export class GroundsService {
       where: { groundId, userId },
       select: { id: true },
     });
-    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!participant) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
     // Scoped by participantId as well as id, so one person cannot delete another's
     // by guessing an id.
     const { count } = await this.prisma.participantNote.deleteMany({
       where: { id: noteId, participantId: participant.id },
     });
-    if (count === 0) throw new NotFoundException('Note not found');
+    if (count === 0) throw new NotFoundException('That note could not be found, so refresh the page.');
     return { deleted: true };
   }
 
@@ -7345,20 +7345,20 @@ export class GroundsService {
       where: { id: groundId },
       select: { initiatorId: true },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const me = await this.prisma.groundParticipant.findFirst({
       where: { groundId, userId: requestingUserId },
       select: { id: true },
     });
     if (!me && ground.initiatorId !== requestingUserId) {
-      throw new ForbiddenException('You are not a participant in this check-in');
+      throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
     }
 
     const { count } = await this.prisma.personObjective.updateMany({
       where: { id: objectiveId, groundId },
       data: { lastSeenState: state, lastSeenAt: new Date() },
     });
-    if (count === 0) throw new NotFoundException('Expectation not found');
+    if (count === 0) throw new NotFoundException('That expectation could not be found, so refresh the page.');
     return { ok: true as const };
   }
 
@@ -7392,7 +7392,7 @@ export class GroundsService {
       where: { groundId, userId },
       select: { id: true },
     });
-    if (!me) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!me) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
 
     // An expectation id is only accepted where it is one of THIS person's own on THIS check-in.
     // Otherwise a delivery could be filed against somebody else's target.
@@ -7418,7 +7418,7 @@ export class GroundsService {
       where: { groundId, userId },
       select: { id: true },
     });
-    if (!me) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!me) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
     return this.prisma.delivery.findMany({
       where: { groundId, participantId: me.id },
       orderBy: { createdAt: 'desc' },
@@ -7431,7 +7431,7 @@ export class GroundsService {
       where: { groundId, userId },
       select: { id: true },
     });
-    if (!me) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!me) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
     const { count } = await this.prisma.delivery.deleteMany({
       where: { id: deliveryId, participantId: me.id, carriedIntoCheckInId: null },
     });
@@ -7446,7 +7446,7 @@ export class GroundsService {
       where: { id: groundId },
       select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const asker = await this.prisma.user.findUnique({
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
@@ -7499,7 +7499,7 @@ export class GroundsService {
       where: { id: groundId },
       select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const asker = await this.prisma.user.findUnique({
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
@@ -7537,7 +7537,7 @@ export class GroundsService {
       where: { id: groundId },
       select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const asker = await this.prisma.user.findUnique({
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
@@ -7545,7 +7545,7 @@ export class GroundsService {
     /* Reading only, so the admin asked to approve it reads it too (decision 75, item 2). */
     const isOrgAdmin = readsAsAnAdmin({ ...asker, userId: requestingUserId }, ground);
     if (!link && ground.initiatorId !== requestingUserId && !isOrgAdmin) {
-      throw new ForbiddenException('You are not a participant in this check-in');
+      throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
     }
     /* Nobody held for a seat or waiting for the organisation reads the check-in's starting point (privacy row 5). */
     if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
@@ -7612,7 +7612,7 @@ export class GroundsService {
       where: { id: groundId },
       select: { id: true, initiatorId: true, organizationId: true },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /**
      * DECISION 63: the lead's, or - only once the lead has left the organisation - an admin of the
      * same organisation, standing in for them. What doing well looks like is the lead's to state - a
@@ -7670,7 +7670,7 @@ export class GroundsService {
       where: { id: groundId },
       select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const asker = await this.prisma.user.findUnique({
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
@@ -7678,7 +7678,7 @@ export class GroundsService {
     /* Reading only, so the admin asked to approve it reads it too (decision 75, item 2). */
     const isOrgAdmin = readsAsAnAdmin({ ...asker, userId: requestingUserId }, ground);
     if (!link && ground.initiatorId !== requestingUserId && !isOrgAdmin) {
-      throw new ForbiddenException('You are not a participant in this check-in');
+      throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
     }
     /* Nobody held for a seat or waiting for the organisation reads the check-in's starting point (privacy row 5). */
     if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
@@ -7716,7 +7716,7 @@ export class GroundsService {
       where: { groundId, userId },
       select: { id: true, specificityHistory: true },
     });
-    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!participant) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
     const raw: number[] = (participant.specificityHistory as number[]) ?? [];
     const scores = raw.filter(n => typeof n === 'number' && isFinite(n));
     const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
@@ -7779,7 +7779,7 @@ export class GroundsService {
 
   async getMyCheckinStatus(groundId: string, userId: string) {
     const participant = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId } });
-    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!participant) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
 
     const checkIns = await this.prisma.checkIn.findMany({
       where: { participantId: participant.id },
@@ -7814,7 +7814,7 @@ export class GroundsService {
    */
   async pauseGround(groundId: string, adminUserId: string, reason: string): Promise<void> {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     const PAUSABLE_STATUSES: GroundStatus[] = [
       GroundStatus.OPEN,
@@ -7823,14 +7823,14 @@ export class GroundsService {
       GroundStatus.ACTIVE,
     ];
     if (!PAUSABLE_STATUSES.includes(ground.status)) {
-      throw new BadRequestException(`Check-in in status "${ground.status}" cannot be paused`);
+      throw new BadRequestException('This check-in cannot be paused in the state it is in now, so there is nothing to do.');
     }
 
     // Verify the requesting user belongs to this ground's org or is the initiator.
     const initiatorOrAdmin = await this.prisma.user.findFirst({
       where: { id: adminUserId, organizationId: ground.organizationId },
     });
-    if (!initiatorOrAdmin) throw new ForbiddenException('Only an org member may pause a check-in');
+    if (!initiatorOrAdmin) throw new ForbiddenException('Only a member of the organisation can pause a check-in, so ask one to do it.');
 
     await this.prisma.ground.update({
       where: { id: groundId },
@@ -7848,15 +7848,15 @@ export class GroundsService {
    */
   async resumeGround(groundId: string, adminUserId: string, reason: string): Promise<void> {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     if (!isHeld(ground.status)) {
-      throw new BadRequestException(`Check-in in status "${ground.status}" is not on hold`);
+      throw new BadRequestException('This check-in is not on hold, so there is nothing to resume.');
     }
 
     const member = await this.prisma.user.findFirst({
       where: { id: adminUserId, organizationId: ground.organizationId },
     });
-    if (!member) throw new ForbiddenException('Only an org member may resume a check-in');
+    if (!member) throw new ForbiddenException('Only a member of the organisation can resume a check-in, so ask one to do it.');
 
     const backTo = ground.pausedFromStatus ?? GroundStatus.ACTIVE;
     if (!ground.pausedFromStatus) {
@@ -8098,7 +8098,7 @@ export class GroundsService {
         },
       },
     });
-    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!participant) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
 
     const sessions = (participant.checkIns ?? []).map(ci => ({
       sessionNumber: ci.sessionNumber,
@@ -8163,7 +8163,7 @@ export class GroundsService {
       where: { groundId, userId },
       select: { soloArtifact: true, soloArtifactShared: true },
     });
-    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!participant) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
     const report = thePrivateSummaryAsRead(participant.soloArtifact);
     return { report, shared: participant.soloArtifactShared };
   }
@@ -8185,7 +8185,7 @@ export class GroundsService {
       where: { id: groundId },
       select: { initiatorId: true, chaseAfterDays: true, chasingStopped: true, tellTheLead: true },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     if (ground.initiatorId !== userId) {
       throw new ForbiddenException('Only whoever set this check-in up can change how it reminds people.');
     }
@@ -8223,7 +8223,7 @@ export class GroundsService {
       where: { groundId, userId },
       select: { id: true },
     });
-    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!participant) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
     await this.prisma.groundParticipant.update({
       where: { id: participant.id },
       data: { soloArtifactShared: shared },

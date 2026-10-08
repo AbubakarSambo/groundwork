@@ -8,7 +8,7 @@ import { join } from 'path';
  *
  *   PARTICIPANT: "This is a private alignment ground. Accounts are never shown to other parties, so
  *                 there is no shared board. Read your report instead."
- *   ORG ADMIN:   "You are not a participant in this check-in" plus a red Access denied toast.
+ *   ORG ADMIN:   "You are not one of the people in this check-in, so ask whoever runs it to add you." plus a red Access denied toast.
  *
  * There is no board on that ground at all, for anybody. The person with the least authority was the
  * only one told the truth, and the admin was shown a permission problem that does not exist - one
@@ -33,7 +33,7 @@ describe('the board answers "is there one" before "who are you"', () => {
      * gates is what this file is for and that is unchanged.
      */
     expect(get).toMatch(/if \(!boardRendersFor\(ground\.scenario\)\)/);
-    expect(get).toMatch(/throw new NotFoundException\('Check-in not found'\)/);
+    expect(get).toMatch(/throw new NotFoundException\('That check-in could not be found, so go back to your check-ins and open it from the list.'\)/);
   });
 
   it('and the mode gate comes FIRST', () => {

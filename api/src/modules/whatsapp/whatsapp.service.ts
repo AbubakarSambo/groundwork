@@ -226,12 +226,12 @@ export class WhatsAppService implements OnModuleInit {
    */
   async verifySignature(headers: Record<string, string | string[] | undefined>, raw: Buffer): Promise<void> {
     const secret = (await this.ours()).appSecret;
-    if (!secret) throw new UnauthorizedException('WhatsApp webhook signature cannot be verified');
+    if (!secret) throw new UnauthorizedException('That message could not be checked as coming from WhatsApp, so it was not accepted.');
 
     const header = headers['x-hub-signature-256'];
     const provided = Array.isArray(header) ? header[0] : header;
     if (!provided || !provided.startsWith('sha256=')) {
-      throw new UnauthorizedException('Missing or malformed WhatsApp signature');
+      throw new UnauthorizedException('That message could not be checked as coming from WhatsApp, so it was not accepted.');
     }
 
     const expected = crypto.createHmac('sha256', secret).update(raw).digest('hex');
@@ -239,7 +239,7 @@ export class WhatsAppService implements OnModuleInit {
     /** Length check first: timingSafeEqual throws on unequal lengths rather than returning false. */
     if (got.length !== expected.length ||
         !crypto.timingSafeEqual(Buffer.from(got, 'utf8'), Buffer.from(expected, 'utf8'))) {
-      throw new UnauthorizedException('WhatsApp signature did not match');
+      throw new UnauthorizedException('That message could not be checked as coming from WhatsApp, so it was not accepted.');
     }
   }
 
@@ -934,16 +934,16 @@ export class WhatsAppService implements OnModuleInit {
     const phoneNumberId = dto.phoneNumberId?.trim();
     const accessToken = dto.accessToken?.trim();
     const appSecret = dto.appSecret?.trim();
-    if (!phoneNumberId) throw new BadRequestException('phoneNumberId is required: the id Meta gives the number, not the number itself.');
-    if (!/^\d{6,}$/.test(phoneNumberId)) throw new BadRequestException('phoneNumberId is digits only. It is on the WhatsApp > API Setup page in Meta Business.');
+    if (!phoneNumberId) throw new BadRequestException('Add the phone number ID that Meta gives the number, which is not the phone number itself.');
+    if (!/^\d{6,}$/.test(phoneNumberId)) throw new BadRequestException('The phone number ID is digits only, and you can find it under API Setup in your WhatsApp settings in Meta Business.');
     /* Secrets are never written in the clear: a NEW secret with no key on the server is not saved, and the admin is told, in words that are about us and not about a setting. The setting's name goes to the log only. A save with no new secret (the display number, say) needs no key. */
     if ((accessToken || appSecret) && !theServerCanKeepSecrets()) {
       this.logger.error(`An organisation (${organizationId}) tried to save WhatsApp keys, and they were not saved: ${whyItCannot()} (SETTINGS_ENCRYPTION_KEY).`);
       throw new BadRequestException(THE_SERVER_HAS_NO_KEY);
     }
     const existing = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } });
-    if (!accessToken && !existing) throw new BadRequestException('accessToken is required the first time: the permanent system-user token from Meta.');
-    if (!appSecret && !existing) throw new BadRequestException("appSecret is required the first time: the App Secret from your Meta app, used to check that inbound messages are Meta's.");
+    if (!accessToken && !existing) throw new BadRequestException('Add the permanent access token from Meta the first time you save.');
+    if (!appSecret && !existing) throw new BadRequestException("Add the app secret from your Meta app when you first save, so Groundwork can check that messages really come from Meta.");
     const verifyToken = existing?.verifyToken ?? `gwv_${crypto.randomBytes(16).toString('hex')}`;
     const row = await this.prisma.whatsAppConnection.upsert({
       where: { organizationId },
@@ -987,14 +987,14 @@ export class WhatsAppService implements OnModuleInit {
   verifySignatureWith(appSecret: string, headers: Record<string, string | string[] | undefined>, raw: Buffer): void {
     /* No secret to check against (a sealed one this server cannot open) is never a reason to accept: an HMAC made with an empty key is
        something anybody can make. */
-    if (!appSecret) throw new UnauthorizedException('WhatsApp webhook signature cannot be verified');
+    if (!appSecret) throw new UnauthorizedException('That message could not be checked as coming from WhatsApp, so it was not accepted.');
     const header = headers['x-hub-signature-256'];
     const provided = Array.isArray(header) ? header[0] : header;
-    if (!provided || !provided.startsWith('sha256=')) throw new UnauthorizedException('Missing or malformed WhatsApp signature');
+    if (!provided || !provided.startsWith('sha256=')) throw new UnauthorizedException('That message could not be checked as coming from WhatsApp, so it was not accepted.');
     const expected = crypto.createHmac('sha256', appSecret).update(raw).digest('hex');
     const got = provided.slice('sha256='.length);
     if (got.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(got, 'utf8'), Buffer.from(expected, 'utf8'))) {
-      throw new UnauthorizedException('WhatsApp signature did not match');
+      throw new UnauthorizedException('That message could not be checked as coming from WhatsApp, so it was not accepted.');
     }
   }
 

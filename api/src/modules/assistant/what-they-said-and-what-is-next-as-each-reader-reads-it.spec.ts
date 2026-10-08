@@ -65,7 +65,7 @@ const report = {
     const inIt = ground.participants.some((p) => p.userId === userId);
     const runsIt = ground.initiatorId === userId;
     const isAdmin = userId === 'u-grace' || userId === 'u-lola';
-    if (!inIt && !runsIt && !isAdmin) throw new Error('Check-in not found');
+    if (!inIt && !runsIt && !isAdmin) throw new Error('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const released = groundId !== 'g-open';
     const rows: Record<string, { name: string; lines: string[] }[]> = {
       'g-sales': [{ name: 'Femi', lines: FEMI_LINES }, { name: 'Miriam', lines: MIRIAM_LINES }],

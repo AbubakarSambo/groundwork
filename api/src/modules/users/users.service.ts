@@ -263,10 +263,10 @@ export class UsersService {
    */
   async setHowCheckInsWork(organizationId: string, body: { whoMayOpen?: string; needsApproval?: boolean }) {
     if (body.whoMayOpen !== undefined && !['NAMED_LEADS', 'EVERYONE'].includes(body.whoMayOpen)) {
-      throw new BadRequestException('whoMayOpen must be NAMED_LEADS or EVERYONE.');
+      throw new BadRequestException('Choose who may start check-ins, either the people you name or everyone.');
     }
     if (body.needsApproval !== undefined && typeof body.needsApproval !== 'boolean') {
-      throw new BadRequestException('needsApproval must be true or false.');
+      throw new BadRequestException('Choose whether each new check-in waits for an admin, yes or no.');
     }
     await this.prisma.organization.update({
       where: { id: organizationId },
@@ -334,8 +334,8 @@ export class UsersService {
     const addresses = addressesIn(pasted);
     if (addresses.length > MOST_IN_ONE_PASTE) {
       throw new BadRequestException(
-        `That is ${addresses.length} addresses. ${MOST_IN_ONE_PASTE} at a time is the most this takes - `
-        + 'past that, connect your directory instead of pasting.',
+        `That is ${addresses.length} addresses, and ${MOST_IN_ONE_PASTE} at a time is the most this takes, `
+        + 'so for more than that, connect your directory instead of pasting.',
       );
     }
 
@@ -715,7 +715,7 @@ export class UsersService {
       where: { id, organizationId, deletedAt: null },
       select: { id: true, email: true, firstName: true, lastName: true, role: true, isActive: true, isEmailVerified: true, createdAt: true },
     });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
     return user;
   }
 
@@ -789,10 +789,10 @@ export class UsersService {
 
   async create(organizationId: string, dto: CreateUserDto) {
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
-    if (existing) throw new ConflictException('A user with that email already exists');
+    if (existing) throw new ConflictException('Someone with that email address is already here, so use a different address.');
 
     const organization = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true } });
-    if (!organization) throw new NotFoundException('Organization not found');
+    if (!organization) throw new NotFoundException('We could not find that organisation, so sign in again and try once more.');
 
     const { user, token } = await this.prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
@@ -821,11 +821,11 @@ export class UsersService {
 
   async update(id: string, organizationId: string, dto: UpdateUserDto, _actingUserId: string) {
     const user = await this.prisma.user.findFirst({ where: { id, organizationId } });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
 
     if (dto.email && dto.email.toLowerCase() !== user.email) {
       const taken = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
-      if (taken) throw new ConflictException('Email already in use');
+      if (taken) throw new ConflictException('Someone with that email address is already here, so use a different address.');
     }
 
     /*
@@ -863,7 +863,7 @@ export class UsersService {
         where: { organizationId, role: 'ADMIN', isActive: true, id: { not: id }, deletedAt: null },
       });
       if (otherActiveAdmins === 0) {
-        throw new BadRequestException('This is the only active admin here - make somebody else an admin first.');
+        throw new BadRequestException('This is the only active admin here, so make somebody else an admin first.');
       }
     }
 
@@ -906,8 +906,8 @@ export class UsersService {
 
   async resendInvite(id: string, organizationId: string) {
     const user = await this.prisma.user.findFirst({ where: { id, organizationId }, include: { organization: { select: { name: true } } } });
-    if (!user) throw new NotFoundException('User not found');
-    if (user.isEmailVerified && user.passwordHash) throw new BadRequestException('User has already activated their account');
+    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
+    if (user.isEmailVerified && user.passwordHash) throw new BadRequestException('That person has already joined, so there is nothing to activate.');
 
     await this.prisma.emailVerificationToken.updateMany({
       where: { userId: user.id, type: TokenType.PASSWORD_SETUP, usedAt: null },
@@ -925,7 +925,7 @@ export class UsersService {
 
   async leaveOrg(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
 
     await this.prisma.user.update({
       where: { id: userId },
@@ -935,9 +935,9 @@ export class UsersService {
   }
 
   async remove(id: string, organizationId: string, actingUserId: string) {
-    if (id === actingUserId) throw new BadRequestException('You cannot deactivate yourself');
+    if (id === actingUserId) throw new BadRequestException('You cannot turn off your own place here, so ask another admin to do it.');
     const user = await this.prisma.user.findFirst({ where: { id, organizationId, deletedAt: null } });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
 
     /* The same protection as `update`, on the path that deactivates and anonymises somebody. */
     const orgForRemoval = await this.prisma.organization.findUnique({
@@ -961,7 +961,7 @@ export class UsersService {
         where: { organizationId, role: 'ADMIN', isActive: true, id: { not: id }, deletedAt: null },
       });
       if (otherActiveAdmins === 0) {
-        throw new BadRequestException('This is the only active admin here - make somebody else an admin first.');
+        throw new BadRequestException('This is the only active admin here, so make somebody else an admin first.');
       }
     }
 
@@ -987,7 +987,7 @@ export class UsersService {
       where: { id: userId },
       select: { id: true, email: true, firstName: true, lastName: true },
     });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
 
     // Collect all participant links for this user.
     const participantLinks = await this.prisma.groundParticipant.findMany({
@@ -1068,7 +1068,7 @@ export class UsersService {
    */
   async eraseAccount(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
 
     const anonymisedEmail = `deleted-${userId}@deleted`;
 

@@ -365,7 +365,7 @@ export class BoardService {
         poll: { include: { options: { orderBy: { sortOrder: 'asc' } } } },
       },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /* Somebody already here, added by their address, is named by their membership (user journeys, F-7). */
     await withTheirNamesFromTheOrganisation(this.prisma as any, (ground as any).organizationId, (ground.participants ?? []) as any);
     /* A wait on oneself is not a wait, a wait on "the lead" is a wait on the lead, and one wait said four ways is one (request 111 e, request 123 items 4 and 5). */
@@ -457,7 +457,7 @@ export class BoardService {
     const adminHere = adminsThisOrg({ ...viewer, userId: requestingUserId }, ground as any) || askedToApproveIt({ ...viewer, userId: requestingUserId }, ground as any);
     if (!me && !isInitiator && !isSetupAdmin && !adminHere) {
       /* NotFound, not Forbidden: a 403 tells a stranger, or an admin without access to a review, that the check-in is real (GW-PRI-04). */
-      throw new NotFoundException('Check-in not found');
+      throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     }
 
     /*
@@ -3354,7 +3354,7 @@ export class BoardService {
       where: { id: groundId },
       select: { id: true, scenario: true, mode: true, initiatorId: true },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /**
      * GATED ON THE SECTION, NOT ON THE BOARD EXISTING.
      *
@@ -3365,10 +3365,10 @@ export class BoardService {
      * write a target onto a board that will never show it.
      */
     if (!boardHasSection(ground.scenario, 'objectives')) {
-      throw new ForbiddenException('This check-in does not track targets');
+      throw new ForbiddenException('This check-in does not keep targets, so there is nothing to change here.');
     }
     if (ground.initiatorId !== requestingUserId) {
-      throw new ForbiddenException('Only the person who set this check-in up can change what it is aiming for');
+      throw new ForbiddenException('Only the person who set this check-in up can change what it is aiming for, so ask them to.');
     }
     return ground;
   }
@@ -3384,7 +3384,7 @@ export class BoardService {
       where: { id: groundId },
       select: { id: true, initiatorId: true, kindOfWork: true, workStages: true, participants: { select: { id: true } } } as any,
     }) as any;
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     if (ground.initiatorId !== requestingUserId) throw new ForbiddenException('Only the lead of this check-in can change its records.');
     const kind = oneOfTheKinds(ground.kindOfWork);
     if (!kind) throw new BadRequestException('Choose what kind of work this check-in is about first, then add its records.');
@@ -3488,7 +3488,7 @@ export class BoardService {
    */
   async answerADecision(groundId: string, itemId: string, requestingUserId: string, yes: boolean) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { id: true, initiatorId: true } as any }) as any;
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     if (ground.initiatorId !== requestingUserId) throw new ForbiddenException('Only the lead of this check-in can answer this.');
     const line = await (this.prisma as any).groundContextItem.findFirst({ where: { id: itemId, groundId, kind: 'DECISION', closedAt: null } });
     if (!line) throw new NotFoundException('This is not waiting for an answer any more.');
@@ -3620,7 +3620,7 @@ export class BoardService {
     /* A person's own aim read from their promise (request 110): the lead's change puts it on the record first, as theirs. */
     if (objectiveId.startsWith(AN_AIM_FROM_THEIR_PROMISE)) objectiveId = await this.putTheirOwnAimOnTheRecord(groundId, objectiveId);
     const existing = await this.prisma.groundObjective.findUnique({ where: { id: objectiveId } });
-    if (!existing || existing.groundId !== groundId) throw new NotFoundException('Objective not found');
+    if (!existing || existing.groundId !== groundId) throw new NotFoundException('That aim could not be found, so go back to the check-in and open it from there.');
     /*
      * ACCEPTING A NUMBER READ OFF A CLOSED ROUND PUTS IT WHERE THAT ROUND CLOSED (review of 1 October
      * 2026). The listener writes a number it lands into that round's snapshot, so the Movement tile and
@@ -3686,7 +3686,7 @@ export class BoardService {
       throw new ForbiddenException('This aim is one the person set for themselves in their own check-in, so only they can drop it. You can change its number or what is counted against it.');
     }
     const existing = await this.prisma.groundObjective.findUnique({ where: { id: objectiveId } });
-    if (!existing || existing.groundId !== groundId) throw new NotFoundException('Objective not found');
+    if (!existing || existing.groundId !== groundId) throw new NotFoundException('That aim could not be found, so go back to the check-in and open it from there.');
     await this.prisma.groundObjective.delete({ where: { id: objectiveId } });
     return { deleted: true };
   }
@@ -3699,7 +3699,7 @@ export class BoardService {
   ) {
     await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
     const labels = dto.options.map((o) => o.trim()).filter(Boolean);
-    if (labels.length === 0) throw new ForbiddenException('A poll needs at least one time to choose between');
+    if (labels.length === 0) throw new ForbiddenException('Add at least one time for people to choose between, then send the poll.');
 
     const existing = await this.prisma.groundPoll.findUnique({ where: { groundId } });
     if (existing) {
@@ -3728,9 +3728,9 @@ export class BoardService {
       where: { id: groundId },
       select: { id: true, scenario: true, mode: true, initiatorId: true, participants: { select: { id: true, userId: true } } },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     if (!boardRendersFor(ground.scenario)) {
-      throw new ForbiddenException('This check-in does not have a board');
+      throw new ForbiddenException('This check-in has no board, so there is nothing to open here.');
     }
     /**
      * AND THE POLL SECTION SPECIFICALLY, which the board check above no longer implies.
@@ -3742,16 +3742,16 @@ export class BoardService {
      * Same shape as the objectives gate above: write to the SECTION, not to the board.
      */
     if (!boardHasSection(ground.scenario, 'poll')) {
-      throw new ForbiddenException('This check-in does not schedule its own sessions');
+      throw new ForbiddenException('This check-in does not set its own dates, so there is nothing to choose between.');
     }
     const me = ground.participants.find((p) => p.userId === requestingUserId);
-    if (!me) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!me) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
 
     const option = await this.prisma.groundPollOption.findUnique({
       where: { id: optionId },
       include: { poll: { select: { groundId: true } } },
     });
-    if (!option || option.poll.groundId !== groundId) throw new NotFoundException('Poll option not found');
+    if (!option || option.poll.groundId !== groundId) throw new NotFoundException('That time is no longer in the poll, so refresh the page and choose again.');
 
     const has = option.whoIds.includes(me.id);
     const whoIds = has ? option.whoIds.filter((x) => x !== me.id) : [...option.whoIds, me.id];

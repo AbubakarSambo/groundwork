@@ -33,8 +33,10 @@ describe('with no key configured', () => {
     expect(() => service.stripe).toThrow(ServiceUnavailableException);
   });
 
-  it('and names the variable, so the fix is not a search', () => {
-    expect(() => service.stripe).toThrow(/STRIPE_SECRET_KEY/);
+  /* Piece 6: the person who meets this is buying a plan, and reads a plain sentence. The variable is named in the log at start-up (the constructor's warning), where whoever fixes it reads it. */
+  it('tells a person plainly, without the name of a setting', () => {
+    expect(() => service.stripe).toThrow('Billing is not set up here yet, so nothing can be charged.');
+    expect(() => service.stripe).not.toThrow(/STRIPE_SECRET_KEY/);
   });
 
   it('and says nothing was attempted, because a payment error reads as a charge', () => {

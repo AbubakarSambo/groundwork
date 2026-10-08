@@ -188,7 +188,7 @@ export class AuthService {
     }
 
     const existingUser = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
-    if (existingUser) throw new ConflictException('Email already registered');
+    if (existingUser) throw new ConflictException('That email address already has a sign-in, so sign in with it instead.');
 
     /**
      * NOTHING IS CREATED UNTIL THE ADDRESS IS PROVED. GW-001, closed here too.
@@ -248,7 +248,7 @@ export class AuthService {
     }
 
     const existingUser = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
-    if (existingUser) throw new ConflictException('Email already registered');
+    if (existingUser) throw new ConflictException('That email address already has a sign-in, so sign in with it instead.');
 
     const emailLocal = dto.email.toLowerCase().split('@')[0];
     const firstName = dto.firstName?.trim() || emailLocal.charAt(0).toUpperCase() + emailLocal.slice(1);
@@ -662,7 +662,7 @@ export class AuthService {
     if (password !== undefined && isTheirEmail(password, lower)) throw new BadRequestException(IS_THEIR_EMAIL);
 
     if (draft && JSON.stringify(draft).length > 500_000) {
-      throw new BadRequestException('Draft too large');
+      throw new BadRequestException('That draft is too long to keep, so shorten it and try again.');
     }
 
     let user = await this.prisma.user.findUnique({ where: { email: lower } });
@@ -1234,7 +1234,7 @@ export class AuthService {
    */
   async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { organization: true } });
-    if (!user) throw new BadRequestException('User not found');
+    if (!user) throw new BadRequestException('We could not find that sign-in, so sign in again and try once more.');
     /* One builder. A field added to it cannot fail to reach this route now. */
     const belongsElsewhere = await this.belongsElsewhere(user.id, user.organizationId);
     return {
@@ -1262,7 +1262,7 @@ export class AuthService {
    */
   async userShapeFor(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { organization: true } });
-    if (!user) throw new BadRequestException('User not found');
+    if (!user) throw new BadRequestException('We could not find that sign-in, so sign in again and try once more.');
     const belongsElsewhere = await this.belongsElsewhere(user.id, user.organizationId);
     return this.theUserShape(user as unknown as UserWithOrg, belongsElsewhere);
   }
@@ -1562,7 +1562,7 @@ export class AuthService {
       where: { id: userId },
       select: { organizationId: true, role: true },
     });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
 
     /* Never one they are held out of for want of a seat (U.4 third review): they have not been told
        about it, so it is not theirs to see or switch to until the hold is cleared. */
@@ -1629,7 +1629,7 @@ export class AuthService {
     if (!membership || membership.heldForASeat) {
       // Not "not found": from the caller's side this is being refused, and saying so
       // plainly is better than implying the organisation does not exist.
-      throw new ForbiddenException('You are not a member of that organisation');
+      throw new ForbiddenException('You are not a member of that organisation, so switch to one you belong to.');
     }
 
     const updated = await this.prisma.user.update({
@@ -1683,7 +1683,7 @@ export class AuthService {
    */
   async whereCanIJoin(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, isEmailVerified: true } });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
     const mine = await this.prisma.organizationMembership.findMany({ where: { userId }, select: { organizationId: true } });
     const inIt = new Set(mine.map((m) => m.organizationId));
     const domain = theDomainOf(user.email);
@@ -1755,7 +1755,7 @@ export class AuthService {
   /** "Join": by email domain, as "Takes part", through the seat check, then into it. */
   async joinByDomain(userId: string, organizationId: string, via: SignedInVia = 'password') {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, isEmailVerified: true } });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
     const domain = theDomainOf(user.email);
     const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { id: true, name: true, joinDomain: true } });
     const allowed = !!org && !!domain && user.isEmailVerified && mayBeJoinedBy(domain) && org.joinDomain === domain;
@@ -1791,7 +1791,7 @@ export class AuthService {
       where: { id: userId },
       select: { id: true, email: true, firstName: true, lastName: true, organizationId: true },
     });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
 
     /*
      * MORE THAN ONE OF YOUR OWN, AS THE PROTOTYPE HAS IT (Hafsah, 26 September). This used to refuse

@@ -1051,7 +1051,7 @@ export class ReportsService {
 
   private async synthesizeNow(groundId: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, include: { participants: true } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     // Build context preamble from the ground's pre-agreed resolution state,
     // initiator brief, and the initiator's persistent profile signals (if any).
@@ -2992,13 +2992,13 @@ Close the report by framing - neutrally, without recommending one - the choice n
         report: { select: { releasedAt: true, releasedSessions: true } },
       },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     const isInitiator = ground.initiatorId === requestingUserId;
     const me = ground.participants.find((p) => p.userId === requestingUserId) ?? null;
     const isOrgAdmin = !isInitiator && !me && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground, groundId));
     /* NotFound, not Forbidden. GW-PRI-04: a 403 tells a stranger the check-in is real. */
-    if (!me && !isInitiator && !isOrgAdmin) throw new NotFoundException('Check-in not found');
+    if (!me && !isInitiator && !isOrgAdmin) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     const viewerIsLead = isInitiator || isOrgAdmin;
     const released = !!ground.report?.releasedAt;
@@ -3104,7 +3104,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         runsUntilEnded: true,
       },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     const isInitiator = ground.initiatorId === requestingUserId;
     const me = ground.participants.find((p) => p.userId === requestingUserId) ?? null;
@@ -3117,7 +3117,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * ones. `get()` has always thrown NotFound for both cases for exactly this reason, and the
      * privacy suite pins it. I wrote this one as Forbidden.
      */
-    if (!me && !isInitiator && !isOrgAdmin) throw new NotFoundException('Report not found');
+    if (!me && !isInitiator && !isOrgAdmin) throw new NotFoundException('That report could not be found, so go back to the check-in and open it from there.');
     const viewerIsLead = isInitiator || isOrgAdmin;
     /* DECISION 60 POINT 4, 30 September 2026: narrower than viewerIsLead (which counts every admin
        of the organisation) - colleagues' exact words in an evaluation check-in (decision 4's
@@ -4158,7 +4158,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         participants: { select: { userId: true, email: true } },
       },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     const isInitiator = ground.initiatorId === requestingUserId;
     const isParty = ground.participants.some((p) => p.userId === requestingUserId);
@@ -4167,7 +4167,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const isOrgAdmin = !isInitiator && !isParty && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground, groundId));
     /* NotFound, not Forbidden, for the reason in `sessionReport` above: a 403 confirms the
        check-in exists. This endpoint has had the leak since it was written. GW-PRI-04. */
-    if (!isParty && !isInitiator && !isOrgAdmin) throw new NotFoundException('Report not found');
+    if (!isParty && !isInitiator && !isOrgAdmin) throw new NotFoundException('That report could not be found, so go back to the check-in and open it from there.');
 
     /* Nothing has been revealed yet, so there is nothing anybody may read. */
     if (!ground.report?.releasedAt) return { rounds: [] };
@@ -5015,13 +5015,13 @@ happened, and what is in the way.`;
    */
   async generateForAdmin(groundId: string, organizationId: string, adminUserId?: string) {
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId }, include: { participants: { select: { userId: true, email: true } } } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /* A performance plan, a promotion or a renewal is not an admin's to touch without access (decision 5, request 78). */
-    if (isEvaluationCheckIn(ground.scenario) && !runsOrSetItUp(adminUserId, ground)) throw new NotFoundException('Check-in not found');
+    if (isEvaluationCheckIn(ground.scenario) && !runsOrSetItUp(adminUserId, ground)) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     const completedCount = await this.prisma.checkIn.count({ where: { groundId, status: 'COMPLETED' } });
     if (completedCount === 0) {
-      throw new BadRequestException('No check-ins completed yet - at least one party must complete a session before a report can be generated.');
+      throw new BadRequestException('Nobody has finished a check-in yet, so there is no report to write. It can be written once at least one person has finished.');
     }
 
     await this.synthesize(groundId);
@@ -5046,7 +5046,7 @@ happened, and what is in the way.`;
    */
   async releaseAsTheLead(groundId: string, userId: string, organizationId: string) {
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId }, select: { initiatorId: true } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     if (ground.initiatorId === userId) return this.release(groundId, organizationId);
 
     const lead = await this.prisma.user.findUnique({
@@ -5080,8 +5080,8 @@ happened, and what is in the way.`;
       where: { id: groundId, organizationId },
       include: { participants: { include: { user: { select: { passwordHash: true } } } }, report: true },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
-    if (!ground.report) throw new NotFoundException('Report not generated yet');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    if (!ground.report) throw new NotFoundException('This report is not written yet, so check again once everyone has answered.');
     /*
      * EACH SESSION'S PICTURE IS RELEASED ON ITS OWN (decision 76, item 4). This returned early once
      * `releasedAt` was set, so the first release shared every later session too: a participant read
@@ -5266,7 +5266,7 @@ happened, and what is in the way.`;
    */
   async sendToEveryone(groundId: string, userId: string, organizationId: string, as: HowItWasShared = 'NAMED'): Promise<{ sessionNumber: number; sent: number; failed: number; alreadyTold: number; notAsked: number; sharedAs: HowItWasShared }> {
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId }, select: { id: true, initiatorId: true, report: { select: { releasedAt: true } } } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     if (ground.initiatorId !== userId) throw new ForbiddenException('Only the person running this check-in can send its report.');
     const completed = await this.prisma.checkIn.count({ where: { groundId, status: CheckInStatus.COMPLETED } });
     if (completed === 0) throw new BadRequestException('Nobody has answered yet, so there is no report to send.');
@@ -7097,7 +7097,7 @@ happened, and what is in the way.`;
         report: true,
       },
     });
-    if (!ground) throw new NotFoundException('Report not found');
+    if (!ground) throw new NotFoundException('That report could not be found, so go back to the check-in and open it from there.');
     /*
      * WHY, not just no. See `why-there-is-no-report-yet.ts` — the same 404, with the reason the
      * person can act on. The entitlement check below still runs for everybody who HAS a report;
@@ -7109,7 +7109,7 @@ happened, and what is in the way.`;
       const mine = ground.participants.some(
         (p) => p.userId === requestingUserId,
       ) || ground.initiatorId === requestingUserId || (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground, groundId).catch(() => false));
-      if (!mine) throw new NotFoundException('Check-in not found');
+      if (!mine) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
       const checkIns = await this.prisma.checkIn.findMany({
         where: { groundId },
         select: { status: true, participantId: true },
@@ -7136,7 +7136,7 @@ happened, and what is in the way.`;
     // Org admins can read reports for grounds in their own org (read-only, same view as initiator).
     const isOrgAdmin = !isInitiator && !participant && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground, groundId));
     /* NotFound, not Forbidden: a 403 tells a stranger, or an admin without access to a review, that the check-in is real (GW-PRI-04). */
-    if (!participant && !isInitiator && !isOrgAdmin) throw new NotFoundException('Check-in not found');
+    if (!participant && !isInitiator && !isOrgAdmin) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /* Decision 58: narrower than isInitiator || isOrgAdmin - a pattern (the lead's probe list
        included) goes only to the lead or the admin who set this check-in up for them, never to
        every admin of the organisation. See patterns/who-reads-a-pattern, runsItForAPattern. */
@@ -7685,10 +7685,10 @@ happened, and what is in the way.`;
       where: { id: groundId },
       include: { participants: true, report: true },
     });
-    if (!ground?.report?.releasedAt) throw new ForbiddenException('Report has not been released yet');
+    if (!ground?.report?.releasedAt) throw new ForbiddenException('This report has not been shared yet, so check again once the lead shares it.');
 
     const participant = ground.participants.find((p) => p.userId === requestingUserId);
-    if (!participant) throw new ForbiddenException('You are not a participant on this check-in');
+    if (!participant) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
 
     await this.prisma.reportActivation.upsert({
       where: { groundId_participantId: { groundId, participantId: participant.id } },
@@ -7724,11 +7724,11 @@ happened, and what is in the way.`;
       where: { id: groundId },
       include: { participants: true },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const isInitiator = ground.initiatorId === requestingUserId;
     const me = ground.participants.find((p) => p.userId === requestingUserId) ?? null;
     const isOrgAdmin = !isInitiator && !me && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground, groundId));
-    if (!isInitiator && !me && !isOrgAdmin) throw new NotFoundException('Check-in not found');
+    if (!isInitiator && !me && !isOrgAdmin) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const status = await this.getActivationStatus(groundId, ground.participants.map((p) => p.id));
     return this.activationStatusThisReaderMaySee(status, ground as any, isInitiator || isOrgAdmin ? null : me?.id ?? null);
   }

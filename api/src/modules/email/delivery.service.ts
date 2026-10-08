@@ -81,18 +81,18 @@ export class DeliveryService {
    * secret after "whsec_". FAIL CLOSED: no secret configured -> reject. */
   verifySignature(headers: Record<string, string | string[] | undefined>, rawBody: Buffer | string): void {
     const secret = this.webhookSecret();
-    if (!secret) throw new UnauthorizedException('webhook secret not configured');
+    if (!secret) throw new UnauthorizedException('The email delivery notices cannot be checked here yet, so none was accepted.');
 
     const svixId = String(headers['svix-id'] ?? '');
     const svixTimestamp = String(headers['svix-timestamp'] ?? '');
     const svixSignature = String(headers['svix-signature'] ?? '');
     if (!svixId || !svixTimestamp || !svixSignature) {
-      throw new UnauthorizedException('missing svix headers');
+      throw new UnauthorizedException('That delivery notice could not be checked, so it was not accepted.');
     }
 
     const ts = Number(svixTimestamp);
     if (!Number.isFinite(ts) || Math.abs(Date.now() / 1000 - ts) > TIMESTAMP_TOLERANCE_S) {
-      throw new UnauthorizedException('timestamp outside tolerance');
+      throw new UnauthorizedException('That delivery notice was too old to be checked, so it was not accepted.');
     }
 
     const secretBytes = Buffer.from(secret.replace(/^whsec_/, ''), 'base64');
@@ -109,7 +109,7 @@ export class DeliveryService {
       const candidateBuf = Buffer.from(c);
       return candidateBuf.length === expectedBuf.length && crypto.timingSafeEqual(candidateBuf, expectedBuf);
     });
-    if (!ok) throw new UnauthorizedException('signature mismatch');
+    if (!ok) throw new UnauthorizedException('That delivery notice could not be checked, so it was not accepted.');
   }
 
   /** Apply one Resend event. Upserted by resendId -> replays are idempotent.

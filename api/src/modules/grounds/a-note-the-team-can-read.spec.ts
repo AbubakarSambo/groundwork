@@ -62,7 +62,7 @@ describe('a note the team can read', () => {
     const write = SERVICE.slice(SERVICE.indexOf('async addLeadContext'));
     const refusal = write.slice(write.indexOf('A note everyone reads is about'), write.indexOf('A note everyone reads is about') + 400);
     expect(refusal).toMatch(/say it in your own check-in/i);
-    expect(refusal).toMatch(/leave this note private/i);
+    expect(refusal).toMatch(/keep this note private/i);
   });
 
   /** Nothing existing becomes visible: the migration adds the column defaulted to lead-only. */

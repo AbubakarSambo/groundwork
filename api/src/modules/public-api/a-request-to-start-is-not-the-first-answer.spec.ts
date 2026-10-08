@@ -20,7 +20,7 @@ describe('words that only ask to begin are not the first answer', () => {
     expect(isAGreetingOrARequestToStart(said)).toBe(false);
   });
   it('and the WhatsApp door uses it when it opens a check-in that has not begun', () => {
-    const door = fs.readFileSync(path.join(__dirname, 'whatsapp-for-an-organisation.service.ts'), 'utf8');
+    const door = fs.readFileSync(path.join(__dirname, 'whatsapp-for-an-organisation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(door).toContain('if (isAGreetingOrARequestToStart(text) || beginning) { await say(reply); return; }');
   });
 });

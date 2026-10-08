@@ -50,7 +50,7 @@ export class APlanIsManyProposalsService {
         participants: { select: { id: true, email: true, nameGiven: true, roleAsDescribed: true, managingOnly: true, userId: true, leftAt: true, user: { select: { firstName: true, lastName: true } } } },
       },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     if (ground.initiatorId !== userId) throw new ForbiddenException(refusal);
     const refused = opts.evenIfItCannotTakeThings ? null : whyItRefuses(ground.status, ground.endState, 'the lead', ground.scenario);
     if (refused) throw new BadRequestException(refused);

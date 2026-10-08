@@ -105,7 +105,7 @@ describe('GW-DECLINE-02: a declined session cannot be written to', () => {
   it('the loader that refuses a settled session exists and names both settled states', () => {
     expect(SRC).toMatch(/private async loadOwnedOpenCheckIn\(/);
     expect(SRC).toMatch(/CheckInStatus\.DECLINED[\s\S]{0,200}?You declined this session/);
-    expect(SRC).toMatch(/CheckInStatus\.COMPLETED[\s\S]{0,160}?already complete/);
+    expect(SRC).toMatch(/CheckInStatus\.COMPLETED[\s\S]{0,160}?already finished/);
   });
 
   /**

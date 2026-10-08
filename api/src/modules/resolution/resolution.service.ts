@@ -55,7 +55,7 @@ export class ResolutionService {
       where: { id: groundId },
       select: { id: true, organizationId: true, initiatorId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
     });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /* Nobody held for a seat or waiting for the organisation reads how everybody else means to end it (privacy row 5). */
     if (ground.initiatorId !== userId) {
       await refuseSomeoneHeldForASeat(this.prisma as any, groundId, userId);
@@ -85,10 +85,10 @@ export class ResolutionService {
     const { ground, participant } = await this.assertParty(groundId, userId);
 
     if (ground.status === GroundStatus.CLOSED || ground.status === GroundStatus.RESOLVED) {
-      throw new BadRequestException('This check-in is already resolved');
+      throw new BadRequestException('This check-in has already ended, so there is nothing more to do here.');
     }
     if (!isValidEndState(ground.scenario, endState)) {
-      throw new BadRequestException(`"${endState}" is not a valid end state for this scenario`);
+      throw new BadRequestException('That is not a way this kind of check-in can end, so choose one from the list.');
     }
 
     /**
@@ -215,7 +215,7 @@ export class ResolutionService {
     const { ground, participant } = await this.assertParty(groundId, userId);
 
     if (ground.status === GroundStatus.CLOSED || ground.status === GroundStatus.RESOLVED) {
-      throw new BadRequestException('This check-in is already resolved');
+      throw new BadRequestException('This check-in has already ended, so there is nothing more to do here.');
     }
     /** Authorisation first: a party with no say here should not be told which end states are valid. */
     /**
@@ -240,7 +240,7 @@ export class ResolutionService {
     }
 
     if (!isValidEndState(ground.scenario, proposedEndState)) {
-      throw new BadRequestException(`"${proposedEndState}" is not a valid end state for this scenario`);
+      throw new BadRequestException('That is not a way this kind of check-in can end, so choose one from the list.');
     }
 
     // Replace the current leading proposal and clear all existing confirmations
@@ -370,7 +370,7 @@ export class ResolutionService {
    */
   private async buildState(groundId: string, viewerUserId?: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
     const resolution = await this.prisma.resolution.findUnique({
       where: { groundId },
@@ -485,7 +485,7 @@ export class ResolutionService {
 
   private async assertParty(groundId: string, userId: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
-    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /**
      * `user` is included so callers can NAME this person. `displayName` reads `user.firstName`, and
      * without the relation it silently returns null - so a label built from it would have fallen
@@ -495,7 +495,7 @@ export class ResolutionService {
       where: { groundId, userId },
       include: { user: { select: { firstName: true, lastName: true, email: true } } },
     });
-    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
+    if (!participant) throw new ForbiddenException('You are not one of the people in this check-in, so ask whoever runs it to add you.');
     return { ground, participant };
   }
 }

@@ -318,10 +318,10 @@ export class WhoIsWaitingAtTheDoorService {
         organization: { select: { name: true } },
       },
     });
-    if (!request) throw new NotFoundException('That request does not exist');
+    if (!request) throw new NotFoundException('That request could not be found, so refresh the page to see what is waiting.');
     /* Not found rather than forbidden: an admin of another organisation may not learn that an id
        here is real. */
-    if (request.organizationId !== organizationId) throw new NotFoundException('That request does not exist');
+    if (request.organizationId !== organizationId) throw new NotFoundException('That request could not be found, so refresh the page to see what is waiting.');
     if (request.status !== MembershipRequestStatus.PENDING) {
       throw new BadRequestException('Somebody has already answered this one.');
     }

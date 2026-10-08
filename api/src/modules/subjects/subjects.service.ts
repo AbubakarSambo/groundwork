@@ -81,7 +81,7 @@ export class SubjectsService {
     if (!dto.externalId?.trim() || !dto.sourceSystem?.trim()) {
       throw new BadRequestException('externalId and sourceSystem are required.');
     }
-    if (!dto.title?.trim()) throw new BadRequestException('title is required.');
+    if (!dto.title?.trim()) throw new BadRequestException('Add a title and try again.');
 
     const wording = {
       type,

@@ -268,7 +268,7 @@ describe('patchDraft is token-gated', () => {
    */
   it('refuses a missing token, and writes nothing for an unknown or used one', async () => {
     const { service, prisma } = makeService(); // findUnique -> null
-    await expect(service.patchDraft('', { orgName: 'X' })).rejects.toThrow('draftToken required');
+    await expect(service.patchDraft('', { orgName: 'X' })).rejects.toThrow('This draft has lost its place, so start the draft again.');
     await expect(service.patchDraft('bad-token', { orgName: 'X' })).resolves.toEqual({ ok: true });
     expect(prisma.entryDraft.update).not.toHaveBeenCalled();
     expect(prisma.pendingSignup.update).not.toHaveBeenCalled();

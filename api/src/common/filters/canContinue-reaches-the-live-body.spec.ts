@@ -45,7 +45,7 @@ describe('the completion gate\'s refusal, as the filter actually serves it', () 
   });
 
   it('never invents the field for a refusal that never said it', () => {
-    const out = respond(new BadRequestException('This check-in is already complete'));
+    const out = respond(new BadRequestException('You have already finished this check-in, so there is nothing more to add.'));
     expect(out).not.toHaveProperty('canContinue');
   });
 

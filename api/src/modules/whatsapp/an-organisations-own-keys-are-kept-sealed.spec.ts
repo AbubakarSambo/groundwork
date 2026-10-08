@@ -131,7 +131,7 @@ describe('using the keys', () => {
     const raw = Buffer.from('{"entry":[]}');
     const signed = (secret: string) => ({ 'x-hub-signature-256': `sha256=${crypto.createHmac('sha256', secret).update(raw).digest('hex')}` });
     expect(() => svc.verifySignatureWith(theirKey(rows[0], 'appSecret'), signed(SECRET), raw)).not.toThrow();
-    expect(() => svc.verifySignatureWith(theirKey(rows[0], 'appSecret'), signed('groundworks-own-secret'), raw)).toThrow('WhatsApp signature did not match');
+    expect(() => svc.verifySignatureWith(theirKey(rows[0], 'appSecret'), signed('groundworks-own-secret'), raw)).toThrow('That message could not be checked as coming from WhatsApp, so it was not accepted.');
     /* The sealed text is not itself the secret: signing with it does not pass. */
     expect(() => svc.verifySignatureWith(theirKey(rows[0], 'appSecret'), signed(rows[0].appSecret), raw)).toThrow();
   });
@@ -178,8 +178,8 @@ describe('keys that cannot be opened', () => {
       expect(theirKey(rows[0], 'appSecret')).toBe('');
       const { WhatsAppForAnOrganisationController } = await import('../public-api/whatsapp-for-an-organisation.controller');
       const c = new (WhatsAppForAnOrganisationController as any)(prisma, svc, { handle: jest.fn() }, { get: () => undefined });
-      await expect(c.receive('org-baridi', { headers: forged, rawBody: raw, body: {} })).rejects.toThrow('WhatsApp webhook signature cannot be verified');
-      expect(() => svc.verifySignatureWith('', forged, raw)).toThrow('WhatsApp webhook signature cannot be verified');
+      await expect(c.receive('org-baridi', { headers: forged, rawBody: raw, body: {} })).rejects.toThrow('That message could not be checked as coming from WhatsApp, so it was not accepted.');
+      expect(() => svc.verifySignatureWith('', forged, raw)).toThrow('That message could not be checked as coming from WhatsApp, so it was not accepted.');
     });
 
     it(`nothing is sent with a token that is ${name}, and why is kept`, async () => {
