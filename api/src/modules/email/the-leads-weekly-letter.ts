@@ -4,6 +4,8 @@ import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 
+import { WHERE_A_GROUND_IS_THE_ANCHORS } from '../conversation/the-anchor-weekly-check-in';
+
 /**
  * THE LEAD'S WEEKLY LETTER (docs/anchor-scenario-plan.md, piece 29; the prototype's "one weekly letter",
  * C1/every-email-and-message; docs/anchor-scenario.md, section 23: "Email can carry the fuller weekly
@@ -200,7 +202,7 @@ export async function sendTheLeadsWeeklyLetters(
 ): Promise<{ tried: number }> {
   const { prisma } = deps;
   const grounds: any[] = await everyRowAPageAtATime((page: any) => prisma.ground.findMany({
-    where: { startedFrom: 'anchor', status: { notIn: TERMINAL } },
+    where: { ...WHERE_A_GROUND_IS_THE_ANCHORS, status: { notIn: TERMINAL } },
     select: { id: true, label: true, initiatorId: true },
     ...page,
   }), 1000);

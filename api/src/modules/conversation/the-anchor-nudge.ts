@@ -1,5 +1,5 @@
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
-import { STARTED_FROM_THE_ANCHOR } from './the-anchor-weekly-check-in';
+import { aGroundIsTheAnchors } from './the-anchor-weekly-check-in';
 import { inOurVoice } from '../reports/what-the-record-shows-over-time';
 
 /**
@@ -71,8 +71,8 @@ export async function theirOwnLastOpenPromise(prisma: any, groundId: string, par
 }
 
 /** The line for this person on this check-in, or null where it is not an anchor check-in or the switch is off. */
-export async function theAnchorNudgeFor(prisma: any, ground: { id: string; startedFrom?: string | null }, participantId: string): Promise<string | null> {
-  if (ground.startedFrom !== STARTED_FROM_THE_ANCHOR) return null;
+export async function theAnchorNudgeFor(prisma: any, ground: { id: string; startedFrom?: string | null; scenario?: unknown }, participantId: string): Promise<string | null> {
+  if (!aGroundIsTheAnchors(ground)) return null;
   if (!(await theAnchorScenarioIsOn(prisma))) return null;
   return theAnchorNudgeLine(await theirOwnLastOpenPromise(prisma, ground.id, participantId));
 }

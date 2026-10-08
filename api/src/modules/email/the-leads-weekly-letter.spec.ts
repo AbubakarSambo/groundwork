@@ -60,7 +60,8 @@ describe('the lead\'s weekly letter, as the lead reads it', () => {
   it('is built from check-ins started from the anchor that are still going, and never reads what anybody said', async () => {
     const w = aFriday();
     await sendTheLeadsWeeklyLetters({ prisma: w.prisma, email: w.email, frontendUrl: 'https://app.test' }, NOW);
-    expect(w.prisma.lastWhere.startedFrom).toBe('anchor');
+    /* Changed by decision 114: a check-in with the anchor's scenario is the anchor's too, so it asks for either (the-anchor-is-recognised-by-its-scenario.spec.ts). */
+    expect(w.prisma.lastWhere.OR).toEqual([{ startedFrom: 'anchor' }, { scenario: 'HELP_TEAM_UNDERSTAND' }]);
     /* Only counts: no turn, message, question to Ask Groundwork or report is read. */
     expect([...w.touched].sort()).toEqual(['checkIn', 'ground', 'groundCommitment', 'groundDependency', 'groundParticipant', 'user']);
   });

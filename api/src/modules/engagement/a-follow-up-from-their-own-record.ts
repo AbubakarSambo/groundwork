@@ -1,4 +1,4 @@
-import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
+import { aGroundIsTheAnchors } from '../conversation/the-anchor-weekly-check-in';
 import { theAnchorNudgeFor, theAnchorNudgeLine, theirOwnLastOpenPromise } from '../conversation/the-anchor-nudge';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { theEngagementMoment } from './the-engagement-release-moment';
@@ -30,11 +30,11 @@ async function beganAfterTheRelease(prisma: any, began: Date | null | undefined)
 /** For WhatsApp: the person's own open promise to follow up, or null where the ordinary chase goes. */
 export async function theirPromiseToFollowUp(
   prisma: any,
-  ground: { id: string; startedFrom?: string | null },
+  ground: { id: string; startedFrom?: string | null; scenario?: unknown },
   sessionBeganAt: Date | null | undefined,
   participantId: string,
 ): Promise<string | null> {
-  if (ground.startedFrom === STARTED_FROM_THE_ANCHOR) {
+  if (aGroundIsTheAnchors(ground)) {
     return (await theAnchorScenarioIsOn(prisma)) ? theirOwnLastOpenPromise(prisma, ground.id, participantId) : null;
   }
   if (!(await beganAfterTheRelease(prisma, sessionBeganAt))) return null;
@@ -44,11 +44,11 @@ export async function theirPromiseToFollowUp(
 /** For email: the line the nudge carries, or null where the nudge is what it always was. */
 export async function theNudgeLineFor(
   prisma: any,
-  ground: { id: string; startedFrom?: string | null },
+  ground: { id: string; startedFrom?: string | null; scenario?: unknown },
   sessionBeganAt: Date | null | undefined,
   participantId: string,
 ): Promise<string | null> {
-  if (ground.startedFrom === STARTED_FROM_THE_ANCHOR) return theAnchorNudgeFor(prisma, ground, participantId);
+  if (aGroundIsTheAnchors(ground)) return theAnchorNudgeFor(prisma, ground, participantId);
   const promise = await theirPromiseToFollowUp(prisma, ground, sessionBeganAt, participantId);
   return promise ? theAnchorNudgeLine(promise) : null;
 }

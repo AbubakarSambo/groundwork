@@ -856,7 +856,7 @@ export class GroundsCron implements OnApplicationBootstrap {
            * ON AN ANCHOR CHECK-IN, THE ANCHOR'S NUDGE (piece 30; decision 105 item 3): the person's own last open promise,
            * to them only, in place of the chase. Every gate above still holds, and the sender counts it as the day's one.
            */
-          const theirs = await theirPromiseToFollowUp(this.prisma, { id: ci.groundId, startedFrom: ci.ground.startedFrom }, ci.createdAt, ci.participantId);
+          const theirs = await theirPromiseToFollowUp(this.prisma, { id: ci.groundId, startedFrom: ci.ground.startedFrom, scenario: ci.ground.scenario }, ci.createdAt, ci.participantId);
           if (theirs) said = itFollowsUpTheirPromise(who, theirs, ci.ground.simplerWords);
           else {
             const counts = await this.whoHasAnswered(ci.groundId, ci.sessionNumber);

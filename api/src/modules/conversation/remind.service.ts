@@ -62,7 +62,7 @@ export class RemindService {
 
     const ground = await this.prisma.ground.findUnique({
       where: { id: checkIn.groundId },
-      select: { id: true, label: true, startedFrom: true },
+      select: { id: true, label: true, startedFrom: true, scenario: true },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
 
@@ -268,6 +268,7 @@ export class RemindService {
             label: true,
             /* Whether it is an anchor check-in, for the anchor's nudge (piece 30). */
             startedFrom: true,
+            scenario: true,
             /* The lead set the check-in to use simpler words: the reminder email says it in the plainer form. */
             simplerWords: true,
             /* For the channel notice: `tell` is scoped to an organisation. */
@@ -416,7 +417,7 @@ export class RemindService {
           undefined,
           otherPartyCompleted,
           /* Their own last open promise, to them only, on an anchor check-in (piece 30). */
-          await theNudgeLineFor(this.prisma, { id: checkIn.groundId, startedFrom: (checkIn.ground as any).startedFrom }, (checkIn as any).createdAt, participant.id),
+          await theNudgeLineFor(this.prisma, { ...(checkIn.ground as any), id: checkIn.groundId }, (checkIn as any).createdAt, participant.id),
           /* So the reminder carries its own way out. */
           participant.id,
           (checkIn.ground as any).simplerWords,

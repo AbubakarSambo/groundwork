@@ -70,6 +70,18 @@ export function aCheckInStartedFromTheAnchor(ground: { startedFrom?: string | nu
   return ground?.startedFrom === STARTED_FROM_THE_ANCHOR;
 }
 
+/**
+ * A CHECK-IN IS THE ANCHOR'S by how it was started OR by its scenario (decision 114: the anchor is a scenario like the others, so a check-in made
+ * through the ordinary set-up with that scenario is the anchor's even though it did not come in by the anchor link). The weekly letter, the nudge and
+ * the schedule ask this, and so recognise either.
+ */
+export const THE_ANCHOR_SCENARIO_VALUE = 'HELP_TEAM_UNDERSTAND';
+export function aGroundIsTheAnchors(ground: { startedFrom?: string | null; scenario?: unknown } | null | undefined): boolean {
+  return ground?.startedFrom === STARTED_FROM_THE_ANCHOR || ground?.scenario === THE_ANCHOR_SCENARIO_VALUE;
+}
+/** The same as a filter on the ground table. */
+export const WHERE_A_GROUND_IS_THE_ANCHORS = { OR: [{ startedFrom: STARTED_FROM_THE_ANCHOR }, { scenario: THE_ANCHOR_SCENARIO_VALUE }] };
+
 /** Whether the check-in with this id was started from the anchor link: read from its row, for a caller that was not handed it. */
 export async function theCheckInWasStartedFromTheAnchor(prisma: any, id: string): Promise<boolean> {
   const row = await prisma.ground.findUnique({ where: { id }, select: { startedFrom: true } }).catch(() => null);
