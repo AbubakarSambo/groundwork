@@ -11,13 +11,15 @@ import { KINDS_OFFERED_AT_RELEASE, theBoardKindsOffered, aKindMayBeGiven, contex
 const settings = (rows: Record<string, unknown>) => ({ platformSetting: { findUnique: jest.fn(async ({ where }: any) => (where.key in rows ? { value: rows[where.key] } : null)) } });
 
 describe('the anchor scenario switch (piece 0 of docs/anchor-scenario-plan.md)', () => {
-  it('is ON with no row (Hafsah, 8 October), and off only when the row says so', async () => {
-    expect(await theAnchorScenarioIsOn(settings({}))).toBe(true);
+  it('is OFF with no row (Hafsah, 8 October: it follows in the next pull request), and on only when the row says so', async () => {
+    expect(await theAnchorScenarioIsOn(settings({}))).toBe(false);
+    for (const bad of ['yes', 1, { on: 'true' }, { on: false }, false, null, {}]) {
+      expect(await theAnchorScenarioIsOn(settings({ 'release.anchorScenario': bad }))).toBe(false);
+    }
     expect(await theAnchorScenarioIsOn(settings({ 'release.anchorScenario': { on: true } }))).toBe(true);
-    expect(await theAnchorScenarioIsOn(settings({ 'release.anchorScenario': { on: false } }))).toBe(false);
-    expect(await theAnchorScenarioIsOn(settings({ 'release.anchorScenario': false }))).toBe(false);
+    expect(await theAnchorScenarioIsOn(settings({ 'release.anchorScenario': true }))).toBe(true);
   });
-  it('is off when the row cannot be read, so a database fault never starts one', async () => {
+  it('is off when the row cannot be read', async () => {
     expect(await theAnchorScenarioIsOn({ platformSetting: { findUnique: async () => { throw new Error('down'); } } })).toBe(false);
   });
 });

@@ -31,6 +31,7 @@ import * as bcrypt from 'bcrypt';
 import { itIsADatabaseOnThisComputer, NOT_A_DATABASE_ON_THIS_COMPUTER, theyAreInThisOrganisation } from '../a-database-on-this-computer';
 import { loadTheHundredPeople, thePeople } from '../seed-a-hundred-people-for-the-suites';
 import { TEST_PASSWORD, TEST_WHATSAPP, theBed } from './the-test-bed';
+import { putTheOldShapeIn } from './put-the-old-shape-in';
 
 type Role = 'ADMIN' | 'LEAD' | 'MEMBER';
 const DAY = 86_400_000;
@@ -355,6 +356,8 @@ export async function seedTheFiveOrgs(url: string, outFile: string): Promise<Fix
       ];
       const checkIns: FixtureCheckIn[] = [];
       for (const s of specs) checkIns.push(await addCheckIn(org, DOM, s));
+      /* THE OLD SHAPE: check-ins an existing client made before the rebuild, with their real-shaped answers, finished sessions, released reports and boards (E1). */
+      for (const c of await putTheOldShapeIn(db, org.id, DOM, (k) => uid(k, DOM))) checkIns.push({ ...c, notes: 'Made before the rebuild, copied in shape from a made-up existing client: real-shaped answers, finished sessions, a released report and a board. Names scrambled.' });
       /* A small leave and spend history, as old clients have none of the suites switched on except what they set up. */
       await suite(org.id, uid('lead', DOM), [{ suite: 'leave', isOn: true, answers: { days: 20, approver: 'Their manager' } }]);
       orgs.push({

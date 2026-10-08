@@ -1,4 +1,6 @@
 import { withoutComparisonsBetweenPeople } from './no-comparison-between-people';
+import { onlyWhoIsActuallyOutside } from '../board/somebody-carrying-work-with-no-account';
+import { WHERE_IT_BELONGS } from './the-four-reports';
 /**
  * A READ OF HOW SOMEBODY IS DOING BELONGS TO THAT PERSON, NOT TO THEIR COLLEAGUES.
  *
@@ -38,6 +40,8 @@ export interface OwnReadsInput {
   viewerParticipantId: string | null;
   /** A lead or org admin. They keep leadershipGaps; like everyone, only their own rating, and no concernFlags. */
   viewerIsLead: boolean;
+  /** Everybody on the check-in, by name. Lets the lead's list of people outside the room be cut the way the board cuts it. */
+  partyNames?: string[];
 }
 
 /** Anything shaped `{ label, ... }`, which is how the per-party reads are stored. */
@@ -84,7 +88,7 @@ export function withoutOtherPeoplesReads<T extends Record<string, any>>(report: 
 
 function withoutOtherPeoplesRatings<T extends Record<string, any>>(
   report: T,
-  { viewerLabel, viewerParticipantId, viewerIsLead }: OwnReadsInput,
+  { viewerLabel, viewerParticipantId, viewerIsLead, partyNames }: OwnReadsInput,
 ): T {
   /**
    * WHAT A PERSON WAS PRIVATELY ADVISED TO SAY IS NOBODY ELSE'S, INCLUDING THE LEAD'S.
@@ -170,7 +174,19 @@ function withoutOtherPeoplesRatings<T extends Record<string, any>>(
     ...(finalSynthesis ? { finalSynthesis } : {}),
   };
 
-  if (viewerIsLead) return withoutRatings as T;
+  if (viewerIsLead) {
+    /* The lead keeps the people carrying work outside the room, cut the way the board cuts it. */
+    if (engagement && Array.isArray(engagement.hiddenContributors)) {
+      engagement.hiddenContributors = onlyWhoIsActuallyOutside(engagement.hiddenContributors, partyNames ?? []).keep;
+    }
+    return withoutRatings as T;
+  }
+
+  /* Every field the map marks lead-only is the lead's alone. Stripped here, on the server, for
+     everybody else, so a member's API call never carries it (the-four-reports, leadOnly). */
+  if (engagement) {
+    for (const [field, placed] of Object.entries(WHERE_IT_BELONGS)) if (placed.leadOnly) delete engagement[field];
+  }
 
   /* Concerns about people. Not a participant's to read about anyone, including themselves - a
      concern is raised with a person, never delivered to them in a document alongside their
@@ -196,5 +212,6 @@ function withoutOtherPeoplesRatings<T extends Record<string, any>>(
    */
   const out: Record<string, any> = { ...withoutRatings };
   delete out.leadershipGaps;
+  for (const [field, placed] of Object.entries(WHERE_IT_BELONGS)) if (placed.leadOnly) delete out[field];
   return out as T;
 }

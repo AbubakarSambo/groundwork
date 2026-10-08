@@ -42,7 +42,7 @@ for each copy as `the-five-orgs.a.json` and `the-five-orgs.b.json` (these two ar
 | `newOrg` | Fieldnote Studio: brand new, one admin, on the one-month trial, nothing set up. |
 | `clientOrg` | Msingi Foods: fifteen people; Sales team, Q4 (weekly), Imani Hassan's first ninety days, and the new stock system project; leave, spending (limit 100,000 shillings), timesheets and reviews on; WhatsApp on; three people with no number. |
 | `bigOrg` | Baobab Distribution: a hundred people in nine teams, thirty-six check-ins, and dozens of leave and spending requests waiting on each of several approvers. |
-| `existingOrg` | Riverbank Trading: the shape of an existing client, fifteen check-ins made before the rebuild, five stalled, some people with no name and some with no number. All names and addresses are made up. |
+| `existingOrg` | Riverbank Trading: the shape of an existing client, twenty-two check-ins made before the rebuild, five stalled, some people with no name and some with no number. Seven of them (Okr alignment, Renewal push, Group revenue 2027, a new starter, a performance check-in, Night rota, The Fleet Street lease) carry real-shaped old data: their answers, finished sessions, released reports and boards, copied in shape from a made-up existing-client database (`riverbank-old-shape.json`, written by `export-old-shape.ts`, put in by `put-the-old-shape-in.ts`), with names scrambled and dates moved so the newest is yesterday. All names and addresses are made up. |
 | `secondOrg` | Lakeview Clinic: shares Neema Kamau with Client org (one sign-in, one number, two organisations). |
 
 Every check-in has a `notes` line saying what state it is in on purpose. Every date in the data is counted

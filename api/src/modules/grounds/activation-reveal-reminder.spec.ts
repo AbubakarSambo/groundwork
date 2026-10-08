@@ -27,6 +27,8 @@ function makeService(pendingRevealRows: any[]) {
     ground: {
       findMany: jest.fn(async () => []), // legacy REPORT_READY activation-reminder query - none in this test
     },
+    /* Changed 8 October (decision 117, D14): the job counts the reminders already sent from the record of messages. None has been sent here. */
+    notification: { count: jest.fn(async () => 0) },
   };
   const email: any = {
     sendActivationRevealReminder: jest.fn(async (to: string) => { sentTo.push(to); }),

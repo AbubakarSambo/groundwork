@@ -9,6 +9,8 @@ Tick each one before merging. The full steps are in `docs/deploy.md`, "The relea
 - [ ] **`SETTINGS_ENCRYPTION_KEY` is set** on each hosted environment, made with `openssl rand -base64 32`, a different one for each environment, and never changed later.
 - [ ] **`NODE_ENV=production`** is set on production.
 - [ ] **Which Node runs the API and the client.** Your commit "fix: node" asks for Node 24. Our notes said Node 20. The build and the production start check pass on both (Node 20.20.2 and Node 24.21.0), so either is fine; please say which the hosts run.
+- [ ] **Google sign-in:** `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set on the hosted API with the same values as live, `GOOGLE_CALLBACK_URL` is the API's address plus `/api/v1/auth/google/callback` and is an authorised redirect in the Google client, and `FRONTEND_URL` is the client's address. Without the id and secret, no Google button shows anywhere, on live or here.
+- [ ] **Staff access:** on the real database, `hjumare@gmail.com` has an account and `is_platform_admin` reads true after the migrations (migration `20261007233000_hafsah_stays_a_platform_admin` sets it, but cannot create the account).
 - [ ] **The migrations apply in order.** The API applies them itself when it starts (`prisma migrate deploy`). If one fails, the API does not start.
 - [ ] **The four one-off scripts run in this order**, each as a dry run first and then with `--hosted-database --write`:
   1. `stamp-said-word-for-word.ts`
@@ -28,7 +30,10 @@ This is the whole build: the engine work, the screens work, and everything you c
 5. **Staying in touch** (decision 109): "here is what is new" made from the person's own data, one-click opt-out with a confirmation, and a daily lead summary that is skipped when nothing changed.
 6. **Privacy, enforced on the server**, each with a test. What a lead writes about a person never reaches that person. A lead in the same department does not read evaluation check-ins she is not in. A person held for a seat keeps their own answers and own report and nothing else. An email address is never shown in place of a name.
 7. **Safety fixes**: only the person who runs a check-in, or an organisation admin, can resend an invitation; the scheduled jobs' lock is held on one connection; each visitor is counted by their own address in the rate limits; the WhatsApp webhook answers at once and never does a message twice.
-8. **The anchor scenario**, built and switched off (`release.anchorScenario`).
+8. **The anchor scenario, built and switched off** (`release.anchorScenario`). Its separate screens contradict Hafsah's decision 114 that the anchor uses the normal entry chat, board and reports, so it follows in the next pull request, rebuilt through the normal flow.
+9. **Nothing removed.** A feature-by-feature audit of live against this branch (`docs/nothing-removed-audit.md`) found nothing live can do that this cannot, on the server: every sign-in method including Google, every route the live client calls, every setting, email, WhatsApp message, scheduled job and staff page. Google sign-in and staff access were checked and proved; nothing in the code had changed.
+10. **Hafsah's answers of 8 October (decision 117).** The person reviewed on a performance plan, promotion or renewal reads the manager's words again, as on live; only colleagues' exact words stay hidden (`f5e31c45`). "Your report is ready" goes at most twice for a person and a report, then appears in their weekly summary (`e16074bc`).
+11. **The user journey sweep** (`docs/user-journey-tests.md`): 83 problems found through the engine, WhatsApp and email; 63 fixed, each with a test that fails without it. The 20 left are listed below.
 
 Existing clients get the whole build (decision 90). Their check-ins move to the new boards through the one-off scripts above.
 
@@ -46,24 +51,21 @@ The join had one conflict, in `docs/known-issues.md`, and it was resolved by kee
 
 ## Every result
 
-All from 7 October, on the merged code.
+All from 8 October, on the final commit of this branch.
 
 | Check | Result |
 | --- | --- |
-| API tests | All 18,029 pass, in 1,838 suites. Two are skipped on purpose (live journeys run separately). |
-| Client tests | All 4,602 pass. |
+| API tests | 18,636 pass in 1,892 suites, 6 skipped on purpose (live journeys). The run found two guard specs behind the last fixes; both were brought up to date with no product change and pass. |
+| Client tests | All 4,709 pass, in 710 files. |
 | Typechecks | The API (`tsc --noEmit`) and the client (`tsc -b`) are clean. |
-| Clean install and build | Both pass, from a fresh checkout with `npm ci`, using the build commands in `api/railway.toml` and `client/vercel.json`. |
-| Production start | `npm run check:production-start` passes on Node 20.20.2 and on Node 24.21.0: it starts, `/health` says ok, `/embed.js` answers. |
-| Migrations, empty database | All 365 apply, and a second run finds nothing to apply. |
-| Migrations, on the shared line's own schema | A database built with the shared line's 361 migrations, with rows like an existing client, takes our 4 new ones. None fails and every row reads the same afterwards. |
-| The 24-scenario run (run-oct7c), against the baseline | Every problem count is 0. Every engine number holds or rises except "proof asked for": 34 against 42. About three quarters of that count is the word "picture" ("a clearer picture"); two runs of the same code moved it by 7. Commitments recorded 59 (33 before), agreements 75 (56), jargon in Groundwork's turns 20 (42). Every report and judgement ran on the active stored prompts. |
-| Judgements against the right answer | 13 right, 9 partly, 2 missed (loans and openread). |
-| Adversarial set | 32 of 35 checks pass. The three are explained under "Needs Hafsah"; none is a leak by the rules. |
-| User journeys (admin, lead, team member) | Browser and WhatsApp, from a clean install, with the model. Every fault found was fixed, then the journeys were run again: 129 of 130 pass. The one left is the model's own wording in one report sentence. |
-| WhatsApp journeys | 230 of 232 at the first run; both faults fixed. Groundwork's own number and an organisation's own number never cross (32 of 32). A guest asks only about their own check-in (34 of 34). |
-| Privacy sweep | 168 routes read on the server as 12 kinds of reader, then a final re-check of 2,016 calls after the last fixes. No reader can open anything they should not. The faults it found are fixed: a same-department lead reading evaluation check-ins, a join link working on a check-in still waiting for an admin, and a promise listed twice in Ask. |
-| Existing clients | Old against new on a copy of the existing-clients data: 0 leaks, wording worse in nothing. 12 lines say a person held for a seat no longer reads the team's board or report; that is decision 110 (B3), on purpose. The carry-on test passes 10 of 10. |
+| Production start | `npm run check:production-start` passes: it builds as production does, starts, `/health` says ok, `/embed.js` answers. It passed on Node 20.20.2 and Node 24.21.0 on 7 October. |
+| Migrations | Five new ones over live (the anchor's situation, "use simpler words", the strategy's versions, an address can always stop the mail, and the platform admin kept). On 7 October all applied on an empty database and on a database built to live's own schema with existing-client rows, with every row unchanged. |
+| Privacy sweep | 28 readers across three organisations, about 17,000 server reads plus Ask questions. No leak. Transcripts reach only their owner; nobody reads another person's You or Ask; no lead-only field reaches a member; no comparison between people; ratings only to the person they are about; decision 40's checkability rule holds; no email address where a name goes. The last three findings were fixed on 8 October (a lead-only field in the report, labels on the ending panel, the roster's stored text). |
+| Browser journeys | Sign-up and sign-in (link and password, at 1440, 1280, 1024 and 390), the admin, the lead's set-up from a pasted plan, the member joining and checking in, approvals and reviews, people, a check-in waiting for an admin, joining at 390: all pass. One fault found and fixed: a new check-in's first open takes 65 to 88 seconds and the screen gave up at 45. |
+| Google sign-in | With test client ids, `/auth/methods` says google is on, "Sign in with Google" and "Sign up with Google" show at 1440 and 390, and both go to Google's sign-in with the right redirect. Tests prove an existing Google user signs in, a same-address user is linked, and a new one signs up. |
+| The anchor | Off in this release. It was walked as a lead and a team member before being switched off, and nothing stopped either; it follows in the next pull request through the normal flow. |
+| Existing clients ("nothing lost") | Old code against new on realistic old data, as 12 people: every person's words identical in 142 of 142 transcripts; two real losses found and fixed (unnamed colleagues missing from the picker, and words shown as "nothing specific" on the lead's report). Everything else that differs comes from a decision. Stalled check-ins send nothing. |
+| The 24-scenario run (run-oct7c, 7 October) | Every problem count is 0. Every engine number holds or rises except "proof asked for", 34 against 42, mostly the word "picture". |
 
 ## What is switched off
 
@@ -71,7 +73,7 @@ Each is one row in `platform_settings`, and a missing row reads as the safe defa
 
 | Switch | At release |
 | --- | --- |
-| `release.anchorScenario` | Off |
+| `release.anchorScenario` | Off (follows in the next pull request) |
 | `release.contextInAskGroundwork` | Off |
 | `release.planAndBillingNewParts` | Off |
 | `release.boardKindsOffered` | Sales and engineering release only |
@@ -88,8 +90,8 @@ The full list is `docs/deploy.md`, "The release night, in order". In short:
 
 1. **Take the backup first**, and write down the time.
 2. Set the hosted settings: `SETTINGS_ENCRYPTION_KEY`, `TRUST_PROXY_HOPS` if more than one proxy, `NODE_ENV=production`, and the WhatsApp ones in `docs/whatsapp-settings.md`. Leave every switch above at its default.
-3. Release the API. On start it applies the 4 new migrations and adds the prompts.
-4. Check `/health`, that the migrations finished, and the active prompts.
+3. Release the API. On start it applies the 5 new migrations and adds the prompts.
+4. Check `/health`, that the migrations finished, the active prompts, and that `hjumare@gmail.com` reads `is_platform_admin` true.
 5. Run the four one-off scripts in order, each as a dry run first and then with `--hosted-database --write`. Each asks for the database's host name to be typed back.
 6. Read what each person reads on a test organisation.
 7. Turn things on one at a time, never on the day of the migrations.
@@ -98,12 +100,18 @@ The full list is `docs/deploy.md`, "The release night, in order". In short:
 
 Restore the database backup and the old code together, never the code alone. One migration dropped a column, so the old code cannot read the new database.
 
-## Not in this release, and known
+## Still being polished, for the next pull request
 
-- **Prompt changes waiting for a full run.** The anchor's member questions still borrow the project's, suggested replies can carry "..." placeholders, some prompt lines read back to front, and judgements sometimes call one named person "they". Each needs a full 24-scenario run to prove nothing is lost, so none is in this release. The anchor is switched off.
-- **The rest of `docs/known-issues.md`**: 4 Broken entries that need you or Hafsah (the templates, the release-night steps, the hosting questions), and the Wrong and Untidy entries, none of which reaches a private word.
+- **Decision 113, appealing a decided review** (bug B-024): built next.
+- **The anchor scenario, switched on**, as a scenario like the others (decision 114): the normal entry chat, invitations, board and reports, with its board sections through the switchboard; `/start/team` becomes a redirect. The engine and the screens are both on it.
+- **The engagement work** from `docs/engagement-spec.md`.
+- **Prompt changes, each waiting for a full 24-scenario run:** the anchor member's opening questions, "..." in suggested replies, back-to-front lines, "they" for one named person, and the 15 sweep bugs that are the model's own wording.
+- **Open sweep bugs** (`docs/bug-log-engine.md`): B-127 needs a decision (nothing links a check-in to a company priority, so the Company page says "No team feeds it"); B-141 and B-152 are by design; B-112 is a screen item.
+- **The rest of `docs/known-issues.md`.**
 
 ## Needs Hafsah
+
+0. **From the audit, for a yes or no** (`docs/nothing-removed-audit.md`, H3 to H11): a same-department lead no longer reads evaluation check-ins; admins lost the set-up controls on check-ins they do not run, while the server still accepts those writes; the People list's count; the alignment, brief, note and advice narrowings; the WhatsApp add-on section hidden while WhatsApp is off.
 
 1. **What a lead in the same department reads.** Today any lead in the department can open the department's ordinary check-ins (evaluation check-ins are now left out for her), and on them she reads the members' promises word for word, for example "I will call the electrician on Monday". Your rule of 5 September says a manager sees the report, not people's sentences. Should the department read be only the manager's, and should it leave out the promises' exact words? This is how the live line works today; nothing was changed.
 2. **Health and family said in a person's own check-in.** Tunde mentions his father's dialysis himself, and it reaches his lead's report. The rules allow it (what people say in a check-in can be shown to the people in it); the adversarial test treats it as private. No decision covers health or family. Nothing was changed.

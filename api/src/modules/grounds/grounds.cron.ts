@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnApplicationBootstrap, Optional } from '@nestjs/common';
+import { THE_MOST_REPORT_READY_REMINDERS, howManyReportReadyRemindersWereSent } from '../email/the-report-is-ready-reminder';
 import { NOT_HELD_FOR_A_SEAT } from '../participants/held-for-a-seat';
 import { LeaveBoardService } from '../suites/the-leave-board.service';
 import { TimeSheetsService } from '../suites/the-time-sheets.service';
@@ -25,6 +26,7 @@ import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { keptOffThePhone } from '../whatsapp/a-check-in-kept-off-the-phone';
 import { whatToSendThisMorning, whichChase, whenItIsDue, itIsOverdue, itIsDueTomorrow, theTeamIsAlmostIn, yourViewMatters, itOpensSoon, MORNING_ORDER, itFollowsUpTheirPromise } from '../whatsapp/what-goes-to-a-phone';
+import { theirTimeZone } from '../whatsapp/the-persons-own-time-zone';
 import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
 import { sendWhoHasGoneQuiet as sendWhoHasGoneQuietToLeads } from '../engagement/who-has-gone-quiet';
 import { sendTheReportFollowUps } from '../engagement/the-report-follow-up';
@@ -1081,11 +1083,12 @@ export class GroundsCron implements OnApplicationBootstrap {
         if (before) continue;
         if (await isAGuestIn(this.prisma, ci.ground.organizationId, { userId: ci.participant.userId, email: ci.participant.email, userEmail: user?.email })) continue;
         const person = ci.participant.email
-          ? await this.prisma.person.findFirst({ where: { organizationId: ci.ground.organizationId, email: ci.participant.email, active: true }, select: { phone: true } })
+          ? await this.prisma.person.findFirst({ where: { organizationId: ci.ground.organizationId, email: ci.participant.email, active: true }, select: { phone: true, timezone: true } })
           : null;
         const phone = person?.phone ?? user?.phoneNumber ?? null;
         if (!phone) continue;
-        const said = itOpensSoon({ firstName: user?.firstName, label: await nameFor({ userId: ci.participant.userId, email: ci.participant.email }, ci.groundId, ci.ground.label) }, new Date(ci.availableFrom), ci.ground.simplerWords);
+        /* The hour in the person's own zone, with the zone named (B-140). */
+        const said = itOpensSoon({ firstName: user?.firstName, label: await nameFor({ userId: ci.participant.userId, email: ci.participant.email }, ci.groundId, ci.ground.label) }, new Date(ci.availableFrom), ci.ground.simplerWords, theirTimeZone(person?.timezone, phone));
         await this.whatsapp.sendFor(ci.ground.organizationId, phone, said.text, { checkInId: ci.id, kind: said.kind, params: said.params });
         sent++;
       } catch (err: any) {
@@ -1205,6 +1208,8 @@ export class GroundsCron implements OnApplicationBootstrap {
     for (const p of pendingReveal) {
       if (p.user?.emailNotifications === false) continue;
       try {
+        /* At most two for a person and a report (decision 117, D14). Not being able to count is not leave to send. */
+        if ((await howManyReportReadyRemindersWereSent(this.prisma as any, p.email, p.ground.label)) >= THE_MOST_REPORT_READY_REMINDERS) continue;
         await this.email.sendActivationRevealReminder(p.email, p.ground.label, `${frontend}/grounds/${p.ground.id}/report`);
         await this.prisma.groundParticipant.update({ where: { id: p.id }, data: { lastNudgedAt: now } });
         revealReminders++;

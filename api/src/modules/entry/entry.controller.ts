@@ -580,8 +580,8 @@ export class EntryController {
   @Public()
   @Post('opener')
   @Throttle({ global: { limit: 30, ttl: 60000 } })
-  opener(@Body() dto: EntryOpenerDto) {
-    return { reply: this.service.opener(dto.scenario) };
+  async opener(@Body() dto: EntryOpenerDto) {
+    return { reply: await this.service.opener(dto.scenario) };
   }
 
   @Public()

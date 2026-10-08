@@ -12,7 +12,7 @@ import { aQuestionAskedAboutARequest, aQuestionSaidBack, aQuestionSent, aQuestio
 import { whatYouCanAskSaid } from './what-you-can-ask-here';
 import { route, whatICanDoWith, Lane } from './the-router-is-deterministic';
 import { aPromiseAsASentence } from './a-promise-as-a-sentence';
-import { noSeatYetSays, whenIsMyNextCheckIn, whatMyCheckInIsFor, theCompanysPriorities, isTheStrategyMoving, THE_REQUEST_STARTERS, howToAskForLeaveOrSpending } from './about-your-check-ins-and-the-company';
+import { noSeatYetSays, whenIsMyNextCheckIn, whatMyCheckInIsFor, theCompanysPriorities, asksWhatTheCompanyIsWorkingOn, isTheStrategyMoving, THE_REQUEST_STARTERS, howToAskForLeaveOrSpending } from './about-your-check-ins-and-the-company';
 import { Reply, rules, text, picker, SourceBlock } from './a-reply-is-a-payload-not-a-string';
 import { ReportsService } from '../reports/reports.service';
 import { howManyAnsweredInWords } from '../reports/the-picture-in-plain-sentences';
@@ -52,6 +52,8 @@ import {
 } from './a-suite-set-up-by-talking';
 import { theirSignIn } from '../suites/a-roster-entry-and-its-sign-in';
 import { withoutCommitmentsFromGoalsNotToldYet } from '../grounds/a-commitment-from-a-goal-not-told-is-not-read-by-its-person';
+import { theOpenSession as theOpenSessionOfACheckIn, whereOneStands } from '../engagement/heres-what-is-new';
+import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
 import { onWhatsApp, keptInTheApp, mayBeRead, notFromAKeptCheckIn, notAKeptCheckIn } from './a-check-in-kept-in-the-app-is-not-read-on-whatsapp';
 import { aDecisionIn, onlyTheDecision, aDecisionSaidBack, aDecisionDone, aDecisionNotMade, whichDecision, NOTHING_TO_DECIDE, HOURS_ARE_NOT_DECLINED, type AWaitingRequest } from '../suites/a-request-in-words';
 import { whatWaitsForYouToDecide } from '../suites/what-waits-for-you-to-decide';
@@ -134,7 +136,7 @@ import { isAGuestsKey } from './a-guests-questions-are-kept-apart';
 import { withoutGoalsNotToldIn } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { theWordsOfWhatTheLeadHasNotToldThemAbout, theyRunThisCheckIn } from '../board/an-untold-goal-is-not-a-board-objective';
 import { targetsHiddenFrom, withoutHiddenTargetsIn, namesOnTheRoster } from '../board/a-hidden-target-stays-hidden';
-import { runsIt } from '../grounds/who-may-read-this-check-in';
+import { runsIt, groundsAViewerMayList } from '../grounds/who-may-read-this-check-in';
 import { A_GROUND_IS_OVER } from '../grounds/a-ground-that-has-ended';
 import { parseContextLine, parseLeadNote, labelForContextKind, parseChangeContextLine, parseAskAPerson } from './a-line-or-a-note-typed-in-chat';
 import { quotedThenEnding } from './a-quote-takes-no-second-mark';
@@ -192,6 +194,16 @@ export function looksLikeAName(q: string): boolean {
   if (/[.,;:!?]/.test(t)) return false;
   const words = t.split(/\s+/);
   return words.length >= 1 && words.length <= 4;
+}
+
+/** Groundwork's own tags for what people told it (the chat, the panel, the seed), which no customer ever named. */
+function aSourceIsGroundworks(sys: string): boolean {
+  return /^(groundwork|gwc_|panel$|seed$)/i.test(sys);
+}
+
+/** Where the information came from, in words a person uses (B-028): never "groundwork-chat". A customer's own system keeps its own name. */
+function aSourceInPlainWords(sys: string, _stale: boolean): string {
+  return aSourceIsGroundworks(sys) ? 'What you have told Groundwork' : sys;
 }
 
 @Injectable()
@@ -468,7 +480,12 @@ export class AssistantService {
       return rules('how_to_ask_for_leave_or_spending', text(howToAskForLeaveOrSpending({ leave: suites.has('leave'), spend: suites.has('spend') })));
     }
 
-    const routedByRules = route(message);
+    let routedByRules = route(message);
+    /* The company by its own name: the router cannot know it, so it is asked here (B-134). */
+    if (routedByRules.lane === 'unplaced' && /\bworking\s+on\b/i.test(message)) {
+      const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true } }).catch(() => null);
+      if (asksWhatTheCompanyIsWorkingOn(message, org?.name)) routedByRules = { lane: 'company_priorities' };
+    }
     const routed = !contextIsHere && THE_CONTEXT_LANES.has(routedByRules.lane) ? { ...routedByRules, lane: 'unplaced' as typeof routedByRules.lane } : routedByRules;
 
     /*
@@ -571,7 +588,9 @@ export class AssistantService {
       case 'what_is_stuck':
         return this.compose(await this.whatIsStuck(organizationId, who, message, userId ?? null));
       case 'how_is_the_team':
-        return this.howIsTheTeam(organizationId, who, userId ?? null);
+        return this.howIsTheTeam(organizationId, who, userId ?? null, routed.subject);
+      case 'who_has_not_checked_in':
+        return this.whoHasNotCheckedIn(organizationId, userId ?? null, routed.subject);
       case 'how_am_i_doing':
         return this.compose(await this.howAmIDoing(organizationId, who));
       case 'what_can_you_do':
@@ -925,24 +944,81 @@ export class AssistantService {
   }
 
   /**
+   * "WHO HAS NOT CHECKED IN" (B-134). Private to the lead who asks, about the check-ins they RUN only, counted by the one function the
+   * "here is what is new" email and the board use (the people who can answer the round the board calls open, never anybody only managing or
+   * not yet let in), so the answer agrees with Today, the board and the mail. A check-in somebody only takes part in is not theirs to be
+   * told names about. Stalled, ended, held and waiting check-ins are not asked about.
+   */
+  private async whoHasNotCheckedIn(organizationId: string, userId: string | null, subject: string | undefined): Promise<Reply> {
+    const lane = 'who_has_not_checked_in';
+    if (!userId) return rules(lane, text('I cannot look that up without knowing who you are.'));
+    const kept = await keptInTheApp(this.prisma as any, organizationId);
+    /* An admin reads every board in the organisation, who has answered included (decision 5), except a performance plan, a promotion or a renewal
+       they were not given; everybody else is told about the check-ins they run. The one rule says which (who-may-read-this-check-in). */
+    const membership = await this.prisma.organizationMembership.findUnique({ where: { userId_organizationId: { userId, organizationId } }, select: { role: true } }).catch(() => null);
+    const anAdmin = membership?.role === 'ADMIN';
+    const run = (await this.prisma.ground.findMany({
+      where: anAdmin
+        ? { AND: [groundsAViewerMayList(userId, { role: 'ADMIN', organizationId }, organizationId) as any, { status: { notIn: [...A_GROUND_NO_MESSAGE_IS_ABOUT] } }] }
+        : { organizationId, initiatorId: userId, status: { notIn: [...A_GROUND_NO_MESSAGE_IS_ABOUT] } },
+      select: { id: true, label: true },
+      orderBy: { createdAt: 'desc' },
+      take: 40,
+    })).filter((g) => mayBeRead(kept, g.id));
+    if (!run.length) {
+      return rules(lane, text(anAdmin
+        ? 'There is no check-in going in the organisation that you can read, so there is nobody for me to tell you about.'
+        : 'You do not run a check-in that is going yet, so there is nobody for me to tell you about. You can ask me what you are waiting on.'));
+    }
+    const named = (subject ?? '').trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+    const chosen = named ? run.filter((g) => String(g.label).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').includes(named)) : run;
+    if (!chosen.length) {
+      return rules(lane, text(`I cannot find a check-in called ${subject!.trim()} that you ${anAdmin ? 'can read' : 'run'}. The ones you ${anAdmin ? 'can read' : 'run'} include ${run.slice(0, 5).map((g) => `"${g.label}"`).join(', ')}.`));
+    }
+    const lines: string[] = [];
+    for (const g of chosen.slice(0, 5)) {
+      const open = await theOpenSessionOfACheckIn(this.prisma, g.id, userId).catch(() => null);
+      if (open) lines.push(whereOneStands({ ...open, label: g.label }));
+    }
+    if (!lines.length) {
+      return rules(lane, text(`Nothing is open for anybody to check in on in the check-ins you ${anAdmin ? 'can read' : 'run'} right now.`));
+    }
+    const more = chosen.length > 5 ? `\n\nThere ${chosen.length - 5 === 1 ? 'is one more check-in' : `are ${chosen.length - 5} more check-ins`} you can read. Ask me about one by its name.` : '';
+    return rules(lane, text(`${lines.join('\n')}${more}\n\nThis is counted the way your board counts it, and only you can read it here.`));
+  }
+
+  /**
    * "HOW IS THE TEAM DOING" (4 October 2026, the user journeys). Private to the lead who asks, and read from what the
    * board and the latest report of each check-in they RUN already say: the board's own sentence on how it is going and
    * its count of who has answered and what is in the way, read as the lead, so nothing is added to it and nothing is
    * hidden by this lane alone. A check-in somebody only takes part in is not the team they lead. Nothing is rebuilt:
    * the board is read, never opened for writing (decision 7).
    */
-  private async howIsTheTeam(organizationId: string, who: string | null, userId: string | null): Promise<Reply> {
+  private async howIsTheTeam(organizationId: string, who: string | null, userId: string | null, subject?: string): Promise<Reply> {
     const lane = 'how_is_the_team';
     if (!userId) return rules(lane, text('I cannot look that up without knowing who you are.'));
     const kept = await keptInTheApp(this.prisma as any, organizationId);
-    const run = (await this.prisma.ground.findMany({
-      where: { organizationId, initiatorId: userId },
+    /* An admin reads every board in the organisation (decision 5), except a performance plan, a promotion or a renewal she was not given; a lead is told about the check-ins she runs. */
+    const membership = await this.prisma.organizationMembership.findUnique({ where: { userId_organizationId: { userId, organizationId } }, select: { role: true } }).catch(() => null);
+    const anAdmin = membership?.role === 'ADMIN';
+    let run = (await this.prisma.ground.findMany({
+      where: anAdmin
+        ? { AND: [groundsAViewerMayList(userId, { role: 'ADMIN', organizationId }, organizationId) as any, { status: { notIn: [...A_GROUND_NO_MESSAGE_IS_ABOUT] } }] }
+        : { organizationId, initiatorId: userId },
       select: { id: true, label: true },
       orderBy: { createdAt: 'desc' },
-      take: 5,
+      take: anAdmin ? 40 : 5,
     })).filter((g) => mayBeRead(kept, g.id));
+    /* "How is the sales team doing?" is about the check-ins with "sales" in their name, where there are any. */
+    const word = (subject ?? '').trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+    if (word) {
+      const named = run.filter((g) => String(g.label).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').includes(word));
+      if (named.length) run = named;
+    }
     if (!run.length) {
-      return rules(lane, text('You do not run a check-in yet, so there is no team for me to tell you about. You can ask me how you are doing, or what you are waiting on.'));
+      return rules(lane, text(anAdmin
+        ? 'There is no check-in going in the organisation that you can read, so there is no team for me to tell you about.'
+        : 'You do not run a check-in yet, so there is no team for me to tell you about. You can ask me how you are doing, or what you are waiting on.'));
     }
 
     const parts: string[] = [];
@@ -970,7 +1046,7 @@ export class AssistantService {
     if (!parts.length) {
       return rules(lane, text('Nobody has answered in the check-ins you run yet, so there is nothing to tell you about the team so far. I will have more once people have finished.'));
     }
-    return rules(lane, text(`${parts.join('\n\n')}\n\nThis is what your board and your latest report say, and only you can read it here.`));
+    return rules(lane, text(`${parts.join('\n\n')}\n\nThis is what ${anAdmin ? 'the' : 'your'} board${anAdmin ? 's' : ''} and ${anAdmin ? 'the' : 'your'} latest report${anAdmin ? 's' : ''} say, and only you can read it here.`));
   }
 
   /**
@@ -1170,7 +1246,10 @@ export class AssistantService {
     const keep = first && first.type === 'text'
       ? first.body.split('\n').filter((l) => l.startsWith('- "')).map((l) => l.slice(2))
       : [];
-    return this.compose(reply, keep);
+    /* NOTHING QUOTED, NOTHING REWORDED (B-125). "I have nothing from Amani about pricing approvals in the check-ins you can read" went to the composer and
+       came back "You did not mention pricing approvals from Amani in your check-ins": a different claim, about a different person. A refusal, or a
+       wall's sentence, goes out as the lane wrote it; only an answer that quotes people is worded, and its quotes are kept. */
+    return keep.length ? this.compose(reply, keep) : reply;
   }
 
   /** The answer, then where it came from, in a sentence and as a block. Used by every lane that reads a record. */
@@ -5046,7 +5125,14 @@ export class AssistantService {
       where: { organizationId, sourceDeletedAt: null },
       select: { sourceSystem: true, syncedAt: true, sourceDeletedAt: true },
     });
-    const people = await this.prisma.person.count({ where: { organizationId, active: true } });
+    /* EVERYONE WHO BELONGS HERE (B-028): the roster rows, plus members who were invited and never put on a roster, so an organisation of 19 does not read "15 people". */
+    const rosterRows = await this.prisma.person.count({ where: { organizationId, active: true } });
+    const onTheRoster = new Set<string>(((await (this.prisma as any).person?.findMany?.({ where: { organizationId, active: true, linkedUserId: { not: null } }, select: { linkedUserId: true } })) ?? []).map((r: any) => String(r.linkedUserId)));
+    const members: any[] = (await (this.prisma as any).organizationMembership?.findMany?.({
+      where: { organizationId, role: { not: 'GUEST' }, user: { deletedAt: null, isActive: true, awaitingOrgApproval: false } },
+      select: { userId: true },
+    })) ?? [];
+    const people = rosterRows + members.filter((m) => !onTheRoster.has(String(m.userId))).length;
 
     if (!subjects.length && !people) {
       return rules('what_you_can_see', text('Nothing is connected yet, so there is genuinely nothing I can tell you. Your admin can connect your systems from the Connect page.'));
@@ -5066,8 +5152,8 @@ export class AssistantService {
       ...[...bySystem.entries()].map(([sys, v]) =>
         /* Staleness is said out loud rather than left for somebody to infer from a date. */
         v.stale
-          ? `${sys} last sent anything on ${v.syncedAt.toDateString()}, which is old enough that I would check it before relying on it.`
-          : `${sys}, last updated ${v.syncedAt.toDateString()}.`,
+          ? `${aSourceInPlainWords(sys, true)} last ${aSourceIsGroundworks(sys) ? 'added to' : 'sent anything'} on ${v.syncedAt.toDateString()}, which is old enough that I would check it before relying on it.`
+          : `${aSourceInPlainWords(sys, false)}, last updated ${v.syncedAt.toDateString()}.`,
       ),
     ];
 

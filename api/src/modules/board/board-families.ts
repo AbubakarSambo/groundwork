@@ -201,7 +201,16 @@ export type BoardSection =
   | 'hiddenContributors'
   | 'patterns'
   | 'decisions'
-  | 'poll';
+  | 'poll'
+  /* The anchor scenario's own sections (decision 114; docs/anchor-scenario.md sections 11, 12, 18, 19, 23, 24). Named by the switchboard for
+     that scenario alone, and drawn by the ordinary board page. See SCENARIO_SECTIONS_ADDED. */
+  | 'whatYouAreCarrying'
+  | 'howGroundworkWillWork'
+  | 'theFourLenses'
+  | 'ideasFromTheTeam'
+  | 'peopleHelpingTheTeamMove'
+  | 'recommendations'
+  | 'weeklyInsight';
 
 /**
  * Which sections each family renders. SENSING is deliberately empty: not "a
@@ -446,9 +455,18 @@ export function sectionsForARunOf(scenario: GroundScenario, roundsPlanned: numbe
   return all.filter((s) => (WHAT_ONE_ROUND_CAN_SHOW as string[]).includes(s));
 }
 
+/**
+ * THE SWITCHBOARD'S ROWS THAT BELONG TO ONE SCENARIO, ON TOP OF ITS FAMILY'S (decision 114). The anchor is a scenario like the others: it keeps the
+ * delivery family's board and adds the sections docs/anchor-scenario.md names, and the ordinary board payload carries them under these names. A
+ * scenario with no row here has exactly its family's sections.
+ */
+export const SCENARIO_SECTIONS_ADDED: Partial<Record<GroundScenario, BoardSection[]>> = {
+  HELP_TEAM_UNDERSTAND: ['whatYouAreCarrying', 'howGroundworkWillWork', 'theFourLenses', 'ideasFromTheTeam', 'peopleHelpingTheTeamMove', 'recommendations', 'weeklyInsight'],
+};
+
 export function sectionsFor(scenario: GroundScenario): BoardSection[] {
   if (!boardRendersFor(scenario)) return [];
-  return FAMILY_SECTIONS[familyFor(scenario)] ?? [];
+  return [...(FAMILY_SECTIONS[familyFor(scenario)] ?? []), ...(SCENARIO_SECTIONS_ADDED[scenario] ?? [])];
 }
 
 export function boardHasSection(scenario: GroundScenario, section: BoardSection): boolean {

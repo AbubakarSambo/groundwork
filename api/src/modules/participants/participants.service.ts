@@ -32,6 +32,7 @@ export const FRESH_LINK_REPLY =
 
 import { theAnchorInvitation } from '../entry/the-anchor-people-step';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
+import { THE_ANCHOR_SCENARIO_KEY, theInvitationWordsFor } from '../entry/the-anchor-scenario-content';
 import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
 
 @Injectable()
@@ -142,6 +143,10 @@ export class ParticipantsService {
       /* The anchor scenario's own invitation, only for a check-in started from the anchor link and only while the switch is on (request 149). Nothing else about this answer changes. */
       ...((ground as any).startedFrom === STARTED_FROM_THE_ANCHOR && (await theAnchorScenarioIsOn(this.prisma))
         ? { anchorInvitation: theAnchorInvitation(leadFirst) }
+        : {}),
+      /* The same words, as the ordinary invitation read of a scenario that has its own (decision 114): drawn like any scenario's, no anchor branch. Absent for the rest. */
+      ...((ground as any).scenario === THE_ANCHOR_SCENARIO_KEY && (await theAnchorScenarioIsOn(this.prisma))
+        ? { invitationWords: theInvitationWordsFor((ground as any).scenario, leadFirst) }
         : {}),
     };
   }

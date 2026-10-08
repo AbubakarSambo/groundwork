@@ -1040,7 +1040,32 @@ export class ConversationService {
    * eighteen seconds. The first one pays; nobody after does. Never passed for a named participant,
    * whose opener may name them. See theOpenerForThisLink in the-open-link.service.
    */
+  /** The opens still working, by check-in and by who is asking, so a second one is handed the first one's answer. */
+  private readonly opensInFlight = new Map<string, Promise<Awaited<ReturnType<ConversationService['openOnce']>>>>();
+
+  /**
+   * ONE FIRST QUESTION PER SESSION, EVEN IF IT IS ASKED FOR TWICE AT ONCE.
+   *
+   * The first open of a new check-in takes a minute or more, because the brief is read before the
+   * question is written. The stored turn that tells a later open "already done" does not exist until
+   * the first open has finished, so a second tab, or "Try again" after the screen's wait, made a second
+   * model call and a second, different first question. A second open for the same person now waits for
+   * the first and returns the same answer. It is keyed by who is asking as well, so waiting is never a
+   * way past the check on who may open this session (openTheDoor). The question is still written by the
+   * model; this only decides how many times it is asked.
+   */
   async open(checkInId: string, requestingUserId: WhoIsAsking, alreadyWritten?: string | null) {
+    const key = `${checkInId}:${typeof requestingUserId === 'string' ? requestingUserId : `participant:${requestingUserId.theParticipant}`}`;
+    const running = this.opensInFlight.get(key);
+    if (running) return running;
+    const started = this.openOnce(checkInId, requestingUserId, alreadyWritten);
+    this.opensInFlight.set(key, started);
+    const done = () => { if (this.opensInFlight.get(key) === started) this.opensInFlight.delete(key); };
+    started.then(done, done);
+    return started;
+  }
+
+  private async openOnce(checkInId: string, requestingUserId: WhoIsAsking, alreadyWritten?: string | null) {
     const checkIn = await this.openTheDoor(checkInId, requestingUserId);
 
     /**

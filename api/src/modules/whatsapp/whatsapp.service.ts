@@ -356,7 +356,7 @@ export class WhatsAppService implements OnModuleInit {
     }
 
     const ours = await this.ours();
-    const result = await this.post(ours.phoneNumberId ?? '', ours.accessToken ?? '', to, text);
+    const result = await this.post(ours.phoneNumberId ?? '', ours.accessToken ?? '', to, await this.namedForSomebodyInTwoOrganisations(org, to, text, context));
     if (result.sent) this.logger.log(`WhatsApp message sent to ${to}`);
     await this.writeItDown(org, to, result, context);
     return this.counted(org, result);
@@ -507,7 +507,7 @@ export class WhatsAppService implements OnModuleInit {
       await this.writeItDown(organizationId, to, result, context);
       return result;
     }
-    const result = await this.deliver(own.phoneNumberId, theirKey(own, 'accessToken'), to, text);
+    const result = await this.deliver(own.phoneNumberId, theirKey(own, 'accessToken'), to, await this.namedForSomebodyInTwoOrganisations(organizationId, to, text, context));
     if (result.sent) await this.prisma.whatsAppConnection.update({ where: { id: own.id }, data: { lastOutboundAt: new Date() } }).catch(() => undefined);
     await this.writeItDown(organizationId, to, result, context);
     return this.counted(organizationId, result);
@@ -706,6 +706,24 @@ export class WhatsAppService implements OnModuleInit {
       return !came;
     } catch {
       return false;
+    }
+  }
+
+  /**
+   * A MESSAGE GROUNDWORK STARTS, TO A NUMBER THAT IS ON TWO ORGANISATIONS' ROSTERS, SAYS WHICH ONE (B-123). Inside the 24 hours a reminder
+   * went as plain words, without "This is Groundwork, writing for Msingi Foods." and "Not you? Reply STOP.", which everybody else's reminder
+   * carried; the one person who most needed the organisation named was the one who was not told. A reply to what the person wrote is
+   * not started by Groundwork and is left as it is.
+   */
+  private async namedForSomebodyInTwoOrganisations(organizationId: string | null, to: string, text: string, context: SendContext): Promise<string> {
+    if (!isBusinessInitiated(context.kind)) return text;
+    try {
+      const orgs = await this.whichOrganisations(to);
+      if (orgs.length < 2) return text;
+      const name = orgs.find((o) => o.id === organizationId)?.name ?? (await this.nameOfTheOrganisation(organizationId));
+      return `This is Groundwork, writing for ${name}. ${text} Not you? Reply STOP.`;
+    } catch {
+      return text;
     }
   }
 

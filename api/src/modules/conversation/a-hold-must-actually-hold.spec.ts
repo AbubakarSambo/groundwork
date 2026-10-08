@@ -43,8 +43,18 @@ const firstStatementOf = (name: string) => {
 };
 
 describe('every door into a session goes through the same door first', () => {
-  it.each(['open', 'complete'])('%s opens the door before anything else', (method) => {
+  /* Changed with the guard against two opens at once: `open` is now a wrapper that hands a second open the
+     first one's answer, and the work, with the door as its first act, is in `openOnce`. The wrapper is
+     keyed by who is asking, so waiting is never a way past the door. */
+  it.each(['openOnce', 'complete'])('%s opens the door before anything else', (method) => {
     expect(firstStatementOf(method)).toMatch(/const checkIn = await this\.openTheDoor\(checkInId, (requestingUserId|who)\);/);
+  });
+
+  it('open does its work only through openOnce, and is keyed by who is asking', () => {
+    const b = bodyOf('open', 900);
+    expect(b).toContain('this.openOnce(checkInId, requestingUserId, alreadyWritten)');
+    expect(b).toContain('requestingUserId');
+    expect(b).toMatch(/const key = `\$\{checkInId\}:/);
   });
 
   it.each(['sendMessage', 'sendMessageStream'])('%s requires a session already underway before anything else', (method) => {

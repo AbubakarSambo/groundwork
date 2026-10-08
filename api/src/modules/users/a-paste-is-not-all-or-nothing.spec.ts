@@ -74,7 +74,7 @@ describe('the line an admin reads before emailing their company', () => {
     const rows = planFor('a@x.com, b@x.com, c@x.com, a@x.com, oops', (e) => e === 'b@x.com', 1);
     expect(summarise(rows)).toBe(
       '1 person will be invited. 1 person is already here. 1 address was listed twice, so it is left out. '
-      + '1 line is not an email address. 1 person has no seat on your plan.',
+      + '1 line is not an email address. 1 person has no seat on your plan, so the invitation will be kept until there is room.',
     );
   });
 

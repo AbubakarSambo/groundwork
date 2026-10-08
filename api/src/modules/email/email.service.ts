@@ -1,4 +1,5 @@
 import { theEndingSaid, theOutcomeIsThat, TheEndingIsAbout } from '../resolution/end-states';
+import { reportReadyReminderSubject } from './the-report-is-ready-reminder';
 import { THE_EMAILS } from '../grounds/what-is-sent-in-simpler-words';
 import { connectWhatsAppFor, youCanAlsoAnswerOnWhatsApp } from '../whatsapp/connect-whatsapp';
 import { askName } from '../assistant/ask-name';
@@ -1405,7 +1406,7 @@ export class EmailService implements OnModuleInit {
   async sendActivationRevealReminder(email: string, groundLabel: string, reportUrl: string): Promise<void> {
     await this.sendEmail({
       to: email,
-      subject: `Your report for "${groundLabel}" is ready to view`,
+      subject: reportReadyReminderSubject(groundLabel),
       html: this.layout(
         `<p>The shared picture for <strong>${escapeHtml(groundLabel)}</strong> has been ready for a few days now.</p>
          <p>It shows where accounts agree, where they differ, and what is still unresolved. You just need to confirm you are ready to see it.</p>

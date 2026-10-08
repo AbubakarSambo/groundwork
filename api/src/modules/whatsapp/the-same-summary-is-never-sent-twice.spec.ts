@@ -39,33 +39,44 @@ function days() {
   const nobodyIn = [{ status: 'NOT_STARTED', sessionNumber: 1, participant: { userId: 'u-x', managingOnly: false, nameGiven: null, user: { firstName: 'Omar', awaitingOrgApproval: false } } }];
   const bisi = { status: 'NOT_STARTED', sessionNumber: 1, participant: { userId: 'u-b', managingOnly: false, nameGiven: null, user: { firstName: 'Bisi', awaitingOrgApproval: false } } };
   const omarIn = [bisi, { status: 'COMPLETED', completedAt: new Date(Date.UTC(2026, 9, 9, 12)), sessionNumber: 1, participant: { userId: 'u-x', managingOnly: false, nameGiven: null, user: { firstName: 'Omar', awaitingOrgApproval: false } } }];
-  return { morning, sent, setAnswers: (a: any[]) => { answers = a; }, refuse: (v: boolean) => { refuse = v; }, nobodyIn, omarIn };
+  const kofi = { status: 'NOT_STARTED', sessionNumber: 1, participant: { userId: 'u-k', managingOnly: false, nameGiven: null, user: { firstName: 'Kofi', awaitingOrgApproval: false } } };
+  const bothIn = [{ ...bisi, status: 'COMPLETED', completedAt: new Date(Date.UTC(2026, 9, 12, 12)) }, omarIn[1], kofi];
+  return { morning, sent, setAnswers: (a: any[]) => { answers = a; }, refuse: (v: boolean) => { refuse = v; }, nobodyIn, omarIn, bothIn };
 }
 
 describe('eight mornings with nothing new', () => {
   it('she is sent it once, and not again on the seven mornings after', async () => {
     const d = days();
-    d.setAnswers(d.nobodyIn);
+    d.setAnswers(d.omarIn);
     for (let n = 0; n < 8; n++) await d.morning(n);
     expect(d.sent).toHaveLength(1);
-    expect(d.sent[0]).toContain('nobody has checked in for the first check-in yet, out of 1 person');
-    expect(d.sent[0]).toContain("Amina's leave");
+    expect(d.sent[0]).toContain('1 of 2 people has checked in');
+    /* Approvals are told by their own message (B-120): a leave request that has waited all week is not in this one. */
+    expect(d.sent[0]).not.toContain("Amina's leave");
+  });
+
+  it('nothing is sent while nobody has checked in, whatever waits for her to approve', async () => {
+    const d = days();
+    d.setAnswers(d.nobodyIn);
+    for (let n = 0; n < 8; n++) await d.morning(n);
+    expect(d.sent).toEqual([]);
   });
 
   it('and she is sent the next one the morning something changes, once, and then not again', async () => {
     const d = days();
-    d.setAnswers(d.nobodyIn);
-    for (let n = 0; n < 4; n++) await d.morning(n);
     d.setAnswers(d.omarIn);
+    for (let n = 0; n < 4; n++) await d.morning(n);
+    d.setAnswers(d.bothIn);
     for (let n = 4; n < 8; n++) await d.morning(n);
     expect(d.sent).toHaveLength(2);
-    expect(d.sent[1]).toContain('1 of 2 people has checked in');
+    expect(d.sent[0]).toContain('1 of 2 people has checked in');
+    expect(d.sent[1]).toContain('2 of 3 people have checked in');
     expect(d.sent[0]).not.toBe(d.sent[1]);
   });
 
   it('a summary the sender refused is tried again the next morning, and not remembered as said', async () => {
     const d = days();
-    d.setAnswers(d.nobodyIn);
+    d.setAnswers(d.omarIn);
     d.refuse(true);
     await d.morning(0);
     expect(d.sent).toEqual([]);

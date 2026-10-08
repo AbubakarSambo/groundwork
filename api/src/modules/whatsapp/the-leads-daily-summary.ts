@@ -15,7 +15,7 @@ import { namesTheyCanTellApart } from '../../common/check-ins-you-can-tell-apart
 import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
 import { theirApprovedLeave, fallsInLeave } from '../suites/who-is-away';
 import { theirRosterEntry } from '../suites/a-roster-entry-and-its-sign-in';
-import { whatWaitsForYouToDecide, type TheBoards } from '../suites/what-waits-for-you-to-decide';
+import { type TheBoards } from '../suites/what-waits-for-you-to-decide';
 import type { AWaitingRequest } from '../suites/a-request-in-words';
 
 /**
@@ -68,7 +68,7 @@ export function aCheckInInASentence(c: ACheckInToday): string | null {
   /* Which round the count is about, said the way Today and the board say it ("for the second check-in"). */
   const forIt = c.round ? ` for ${theCheckIn(c.round)}` : '';
   if (c.answered >= c.ofHowMany) {
-    return c.ofHowMany === 1 ? `${where}, the one person who can answer has checked in${forIt}.` : `${where}, all ${c.ofHowMany} people have checked in${forIt}.`;
+    return c.ofHowMany === 1 ? `${where}, the one person who can answer has checked in${forIt}.` : c.ofHowMany === 2 ? `${where}, both people have checked in${forIt}.` : `${where}, all ${c.ofHowMany} people have checked in${forIt}.`;
   }
   if (c.answered === 0) return `${where}, nobody has checked in${forIt} yet, out of ${c.ofHowMany} ${c.ofHowMany === 1 ? 'person' : 'people'}.`;
   /* Up to three by name; anybody else, and anybody with no name known, is counted, so the names never read as everyone. */
@@ -167,7 +167,9 @@ export async function sendTheLeadsDailySummaries(
       const entry = await theirRosterEntry(prisma, lead.organizationId, lead.leadId, { phone: true }).catch(() => null);
       const phone = entry?.phone ?? user.phoneNumber ?? null;
       if (!phone) continue;
-      const waiting = await whatWaitsForYouToDecide({ userId: lead.leadId, organizationId: lead.organizationId }, deps.boards);
+      /* WHAT WAITS FOR HER TO APPROVE IS NOT SAID HERE (B-120, decision 92 item 3). Approvals are told straight away and once each morning by their own message,
+         with their own count. Said here too, the same lead read two messages about them in the same second, and the two counts could differ (B-121). */
+      const waiting: AWaitingRequest[] = [];
       const paragraph = theSummaryParagraph(lead.checkIns, waiting);
       if (!paragraph) continue;
       const last = await (async () => prisma.whatsAppSend.findFirst({ where: { phone: { in: formsOfTheSameNumber(phone) }, kind: { startsWith: 'lead-summary' }, sentAt: { not: null } }, orderBy: { sentAt: 'desc' }, select: { sentAt: true } }))().catch(() => null);

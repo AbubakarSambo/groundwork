@@ -3272,6 +3272,18 @@ Close the report by framing - neutrally, without recommending one - the choice n
     };
 
     /*
+     * ONE STRING FOR A PERSON ON A ROW AND ON EACH OF THEIR LINES (E1, Riverbank Trading). A row is named by the name this reader may see, or
+     * "A colleague" (decision 115: an address is never a name). Their lines were filed under `whoOf`, which falls back to the raw label for a
+     * person with no name, so the lines and the row never met and the lead read "This person has answered, and nothing specific enough to
+     * record came out of it." beside people whose words were on record: seven of the twelve at an organisation made before the rebuild.
+     */
+    const nameOnARow = (participantId: string): string | null => {
+      const label = labels.get(participantId);
+      if (!label) return null;
+      return nameByLabel.get(label) ?? aColleague(participantId);
+    };
+
+    /*
      * WHO ANSWERED THIS SESSION, READ BEFORE ANYTHING USES IT.
      *
      * This sat with the reveal rows further down, and the per-person section built above it reads
@@ -3386,7 +3398,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       entries: entries.map((e) => ({
         type: e.type,
         text: cleanText(e.text),
-        who: whoOf(e.participantId),
+        who: nameOnARow(e.participantId),
         recallBased: e.recallBased,
         backedBy: (e as any).anchoredOrigin ?? null,
         confirmedAt: (e as any).confirmedAt ?? null,
@@ -3397,7 +3409,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         type: e.type,
         text: cleanText(e.text),
         /* Whose commitment it was. Without it the reader calls every carried line the reader's own. */
-        who: whoOf(e.participantId),
+        who: nameOnARow(e.participantId),
         threadKey: e.dimensionThreadKey ?? null,
       })),
       baselineSuccess: baseline?.successLooksLike ?? null,
@@ -7228,6 +7240,7 @@ happened, and what is in the way.`;
           viewerLabel: participant ? (labelsForParties(ground.participants as any).get(participant.id) ?? null) : null,
           viewerParticipantId: participant?.id ?? null,
           viewerIsLead: isInitiator || isOrgAdmin,
+          partyNames: ((ground.participants ?? []) as any[]).flatMap((p) => [[p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim(), (p?.user?.firstName ?? '').trim(), (p?.nameGiven ?? '').trim()]).filter(Boolean),
         },
       ), { isLead: isInitiator || isOrgAdmin, participantId: participant?.id ?? null });
       /*
@@ -7415,6 +7428,7 @@ happened, and what is in the way.`;
           viewerLabel: participant ? (labelsForParties(ground.participants as any).get(participant.id) ?? null) : null,
           viewerParticipantId: participant?.id ?? null,
           viewerIsLead: isInitiator || isOrgAdmin,
+          partyNames: ((ground.participants ?? []) as any[]).flatMap((p) => [[p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim(), (p?.user?.firstName ?? '').trim(), (p?.nameGiven ?? '').trim()]).filter(Boolean),
         },
       ), { isLead: isInitiator || isOrgAdmin, participantId: participant?.id ?? null }),
       activated: true,

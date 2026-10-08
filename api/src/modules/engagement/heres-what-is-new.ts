@@ -51,7 +51,7 @@ export function whereOneStands(c: AnExistingCheckIn): string {
   /* Which round the count is about, said the way Today and the board say it. */
   const forIt = c.round ? ` for ${theCheckIn(c.round)}` : '';
   if (c.answered <= 0) return `${In}, nobody has checked in${forIt} yet, out of ${people(c.ofHowMany)}.`;
-  if (c.answered >= c.ofHowMany) return `${In}, ${c.ofHowMany === 1 ? 'the one person who can answer has' : `all ${aNumberInWords(c.ofHowMany)} people have`} checked in${forIt}.`;
+  if (c.answered >= c.ofHowMany) return `${In}, ${c.ofHowMany === 1 ? 'the one person who can answer has' : c.ofHowMany === 2 ? 'both people have' : `all ${aNumberInWords(c.ofHowMany)} people have`} checked in${forIt}.`;
   const named = c.notYet.slice(0, 3);
   const others = c.ofHowMany - c.answered - named.length;
   const who = named.length ? `, and ${listed(others > 0 ? [...named, others === 1 ? 'one other person' : `${aNumberInWords(others)} others`] : named)} ${c.ofHowMany - c.answered === 1 && !named.includes('you') ? 'has' : 'have'} not yet` : '';

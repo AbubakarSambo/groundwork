@@ -55,12 +55,12 @@ function aMorning(opts: { onLeave?: boolean; onlyThePlan?: boolean; waiting?: bo
 }
 
 describe("what Wairimu reads on her phone", () => {
-  it('one paragraph: who answered, who has not, and what waits for her, with the board\'s link', async () => {
+  it('one paragraph: who answered and who has not, with the board\'s link, and nothing about approvals (they have their own message)', async () => {
     const m = aMorning();
     expect(await m.run()).toEqual({ tried: 1 });
     expect(m.sent).toHaveLength(1);
     expect(m.sent[0].text).toBe(
-      "Good morning Wairimu. Here is today's summary of your check-ins. In \"Sales team, Q3\", 5 of 6 people have checked in for the third check-in, and Omar has not yet. Amina's leave from Monday 5 October to Friday 9 October is waiting for you to approve or decline. You can open your board for the full picture here https://myground.work/grounds/g-sales/board If you would rather not hear from us here again today, reply \"not now\".",
+      "Good morning Wairimu. Here is today's summary of your check-ins. In \"Sales team, Q3\", 5 of 6 people have checked in for the third check-in, and Omar has not yet. You can open your board for the full picture here https://myground.work/grounds/g-sales/board If you would rather not hear from us here again today, reply \"not now\".",
     );
     expect(m.sent[0].context).toEqual({ kind: 'lead-summary', params: ['Wairimu', expect.any(String), 'https://myground.work/grounds/g-sales/board'] });
     expect(m.sent[0].context.params[1]).not.toMatch(/[\r\n\t]/);
@@ -136,10 +136,10 @@ describe('a morning when nothing useful happened', () => {
     await m.run();
     expect(asked[0]).toEqual(expect.arrayContaining(['+254711000111', '254711000111']));
   });
-  it('and it goes when something waits for her, even if nobody has checked in', async () => {
+  it('and it does not go for something that waits for her to approve, which is told by its own message (B-120)', async () => {
     const m = aMorning({ nobodyIn: true, lastSummary: yesterday });
-    expect(await m.run()).toEqual({ tried: 1 });
-    expect(m.sent[0].context.params[1]).toMatch(/waiting for you to approve or decline\.$/);
+    expect(await m.run()).toEqual({ tried: 0 });
+    expect(m.sent).toHaveLength(0);
   });
 });
 

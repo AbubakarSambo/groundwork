@@ -97,10 +97,15 @@ describe('request 124 (1): the new hire reads the lead\'s own words', () => {
   });
 });
 
-describe('request 124 (1): a renewal, a plan and a promotion are unchanged', () => {
-  it('on a renewal the person reviewed still does not read the lead\'s words', async () => {
-    const views = sides(await boardAs(RECORD({ scenario: GroundScenario.CONTRACT_RENEWAL }), ...RUKIA));
-    expect(views).not.toContain(LEADS_WORDS);
-    expect(views).toContain('The words your lead used are not shown to you here. What was found is below.');
+/* Changed 8 October (decision 117, D16): the 30 September ruling had taken the lead's words from the person reviewed on a renewal,
+   a plan and a promotion; Hafsah's answer is that they read them, as decisions 3 and 6 say. Only a colleague's words stay hidden. */
+describe.each([['a renewal', GroundScenario.CONTRACT_RENEWAL], ['a plan', GroundScenario.PIP], ['a promotion', GroundScenario.RECOGNITION]])(
+  'decision 117 (D16): on %s the person reviewed reads the manager\'s words too', (_l, scenario) => {
+  it('Rukia reads the lead\'s words, and still not a colleague\'s', async () => {
+    const views = sides(await boardAs(RECORD({ scenario }), ...RUKIA));
+    expect(views).toContain(LEADS_WORDS);
+    expect(views).not.toContain(COLLEAGUES_WORDS);
+    expect(views).toContain("A colleague's own words are not shown to you here. What was found is below.");
+    expect(views.join(' ')).not.toMatch(/The words your lead used are not shown to you here/);
   });
 });

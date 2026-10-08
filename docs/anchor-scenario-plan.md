@@ -373,7 +373,7 @@ Nothing below has been decided by this plan. Each one has the scenario's words, 
 
 ## 3. The switch
 
-**The setting.** `release.anchorScenario`, stored as `{ "on": false }` in `platform_settings`, exactly like `release.contextInAskGroundwork` and `release.planAndBillingNewParts`. It is read in one place, `api/src/modules/admin/what-is-hidden-at-release.ts` (the same helper `aSwitch`), as a new exported function `theAnchorScenarioIsOn(prisma)`. It is ON at release (Hafsah, 8 October): a missing row reads as on, `{ "on": false }` switches it off, and a row that cannot be read reads as off. It is listed in `docs/deploy.md`'s "Hidden at release" list and in `docs/release-checklist.md`.
+**The setting.** `release.anchorScenario`, stored as `{ "on": false }` in `platform_settings`, exactly like `release.contextInAskGroundwork` and `release.planAndBillingNewParts`. It is read in one place, `api/src/modules/admin/what-is-hidden-at-release.ts` (the same helper `aSwitch`), as a new exported function `theAnchorScenarioIsOn(prisma)`. It is OFF at release (Hafsah, 8 October: its separate screens contradict decision 114; it follows in the next pull request). A missing or unreadable row reads as off; `{ "on": true }` switches it on. It is listed in `docs/deploy.md`'s "Hidden at release" list and in `docs/release-checklist.md`.
 
 **What it decides.** Whether a new anchor Ground can be started. A Ground already started from the anchor link keeps behaving as an anchor Ground even if the setting is later turned off, the same rule `aKindMayBeGiven` uses for a kind a check-in already holds. A Ground is an anchor Ground because it has the new situation key (Needs Hafsah 12), so no other flag is stored.
 

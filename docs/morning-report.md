@@ -1,5 +1,17 @@
 # Morning report
 
+**8 October, morning: is #322 ready? Yes, with your go-ahead.** `wip/release` is ready to update #322; nothing was pushed to Abubakar's repository. The commands are in the chat and `docs/pull-request.md` has the "Before you merge" checklist.
+
+Found removed, and restored:
+- Nothing in the code was removed. The feature-by-feature audit (`docs/nothing-removed-audit.md`) found every live sign-in method, route, setting, email, WhatsApp message, job and staff page still here. Three screen controls were narrowed without a decision and went to the screens workspace.
+- Google sign-in and sign-up: identical to live in code; proved with tests and in the browser. If Google is missing somewhere, that host lacks `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+- hjumare@gmail.com as super admin: no code or migration removes it; the flag must have been false on the database you looked at. A migration now sets it, and a test fails if any migration ever turns it off.
+- From the old-data check: unnamed colleagues missing from the picker, and words shown as "nothing specific" on the lead's report. Both fixed.
+
+Every test result: see "Every result" in `docs/pull-request.md` (API, client, typechecks, production start, privacy sweep of 28 readers, browser journeys, Google sign-in, the anchor walk, existing clients on realistic old data). Bugs from the sweep: 63 of 83 fixed.
+
+Needs your confirmation: the audit's H3 to H11, D16, D10 and D14 (in `docs/pull-request.md`, "Needs Hafsah"); B-127 (linking a check-in to a company priority); and the old test databases to remove (the command is in the chat).
+
 **7 October, midday: the pull request is ready on `wip/release` (head after `3e4bf527`), waiting only on the push to #322, which needs you.** The write-up, with the "Before you merge" checklist for Abubakar, is `docs/pull-request.md`.
 
 Every result, on the merged code (the screens, and Abubakar's seven commits since #322, all kept):

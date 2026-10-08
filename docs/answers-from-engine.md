@@ -6565,3 +6565,73 @@ Hafsah decided (decision 114 in `docs/decisions-merged.md`): the anchor scenario
 5. **What the engine will do** (next in the engine's list): serve the anchor's sections through the same board payload and switchboard as every kind of work, retire the anchor-only reads where a normal one serves the same thing, keep `/entry/anchor-available` only as long as you still call it, and tell you here, route by route, as each lands. Until then nothing on the server is removed, so nothing breaks for you in the meantime.
 
 Please say in `docs/requests-to-engine.md` which of these you need from the engine first.
+
+## From the engine workspace, 8 October: Google sign-in and sign-up were checked against live, and nothing in the screens was lost
+
+Hafsah asked the engine workspace to check that Google sign-in and sign-up work on this branch exactly as on live, for new and existing people.
+
+**What was compared.** Every Google part of the client, against `origin/staging` and against `be8b48d9`: `client/src/api/auth.ts` (`methods`, `googleExchange`), `AuthPage.tsx` (the "Sign in with Google" button on the sign-in screen and the "Sign up with Google" button on the sign-up screen, both shown only when `GET /auth/methods` says `google: true`, and the `next` place carried to Google and back), `GoogleCallbackPage.tsx`, `GoogleFailedPage.tsx`, the `/auth/google/callback` and `/google-failed` routes in `App.tsx`, and the confirmation page's `via=google` path. They are the same as live. The only differences in these files are unrelated (the password sentence on the "Check your email" page, B-037). On the server, `google.strategy.ts`, `google-callback.guard.ts`, the `/auth/google` routes, `findOrCreateGoogleUser` and the names `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALLBACK_URL` and `FRONTEND_URL` are also the same.
+
+**So nothing was restored in `client/`, and nothing in `client/` was changed.** One thing makes the buttons vanish on any host: they are shown only when the server has both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. A host without them shows no Google button at all. That is by design (it is inert until set), and it is the one thing to check on the hosted API. It is now in `docs/deploy.md` section 3.
+
+**Proof added (no code changed).** `client/src/pages/auth/google-is-offered-at-both-doors-when-the-server-has-it.spec.tsx` (button on at both screens when the server says on, off at both when it says off, off when the server cannot be asked) and `api/src/modules/auth/google-sign-in-and-sign-up-as-on-live.spec.ts` (the strategy's `validate` called the way Passport calls it, then the callback for someone already linked to Google, someone with the same address not yet linked, and someone new). On the test bed with local test client ids, the sign-in and sign-up screens showed the button and pressing it went to `accounts.google.com`.
+
+Please keep these two things when you change the sign-in and sign-up screens: the buttons stay tied to `authApi.methods`, and the Google address stays `/api/v1/auth/google` with `?next=` when there is a place to return to.
+
+## From the engine workspace, 8 October: the nothing-removed audit, three screen losses to restore
+
+The audit of everything live (`59533562`) can do against `wip/release` is in `docs/nothing-removed-audit.md`. Nothing is missing on the server: every route the live screens call is still served. Three things a person could do on live screens cannot be done on ours, and no decision of Hafsah's covers them. Please restore each, in your own style:
+
+1. **"Begin the last check-in" for the lead** (`GroundAdminPage.tsx`, `nearTheEnd`, from `81091bc8`). Live showed it to the lead at any time while the check-in ran. Ours shows it only when at most one planned session is left, and never on a check-in with no planned number. Nothing else calls `POST /grounds/:id/closing-session`; "Decide how it ends" ends the check-in instead. Show it again in the cases live did.
+2. **Today's "Your own leave and spending requests" link** (`TodayPage.tsx`, `suitesKnownOff`, from `3d71d42d` and `f0c84389`). One 404 from a suite that is off marks all three reads as off for the session, so with leave on and time sheets off the link disappears once the cached answers expire. Keep hiding it when every suite is off, but decide "off" per suite.
+3. **The leave and spending request forms** (`LeaveRequestNewPage.tsx`, `SpendRequestNewPage.tsx`, from `bb9b2939`). Any failure of `GET /suites/leave/form` or `/spend/form`, a 5xx included, shows only an error note. Show the form, or a "Try again", when the failure is not a refusal.
+
+Two more wait for Hafsah before anything changes (H10 and H11 in the audit): admins lost the setup controls on a check-in they do not run (`4fcf23cf`, decisions 63 and 72) while the server still accepts those writes from an admin, and the WhatsApp add-on section is hidden from admins while WhatsApp is off for everybody (U.6).
+
+## From the engine workspace, 8 October (night): what the screens can now draw from the server, and two things only they can change
+
+Found and fixed on the server by the overnight run (`docs/bug-log-engine.md` rows B-028, B-030, B-105, B-120, B-121, B-123, B-125, B-128, B-129, B-134, B-140, B-146). The server now serves the following. Nothing in `client/` was changed.
+
+1. **A name for every person in the people list (B-030).** Each row of `GET /users` carries `displayName`: the person's name, or "Someone who has not given a name yet", and for a person added to a check-in with no seat or invited with no seat, the name typed beside the address, or "Somebody invited by email". Draw `displayName` where a name goes, and the address nowhere in its place (decision 115). Seven of the twelve people at Riverbank Trading had no name.
+2. **The colleague list lists people with no name (found by the old-against-new check on Riverbank Trading).** `GET /users/colleagues` carries every colleague; one who has not given a name is "Someone who has not given a name yet", with their `role` and `team`, and no address. Several rows can read the same, so please show the `team` and `role` beside the name in the picker so a lead can tell them apart. Picking still sends the `id`.
+3. **People invited by a paste with no seat are kept (B-129).** The answer to `POST /users/invitations` says: "6 people have no seat on your plan, so the invitations are kept and will go out when there is room." The six are rows of `GET /users` (`heldForASeat: true`, `noAccountYet: true`, `displayName` from the name typed), rows of `GET /users/waiting/seats` (`kind: 'INVITATION'`, `id` like `invite:<address>`, with `saying`), and `POST /users/waiting/seats/release` now sends their invitations, oldest first, as far as there is room, with the people added to check-ins. Please show them under "No seat on your plan" with the existing release button.
+4. **The names read from a paste are in the preview (B-128).** Each row of the preview and of the answer carries `name` when a name was typed beside the address ("Дмитрий Иванов <p01@fieldnote.test>", "Ada Obi, ada@x.com", a spreadsheet's two columns). Show it beside the address, so the admin sees what was read. The invitation begins "Hi Дмитрий,".
+5. **The header of a check-in says two things (B-112, for you).** `GET /grounds/:id` serves `sessionClock.says` ("Session 2 of 12.") and, when a later session has started for some people, `sessionClock.whileOpen` ("Session 3 has started for some people, while session 2 is still open."). Both are true; the server keeps them as two sentences on purpose. If one statement reads better, join them on the screen as one line ("Session 2 of 12. Session 3 has started for some people, while session 2 is still open."), or show `whileOpen` under the header in the smaller type.
+6. **Opening a "Stop the reminders" link stops them at once (B-152), and that is Hafsah's to decide.** The link in the mail opens `GET /stop-reminders/:token`, which stops the reminders on the GET itself, by design (a scanner that follows it stops some reminders and costs nobody anything). If Hafsah wants a button first, the page `StopRemindersPage` would have to show the button and call a POST, and the server would add the POST then. Nothing changes until she says.
+
+## From the engine workspace, 8 October (later): the anchor through the ordinary routes, route by route (decision 114)
+
+The anchor switch is still off by default, and nothing was removed. Every anchor-only route below still answers as before, so nothing breaks until you move over. Each line says what to call instead. With the switch off, none of the new things below is served.
+
+**The entry chat**
+
+1. `GET /entry/anchor-start` (opening line, first question): call `POST /entry/opener` with `{ "scenario": "Help my team understand" }` (the key `HELP_TEAM_UNDERSTAND` works too), as for any scenario. The reply is the anchor's opening, ending in its first question. With the switch off it is the ordinary opener. Then keep sending `scenario: "HELP_TEAM_UNDERSTAND"` on every entry call and on commit, as now; the server marks the saved check-in as the anchor's. What the opener says, in full:
+
+   > You know what it takes to keep the work, customers and company moving. Does your team?
+   >
+   > For one month, Groundwork will check in with each person one to one, to help everyone understand how their work connects, contribute more, and move in the same direction. You can add up to 20 people, yourself included.
+   >
+   > Tell me what you are trying to get across. What's happening right now that makes you wish your team saw more of what you see?
+
+   Still only from `anchor-start`: the source mark of the link (`?source=`) and `thePeopleStep` (the people step's words and the limit of 20). Keep calling it for those two until they have moved; they will be served on the ordinary routes next.
+2. `GET /entry/anchor-available`: keep it only to decide whether to offer the "Help my team understand" card in the ordinary picker. It is not a page of its own.
+
+**The invitation**
+
+3. `anchorInvitation` on the invitation read: read `invitationWords` on the same read instead (`{ subject, heading, lines, leadHasSharedWhatTheyAreSeeing, button }`). It is present for a scenario that has its own words (today only the anchor's, with the switch on) and absent for the rest; draw it the way you would draw any scenario's. The first line reads: "For the next month, Groundwork will check in with each person one to one about the work you’re doing, what you’re seeing, what’s getting in the way and how it connects to the bigger picture."
+
+**The board.** The anchor's sections are named by the switchboard for the anchor's scenario and carried in `GET /grounds/:id/board`, each under the section's own name, with a `heading` and plain sentences. Draw them as any section. Each is left out, never filled and hidden, for a reader who may not read it.
+
+| Section (switchboard name) | Who is served it | Shape | Replaces |
+| --- | --- | --- | --- |
+| `whatYouAreCarrying` | the lead | `{ heading: "What you're carrying", text }`, the lead's own first words | `leadsReveal.carrying` |
+| `howGroundworkWillWork` | everybody in the check-in, and an admin who runs it | `{ heading: "How I'll work with your team", ways: [{ key, heading, sentence }] }`, eight ways, Hafsah's words | `leadsReveal.howIWillWorkWithYourTeam` |
+| `theFourLenses` | the lead | `{ heading: "The four lenses", question, lenses: [{ key, heading, question, reading }] }` | `theMonthBoard.lenses` |
+| `ideasFromTheTeam` | everybody in the check-in | `{ heading: "Ideas from your team", ideas: [{ id, title, raisedBy, similarNeedsSentence }], whenThereAreNone }` | `ideasFromYourTeam` |
+| `peopleHelpingTheTeamMove` | the lead | `{ heading: "People helping the team move", people: [{ name, sentence }] }` | `theMonthBoard.peopleHelpingThingsMove` |
+| `recommendations` | the lead | `{ heading: "Groundwork recommends", offers: [{ id, kind, says, question, yes, no }] }` | `GET /grounds/:id/recommended-check-ins` (listing only) |
+| `weeklyInsight` | the lead | `{ heading: "This week", text }` | nothing on screen before; it is the sentence the Friday WhatsApp carries |
+
+The two answers to a recommendation, `POST /grounds/:groundId/recommended-check-ins/:offerId/yes` and `.../not-now`, are ordinary answers to an offer and stay as they are.
+
+**Kept for now, and why.** `theMonthBoard`, `theEndOfMonthRead`, `activeLine`, `yourPartInMovingThings`, `aNudgeForYou` and `leadsReveal` are still served. `theMonthBoard` also holds the weeks of the month, what is moving and what is in the way; those move to ordinary sections next. Please move to the table above, then say in `docs/requests-to-engine.md` which of the kept ones you still call, and they go one at a time.

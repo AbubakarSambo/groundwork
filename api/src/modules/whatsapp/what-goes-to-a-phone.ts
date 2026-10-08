@@ -2,6 +2,7 @@ import { TEMPLATES, fill } from './a-message-outside-the-window';
 import { theReminderBody } from '../grounds/what-is-sent-in-simpler-words';
 import { whatToDoToday, type ChasingPolicy } from '../conversation/chasing-belongs-to-the-lead';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
+import { anHourInTheirZone } from './the-persons-own-time-zone';
 
 /**
  * THE MESSAGES GROUNDWORK STARTS ON WHATSAPP, IN THE WORDS A PERSON READS (survey item 7,
@@ -29,7 +30,8 @@ export const theCheckInIsOpen = (w: WhoAndWhat, simplerWords?: boolean | null) =
 /** checkin_due_tomorrow, with the day it is due ("Thursday 8 October"). */
 export const itIsDueTomorrow = (w: WhoAndWhat, dueAt: Date, simplerWords?: boolean | null) => notice('due-tomorrow', [first(w), w.label, whenItWas(dueAt, 'weekdayAndDay')], simplerWords);
 /** checkin_opens_soon, with the time it opens ("10:00 am"). */
-export const itOpensSoon = (w: WhoAndWhat, opensAt: Date, simplerWords?: boolean | null) => notice('opens-soon', [first(w), w.label, whenItWas(opensAt, 'hourOfDay')], simplerWords);
+/* `zone` is the person's own (the-persons-own-time-zone.ts): the hour is then theirs, with the zone named. Left out, the platform's, as before. */
+export const itOpensSoon = (w: WhoAndWhat, opensAt: Date, simplerWords?: boolean | null, zone?: string) => notice('opens-soon', [first(w), w.label, zone ? anHourInTheirZone(opensAt, zone) : whenItWas(opensAt, 'hourOfDay')], simplerWords);
 /** checkin_overdue: only while it is still open (whatToSendThisMorning decides). */
 export const itIsOverdue = (w: WhoAndWhat, simplerWords?: boolean | null) => notice('overdue', [first(w), w.label], simplerWords);
 /** checkin_team_almost_in: {{2}} of {{3}} people, for {{4}}, never anything they said. */

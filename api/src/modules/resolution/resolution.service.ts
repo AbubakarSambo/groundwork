@@ -13,6 +13,8 @@ import { SuggestionsService } from '../suggestions/suggestions.service';
 import { ReviewsProposedService } from '../suites/the-reviews-proposed.service';
 import { theEndingPageFor } from './what-the-ending-page-reads';
 import { whoTheEndingIsAbout } from './who-the-ending-is-about';
+import { peersAreNamedOn } from '../reports/peers-are-named';
+import { whatEachLabelIsCalled } from '../reports/no-internal-label-reaches-anyone';
 import { labelsForParties, namesVisibleTo, displayName, plainWordsByPerson, atTheStart } from '../reports/party-labels';
 
 /**
@@ -383,6 +385,8 @@ export class ResolutionService {
         userId: true,
         partyType: true,
         createdAt: true,
+        nameGiven: true,
+        roleAsDescribed: true,
         /** For `labelsForParties`, which reads the name before anything else. */
         user: { select: { firstName: true, lastName: true, email: true } },
       },
@@ -414,13 +418,24 @@ export class ResolutionService {
      * name still gets their role here, and nobody ever gets an email address.
      */
     const viewer = viewerUserId ? active.find((p) => p.userId === viewerUserId) : undefined;
-    const names = namesVisibleTo(viewer?.id ?? null, active as any);
+    /* An admin who is not in it reads the ending as a person who is not the lead does, as the options below already say it. */
+    const viewerIsLead = viewer?.partyType === PartyType.INITIATOR;
+    /* The check-in's own setting for whether colleagues see each other's names (decision 115), as every report read takes it. */
+    const peersAreNamed = peersAreNamedOn(ground as any, { participantId: viewer?.id ?? null });
+    const names = namesVisibleTo(viewer?.id ?? null, active as any, viewerIsLead || peersAreNamed);
+    const called = whatEachLabelIsCalled(active as any, {
+      viewerParticipantId: viewer?.id ?? null,
+      viewerIsLead,
+      peersAreNamed,
+      readerIsYou: true,
+    });
     const choiceByParticipant = new Map((resolution?.confirmations ?? []).map((c) => [c.participantId, c.endState]));
     const confirmations = active.map((p) => {
       const label = labels.get(p.id) ?? 'A party';
       return {
       participantId: p.id,
-      label: names.get(label) ?? label,
+      /* The reader is "You"; a colleague is a name where this reader may see it, otherwise "a colleague". Never a label. */
+      label: atTheStart(called.get(label.toLowerCase()) ?? 'a colleague'),
       partyType: p.partyType,
       endState: choiceByParticipant.get(p.id) ?? null,
       confirmed: choiceByParticipant.has(p.id),

@@ -91,7 +91,7 @@ export interface OrgRosterEntry {
   memberCount: number
   members: { email: string; partyType: 'INITIATOR' | 'PARTICIPANT'; roleAsDescribed: string | null; accepted: boolean }[]
   contributedParties: number
-  report: { agreements: string[]; divergences: unknown[]; releasedAt: string | null } | null
+  report: { agreementsCount: number; differencesCount: number; releasedAt: string | null } | null
   lastActivity: string | null
 }
 
