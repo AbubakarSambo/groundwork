@@ -298,6 +298,14 @@ export function InvitePage() {
   )
 
   const opensLater = preview.opensOn && new Date(preview.opensOn).getTime() > Date.now() ? preview.opensOn : null
+  /**
+   * THE SCENARIO'S OWN WORDS, SERVED LIKE ANY SCENARIO'S (decision 114; docs/answers-from-engine.md,
+   * "8 October (later): the anchor through the ordinary routes, route by route"). `invitationWords`
+   * is the ordinary field for this - present for a scenario that has its own words (today only the
+   * anchor's, with the switch on) and absent for the rest - read first; `anchorInvitation` is kept
+   * underneath it only until the server has moved every caller onto the new field.
+   */
+  const theInvitationWords = preview.invitationWords ?? preview.anchorInvitation
 
   if (preview.alreadyAccepted) {
     return (
@@ -345,21 +353,22 @@ export function InvitePage() {
         own gap, and nothing here sets an inline margin, padding or gap again.
       */}
       <Stack gap={0}>
-        <PageTitle title={preview.anchorInvitation?.heading ?? theInvitation(preview)} subtitle={(preview.organisationName || preview.endsAt) ? whereAndUntil(preview) : undefined} />
+        <PageTitle title={theInvitationWords?.heading ?? theInvitation(preview)} subtitle={(preview.organisationName || preview.endsAt) ? whereAndUntil(preview) : undefined} />
 
         <Stack gap={19}>
           <Callout>{whoCanReadThis(preview.scenario, preview.organisationName)}</Callout>
 
           {/*
-            ANCHOR PIECE 11, THE INVITATION (docs/anchor-scenario-plan.md section 5 row 5;
-            docs/answers-from-engine.md, "Request 149 (3 of 6)"). Served now, only for an
-            invitation to an anchor Ground - drawn only when `anchorInvitation` is present; every
-            other invitation is exactly as it reads today. The callout above (what the prototype
-            always says about who can read this) is kept, unchanged, ahead of these lines.
+            A SCENARIO'S OWN INVITATION WORDS (piece 11; docs/anchor-scenario-plan.md section 5 row
+            5; docs/answers-from-engine.md, "Request 149 (3 of 6)", and decision 114's "8 October
+            (later)" note). Drawn only when `theInvitationWords` is present - today only an anchor
+            invitation, with the switch on; every other invitation is exactly as it reads today. The
+            callout above (what the prototype always says about who can read this) is kept, unchanged,
+            ahead of these lines.
           */}
-          {preview.anchorInvitation && (
+          {theInvitationWords && (
             <Stack gap={10}>
-              {preview.anchorInvitation.lines.map((line, i) => (
+              {theInvitationWords.lines.map((line, i) => (
                 <p key={i} className="gwui-panel-text">{line}</p>
               ))}
             </Stack>
@@ -431,7 +440,7 @@ export function InvitePage() {
                   <p className="gwui-field-help">Your name is optional. If you add it, the others will see it on the shared report.</p>
                   <div className="gwui-form-actions">
                     <Button type="submit" size="big" wide disabled={accept.isPending} >
-                      {accept.isPending ? 'Setting up your session…' : preview.anchorInvitation?.button ?? 'Answer today’s check-in now'}
+                      {accept.isPending ? 'Setting up your session…' : theInvitationWords?.button ?? 'Answer today’s check-in now'}
                     </Button>
                   </div>
                 </form>

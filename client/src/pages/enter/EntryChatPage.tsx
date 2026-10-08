@@ -1358,6 +1358,21 @@ export function EntryChatPage() {
     retry: false,
   })
   /**
+   * THE ANCHOR'S OPENING TEXT, FROM THE ORDINARY OPENER, LIKE ANY SCENARIO'S (decision 114;
+   * docs/answers-from-engine.md, "8 October (later): the anchor through the ordinary routes, route
+   * by route"). `POST /entry/opener` now answers for "Help my team understand" with the anchor's
+   * full opening - the hook's two sentences and then "Tell me what you are trying to get across."
+   * followed by its first question - while the switch is on; `GET /entry/anchor-start` above still
+   * carries what the opener does not (`groundLabel`, `source`, `thePeopleStep`), so that call stays.
+   * Fetched alongside it, gated the same way, so it settles before the intro turn below is seeded.
+   */
+  const anchorOpenerQuery = useQuery({
+    queryKey: ['anchor-opener-inline'],
+    queryFn: () => entryApi.opener('HELP_TEAM_UNDERSTAND'),
+    enabled: scenario === 'HELP_TEAM_UNDERSTAND' && !theAnchorStartSucceededForThisTab(),
+    retry: false,
+  })
+  /**
    * WHILE THAT CALL IS STILL OUT, THE DOOR WAITS. `AnchorLandingPage.tsx` used to draw nothing at
    * all until the switch answered (never a half-answered page); this page cannot draw nothing,
    * since it is also the ordinary door for every other situation, so instead it simply does not
@@ -1367,7 +1382,7 @@ export function EntryChatPage() {
    */
   const anchorStartPending = scenario === 'HELP_TEAM_UNDERSTAND'
     && !theAnchorStartSucceededForThisTab()
-    && !anchorStartQuery.isFetched
+    && (!anchorStartQuery.isFetched || !anchorOpenerQuery.isFetched)
   /**
    * PIECE 25, "YES, SET IT UP" OPENS HERE PREFILLED (plan piece 25, docs/anchor-scenario-plan.md
    * section 5 row 9; docs/answers-from-engine.md, "Request 148 (1)"). BoardPage.tsx's "Groundwork
@@ -2586,18 +2601,24 @@ export function EntryChatPage() {
      * FAULT 1 (the anchor's own first question, no door). An anchor arrival (`?scenario=
      * HELP_TEAM_UNDERSTAND`, with the switch confirmed on - `anchorConversationOpensDirectly()`,
      * above) opens on the engine's own opening line, never the ordinary picker's
-     * `THE_OPENING_QUESTION`. `takeTheServedFirstQuestion()` reads what the `anchor-start` effect
-     * just above remembered (request 163 item 9); until the engine serves it, `THE_ANCHOR_FIRST_
-     * QUESTION` is the plan's own wording (docs/anchor-scenario-plan.md section 6). This is the ONLY
-     * assistant turn ever placed in this draft's history for an anchor arrival - nothing below sends
-     * a word on the lead's behalf; she types the first answer herself, into the ordinary composer,
-     * which carries `scenario` (this page's own URL-derived constant) straight through
-     * `sendOnboarding` to `entryApi.onboardStream`'s `scenario` field (see `atTheDoor`, below, for
-     * where the door itself is skipped). `anchorStartPending` (above) holds this off until the
-     * engine's own call has settled one way or the other, so a fresh anchor arrival never seeds
-     * `THE_OPENING_QUESTION` for a moment and then has to replace it.
+     * `THE_OPENING_QUESTION`. DECISION 114: that opening line is now drawn from `POST /entry/
+     * opener`, the same route any scenario's would be, fetched just above as `anchorOpenerQuery` -
+     * its `reply` is the anchor's full opening (the hook's two sentences, then "Tell me what you are
+     * trying to get across." and its first question), so it comes first. `takeTheServedFirstQuestion
+     * ()` (what an earlier `anchor-start` effect remembered, request 163 item 9) and `THE_ANCHOR_
+     * FIRST_QUESTION` (the plan's own wording, docs/anchor-scenario-plan.md section 6) stay underneath
+     * it, only reached if the opener call itself failed - the opener covers the first question's
+     * content, but not a dropped request. This is the ONLY assistant turn ever placed in this draft's
+     * history for an anchor arrival - nothing below sends a word on the lead's behalf; she types the
+     * first answer herself, into the ordinary composer, which carries `scenario` (this page's own
+     * URL-derived constant) straight through `sendOnboarding` to `entryApi.onboardStream`'s `scenario`
+     * field (see `atTheDoor`, below, for where the door itself is skipped). `anchorStartPending`
+     * (above) holds this off until both the engine's calls have settled one way or the other, so a
+     * fresh anchor arrival never seeds `THE_OPENING_QUESTION` for a moment and then has to replace it.
      */
-    const INTRO = anchorConversationOpensDirectly() ? (takeTheServedFirstQuestion() ?? THE_ANCHOR_FIRST_QUESTION) : THE_OPENING_QUESTION
+    const INTRO = anchorConversationOpensDirectly()
+      ? (anchorOpenerQuery.data?.reply || takeTheServedFirstQuestion() || THE_ANCHOR_FIRST_QUESTION)
+      : THE_OPENING_QUESTION
     // If URL params pre-populate, inject as first user message
     if (urlInitial) {
       setOnboardingHistory(prev => {

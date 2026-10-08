@@ -87,6 +87,15 @@ export type TheAnchorInvitation = {
   button: string
 }
 
+/**
+ * THE SAME SHAPE, SERVED LIKE ANY SCENARIO'S WORDS (decision 114; docs/answers-from-engine.md,
+ * "8 October (later): the anchor through the ordinary routes, route by route"). `GET /participants/
+ * preview` now carries `invitationWords` in this shape for a scenario that has its own words - today
+ * only the anchor's, with the switch on - present for it and absent for the rest, drawn by the
+ * invitation page the way it draws any scenario's, with no scenario check in the screens at all.
+ */
+export type TheInvitationWords = TheAnchorInvitation
+
 /* ------------------------------------------------------------------------------------------------
  * PIECES 12 AND 13/20. THE MONTH BOARD, "Are we moving together?" (section 24). Lead only.
  * ---------------------------------------------------------------------------------------------- */

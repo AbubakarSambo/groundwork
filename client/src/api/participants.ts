@@ -1,6 +1,6 @@
 import { apiClient } from './client'
 import type { User, GroundScenario } from '@/types'
-import type { TheAnchorInvitation } from './anchorShapes'
+import type { TheAnchorInvitation, TheInvitationWords } from './anchorShapes'
 
 export interface InvitePreview {
   groundLabel: string
@@ -36,6 +36,15 @@ export interface InvitePreview {
    * staging.
    */
   anchorInvitation?: TheAnchorInvitation
+  /**
+   * THE SAME WORDS, FOR ANY SCENARIO THAT HAS ITS OWN (decision 114; docs/answers-from-engine.md,
+   * "8 October (later): the anchor through the ordinary routes, route by route"). Present for a
+   * scenario with its own invitation words - today only the anchor's, with the switch on - and
+   * absent for the rest, drawn exactly like `anchorInvitation` above. `InvitePage.tsx` reads this
+   * first and falls back to `anchorInvitation` only where the server has not moved a caller onto
+   * it yet, so nothing already working stops working while the two exist side by side.
+   */
+  invitationWords?: TheInvitationWords
 }
 
 /** What an expired invitation's preview is: nothing but the lead's first name. */

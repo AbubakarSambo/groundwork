@@ -43,8 +43,6 @@ const KNOWN: Record<string, string> = {
     'See pricingAdminApi.get. Note this one is NOT a duplicate: resetting prices to defaults exists only here, so collapsing the two must carry it across rather than drop it.',
   'resolutionApi.counter':
     'POST /grounds/:id/resolution/counter. One side can propose an end state and the other can accept; nobody can COUNTER. So a feature about two parties agreeing is currently propose-or-accept, which is the shape of a verdict rather than an agreement.',
-  'entryApi.opener':
-    'POST /entry/opener, the model-written opening line. The entry chat opens with client-side copy now, so this looks superseded rather than missing - but it is the only path by which the first thing a stranger reads could be scenario-aware.',
   'groundsApi.activate':
     'POST /grounds/:id/activate, distinct from report activation. Approve and confirm-lead appear to cover the same ground now. Probably dead; not deleting a state-changing route on an assumption.',
   'promptsApi.create':
