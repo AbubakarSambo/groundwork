@@ -24,18 +24,17 @@ import type { ThePeopleStepRules } from '@/api/anchorShapes'
  * invite block draws the served `ThePeopleStepRules` carried through the draft's session state when
  * there is one, and falls back to this constant otherwise.
  *
- * `mayAdd` is 19, not 20: the limit is 20 people including the lead (decision 96, item 3), so the
- * lead can add 19 others.
+ * `mayAdd` is 20: the limit is 20 people besides the lead, who is not counted (decision 121, item 4).
  */
 export const ANCHOR_PEOPLE_STEP_RULES: ThePeopleStepRules = {
   limit: 20,
-  theLeadCounts: true,
-  mayAdd: 19,
+  theLeadCounts: false,
+  mayAdd: 20,
   heading: 'Who needs to be part of this?',
   intro: 'Add up to 20 people. They don’t need to report directly to you. They simply need to be part of the work you’re trying to move.',
   contextLabel: 'What do they do / why are they part of this?',
   button: 'Start my Groundwork.',
-  limitSentence: 'This one-month Groundwork holds 20 people, and you are one of them, so you can add 19 more.',
+  limitSentence: 'This one-month Groundwork holds up to 20 people besides you.',
 }
 
 /**

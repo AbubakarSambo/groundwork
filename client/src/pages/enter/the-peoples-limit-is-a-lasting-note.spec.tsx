@@ -59,7 +59,7 @@ async function addOnePerson(email: string) {
   await waitFor(() => expect(screen.queryByText('What do they do / why are they part of this?')).toBeNull())
 }
 
-const LIMIT_SENTENCE = 'This one-month Groundwork holds 20 people, and you are one of them, so you can add 19 more.'
+const LIMIT_SENTENCE = 'This one-month Groundwork holds up to 20 people besides you.'
 
 describe('the people step keeps the limit sentence on screen, and disables Add person', () => {
   beforeEach(() => { localStorage.clear(); vi.clearAllMocks() })

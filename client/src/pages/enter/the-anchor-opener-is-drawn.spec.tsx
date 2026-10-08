@@ -57,7 +57,7 @@ describe('the anchor opener, served like any scenario’s', () => {
   it('draws the opener’s own reply, ending in the first question, once /entry/opener answers', async () => {
     const theFullOpening = [
       'You know what it takes to keep the work, customers and company moving. Does your team?',
-      'For one month, Groundwork will check in with each person one to one, to help everyone understand how their work connects, contribute more, and move in the same direction. You can add up to 20 people, yourself included.',
+      'For one month, Groundwork will check in with each person one to one, to help everyone understand how their work connects, contribute more, and move in the same direction. You can add up to 20 people besides yourself.',
       'Tell me what you are trying to get across. What is going on for your team right now that makes you wish they saw more of what you see?',
     ].join('\n\n')
     opener.mockResolvedValue({ reply: theFullOpening })

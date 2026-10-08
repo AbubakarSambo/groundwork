@@ -5,20 +5,20 @@ import type { ThePeopleStepRules, TheAnchorInvitation } from './the-anchor-serve
  * items 1, 3 and 8; request 149). Fixed words, the same for every lead, except the lead's own first name.
  */
 
-/** 20 includes the lead: the lead plus 19 (decision 96, item 3). */
+/** Up to 20 people besides the lead, who is not counted (decision 121, item 4; this corrects decision 96, item 3, which counted the lead among the 20). */
 export const THE_PEOPLE_STEP_RULES: ThePeopleStepRules = {
   limit: 20,
-  theLeadCounts: true,
-  mayAdd: 19,
+  theLeadCounts: false,
+  mayAdd: 20,
   heading: 'Who needs to be part of this?',
   intro: 'Add up to 20 people. They don’t need to report directly to you. They simply need to be part of the work you’re trying to move.',
   contextLabel: 'What do they do / why are they part of this?',
   button: 'Start my Groundwork.',
-  limitSentence: 'This one-month Groundwork holds 20 people, and you are one of them, so you can add 19 more.',
+  limitSentence: 'This one-month Groundwork holds up to 20 people besides you.',
 };
 
 /**
- * THE LIMIT, HELD WHEN THE PEOPLE STEP IS COMMITTED (decision 99, item 2). The lead plus 19. The people are counted once
+ * THE LIMIT, HELD WHEN THE PEOPLE STEP IS COMMITTED (decision 99, item 2). The lead and up to 20 other people. The people are counted once
  * each, by address, and the lead's own address is not counted again. Past the limit the commit is refused with a plain
  * sentence that says how many to take off.
  */

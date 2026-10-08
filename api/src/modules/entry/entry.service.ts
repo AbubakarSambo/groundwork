@@ -2243,7 +2243,7 @@ from finishing at all.`;
     /* One number, in one file, with the reason - see how-many-people-one-check-in-holds. */
     const tooMany = tooManyPeopleFor(dto.contributors.length);
     if (tooMany) throw new BadRequestException(tooMany);
-    /* The anchor's own limit: the lead plus 19 (decision 99, item 2). */
+    /* The anchor's own limit: the lead and up to 20 other people (decision 121, item 4). */
     if (dto.scenario === ANCHOR_ENTRY_SCENARIO) {
       const lead = await Promise.resolve(this.prisma.user?.findUnique?.({ where: { id: initiatorId }, select: { email: true } })).catch(() => null);
       const tooManyForThisOne = tooManyForTheAnchor(dto.contributors.map((c) => c.email), lead?.email);
@@ -2385,8 +2385,8 @@ from finishing at all.`;
      */
     const theAnchorIsOn = dto.scenario === ANCHOR_ENTRY_SCENARIO && (await theAnchorScenarioIsOn(this.prisma));
     /*
-     * THE ANCHOR'S LEAD HAS SAID HER TEAM'S SIZE (release check, 8 October 2026). The anchor is a group of up to 20 people,
-     * the lead included, which is the free trial's own question ("fewer than 20?"), so it is asked of billing here, before the
+     * THE ANCHOR'S LEAD HAS SAID HER TEAM'S SIZE (release check, 8 October 2026). The anchor is a group of up to 20 people
+     * besides the lead, which is the free trial's own question ("fewer than 20?"), so it is asked of billing here, before the
      * check-in is made, and waited for. Without it a lead who left the organisation name blank on the sign-up form was never
      * given the month, and her check-in was refused for ever with "Your organisation has no plan yet" (seen on test bed copy a);
      * the anchor's own month is given only after a check-in exists, so it could never help her. Billing still decides: the

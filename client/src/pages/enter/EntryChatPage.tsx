@@ -1650,7 +1650,7 @@ export function EntryChatPage() {
   }
 
   /**
-   * THE 19-PERSON LIMIT (the lead plus 19 is 20, decision 96 item 3; `thePeopleStepRules.mayAdd`,
+   * THE 20-PERSON LIMIT (20 people besides the lead, decision 121 item 4; `thePeopleStepRules.mayAdd`,
    * served or else `ANCHOR_PEOPLE_STEP_RULES`), for an anchor draft only. `true` means the add
    * actually happened; every place that adds a contributor checks this first and shows the engine's
    * own limit sentence instead when it does not.

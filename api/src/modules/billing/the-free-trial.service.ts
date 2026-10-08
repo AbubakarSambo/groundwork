@@ -45,7 +45,7 @@ export class TheFreeTrialService {
    * THE ANCHOR'S ONE-MONTH TRIAL (anchor piece 34). Given when a check-in is started from the anchor link, only while
    * both the anchor switch and `pricing.anchorTrial` are on, once per organisation, never on top of a free run we
    * already gave it and never to one that is paying, exactly as the free trial is. It covers the plan that holds 20
-   * people, the lead included. Nothing touches Stripe.
+   * people and the lead. Nothing touches Stripe.
    */
   @OnEvent(GroundworkEvents.ANCHOR_CHECK_IN_STARTED)
   async whenAnAnchorCheckInStarts(event: AnchorCheckInStartedEvent): Promise<void> {
@@ -68,8 +68,8 @@ export class TheFreeTrialService {
       if (org.freeTrialStartedAt) return { granted: false, why: 'it has had a trial already' };
       if (whatCoversThem(org, now).covers === 'paid') return { granted: false, why: 'it is paying' };
       if (org.freeUntil) return { granted: false, why: 'it has a free run of its own' };
-      /* Twenty people, the lead included: a plan whose seat limit is at least 20. */
-      const plan = await this.thePlanItCovers(trial.people + 1);
+      /* Twenty people and the lead: a plan whose seat limit is at least 21 (decision 121, item 4). */
+      const plan = await this.thePlanItCovers(trial.people + 2);
       if (!plan) return { granted: false, why: 'no plan holds a team of that size' };
       /*
        * NEVER SHORTER THAN THE REGULAR TRIAL (review of piece 34). Where the organisation would also be given the regular
@@ -194,7 +194,7 @@ export class TheFreeTrialService {
     if (ends.getTime() <= now.getTime()) return null;
     const anchor = this.pricing.getAnchorTrial ? await this.pricing.getAnchorTrial().catch(() => null) : null;
     if (!anchor) return null;
-    const plan = await this.thePlanItCovers(anchor.people + 1);
+    const plan = await this.thePlanItCovers(anchor.people + 2);
     if (!plan || org.freePlan !== plan) return null;
     const starts = ((await (this.prisma as any).ground?.findMany?.({ where: { organizationId, ...WHERE_A_GROUND_IS_THE_ANCHORS }, select: { createdAt: true } })?.catch?.(() => [])) ?? []) as { createdAt: Date }[];
     const A_DAY = 24 * 60 * 60 * 1000;

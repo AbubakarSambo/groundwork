@@ -27,7 +27,7 @@ describe('the entry chat\'s opening text', () => {
   it('reads as plain sentences ending in the first question, and says one to one, never privately', () => {
     expect(THE_ANCHOR_OPENING_TEXT).toBe([
       'You know what it takes to keep the work, customers and company moving. Does your team?',
-      'For one month, Groundwork will check in with each person one to one, to help everyone understand how their work connects, contribute more, and move in the same direction. You can add up to 20 people, yourself included.',
+      'For one month, Groundwork will check in with each person one to one, to help everyone understand how their work connects, contribute more, and move in the same direction. You can add up to 20 people besides yourself.',
       "Tell me what you are trying to get across. What's happening right now that makes you wish your team saw more of what you see?",
     ].join('\n\n'));
     expect(THE_ANCHOR_OPENING_TEXT).not.toMatch(/privately/i);

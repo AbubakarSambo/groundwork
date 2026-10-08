@@ -168,7 +168,7 @@ describe('the people step, for an anchor draft', () => {
     fireEvent.click(screen.getByText('Add'))
     await screen.findByText('What do they do / why are they part of this?')
     fireEvent.click(screen.getByText('Skip'))
-    expect(toast.error).toHaveBeenCalledWith('This one-month Groundwork holds 20 people, and you are one of them, so you can add 19 more.')
+    expect(toast.error).toHaveBeenCalledWith('This one-month Groundwork holds up to 20 people besides you.')
   })
 })
 

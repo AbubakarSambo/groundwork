@@ -686,7 +686,7 @@ export function AnchorTrialRow() {
         <div>
           <div style={{ fontSize: 13, fontWeight: 700 }}>The anchor trial</div>
           <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2, lineHeight: 1.5 }}>
-            A check-in started from the anchor link gives the organisation 1 month on the plan for up to 20 people, the lead included.
+            A check-in started from the anchor link gives the organisation 1 month on the plan for up to 20 people besides the lead.
           </div>
           {err && <div role="alert" style={{ fontSize: 12, color: 'var(--gw-red-t)', marginTop: 4 }}>{err}</div>}
         </div>

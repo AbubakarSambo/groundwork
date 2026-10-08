@@ -45,11 +45,11 @@ describe('the anchor trial', () => {
     }
   });
 
-  it('with both on, one month on the plan that holds 20 people, the lead included', async () => {
+  it('with both on, one month on the plan that holds 20 people and the lead (decision 121, item 4: it was Small Team, which holds 20 seats in all)', async () => {
     const { svc, org } = baridi({ anchorOn: true, trialOn: true });
     const got: any = await svc.grantTheAnchorTrial('org-baridi', NOW);
     expect(got.granted).toBe(true);
-    expect(got.plan).toBe('SMALL_TEAM');
+    expect(got.plan).toBe('GROWTH');
     expect(org.freeUntil.toISOString().slice(0, 10)).toBe('2026-11-05');
     /* Changed after review: with the regular trial off, the anchor month does not use it up. */
     expect(org.freeTrialStartedAt).toBeNull();
@@ -95,7 +95,7 @@ describe('the anchor month and the regular trial', () => {
     };
     return new TheFreeTrialService(prisma, pricing).grantIfItApplies('org-baridi', 'fewer', at);
   };
-  const anAnchorMonth = () => ({ subscriptionPlan: null, subscriptionStatus: null, freeUntil: new Date('2026-11-05T10:00:00Z'), freePlan: 'SMALL_TEAM', freeTrialStartedAt: null });
+  const anAnchorMonth = () => ({ subscriptionPlan: null, subscriptionStatus: null, freeUntil: new Date('2026-11-05T10:00:00Z'), freePlan: 'GROWTH', freeTrialStartedAt: null });
 
   it('where it would not, the anchor month leaves the regular trial to be given later', async () => {
     const { svc, org } = baridi({ anchorOn: true, trialOn: true, regular: { on: false, teamsUnder: 20, months: 1 } });
@@ -134,8 +134,8 @@ describe('the anchor month and the regular trial', () => {
   });
 
   it('fault 2: a free run on another plan, or that does not end a month after an anchor start, is not taken for one', async () => {
-    const onGrowth = { ...anAnchorMonth(), freePlan: 'GROWTH' };
-    expect(await later(onGrowth, new Date('2026-10-20T10:00:00Z'))).toEqual({ granted: false, why: 'it has a free run of its own' });
+    const onSmallTeam = { ...anAnchorMonth(), freePlan: 'SMALL_TEAM' };
+    expect(await later(onSmallTeam, new Date('2026-10-20T10:00:00Z'))).toEqual({ granted: false, why: 'it has a free run of its own' });
     const givenByStaff = { ...anAnchorMonth(), freeUntil: new Date('2026-12-15T10:00:00Z') };
     expect(await later(givenByStaff, new Date('2026-10-20T10:00:00Z'))).toEqual({ granted: false, why: 'it has a free run of its own' });
     const noAnchorCheckIn = anAnchorMonth();

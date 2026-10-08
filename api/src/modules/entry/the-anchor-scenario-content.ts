@@ -15,7 +15,7 @@ export const THE_ANCHOR_SCENARIO_LABEL = 'Help my team understand';
 
 export const THE_ANCHOR_OPENING_TEXT = [
   'You know what it takes to keep the work, customers and company moving. Does your team?',
-  'For one month, Groundwork will check in with each person one to one, to help everyone understand how their work connects, contribute more, and move in the same direction. You can add up to 20 people, yourself included.',
+  'For one month, Groundwork will check in with each person one to one, to help everyone understand how their work connects, contribute more, and move in the same direction. You can add up to 20 people besides yourself.',
   `Tell me what you are trying to get across. ${THE_FIRST_QUESTION.HELP_TEAM_UNDERSTAND.ask}`,
 ].join('\n\n');
 

@@ -14,8 +14,8 @@ describe('what the opener carries beside its words', () => {
     expect(r.source).toBe('founders-whatsapp');
     expect(r.thePeopleStep).toEqual(THE_PEOPLE_STEP_RULES);
     expect(r.thePeopleStep).toMatchObject({
-      limit: 20, mayAdd: 19, heading: 'Who needs to be part of this?',
-      limitSentence: 'This one-month Groundwork holds 20 people, and you are one of them, so you can add 19 more.',
+      limit: 20, mayAdd: 20, heading: 'Who needs to be part of this?',
+      limitSentence: 'This one-month Groundwork holds up to 20 people besides you.',
     });
     expect(r.reply).toMatch(/one to one/);
   });

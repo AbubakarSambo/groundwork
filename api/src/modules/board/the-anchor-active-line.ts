@@ -9,7 +9,7 @@ import type { TheActiveLine } from '../entry/the-anchor-served-shapes';
  *
  * ACTIVE is the people who have answered the round that is open now, counted exactly as "N of M have
  * answered" counts them (nobody an admin has not let in, nobody away). TOTAL is those same people, the
- * lead included, and never more than 20. NUDGED is, of the people who have not answered, those Groundwork
+ * lead not among them (decision 121, item 4), and never more than 20. NUDGED is, of the people who have not answered, those Groundwork
  * has nudged since this round opened.
  */
 export const THE_MOST_PEOPLE_AN_ANCHOR_CHECK_IN_HOLDS = 20;

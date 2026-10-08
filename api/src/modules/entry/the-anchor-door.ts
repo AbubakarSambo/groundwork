@@ -33,7 +33,7 @@ export type TheAnchorDraftToStart = {
   firstQuestion: string;
   /** Where the link came from (the group or post it was shared in), or null. Kept in the draft's payload as `anchorSource`. */
   source: string | null;
-  /** The people step's own rules and words: up to 20 people, the lead included (decision 96, item 3). */
+  /** The people step's own rules and words: up to 20 people besides the lead (decision 121, item 4). */
   thePeopleStep: ThePeopleStepRules;
 };
 

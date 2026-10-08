@@ -51,8 +51,7 @@ export type TheLeadsReveal = {
 
 /* ------------------------------------------------------------------------------------------------
  * PIECE 10/11. UP TO 20 PEOPLE, AND THE INVITATION (section 13 and 14; decision 96, items 1, 3 and
- * 8). `mayAdd` is 19, not 20: the limit is 20 people including the lead, so the lead can add 19
- * others. Served as `thePeopleStep` on `GET /entry/anchor-start`.
+ * 8). `mayAdd` is 20: the limit is 20 people besides the lead, who is not counted (decision 121, item 4). Served as `thePeopleStep` on `GET /entry/anchor-start`.
  * ---------------------------------------------------------------------------------------------- */
 export type OnePersonTheLeadAdds = {
   /** Required unless `colleagueId` is given. */
@@ -68,13 +67,13 @@ export type ThePeopleStepSends = { contributors: OnePersonTheLeadAdds[] }
 
 export type ThePeopleStepRules = {
   limit: 20
-  theLeadCounts: true
-  mayAdd: 19
+  theLeadCounts: false
+  mayAdd: 20
   heading: string
   intro: string
   contextLabel: string
   button: string
-  /** Said when the lead tries to add a twentieth other person. */
+  /** Said when the lead tries to add a twenty-first other person. */
   limitSentence: string
 }
 
@@ -122,7 +121,7 @@ export type TheMonthBoard = {
 export type TheActiveLine = {
   /** People who have checked in within the cadence. */
   active: number
-  /** People in the check-in, the lead included, never more than 20. */
+  /** People who check in, the lead not counted, never more than 20. */
   total: number
   /** People Groundwork has nudged and who are not yet active. */
   nudged: number

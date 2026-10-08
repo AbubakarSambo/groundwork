@@ -73,16 +73,16 @@ export type OnePersonTheLeadAdds = {
 };
 export type ThePeopleStepSends = { contributors: OnePersonTheLeadAdds[] };
 
-/** 20 includes the lead: the lead plus 19 (decision 96, item 3). */
+/** Up to 20 people besides the lead, who is not counted (decision 121, item 4). */
 export type ThePeopleStepRules = {
   limit: 20;
-  theLeadCounts: true;
-  mayAdd: 19;
+  theLeadCounts: false;
+  mayAdd: 20;
   heading: string;
   intro: string;
   contextLabel: string;
   button: string;
-  /** Said when the lead tries to add a twentieth other person. */
+  /** Said when the lead tries to add a twenty-first other person. */
   limitSentence: string;
 };
 
@@ -123,7 +123,7 @@ export type TheMonthBoard = {
 export type TheActiveLine = {
   /** People who have checked in within the cadence. */
   active: number;
-  /** People in the check-in, the lead included, never more than 20. */
+  /** People who check in, the lead not counted, never more than 20. */
   total: number;
   /** People Groundwork has nudged and who are not yet active. */
   nudged: number;

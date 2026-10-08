@@ -9,7 +9,7 @@ const keysOf = (o: object) => Object.keys(o).sort();
 const sorted = (a: readonly string[]) => [...a].sort();
 
 const reveal: TheLeadsReveal = { title: 'Help my team understand', subtitle: 'One-month Groundwork', carrying: 'x', whatTheTeamNeedsToUnderstand: null, sharedWithTheTeam: false, whoYouAreTryingToMove: 'x', seeingToday: 'x', whatMeaningfulChangeWouldLookLike: [], whatGroundworkWillExplore: [], howIWillWorkWithYourTeam: [...HOW_I_WILL_WORK_WITH_YOUR_TEAM] };
-const rules: ThePeopleStepRules = { limit: 20, theLeadCounts: true, mayAdd: 19, heading: '', intro: '', contextLabel: '', button: '', limitSentence: '' };
+const rules: ThePeopleStepRules = { limit: 20, theLeadCounts: false, mayAdd: 20, heading: '', intro: '', contextLabel: '', button: '', limitSentence: '' };
 const invitation: TheAnchorInvitation = { subject: '', heading: '', lines: [], leadHasSharedWhatTheyAreSeeing: false, button: '' };
 const board: TheMonthBoard = { question: 'Are we moving together?', weekOfTheMonth: 1, weekSaid: 'Week 1 of the month', lenses: [], whatIsMoving: [], whatTheTeamIsContributing: [], peopleHelpingThingsMove: [], wherePerspectivesDiffer: [], whatIsStillGettingInTheWay: [], whatGroundworkIsWorkingOnNext: [] };
 const active: TheActiveLine = { active: 18, total: 20, nudged: 2, line: '18/20 active · Groundwork has nudged the remaining 2.' };

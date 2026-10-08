@@ -132,7 +132,7 @@ export class AdminController {
   }
 
   @Get('pricing/anchor-trial')
-  @ApiOperation({ summary: 'The anchor trial: whether it is on. One month, up to 20 people with the lead.' })
+  @ApiOperation({ summary: 'The anchor trial: whether it is on. One month, up to 20 people besides the lead.' })
   async getAnchorTrial() {
     return this.pricing.getAnchorTrial();
   }
