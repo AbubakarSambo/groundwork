@@ -1632,7 +1632,19 @@ export function GroundAdminPage() {
             /* PROGRESS IS COUNTED IN SESSIONS, NOT DAYS. A ground eight sessions into twelve read
                "90 days remaining", which is arithmetically true and useless, because the work is
                measured in check-ins, not the calendar. */
-            if (plannedSessions != null) parts.push(`Session ${Math.min(sessionsDone + 1, plannedSessions)} of ${plannedSessions}.`)
+            /*
+             * DRAWN FROM THE SERVER'S OWN CLOCK (8 October, night note item 5, B-112). `GET
+             * /grounds/:id` now serves `sessionClock`, the board's own count (request 101 f) -
+             * `says` ("Session 2 of 12.") is read first, so the report tab and this header can no
+             * longer disagree about which session is open. `whileOpen` ("Session 3 has started
+             * for some people, while session 2 is still open.") is a second, true sentence this
+             * page could not say at all before: a later session can start for some people while an
+             * earlier one is still open for others, and both facts matter. The old client-side
+             * count stays only as the fallback for a server that does not send it yet.
+             */
+            if (ground.sessionClock?.says) parts.push(ground.sessionClock.says)
+            else if (plannedSessions != null) parts.push(`Session ${Math.min(sessionsDone + 1, plannedSessions)} of ${plannedSessions}.`)
+            if (ground.sessionClock?.whileOpen) parts.push(ground.sessionClock.whileOpen)
             /* THE DAY IT ENDS, ON EVERY CHECK-IN THAT HAS ONE, unless the days-left sentence is about to say the same thing more urgently. */
             if (ground.endsOn && !(ground.daysLeft != null && ground.daysLeft <= 3)) parts.push(`It ends on ${whenItWas(ground.endsOn, 'full')}.`)
             if (ground.daysLeft != null && ground.daysLeft <= 3) parts.push(ground.daysLeft === 0 ? 'It is due today.' : `${ground.daysLeft} day${ground.daysLeft === 1 ? '' : 's'} remain.`)
