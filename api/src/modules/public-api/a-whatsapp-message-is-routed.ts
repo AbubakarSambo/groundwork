@@ -214,6 +214,14 @@ export const A_BACK_WORD = /^\s*(back|go\s+back|back\s+to\s+(my\s+)?check-?in)\s
  * that one yet". Those words are a return to the check-in, as "back" is. A question ("when is my next check-in?") stays with Ask.
  */
 export const A_WISH_TO_CARRY_ON_THE_CHECK_IN = /^\s*(?:(?:hi|hello|hey)[\s,!.]*|(?:start|begin|continue|resume)\s*[.!]?\s*|(?!(?:when|what|how|who|why|is|are|can|could|do|does|where)\b)[^?]*\b(?:(?:do|start|begin|continue|resume|finish|answer)\b[^?]*\bcheck-?in|check-?in\b[^?]*\b(?:now|please))[^?]*)$/i;
+/**
+ * WORDS THAT ONLY ASK TO BEGIN ARE NOT THE FIRST ANSWER (B-108). "Hi, I want to do my check-in" was handed to the check-in as what the person said,
+ * and the reply quoted it back ("You mentioned last time that you wanted to do your check-in"), after the opener had already asked its question, so the
+ * message carried two openers (B-101). A greeting alone, or a short message that only asks to start, opens the check-in and is not put in it. A long
+ * message that happens to mention a check-in is an answer.
+ */
+export const isAGreetingOrARequestToStart = (text: string): boolean =>
+  A_GREETING_ALONE.test(text) || ((text ?? '').trim().length <= 60 && A_WISH_TO_CARRY_ON_THE_CHECK_IN.test(text));
 /** "switch": the list of check-ins again, or, on Groundwork's number, the list of organisations. */
 export const A_SWITCH_WORD = /^\s*switch\s*[.!]?\s*$/i;
 export const A_YES = /^\s*(?:(?:yes|yeah|yep|ok|okay|sure)(?:\s+(?:please|thanks|thank\s+you|do))?|y|please\s+do|go\s+ahead|yes,?\s+please)\s*[.!]?\s*$/i;

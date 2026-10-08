@@ -130,7 +130,7 @@ describe('the first message into a check-in that has not started', () => {
 
   /* A greeting on its own gets the opener and stops - there is nothing to answer yet. */
   it('and a greeting alone stops after the opener', () => {
-    expect(route).toMatch(/if \(A_GREETING_ALONE\.test\(text\)( \|\| beginning)?\) \{ await say\(reply\); return; \}/);
+    expect(route).toMatch(/if \((?:A_GREETING_ALONE\.test\(text\)|isAGreetingOrARequestToStart\(text\))( \|\| beginning)?\) \{ await say\(reply\); return; \}/);
   });
 });
 
