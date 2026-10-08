@@ -62,6 +62,9 @@ export interface AThingOutstanding {
   keptInTheApp?: boolean;
   /** The check-in it is about. Said (" in \u201cSales team, Q3\u201d" at the {in} mark) only when the lead is being told about more than one. */
   place?: string;
+  /** The check-in it comes from, and how many days past its day it is, so a long-overdue item can be left out for a check-in made before the release (decision 121, item 6). */
+  groundId?: string;
+  daysOverdue?: number;
 }
 
 const THE_PLACE_MARK = '{in}';
@@ -228,6 +231,26 @@ const PERSON = {
  * EVERYTHING OUTSTANDING FOR ONE LEAD, from the record, as sentences. Reads only check-ins she runs (and her own commitments), never a check-in about one person's
  * performance, promotion or renewal. A promise a lead wrote for somebody who has not been told is not counted as theirs.
  */
+/** More than a month past its day is long overdue (decision 121, item 6). */
+export const LONG_OVERDUE_AFTER_DAYS = 30;
+
+/**
+ * FOR EXISTING CLIENTS, WHAT IS MORE THAN A MONTH OVERDUE IS LEFT OUT (decision 121, item 6). A check-in made before the engagement messages
+ * began (the same moment the other engagement messages use) carries a history nobody can act on every morning, so the daily nudge does not
+ * open with it. Check-ins made since are untouched, and an item with no day, or with a day not yet a month gone, always stays.
+ */
+async function leaveOutWhatIsLongOverdueOnOldCheckIns(prisma: any, o: WhatIsOutstanding, release: Date | null): Promise<WhatIsOutstanding> {
+  if (!release) return o;
+  const long = (t: AThingOutstanding) => !!t.groundId && (t.daysOverdue ?? 0) > LONG_OVERDUE_AFTER_DAYS;
+  const ids = [...new Set([...o.needsYou, ...o.overdueOnYourTeam, ...o.risks].filter(long).map((t) => t.groundId!))];
+  if (!ids.length) return o;
+  const made: any[] = await prisma.ground.findMany({ where: { id: { in: ids } }, select: { id: true, createdAt: true } }).catch(() => []);
+  const old = new Set(made.filter((g) => g.createdAt && new Date(g.createdAt).getTime() < release.getTime()).map((g) => g.id));
+  if (!old.size) return o;
+  const keep = (t: AThingOutstanding) => !(long(t) && old.has(t.groundId!));
+  return { needsYou: o.needsYou.filter(keep), overdueOnYourTeam: o.overdueOnYourTeam.filter(keep), risks: o.risks.filter(keep) };
+}
+
 export async function whatIsOutstandingFor(
   prisma: any,
   lead: { userId: string; organizationId: string; grounds: { id: string; label: string; scenario: any; overWhatsApp: boolean | null; timelineDays: number | null; cadence: any }[] },
@@ -276,8 +299,8 @@ export async function whatIsOutstandingFor(
     const text = (who: string) => `${THE_PLACE_FIRST}${theyCommitted(who, pr.text)}. That was due by ${theDay(pr.dueDate)} and is ${lateWords(late)}.`;
     /* "Someone" is the word for a person nobody has a name for (decision 115): a lead cannot act on it, so it is not told. */
     if (pr.participant?.userId !== lead.userId && nameToCall(pr.participant) === SOMEONE) continue;
-    if (pr.participant?.userId === lead.userId) out.needsYou.push({ text: text('You'), late, group: 2, keptInTheApp: keptOffThePhone(g), place: g.label });
-    else if (ids.includes(pr.groundId) && letIn(pr.participant) && (pr.authoredBy === 'self' || pr.seenBySubject)) out.overdueOnYourTeam.push({ text: text(nameToCall(pr.participant)), late, keptInTheApp: keptOffThePhone(g), place: g.label });
+    if (pr.participant?.userId === lead.userId) out.needsYou.push({ text: text('You'), late, group: 2, keptInTheApp: keptOffThePhone(g), place: g.label, groundId: g.id, daysOverdue: late });
+    else if (ids.includes(pr.groundId) && letIn(pr.participant) && (pr.authoredBy === 'self' || pr.seenBySubject)) out.overdueOnYourTeam.push({ text: text(nameToCall(pr.participant)), late, keptInTheApp: keptOffThePhone(g), place: g.label, groundId: g.id, daysOverdue: late });
   }
 
   /* Waits on her people's work: open, named, in her check-ins. */
@@ -307,14 +330,14 @@ export async function whatIsOutstandingFor(
     /* A decision she owes: somebody is waiting for her to decide it. */
     if (onHer && w.blockerKind === 'DECISION') {
       const since = `since ${theDay(w.createdAt)}`;
-      out.needsYou.push({ text: `${saidWait(w, 'is')}${THE_PLACE_MARK} ${since}.`, late: late > 0 ? late : 0, group: 1, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId) });
+      out.needsYou.push({ text: `${saidWait(w, 'is')}${THE_PLACE_MARK} ${since}.`, late: late > 0 ? late : 0, group: 1, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId), groundId: w.groundId, daysOverdue: Math.max(0, late) });
       counted.add(w.id);
       continue;
     }
     if (late < 1) continue;
     const text = `${saidWait(w, 'is')}${THE_PLACE_MARK}, which was due on ${theDay(w.dueOn)} and is ${lateWords(late)}.`;
-    if (onHer) out.needsYou.push({ text, late, group: 2, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId) });
-    else if (w.onParticipant && letIn(w.onParticipant)) out.overdueOnYourTeam.push({ text, late, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId) });
+    if (onHer) out.needsYou.push({ text, late, group: 2, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId), groundId: w.groundId, daysOverdue: late });
+    else if (w.onParticipant && letIn(w.onParticipant)) out.overdueOnYourTeam.push({ text, late, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId), groundId: w.groundId, daysOverdue: late });
     else continue;
     counted.add(w.id);
   }
@@ -350,7 +373,7 @@ export async function whatIsOutstandingFor(
       );
       if (stands?.word !== 'Behind' && stands?.word !== 'Over limit') continue;
       const is = stands.word === 'Behind' ? 'is behind' : 'is over its limit';
-      out.risks.push({ text: `The target ${quoted(o.name.trim())} in ${quoted(g.label)} ${is}. ${sentence(stands.says)}`, late: 1_000_000, keptInTheApp: keptOffThePhone(g), place: g.label });
+      out.risks.push({ text: `The target ${quoted(o.name.trim())} in ${quoted(g.label)} ${is}. ${sentence(stands.says)}`, late: 1_000_000, keptInTheApp: keptOffThePhone(g), place: g.label, groundId: g.id, daysOverdue: o.dueOn ? Math.max(0, daysLate(o.dueOn, today)) : 0 });
     }
   }
   /* A wait that has gone on too long, the oldest first, if it is not already said as overdue. */
@@ -382,7 +405,7 @@ export async function whatIsOutstandingFor(
   const byLate = (a: AThingOutstanding, b: AThingOutstanding) => (b.late ?? 0) - (a.late ?? 0);
   out.needsYou.sort((a, b) => (a.group ?? 9) - (b.group ?? 9) || byLate(a, b));
   out.overdueOnYourTeam.sort(byLate);
-  return out;
+  return await leaveOutWhatIsLongOverdueOnOldCheckIns(prisma, out, deps.release);
 }
 
 /**
