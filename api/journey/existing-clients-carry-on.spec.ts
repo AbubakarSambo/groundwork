@@ -261,7 +261,6 @@ async function releaseNight(): Promise<Outcome> {
         ['07:00 invites about to lapse', () => cron.tellThemBeforeAnInviteLapses()],
         ['08:00 the scheduled nudges', () => remind.sendScheduledNudges()],
         ['08:30 the WhatsApp reminders', () => cron.sendWhatsAppReminders()],
-        ['07:00 Lagos the lead summaries', () => cron.sendTheLeadsDailySummaries()],
         ['09:00 the reminders', () => cron.sendReminders()],
         ['10:00 the feedback requests', () => cron.sendFeedbackRequests()],
         ['every 15 minutes: session ready', () => cron.sendSessionReadyNotifications()],
@@ -277,6 +276,8 @@ async function releaseNight(): Promise<Outcome> {
         ['11:00 Lagos the follow-up after a report', () => cron.sendTheReportFollowUpsInner()],
         ['Wednesday: who has gone quiet', () => cron.sendWhoHasGoneQuietInner()],
         ['Friday: the lead\'s weekly letter', () => cron.sendTheLeadsWeeklyLettersInner()],
+        /* The lead's daily nudge (decision 120), at nine in Lagos, after the insights above and before the reminders; it replaced the WhatsApp daily summary at seven. */
+        ['09:00 Lagos the lead\'s daily nudge', () => cron.sendTheLeadsDailyNudgesInner()],
       ];
       for (const [name, run] of jobs) {
         try { await run(); } catch (e: any) { errors.push(`${name}: ${e?.message ?? e}`); }
@@ -368,13 +369,33 @@ describe('release night, for a check-in that already exists', () => {
   }));
 
   it('sends no engagement message about a check-in made before the release, beyond that one "what is new" email, and never about the stalled one (A to F)', needsTheDatabase((o) => {
-    const engagement = ['sendTheLeadsWeeklyLetter', 'sendWhoHasGoneQuiet', 'sendTheReportFollowUp', 'sendTestCheckInMovesOn', 'sendWaitingOnThePeople', 'sendLeadFirstCheckIn', 'sendYourWeek'];
+    const engagement = ['sendTheLeadsDailyNudge', 'sendTheLeadsWeeklyLetter', 'sendWhoHasGoneQuiet', 'sendTheReportFollowUp', 'sendTestCheckInMovesOn', 'sendWaitingOnThePeople', 'sendLeadFirstCheckIn', 'sendYourWeek'];
     const said = ['A', 'B', 'C', 'D', 'E', 'F'].flatMap((k) => aboutIt(o, o.seeded[k]).filter((c) => engagement.some((m) => c.method === `email.${m}`)).map((c) => `${k}: ${c.method}`));
     expect(said).toEqual([]);
     /* And the one "what is new" does not mention the stalled check-in (F). It was sent, so the engagement jobs did run: this is not a silence from jobs that never started. */
     const news = o.calls.filter((c) => c.method === 'email.sendHeresWhatIsNew');
     expect(news.length).toBeGreaterThan(0);
     expect(news.filter((c) => c.text.includes(o.seeded.F.label))).toEqual([]);
+  }));
+
+  it('the lead\'s daily nudge (decision 120): each lead is told once, on one channel, in whole sentences, and never about the stalled check-in or by an address', needsTheDatabase((o) => {
+    const byEmail = o.calls.filter((c) => c.method === 'email.sendTheLeadsDailyNudge').map((c) => JSON.parse(c.text) as [string, string, { needsYou: string[]; overdueOnYourTeam: string[]; risks: string[] }, string | null, string, string]);
+    const onPhone = o.calls.filter((c) => c.method === 'whatsapp.sendFor').map((c) => JSON.parse(c.text) as [string, string, string, { kind: string; params: string[] }]).filter((a) => a[3]?.kind === 'lead-summary');
+    /* It ran on release morning, so this is not a silence from a job that never started. */
+    expect(byEmail.length + onPhone.length).toBeGreaterThan(0);
+    expect(new Set(byEmail.map((a) => a[0].toLowerCase())).size).toBe(byEmail.length);
+    expect(new Set(onPhone.map((a) => a[1])).size).toBe(onPhone.length);
+    for (const [, subject, parts] of byEmail) {
+      const all = [subject, ...parts.needsYou, ...parts.overdueOnYourTeam, ...parts.risks];
+      expect(all.join(' ')).not.toMatch(/@\w|undefined|null|\[object|NaN/);
+      expect(all.join(' ')).not.toContain(o.seeded.F.label);
+      for (const line of [...parts.needsYou, ...parts.overdueOnYourTeam, ...parts.risks]) expect(line).toMatch(/[.]$/);
+      for (const part of [parts.needsYou, parts.overdueOnYourTeam, parts.risks]) expect(part.length).toBeLessThanOrEqual(3);
+    }
+    for (const [, , , ctx] of onPhone) {
+      expect(ctx.params[1]).not.toMatch(/[\r\n\t]|undefined|null|\[object|NaN/);
+      expect(ctx.params[1]).not.toContain(o.seeded.F.label);
+    }
   }));
 
   it('does not email the lead that time is running out, for a check-in already in its last week or past its end (D and E)', needsTheDatabase((o) => {

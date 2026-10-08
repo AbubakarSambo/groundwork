@@ -18,11 +18,12 @@ import { whereThisTargetStands, theDirectionToReadIn } from '../board/the-headli
 import { asADirection, theDayItIsDue } from '../board/an-aim-or-a-limit';
 import { aDateOnly } from '../board/the-day-in-words';
 import { blockerHasSubstance, dedupeDependencies } from '../board/reads';
-import { oneBlockerPerThingWaitedOn } from '../board/a-blocker-with-nothing-in-it-is-the-same-blocker';
+import { oneBlockerPerThingWaitedOn, theyNamedWhatTheyAreWaitingOn } from '../board/a-blocker-with-nothing-in-it-is-the-same-blocker';
+import { startsWithAPronoun } from '../grounds/a-blocker-that-says-her-or-his';
 import { theWaitSaid } from '../board/a-wait-said-in-full';
 import { ESCALATE_AFTER_DAYS } from '../webhooks/a-handoff-that-has-sat-too-long';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
-import { nameToCall } from './a-name-to-call-them';
+import { nameToCall, SOMEONE } from './a-name-to-call-them';
 import { aNumberInWords } from './a-number-in-words';
 import { theEngagementMoment } from './the-engagement-release-moment';
 import { theQuietIn, quietIn } from './who-has-gone-quiet';
@@ -169,8 +170,34 @@ export function theTemplateParagraph(firstName: string | null | undefined, o: Wh
 }
 
 /** A commitment is "said" when it is stored in the person's own first-person words ("I will chase legal on Monday"), and "committed to" when it is the thing itself ("send the supplier list"). */
-const FIRST_PERSON = /^(?:(?:next|then|first|also|and|so|now)[,\s]+)?(?:i|we)(?:[\u2019']\w+)?\b/i;
+const FIRST_PERSON = /\b(?:i|i[\u2019']\w+|me|my|mine|myself|we|we[\u2019']\w+|our|ours)\b/i;
 const theyCommitted = (who: string, text: string) => (FIRST_PERSON.test(text.trim()) ? `${who} said ${quoted(text.trim())}` : `${who} committed to ${quoted(text.trim())}`);
+
+/**
+ * ONLY A WAIT THAT READS AS A SENTENCE IS TOLD (found on a copy of an existing client's data, 8 October). A wait is kept as the person said it, and said that way in a
+ * message to somebody else it read "Segun has been waiting on Amaka and Chidinma's decision for in writing whether the 30 September close is mine", "Aisha has been
+ * waiting on funding for funding for the solar", and "has been waiting on whoever needs to make the connection clear for how this connects to anything". So a wait is
+ * told only when the person named what they wait for, said it in nobody's first person and not as "her" or "his", named who holds it, and the thing is not the holder said
+ * again. Anything else is still on the board, where the person's own words stand with the rest of what they said.
+ */
+const THE_WORDS = (t: string) => t.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !['the', 'and', 'for', 'with'].includes(w));
+export function aWaitReadsAsASentence(w: { what: string; namedTheThing?: boolean | null; onLabel?: string | null; onParticipant?: unknown }): boolean {
+  const what = (w.what ?? '').trim();
+  if (!what || what.length > 120) return false;
+  if (!theyNamedWhatTheyAreWaitingOn(w as any)) return false;
+  if (FIRST_PERSON.test(what) || startsWithAPronoun(what)) return false;
+  /* A clause and not a thing ("how this connects to anything", "whether it is mine"), or one that points at something not said ("this", "it", "them"). */
+  if (/^(?:how|whether|why|if|when|what)\b/i.test(what) || /\b(?:this|it|them)\b/i.test(what)) return false;
+  const holder = (w.onLabel ?? '').trim();
+  /* Somebody outside the check-in with no name is not a holder; a person in it is. */
+  if (!w.onParticipant && !holder) return false;
+  if (!w.onParticipant && holder) {
+    const h = THE_WORDS(holder);
+    const t = new Set(THE_WORDS(what));
+    if (h.length && h.every((x) => t.has(x))) return false;
+  }
+  return true;
+}
 
 const lateWords = (n: number) => (n === 1 ? 'one day late' : `${aNumberInWords(n)} days late`);
 
@@ -240,6 +267,8 @@ export async function whatIsOutstandingFor(
     const late = daysLate(pr.dueDate, today);
     if (late < 1) continue;
     const text = (who: string) => `${theyCommitted(who, pr.text)}${THE_PLACE_MARK} by ${theDay(pr.dueDate)}, and it is ${lateWords(late)}.`;
+    /* "Someone" is the word for a person nobody has a name for (decision 115): a lead cannot act on it, so it is not told. */
+    if (pr.participant?.userId !== lead.userId && nameToCall(pr.participant) === SOMEONE) continue;
     if (pr.participant?.userId === lead.userId) out.needsYou.push({ text: text('You'), late, group: 2, keptInTheApp: keptOffThePhone(g), place: g.label });
     else if (ids.includes(pr.groundId) && letIn(pr.participant) && (pr.authoredBy === 'self' || pr.seenBySubject)) out.overdueOnYourTeam.push({ text: text(nameToCall(pr.participant)), late, keptInTheApp: keptOffThePhone(g), place: g.label });
   }
@@ -264,6 +293,8 @@ export async function whatIsOutstandingFor(
   const counted = new Set<string>();
   for (const w of real) {
     if (!letIn(w.fromParticipant) && !hers.has(w.fromParticipantId)) continue;
+    if (!aWaitReadsAsASentence(w)) continue;
+    if ((!hers.has(w.fromParticipantId) && nameToCall(w.fromParticipant) === SOMEONE) || (w.onParticipant && !hers.has(w.onParticipantId) && nameToCall(w.onParticipant) === SOMEONE)) continue;
     const onHer = hers.has(w.onParticipantId);
     const late = daysLate(w.dueOn, today);
     /* A decision she owes: somebody is waiting for her to decide it. */
@@ -317,11 +348,9 @@ export async function whatIsOutstandingFor(
   }
   /* A wait that has gone on too long, the oldest first, if it is not already said as overdue. */
   const tooLong = real
-    .filter((w) => !counted.has(w.id) && letIn(w.fromParticipant) && Math.floor((now.getTime() - new Date(w.createdAt).getTime()) / DAY) >= ESCALATE_AFTER_DAYS)
+    .filter((w) => !counted.has(w.id) && aWaitReadsAsASentence(w) && letIn(w.fromParticipant) && (hers.has(w.fromParticipantId) || nameToCall(w.fromParticipant) !== SOMEONE) && !(w.onParticipant && !hers.has(w.onParticipantId) && nameToCall(w.onParticipant) === SOMEONE) && Math.floor((now.getTime() - new Date(w.createdAt).getTime()) / DAY) >= ESCALATE_AFTER_DAYS)
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   for (const w of tooLong) {
-    const hasName = w.onParticipant || (w.onLabel ?? '').trim() || w.namedTheThing;
-    if (!hasName) continue;
     out.risks.push({ text: `${saidWait(w, 'has been')}${THE_PLACE_MARK} since ${theDay(w.createdAt)}.`, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId) });
   }
   /* A check-in where people have gone quiet. Not about a check-in that began before the engagement messages did. */

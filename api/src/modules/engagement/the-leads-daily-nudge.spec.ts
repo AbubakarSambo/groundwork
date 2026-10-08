@@ -271,6 +271,18 @@ describe('in "Needs you", what waits for her to approve comes first, then a deci
 });
 
 describe('a commitment stored in the person\'s own first-person words is said as theirs', () => {
+  it('wherever the "I" is in it, and a person nobody has a name for is not told', async () => {
+    const m = aMorning({
+      phone: null, waiting: false,
+      promises: [
+        promise({ text: 'If I don\'t hear back by Friday, I will re-escalate to the Head of Credit', dueDate: day('2026-10-06') }),
+        promise({ text: 'chase it on Monday', dueDate: day('2026-10-06'), participantId: 'p-bisi', participant: { ...PEOPLE['p-bisi'], nameGiven: null, user: { firstName: null, lastName: null, awaitingOrgApproval: false }, ground: SALES } }),
+      ],
+    });
+    await m.run();
+    expect(m.mails[0][2].overdueOnYourTeam).toEqual(['Omar said \u201cIf I don\'t hear back by Friday, I will re-escalate to the Head of Credit\u201d by Tuesday 6 October, and it is six days late.']);
+  });
+
   it('"said" for "I will chase legal on Monday", "committed to" for "send the supplier list"', async () => {
     const m = aMorning({
       phone: null, waiting: false,
@@ -296,6 +308,28 @@ describe('a check-in about one person\'s performance, promotion or renewal is ne
     expect(await m.run()).toEqual({ tried: 0 });
     expect(m.mails).toEqual([]);
     expect(m.whats).toEqual([]);
+  });
+});
+
+describe('a wait is told only when it reads as a sentence', () => {
+  const wait = (over: any) => ({ id: 'w-x', groundId: 'g-sales', what: 'the price list', namedTheThing: true, onLabel: null, status: 'WAITING', createdAt: day('2026-09-21'), dueOn: null, blockerKind: null, fromParticipantId: 'p-bisi', onParticipantId: 'p-omar', fromParticipant: PEOPLE['p-bisi'], onParticipant: PEOPLE['p-omar'], ...over });
+  it.each([
+    ['in the first person ("is mine")', { what: 'in writing whether the 30 September close is mine or Chidinma\'s' }],
+    ['as "her" or "his"', { what: 'her login for the order system' }],
+    ['with the holder said again ("funding for funding")', { what: 'funding for the solar', onParticipantId: null, onParticipant: null, onLabel: 'funding' }],
+    ['with nobody who holds it', { onParticipantId: null, onParticipant: null, onLabel: null }],
+    ['when the person did not name the thing', { namedTheThing: false, what: 'how this connects to anything' }],
+    ['as a clause and not a thing ("how it ties to the target")', { what: 'how it ties to the group target' }],
+    ['when the one waiting has no name anybody knows ("Someone")', { fromParticipant: { ...PEOPLE['p-bisi'], nameGiven: null, user: { firstName: null, lastName: null, awaitingOrgApproval: false } } }],
+  ])('not %s', async (_why, over) => {
+    const m = aMorning({ phone: null, promises: [], waiting: false, waits: [wait(over)] });
+    expect(await m.run()).toEqual({ tried: 0 });
+    expect(m.mails).toEqual([]);
+  });
+  it('but one that is whole is', async () => {
+    const m = aMorning({ phone: null, promises: [], waiting: false, waits: [wait({})] });
+    await m.run();
+    expect(m.mails[0][2].risks).toEqual(['Bisi has been waiting on Omar for the price list since Monday 21 September.']);
   });
 });
 
