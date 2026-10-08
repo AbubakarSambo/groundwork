@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { roleWord } from './your-organisations'
 
 /**
  * ADDING PEOPLE THE WAY A GROUP CHAT DOES IT.
@@ -28,10 +29,20 @@ export interface APerson {
   team?: string | null
 }
 
-/** Role and team together, comma-joined as the rest of the product already writes two facts side
- * by side (see `whereTheySitLine`, people-here.ts) - never a colon, dot or arrow between them. */
+/**
+ * B-054: THE PRODUCT'S OWN WORD FOR THE ROLE, NOT THE SERVER'S CODE. `GET /users/colleagues` serves
+ * `role` as it is stored - "MEMBER", "LEAD" - and this used to print that straight under the name,
+ * so a lead read "Arjun Shah, MEMBER" and searching "takes part" or "account manager" found nobody,
+ * because nothing on screen or in the search read those words. `roleWord` (your-organisations.ts) is
+ * the one mapping the People page itself already uses for the same codes - "Admin", "Can open
+ * check-ins", "Takes part" - so this reads and searches the same word a lead already knows from
+ * there, never a second translation of the same codes.
+ *
+ * Role and team together, comma-joined as the rest of the product already writes two facts side
+ * by side (see `whereTheySitLine`, people-here.ts) - never a colon, dot or arrow between them.
+ */
 function roleAndTeam(p: APerson): string {
-  const role = (p.role ?? '').trim()
+  const role = roleWord(p.role).trim()
   const team = (p.team ?? '').trim()
   if (role && team) return `${role}, ${team}`
   return role || team
@@ -58,7 +69,7 @@ export function PeoplePicker({
     const q = query.trim().toLowerCase()
     if (!q) return candidates
     return candidates.filter((p) =>
-      p.name.toLowerCase().includes(q) || (p.team ?? '').toLowerCase().includes(q) || (p.role ?? '').toLowerCase().includes(q))
+      p.name.toLowerCase().includes(q) || (p.team ?? '').toLowerCase().includes(q) || roleWord(p.role).toLowerCase().includes(q))
   }, [candidates, query])
 
   if (!candidates.length) return null
