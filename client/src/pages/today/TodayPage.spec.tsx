@@ -336,3 +336,73 @@ describe('Today has one navy button', () => {
     expect(document.querySelectorAll('.gwui-btn-primary')).toHaveLength(1)
   })
 })
+
+/**
+ * REQUEST 198 (b), DONE (docs/answers-from-engine.md, 8 October (late night)). `GET /today` carries
+ * `forTheLead` only for a lead with something to add - built from the same functions the
+ * first-reminder and Friday letter mails use. A participant, and an admin who does not run the
+ * check-in, get no key at all, and nothing here repeats what Today's other cards already say.
+ */
+const FOR_THE_LEAD_READ = {
+  ...LEAD_READ,
+  forTheLead: {
+    nobodyHasStarted: [{
+      groundId: 'd1',
+      label: 'Distributor review',
+      subject: 'Nobody has started "Distributor review" yet, and Groundwork is following up',
+      lines: [
+        'Nobody has started "Distributor review" yet.',
+        'It opened four days ago.',
+        'Groundwork has already followed up once.',
+        'You can see who has started from here.',
+      ],
+      linkLabel: 'See who has started',
+      to: '/grounds/d1',
+    }],
+    whatIWouldDoThisWeek: [{
+      groundId: 's',
+      label: 'Sales team, Q3',
+      lines: [
+        'Here is what I would do this week.',
+        'Get back to Amani about the discount limit - he has been waiting since Saturday.',
+      ],
+    }],
+  },
+}
+
+describe('"For the lead", request 198 (b)', () => {
+  it('a lead with something to add reads "Nobody has started" and "What I would do this week", once each', async () => {
+    open(WAIRIMU, FOR_THE_LEAD_READ)
+    expect(await screen.findByText('Nobody has started')).toBeTruthy()
+    expect(screen.getByText('Nobody has started "Distributor review" yet, and Groundwork is following up')).toBeTruthy()
+    expect(screen.getByText('It opened four days ago.')).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'See who has started' })).toHaveAttribute('href', '/grounds/d1')
+
+    expect(screen.getByText('What I would do this week')).toBeTruthy()
+    expect(screen.getByText('Here is what I would do this week.')).toBeTruthy()
+    expect(screen.getByText(/Get back to Amani about the discount limit/)).toBeTruthy()
+
+    /* Not said twice: each heading, and each of its lines, appears exactly once. */
+    expect(screen.getAllByText('Nobody has started "Distributor review" yet, and Groundwork is following up')).toHaveLength(1)
+    expect(screen.getAllByText('Here is what I would do this week.')).toHaveLength(1)
+  })
+
+  it('a member reads neither section - the server sends her no forTheLead key at all', async () => {
+    open(MIRIAM, PARTICIPANT_READ)
+    await screen.findByText(partOfTheDayGreeting())
+    expect(screen.queryByText('Nobody has started')).toBeNull()
+    expect(screen.queryByText('What I would do this week')).toBeNull()
+  })
+
+  it('a lead with nothing new draws neither section', async () => {
+    open(WAIRIMU, LEAD_READ)
+    await screen.findByText('What needs you')
+    expect(screen.queryByText('Nobody has started')).toBeNull()
+    expect(screen.queryByText('What I would do this week')).toBeNull()
+  })
+
+  function partOfTheDayGreeting() {
+    /* Any greeting reads "Morning,"/"Afternoon,"/"Evening," at 9am on the fixed clock above. */
+    return /Morning, Miriam/
+  }
+})

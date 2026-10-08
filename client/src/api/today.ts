@@ -28,11 +28,41 @@ export interface ComingUp {
   checkInStartedOn?: string
 }
 
+/**
+ * REQUEST 198 (b), DONE (docs/answers-from-engine.md, 8 October (late night)). Built from the same
+ * functions the mail uses, so Today and the mail cannot disagree. Absent for anybody but a lead
+ * with something to add - a participant, an admin who does not run the check-in, and a lead with
+ * nothing new all get no key at all.
+ */
+export interface NobodyHasStarted {
+  groundId: string
+  label: string
+  /** The same subject the first-reminder mail has, e.g. "Nobody has started "Distributor review" yet, and Groundwork is following up". */
+  subject: string
+  lines: string[]
+  linkLabel: string
+  to: string
+}
+
+export interface WhatIWouldDoThisWeek {
+  groundId: string
+  label: string
+  /** "Here is what I would do this week." first, then each thing with its reason. */
+  lines: string[]
+}
+
+export interface ForTheLead {
+  nobodyHasStarted: NobodyHasStarted[]
+  whatIWouldDoThisWeek: WhatIWouldDoThisWeek[]
+}
+
 export interface WhatNeedsYou {
   needs: Need[]
   count: number
   line: string | null
   comingUp: ComingUp[]
+  /** Absent for everybody but a lead with something here to add (request 198 (b)). */
+  forTheLead?: ForTheLead
 }
 
 /**
