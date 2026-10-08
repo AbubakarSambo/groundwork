@@ -133,7 +133,9 @@ describe('the pin and the rename pencil on a sidebar row', () => {
   it('as drawn: an admin\'s row with no badge keeps 64px for the pin and pencil; a row saying "Your turn" does not need to', () => {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } })
     qc.setQueryData(['grounds'], [
-      { id: 'g1', label: 'Coamana growth, Q3 paying customers', status: 'AWAITING_PARTIES', initiatorId: 'u-lead', participants: [], checkIns: [] },
+      /* An admin is offered the pencil on somebody else's check-in only when the server says she may change its set-up
+         (decision 119, H10: the lead has left), so this row carries that answer. */
+      { id: 'g1', label: 'Coamana growth, Q3 paying customers', status: 'AWAITING_PARTIES', initiatorId: 'u-lead', mayChangeSetup: true, participants: [], checkIns: [] },
       { id: 'g2', label: 'Leadership, Q3', status: 'AWAITING_PARTIES', initiatorId: 'u-x', participants: [{ id: 'p', userId: 'u-sahar' }], checkIns: [{ participantId: 'p', sessionNumber: 1, status: 'IN_PROGRESS' }] },
     ])
     qc.setQueryData(['my-organizations'], [])
