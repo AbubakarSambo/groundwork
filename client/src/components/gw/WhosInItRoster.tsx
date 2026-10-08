@@ -48,7 +48,7 @@ export function WhosInItRoster({
   ground: any
   isInitiator: boolean
   isOrgAdmin: boolean
-  colleagues?: { id: string; name: string }[]
+  colleagues?: { id: string; name: string; role?: string; team?: string | null }[]
   addingMany: boolean
   addManyParticipants: (picked: { id: string; name: string }[]) => void
   newParticipantEmail: string

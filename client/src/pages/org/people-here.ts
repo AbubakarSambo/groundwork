@@ -13,6 +13,15 @@ export interface OrgMember {
   email: string
   firstName: string | null
   lastName: string | null
+  /**
+   * DECISION 115: A NAME FOR EVERY PERSON, NEVER AN ADDRESS IN ITS PLACE. `GET /users` now carries
+   * this on every row - the person's name, "Someone who has not given a name yet" for one who has
+   * not, and for somebody added or invited with no seat, the name typed beside their address, or
+   * "Somebody invited by email". Seven of twelve people at one real organisation had no name, and
+   * `nameOf`/`firstNameOf` used to fall back to the raw email address for them. Read this first,
+   * wherever a name goes.
+   */
+  displayName?: string
   role: string
   isActive: boolean
   isEmailVerified: boolean
@@ -66,7 +75,8 @@ export async function fetchMembers(): Promise<{ data: OrgMember[]; meta: { total
   return { data: here, meta: { total: total - (all.length - here.length) } }
 }
 
-export function nameOf(m: Pick<OrgMember, 'firstName' | 'lastName' | 'email'>): string {
+export function nameOf(m: Pick<OrgMember, 'firstName' | 'lastName' | 'email' | 'displayName'>): string {
+  if (m.displayName) return m.displayName
   return `${m.firstName ?? ''} ${m.lastName ?? ''}`.trim() || m.email || ''
 }
 
@@ -77,7 +87,7 @@ export function nameOf(m: Pick<OrgMember, 'firstName' | 'lastName' | 'email'>): 
  * field whole read "What Rukia Otieno can do..." and "Rukia Otieno owns this organisation..." where
  * every other person on the same page reads their first name alone ("What Faraji can do...").
  */
-export function firstNameOf(m: Pick<OrgMember, 'firstName' | 'lastName' | 'email'>): string {
+export function firstNameOf(m: Pick<OrgMember, 'firstName' | 'lastName' | 'email' | 'displayName'>): string {
   const whole = (m.firstName ?? '').trim() || nameOf(m)
   return whole.split(/\s+/)[0] || whole
 }

@@ -24,9 +24,16 @@ describe('people are picked like a group chat picks them', () => {
     expect(onAdd).toHaveBeenCalledWith([people[0]])
   })
 
-  it('shows each person\'s team under their name, and no address anywhere', () => {
+  /*
+   * UPDATED (8 October, night note item 2): several colleagues can share a name - "Someone who has
+   * not given a name yet" among them - so role now reads beside team under the name, not team
+   * alone, to tell two same-named rows apart. This test used to check for "Operations" alone; it
+   * now checks for the combined line.
+   */
+  it('shows each person\'s role and team under their name, and no address anywhere', () => {
     const { container } = render(<PeoplePicker people={people} alreadyIn={[]} onAdd={vi.fn()} />)
-    expect(screen.getByText('Operations')).toBeTruthy()
+    expect(screen.getAllByText('MEMBER, Sales')).toHaveLength(2)
+    expect(screen.getByText('LEAD, Operations')).toBeTruthy()
     expect(container.textContent).not.toMatch(/@/)
   })
 
@@ -47,6 +54,29 @@ describe('people are picked like a group chat picks them', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add 3 people' }))
     expect(onAdd).toHaveBeenCalledTimes(1)
     expect(onAdd.mock.calls[0][0]).toHaveLength(3)
+  })
+
+  /*
+   * RESTORED (8 October, night note item 2, found by the old-against-new check on Riverbank
+   * Trading). Several rows of `GET /users/colleagues` can read the same name, so role and team are
+   * what tells a lead two "Someone who has not given a name yet" rows apart.
+   */
+  it('tells two same-named colleagues apart by role and team', () => {
+    const sameName = [
+      { id: 'u1', name: 'Someone who has not given a name yet', role: 'MEMBER', team: 'Sales' },
+      { id: 'u2', name: 'Someone who has not given a name yet', role: 'LEAD', team: 'Operations' },
+    ]
+    render(<PeoplePicker people={sameName} alreadyIn={[]} onAdd={vi.fn()} />)
+    expect(screen.getByText('MEMBER, Sales')).toBeTruthy()
+    expect(screen.getByText('LEAD, Operations')).toBeTruthy()
+  })
+
+  it('typing a role finds everyone with it', () => {
+    const onAdd = vi.fn()
+    render(<PeoplePicker people={people} alreadyIn={[]} onAdd={onAdd} />)
+    fireEvent.change(screen.getByLabelText('Find a colleague'), { target: { value: 'lead' } })
+    expect(screen.getByText('Chi Eze')).toBeTruthy()
+    expect(screen.queryByText('Ada Obi')).toBeNull()
   })
 
   it('renders nothing when everyone is already in', () => {

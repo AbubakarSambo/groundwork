@@ -121,6 +121,44 @@ describe('everyone at Baridi', () => {
     expect(peter.getByText('No team')).toBeTruthy()
   })
 
+  /*
+   * RESTORED (8 October, decision 115, night note item 1). `GET /users` now carries `displayName`
+   * on every row, and seven of twelve people at one real organisation (Riverbank Trading) had no
+   * name on record. Before this fix, a person with no firstName/lastName read by their raw email
+   * address in the People list; the server's own placeholder sentence is drawn now instead.
+   */
+  it('reads the server\'s displayName for a person with no name, never their address', async () => {
+    vi.spyOn(apiClient, 'get').mockImplementation(async (url: string) => {
+      if (url.startsWith('/users?')) {
+        const noName = {
+          id: 'noname', email: 'p07@fieldnote.test', firstName: null, lastName: null,
+          displayName: 'Someone who has not given a name yet',
+          role: 'MEMBER', isEmailVerified: true, state: 'signed in', checkInsOn: 0, checkInsAnswered: 0,
+          level: null, team: null, reportsTo: null, checkIns: [],
+        }
+        return { data: { data: [...people, noName], meta: { total: people.length + 1 } } } as any
+      }
+      if (url === '/users/organization/owner') return { data: { ownerUserId: 'amani' } } as any
+      if (url === '/billing/status') return { data: { people: { count: 27, cap: 100 }, subscription: { plan: 'GROWTH' } } } as any
+      if (url === '/users/organization/check-ins') return { data: { whoMayOpen: 'NAMED_LEADS', needsApproval: false } } as any
+      if (url === '/users/organization/joining') return { data: { on: false, domain: 'baridi.co.ke', whyNot: null } } as any
+      if (url === '/users/organization/invite-link') return { data: { on: false, code: null } } as any
+      return { data: [] } as any
+    })
+    vi.spyOn(authApi, 'whoIsWaiting').mockResolvedValue([] as any)
+    vi.spyOn(authApi, 'waitingForASeat').mockResolvedValue([] as any)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={['/org/members']}>
+          <Routes><Route path="/org/members" element={<OrgMembersPage />} /></Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    expect(await screen.findByText('Someone who has not given a name yet', { selector: '.gwui-person-name' })).toBeTruthy()
+    expect(screen.queryByText('p07@fieldnote.test', { selector: '.gwui-person-name' })).toBeNull()
+  })
+
   it('shows no label on anybody: no score, no rating, nothing but what they are and where they got to', async () => {
     const { container } = open()
     await screen.findByText('Miriam Wanjiku', { selector: '.gwui-person-name' })

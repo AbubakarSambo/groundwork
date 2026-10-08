@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { firstNameOf, checkInsWordApart, checkInsPartsApart } from './people-here'
+import { firstNameOf, nameOf, checkInsWordApart, checkInsPartsApart } from './people-here'
 
 /**
  * U.4 RE-REVIEW, ITEM 7: THE ONE-PERSON PAGE USES THE FIRST NAME, EVERY TIME.
@@ -20,6 +20,39 @@ describe('firstNameOf', () => {
 
   it('falls back to the first word of the name built from the email, with no name on record', () => {
     expect(firstNameOf({ firstName: null, lastName: null, email: 'zawadi.u8@example.test' })).toBe('zawadi.u8@example.test')
+  })
+})
+
+/**
+ * DECISION 115 (8 October, night note item 1): A NAME FOR EVERY PERSON, NEVER AN ADDRESS IN ITS
+ * PLACE. `GET /users` now carries `displayName` on every row, so `nameOf`/`firstNameOf` read it
+ * first, rather than falling back to the raw email address - seven of twelve people at one real
+ * organisation (Riverbank Trading) had no name, and used to read as their own address.
+ */
+describe('nameOf, with the server\'s displayName', () => {
+  it('reads displayName over anything built from firstName/lastName/email', () => {
+    expect(nameOf({ firstName: 'Faraji', lastName: 'Odhiambo', email: 'faraji@example.test', displayName: 'Faraji Odhiambo' })).toBe('Faraji Odhiambo')
+  })
+
+  it('reads the server\'s placeholder sentence for a person with no name, never their address', () => {
+    expect(nameOf({ firstName: null, lastName: null, email: 'zawadi.u8@example.test', displayName: 'Someone who has not given a name yet' }))
+      .toBe('Someone who has not given a name yet')
+  })
+
+  it('reads the name typed beside an address for somebody invited with no seat', () => {
+    expect(nameOf({ firstName: null, lastName: null, email: 'p07@fieldnote.test', displayName: 'Дмитрий Иванов' })).toBe('Дмитрий Иванов')
+  })
+
+  it('falls back to the old rule when the server sends no displayName at all', () => {
+    expect(nameOf({ firstName: 'Faraji', lastName: 'Odhiambo', email: 'faraji@example.test' })).toBe('Faraji Odhiambo')
+    expect(nameOf({ firstName: null, lastName: null, email: 'zawadi.u8@example.test' })).toBe('zawadi.u8@example.test')
+  })
+})
+
+describe('firstNameOf, with the server\'s displayName', () => {
+  it('takes the first word of the placeholder sentence, never the raw address, with no name on record', () => {
+    expect(firstNameOf({ firstName: null, lastName: null, email: 'zawadi.u8@example.test', displayName: 'Someone who has not given a name yet' }))
+      .toBe('Someone')
   })
 })
 
