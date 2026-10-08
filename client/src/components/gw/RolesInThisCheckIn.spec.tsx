@@ -171,6 +171,19 @@ describe('a lead who only manages, in an anchor check-in', () => {
   }
 })
 
+/**
+ * B-108: "NOBODY HAS DESCRIBED IT YET.EDIT" RAN TWO SENTENCES TOGETHER WITH NO SPACE BETWEEN
+ * THEM. JSX drops the line break between the sentence and the "Edit" button, so without an
+ * explicit space the two sit side by side as one word.
+ */
+describe('the role sentence and "Edit" are not run together', () => {
+  it('reads "yet. Edit", with a space, not "yet.Edit"', () => {
+    renderTable(true)
+    expect(document.body.textContent).toContain('Nobody has described it yet. Edit')
+    expect(document.body.textContent).not.toContain('yet.Edit')
+  })
+})
+
 describe('somebody with no name, whose address this reader may not see', () => {
   it('is "Somebody invited by email", never "A colleague"', () => {
     render(

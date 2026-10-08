@@ -99,6 +99,11 @@ export function RolesInThisCheckIn({
                 ) : (
                   <span>
                     {p.roleAsDescribed ? <TheLeadsNote role={p.roleAsDescribed} /> : 'Nobody has described it yet.'}
+                    {/* B-108: no space between the sentence and "Edit" ran the two together as
+                        "yet.Edit" - JSX drops the line break between them, so a space is written
+                        in explicitly, the same way other rows on this page already join text and
+                        a button. */}
+                    {' '}
                     <Button kind="quiet" size="small" onClick={() => { setEditingId(p.id); setValue(p.roleAsDescribed ?? '') }}>
                       Edit
                     </Button>
