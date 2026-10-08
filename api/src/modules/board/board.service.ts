@@ -145,6 +145,7 @@ import { askTheReportsDoor, theLeadsNamesOf, theLeadsLineAsAParticipantMayRead, 
 import { whatThisSessionHolds, atAGlanceTiles, theBlockersTileNamesThis } from '../reports/what-this-session-holds';
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-quote-built-at-the-read';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
+import { wasAQuietClose } from '../grounds/an-answer-includes-a-refusal';
 import { isFromOutside, leaveOfThePeopleOn, theAwayLinesFor } from '../suites/who-is-away';
 import { adminsThisOrg, askedToApproveIt } from '../grounds/who-may-read-this-check-in';
 import { refuseSomeoneHeldForASeat } from '../participants/held-for-a-seat';
@@ -600,6 +601,8 @@ export class BoardService {
         /* Whether it was a set-up conversation, which the timeline leaves out: the anchor lead's set-up is saved done, and read as "the first answers for
            session 1 came in" before anybody had answered (review of fd583ba5). */
         isSetup: true,
+        /* Whether the clock closed it with nothing said, which is not an answer (the grid's "answered"). */
+        closedReason: true, turns: { where: { role: 'PERSON' as any }, take: 1, select: { id: true } },
       },
       orderBy: { sessionNumber: 'asc' },
     });
@@ -1582,7 +1585,7 @@ export class BoardService {
               : (heldBack.has(p.id) ? { by: null, at: null, declined: false } : undefined),
             target: theirs?.target ?? null,
             count: theirs?.count ?? 0,
-            answeredThisRound: thisRound?.status === CheckInStatus.COMPLETED,
+            answeredThisRound: thisRound?.status === CheckInStatus.COMPLETED && !wasAQuietClose(thisRound as any),
             roundsSoFar: new Set(mine.map((c) => c.sessionNumber)).size,
             inTheWay: (ground.dependencies ?? [])
               .filter((d: any) => d.fromParticipantId === p.id && d.status !== 'CLEARED')

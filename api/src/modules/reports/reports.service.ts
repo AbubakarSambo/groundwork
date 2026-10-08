@@ -213,7 +213,7 @@ import { refuseSomeoneHeldForASeat } from '../participants/held-for-a-seat';
 import { CANNOT_READ_THE_REPORT_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { documentBackedShare } from './backed-by-a-document';
 import { howManyHaveAnswered, howManyInTheRoundAnswered } from './how-many-have-answered';
-import { AN_ANSWER } from '../grounds/an-answer-includes-a-refusal';
+import { NOT_A_QUIET_CLOSE, aQuietCloseWhere, AN_ANSWER } from '../grounds/an-answer-includes-a-refusal';
 import { theInferencesOfSession, keptWithEachSessionsOwn } from './each-sessions-inferences-are-its-own';
 import { asTheReleasedSessionHadIt, isThisSessionReleased, releasedSessionsOf, theLatestReleasedSession, theSessionTheReportHolds, thisSessionIsNotSharedYet, whatReleasingThisSessionDoes, withThisSessionReleased, youAreReadingAnEarlierSession } from './each-sessions-picture-is-released-on-its-own';
 import { aRoleInTheirOwnWords, withoutTheLeadsDescriptionOfAnyone, deeplyWithoutTheLeadsDescriptionOfAnyone, theShareableTextFor } from '../grounds/the-leads-words-about-someone';
@@ -2358,7 +2358,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * check-in": a person whose answer produced no finding is still a person who answered.
      */
     const peopleWhoAnswered = await (this.prisma.checkIn?.findMany?.({
-      where: { groundId, status: CheckInStatus.COMPLETED },
+      where: { groundId, status: CheckInStatus.COMPLETED, AND: [NOT_A_QUIET_CLOSE], },
       select: { participantId: true },
     }) ?? Promise.resolve([] as any[])).then((rows: any[]) => new Set(rows.map((r) => r.participantId)).size).catch(() => findings.length);
     /*
@@ -2384,7 +2384,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
      */
     const answeredThisRound = new Set(
       ((await (this.prisma.checkIn?.findMany?.({
-        where: { groundId, sessionNumber: roundNow, status: { in: AN_ANSWER } },
+        where: { groundId, sessionNumber: roundNow, status: { in: AN_ANSWER }, AND: [NOT_A_QUIET_CLOSE], },
         select: { participantId: true },
       }) ?? Promise.resolve([] as any[])).catch(() => [] as any[])) as any[]).map((r: any) => r.participantId),
     );
@@ -3139,7 +3139,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
      */
     if (me && !viewerIsLead && !released) {
       const answeredThis = await (this.prisma.checkIn?.count?.({
-        where: { participantId: me.id, sessionNumber, status: { in: AN_ANSWER } },
+        where: { participantId: me.id, sessionNumber, status: { in: AN_ANSWER }, AND: [NOT_A_QUIET_CLOSE], },
       }) ?? Promise.resolve(1)).catch(() => 1);
       if (!answeredThis) {
         return { sessionNumber, withheldUntilYouAnswer: true, saying: A_PICTURE_IS_FORMING } as any;
@@ -3299,7 +3299,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     /* A DECLINE IS AN ANSWER, and this counted only COMPLETED - so a declined session read as silence
        on the masthead while the finding under it counted the same person as having answered. */
     const answered = await this.prisma.checkIn.findMany({
-      where: { groundId, sessionNumber, status: { in: AN_ANSWER } },
+      where: { groundId, sessionNumber, status: { in: AN_ANSWER }, AND: [NOT_A_QUIET_CLOSE], },
       select: { participantId: true },
     });
     const answeredIds = new Set(answered.map((c) => c.participantId));
@@ -5247,8 +5247,14 @@ happened, and what is in the way.`;
     const already = new Set(
       (await this.prisma.reportNotice.findMany({ where: { groundId, sessionNumber }, select: { participantId: true } })).map((n) => n.participantId),
     );
+    /* Somebody the clock closed on, who said nothing, has not answered: the picture is not mailed to them as if they had. */
+    const saidNothing = new Set(
+      ((await (this.prisma.checkIn?.findMany?.({ where: { groundId, sessionNumber, status: CheckInStatus.COMPLETED, ...aQuietCloseWhere }, select: { participantId: true } }) ?? Promise.resolve([] as any[])).catch(() => [] as any[])) as any[])
+        .map((c: any) => c.participantId),
+    );
     const owed = ground.participants.filter((p) =>
       !already.has(p.id)
+      && !saidNothing.has(p.id)
       && (!onlyParticipantId || p.id === onlyParticipantId)
       && !!p.email
       && !p.email.endsWith(AN_UNCLAIMED_ADDRESS)
@@ -6913,7 +6919,7 @@ happened, and what is in the way.`;
       select: { initiatorId: true, participants: { select: { id: true, userId: true, partyType: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, roleAsDescribed: true, remitAsGiven: true, managingOnly: true, user: { select: { firstName: true, lastName: true } } } } } as any,
     }) as Promise<any>).catch(() => null);
     if (!ground || ground.initiatorId !== requestingUserId) return served;
-    const answered = await this.prisma.checkIn.findMany({ where: { groundId, status: CheckInStatus.COMPLETED }, select: { participantId: true } }).catch(() => [] as { participantId: string }[]);
+    const answered = await this.prisma.checkIn.findMany({ where: { groundId, status: CheckInStatus.COMPLETED, AND: [NOT_A_QUIET_CLOSE], }, select: { participantId: true } }).catch(() => [] as { participantId: string }[]);
     const answeredIds = new Set(answered.map((c) => c.participantId));
     const labels = labelsForParties(ground.participants ?? []);
     const who = (ground.participants ?? []).filter((p: any) => answeredIds.has(p.id) && !p.managingOnly && p.userId !== requestingUserId).map((p: any) => labels.get(p.id) as string).filter(Boolean);
@@ -7337,7 +7343,7 @@ happened, and what is in the way.`;
         /* Optional-chained like every other read here: a caller whose prisma double does not stub a
            model must get an empty read rather than a crash mid-report. */
         behindTheAnswers: howFarBehind(
-          await (this.prisma.checkIn?.findMany?.({ where: { groundId, status: CheckInStatus.COMPLETED }, select: { participantId: true } }) ?? Promise.resolve([] as any[]))
+          await (this.prisma.checkIn?.findMany?.({ where: { groundId, status: CheckInStatus.COMPLETED, AND: [NOT_A_QUIET_CLOSE], }, select: { participantId: true } }) ?? Promise.resolve([] as any[]))
             .then((rows: any[]) => new Set(rows.map((r) => r.participantId)).size)
             .catch(() => 0),
           (ground.report as any)?.builtFromAnswers ?? null,
@@ -7508,7 +7514,7 @@ happened, and what is in the way.`;
        * opposite decisions. See a-report-behind-the-answers.
        */
       behindTheAnswers: howFarBehind(
-        await (this.prisma.checkIn?.findMany?.({ where: { groundId, status: CheckInStatus.COMPLETED }, select: { participantId: true } }) ?? Promise.resolve([] as any[]))
+        await (this.prisma.checkIn?.findMany?.({ where: { groundId, status: CheckInStatus.COMPLETED, AND: [NOT_A_QUIET_CLOSE], }, select: { participantId: true } }) ?? Promise.resolve([] as any[]))
           .then((rows: any[]) => new Set(rows.map((r) => r.participantId)).size)
           .catch(() => 0),
         (ground.report as any)?.builtFromAnswers ?? null,
