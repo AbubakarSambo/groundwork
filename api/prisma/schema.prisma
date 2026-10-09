@@ -2463,6 +2463,10 @@ model PatternDetection {
   /// the lead is told "Two separate reads of the record found this." beside the pattern; the rule is
   /// evidence, never shown as an accusation or a score.
   evidenceSource   String?       @map("evidence_source")
+  /// Which stored version of the detector's prompt (`pattern_detection`) read the check-in that last
+  /// kept this pattern. Empty on rows written before the prompt was stored; those stay valid.
+  promptVersionId  String?       @map("prompt_version_id")
+  promptVersion    PromptVersion? @relation(fields: [promptVersionId], references: [id])
   firstSeenAt      DateTime      @default(now()) @map("first_seen_at")
   lastSeenAt       DateTime      @default(now()) @map("last_seen_at")
   createdAt        DateTime      @default(now()) @map("created_at")
@@ -3112,6 +3116,7 @@ model PromptVersion {
 
   grounds Ground[]
   reports Report[]
+  patternDetections PatternDetection[]
 
   @@unique([key, version])
   @@map("prompt_versions")

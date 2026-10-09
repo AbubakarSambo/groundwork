@@ -348,6 +348,9 @@ export const PATTERN_PROBE_BY_CODE = new Map<string, string>(
 );
 
 // The prompt that drives detection over one party's period (transcript + record).
+/** The key the detector's prompt is stored under (PromptVersion, served by /prompts). The version stored is the one that runs; this text is the fallback and what a start seeds. */
+export const PATTERN_DETECTION_PROMPT_KEY = 'pattern_detection';
+
 export const PATTERN_DETECTION_PROMPT = `You analyse ONE party's check-in for a single period and identify whether any behavioural pattern signals are present in the record. You are looking at the record, not judging the person. Some of these signals are good news and some are not, and both matter equally.
 
 Hard rules:
