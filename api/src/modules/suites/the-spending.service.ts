@@ -1,4 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { answersUnderTheQuestionsOwnIds } from './the-answers-under-the-questions-own-ids';
+import { suiteOf } from './the-ten-suites';
 import { thisSuiteIsOff } from './a-suite-that-is-off-says-what-to-do';
 import { PrismaService } from '../prisma/prisma.service';
 import { askNameOf } from '../assistant/ask-name';
@@ -809,15 +811,15 @@ export class SpendingService {
       select: { isOn: true, answers: true },
     });
     if (!suite?.isOn) throw new NotFoundException(SPEND_REFUSED.notOn);
-    const a = (suite.answers ?? {}) as Record<string, unknown>;
+    const a = answersUnderTheQuestionsOwnIds(suiteOf('spend')!, suite.answers) as Record<string, unknown>;
     /* The spending rules an admin set (the-spending-rules.ts). None: no category, no evidence, no thresholds. */
     const rules = await readSpendRules(this.prisma, organizationId).catch(() => ({} as SpendRules));
     return {
       rules,
       ...(rules.thresholds?.length ? { thresholds: rules.thresholds } : {}),
-      currency: typeof a.currency === 'string' ? a.currency : null,
+      currency: typeof a.currency === 'string' && a.currency ? a.currency : null,
       limit: typeof a.limit === 'number' ? a.limit : null,
-      above: typeof a.above === 'string' ? a.above : null,
+      above: typeof a.above === 'string' && a.above ? a.above : null,
       /* The steps an admin set (the-approval-steps.ts). None: one step, as before. */
       workflow: await readWorkflow(this.prisma, organizationId, 'spend'),
     };

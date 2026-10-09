@@ -1,4 +1,6 @@
 import { notToldYet } from '../grounds/a-goal-not-told-stays-with-the-lead';
+import { answersUnderTheQuestionsOwnIds } from './the-answers-under-the-questions-own-ids';
+import { suiteOf } from './the-ten-suites';
 import { thisSuiteIsOff } from './a-suite-that-is-off-says-what-to-do';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -1020,8 +1022,8 @@ export class ReviewsService {
       select: { isOn: true, answers: true },
     });
     if (!suite?.isOn) throw new NotFoundException(REVIEW_REFUSED.notOn);
-    const a = (suite.answers ?? {}) as Record<string, unknown>;
-    return { every: typeof a.every === 'string' ? a.every : null, writer: typeof a.writer === 'string' ? a.writer : null };
+    const a = answersUnderTheQuestionsOwnIds(suiteOf('reviews')!, suite.answers) as Record<string, unknown>;
+    return { every: typeof a.every === 'string' && a.every ? a.every : null, writer: typeof a.writer === 'string' && a.writer ? a.writer : null };
   }
 
   private async roleOf(reader: Reader): Promise<string | null> {

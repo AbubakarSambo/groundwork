@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { answersUnderTheQuestionsOwnIds, theOldNamesOf } from './the-answers-under-the-questions-own-ids';
 import { readDuties } from './who-holds-each-duty';
 import { thisSuiteIsOff } from './a-suite-that-is-off-says-what-to-do';
 import { PrismaService } from '../prisma/prisma.service';
@@ -159,6 +160,7 @@ export class SuitesService {
   async forReader(reader: Reader): Promise<ForAnAdmin | ForALead | ForADutyHolder> {
     const role = await this.roleOf(reader);
     const rows = await this.rows(reader.organizationId);
+    const adminIds = await this.adminIdsOf(reader.organizationId);
     if (role === 'ADMIN') {
       return {
         reader: 'admin',
@@ -168,7 +170,7 @@ export class SuitesService {
             key: s.key, name: s.name, line: s.line,
             on: rows.get(s.key)?.isOn ?? false,
             questions: s.questions,
-            answers: (rows.get(s.key)?.answers as Answers) ?? {},
+            answers: answersUnderTheQuestionsOwnIds(s, rows.get(s.key)?.answers, adminIds),
           })),
         })),
         people: await this.people(reader.organizationId),
@@ -177,7 +179,7 @@ export class SuitesService {
     /* Whoever holds the HR or finance duty also reads the suites that duty sets up (decision 85). */
     const mine = role && role !== 'GUEST' ? await this.suitesTheySetUp(reader, role) : new Set<string>();
     const youSetUp = SUITES.filter((s) => mine.has(s.key)).map((s) => ({
-      key: s.key, name: s.name, line: s.line, on: rows.get(s.key)?.isOn ?? false, questions: s.questions, answers: (rows.get(s.key)?.answers as Answers) ?? {},
+      key: s.key, name: s.name, line: s.line, on: rows.get(s.key)?.isOn ?? false, questions: s.questions, answers: answersUnderTheQuestionsOwnIds(s, rows.get(s.key)?.answers, adminIds),
     }));
     if (role === 'LEAD') {
       return {
@@ -188,6 +190,12 @@ export class SuitesService {
     }
     if (role === 'MEMBER' && youSetUp.length) return { reader: 'duty', youSetUp, people: await this.people(reader.organizationId) };
     throw new ForbiddenException(REFUSED.onlyAdminsAndLeads);
+  }
+
+  /** Who in the organisation is an admin, so a person kept as the approver can be read as "An admin". */
+  private async adminIdsOf(organizationId: string): Promise<Set<string>> {
+    const rows = await (this.prisma.organizationMembership?.findMany?.({ where: { organizationId, role: 'ADMIN' as never }, select: { userId: true } }) ?? Promise.resolve([])).catch(() => []);
+    return new Set((rows as { userId: string }[]).map((r) => r.userId));
   }
 
   /**
@@ -229,8 +237,12 @@ export class SuitesService {
     const before = (await this.rows(reader.organizationId).catch(() => new Map())).get(suite.key) ?? null;
     if (on) {
       const people = new Set((await this.people(reader.organizationId)).map((p) => p.id));
-      const answers = checkAnswers(suite, input.answers, people);
-      if (!answers) throw new BadRequestException(REFUSED.answerFirst);
+      const given = checkAnswers(suite, input.answers, people);
+      if (!given) throw new BadRequestException(REFUSED.answerFirst);
+      /* Whatever else the row holds stays (an old setting under a name the questions do not use), except the old names the answers now replace. */
+      const old = theOldNamesOf(suite.key);
+      const kept = Object.fromEntries(Object.entries((before?.answers && typeof before.answers === 'object' ? before.answers : {}) as Record<string, unknown>).filter(([k]) => !old.includes(k) && !(k in given)));
+      const answers = { ...kept, ...given } as typeof given;
       await this.prisma.organizationSuite.upsert({
         where,
         create: { organizationId: reader.organizationId, suite: suite.key, isOn: true, answers, changedById: reader.userId },

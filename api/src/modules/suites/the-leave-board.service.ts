@@ -1,4 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { answersUnderTheQuestionsOwnIds } from './the-answers-under-the-questions-own-ids';
+import { suiteOf } from './the-ten-suites';
 import { thisSuiteIsOff } from './a-suite-that-is-off-says-what-to-do';
 import { PrismaService } from '../prisma/prisma.service';
 import { askNameOf } from '../assistant/ask-name';
@@ -845,10 +847,10 @@ export class LeaveBoardService {
       select: { isOn: true, answers: true },
     });
     if (!suite?.isOn) throw new NotFoundException(LEAVE_REFUSED.notOn);
-    const a = (suite.answers ?? {}) as Record<string, unknown>;
+    const a = answersUnderTheQuestionsOwnIds(suiteOf('leave')!, suite.answers) as Record<string, unknown>;
     return {
       perYear: typeof a.days === 'number' ? a.days : null,
-      approver: typeof a.approver === 'string' ? a.approver : null,
+      approver: typeof a.approver === 'string' && a.approver ? a.approver : null,
       /* The steps an admin set (the-approval-steps.ts). None: one step, as before. */
       workflow: await readWorkflow(this.prisma, organizationId, 'leave'),
       /* The leave rules an admin set (the-leave-rules.ts). None: exactly as before. */

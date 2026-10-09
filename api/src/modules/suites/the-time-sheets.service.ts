@@ -1,4 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { answersUnderTheQuestionsOwnIds } from './the-answers-under-the-questions-own-ids';
+import { suiteOf } from './the-ten-suites';
 import { thisSuiteIsOff } from './a-suite-that-is-off-says-what-to-do';
 import { PrismaService } from '../prisma/prisma.service';
 import { theirRosterEntries, theirRosterEntry } from './a-roster-entry-and-its-sign-in';
@@ -694,10 +696,10 @@ export class TimeSheetsService {
       select: { isOn: true, answers: true },
     });
     if (!suite?.isOn) throw new NotFoundException(TIME_REFUSED.notOn);
-    const a = (suite.answers ?? {}) as Record<string, unknown>;
+    const a = answersUnderTheQuestionsOwnIds(suiteOf('time')!, suite.answers) as Record<string, unknown>;
     return {
       clients: Array.isArray(a.clients) ? a.clients.filter((c): c is string => typeof c === 'string') : [],
-      approver: typeof a.approver === 'string' ? a.approver : null,
+      approver: typeof a.approver === 'string' && a.approver ? a.approver : null,
       /* The steps an admin set (the-approval-steps.ts). None: one step, as before. */
       workflow: await readWorkflow(this.prisma, organizationId, 'time'),
     };
