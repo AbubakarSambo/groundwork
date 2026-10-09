@@ -3098,8 +3098,8 @@ export class BoardService {
               ? `${who} ${is} waiting on ${holder} for ${inASentence(d.what)}.`
               : `${who} ${is} waiting for ${inASentence(d.what)}, and nobody has been named to provide it.`,
           why: aDecision
-            ? (who === 'You' ? 'You cannot move until this is decided.' : `${who} cannot move until this is decided.`)
-            : `${who} cannot move until it comes.`,
+            ? (who === 'You' ? 'You cannot move until this is decided.' : 'They cannot move until this is decided.')
+            : (who === 'You' ? 'You cannot move until it comes.' : 'They cannot move until it comes.'),
           owner: !aDecision && owner === NOBODY_NAMED_TO_DECIDE ? 'Nobody has been named to provide it.' : owner,
           source: 'blocker' as const,
           /* For what the lead can do about it (request 112 b); taken off before the board is served. */
