@@ -2061,9 +2061,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * note). Every other kind of work keeps the plain heading and note it already had.
    */
   const patternsHeading = kindOfWorkKey === 'asset loans' ? 'One person, a place, or the model?' : 'What keeps coming up'
+  /*
+   * B-138, DECISION 8: "Patterns show only after three periods, whether or not they are in a row."
+   * The old note said the opposite - that three in a row were required - for both the default
+   * heading and the asset-loans cohort's own one.
+   */
   const patternsNote = kindOfWorkKey === 'asset loans'
-    ? 'Patterns named after three check-ins in a row'
-    : 'Named after three check-ins in a row, never after one. Each describes the work.'
+    ? 'Shown only after the same thing comes up in three check-ins, in a row or not'
+    : 'Shown only after the same thing comes up in three check-ins, in a row or not. Each describes the work.'
 
   const patternsAndCoachingSection = () => (
     <>
@@ -2080,7 +2085,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             <Panel pad={false}>
               <RowList label="What keeps coming up">
               {visiblePatterns.length === 0 ? (
-                <Row columns="1fr" inset="panel"><Text size="15" ink="muted">Nothing to show here yet. A pattern appears only after three check-ins in a row, and the person it is about always sees it first.</Text></Row>
+                <Row columns="1fr" inset="panel"><Text size="15" ink="muted">Nothing to show here yet. A pattern appears only after the same thing comes up in three check-ins, in a row or not, and the person it is about always sees it first.</Text></Row>
               ) : (
                 <>
                   {/*
