@@ -123,5 +123,6 @@ export const NOT_A_RANKING = [
 
 /** What an empty week says, which is the sentence this whole file exists to get right. */
 export const NOTHING_FLAGGED =
-  'Nothing in the record needs you this week. That is not the same as everybody being fine. It is'
-  + ' the record being quiet, and the people who most need a conversation are often the quietest in it.';
+  /* No sentence about whether anybody is "fine": a reworded copy said "Not all of the people are fine" to Esther, which the record cannot know (B-168). */
+  'Nothing in the record needs you this week. The record is quiet, which does not tell you how anybody is,'
+  + ' and the people who most need a conversation are often the quietest in it.';
