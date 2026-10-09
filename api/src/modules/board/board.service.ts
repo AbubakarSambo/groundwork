@@ -2147,7 +2147,7 @@ export class BoardService {
          rest of the board. See patterns/who-reads-a-pattern, runsItForAPattern. */
       const patternReader = { participantId: me?.id ?? null, runsIt: runsItForAPattern(ground as any, requestingUserId) };
       const namesForPatterns = whoIsWhoIn(ground.participants as any, ground.initiatorId, (ground as any).cadence);
-      const served = withTheEarlierRead(servedPatterns(detections as any, patternReader, namesForPatterns), detections as any, (ground as any).report?.overTime?.patterns, patternReader);
+      const served = withTheEarlierRead(servedPatterns(detections as any, patternReader, { ...namesForPatterns, now }), detections as any, (ground as any).report?.overTime?.patterns, patternReader);
       out.patterns = await wordPatternEvidence(
         served,
         namesForPatterns.firstNameOf ?? (() => null),
