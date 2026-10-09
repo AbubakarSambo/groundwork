@@ -9,6 +9,7 @@ import { UPLOAD_ACCEPT_ATTR } from '@/lib/what-you-can-upload'
 import { whatTellsItApart } from '@/lib/tell-apart-the-same-name'
 import { askNameFor } from '@/lib/ask-name'
 import { useAuthStore } from '@/stores/auth'
+import { whatWentWrong, whyYouCannotSeeThis } from '@/pages/report/why-you-cannot-see-this'
 import { Mark } from './kit'
 import { Composer } from './ui/Composer'
 import { PRIVATE_LINE } from './what-ask-groundwork-says'
@@ -175,6 +176,27 @@ export function AskGroundwork({
   const user = useAuthStore(s => s.user)
   const orgName = (user as any)?.organization?.name?.trim() || user?.organizationName || ''
   const page = useQuery({ queryKey: ['ask'], queryFn: askApi.mine })
+  /*
+   * B-112: `GET /ask` FAILING, OR STILL LOADING, USED TO READ IDENTICALLY TO "YOU MAY NOT ASK" -
+   * the composer is gated on `page.data?.canAsk`, and a failed or slow fetch leaves `page.data`
+   * undefined, so the whole question box vanished with nothing on screen to say why. Only the
+   * name, the caption and the flag that turns the box off come from this payload at all (the
+   * name and caption already fall back to a fixed default, above); the flag is the one thing
+   * that cannot be guessed, so a failed load assumes the box still works rather than hiding it -
+   * `POST /ask` and `/ask/answer` enforce who may ask on their own (ask.service.ts), so a wrong
+   * guess here is caught there, not silently allowed. "About", the starters and the greeting are
+   * the extras this payload also carries; they simply wait for a load that lands.
+   */
+  const askSettled = !page.isLoading
+  const askOk = askSettled && (page.isError ? true : !!page.data?.canAsk)
+  /*
+   * ONE SENTENCE FOR EVERY WAY THIS LOAD CAN FAIL, NOT ONE PER STATUS CODE. `whyYouCannotSeeThis`
+   * is written for a record that either opened or did not ("this record could not be opened"),
+   * which reads oddly for a question box that keeps working regardless - there is no "it" that
+   * failed to open here, only an extra that has not arrived yet. `canRetry` is still worth
+   * keeping: a 401 (signed out) is the one case retrying this alone cannot fix.
+   */
+  const askWhy = page.isError ? whyYouCannotSeeThis(whatWentWrong(page.error)) : null
   /* The check-in the page is about, from its address, so the panel opens on it. */
   const here = checkInOnThisPage(location.pathname)
   /*
@@ -355,7 +377,7 @@ export function AskGroundwork({
   }
 
   useEffect(() => {
-    if (sentInitial.current || sending || !page.data?.canAsk) return
+    if (sentInitial.current || sending || !askOk) return
     /*
      * DECISION 65: OPENED FROM A CHECK-IN'S OWN SETUP. Sent before the ordinary `initialMessage`
      * check below, and with an empty message - this is the one case an empty message is sent at
@@ -374,7 +396,7 @@ export function AskGroundwork({
     ask(initialMessage, false)
     onSentInitialMessage?.()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialMessage, initialOpenedFromGroundId, page.data?.canAsk])
+  }, [initialMessage, initialOpenedFromGroundId, askOk])
 
   const answer = (proposalId: string, yes: boolean) => {
     if (sending) return
@@ -535,14 +557,33 @@ export function AskGroundwork({
           nowhere to go in a text box. */}
       <input ref={fileInput} type="file" style={{ display: 'none' }} accept={UPLOAD_ACCEPT_ATTR} onChange={onFileChosen} />
 
-      {page.data?.canAsk && (
+      {(askOk || !askSettled) && (
         /*
          * ITEM 2: A MULTI-LINE MESSAGE BOX. This was a one-line `<input>`, so a pasted plan lost
          * its own line breaks the moment it landed here. The shared `Composer` (already the check-in
          * conversation's own footer, ChatPage.tsx) is a textarea that grows with its text - Enter
          * sends, Shift+Enter starts a new line, the same as the prototype's chat.
+         *
+         * B-112: rendered while `page` is still loading (disabled, so it never flashes empty space
+         * where it belongs) and after a failed load too (enabled - see `askOk`, above), not only
+         * once `canAsk` has actually arrived true.
          */
         <div style={{ borderTop: '1px solid var(--gw-line)' }}>
+          {page.isError && (
+            <p role="alert" style={{ margin: '8px 12px 0', fontSize: 14, color: 'var(--gw-red-t)' }}>
+              Ask didn't load fully. Nothing you've asked is lost; it's usually the connection.
+              {askWhy?.canRetry && (
+                <>
+                  {' '}
+                  <button type="button" onClick={() => page.refetch()}
+                    style={{ fontSize: 14, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
+                    Try again
+                  </button>
+                </>
+              )}
+            </p>
+          )}
+          {!askSettled && <p role="status" style={{ margin: '8px 12px 0', fontSize: 13, color: 'var(--gw-sub)' }}>Getting Ask ready.</p>}
           {problem && <p role="alert" style={{ margin: '8px 12px 0', fontSize: 14, color: 'var(--gw-red-t)' }}>{problem}</p>}
           <Composer
             inputRef={composerRef}
@@ -554,7 +595,7 @@ export function AskGroundwork({
             }}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(draft, true) } }}
             onSend={() => ask(draft, true)}
-            disabled={sending}
+            disabled={sending || !askSettled}
             sendDisabled={!draft.trim()}
             placeholder={page.data?.caption ?? 'Ask a question'}
             ariaLabel={page.data?.caption ?? 'Ask a question'}
