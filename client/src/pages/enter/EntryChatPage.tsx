@@ -4906,8 +4906,14 @@ export function EntryChatPage() {
                   {/* FAULT E (reviewer, third round): "Saving to amina@suites.test. No confirmation
                       needed, you are already signed in." read like a log line, not a sentence a
                       person would read - "saving to" an address is what a form does, not what a
-                      person says. Said as what it actually is: the account this goes to. */}
-                  We save this to your account, {user.email}.
+                      person says. Said as what it actually is: the account this goes to.
+
+                      SCREEN FAULT (engine workspace, 9 October night): it still said "to your
+                      account" and gave the address, when the person reading it is signed in and
+                      has a name - the address is the login word's business, not theirs. Now it
+                      speaks to them, by name, with no "account" and no address. Only when no name
+                      is known does it fall back to the plain sentence with nobody named. */}
+                  {user.firstName ? `We save this for you, ${user.firstName}.` : 'We save this for you.'}
                 </div>
                 {/* A WAY OUT OF THE CARD. It covers the whole page, including the page's own Start over,
                     so a card that cannot save (an old empty lead session) was a screen with one button

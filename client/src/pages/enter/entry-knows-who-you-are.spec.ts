@@ -31,11 +31,18 @@ describe('somebody who is already signed in', () => {
     expect(CODE).toMatch(/entryApi\.commit\(\{ \.\.\.buildCommitPayload\(\), history \}\)/)
   })
 
-  it('and is told where it is being saved, by name', () => {
+  it('and is told it is saved for them, by their own first name, not an address', () => {
     /* FAULT E (reviewer, third round): "Saving to {user.email}. No confirmation needed, you are
        already signed in." read like a log line. Reworded to "We save this to your account,
-       {user.email}." - still named by email, no "signed in" talk needed to say it. */
-    expect(CODE).toMatch(/We save this to your account, \{user\.email\}/)
+       {user.email}." - still named by email, no "signed in" talk needed to say it.
+
+       SCREEN FAULT (engine workspace, 9 October night, test bed copy a): Ruth Kamara read "We
+       save this to your account, admin@fieldnote.test." - her own address, and the word
+       "account". Updated: no "account", and her first name in place of the address, with a plain
+       fallback when no name is known. This test is changed because it pinned the old, faulty
+       wording. */
+    expect(CODE).toMatch(/We save this for you, \$\{user\.firstName\}/)
+    expect(CODE).not.toMatch(/We save this to your account/)
   })
 
   it('lands on the check-in rather than back at a list', () => {
