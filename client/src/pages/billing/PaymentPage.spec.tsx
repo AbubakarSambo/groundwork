@@ -29,7 +29,10 @@ describe('the checkout page starts near the top, like every other page (B-045)',
   it('does not centre its content vertically in the viewport', async () => {
     open()
     expect(await screen.findByText('Add sessions to this check-in')).toBeInTheDocument()
-    const outer = screen.getByText('Back').closest('div')!.parentElement as HTMLElement
+    /* B-126: the "Back" button's label now depends on whether there is real history to go back to
+       (plain "Back") or not ("Back to this check-in"/"Back to Today") - matched by role rather than
+       the exact word, so this test does not care which one it is. */
+    const outer = screen.getByRole('button', { name: /^Back/ }).closest('div')!.parentElement as HTMLElement
     /* The outer column used to read `justifyContent: center` - the one property that pushed
        everything down by roughly half the viewport's height. It must now start the content at
        the top of its own flex column. */

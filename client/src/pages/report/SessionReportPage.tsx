@@ -21,6 +21,7 @@ import { copy } from '@/components/gw/copying-can-fail'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { whoIsInRound } from '@/lib/who-is-in-this-round'
 import { plannedSessionsFor } from '@/lib/sessionCount'
+import { useBackOrFallback } from '@/lib/a-back-button-never-leaves-groundwork'
 import { TheCheckInHeader } from '@/components/gw/TheCheckInHeader'
 import { checkInHeaderTabs } from '@/pages/grounds/ground-tabs'
 import { Page, Button, Panel, Callout, Section, SubHeading, Note, Tag, Stack } from '@/components/gw/ui'
@@ -72,6 +73,16 @@ export default function SessionReportPage() {
     queryKey: ['session-report', checkInId],
     queryFn: () => conversationApi.sessionReport(checkInId!),
     enabled: !!checkInId,
+    /*
+     * B-134: "Your report is still being written... this fills in as soon as it is ready" was never
+     * true - this query never re-fetched on its own, so whoever opened the page while the
+     * background job was mid-write (`conversationApi.sessionReport`'s own comment: a background job
+     * writes it after the session ends) stayed on "still being written" until they reloaded by hand,
+     * even once the list on My work had already moved to "Your report is ready". Polling here, the
+     * same way the shared report below already polls while it is behind (`theTeamsReportIsBehind`),
+     * makes the promise true and keeps every surface agreeing on the same served state.
+     */
+    refetchInterval: (q: any) => (q?.state?.data && !q.state.data.report ? 5_000 : false),
   })
 
   /* The per-session shape, for the one fact the correction control needs: whether the window is
@@ -216,6 +227,12 @@ export default function SessionReportPage() {
     return labels.get(participantId) ?? 'a colleague'
   }
 
+  /* B-126: this "Back" only shows while the report is loading or has refused the viewer, so there
+     is nothing on this page yet to go back within - no browser history inside the app, say, from a
+     link in an email, must not fall through to about:blank. "Back to your check-ins" names where it
+     goes instead. */
+  const back = useBackOrFallback('/grounds', 'Back to your check-ins')
+
   return (
     <Page>
       {/*
@@ -238,8 +255,8 @@ export default function SessionReportPage() {
           tabs={checkInHeaderTabs({ id: data.groundId as string, contextEnabled, canRunThisCheckIn: amTheInitiator, isAParty: true })}
         />
       ) : (
-        <button type="button" onClick={() => navigate(-1)} className="gwui-plain-link">
-          Back
+        <button type="button" onClick={back.onClick} className="gwui-plain-link">
+          {back.label}
         </button>
       )}
 
