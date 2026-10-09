@@ -48,7 +48,9 @@ const monthOf = (day: string) => `${whenItWas(at(day), 'month', 'UTC')} ${day.sl
  * entirely, and the rest reads as its own sentence, starting with "A review" rather than the
  * dangling "It" the original fault was about.
  */
-const everySays = (raw: string | null | undefined) => {
+/** Exported for B-140: the suites switchboard (`SuitesPage.tsx`) uses the same rule for the
+    reviews suite's own card, so it never shows a made-up cadence either. */
+export const everySays = (raw: string | null | undefined) => {
   const every = raw?.replace(/^Every /, 'every ').trim()
   return every || null
 }

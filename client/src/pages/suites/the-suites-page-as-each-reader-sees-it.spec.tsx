@@ -16,8 +16,13 @@ import type { SuitesForAnAdmin, SuitesForALead, SuitesForADutyHolder, AdminSuite
    switched on): the fault 2 tests below set it explicitly, and every other test here never reads
    "Your own leave and spending requests" at all, so its absence by default changes nothing they
    check. */
+/* B-140: SuitesPage now asks GET /suites/reviews/board for the reviews suite's own card
+   (reviewsLineFor), the same call ReviewsBoardPage already reads `every` from - mocked here so
+   every existing test keeps its default (no override) unless a test sets it. */
+const reviewsBoard: any = vi.fn(() => Promise.resolve({ every: null as string | null, next: [] as any[] }))
 vi.mock('@/api/suites', () => ({
   suitesApi: { get: vi.fn(), switch: vi.fn() },
+  reviewsApi: { board: () => reviewsBoard() },
   yourRequestsApi: {
     leave: vi.fn(() => Promise.reject(Object.assign(new Error('off'), { response: { status: 404 } }))),
     spending: vi.fn(() => Promise.reject(Object.assign(new Error('off'), { response: { status: 404 } }))),
@@ -330,6 +335,29 @@ describe('Grace, an admin, reads the Suites page', () => {
     ;(suitesApi.switch as any).mockRejectedValue(new Error('network'))
     fireEvent.click(await screen.findByRole('switch', { name: 'To-dos' }))
     expect(await within(card('To-dos')).findByRole('alert')).toHaveTextContent('That did not go through, and nothing has changed. Try again.')
+  })
+})
+
+/**
+ * B-140: Kijani Foods has switched performance reviews on but never set how often, and the
+ * switchboard still said "A review every 6 months..." as if it had - the same made-up cadence
+ * B-119 already fixed on the reviews board itself. This asks the one extra call the reviews board
+ * already makes (`GET /suites/reviews/board`) and swaps the sentence the same way.
+ */
+describe('B-140: the reviews card never states a cadence nobody has set', () => {
+  it('drops the made-up "every 6 months" once the reviews suite is on and nothing was set', async () => {
+    reviewsBoard.mockResolvedValue({ every: null, next: [] })
+    open(GRACE, withOn('reviews'))
+    const reviews = await screen.findByRole('region', { name: 'Performance reviews' })
+    await waitFor(() => expect(within(reviews).queryByText(/A review every 6 months/)).toBeNull())
+    expect(within(reviews).getByText('A review is built from what each person did and proved, with their own view beside it.')).toBeTruthy()
+  })
+
+  it('keeps the organisation’s own cadence once one has been set', async () => {
+    reviewsBoard.mockResolvedValue({ every: 'Every 6 months', next: [] })
+    open(GRACE, withOn('reviews'))
+    const reviews = await screen.findByRole('region', { name: 'Performance reviews' })
+    expect(await within(reviews).findByText('A review every 6 months, built from what each person did and proved, with their own view beside it.')).toBeTruthy()
   })
 })
 

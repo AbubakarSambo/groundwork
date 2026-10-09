@@ -1,10 +1,40 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { suitesApi, yourRequestsApi, type AdminSuite, type Answers, type Question, type SuitesForAnAdmin, type SuitesForALead, type SuitesForADutyHolder } from '@/api/suites'
+import { suitesApi, reviewsApi, yourRequestsApi, type AdminSuite, type Answers, type Question, type SuitesForAnAdmin, type SuitesForALead, type SuitesForADutyHolder } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { Page, PageTitle, Section, Panel, Button, Tag, Toggle, Note, Empty, RowList, Row, FieldLabel, TextField, TextArea, Select, Modal } from '@/components/gw/ui'
 import { QueueLink } from './QueuePage'
+import { everySays } from './ReviewsBoardPage'
+
+/**
+ * B-140: THE SAME MADE-UP CADENCE B-119 ALREADY FIXED ON THE REVIEWS BOARD, STILL HERE. The
+ * catalog's own line for the reviews suite (`the-ten-suites.ts`, `key: 'reviews'`) is one sentence
+ * for every organisation, "A review every 6 months, built from...", which reads as a real setting
+ * even for an organisation like Kijani Foods that has never set how often (`every: null`). `GET
+ * /suites` does not carry each organisation's own cadence, only `GET /suites/reviews/board` does
+ * (the same call the reviews board itself reads it from), so this suite's card alone asks that too,
+ * once it is on, and swaps the made-up clause out exactly as `everySays` already does on the board.
+ */
+function reviewsLineFor(line: string, every: string | null | undefined): string {
+  const said = everySays(every)
+  return said ? line : 'A review is built from what each person did and proved, with their own view beside it.'
+}
+
+/** A suite's own description, with B-140's fix applied to the reviews suite alone. */
+function SuiteLine({ s }: { s: { key: string; line: string; on?: boolean } }) {
+  /* The lead's own list (`SuitesForALead`) carries only the suites that are already on, with no
+     `on` field of its own - so a lead's card is "reviews" and on whenever its key says so. */
+  const isReviews = s.key === 'reviews' && s.on !== false
+  const { data } = useQuery({
+    queryKey: ['suite-reviews-board-for-switchboard'],
+    queryFn: reviewsApi.board,
+    enabled: isReviews,
+    retry: false,
+  })
+  const line = isReviews ? reviewsLineFor(s.line, data?.every) : s.line
+  return <p className="gwui-panel-text">{line}</p>
+}
 
 /**
  * THE SUITES PAGE (E, #/settings/suites, group 2 piece 4). The wording is copied from
@@ -133,7 +163,7 @@ function ForALead({ page }: { page: SuitesForALead }) {
           {page.suites.map(s => (
             <Panel as="section" key={s.key} aria-label={s.name}>
               <h3 className="gwui-panel-heading">{s.name}</h3>
-              <p className="gwui-panel-text">{s.line}</p>
+              <SuiteLine s={s} />
               {BOARDS[s.key] && <Link className="gwui-plain-link" to={BOARDS[s.key].to}>Open its board</Link>}
             </Panel>
           ))}
@@ -253,7 +283,7 @@ function ASuite({ s, people, forYou }: { s: AdminSuite; people: SuitesForAnAdmin
       <div className="gwui-suite-head">
         <div>
           <h3 className="gwui-panel-heading">{s.name}</h3>
-          <p className="gwui-panel-text">{s.line}</p>
+          <SuiteLine s={s} />
           {s.on && BOARDS[s.key] && <Link className="gwui-plain-link" to={forYou && s.key === 'spend' ? '/suite/spend/finance' : BOARDS[s.key].to}>{forYou && s.key === 'spend' ? 'Open the requests for finance' : 'Open its board'}</Link>}
           {s.on && s.questions.length > 0 && !asking && (
             <Button kind="quiet" size="small" onClick={openSettings}>See or change its settings</Button>
