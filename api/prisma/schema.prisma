@@ -564,6 +564,11 @@ model Organization {
   /// belongs to one organisation. Null means nobody joins by domain.
   joinDomain String? @unique @map("join_domain")
 
+  /// THE ORGANISATION'S OWN TIME ZONE (B-094, 9 October 2026), a zone name such as "Africa/Nairobi". Every day a board, a report or Today writes in a
+  /// sentence ("raised on 9 October", "Session 2 opens on 16 October") is the day in this zone, not the day in UTC. Null means nobody has said: the day is
+  /// then worked out from where the people's phone numbers are, and failing that the product's own (common/the-organisations-own-day.ts).
+  timeZone String? @map("time_zone")
+
   /// THE ORGANISATION'S OWN INVITE LINK (U.3): /j/<code>, where the code is the organisation's name
   /// with a random part, such as "baridi-7k2p". Joining through it gives "Takes part". Null while an
   /// admin has it off; turning it on again makes a new code, so an old link stops working.

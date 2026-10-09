@@ -1,3 +1,4 @@
+import { theOrganisationsZone, isAZone, forgetTheOrganisationsZone } from '../../common/the-organisations-own-day';
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
 import { Injectable, Logger, Inject, forwardRef, NotFoundException, ConflictException, BadRequestException, ForbiddenException, Optional } from '@nestjs/common';
 import { alreadyOpen, Subject } from './what-a-call-is-about';
@@ -88,6 +89,20 @@ export class UsersService {
       whatsappConnected: !!wa?.enabled,
       welcomeCardSeen: !!reader?.welcomeCardSeenAt,
     };
+  }
+
+  /** The zone an admin named, and the zone in use now (named, else from where people's numbers are, else the product's own). */
+  async theTimeZone(organizationId: string) {
+    const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { timeZone: true } });
+    return { timeZone: org?.timeZone ?? null, inUse: await theOrganisationsZone(this.prisma as any, organizationId) };
+  }
+
+  async setTheTimeZone(organizationId: string, timeZone: string | null) {
+    const zone = typeof timeZone === 'string' ? timeZone.trim() : '';
+    if (zone && !isAZone(zone)) throw new BadRequestException('That is not a time zone I know. A time zone is written like Africa/Nairobi.');
+    await this.prisma.organization.update({ where: { id: organizationId }, data: { timeZone: zone || null } });
+    forgetTheOrganisationsZone(organizationId);
+    return this.theTimeZone(organizationId);
   }
 
   /**

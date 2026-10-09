@@ -23,10 +23,15 @@ function isAZone(z: string | null | undefined): z is string {
 /** The zone to tell this person a time in. */
 export function theirTimeZone(rosterZone: string | null | undefined, phone: string | null | undefined): string {
   if (isAZone(rosterZone)) return rosterZone;
+  return thePhonesOwnZone(phone) ?? displayTimezone();
+}
+
+/** The zone of the country a number belongs to, where the country has one; null where it is not one we know. */
+export function thePhonesOwnZone(phone: string | null | undefined): string | null {
   const digits = String(phone ?? '').replace(/\D/g, '');
   // The longest calling code first, so 254 is never read as 25.
   for (const [code, zone] of [...ONE_ZONE_COUNTRIES].sort((a, b) => b[0].length - a[0].length)) if (digits.startsWith(code)) return zone;
-  return displayTimezone();
+  return null;
 }
 
 /** "5:22 pm East Africa Time": the hour in that zone, with the zone named. */

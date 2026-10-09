@@ -1,10 +1,11 @@
+import { theDayZone } from '../../common/the-organisations-own-day';
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-/** "30 September", in Lagos time, with the year only where it is not the year of `now`. */
+/** "30 September", in the organisation's own day (common/the-organisations-own-day), with the year only where it is not the year of `now`. */
 export function theDayInWords(d: Date, now: Date = new Date()): string {
-  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Lagos', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d).split('-').map(Number);
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: theDayZone(), year: 'numeric', month: '2-digit', day: '2-digit' }).format(d).split('-').map(Number);
   const [y, m, day] = parts;
-  const thisYear = Number(new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Lagos', year: 'numeric' }).format(now));
+  const thisYear = Number(new Intl.DateTimeFormat('en-CA', { timeZone: theDayZone(), year: 'numeric' }).format(now));
   return `${day} ${MONTHS[m - 1]}${y === thisYear ? '' : ` ${y}`}`;
 }
 
