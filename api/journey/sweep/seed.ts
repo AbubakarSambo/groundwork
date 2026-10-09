@@ -236,7 +236,7 @@ export async function seedTheFiveOrgs(url: string, outFile: string): Promise<Fix
       await suite(org.id, grace, [
         { suite: 'leave', isOn: true, answers: { days: 21, approver: 'Their manager' } },
         { suite: 'spend', isOn: true, answers: { currency: 'KES', limit: 100_000, above: uid('fatuma', CLIENT), categories: ['Fuel', 'Labels', 'Travel', 'Training'] } },
-        { suite: 'timesheets', isOn: true, answers: { approver: 'Their manager' } },
+        { suite: 'time', isOn: true, answers: { clients: ['Kilimani', 'Westlands'], approver: 'Their manager' } },
         { suite: 'reviews', isOn: true, answers: { approver: 'Their manager', workflow: 'one_approver' } },
         { suite: 'duties', isOn: false, answers: { finance: uid('fatuma', CLIENT), hr: uid('peter', CLIENT), chiefExecutive: grace, departmentHeads: { Sales: wairimu, Operations: baraka }, budgetOwners: { Sales: wairimu, Operations: baraka } } },
         { suite: 'workflows', isOn: false, answers: { leave: { steps: [['manager', 'admin']], escalateAfter: 2 }, spend: { steps: [['manager', 'admin']], stepsAbove: [['manager', 'finance', 'admin']], escalateAfter: 2 } } },
