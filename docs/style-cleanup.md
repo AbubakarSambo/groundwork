@@ -22,3 +22,37 @@ The one-off classes still left on every page sampled fall into two shapes, neith
 2. **Horizontal `gap` on a flex row** (`gwui-gap-N` with inline `display: flex` and no `flexDirection: column`) - buttons or badges spaced across a row. `Stack` only reproduces vertical `margin-top` stacking between block children, so swapping it in would be a behaviourally different (and here, visually different) layout, not an exact match.
 
 This agrees with `docs/answers-from-engine.md` item 18: "the one-off style clean-up stopped where no exact shared class exists... Going further means new shared parts with no visible gain." This pass re-checked that conclusion against the current code (including one new read of `GroundParticipantPage.tsx`'s settings tab, which has its own documented, test-pinned reason for staying a flex column) rather than taking it on trust, and found it still holds.
+
+## Round 2 (9 October): two new shared parts, `FlexRow` and `Text`
+
+Hafsah asked for the clean-up to continue past round 1's "no exact match" conclusion by adding two
+new shared parts whose CSS is exactly what the inline code already does, so swapping them in cannot
+change a pixel: `FlexRow` (`components/gw/ui/FlexRow.tsx`) and `Text` (`components/gw/ui/Text.tsx`).
+Written up in `docs/the-parts-against-the-prototype.md` per the guard's own requirement.
+
+**Method used for BoardPage's first batch (`FlexRow`):** before screenshots of the board, signed in
+as the lead and as a member, on two boards of different kinds (one report-ready with both of them in
+it, one still active with only the lead), full page, at 1440 and 390
+(`e2e/sweep/style-cleanup-pixels.spec.ts`, screenshots to the scratchpad, not committed). The before
+set was run twice first to check the page's own noise - both runs came back pixel-identical, so no
+masking was needed. Every `<div className="gwui-gap-N" style={{ display: 'flex', ... }}>` row (no
+fixed width, no `flexDirection: column`) was swapped for `<FlexRow gap={N} ...>`, after screenshots
+taken, and compared pixel by pixel against the before set with `e2e/sweep/compare-style-shots.js`
+(uses `client/node_modules/pngjs`, already a project dependency, rather than adding `pixelmatch`,
+which was not installed; same idea - a per-channel tolerance for anti-aliasing, exact match required
+otherwise).
+
+| Page | Uses before | Uses after | States checked | Result |
+| --- | --- | --- | --- | --- |
+| `pages/board/BoardPage.tsx` (FlexRow batch) | 584 | 561 | report-ready board as lead and as member, active board as lead, at 1440 and 390 (6 screenshots) | 0 differing pixels in every screenshot. 23 `gwui-gap-N` + inline `display: flex` rows converted. |
+
+**Left for the next batch:** `Text` was built (wraps `gwui-fs-N`/`gwui-ink-X` for the style-free
+case) but not yet applied to BoardPage - this round's time went to `FlexRow` and its pixel proof.
+The ~14 plain `<div className="gwui-fs-N gwui-ink-X">text</div>` cases (no inline style at all) in
+`BoardPage.tsx` are the safest first targets for `Text`, in the next batch.
+
+**Still left alone, and why:** every `gwui-gap-N` with a fixed `width` or paired with
+`flexDirection: 'column'` (`GroundParticipantPage.tsx`'s settings tab - its own comment explains the
+children need `order`, see `docs/the-parts-against-the-prototype.md`) - not `FlexRow`'s row-only
+shape. The CSS-grid `gwui-gap-N`/`gwui-gap-14` rows (`display: 'grid'`, three of them in
+`BoardPage.tsx`) are a different layout mode entirely and were not touched.
