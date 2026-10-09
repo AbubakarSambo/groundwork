@@ -41,6 +41,27 @@ describe('what this session holds', () => {
     expect(r.waiting).toBe(1);
   });
 
+  it('B-103: counts the people who are waiting, not their waits, because the tile reads "N people are waiting on somebody else"', async () => {
+    const one = await whatThisSessionHolds(aPrisma({
+      checkIns: [{ id: 'ci-1' }],
+      deps: [
+        { status: 'WAITING', fromParticipantId: 'halima', onParticipantId: null, what: 'the shop numbers' },
+        { status: 'WAITING', fromParticipantId: 'halima', onParticipantId: null, what: 'the complaint list' },
+      ],
+      objectives: [], snapshots: {},
+    }), 'g', 1, LEAD);
+    expect(one.waiting).toBe(1);
+    const two = await whatThisSessionHolds(aPrisma({
+      checkIns: [{ id: 'ci-1' }],
+      deps: [
+        { status: 'WAITING', fromParticipantId: 'halima', onParticipantId: null, what: 'the shop numbers' },
+        { status: 'WAITING', fromParticipantId: 'juma', onParticipantId: null, what: 'the complaint list' },
+      ],
+      objectives: [], snapshots: {},
+    }), 'g', 1, LEAD);
+    expect(two.waiting).toBe(2);
+  });
+
   it('a session with no check-ins has nothing raised in it, and does not ask the dependency table', async () => {
     const prisma = aPrisma({ checkIns: [], deps: [{ status: 'BLOCKING', fromParticipantId: 'a', onParticipantId: 'b' }], objectives: [], snapshots: {} });
     const r = await whatThisSessionHolds(prisma, 'g', 3, LEAD);
