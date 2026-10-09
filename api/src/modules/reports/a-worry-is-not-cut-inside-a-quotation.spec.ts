@@ -9,10 +9,10 @@ const tile = (worry: string) => (atAGlanceTiles({ agreed: 0, stillOpen: 1, moved
 
 describe('a worry is quoted whole, and the count starts a sentence of its own', () => {
   it('a quotation with a full stop inside it is not cut at that full stop', () => {
-    expect(tile('You said, "Two shops owe us. I never ask."')).toBe('You said, "Two shops owe us. I never ask." There are 3 more worries on record, and nobody is waiting on anybody.');
+    expect(tile('You said, "Two shops owe us. I never ask."')).toBe('You said, "Two shops owe us. I never ask." There are 3 more worries on record, and no wait has been recorded against a named person.');
   });
   it('a quotation of one sentence reads as it did', () => {
-    expect(tile('You said, "Nobody told me it was my job to ask."')).toBe('You said, "Nobody told me it was my job to ask." There are 3 more worries on record, and nobody is waiting on anybody.');
+    expect(tile('You said, "Nobody told me it was my job to ask."')).toBe('You said, "Nobody told me it was my job to ask." There are 3 more worries on record, and no wait has been recorded against a named person.');
   });
   it('a quotation that ends on a question is kept to its mark', () => {
     expect(theFirstSentenceThatFits('Juma Otieno said, "Who asks the shops? Not me." Then more.')).toBe('Juma Otieno said, "Who asks the shops? Not me."');

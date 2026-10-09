@@ -144,7 +144,7 @@ export interface WhatThisSessionHolds {
   whyNoWorryIsShown: WhyNoWorryIsShown;
   /**
    * WAITS RAISED IN AN EARLIER SESSION AND STILL OPEN (item 21, the founder's board). The tile said
-   * "There is 1 more worry on record, and nobody is waiting on anybody." to Ada, while Tunde was
+   * "There is 1 more worry on record, and no wait has been recorded against a named person." to Ada, while Tunde was
    * waiting on her for three things raised two sessions before. This session raised no wait, but
    * the earlier ones had not gone away; the tile now says so instead of saying nobody waits.
    */
@@ -444,7 +444,7 @@ export function atAGlanceTiles(a: {
   /* Nobody waits, said only where it is true; otherwise how many waits from earlier sessions are still open. */
   const andTheWaits = earlier > 0
     ? `. Nobody named a new wait this session, and ${earlier === 1 ? '1 wait from an earlier session is' : `${earlier} waits from earlier sessions are`} still open.`
-    : ', and nobody is waiting on anybody.';
+    : ', and no wait has been recorded against a named person.';
   const theRestOfTheWorries = (n: number): string => (n <= 0
     ? `It is the only worry on record${andTheWaits}`
     : `There ${n === 1 ? 'is 1 more worry' : `are ${n} more worries`} on record${andTheWaits}`);
@@ -523,7 +523,7 @@ export function atAGlanceTiles(a: {
               ? `${theWorry} ${theRestOfTheWorries(worries - 1)}`
               /*
                * A COUNT IS NEVER LEFT WITH NOTHING BEHIND IT (request 127 item 7). "13 worries are on record,
-               * and nobody is waiting on anybody." was read where no worry is shown anywhere. A worry is only
+               * and no wait has been recorded against a named person." was read where no worry is shown anywhere. A worry is only
                * shown in the words it was said, and only to somebody who may read them, so where none is, the
                * tile says the true reason: other people's words walled from this reader, or none kept word
                * for word (true for the lead as well, so "cannot be shown to you" was not said to everyone).
@@ -536,7 +536,7 @@ export function atAGlanceTiles(a: {
                     ? (worries === 1 ? '1 worry is on record. It cannot be quoted here whole, so it is not shown.' : `${worries} worries are on record. None can be quoted here whole, so none is shown.`)
                     : (worries === 1 ? '1 worry is on record. It was not kept in the words it was said, so it is not quoted here.' : `${worries} worries are on record. None was kept in the words it was said, so none is quoted here.`)} ${earlier > 0
                 ? `Nobody named a new wait this session, and ${earlier === 1 ? '1 wait from an earlier session is' : `${earlier} waits from earlier sessions are`} still open.`
-                : 'Nobody is waiting on anybody.'}`)
+                : 'No wait has been recorded against a named person.'}`)
             : earlier > 0
               ? `Nobody named anything new holding work up this session, and ${earlier === 1 ? '1 wait from an earlier session is' : `${earlier} waits from earlier sessions are`} still open.`
               : 'Nobody named anything holding work up.',

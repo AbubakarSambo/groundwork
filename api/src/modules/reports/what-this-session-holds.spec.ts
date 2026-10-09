@@ -11,7 +11,7 @@ describe('worries reach the Blockers tile when nothing is blocked', () => {
   it('says how many were said and names the first, instead of None', () => {
     const b = blockers(atAGlanceTiles({ ...base, worries: 3, theWorry: 'I lost 220 birds and missed a payment.' }));
     expect(b.value).toBe('3 worries');
-    expect(b.sub).toBe('I lost 220 birds and missed a payment. There are 2 more worries on record, and nobody is waiting on anybody.');
+    expect(b.sub).toBe('I lost 220 birds and missed a payment. There are 2 more worries on record, and no wait has been recorded against a named person.');
     expect(b.tone).toBe('warn');
   });
 
@@ -64,18 +64,18 @@ describe('the worry line is whole sentences, never a piece joined to a count', (
 
   it('the exact case: Amina\'s first worry, shown as its first sentence, and the count as a sentence', () => {
     const sub = blockers({ worries: 4, theWorry: "I haven't explicitly said 'get me out of these meetings.' I did say he would own the relationships in his interview." }).sub;
-    expect(sub).toBe("I haven't explicitly said 'get me out of these meetings.' There are 3 more worries on record, and nobody is waiting on anybody.");
+    expect(sub).toBe("I haven't explicitly said 'get me out of these meetings.' There are 3 more worries on record, and no wait has been recorded against a named person.");
     expect(sub).not.toContain('...');
     expect(sub).not.toContain(';');
   });
 
   it('one worry, and no worry that fits', () => {
     expect(blockers({ worries: 1, theWorry: 'Diesel is N90,000 a month more.' }).sub)
-      .toBe('Diesel is N90,000 a month more. It is the only worry on record, and nobody is waiting on anybody.');
+      .toBe('Diesel is N90,000 a month more. It is the only worry on record, and no wait has been recorded against a named person.');
     /* Changed 5 Oct 2026 (request 127 item 7): a count with no worry shown says why none is shown. */
-    expect(blockers({ worries: 4, theWorry: null }).sub).toBe('4 worries are on record. None was kept in the words it was said, so none is quoted here. Nobody is waiting on anybody.');
-    expect(blockers({ worries: 1, theWorry: null }).sub).toBe('1 worry is on record. It was not kept in the words it was said, so it is not quoted here. Nobody is waiting on anybody.');
-    expect(blockers({ worries: 4, theWorry: null, whyNoWorry: 'walled' }).sub).toBe('4 worries are on record. They are other people\'s words, so they are not shown to you. Nobody is waiting on anybody.');
+    expect(blockers({ worries: 4, theWorry: null }).sub).toBe('4 worries are on record. None was kept in the words it was said, so none is quoted here. No wait has been recorded against a named person.');
+    expect(blockers({ worries: 1, theWorry: null }).sub).toBe('1 worry is on record. It was not kept in the words it was said, so it is not quoted here. No wait has been recorded against a named person.');
+    expect(blockers({ worries: 4, theWorry: null, whyNoWorry: 'walled' }).sub).toBe('4 worries are on record. They are other people\'s words, so they are not shown to you. No wait has been recorded against a named person.');
   });
 });
 
