@@ -25,6 +25,7 @@ import { toast } from 'sonner'
 import {
   rememberConversation, recallConversation, forgetConversation,
 } from './remembering-the-context-conversation'
+import { GroundworkIsWriting } from './ui/GroundworkIsWriting'
 
 export function ContextChat({ groundId }: { groundId: string }) {
   const qc = useQueryClient()
@@ -366,7 +367,10 @@ export function ContextChat({ groundId }: { groundId: string }) {
           </div>
         ))}
         {(send.isPending || opening.isFetching) && (
-          <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', alignSelf: 'flex-start' }}>Thinking…</div>
+          /* `wrap={false}`: this chat draws no bubbles of its own (a citation-style rule down the
+             left edge instead, see the comment above), so the shared sentence sits plainly here
+             too, rather than in a bubble shape nothing else on this screen has. */
+          <div style={{ alignSelf: 'flex-start' }}><GroundworkIsWriting wrap={false} /></div>
         )}
       </div>
 
