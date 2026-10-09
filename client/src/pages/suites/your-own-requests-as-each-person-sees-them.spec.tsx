@@ -103,9 +103,17 @@ describe('Aisha reads her own requests', () => {
   /*
    * WALKTHROUGH PASS 2, ITEM 3: AN ADMIN IS TOLD WHERE TO SWITCH A SUITE ON; A PARTICIPANT ISN'T
    * POINTED AT A PAGE THAT REFUSES THEM.
+   *
+   * UPDATED (B-122, deep page audit, 9 October): the fixture used to stop at "...is not switched
+   * on.", which was never what the server actually sends - every "not switched on" refusal ends
+   * "An admin switches it on under Suites." (`a-suite-that-is-off-says-what-to-do.ts`). Checked
+   * against the old ending, `isSuiteOffMessage` never matched the server's real sentence, so an
+   * admin read it as plain text with nothing to press - a dead end this fixture was not catching.
+   * The fixture now carries the server's real sentence, and the test still proves the same thing:
+   * an admin gets a working link.
    */
   it('tells an admin where to switch the suite on', async () => {
-    open(refusal(404, 'The leave suite is not switched on.'), SPENDING)
+    open(refusal(404, 'The leave suite is not switched on. An admin switches it on under Suites.'), SPENDING)
     useAuthStore.setState({ user: { ...AISHA, role: 'ADMIN' } } as any)
     expect(await screen.findByText(/The leave suite is not switched on\./)).toBeTruthy()
     /* Two links read "Suites" here: the breadcrumb, and the one this message adds - both to the
@@ -120,7 +128,7 @@ describe('Aisha reads her own requests', () => {
    * sentence with no link - the whole section is left out for whoever cannot switch it on.
    */
   it('leaves the section out for a participant entirely, rather than a sentence with no way to act on it', async () => {
-    open(refusal(404, 'The leave suite is not switched on.'), SPENDING)
+    open(refusal(404, 'The leave suite is not switched on. An admin switches it on under Suites.'), SPENDING)
     await screen.findByText('Your request to spend KES 12,000 for tyres for the van is approved by Fatuma.')
     expect(screen.queryByText(/The leave suite is not switched on/)).toBeNull()
     expect(screen.queryByRole('heading', { name: 'Your leave' })).toBeNull()

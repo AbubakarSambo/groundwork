@@ -22,16 +22,27 @@ export function maySwitchSuitesOn(role?: string): boolean {
   return role === 'ADMIN'
 }
 
+/**
+ * B-122 (deep page audit, 9 October): the server's sentence for an off suite now ends "An admin
+ * switches it on under Suites." (`a-suite-that-is-off-says-what-to-do.ts`, `AN_ADMIN_SWITCHES_IT_ON`),
+ * not "...is not switched on." as this used to check for. With the old check, an admin - the one
+ * person who can actually act on it - read the same plain sentence as everybody else, with nothing
+ * to press: a dead end. This now matches the server's real ending, so the admin's "Suites" becomes a
+ * working link again. A lead or a member still reads the server's sentence with no link, since
+ * neither of them can switch a suite on.
+ */
 export function isSuiteOffMessage(message?: string | null): boolean {
-  return !!message && /is not switched on\.?\s*$/.test(message.trim())
+  return !!message && /\bunder Suites\.?\s*$/.test(message.trim())
 }
 
 /**
- * The server's own "not switched on" sentence, with an admin's way out added after it. A lead or a
- * participant reads the server's sentence and nothing more, since neither of them can switch a
- * suite on.
+ * The server's own "not switched on" sentence, with "Suites" turned into a working link for an
+ * admin. A lead or a member reads the server's sentence and nothing more, since neither of them can
+ * switch a suite on.
  */
 export function SuiteOffMessage({ message, role }: { message: string; role?: string }) {
   if (!isSuiteOffMessage(message) || !maySwitchSuitesOn(role)) return <>{message}</>
-  return <>{message} You can switch it on in <Link to="/settings/suites">Suites</Link>.</>
+  const trimmed = message.trim()
+  const before = trimmed.replace(/under Suites\.?\s*$/, 'under ')
+  return <>{before}<Link to="/settings/suites">Suites</Link>.</>
 }

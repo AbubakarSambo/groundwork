@@ -51,7 +51,8 @@ export function YourRequestsPage() {
 
       {sentMessage && <Callout tone="success" role="status">{sentMessage}</Callout>}
 
-      <SuiteSection heading="Your leave" q={leave} off="Leave is not switched on in your organisation." role={user?.role}>
+      <SuiteSection heading="Your leave" q={leave} off="Leave is not switched on in your organisation." role={user?.role}
+        action={<Button kind="secondary" size="small" to="/suite/leave/new">Request leave</Button>}>
         {data => (
           <>
             <p className="gwui-panel-text">{data.daysLeftSaid}</p>
@@ -60,7 +61,8 @@ export function YourRequestsPage() {
         )}
       </SuiteSection>
 
-      <SuiteSection heading="Your requests to spend" q={spending} off="Spending requests are not switched on in your organisation." role={user?.role}>
+      <SuiteSection heading="Your requests to spend" q={spending} off="Spending requests are not switched on in your organisation." role={user?.role}
+        action={<Button kind="secondary" size="small" to="/suite/spend/new">Ask to spend money</Button>}>
         {data => <Requests rows={data.requests} none="You have not asked to spend anything." answer={yourRequestsApi.answerSpending} queryKey={['your-spending']} />}
       </SuiteSection>
 
@@ -97,11 +99,15 @@ function YourHoursSection({ data }: { data: YourHours }) {
  * is left out entirely, the same way a suite nobody has switched on leaves no trace elsewhere on the
  * product.
  */
-function SuiteSection<T>({ heading, q, off, role, children }: {
+function SuiteSection<T>({ heading, q, off, role, action, children }: {
   heading: string
   q: { data?: T; isLoading: boolean; isError: boolean; error: unknown; refetch: () => unknown; isFetching: boolean }
   off: string
   role?: string
+  /** A button beside the heading, for example "Request leave" - shown only once the suite is
+   *  actually on for this person (request 185: a dead end with no button and no word on how to
+   *  ask, B-123). Never shown while the suite is off or failed to load. */
+  action?: React.ReactNode
   children: (data: T) => React.ReactNode
 }) {
   if (q.isLoading) return <Section heading={heading}><Note>Loading…</Note></Section>
@@ -120,7 +126,7 @@ function SuiteSection<T>({ heading, q, off, role, children }: {
       </Section>
     )
   }
-  return q.data ? <Section heading={heading}>{children(q.data)}</Section> : null
+  return q.data ? <Section heading={heading} action={action}>{children(q.data)}</Section> : null
 }
 
 function Requests<L extends { requests: YourRequest[] }>({ rows, none, answer, queryKey }: {
