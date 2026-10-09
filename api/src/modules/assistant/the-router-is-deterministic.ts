@@ -299,6 +299,12 @@ const RULES = [
     /\bwhere\s+am\s+i\s+up\s+to\b/i,
     /\bmy\s+onboarding\b/i,
     /\bwhat\s+is\s+my\s+role\b/i,
+    /*
+     * THE CHECK-IN TAB OFFERS "What am I missing?" (B-168), and it was answered "I cannot answer that one yet." What is still missing for a person
+     * is what is still left for them, so it is the same lane.
+     */
+    /^\s*what\s+am\s+i\s+missing\s*\??\s*$/i,
+    /\bwhat\s+is\s+missing\s+from\s+my\s+record\b/i,
   ]),
   rule('what_came_of_it', [
     /*
@@ -449,6 +455,8 @@ const RULES = [
     /\bwhat\s+am\s+i\s+(?:on|working on|assigned)\b/i,
     /\bwhat(?:'s| is)\s+(?:on\s+)?my\s+(?:plate|work|objectives?)\b/i,
     /\bmy\s+objectives?\b/i,
+    /* "Review my goals", offered by the Check-in tab (B-168): the goals a person holds are what they are on. */
+    /\breview\s+(?:my|the)\s+goals\b/i,
     /\bwhat\s+do\s+i\s+owe\b/i,
   ]),
   rule('what_you_can_see', [
