@@ -4011,7 +4011,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
             named: theyNamedWhatTheyAreWaitingOn(d),
           })),
           settled: shape.whereThingsStand.settled,
-          open: shape.whereThingsStand.open,
+          open: shape.whereThingsStand.differences ?? shape.whereThingsStand.open,
           oneTime,
           direction: directionForThePicture,
         });

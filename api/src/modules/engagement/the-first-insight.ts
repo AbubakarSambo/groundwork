@@ -76,7 +76,7 @@ export function theFirstInsight(report: any, label: string, reader: { isTheLead:
   const stand = report?.whereThingsStand;
   if (!stand || report?.withheldUntilYouAnswer) return null;
   const settled = Array.isArray(stand.settled) ? stand.settled.length : Number(stand.agreed) || 0;
-  const open: string[] = (Array.isArray(stand.open) ? stand.open : []).map(anOpenThing).filter((t: string | null): t is string => !!t);
+  const open: string[] = (Array.isArray(stand.differences) ? stand.differences : Array.isArray(stand.open) ? stand.open : []).map(anOpenThing).filter((t: string | null): t is string => !!t);
   if (settled === 0 && open.length === 0) return null;
 
   const lines: string[] = [];
@@ -119,7 +119,7 @@ export function theFirstInsight(report: any, label: string, reader: { isTheLead:
  */
 export function theFirstOpenDifference(report: any): string | null {
   if (!report?.whereThingsStand || report?.withheldUntilYouAnswer) return null;
-  const open: unknown[] = Array.isArray(report.whereThingsStand.open) ? report.whereThingsStand.open : [];
+  const open: unknown[] = Array.isArray(report.whereThingsStand.differences) ? report.whereThingsStand.differences : Array.isArray(report.whereThingsStand.open) ? report.whereThingsStand.open : [];
   for (const t of open) {
     const x = anOpenThing(t);
     if (x) return isAWholeSentence(x) ? lowerFirstOfAClause(x) : `the people differ on "${x}"`;
@@ -135,7 +135,7 @@ export function theFirstOpenDifference(report: any): string | null {
  */
 export function theFindingOnItsOwn(report: any, label: string): { finding: string; moreStillOpen: number; conversationWorthHaving: string | null } | null {
   if (!report?.whereThingsStand || report?.withheldUntilYouAnswer) return null;
-  const open: string[] = (Array.isArray(report.whereThingsStand.open) ? report.whereThingsStand.open : []).map(anOpenThing).filter((t: string | null): t is string => !!t);
+  const open: string[] = (Array.isArray(report.whereThingsStand.differences) ? report.whereThingsStand.differences : Array.isArray(report.whereThingsStand.open) ? report.whereThingsStand.open : []).map(anOpenThing).filter((t: string | null): t is string => !!t);
   if (!open.length) return null;
   const first = open[0];
   const finding = isAWholeSentence(first) ? `${capital(first)}.` : `The people in "${cutLabel(label, 60)}" differ on "${first}".`;

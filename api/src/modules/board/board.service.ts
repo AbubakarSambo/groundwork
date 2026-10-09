@@ -1410,7 +1410,7 @@ export class BoardService {
            question is only for a report that has none yet. */
         centralQuestion: (typeof reportSafe.centralQuestion === 'string' && reportSafe.centralQuestion.trim() ? reportSafe.centralQuestion : null) ?? sessionShape?.theConversationWorthHaving ?? null,
         settled: sessionShape?.whereThingsStand?.settled ?? [],
-        stillOpen: sessionShape?.whereThingsStand?.open ?? [],
+        stillOpen: sessionShape?.whereThingsStand?.differences ?? sessionShape?.whereThingsStand?.open ?? [],
         ...(sessionShape?.whereThingsStand?.settledMarks ? { settledMarks: sessionShape.whereThingsStand.settledMarks } : {}),
         ...(sessionShape?.whereThingsStand?.openMarks ? { stillOpenMarks: sessionShape.whereThingsStand.openMarks } : {}),
       };
@@ -1915,7 +1915,7 @@ export class BoardService {
          * tile counted the live report's divergences; the section under it renders the round's. They
          * are two readings of one round and the tile takes whichever has found something.
          */
-        const openHere = Array.isArray(sessionShape?.whereThingsStand?.open) ? sessionShape!.whereThingsStand!.open.length : 0;
+        const openHere = Array.isArray(sessionShape?.whereThingsStand?.differences ?? sessionShape?.whereThingsStand?.open) ? (sessionShape!.whereThingsStand!.differences ?? sessionShape!.whereThingsStand!.open).length : 0;
         const divCount = Math.max(openHere, Array.isArray(reportSafe?.divergences) ? (reportSafe!.divergences as any[]).length : 0);
         const agreedCount = Array.isArray(reportSafe?.agreements) ? (reportSafe!.agreements as any[]).length : 0;
         const eng = (reportSafe?.engagement ?? {}) as Record<string, any>;

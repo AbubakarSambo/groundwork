@@ -112,6 +112,12 @@ export interface SessionReportShape {
     settledMarks?: AMarkOnALine[];
     /** The same for `open`. */
     openMarks?: AMarkOnALine[];
+    /**
+     * THE DIFFERENCES ALONE (B-165). `open` is what the screen lists under "What is still open", and where the report lists no difference but the
+     * record holds a blocker, a wait or a worry, `open` says what the record holds, so the screen never reads "Nothing is open. Everything anybody
+     * raised has been settled." beside Esther's three shops waiting on a credit decision. Anything that means a difference between people reads this.
+     */
+    differences?: string[];
     /*
      * AND WHY EACH OPEN ONE IS OPEN, WHICH THIS THREW AWAY.
      *
@@ -633,6 +639,17 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     commitmentsWithOwnerAndDate: input.commitmentsWithOwnerAndDate ?? 0,
   });
 
+  /*
+   * WHAT IS STILL OPEN IS NEVER "NOTHING" WHILE THE RECORD HOLDS A BLOCKER, A WAIT OR A WORRY (B-165). The page says "Nothing is open. Everything anybody
+   * raised has been settled." when it is handed something settled and nothing open. Where the report lists no difference, the Blockers read says what the
+   * record holds, in the one sentence the quick read uses, and it goes on the list too. Counts of differences are left as they were.
+   */
+  const theBlockersRead = atAGlance.find((t) => t.label === 'Blockers');
+  const theRecordHoldsSomethingOpen = !!(input.blocked || input.waiting || input.worries || input.waitsFromEarlier);
+  const theOpenListWithWhatTheRecordHolds = openNow.length === 0 && settled.length > 0 && theRecordHoldsSomethingOpen && theBlockersRead?.sub
+    ? [theBlockersRead.sub]
+    : openNow;
+
   return {
     sessionNumber: input.sessionNumber,
     plannedSessions: input.runsUntilEnded ? null : input.plannedSessions ?? null,
@@ -642,7 +659,7 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
       : input.plannedSessions ? `Session ${input.sessionNumber} of ${input.plannedSessions}.` : `Session ${input.sessionNumber}.`,
     state: input.closed ? 'final' : 'forming',
     confidence,
-    whereThingsStand: { agreed, stillOpen, saying: standing, settled, ...(settledMarks ? { settledMarks } : {}), open: openNow, ...(openMarks ? { openMarks } : {}), openWithReasons },
+    whereThingsStand: { agreed, stillOpen, saying: standing, settled, ...(settledMarks ? { settledMarks } : {}), open: theOpenListWithWhatTheRecordHolds, differences: openNow, ...(openMarks ? { openMarks } : {}), openWithReasons },
     atAGlance,
     whatEachPersonSaid,
     sections,
