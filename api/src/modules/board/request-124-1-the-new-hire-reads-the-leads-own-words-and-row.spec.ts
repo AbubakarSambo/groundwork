@@ -1,5 +1,5 @@
 import { GroundScenario } from '@prisma/client';
-import { AMINA, BARAKA, RUKIA, boardAs, commitment, answered, A_RELEASED_REPORT, type Setup } from './the-switchboards-sections-harness';
+import { AMINA, BARAKA, RUKIA, PEOPLE, boardAs, commitment, answered, A_RELEASED_REPORT, type Setup } from './the-switchboards-sections-harness';
 
 /**
  * REQUEST 124, PART 1 (Hafsah's answer of 3 October, decision 88): ON AN ONBOARDING CHECK-IN, THE NEW HIRE READS THEIR LEAD'S OWN
@@ -28,6 +28,8 @@ const REPORT = {
 const RECORD = (more: Partial<Setup> = {}): Setup => ({
   scenario: GroundScenario.NEW_HIRE,
   peersVisibleToEachOther: false,
+  /* Amina checks in here (she answered session 1), so she is not a lead who only manages; the harness marks every lead as managing only, and such a lead has no row (B-079). */
+  people: PEOPLE.map((p) => (p.id === 'p-amina' ? { ...p, managingOnly: false } : p)),
   checkIns: [answered('p-amina', 1), answered('p-rukia', 1), answered('p-baraka', 1)],
   commitments: [
     commitment('k-amina', 'p-amina', 'I will give Rukia the commercial terms by Friday.', { saidWordForWord: true }),
