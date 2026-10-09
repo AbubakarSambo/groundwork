@@ -464,3 +464,18 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
     whyNoRoleMap,
   };
 }
+
+/**
+ * THE NOTE FOR SOMEBODY WHO HAS NOT CHECKED IN YET (B-164). It says nothing about a session, a role or a record, because there is none to speak of.
+ */
+export function theNoteBeforeYouHaveCheckedIn(): WhatToWorkOnNext {
+  return {
+    aboutYou: [],
+    showingUp: null,
+    whyItMatters: 'You have not checked in yet, so there is nothing to say about your session.',
+    beforeNextTime: ['When you check in, say one thing you did, with the date and who else was involved.'],
+    general: true,
+    role: null,
+    whyNoRoleMap: null,
+  };
+}

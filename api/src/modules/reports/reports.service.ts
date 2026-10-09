@@ -43,7 +43,7 @@ import { whenThisWouldHaveSurfaced } from './when-this-would-have-surfaced';
 import { ONE_SITTING_ONLY, ALREADY_IN_THE_OPEN } from './there-is-not-always-a-next-time';
 import { isThisACascade } from '../board/is-this-a-cascade';
 import { theSessionReport, hasOwnerAndDate } from './the-session-report';
-import { whatToWorkOnNext } from './what-to-work-on-next';
+import { whatToWorkOnNext, theNoteBeforeYouHaveCheckedIn } from './what-to-work-on-next';
 import { whatToProbe } from './what-to-probe';
 import { wordedByTheModel, type Drafted, type Compose } from './the-engine-drafts-it-the-model-words-it';
 import { rememberedCompose } from './a-line-worded-once-is-kept';
@@ -6185,6 +6185,13 @@ happened, and what is in the way.`;
        and where there are real check-ins, the set-up is not counted among them. */
     if (allMine.length > 0 && allMine.every((c: any) => c.isSetup)) return null;
     const mySessions = allMine.filter((c: any) => !c.isSetup);
+    /*
+     * NOTHING IS SAID ABOUT A SESSION UNTIL THERE IS ONE (B-164). A lead who had not checked in read "Everything in your session came from memory",
+     * "This is session 1 of 6 of your work as head of sales" and "Nothing here says what kind of work this is". She had no session to speak of.
+     */
+    if (mySessions.length === 0) {
+      return theNoteBeforeYouHaveCheckedIn();
+    }
     /* Office work has documents; a tractor, a cold store and a rice mill do not. See TheirOwnRecord.documentsExpected. */
     const documentsExpected = !['COHORT_CHECK', 'DISCOVERY', 'SNAPSHOT'].includes(String(ground.scenario));
     /* The product's finding about this person, from the report: the first thing the note says. */
