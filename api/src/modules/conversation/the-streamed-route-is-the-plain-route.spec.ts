@@ -43,12 +43,19 @@ describe('the streamed route is the plain route', () => {
     return events;
   };
 
-  it('ends with exactly what the plain route returns, after showing the draft as it came', async () => {
+  it('shows only the reply that is kept when a check changed the draft (B-092), so what the person answers is what is saved', async () => {
     const plain = { reply: 'Thank you. Which shop placed the order?', sessionComplete: false, suggestedAnswers: ['Kariuki Butchery.', 'Not sure yet.'] };
     const events = await run(serviceWith(plain, ['Thank you. ', 'Which shop, ', 'and when?']));
-    expect(events.filter((e) => e.type === 'delta').map((e) => e.text)).toEqual(['Thank you. ', 'Which shop, ', 'and when?']);
-    /* The draft asked two things; the plain route's rewrite asked one. What stays on screen is the rewrite. */
+    /* The draft asked two things; the plain route's rewrite asked one. The draft was never shown, so the person never answers it. */
+    expect(events.filter((e) => e.type === 'delta').map((e) => e.text)).toEqual([plain.reply]);
     expect(events[events.length - 1]).toEqual({ type: 'done', reply: plain.reply, sessionComplete: false, suggestedAnswers: plain.suggestedAnswers });
+  });
+
+  it('shows the draft as it came when the checks kept it as it was', async () => {
+    const plain = { reply: 'Thank you. Which shop placed the order?', sessionComplete: false };
+    const events = await run(serviceWith(plain, ['Thank you. ', 'Which shop ', 'placed the order?']));
+    expect(events.filter((e) => e.type === 'delta').map((e) => e.text)).toEqual(['Thank you. ', 'Which shop ', 'placed the order?']);
+    expect(events[events.length - 1]).toMatchObject({ type: 'done', reply: plain.reply });
   });
 
   it('closes when the plain route closes', async () => {

@@ -3365,25 +3365,23 @@ export class ConversationService {
     /* The same door first, so a refused session is refused before the stream opens. sendMessage checks it again. */
     const checkIn = await this.aSessionUnderway(checkInId, requestingUserId);
     this.logger?.debug?.(`Check-in ${checkIn.id}: streaming the plain route.`);
-    const waiting: string[] = [];
-    let wake: (() => void) | null = null;
-    let finished = false;
-    let result: Awaited<ReturnType<ConversationService['sendMessage']>> | null = null;
-    let failure: unknown = null;
-    const running = this.sendMessage(checkInId, requestingUserId as any, message, {
-      streamDraft: (text) => { waiting.push(text); wake?.(); },
-    })
-      .then((r) => { result = r; }, (err) => { failure = err; })
-      .finally(() => { finished = true; wake?.(); });
-    for (;;) {
-      while (waiting.length) yield { type: 'delta', text: waiting.shift() as string };
-      if (finished) break;
-      await new Promise<void>((resolve) => { wake = resolve; });
-      wake = null;
-    }
-    await running;
-    if (failure) throw failure;
+    /*
+     * NOTHING IS SHOWN UNTIL IT IS THE ANSWER THAT IS KEPT (B-092, 9 October 2026). The first draft used to be shown as it was written and then
+     * replaced by the checked one, and when a check asked for a second try the person read, and answered, a question that was not the one saved:
+     * Halima's answer sat under "What will you do if they say no?" in her record after she had read "When will you do that?". The draft is held
+     * while the checks run. If the checked reply is the draft, it goes out as it was written; if not, the kept reply goes out whole. Either way
+     * what the person last read is what was saved, as `done.reply` says.
+     */
+    const draft: string[] = [];
+    const result = await this.sendMessage(checkInId, requestingUserId as any, message, {
+      streamDraft: (text) => { draft.push(text); },
+    });
     const r = result as any;
+    if (typeof r.reply === 'string' && r.reply && draft.length) {
+      const sameAsTheDraft = draft.join('').replace(/\s+/g, ' ').trim() === r.reply.replace(/\s+/g, ' ').trim();
+      if (sameAsTheDraft) for (const d of draft) yield { type: 'delta', text: d };
+      else yield { type: 'delta', text: r.reply };
+    }
     yield {
       type: 'done',
       reply: r.reply,
