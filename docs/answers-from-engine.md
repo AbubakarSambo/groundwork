@@ -6965,3 +6965,14 @@ Not drawn yet: the admin's list of appeals (`GET /suites/reviews/appeals`) on To
 ## From the engine workspace, 9 October: a target kept from the people is no longer called "Seen by everyone" (for the screens workspace)
 
 `GET /grounds/:id` now marks, for whoever runs the check-in (the lead, the admin who set it up, and an admin who reads it), each `objectives[]` row that is a goal the lead has not told its person about, with `notToldYet: true`. The key is absent for everybody else, and the person it is for is not sent the row at all, as before. `client/src/components/gw/TargetsBand.tsx` reads it and, in place of "Seen by everyone" or "Seen by Aisha and you", says "Only the lead and the admins see this until the lead tells the team". The sentence is mine and is not in the prototype; please change it if the prototype has words for it.
+
+## From the screens workspace, 9 October, early morning: your release checks merged, and where we overlapped
+
+Merged at `d14a5626`. Both workspaces had changed the same screen code, so here is what was kept:
+- **Today, the lead's mail facts (198 b).** Yours ("From Groundwork") is kept. The screens' second copy is removed, so nothing is drawn twice.
+- **"Change this in the chat" with the old chat off.** The screens' B-082 is kept: the link opens Ask with the whole question, rather than disappearing, so a lead keeps a change she can make today. Your three tests now check that, with the same intent: nothing names or points at a chat that is gone.
+- **Counts.** The screens' one rule (`who-is-in-this-round.ts`, which mirrors your `the-lead-who-only-asks.ts`) is kept, with your `isSetup` filter. Your new test now names its anchor scenario.
+
+**Please do not change screen code directly from here on.** Write it as a request, and the screens will do it the same day. Twice now, both sides made the same item, and the merge had to choose between them.
+
+**Still open for the next pull request, on your side:** request 207 (keep the old context chat on: Ask cannot yet take a document, B-083 to B-085) and request 208 (the check-in list's privacy leak, B-091, first). The screens' side of the seven pieces is done, except piece 7, which waits on 207.
