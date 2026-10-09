@@ -86,6 +86,27 @@ describe('the person', () => {
     expect(screen.queryByLabelText('Add to your reasons')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Appeal this decision' })).toBeNull()
   })
+
+  /*
+   * SCREEN FAULT (engine workspace, 9 October night, test bed copy a): Imani Hassan, after Grace
+   * decided her review and Imani appealed, still read "No scores. You and Grace talk it through,
+   * and Grace decides." under "Your appeal" - a sentence about how a decision gets made, left
+   * standing once it had already been made and even appealed. This fails before the fix (the
+   * line is always drawn for the person) and passes after (it is left out once the review is
+   * decided, for both an appeal still with an admin and one already decided).
+   */
+  it('drops "No scores" once the review is decided, under an appeal still waiting', async () => {
+    ;(reviewsApi.one as any).mockResolvedValue(APPEALED)
+    open(U('u-j', 'Juma', 'MEMBER'))
+    await screen.findByText(APPEALED.appeal!.says)
+    expect(text()).not.toContain('No scores.')
+  })
+  it('drops "No scores" once the review is decided, under a decided appeal', async () => {
+    ;(reviewsApi.one as any).mockResolvedValue(DECIDED)
+    open(U('u-j', 'Juma', 'MEMBER'))
+    await screen.findByText(DECIDED.appeal!.says)
+    expect(text()).not.toContain('No scores.')
+  })
 })
 
 describe('an admin who did not decide it', () => {

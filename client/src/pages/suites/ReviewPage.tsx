@@ -97,7 +97,20 @@ function TheReview({ r, myUserId }: { r: AReview; myUserId: string | null }) {
   /* A decision somebody else made, for a reader who is not the person: after an appeal changed it, it is the admin's, not the reviewer's. */
   const someoneElseDecided = !person && !!r.decision && r.decidedByYou === false
   const decidedBy = !person ? r.decidedByFirstName ?? null : null
-  const footer = someoneElseDecided
+  /*
+   * SCREEN FAULT (engine workspace, 9 October night, test bed copy a): Imani Hassan, after Grace
+   * decided her review and Imani appealed, still read "No scores. You and Grace talk it through,
+   * and Grace decides." under "Your appeal" - a sentence about how the decision gets made, left
+   * standing after it had already been made. For the person it is about, once the review is
+   * decided this line has nothing left to say: the decision itself is shown above (`Decision`),
+   * and once appealed, the appeal's own sentence (`YourAppealSection`, `a.says`) already says who
+   * decides the appeal, by name, from the server. So it is left out entirely for the person once
+   * `r.decision` exists. For every other reader the line keeps its own meaning (who decided, for
+   * someone reading about somebody else's review) and is unchanged.
+   */
+  const footer = person && r.decision
+    ? null
+    : someoneElseDecided
     ? (decidedBy ? `No scores. ${decidedBy} decided, and ${r.firstName} reads the decision and the reasons.` : 'No scores.')
     : !manager
     ? 'No scores.'
@@ -145,7 +158,7 @@ function TheReview({ r, myUserId }: { r: AReview; myUserId: string | null }) {
 
       <Appeal r={r} />
 
-      <p className="gwui-panel-text-muted">{footer}</p>
+      {footer && <p className="gwui-panel-text-muted">{footer}</p>}
     </>
   )
 }
