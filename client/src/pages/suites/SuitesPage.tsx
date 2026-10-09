@@ -190,7 +190,7 @@ function ForAnAdmin({ page }: { page: SuitesForAnAdmin }) {
 function ASuite({ s, people, forYou }: { s: AdminSuite; people: SuitesForAnAdmin['people']; forYou?: boolean }) {
   const qc = useQueryClient()
   const [asking, setAsking] = useState(false)
-  const [answers, setAnswers] = useState<Record<string, string>>(() => startFrom(s))
+  const [answers, setAnswers] = useState<Record<string, string>>(() => startFrom(s, people))
   const [problem, setProblem] = useState<string | null>(null)
   const flip = useMutation({
     mutationFn: ({ on, given }: { on: boolean; given?: Answers }) => suitesApi.switch(s.key, on, given),
@@ -211,7 +211,7 @@ function ASuite({ s, people, forYou }: { s: AdminSuite; people: SuitesForAnAdmin
     setProblem(null)
     if (s.on) { setConfirmingOff(true); return }
     if (s.questions.length === 0) return flip.mutate({ on: true })
-    setAnswers(startFrom(s))
+    setAnswers(startFrom(s, people))
     setAsking(true)
   }
   /*
@@ -222,21 +222,31 @@ function ASuite({ s, people, forYou }: { s: AdminSuite; people: SuitesForAnAdmin
    * save them without touching the switch, so this opens the same form, filled in, and saves
    * through the same call `pressed` already uses to switch on - it just never sends `on: false`.
    */
-  /*
-   * NEVER SAVE OVER SETTINGS THIS FORM CANNOT READ (recheck, 7 October). Some suites' stored
-   * answers were written under other names than the suite's questions (leave stored `daysAYear`
-   * and a person's id where the questions ask `days` and a choice). Opened, the form showed them
-   * empty, and Save would have replaced the real settings. Until the engine serves them under the
-   * questions' own names (request 180), such a suite says so instead of opening the form.
-   */
-  const [cannotChangeHere, setCannotChangeHere] = useState(false)
   function openSettings() {
     setProblem(null)
-    if (storedUnderOtherNames(s)) { setCannotChangeHere(true); return }
-    setAnswers(startFrom(s))
+    setAnswers(startFrom(s, people))
     setAsking(true)
   }
   const allAnswered = s.questions.every(q => (answers[q.id] ?? '').trim() !== '')
+  /*
+   * B-124 FOR AN EXISTING ORGANISATION (coordinator follow-up, 9 October). "These settings were set
+   * up another way, so they cannot be changed here yet." used to refuse the form outright for a
+   * suite like Kijani Foods' leave, stored before this page existed (`daysAYear` and a person's id
+   * where today's questions ask `days` and a choice of "Their manager"/"An admin") - the real bug
+   * B-124 names: an existing admin with nothing to lose by looking could not even open the door, and
+   * could not change a single thing the server already lets an admin change.
+   *
+   * `startFrom` now reads every current question under its own id first, falls back to the one
+   * legacy rename this product actually made (`days` from the even older `daysAYear`), and leaves
+   * anything else blank rather than guess - a stored value of the wrong shape for its question (a
+   * person's id where a choice is asked) is exactly as unsafe to prefill as one under the wrong
+   * name, so it is treated the same way: blank, not guessed at. The form always opens now; a plain
+   * note below says when something could not be read, and `allAnswered` still keeps "Save" disabled
+   * until every blank is deliberately filled in - so nothing already on record is ever replaced
+   * except by the admin's own, explicit save, never just by opening the form to look.
+   */
+  const hadAnswersBefore = !!s.answers && Object.keys(s.answers).length > 0
+  const someUnreadable = hadAnswersBefore && s.questions.some(q => (answers[q.id] ?? '') === '')
 
   return (
     <Panel as="section" aria-label={s.name}>
@@ -245,11 +255,8 @@ function ASuite({ s, people, forYou }: { s: AdminSuite; people: SuitesForAnAdmin
           <h3 className="gwui-panel-heading">{s.name}</h3>
           <p className="gwui-panel-text">{s.line}</p>
           {s.on && BOARDS[s.key] && <Link className="gwui-plain-link" to={forYou && s.key === 'spend' ? '/suite/spend/finance' : BOARDS[s.key].to}>{forYou && s.key === 'spend' ? 'Open the requests for finance' : 'Open its board'}</Link>}
-          {s.on && s.questions.length > 0 && !asking && !cannotChangeHere && (
+          {s.on && s.questions.length > 0 && !asking && (
             <Button kind="quiet" size="small" onClick={openSettings}>See or change its settings</Button>
-          )}
-          {cannotChangeHere && (
-            <Note tone="muted">These settings were set up another way, so they cannot be changed here yet. Nothing has been changed.</Note>
           )}
         </div>
         <div className="gwui-suite-switch">
@@ -264,6 +271,9 @@ function ASuite({ s, people, forYou }: { s: AdminSuite; people: SuitesForAnAdmin
           onSubmit={e => { e.preventDefault(); if (allAnswered) flip.mutate({ on: true, given: answers }) }}
         >
           <p className="gwui-panel-text">{s.on ? 'Change your answers below, then save them.' : 'Answer these first, and it switches on.'}</p>
+          {someUnreadable && (
+            <Note tone="muted">Some of these were set up before this page existed, so they show blank below. Choose them now, and saving sets them from what you choose.</Note>
+          )}
           {s.questions.map(q => (
             <AQuestion key={q.id} suite={s.key} q={q} value={answers[q.id] ?? ''} people={people}
               onChange={v => setAnswers(a => ({ ...a, [q.id]: v }))} />
@@ -322,20 +332,48 @@ function AQuestion({ suite, q, value, people, onChange }: {
   )
 }
 
-/** True when the suite has stored answers, but not under the names its questions use, so the form
- *  would show them empty and a save would replace them. */
-export function storedUnderOtherNames(s: AdminSuite): boolean {
-  const stored = s.answers ? Object.keys(s.answers) : []
-  if (stored.length === 0) return false
-  return s.questions.some(q => !(q.id in (s.answers as Record<string, unknown>)))
+/**
+ * THE ONE LEGACY RENAME THIS PRODUCT ACTUALLY MADE (B-124 for an existing organisation). Before the
+ * suite's first questions were written as they are now, the leave suite stored the days a year
+ * under `daysAYear`; today's question asks for the same thing under `days`. Both names mean exactly
+ * the same number, so it is safe to read one under the other. Nothing else is renamed here: a
+ * person's id stored where a choice is asked, say, is not "the same thing under another name" - it
+ * is a different shape the current question cannot use at all, and is left blank rather than guessed.
+ */
+const LEGACY_RENAMES: Record<string, Record<string, string>> = {
+  leave: { days: 'daysAYear' },
 }
 
-/** What the admin answered last time, so switching on again starts from it. */
-function startFrom(s: AdminSuite): Record<string, string> {
+/** Whether a stored value is safe to show for this particular question, never just present. */
+function readableFor(q: Question, v: unknown, people: SuitesForAnAdmin['people']): string | null {
+  if (v == null) return null
+  if (q.kind === 'person') return typeof v === 'string' && people.some(p => p.id === v) ? v : null
+  if (q.kind === 'choice') return typeof v === 'string' && q.options.includes(v) ? v : null
+  if (q.kind === 'number') {
+    const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN
+    return Number.isFinite(n) ? String(n) : null
+  }
+  /* lines */
+  if (Array.isArray(v)) return v.map(String).join('\n')
+  return typeof v === 'string' && v.trim() !== '' ? v : null
+}
+
+/**
+ * WHAT THE ADMIN ANSWERED LAST TIME, SO THE FORM STARTS FROM IT - for a suite set up on this page,
+ * and, where the meaning carries over safely, for one set up before it existed too. A field this
+ * cannot read starts blank, never guessed at: `allAnswered` then keeps "Save" disabled until the
+ * admin has deliberately chosen it, so nothing already on record can be replaced except by their own,
+ * explicit save.
+ */
+function startFrom(s: AdminSuite, people: SuitesForAnAdmin['people']): Record<string, string> {
+  const stored = (s.answers ?? {}) as Record<string, unknown>
+  const renames = LEGACY_RENAMES[s.key] ?? {}
   const out: Record<string, string> = {}
   for (const q of s.questions) {
-    const v = s.answers?.[q.id]
-    out[q.id] = Array.isArray(v) ? v.join('\n') : v == null ? '' : String(v)
+    const own = readableFor(q, stored[q.id], people)
+    const legacyKey = renames[q.id]
+    const legacy = own == null && legacyKey ? readableFor(q, stored[legacyKey], people) : null
+    out[q.id] = own ?? legacy ?? ''
   }
   return out
 }

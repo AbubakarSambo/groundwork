@@ -6,7 +6,7 @@ import { AppShell } from './AppShell'
 import { useAuthStore } from '@/stores/auth'
 import { groundsApi } from '@/api/grounds'
 import { todayApi } from '@/api/today'
-import { queueApi } from '@/api/suites'
+import { queueApi, yourRequestsApi, reviewsApi } from '@/api/suites'
 
 /**
  * THE SIDEBAR DOES NOT SAY "NOTHING IN PROGRESS YET" BEFORE IT KNOWS.
@@ -46,10 +46,19 @@ function mount() {
  * (`queueApi.get`) for a MEMBER, the same quiet count `QueueLink` already uses, to decide whether
  * "Suites" belongs in their sidebar too. `USER` here is a MEMBER, so the same real-network risk
  * applies to it as it did to `today` - mocked here for the same reason.
+ *
+ * B-123 (coordinator follow-up, 9 October): `AppShell` now also reads `your-leave`/`your-spending`/
+ * `your-hours` (`yourRequestsApi`) and `your-reviews` (`reviewsApi.mineQuietly`) for a MEMBER, to
+ * decide whether their OWN "Suites" nav item belongs in their rail (`memberSuiteOnly`, nav-items.tsx)
+ * - the same real-network risk as `today` and the queue, mocked here for the same reason.
  */
 beforeEach(() => {
   vi.spyOn(todayApi, 'get').mockResolvedValue({ needs: [], count: 0, line: null, comingUp: [] } as any)
   vi.spyOn(queueApi, 'get').mockResolvedValue({ counts: { all: 0, leave: 0, spend: 0, pastTheDeadline: 0 }, page: 1, pageSize: 1, pages: 1, items: [], says: '' } as any)
+  vi.spyOn(yourRequestsApi, 'leave').mockRejectedValue(Object.assign(new Error('off'), { response: { status: 404 } }))
+  vi.spyOn(yourRequestsApi, 'spending').mockRejectedValue(Object.assign(new Error('off'), { response: { status: 404 } }))
+  vi.spyOn(yourRequestsApi, 'hours').mockRejectedValue(Object.assign(new Error('off'), { response: { status: 404 } }))
+  vi.spyOn(reviewsApi, 'mineQuietly').mockResolvedValue([])
 })
 afterEach(() => vi.restoreAllMocks())
 

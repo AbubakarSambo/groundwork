@@ -63,6 +63,26 @@ const NAV_ITEMS = [
     ),
   },
   {
+    /* SUITES FOR A MEMBER (Hafsah's design for B-123): their own leave, spending, hours and
+       reviews, in one place, reachable without going through Today. A lead and an admin already
+       have "Suites" above by role; this is the same label and icon, a different page
+       (`/suite/mine`, their own part only - never the switches). Shown only once a suite is
+       actually on for them (or they have a review to show), the same way Today's own link to the
+       same page already waits for that (`aSuiteIsOnForYou` there, `suiteOnForMember` here) - a
+       member with every suite off has no "Suites" item, the same as before this was added. */
+    label: 'Suites',
+    to: '/suite/mine',
+    memberSuiteOnly: true,
+    icon: (active: boolean) => (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <rect x="2.5" y="2.5" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0} />
+        <rect x="11.5" y="2.5" width="6" height="6" rx="3" stroke="currentColor" strokeWidth="1.5" />
+        <rect x="2.5" y="11.5" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+        <rect x="11.5" y="11.5" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0} />
+      </svg>
+    ),
+  },
+  {
     /*
      * "ALL CHECK-INS", BECAUSE THE RAIL ABOVE IT IS ALREADY A LIST OF CHECK-INS.
      *
@@ -258,7 +278,7 @@ const NAV_ITEMS = [
  */
 export function navItemsFor(
   user: { role?: string; isPlatformAdmin?: boolean } | null | undefined,
-  opts: { queueServesThem?: boolean } = {},
+  opts: { queueServesThem?: boolean; suiteOnForMember?: boolean } = {},
 ) {
   return NAV_ITEMS.filter(item => {
     if ((item as any).platformAdminOnly) return !!user?.isPlatformAdmin
@@ -266,6 +286,9 @@ export function navItemsFor(
     /* A lead of this organisation, by role, or anybody else the approver's queue currently serves
        something to. An admin has the same page under the organisation's name. */
     if ((item as any).leadOnly) return user?.role === 'LEAD' || !!opts.queueServesThem
+    /* An ordinary member, and only once a suite of their own is actually on (or they have a review
+       to show) - never a lead or an admin, who already have "Suites" above by role. */
+    if ((item as any).memberSuiteOnly) return user?.role === 'MEMBER' && !!opts.suiteOnForMember
     /* Whoever oversees more than one check-in: the org's, or a department's. */
     if ((item as any).oversightOnly) return user?.role === 'ADMIN' || user?.role === 'LEAD'
     /* Everybody in the organisation, and not a guest from another company. */

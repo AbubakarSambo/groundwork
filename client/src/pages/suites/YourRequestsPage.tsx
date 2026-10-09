@@ -1,28 +1,47 @@
 import { useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { yourRequestsApi, type YourRequest, type YourHours } from '@/api/suites'
+import { yourRequestsApi, reviewsApi, type YourRequest, type YourHours, type YourReview } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { Page, PageTitle, Section, Button, Note, Callout, Empty, RowList, Row, Tag, FieldLabel, TextArea } from '@/components/gw/ui'
-import { maySeeSuites, maySwitchSuitesOn, SuiteOffMessage } from '@/lib/suite-is-off'
+import { maySwitchSuitesOn, SuiteOffMessage } from '@/lib/suite-is-off'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 /**
- * YOUR OWN REQUESTS (#/suite/mine). The person's own leave and requests to spend, where each one
- * stands, the question the person who decides it asked, a place to answer it, and what was said when
- * it was declined. There is no prototype screen for it (the prototype draws the boards for the people
- * who decide), so it is built from the shared parts and every sentence is the server's:
- * GET /suites/leave/mine and GET /suites/spend/mine. Nobody else's request is on it.
+ * A MEMBER'S OWN SUITES PAGE (#/suite/mine; Hafsah's design for B-123). Every switched-on suite's
+ * own part of it for this one person - their leave balance and leave requests, their expenses and
+ * money requests, their timesheets, their reviews - each with its status and, where a form exists,
+ * a clear button to make a new request. There is no prototype screen for it (the prototype draws
+ * the boards for the people who decide, never a member's own view across suites), so it is built
+ * from the shared parts and every fact in it is the server's own: GET /suites/leave/mine,
+ * /suites/spend/mine, /suites/time/mine and /suites/reviews/mine. Nobody else's request, hours or
+ * review is on it.
  *
- * WORDING THE SERVER DOES NOT SEND: the title and its one line; "Your leave"; "Your requests to spend";
- * "Waiting", "Approved", "Declined"; "Your answer"; "Send your answer"; and the empty and failed states.
+ * RETITLED FROM "Your requests" (B-123): this is the member's own "Suites" page - the same name,
+ * and the same `/suite/mine` address, a lead or an admin's own "Suites" nav item already carries by
+ * role (`nav-items.tsx`'s `memberSuiteOnly` gate puts the same label in a member's own rail, once a
+ * suite of theirs is actually on). It no longer sits under a "Suites" crumb the server refuses a
+ * member to open (`/settings/suites`) - it IS the member's own Suites page, not a page below it.
+ *
+ * WORDING THE SERVER DOES NOT SEND: the title and its subtitle; "Your leave"; "Your requests to
+ * spend"; "Your hours"; "Your reviews"; "Waiting", "Approved", "Declined"; "Your answer"; "Send your
+ * answer"; "Open it"; and the empty and failed states.
  *
  * "YOUR HOURS" (fault 1 of the live walk, 6 October): after confirming hours in chat a person is told
  * "...you will see it under your hours.", but nothing here showed them - GET /suites/time/mine was
  * never read. Added as a third section, quiet in the same way as the other two when the time sheets
  * suite is off or this person keeps none. Every sentence in it is the server's own.
+ *
+ * "YOUR REVIEWS" (B-123, Hafsah's design): `GET /suites/reviews/mine` never checks whether the
+ * reviews suite is on or off - it answers whatever reviews already exist for this person
+ * (`SuitesService.mine`, the-reviews.service.ts) - so this section is shown whenever that list is
+ * not empty, the same way `ReviewsBoardPage.tsx`'s own "Your reviews" section already reads it.
+ * There is no new-request button here: a review is started by whoever writes it with the person
+ * (an admin or a lead), never asked for by the person it is about.
  */
 const DID_NOT_GO = 'That did not go through, and nothing has changed. Try again.'
 const TAGS = { waiting: 'Waiting', approved: 'Approved', declined: 'Declined' } as const
+const at = (day: string) => new Date(`${day}T00:00:00.000Z`)
 
 const refusalOf = (error: unknown): { status?: number; message?: string } | undefined =>
   (error as { response?: { status?: number; data?: { message?: string } } } | null)?.response
@@ -40,13 +59,13 @@ export function YourRequestsPage() {
   const leave = useQuery({ queryKey: ['your-leave'], queryFn: yourRequestsApi.leave, enabled: !!user, retry: false })
   const spending = useQuery({ queryKey: ['your-spending'], queryFn: yourRequestsApi.spending, enabled: !!user, retry: false })
   const hours = useQuery({ queryKey: ['your-hours'], queryFn: yourRequestsApi.hours, enabled: !!user, retry: false })
+  const reviews = useQuery({ queryKey: ['your-reviews'], queryFn: reviewsApi.mineQuietly, enabled: !!user, retry: false })
 
   return (
     <Page>
       <PageTitle
-        crumbs={[{ label: 'Suites', to: maySeeSuites(user?.role) ? '/settings/suites' : undefined }, { label: 'Your requests' }]}
-        title="Your requests"
-        subtitle="Your leave and your requests to spend, and where each one stands."
+        title="Suites"
+        subtitle="Your own part of each suite your organisation has switched on."
       />
 
       {sentMessage && <Callout tone="success" role="status">{sentMessage}</Callout>}
@@ -69,7 +88,33 @@ export function YourRequestsPage() {
       <SuiteSection heading="Your hours" q={hours} off="Time sheets are not switched on in your organisation." role={user?.role}>
         {data => <YourHoursSection data={data} />}
       </SuiteSection>
+
+      {/* "YOUR REVIEWS" never refuses with a 403/404 the way the other three sections can (reviews/
+          mine answers whatever already exists, suite on or off), so it is drawn directly from the
+          query rather than through `SuiteSection` - empty, not off, is the only "nothing here"
+          state it has. */}
+      {reviews.isSuccess && reviews.data.length > 0 && (
+        <Section heading="Your reviews">
+          <RowList label="Your reviews">
+            {reviews.data.map(y => <YourOwnReview key={y.id} y={y} />)}
+          </RowList>
+        </Section>
+      )}
     </Page>
+  )
+}
+
+function YourOwnReview({ y }: { y: YourReview }) {
+  const month = whenItWas(at(y.dueOn), 'month', 'UTC')
+  return (
+    <Row columns="minmax(0, 1fr) auto">
+      <div>
+        <b>{`Your review, ${month}`}</b>
+        <p className="gwui-panel-text">{y.says}</p>
+        {y.appealSays && <p className="gwui-panel-text">{y.appealSays}</p>}
+      </div>
+      <Link className="gwui-plain-link" to={`/suite/reviews/${y.id}`} aria-label={`Open your review, ${month}`}>Open it</Link>
+    </Row>
   )
 }
 

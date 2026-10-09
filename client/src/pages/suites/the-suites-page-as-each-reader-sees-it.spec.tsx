@@ -190,17 +190,38 @@ describe('Grace, an admin, reads the Suites page', () => {
     await waitFor(() => expect(within(card('Leave requests')).getByRole('switch')).toHaveAttribute('aria-checked', 'true'))
   })
 
-  /* Recheck, 7 October: settings stored under other names (leave's `daysAYear`, a person's id for
-     `approver`) showed empty in the form, and Save would have replaced them. Such a suite says so
-     instead of opening the form, and nothing is sent. */
-  it('never opens the form over settings stored under other names, and says why', async () => {
+  /*
+   * B-124 FOR AN EXISTING ORGANISATION (coordinator follow-up, 9 October). Kijani Foods' leave
+   * suite was switched on before this page existed: its days a year are stored under the older name
+   * `daysAYear`, and its `approver` is a person's id, not one of today's two choices. "These
+   * settings were set up another way, so they cannot be changed here yet." used to refuse the whole
+   * form over this - even the days a year, which reads perfectly well under its old name. The form
+   * now always opens: `days` is read from `daysAYear` (the one rename this product actually made),
+   * `approver` shows blank with a plain note (its stored value is a person's id, not a valid choice,
+   * so it is not guessed at), and "Save" stays disabled until the admin picks one - nothing on
+   * record is touched until they do.
+   */
+  it('opens the form even over settings stored before this page existed, reads what carries over, and leaves the rest for the admin to choose', async () => {
     open(GRACE, withOn('leave', { daysAYear: 21, approver: 'u-g', workflow: 'manager' } as any))
     await screen.findByRole('heading', { level: 2, name: 'People' })
     const c = card('Leave requests')
     fireEvent.click(within(c).getByRole('button', { name: 'See or change its settings' }))
-    expect(within(c).getByText('These settings were set up another way, so they cannot be changed here yet. Nothing has been changed.')).toBeInTheDocument()
-    expect(within(c).queryByRole('button', { name: 'Save' })).toBeNull()
+    expect(within(c).getByText('Some of these were set up before this page existed, so they show blank below. Choose them now, and saving sets them from what you choose.')).toBeInTheDocument()
+    expect(within(c).getByLabelText('How many days of leave does each person have in a year?')).toHaveValue(21)
+    expect(within(c).getByLabelText('Who approves a request for time off?')).toHaveValue('')
+    expect(within(c).getByRole('button', { name: 'Save' })).toBeDisabled()
     expect(suitesApi.switch).not.toHaveBeenCalled()
+  })
+
+  it('once the admin fills in what could not be read, saves everything - the carried-over value and the new choice together', async () => {
+    open(GRACE, withOn('leave', { daysAYear: 21, approver: 'u-g', workflow: 'manager' } as any))
+    await screen.findByRole('heading', { level: 2, name: 'People' })
+    const c = card('Leave requests')
+    fireEvent.click(within(c).getByRole('button', { name: 'See or change its settings' }))
+    fireEvent.change(within(c).getByLabelText('Who approves a request for time off?'), { target: { value: 'An admin' } })
+    ;(suitesApi.switch as any).mockResolvedValue(withOn('leave', { days: 21, approver: 'An admin' }))
+    fireEvent.click(within(c).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(suitesApi.switch).toHaveBeenCalledWith('leave', true, { days: '21', approver: 'An admin' }))
   })
 
   it('"Cancel" leaves its answers exactly as they were, and sends nothing', async () => {

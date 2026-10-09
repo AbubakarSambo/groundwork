@@ -68,7 +68,7 @@ export function LeaveRequestNewPage() {
   return (
     <Page>
       <PageTitle
-        crumbs={[{ label: 'Your requests', to: '/suite/mine' }, { label: 'Request leave' }]}
+        crumbs={[{ label: 'Suites', to: '/suite/mine' }, { label: 'Request leave' }]}
         title="Request leave"
         subtitle="Say when you will be away, and Groundwork will send it to the right person."
       />
