@@ -44,6 +44,21 @@ export function useOpenSession(groundId: string | undefined) {
       return { blocked: false, checkIn, reason: undefined, freeExtensionAvailable: undefined }
     },
     onSuccess: ({ blocked, checkIn, freeExtensionAvailable }) => {
+      /*
+       * A SILENT AUTO-OPEN MUST NOT CLOBBER WHAT THE READER IS DOING BY THE TIME IT RESOLVES.
+       *
+       * GroundAdminPage.tsx fires this the moment a lead lands on her Check-in tab, before she has
+       * read anything - and the probe (POST /check-ins/:id/open) can take long enough that she has
+       * already moved to another tab and started something there by the time it answers. Read live,
+       * 9 October: Wairimu Njoroge moved to Context and resources and sent her first message to the
+       * old context chat while this was still in flight; it then resolved and navigated her to
+       * `/checkin/...` anyway, losing the reply she was waiting on. `shouldNavigate`, passed only by
+       * that silent auto-open effect, is checked right before acting on the answer - never checked
+       * for a reader who pressed "Your check-in" or "Start my check-in" themselves, since there is
+       * nothing stale to guard against in a result of their own direct action.
+       */
+      const shouldNavigate = (checkIn as any)?.__shouldNavigate as (() => boolean) | undefined
+      if (shouldNavigate && !shouldNavigate()) return
       if (blocked && !(checkIn as any)?.isFreeGround) {
         setPaywallFreeExtensionAvailable(freeExtensionAvailable ?? false)
         setShowPaywall(true)
@@ -115,12 +130,13 @@ export function useOpenSession(groundId: string | undefined) {
      check-in row itself; the caller passes them once, here, rather than every call site threading
      them through `probeSession.mutate`. The `__` prefix keeps them visibly not part of the
      check-in's own shape when `onSuccess` reads them back off `data.checkIn`. */
-  const open = (checkIn: any, opts?: { isFreeGround?: boolean; groundLabel?: string; isInitiator?: boolean }) => {
+  const open = (checkIn: any, opts?: { isFreeGround?: boolean; groundLabel?: string; isInitiator?: boolean; shouldNavigate?: () => boolean }) => {
     probeSession.mutate({
       ...checkIn,
       isFreeGround: opts?.isFreeGround ?? false,
       __groundLabel: opts?.groundLabel,
       __isInitiator: opts?.isInitiator ?? false,
+      __shouldNavigate: opts?.shouldNavigate,
     })
   }
 

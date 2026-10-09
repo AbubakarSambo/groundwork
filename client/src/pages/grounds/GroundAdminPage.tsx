@@ -193,6 +193,15 @@ export function GroundAdminPage() {
     const asked = searchParams.get('tab') ?? ''
     return FROM_TAB_KEY[asked] ?? (['chat', 'checkins', 'docs', 'report', 'settings'].includes(asked) ? (asked as Tab) : 'chat')
   })
+  /*
+   * THE CURRENT TAB, READABLE FROM INSIDE AN ALREADY-IN-FLIGHT REQUEST. `tab` itself is fine for
+   * anything that renders, but the auto-open effect below fires a request the moment the page
+   * mounts on the Check-in tab, and that request can still be pending once the reader has clicked
+   * away to another tab - `tab` as a plain closed-over value would answer with whatever it was
+   * when the effect ran, not what it is now. See the effect, and useOpenSession's `shouldNavigate`.
+   */
+  const tabRef = useRef(tab)
+  useEffect(() => { tabRef.current = tab }, [tab])
   /** So a tab can be linked to and come back to. Replace, not push: tabs are not history. */
   const goTab = (t: Tab) => {
     setTab(t)
@@ -561,10 +570,21 @@ export function GroundAdminPage() {
       return
     }
     myOpenSessionAutoOpenFired.current = true
+    /*
+     * SCREEN FAULT (engine workspace, 9 October night, test bed copy a): this fires the moment the
+     * page lands on the Check-in tab, silently, before the reader has read anything - and the
+     * probe it starts can still be pending once she has clicked over to another tab and started
+     * something there (Wairimu Njoroge, sending her first message in Context and resources). Its
+     * own navigate, landing later, took her back to `/checkin/...` regardless, and her message's
+     * reply was lost. `shouldNavigate` is checked right before that navigate fires, against the
+     * tab she is actually on then, not the tab she was on when this effect ran - so a silent
+     * auto-open from the Check-in tab never pulls her away once she has moved on.
+     */
     openMySession(myOpenCheckIn, {
       isFreeGround: (ground as any)?.isFreeGround,
       groundLabel: (ground as any)?.label,
       isInitiator,
+      shouldNavigate: () => tabRef.current === 'chat',
     })
   }, [tab, viewerChecksIn, myOpenCheckIn, myOpenOpensLater, openMySession, ground, isInitiator])
 
