@@ -26,7 +26,7 @@ import { theValueOf, theContactHistory, theirReadInTheirWords, NO_VALUE_SAID, WH
 import { helpNobodyMentioned } from './help-nobody-mentioned';
 
 /** Said where the prototype has "Open issues" (request 115 c): what the record would need to hold. */
-export const NO_OPEN_ISSUES_ON_RECORD = 'Nothing on record follows an issue from unclear, to decided, to done and checked, so open issues cannot be shown yet. Where people see something differently, and the questions written down to decide on the Context page, are under what needs you.';
+export const NO_OPEN_ISSUES_ON_RECORD = 'Groundwork does not follow an issue from the day it is raised to the day it is decided and done, so there is no list of open issues here. Where people see something differently, and the questions written down to decide on the Context page, are under what needs you.';
 import { theShareSays, YOU_HAVE_NO_SHARE_YET } from './your-share';
 import { theirOwnAimsKeptOnlyAsPromises, AN_AIM_FROM_THEIR_PROMISE } from './an-aim-kept-only-as-their-promise';
 import { eachDealInItsGroup } from './each-deal-in-its-group';
