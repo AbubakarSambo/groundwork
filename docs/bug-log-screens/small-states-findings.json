@@ -1,0 +1,26 @@
+[
+  {
+    "page": "checkins-list",
+    "state": "empty",
+    "width": 390,
+    "problems": [
+      "elements overlap at 390"
+    ]
+  },
+  {
+    "page": "checkins-list",
+    "state": "error-500",
+    "width": 390,
+    "problems": [
+      "elements overlap at 390"
+    ]
+  },
+  {
+    "page": "checkins-list",
+    "state": "network-down",
+    "width": 390,
+    "problems": [
+      "elements overlap at 390"
+    ]
+  }
+]

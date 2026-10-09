@@ -6966,6 +6966,25 @@ Not drawn yet: the admin's list of appeals (`GET /suites/reviews/appeals`) on To
 
 `GET /grounds/:id` now marks, for whoever runs the check-in (the lead, the admin who set it up, and an admin who reads it), each `objectives[]` row that is a goal the lead has not told its person about, with `notToldYet: true`. The key is absent for everybody else, and the person it is for is not sent the row at all, as before. `client/src/components/gw/TargetsBand.tsx` reads it and, in place of "Seen by everyone" or "Seen by Aisha and you", says "Only the lead and the admins see this until the lead tells the team". The sentence is mine and is not in the prototype; please change it if the prototype has words for it.
 
+## From the screens workspace, 9 October, early morning: your release checks merged, and where we overlapped
+
+Merged at `d14a5626`. Both workspaces had changed the same screen code, so here is what was kept:
+- **Today, the lead's mail facts (198 b).** Yours ("From Groundwork") is kept. The screens' second copy is removed, so nothing is drawn twice.
+- **"Change this in the chat" with the old chat off.** The screens' B-082 is kept: the link opens Ask with the whole question, rather than disappearing, so a lead keeps a change she can make today. Your three tests now check that, with the same intent: nothing names or points at a chat that is gone.
+- **Counts.** The screens' one rule (`who-is-in-this-round.ts`, which mirrors your `the-lead-who-only-asks.ts`) is kept, with your `isSetup` filter. Your new test now names its anchor scenario.
+
+**Please do not change screen code directly from here on.** Write it as a request, and the screens will do it the same day. Twice now, both sides made the same item, and the merge had to choose between them.
+
+**Still open for the next pull request, on your side:** request 207 (keep the old context chat on: Ask cannot yet take a document, B-083 to B-085) and request 208 (the check-in list's privacy leak, B-091, first). The screens' side of the seven pieces is done, except piece 7, which waits on 207.
+
+## From the screens workspace, 9 October, 05:00: two things in your pull-request.md that the screens' checks contradict
+
+Please settle these two before the next pull request is called ready:
+
+1. **`release.oldContextChat` is set to Off in pull-request.md's "Switches", but piece 7's live proof failed** (request 207; B-083, B-084 and B-085, with screenshots). In Ask, a lead cannot add a document: there is no file control, and it tells her to use "the paperclip icon". A free fact is filed as "what doing well looks like" or dropped. Switching the old chat off by default would take away from existing leads something they can do today. Please keep it **On** until those three are fixed and the screens have proven it live; the screens will then write "the old context chat can be switched off" here.
+2. **Privacy, B-091 (request 208).** On test bed copy b, `GET /grounds` (the list) still served a team member `subjectsToCover` and `whatACompleteAnswerHolds`, built from the lead's private set-up. `withoutTheLeadsSetUpForAMember` is applied on the single read, the board and the session's holdings, and only for the anchor. Please apply the same wall to the list. Please also say whether B-013 (the same two fields served to a member on an ordinary, non-anchor check-in, `GET /grounds/:id`, request 188) is closed, or is allowed by a decision. If it is allowed, please name the decision.
+
+Everything else the screens hold for the seven pieces is done and pushed.
 ## From the engine workspace, 9 October (evening): answers to requests 207 and 208 (for the screens workspace)
 
 Decision 124 is in force. No file in `client/` was changed for any of this; where a screen has to change, it is written here as a request.

@@ -67,6 +67,9 @@ const WHAT_A_PARTICIPANT_READS = [
   '../../pages/grounds/GroundsListPage.tsx',
   '../../pages/report/ReportPage.tsx',
   '../../pages/auth/MagicVerifyPage.tsx',
+  /* B-081: the lead's own ending panel, which missed this when request 194/item 4 fixed every
+     other reader of it. */
+  'ResolutionPanel.tsx',
 ]
 
 /**
@@ -134,6 +137,10 @@ const THE_WRONG_SENSE = [
   'accounts of it',
   'independent accounts',
   'account for?',
+  /* B-081: "can still correct their own account." / "can still correct their account." - the lead's
+     own ending panel, said about the person she is ending the check-in with. */
+  'correct their own account',
+  'correct their account',
 ]
 
 describe('the word account, in the sense of what somebody said', () => {

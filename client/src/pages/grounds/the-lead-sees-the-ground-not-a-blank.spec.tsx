@@ -52,7 +52,13 @@ describe('the chat is here at all', () => {
      * what should be one check-in. She opens it from here now, through the same shared hook the
      * participant page uses (useOpenSession.ts), and never lands on the other page for it.
      */
-    expect(CODE).toMatch(/if \(tab !== 'chat' \|\| !viewerIsAParty\) return/)
+    /*
+     * COORDINATOR FOLLOW-UP: `viewerIsAParty` WAS TOO WIDE. A lead who only manages
+     * (`managingOnly`) is a party but has no check-in of her own to auto-open - this now reads
+     * `viewerChecksIn` (`viewerIsAParty && !managingOnly`), which agrees with every ordinary
+     * party exactly as before and only differs for her.
+     */
+    expect(CODE).toMatch(/if \(tab !== 'chat' \|\| !viewerChecksIn\) return/)
     expect(CODE).toContain('openMySession(myOpenCheckIn')
     expect(CODE).not.toMatch(/\/grounds\/\$\{id\}\/p\?open=1/)
   })
@@ -156,7 +162,10 @@ describe('the four things mounting it exposed', () => {
 
   /** And they are that person's sessions, not everybody's. This is the BUG7 protection, structural. */
   it('and they are filtered to that person', () => {
-    expect(CODE).toMatch(/\.filter\(\(c: any\) => c\.participantId === p\.id\)/)
+    /* B-080: `&& !c.isSetup` added - a set-up row is not a session (see
+       one-row-per-person-per-session.spec.ts for the full reason). Still filtered to this one
+       person, which is what this test protects. */
+    expect(CODE).toMatch(/\.filter\(\(c: any\) => c\.participantId === p\.id && !c\.isSetup\)/)
   })
 
   it('the history computation this protected is gone, not fixed twice', () => {

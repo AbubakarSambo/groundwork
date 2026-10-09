@@ -34,7 +34,13 @@ export function RolesInThisCheckIn({
   const participants: any[] = ground.participants ?? []
   const leadRow = participants.find((p) => p.userId === ground.initiatorId)
 
+  /* B-077: the same rule WhosInItRoster.tsx already uses - in an anchor check-in, a lead who only
+     manages never checks in, so her own row never reads "Checking in". */
+  const leavesOutTheManager = ground.scenario === 'HELP_TEAM_UNDERSTAND'
+  const isManagingOnly = (p: any) => leavesOutTheManager && p.managingOnly === true
+
   const statusFor = (p: any): { text: string; tone: TagTone } => {
+    if (isManagingOnly(p)) return { text: 'Runs it', tone: 'plain' }
     if (!p.userId && p.inviteDeliveryStatus === 'BOUNCED') return { text: 'The email bounced', tone: 'concern' }
     if (p.awaitingSeat) return { text: 'Waiting for a seat', tone: 'attention' }
     /* SOMEBODY AN ADMIN HAS DECLINED IS NOT "WAITING" (U.4 re-review, item 2a). `p.notLetIn` is the
@@ -93,6 +99,11 @@ export function RolesInThisCheckIn({
                 ) : (
                   <span>
                     {p.roleAsDescribed ? <TheLeadsNote role={p.roleAsDescribed} /> : 'Nobody has described it yet.'}
+                    {/* B-108: no space between the sentence and "Edit" ran the two together as
+                        "yet.Edit" - JSX drops the line break between them, so a space is written
+                        in explicitly, the same way other rows on this page already join text and
+                        a button. */}
+                    {' '}
                     <Button kind="quiet" size="small" onClick={() => { setEditingId(p.id); setValue(p.roleAsDescribed ?? '') }}>
                       Edit
                     </Button>

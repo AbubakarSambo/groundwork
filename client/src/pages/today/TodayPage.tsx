@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
 import { todayApi, type Need } from '@/api/today'
 import { outstandingNotAlreadyShown } from './outstanding-not-already-shown'
+import { withComingUpTellingTwoApart } from './tell-apart-coming-up'
 import { useAuthStore } from '@/stores/auth'
 import { Page, Stack, Greeting, Section, EdgeList, EdgeRow, Button, Note, Empty, ComingUp } from '@/components/gw/ui'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
@@ -128,7 +129,7 @@ export function TodayPage() {
      server; "Needs you" leaves out anything "What needs you" already says, in whole or in part, so
      nothing is said twice (outstanding-not-already-shown.ts). */
   const outstanding = outstandingQuery.data ?? null
-  const outstandingNeedsYou = outstanding ? outstandingNotAlreadyShown(needs, outstanding.needsYou) : []
+  const outstandingNeedsYou = outstanding ? outstandingNotAlreadyShown(needs, outstanding.needsYou, outstanding.about?.needsYou) : []
   const overdueOnYourTeam = outstanding?.overdueOnYourTeam ?? []
   const risks = outstanding?.risks ?? []
   /* What the lead's mail also tells her (request 198, b): the server's own sentences and links, drawn once. Absent for everybody else. */
@@ -248,7 +249,11 @@ export function TodayPage() {
         </Stack>
 
         {comingUp.length > 0 && (
-          <ComingUp items={comingUp.map(c => ({ when: whenItComes(c.at, now), what: c.what, to: c.to }))} />
+          <ComingUp items={withComingUpTellingTwoApart(comingUp).map(c => ({
+            when: whenItComes(c.at, now),
+            what: c.apart ? `${c.what} (${c.apart})` : c.what,
+            to: c.to,
+          }))} />
         )}
       </div>
     </Page>

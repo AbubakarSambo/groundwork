@@ -43,3 +43,22 @@ describe('a single review’s own refusal shows only its own sentence', () => {
     expect(line).toContain('skipForbiddenToast: true')
   })
 })
+
+/**
+ * B-110 (GW-PRI-04): the board itself - `GET /grounds/:id/board` - had only `skipNotFoundToast`,
+ * not `skipForbiddenToast`. BoardPage.tsx already renders the prototype's GroundGone screen for
+ * both a 404 and a 403 (the same words, on purpose: a stranger holding a stale link must not be
+ * able to tell "never existed" from "exists, not yours" apart). Without this flag, the client's
+ * own axios layer raised a second, different message on top of it for a 403 only - "That one is
+ * not yours to open... whoever runs this check-in can let you in" - undoing the unification by a
+ * different door. Found by forcing a 403 on the board in a real browser (docs/bug-log-screens.md).
+ */
+describe('the check-in board’s own refusal shows only GroundGone, not the check-in-access toast', () => {
+  it('GET /grounds/:id/board skips the check-in-access toast', () => {
+    const boardSrc = readFileSync(join(__dirname, 'board.ts'), 'utf8')
+    const at = boardSrc.indexOf('`/grounds/${groundId}/board`')
+    const nextCloseParen = boardSrc.indexOf('.then((r) => r.data)', at)
+    const callSite = boardSrc.slice(at, nextCloseParen)
+    expect(callSite).toContain('skipForbiddenToast: true')
+  })
+})

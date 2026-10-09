@@ -43,12 +43,15 @@ describe('a page that refuses you offers nothing at its foot', () => {
     vi.mocked(conversationApi.sessionReport).mockRejectedValue({ response: { status: 403 } })
   })
 
-  it('says this report is not yours to open, and offers no "What now?"', async () => {
+  it('says this report is not yours to open, offers no "What now?", but still a plain way back - B-111', async () => {
     renderIt()
     expect(await screen.findByText('This report is not yours to open')).toBeTruthy()
     expect(screen.getByText('Each person’s own report can only be read by that person.')).toBeTruthy()
     expect(screen.queryByText('What now?')).toBeNull()
     expect(screen.queryByText('Start a new check-in')).toBeNull()
     expect(screen.queryByText('Copy the link')).toBeNull()
+    // Neither promises anything false about letting the reader in, unlike the ones above -
+    // every small state still needs one way on, and this page had none at all before B-111.
+    expect(screen.getByText('Back to check-ins')).toHaveAttribute('href', '/grounds')
   })
 })

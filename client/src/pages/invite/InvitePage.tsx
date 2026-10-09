@@ -571,13 +571,21 @@ export function theInvitation(p: { leadFirstName?: string | null; initiatorName:
 }
 
 /**
- * "Baridi Appliances, until 30 September.", the prototype's line. With only one of the two it is a
- * full sentence of its own (U.3 review): "A check-in at Coamana." or "It runs until 30 September."
+ * "This runs at Baridi Appliances until 30 September.", a full sentence of its own (U.3 review,
+ * B-088): "Baridi Appliances, until 30 September." joined two pieces with a comma rather than
+ * saying either one as a sentence. With only one of the two, it still reads as one: "A check-in at
+ * Coamana." or "It runs until 30 September."
+ *
+ * B-088: NO TIMEZONE OF THIS SCREEN'S OWN CHOOSING. Forcing `'UTC'` here, while every other date on
+ * the check-in itself (How long, on People and setup) reads in the viewer's own zone, is what made
+ * the two disagree - "Msingi Foods, until 7 November." here, "9 October to 8 November" on the
+ * check-in, same end date, two different renderings of it. `whenItWas` already reads the same way
+ * everywhere once nothing overrides it; this screen should not be the one surface that does.
  */
 export function whereAndUntil(p: { organisationName?: string | null; endsAt?: string | null }): string {
-  const until = p.endsAt ? whenItWas(p.endsAt, 'dayAndMonthLong', 'UTC') : null
+  const until = p.endsAt ? whenItWas(p.endsAt, 'dayAndMonthLong') : null
   const org = (p.organisationName ?? '').trim()
-  if (org && until) return `${org}, until ${until}.`
+  if (org && until) return `This runs at ${org} until ${until}.`
   if (org) return `A check-in at ${org}.`
   return `It runs until ${until}.`
 }

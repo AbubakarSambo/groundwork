@@ -80,8 +80,11 @@ export function GroundParticipantPage() {
     enabled: !!id,
   })
 
-  /* Only a 404 means gone. Everything else is a failure to reach it - see the guard below. */
-  const definitelyGone = isError && (error as any)?.response?.status === 404
+  /* A 404 or a 403 means gone, the same way (B-110, GW-PRI-04): the only other true sentence for
+     a 403 would say this check-in exists and just isn't yours, which leaks exactly what the 404
+     wording is written not to leak. Everything else is a failure to reach it - see the guard
+     below. */
+  const definitelyGone = isError && [404, 403].includes((error as any)?.response?.status)
 
   /*
    * "ASK TO JOIN" IS NOT DRAWN YET (U.20 review). The prototype offers it under "You’re not in this

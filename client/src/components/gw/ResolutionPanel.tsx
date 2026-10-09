@@ -300,8 +300,8 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
         <>
           <div className="gwui-fs-13 gwui-ink-sub gwui-mt-12" style={{ lineHeight: 1.6 }}>
             {oneOther
-              ? `Ending means nobody can add to it. Both of you keep your own history, and ${oneOther} can still correct their account.`
-              : 'Ending means nobody can add to it. Everyone keeps their own history, and can still correct their own account.'}
+              ? `Ending means nobody can add to it. Both of you keep your own history, and ${oneOther} can still correct what they said.`
+              : 'Ending means nobody can add to it. Everyone keeps their own history, and can still correct what they said.'}
           </div>
           <div className={subheadingClass} style={subheadingStyle}>{oneOther ? `What ${oneOther} sees now` : 'What everyone else sees now'}</div>
           <div className="gwui-fs-13 gwui-ink-sub" style={{ lineHeight: 1.6 }}>“{`These are the outcomes this check-in can reach. ${leadNameAsOthersReadIt} ${decidesVerb(leadNameAsOthersReadIt)} which one it is. Your words are kept either way, and you can still correct or add to them.`}”</div>

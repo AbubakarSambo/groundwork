@@ -85,6 +85,9 @@ export function EachPerson({
   isLead,
   isTheLead = false,
   leadFirstName = null,
+  groundLabel = 'this check-in',
+  oldChatIsOpen = true,
+  askName = 'Ask Groundwork',
   onChangeInChat,
   onUploadFor,
   onSetToDo,
@@ -102,8 +105,14 @@ export function EachPerson({
   isTheLead?: boolean
   /** The lead's first name, so nobody but the lead reads "your" about the lead's own things. */
   leadFirstName?: string | null
-  /** The lead changes what is expected of somebody in the conversation, not in a form. */
-  onChangeInChat?: (said: string) => void
+  /** This check-in's own name, said to Ask so it knows which one (B-082). */
+  groundLabel?: string
+  /** Whether the old context chat is still drawn below this page (B-082). */
+  oldChatIsOpen?: boolean
+  /** What Ask is called for this organisation, read before its own panel has opened. */
+  askName?: string
+  /** The lead changes what is expected of somebody in the conversation, or, once that chat is gone, by asking Ask. */
+  onChangeInChat?: (said: string, askSaid: string) => void
   /** A person attaching the thing they said they would show. */
   onUploadFor?: (participantId: string, ask?: AnAskOnTheCard) => void
   /** Their own to-do, moved by them. */
@@ -222,19 +231,31 @@ export function EachPerson({
                         check-in's own lead, who does have it, reads that second half now.
                       */
                       <Empty>
-                        {/* Release check, 9 October: with the old context chat off there is no conversation on this page to name. */}
-                        {isTheLead && onChangeInChat
-                          ? <>Nothing yet. It comes from your own check-in, or from the conversation on this page.</>
-                          : isTheLead
-                          ? <>Nothing yet. It comes from your own check-in.</>
+                        {isTheLead
+                          ? (oldChatIsOpen
+                            ? <>Nothing yet. It comes from your own check-in, or from the conversation on this page.</>
+                            : <>Nothing yet. It comes from your own check-in, or from telling {askName}.</>)
                           : <>Nothing yet. It comes from {leadsOwn} own check-in.</>}
                       </Empty>
                     )}
                   {/* THIS ONLY GOES ELSEWHERE (Hafsah, 30 September, the button rules): it hands the
                       change to the conversation rather than doing anything itself, so it is a quiet
-                      text link, `.gwui-plain-link`, not a button. */}
+                      text link, `.gwui-plain-link`, not a button. B-082: once the old chat is gone,
+                      the same link asks Ask the whole question instead of filling a box nobody can see. */}
                   {isLead && onChangeInChat && (
-                    <QuietLink onClick={() => onChangeInChat(`Change what I expect of ${labelOf(p)} to `)}>Change this in the chat</QuietLink>
+                    /*
+                      B-116: ON HER OWN CARD, THE FILLED LINE MUST SPEAK AS HER. The lead can also be
+                      a participant on her own check-in (isMe true here), and `labelOf(p)` always
+                      gives her real name - there is no "you" form of it (see the "You" summary
+                      above, handled as its own special case). Filling the chat with "Change what I
+                      expect of Tendai Moyo to " read as if she were talking about somebody else.
+                      Worded for the reader instead, same as every other "you"/"your" branch on this
+                      card: "myself" in what she types, "me" in the sentence handed to Ask.
+                    */
+                    <QuietLink onClick={() => onChangeInChat(
+                      isMe ? 'Change what I expect of myself to ' : `Change what I expect of ${labelOf(p)} to `,
+                      isMe ? `I want to change what ${groundLabel} expects of me.` : `I want to change what ${groundLabel} expects of ${labelOf(p)}.`,
+                    )}>Change this in the chat</QuietLink>
                   )}
                 </Part>
 

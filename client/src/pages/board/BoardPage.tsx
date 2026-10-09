@@ -147,7 +147,7 @@ import { buildSessionRows } from '@/lib/session-rows'
 import { peopleLabels, personLabel } from '@/lib/utils'
 import { EVERY_SESSION, checkedIn } from '@/components/gw/TheReportIsAListOfSessions'
 import { useAskStore } from '@/stores/ask'
-import { Page, CheckInHeader, Section, Panel, RowList, Row, Tag, type TagTone, Button as UIButton, PeopleTable, PersonRow, EdgeRow, EdgeList, Folded, Callout, Stack, SubHeading, Note } from '@/components/gw/ui'
+import { Page, CheckInHeader, Section, Panel, RowList, Row, Tag, type TagTone, Button as UIButton, PeopleTable, PersonRow, EdgeRow, EdgeList, Folded, Callout, Stack, SubHeading, Note, FlexRow, Text } from '@/components/gw/ui'
 import { initialsOf } from '@/pages/org/people-here'
 import { cadenceLabel } from '@/lib/cadence'
 import { phaseSpineSentence } from '@/lib/phase-spine-sentence'
@@ -394,11 +394,11 @@ function HiddenContributorRow({ groundId, label, evidence, isInitiator }: {
     <div className="gwui-panel-row">
       <Stack gap={6}>
         <Stack gap={4}>
-          <div className="gwui-fs-16 gwui-ink-text" style={{ fontWeight: 600 }}>{label}</div>
-          <div className="gwui-fs-15 gwui-ink-sub" style={{ lineHeight: 1.55 }}>{evidence}</div>
+          <Text size="16" ink="text" weight={600}>{label}</Text>
+          <Text size="15" ink="sub" lineHeight={1.55}>{evidence}</Text>
         </Stack>
         {done ? (
-          <div className="gwui-fs-13 gwui-ink-green" style={{ fontWeight: 600 }}>{isInitiator ? 'Invited.' : 'Request sent.'}</div>
+          <Text size="13" ink="green" weight={600}>{isInitiator ? 'Invited.' : 'Request sent.'}</Text>
         ) : open ? (
           <Stack gap={6}>
             <input
@@ -415,8 +415,8 @@ function HiddenContributorRow({ groundId, label, evidence, isInitiator }: {
                 style={{ borderRadius: 6, fontFamily: 'inherit', outline: 'none' }}
               />
             )}
-            {emailError && <div className="gwui-fs-13 gwui-ink-red">{emailError}</div>}
-            <div className="gwui-gap-6" style={{ display: 'flex' }}>
+            {emailError && <Text size="13" ink="red">{emailError}</Text>}
+            <FlexRow gap={6}>
               <UIButton
                 kind="secondary"
                 onClick={() => {
@@ -432,7 +432,7 @@ function HiddenContributorRow({ groundId, label, evidence, isInitiator }: {
               <UIButton kind="secondary" onClick={() => { setOpen(false); setEmail(''); setName(''); setReason('') }}>
                 Cancel
               </UIButton>
-            </div>
+            </FlexRow>
           </Stack>
         ) : (
           <button onClick={() => { setOpen(true); setEmail(''); setName(''); setReason(evidence) }} className="gwui-plain-link gwui-fs-13">
@@ -663,9 +663,9 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
             whole check-in" (`MaybeFolded`), closed by default, so "below" alone left a reader to find
             and open it themselves. This instead opens that fold and jumps straight to it.
           */}
-          <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 700}}>
+          <Text size="16" ink="dark" weight={700}>
             {shared ? 'Today’s team picture is shared.' : 'Today’s team picture isn’t shared yet.'}
-          </div>
+          </Text>
           <div className="gwui-fs-15 gwui-ink-sub gwui-mt-4" style={{lineHeight: 1.55}}>
             {shared
               ? null
@@ -786,7 +786,7 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
 const STARTING_STATE_STEPS = ['Day 1', 'By day 30', 'By day 60', 'By day 90', 'After day 90'] as const
 
 function StartingStateSentence({ children }: { children: React.ReactNode }) {
-  return <div className="gwui-fs-15 gwui-ink-dark" style={{lineHeight: 1.55}}>{children}</div>
+  return <Text size="15" ink="dark" lineHeight={1.55}>{children}</Text>
 }
 
 function StartingStateBody({ startingState }: { startingState: string | StartingStateAtTheStart }) {
@@ -915,24 +915,24 @@ function DivergenceSectionBody({ heading, divergence, whyNothingYet, onlyOnePers
           /* WHY IT IS EMPTY, NOT ONE SENTENCE FOR EVERY REASON. This said "This fills in once
              more than one person has checked in" on a round where everybody had, three inches
              under a tile that said so. The server computes it from the one counter. */
-          <Row columns="1fr" inset="panel"><div className="gwui-fs-15 gwui-ink-muted">{onlyOnePersonHere ? 'There is nothing to compare yet.' : (whyNothingYet ?? 'There is nothing to compare yet. This fills in once more than one person has answered.')}</div></Row>
+          <Row columns="1fr" inset="panel"><Text size="15" ink="muted">{onlyOnePersonHere ? 'There is nothing to compare yet.' : (whyNothingYet ?? 'There is nothing to compare yet. This fills in once more than one person has answered.')}</Text></Row>
         ) : (
           <>
             {divergence.items.map((d: any, i: number) => (
               <Row key={i} columns="1fr" inset="panel">
-                <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 600}}>
+                <Text size="16" ink="dark" weight={600}>
                   {d.topic ?? d.tag ?? 'Somewhere you see it differently'}
-                </div>
+                </Text>
                 <div className="gwui-fs-15 gwui-ink-amber gwui-mt-2">{whoSeesThisDifferently(d.positions, myName)}</div>
                 {d.text && <div className="gwui-fs-15 gwui-ink-sub gwui-mt-3">{d.text}</div>}
                 {Array.isArray(d.positions) && d.positions.some((pos: any) => pos.view) && (
                   <div className="gwui-mt-6">
                     <Stack gap={4}>
                       {d.positions.filter((pos: any) => pos.view).map((pos: any, j: number) => (
-                        <div key={j} className="gwui-fs-15 gwui-ink-text" style={{lineHeight: 1.55}}>
+                        <Text key={j} size="15" ink="text" lineHeight={1.55}>
                           <div style={{fontWeight: 700}}>{pos.who ?? 'A colleague'}</div>
                           <div className="gwui-ink-sub">{pos.view}</div>
-                        </div>
+                        </Text>
                       ))}
                     </Stack>
                   </div>
@@ -947,9 +947,9 @@ function DivergenceSectionBody({ heading, divergence, whyNothingYet, onlyOnePers
             ))}
             {divergence.agreements.map((a: any, i: number) => (
               <Row key={`a${i}`} columns="1fr" inset="panel">
-                <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 600}}>
+                <Text size="16" ink="dark" weight={600}>
                   {typeof a === 'string' ? a : a.topic ?? 'Agreed'}
-                </div>
+                </Text>
                 <div className="gwui-fs-15 gwui-ink-green gwui-mt-2">Everybody agrees on this.</div>
               </Row>
             ))}
@@ -1207,8 +1207,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     const why = whyYouCannotSeeThis(what)
     /* A 404 is the prototype's own "a check-in that's gone" (F4-small-states/c-gone-board): the
        board's address, with the sidebar, and the same words whether the check-in was ended,
-       removed, or was never this reader's (GW-PRI-04: the server answers all of them alike). */
-    if (what.status === 404) return <GroundGone />
+       removed, or was never this reader's (GW-PRI-04: the server answers all of them alike).
+       B-110: a 403 must read identically - GW-PRI-04 exists precisely so a stranger holding a
+       stale link cannot tell "this never existed" from "this exists, you're just not on it"
+       apart. This branch used to fall through to `why.say`'s 403 sentence instead, which does
+       exactly that ("This record belongs to a check-in you are not part of."). Same screen,
+       both codes. */
+    if (what.status === 404 || what.status === 403) return <GroundGone />
     /* The prototype's connection words only when it was the connection: no answer came back at all.
        A server error keeps its own true sentence, with Try again still offered (U.20 review). */
     const theConnection = what.status === undefined
@@ -1223,12 +1228,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
       <div className="gwui-mt-48 gwui-mr-auto gwui-mb-48 gwui-ml-auto gwui-pt-0 gwui-pr-20 gwui-pb-0 gwui-pl-20" style={{maxWidth: 620, textAlign: 'center'}}>
         <div className="gwui-fs-15 gwui-mb-6" style={{fontWeight: 700}}>{why.canRetry ? 'The board didn’t load' : 'This board could not be loaded.'}</div>
         <div className="gwui-fs-15 gwui-ink-sub gwui-mb-16">
-          {theConnection ? 'Nothing is lost; your check-ins are saved. It’s usually the connection.' : why.say}
+          {theConnection ? 'Nothing is lost. Your check-ins are saved. It is usually the connection.' : why.say}
         </div>
-        <div className="gwui-gap-8" style={{display: 'flex', justifyContent: 'center'}}>
+        <FlexRow gap={8} justify="center">
           {why.canRetry && <UIButton kind="primary" onClick={() => refetch()}>Try again</UIButton>}
           <UIButton kind={why.canRetry ? 'secondary' : 'primary'} onClick={() => navigate('/grounds')}>Back to check-ins</UIButton>
-        </div>
+        </FlexRow>
       </div>
     )
   }
@@ -2075,7 +2080,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             <Panel pad={false}>
               <RowList label="What keeps coming up">
               {visiblePatterns.length === 0 ? (
-                <Row columns="1fr" inset="panel"><div className="gwui-fs-15 gwui-ink-muted">Nothing to show here yet. A pattern appears only after three check-ins in a row, and the person it is about always sees it first.</div></Row>
+                <Row columns="1fr" inset="panel"><Text size="15" ink="muted">Nothing to show here yet. A pattern appears only after three check-ins in a row, and the person it is about always sees it first.</Text></Row>
               ) : (
                 <>
                   {/*
@@ -2233,7 +2238,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       {notYet ? (
                         <Note tone="muted">{displayName} is waiting to be let in.</Note>
                       ) : (
-                        <div className="gwui-gap-5" style={{display: 'flex', justifyContent: 'flex-end'}}>
+                        <FlexRow gap={5} justify="flex-end">
                           {squaresFor(r.participantId).map((sq) => (
                             <span
                               key={sq.key}
@@ -2243,7 +2248,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                               style={{display: 'inline-block', width: 14, height: 14, borderRadius: 3, flexShrink: 0, background: sq.state === 'done' ? 'var(--gw-navy)' : 'transparent'}}
                             />
                           ))}
-                        </div>
+                        </FlexRow>
                       )}
                     </PersonRow>
                     )
@@ -2444,7 +2449,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           title={b.title}
           subtitle={cadenceLine || undefined}
           action={(
-            <div className="gwui-gap-16" style={{display: 'flex', alignItems: 'center', flexShrink: 0}}>
+            <FlexRow gap={16} align="center" shrink0>
               {/*
                 THE PROTOTYPE USES TWO DIFFERENT WORDS HERE. The lead's own board says "Your
                 check-in" (board-as-lead.txt); a party's says "Start my check-in"
@@ -2482,7 +2487,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               <button type="button" onClick={showAsk} className="gwui-plain-link">
                 Ask
               </button>
-            </div>
+            </FlexRow>
           )}
           active="board"
           tabs={headerTabs}
@@ -3372,7 +3377,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {has('phaseSpine') && b.phaseSpine && (
           <div className="gwui-mt-10">
-            <div className="gwui-gap-10" style={{display: 'flex', flexWrap: 'wrap'}}>
+            <FlexRow gap={10} wrap>
               {/*
                 A FINISHED SESSION OPENS ITS REPORT, which is a rule this codebase already made
                 and this was the one list not keeping it: "a finished session opens the REPORT and
@@ -3406,7 +3411,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   </button>
                 )
               })}
-            </div>
+            </FlexRow>
           </div>
         )}
 
@@ -3584,11 +3589,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               )}
               <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-fs-15 gwui-ink-sub" style={{lineHeight: 1.55}}>{b.cascade.why}</p>
               {b.cascade.teamsNamed.length > 1 && (
-                <div className="gwui-mt-8 gwui-gap-6" style={{display: 'flex', flexWrap: 'wrap'}}>
+                <FlexRow gap={6} wrap className="gwui-mt-8">
                   {b.cascade.teamsNamed.map((t: string) => (
                     <Tag key={t} tone="plain">{t}</Tag>
                   ))}
-                </div>
+                </FlexRow>
               )}
             </Panel>
           </Section>
@@ -3652,7 +3657,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 const pct = o.journey?.covered ?? (o.target && o.target > 0 ? Math.min(100, Math.round((o.count / o.target) * 100)) : 0)
                 return (
                   <Row key={o.id} columns="1fr" inset="panel">
-                    <div className="gwui-gap-12" style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap'}}>
+                    <FlexRow gap={12} align="center" wrap>
                       <div className="gwui-fs-16" style={{flex: 1, fontWeight: 600, minWidth: 160}}>
                         {o.name}
                         {o.isNew && <span className="gwui-ml-7"><Tag tone="plain">new</Tag></span>}
@@ -3721,7 +3726,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       ) : (
                         <div className="gwui-fs-15 gwui-ink-muted" style={{minWidth: 92, textAlign: 'right'}}>No number is set yet.</div>
                       )}
-                    </div>
+                    </FlexRow>
                     {o.notSettled && (
                       <div className="gwui-fs-15 gwui-ink-amber gwui-mt-5" style={{lineHeight: 1.55, maxWidth: '68ch'}}>{o.notSettled}</div>
                     )}
@@ -3736,7 +3741,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       */}
                       {b.canEditFrame && (
                         editingTargetId === o.id ? (
-                          <span className="gwui-gap-6" style={{display: 'flex', alignItems: 'center'}}>
+                          <FlexRow gap={6} align="center" as="span">
                             <UIButton
                               kind="secondary" size="small"
                               onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: Math.max(0, o.count - 1) })}
@@ -3756,7 +3761,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                               aria-label={`Remove target: ${o.name}`}
                             >Remove</UIButton>
                             <UIButton kind="quiet" size="small" onClick={() => setEditingTargetId(null)}>Done</UIButton>
-                          </span>
+                          </FlexRow>
                         ) : (
                           <UIButton kind="quiet" size="small" onClick={() => setEditingTargetId(o.id)} aria-label={`Change target: ${o.name}`}>Change</UIButton>
                         )
@@ -3771,7 +3776,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     {/* The record suggests, the lead decides. Never auto-applied:
                         a number a person set is theirs until they change it. */}
                     {o.suggestedCount != null && b.canEditFrame && (
-                      <div className="gwui-fs-15 gwui-ink-navy gwui-mt-6 gwui-gap-8" style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap'}}>
+                      <FlexRow gap={8} align="center" wrap className="gwui-fs-15 gwui-ink-navy gwui-mt-6">
                         <span>
                           The record shows <b>{o.suggestedCount}</b> for this, not {o.count}.
                         </span>
@@ -3795,7 +3800,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         >
                           Use {o.suggestedCount}
                         </button>
-                      </div>
+                      </FlexRow>
                     )}
                     {/* A new target means nothing until people have checked in against it. */}
                     {o.isNew && o.askedOf && (
@@ -3814,7 +3819,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               {/* The lead sets the frame. A target, never an assessment of a person. */}
               {b.canEditFrame && (
                 <Row columns="1fr" inset="panel">
-                  <div className="gwui-gap-8" style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap'}}>
+                  <FlexRow gap={8} align="center" wrap>
                     <input
                       value={newObjName}
                       onChange={(e) => setNewObjName(e.target.value)}
@@ -3840,7 +3845,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     >
                       {addObjective.isPending ? 'Adding...' : 'Add target'}
                     </UIButton>
-                  </div>
+                  </FlexRow>
                 </Row>
               )}
               </RowList>
@@ -3903,7 +3908,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {shown.whatTheRoomIsAbout && (
           <Section heading="What people are after, and where" note="Built from what everybody said.">
             {b.whatTheRoomIsAboutNote && (
-              <Panel><div className="gwui-fs-15 gwui-ink-sub">{b.whatTheRoomIsAboutNote}</div></Panel>
+              <Panel><Text size="15" ink="sub">{b.whatTheRoomIsAboutNote}</Text></Panel>
             )}
             {b.whatTheRoomIsAbout && (
               <div className={`gwui-gap-14 ${b.whatTheRoomIsAboutNote ? 'gwui-mt-14' : 'gwui-mt-0'}`} style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(300px,100%),1fr))'}}>
@@ -3923,13 +3928,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   <div className="gwui-pt-2 gwui-pb-12">
                     <RowList label="What people are trying to do">
                     {(b.whatTheRoomIsAbout.aims ?? []).length === 0 ? (
-                      <Row columns="1fr" inset="list"><div className="gwui-fs-15 gwui-ink-muted">Nobody has said what they are after yet.</div></Row>
+                      <Row columns="1fr" inset="list"><Text size="15" ink="muted">Nobody has said what they are after yet.</Text></Row>
                     ) : (b.whatTheRoomIsAbout.aims ?? []).map((a) => (
                       <Row key={a.aim} columns="1fr" inset="list">
-                        <div className="gwui-gap-10" style={{display: 'flex', alignItems: 'baseline'}}>
+                        <FlexRow gap={10} align="baseline">
                           <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 600, flex: 1}}>{a.aim}</div>
                           <Tag>{a.held.length === 1 ? '1 person' : `${a.held.length} people`}</Tag>
-                        </div>
+                        </FlexRow>
                         <div className="gwui-fs-15 gwui-ink-sub gwui-mt-3" style={{lineHeight: 1.5}}>{a.held.join(', ')}</div>
                       </Row>
                     ))}
@@ -3943,13 +3948,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     <div className="gwui-pt-2 gwui-pb-12">
                       <RowList label={label}>
                       {rows.length === 0 ? (
-                        <Row columns="1fr" inset="list"><div className="gwui-fs-15 gwui-ink-muted">Nobody named one.</div></Row>
+                        <Row columns="1fr" inset="list"><Text size="15" ink="muted">Nobody named one.</Text></Row>
                       ) : rows.map((r) => (
                         <Row key={r.name} columns="1fr" inset="list">
-                          <div className="gwui-gap-10" style={{display: 'flex', alignItems: 'baseline'}}>
+                          <FlexRow gap={10} align="baseline">
                             <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 600, flex: 1}}>{r.name}</div>
                             <Tag>{r.named.length}</Tag>
-                          </div>
+                          </FlexRow>
                           <div className="gwui-fs-15 gwui-ink-sub gwui-mt-3" style={{lineHeight: 1.5}}>{r.named.join(', ')}</div>
                         </Row>
                       ))}
@@ -4111,13 +4116,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     `certain` - the fallback below writes the same fact as one plain sentence
                     instead of the old "who — what" plus a separate "open since" note.
                   */}
-                  <span className="gwui-fs-16 gwui-ink-dark">
+                  <Text size="16" ink="dark" as="span">
                     {g.says ?? (
                       g.certain
                         ? `In session ${g.sinceRound}, ${g.who} was asked, "${g.what}" ${g.who} has not answered it yet.`
                         : `In session ${g.sinceRound}, ${g.who} was asked, "${g.what}" Nothing on record can confirm the answer yet.`
                     )}
-                  </span>
+                  </Text>
                 </div>
               ))}
             </Panel>
@@ -4136,7 +4141,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             <Panel pad={false}>
               {b.decisions.map((d, i) => (
                 <div key={i} className="gwui-panel-row">
-                  <div className="gwui-gap-11" style={{display: 'flex', alignItems: 'baseline'}}>
+                  <FlexRow gap={11} align="baseline">
                     <span className="gwui-fs-17 gwui-ink-navy" style={{fontFamily: 'var(--gw-font-name)', minWidth: 18}}>{i + 1}</span>
                     <div style={{flex: 1}}>
                       <div className="gwui-ink-dark gwui-fs-16" style={{fontWeight: 600}}>{d.question}</div>
@@ -4151,7 +4156,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         375px board measured 395px wide because of it) - this box must wrap like
                         any other sentence, not stay on one line. */}
                     <Note>{myName && d.owner === myName ? 'You' : d.owner}</Note>
-                  </div>
+                  </FlexRow>
                 </div>
               ))}
             </Panel>
@@ -4187,9 +4192,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       sentence inside the card already says "you" for its own record (see
                       progress-reported-is-never-they.spec.tsx); the heading above it did not.
                     */}
-                    <div className="gwui-fs-15 gwui-ink-dark" style={{fontWeight: 700}}>
+                    <Text size="15" ink="dark" weight={700}>
                       {p.participantId === b.myParticipantId ? 'You' : nameOnTheBoard(b, p.participantId, p.name)}
-                    </div>
+                    </Text>
                     {p.role && p.role !== p.name && <TheLeadsNote role={p.role} className="gwui-fs-13-5 gwui-ink-sub gwui-mt-1" />}
                   </div>
                   <div className="gwui-pt-2 gwui-pr-15 gwui-pb-10 gwui-pl-15">
@@ -4211,7 +4216,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     ) : said.map((it) => (
                       <div key={it.id} className="gwui-pt-10 gwui-pr-0 gwui-pb-10 gwui-pl-0 gwui-inner-row">
                         <div className="gwui-fs-15" style={{lineHeight: 1.45}}>{theWordsOfALine(it.text)}</div>
-                        <div className="gwui-mt-4 gwui-gap-6" style={{display: 'flex', alignItems: 'baseline', flexWrap: 'wrap'}}>
+                        <FlexRow gap={6} align="baseline" wrap className="gwui-mt-4">
                           {/*
                             RECORD TYPES ARE THE GOAL VOCABULARY, SAID AS A SENTENCE. "success
                             definition", "commitment", "intent" and "progress" as bare tags are the
@@ -4223,10 +4228,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                               progress.") - drawing this sentence too repeated it: "You have
                               reported progress. This is progress you reported." */}
                           {b.family !== 'UPDATE' && !it.itsKindIsSaid && whatThisItemIs(it.type, p.participantId === b.myParticipantId, nameOnTheBoard(b, p.participantId, p.name)) && (
-                            <span className="gwui-fs-13 gwui-ink-sub">{whatThisItemIs(it.type, p.participantId === b.myParticipantId, nameOnTheBoard(b, p.participantId, p.name))}</span>
+                            <Text size="13" ink="sub" as="span">{whatThisItemIs(it.type, p.participantId === b.myParticipantId, nameOnTheBoard(b, p.participantId, p.name))}</Text>
                           )}
-                          {it.sessionNumber && <span className="gwui-fs-13 gwui-ink-muted">Said in session {it.sessionNumber}.</span>}
-                        </div>
+                          {it.sessionNumber && <Text size="13" ink="muted" as="span">Said in session {it.sessionNumber}.</Text>}
+                        </FlexRow>
                       </div>
                     )) })()}
                   </div>
@@ -4255,7 +4260,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               for it. W8-24.
             */}
             {b.dependencies.length === 0 ? (
-              <Panel><div className="gwui-fs-15 gwui-ink-sub" style={{lineHeight: 1.6}}>Nothing here yet. Handoffs appear when somebody says in a check-in that they are waiting on another person.</div></Panel>
+              <Panel><Text size="15" ink="sub" lineHeight={1.6}>Nothing here yet. Handoffs appear when somebody says in a check-in that they are waiting on another person.</Text></Panel>
             ) : (
               <Stack gap={10}>
                 {b.dependencies.filter((d) => (d.what ?? '').trim().toLowerCase() !== (d.on ?? '').trim().toLowerCase()).map((d) => {
@@ -4290,10 +4295,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   const holdingUp = matchingBlocker?.holdingUp as string | null | undefined
                   return (
                     <Panel key={d.id}>
-                      <div className="gwui-gap-10" style={{display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between'}}>
-                        <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 700}}>{title}</div>
+                      <FlexRow gap={10} align="flex-start" justify="space-between">
+                        <Text size="16" ink="dark" weight={700}>{title}</Text>
                         <Tag tone={tone}>{word}</Tag>
-                      </div>
+                      </FlexRow>
                       <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-8">
                         {readerIsOnWhom
                           ? 'This is waiting on you.'
@@ -4368,12 +4373,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               */}
               {b.contribution.every((c) => !c.remitDefined) && b.contribution.length > 1 ? (
                 <div className="gwui-rule gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14 gwui-mt-9" style={{borderRadius: 12, background: 'var(--gw-bg)'}}>
-                  <div className="gwui-gap-9" style={{display: 'flex', alignItems: 'baseline', flexWrap: 'wrap'}}>
+                  <FlexRow gap={9} align="baseline" wrap>
                     <span className="gwui-ink-dark gwui-fs-14" style={{fontWeight: 700}}>Everyone here</span>
                     {/* Board review, 30 September, item 7: a two-word tag beside a name, not a
                         sentence a person reads. */}
-                    <span className="gwui-fs-13-5 gwui-ink-amber" style={{fontWeight: 600}}>Nobody here has said what their role covers yet.</span>
-                  </div>
+                    <Text size="13-5" ink="amber" weight={600} as="span">Nobody here has said what their role covers yet.</Text>
+                  </FlexRow>
                   <div className="gwui-fs-15 gwui-ink-navy gwui-rule-blue gwui-pt-8 gwui-pr-10 gwui-pb-8 gwui-pl-10 gwui-mt-8" style={{background: 'var(--gw-blue-bg)', borderRadius: 9, lineHeight: 1.5}}>
                     {b.contribution[0].note}
                   </div>
@@ -4390,16 +4395,16 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 const nameFirstWord = nameOnTheBoard(b, c.participantId, c.name).split(' ')[0]
                 return (
                 <div key={c.participantId} className="gwui-rule gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14 gwui-mt-9" style={{borderRadius: 12, background: 'var(--gw-bg)'}}>
-                  <div className="gwui-gap-9" style={{display: 'flex', alignItems: 'baseline', flexWrap: 'wrap'}}>
+                  <FlexRow gap={9} align="baseline" wrap>
                     <span className="gwui-ink-dark gwui-fs-14" style={{fontWeight: 700}}>{displayName}</span>
                     {/* "Your note" to the lead who wrote it, never to an admin (U.7 review). */}
                     {c.remitDefined
                       ? (b.canEditFrame && c.remit ? <TheLeadsNote role={c.remit} className="gwui-fs-13-5 gwui-ink-sub" /> : null)
                       /* Board review, 30 September, item 7: "role not clearly defined" beside a
                          name is a tag, not a sentence about that person. */
-                      : <span className="gwui-fs-13-5 gwui-ink-amber" style={{fontWeight: 600}}>{isReader ? 'Nobody has said what your role covers yet.' : `Nobody has said what ${nameFirstWord || 'their'}'s role covers yet.`}</span>}
+                      : <Text size="13-5" ink="amber" weight={600} as="span">{isReader ? 'Nobody has said what your role covers yet.' : `Nobody has said what ${nameFirstWord || 'their'}'s role covers yet.`}</Text>}
 
-                  </div>
+                  </FlexRow>
 
                   {/* An undefined remit shows NO position. You cannot measure someone
                       against a bar that was never set. */}
@@ -4440,11 +4445,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       {/* `Note tone="muted"` is the shared part for this, not a fresh one-off class pair. */}
                       {c.basis && <Note tone="muted">{c.basis}</Note>}
                       {c.fnLabel && (
-                        <div className="gwui-mt-6 gwui-gap-6" style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap'}}>
+                        <FlexRow gap={6} align="center" wrap className="gwui-mt-6">
                           <Tag tone="action">read as {c.fnLabel.toLowerCase()}</Tag>
                           {!c.fnConfident && <span className="gwui-fs-13 gwui-ink-muted" style={{fontStyle: 'italic'}}>still provisional</span>}
                           {c.isBlocked && <Tag tone="attention">part of this is blocked</Tag>}
-                        </div>
+                        </FlexRow>
                       )}
                       <div className={`gwui-mt-8 gwui-fs-15 gwui-pt-6 gwui-pr-10 gwui-pb-6 gwui-pl-10 ${c.ownVoice ? 'gwui-ownvoice' : 'gwui-ownvoice-none'}`} style={{lineHeight: 1.4, borderRadius: 9, fontStyle: c.ownVoice ? 'normal' : 'italic'}}>
                         {c.ownVoice ?? (isReader ? 'No note. You can add your own context through your next check-in.' : 'No note. This person can add their own context through their next check-in.')}
@@ -4514,7 +4519,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 const isReader = r.participantId === b.myParticipantId
                 return (
                 <div key={r.participantId} className="gwui-rule gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14 gwui-mt-9" style={{borderRadius: 12, background: 'var(--gw-bg)'}}>
-                  <div className="gwui-gap-9" style={{display: 'flex', alignItems: 'baseline', flexWrap: 'wrap'}}>
+                  <FlexRow gap={9} align="baseline" wrap>
                     {/* Re-review, 2 October: the reader's own row here still headed with their own
                         name - "Rukia Otieno" over her own card, on the board she herself was
                         reading - the same mistake "Who owns what" was fixed for. */}
@@ -4523,13 +4528,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         the name, not a section of its own, so it no longer renders in capitals. */}
                     {/* Board review, 30 September, item 7: "at role level" is a fragment, not
                         something a person reads as a sentence. */}
-                    <span className="gwui-fs-13 gwui-ink-muted">{`This is measured at the ${String(r.scope).toLowerCase()} level.`}</span>
+                    <Text size="13" ink="muted" as="span">{`This is measured at the ${String(r.scope).toLowerCase()} level.`}</Text>
                     <span className="gwui-ml-auto">
                       <Tag tone={r.kind === 'LEAKING' ? 'attention' : r.kind === 'ABSORBING' ? 'action' : 'plain'}>
                         {r.kind === 'LEAKING' ? 'Landing with others' : r.kind === 'ABSORBING' ? "Taking on others' work" : isReader ? 'Staying with you' : 'Staying with them'}
                       </Tag>
                     </span>
-                  </div>
+                  </FlexRow>
 
                   {/*
                     REQUEST 111 (a): A SCORE OF WHERE A PERSON'S WORK LANDS STAYS REMOVED. `pct` is
@@ -4625,8 +4630,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               </div>
               {b.managerAlignment.map((m, i) => (
                 <div key={i} className="gwui-panel-row">
-                  <div className="gwui-gap-8" style={{display: 'flex', alignItems: 'baseline', flexWrap: 'wrap'}}>
-                    <span className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 600}}>{m.label}</span>
+                  <FlexRow gap={8} align="baseline" wrap>
+                    <Text size="16" ink="dark" weight={600} as="span">{m.label}</Text>
                     {/* The pole matters more than the gap: holding on to everything
                         and holding nobody need opposite responses, and telling one
                         to do the other makes it worse. */}
@@ -4640,7 +4645,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         {seenAcross(m.periods, b.phaseSpine?.currentSession ?? null)}
                       </span>
                     )}
-                  </div>
+                  </FlexRow>
                   <div className="gwui-fs-15 gwui-ink-text gwui-mt-4" style={{lineHeight: 1.45}}>{m.gap}</div>
                   <div className="gwui-fs-15 gwui-ink-sub gwui-mt-4" style={{lineHeight: 1.45}}>{m.note}</div>
                 </div>
@@ -4678,7 +4683,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 />
               ))}
               <div className="gwui-panel-row">
-                <div className="gwui-fs-15 gwui-ink-sub" style={{lineHeight: 1.6}}>{b.hiddenContributors.why}</div>
+                <Text size="15" ink="sub" lineHeight={1.6}>{b.hiddenContributors.why}</Text>
               </div>
             </Panel>
           </Section>
@@ -4707,9 +4712,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       <textarea value={pollOpts} onChange={(e) => setPollOpts(e.target.value)} placeholder={'One time per line\nTue 16:00\nWed 09:00'}
                         className="gwui-pt-7 gwui-pr-10 gwui-pb-7 gwui-pl-10 gwui-fs-13-5 gwui-rule" style={{minHeight: 68, borderRadius: 7, fontFamily: 'inherit', outline: 'none', resize: 'vertical'}} />
                       {b.poll && (
-                        <div className="gwui-fs-13 gwui-ink-amber">
+                        <Text size="13" ink="amber">
                           Changing the times clears everyone's availability, because an answer to a question that changed is not an answer.
-                        </div>
+                        </Text>
                       )}
                       <div className="gwui-button-row">
                         {/* Secondary, not navy: the board's one primary is "Your check-in", in the header. */}
@@ -4728,7 +4733,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 </div>
               )}
               {!b.poll ? (
-                <div className="gwui-fs-15 gwui-ink-muted">No availability poll yet.</div>
+                <Text size="15" ink="muted">No availability poll yet.</Text>
               ) : (
                 <>
                   <div className="gwui-fs-14 gwui-ink-dark gwui-pt-4 gwui-pr-0 gwui-pb-4 gwui-pl-0" style={{fontWeight: 700}}>
@@ -4739,13 +4744,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     const max = Math.max(...b.poll!.options.map((x) => x.count))
                     const win = o.count === max && max > 0
                     return (
-                      <div key={o.id} className={`gwui-gap-10 gwui-pt-8 gwui-pr-8 gwui-pb-8 gwui-pl-8 gwui-inner-row ${win ? 'gwui-win-row' : ''}`} style={{display: 'flex', alignItems: 'center'}}>
+                      <FlexRow key={o.id} gap={10} align="center" className={`gwui-pt-8 gwui-pr-8 gwui-pb-8 gwui-pl-8 gwui-inner-row ${win ? 'gwui-win-row' : ''}`}>
                         <div className="gwui-fs-16" style={{fontWeight: 600, minWidth: 110}}>{o.label}</div>
                         {/* Only YOUR OWN availability is clickable. Everyone else is a
                             read-only indicator: the toggle endpoint acts on the caller,
                             so a clickable chip bearing someone else's name would set
                             your availability while appearing to set theirs. */}
-                        <div className="gwui-gap-5" style={{display: 'flex', flexWrap: 'wrap', flex: 1, alignItems: 'center'}}>
+                        <FlexRow gap={5} wrap flex1 align="center">
                           {(() => {
                             const iCanMakeThis = o.whoIds.some((w) => myIds.has(w))
                             return (
@@ -4761,13 +4766,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                             )
                           })()}
                           {o.who.filter(Boolean).length > 0 && (
-                            <span className="gwui-fs-13 gwui-ink-muted">
+                            <Text size="13" ink="muted" as="span">
                               also: {o.who.filter(Boolean).join(', ')}
-                            </span>
+                            </Text>
                           )}
-                        </div>
+                        </FlexRow>
                         <div className={`gwui-fs-13-5 ${win ? 'gwui-ink-green' : 'gwui-ink-sub'}`} style={{minWidth: 42, textAlign: 'right', fontWeight: win ? 700 : 400}}>{o.count} in</div>
-                      </div>
+                      </FlexRow>
                     )
                   })}
                 </>
@@ -4802,11 +4807,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             return (
               <Section heading="Alignment feed">
                 <Panel>
-                  <div className="gwui-fs-15 gwui-ink-muted">
+                  <Text size="15" ink="muted">
                     {sigs.length === 1
                       ? 'One pattern has come up so far. It is shown above, under What keeps coming up.'
                       : `${sigs.length} patterns have come up so far. They are shown above, under What keeps coming up.`}
-                  </div>
+                  </Text>
                 </Panel>
               </Section>
             )
@@ -4919,7 +4924,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               ].map((cell, i) => (
                 <Stack key={i} gap={4}>
                   <div className="gwui-fs-13-5 gwui-ink-muted" style={{letterSpacing: '.1px', fontWeight: 700}}>{cell.h}</div>
-                  <div className="gwui-fs-15 gwui-ink-sub" style={{lineHeight: 1.55}}>{cell.p}</div>
+                  <Text size="15" ink="sub" lineHeight={1.55}>{cell.p}</Text>
                 </Stack>
               ))}
             </Stack>
@@ -5000,7 +5005,10 @@ function AskTheBoard({ firstBlocker, myParticipantId }: {
   const isAPhone = useIsAPhone()
   const placeholder = isAPhone ? 'Ask about this board' : `Ask about this board, for example “${example}”`
   return (
-    <form
+    <FlexRow
+      as="form"
+      gap={8}
+      className="gwui-mt-22"
       onSubmit={(e) => {
         e.preventDefault()
         const m = draft.trim()
@@ -5008,7 +5016,6 @@ function AskTheBoard({ firstBlocker, myParticipantId }: {
         showWith(m)
         setDraft('')
       }}
-      className="gwui-gap-8 gwui-mt-22" style={{display: 'flex'}}
     >
       <input
         type="text"
@@ -5026,7 +5033,7 @@ function AskTheBoard({ firstBlocker, myParticipantId }: {
         rather than the prototype's own quirk here.
       */}
       <UIButton kind="secondary" type="submit">Ask</UIButton>
-    </form>
+    </FlexRow>
   )
 }
 

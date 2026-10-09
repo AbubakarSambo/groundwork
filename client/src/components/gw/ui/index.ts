@@ -4,6 +4,8 @@
  */
 export { Page } from './Page'
 export { Stack, type StackGap } from './Stack'
+export { FlexRow, type FlexRowGap, type FlexRowAlign, type FlexRowJustify } from './FlexRow'
+export { Text, type TextSize, type TextInk } from './Text'
 export { Mark } from './Mark'
 export { ProofMark } from './ProofMark'
 export { PageTitle, type Crumb } from './PageTitle'

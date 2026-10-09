@@ -1,6 +1,48 @@
 import type { Need } from '@/api/today'
 
 /**
+ * REQUEST 205, DONE: `GET /today/outstanding` now serves `about` beside each of `needsYou`,
+ * `overdueOnYourTeam` and `risks` - one entry per sentence, in the same order, shaped
+ * `{ kind, ids, groundId? }`. This is the same fact every function below was already reading out of
+ * the words themselves (a wait's own id, a leave or spend request's id, a promise's id, the check-in
+ * a "nothing yet" line is about), served plainly instead of needing to be parsed back out of a
+ * sentence built in different words on each side. Matching on it is the primary rule now; the
+ * wording-based functions below stay only as the fallback for a sentence `about` does not cover
+ * (an older server, or a row with no entry for it).
+ */
+export type OutstandingAboutKind = 'requests' | 'wait' | 'decision' | 'promise' | 'plan-decision' | 'target' | 'quiet'
+export interface OutstandingAbout {
+  kind: OutstandingAboutKind
+  /** One id per thing the sentence is about: a wait, a leave/spend/hours request, a commitment, a
+      target, or (for `quiet`) the check-in itself. A summary sentence ("Two requests are waiting
+      ...") carries every id it is summarising. */
+  ids: string[]
+  groundId?: string
+}
+
+/**
+ * THE RAW ID A `Need`'S OWN `key` IS BUILT FROM. An id like `leave:<id>` or `hours:<person>|<week>`
+ * carries a prefix or a second field that a `Need`'s key never repeats verbatim - only the id (or
+ * the person) itself does - so this tries the id as given, with its "kind:" prefix stripped, and
+ * with anything after "|" dropped too, and matches if any of those is part of the key.
+ */
+function bareIdsOf(id: string): string[] {
+  const noPrefix = id.includes(':') ? id.slice(id.indexOf(':') + 1) : id
+  const noWeek = noPrefix.split('|')[0]
+  return Array.from(new Set([id, noPrefix, noWeek].filter(Boolean)))
+}
+
+/** Whether every id (or, for `quiet`, the check-in itself) this sentence is about already has a row
+    of its own among `existingNeeds` - the id-based version of everything below. */
+function alreadyShownByAbout(entry: OutstandingAbout, existingNeeds: Need[]): boolean {
+  if (entry.kind === 'quiet') {
+    return !!entry.groundId && existingNeeds.some((n) => n.groundId === entry.groundId)
+  }
+  if (!entry.ids.length) return false
+  return entry.ids.every((id) => bareIdsOf(id).some((bare) => existingNeeds.some((n) => n.key.includes(bare))))
+}
+
+/**
  * THE LEAD'S DAILY NUDGE, ON TODAY (decision 120). `GET /today/outstanding`'s `needsYou` repeats, in
  * full sentences, what is waiting for the lead to approve, a decision she owes, and her own overdue
  * commitments - some of which "What needs you" (`GET /today`) may already say, in its own words, as
@@ -68,12 +110,18 @@ function approvalSummaryCount(sentence: string): number | null {
   return n !== undefined ? n : (Number.isFinite(Number(m[1])) ? Number(m[1]) : null)
 }
 
-export function outstandingNotAlreadyShown(existingNeeds: Need[], sentences: string[]): string[] {
+export function outstandingNotAlreadyShown(existingNeeds: Need[], sentences: string[], about?: (OutstandingAbout | null | undefined)[]): string[] {
   const alreadyOnScreen = existingNeeds.flatMap(flatten)
   const normalisedAlready = alreadyOnScreen.map(normalise)
   const approvalRowCount = alreadyOnScreen.filter((t) => /waiting for (?:you|them|him|her) to approve/i.test(t)).length
 
-  return sentences.filter((sentence) => {
+  return sentences.filter((sentence, i) => {
+    const entry = about?.[i]
+    /* REQUEST 205: matched by what the sentence is about, not by its words, whenever the server
+       says what that is. The wording checks below run only where it does not (an older server, or
+       a row `about` has nothing for). */
+    if (entry) return !alreadyShownByAbout(entry, existingNeeds)
+
     if (alreadyOnScreen.some((text) => text.includes(sentence) || sentence.includes(text))) return false
 
     const wait = waitingOnYouFor(sentence)

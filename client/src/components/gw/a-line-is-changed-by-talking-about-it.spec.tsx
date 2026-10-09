@@ -16,9 +16,13 @@ describe('a line is changed by talking about it', () => {
   it('the page hands the line over and scrolls to where it landed', () => {
     expect(PAGE).toContain("new CustomEvent('gw:context-chat:say', { detail: said })")
     expect(PAGE).toContain("scrollToId('gw-context-chat')")
-    /* Both kinds of row: a target and a line of a bucket. */
-    expect(PAGE).toContain('changeThisInTheChat(`Change the target "${o.name}" to `)')
-    expect(PAGE).toContain('changeThisInTheChat(`Change the line "${l.text}" to `)')
+    /*
+     * Both kinds of row: a target and a line of a bucket. B-082 added a second argument - the whole
+     * question, asked of Ask, for when the old chat this used to fill is off - so each call now
+     * carries both the half-sentence for the chat and the full one for Ask.
+     */
+    expect(PAGE).toContain('changeThisInTheChat(`Change the target "${o.name}" to `, `I want to change the target "${o.name}" on ${groundLabel}.`)')
+    expect(PAGE).toContain('changeThisInTheChat(`Change the line "${l.text}" to `, `I want to change the line "${l.text}" on ${groundLabel}.`)')
   })
 
   it('the chat takes it, opens, and puts the caret after it', () => {

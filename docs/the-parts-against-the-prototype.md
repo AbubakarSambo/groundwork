@@ -795,3 +795,38 @@ fork's two choices, could overflow and be clipped above the 640px breakpoint tha
 it below); `.gwui-ec-sessions-count`, `.gwui-ec-which-row` and `.gwui-ec-quick-actions-end` each
 gained a narrow-width rule fixing clipped or overlapping text and controls at 390px (the sessions
 help line, "Start over", and "End session" against the floating Feedback trigger).
+
+## Style clean-up round 2: two new shared parts, no new CSS
+
+**`FlexRow`** (`components/gw/ui/FlexRow.tsx`) and **`Text`** (`components/gw/ui/Text.tsx`), per
+Hafsah's instruction of 9 October ("Add two shared parts whose CSS is EXACTLY what the inline
+code does today, so swapping them in cannot change a pixel"). Neither adds a CSS rule: both are a
+typed wrapper around classes and inline-style properties `BoardPage.tsx` (and others) already set
+by hand, written up here because the one-off guard requires any new shared part to be.
+
+**`FlexRow`** replaces `<div className="gwui-gap-N" style={{ display: 'flex', ... }}>` - a row of
+buttons, tags or short facts spaced with one of the existing `gwui-gap-*` classes (`gw-ui.css`,
+unchanged). Its props (`gap`, `align`, `justify`, `wrap`, `shrink0`, `flex1`, `as`) are exactly the
+inline style properties the board already used (`alignItems`, `justifyContent`, `flexWrap`,
+`flexShrink: 0`, `flex: 1`), and only the specific values actually in use anywhere in `BoardPage.tsx`
+(`align`: `center`/`baseline`/`flex-start`; `justify`: `center`/`flex-end`/`space-between`) - no
+value is offered that no caller needs yet. Not named `Row`: that name is already `Rows.tsx`'s grid
+-column table row, a different part with its own inset padding, and the two must not be confused.
+
+A row whose inline style set anything else - a fixed `width`, `flexDirection: 'column'`, a
+`flexBasis` - is not an exact match and was left alone. `GroundParticipantPage.tsx`'s settings tab
+is the clearest case: its own comment explains it stays a flex column so `MyParticipation`'s child
+`order` values keep working, which `Stack`'s block-margin layout would break: `FlexRow` does not
+change that reasoning (it is still a flex container, `order` would still work), but converting a
+column is outside what this round's `FlexRow` offers (row-only props), so it was left as written.
+
+**`Text`** replaces a `gwui-fs-N`/`gwui-ink-X` pair of classes on a `<div>`/`<span>`/`<p>`, for the
+cases with no inline style at all - a sentence set in one size and one colour and nothing else
+(for example `<div className="gwui-fs-15 gwui-ink-muted">Nothing to show here yet...</div>`).
+`size`/`ink` are strings rather than numbers because some sizes are not whole numbers
+(`gwui-fs-13-5`); each names the existing class's own suffix exactly, so `Text` renders the same
+class names `gw-ui.css` already has rules for. `weight`/`lineHeight`/`letterSpacing`/`display` are
+there for a later batch that also carries one of those inline alongside the size and colour, but
+this round's first use of `Text` is the plain, style-free case only - see `docs/style-cleanup.md`
+for exactly which lines moved. A caller whose inline style sets a property `Text` does not offer
+(a margin, a different colour not already a `gwui-ink-*`) is not an exact match and was left alone.

@@ -29,7 +29,13 @@ const CODE = readFileSync(path.join(__dirname, 'GroundAdminPage.tsx'), 'utf8')
 describe('one row per person, one cell per session', () => {
   it('a row carries every session that person has', () => {
     expect(CODE).toMatch(/const theirSessions = \[\.\.\.\(ground\.checkIns \?\? \[\]\)\]/)
-    expect(CODE).toMatch(/\.filter\(\(c: any\) => c\.participantId === p\.id\)/)
+    /*
+     * B-080: WIDENED, NOT NARROWED. A set-up row (`isSetup: true`) is not a session - the same rule
+     * `sessionsDoneBy` already applies to "Your sessions" - so it is now excluded here too; without
+     * it, a lead who only manages and never checks in read "Some sessions done, some still open"
+     * from her one completed set-up row alone. Every *real* session that person has is still here.
+     */
+    expect(CODE).toMatch(/\.filter\(\(c: any\) => c\.participantId === p\.id && !c\.isSetup\)/)
   })
 
   it('in session order, left to right', () => {

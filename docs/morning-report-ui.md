@@ -4,6 +4,82 @@ This is the report from the screens workspace, on the branch `wip/prototype-ui`.
 workspace writes its own report in `docs/morning-report.md`, so the two computers never edit the
 same file.
 
+## 9 October, the engine's fixes checked
+
+The engine's commits 4bae3659 (B-091 and B-013) and 3f8f821a (the old context chat stays on) were merged and checked in a real browser, reading what the API sends each person, at 1440, 1280, 1024 and 390.
+
+| What was checked | 1440 | 1280 | 1024 | 390 |
+| --- | --- | --- | --- | --- |
+| B-091: Halima, a team member on the anchor check-in, gets nothing built from Baraka's set-up, from the list or the check-in | PASS | PASS | PASS | PASS |
+| B-013: Amani, a team member on Sales team, Q3, gets nothing built from Rukia's set-up, from the list or the check-in | PASS | PASS | PASS | PASS |
+| The lead, and an admin who is not in the check-in, still get the set-up | PASS | PASS | PASS | PASS |
+| The old chat is drawn on Context and resources, and "Change this in the chat" fills it | PASS | PASS | PASS | PASS |
+| A document added through the old chat's paperclip is filed, read and kept | PASS | PASS | PASS | PASS |
+| Ask adds a document when asked | FAIL | FAIL | FAIL | FAIL |
+| Ask keeps a fact the lead types | FAIL | FAIL | FAIL | FAIL |
+
+- **Privacy.** None of the lead's set-up reaches the team member in any response her pages load. No sideways scroll at 390. The only console errors are the known 404s from the suites (B-002).
+- **A new privacy leak, B-114 (engine).** On Sales team, Q3, where people see only their own targets, the list `GET /grounds` still gives Amani every colleague's target number with their name: Baraka 4, Neema 4, Rukia 4. The check-in's own read does not. This needs the engine before the pull request.
+- **The old chat works.** The paperclip filed `westlands-depot-plan-<width>.txt` at each width, read it and offered its numbers. What it says back is in pieces, for example "The date it sets for No deliveries leave Westlands is that week.", and once it took "Each account manager" for a person's name (B-115, engine). On the lead's own card the chat is filled with her own name, "Change what I expect of Tendai Moyo to " (B-116, screens).
+- **Ask is unchanged.** B-083, B-084 and B-085 are not fixed, and nothing in these commits touched them. Ask has no way to attach a file (the only control by its box is Send). It turned "I want to add a document to this check-in." into a measure, "a document to this check-in" is an aim of 1 to reach, and the Westlands fact got "I cannot answer that one yet." twice, a measure once, and "Everyone in this check-in will see this" once, with nothing written. No reply mentioned a paperclip this time. But Ask still says "You can also add context or documents to your check-ins here." and offers "Add a document or some context to my check-in.", which it cannot do. Because the old chat stays on, a lead can still add documents and facts there.
+
+## 9 October, Hafsah's answers
+
+- **The old context chat stays on in this pull request.** The engine is keeping `release.oldContextChat` on.
+- **The privacy leak (B-091, and B-013 with it) must be closed before the pull request.** The engine is doing it. When it pushes, the screens will merge and check B-091, B-013 and Ask's handling of documents at every width.
+- **B-113:** build a simple offline page instead of the blank one. **Done.**
+  - A minimal service worker (`client/public/sw.js`) handles only page loads that fail, and shows `offline.html` ("You're offline. Groundwork will open again when you're back online.", with "Try again").
+  - It caches nothing else, so it can never serve an old app or old data. It registers only in production builds.
+  - Inside the open app, a note now says when the connection drops.
+  - It was proven on a production preview at 1440 and 390. 4,892 of 4,892 client tests pass.
+  - **For Hafsah and Abubakar:** this is the product's first service worker. `docs/deploy-notes-screens.md` says how to turn it off, and gives one optional `Cache-Control` header for `/sw.js` on Vercel, which is not added.
+- **The style clean-up waits until after the pull request.**
+
+## Morning, 9 October: what is finished, every result, and what needs Hafsah
+
+### What is finished overnight (23:15 to 06:30)
+
+1. **The engine's six screen items were merged, and its versions kept** (Hafsah's instruction). The screens had built their own copies of the same six, unpushed; those were dropped. Each item was then checked at 1440, 1280, 1024 and 390. Two did not hold, and both are now fixed on the screens:
+   - Grace was still "Checking in" in the roles table (B-077).
+   - The lead's ending panel still said "account" (B-081).
+2. **The anchor walked from `/start/team` through the normal flow**, as a lead and a team member, on the test bed:
+   - The door works: the redirect, the opener, and saving as an anchor. The earlier fault of turning into another scenario (B-086, B-087) did not come back.
+   - The screens' faults are fixed: a lead who only manages is never counted, never "Checking in", and gets no "Your check-in" tab; the "of the one" sentences are gone. That covers B-077, B-078, B-080, B-088, B-100 and B-108.
+3. **The remaining bugs.** Every screen row in `docs/bug-log-screens.md` is fixed, checked and not a bug, or with the engine (requests 186 to 208). Also done:
+   - The check-in day editor in People and setup (request 194). It was proven live: "Lands on Mondays."
+   - Requests 193, 198, 205 and 206 are drawn.
+   - "Change this in the chat" never becomes a dead control: with the old chat off, it opens Ask (B-082).
+4. **Small states and error pages,** forced in a real browser on 13 pages, with 86 screenshots:
+   - **Privacy (B-110, fixed):** on three check-in pages a 403 read differently from a 404, which told someone with no access that the check-in exists. Now both read the same.
+   - **B-111:** a refused session report now has a way back.
+   - **B-112:** Ask no longer loses its question box when its own load fails or is slow.
+   - **B-113:** offline navigation shows a blank page. That needs Hafsah's decision (below).
+5. **The style clean-up, with no visible change.**
+   - There are two new shared parts, `FlexRow` and `Text`, whose CSS is exactly what the inline code did.
+   - BoardPage went from 584 to 501 one-off uses, in three batches. Each batch was pixel-identical at 1440 and 390, as the lead and as a member.
+   - The rest (about 500 on BoardPage, then WorkRecords 70, TheSwitchboardsSections 32, and others) can be done the same way. `docs/style-cleanup.md` has the method and the table.
+6. **Merges.** The engine's work up to `ffabd2e8` is merged, with both sides' overlapping screen fixes reconciled (written up for the engine in `docs/answers-from-engine.md`). `mine/wip/live-base` has had nothing new since 6 October.
+
+### Every result
+
+- **Client:** 4,878 of 4,878 tests pass, and the type check is clean.
+- **Browser checks:** 59 of 59 pass. The boards marked as expected to fail (more buttons than the prototype) are known, recorded on purpose, and unchanged.
+- **The sweep's 37 browser test files, run one at a time this morning:** 88 tests pass, 3 fail and 3 are skipped. Google sign-in passes 10 of 10 (an existing user, a new user, a link that survives the trip, a failed sign-in, and Google switched off).
+  - The 3 failures are not product faults:
+    - l8-end-or-extend's check-in was already ended on 7 October;
+    - m2-attachments needs Amani's next session, which opens on 15 October;
+    - situations-orgs-tabs-slow expects a "verify your email" link when an existing account joins a second organisation, but the API adds such a person without one. The test's expectation needs checking.
+  - Skipped: engagement-screenshots needs hand-made sign-in links. style-cleanup-pixels runs only with its own settings.
+- **Privacy, read from the network on the test bed:** a team member is served no lead-only anchor section and none of the lead's aims. One leak is open, and it is the engine's: **B-091**. The check-in list still serves a member two fields built from the lead's private set-up (request 208).
+
+### What needs Hafsah
+
+1. **Do not switch the old context chat off yet.** The engine's `docs/pull-request.md` lists `release.oldContextChat` as Off, but the screens' live proof of piece 7 failed. In Ask, a lead cannot add a document, and a free fact is misfiled (B-083 to B-085, request 207). Switching it off would take away something leads can do today. The screens have asked the engine to keep it On until those are fixed and proven.
+2. **The privacy leak B-091** (request 208) should be closed before the next pull request. B-013, the same two fields on an ordinary check-in, is still unanswered by the engine.
+3. **B-113:** whether to build an offline page, so that a blank page does not show when someone navigates while offline.
+4. **Stripe test mode** (A5) still needs `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY` and `STRIPE_WEBHOOK_SECRET` as TEST values in `api/.env`.
+5. **The style clean-up's next step** adds no visible change, but it is long: about 900 more one-off uses. Say if it should continue before or after the next pull request.
+
 ## 8 October, evening: the next pull request, where each of the seven pieces stands
 
 Hafsah set the next pull request's contents. This is the screens' half of each piece. It is **not ready yet**, because pieces 2, 4, 5 and 7 wait on the engine.

@@ -119,10 +119,20 @@ export function ContextPage({
   const askPage = useQuery({ queryKey: ['ask'], queryFn: askApi.mine })
   const orgName = useAuthStore((s) => s.user?.organizationName)
   const showForCheckInSetup = useAskStore((s) => s.showForCheckInSetup)
+  const showWith = useAskStore((s) => s.showWith)
   const canAddContextWithAsk = mayRewriteTheBrief && askPage.data?.addsContext === true
   const contextEnabled = (ground as any)?.contextEnabled === true
   /* The old context chat is drawn only while the server says it is open; while Ask's answer is still loading it is not drawn, so it never flashes and goes. */
   const oldChatIsOpen = !askPage.isLoading && askPage.data?.oldContextChatIsOpen !== false
+  /*
+   * B-082: WHILE THE OLD CHAT IS OFF, NOTHING POINTS AT IT. Every control that used to fill the old
+   * chat's box now opens Ask with the question already asked, naming this check-in so Ask knows
+   * which one; every line that told somebody to use "the conversation below" or "on this page"
+   * names Ask instead. `askName` is the same name `GET /ask` serves (askNameFor), read here before
+   * Ask's own panel has ever opened.
+   */
+  const askName = askNameFor(orgName)
+  const groundLabel: string = (ground as any).label || 'this check-in'
   const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === viewerUserId)
 
   /*
@@ -329,9 +339,15 @@ export function ContextPage({
    * Scrolling as well as filling, because the chat is at the top and a filled box nobody can see is
    * the same as no box at all.
    */
-  const changeThisInTheChat = (said: string) => {
-    window.dispatchEvent(new CustomEvent('gw:context-chat:say', { detail: said }))
-    scrollToId('gw-context-chat')
+  const changeThisInTheChat = (said: string, askSaid: string) => {
+    if (oldChatIsOpen) {
+      window.dispatchEvent(new CustomEvent('gw:context-chat:say', { detail: said }))
+      scrollToId('gw-context-chat')
+    } else {
+      /* B-082: no chat is drawn to fill, so this asks Ask the whole question instead of filling a
+         box nobody can see. */
+      showWith(askSaid)
+    }
   }
 
   /*
@@ -598,7 +614,7 @@ export function ContextPage({
                   viewerUserId={viewerUserId}
                   isTheLead={isTheLead}
                   numbersShared={(ground as any).whoSeesTargets === 'EVERYBODY'}
-                  onChangeTarget={isTheLead && contextEnabled ? (o) => changeThisInTheChat(`Change the target "${o.name}" to `) : undefined}
+                  onChangeTarget={isTheLead && contextEnabled ? (o) => changeThisInTheChat(`Change the target "${o.name}" to `, `I want to change the target "${o.name}" on ${groundLabel}.`) : undefined}
                 />
               </>
             ) : (
@@ -614,7 +630,9 @@ export function ContextPage({
                     nothing to act on.
                   */}
                   {mayRewriteTheBrief && contextEnabled
-                    ? 'Nothing yet. Say what this is counted by in the conversation below and it lands here.'
+                    ? (oldChatIsOpen
+                      ? 'Nothing yet. Say what this is counted by in the conversation below and it lands here.'
+                      : `Nothing yet. Tell ${askName} what this is counted by and it lands here.`)
                     : 'Nothing yet.'}
                 </Callout>
               )
@@ -677,7 +695,10 @@ export function ContextPage({
               isLead={isLead}
               isTheLead={isTheLead}
               leadFirstName={theLeadMidSentence}
-              onChangeInChat={isTheLead && contextEnabled && oldChatIsOpen ? changeThisInTheChat : undefined}
+              groundLabel={groundLabel}
+              oldChatIsOpen={oldChatIsOpen}
+              askName={askName}
+              onChangeInChat={isTheLead && contextEnabled ? changeThisInTheChat : undefined}
               /*
                 ATTACHING AGAINST THE THING THEY PROMISED, not into a general pile. The line they
                 pressed becomes what the check-in is told to look for in the file, so the promise and
@@ -1176,12 +1197,13 @@ export function ContextPage({
                 {isTheLead && contextEnabled && commitments.length === 0 && (
                   <Panel>
                     <p className="gwui-panel-text-muted">
-                      Nothing yet. Anything somebody says they will do in a check-in lands here on its
-                      own. Something agreed on a call goes in by saying it in the conversation above.
+                      {oldChatIsOpen
+                        ? 'Nothing yet. Anything somebody says they will do in a check-in lands here on its own. Something agreed on a call goes in by saying it in the conversation above.'
+                        : `Nothing yet. Anything somebody says they will do in a check-in lands here on its own. Something agreed on a call goes in by telling ${askName}.`}
                     </p>
                     <div className="gwui-mt-8">
                       {/* A quiet text link: the prototype's Context screen has no button here. */}
-                      <button type="button" className="gwui-plain-link" onClick={() => changeThisInTheChat('On the call today, ')}>
+                      <button type="button" className="gwui-plain-link" onClick={() => changeThisInTheChat('On the call today, ', `Something was agreed on a call today for ${groundLabel}. I want to add it to this check-in.`)}>
                         Something agreed on a call
                       </button>
                     </div>
@@ -1317,10 +1339,17 @@ export function ContextPage({
                           */}
                           {contextEnabled && (
                             <button
-                              onClick={() => { changeThisInTheChat(lineDraft.trim() || (THE_WAY_IN[typingInto] ?? '')); setTypingInto(null); setLineDraft('') }}
+                              onClick={() => {
+                                const typed = lineDraft.trim()
+                                changeThisInTheChat(
+                                  typed || (THE_WAY_IN[typingInto] ?? ''),
+                                  typed ? `For ${groundLabel}: ${typed}` : `I want to add something to ${groundLabel}.`,
+                                )
+                                setTypingInto(null); setLineDraft('')
+                              }}
                               className="gwui-plain-link"
                             >
-                              Say it in the conversation instead
+                              {oldChatIsOpen ? 'Say it in the conversation instead' : `Tell ${askName} instead`}
                             </button>
                           )}
                         </div>
@@ -1358,7 +1387,7 @@ export function ContextPage({
                                 {l.audience === 'EVERYONE' ? 'Make it yours only' : 'Share with the team'}
                               </Button>
                               {contextEnabled && (
-                                <Button kind="quiet" size="small" onClick={() => changeThisInTheChat(`Change the line "${l.text}" to `)}>
+                                <Button kind="quiet" size="small" onClick={() => changeThisInTheChat(`Change the line "${l.text}" to `, `I want to change the line "${l.text}" on ${groundLabel}.`)}>
                                   Change this
                                 </Button>
                               )}

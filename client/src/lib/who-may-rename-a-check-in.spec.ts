@@ -43,6 +43,19 @@ describe('who may rename a check-in', () => {
     expect(mayRenameACheckIn({ ...CHECK_IN, leadHasLeft: false }, { id: 'u-other', role: 'ADMIN' })).toBe(false)
   })
 
+  /*
+   * REQUEST 206, DONE: `GET /grounds` now carries `mayChangeSetup` on every row, worked out for the
+   * viewer who asked for the list the same way `GET /grounds/:id` already does. Where it is sent,
+   * it is read directly rather than re-derived - an admin may rename once `mayChangeSetup` says so,
+   * whatever `leadHasLeft` says or does not say, and a party reads `false` even though she "leads"
+   * nothing the old rule would have refused her either way.
+   */
+  it('reads the server\'s own mayChangeSetup directly, once the list carries it', () => {
+    expect(mayRenameACheckIn({ ...CHECK_IN, mayChangeSetup: true }, { id: 'u-other', role: 'ADMIN' })).toBe(true)
+    expect(mayRenameACheckIn({ ...CHECK_IN, mayChangeSetup: false }, { id: 'u-lead', role: 'MEMBER' })).toBe(false)
+    expect(mayRenameACheckIn({ ...CHECK_IN, mayChangeSetup: true, leadHasLeft: false }, { id: 'u-other', role: 'ADMIN' })).toBe(true)
+  })
+
   it('a party who does not lead it may not - this is the one the audit found', () => {
     expect(mayRenameACheckIn(CHECK_IN, { id: 'u-party', role: 'MEMBER' })).toBe(false)
   })

@@ -8,6 +8,9 @@ import { howManyHaveNotAnsweredYet } from './a-number-up-to-ten-in-words'
  */
 const ground = {
   status: 'ACTIVE',
+  /* Baraka's check-in is the anchor's. The server's rule (the-lead-who-only-asks.ts, a0728ceb) never counts a lead who only
+     manages on the anchor; on other kinds she still gives session 1. The fixture names its scenario so it reads that rule. */
+  scenario: 'HELP_TEAM_UNDERSTAND',
   participants: [
     { id: 'p-lead', userId: 'u-lead', managingOnly: true },
     { id: 'p-kito', userId: 'u-kito', managingOnly: false },

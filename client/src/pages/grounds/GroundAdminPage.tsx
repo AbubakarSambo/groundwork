@@ -215,6 +215,14 @@ export function GroundAdminPage() {
      day - see WhichDaysTheyWork. This is the only place the rhythm can be changed after creation,
      and it carried no way to say "not at the weekend". */
   const [workingDaysDraft, setWorkingDaysDraft] = useState<number[]>([])
+  /*
+   * REQUEST 194 (8 October 2026): THE DAY CHECK-INS LAND ON, EDITABLE FROM "PEOPLE AND SETUP". The
+   * same `cadenceAnchorDay` setup already offers while a check-in is being created
+   * (TheSetup.tsx) - 0 to 6 for a weekly or fortnightly rhythm, 1 to 31 for a monthly one, `null` to
+   * clear it - now editable afterwards too, through `PATCH /grounds/:id`, by whoever `mayChangeSetup`
+   * says may change this check-in's setup.
+   */
+  const [anchorDayDraft, setAnchorDayDraft] = useState<number | null>(null)
   const [groundScenario, setGroundScenario] = useState('')
   const [showReleaseConfirm, setShowReleaseConfirm] = useState(false)
   const [newParticipantEmail, setNewParticipantEmail] = useState('')
@@ -270,11 +278,15 @@ export function GroundAdminPage() {
   })
 
   /*
-   * A check-in that is genuinely gone answers 404. Anything else - a dropped connection, a token
-   * being refreshed, a cold server - is a failure to load, and telling somebody their check-in does
-   * not exist because their wifi blinked is the wrong sentence at the worst moment.
+   * A check-in that is genuinely gone answers 404 - OR 403: B-110 (GW-PRI-04). The two have to
+   * read the same, because the only other true sentence for a 403 here ("you are not part of
+   * this check-in") tells a stranger holding a stale link that something real sits behind it,
+   * which is exactly what the 404 wording is written not to say. Anything else - a dropped
+   * connection, a token being refreshed, a cold server - is a failure to load, and telling
+   * somebody their check-in does not exist because their wifi blinked is the wrong sentence at
+   * the worst moment.
    */
-  const definitelyGone = isError && (error as any)?.response?.status === 404
+  const definitelyGone = isError && [404, 403].includes((error as any)?.response?.status)
 
   /* THE CHECK-IN'S LIVE REPORT QUERY WENT WITH THE BODY THAT RENDERED IT. Each session's report
      is fetched by the page that shows it, from `/report/session/:n`, which is the only call that
@@ -292,11 +304,30 @@ export function GroundAdminPage() {
    * Yours only. Somebody else's session is theirs until the shared report releases, which is the
    * same wall the session grid keeps - and the reason this reads `userId === user?.id` rather than
    * "everybody on the check-in".
+   *
+   * B-100: A SET-UP ROW IS NOT A SESSION, HERE EITHER. `sessionsDoneBy`, `mySessionDots` and the
+   * session grid (`!c.isSetup`) all already leave the set-up conversation out, but this list fed
+   * "Your reports" straight from the raw check-ins, so a lead who only manages read "Session 1,
+   * your own" with a report to read even though "Your check-ins" on the very same page said
+   * "Nothing on record yet" and the stat tile above it said she does not check in herself. One
+   * rule, here too.
    */
   const mySessions = ((ground as any)?.checkIns ?? [])
-    .filter((c: any) => c.status === 'COMPLETED')
+    .filter((c: any) => c.status === 'COMPLETED' && !c.isSetup)
     .filter((c: any) => ((ground as any)?.participants ?? []).some((p: any) => p.id === c.participantId && p.userId === user?.id))
     .sort((a: any, b: any) => (b.sessionNumber ?? 0) - (a.sessionNumber ?? 0))
+
+  /**
+   * EVERYONE WHO ACTUALLY CHECKS IN ON THIS GROUND.
+   *
+   * B-100: A LEAD WHO ONLY MANAGES IS NOT SOMEONE WHO CHECKS IN, AND THE CHECK-IN TAB'S OWN
+   * ROSTER AND "ONCE EVERYBODY IS IN" LINE STILL COUNTED HER. "Your sessions" (B-080) already
+   * leaves her out, but the People list on the Check-ins tab still listed her own row with "Not
+   * started" and "Copy check-in link", and the total it counted against ("once all three people
+   * are in") still carried her, when only the two who answer were ever going to. The same
+   * `managingOnly` exclusion `rail-attention.ts`/`WhosInItRoster.tsx` already apply, here too.
+   */
+  const participantsWhoCheckIn = ((ground as any)?.participants ?? []).filter((p: any) => !p.managingOnly)
 
   /*
    * EVERYBODY ON THIS PAGE, NAMED ONCE (request 36). Their name, else the address the lead typed,
@@ -459,6 +490,16 @@ export function GroundAdminPage() {
    * further down for the roster; named here because the tab row asks it too.
    */
   const viewerIsAParty = (ground?.participants ?? []).some((p: any) => p.userId === user?.id)
+  /**
+   * AND WHETHER SHE ANSWERS IT HERSELF, WHICH IS A THIRD QUESTION.
+   *
+   * A lead who only manages (`managingOnly`) IS a party (she is on `ground.participants`, same as
+   * anybody else), but never gives her own account of a round - the same fact "Your sessions" and
+   * every count on the Check-ins tab already leave her out for (`participantsWhoCheckIn` above).
+   * The "Your check-in" tab and header button are a door to a check-in she does not do; this is
+   * the same `managingOnly` rule, named for where a party who checks in is asked for.
+   */
+  const viewerChecksIn = viewerIsAParty && !(myParticipant as any)?.managingOnly
 
   /**
    * ROUND 4, ITEM A STEP 3: THE CHECK-IN TAB IS THE FOCUSED CONVERSATION, FOR A PARTY.
@@ -479,7 +520,9 @@ export function GroundAdminPage() {
    */
   const myOpenSessionAutoOpenFired = useRef(false)
   useEffect(() => {
-    if (tab !== 'chat' || !viewerIsAParty) return
+    /* A lead who only manages has no session of her own to auto-open - `viewerChecksIn`, not
+       `viewerIsAParty`, the same distinction the tab and header button below now make. */
+    if (tab !== 'chat' || !viewerChecksIn) return
     if (myOpenSessionAutoOpenFired.current) return
     if (!myOpenCheckIn || myOpenOpensLater) return
     /*
@@ -523,7 +566,7 @@ export function GroundAdminPage() {
       groundLabel: (ground as any)?.label,
       isInitiator,
     })
-  }, [tab, viewerIsAParty, myOpenCheckIn, myOpenOpensLater, openMySession, ground, isInitiator])
+  }, [tab, viewerChecksIn, myOpenCheckIn, myOpenOpensLater, openMySession, ground, isInitiator])
 
   /**
    * REVIEW ROUND 3, ITEM 3: AN ADMIN WHO NEITHER RUNS THIS CHECK-IN NOR TAKES PART IN IT LANDS ON
@@ -1017,6 +1060,7 @@ export function GroundAdminPage() {
     /* Seeded like the rest: an empty picker on a check-in that already skips weekends would offer
        to put it back on Sundays by pressing save. */
     if (Array.isArray(ground?.workingDays)) setWorkingDaysDraft(ground.workingDays as number[])
+    setAnchorDayDraft(((ground as any)?.cadenceAnchorDay ?? null) as number | null)
     if (ground?.scenario) setGroundScenario(prev => prev || ground.scenario)
     /* Seeded from the record for the same reason as the two above: an empty date control on a
        check-in that HAS a start date would offer to clear it by pressing save. */
@@ -1036,6 +1080,7 @@ export function GroundAdminPage() {
     timelineDaysDraft !== ground.timelineDays
     || cadenceDraft !== ground.cadence
     || !sameDays(workingDaysDraft, (ground as { workingDays?: number[] }).workingDays)
+    || anchorDayDraft !== (((ground as any)?.cadenceAnchorDay ?? null) as number | null)
   )
 
   // Was the bare words "Ground not found." with nothing to press. W8-65.
@@ -1492,8 +1537,13 @@ export function GroundAdminPage() {
                 tabs - only "Add people" is navy on that screen. Without this, the People and setup
                 tab carried two navy buttons at once ("Your check-in" here, "Add people" further
                 down); the prototype's own screen has exactly one.
+
+                COORDINATOR FOLLOW-UP: NOT FOR A LEAD WHO ONLY MANAGES EITHER. She is a party
+                (`viewerIsAParty`), but never answers a round of her own - `viewerChecksIn` is the
+                same distinction `participantsWhoCheckIn` already draws for every count on the
+                Check-ins tab. Offering this button promised a check-in she does not do.
               */}
-              {viewerIsAParty && outerTabOf(tab) !== 'people' && (
+              {viewerChecksIn && outerTabOf(tab) !== 'people' && (
                 /*
                  * RE-REVIEW: THIS LINKED TO THE BARE GROUND PAGE, NOT TO A CHECK-IN.
                  * `/grounds/:id` is this very page - clicking it while already here did
@@ -1532,6 +1582,12 @@ export function GroundAdminPage() {
              * Filtered from ONE list (not two literal arrays) so "/board`" - which
              * one-door-per-place.spec.ts pins at an exact count - still appears once here, not
              * once per branch.
+             *
+             * COORDINATOR FOLLOW-UP: "CHECK-IN" IS ALSO NOT FOR A LEAD WHO ONLY MANAGES. She is
+             * `isInitiator`, so the general condition below never dropped it for her - but she has
+             * no check-in of her own to answer, same as the admin the comment above already
+             * excludes it for. This one tab reads `viewerChecksIn` on its own; every other tab
+             * keeps the existing rule.
              */
             [
               { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
@@ -1539,7 +1595,9 @@ export function GroundAdminPage() {
               { key: 'context', label: contextEnabled ? 'Context and resources' : 'Documents' },
               { key: 'mywork', label: 'My work' },
               { key: 'people', label: 'People and setup' },
-            ].filter(t => (isInitiator || viewerIsAParty) || (t.key === 'board' || t.key === 'context' || t.key === 'people'))
+            ].filter(t => t.key === 'checkin'
+              ? viewerChecksIn
+              : (isInitiator || viewerIsAParty) || (t.key === 'board' || t.key === 'context' || t.key === 'people'))
           }
           onSelectTab={(k) => {
             if (k === 'checkin') goTab('chat')
@@ -1840,10 +1898,15 @@ export function GroundAdminPage() {
           * read-only history used to stand in for that; it is retired now that the history it drew
           * lives on My work and the roster it drew lives on People and setup, so this says plainly
           * that this reader does not answer the check-in, and links to the board instead.
+          *
+          * COORDINATOR FOLLOW-UP: THE SAME IS TRUE OF A LEAD WHO ONLY MANAGES. She is a party
+          * (`viewerIsAParty`), but has no check-in of her own either - reading `viewerChecksIn`
+          * here means she gets this same plain sentence and link, rather than "No check-in open
+          * right now" for a check-in she was never going to have.
           */}
         {tab === 'chat' && (
           <div>
-            {viewerIsAParty ? (
+            {viewerChecksIn ? (
               /*
                * B-19: AN ENDED CHECK-IN STILL PROMISED A NEXT ONE, here on the lead's own Check-in
                * tab too ("Bring this to your next check-in" never applied once it had ended). The
@@ -2014,7 +2077,7 @@ export function GroundAdminPage() {
               })()}
               <SubHeading>People</SubHeading>
               <Stack gap={10}>
-                {ground.participants.map((p: any) => {
+                {participantsWhoCheckIn.map((p: any) => {
                   const myCheckIn = ground.checkIns?.find(c => c.participantId === p.id)
                   /**
                    * EVERY SESSION THIS PERSON HAS, NOT THE FIRST ONE FOUND.
@@ -2024,8 +2087,12 @@ export function GroundAdminPage() {
                    * it was about. That is why the tab needed a separate flat list of cards underneath
                    * repeating the same information a different way.
                    */
+                  /* B-080: a set-up row (`isSetup`) is not a session, the same rule `sessionsDoneBy`
+                     already applies to "Your sessions" - without it, a lead who only manages and
+                     never checks in read "Some sessions done, some still open" from her one
+                     completed set-up row alone. */
                   const theirSessions = [...(ground.checkIns ?? [])]
-                    .filter((c: any) => c.participantId === p.id)
+                    .filter((c: any) => c.participantId === p.id && !c.isSetup)
                     .sort((a: any, b: any) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0))
                   const status = myCheckIn?.status ?? 'NOT_STARTED'
                   /**
@@ -2424,7 +2491,9 @@ export function GroundAdminPage() {
               What is left is the one thing this spot can usefully do: get to the report.
             */}
             {(() => {
-              const pending = ground.participants.filter((p: any) => {
+              /* B-100: a lead who only manages is never going to answer, so she is not "pending"
+                 one either - the same `participantsWhoCheckIn` the roster above now uses. */
+              const pending = participantsWhoCheckIn.filter((p: any) => {
                 const ci = ground.checkIns?.find((c: any) => c.participantId === p.id)
                 return !ci || ci.status !== 'COMPLETED'
               })
@@ -2446,8 +2515,8 @@ export function GroundAdminPage() {
                * (the lead can view a check-in that is not her own) - and with more than one, the
                * count is said in words, the way every other small number on this page already is.
                */
-              const total = ground.participants.length
-              const theOnlyParticipant = total === 1 ? ground.participants[0] : null
+              const total = participantsWhoCheckIn.length
+              const theOnlyParticipant = total === 1 ? participantsWhoCheckIn[0] : null
               const onceEverybodyIsIn = total === 1
                 ? (theOnlyParticipant?.userId === user?.id ? 'you have checked in' : 'they are in')
                 : `all ${numberUpToTenInWords(total)} people are in`
@@ -2808,6 +2877,7 @@ export function GroundAdminPage() {
             timelineDaysDraft={timelineDaysDraft} setTimelineDaysDraft={setTimelineDaysDraft}
             cadenceDraft={cadenceDraft} setCadenceDraft={setCadenceDraft}
             workingDaysDraft={workingDaysDraft} setWorkingDaysDraft={setWorkingDaysDraft}
+            anchorDayDraft={anchorDayDraft} setAnchorDayDraft={setAnchorDayDraft}
             theTimeframeChanged={theTimeframeChanged}
             saveSetup={saveSetup}
             groundLabel={groundLabel} setGroundLabel={setGroundLabel}

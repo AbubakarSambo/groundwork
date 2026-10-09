@@ -76,8 +76,10 @@ describe('Wairimu, who runs it, on the ending page', () => {
     expect(screen.getByLabelText('Why, in a sentence or two')).toBeTruthy()
     expect(screen.getByText('Kwame reads this with the outcome.')).toBeTruthy()
     expect(screen.getByText('Save the outcome and end it')).toBeTruthy()
+    /* B-081: "account" is banned wherever a person reads about their own words - this line used
+       "correct their account", the one spot the earlier fix (request 194/item 4) missed. */
     expect(screen.getByText(
-      'Ending means nobody can add to it. Both of you keep your own history, and Kwame can still correct their account.',
+      'Ending means nobody can add to it. Both of you keep your own history, and Kwame can still correct what they said.',
     )).toBeTruthy()
     expect(screen.getByText('What Kwame sees now')).toBeTruthy()
     expect(screen.getByText(
