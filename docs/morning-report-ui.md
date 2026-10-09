@@ -8,7 +8,12 @@ same file.
 
 - **The old context chat stays on in this pull request.** The engine is keeping `release.oldContextChat` on.
 - **The privacy leak (B-091, and B-013 with it) must be closed before the pull request.** The engine is doing it. When it pushes, the screens will merge and check B-091, B-013 and Ask's handling of documents at every width.
-- **B-113:** build a simple offline page instead of the blank one.
+- **B-113:** build a simple offline page instead of the blank one. **Done.**
+  - A minimal service worker (`client/public/sw.js`) handles only page loads that fail, and shows `offline.html` ("You're offline. Groundwork will open again when you're back online.", with "Try again").
+  - It caches nothing else, so it can never serve an old app or old data. It registers only in production builds.
+  - Inside the open app, a note now says when the connection drops.
+  - It was proven on a production preview at 1440 and 390. 4,892 of 4,892 client tests pass.
+  - **For Hafsah and Abubakar:** this is the product's first service worker. `docs/deploy-notes-screens.md` says how to turn it off, and gives one optional `Cache-Control` header for `/sw.js` on Vercel, which is not added.
 - **The style clean-up waits until after the pull request.**
 
 ## Morning, 9 October: what is finished, every result, and what needs Hafsah
