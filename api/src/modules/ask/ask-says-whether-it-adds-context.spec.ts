@@ -44,7 +44,7 @@ describe('who is told Ask can add context for them', () => {
   it('the lead of a check-in that is running: yes, and the line under the caption is served', async () => {
     const r = await world({ grounds: [q4], roles }).read('u-wanjiru');
     expect(r.addsContext).toBe(true);
-    expect(r.addLine).toBe('You can also add context or documents to your check-ins here.');
+    expect(r.addLine).toBe("To add context or a document, open the check-in's Context and resources page.");
   });
   it('a person who only takes part: no', async () => {
     expect((await world({ grounds: [q4], roles }).read('u-miriam')).addsContext).toBe(false);
@@ -66,11 +66,12 @@ describe('the switch, as the screens read it', () => {
   it('no row at all reads on', async () => {
     expect((await world({ grounds: [q4], roles }).read('u-wanjiru')).addsContext).toBe(true);
   });
-  it('{ on: false } switches it off: no button, no line about adding context, and the welcome does not offer it', async () => {
+  it('{ on: false } switches it off: no button in Ask, and nothing promises that Ask takes context; the line points to the check-in\'s own page (request 209)', async () => {
     const r = await world({ setting: { on: false }, grounds: [q4], roles }).read('u-wanjiru');
     expect(r.addsContext).toBe(false);
-    expect(r.addLine).toBeNull();
-    expect(JSON.stringify([r.welcome, r.starters])).not.toMatch(/context|document/i);
+    expect(r.addLine).toBe("To add context or a document, open the check-in's Context and resources page.");
+    expect(JSON.stringify(r.starters)).not.toMatch(/context|document/i);
+    expect(r.welcome).not.toMatch(/You can add context|says it back|say it back/i);
   });
   it('a row that cannot be read reads off', async () => {
     const r = await world({ setting: 'yes', grounds: [q4], roles }).read('u-wanjiru');

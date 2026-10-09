@@ -284,8 +284,12 @@ export class AskService {
     const mine = await this.theirCheckIns(asker);
     const standing = await this.standingOf(asker);
     const suitesOn = await this.suitesThatAreOn(asker.organizationId);
+    /* ASK POINTS TO THE CONTEXT PAGE, never promises to take context or a document itself (request 209): only to somebody who may add context,
+       and only while the check-in's own chat is open to do it. */
+    const oldContextChatIsOpen = await theOldContextChatIsOpen(this.prisma);
+    const pointsToTheContextPage = shown.canAsk && oldContextChatIsOpen && (await this.theyMayAddContext(asker));
     const welcome = shown.canAsk && shown.turns.length === 0
-      ? askFirstWelcome(organisationName, contextIsHere, { leaveIsOn: suitesOn.has('leave'), spendingIsOn: suitesOn.has('spend'), isAGuest: standing.is === 'guest' })
+      ? askFirstWelcome(organisationName, pointsToTheContextPage, { leaveIsOn: suitesOn.has('leave'), spendingIsOn: suitesOn.has('spend'), isAGuest: standing.is === 'guest' })
       : null;
     const starters = shown.canAsk
       ? askStartersFor({
@@ -301,9 +305,8 @@ export class AskService {
     /* WHETHER "ADD CONTEXT WITH ASK" IS ONE OF THE THINGS THIS READER CAN DO (request 169). True only while Context is in Ask and the
        reader may confirm setup on at least one check-in: their own, or, for an admin, one whose lead has left. The screens draw the button from this. */
     const addsContext = shown.canAsk && contextIsHere ? await this.theyMayAddContext(asker) : false;
-    /* Whether the old context chat on the check-in page still answers (release.oldContextChat). The screens stop drawing it when this is false. */
-    const oldContextChatIsOpen = await theOldContextChatIsOpen(this.prisma);
-    return { ...shown, askName: name, caption: ASK_CAPTION, addLine: contextIsHere ? ASK_ADD_LINE : null, addsContext, oldContextChatIsOpen, welcome, starters };
+    /* Whether the old context chat on the check-in page still answers (release.oldContextChat) is read above. The screens stop drawing it when this is false. */
+    return { ...shown, askName: name, caption: ASK_CAPTION, addLine: pointsToTheContextPage ? ASK_ADD_LINE : null, addsContext, oldContextChatIsOpen, welcome, starters };
   }
 
   /**

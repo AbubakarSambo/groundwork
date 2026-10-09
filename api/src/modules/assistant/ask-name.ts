@@ -24,7 +24,9 @@ export function askName(organisationName?: string | null): string {
 /** The caption under the name. */
 export const ASK_CAPTION = 'Ask about the company, your work or your check-ins.';
 /** The one line under the caption. */
-export const ASK_ADD_LINE = 'You can also add context or documents to your check-ins here.';
+export const ASK_ADD_LINE = 'To add context or a document, open the check-in\'s Context and resources page.';
+/* Ask cannot take a document or a fact for a check-in (B-083 to B-085), so it does not say it can (request 209). The sentence above points to the page where
+   the check-in's own chat does it, and is said only to somebody who may add context. */
 
 /**
  * What the first time somebody opens Ask says (docs/ask-definition.md, "The first time you open it").
@@ -41,7 +43,7 @@ export const ASK_ADD_LINE = 'You can also add context or documents to your check
  */
 export function askFirstWelcome(
   organisationName?: string | null,
-  contextIsHere = true,
+  pointToTheContextPage = false,
   /** Which of leave and spending are on here, and whether the reader is a guest: what the welcome says Ask can do is only what is true for them. */
   who: { leaveIsOn?: boolean; spendingIsOn?: boolean; isAGuest?: boolean } = { leaveIsOn: true, spendingIsOn: true },
 ): string {
@@ -50,13 +52,11 @@ export function askFirstWelcome(
     return `This is Ask ${name}. You are a guest here, so I answer you only about your own check-in. What you ask me stays private.`;
   }
   const request = who.leaveIsOn && who.spendingIsOn ? 'for leave or to spend money' : who.leaveIsOn ? 'for leave' : who.spendingIsOn ? 'to spend money' : null;
-  /* While adding context or a document is hidden at release (`release.contextInAskGroundwork`), the welcome neither offers it nor explains it. */
+  /* Ask does not promise to take context or a document: it points to the page that does, and only for somebody who may add context (request 209). */
+  const pointer = pointToTheContextPage ? ` ${ASK_ADD_LINE}` : '';
   return `This is Ask ${name}. I answer about the whole organisation and about your own work, and you can point me at one of your check-ins whenever you want to. `
-    + (contextIsHere
-      ? `Ask me about the company, about your work, or about your check-ins. You can add context or a document to one of your check-ins here${request ? `, and ask ${request}` : ''}. `
-      : `Ask me about the company, about your work, or about your check-ins.${request ? ` You can also ask me ${request}.` : ''} `)
-    + `What you ask me stays private.`
-    + (contextIsHere ? ` Anything you choose to add to a check-in works differently. I say it back to you first, it goes in only once you say yes, and from then on it is part of that check-in.` : '');
+    + `Ask me about the company, about your work, or about your check-ins.${request ? ` You can also ask me ${request}.` : ''}${pointer} `
+    + `What you ask me stays private.`;
 }
 
 /** Looks up the name of one organisation. A missing organisation gives "Ask Groundwork". */
@@ -95,7 +95,6 @@ const STARTERS = [
   { line: 'What is my check-in for, and who reads it?', needsACheckIn: true },
   { line: 'When is my next check-in?', needsACheckIn: true },
   { line: "What are the company's priorities right now?", needsACheckIn: false },
-  { line: 'Add a document or some context to my check-in.', needsACheckIn: true },
   /*
    * THE SIXTH IS LEAVE AND SPENDING, and it is an addition to decision 101 rather than part of it.
    * Hafsah's five were decided before she said the suggestions must also cover leave or spending
@@ -105,9 +104,9 @@ const STARTERS = [
   { line: 'Ask for leave, or to spend money.', needsACheckIn: false },
 ] as const;
 
-export function askStarters(hasACheckIn: boolean, contextIsHere = true): string[] {
-  /* While adding context is hidden at release, the starter that offers it is left out too. */
-  return STARTERS.filter((s) => (hasACheckIn || !s.needsACheckIn) && (contextIsHere || !/context/i.test(s.line))).map((s) => s.line);
+export function askStarters(hasACheckIn: boolean, _contextIsHere = true): string[] {
+  /* No starter offers to add context or a document: Ask cannot do it (request 209). */
+  return STARTERS.filter((s) => hasACheckIn || !s.needsACheckIn).map((s) => s.line);
 }
 
 
@@ -138,7 +137,6 @@ export function askStartersFor(o: WhoIsAsking): string[] {
   if (o.hasOneToUse) out.push('What is my check-in for, and who reads it?');
   if (o.takesPartInOne) out.push('When is my next check-in?');
   if (!o.isAGuest) out.push("What are the company's priorities right now?");
-  if (!o.isAGuest && o.runsOne && o.contextIsHere) out.push('Add a document or some context to my check-in.');
   if (!o.isAGuest && (o.leaveIsOn || o.spendingIsOn)) {
     out.push(o.leaveIsOn && o.spendingIsOn ? 'Ask for leave, or to spend money.' : o.leaveIsOn ? 'Ask for leave.' : 'Ask to spend money.');
   }

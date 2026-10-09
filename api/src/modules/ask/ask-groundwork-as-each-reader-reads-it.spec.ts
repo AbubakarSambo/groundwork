@@ -286,6 +286,7 @@ const STARTERS_WITH_A_CHECK_IN_AND_CONTEXT = [
 const STARTERS_WITH_A_CHECK_IN = STARTERS_WITH_A_CHECK_IN_AND_CONTEXT.filter((l) => !/context/.test(l));
 /* As shipped, with adding context hidden (`release.contextInAskGroundwork` off): nothing is offered that cannot be done. */
 const BARIDI_WELCOME = 'This is Ask Baridi. I answer about the whole organisation and about your own work, and you can point me at one of your check-ins whenever you want to. Ask me about the company, about your work, or about your check-ins. You can also ask me for leave or to spend money. What you ask me stays private.';
+/* Kept for the record of the old words; no reader is given them now. */
 const BARIDI_WELCOME_WITH_CONTEXT = 'This is Ask Baridi. I answer about the whole organisation and about your own work, and you can point me at one of your check-ins whenever you want to. Ask me about the company, about your work, or about your check-ins. You can add context or a document to one of your check-ins here, and ask for leave or to spend money. What you ask me stays private. Anything you choose to add to a check-in works differently. I say it back to you first, it goes in only once you say yes, and from then on it is part of that check-in.';
 
 const everything = (x: unknown) => JSON.stringify(x);
@@ -991,8 +992,9 @@ describe('Ask is named for the organisation, and tells a person what it can do t
     const tom: any = await controller.mine(asUser(readers.tom));
     expect(tom.askName).toBe('Ask Baridi');
     expect(tom.caption).toBe('Ask about the company, your work or your check-ins.');
-    expect(tom.addLine).toBe('You can also add context or documents to your check-ins here.');
-    expect(tom.welcome).toBe(BARIDI_WELCOME_WITH_CONTEXT);
+    /* Changed 9 October (request 209): Ask cannot take a document, so it no longer says it can. Tom only takes part, so he is told nothing about adding context. */
+    expect(tom.addLine).toBeNull();
+    expect(tom.welcome).toBe(BARIDI_WELCOME);
   });
 
   it('while the switch for context in Ask is off, nobody is told they can add context or documents here', async () => {
@@ -1004,11 +1006,10 @@ describe('Ask is named for the organisation, and tells a person what it can do t
     expect(tom.welcome).toBe(BARIDI_WELCOME);
   });
 
-  it('the starter about adding a document or context is offered only while that part is on', () => {
+  it('no starter offers to add a document or context, because Ask cannot do it (request 209)', () => {
     const line = 'Add a document or some context to my check-in.';
     expect(askStarters(true, false)).not.toContain(line);
-    expect(askStarters(true, true)).toContain(line);
-    expect(askStarters(true, false)).toHaveLength(askStarters(true, true).length - 1);
+    expect(askStarters(true, true)).not.toContain(line);
   });
 
   it('a member who has already asked is not welcomed again, and still reads the name', async () => {
@@ -1018,11 +1019,12 @@ describe('Ask is named for the organisation, and tells a person what it can do t
     expect(miriam.welcome).toBeNull();
   });
 
-  it('an admin with no questions yet is welcomed in the same words', async () => {
+  it('an admin who leads a check-in is welcomed in the same words, and told where to add context (request 209)', async () => {
     const { controller, asUser } = fixture();
     const grace: any = await controller.mine(asUser(readers.grace));
     expect(grace.askName).toBe('Ask Baridi');
-    expect(grace.welcome).toBe(BARIDI_WELCOME);
+    expect(grace.welcome).toBe(BARIDI_WELCOME.replace(' What you ask', " To add context or a document, open the check-in's Context and resources page. What you ask"));
+    expect(grace.addLine).toBe("To add context or a document, open the check-in's Context and resources page.");
   });
 
   it('a guest reads the host organisation\'s Ask name, and what a guest is refused reads it too', async () => {

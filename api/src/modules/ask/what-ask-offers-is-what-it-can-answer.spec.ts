@@ -94,7 +94,8 @@ describe('somebody held for a seat, and a check-in that has ended', () => {
 
 describe('adding context', () => {
   it('is offered to somebody who runs a check-in, and not to a person who only takes part, and not while it is hidden', async () => {
-    expect((await read(leah, [], true)).starters).toContain('Add a document or some context to my check-in.');
+    /* Changed 9 October (request 209): no starter offers it now, because Ask cannot take a document. The page is pointed to by the line under the caption. */
+    expect((await read(leah, [], true)).starters).not.toContain('Add a document or some context to my check-in.');
     expect((await read(miriam, [], true)).starters).not.toContain('Add a document or some context to my check-in.');
     expect((await read(leah, [], false)).starters).not.toContain('Add a document or some context to my check-in.');
   });
