@@ -18,6 +18,7 @@ import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { useAfterAWhile, GETTING_YOUR_FIRST_QUESTION_READY } from '@/lib/opening-is-slow'
 import { TheCheckInHeader } from '@/components/gw/checkin/TheCheckInHeader'
 import { Bubble } from '@/components/gw/ui/Bubble'
+import { GroundworkIsWriting, WritingDots } from '@/components/gw/ui/GroundworkIsWriting'
 import { ConversationCard } from '@/components/gw/ui/ConversationCard'
 import { Composer } from '@/components/gw/ui/Composer'
 import { Modal } from '@/components/gw/ui/Modal'
@@ -1385,15 +1386,24 @@ export function ChatPage() {
               two seconds, and openSession.isPending cannot be true until after it, so every arrival opened on
               a blank screen. The jitter stays; the sentence starts earlier. */}
           {openingNow && (
-            <div role="status" className="gwui-panel-text-muted">
-              Opening your session…
-              {/* Said only once the wait is long enough to need explaining (U.8 review): opening a
-                  session runs several model calls and can take up to a minute with nothing else on
-                  screen, which read as a hang. */}
-              {openingIsSlow && (
-                <div>{GETTING_YOUR_FIRST_QUESTION_READY}</div>
-              )}
-            </div>
+            /*
+             * Still the pinned sentence, verbatim (the-page-says-what-it-is-doing.spec.ts), now in
+             * Groundwork's own bubble shape with the same animated dots every other wait uses
+             * (WritingDots - just the dots, since this status already has its own sentence, so it
+             * is not said twice).
+             */
+            <Bubble mine={false}>
+              <div role="status" className="gwui-writing">
+                Opening your session…
+                <WritingDots />
+                {/* Said only once the wait is long enough to need explaining (U.8 review): opening a
+                    session runs several model calls and can take up to a minute with nothing else on
+                    screen, which read as a hang. */}
+                {openingIsSlow && (
+                  <div className="gwui-panel-text-muted">{GETTING_YOUR_FIRST_QUESTION_READY}</div>
+                )}
+              </div>
+            </Bubble>
           )}
 
           {/*
@@ -1533,24 +1543,22 @@ export function ChatPage() {
             >
               {isWaiting(m) ? (
                 /*
-                 * THE DOTS, AND AFTER A FEW SECONDS WHAT THEY MEAN.
+                 * "GROUNDWORK IS WRITING…", AND AFTER A FEW SECONDS WHAT THE WAIT MEANS.
                  *
-                 * Three bouncing dots say "something is happening" for about two seconds and
-                 * "has this frozen?" for every second after that. Ninety-nine of the hundred
-                 * audited journeys waited longer than four seconds for a reply, and the answer
-                 * to that doubt was people pressing send again — which used to put the same
-                 * sentence in the record twice.
+                 * Ninety-nine of the hundred audited journeys waited longer than four seconds for
+                 * a reply, and the answer to that doubt was people pressing send again — which
+                 * used to put the same sentence in the record twice. `wrap={false}`: this turn
+                 * already has its own enclosing `Bubble` (the one this content sits inside), so
+                 * the indicator draws only its sentence and dots, not a second bubble around them.
                  */
-                <span className="gwui-ci-dots">
-                  {[0, 1, 2].map(i => (
-                    <span key={i} className="gwui-ci-dot" style={{ animationDelay: `${i * 0.2}s` }} />
-                  ))}
+                <>
+                  <GroundworkIsWriting wrap={false} />
                   {waitedAWhile && (
                     <span role="status" className="gwui-ci-dot-note">
                       Still reading what you wrote. Nothing was lost, you do not need to send it again.
                     </span>
                   )}
-                </span>
+                </>
               ) : nothingInternalReachesTheBubble(m.content)}
               {streamingId === m.id && (
                 <span className="gwui-ci-caret" />
