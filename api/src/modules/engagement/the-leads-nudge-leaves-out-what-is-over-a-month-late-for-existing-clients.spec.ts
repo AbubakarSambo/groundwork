@@ -67,3 +67,27 @@ describe('the lead\'s nudge, for an existing client', () => {
     expect(lines[2]).toContain('Naivas buyer');
   });
 });
+
+/*
+ * (Final check, 9 October.) The same for a wait or a blocker that has been open for more than a month, which has no day of its own and so
+ * was never "overdue": it sat in Risks every morning for an existing client's check-in.
+ */
+describe('the lead\'s nudge, for an existing client: a wait open for more than a month', () => {
+  const OMAR = PEOPLE[0];
+  const BISI = PEOPLE[1];
+  const wait = (id: string, groundId: string, what: string, createdAt: string) => ({
+    id, groundId, what, namedTheThing: true, onLabel: null, status: 'WAITING', createdAt: day(createdAt), dueOn: null, blockerKind: null,
+    fromParticipantId: BISI.id, onParticipantId: OMAR.id,
+    fromParticipant: { ...BISI }, onParticipant: { ...OMAR },
+  });
+  it('leaves it out for a check-in made before the release, and keeps a younger one', async () => {
+    const read = await morning([], { waits: [wait('w-old', 'g-old', 'the price list for Mombasa', '2026-08-20'), wait('w-young', 'g-old', 'the stock count for Kisumu', '2026-09-20')] });
+    const risks = (read?.risks ?? []).join(' ');
+    expect(risks).not.toContain('price list for Mombasa');
+    expect(risks).toContain('stock count for Kisumu');
+  });
+  it('keeps the same old wait on a check-in made since the release', async () => {
+    const read = await morning([], { waits: [{ ...wait('w-old2', 'g-new', 'the price list for Mombasa', '2026-08-20'), fromParticipantId: PEOPLE[2].id, fromParticipant: { ...PEOPLE[2] } }] });
+    expect((read?.risks ?? []).join(' ')).toContain('price list for Mombasa');
+  });
+});

@@ -182,6 +182,34 @@ export interface ABriefing {
   corrections: { line: string; said: string; whatIsTrue: string }[]
   whoDecides: string
 }
+/** An appeal of a decided review (decision 113), as the server serves it to each reader. */
+export type AppealStands = 'with-an-admin' | 'needs-another-admin' | 'decided'
+export interface YourAppeal {
+  stands: AppealStands
+  says: string
+  appealedOn: string
+  yourReasons: string
+  additions: { said: string; on: string }[]
+  outcome: 'stands' | 'changed' | null
+  decidedByFirstName: string | null
+  reasons: string | null
+  decisionWas: { says: string; reasons: string } | null
+}
+/** For an admin who may decide the appeal, or the reviewer (who never reads `theirReasons` while it waits). */
+export interface AppealForAnotherReader {
+  reader: 'admin' | 'reviewer'
+  stands: AppealStands
+  says: string
+  personFirstName: string
+  appealedOn: string
+  theirReasons?: string | null
+  additions?: { said: string; on: string }[]
+  mayDecide: boolean
+  outcome: 'stands' | 'changed' | null
+  decidedByFirstName: string | null
+  reasons: string | null
+  decisionWas: { says: string; reasons: string } | null
+}
 export interface ReviewForTheWriter {
   reader: 'writer' | 'lead' | 'admin'
   id: string
@@ -201,6 +229,11 @@ export interface ReviewForTheWriter {
   record?: TheRecord | null
   recognise?: RecogniseForTheWriter | null
   briefing?: ABriefing
+  /** Null unless this reader is an admin who may decide the appeal, or the reviewer. */
+  appeal?: AppealForAnotherReader | null
+  /** Who made the decision as it stands now (after an appeal changed it, the admin who changed it). Null until decided. */
+  decidedByYou?: boolean | null
+  decidedByFirstName?: string | null
 }
 export interface ReviewForThePerson {
   reader: 'person'
@@ -221,6 +254,11 @@ export interface ReviewForThePerson {
   decision: { says: string; reasons: string } | null
   record?: TheRecord | null
   recognise?: RecogniseForThePerson
+  /** Who writes the review with them; not the admin who changed the decision on appeal (who is `writtenWithFirstName` then). */
+  writerFirstName?: string | null
+  mayAppeal?: boolean
+  mayAppealSays?: string | null
+  appeal?: YourAppeal | null
 }
 export type AReview = ReviewForTheWriter | ReviewForThePerson
 
@@ -235,6 +273,10 @@ export const reviewsApi = {
     (await apiClient.post(`/suites/reviews/${id}/lines/${encodeURIComponent(lineKey)}/correction`, { text })).data,
   decide: async (id: string, decision: string, reasons: string): Promise<AReview> =>
     (await apiClient.post(`/suites/reviews/${id}/decision`, { decision, reasons })).data,
+  appeal: async (id: string, why: string): Promise<AReview> => (await apiClient.post(`/suites/reviews/${id}/appeal`, { why })).data,
+  addToTheAppeal: async (id: string, text: string): Promise<AReview> => (await apiClient.post(`/suites/reviews/${id}/appeal/more`, { text })).data,
+  decideTheAppeal: async (id: string, input: { outcome: 'stands' | 'changed'; reasons: string; decision?: string }): Promise<AReview> =>
+    (await apiClient.post(`/suites/reviews/${id}/appeal/decision`, input)).data,
 }
 
 /** When someone leaves (GET /suites/leaving/board). Admins only. */

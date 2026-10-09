@@ -35,6 +35,7 @@ import { whenTheNextOneOpens, whoElseAnswers, whoRunsThis } from '@/lib/what-the
 import { firstWordOfAName } from '@/lib/the-first-word-of-a-name'
 import { toast } from 'sonner'
 import { useCheckInFocusStore } from '@/stores/check-in-focus'
+import { answersTheServerKept } from '@/lib/answers-the-server-kept'
 import '@/components/gw/ui/gw-ui.css'
 
 /** ONE LIST. The OS dialog offered 23 extensions, the label's title a third list of 9, and the validator refused everything outside these 10 - so the dialog invited a refusal the product then issued. */
@@ -1665,7 +1666,7 @@ export function ChatPage() {
               refusal below still hands the composer back in plain words on an early press either
               way - that part of the fourth review's fix stands - but the offer itself now waits
               for the one floor everybody reads. */}
-          {!done && !completed && !declined && opened && msgs.filter(m => m.role === 'PERSON' && !m.id.startsWith('local-')).length >= mayCompleteAfter && (
+          {!done && !completed && !declined && opened && answersTheServerKept(msgs) >= mayCompleteAfter && (
             <div className="gwui-ci-finish-wrap">
               {/*
                 SCREEN FAULT 3: A 32px TEXT LINK WAS THE ONLY WAY FORWARD HERE, BELOW THE 40px

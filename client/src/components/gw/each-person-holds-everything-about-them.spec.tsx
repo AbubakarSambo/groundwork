@@ -116,7 +116,8 @@ describe('each person holds everything about them', () => {
   })
 
   it('the check-in’s own lead, who does have the conversation, reads the longer sentence', () => {
-    render(<EachPerson groundId="g1" people={[people[1]] as any} targets={[]} toDos={[]} files={[]} asks={{}} viewerUserId="u-wanjiru" isLead isTheLead leadFirstName="Wanjiru" />)
+    /* The conversation is there only when the page passes its handler (release check, 9 October). */
+    render(<EachPerson groundId="g1" people={[people[1]] as any} targets={[]} toDos={[]} files={[]} asks={{}} viewerUserId="u-wanjiru" isLead isTheLead leadFirstName="Wanjiru" onChangeInChat={() => {}} />)
     fireEvent.click(screen.getByText('Miriam'))
     expect(screen.getByText('Nothing yet. It comes from your own check-in, or from the conversation on this page.')).toBeTruthy()
   })
@@ -144,5 +145,16 @@ describe('each person holds everything about them', () => {
       'Change what I expect of Miriam to ',
       'I want to change what Weekly sales push expects of Miriam.',
     )
+  })
+
+  /* The release check of 9 October, merged with the screens' B-082: with the old context chat off, the
+     lead is never told about a conversation on this page that is gone, and is never shown a link with
+     nothing behind it. B-082's own case above covers the link going to Ask when it is passed. */
+  it('with the old context chat off, the lead reads no conversation on this page, and no link is drawn without a handler (release check, 9 October)', () => {
+    render(<EachPerson groundId="g1" people={[people[1]] as any} targets={[]} toDos={[]} files={[]} asks={{}} viewerUserId="u-wanjiru" isLead isTheLead leadFirstName="Wanjiru" oldChatIsOpen={false} />)
+    fireEvent.click(screen.getByText('Miriam'))
+    expect(screen.queryByText(/the conversation on this page/)).toBeNull()
+    expect(screen.getByText('Nothing yet. It comes from your own check-in, or from telling Ask Groundwork.')).toBeTruthy()
+    expect(screen.queryByText('Change this in the chat')).toBeNull()
   })
 })

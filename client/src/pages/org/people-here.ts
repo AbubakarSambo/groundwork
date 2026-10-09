@@ -59,12 +59,15 @@ export interface OrgMember {
 const MOST_PAGES = 10
 const PER_PAGE = 100
 
-export async function fetchMembers(): Promise<{ data: OrgMember[]; meta: { total: number } }> {
+export async function fetchMembers(): Promise<{ data: OrgMember[]; meta: { total: number }; overThePlanSays?: string | null }> {
   const all: OrgMember[] = []
   let total = 0
+  /* Request 197: the server's one sentence about who waits for a seat because the plan is full, the same one Plan and billing says. */
+  let overThePlanSays: string | null = null
   for (let page = 1; page <= MOST_PAGES; page += 1) {
     const r = await apiClient.get(`/users?limit=${PER_PAGE}&page=${page}`)
     const body = r.data.data ? r.data : { data: r.data, meta: { total: 0 } }
+    if (page === 1 && typeof body.overThePlanSays === 'string') overThePlanSays = body.overThePlanSays
     all.push(...(body.data ?? []))
     total = body.meta?.total ?? all.length
     if (all.length >= total || (body.data ?? []).length < PER_PAGE) break
@@ -72,7 +75,7 @@ export async function fetchMembers(): Promise<{ data: OrgMember[]; meta: { total
   /* Somebody who left is not one of the organisation's people (U.4 fourth review). The server leaves
      them out already; this keeps every filter's count true even against an older server. */
   const here = all.filter((m) => m.isActive !== false)
-  return { data: here, meta: { total: total - (all.length - here.length) } }
+  return { data: here, meta: { total: total - (all.length - here.length) }, overThePlanSays }
 }
 
 export function nameOf(m: Pick<OrgMember, 'firstName' | 'lastName' | 'email' | 'displayName'>): string {

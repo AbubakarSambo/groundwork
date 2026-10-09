@@ -56,7 +56,10 @@ export async function whatTheLeadIsToldOnToday(
         const facts = await whoIsWaitedOn(prisma, g, now);
         if (facts) {
           const w = theWaitingWords(me?.firstName, facts);
-          if (isNew(w.subject)) nobodyHasStarted.push({ groundId: g.id, label: g.label, subject: w.subject, lines: w.lines, linkLabel: w.linkLabel, to: `/grounds/${g.id}` });
+          /* The mail opens "Hello Wairimu."; Today has already greeted her ("Morning, Wairimu"), so a card on it does not greet her again (test bed copy a, 9 October). */
+          const hello = `Hello ${me?.firstName?.trim() || 'there'}. `;
+          const lines = w.lines.map((l, i) => (i === 0 && l.startsWith(hello) ? l.slice(hello.length) : l));
+          if (isNew(w.subject)) nobodyHasStarted.push({ groundId: g.id, label: g.label, subject: w.subject, lines, linkLabel: w.linkLabel, to: `/grounds/${g.id}` });
         }
       }
       const read = await deps.weeklyReport?.(g.id, now).catch(() => null);

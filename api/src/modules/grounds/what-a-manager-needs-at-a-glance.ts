@@ -90,8 +90,9 @@ export function atAGlance(i: GlanceInput, now: Date = new Date()): AtAGlance {
    * invitation had lapsed held the denominator open. See how-many-have-answered.ts.
    */
   const session = i.sessionNumber ?? 1;
-  const rows = new Map<string, { status: string }[]>();
-  for (const c of i.thisRound) rows.set(c.participantId, [...(rows.get(c.participantId) ?? []), { status: c.status }]);
+  const rows = new Map<string, { status: string; closedReason?: string | null; turns?: unknown[] | null }[]>();
+  /* The close reason and the person's turns ride along, so a session the clock closed with nothing said is not counted as answered (test bed copy a, 9 October). */
+  for (const c of i.thisRound) rows.set(c.participantId, [...(rows.get(c.participantId) ?? []), { status: c.status, closedReason: (c as any).closedReason, turns: (c as any).turns }]);
   const withRows = i.people.map((p) => ({ ...p, checkIns: p.checkIns ?? rows.get(p.id) ?? [] }));
   const counted = howManyOfThemAnswered(withRows, session, i.scenario, now);
   const shown = howManyInTheRoundAnswered(withRows, session, i.scenario);

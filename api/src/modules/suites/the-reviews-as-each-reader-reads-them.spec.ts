@@ -159,7 +159,7 @@ describe('one review, as each reader reads it', () => {
     await svc.decide(as('u-wairimu'), 'r-aisha', { decision: 'Aisha leads the supermarket accounts from April.', reasons: 'She closed 9 sales, all paid, and helped two others.' });
     const r = await svc.one(as('u-aisha'), 'r-aisha');
     expect(r).toEqual({
-      reader: 'person', id: 'r-aisha', firstName: 'Aisha', writtenWithFirstName: 'Wairimu', dueOn: '2027-03-01',
+      reader: 'person', id: 'r-aisha', firstName: 'Aisha', writtenWithFirstName: 'Wairimu', writerFirstName: 'Wairimu', dueOn: '2027-03-01',
       noticed: [
         { says: 'Closed 9 sales since March. Paystack shows all 9 payments.', mark: 'proven' },
         { says: 'Kept 41 of 44 things she said she would do.', mark: 'proven' },

@@ -109,7 +109,10 @@ describe('the way in is on the page it points at', () => {
   it('and the page only claims to have one when it does', () => {
     // hasChat is true exactly where ContextChat is rendered: the lead, with context on.
     /* `isTheLead`, not `isLead`: the conversation is the lead's own, and an admin reads the page. */
+    /* The link is the lead's, with context on. Once the old chat is off it goes to Ask rather than to a chat
+       that is gone (B-082, merged with the release check of 9 October), so it never points at nothing. */
     expect(CONTEXT).toMatch(/onChangeInChat=\{isTheLead && contextEnabled \?/)
+    expect(CONTEXT).toMatch(/showWith\(askSaid\)/)
     expect(CONTEXT).toMatch(/\{contextEnabled && isTheLead && oldChatIsOpen && <ContextChat/)
   })
 })

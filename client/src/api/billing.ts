@@ -25,6 +25,8 @@ export interface BillingStatus {
   }
   /** `cap: null` means unlimited or no plan - render the count without a ceiling. W14-7. */
   people: { count: number; cap: number | null }
+  /** Request 197: "6 people are waiting for a seat because your plan is full. ...", the same sentence People says; null when nobody waits. */
+  overThePlanSays?: string | null
   /**
    * Set while a free run we gave them is running: what it covers and the day it ends. A free run
    * nobody can see ends as a surprise, which is the one thing it must not do.

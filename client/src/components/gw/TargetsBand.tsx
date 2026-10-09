@@ -29,6 +29,8 @@ export interface Target {
   ownerParticipantId?: string | null
   assumes?: string[]
   notSettled?: string | null
+  /** Served to whoever runs the check-in only: the lead has not told the people about this one yet, so they do not read it. */
+  notToldYet?: boolean
 }
 
 /* A first name, or the plain words whole ("a colleague", "the lead"), never a lead's note (request 36). */
@@ -84,6 +86,8 @@ export function TargetsBand({
    * of who actually sees it, since the lead reading her own share is one person, not two.
    */
   const seenBy = (t: Target): string => {
+    /* Kept from the people until the lead tells them: never "Seen by everyone" (the server says which). */
+    if (t.notToldYet) return 'Only the lead and the admins see this until the lead tells the team'
     if (!t.ownerParticipantId || numbersShared) return 'Seen by everyone'
     const owner = personOf(t.ownerParticipantId)
     const ownerFirst = owner ? first(owner) : null

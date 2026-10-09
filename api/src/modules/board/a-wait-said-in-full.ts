@@ -14,7 +14,7 @@
  */
 
 /** "A colleague" and the other plain words for somebody with no name, which are not capitalised mid-sentence. */
-const PLAIN_WORDS = /^(?:(?:a|an|one|another|the same)\s+(?:[a-z]+\s+)?colleague|(?:your|the)\s+lead)$/i;
+export const PLAIN_WORDS = /^(?:(?:a|an|one|another|the same)\s+(?:[a-z]+\s+)?colleague|(?:your|the)\s+lead)$/i;
 
 const midSentence = (who: string) => (PLAIN_WORDS.test(who) ? who.toLowerCase() : who);
 const atTheStart = (who: string) => (who ? `${who[0].toUpperCase()}${who.slice(1)}` : who);

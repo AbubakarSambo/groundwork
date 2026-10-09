@@ -477,3 +477,21 @@ Never write `pricing.freeTrial` as a bare `{"on": true}`. Without `onSince`, eve
 **To switch off again.** Write `"on": false` in both rows. Nothing granted is taken back: a team in its trial keeps it until it ends. A Stripe line already added for the add-on is taken off at 1am UTC the next night.
 
 **Run on the local test database, 5 October.** Both statements ran on `gw_pw9_1786222102`. A new team, Kijani Repairs, was made by its founder, Wanjiru, who said it had fewer than 20 people. It was given one month on the Small Team plan, ending on 5 November 2026. Wanjiru, its admin, turned WhatsApp on and read that nothing is charged for WhatsApp until the trial ends. Stripe test mode could not be driven: the local environment holds only the placeholder `sk_test_...`, so creating a checkout failed with "Invalid API Key provided". A real Stripe test key in the local `api/.env` is needed for that part.
+
+## Organisations over their plan
+
+Decision 123: an organisation already over its plan's limit at release keeps everyone it has; only people added afterwards wait for a seat. Hafsah wants to know which organisations are over, and by how much, so she can talk to them. Run this once on the live database, read-only, and send her the result. A seat is an active, not-deleted person who is not waiting to be let in (`api/src/common/seats.ts`); an organisation with no plan is on the free plan, whose limit is 5 unless the platform's free limit says otherwise.
+
+```sql
+SELECT o.name,
+       COALESCE(o.subscription_plan::text, o.free_plan::text, 'FREE') AS plan,
+       COALESCE(p.member_cap, CASE WHEN o.subscription_plan IS NULL AND o.free_plan IS NULL THEN 5 END) AS seats_on_the_plan,
+       COUNT(u.id) AS people,
+       COUNT(u.id) - COALESCE(p.member_cap, CASE WHEN o.subscription_plan IS NULL AND o.free_plan IS NULL THEN 5 END) AS over_by
+FROM organizations o
+LEFT JOIN pricing_plans p ON p.plan = COALESCE(o.subscription_plan, o.free_plan)
+JOIN users u ON u.organization_id = o.id AND u.is_active AND u.deleted_at IS NULL AND NOT u.awaiting_org_approval
+GROUP BY o.id, o.name, plan, p.member_cap
+HAVING COUNT(u.id) > COALESCE(p.member_cap, CASE WHEN o.subscription_plan IS NULL AND o.free_plan IS NULL THEN 5 END)
+ORDER BY over_by DESC;
+```

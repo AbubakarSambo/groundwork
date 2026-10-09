@@ -22,7 +22,7 @@ import { rememberedCompose } from '../reports/a-line-worded-once-is-kept';
 import { wordPatternEvidence } from '../reports/pattern-evidence-in-plain-words';
 import { withoutBankDetails, withoutBankDetailsInEachTurn } from '../documents/bank-details-are-never-kept';
 import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD, hasEnded, hasStalled, isHeld, isShut, mayChangeOnItsOwn, whyItRefuses, whyAJoinLinkRefuses, WHILE_IT_IS_HELD, IT_RAN_OUT_OF_TIME } from './a-ground-that-has-ended';
-import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT } from './an-answer-includes-a-refusal';
+import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT, wasAQuietClose } from './an-answer-includes-a-refusal';
 import { isNotLetInYet, whoIsNotLetInYet, theWaitingToBeLetInLine } from './who-an-admin-did-not-let-in';
 import { waitsOnAManagingOnlyLead } from './the-lead-who-only-asks';
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException, Optional, GoneException } from '@nestjs/common';
@@ -1373,7 +1373,7 @@ export class GroundsService {
            * The detail endpoint has always returned it. That is why one check-in could say "your turn"
            * in the rail and say nothing at all on its own page - two surfaces, one rule, different data.
            */
-          select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true, isSetup: true, availableFrom: true },
+          select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true, isSetup: true, availableFrom: true, closedReason: true, turns: { where: { role: 'PERSON' as any }, take: 1, select: { id: true } } },
         },
         // A released report that nobody is told about is a report nobody reads.
         // Ten grounds released theirs and not one person ever activated.
@@ -1444,7 +1444,7 @@ export class GroundsService {
         participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } },
             checkIns: {
               /** Must match the sibling query above: both feed the same list. GW-EXP-6. */
-              select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true, isSetup: true, availableFrom: true },
+              select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true, isSetup: true, availableFrom: true, closedReason: true, turns: { where: { role: 'PERSON' as any }, take: 1, select: { id: true } } },
             },
             report: { select: { releasedAt: true, releasedSessions: true, agreements: true, divergences: true, sharedAs: true } },
             /* Must match the sibling query above: both feed the same list, and a card fed by this
@@ -2742,6 +2742,8 @@ export class GroundsService {
       ).shown.filter((o: any) => !objectivesNotToldHere.has(o.id)).map((o: any) => ({
         ...o,
         notSettled: whatIsNotSettledAbout({ name: o.name, target: o.target }, notSettledSaid),
+        /* Whoever runs the check-in is told which targets are kept from the people until the lead tells them, so the page does not say "seen by everyone" of one. Absent for everybody else. */
+        ...(viewerRunsIt && !withoutWhatTheLeadHasNotToldThemAbout([o], objectiveRowsAsStored as any[], (ground.participants ?? []) as any[], false).kept.length ? { notToldYet: true } : {}),
       })),
       /*
        * THE REPORT RIDES ALONG IN `rest`, AND IT IS REPORT TEXT WHEREVER IT IS READ.
@@ -8058,11 +8060,12 @@ export class GroundsService {
     for (const p of active) {
       const ci = await this.prisma.checkIn.findFirst({
         where: { participantId: p.id, sessionNumber, status: { in: AN_ANSWER } },
-        select: { status: true },
+        select: { status: true, closedReason: true, turns: { where: { role: 'PERSON' as any }, take: 1, select: { id: true } } },
       });
       if (!ci && away.has(p.id)) continue;
       if (!ci) return false;
-      if (ci.status === CheckInStatus.COMPLETED) completed += 1;
+      /* A session the clock closed with nothing said ends the wait on that person, but is not an account. */
+      if (ci.status === CheckInStatus.COMPLETED && !wasAQuietClose(ci as any)) completed += 1;
     }
     /* A round of refusals has answered and has nothing to report: no shared report from zero accounts. */
     return completed >= AT_LEAST_ONE_ACCOUNT;

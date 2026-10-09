@@ -23,6 +23,7 @@ import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-in
 import { everythingOutstandingFor } from '../engagement/the-leads-daily-nudge';
 import { whatTheLeadIsToldOnToday, type WhatTheLeadIsToldOnToday } from '../engagement/what-the-lead-is-told-on-today';
 import { TheWeeklyReportService } from '../reports/the-weekly-report.service';
+import { theSameWaitInOtherWords } from '../board/reads';
 
 /**
  * THE ONE READ OF "WHAT NEEDS YOU" (C1, U.5), for Today and for "Choose an organisation".
@@ -244,7 +245,7 @@ export class WhatNeedsYouService {
   async today(userId: string, email: string, organizationId: string, role: string): Promise<WhatNeedsYou & { forTheLead?: WhatTheLeadIsToldOnToday }> {
     const told = await this.forReader(userId, email, organizationId, role);
     const weekly = this.moduleRef?.get(TheWeeklyReportService, { strict: false });
-    const outstanding = await this.outstanding(userId, organizationId).catch(() => null);
+    const outstanding = await this.outstanding(userId, organizationId, told.needs).catch(() => null);
     const alreadySaid = [
       ...told.needs.flatMap((n) => [n.title, n.detail ?? '']),
       ...(outstanding ? [...outstanding.needsYou, ...outstanding.overdueOnYourTeam, ...outstanding.risks] : []),
@@ -261,9 +262,41 @@ export class WhatNeedsYouService {
    * EVERYTHING THAT IS OUTSTANDING FOR A LEAD, the page the daily nudge's link goes to (decision 120): what needs her, what is overdue on her team and the risks, every one
    * of them and not three, in the nudge's own sentences. Only her own check-ins; null for somebody who runs none, and when nothing is outstanding.
    */
-  async outstanding(userId: string, organizationId: string): Promise<{ needsYou: string[]; overdueOnYourTeam: string[]; risks: string[]; about: { needsYou: any[]; overdueOnYourTeam: any[]; risks: any[] } } | null> {
-    return everythingOutstandingFor(this.prisma as any, { userId, organizationId }, { boards: { leave: this.leave as any, timeSheets: this.time as any, spending: this.spend as any } })
+  async outstanding(userId: string, organizationId: string, todaysNeeds?: Need[]): Promise<{ needsYou: string[]; overdueOnYourTeam: string[]; risks: string[]; about: { needsYou: any[]; overdueOnYourTeam: any[]; risks: any[] } } | null> {
+    const found = await everythingOutstandingFor(this.prisma as any, { userId, organizationId }, { boards: { leave: this.leave as any, timeSheets: this.time as any, spending: this.spend as any } })
       .catch(() => null);
+    if (!found) return found;
+    return this.withoutTheWaitsTodayAlreadyListed(found, userId, organizationId, todaysNeeds);
+  }
+
+  /**
+   * THE SAME WAIT IS NOT LISTED TWICE ON TODAY. A wait on the lead that the check-in's board lists under "What needs you" ("You need to get back to Amani Wekesa,
+   * who is waiting on you for the discount limit") was also in "Risks" as a wait that has gone on too long, in other words and with its date. A risk about a wait that
+   * is one of the board's own rows on Today (the same row, or the same wait said again: theSameWaitInOtherWords) is left out of the page, and from its `about`.
+   * Only for Today's page: the daily message to the lead is not a page with a "What needs you" above it, and is not changed.
+   */
+  private async withoutTheWaitsTodayAlreadyListed<T extends { risks: string[]; about: { risks: any[] } }>(found: T, userId: string, organizationId: string, todaysNeeds?: Need[]): Promise<T> {
+    const riskWaitIds = found.about.risks.map((a: any) => (a?.kind === 'wait' ? a.ids?.[0] : null));
+    if (!riskWaitIds.some(Boolean)) return found;
+    let needs = todaysNeeds;
+    if (!needs) {
+      const mine = await this.prisma.ground.findMany({
+        where: { initiatorId: userId, organizationId },
+        select: { id: true, organizationId: true, label: true, initiatorId: true, status: true, closedAt: true, resolvedAt: true },
+      }).catch(() => [] as any[]);
+      needs = await this.whatTheirBoardsAsk(userId, mine as any[]).catch(() => [] as Need[]);
+    }
+    const onTodayIds = needs.map((n) => /-waiting-on-the-lead-(.+)$/.exec(n.key)?.[1]).filter((x): x is string => !!x);
+    if (!onTodayIds.length) return found;
+    const rows = await this.prisma.groundDependency.findMany({
+      where: { id: { in: [...new Set([...onTodayIds, ...riskWaitIds.filter((x): x is string => !!x)])] } },
+      select: { id: true, fromParticipantId: true, onParticipantId: true, onLabel: true, what: true },
+    }).catch(() => [] as any[]);
+    const byId = new Map<string, any>((rows as any[]).map((r) => [r.id, r]));
+    const sameAsOneOnToday = (id: string) => onTodayIds.some((t) => t === id || (byId.get(t) && byId.get(id) && theSameWaitInOtherWords(byId.get(t), byId.get(id))));
+    const keep = riskWaitIds.map((id) => !id || !sameAsOneOnToday(id));
+    if (keep.every(Boolean)) return found;
+    return { ...found, risks: found.risks.filter((_, i) => keep[i]), about: { ...found.about, risks: found.about.risks.filter((_, i) => keep[i]) } };
   }
 
   /**

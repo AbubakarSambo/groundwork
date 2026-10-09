@@ -35,8 +35,10 @@ export type RailAttention =
 export interface RailGround {
   /** The ground's own status. Without it, the rail cannot tell a live check-in from a shut one. */
   status?: string | null
+  /** `managingOnly`: a lead who runs an anchor check-in and does not check in herself (the server's flag). */
   participants?: { id: string; userId?: string | null; managingOnly?: boolean | null; notLetInYet?: boolean | null }[]
-  checkIns?: { participantId: string; sessionNumber: number; status: string; availableFrom?: string | null }[]
+  /** `isSetup`: the lead's set-up conversation, kept as a check-in row; it is not a session and nobody answered it. */
+  checkIns?: { participantId: string; sessionNumber: number; status: string; availableFrom?: string | null; isSetup?: boolean | null }[]
   closedAt?: string | null
   resolvedAt?: string | null
   /** B-078: needed to leave out a lead who only manages, the same rule `whoIsInRound` already uses. */
@@ -65,7 +67,9 @@ export function railAttention(g: RailGround, myUserId: string | null | undefined
   if (isShut(g.status) || g.closedAt || g.resolvedAt) return { kind: 'none' }
 
   const me = (g.participants ?? []).find((p) => p.userId && p.userId === myUserId)
-  const checkIns = g.checkIns ?? []
+  /* The set-up conversation is not a session (screens item c), so it is never "done" for anybody here (release check, 9 October:
+     an anchor lead read "Two of the three have not answered yet." while nobody had checked in). */
+  const checkIns = (g.checkIns ?? []).filter((c) => !c.isSetup)
 
   if (me) {
     const mine = checkIns.filter((c) => c.participantId === me.id && c.status !== 'COMPLETED')

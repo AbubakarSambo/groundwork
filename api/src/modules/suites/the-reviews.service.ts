@@ -182,6 +182,12 @@ export interface ForTheWriter {
   managersWordsById: string | null;
   theirView: string | null;
   decision: { says: string; reasons: string } | null;
+  /**
+   * Who made the decision as it stands now, so the screen says "Your decision" only to that person. Once an appeal has
+   * changed it, it is the admin who changed it, not the reviewer (decision 113). Both null until it is decided.
+   */
+  decidedByYou: boolean | null;
+  decidedByFirstName: string | null;
   mayWrite: boolean;
   /**
    * Groundwork's suggestion about this person, when one was reached on a check-in this reader runs,
@@ -227,6 +233,11 @@ export interface ForThePerson {
   /** Who wrote them, by sign-in (request 162, item 6). Null until they are written. */
   managersWordsById: string | null;
   managersWordsHeading: string | null;
+  /**
+   * Who writes the review with them, for "What Grace writes" before anything is written. Not `writtenWithFirstName`, which
+   * names the admin who changed the decision on appeal (decision 113): that admin never writes the review's words.
+   */
+  writerFirstName: string | null;
   /**
    * WHERE THE TWO VIEWS DIFFER (decision 93, row 15; the prototype's "where she and Wairimu see things differently").
    * Both views, side by side, once the writer and the person have each written theirs. Groundwork does not say
@@ -481,6 +492,7 @@ export class ReviewsService {
         theirView: row.theirView ?? null,
         managersWords: row.managersWords?.trim() ? row.managersWords : null,
         managersWordsById: wordsById,
+        writerFirstName: writerFirst,
         managersWordsHeading: row.managersWords?.trim() ? `What ${wordsFirst ?? writerFirst ?? 'the person who writes your review'} writes` : null,
         whereYouDiffer: row.managersWords?.trim() && row.theirView?.trim()
           ? { says: whereYouDifferSaid(wordsFirst ?? writerFirst), managersWords: row.managersWords, yourView: row.theirView }
@@ -500,6 +512,8 @@ export class ReviewsService {
     const record = await this.theRecordServed(row, person, reader.userId, writerId, writerFirst);
     const briefing = await this.theBriefing(row, person, reader.userId, writes, theOneWhoDecidesSaid(writerFirst, named.anAdmin), record);
     /* The writer, and (decision 93, row 17) an admin; the suggestion service itself reads only a check-in the admin has access to. A lead who does not write it reads none. */
+    /* Whoever made the decision as it stands now: the admin who changed it on appeal, or else whoever decided it. */
+    const decidedNowId: string | null = (row as any).appealOutcome === 'changed' && (row as any).appealDecidedById ? (row as any).appealDecidedById : ((row as any).decidedById ?? null);
     const suggestion = (writes || role === 'ADMIN') && person.userId && this.suggestions
       ? await this.suggestions.latestForTheLeadAbout(person.userId, reader).catch(() => null)
       : null;
@@ -509,7 +523,10 @@ export class ReviewsService {
       writtenWith: await this.fullNameOf(writerId, directory), writtenWithFirstName: writerFirst,
       dueOn, noticed: this.noticedOf(row.noticed, writes),
       record,
-      managersWords: row.managersWords ?? null, managersWordsById: wordsById, theirView: row.theirView ?? null, decision, mayWrite: writes, suggestion,
+      managersWords: row.managersWords ?? null, managersWordsById: wordsById, theirView: row.theirView ?? null, decision,
+      decidedByYou: decision ? decidedNowId === reader.userId : null,
+      decidedByFirstName: decision ? await this.firstNameOf(decidedNowId, directory) : null,
+      mayWrite: writes, suggestion,
       /* The writer reads it as "you"; an admin and a lead of the team who does not write it read it too, with the writer named (decision 93, row 16). */
       recognise: recognising && theWriterMayReadIt({ theirView: row.theirView ?? null, startedAt: (row as any).startedAt })
         ? (writes ? recogniseForTheWriter(this.firstOf(person), recognising) : recogniseForAnotherReader(this.firstOf(person), recognising, startedByFirst))
@@ -795,7 +812,7 @@ export class ReviewsService {
          access never reaches this line). The reviewer is answered above and never reads them. */
       const readsTheReasons = true;
       return {
-        reader: 'admin', stands, says: theAdminReadsSaid(stands, personFirst, reviewerFirst, appealedOn, decider, outcome), personFirstName: personFirst, appealedOn,
+        reader: 'admin', stands, says: theAdminReadsSaid(stands, personFirst, reviewerFirst, appealedOn, decider, outcome, !!row.appealDecidedById && row.appealDecidedById === reader.userId), personFirstName: personFirst, appealedOn,
         theirReasons: readsTheReasons ? row.appeal : null,
         additions: readsTheReasons ? theAdditions(row).map((a) => ({ said: a.said, on: a.at ? aDaySaid(a.at) : '' })) : [],
         mayDecide: stands !== 'decided', outcome, decidedByFirstName: decider, reasons, decisionWas: was,

@@ -194,7 +194,10 @@ describe('Imani appeals, and Grace, an admin who did not decide it, decides', ()
     const imani: any = await svc.one(as('u-imani'), 'r-imani');
     expect(imani.decision).toEqual({ says: 'Imani moves up one level in January.', reasons: 'Her Karen work came in after the draft was written.' });
     expect(imani.appeal.decisionWas).toEqual({ says: 'Imani moves up one level in March.', reasons: 'She has kept nearly every commitment and led two shops.' });
-    expect(imani.appeal.says).toBe('Grace, an admin, has read your appeal and has changed the decision. You can read the new decision and the reasons below.');
+    /* The new decision is the review's own decision, drawn above the appeal, so the sentence does not say "below" (test bed copy a, 9 October). */
+    expect(imani.appeal.says).toBe('Grace, an admin, has read your appeal and has changed the decision. The decision and the reasons on your review are now the new ones.');
+    const baraka: any = await svc.one(as('u-baraka'), 'r-imani');
+    expect(baraka.appeal.says).toBe('Imani appealed your decision. Grace, an admin, has read the appeal and has changed the decision. The decision and the reasons on this review are now the new ones.');
   });
 
   /* After the appeal changed the decision, Imani is told who has decided her review now, on the review and in the list Today reads. (8 October) */
@@ -204,6 +207,8 @@ describe('Imani appeals, and Grace, an admin who did not decide it, decides', ()
     await changed.svc.decideTheAppeal(changed.as('u-grace'), 'r-imani', { outcome: 'changed', decision: 'Imani moves up one level in January.', reasons: 'Her Karen work came in after the draft was written.' });
     const page: any = await changed.svc.one(changed.as('u-imani'), 'r-imani');
     expect(page.writtenWithFirstName).toBe('Grace');
+    /* Baraka still wrote the review: "What Baraka writes", never "What Grace writes" (test bed copy a, 9 October). */
+    expect(page.writerFirstName).toBe('Baraka');
     const list = await changed.svc.mine(changed.as('u-imani'));
     expect(list[0].says).toBe('Grace has decided your review. You can read the decision and the reasons.');
     expect(list[0].writtenWithFirstName).toBe('Grace');
@@ -213,6 +218,22 @@ describe('Imani appeals, and Grace, an admin who did not decide it, decides', ()
     await stands.svc.decideTheAppeal(stands.as('u-grace'), 'r-imani', { outcome: 'stands', reasons: 'It is the usual step.' });
     expect(((await stands.svc.one(stands.as('u-imani'), 'r-imani')) as any).writtenWithFirstName).toBe('Baraka');
     expect((await stands.svc.mine(stands.as('u-imani')))[0].says).toBe('Baraka has decided your review. You can read the decision and the reasons.');
+  });
+
+  /* Found on test bed copy a, 9 October: the admin deciding the appeal read the reviewer's decision as "Your decision", and once the
+     appeal changed it the reviewer read the admin's decision as her own. Each reader is told who made the decision as it stands now. */
+  it('each reader is told who made the decision as it stands, before and after the appeal changes it', async () => {
+    const { svc, as } = setup();
+    await svc.appeal(as('u-imani'), 'r-imani', BIG_WORDS);
+    const before: any = await svc.one(as('u-grace'), 'r-imani');
+    expect([before.decidedByYou, before.decidedByFirstName]).toEqual([false, 'Baraka']);
+    const baraka: any = await svc.one(as('u-baraka'), 'r-imani');
+    expect([baraka.decidedByYou, baraka.decidedByFirstName]).toEqual([true, 'Baraka']);
+    await svc.decideTheAppeal(as('u-grace'), 'r-imani', { outcome: 'changed', decision: 'Imani moves up one level in January.', reasons: 'Her Karen work came in after the draft was written.' });
+    const after: any = await svc.one(as('u-baraka'), 'r-imani');
+    expect([after.decidedByYou, after.decidedByFirstName]).toEqual([false, 'Grace']);
+    const grace: any = await svc.one(as('u-grace'), 'r-imani');
+    expect([grace.decidedByYou, grace.decidedByFirstName]).toEqual([true, 'Grace']);
   });
 
   it('Grace sees it in her list; nobody else is served that list', async () => {

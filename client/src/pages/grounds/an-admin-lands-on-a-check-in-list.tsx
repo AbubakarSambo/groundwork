@@ -4,7 +4,7 @@ import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { Link } from 'react-router-dom'
 import { Button, Tag } from '@/components/gw/ui'
-import { askNameFor } from '@/lib/ask-name'
+import { askNameFor, aRealOrganisationName } from '@/lib/ask-name'
 import { WHAT_AN_ADMIN_CANNOT_READ_WITHOUT_ACCESS } from '@/lib/what-an-admin-cannot-read-without-access'
 
 /**
@@ -116,7 +116,7 @@ export function AdminFirstRun() {
   })
   if (!isAdmin || !data) return null
 
-  const realOrgName = user.organization?.name?.trim() || user.organizationName
+  const realOrgName = aRealOrganisationName(user.organization?.name?.trim() || user.organizationName)
   const orgName = realOrgName || 'your organisation'
   const steps = getItGoing(data)
   const done = steps.filter(s => s.done).length

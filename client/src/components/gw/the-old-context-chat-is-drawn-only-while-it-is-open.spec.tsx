@@ -75,3 +75,19 @@ describe('the old context chat on the Context and resources page', () => {
     await screen.findByText(/Something agreed on a call goes in by saying it in the conversation above\./)
   })
 })
+
+describe('the people cards do not point at the old context chat while it is off (release check, 9 October)', () => {
+  /* Merged with the screens' B-082 (9 October): the link is never a dead control. While the old chat is
+     open it fills that chat; once it is off it hands the whole question to Ask instead of disappearing,
+     so the lead can still change it (nothing a person can do today is lost). The intent of the release
+     check - nothing points at a chat that is gone - still holds: with the chat off, the link goes to Ask. */
+  it('"Change this in the chat" fills the old chat while it is open, and asks Ask once it is off', async () => {
+    const { readFileSync } = await import('fs')
+    const { resolve } = await import('path')
+    const source = readFileSync(resolve(__dirname, 'ContextPage.tsx'), 'utf8')
+    expect(source).toContain('onChangeInChat={isTheLead && contextEnabled ? changeThisInTheChat : undefined}')
+    const handler = source.slice(source.indexOf('const changeThisInTheChat'), source.indexOf('const changeThisInTheChat') + 600)
+    expect(handler).toMatch(/if \(oldChatIsOpen\)/)
+    expect(handler).toMatch(/showWith\(askSaid\)/)
+  })
+})

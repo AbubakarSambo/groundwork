@@ -62,8 +62,18 @@ export function withoutAGuessedPronoun(sentence: string, turnBefore: string, onT
       if (!name || theirPronounsAreOnRecord(name, onTheRoster)) { result += m[0]; continue; }
       const w = m[0].toLowerCase();
       let rewritten: string;
-      if (w === 'he' || w === 'she') rewritten = name;
-      else if (w === 'him' || w === 'himself' || w === 'herself') rewritten = w === 'him' ? name : name;
+      if (w === 'he' || w === 'she') {
+        rewritten = name;
+        /* "he'll" is "Baraka will", never "Baraka'll" (release check, 9 October): a contraction on the pronoun is said in full after the name. */
+        const short = /^['’](ll|d|s)\b/i.exec(part.slice(cursor));
+        if (short) {
+          const next = part.slice(cursor + short[0].length).trimStart();
+          const done = /^(been|had|got|gone|done|said|made|taken|told|asked|seen|left|finished|started|already)\b/i.test(next);
+          const s = short[1].toLowerCase();
+          rewritten = `${name} ${s === 'll' ? 'will' : s === 'd' ? (done ? 'had' : 'would') : done ? 'has' : 'is'}`;
+          cursor += short[0].length;
+        }
+      } else if (w === 'him' || w === 'himself' || w === 'herself') rewritten = w === 'him' ? name : name;
       else if (w === 'his' || w === 'hers') rewritten = `${name}'s`;
       else rewritten = AN_OBJECT_COMES_AFTER.test(part.slice(cursor).trimStart()) ? name : `${name}'s`;
       /* A name starting a sentence is already capital; mid-sentence it stays as the name. */

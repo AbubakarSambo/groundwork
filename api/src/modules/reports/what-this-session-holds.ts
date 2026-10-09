@@ -1,4 +1,5 @@
 import { withoutWhatTheLeadHasNotToldThemAbout } from '../board/an-untold-goal-is-not-a-board-objective';
+import { withoutTheLeadsSetUpForAMember } from '../grounds/the-leads-set-up-is-the-leads-in-the-anchor';
 import { targetsFor } from '../board/whose-number-is-whose-business';
 import { aWaitOnOneself } from '../board/a-thing-is-not-somebody';
 import { labelsForParties, namesVisibleTo } from './party-labels';
@@ -236,7 +237,7 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
     (prisma as any).ground?.findUnique?.({
       where: { id: groundId },
       select: {
-        whoSeesTargets: true, peersVisibleToEachOther: true,
+        whoSeesTargets: true, peersVisibleToEachOther: true, startedFrom: true, scenario: true,
         participants: { select: { id: true, userId: true, partyType: true, email: true, createdAt: true, roleAsDescribed: true, nameGiven: true, organisationGiven: true, user: { select: { firstName: true, lastName: true } } } },
       },
     })?.catch?.(() => null) ?? null,
@@ -278,7 +279,9 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
     where: { groundId, awareness: 'NOT_TOLD' },
     select: { participantId: true, text: true, awareness: true, authoredBy: true, createdAt: true },
   })?.catch?.(() => []) ?? Promise.resolve([]));
-  const objectives = withoutWhatTheLeadHasNotToldThemAbout(shownTargets, (untoldRows ?? []) as any[], ((theGround as any)?.participants ?? []) as any[], !!(reader.runsIt ?? reader.isLead)).kept as unknown as { id: string; count: number; target?: number | null }[];
+  const notToldOut = withoutWhatTheLeadHasNotToldThemAbout(shownTargets, (untoldRows ?? []) as any[], ((theGround as any)?.participants ?? []) as any[], !!(reader.runsIt ?? reader.isLead)).kept as unknown as { id: string; count: number; target?: number | null }[];
+  /* And in an anchor check-in the lead's own aims are hers alone: the ground read serves a member none (decision 96, item 8), so the tile counts none either (final check, 9 October: "2 targets are set" over a page listing no target). */
+  const objectives = withoutTheLeadsSetUpForAMember({ objectives: notToldOut }, { startedFrom: (theGround as any)?.startedFrom ?? null, scenario: (theGround as any)?.scenario ?? null, runsIt: !!(reader.runsIt ?? reader.isLead) }).objectives;
   /*
    * THE FIRST WORRY WHOSE LINE STANDS WHOLE: a first sentence that fits a tile, and whose quotes,
    * if it has any, are the record's words, so the quote rule at the read leaves it as it is (see

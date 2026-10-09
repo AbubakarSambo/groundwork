@@ -298,7 +298,7 @@ export function BillingPage() {
         <FieldRows>
           <FieldRow
             label="Plan"
-            value={`${thePlanLine(billingStatus, livePricing, freeGrounds)}${peopleOverCap ? ' More people have accounts here than this plan covers.' : ''}`}
+            value={`${thePlanLine(billingStatus, livePricing, freeGrounds)}${peopleOverCap ? ` ${billingStatus?.overThePlanSays?.trim() || 'More people have accounts here than this plan covers.'}` : ''}`}
             /*
              * SCREEN FAULT 11 (FINAL WALK): "MORE PEOPLE HAVE ACCOUNTS HERE THAN THIS PLAN COVERS."
              * NAMED A PROBLEM WITH NO NEXT STEP BESIDE IT. The row's own action was the same plain

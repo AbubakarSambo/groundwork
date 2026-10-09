@@ -1,5 +1,19 @@
 # Morning report
 
+**9 October, 04:15: one number to watch before the pull request.** A fresh 24-scenario run on exactly this release's engine (run-oct9a, on `wip/next`) has every problem at 0 and every engine number holding or rising, except "patterns found": 89 against the baseline's 100 (oct7c 96, oct7b 99). The fall is in a few scenarios that swing between runs (loans 8 to 1, pulse 3 to 0) while others rose (renewal 5 to 7, crisis 2 to 4), and nothing in this release changed how patterns are detected, so it reads as noise; a second run on the same engine is going now to show it. Judgement accuracy: 18 clearly right, 6 partly, 0 missed (about 13, 11 and 0 read as strictly as oct7c). Adversarial set: 33 of 34. Pattern steadiness: about 72% within a run; nothing in code takes it to 80% without showing fewer patterns or changing the detector prompt, which is Hafsah's call.
+
+**9 October, early: ready for the next pull request.** `wip/release` (head after `d02e8d709`) holds the seven pieces, the lead's daily nudge, review appeals and decisions 117 to 123. The write-up with the "Before you merge" checklist is `docs/pull-request.md`; the commands are in the chat. Nothing was opened or pushed to Abubakar's repository.
+
+Every result: API 19,279 tests pass; client 4,831 pass; both typechecks clean; production start passes; migrations apply on an empty database and on live's schema with rows unchanged; the browser journeys and one full anchor walk pass; the privacy sweep finds nothing; existing users get nothing worse over a week on the clock.
+
+Needs Hafsah:
+1. Run the read-only query in `docs/deploy.md` ("Organisations over their plan") on the live data, to see which organisations are over their plan and by how much.
+2. Meta's approval of `lead_daily_summary`, and the three proposed review-appeal templates.
+3. A team aim that does not name a person stays visible to members on ordinary check-ins (the existing rule): confirm, or make it the lead's alone as in the anchor. Related: on the anchor, a member's Differences tile came close to wording the lead's private aim.
+4. Small wording left for the next round: Today's dates in two styles, the appeal footer after a changed decision, every admin offered the review's writing box, straight against curly apostrophes.
+
+Next, on `wip/next` so this pull request stays exactly as checked: pattern steadiness towards 80%, a fresh 24-scenario run for judgement accuracy, then the larger pieces.
+
 **8 October, morning: is #322 ready? Yes, with your go-ahead.** `wip/release` is ready to update #322; nothing was pushed to Abubakar's repository. The commands are in the chat and `docs/pull-request.md` has the "Before you merge" checklist.
 
 Found removed, and restored:

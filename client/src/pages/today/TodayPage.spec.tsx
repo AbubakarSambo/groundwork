@@ -337,72 +337,28 @@ describe('Today has one navy button', () => {
   })
 })
 
-/**
- * REQUEST 198 (b), DONE (docs/answers-from-engine.md, 8 October (late night)). `GET /today` carries
- * `forTheLead` only for a lead with something to add - built from the same functions the
- * first-reminder and Friday letter mails use. A participant, and an admin who does not run the
- * check-in, get no key at all, and nothing here repeats what Today's other cards already say.
+/*
+ * THE LEAD'S TODAY ALSO DRAWS WHAT HER MAIL TELLS HER (request 198, b): nobody has started, and what
+ * Groundwork would do this week. The sentences are the server's (what-the-lead-is-told-on-today.ts).
  */
-const FOR_THE_LEAD_READ = {
-  ...LEAD_READ,
-  forTheLead: {
-    nobodyHasStarted: [{
-      groundId: 'd1',
-      label: 'Distributor review',
-      subject: 'Nobody has started "Distributor review" yet, and Groundwork is following up',
-      lines: [
-        'Nobody has started "Distributor review" yet.',
-        'It opened four days ago.',
-        'Groundwork has already followed up once.',
-        'You can see who has started from here.',
-      ],
-      linkLabel: 'See who has started',
-      to: '/grounds/d1',
-    }],
-    whatIWouldDoThisWeek: [{
-      groundId: 's',
-      label: 'Sales team, Q3',
-      lines: [
-        'Here is what I would do this week.',
-        'Get back to Amani about the discount limit - he has been waiting since Saturday.',
-      ],
-    }],
-  },
-}
-
-describe('"For the lead", request 198 (b)', () => {
-  it('a lead with something to add reads "Nobody has started" and "What I would do this week", once each', async () => {
-    open(WAIRIMU, FOR_THE_LEAD_READ)
-    expect(await screen.findByText('Nobody has started')).toBeTruthy()
-    expect(screen.getByText('Nobody has started "Distributor review" yet, and Groundwork is following up')).toBeTruthy()
-    expect(screen.getByText('It opened four days ago.')).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'See who has started' })).toHaveAttribute('href', '/grounds/d1')
-
-    expect(screen.getByText('What I would do this week')).toBeTruthy()
-    expect(screen.getByText('Here is what I would do this week.')).toBeTruthy()
-    expect(screen.getByText(/Get back to Amani about the discount limit/)).toBeTruthy()
-
-    /* Not said twice: each heading, and each of its lines, appears exactly once. */
-    expect(screen.getAllByText('Nobody has started "Distributor review" yet, and Groundwork is following up')).toHaveLength(1)
-    expect(screen.getAllByText('Here is what I would do this week.')).toHaveLength(1)
-  })
-
-  it('a member reads neither section - the server sends her no forTheLead key at all', async () => {
-    open(MIRIAM, PARTICIPANT_READ)
-    await screen.findByText(partOfTheDayGreeting())
-    expect(screen.queryByText('Nobody has started')).toBeNull()
-    expect(screen.queryByText('What I would do this week')).toBeNull()
-  })
-
-  it('a lead with nothing new draws neither section', async () => {
-    open(WAIRIMU, LEAD_READ)
-    await screen.findByText('What needs you')
-    expect(screen.queryByText('Nobody has started')).toBeNull()
-    expect(screen.queryByText('What I would do this week')).toBeNull()
-  })
-
-  function partOfTheDayGreeting() {
-    /* Any greeting reads "Morning,"/"Afternoon,"/"Evening," at 9am on the fixed clock above. */
-    return /Morning, Miriam/
+describe('the lead’s Today, with what her mail also tells her', () => {
+  const FOR_THE_LEAD = {
+    nobodyHasStarted: [{ groundId: 'd', label: 'Distributor review', subject: 'Nobody has started “Distributor review” yet, and Groundwork is following up', lines: ['You invited Kito and Lerato three days ago.', 'Groundwork is reminding them.'], linkLabel: 'See who has started', to: '/grounds/d' }],
+    whatIWouldDoThisWeek: [{ groundId: 's', label: 'Sales team, Q3', lines: ['Here is what I would do this week.', 'Ask Omar about the Naivas order, because it has been open for a fortnight.'] }],
   }
+  it('draws each sentence once, with its link, for the lead', async () => {
+    open(WAIRIMU, { ...LEAD_READ, forTheLead: FOR_THE_LEAD })
+    const region = await screen.findByRole('list', { name: 'From Groundwork' })
+    expect(within(region).getAllByText('Nobody has started “Distributor review” yet, and Groundwork is following up')).toHaveLength(1)
+    expect(within(region).getByText('Groundwork is reminding them.')).toBeInTheDocument()
+    expect(within(region).getByRole('link', { name: 'See who has started' })).toHaveAttribute('href', '/grounds/d')
+    expect(within(region).getByText('Here is what I would do this week.')).toBeInTheDocument()
+    expect(within(region).getByText('Ask Omar about the Naivas order, because it has been open for a fortnight.')).toBeInTheDocument()
+    expect(within(region).getByRole('link', { name: 'Open the check-in' })).toHaveAttribute('href', '/grounds/s')
+  })
+  it('draws nothing for a reader the server gave no key', async () => {
+    open(MIRIAM, PARTICIPANT_READ)
+    await screen.findByText('Your own report for Sales team, Q3')
+    expect(screen.queryByRole('list', { name: 'From Groundwork' })).toBeNull()
+  })
 })

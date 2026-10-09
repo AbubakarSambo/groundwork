@@ -132,15 +132,9 @@ export function TodayPage() {
   const outstandingNeedsYou = outstanding ? outstandingNotAlreadyShown(needs, outstanding.needsYou, outstanding.about?.needsYou) : []
   const overdueOnYourTeam = outstanding?.overdueOnYourTeam ?? []
   const risks = outstanding?.risks ?? []
-
-  /* REQUEST 198 (b), DONE: absent for anybody but a lead with something here to add - a participant
-     and an admin who does not run the check-in both read nothing, and nothing extra is drawn for a
-     lead whose server has nothing new for her either. The server has already left out anything its
-     own other cards or "Needs you"/"Overdue on your team"/"Risks" say, so this draws exactly what
-     it is given. */
-  const forTheLead = data?.forTheLead
-  const nobodyHasStarted = forTheLead?.nobodyHasStarted ?? []
-  const whatIWouldDoThisWeek = forTheLead?.whatIWouldDoThisWeek ?? []
+  /* What the lead's mail also tells her (request 198, b): the server's own sentences and links, drawn once. Absent for everybody else. */
+  const nobodyHasStarted = data?.forTheLead?.nobodyHasStarted ?? []
+  const whatIWouldDo = data?.forTheLead?.whatIWouldDoThisWeek ?? []
 
   return (
     <Page>
@@ -218,39 +212,28 @@ export function TodayPage() {
             </Section>
           )}
 
-          {/*
-            REQUEST 198 (b): FOR THE LEAD, DRAWN IN THIS LAYOUT'S OWN TERMS, NOTHING SAID TWICE.
-            Built from the same functions the first-reminder and Friday letter mails use, so Today
-            and the mail read the same facts. Each check-in's own subject and lines, once per
-            check-in - nothing here repeats "What needs you" or the three lists just above.
-          */}
-          {nobodyHasStarted.length > 0 && (
-            <Section heading="Nobody has started">
-              <Stack gap={12}>
+          {(nobodyHasStarted.length > 0 || whatIWouldDo.length > 0) && (
+            <Section heading="From Groundwork">
+              <EdgeList label="From Groundwork">
                 {nobodyHasStarted.map((n) => (
-                  <Stack key={n.groundId} gap={4}>
-                    <p className="gwui-panel-text"><strong>{n.subject}</strong></p>
-                    {n.lines.map((line, i) => (
-                      <p key={i} className="gwui-panel-text-muted">{line}</p>
-                    ))}
-                    <p><Link className="gwui-plain-link" to={n.to}>{n.linkLabel}</Link></p>
-                  </Stack>
+                  <EdgeRow
+                    key={`started-${n.groundId}`}
+                    kind="look"
+                    title={n.subject}
+                    detail={n.lines.map((line, i) => <p key={i} className="gwui-panel-text">{line}</p>)}
+                    actions={<Button kind="secondary" size="small" to={n.to}>{n.linkLabel}</Button>}
+                  />
                 ))}
-              </Stack>
-            </Section>
-          )}
-          {whatIWouldDoThisWeek.length > 0 && (
-            <Section heading="What I would do this week">
-              <Stack gap={12}>
-                {whatIWouldDoThisWeek.map((w) => (
-                  <Stack key={w.groundId} gap={4}>
-                    <p className="gwui-panel-text"><strong>{w.label}</strong></p>
-                    {w.lines.map((line, i) => (
-                      <p key={i} className="gwui-panel-text-muted">{line}</p>
-                    ))}
-                  </Stack>
+                {whatIWouldDo.map((w) => (
+                  <EdgeRow
+                    key={`week-${w.groundId}`}
+                    kind="look"
+                    title={w.lines[0]}
+                    detail={[`This is for ${w.label}.`, ...w.lines.slice(1)].map((line, i) => <p key={i} className="gwui-panel-text">{line}</p>)}
+                    actions={<Button kind="secondary" size="small" to={`/grounds/${w.groundId}`}>Open the check-in</Button>}
+                  />
                 ))}
-              </Stack>
+              </EdgeList>
             </Section>
           )}
 

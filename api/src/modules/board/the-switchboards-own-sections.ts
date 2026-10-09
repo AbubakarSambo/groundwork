@@ -1,4 +1,4 @@
-import { theWaitSaid, aHolderThatIsOnlyTheThing } from './a-wait-said-in-full';
+import { theWaitSaid, aHolderThatIsOnlyTheThing, PLAIN_WORDS } from './a-wait-said-in-full';
 import { howManyGoalsAreNotTold } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { holdsItSaid, theReaderSaidAsYou, aThingWithoutItsHolder } from './a-holder-in-their-own-words';
 import { aCommitmentSaid, looksLikeATimeOrADate, inOurVoice } from '../reports/what-the-record-shows-over-time';
@@ -171,7 +171,8 @@ export function theTimeGivenSaid(d: AHandoff, who: string): string | null {
   return 'A time has been given for it.';
 }
 
-const midSentence = (who: string) => (who === 'You' ? 'you' : who);
+/* Inside a sentence: "you" for the reader, and the plain words for somebody with no name ("a colleague") are not capitalised (final check, 9 October: "…the ward that A colleague is waiting for"). */
+const midSentence = (who: string) => (who === 'You' ? 'you' : PLAIN_WORDS.test(who) ? who.toLowerCase() : who);
 const possessive = (who: string) => (who === 'You' ? 'Your' : `${who}'s`);
 
 /** Who, as a sentence starts with them: the reader's own name is 'You', somebody they may not name is 'A colleague'. */

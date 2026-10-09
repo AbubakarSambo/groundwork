@@ -65,6 +65,8 @@ export interface AThingOutstanding {
   /** The check-in it comes from, and how many days past its day it is, so a long-overdue item can be left out for a check-in made before the release (decision 121, item 6). */
   groundId?: string;
   daysOverdue?: number;
+  /** For a wait or blocker with no day of its own: how many days it has been open, so one more than a month old can be left out for a check-in made before the release (decision 121, item 6). */
+  daysOpen?: number;
   /**
    * WHAT IT IS ABOUT, for a screen to match it against its own rows by the thing and not by its words (request 205). `kind` is one of
    * `wait`, `decision`, `promise`, `requests`, `plan-decision`, `target`, `quiet`; `ids` are the ids of the records it is about (a wait's or a
@@ -243,13 +245,13 @@ const PERSON = {
 export const LONG_OVERDUE_AFTER_DAYS = 30;
 
 /**
- * FOR EXISTING CLIENTS, WHAT IS MORE THAN A MONTH OVERDUE IS LEFT OUT (decision 121, item 6). A check-in made before the engagement messages
+ * FOR EXISTING CLIENTS, WHAT IS MORE THAN A MONTH OVERDUE IS LEFT OUT (decision 121, item 6), AND SO IS A WAIT OR BLOCKER OPEN FOR MORE THAN A MONTH. A check-in made before the engagement messages
  * began (the same moment the other engagement messages use) carries a history nobody can act on every morning, so the daily nudge does not
  * open with it. Check-ins made since are untouched, and an item with no day, or with a day not yet a month gone, always stays.
  */
 async function leaveOutWhatIsLongOverdueOnOldCheckIns(prisma: any, o: WhatIsOutstanding, release: Date | null): Promise<WhatIsOutstanding> {
   if (!release) return o;
-  const long = (t: AThingOutstanding) => !!t.groundId && (t.daysOverdue ?? 0) > LONG_OVERDUE_AFTER_DAYS;
+  const long = (t: AThingOutstanding) => !!t.groundId && ((t.daysOverdue ?? 0) > LONG_OVERDUE_AFTER_DAYS || (t.daysOpen ?? 0) > LONG_OVERDUE_AFTER_DAYS);
   const ids = [...new Set([...o.needsYou, ...o.overdueOnYourTeam, ...o.risks].filter(long).map((t) => t.groundId!))];
   if (!ids.length) return o;
   const made: any[] = await prisma.ground.findMany({ where: { id: { in: ids } }, select: { id: true, createdAt: true } }).catch(() => []);
@@ -389,7 +391,7 @@ export async function whatIsOutstandingFor(
     .filter((w) => !counted.has(w.id) && aWaitReadsAsASentence(w) && letIn(w.fromParticipant) && (hers.has(w.fromParticipantId) || nameToCall(w.fromParticipant) !== SOMEONE) && !(w.onParticipant && !hers.has(w.onParticipantId) && nameToCall(w.onParticipant) === SOMEONE) && Math.floor((now.getTime() - new Date(w.createdAt).getTime()) / DAY) >= ESCALATE_AFTER_DAYS)
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   for (const w of tooLong) {
-    out.risks.push({ text: `${saidWait(w, 'has been')}${THE_PLACE_MARK} since ${theDay(w.createdAt)}.`, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId), groundId: w.groundId, about: { kind: 'wait', ids: [w.id] } });
+    out.risks.push({ text: `${saidWait(w, 'has been')}${THE_PLACE_MARK} since ${theDay(w.createdAt)}.`, keptInTheApp: kept(w.groundId), place: labelOf.get(w.groundId), groundId: w.groundId, daysOpen: Math.floor((now.getTime() - new Date(w.createdAt).getTime()) / DAY), about: { kind: 'wait', ids: [w.id] } });
   }
   /* A check-in where people have gone quiet. Not about a check-in that began before the engagement messages did. */
   if (deps.release) {
