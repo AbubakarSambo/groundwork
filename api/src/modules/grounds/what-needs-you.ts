@@ -411,7 +411,8 @@ export function whatNeedsYou(
       if (future) {
         comingUp.push({
           at: new Date(future.at).toISOString(),
-          what: mayName ? `${cap(theCheckIn(future.sessionNumber))} for ${g.label} opens.` : `${yourCheckIn(future.sessionNumber)} for ${g.label} opens.`,
+          /* The name is in quotation marks, so a name with a comma in it ("Wanjiru, first 90 days") is not read as two pieces (B-167). */
+          what: mayName ? `${cap(theCheckIn(future.sessionNumber))} for “${g.label}” opens.` : `${yourCheckIn(future.sessionNumber)} for “${g.label}” opens.`,
           to: `/grounds/${g.id}`,
           ...aboutTheCheckIn(g),
         });

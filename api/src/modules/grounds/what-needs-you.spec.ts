@@ -94,7 +94,7 @@ describe('Today, as the lead who runs the sales team', () => {
   });
 
   it('says what is coming up, as moments the screen puts in her own time', () => {
-    expect(r.comingUp).toEqual([{ at: ahead(31), what: 'The third check-in for Sales team, Q3 opens.', to: '/grounds/g-sales', groundId: 'g-sales' }]);
+    expect(r.comingUp).toEqual([{ at: ahead(31), what: 'The third check-in for “Sales team, Q3” opens.', to: '/grounds/g-sales', groundId: 'g-sales' }]);
   });
 });
 
@@ -209,7 +209,7 @@ describe('Today, for a session that was started before its own date', () => {
   it('Neema, who has not started, is still told that it opens later, and is offered nothing yet', () => {
     const r = whatNeedsYou([started], { userId: 'u-neema', role: 'MEMBER', organizationId: 'org' }, [], NOW);
     expect(titles(r)).toEqual([]);
-    expect(r.comingUp).toEqual([{ at: ahead(150), what: 'Your second check-in for Sales team, Q3 opens.', to: '/grounds/g-early', groundId: 'g-early' }]);
+    expect(r.comingUp).toEqual([{ at: ahead(150), what: 'Your second check-in for “Sales team, Q3” opens.', to: '/grounds/g-early', groundId: 'g-early' }]);
   });
 });
 
