@@ -4,6 +4,25 @@ This is the report from the screens workspace, on the branch `wip/prototype-ui`.
 workspace writes its own report in `docs/morning-report.md`, so the two computers never edit the
 same file.
 
+## 9 October, the engine's fixes checked
+
+The engine's commits 4bae3659 (B-091 and B-013) and 3f8f821a (the old context chat stays on) were merged and checked in a real browser, reading what the API sends each person, at 1440, 1280, 1024 and 390.
+
+| What was checked | 1440 | 1280 | 1024 | 390 |
+| --- | --- | --- | --- | --- |
+| B-091: Halima, a team member on the anchor check-in, gets nothing built from Baraka's set-up, from the list or the check-in | PASS | PASS | PASS | PASS |
+| B-013: Amani, a team member on Sales team, Q3, gets nothing built from Rukia's set-up, from the list or the check-in | PASS | PASS | PASS | PASS |
+| The lead, and an admin who is not in the check-in, still get the set-up | PASS | PASS | PASS | PASS |
+| The old chat is drawn on Context and resources, and "Change this in the chat" fills it | PASS | PASS | PASS | PASS |
+| A document added through the old chat's paperclip is filed, read and kept | PASS | PASS | PASS | PASS |
+| Ask adds a document when asked | FAIL | FAIL | FAIL | FAIL |
+| Ask keeps a fact the lead types | FAIL | FAIL | FAIL | FAIL |
+
+- **Privacy.** None of the lead's set-up reaches the team member in any response her pages load. No sideways scroll at 390. The only console errors are the known 404s from the suites (B-002).
+- **A new privacy leak, B-114 (engine).** On Sales team, Q3, where people see only their own targets, the list `GET /grounds` still gives Amani every colleague's target number with their name: Baraka 4, Neema 4, Rukia 4. The check-in's own read does not. This needs the engine before the pull request.
+- **The old chat works.** The paperclip filed `westlands-depot-plan-<width>.txt` at each width, read it and offered its numbers. What it says back is in pieces, for example "The date it sets for No deliveries leave Westlands is that week.", and once it took "Each account manager" for a person's name (B-115, engine). On the lead's own card the chat is filled with her own name, "Change what I expect of Tendai Moyo to " (B-116, screens).
+- **Ask is unchanged.** B-083, B-084 and B-085 are not fixed, and nothing in these commits touched them. Ask has no way to attach a file (the only control by its box is Send). It turned "I want to add a document to this check-in." into a measure, "a document to this check-in" is an aim of 1 to reach, and the Westlands fact got "I cannot answer that one yet." twice, a measure once, and "Everyone in this check-in will see this" once, with nothing written. No reply mentioned a paperclip this time. But Ask still says "You can also add context or documents to your check-ins here." and offers "Add a document or some context to my check-in.", which it cannot do. Because the old chat stays on, a lead can still add documents and facts there.
+
 ## 9 October, Hafsah's answers
 
 - **The old context chat stays on in this pull request.** The engine is keeping `release.oldContextChat` on.
