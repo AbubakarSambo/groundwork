@@ -394,11 +394,11 @@ function HiddenContributorRow({ groundId, label, evidence, isInitiator }: {
     <div className="gwui-panel-row">
       <Stack gap={6}>
         <Stack gap={4}>
-          <div className="gwui-fs-16 gwui-ink-text" style={{ fontWeight: 600 }}>{label}</div>
-          <div className="gwui-fs-15 gwui-ink-sub" style={{ lineHeight: 1.55 }}>{evidence}</div>
+          <Text size="16" ink="text" weight={600}>{label}</Text>
+          <Text size="15" ink="sub" lineHeight={1.55}>{evidence}</Text>
         </Stack>
         {done ? (
-          <div className="gwui-fs-13 gwui-ink-green" style={{ fontWeight: 600 }}>{isInitiator ? 'Invited.' : 'Request sent.'}</div>
+          <Text size="13" ink="green" weight={600}>{isInitiator ? 'Invited.' : 'Request sent.'}</Text>
         ) : open ? (
           <Stack gap={6}>
             <input
@@ -663,9 +663,9 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
             whole check-in" (`MaybeFolded`), closed by default, so "below" alone left a reader to find
             and open it themselves. This instead opens that fold and jumps straight to it.
           */}
-          <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 700}}>
+          <Text size="16" ink="dark" weight={700}>
             {shared ? 'Today’s team picture is shared.' : 'Today’s team picture isn’t shared yet.'}
-          </div>
+          </Text>
           <div className="gwui-fs-15 gwui-ink-sub gwui-mt-4" style={{lineHeight: 1.55}}>
             {shared
               ? null
@@ -786,7 +786,7 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
 const STARTING_STATE_STEPS = ['Day 1', 'By day 30', 'By day 60', 'By day 90', 'After day 90'] as const
 
 function StartingStateSentence({ children }: { children: React.ReactNode }) {
-  return <div className="gwui-fs-15 gwui-ink-dark" style={{lineHeight: 1.55}}>{children}</div>
+  return <Text size="15" ink="dark" lineHeight={1.55}>{children}</Text>
 }
 
 function StartingStateBody({ startingState }: { startingState: string | StartingStateAtTheStart }) {
@@ -920,19 +920,19 @@ function DivergenceSectionBody({ heading, divergence, whyNothingYet, onlyOnePers
           <>
             {divergence.items.map((d: any, i: number) => (
               <Row key={i} columns="1fr" inset="panel">
-                <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 600}}>
+                <Text size="16" ink="dark" weight={600}>
                   {d.topic ?? d.tag ?? 'Somewhere you see it differently'}
-                </div>
+                </Text>
                 <div className="gwui-fs-15 gwui-ink-amber gwui-mt-2">{whoSeesThisDifferently(d.positions, myName)}</div>
                 {d.text && <div className="gwui-fs-15 gwui-ink-sub gwui-mt-3">{d.text}</div>}
                 {Array.isArray(d.positions) && d.positions.some((pos: any) => pos.view) && (
                   <div className="gwui-mt-6">
                     <Stack gap={4}>
                       {d.positions.filter((pos: any) => pos.view).map((pos: any, j: number) => (
-                        <div key={j} className="gwui-fs-15 gwui-ink-text" style={{lineHeight: 1.55}}>
+                        <Text key={j} size="15" ink="text" lineHeight={1.55}>
                           <div style={{fontWeight: 700}}>{pos.who ?? 'A colleague'}</div>
                           <div className="gwui-ink-sub">{pos.view}</div>
-                        </div>
+                        </Text>
                       ))}
                     </Stack>
                   </div>
@@ -947,9 +947,9 @@ function DivergenceSectionBody({ heading, divergence, whyNothingYet, onlyOnePers
             ))}
             {divergence.agreements.map((a: any, i: number) => (
               <Row key={`a${i}`} columns="1fr" inset="panel">
-                <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 600}}>
+                <Text size="16" ink="dark" weight={600}>
                   {typeof a === 'string' ? a : a.topic ?? 'Agreed'}
-                </div>
+                </Text>
                 <div className="gwui-fs-15 gwui-ink-green gwui-mt-2">Everybody agrees on this.</div>
               </Row>
             ))}
@@ -4192,9 +4192,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       sentence inside the card already says "you" for its own record (see
                       progress-reported-is-never-they.spec.tsx); the heading above it did not.
                     */}
-                    <div className="gwui-fs-15 gwui-ink-dark" style={{fontWeight: 700}}>
+                    <Text size="15" ink="dark" weight={700}>
                       {p.participantId === b.myParticipantId ? 'You' : nameOnTheBoard(b, p.participantId, p.name)}
-                    </div>
+                    </Text>
                     {p.role && p.role !== p.name && <TheLeadsNote role={p.role} className="gwui-fs-13-5 gwui-ink-sub gwui-mt-1" />}
                   </div>
                   <div className="gwui-pt-2 gwui-pr-15 gwui-pb-10 gwui-pl-15">
@@ -4260,7 +4260,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               for it. W8-24.
             */}
             {b.dependencies.length === 0 ? (
-              <Panel><div className="gwui-fs-15 gwui-ink-sub" style={{lineHeight: 1.6}}>Nothing here yet. Handoffs appear when somebody says in a check-in that they are waiting on another person.</div></Panel>
+              <Panel><Text size="15" ink="sub" lineHeight={1.6}>Nothing here yet. Handoffs appear when somebody says in a check-in that they are waiting on another person.</Text></Panel>
             ) : (
               <Stack gap={10}>
                 {b.dependencies.filter((d) => (d.what ?? '').trim().toLowerCase() !== (d.on ?? '').trim().toLowerCase()).map((d) => {
@@ -4296,7 +4296,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   return (
                     <Panel key={d.id}>
                       <FlexRow gap={10} align="flex-start" justify="space-between">
-                        <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 700}}>{title}</div>
+                        <Text size="16" ink="dark" weight={700}>{title}</Text>
                         <Tag tone={tone}>{word}</Tag>
                       </FlexRow>
                       <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-8">
@@ -4377,7 +4377,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     <span className="gwui-ink-dark gwui-fs-14" style={{fontWeight: 700}}>Everyone here</span>
                     {/* Board review, 30 September, item 7: a two-word tag beside a name, not a
                         sentence a person reads. */}
-                    <span className="gwui-fs-13-5 gwui-ink-amber" style={{fontWeight: 600}}>Nobody here has said what their role covers yet.</span>
+                    <Text size="13-5" ink="amber" weight={600} as="span">Nobody here has said what their role covers yet.</Text>
                   </FlexRow>
                   <div className="gwui-fs-15 gwui-ink-navy gwui-rule-blue gwui-pt-8 gwui-pr-10 gwui-pb-8 gwui-pl-10 gwui-mt-8" style={{background: 'var(--gw-blue-bg)', borderRadius: 9, lineHeight: 1.5}}>
                     {b.contribution[0].note}
@@ -4402,7 +4402,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       ? (b.canEditFrame && c.remit ? <TheLeadsNote role={c.remit} className="gwui-fs-13-5 gwui-ink-sub" /> : null)
                       /* Board review, 30 September, item 7: "role not clearly defined" beside a
                          name is a tag, not a sentence about that person. */
-                      : <span className="gwui-fs-13-5 gwui-ink-amber" style={{fontWeight: 600}}>{isReader ? 'Nobody has said what your role covers yet.' : `Nobody has said what ${nameFirstWord || 'their'}'s role covers yet.`}</span>}
+                      : <Text size="13-5" ink="amber" weight={600} as="span">{isReader ? 'Nobody has said what your role covers yet.' : `Nobody has said what ${nameFirstWord || 'their'}'s role covers yet.`}</Text>}
 
                   </FlexRow>
 
@@ -4631,7 +4631,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               {b.managerAlignment.map((m, i) => (
                 <div key={i} className="gwui-panel-row">
                   <FlexRow gap={8} align="baseline" wrap>
-                    <span className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 600}}>{m.label}</span>
+                    <Text size="16" ink="dark" weight={600} as="span">{m.label}</Text>
                     {/* The pole matters more than the gap: holding on to everything
                         and holding nobody need opposite responses, and telling one
                         to do the other makes it worse. */}
@@ -4683,7 +4683,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 />
               ))}
               <div className="gwui-panel-row">
-                <div className="gwui-fs-15 gwui-ink-sub" style={{lineHeight: 1.6}}>{b.hiddenContributors.why}</div>
+                <Text size="15" ink="sub" lineHeight={1.6}>{b.hiddenContributors.why}</Text>
               </div>
             </Panel>
           </Section>
@@ -4924,7 +4924,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               ].map((cell, i) => (
                 <Stack key={i} gap={4}>
                   <div className="gwui-fs-13-5 gwui-ink-muted" style={{letterSpacing: '.1px', fontWeight: 700}}>{cell.h}</div>
-                  <div className="gwui-fs-15 gwui-ink-sub" style={{lineHeight: 1.55}}>{cell.p}</div>
+                  <Text size="15" ink="sub" lineHeight={1.55}>{cell.p}</Text>
                 </Stack>
               ))}
             </Stack>

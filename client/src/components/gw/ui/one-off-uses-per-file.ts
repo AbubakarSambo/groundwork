@@ -25,7 +25,7 @@ export const ONE_OFF_USES_PER_FILE: Record<string, number> = {
   'components/gw/ui/PatternPanel.tsx': 13,
   'components/gw/where-each-person-is.tsx': 4,
   'components/gw/where-to-focus.tsx': 26,
-  'pages/board/BoardPage.tsx': 533,
+  'pages/board/BoardPage.tsx': 501,
   'pages/board/TheSwitchboardsSections.tsx': 32,
   'pages/board/WorkRecords.tsx': 70,
   'pages/company/CompanyContextPage.tsx': 1,

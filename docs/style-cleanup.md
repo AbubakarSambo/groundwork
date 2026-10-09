@@ -65,11 +65,21 @@ first baseline from before any change) all came back at 0 differing pixels on al
 | --- | --- | --- | --- | --- |
 | `pages/board/BoardPage.tsx` (Text batch) | 561 | 533 | report-ready board as lead and as member, active board as lead, at 1440 and 390 (6 screenshots) | 0 differing pixels in every screenshot, once the sidebar's own unrelated flake was retried past. 14 style-free `gwui-fs-N`/`gwui-ink-X` text elements converted. |
 
-**Left for a future batch:** `Text`'s props for `weight`/`lineHeight`/`letterSpacing`/`display` were
-built but not yet exercised - BoardPage's remaining `gwui-fs-N`/`gwui-ink-X` uses all carry an
-inline style alongside the classes (the common shape is size, colour, and one of `fontWeight 600`/
-`700`, `lineHeight 1.4` to `1.6`, or both), which `Text` already covers prop-for-prop; converting
-those is the safest next target.
+**Third batch, same session (`Text`, `weight`/`lineHeight`):** the `gwui-fs-N`/`gwui-ink-X` cases
+carrying exactly one `fontWeight` (10 occurrences) or exactly one `lineHeight` (6 occurrences) and
+nothing else in their inline style were converted the same way - `<Text size="N" ink="X"
+weight={600}>`/`<Text size="N" ink="X" lineHeight={1.55}>`. 533 -> 501 one-off uses.
+
+| Page | Uses before | Uses after | States checked | Result |
+| --- | --- | --- | --- | --- |
+| `pages/board/BoardPage.tsx` (Text weight/lineHeight batch) | 533 | 501 | report-ready board as lead and as member, active board as lead, at 1440 and 390 (6 screenshots) | 0 differing pixels in every screenshot. 16 single-property text elements converted. |
+
+**Left for a future batch:** `Text`'s `letterSpacing`/`display` props were built but not yet
+exercised, and no case in `BoardPage.tsx` combines `fontWeight` and `lineHeight` on the same
+element in a way `Text` doesn't already cover (it takes both at once) - what is left is mostly
+`gwui-fs-N`/`gwui-ink-X` pairs carrying a `letterSpacing` plus `fontWeight` together (for example
+a small bold eyebrow label), which `Text` already has props for; converting those, and the
+remaining grid-gap and column-flex cases `FlexRow` does not reach, is the next session's work.
 
 **Still left alone, and why:** every `gwui-gap-N` with a fixed `width` or paired with
 `flexDirection: 'column'` (`GroundParticipantPage.tsx`'s settings tab - its own comment explains the
