@@ -13,7 +13,7 @@ import { groundsApi } from '@/api/grounds'
 import { YouAreIn } from './YouAreIn'
 import { firstWordOfAName } from '@/lib/the-first-word-of-a-name'
 import { QueueLink } from '@/pages/suites/QueuePage'
-import { yourRequestsApi } from '@/api/suites'
+import { yourRequestsApi, reviewsApi } from '@/api/suites'
 import { useSuitesKnownOffStore } from '@/stores/suites-known-off'
 import { useEffect } from 'react'
 import { todayGreetingLine } from '@/lib/the-greeting-line-does-not-claim-what-needs-you-does-not'
@@ -104,6 +104,17 @@ export function TodayPage() {
      has nothing outstanding - a member's query simply resolves to nothing drawn. */
   const outstandingQuery = useQuery({ queryKey: ['today-outstanding'], queryFn: todayApi.outstanding, enabled: !!user, staleTime: 30_000 })
 
+  /*
+   * A PERSON'S OWN REVIEW APPEAL, ON TODAY (decision 113, engine workspace, 9 October: "the review
+   * appeal is drawn" - "Not drawn yet: ... the person's card on Today (mayAppeal, appealSays)").
+   * The generic review `Need` above (from `GET /today`) only ever carries the review's main
+   * sentence; it says nothing about appealing a decision once it is made. `GET /suites/reviews/mine`
+   * already carries that (the same call the reviews board makes for "Your reviews"), so it is read
+   * again here, and only a review with something to say about an appeal is drawn.
+   */
+  const myReviews = useQuery({ queryKey: ['suite-reviews-mine-today'], queryFn: reviewsApi.mineQuietly, enabled: !!user, retry: false })
+  const myReviewAppeals = (Array.isArray(myReviews.data) ? myReviews.data : []).filter(r => r.mayAppeal || r.appealSays)
+
   const now = new Date()
   /* Signup asks for "Your name" in one field, stored whole as `firstName` (AuthPage.tsx), so a real
      signup ("Rukia Otieno") used to greet "Morning, Rukia Otieno". The prototype's greeting is a
@@ -180,6 +191,29 @@ export function TodayPage() {
             {aSuiteIsOnForYou && <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/mine">{requestsLinkLabel}</Link></p>}
             <QueueLink userId={user?.id} />
           </Section>
+
+          {/*
+            A PERSON'S OWN REVIEW APPEAL (decision 113, engine workspace, 9 October: "the review
+            appeal is drawn" - "Not drawn yet: ... the person's card on Today"). Plain heading and
+            sentence, since the prototype has none for this yet; the server's own sentence
+            (`mayAppealSays` is read on the review itself, `appealSays` here) does the real talking.
+            One row per review with something to say, each going to where the full appeal form
+            already lives, so nothing here duplicates the form on `ReviewPage.tsx`.
+          */}
+          {myReviewAppeals.length > 0 && (
+            <Section heading="Your review appeal">
+              <EdgeList label="Your review appeal">
+                {myReviewAppeals.map(r => (
+                  <EdgeRow
+                    key={r.id}
+                    kind="look"
+                    title={r.appealSays ?? 'You can appeal this decision.'}
+                    actions={<Button kind="secondary" size="small" to="/suite/reviews">{r.appealSays ? 'Open your appeal' : 'Appeal this decision'}</Button>}
+                  />
+                ))}
+              </EdgeList>
+            </Section>
+          )}
 
           {/* The lead's daily nudge's own link (decision 120): "Needs you", "Overdue on your team"
               and "Risks", each left out while its own list is empty. `null` for anybody who is not

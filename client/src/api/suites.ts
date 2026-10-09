@@ -156,6 +156,15 @@ export interface YourReview {
   writtenWithFirstName: string | null
   stands: 'started' | 'decided'
   says: string
+  /**
+   * THE APPEAL (decision 113), served here too and not yet drawn anywhere but the review itself
+   * (engine workspace, 9 October: "the review appeal is drawn" - "Not drawn yet: ... the person's
+   * card on Today (mayAppeal, appealSays)"). `mayAppeal`: the review is decided and not yet
+   * appealed. `appealSays`: the server's own sentence for where an appeal already made stands.
+   */
+  mayAppeal?: boolean
+  appealStands?: AppealStands | null
+  appealSays?: string | null
 }
 export interface ReviewsBoard { every: string | null; next: NextReview[] }
 export interface Noticed { says: string; mark: 'proven' | 'said' }
@@ -262,9 +271,27 @@ export interface ReviewForThePerson {
 }
 export type AReview = ReviewForTheWriter | ReviewForThePerson
 
+/**
+ * AN ADMIN'S LIST OF APPEALS (decision 113, GET /suites/reviews/appeals). Not drawn until now
+ * (engine workspace, 9 October: "the review appeal is drawn" - "Not drawn yet"): an admin who may
+ * decide an appeal, and one who decided the review itself and is waiting for a second admin.
+ */
+export interface AppealToDecide { id: string; name: string; firstName: string; dueOn: string; appealedOn: string; reviewerFirstName: string | null }
+export interface AppealWaitingForAnotherAdmin { id: string; name: string; firstName: string; dueOn: string; appealedOn: string; says: string }
+export interface AppealsToDecide { appeals: AppealToDecide[]; waitingForAnotherAdmin: AppealWaitingForAnotherAdmin[] }
+
 export const reviewsApi = {
   board: async (): Promise<ReviewsBoard> => (await apiClient.get('/suites/reviews/board', { skipForbiddenToast: true } as any)).data,
   mine: async (): Promise<YourReview[]> => (await apiClient.get('/suites/reviews/mine')).data,
+  /**
+   * THE SAME CALL, FOR TODAY. Today asks it for everyone (to draw a decided review's own appeal
+   * card, mayAppeal/appealSays), not only somebody already on the Performance reviews page - and
+   * the reviews suite is off for most organisations, which the server reads as a 404. `mine` above
+   * is called only from the reviews board, where that 404 is the caller's own business; here, for
+   * every reader on Today, it is the ordinary case and must not toast "Not found" at them.
+   */
+  mineQuietly: async (): Promise<YourReview[]> =>
+    (await apiClient.get('/suites/reviews/mine', { skipNotFoundToast: true } as any)).data,
   start: async (dueId: string): Promise<{ id: string }> => (await apiClient.post(`/suites/reviews/due/${dueId}/start`)).data,
   one: async (id: string): Promise<AReview> => (await apiClient.get(`/suites/reviews/${id}`, { skipForbiddenToast: true } as any)).data,
   words: async (id: string, text: string): Promise<AReview> => (await apiClient.put(`/suites/reviews/${id}/words`, { text })).data,
@@ -277,6 +304,8 @@ export const reviewsApi = {
   addToTheAppeal: async (id: string, text: string): Promise<AReview> => (await apiClient.post(`/suites/reviews/${id}/appeal/more`, { text })).data,
   decideTheAppeal: async (id: string, input: { outcome: 'stands' | 'changed'; reasons: string; decision?: string }): Promise<AReview> =>
     (await apiClient.post(`/suites/reviews/${id}/appeal/decision`, input)).data,
+  appealsToDecide: async (): Promise<AppealsToDecide> =>
+    (await apiClient.get('/suites/reviews/appeals', { skipForbiddenToast: true } as any)).data,
 }
 
 /** When someone leaves (GET /suites/leaving/board). Admins only. */
