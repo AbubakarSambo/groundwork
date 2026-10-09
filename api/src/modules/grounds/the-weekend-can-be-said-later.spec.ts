@@ -52,7 +52,7 @@ describe('the days a team works, after the check-in exists', () => {
   it('and the lead has somewhere to say it', () => {
     expect(ADMIN_PAGE).toMatch(/<WhichDaysTheyWork value=\{workingDaysDraft\} onChange=\{setWorkingDaysDraft\} \/>/);
     /* Sent with the rhythm it belongs to, and the save button knows it changed. */
-    expect(ADMIN_PAGE).toMatch(/saveSetup\.mutate\(\{ timelineDays: timelineDaysDraft, cadence: cadenceDraft, workingDays: workingDaysDraft \}\)/);
+    expect(ADMIN_PAGE).toMatch(/saveSetup\.mutate\(\{ timelineDays: timelineDaysDraft, cadence: cadenceDraft, workingDays: workingDaysDraft(, cadenceAnchorDay: anchorDayDraft)? \}\)/);
     expect(ADMIN_PAGE).toMatch(/!sameDays\(workingDaysDraft, \(ground as \{ workingDays\?: number\[\] \}\)\.workingDays\)/);
   });
 
