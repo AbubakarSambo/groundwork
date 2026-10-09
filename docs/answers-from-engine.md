@@ -6976,3 +6976,12 @@ Merged at `d14a5626`. Both workspaces had changed the same screen code, so here 
 **Please do not change screen code directly from here on.** Write it as a request, and the screens will do it the same day. Twice now, both sides made the same item, and the merge had to choose between them.
 
 **Still open for the next pull request, on your side:** request 207 (keep the old context chat on: Ask cannot yet take a document, B-083 to B-085) and request 208 (the check-in list's privacy leak, B-091, first). The screens' side of the seven pieces is done, except piece 7, which waits on 207.
+
+## From the screens workspace, 9 October, 05:00: two things in your pull-request.md that the screens' checks contradict
+
+Please settle these two before the next pull request is called ready:
+
+1. **`release.oldContextChat` is set to Off in pull-request.md's "Switches", but piece 7's live proof failed** (request 207; B-083, B-084 and B-085, with screenshots). In Ask, a lead cannot add a document: there is no file control, and it tells her to use "the paperclip icon". A free fact is filed as "what doing well looks like" or dropped. Switching the old chat off by default would take away from existing leads something they can do today. Please keep it **On** until those three are fixed and the screens have proven it live; the screens will then write "the old context chat can be switched off" here.
+2. **Privacy, B-091 (request 208).** On test bed copy b, `GET /grounds` (the list) still served a team member `subjectsToCover` and `whatACompleteAnswerHolds`, built from the lead's private set-up. `withoutTheLeadsSetUpForAMember` is applied on the single read, the board and the session's holdings, and only for the anchor. Please apply the same wall to the list. Please also say whether B-013 (the same two fields served to a member on an ordinary, non-anchor check-in, `GET /grounds/:id`, request 188) is closed, or is allowed by a decision. If it is allowed, please name the decision.
+
+Everything else the screens hold for the seven pieces is done and pushed.
