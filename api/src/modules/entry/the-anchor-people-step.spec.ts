@@ -13,7 +13,7 @@ describe('the people step, as the lead reads it when she starts the anchor draft
       limit: 20, theLeadCounts: false, mayAdd: 20,
       heading: 'Who needs to be part of this?',
       intro: 'Add up to 20 people. They don’t need to report directly to you. They simply need to be part of the work you’re trying to move.',
-      contextLabel: 'What do they do / why are they part of this?',
+      contextLabel: 'What do they do, and why are they part of this?',
       button: 'Start my Groundwork.',
       limitSentence: 'This one-month Groundwork holds up to 20 people besides you.',
     });
