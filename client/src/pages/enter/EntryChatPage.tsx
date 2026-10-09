@@ -41,7 +41,7 @@ import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-t
 import { copy } from '@/components/gw/copying-can-fail'
 import { whatIsSetAndWhatIsNot, whenTheCheckInsLand } from '@/components/gw/when-the-check-ins-land'
 import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
-import { Button, Callout, Note, TextField, TextArea, Bubble, Composer, PhaseSteps, Modal, Mark } from '@/components/gw/ui'
+import { Button, Callout, Note, TextField, TextArea, Bubble, Composer, PhaseSteps, Modal, Mark, GroundworkIsWriting } from '@/components/gw/ui'
 
 /*
  * A COLLEAGUE ON THE INVITE LIST, BY ID (U.4). The list of colleagues carries no addresses, so a
@@ -4071,14 +4071,7 @@ export function EntryChatPage() {
 
               {onboardingLoading && (
                 <Bubble mine={false}>
-                  {onboardingDraft ? onboardingDraft : (
-                    <span className="gwui-ci-dots">
-                      <span className="gwui-ec-thinking">Thinking</span>
-                      {[0, 1, 2].map(i => (
-                        <span key={i} className="gwui-ci-dot" style={{ animationDelay: `${i * 0.2}s` }} />
-                      ))}
-                    </span>
-                  )}
+                  {onboardingDraft ? onboardingDraft : <GroundworkIsWriting wrap={false} />}
                 </Bubble>
               )}
 
@@ -4426,13 +4419,7 @@ export function EntryChatPage() {
                 const typing = m.content === '…'
                 return (
                   <Bubble key={i} mine={m.role === 'user'} opacity={typing ? 0.45 : 1}>
-                    {typing ? (
-                      <span className="gwui-ci-dots">
-                        {[0, 1, 2].map(i2 => (
-                          <span key={i2} className="gwui-ci-dot" style={{ animationDelay: `${i2 * 0.2}s` }} />
-                        ))}
-                      </span>
-                    ) : nothingInternalReachesTheBubble(m.content)}
+                    {typing ? <GroundworkIsWriting wrap={false} /> : nothingInternalReachesTheBubble(m.content)}
                     {streamingIdx === i && <span className="gwui-ci-caret" />}
                   </Bubble>
                 )
