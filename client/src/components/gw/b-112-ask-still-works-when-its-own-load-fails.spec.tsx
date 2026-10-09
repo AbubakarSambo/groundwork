@@ -72,7 +72,7 @@ describe.each([
     vi.mocked(askApi.mine).mockRejectedValueOnce(new Error('network down')).mockResolvedValue(DATA)
     mount()
     expect(await screen.findByText(/ask didn't load fully/i)).toBeInTheDocument()
-    expect(screen.getByText(/nothing you've asked is lost/i)).toBeInTheDocument()
+    expect(screen.getByText(/nothing you have asked is lost\. It is usually the connection\./i)).toBeInTheDocument()
     const box = screen.getByRole('textbox', { name: /ask a question|ask about/i }) as HTMLTextAreaElement
     expect(box).not.toBeDisabled()
 

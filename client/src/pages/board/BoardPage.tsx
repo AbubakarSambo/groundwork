@@ -1228,7 +1228,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
       <div className="gwui-mt-48 gwui-mr-auto gwui-mb-48 gwui-ml-auto gwui-pt-0 gwui-pr-20 gwui-pb-0 gwui-pl-20" style={{maxWidth: 620, textAlign: 'center'}}>
         <div className="gwui-fs-15 gwui-mb-6" style={{fontWeight: 700}}>{why.canRetry ? 'The board didn’t load' : 'This board could not be loaded.'}</div>
         <div className="gwui-fs-15 gwui-ink-sub gwui-mb-16">
-          {theConnection ? 'Nothing is lost; your check-ins are saved. It’s usually the connection.' : why.say}
+          {theConnection ? 'Nothing is lost. Your check-ins are saved. It is usually the connection.' : why.say}
         </div>
         <div className="gwui-gap-8" style={{display: 'flex', justifyContent: 'center'}}>
           {why.canRetry && <UIButton kind="primary" onClick={() => refetch()}>Try again</UIButton>}

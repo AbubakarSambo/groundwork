@@ -571,7 +571,7 @@ export function AskGroundwork({
         <div style={{ borderTop: '1px solid var(--gw-line)' }}>
           {page.isError && (
             <p role="alert" style={{ margin: '8px 12px 0', fontSize: 14, color: 'var(--gw-red-t)' }}>
-              Ask didn't load fully. Nothing you've asked is lost; it's usually the connection.
+              Ask didn't load fully. Nothing you have asked is lost. It is usually the connection.
               {askWhy?.canRetry && (
                 <>
                   {' '}

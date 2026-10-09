@@ -49,7 +49,7 @@ describe('when the board fails to load', () => {
     ;(boardApi.get as any).mockRejectedValue(Object.assign(new Error('network'), { response: undefined }))
     const { container } = renderBoard()
     await waitFor(() => expect(container.textContent).toContain('The board didn’t load'))
-    expect(screen.getByText('Nothing is lost; your check-ins are saved. It’s usually the connection.')).toBeTruthy()
+    expect(screen.getByText('Nothing is lost. Your check-ins are saved. It is usually the connection.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy()
   })
 
