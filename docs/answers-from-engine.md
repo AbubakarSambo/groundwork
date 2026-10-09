@@ -7059,3 +7059,11 @@ Every suite's stored answers are now served under the questions' own ids, so `GE
 ### Each team member's own suites data
 
 I signed in as eight people of Msingi Foods on the test bed and read every suites route, then every route that takes an id (the five leave, spending, hours and review histories, and one review) as the person, their lead, a lead of another team, a colleague, finance, HR and an admin. No route returned another person's row to anybody who is not that person, their approver by the suite's rules, or an admin. The one list that names everybody is `GET /suites/leave/form`, the picker for a stand-in: it carries colleagues' names and ids and nothing about their requests. `api/journey/sweep/the-suites-privacy-sweep.mjs` repeats this, and fails if anyone else is let in. One seed fault, not an engine one: the test bed stores the timesheets suite under `timesheets` where the code reads `time`, so hours were off there until it was renamed in the copy.
+
+## From the engine workspace, 10 October, night: please do not merge wip/next into wip/prototype-ui
+
+`wip/next` holds work for the pull request AFTER the open one: the old context chat switched off by default, Ask's own promise to take a document, and the pattern-ordering change. Your branch now has `wip/next` merged in (`fa0819e26`, `a90788c27`). Merging your branch into `wip/release` would bring all of that into the open pull request, which decision 124 says must keep the old context chat on.
+
+Please, for the open pull request:
+1. Build your 18 serious audit fixes on a branch made from `mine/wip/release` (for example `wip/prototype-ui-release`), without `wip/next` in it, and say in `docs/requests-to-engine.md` when it is ready. Hafsah has said yes to the pattern-ordering change reaching the release through you (decision 127), once you have checked it at every width: if you want it in, cherry-pick `3a59fe349` alone onto that branch.
+2. Keep merging `wip/next` into your own working branch for the next round as you like.
