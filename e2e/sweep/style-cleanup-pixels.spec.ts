@@ -93,6 +93,16 @@ for (const shot of SHOTS) {
       await page.goto(`${CLIENT}/grounds/${shot.groundId}/board`);
       await page.waitForLoadState('networkidle', { timeout: 20000 }).catch(() => {});
     }
+    // The sidebar's own check-ins list is a SEPARATE fetch from the board itself, and flakes
+    // under load independently of anything the board draws - "Your check-ins did not load" has
+    // nothing to do with the style clean-up and must not be photographed as if it did.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const sidebarFailed = await page.getByText('Your check-ins did not load.').isVisible().catch(() => false);
+      if (!sidebarFailed) break;
+      await page.reload();
+      await page.waitForLoadState('networkidle', { timeout: 20000 }).catch(() => {});
+      await page.waitForTimeout(500);
+    }
     await page.addStyleTag({ content: FREEZE_CSS });
     await page.waitForTimeout(1000);
     const file = path.join(OUT_DIR!, `${shot.slug}-${shot.width}.png`);

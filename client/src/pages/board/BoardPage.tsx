@@ -415,7 +415,7 @@ function HiddenContributorRow({ groundId, label, evidence, isInitiator }: {
                 style={{ borderRadius: 6, fontFamily: 'inherit', outline: 'none' }}
               />
             )}
-            {emailError && <div className="gwui-fs-13 gwui-ink-red">{emailError}</div>}
+            {emailError && <Text size="13" ink="red">{emailError}</Text>}
             <FlexRow gap={6}>
               <UIButton
                 kind="secondary"
@@ -915,7 +915,7 @@ function DivergenceSectionBody({ heading, divergence, whyNothingYet, onlyOnePers
           /* WHY IT IS EMPTY, NOT ONE SENTENCE FOR EVERY REASON. This said "This fills in once
              more than one person has checked in" on a round where everybody had, three inches
              under a tile that said so. The server computes it from the one counter. */
-          <Row columns="1fr" inset="panel"><div className="gwui-fs-15 gwui-ink-muted">{onlyOnePersonHere ? 'There is nothing to compare yet.' : (whyNothingYet ?? 'There is nothing to compare yet. This fills in once more than one person has answered.')}</div></Row>
+          <Row columns="1fr" inset="panel"><Text size="15" ink="muted">{onlyOnePersonHere ? 'There is nothing to compare yet.' : (whyNothingYet ?? 'There is nothing to compare yet. This fills in once more than one person has answered.')}</Text></Row>
         ) : (
           <>
             {divergence.items.map((d: any, i: number) => (
@@ -2080,7 +2080,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             <Panel pad={false}>
               <RowList label="What keeps coming up">
               {visiblePatterns.length === 0 ? (
-                <Row columns="1fr" inset="panel"><div className="gwui-fs-15 gwui-ink-muted">Nothing to show here yet. A pattern appears only after three check-ins in a row, and the person it is about always sees it first.</div></Row>
+                <Row columns="1fr" inset="panel"><Text size="15" ink="muted">Nothing to show here yet. A pattern appears only after three check-ins in a row, and the person it is about always sees it first.</Text></Row>
               ) : (
                 <>
                   {/*
@@ -3908,7 +3908,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {shown.whatTheRoomIsAbout && (
           <Section heading="What people are after, and where" note="Built from what everybody said.">
             {b.whatTheRoomIsAboutNote && (
-              <Panel><div className="gwui-fs-15 gwui-ink-sub">{b.whatTheRoomIsAboutNote}</div></Panel>
+              <Panel><Text size="15" ink="sub">{b.whatTheRoomIsAboutNote}</Text></Panel>
             )}
             {b.whatTheRoomIsAbout && (
               <div className={`gwui-gap-14 ${b.whatTheRoomIsAboutNote ? 'gwui-mt-14' : 'gwui-mt-0'}`} style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(300px,100%),1fr))'}}>
@@ -3928,7 +3928,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   <div className="gwui-pt-2 gwui-pb-12">
                     <RowList label="What people are trying to do">
                     {(b.whatTheRoomIsAbout.aims ?? []).length === 0 ? (
-                      <Row columns="1fr" inset="list"><div className="gwui-fs-15 gwui-ink-muted">Nobody has said what they are after yet.</div></Row>
+                      <Row columns="1fr" inset="list"><Text size="15" ink="muted">Nobody has said what they are after yet.</Text></Row>
                     ) : (b.whatTheRoomIsAbout.aims ?? []).map((a) => (
                       <Row key={a.aim} columns="1fr" inset="list">
                         <FlexRow gap={10} align="baseline">
@@ -3948,7 +3948,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     <div className="gwui-pt-2 gwui-pb-12">
                       <RowList label={label}>
                       {rows.length === 0 ? (
-                        <Row columns="1fr" inset="list"><div className="gwui-fs-15 gwui-ink-muted">Nobody named one.</div></Row>
+                        <Row columns="1fr" inset="list"><Text size="15" ink="muted">Nobody named one.</Text></Row>
                       ) : rows.map((r) => (
                         <Row key={r.name} columns="1fr" inset="list">
                           <FlexRow gap={10} align="baseline">
@@ -4116,13 +4116,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     `certain` - the fallback below writes the same fact as one plain sentence
                     instead of the old "who — what" plus a separate "open since" note.
                   */}
-                  <span className="gwui-fs-16 gwui-ink-dark">
+                  <Text size="16" ink="dark" as="span">
                     {g.says ?? (
                       g.certain
                         ? `In session ${g.sinceRound}, ${g.who} was asked, "${g.what}" ${g.who} has not answered it yet.`
                         : `In session ${g.sinceRound}, ${g.who} was asked, "${g.what}" Nothing on record can confirm the answer yet.`
                     )}
-                  </span>
+                  </Text>
                 </div>
               ))}
             </Panel>
@@ -4228,9 +4228,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                               progress.") - drawing this sentence too repeated it: "You have
                               reported progress. This is progress you reported." */}
                           {b.family !== 'UPDATE' && !it.itsKindIsSaid && whatThisItemIs(it.type, p.participantId === b.myParticipantId, nameOnTheBoard(b, p.participantId, p.name)) && (
-                            <span className="gwui-fs-13 gwui-ink-sub">{whatThisItemIs(it.type, p.participantId === b.myParticipantId, nameOnTheBoard(b, p.participantId, p.name))}</span>
+                            <Text size="13" ink="sub" as="span">{whatThisItemIs(it.type, p.participantId === b.myParticipantId, nameOnTheBoard(b, p.participantId, p.name))}</Text>
                           )}
-                          {it.sessionNumber && <span className="gwui-fs-13 gwui-ink-muted">Said in session {it.sessionNumber}.</span>}
+                          {it.sessionNumber && <Text size="13" ink="muted" as="span">Said in session {it.sessionNumber}.</Text>}
                         </FlexRow>
                       </div>
                     )) })()}
@@ -4528,7 +4528,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         the name, not a section of its own, so it no longer renders in capitals. */}
                     {/* Board review, 30 September, item 7: "at role level" is a fragment, not
                         something a person reads as a sentence. */}
-                    <span className="gwui-fs-13 gwui-ink-muted">{`This is measured at the ${String(r.scope).toLowerCase()} level.`}</span>
+                    <Text size="13" ink="muted" as="span">{`This is measured at the ${String(r.scope).toLowerCase()} level.`}</Text>
                     <span className="gwui-ml-auto">
                       <Tag tone={r.kind === 'LEAKING' ? 'attention' : r.kind === 'ABSORBING' ? 'action' : 'plain'}>
                         {r.kind === 'LEAKING' ? 'Landing with others' : r.kind === 'ABSORBING' ? "Taking on others' work" : isReader ? 'Staying with you' : 'Staying with them'}
@@ -4712,9 +4712,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       <textarea value={pollOpts} onChange={(e) => setPollOpts(e.target.value)} placeholder={'One time per line\nTue 16:00\nWed 09:00'}
                         className="gwui-pt-7 gwui-pr-10 gwui-pb-7 gwui-pl-10 gwui-fs-13-5 gwui-rule" style={{minHeight: 68, borderRadius: 7, fontFamily: 'inherit', outline: 'none', resize: 'vertical'}} />
                       {b.poll && (
-                        <div className="gwui-fs-13 gwui-ink-amber">
+                        <Text size="13" ink="amber">
                           Changing the times clears everyone's availability, because an answer to a question that changed is not an answer.
-                        </div>
+                        </Text>
                       )}
                       <div className="gwui-button-row">
                         {/* Secondary, not navy: the board's one primary is "Your check-in", in the header. */}
@@ -4733,7 +4733,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 </div>
               )}
               {!b.poll ? (
-                <div className="gwui-fs-15 gwui-ink-muted">No availability poll yet.</div>
+                <Text size="15" ink="muted">No availability poll yet.</Text>
               ) : (
                 <>
                   <div className="gwui-fs-14 gwui-ink-dark gwui-pt-4 gwui-pr-0 gwui-pb-4 gwui-pl-0" style={{fontWeight: 700}}>
@@ -4766,9 +4766,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                             )
                           })()}
                           {o.who.filter(Boolean).length > 0 && (
-                            <span className="gwui-fs-13 gwui-ink-muted">
+                            <Text size="13" ink="muted" as="span">
                               also: {o.who.filter(Boolean).join(', ')}
-                            </span>
+                            </Text>
                           )}
                         </FlexRow>
                         <div className={`gwui-fs-13-5 ${win ? 'gwui-ink-green' : 'gwui-ink-sub'}`} style={{minWidth: 42, textAlign: 'right', fontWeight: win ? 700 : 400}}>{o.count} in</div>
@@ -4807,11 +4807,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             return (
               <Section heading="Alignment feed">
                 <Panel>
-                  <div className="gwui-fs-15 gwui-ink-muted">
+                  <Text size="15" ink="muted">
                     {sigs.length === 1
                       ? 'One pattern has come up so far. It is shown above, under What keeps coming up.'
                       : `${sigs.length} patterns have come up so far. They are shown above, under What keeps coming up.`}
-                  </div>
+                  </Text>
                 </Panel>
               </Section>
             )

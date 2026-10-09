@@ -46,10 +46,30 @@ otherwise).
 | --- | --- | --- | --- | --- |
 | `pages/board/BoardPage.tsx` (FlexRow batch) | 584 | 561 | report-ready board as lead and as member, active board as lead, at 1440 and 390 (6 screenshots) | 0 differing pixels in every screenshot. 23 `gwui-gap-N` + inline `display: flex` rows converted. |
 
-**Left for the next batch:** `Text` was built (wraps `gwui-fs-N`/`gwui-ink-X` for the style-free
-case) but not yet applied to BoardPage - this round's time went to `FlexRow` and its pixel proof.
-The ~14 plain `<div className="gwui-fs-N gwui-ink-X">text</div>` cases (no inline style at all) in
-`BoardPage.tsx` are the safest first targets for `Text`, in the next batch.
+**Second batch, same session (`Text`):** the 14 style-free `gwui-fs-N`/`gwui-ink-X` cases in
+`BoardPage.tsx` (a sentence set in one size and one colour with no inline style at all) were
+swapped for `<Text size="N" ink="X">`. One more occurrence (`TheLeadsNote`'s own `className` prop)
+was left alone - it passes the classes into another component's prop API, not onto a literal
+element, so it is not this shape. 561 -> 533 one-off uses.
+
+Pixel proof hit one false alarm worth recording: the first after-run showed real differences on
+the lead's two screenshots and one of the member's, all traced to the SAME cause - the sidebar's
+own check-ins list ("Your check-ins did not load. Reload the page to try again."), a background
+fetch entirely separate from the board itself, flaking under the repeated sign-ins this sweep does.
+`style-cleanup-pixels.spec.ts` now checks for that exact sentence after each page load and reloads
+(up to twice) until it is gone, same as it already retried a dropped sign-in. With that fix, three
+separate before/after comparisons (against the FlexRow-batch screenshots, and against the very
+first baseline from before any change) all came back at 0 differing pixels on all 6 screenshots.
+
+| Page | Uses before | Uses after | States checked | Result |
+| --- | --- | --- | --- | --- |
+| `pages/board/BoardPage.tsx` (Text batch) | 561 | 533 | report-ready board as lead and as member, active board as lead, at 1440 and 390 (6 screenshots) | 0 differing pixels in every screenshot, once the sidebar's own unrelated flake was retried past. 14 style-free `gwui-fs-N`/`gwui-ink-X` text elements converted. |
+
+**Left for a future batch:** `Text`'s props for `weight`/`lineHeight`/`letterSpacing`/`display` were
+built but not yet exercised - BoardPage's remaining `gwui-fs-N`/`gwui-ink-X` uses all carry an
+inline style alongside the classes (the common shape is size, colour, and one of `fontWeight 600`/
+`700`, `lineHeight 1.4` to `1.6`, or both), which `Text` already covers prop-for-prop; converting
+those is the safest next target.
 
 **Still left alone, and why:** every `gwui-gap-N` with a fixed `width` or paired with
 `flexDirection: 'column'` (`GroundParticipantPage.tsx`'s settings tab - its own comment explains the
