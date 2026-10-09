@@ -1671,8 +1671,10 @@ export class GroundsService {
         const latestRound = ((rest as any).reportRounds?.[0]?.sessionNumber as number | undefined) ?? null;
         const mayReadTheReport = runsIt || (!!fullReport?.releasedAt && peersVisibleEffective
           && latestRound !== null && isThisSessionReleased(fullReport as any, latestRound));
-        /* And no sentence with a colleague's hidden target, in the brief or the report's words (as get()). */
-        return this.withoutTheTargetsHiddenFrom(g as any, userId, {
+        /* And no sentence with a colleague's hidden target, in the brief or the report's words (as get()). The row is then narrowed
+           again for anyone who does not run it: nothing built from the lead's private set-up (B-013, B-091), and in an anchor
+           check-in not the lead's aims either (decision 96, item 8), exactly as the check-in's own read does. */
+        return this.withoutTheLeadsSetUpForAReader(g as any, runsIt, this.withoutTheTargetsHiddenFrom(g as any, userId, {
           ...safe,
           /* Until the lead ends it: no length to show. The flag says so (request 37). */
           timelineDays: (safe as any).runsUntilEnded ? null : (safe as any).timelineDays,
@@ -1790,9 +1792,14 @@ export class GroundsService {
             const named = [lead.user?.firstName, lead.user?.lastName].filter(Boolean).join(' ').trim() || (lead.nameGiven ?? '').trim();
             return named || null;
           })(),
-        }, runsIt);
+        }, runsIt));
       })
       .sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime());
+  }
+
+  /** The one place a row's lead-only set-up is taken off before it is served to someone who does not run the check-in. */
+  private withoutTheLeadsSetUpForAReader<P extends Record<string, any>>(g: Record<string, any>, runsIt: boolean, row: P): P {
+    return withoutTheLeadsSetUpForAMember(row, { startedFrom: g.startedFrom ?? null, scenario: g.scenario ?? null, runsIt });
   }
 
   async get(id: string, organizationId: string, requestingUserId?: string) {

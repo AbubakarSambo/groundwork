@@ -29,8 +29,6 @@ export const BUSINESS_INITIATED: ReadonlySet<string> = new Set([
   'checkin-catch-up',
   'anchor-weekly-insight', 'anchor-follow-up',
   'report', 'report-retry', 'request-waiting', 'request-decided', 'review-started', 'review-decided',
-  /* An appeal of a decided review (decision 113): it waits for an admin, the reviewer is asked for a second admin, and it is decided. Each follows something a person did, so none counts as the day's first message. */
-  'review-appeal-waiting', 'review-appeal-needs-admin', 'review-appeal-decided',
   /* What waits for an approver, said once for all of it (the-approvals-summary.ts). */
   'requests-waiting',
   /* A check-in left halfway (a-check-in-left-halfway.ts): the reminder to carry on, the half-hour warning, and the clock closing it. */
@@ -184,13 +182,7 @@ export const TEMPLATES: Record<string, ATemplate> = {
    */
   'review-started': aTemplate('groundwork_review_started', 'Hi {{1}}, {{2}} has started your review. Open Groundwork to read it and add your own view before you meet.'),
   'review-decided': aTemplate('groundwork_review_decided', 'Hi {{1}}, {{2}} has decided your review. Open Groundwork to read the decision and the reasons.'),
-  /*
-   * Ours, proposed to Hafsah (decision 113): the appeal of a decided review. Never a word of the review or of the person's reasons.
-   * To an admin who may decide it, to the reviewer when there is no other admin, and to the person and the reviewer when it is decided.
-   */
-  'review-appeal-waiting': aTemplate('groundwork_review_appeal_waiting', 'Hi {{1}}, {{2}} has appealed a decision on their review, and you are an admin who can decide it. Open Groundwork to read their reasons and decide.'),
-  'review-appeal-needs-admin': aTemplate('groundwork_review_appeal_needs_admin', 'Hi {{1}}, {{2}} has appealed your decision on their review. It needs an admin other than you, and there is not one yet. Please add a second admin in Groundwork, and that admin will decide it.'),
-  'review-appeal-decided': aTemplate('groundwork_review_appeal_decided', 'Hi {{1}}, {{2}} has decided the appeal of a decision on a review. Open Groundwork to read the decision and the reasons.'),
+  /* No template for the appeal of a decided review (decision 124, item 4): its messages go by email and in the app only. */
 };
 TEMPLATES['report-retry'] = TEMPLATES.report;
 /* The catch-up for somebody the opening notice never reached is the opening notice's own template: no new template (Hafsah, 8 October). */

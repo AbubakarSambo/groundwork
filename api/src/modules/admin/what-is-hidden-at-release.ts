@@ -107,17 +107,18 @@ export const contextIsInAskGroundwork = async (prisma: Reader): Promise<boolean>
 
 /**
  * THE OLD CONTEXT CHAT ON THE CHECK-IN PAGE (`POST /grounds/:id/context-chat` and its confirm and decline).
- * OFF by default (8 October, the pull request that finished moving context into Ask): a missing row reads off, and the three routes then answer
- * with one sentence that sends the person to Ask. `{ "on": true }` keeps it open. A row that cannot be read, or holds something else, reads
- * off. The screens stop drawing it when `GET /ask` serves `oldContextChatIsOpen: false`. Ask's own setup lane calls the same two methods in the
- * engine and is not touched by this switch.
+ * ON by default (decision 124, item 1, 9 October): the chat stays open in this pull request, because Ask Groundwork cannot yet add a document or file a
+ * typed fact rightly (screens bugs B-083 to B-085). A missing row reads on, and a row that cannot be read, or holds something other than an explicit
+ * off, reads on too, so a lead who has the chat keeps it. `{ "on": false }` (or `false`) switches it off: the three routes then answer with one
+ * sentence that sends the person to Ask, and the screens stop drawing it when `GET /ask` serves `oldContextChatIsOpen: false`. Ask's own setup lane
+ * calls the same two methods in the engine and is not touched by this switch.
  */
 export const theOldContextChatIsOpen = async (prisma: Reader): Promise<boolean> => {
   const read = await theRowOrAFault(prisma, OLD_CONTEXT_CHAT_KEY);
-  if (read.fault || read.row == null) return false;
+  if (read.fault || read.row == null) return true;
   const v = read.row.value as { on?: unknown } | boolean | null | undefined;
   if (typeof v === 'boolean') return v;
-  return !!v && typeof v === 'object' && (v as { on?: unknown }).on === true;
+  return !(v && typeof v === 'object' && (v as { on?: unknown }).on === false);
 };
 export const theNewBillingPartsAreShown = (prisma: Reader) => aSwitch(prisma, PLAN_AND_BILLING_NEW_PARTS_KEY);
 

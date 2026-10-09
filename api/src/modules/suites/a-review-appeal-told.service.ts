@@ -3,7 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { EmailService } from '../email/email.service';
-import { anAppealNeedsASecondAdmin, anAppealWaitsForAnAdmin, anAppealWasDecidedSaid } from '../whatsapp/what-goes-to-a-phone';
 import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
 import {
   anAppealWaitsForYou, pleaseAddASecondAdmin, theAppealWasDecided, type TheMessage,
@@ -12,10 +11,9 @@ import {
 const escape = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 /**
- * AN APPEAL OF A REVIEW, TOLD (decision 113). By email always, and on WhatsApp where it is on and the
- * person has a number; the WhatsApp sender keeps its own rules (STOP, "not now", the add-on, the 24 hours
- * and the approved template). Never a word of the review or of the person's reasons, in either: they are
- * read in the app. Never throws into the appeal it follows: a message that could not go is logged, and the
+ * AN APPEAL OF A REVIEW, TOLD (decision 113). By email, and waiting in the app. Never on WhatsApp, not as a template and not as a
+ * text inside the 24 hours (decision 124, item 4: no new templates for now). Never a word of the review or of the person's
+ * reasons, in either: they are read in the app. Never throws into the appeal it follows: a message that could not go is logged, and the
  * appeal stands.
  */
 @Injectable()
@@ -34,14 +32,14 @@ export class AReviewAppealToldService {
   async toAnAdmin(organizationId: string, reviewId: string, adminUserId: string, personFirstName: string, reviewerFirstName: string | null): Promise<void> {
     const to = await this.reach.reach(organizationId, adminUserId);
     const m = anAppealWaitsForYou(to.firstName, personFirstName, reviewerFirstName);
-    await this.send(organizationId, reviewId, adminUserId, m, to, anAppealWaitsForAnAdmin(to.firstName, personFirstName));
+    await this.send(organizationId, reviewId, adminUserId, m, to);
   }
 
   /** The reviewer: nobody else can decide it, so they are asked to add a second admin. */
   async toTheReviewerToAddAnAdmin(organizationId: string, reviewId: string, reviewerUserId: string, personFirstName: string, reviewerIsAnAdmin: boolean): Promise<void> {
     const to = await this.reach.reach(organizationId, reviewerUserId);
     const m = pleaseAddASecondAdmin(to.firstName, personFirstName, reviewerIsAnAdmin);
-    await this.send(organizationId, reviewId, reviewerUserId, m, to, anAppealNeedsASecondAdmin(to.firstName, personFirstName));
+    await this.send(organizationId, reviewId, reviewerUserId, m, to);
   }
 
   /** The appeal was decided: the person and the reviewer are told who decided it and what the outcome is (it stands, or it was changed), and nothing else. */
@@ -50,13 +48,13 @@ export class AReviewAppealToldService {
     for (const [userId, forThePerson] of [[personUserId, true], [reviewerUserId, false]] as const) {
       if (!userId || userId === adminUserId) continue;
       const to = await this.reach.reach(organizationId, userId);
-      await this.send(organizationId, reviewId, userId, theAppealWasDecided(to.firstName, admin, forThePerson, personFirstName, outcome), to, anAppealWasDecidedSaid(to.firstName, admin));
+      await this.send(organizationId, reviewId, userId, theAppealWasDecided(to.firstName, admin, forThePerson, personFirstName, outcome), to);
     }
   }
 
   private async send(
     organizationId: string, reviewId: string, userId: string, m: TheMessage,
-    to: { phone: string | null; firstName: string | null }, onWhatsApp: { text: string; kind: string; params: string[] },
+    to: { phone: string | null; firstName: string | null },
   ): Promise<void> {
     let how: string | null = null;
     try {
@@ -69,14 +67,6 @@ export class AReviewAppealToldService {
       }
     } catch (err: any) {
       this.logger.warn(`Could not email somebody about a review appeal: ${err?.message}`);
-    }
-    try {
-      if (this.whatsapp && to.phone) {
-        const r = await this.whatsapp.sendFor(organizationId, to.phone, onWhatsApp.text, { kind: onWhatsApp.kind, params: onWhatsApp.params });
-        if (r?.sent) how = how ? `${how} and whatsapp` : 'whatsapp';
-      }
-    } catch (err: any) {
-      this.logger.warn(`Could not tell somebody on WhatsApp about a review appeal: ${err?.message}`);
     }
     /* Not recorded as "told": a review's history is read by everyone who reads the review, and only three people may read that there was an appeal. */
     if (!how) this.logger.warn(`Nobody could be told about the appeal of review ${reviewId}; it stands, and waits in the app.`);

@@ -36,6 +36,10 @@ describe('the check-in page and the board, for a member', () => {
   });
   it('are whole for whoever runs it, and for another scenario', () => {
     expect(withoutTheLeadsSetUpForAMember(page, { startedFrom: null, scenario: 'HELP_TEAM_UNDERSTAND', runsIt: true })).toBe(page);
-    expect(withoutTheLeadsSetUpForAMember(page, { startedFrom: null, scenario: 'OKR_ALIGNMENT', runsIt: false })).toBe(page);
+    /* B-091: another scenario keeps the aims a member is told, but never what was built from the lead's private set-up. */
+    const ordinary = withoutTheLeadsSetUpForAMember(page, { startedFrom: null, scenario: 'OKR_ALIGNMENT', runsIt: false });
+    expect(ordinary.objectives).toEqual(page.objectives);
+    expect(ordinary.subjectsToCover).toBeNull();
+    expect(ordinary.whatACompleteAnswerHolds).toBeNull();
   });
 });

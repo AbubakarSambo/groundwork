@@ -76,11 +76,11 @@ describe('the switch, as the screens read it', () => {
     const r = await world({ setting: 'yes', grounds: [q4], roles }).read('u-wanjiru');
     expect(r.addsContext).toBe(false);
   });
-  it('and the read for the old chat says it is off unless its own switch is turned on (8 October)', async () => {
+  it('and the read for the old chat says it is open unless its own switch is turned off (decision 124)', async () => {
     const w = world({ grounds: [q4], roles });
-    expect((await w.read('u-wanjiru')).oldContextChatIsOpen).toBe(false);
-    const on = world({ grounds: [q4], roles });
-    on.prisma.platformSetting.findUnique = jest.fn(async ({ where }: any) => (where.key === 'release.oldContextChat' ? { value: { on: true } } : null));
-    expect((await on.read('u-wanjiru')).oldContextChatIsOpen).toBe(true);
+    expect((await w.read('u-wanjiru')).oldContextChatIsOpen).toBe(true);
+    const off = world({ grounds: [q4], roles });
+    off.prisma.platformSetting.findUnique = jest.fn(async ({ where }: any) => (where.key === 'release.oldContextChat' ? { value: { on: false } } : null));
+    expect((await off.read('u-wanjiru')).oldContextChatIsOpen).toBe(false);
   });
 });
