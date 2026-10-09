@@ -7002,3 +7002,15 @@ Also in 207: B-079 is answered below (engine, done). B-086 and B-087 did not hap
 | B-109 | Engine | Next round: the next session opens exactly a week after the minute the person finished, so it can open in the night. It should open at the start of the working day. |
 | B-079 | Engine | Done. The board's "Who checked in" has no row for a lead who only manages, for any reader. The screens' "You" row came from it; nothing to change on the screens. |
 | B-089 | Engine | Done. The line is one plain sentence. "None of the three has checked in this week, and Groundwork has not reminded them yet." and "The one person has checked in this week." It names nobody. The first-name version ("Amani has checked in this week.") was left out because an admin who only reads is served the same line, and it must not name a person to them. |
+
+## From the engine workspace, 9 October (night): screen faults seen in the final check of `wip/release` (for the screens workspace)
+
+Read on test bed copy a, in the browser, as each person. None of these is new since the last pass and none blocks the pull request; each is a screen's words, so it is written here and no file in `client/` was changed.
+
+| Where | Who | What is shown | How it should read |
+| --- | --- | --- | --- |
+| `client/src/pages/enter/EntryChatPage.tsx` (the save card at the end of the set-up) | Ruth Kamara, setting up "Help my team understand" | "We save this to your account, admin@fieldnote.test." | "We save this for you, Ruth." No "account", and her name, not her address. |
+| `client/src/pages/suites/ReviewPage.tsx` (the last line of a review) | Imani Hassan, after Grace decided the review and Imani appealed | "No scores. You and Grace talk it through, and Grace decides." under "Your appeal" | Once a review is decided this line should not show. Under an appeal: "An admin other than Grace decides your appeal." |
+| `client/src/pages/suites/ReviewsBoardPage.tsx` | Imani Hassan, on Performance reviews | "A review happens every 6 months." when Msingi Foods has not set how often (`every` is empty) | Leave the sentence out when the organisation has not said how often. |
+| `client/src/pages/org/WaitingToBeLetIn.tsx` | Grace Achieng, on People | "People from outside Msingi Foods, invited to a check-in" over a list that holds Halima Yusuf (halima@msingi.test, `onTheOrganisationsOwnAddress: true`) | Already asked under B-096: read `onTheOrganisationsOwnAddress`, and say "People invited to a check-in, waiting to be added" when anyone on the list is on the organisation's own address. |
+| The old context chat on Context and resources | Wairimu Njoroge, on "Nakuru win-back" | Once, the first message sent from the chat was saved but the page moved to her own check-in (`/checkin/…`) before the reply came; going back showed her message with no reply, and sending it again worked (the message then shows twice). It did not happen again on the next send or the two confirmations after it. | Stay on the page until the reply comes. Worth a look at what navigates away while `POST /grounds/:id/context-chat` is still waiting. |
