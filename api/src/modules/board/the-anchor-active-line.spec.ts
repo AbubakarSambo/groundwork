@@ -4,7 +4,7 @@ import { theActiveLine } from './the-anchor-active-line';
 import { THE_SHAPES_KEYS } from '../entry/the-anchor-served-shapes';
 
 /**
- * Request 149: the "active" line on the board, "18/20 active · Groundwork has nudged the remaining 2." (decision 98).
+ * Request 149: the "active" line on the board (decision 98), said since B-089 as one plain sentence: "Three of the five have checked in this week, and Groundwork has reminded the two who have not." 
  * Served only for a check-in started from the anchor link, with the switch on, to whoever runs it.
  */
 const lead = { ...person('p-amina', 'u-amina', 'Amina', 'Wanjiru', PartyType.INITIATOR), managingOnly: false };
@@ -43,12 +43,12 @@ describe('the active line on an anchor check-in\'s board', () => {
   it('is Hafsah\'s own line, for the lead', async () => {
     const b = await boardAs(anchor(true, 'anchor'), ...AMINA);
     expect(Object.keys(b.activeLine).sort()).toEqual([...THE_SHAPES_KEYS.activeLine].sort());
-    expect(b.activeLine).toEqual({ active: 3, total: 5, nudged: 2, line: '3/5 active · Groundwork has nudged the remaining 2.' });
+    expect(b.activeLine).toEqual({ active: 3, total: 5, nudged: 2, line: 'Three of the five have checked in this week, and Groundwork has reminded the two who have not.' });
   });
 
   it('is read the same by an admin who runs it, counts only and no names', async () => {
     const b = await boardAs(anchor(true, 'anchor'), ...JUMA);
-    expect(b.activeLine.line).toBe('3/5 active · Groundwork has nudged the remaining 2.');
+    expect(b.activeLine.line).toBe('Three of the five have checked in this week, and Groundwork has reminded the two who have not.');
     expect(b.activeLine.line).not.toMatch(/Zawadi|Ibrahim/);
   });
 
@@ -58,8 +58,8 @@ describe('the active line on an anchor check-in\'s board', () => {
   });
 
   it('says honestly when only some were nudged, or none', async () => {
-    expect((await boardAs(anchor(true, 'anchor', ['p-zawadi']), ...AMINA)).activeLine.line).toBe('3/5 active · Groundwork has nudged 1 of the remaining 2.');
-    expect((await boardAs(anchor(true, 'anchor', []), ...AMINA)).activeLine.line).toBe('3/5 active · Groundwork has not nudged the remaining 2 yet.');
+    expect((await boardAs(anchor(true, 'anchor', ['p-zawadi']), ...AMINA)).activeLine.line).toBe('Three of the five have checked in this week, and Groundwork has reminded one of the two who have not.');
+    expect((await boardAs(anchor(true, 'anchor', []), ...AMINA)).activeLine.line).toBe('Three of the five have checked in this week, and Groundwork has not reminded the two yet.');
   });
 
   it('with the switch off, or a check-in not started from the anchor, nothing is served', async () => {
@@ -71,9 +71,19 @@ describe('the active line on an anchor check-in\'s board', () => {
 
 describe('the line itself', () => {
   it('never says more than 20 people', () => {
-    expect(theActiveLine({ answered: 18, expected: 25, nudgedOfThoseWhoHaveNot: 2 }).line).toBe('18/20 active · Groundwork has nudged the remaining 2.');
+    expect(theActiveLine({ answered: 18, expected: 25, nudgedOfThoseWhoHaveNot: 2 }).line).toBe('18 of the 20 have checked in this week, and Groundwork has reminded the two who have not.');
   });
-  it('is just the count when everybody is active', () => {
-    expect(theActiveLine({ answered: 4, expected: 4, nudgedOfThoseWhoHaveNot: 0 }).line).toBe('4/4 active.');
+  it('is one sentence when everybody has checked in', () => {
+    expect(theActiveLine({ answered: 4, expected: 4, nudgedOfThoseWhoHaveNot: 0 }).line).toBe('All four people have checked in this week.');
+    expect(theActiveLine({ answered: 2, expected: 2, nudgedOfThoseWhoHaveNot: 0 }).line).toBe('Both people have checked in this week.');
+  });
+  it('is the plain sentence for nobody yet (B-089), with no fraction and no dot between pieces', () => {
+    const none = theActiveLine({ answered: 0, expected: 3, nudgedOfThoseWhoHaveNot: 0 });
+    expect(none.line).toBe('None of the three has checked in this week, and Groundwork has not reminded them yet.');
+    expect(none.line).not.toMatch(/\d\/\d|·/);
+    expect(theActiveLine({ answered: 0, expected: 3, nudgedOfThoseWhoHaveNot: 3 }).line).toBe('None of the three has checked in this week, and Groundwork has reminded them.');
+    expect(theActiveLine({ answered: 1, expected: 1, nudgedOfThoseWhoHaveNot: 0 }).line).toBe('The one person has checked in this week.');
+    expect(theActiveLine({ answered: 0, expected: 1, nudgedOfThoseWhoHaveNot: 0 }).line).toBe('The one person has not checked in this week, and Groundwork has not reminded them yet.');
+    expect(theActiveLine({ answered: 0, expected: 2, nudgedOfThoseWhoHaveNot: 0 }).line).toBe('Neither of the two has checked in this week, and Groundwork has not reminded them yet.');
   });
 });

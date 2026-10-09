@@ -12,7 +12,7 @@ const reveal: TheLeadsReveal = { title: 'Help my team understand', subtitle: 'On
 const rules: ThePeopleStepRules = { limit: 20, theLeadCounts: false, mayAdd: 20, heading: '', intro: '', contextLabel: '', button: '', limitSentence: '' };
 const invitation: TheAnchorInvitation = { subject: '', heading: '', lines: [], leadHasSharedWhatTheyAreSeeing: false, button: '' };
 const board: TheMonthBoard = { question: 'Are we moving together?', weekOfTheMonth: 1, weekSaid: 'Week 1 of the month', lenses: [], whatIsMoving: [], whatTheTeamIsContributing: [], peopleHelpingThingsMove: [], wherePerspectivesDiffer: [], whatIsStillGettingInTheWay: [], whatGroundworkIsWorkingOnNext: [] };
-const active: TheActiveLine = { active: 18, total: 20, nudged: 2, line: '18/20 active · Groundwork has nudged the remaining 2.' };
+const active: TheActiveLine = { active: 18, total: 20, nudged: 2, line: '18 of the 20 have checked in this week, and Groundwork has reminded the two who have not.' };
 const counts: TheRevealCounts = { projectsThatCouldHaveTheirOwnGround: 3, sharedObjectivesWorthTracking: 2, workingRelationshipsNeedingAlignment: 4, activeCommitments: 17, teamGeneratedIdeas: 7, suitesRelevantToWorkAlreadyBeingDone: 3 };
 const end: TheEndOfMonthRead = { yourOwnWords: '', whatWeFound: [], whatTheyNowUnderstandDifferently: [], whatTheyAreDoingDifferently: [], whatYourTeamContributed: [], peopleWhoHelpedMoveTheThinking: [], whatYouChangedAsALead: [], whatIsStillStuck: [], whatShouldHappenNext: [], reveal: counts, revealSaid: { heading: '', intro: '', lines: [], closing: '' }, continueOptions: [] };
 

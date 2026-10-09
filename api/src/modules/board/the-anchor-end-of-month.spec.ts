@@ -207,7 +207,7 @@ describe('the end of the month reads in plain sentences, and an ended check-in d
 
 describe('an ended check-in has no line about who is active', () => {
   it('serves the active line while it runs, and not once it has ended', async () => {
-    expect((await boardAs(anchor(), ...AMINA)).activeLine?.line).toMatch(/active/);
+    expect((await boardAs(anchor(), ...AMINA)).activeLine?.line).toMatch(/have checked in this week/);
     expect((await boardAs(anchor({ status: 'RESOLVED' }), ...AMINA)).activeLine).toBeUndefined();
   });
 });
