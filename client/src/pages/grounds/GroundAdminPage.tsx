@@ -2647,21 +2647,25 @@ export function GroundAdminPage() {
                 <Stack gap={10}>
                   {/* GROUP 3'S REVIEW, BATCH A FAULT 6: "SESSION" IS INTERNAL JARGON HERE; THE
                       PRODUCT CALLS THE THING A PERSON ANSWERS A "CHECK-IN" EVERYWHERE ELSE. */}
-                  <Callout tone="warning" title="Begin the last check-in?">
-                    Everyone's next check-in becomes their final one. It is the same conversation,
-                    marked as closing. The final report reads the whole record, then you and the
-                    others agree the end state.
+                  {/* B-136: this ends the check-in early, at any session, not only near the planned
+                      last one - the old wording ("Begin the last check-in?") read like the normal,
+                      on-schedule final session, and at session 1 of 6 that read as plain wrong. The
+                      control itself is kept (restored on purpose, see the file above this one). */}
+                  <Callout tone="warning" title="End early with a last check-in?">
+                    Everyone's next check-in becomes their final one, ending this check-in earlier
+                    than planned. It is the same conversation, marked as closing. The final report
+                    reads the whole record, then you and the others agree the end state.
                   </Callout>
                   <div className="gwui-button-row">
                     <Button kind="secondary" redText onClick={() => closingSession.mutate()} disabled={closingSession.isPending}>
-                      Begin the last check-in
+                      End early with a last check-in
                     </Button>
                     <Button kind="quiet" onClick={() => setConfirmClosing(false)}>Cancel</Button>
                   </div>
                 </Stack>
               ) : (
                 <Button kind="secondary" redText wide onClick={() => setConfirmClosing(true)}>
-                  Begin the last check-in
+                  End early with a last check-in
                 </Button>
               )
             )}
