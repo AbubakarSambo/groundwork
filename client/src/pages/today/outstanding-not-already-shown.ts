@@ -98,6 +98,25 @@ function leaveRequestKey(sentence: string): { name: string; dates: string } | nu
 }
 
 /**
+ * B-132: THE SAME SPEND REQUEST, "asked to spend" against "'s request to spend ... is waiting". Like
+ * `leaveRequestKey` above, matched by the person and what the sentence is actually about rather than
+ * its exact words, because the two sides are never worded the same: "What needs you" (`GET /today`)
+ * says "Tendai asked to spend 300,000 on the Mwangi agency, for the quarter.", and the lead's daily
+ * nudge (`GET /today/outstanding`) says "Tendai's request to spend 300,000 for the Mwangi agency, for
+ * the quarter is waiting for you to approve or decline." - the same amount and the same "what" (both
+ * built from `whatTheMoneyIsFor`), with "for" where the other sentence says "on".
+ *
+ * `about` (request 205) cannot be used for this one: the row in "What needs you" is keyed
+ * `approve-spend-<i>`, a position in the list rather than the request's own id, so an id can never
+ * match it (see the request to the engine in docs/requests-to-engine.md). This wording match is the
+ * only way left to catch it.
+ */
+function spendRequestKey(sentence: string): { name: string; amount: string; what: string } | null {
+  const m = /^([A-Z][A-Za-z]+)['’]s request to spend ([A-Z]{0,4}\s?[\d.,]+) for (.+?) is waiting for (?:you|them|him|her) to approve or decline\.?$/i.exec(sentence.trim())
+  return m ? { name: m[1].toLowerCase(), amount: normalise(m[2]), what: normalise(m[3]) } : null
+}
+
+/**
  * "Two requests are waiting for you to approve or decline." has no person and no subject of its own
  * to match on - only a count. Safe to drop only once Today already lists at least that many rows each
  * waiting for the reader to approve or decline it (`waitingForYouToApprove`'s own "It is waiting for
@@ -129,6 +148,9 @@ export function outstandingNotAlreadyShown(existingNeeds: Need[], sentences: str
 
     const leave = leaveRequestKey(sentence)
     if (leave && normalisedAlready.some((text) => text.includes(leave.name) && text.includes(leave.dates))) return false
+
+    const spend = spendRequestKey(sentence)
+    if (spend && normalisedAlready.some((text) => text.includes(spend.name) && text.includes(spend.amount) && text.includes(spend.what))) return false
 
     const count = approvalSummaryCount(sentence)
     if (count !== null && approvalRowCount >= count) return false
