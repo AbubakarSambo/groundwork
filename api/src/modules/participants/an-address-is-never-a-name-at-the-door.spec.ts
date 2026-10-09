@@ -18,6 +18,8 @@ describe('who is waiting at the door, for the admin', () => {
       },
       user: { findMany: jest.fn(async () => [{ id: 'u1', ...NOBODY }]) },
       ground: { findMany: jest.fn(async () => []) },
+      /* The list now reads the organisation's own address (B-096). */
+      organization: { findUnique: jest.fn(async () => ({ email: null, joinDomain: null })) },
     };
     const s = new WhoIsWaitingAtTheDoorService(prisma, { sendTheyAreInNow: (...a: any[]) => told.push(a) } as any, {} as any);
     const rows: any[] = await s.waiting('org');
