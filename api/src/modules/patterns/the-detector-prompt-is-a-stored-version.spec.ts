@@ -6,7 +6,7 @@
  * read the check-in that last kept it. Rows written before this stay valid with no id.
  */
 import { PatternsService } from './patterns.service';
-import { PATTERN_DETECTION_PROMPT, PATTERN_DETECTION_PROMPT_KEY } from './pattern-library';
+import { PATTERN_DETECTION_PROMPT, PATTERN_DETECTION_PROMPT_KEY, PATTERN_DETECTION_SCHEMA } from './pattern-library';
 import { SEED_PROMPTS } from '../conversation/prompt-library';
 import { PatternStatus } from '@prisma/client';
 
@@ -54,5 +54,26 @@ describe('the detector prompt as a stored version', () => {
     const c = prismaWith(existing);
     await (new PatternsService(c.prisma, {} as any) as any).observePositive('g', 'p', 'M1', 'Shipped 3 of 3.', 2, 'model', null);
     expect(c.update.mock.calls[0][0].data).not.toHaveProperty('promptVersionId');
+  });
+});
+
+describe('the sharper detector prompt (decision 124, item 3)', () => {
+  it('tells the model to decide every code the same way and to quote the sentence that shows it', () => {
+    expect(PATTERN_DETECTION_PROMPT).toContain('DECIDE EVERY CODE THE SAME WAY, EVERY TIME');
+    expect(PATTERN_DETECTION_PROMPT).toContain('copy that sentence, exactly as it is written, into "quote"');
+    expect(PATTERN_DETECTION_PROMPT).toContain('A hint is not a sentence that does what the signal says');
+  });
+
+  it('keeps every code, and gives the codes that came and went most a line for what counts and what does not', () => {
+    for (const code of ['D6', 'K1', 'D3', 'F1', 'A1', 'D1', 'M1', 'B11', 'E2', 'K3']) {
+      expect(PATTERN_DETECTION_PROMPT).toMatch(new RegExp(`- ${code} \\(.*Counts when`));
+    }
+    expect((PATTERN_DETECTION_PROMPT.match(/^- [A-Z]\d+ \(/gm) ?? []).length).toBeGreaterThanOrEqual(49);
+  });
+
+  it('asks for the quote in the schema ahead of the observation, but does not require it, so the earlier stored version still works', () => {
+    const item: any = (PATTERN_DETECTION_SCHEMA as any).input_schema.properties.detections.items;
+    expect(Object.keys(item.properties)).toEqual(['code', 'quote', 'observation']);
+    expect(item.required).toEqual(['code', 'observation']);
   });
 });

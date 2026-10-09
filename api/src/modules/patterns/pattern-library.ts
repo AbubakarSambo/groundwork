@@ -364,6 +364,9 @@ Hard rules:
   The observation is already about the record; saying so adds nothing but distance.
 - Do not infer intent. A pattern is a reason to have a specific conversation, not a conclusion.
 - Some lines below say what counts and what does not. Follow them. Where a line speaks of the earlier record, use the section headed "WHAT THIS PERSON THEMSELVES RECORDED IN THE LAST TWO PERIODS" if there is one, to tell a repeat from a first time. Their own words in this check-in about something being raised before count too.
+- DECIDE EVERY CODE THE SAME WAY, EVERY TIME. Go through the codes below one at a time, in the order they are listed, and for each one ask a single question: is there a sentence said by the PERSON in the transcript, or a line of the extracted record, that does what this code's signal says? If you can point to one, emit the code once and copy that sentence, exactly as it is written, into "quote". If you cannot, do not emit the code. Do not stop after the first one or two you find. Do not hold a code back because others are already emitted, and do not emit one to balance the others. The same words must give the same codes whenever they are read.
+- A hint is not a sentence that does what the signal says. One vague phrase, a mood, something only implied, a signal that was true of an earlier period, or a thing only GROUNDWORK said or suggested and the person did not say, does not count. A clear sentence counts, even when it is the only one: do not hold back a code that is plainly there.
+- When one sentence could fit two codes, emit each code whose "counts" line (where there is one) is met by that sentence, and do not emit a code whose line it does not meet.
 - One data point is not a pattern. You are emitting a per-period observation; the system applies the three-period rule across periods. Do not claim a pattern is established.
 
 The pattern codes and their signals:
@@ -417,6 +420,8 @@ export const PATTERN_DETECTION_SCHEMA = {
               enum: [...BAD_FAITH_CODES, ...POSITIVE_CODES, ...CARRYING_CODES].map((c) => c.code),
               description: 'The pattern code. M, C and R3 are good news; A codes say somebody is carrying something; the rest are not.',
             },
+            /* The sentence that shows it, copied exactly from what the person said or from the record. The prompt says a code with no sentence to point to is not emitted; asking for the sentence first each time is what makes the same words give the same codes. Optional in the schema, so the earlier version of the prompt, which does not ask for it, still works. Not used downstream: the observation is what is kept. */
+            quote: { type: 'string', description: 'The one sentence, copied exactly from what the person said or from the record, that does what this code\'s signal says.' },
             observation: { type: 'string', description: 'Plain-language, pattern-level description of what happened. Do NOT open with "The record shows/describes/contains" - say the thing directly. Never names the person; never a verdict.' },
           },
           required: ['code', 'observation'],
