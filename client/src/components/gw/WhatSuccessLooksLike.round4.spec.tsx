@@ -51,4 +51,22 @@ describe('what each person says success is', () => {
     render(<WhatSuccessLooksLike data={data([{ who: 'Rukia Otieno', text: 'I want us to sign 12 shops.' }])} yourName="Rukia Otieno" />)
     expect(screen.getAllByText(fullTextOf('You said, “I want us to sign 12 shops.”')).length).toBeGreaterThan(0)
   })
+
+  /**
+   * B-141: an aim typed in lower case ("forty more shops in Nairobi order every week by 15
+   * December") still read in lower case here too - this is the same component the board, the
+   * report and My work all share for "What success looks like", so the stated aim itself (not a
+   * colleague's definition, which is never rewritten at all) gets its first letter capitalised,
+   * the rest kept exactly as typed.
+   */
+  it('reads the stated aim as a sentence, lower case and all, with only its first letter touched', () => {
+    render(<WhatSuccessLooksLike data={{ ...data([]), stated: 'forty more shops in Nairobi order every week by 15 December' }} />)
+    expect(screen.getByText('Forty more shops in Nairobi order every week by 15 December')).toBeTruthy()
+    expect(screen.queryByText(/^forty more shops/)).toBeNull()
+  })
+
+  it('does the same for the dense, one-line form used elsewhere', () => {
+    render(<WhatSuccessLooksLike data={{ ...data([]), stated: 'forty more shops by December' }} dense />)
+    expect(screen.getByText(/Forty more shops by December/)).toBeTruthy()
+  })
 })

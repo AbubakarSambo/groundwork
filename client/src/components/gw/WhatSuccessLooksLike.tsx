@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { reportsApi } from '@/api/reports'
 import { Note } from '@/components/gw/ui'
+import { withSentenceCase } from '@/lib/an-aim-reads-as-a-sentence'
 
 /**
  * WHERE YOU ARE AGAINST THE THING YOU WERE ASKED TO DEFINE.
@@ -108,7 +109,7 @@ export function WhatSuccessLooksLike({
   if (!data) return null
 
   if (dense) {
-    const line = data.stated || data.saying
+    const line = data.stated ? withSentenceCase(data.stated) : data.saying
     if (!line) return null
     return (
       <div className={`gwui-fs-13 ${data.stated ? 'gwui-ink-text' : 'gwui-ink-muted'}`} style={{ lineHeight: 1.65 }}>
@@ -152,7 +153,9 @@ export function WhatSuccessLooksLike({
 
       {data.stated ? (
         <div className="gwui-fs-13 gwui-ink-text" style={{ lineHeight: 1.65 }}>
-          {data.stated}
+          {/* B-141: this is the same stated aim BaselinePanel.tsx reads back, lower-cased exactly as
+              typed until this reads it. Only the first letter is touched (an-aim-reads-as-a-sentence.ts) */}
+          {withSentenceCase(data.stated)}
           {data.version && data.version > 1 ? (
             /* A changed goal is not a wiped record, and the schema says so in as many words. The
                version is shown because being read against something restated in week six is a

@@ -606,7 +606,12 @@ export function CheckInPeopleAndSetup(props: {
       {/* NOT IN THE PROTOTYPE HERE - kept, one section each (each already carries its own single
           heading - "What doing well looks like", "Where this stood at the start" - so this does not
           wrap them in a second, redundant heading). List for Hafsah. */}
-      <BaselinePanel groundId={props.id} canState={isInitiator} />
+      {/* B-141: version 1's "Stated at the start" date is the check-in's own start, the same
+          fallback (`startsAt`, else `createdAt`) the server uses to measure the timeline - never
+          whatever day the version-1 row happened to be written. */}
+      {/* `startsAtOnRecord` is '' (not null) when nothing is set - `||`, not `??`, so an empty
+          string falls through to `createdAtOnRecord` the same as a missing one would. */}
+      <BaselinePanel groundId={props.id} canState={isInitiator} groundStartedAt={props.startsAtOnRecord || props.createdAtOnRecord} />
       <StartingPointPanel groundId={props.id} canRecord={isInitiator} />
 
       <Section heading="Who sees what">
