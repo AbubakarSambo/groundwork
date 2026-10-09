@@ -2,6 +2,63 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## A second 24-scenario run, run-oct9b, to tell noise from a real drop in "patterns found" (9 October)
+
+**How it was run.** The same worktree, put on `e312faf3d` (the engine exactly as on `wip/release`) for the run and back on `wip/next` after. Its own `nest build`, a new database copy `gw_next_run3` (from `gw_pw9_1786222102`, migrations applied), one API on port 3092, `EMAIL_SENDS_FOR_REAL=false`, a test JWT secret and a throwaway settings key only in the start command. Three shards instead of four, started 04:16 and stopped at 06:13 (the time set for the report). 23 of the 24 scenarios finished. `discovery`, the last one in its shard, was still running when I stopped it, so it has no file (it scored 2, 0 and 0 in the three earlier runs). Every one of the 26 reports written in the run carries `dfce4b13` as `promptVersionId`, and every one of the 26 judgements carries `1d03ffef`. "REPORT SETTLED SHORT" still printed 23 times, with three shards, as it did with four: it is the runner's minute-long wait in the middle sessions, and every finished scenario has its lead report and judgement. So fewer shards did not remove it; only a longer wait in `run.ts` would, and I did not change the runner.
+
+### The scorer against `docs/baseline.json` (23 scenarios, `run-oct9b/score-vs-baseline.txt`)
+
+Every problem is 0. Verdict from the scorer: nothing got worse than the baseline. The 23 scenarios cannot reach the 24-scenario baseline numbers where a count adds up per scenario, so read the "patterns found" row against the scenario table below.
+
+| Engine value | oct7b | oct7c | oct9a | oct9b (23) | Baseline |
+| --- | --- | --- | --- | --- | --- |
+| proof asked for | 27 | 34 | 41 | 40 | 42 |
+| past words | 36 | 30 | 27 | 35 | 25 |
+| specific detail | 96 | 85 | 101 | 101 | 88 |
+| blocker checked | 58 | 44 | 56 | 53 | 37 |
+| differences | 30 | 40 | 38 | 36 | 29 |
+| agreements | 81 | 75 | 82 | 78 | 56 |
+| findings | 87 | 86 | 83 | 81 | 81 |
+| patterns found | 99 | 96 | 89 | 94 | 100 |
+| commitments | 66 | 59 | 66 | 56 | 33 |
+| central question | 29 | 29 | 29 | 28 | 29 |
+| judgement present | 29 | 29 | 29 | 28 | 21 |
+| jargon in Groundwork's turns | 16 | 20 | 17 | 26 | 42 |
+
+### Patterns found, per scenario, across the four runs (the same 23 scenarios in each)
+
+| Scenario | oct7b | oct7c | oct9a | oct9b |
+| --- | --- | --- | --- | --- |
+| advisor | 0 | 0 | 0 | 1 |
+| board | 3 | 4 | 2 | 0 |
+| cofounder | 0 | 1 | 0 | 0 |
+| contractreview | 1 | 2 | 2 | 0 |
+| crisis | 4 | 2 | 4 | 2 |
+| drift | 1 | 2 | 3 | 2 |
+| handover | 3 | 1 | 2 | 2 |
+| implementation | 4 | 3 | 4 | 4 |
+| loans | 6 | 8 | 1 | 4 |
+| newmanager | 2 | 4 | 5 | 2 |
+| openread | 1 | 1 | 1 | 1 |
+| pip | 3 | 1 | 1 | 2 |
+| project | 1 | 1 | 1 | 0 |
+| pulse | 1 | 3 | 0 | 2 |
+| realign | 6 | 5 | 5 | 9 |
+| recognition | 1 | 1 | 0 | 0 |
+| renewal | 4 | 5 | 7 | 4 |
+| sales | 34 | 29 | 27 | 38 |
+| seniorhire | 15 | 15 | 16 | 13 |
+| shock | 1 | 2 | 3 | 3 |
+| snapshot | 3 | 2 | 0 | 0 |
+| updates | 3 | 4 | 4 | 3 |
+| workplan | 0 | 0 | 1 | 2 |
+| Total, 23 scenarios | 97 | 96 | 89 | 94 |
+| discovery (not finished in oct9b) | 2 | 0 | 0 | not run |
+
+### Reading: noise, not a real fall
+
+The 23-scenario totals are 97, 96, 89 and 94; adding discovery's 2, 0 and 0 gives 99, 96 and 89 for the three earlier runs, and about 94 for this one. The fall to 89 did not repeat: oct9b is back at 94, inside the 92 to 99 spread of the last runs. Where oct9a fell, oct9b did not fall with it: loans (8 to 1 to 4), pulse (3 to 0 to 2), newmanager and renewal swing up and down, and sales swings 34, 29, 27, 38 on its own. The scenarios that sat at zero in oct9a (cofounder, recognition, snapshot, advisor, pulse) are small counts of 0 to 2 in every run and move by one. The same scenarios did not fall again except `snapshot` (3, 2, 0, 0) and `board`, `contractreview` and `project` (each lower in oct9b than before); those are one to four patterns each, and they are offset by realign and sales going up. The total stays under 100 in all four runs, which still sits under the baseline of 100 by 6 to 11, so the engine's patterns number is "about 90 to 99 and not held at 100"; it is the same engine as before this task, and the earlier entry's measurement (a code is named by a reading about half the time) explains the size of the swing. Nothing got worse by the scorer's rule (the verdict is "nothing got worse"; oct9b is inside the 10 percent margin of 100).
+
 ## Pattern steadiness again, and the 24-scenario run run-oct9a with the adversarial set, on wip/next (9 October)
 
 **How it was run.** A worktree of `wip/next` (from `e312faf3d`), its own `npm ci` and `nest build`, a database copy `gw_next_run` (from `gw_pw9_1786222102`, migrations applied), one API on port 3091, four shards for the 24 scenarios and a fifth for the eight adversarial ones, `EMAIL_SENDS_FOR_REAL=false`, a test JWT secret and a throwaway settings key only in the start command. Started 02:31, the 24 were all in by about 04:10. The API was built before my one code change (below), so this run is the engine as it stood on `wip/release`. Active prompts in the copy: `report_synthesis` v8 `dfce4b13`, `the_judgement_room` v2 `1d03ffef`. Every one of the 24 reports carries `dfce4b13` and every one of the 24 judgements carries `1d03ffef` as its `promptVersionId`. No scenario failed. The log printed "REPORT SETTLED SHORT" for most scenarios (the runner's wait for the report ran out at its 64 to 124 second limit while four shards shared the model); every scenario still ended with a lead report and a judgement.
