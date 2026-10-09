@@ -243,7 +243,19 @@ export function EachPerson({
                       text link, `.gwui-plain-link`, not a button. B-082: once the old chat is gone,
                       the same link asks Ask the whole question instead of filling a box nobody can see. */}
                   {isLead && onChangeInChat && (
-                    <QuietLink onClick={() => onChangeInChat(`Change what I expect of ${labelOf(p)} to `, `I want to change what ${groundLabel} expects of ${labelOf(p)}.`)}>Change this in the chat</QuietLink>
+                    /*
+                      B-116: ON HER OWN CARD, THE FILLED LINE MUST SPEAK AS HER. The lead can also be
+                      a participant on her own check-in (isMe true here), and `labelOf(p)` always
+                      gives her real name - there is no "you" form of it (see the "You" summary
+                      above, handled as its own special case). Filling the chat with "Change what I
+                      expect of Tendai Moyo to " read as if she were talking about somebody else.
+                      Worded for the reader instead, same as every other "you"/"your" branch on this
+                      card: "myself" in what she types, "me" in the sentence handed to Ask.
+                    */
+                    <QuietLink onClick={() => onChangeInChat(
+                      isMe ? 'Change what I expect of myself to ' : `Change what I expect of ${labelOf(p)} to `,
+                      isMe ? `I want to change what ${groundLabel} expects of me.` : `I want to change what ${groundLabel} expects of ${labelOf(p)}.`,
+                    )}>Change this in the chat</QuietLink>
                   )}
                 </Part>
 

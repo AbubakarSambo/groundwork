@@ -147,6 +147,35 @@ describe('each person holds everything about them', () => {
     )
   })
 
+  /*
+   * B-116: ON HER OWN CARD, THE FILLED LINE SPEAKS AS HER, NOT ABOUT HER. The lead is also a
+   * participant on her own check-in, and her row's "Change this in the chat" filled the chat with
+   * "Change what I expect of Tendai Moyo to " - her own name, as if she were talking about somebody
+   * else. It must read "Change what I expect of myself to " instead, and the sentence handed to Ask
+   * (the old chat off) must say "...expects of me.", not her name.
+   */
+  it('the lead’s own card fills the chat as her, not about her by name', () => {
+    const onChangeInChat = vi.fn()
+    const withLead = [{ id: 'pl', userId: 'u-tendai', user: { firstName: 'Tendai', lastName: 'Moyo' }, objective: { all: [] } }]
+    render(
+      <EachPerson
+        groundId="g1" people={withLead as any} targets={[]} toDos={[]} files={[]} asks={{}}
+        viewerUserId="u-tendai" isLead isTheLead leadFirstName="Tendai"
+        groundLabel="Weekly sales push" onChangeInChat={onChangeInChat}
+      />,
+    )
+    /* Her own row is open by default (it is "mine"). */
+    fireEvent.click(screen.getByText('Change this in the chat'))
+    expect(onChangeInChat).toHaveBeenCalledWith(
+      'Change what I expect of myself to ',
+      'I want to change what Weekly sales push expects of me.',
+    )
+    expect(onChangeInChat).not.toHaveBeenCalledWith(
+      expect.stringContaining('Tendai Moyo'),
+      expect.anything(),
+    )
+  })
+
   /* The release check of 9 October, merged with the screens' B-082: with the old context chat off, the
      lead is never told about a conversation on this page that is gone, and is never shown a link with
      nothing behind it. B-082's own case above covers the link going to Ask when it is passed. */
