@@ -29,6 +29,11 @@ const REACHED_FROM_OUTSIDE_THE_APP: Record<string, string> = {
      anchor link Hafsah shares outside the app, never from inside it, and it shows only while
      release.anchorScenario is on; otherwise it sends the visitor to /start. */
   '/start/team': 'the anchor link, shared outside the app',
+  /* B-128: the old, hyphenated check-in permalink webhooks and the public API still send out
+     (`api/src/modules/webhooks/what-a-webhook-may-carry.ts`). Nothing inside the app ever links to
+     it on purpose - it exists only so a link already sent keeps working - it redirects straight to
+     the real route, `/checkin/:checkInId`, which is linked. */
+  '/check-in/:checkInId': 'the old permalink in webhooks and the public API, sent to people outside the app',
   /*
    * THE REPORT REBUILD'S REVIEW PAGE, and it has no door on purpose.
    *
