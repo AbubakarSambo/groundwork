@@ -163,3 +163,4 @@ e2e/.user-journeys-world.json
 
 # The page audit screenshots stay on this computer for Hafsah, never in the repo.
 docs/page-audit/*.png
+docs/page-audit/deep/
