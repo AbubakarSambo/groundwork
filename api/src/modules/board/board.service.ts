@@ -2646,7 +2646,7 @@ export class BoardService {
           ...out.howItIsGoing,
           glance: {
             ...out.howItIsGoing.glance,
-            inTheWay: { ...out.howItIsGoing.glance.inTheWay, says: theGlanceInASentence(blockers as any[], (iso) => theDayItBegan(iso, recordsClock)) },
+            inTheWay: { ...out.howItIsGoing.glance.inTheWay, says: theGlanceInASentence(blockers as any[], (iso) => theDayItBegan(iso, recordsClock), Number(/^(\d+) worr/.exec(String((out.quickRead as any[] | undefined)?.find?.((t: any) => t?.label === 'Blockers')?.value ?? ''))?.[1] ?? 0)) },
           },
         };
       }

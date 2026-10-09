@@ -10,8 +10,14 @@ export interface AListedBlocker { who?: string | null; name?: string | null; rai
 
 const bare = (s: string) => s.trim().replace(/^["“](.*)["”]$/, '$1').replace(/[.!?]+$/, '');
 
-export function theGlanceInASentence(blockers: AListedBlocker[], dayOf: (iso: string) => string | null): string {
+/**
+ * A WORRY ON RECORD IS NOT "NOTHING IS IN THE WAY" (B-165). Esther said three shops were waiting on a credit decision and she could not
+ * move them until it came back; the worry was on record, no wait row was, and the board read "Nothing is in the way." Where there are
+ * no listed blockers but worries are on record, the sentence says both facts.
+ */
+export function theGlanceInASentence(blockers: AListedBlocker[], dayOf: (iso: string) => string | null, worries = 0): string {
   const n = blockers.length;
+  if (n === 0 && worries > 0) return `No wait is listed against a named person, but ${worries === 1 ? '1 worry is' : `${worries} worries are`} on record.`;
   if (n === 0) return 'Nothing is in the way.';
   const dated = [...blockers].filter((b) => b.raised?.firstRaisedAt).sort((a, b) => String(a.raised!.firstRaisedAt).localeCompare(String(b.raised!.firstRaisedAt)));
   const oldest = dated[0] ?? blockers[0];
