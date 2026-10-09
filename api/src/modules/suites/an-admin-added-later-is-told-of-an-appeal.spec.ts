@@ -10,8 +10,8 @@ import { AnAppealWaitsForANewAdmin } from './an-appeal-waits-for-a-new-admin';
  *
  * Kilima Traders. Baraka is the only admin, and he decided Imani's review. Imani appeals. Nobody else can decide it, so Baraka is
  * asked to add a second admin. He makes Grace an admin. Before this, Grace was told nothing and had to look at her list of appeals.
- * Now she is told once, by email and on WhatsApp, with no word of the review or of Imani's reasons; she is never told twice, and
- * nothing of it is in the review's history. Read from the mail and the WhatsApp messages that really go out.
+ * Now she is told once, by email and in the app only (decision 124, item 4: nothing on WhatsApp, not a template and not a text), with no word of the review or of Imani's reasons; she is never told twice, and
+ * nothing of it is in the review's history. Read from the mail that really goes out, and from the WhatsApp sender, which is never called.
  */
 
 beforeAll(() => jest.useFakeTimers({
@@ -90,7 +90,7 @@ function setup(roles: Record<string, string>, o: { suiteOn?: boolean } = {}) {
 const onlyBaraka = () => ({ 'u-baraka': 'ADMIN', 'u-wairimu': 'LEAD', 'u-imani': 'MEMBER', 'u-grace': 'MEMBER' } as Record<string, string>);
 
 describe('Baraka, the only admin and the reviewer, makes Grace an admin while Imani\'s appeal waits', () => {
-  it('Grace is told once, by email and on WhatsApp, with no word of the review or the reasons', async () => {
+  it('Grace is told once, by email and in the app only (decision 124, item 4: nothing on WhatsApp, not a template and not a text), with no word of the review or the reasons', async () => {
     const roles = onlyBaraka();
     const { svc, sweep, as, sent, phones, events } = setup(roles);
     await svc.appeal(as('u-imani'), 'r-imani', HER_REASONS);
@@ -107,18 +107,15 @@ describe('Baraka, the only admin and the reviewer, makes Grace an admin while Im
       "Imani has appealed Baraka's decision on Imani's review. You are an admin who did not decide it, so you decide the appeal.",
       "Open Groundwork to read the review, Imani's side and the reasons Imani gave, and then say whether the decision stands or is changed.",
     ]);
-    expect(phones).toHaveLength(1);
-    expect(phones[0]).toMatchObject({
-      kind: 'review-appeal-waiting',
-      text: 'Hi Grace, Imani has appealed a decision on their review, and you are an admin who can decide it. Open Groundwork to read their reasons and decide.',
-    });
+    /* Nothing on WhatsApp for an appeal, though Grace has a number and the organisation a connection: no template and no text. */
+    expect(phones).toHaveLength(0);
     expect(JSON.stringify([sent, phones])).not.toMatch(/Karen|March|commitment/);
 
     /* Never twice: not when she is made an admin again, and not by the hourly sweep. */
     await sweep.anAdminWasMade({ organizationId: ORG, userId: 'u-grace' });
     expect(await sweep.sweepNow()).toEqual({ told: 0 });
     expect(sent).toHaveLength(1);
-    expect(phones).toHaveLength(1);
+    expect(phones).toHaveLength(0);
     expect(events.filter((e) => e.kind === 'appeal-told').map((e) => e.toUserId)).toEqual(['u-grace']);
 
     /* Nothing of it is in the review's history, which a lead of the team reads too. */

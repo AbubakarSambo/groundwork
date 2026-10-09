@@ -180,32 +180,9 @@ All three are now on the list the Connections page asks an admin to submit (`the
 - **Why:** to tell the person that the decision and its reasons are written and waiting in the app. The decision itself is never sent. It goes once, the first time the review is decided. It counts as Groundwork writing first. Proposed by the engine on 2 October, for Hafsah to confirm.
 - **Checked against WhatsApp's rules:** passes.
 
-### `groundwork_review_appeal_waiting` (decision 113: an appeal waits for an admin)
+### The three proposed for the appeal of a decided review: not to be used (decision 124, item 4)
 
-- **Category:** Utility. **Language:** en.
-- **Body:** Hi {{1}}, {{2}} has appealed a decision on their review, and you are an admin who can decide it. Open Groundwork to read their reasons and decide.
-- **Examples:** {{1}} Grace. {{2}} Imani.
-- **Sample values:** {{1}} Grace. {{2}} Imani.
-- **Why:** to tell an admin who did not decide the review that the person has appealed it. Nothing of the review or the reasons is in it. It goes straight away and does not use up the day's one message. Proposed by the engine on 8 October, for Hafsah to confirm.
-- **Checked against WhatsApp's rules:** passes.
-
-### `groundwork_review_appeal_needs_admin` (decision 113: the reviewer is asked for a second admin)
-
-- **Category:** Utility. **Language:** en.
-- **Body:** Hi {{1}}, {{2}} has appealed your decision on their review. It needs an admin other than you, and there is not one yet. Please add a second admin in Groundwork, and that admin will decide it.
-- **Examples:** {{1}} Baraka. {{2}} Imani.
-- **Sample values:** {{1}} Baraka. {{2}} Imani.
-- **Why:** an appeal must be decided by an admin who is not the reviewer. When the organisation has none, the appeal is saved, and the reviewer is asked to add one. Proposed by the engine on 8 October, for Hafsah to confirm.
-- **Checked against WhatsApp's rules:** passes.
-
-### `groundwork_review_appeal_decided` (decision 113: an appeal is decided)
-
-- **Category:** Utility. **Language:** en.
-- **Body:** Hi {{1}}, {{2}} has decided the appeal of a decision on a review. Open Groundwork to read the decision and the reasons.
-- **Examples:** {{1}} Imani. {{2}} Grace.
-- **Sample values:** {{1}} Imani. {{2}} Grace.
-- **Why:** to tell the person who appealed, and the reviewer, that the appeal is decided. The decision and the reasons are read in the app. Proposed by the engine on 8 October, for Hafsah to confirm.
-- **Checked against WhatsApp's rules:** passes.
+`groundwork_review_appeal_waiting`, `groundwork_review_appeal_needs_admin` and `groundwork_review_appeal_decided` are withdrawn and must not be submitted to Meta. The appeal of a decided review is told by email and in the app only. Nothing is sent on WhatsApp for it, inside the 24 hours or outside them.
 
 ### `anchor_weekly_insight` (anchor piece 28; decision 105, item 2). The ninth, proposed
 

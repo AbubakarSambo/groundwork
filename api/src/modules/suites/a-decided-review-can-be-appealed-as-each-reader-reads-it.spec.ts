@@ -16,7 +16,7 @@ import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
  *     review, Imani's side and the appeal, and decides it, giving reasons; Imani and Baraka read the decision and the reasons;
  *   - Baraka (the reviewer) reads that it was appealed and where it stands, and never Imani's reasons while it waits;
  *   - with no admin other than the reviewer, the appeal is saved and stays open, Imani is told so plainly, and Baraka is asked
- *     (email, and WhatsApp where it is on) to add a second admin, who then decides it;
+ *     (by email) to add a second admin, who then decides it;
  *   - the only admin, who is also the reviewer, cannot decide it; a colleague and a lead who does not write the review read nothing of it.
  */
 
@@ -159,7 +159,7 @@ describe('Imani appeals, and Grace, an admin who did not decide it, decides', ()
   });
 
   it('Grace decides that it stands, with reasons, and Imani and Baraka read the decision and the reasons', async () => {
-    const { svc, as, sent } = setup({ whatsapp: true });
+    const { svc, as, sent, phones } = setup({ whatsapp: true });
     await svc.appeal(as('u-imani'), 'r-imani', BIG_WORDS);
     sent.length = 0;
     await expect(svc.decideTheAppeal(as('u-grace'), 'r-imani', { outcome: 'stands' })).rejects.toThrow(new BadRequestException(APPEAL_REFUSED.sayWhyToBoth));
@@ -177,7 +177,8 @@ describe('Imani appeals, and Grace, an admin who did not decide it, decides', ()
     expect(baraka.appeal).toMatchObject({ stands: 'decided', outcome: 'stands', reasons: imani.appeal.reasons });
     expect(baraka.appeal.says).toBe('Imani appealed your decision. Grace, an admin, has read the appeal, and the decision stands. You can read the reasons below.');
 
-    /* Both are told it is decided, by email and on WhatsApp, and neither message carries the reasons. */
+    /* Both are told it is decided, by email only (nothing on WhatsApp, decision 124), and neither message carries the reasons. */
+    expect(phones).toHaveLength(0);
     expect(sent.map((s) => [s.to, s.subject])).toEqual([['imani@kilima.test', 'Your appeal was decided, and the decision stands'], ['baraka@kilima.test', "Imani's appeal was decided, and your decision stands"]]);
     expect(sent[0].lines).toEqual(['Hi Imani,', 'Grace, an admin, has read your appeal of the decision on your review. The decision stands.', 'Open Groundwork to read the decision and the reasons.']);
     expect(sent[1].lines[1]).toBe("Grace, an admin, has read Imani's appeal of your decision on Imani's review. The decision stands.");
@@ -250,7 +251,7 @@ describe('Imani appeals, and Grace, an admin who did not decide it, decides', ()
 describe('with no admin other than the reviewer', () => {
   const onlyBaraka = { 'u-baraka': 'ADMIN', 'u-wairimu': 'LEAD', 'u-joy': 'LEAD', 'u-imani': 'MEMBER', 'u-neema': 'MEMBER' };
 
-  it('the appeal is saved and stays open, Imani is told plainly, and Baraka is asked by email and on WhatsApp to add a second admin', async () => {
+  it('the appeal is saved and stays open, Imani is told plainly, and Baraka is asked by email, and not on WhatsApp, to add a second admin', async () => {
     const { svc, as, sent, phones } = setup({ roles: onlyBaraka, whatsapp: true });
     const imani: any = await svc.appeal(as('u-imani'), 'r-imani', BIG_WORDS);
     expect(imani.appeal.stands).toBe('needs-another-admin');
@@ -263,8 +264,7 @@ describe('with no admin other than the reviewer', () => {
       "Imani has appealed your decision on Imani's review. An appeal has to be decided by an admin who is not you, and your organisation does not have another one yet.",
       'Please add a second admin to Groundwork. The appeal is saved and stays open, and that admin decides it as soon as they are added.',
     ]);
-    expect(phones).toHaveLength(1);
-    expect(phones[0]).toMatchObject({ kind: 'review-appeal-needs-admin', text: 'Hi Baraka, Imani has appealed your decision on their review. It needs an admin other than you, and there is not one yet. Please add a second admin in Groundwork, and that admin will decide it.' });
+    expect(phones).toHaveLength(0);
     expect(JSON.stringify([sent, phones])).not.toContain('Karen account');
 
     /* Baraka is the only admin and decided it: he cannot decide it, and reads where it stands without her reasons. */
