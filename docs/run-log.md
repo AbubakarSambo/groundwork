@@ -1390,3 +1390,25 @@ Not seen rendered on the bed: the follow-up that names the finding, and the valu
 **What was run.** Specs only: `ask-sorts-what-the-lead-says-while-setting-up.spec.ts` (B-083, B-084), `nothing-is-offered-that-changes-nothing.spec.ts` (B-085), the four specs that asserted old wording (changed, with the reason in the commit), the assistant, ask and grounds folders (309 of 313 suites then; the 4 failures were those four, now updated) and the existing users' check (`existing-clients-carry-on.spec.ts` and `existing-clients-check.spec.ts`, 26 of 26).
 
 **What was not run.** The side-by-side journey (`journey/context-through-ask-side-by-side-with-the-old-chat.ts`, now with sections 6b to 6d for a fact, a document through Ask and a check-in that is already set up) needs the test bed API with the real model, and this worktree has no model access (no `api/.env`, and none may be copied or read here). So the table of the same words writing the same rows is not yet made, and the old context chat has not been switched off.
+
+### First live run of the side-by-side journey (9 October, evening; unfinished, paused)
+
+Run on test bed copy a with wip/next's built API and the real model (the API process was started with the main folder's api as its working directory so it found its own settings; nothing was read or written in the main folder). 23 of 25 checks passed.
+
+| Item | Same words through the old chat and Ask | Result |
+| --- | --- | --- |
+| A line (decision) | Both write `DECISION, EVERYONE, "we will drop the pilot"`. | Pass |
+| A private note about Miriam | Both write `NOTE, LEAD_ONLY, about Miriam`; Miriam reads none of it. | Pass |
+| A question for a person | Both keep one question for Miriam, said back first, with the words shown. | Pass |
+| A goal for a person | The old chat still reads it as a goal. | Pass |
+| A document | Said back and read, the yes writes rows. | Pass |
+| B-083, a fact typed while "How long should this run?" was open | Ask said "Shall I add "The Westlands depot is closed from 20 to 27 October, so no deliveries leave Westlands that week. Everyone in this check-in should know this." to this check-in's context as a note? Everybody in this check-in will read it." and, after the yes, wrote `NOTE, EVERYONE` with the lead's words and asked the open question again. The old typed-in line wrote the same kind for the same readers. | Pass |
+| B-083, a private thought about Miriam | Kept as `NOTE, LEAD_ONLY, about Miriam`. | Pass |
+| B-084, "I want to add a document to this check-in." | A file control for this check-in is served, nothing about a paperclip, no measure, nothing written. After the file and "I have just added the document." Ask says back what it read and keeps nothing before a yes. | Pass |
+| B-085, a check-in already 90 days, every two weeks | Ask did not ask how long or how often; "90 days" was answered "This check-in already runs for 90 days, so nothing needs to change."; no change from a value to itself in the history; the Westlands fact was not read as a length or a rhythm. | Pass |
+| Who may (lead, admin while the lead is there, admin after the lead left, a person in the check-in) | Refused or allowed exactly as the old chat. | Pass |
+| The old chat switched off | 410 with one sentence naming Ask; Ask still takes the same line. | Pass |
+| FAIL: the line under Ask's caption | The check still expects the old promise "add context or documents"; since wip/release the line points to the Context and resources page. Expected until Ask's own promise is put back (step 5). | Open |
+| FAIL: a paste of plan and notes | The old chat wrote a `BASELINE` (what doing well looks like) row in both of its runs; Ask's run did not. Everything else matched. To investigate: whether Ask's paste path drops the success statement or the model did not name one in that run. | Open |
+
+Not yet done: the real answers that must not be read as a fact ("Success means every account has an owner"), a re-run after the paste finding is looked at, and step 5. The old chat is still on by default.
