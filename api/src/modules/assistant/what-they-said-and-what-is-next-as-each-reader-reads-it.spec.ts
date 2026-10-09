@@ -212,6 +212,9 @@ describe('as a participant asking about a colleague (Miriam)', () => {
     expect(bodyOf(r).split("words open to you").length - 1).toBe(1);
     expect(bodyOf(r).split('Kilimani launch').length - 1).toBe(1);
     expect(sourceOf(r).href).toBe('/grounds/g-open/session/1');
+    /* B-168: no "This is from" under words that were not shown. */
+    expect(bodyOf(r)).toMatch(/This is about .*Kilimani launch\./);
+    expect(bodyOf(r)).not.toMatch(/This is from/);
   });
 
   it('is told "I cannot show you that" about somebody she shares no check-in with', async () => {

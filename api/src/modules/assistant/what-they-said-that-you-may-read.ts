@@ -253,9 +253,15 @@ export async function whatSomeoneSaid(
       }
       if (f.row.finding) entry.push(`What the report says: ${f.row.finding}`);
     }
-    entry.push(source.says);
+    /*
+     * "THIS IS ABOUT", NOT "THIS IS FROM", WHERE THE WORDS ARE NOT SHOWN (B-168). Esther was told "Kwesi's words open to you when the team's report is
+     * shared." and, on the next line, "This is from Kwesi Boateng's check-in of 26 September ...", which reads as if those words had just been shown.
+     */
+    const shown = source.kind === 'check_in' && !!f.row.lines?.length;
+    const theSource = shown ? source : { ...source, says: `This is about ${source.label}.` };
+    entry.push(theSource.says);
     parts.push(entry.join('\n'));
-    sources.push(source);
+    sources.push(theSource);
   }
   return rules(lane, text(parts.join('\n\n')), ...sources);
 }
