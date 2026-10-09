@@ -2,6 +2,50 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## Pattern steadiness again, and the 24-scenario run run-oct9a with the adversarial set, on wip/next (9 October)
+
+**How it was run.** A worktree of `wip/next` (from `e312faf3d`), its own `npm ci` and `nest build`, a database copy `gw_next_run` (from `gw_pw9_1786222102`, migrations applied), one API on port 3091, four shards for the 24 scenarios and a fifth for the eight adversarial ones, `EMAIL_SENDS_FOR_REAL=false`, a test JWT secret and a throwaway settings key only in the start command. Started 02:31, the 24 were all in by about 04:10. The API was built before my one code change (below), so this run is the engine as it stood on `wip/release`. Active prompts in the copy: `report_synthesis` v8 `dfce4b13`, `the_judgement_room` v2 `1d03ffef`. Every one of the 24 reports carries `dfce4b13` and every one of the 24 judgements carries `1d03ffef` as its `promptVersionId`. No scenario failed. The log printed "REPORT SETTLED SHORT" for most scenarios (the runner's wait for the report ran out at its 64 to 124 second limit while four shards shared the model); every scenario still ended with a lead report and a judgement.
+
+### 1. Pattern steadiness: nothing in code gets it to 8 in 10 without changing what is shown
+
+Before (measured again from the stored reads of the six-session conversations, 135 check-ins, 30 reads each, 26 people): two readings of the same conversations agree on 72% of shown person-and-pattern pairs (289 of 401 in the pairing that gives each reading three separate copies of five reads), 64% of people exactly the same, real patterns found 88%. The earlier figure was 72% (79% in piece 4, on a different pairing). Across separate runs (different simulated conversations): 45% weighted over three runs (oct7b, oct7c, oct9a; 33% as a plain average over 23 scenarios), against 53% over three other runs on 6 October.
+
+What I found about the cause (`journey/where-the-noise-is.ts`, 4 check-ins, 10 extractions each, then the confirming call four times on the same wording):
+- The confirming call is not the noise. On the same wording it said yes four times out of four in 20 of 21 tries, and where it said no (E2, one wording) it said no four times. Which wording it is asked about matters, but for one wording it is steady.
+- The noise is the extraction: whether a read names a code at all. The same unchanged text, at temperature 0 and a fixed seed, named B2 in 5 of 10 reads, K5 in 3 of 10, B11 in 1 to 4 of 10, and the wording of an observation differed in 2 to 8 of 10 reads. The model does not give the same answer twice even at its steadiest setting, so a seed does not help.
+- More reads cannot fix a code a read names about half the time. On the stored reads (`journey/pattern-rules-on-stored-reads.py`, no model call): the product's rule 72.1% agreement; five more reads when the ten are borderline 72.5%; every code decided on fifteen reads 72.5% (the most extra reads can give); a tie not counted 69.3% and real patterns found falls from 88% to 82%; a lenient rule to continue a streak 71.6%, showing 1.5 patterns a person against 1.33 and more beyond the real ones (0.24 against 0.11). A soft sum of evidence over periods, set to show as many patterns as now, reached 75% with fewer real ones found. None reaches 8 in 10 without changing what is shown, so none was put in the product.
+
+One change kept (`3a59fe349`): a check-in's record rows and the findings of the last period were read from the database with no order, so two readings could be given the same text in a different order. They are now in the order written. It adds and removes no pattern (251 pattern tests still pass: 262 in the folder). It cannot be seen in the steadiness numbers above, because the measuring tool does not use those two reads. Steadiness stays at about 72% within a run; patterns stay "person only" (decision 74). To go further needs Hafsah: show fewer patterns (a code must be seen in more reads), or a sharper detector prompt, which I did not touch.
+
+### 2. The scorer against `docs/baseline.json` (run-oct9a, 24 scenarios)
+
+Every problem is 0. One engine number is below the baseline: patterns found 89 (baseline 100, so more than 10% under). Output in `run-oct9a/score-vs-baseline.txt`.
+
+| Engine value | oct6f | oct7b | oct7c | oct9a | Baseline |
+| --- | --- | --- | --- | --- | --- |
+| proof asked for | 38 | 27 | 34 | 41 | 42 |
+| past words | 38 | 36 | 30 | 27 | 25 |
+| specific detail | 99 | 96 | 85 | 101 | 88 |
+| blocker checked | 59 | 58 | 44 | 56 | 37 |
+| differences | 37 | 30 | 40 | 38 | 29 |
+| agreements | 83 | 81 | 75 | 82 | 56 |
+| findings | 87 | 87 | 86 | 83 | 81 |
+| patterns found | 92 | 99 | 96 | **89** | 100 |
+| commitments | 53 | 67 | 59 | 66 | 33 |
+| central question | 29 | 29 | 29 | 29 | 29 |
+| judgement present | 29 | 29 | 29 | 29 | 21 |
+| jargon in Groundwork's turns | 12 | 16 | 20 | 17 | 42 |
+
+Patterns found by scenario, oct7c then oct9a: loans 8 to 1, pulse 3 to 0, board 4 to 2, snapshot 2 to 0, cofounder 1 to 0, recognition 1 to 0, workplan 0 to 1, sales 29 to 27, seniorhire 15 to 16, renewal 5 to 7, crisis 2 to 4 (96 to 89). These are fresh conversations and the number has ranged 92 to 99 across the last three runs; the change in this run's code (an order) cannot add or remove a pattern, so I read the 89 as the run's spread, but it is below the baseline's margin and I did not rerun it. The scorer's "patterns found" for this run is therefore NOT held; Hafsah should decide whether to read it as noise.
+
+### 3. The judgement against `theDecision` (my reading, run-oct9a)
+
+Clearly right 18: advisor, board, cofounder, contractreview, crisis, discovery, drift, implementation, newmanager, pip, project, pulse, realign, recognition, seniorhire, snapshot, updates, workplan. Partly 6: handover (the spreadsheet, not the unwritten payment arrangement), loans (the repayment rule, not the five against the one who never took delivery), openread (a weekly release schedule, not the Friday freeze), renewal (the truck against the cut-off, not that our own cut-off moved), sales (three separate blockers, not Femi's capability), shock (the support problem, not the champion who left or the missed reviews). Missed 0. I read more kindly than the oct7c entry did (13, 9, 2) for advisor, board, crisis, drift and pulse; against that stricter reading these would be partly, which gives about 13 / 11 / 0. Same unchanged prompts as oct7c, so the difference is fresh conversations and my reading.
+
+### 4. The adversarial set (`run-oct9a-adv`): 33 passed, 1 failed (oct7c: 32 and 3)
+
+The one failure is `case`: "Groundwork says in plain words that it will not build a case against one person" was not found in what Groundwork said. The earlier "exit" and "claimed" failures did not repeat. The private-words question from oct7c (a person's own check-in words about a family illness appearing in the lead's report when they said them in their check-in) is still there in this run's output and still waits for Hafsah.
+
 ## The 24-scenario run again, run-oct7c, to tell noise from a real drop (7 October)
 
 **How it was run.** A detached worktree of `wip/release` at `8ecdc336` (the head when I started; the branch has moved since, and nothing in the conversation's asking was part of that), its own `npm ci` and `nest build`, a new database copy `gw_run_full3` (from `gw_pw9_1786222102`, migrations applied), one API on port 3084, `EMAIL_SENDS_FOR_REAL=false`, settings key and a test JWT secret only in the start command. Active stored prompts in the copy are the same as run-oct7b (`report_synthesis` v8 `dfce4b13`, `the_judgement_room` v2 `1d03ffef`, the same anchor prompts). Three shards, then reruns of the damaged scenarios, then the eight adversarial scenarios.
