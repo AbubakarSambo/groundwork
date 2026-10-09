@@ -55,7 +55,7 @@ describe('and the board sends it', () => {
     /* 29 September 2026: out.patterns now carries wordPatternEvidence's result, which wraps the
        same servedPatterns(...) call rather than replacing it - askThem is unchanged either way. */
     expect(SRC).toMatch(/out\.patterns = await wordPatternEvidence\(/);
-    expect(SRC).toMatch(/servedPatterns\(detections as any, patternReader, namesForPatterns\)/);
+    expect(SRC).toMatch(/servedPatterns\(detections as any, patternReader, \{ \.\.\.namesForPatterns, now \}\)/);
     expect(RULES).toMatch(/askThem: yours \? null : whatToAskAbout\(row\.code\)/);
   });
 });
