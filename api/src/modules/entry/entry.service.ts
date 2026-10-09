@@ -75,7 +75,7 @@ import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { isTheAnchorScenario, THE_ANCHOR_OPENING_TEXT } from './the-anchor-scenario-content';
 import { TheAnchorDoor, THE_ANCHOR_GROUND_LABEL, aSourceMark } from './the-anchor-door';
-import { THE_EXTRACTION_SYSTEM, THE_EXTRACTION_TOOL, THE_CLOSING_REMINDER, allSevenAreHeard, theChallengeIsDue, theReadTheScreenAlreadyKnows, whatHasBeenHeard, whatTheConversationHasHeard, type TheSevenItems } from './the-anchor-setup';
+import { THE_EXTRACTION_SYSTEM, THE_EXTRACTION_TOOL, THE_CLOSING_REMINDER, allSevenAreHeard, theChallengeIsDue, theReadTheScreenAlreadyKnows, whatHasBeenHeard, withoutTheOpeningsOwnWords, whatTheConversationHasHeard, type TheSevenItems } from './the-anchor-setup';
 import { theLeadsReveal } from './the-anchor-reveal';
 import type { TheLeadsReveal, ThePeopleStepRules } from './the-anchor-served-shapes';
 import { draftFromASetUp, type ASetUpToStartFrom } from './a-set-up-can-start-from-a-recommendation';
@@ -1462,7 +1462,8 @@ from finishing at all.`;
     const read = await this.anthropic
       .extract<TheSevenItems & { peopleNamed?: string[]; initial?: string }>(THE_EXTRACTION_SYSTEM, messages, THE_EXTRACTION_TOOL, { thinkingBudget: CONVERSATION_THINKING_BUDGET_FOR_EXTRACT, fast: true })
       .catch((err: Error) => { this.logger.warn(`The anchor read failed this turn: ${err?.message}`); return null; });
-    const heard = whatHasBeenHeard(read, soFar);
+    const openingWords = messages[0]?.role === 'assistant' ? messages[0].content : undefined;
+    const heard = whatHasBeenHeard(withoutTheOpeningsOwnWords(read, openingWords, messages.filter((m) => m.role === 'user').map((m) => m.content)), soFar);
     const peopleNamed = (read?.peopleNamed?.length ? read.peopleNamed : (soFar?.peopleNamed ?? [])).filter((n) => n?.trim());
     const anchor = await theAnchorGuidance(() => theAnchorScenarioIsOn(this.prisma), this.prompts, ANCHOR_ENTRY_SCENARIO, messages);
     const opening = messages[0]?.role === 'assistant' ? messages[0].content : undefined;
@@ -1905,7 +1906,7 @@ from finishing at all.`;
       const read = await this.anthropic
         .extract<TheSevenItems>(THE_EXTRACTION_SYSTEM, trimmed, THE_EXTRACTION_TOOL, { thinkingBudget: CONVERSATION_THINKING_BUDGET_FOR_EXTRACT, fast: true })
         .catch((err: Error) => { this.logger.warn(`The reveal could not read what the lead said: ${err?.message}`); return null; });
-      const heard = whatHasBeenHeard(read, anchorItems);
+      const heard = whatHasBeenHeard(withoutTheOpeningsOwnWords(read, messages[0]?.role === 'assistant' ? messages[0].content : undefined, messages.filter((m) => m.role === 'user').map((m) => m.content)), anchorItems);
       return { ...served, leadsReveal: theLeadsReveal({ messages: messages as any, peopleNamed: [...alreadyNamed, ...served.mentionedPeople.map((m: any) => m.name)], reader: 'lead', heard }) } as EntryReport;
     }
     return served;

@@ -67,6 +67,31 @@ export function whatHasBeenHeard(thisTurn: unknown, before: unknown): TheSevenIt
   return out;
 }
 
+const LITTLE = new Set('the and for but not has had have was were are been will would should could can did does his her its our their they them you your with from that this than then there what when who why how all any one two out off per into onto over about also just very more most some such too own same each both few many much shall may might must me my we us he she it is be to of in on at by an as or if so do no up'.split(' '));
+const bigWords = (t: string): string[] => (t.toLowerCase().normalize('NFC').replace(/[\u2018\u2019']/g, '').match(/[\p{L}\p{N}]+/gu) ?? []).filter((w) => w.length > 2 && !LITTLE.has(w));
+
+/**
+ * A FACT SHE GAVE IS NEVER REPLACED BY THE PAGE'S OWN OPENING WORDS (B-099). The read runs over the whole conversation, opening question included,
+ * and twice it took the opening line ("You know what it takes to keep the work, customers and company moving. Does your team?") for what the lead
+ * said: "You are responsible for running deliveries to about 300 shops from four depots" became "keeping the work, customers and company moving", and
+ * "your drivers and depot staff" became "your team". An item whose words are the opening's and are not the lead's own is not an item she gave.
+ */
+export function withoutTheOpeningsOwnWords<T extends Record<string, unknown>>(read: T | null | undefined, opening: string | undefined, theLeadsTurns: string[]): T | null {
+  if (!read) return null;
+  if (!opening?.trim()) return read;
+  const inTheOpening = new Set(bigWords(opening));
+  const inHers = new Set(theLeadsTurns.flatMap(bigWords));
+  const out: Record<string, unknown> = { ...read };
+  for (const k of THE_SEVEN) {
+    const v = typeof out[k] === 'string' ? (out[k] as string) : '';
+    const words = bigWords(v);
+    if (!words.length) continue;
+    const share = (set: Set<string>) => words.filter((w) => set.has(w)).length / words.length;
+    if (share(inTheOpening) >= 0.8 && share(inHers) < 0.8) delete out[k];
+  }
+  return out as T;
+}
+
 export const stillToHear = (heard: TheSevenItems): TheSevenKey[] => THE_SEVEN.filter((k) => !heard[k]);
 
 /** The conversation is complete when all seven are heard. */
