@@ -327,7 +327,8 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
   const real = theseMayBeRead(deps);
   const waitsFromEarlier = theseMayBeRead(earlierDeps).length;
   const blocked = real.filter((d) => d.status === 'BLOCKING').length;
-  const waiting = real.filter((d) => d.status === 'WAITING').length;
+  /* PEOPLE, NOT ROWS (B-103): the tile is read as "N people are waiting on somebody else", and Halima, the only one who had answered, had two waits, so it said "Two people". */
+  const waiting = new Set(real.filter((d) => d.status === 'WAITING').map((d) => d.fromParticipantId)).size;
   /* The hard one first, because that is the one a lead acts on. */
   const first = real.find((d) => d.status === 'BLOCKING') ?? real[0] ?? null;
   /* The person it sits with, unless the line already says it: "legal to look at the contract, on

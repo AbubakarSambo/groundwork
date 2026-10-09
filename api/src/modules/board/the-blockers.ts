@@ -149,10 +149,17 @@ const namesAThing = (t: string): boolean => {
   return /(?:ing|tion|sion)$/.test(first) && !NOT_A_THING_ENDING.test(first);
 };
 
-export function whatItIsHoldingUp(then: string, theirWords: string | null, who: string): string {
+/**
+ * NEVER A PROMISE THEY DID NOT MAKE (B-093). "I assumed the drivers or sales would call them" was kept as "call them", and the board said "Once it is
+ * cleared, Halima Yusuf will call them". A line with no subject of its own is given the person as its subject only when what they typed shows they said
+ * they would do it (`theyPromisedIt`, worked out in the-handoff-words-the-person-typed); otherwise there is no line, because a gap nobody owns is
+ * already said by the blocker itself. Where nothing they typed could be read, the line is said as it was.
+ */
+export function whatItIsHoldingUp(then: string, theirWords: string | null, who: string, theyPromisedIt = true): string | null {
   const t = then.trim().replace(/[.!?]+$/, '');
   const subject = who === 'You' ? 'you' : mid(who);
   if (!FIRST_PERSON.test(t)) {
+    if (!theyPromisedIt && startsWithAVerb(t) && !(/^[a-z]/.test(t) && namesAThing(t) && !HAS_ITS_OWN_VERB.test(t)) && !HAS_ITS_OWN_VERB.test(t)) return null;
     if (/^[a-z]/.test(t) && namesAThing(t) && !HAS_ITS_OWN_VERB.test(t)) return `Once it is cleared, ${inASentence(t)} can go ahead.`;
     if (HAS_ITS_OWN_VERB.test(t)) return `Once it is cleared, ${inASentence(t)}.`;
     return startsWithAVerb(t) ? `Once it is cleared, ${subject} will ${t}.` : `Once it is cleared, ${inASentence(t)}.`;
@@ -256,7 +263,7 @@ export function theBlockers(
       timeGiven,
       wouldClearIt,
       wouldClearItSays,
-      holdingUp: then ? whatItIsHoldingUp(then, (d as any).thenTheirWords ?? null, who) : null,
+      holdingUp: then ? whatItIsHoldingUp(then, (d as any).thenTheirWords ?? null, who, (d as any).thenIsTheirPromise !== false) : null,
       order: new Date(d.createdAt).getTime(),
     });
   }

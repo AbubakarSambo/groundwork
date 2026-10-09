@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { BillingService } from '../billing/billing.service';
 import { fullNameToCall } from '../engagement/a-name-to-call-them';
+import { effectiveJoinDomain, theDomainOf } from '../../common/an-email-domain';
 
 /**
  * THE QUEUE AN ADMIN ANSWERS.
@@ -44,8 +45,8 @@ export class WhoIsWaitingAtTheDoorService {
       where: { userId, status: MembershipRequestStatus.PENDING },
       orderBy: { createdAt: 'desc' },
       select: {
-        id: true, createdAt: true, lastRemindedAt: true, viaInvitation: true, organizationId: true, requestedByUserId: true,
-        organization: { select: { name: true } },
+        id: true, email: true, createdAt: true, lastRemindedAt: true, viaInvitation: true, organizationId: true, requestedByUserId: true,
+        organization: { select: { name: true, email: true, joinDomain: true } },
       },
     });
     if (!request) return { waiting: false as const };
@@ -65,8 +66,24 @@ export class WhoIsWaitingAtTheDoorService {
      * it is checked here and said honestly instead of guessing at the reason from the queue alone.
      */
     const seats = await this.billing.canInviteMember(request.organizationId);
+    /*
+     * THE TRUE REASON, WHEN THE PERSON IS ON THE ORGANISATION'S OWN ADDRESS (B-096). halima@msingi.test waiting to be let into Msingi Foods was told
+     * "You're from outside Msingi Foods". She is not: the invitation does not make anyone a member, an admin still adds her, and that is what is
+     * said. `says` is the whole sentence for each of the three reasons, so a screen never has to guess one.
+     */
+    const ownDomain = effectiveJoinDomain((request.organization as any) ?? { email: null, joinDomain: null });
+    const onTheOrganisationsOwnAddress = !!ownDomain && theDomainOf((request as any).email) === ownDomain;
+    const asked = admin ? ` We’ve asked ${[admin.firstName, admin.lastName].filter(Boolean).join(' ').trim() || 'the admins there'}.` : ' We’ve asked the admins there.';
+    const adminName = admin ? [admin.firstName, admin.lastName].filter(Boolean).join(' ').trim() : '';
+    const says = !seats.allowed
+      ? `${request.organization.name} has no free seat right now, so an admin there has to make room before you can start.${asked}`
+      : onTheOrganisationsOwnAddress
+        ? `${request.viaInvitation && inviter?.firstName ? `${inviter.firstName} invited you. ` : ''}${adminName ? `${adminName}, an admin, has` : 'An admin has'} to add you to ${request.organization.name} first.${adminName ? '' : ' We’ve asked the admins there.'}`
+        : `You’re from outside ${request.organization.name}, so an admin there has to let you in.${asked}`;
     return {
       waiting: true as const,
+      onTheOrganisationsOwnAddress,
+      says,
       organisationName: request.organization.name,
       askedAt: request.createdAt.toISOString(),
       admin: admin ? { name: [admin.firstName, admin.lastName].filter(Boolean).join(' ').trim(), firstName: admin.firstName } : null,
@@ -132,6 +149,8 @@ export class WhoIsWaitingAtTheDoorService {
         user: { select: { firstName: true, lastName: true } },
       },
     });
+    const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { email: true, joinDomain: true } });
+    const ownDomain = effectiveJoinDomain(org ?? { email: null, joinDomain: null });
 
     /* Who asked for them and what for, resolved here rather than by the client making N calls. */
     const askerIds = [...new Set(rows.map((r) => r.requestedByUserId).filter((x): x is string => !!x))];
@@ -157,6 +176,8 @@ export class WhoIsWaitingAtTheDoorService {
         /* Named, because "somebody added them" is not something an admin can act on. */
         addedBy: asker ? (fullNameToCall({ user: asker })) : null,
         forCheckIn: r.groundId ? (groundById.get(r.groundId)?.label ?? null) : null,
+        /* Whether they are on the organisation's own address, so nobody is called an outsider who is not (B-096). */
+        onTheOrganisationsOwnAddress: !!ownDomain && theDomainOf(r.email) === ownDomain,
         /* Two things wait at this door now. See `waitingForASeat` below. */
         kind: 'MEMBERSHIP' as const,
       };

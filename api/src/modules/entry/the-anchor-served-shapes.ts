@@ -67,7 +67,7 @@ export type OnePersonTheLeadAdds = {
   /** Required unless `colleagueId` is given. */
   email?: string;
   colleagueId?: string;
-  /** "What do they do / why are they part of this?" Optional. The lead's own note: never shown to the person. */
+  /** "What do they do, and why are they part of this?" Optional. The lead's own note: never shown to the person. */
   context?: string;
   note?: string;
 };
@@ -127,7 +127,7 @@ export type TheActiveLine = {
   total: number;
   /** People Groundwork has nudged and who are not yet active. */
   nudged: number;
-  /** The status line for the board, in Hafsah's own words from the spec: "18/20 active · Groundwork has nudged the remaining 2." */
+  /** The status line for the board, one plain sentence (B-089): "Three of the five have checked in this week, and Groundwork has reminded the two who have not." */
   line: string;
 };
 

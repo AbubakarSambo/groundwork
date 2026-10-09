@@ -1,4 +1,5 @@
 import { whichRoundIsOpen } from './which-round-is-open';
+import { theDayZone } from '../../common/the-organisations-own-day';
 /**
  * ONE COUNT FOR THE SESSIONS, FROM THE BOARD'S OWN CLOCK (request 107 e, with request 97 a).
  *
@@ -33,11 +34,11 @@ export const asDate = (d: Date | string | null | undefined): Date | null => {
   return Number.isNaN(t.getTime()) ? null : t;
 };
 
-/** "30 September", counted in Lagos time like every board date, with the year only when it is not this one. */
+/** "30 September", counted in the organisation's own day like every board date (B-094), with the year only when it is not this one. */
 export function aDayPeopleRead(d: Date, now = new Date()): string {
-  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Lagos', day: 'numeric', month: 'long', year: 'numeric' }).formatToParts(d);
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: theDayZone(), day: 'numeric', month: 'long', year: 'numeric' }).formatToParts(d);
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
-  const thisYear = new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Lagos', year: 'numeric' }).format(now);
+  const thisYear = new Intl.DateTimeFormat('en-GB', { timeZone: theDayZone(), year: 'numeric' }).format(now);
   return `${get('day')} ${get('month')}${get('year') === thisYear ? '' : ` ${get('year')}`}`;
 }
 

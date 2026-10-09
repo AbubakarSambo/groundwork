@@ -1694,7 +1694,8 @@ export class BoardService {
     if (has('checkInGrid')) {
       out.checkInGrid = {
         sessions: Array.from(new Set(checkIns.map((c) => c.sessionNumber))).sort((a, b) => a - b),
-        rows: ground.participants.map((p) => ({
+        /* A lead who only manages does not check in, so she has no row in "Who checked in" (B-079): an empty square beside her name read as a missed session. */
+        rows: ground.participants.filter((p) => !p.managingOnly).map((p) => ({
           participantId: p.id,
           name: nameOf(p.id),
           /* Managing only is an internal flag, never said as a role: the real role is the lead's own words, or nothing. */

@@ -75,7 +75,7 @@ import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { isTheAnchorScenario, THE_ANCHOR_OPENING_TEXT } from './the-anchor-scenario-content';
 import { TheAnchorDoor, THE_ANCHOR_GROUND_LABEL, aSourceMark } from './the-anchor-door';
-import { THE_EXTRACTION_SYSTEM, THE_EXTRACTION_TOOL, THE_CLOSING_REMINDER, allSevenAreHeard, theChallengeIsDue, theReadTheScreenAlreadyKnows, whatHasBeenHeard, whatTheConversationHasHeard, type TheSevenItems } from './the-anchor-setup';
+import { THE_EXTRACTION_SYSTEM, THE_EXTRACTION_TOOL, THE_CLOSING_REMINDER, allSevenAreHeard, theChallengeIsDue, theReadTheScreenAlreadyKnows, whatHasBeenHeard, withoutTheOpeningsOwnWords, whatTheConversationHasHeard, type TheSevenItems } from './the-anchor-setup';
 import { theLeadsReveal } from './the-anchor-reveal';
 import type { TheLeadsReveal, ThePeopleStepRules } from './the-anchor-served-shapes';
 import { draftFromASetUp, type ASetUpToStartFrom } from './a-set-up-can-start-from-a-recommendation';
@@ -1462,7 +1462,8 @@ from finishing at all.`;
     const read = await this.anthropic
       .extract<TheSevenItems & { peopleNamed?: string[]; initial?: string }>(THE_EXTRACTION_SYSTEM, messages, THE_EXTRACTION_TOOL, { thinkingBudget: CONVERSATION_THINKING_BUDGET_FOR_EXTRACT, fast: true })
       .catch((err: Error) => { this.logger.warn(`The anchor read failed this turn: ${err?.message}`); return null; });
-    const heard = whatHasBeenHeard(read, soFar);
+    const openingWords = messages[0]?.role === 'assistant' ? messages[0].content : undefined;
+    const heard = whatHasBeenHeard(withoutTheOpeningsOwnWords(read, openingWords, messages.filter((m) => m.role === 'user').map((m) => m.content)), soFar);
     const peopleNamed = (read?.peopleNamed?.length ? read.peopleNamed : (soFar?.peopleNamed ?? [])).filter((n) => n?.trim());
     const anchor = await theAnchorGuidance(() => theAnchorScenarioIsOn(this.prisma), this.prompts, ANCHOR_ENTRY_SCENARIO, messages);
     const opening = messages[0]?.role === 'assistant' ? messages[0].content : undefined;
@@ -1905,7 +1906,7 @@ from finishing at all.`;
       const read = await this.anthropic
         .extract<TheSevenItems>(THE_EXTRACTION_SYSTEM, trimmed, THE_EXTRACTION_TOOL, { thinkingBudget: CONVERSATION_THINKING_BUDGET_FOR_EXTRACT, fast: true })
         .catch((err: Error) => { this.logger.warn(`The reveal could not read what the lead said: ${err?.message}`); return null; });
-      const heard = whatHasBeenHeard(read, anchorItems);
+      const heard = whatHasBeenHeard(withoutTheOpeningsOwnWords(read, messages[0]?.role === 'assistant' ? messages[0].content : undefined, messages.filter((m) => m.role === 'user').map((m) => m.content)), anchorItems);
       return { ...served, leadsReveal: theLeadsReveal({ messages: messages as any, peopleNamed: [...alreadyNamed, ...served.mentionedPeople.map((m: any) => m.name)], reader: 'lead', heard }) } as EntryReport;
     }
     return served;
@@ -2394,6 +2395,15 @@ from finishing at all.`;
      */
     if (theAnchorIsOn) await this.theAnchorSaysTheTeamsSize(organizationId);
     const theMonthEnds = theAnchorIsOn ? new Date((dto.checkInBy ? new Date(dto.checkInBy).getTime() : Date.now()) + 30 * 86_400_000).toISOString() : undefined;
+    /*
+     * WHAT THE SET-UP PROMISED IS WHAT IS SAVED (B-095, 9 October 2026). The set-up showed "When it ends" and listed the Fridays up to it, five of them to
+     * 9 November, and the save kept the month's own end, 8 November, and four sessions. When the lead sent an end after the start, that end is the check-in's
+     * end and the length is the set-up's own count of the weeks up to it (timelineDaysForAChosenEnd); the thirty days and four sessions are what is saved
+     * only when she chose no end.
+     */
+    const theEndSheChose = theAnchorIsOn && dto.lastCheckInBy && !Number.isNaN(new Date(dto.lastCheckInBy).getTime())
+      && new Date(dto.lastCheckInBy).getTime() > (dto.checkInBy ? new Date(dto.checkInBy).getTime() : Date.now())
+      ? dto.lastCheckInBy : undefined;
     const ground = await this.grounds.create(organizationId, initiatorId, {
       label,
       scenario,
@@ -2414,10 +2424,10 @@ from finishing at all.`;
       cadenceAnchorDay: dto.cadenceAnchorDay ?? undefined,
       workingDays: dto.workingDays ?? undefined,
       startsAt: dto.checkInBy || undefined,
-      endsAt: theAnchorIsOn ? theMonthEnds : dto.lastCheckInBy || undefined,
+      endsAt: theAnchorIsOn ? theEndSheChose ?? theMonthEnds : dto.lastCheckInBy || undefined,
       /* Thirty days, which is four weekly sessions. Without it the length was read from the end date, which counts the weeks that start inside it, five, and
          the members read "Session 1 of 5" (review of fd583ba5). */
-      ...(theAnchorIsOn ? { timelineDays: DEFAULT_TIMELINE_DAYS.HELP_TEAM_UNDERSTAND } : howLongTheyAsked ? { timelineDays: howLongTheyAsked } : {}),
+      ...(theAnchorIsOn ? (theEndSheChose ? {} : { timelineDays: DEFAULT_TIMELINE_DAYS.HELP_TEAM_UNDERSTAND }) : howLongTheyAsked ? { timelineDays: howLongTheyAsked } : {}),
       brief,
       freeParticipantCap: isBroadcast ? 100 : DEFAULT_FREE_MEMBER_LIMIT,
       /*

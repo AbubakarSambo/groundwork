@@ -130,6 +130,20 @@ describe('week 16: the report’s open differences reach the lead’s list, and 
     expect(writes).toEqual([]);
   });
 
+  it('B-098: while only one person who checks in has answered, there is no difference to settle, as the board says', async () => {
+    const { prisma } = prismaFor('MEMBER');
+    prisma.report = { findUnique: jest.fn(async () => ({ divergences: structuredClone(DIVERGENCES) })) };
+    const all = prisma.checkIn.findMany;
+    prisma.checkIn.findMany = jest.fn(async (args: any) => (args?.where?.status === 'COMPLETED' ? [{ participantId: 'p-brian' }] : all(args)));
+    const svc = Object.create(ReportsService.prototype) as any;
+    svc.prisma = prisma;
+    svc.logger = new Logger('test');
+    svc.getAsBuilt = jest.fn(async () => ({ groundId: 'g-sales', report: { findings: [] } }));
+    const r: any = await (svc as ReportsService).get('g-sales', 'u-wairimu', 'org-1');
+    expect((r.forTheLead ?? []).filter((x: any) => /^difference-/.test(x.id))).toEqual([]);
+    expect(JSON.stringify(r.forTheLead ?? [])).not.toMatch(/Settle the difference|said different things/);
+  });
+
   it('a participant never reads it', async () => {
     const r = await withDifferences('u-brian').report;
     expect(r).not.toHaveProperty('forTheLead');

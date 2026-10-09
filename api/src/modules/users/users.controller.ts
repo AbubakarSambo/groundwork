@@ -186,6 +186,21 @@ export class UsersController {
     return this.usersService.changeJoinDomain(organizationId, userId);
   }
 
+  /** THE ORGANISATION'S OWN TIME ZONE (B-094): the day every board, report and Today sentence is written in. */
+  @Get('organization/time-zone')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'The time zone this organisation reads its days in' })
+  async theTimeZone(@CurrentUser('organizationId') organizationId: string) {
+    return this.usersService.theTimeZone(organizationId);
+  }
+
+  @Patch('organization/time-zone')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Name the time zone this organisation reads its days in, or clear it' })
+  async setTheTimeZone(@CurrentUser('organizationId') organizationId: string, @Body() body: { timeZone?: string | null }) {
+    return this.usersService.setTheTimeZone(organizationId, body?.timeZone ?? null);
+  }
+
   @Get('organization/check-ins')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Who may open a check-in here, and whether one waits for approval' })
