@@ -1412,3 +1412,20 @@ Run on test bed copy a with wip/next's built API and the real model (the API pro
 | FAIL: a paste of plan and notes | The old chat wrote a `BASELINE` (what doing well looks like) row in both of its runs; Ask's run did not. Everything else matched. To investigate: whether Ask's paste path drops the success statement or the model did not name one in that run. | Open |
 
 Not yet done: the real answers that must not be read as a fact ("Success means every account has an owner"), a re-run after the paste finding is looked at, and step 5. The old chat is still on by default.
+
+### The live run, finished (9 October, night): 32 of 32 checks
+
+Same arrangement (wip/next's built API, the real model, test bed copy a; nothing read or written in the main folder). The journey now has sections 6b to 6e and 4b, and writes `{ "on": true }` for the old chat so both can be run side by side. The old chat is off by default.
+
+| Item | Result |
+| --- | --- |
+| A line, a private note about Miriam, a question for a person, a goal for a person, a paste of plan and notes, a document | Ask and the old chat write the same rows for the same readers. |
+| A fact typed while "How long should this run?" was open | Ask: "Shall I add "The Westlands depot is closed from 20 to 27 October, so no deliveries leave Westlands that week. Everyone in this check-in should know this." to this check-in's context as a note? Everybody in this check-in will read it." The yes wrote a `NOTE` for everyone, as the old typed-in line does. |
+| Adding a document | A file control for the check-in, no paperclip, no measure, nothing written; after the file, a say-back of what was read and nothing kept before a yes. |
+| A check-in already set up | "This check-in already runs for 90 days, so nothing needs to change." No change from a value to itself in the history; the fact was not read as a rhythm or a length. |
+| Real answers | "Success means every account has an owner." gave "Shall I record "every account has an owner" as what doing well looks like?". "Doing well is when no delivery is late for two weeks in a row.", "We are doing well when each shop we visit has paid its deposit by the end of the month." and "I want Miriam to sign twelve shops by the end of September." were each read as an answer or a goal ("what you expect of Miriam"), never as a line everybody reads. "About three months, finishing at the end of December." was filed as a line the first time, and is now an answer to how long, by a rule before the model. |
+| The pasted plan (first run's open item) | The same reading serves both doors, and a success statement was written in 2 of 3 old-chat runs and 1 of 3 Ask runs on the same paste, so it is the model's variation, not Ask's code. Nothing changed for it. |
+| Who may | Lead, admin while the lead is there, admin after the lead left, a person in the check-in: refused or allowed exactly as the old chat. |
+| The old chat | Off by default: 410 with one sentence naming Ask; `GET /ask` serves `oldContextChatIsOpen: false`; `{ "on": true }` brings it back. |
+
+**Whole API suite on wip/next after this change:** 19,329 passed, 3 failed, 13 skipped. The failures: `the-whole-app-resolves.spec.ts` needs `JWT_SECRET` in the environment, which this worktree has no `.env` to supply (it is not a fault of the change); `a-pattern-says-what-to-ask.spec.ts` fails the same way on wip/next without this change (a source check of the board service that decisions 125 and 126 moved), so it is not this piece's; the Yoda copy check failed on one new sentence in the kind-of-thing prompt, which is reworded and now passes.

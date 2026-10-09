@@ -334,11 +334,11 @@ It was drawn from `docs/morning-report.md`, `docs/weekly-plan.md`, `docs/run-log
 - Why it was left: the email module belongs to another builder, and the minutes need Hafsah.
 - Recommendation: one email that names the person and the check-in; once a day for the paused notice; its own subject for the limit; Hafsah picks the minutes.
 
-**U5. Context in Ask Groundwork is on, and the old context chat stays on this round (decision 124).**
-- Where: `release.contextInAskGroundwork` is on (a missing row reads on) and `GET /ask` serves `addsContext` and `oldContextChatIsOpen`. The old chat stays on (a missing row, or one that cannot be read, reads on; `{"on": false}` switches it off), and the Context and resources page reads `oldContextChatIsOpen` and draws it while it is open. The plan page's own promise still names only goals, roles and commitments, though it reads seven kinds.
+**U5. Context in Ask Groundwork is on, and the old context chat is off by default (wip/next).**
+- Where: `release.contextInAskGroundwork` is on (a missing row reads on) and `GET /ask` serves `addsContext` and `oldContextChatIsOpen`. The old chat is off (a missing row, or one that cannot be read, reads off; `{"on": true}` keeps it), and the Context and resources page reads `oldContextChatIsOpen` and stops drawing it. Ask takes a document, sorts a typed fact, rule, decision or private note, and reads what a check-in already has (screens bugs B-083 to B-085), proved live beside the old chat in `docs/run-log.md`. The plan page's own promise still names only goals, roles and commitments, though it reads seven kinds.
 - Who: leads.
-- Why it was left: proved side by side on 6 October, waiting on the screens and on Hafsah.
-- Recommendation: leave the chat on until Ask can add a document and file a typed fact rightly (screens bugs B-083 to B-085) and that is proven; then Hafsah writes `{"on": false}`.
+- Why it was left: the full-page Ask (`/chat`) still has to draw the file control (`docs/answers-from-engine.md`).
+- Recommendation: draw the file control on the full-page Ask before this is released.
 
 **U6. Decisions taken provisionally that still wait for Hafsah.**
 - Where: decisions 102 (a goal a person wrote is not rewritten to "you"), 103 (two session counts worded apart) and 104 (pattern A1 reworded); quiet hours of 20:00 to 07:00 in Lagos for approvals, chosen because there were none; "they" for one named person; the ending `REACH_WITH_A_CHANGE`; the list of placeholder surnames; a headline asked without a day; the recognise threshold and whether to switch it on; the two-week window for reviews on Today; prototype fragments turned into sentences on the settings pages (screens workspace); and the twenty or so suites questions in the morning report of 2 October (for example whether a missing receipt blocks payment, whether hours can be declined, and whether a review has an appeal).

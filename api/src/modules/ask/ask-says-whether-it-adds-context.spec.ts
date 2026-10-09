@@ -44,7 +44,7 @@ describe('who is told Ask can add context for them', () => {
   it('the lead of a check-in that is running: yes, and the line under the caption is served', async () => {
     const r = await world({ grounds: [q4], roles }).read('u-wanjiru');
     expect(r.addsContext).toBe(true);
-    expect(r.addLine).toBe("To add context or a document, open the check-in's Context and resources page.");
+    expect(r.addLine).toBe('You can also add context or documents to your check-ins here.');
   });
   it('a person who only takes part: no', async () => {
     expect((await world({ grounds: [q4], roles }).read('u-miriam')).addsContext).toBe(false);
@@ -66,22 +66,22 @@ describe('the switch, as the screens read it', () => {
   it('no row at all reads on', async () => {
     expect((await world({ grounds: [q4], roles }).read('u-wanjiru')).addsContext).toBe(true);
   });
-  it('{ on: false } switches it off: no button in Ask, and nothing promises that Ask takes context; the line points to the check-in\'s own page (request 209)', async () => {
+  it('{ on: false } switches it off: no button, no line about adding context, and the welcome does not offer it', async () => {
     const r = await world({ setting: { on: false }, grounds: [q4], roles }).read('u-wanjiru');
     expect(r.addsContext).toBe(false);
-    expect(r.addLine).toBe("To add context or a document, open the check-in's Context and resources page.");
-    expect(JSON.stringify(r.starters)).not.toMatch(/context|document/i);
-    expect(r.welcome).not.toMatch(/You can add context|says it back|say it back/i);
+    expect(r.addLine).toBeNull();
+    expect(JSON.stringify([r.welcome, r.starters])).not.toMatch(/context|document/i);
   });
   it('a row that cannot be read reads off', async () => {
     const r = await world({ setting: 'yes', grounds: [q4], roles }).read('u-wanjiru');
     expect(r.addsContext).toBe(false);
   });
-  it('and the read for the old chat says it is open unless its own switch is turned off (decision 124)', async () => {
+  /* Changed on wip/next: the old chat is OFF unless its row says on (it was ON unless the row said off, decision 124, while Ask could not yet add a document or file a fact). */
+  it('and the read for the old chat says it is closed unless its own switch is turned on', async () => {
     const w = world({ grounds: [q4], roles });
-    expect((await w.read('u-wanjiru')).oldContextChatIsOpen).toBe(true);
-    const off = world({ grounds: [q4], roles });
-    off.prisma.platformSetting.findUnique = jest.fn(async ({ where }: any) => (where.key === 'release.oldContextChat' ? { value: { on: false } } : null));
-    expect((await off.read('u-wanjiru')).oldContextChatIsOpen).toBe(false);
+    expect((await w.read('u-wanjiru')).oldContextChatIsOpen).toBe(false);
+    const on = world({ grounds: [q4], roles });
+    on.prisma.platformSetting.findUnique = jest.fn(async ({ where }: any) => (where.key === 'release.oldContextChat' ? { value: { on: true } } : null));
+    expect((await on.read('u-wanjiru')).oldContextChatIsOpen).toBe(true);
   });
 });

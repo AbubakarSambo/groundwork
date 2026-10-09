@@ -69,6 +69,8 @@ const stamp = Date.now();
 
   // The switch, in this local database only. Before it, Ask does not take context (proved separately in the run log).
   await prisma.platformSetting.upsert({ where: { key: 'release.contextInAskGroundwork' }, create: { key: 'release.contextInAskGroundwork', value: { on: false } as any, updatedBy: 'ctx-journey' }, update: { value: { on: false } as any } });
+  /* The old chat is OFF unless its row says on (wip/next), and this journey sets the two side by side, so it is turned on here, in this local database only. */
+  await prisma.platformSetting.upsert({ where: { key: 'release.oldContextChat' }, create: { key: 'release.oldContextChat', value: { on: true } as any, updatedBy: 'ctx-journey' }, update: { value: { on: true } as any } });
   const g0 = await makeGround('Switch off', wanjiru);
   const off = await call('/ask', T.wanjiru, 'POST', { message: 'decision: we will drop the pilot', groundId: g0.id });
   console.log(`    With the switch OFF, Wanjiru asks Ask Groundwork to add a decision and reads: ${said(off)}`);
@@ -233,6 +235,36 @@ const stamp = Date.now();
   console.log(`    The Westlands fact on the same check-in: ${said(factOnSet.first)}`);
   check('The fact is not read as a rhythm or a length', !!factOnSet.p && !/check in once a week|run for \d+ days/i.test(said(factOnSet.first)), said(factOnSet.first));
 
+  console.log('\n==================== 6e. REAL ANSWERS ARE NOT READ AS A FACT ====================');
+  const answers: { said: string; open: 'success' | 'timeline'; expect: RegExp; not: RegExp }[] = [
+    { said: 'Success means every account has an owner.', open: 'success', expect: /what doing well looks like/i, not: /context as a/i },
+    { said: 'Doing well is when no delivery is late for two weeks in a row.', open: 'success', expect: /what doing well looks like/i, not: /context as a/i },
+    { said: 'We are doing well when each shop we visit has paid its deposit by the end of the month.', open: 'success', expect: /what doing well looks like/i, not: /context as a/i },
+    { said: 'About three months, finishing at the end of December.', open: 'timeline', expect: /run for|until/i, not: /context as a/i },
+    { said: 'I want Miriam to sign twelve shops by the end of September.', open: 'success', expect: /Miriam/i, not: /context as a/i },
+  ];
+  for (const a of answers) {
+    const g = await makeGround(`Answer: ${a.said.slice(0, 25)}`, wanjiru);
+    if (a.open === 'success') await prisma.ground.update({ where: { id: g.id }, data: { timelineStated: true, cadenceStated: true, timelineDays: 60 } });
+    await call('/ask', T.wanjiru, 'POST', { message: '', groundId: g.id, openedFrom: 'check_in_setup' });
+    const r = await call('/ask', T.wanjiru, 'POST', { message: a.said, groundId: g.id, openedFrom: 'check_in_setup' });
+    /* What the lead reads: the text, and the say-back under it when the text is only the opening line. */
+    const text1 = (r.data?.blocks ?? []).map((b: any) => b.body ?? b.summary ?? '').join(' ');
+    console.log(`    Wanjiru answers "${a.said}" and reads: ${text1.slice(0, 400)}`);
+    check(`"${a.said}" is read as an answer, not filed as a line everyone reads`, !a.not.test(text1) && a.expect.test(text1), text1);
+  }
+
+  console.log('\n==================== 4b. THE SAME PASTE, THREE MORE TIMES EACH WAY: IS THE SUCCESS STATEMENT THE CODE OR THE MODEL? ====================');
+  const pasteText = dump;
+  const baselineCount = async (gid: string) => (await prisma.groundBaseline.count({ where: { groundId: gid } }));
+  let oldWith = 0; let askWith = 0;
+  for (let i = 0; i < 3; i++) {
+    const po = await makeGround(`Paste repeat old ${i}`, wanjiru); await oldYes(po.id, T.wanjiru, pasteText); if (await baselineCount(po.id)) oldWith++;
+    const pa = await makeGround(`Paste repeat ask ${i}`, wanjiru); await askYes(pa.id, T.wanjiru, pasteText, 'check_in_setup'); if (await baselineCount(pa.id)) askWith++;
+  }
+  console.log(`    A success statement was written in ${oldWith} of 3 old-chat runs and ${askWith} of 3 Ask runs (the first runs above: old 2 of 2, Ask 0 of 1).`);
+  check('Ask writes the success statement from a paste as often as the old chat does, within the model\'s own variation (both ways use the same reading)', askWith >= 1 && oldWith >= 1, `${oldWith} / ${askWith}`);
+
   console.log('\n==================== 7. WHO MAY: A LEAD, AN ADMIN, A PERSON IN THE CHECK-IN ====================');
   const who = await pair('Who');
   const graceOld = await call(`/grounds/${who.old.id}/context-chat`, T.grace, 'POST', { history: [] });
@@ -266,8 +298,13 @@ const stamp = Date.now();
   const offRead = await readAsk(T.wanjiru);
   check('GET /ask tells the screens the old chat is off, and still that Ask adds context', offRead?.oldContextChatIsOpen === false && offRead?.addsContext === true, JSON.stringify(offRead).slice(0, 300));
   await prisma.platformSetting.delete({ where: { key: 'release.oldContextChat' } });
+  const stillGone = await call(`/grounds/${sw.old.id}/context-chat`, T.wanjiru, 'POST', { history: [] });
+  const defaultRead = await readAsk(T.wanjiru);
+  check('With the row gone the old chat stays switched off (it is off by default), and GET /ask says so', stillGone.status === 410 && defaultRead?.oldContextChatIsOpen === false, `${stillGone.status} ${defaultRead?.oldContextChatIsOpen}`);
+  await prisma.platformSetting.upsert({ where: { key: 'release.oldContextChat' }, create: { key: 'release.oldContextChat', value: { on: true } as any, updatedBy: 'ctx-journey' }, update: { value: { on: true } as any } });
   const back = await call(`/grounds/${sw.old.id}/context-chat`, T.wanjiru, 'POST', { history: [] });
-  check('With the row gone the old chat answers again', back.status < 300, `${back.status}`);
+  check('Written { on: true }, the old chat answers again', back.status < 300, `${back.status}`);
+  await prisma.platformSetting.delete({ where: { key: 'release.oldContextChat' } });
 
   const failed = checks.filter((c) => !c.ok);
   console.log(`\n${checks.length - failed.length} of ${checks.length} checks passed.${failed.length ? `\nFAILED:\n${failed.map((x) => '  ' + x.what).join('\n')}` : ''}`);

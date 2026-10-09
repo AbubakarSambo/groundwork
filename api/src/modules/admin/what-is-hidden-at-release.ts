@@ -8,7 +8,7 @@
  *
  *  - `release.boardKindsOffered`        { "kinds": [ ... ] }  the kinds of work a NEW check-in may be given
  *  - `release.contextInAskGroundwork`   { "on": false }       the setup and context lanes in Ask Groundwork (ON when the row is missing, from the pull request that moved Context into Ask)
- *  - `release.oldContextChat`           { "on": false }       the old context chat on the check-in page (ON when the row is missing; off sends people to Ask)
+ *  - `release.oldContextChat`           { "on": true }        the old context chat on the check-in page (OFF when the row is missing; off sends people to Ask)
  *  - `release.planAndBillingNewParts`   { "on": false }       the WhatsApp add-on's price, use and limit
  *  - `release.anchorScenario`           { "on": true }        whether a new anchor check-in can be started (on when the row is missing)
  *
@@ -107,18 +107,19 @@ export const contextIsInAskGroundwork = async (prisma: Reader): Promise<boolean>
 
 /**
  * THE OLD CONTEXT CHAT ON THE CHECK-IN PAGE (`POST /grounds/:id/context-chat` and its confirm and decline).
- * ON by default (decision 124, item 1, 9 October): the chat stays open in this pull request, because Ask Groundwork cannot yet add a document or file a
- * typed fact rightly (screens bugs B-083 to B-085). A missing row reads on, and a row that cannot be read, or holds something other than an explicit
- * off, reads on too, so a lead who has the chat keeps it. `{ "on": false }` (or `false`) switches it off: the three routes then answer with one
- * sentence that sends the person to Ask, and the screens stop drawing it when `GET /ask` serves `oldContextChatIsOpen: false`. Ask's own setup lane
- * calls the same two methods in the engine and is not touched by this switch.
+ * OFF by default (decision 50, finished on `wip/next`): Ask Groundwork now adds a document, files a typed fact and reads what a check-in already has
+ * (screens bugs B-083 to B-085), proved live with the real model beside the old chat (docs/run-log.md). A missing row reads OFF, and so does a row that
+ * cannot be read or holds anything other than an explicit on. `{ "on": true }` (or `true`) keeps the chat for a deployment that wants it: the three
+ * routes then answer as before. Off, they answer with one sentence that sends the person to Ask, and the screens stop drawing the chat when `GET /ask`
+ * serves `oldContextChatIsOpen: false`. Ask's own setup lane calls the same two methods in the engine and is not touched by this switch.
+ * (It was ON unless the row said off until this change; decision 124 had kept it on for the round before.)
  */
 export const theOldContextChatIsOpen = async (prisma: Reader): Promise<boolean> => {
   const read = await theRowOrAFault(prisma, OLD_CONTEXT_CHAT_KEY);
-  if (read.fault || read.row == null) return true;
+  if (read.fault || read.row == null) return false;
   const v = read.row.value as { on?: unknown } | boolean | null | undefined;
   if (typeof v === 'boolean') return v;
-  return !(v && typeof v === 'object' && (v as { on?: unknown }).on === false);
+  return !!(v && typeof v === 'object' && (v as { on?: unknown }).on === true);
 };
 export const theNewBillingPartsAreShown = (prisma: Reader) => aSwitch(prisma, PLAN_AND_BILLING_NEW_PARTS_KEY);
 

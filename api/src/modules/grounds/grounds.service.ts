@@ -474,7 +474,7 @@ export class GroundsService {
    * THE OLD CONTEXT CHAT, WHEN IT IS SWITCHED OFF (`release.oldContextChat`, decision 50). Context and resources are done in Ask now, so while the
    * switch says off, the three routes of the old chat on the check-in page answer with one sentence that sends the person there, naming Ask for
    * their organisation. Only the controller calls this: Ask's own setup lane calls `contextChat` and `applyContextProposal` directly and is never
-   * stopped by it. ON when the row is missing or cannot be read.
+   * stopped by it. OFF when the row is missing or cannot be read; `{ "on": true }` keeps it.
    */
   async theOldContextChatMustBeOpen(organizationId: string): Promise<void> {
     if (await theOldContextChatIsOpen(this.prisma)) return;

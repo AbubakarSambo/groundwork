@@ -88,6 +88,8 @@ const SYSTEM =
   + 'Be careful: a statement of fact about the work, such as a closure, a date or a constraint, is a fact for everybody, and is NOT an answer to a set-up question and NOT a goal. '
   + 'A goal or target is something people are expected to reach, with a number or a clear result. '
   + 'Use "answer" when it is a goal, a measure, what doing well looks like, how long it runs, how often people check in, or a direct reply to the question that was asked. '
+  + 'A message that answers the open question is "answer", even when it is a plain statement. That includes a length ("about three months, until the end of December"), a rhythm ("every two weeks"), and what doing well looks like ("success means every account has an owner"). '
+  + 'A fact only tells people something true about the work; it does not answer the open question. '
   + 'Quote the lead\'s own words and never add to them.';
 
 export interface Reader {
@@ -98,9 +100,24 @@ export interface Reader {
  * Which kind of thing this was. A model that cannot be reached, says nothing, or quotes words the lead
  * never typed, gives `answer`, which is the set-up conversation's own reading as before.
  */
+/**
+ * AN ANSWER TO WHAT WAS JUST ASKED, BY RULES, BEFORE THE MODEL IS ASKED ANYTHING. A length said to "how long should this run?" and a rhythm
+ * said to "how often should people check in?" are answers, however they are phrased, and are never filed as a line everybody reads.
+ */
+export function answersTheOpenQuestion(openQuestion: string | null, message: string): boolean {
+  const q = openQuestion ?? '';
+  const m = message ?? '';
+  const words = m.trim().split(/\s+/).filter(Boolean).length;
+  /* Short, and holding a quantity of time or an end: "about three months", "until the end of December", "when I end it". A long message that happens to say "that week" is a fact. */
+  if (words <= 14 && /how\s+long|run\s+for|number\s+of\s+weeks|end\s+date/i.test(q)
+    && /\b(?:\d+|an?|one|two|three|four|five|six|seven|eight|nine|ten|twelve|fifteen|twenty|thirty|sixty|ninety|few|couple)\s+(?:more\s+)?(?:days?|weeks?|months?|years?)\b|\buntil\b|\bend\s+of\b|\bwhen\s+i\s+end\b/i.test(m)) return true;
+  if (words <= 14 && /how\s+often|how\s+frequently|rhythm/i.test(q) && /\b(?:daily|weekly|fortnight\w*|monthly|every|once\s+a|twice\s+a|each\s+(?:day|week|month))\b/i.test(m)) return true;
+  return false;
+}
+
 export async function whatKindOfThingWasSaid(engine: Reader, message: string, openQuestion: string | null): Promise<WhatWasSaid> {
   const said = (message ?? '').trim();
-  if (tooLittleToTell(said)) return { kind: 'answer' };
+  if (tooLittleToTell(said) || answersTheOpenQuestion(openQuestion, said)) return { kind: 'answer' };
   let heard: { kind?: string; text?: string; about?: string; question?: string } | null = null;
   try {
     heard = await engine.extract(

@@ -1,5 +1,5 @@
 import { AssistantService } from './assistant.service';
-import { asksToAddADocument, whatKindOfThingWasSaid } from './what-kind-of-thing-was-said';
+import { answersTheOpenQuestion, asksToAddADocument, whatKindOfThingWasSaid } from './what-kind-of-thing-was-said';
 
 /**
  * B-083 AND B-084. A lead who is setting a check-in up through Ask says many kinds of thing, in no order.
@@ -150,5 +150,20 @@ describe('B-084: adding a document through Ask', () => {
     (service as any).prisma.groundDocument.findFirst = jest.fn(async () => ({ fileName: 'q3-plan.txt', content: '', holds: null, visibility: 'OWN' }));
     const r: any = await service.respond('org-a', 'p1', 'I have just added the document.', 'g1', true);
     expect(said(r)).toBe('I am still reading q3-plan.txt. Tell me again that you have added it in a moment, and I will say what I found.');
+  });
+});
+
+describe('an answer to the question that was open is not filed as a line everybody reads', () => {
+  const HOW_LONG = 'How long should this run? You can give an end date or a number of weeks.';
+  it.each(['About three months, finishing at the end of December.', 'Until the end of December.', 'Twelve weeks.', 'It runs until I end it.'])('"%s" answers how long', (m) => {
+    expect(answersTheOpenQuestion(HOW_LONG, m)).toBe(true);
+  });
+  it('a fact that happens to say "that week" is not an answer to how long', () => {
+    expect(answersTheOpenQuestion(HOW_LONG, FACT)).toBe(false);
+  });
+  it('a rhythm answers how often, and never reaches the model', async () => {
+    expect(answersTheOpenQuestion('How often should people check in?', 'Every two weeks, on a Friday.')).toBe(true);
+    const never = { extract: async () => { throw new Error('the model must not be asked'); } };
+    expect(await whatKindOfThingWasSaid(never as any, 'About three months, finishing at the end of December.', HOW_LONG)).toEqual({ kind: 'answer' });
   });
 });
