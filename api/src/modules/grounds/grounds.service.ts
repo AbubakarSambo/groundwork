@@ -1384,7 +1384,7 @@ export class GroundsService {
          */
         reportRounds: { select: { sessionNumber: true, finding: true, sharedPicture: true }, orderBy: { sessionNumber: 'desc' }, take: 1 },
         /* Whose target is whose, so no sentence gives a colleague's hidden one (see withoutTheTargetsHiddenFrom). */
-        objectives: { select: { ownerParticipantId: true, target: true } },
+        objectives: { select: { id: true, ownerParticipantId: true, target: true, isADecisionAboutAPerson: true } },
         /* For the at-a-glance read. Counted the way the board counts it - see the module. */
         dependencies: { select: { what: true, status: true, createdAt: true, fromParticipantId: true, onParticipantId: true, onLabel: true } },
         reportActivations: { select: { participantId: true, status: true } },
@@ -1451,7 +1451,7 @@ export class GroundsService {
                one would fall back to the brief for ever while its twin showed the finding. */
             reportRounds: { select: { sessionNumber: true, finding: true, sharedPicture: true }, orderBy: { sessionNumber: 'desc' }, take: 1 },
             /* Same as the sibling query. */
-            objectives: { select: { ownerParticipantId: true, target: true } },
+            objectives: { select: { id: true, ownerParticipantId: true, target: true, isADecisionAboutAPerson: true } },
             /* Same as the sibling query: both feed the same card. */
             dependencies: { select: { what: true, status: true, createdAt: true, fromParticipantId: true, onParticipantId: true, onLabel: true } },
             reportActivations: { select: { participantId: true, status: true } },
@@ -1674,8 +1674,22 @@ export class GroundsService {
         /* And no sentence with a colleague's hidden target, in the brief or the report's words (as get()). The row is then narrowed
            again for anyone who does not run it: nothing built from the lead's private set-up (B-013, B-091), and in an anchor
            check-in not the lead's aims either (decision 96, item 8), exactly as the check-in's own read does. */
+        /* WHICH TARGETS THIS READER MAY SEE, BY THE FUNCTION THE CHECK-IN'S OWN READ USES (request 209, B-114). The list sent every person's
+           {ownerParticipantId, target} to a member where people see only their own, so a colleague's number was readable here. Now the lead and
+           whoever runs it read every share, and everybody else reads what targetsFor gives them, which is the same rule as get(). */
+        const readerViewer = { role: userRole, organizationId, userId } as any;
+        const readsEveryShare = isInitiator || (!!userId && (g as any).createdByUserId === userId)
+          || adminsThisOrg(readerViewer, g as any) || askedToApproveIt(readerViewer, g as any);
+        const myParticipantHere = ((allParticipants ?? []) as any[]).find((p: any) => !!userId && p.userId === userId);
+        const targetsThisReaderMaySee = targetsFor(
+          (((g as any).objectives ?? []) as any[]),
+          myParticipantHere?.id ?? null,
+          ((g as any).whoSeesTargets ?? 'THEIR_OWN') === 'EVERYBODY' ? 'everybody' : 'their own',
+          { isLead: isInitiator, seesEveryShare: readsEveryShare },
+        ).shown.map(({ id: _id, isADecisionAboutAPerson: _d, ...kept }: any) => kept);
         return this.withoutTheLeadsSetUpForAReader(g as any, runsIt, this.withoutTheTargetsHiddenFrom(g as any, userId, {
           ...safe,
+          objectives: targetsThisReaderMaySee,
           /* Until the lead ends it: no length to show. The flag says so (request 37). */
           timelineDays: (safe as any).runsUntilEnded ? null : (safe as any).timelineDays,
           /*
