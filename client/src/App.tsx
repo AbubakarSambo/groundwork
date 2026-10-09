@@ -147,6 +147,7 @@ import { authApi } from '@/api/auth'
 import { NotFoundPage } from '@/pages/notfound/NotFoundPage'
 import { StopMailPage } from '@/pages/mail/StopMailPage'
 import { HelpModal } from '@/components/gw/HelpModal'
+import { OfflineNote } from '@/components/gw/OfflineNote'
 import { AppShell } from '@/components/gw/AppShell'
 import { TalkToUsPage } from '@/pages/talk/TalkToUsPage'
 import type { JSX } from 'react'
@@ -430,6 +431,10 @@ export default function App() {
               without moving the toast off the screen on any page. */}
           <Toaster position="top-right" richColors offset={{ top: 150 }} mobileOffset={{ top: 170 }} />
           <HelpModal />
+          {/* B-113: the connection drops while the app is already open. The service worker
+              (public/sw.js) covers a fresh navigation that cannot reach the server at all; this
+              covers staying on a page that is already open. */}
+          <OfflineNote />
           {/* A render error in one page used to blank the entire app. W8-63. Outside the shell, so
               the crash card takes the whole window (crash.jpg) and a broken sidebar is caught too. */}
           <PageCrash>
