@@ -1,4 +1,5 @@
 import { howALineIsKnown, type HowALineIsKnown } from './how-a-line-is-known';
+import { theDifferencesReadAgreesWithTheQuestion } from '../board/the-quick-read-agrees-with-the-report';
 import { WHAT_EACH_MARK_SAYS, type AMarkOnALine, type TheMarksOfAReport } from './the-mark-on-every-line';
 import { WHERE_IT_WAS_READ_FROM } from '../conversation/how-checkable-a-session-was';
 import { COUNTS_AS_A_SOURCE } from '../documents/what-kind-of-thing-a-document-is';
@@ -537,7 +538,7 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
      shows as backed, and it does not raise the documented share. */
   const documented = input.entries.filter((e) => !e.recallBased && countsAsASource(e.backedBy)).length;
   const backedPct = input.entries.length ? Math.round((documented / input.entries.length) * 100) : null;
-  const atAGlance: AGlanceRead[] = atAGlanceTiles({
+  const atAGlance: AGlanceRead[] = theDifferencesReadAgreesWithTheQuestion(atAGlanceTiles({
     agreed, stillOpen, movedOnTargets: input.movedOnTargets, blocked: input.blocked, waiting: input.waiting ?? 0,
     targetsSet: input.targetsSet ?? 0,
     targetsWithANumber: input.targetsWithANumber ?? input.targetsSet ?? 0,
@@ -552,7 +553,7 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     theWorry: input.theFirstWorry ?? null,
     whyNoWorry: input.whyNoWorryIsShown ?? null,
     waitsFromEarlier: input.waitsFromEarlier ?? 0,
-  });
+  }), input.centralQuestion);
 
   /**
    * WHAT EACH PERSON SAID THEY DID, under their own name.

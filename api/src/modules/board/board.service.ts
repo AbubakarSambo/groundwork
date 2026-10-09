@@ -155,7 +155,7 @@ import { withTheirNamesFromTheOrganisation } from '../../common/colleagues';
 import { CANNOT_OPEN_THE_BOARD_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { theLeadsWordsAbout, withoutTheLeadsDescriptionOfAnyone, theShareableTextFor } from '../grounds/the-leads-words-about-someone';
 import { whereEachPersonIs, hasANumberADateOrADocument, notNothingWhereThePageSaysSomething } from './where-each-person-is-against-their-number';
-import { theQuickReadAgreesWithTheReport, theDisagreementTheReportOpensWith } from './the-quick-read-agrees-with-the-report';
+import { theQuickReadAgreesWithTheReport, theDisagreementTheReportOpensWith, theDifferencesReadAgreesWithTheQuestion } from './the-quick-read-agrees-with-the-report';
 import { theNinetyDaysInThreeSteps } from './the-ninety-days-in-three-steps';
 import { theQuickReadCountsTheWaitsTheBoardCounts } from './the-quick-read-counts-the-waits-the-board-counts';
 import { oneCountPerThing } from './one-count-per-thing';
@@ -1953,6 +1953,7 @@ export class BoardService {
       out.quickRead = theQuickReadCountsTheWaitsTheBoardCounts(out.quickRead as any, out.howItIsGoing?.glance?.inTheWay?.count) as any;
       /* And never "no disagreement" over a report that opens with one. See the-quick-read-agrees-with-the-report. */
       out.quickRead = theQuickReadAgreesWithTheReport(out.quickRead as any, ((ground as any).report?.sharedPicture as string | null) ?? null) as any;
+      out.quickRead = theDifferencesReadAgreesWithTheQuestion(out.quickRead as any, ((ground as any).report?.centralQuestion as string | null) ?? null) as any;
     }
 
     // Loaded once and shared. It was fetched twice, running every one of these

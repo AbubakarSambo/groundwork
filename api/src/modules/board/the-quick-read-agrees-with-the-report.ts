@@ -60,3 +60,21 @@ export function theQuickReadAgreesWithTheReport<T extends ATile>(tiles: T[] | nu
     };
   });
 }
+
+/**
+ * A QUESTION THE REPORT ASKS BETWEEN TWO WAYS OF COUNTING IS A DIFFERENCE, NOT "NOBODY SEES ANYTHING DIFFERENTLY" (B-165).
+ *
+ * Esther counts shops that order, Kwesi counts second orders. The report listed no difference, so the Differences read said
+ * "Nobody sees anything differently. The written report finds no disagreement.", and the board asked the lead "Does a shop count when it
+ * signs, or when it orders again?" two inches away. Where the read says there is no difference and the report's own central question
+ * sets two ways against each other ("Does X, or Y?"), the read says the report asks it, as a difference. The question is the report's words.
+ */
+const AN_EITHER_OR_QUESTION = /^(?:does|do|did|is|are|was|were|should|will|would|can|could)\b[^?]*,\s*or\s+[^?]+\?$/i;
+
+export function theDifferencesReadAgreesWithTheQuestion<T extends ATile>(tiles: T[], centralQuestion: string | null | undefined): T[] {
+  const q = String(centralQuestion ?? '').replace(/\s+/g, ' ').trim();
+  if (!q || !AN_EITHER_OR_QUESTION.test(q)) return tiles;
+  return tiles.map((t) => (t?.label === 'Differences' && String(t.value ?? '').trim() === 'None'
+    ? { ...t, value: '1', sub: `The report asks, "${q}"`, tone: 'warn' }
+    : t));
+}
