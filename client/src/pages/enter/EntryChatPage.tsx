@@ -18,6 +18,7 @@ import { authApi } from '@/api/auth'
 import { PeoplePicker } from '@/components/gw/PeoplePicker'
 import { useEntryStore } from '@/stores/entry'
 import { useAuthStore } from '@/stores/auth'
+import { planLimitNotice } from '@/lib/the-plan-limit-notice-fits-the-reader'
 import { VennIcon } from '@/components/gw/VennIcon'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
@@ -3982,8 +3983,12 @@ export function EntryChatPage() {
             {refusedByThePlan && (
               <div className="gwui-ec-refusal-band">
                 <Callout tone="warning" title={whetherTheyMayOpenOne.data?.noPlan ? 'No plan yet' : 'You have used all of your free check-ins'}>
-                  {refusedByThePlan} You can still set this one up and it stays on this device, but it cannot be saved to your account until then.{' '}
-                  <button type="button" className="gwui-plain-link" onClick={() => navigate('/billing')}>See plans</button>
+                  {planLimitNotice({
+                    reason: refusedByThePlan,
+                    isAdmin: user?.role === 'ADMIN',
+                    continuation: 'You can still set this one up and it stays on this device, but it cannot be saved to your account until then.',
+                    onSeePlans: () => navigate('/billing'),
+                  })}
                 </Callout>
               </div>
             )}
