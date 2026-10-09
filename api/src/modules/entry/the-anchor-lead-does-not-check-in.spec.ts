@@ -1,6 +1,6 @@
 import { EntryService } from './entry.service';
 import { RECOMMENDED_CADENCE, DEFAULT_TIMELINE_DAYS } from '../grounds/grounds.service';
-import { totalSessionsFor } from '../grounds/session-count';
+import { totalSessionsFor, timelineDaysForAChosenEnd } from '../grounds/session-count';
 import { withoutACannotApprove } from '../conversation/a-request-offered-in-the-check-in';
 import { anAnswerToTheIdeaOffer } from '../conversation/ideas-from-the-team';
 
@@ -50,6 +50,18 @@ describe('the lead who sets the anchor up', () => {
     const days = (new Date(made.endsAt).getTime() - Date.now()) / 86_400_000;
     expect(days).toBeGreaterThan(29);
     expect(days).toBeLessThan(31);
+  });
+
+  it('keeps the end the set-up showed, and the weeks up to it, when she chose one (B-095)', async () => {
+    const { service, grounds } = makeService(true);
+    await service.commit('org1', 'user1', { groundLabel: 'Help my team understand', scenario: 'HELP_TEAM_UNDERSTAND', cadence: 'WEEKLY', cadenceChosen: true, checkInBy: '2026-10-09', lastCheckInBy: '2026-11-09', history: [{ role: 'user', content: 'hi' }] as any, report: null, contributors: [] } as any);
+    const made = grounds.create.mock.calls[0][2];
+    /* The end she was shown, not the month's own end, and no fixed thirty days: the length is worked from the end as the set-up lists it. */
+    expect(made.endsAt).toBe('2026-11-09');
+    expect(made.timelineDays).toBeUndefined();
+    /* Five Fridays fit from 9 October to 9 November, which is what the set-up listed. */
+    const days = timelineDaysForAChosenEnd({ startsAt: new Date(2026, 9, 9), endsAt: new Date(2026, 10, 9), cadence: made.cadence, workingDays: made.workingDays ?? null });
+    expect(totalSessionsFor(days, made.cadence)).toBe(5);
   });
 
   it('changes nothing for any other check-in, or with the switch off', async () => {

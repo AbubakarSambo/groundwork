@@ -2394,6 +2394,15 @@ from finishing at all.`;
      */
     if (theAnchorIsOn) await this.theAnchorSaysTheTeamsSize(organizationId);
     const theMonthEnds = theAnchorIsOn ? new Date((dto.checkInBy ? new Date(dto.checkInBy).getTime() : Date.now()) + 30 * 86_400_000).toISOString() : undefined;
+    /*
+     * WHAT THE SET-UP PROMISED IS WHAT IS SAVED (B-095, 9 October 2026). The set-up showed "When it ends" and listed the Fridays up to it, five of them to
+     * 9 November, and the save kept the month's own end, 8 November, and four sessions. When the lead sent an end after the start, that end is the check-in's
+     * end and the length is the set-up's own count of the weeks up to it (timelineDaysForAChosenEnd); the thirty days and four sessions are what is saved
+     * only when she chose no end.
+     */
+    const theEndSheChose = theAnchorIsOn && dto.lastCheckInBy && !Number.isNaN(new Date(dto.lastCheckInBy).getTime())
+      && new Date(dto.lastCheckInBy).getTime() > (dto.checkInBy ? new Date(dto.checkInBy).getTime() : Date.now())
+      ? dto.lastCheckInBy : undefined;
     const ground = await this.grounds.create(organizationId, initiatorId, {
       label,
       scenario,
@@ -2414,10 +2423,10 @@ from finishing at all.`;
       cadenceAnchorDay: dto.cadenceAnchorDay ?? undefined,
       workingDays: dto.workingDays ?? undefined,
       startsAt: dto.checkInBy || undefined,
-      endsAt: theAnchorIsOn ? theMonthEnds : dto.lastCheckInBy || undefined,
+      endsAt: theAnchorIsOn ? theEndSheChose ?? theMonthEnds : dto.lastCheckInBy || undefined,
       /* Thirty days, which is four weekly sessions. Without it the length was read from the end date, which counts the weeks that start inside it, five, and
          the members read "Session 1 of 5" (review of fd583ba5). */
-      ...(theAnchorIsOn ? { timelineDays: DEFAULT_TIMELINE_DAYS.HELP_TEAM_UNDERSTAND } : howLongTheyAsked ? { timelineDays: howLongTheyAsked } : {}),
+      ...(theAnchorIsOn ? (theEndSheChose ? {} : { timelineDays: DEFAULT_TIMELINE_DAYS.HELP_TEAM_UNDERSTAND }) : howLongTheyAsked ? { timelineDays: howLongTheyAsked } : {}),
       brief,
       freeParticipantCap: isBroadcast ? 100 : DEFAULT_FREE_MEMBER_LIMIT,
       /*
