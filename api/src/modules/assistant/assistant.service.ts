@@ -132,6 +132,7 @@ import {
 import { Prisma } from '@prisma/client';
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
 import { looksLikeADump } from '../grounds/a-dump-is-many-things';
+import { asksToAddADocument, LINE_KINDS, whatKindOfThingWasSaid } from './what-kind-of-thing-was-said';
 import { isAGuestsKey } from './a-guests-questions-are-kept-apart';
 import { withoutGoalsNotToldIn } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { theWordsOfWhatTheLeadHasNotToldThemAbout, theyRunThisCheckIn } from '../board/an-untold-goal-is-not-a-board-objective';
@@ -3080,7 +3081,7 @@ export class AssistantService {
       };
     }
 
-    return this.runContextChat(organizationId, who, userId, target.id, message);
+    return this.setUpTurn(organizationId, who, userId, target.id, message);
   }
 
   /**
@@ -3134,8 +3135,92 @@ export class AssistantService {
         return this.questionsForPeopleByChat(organizationId, who, person.linkedUserId, found.groundId, payload.said);
       case 'setup':
       default:
-        return this.runContextChat(organizationId, who, person.linkedUserId, found.groundId, payload.said);
+        return this.setUpTurn(organizationId, who, person.linkedUserId, found.groundId, payload.said);
     }
+  }
+
+  /**
+   * ONE TURN OF THE SET-UP CONVERSATION IN ASK: WHAT KIND OF THING WAS SAID, AND WHICH DOOR IT GOES THROUGH
+   * (B-083, B-084).
+   *
+   * The set-up conversation used to take every message as the answer to whichever question was open,
+   * so a fact was offered back as what doing well looks like, "I want to add a document" became a
+   * measure, and a sentence that was neither was dropped. Here the lead's words are first sent to the
+   * door that fits them, and only an answer, a goal or a measure reaches the set-up conversation:
+   *
+   *   a document to add, or one just added   -> the document door (a file control, then what it holds)
+   *   a line typed with its kind              -> the typed-in line door
+   *   a private note                          -> the lead's note door (for the lead alone)
+   *   a question for one person               -> the questions-for-people door (decision 34)
+   *   a fact, a rule, a decision, a strategy, or something not settled -> a line everybody in the check-in reads
+   *   anything else                           -> the set-up conversation, as before
+   *
+   * Every door says it back and writes only on a yes, through the writer the old chat and the Context
+   * page already use, so the same words write the same rows. The kind is read by the model; which door
+   * it goes through, and that the words kept are the lead's own, is code.
+   */
+  private async setUpTurn(
+    organizationId: string,
+    who: string,
+    userId: string,
+    groundId: string,
+    message: string,
+    priorHistory?: { role: 'user' | 'assistant'; content: string }[],
+  ): Promise<Reply> {
+    const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { id: true } });
+    const document = asksToAddADocument(message);
+    if (document && person) {
+      if (document === 'wants') return this.addADocument(organizationId, person.id, who, message, groundId, userId);
+      return this.whatTheDocumentHolds(organizationId, person.id, who, userId, groundId, message);
+    }
+    if (parseChangeContextLine(message) || parseContextLine(message)) return this.addContextLineByChat(organizationId, who, userId, groundId, message);
+    if (parseLeadNote(message) || /\bshare\s+(?:the|my|this)\s+note\b/i.test(message)) return this.addLeadNoteByChat(organizationId, who, userId, groundId, message);
+    if (parseAskAPerson(message)) return this.questionsForPeopleByChat(organizationId, who, userId, groundId, message);
+    if (looksLikeADump(message)) return this.runContextChat(organizationId, who, userId, groundId, message, priorHistory);
+
+    /* What is open, so the model can tell an answer to it from something else, and so it is asked again afterwards. */
+    const lastAsked = [...(priorHistory ?? [])].reverse().find((h) => h.role === 'assistant')?.content ?? null;
+    const heard = await whatKindOfThingWasSaid(this.engine as any, message, lastAsked);
+    const carried = priorHistory?.length ? { history: priorHistory, openQuestion: lastAsked } : undefined;
+    if (heard.kind in LINE_KINDS) {
+      return this.proposeContextLine(organizationId, who, groundId, { kind: LINE_KINDS[heard.kind as keyof typeof LINE_KINDS], text: (heard as any).text }, carried);
+    }
+    if (heard.kind === 'private_note') return this.proposeLeadNote(organizationId, who, groundId, { about: heard.about, text: heard.text }, carried);
+    if (heard.kind === 'question_for_person') {
+      return this.proposeAQuestionForAPerson(organizationId, who, userId, groundId, { name: heard.about, leadWords: `Ask ${heard.about}: ${heard.question}` });
+    }
+    return this.runContextChat(organizationId, who, userId, groundId, message, priorHistory);
+  }
+
+  /**
+   * A DOCUMENT THE LEAD SAYS THEY HAVE JUST ADDED: WHAT WAS READ IN IT, SAID BACK, AND NOTHING KEPT ON ITS OWN.
+   * The numbers, the whole-document read and the plain description are the old chat's own. When the file
+   * has no numbers and is not a plan, the lead is still told what it was read as, and that it stays
+   * private to them until they share it. A file still being read, or none at all, is said honestly.
+   */
+  private async whatTheDocumentHolds(organizationId: string, personId: string, who: string, userId: string, groundId: string, message: string): Promise<Reply> {
+    if (/https?:\/\/\S+/i.test(message) && message.length < 600) return rules('add_a_document', text(A_LINK_IS_NOT_READ));
+    const whole = await this.aDocumentToReadWhole(organizationId, personId, userId, groundId);
+    if (whole) return this.runContextChat(organizationId, who, userId, whole.groundId, whole.text, undefined, whole.documentId);
+    const waiting = await this.waitingDocumentFor(organizationId, personId, groundId);
+    if (waiting) return this.proposeDocumentNumbers(organizationId, who, waiting);
+    const mine = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId }, select: { id: true } });
+    const latest = mine
+      ? await this.prisma.groundDocument.findFirst({ where: { groundId, participantId: mine.id }, orderBy: { createdAt: 'desc' }, select: { fileName: true, content: true, holds: true, visibility: true } })
+      : null;
+    if (!latest) {
+      return this.addADocument(organizationId, personId, who, 'add a document', groundId, userId);
+    }
+    if (!(latest.content ?? '').trim() && !latest.holds) {
+      return rules('add_a_document', text(`I am still reading ${latest.fileName}. Tell me again that you have added it in a moment, and I will say what I found.`));
+    }
+    const what = String(((latest.holds ?? {}) as any).whatItIs ?? '').trim().replace(/[.]+$/, '');
+    const who2 = latest.visibility === 'OPEN' ? 'Everybody in this check-in can read it.' : 'Only you can read it until you share it.';
+    return rules('add_a_document', text(
+      `I have read ${latest.fileName}.${what ? ` It looks like ${/^(a|an|the)\b/i.test(what) ? what : `${what}`}.` : ''} `
+      + `It does not hold a number for anybody, so there is nothing in it for me to record as a target. ${who2} `
+      + 'If there is a fact, a rule or a decision in it that you want everybody to know, tell me in a sentence and I will say it back to you first.',
+    ));
   }
 
   /**
@@ -3267,7 +3352,7 @@ export class AssistantService {
       return rules('add_context', text('I could not continue that, because I can no longer see you in your organisation records.'));
     }
     if (parseAskAPerson(message)) return this.questionsForPeopleByChat(organizationId, who, person.linkedUserId, payload.groundId, message);
-    return this.runContextChat(organizationId, who, person.linkedUserId, payload.groundId, message, payload.history);
+    return this.setUpTurn(organizationId, who, person.linkedUserId, payload.groundId, message, payload.history);
   }
 
   /**
@@ -4427,14 +4512,21 @@ export class AssistantService {
     }
   }
 
-  private async proposeContextLine(organizationId: string, who: string, groundId: string, parsed: { kind: string; text: string }): Promise<Reply> {
+  private async proposeContextLine(
+    organizationId: string,
+    who: string,
+    groundId: string,
+    parsed: { kind: string; text: string },
+    /** The set-up conversation this line interrupted: asked again after the yes or the no, so the question that was open is not lost. */
+    carried?: { history: { role: 'user' | 'assistant'; content: string }[]; openQuestion: string | null },
+  ): Promise<Reply> {
     const proposal = await this.prisma.assistantProposal.create({
       data: {
         organizationId,
         personExternalId: who,
         kind: 'context_line',
-        summary: `Shall I add "${parsed.text}" to this check-in's context as ${labelForContextKind(parsed.kind)}?`,
-        payload: { groundId, kind: parsed.kind, text: parsed.text } as never,
+        summary: `Shall I add "${parsed.text}" to this check-in's context as ${labelForContextKind(parsed.kind)}? Everybody in this check-in will read it.`,
+        payload: { groundId, kind: parsed.kind, text: parsed.text, ...(carried ? { carried } : {}) } as never,
       },
     });
     return {
@@ -4444,12 +4536,40 @@ export class AssistantService {
     };
   }
 
+  /**
+   * AFTER A LINE OR A NOTE THAT INTERRUPTED THE SET-UP CONVERSATION, THE QUESTION THAT WAS OPEN IS ASKED AGAIN,
+   * and the next message is read as its answer. Without it a fact said in the middle of set-up left the
+   * conversation with nothing to carry on from.
+   */
+  private async carryOn(
+    organizationId: string,
+    who: string,
+    groundId: string,
+    said: string,
+    carried?: { history: { role: 'user' | 'assistant'; content: string }[]; openQuestion: string | null },
+  ): Promise<Reply> {
+    const still = (carried?.openQuestion ?? '').trim();
+    if (!carried || !still) return rules('add_context', text(said));
+    const spoken = `${said}\n\n${still}`;
+    await this.prisma.assistantProposal.create({
+      data: {
+        organizationId,
+        personExternalId: who,
+        kind: 'context_turn',
+        summary: spoken,
+        payload: { groundId, history: [...carried.history.slice(0, -1), { role: 'assistant' as const, content: spoken }] } as never,
+      },
+    });
+    return rules('add_context', text(spoken));
+  }
+
   private async resolveParkedContextLine(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
     if (decision === 'decline') {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
-      return rules('add_context', text('I have not added the line. Nothing was changed.'));
+      const was = parked.payload as { groundId: string; carried?: any };
+      return this.carryOn(organizationId, who, was.groundId, 'I have not added the line. Nothing was changed.', was.carried);
     }
-    const payload = parked.payload as { groundId: string; kind: string; text: string };
+    const payload = parked.payload as { groundId: string; kind: string; text: string; carried?: any };
     const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { linkedUserId: true } });
     if (!person?.linkedUserId) {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
@@ -4458,7 +4578,7 @@ export class AssistantService {
     try {
       await this.grounds.addContextLine(payload.groundId, person.linkedUserId, { kind: payload.kind, text: payload.text });
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
-      return rules('add_context', text('I have added the line to this check-in.'));
+      return this.carryOn(organizationId, who, payload.groundId, 'I have added the line to this check-in. Everybody in it can read it now.', payload.carried);
     } catch (err: any) {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
       return rules('add_context', text(err?.message ?? 'That could not be added.'));
@@ -4572,7 +4692,13 @@ export class AssistantService {
     }
   }
 
-  private async proposeLeadNote(organizationId: string, who: string, groundId: string, parsed: { about: string | null; text: string }): Promise<Reply> {
+  private async proposeLeadNote(
+    organizationId: string,
+    who: string,
+    groundId: string,
+    parsed: { about: string | null; text: string },
+    carried?: { history: { role: 'user' | 'assistant'; content: string }[]; openQuestion: string | null },
+  ): Promise<Reply> {
     let participantId: string | null = null;
     let aboutClause = '';
     if (parsed.about) {
@@ -4603,7 +4729,7 @@ export class AssistantService {
         personExternalId: who,
         kind: 'lead_note',
         summary: `Shall I keep "${parsed.text}" as a private note${aboutClause} that only you can see?`,
-        payload: { groundId, participantId, text: parsed.text } as never,
+        payload: { groundId, participantId, text: parsed.text, ...(carried ? { carried } : {}) } as never,
       },
     });
     return {
@@ -4616,9 +4742,10 @@ export class AssistantService {
   private async resolveParkedLeadNote(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
     if (decision === 'decline') {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
-      return rules('add_context', text('I have left it as it was. Nothing was saved.'));
+      const was = parked.payload as { groundId: string; carried?: any };
+      return this.carryOn(organizationId, who, was.groundId, 'I have left it as it was. Nothing was saved.', was.carried);
     }
-    const payload = parked.payload as { groundId: string; participantId: string | null; text: string };
+    const payload = parked.payload as { groundId: string; participantId: string | null; text: string; carried?: any };
     const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { linkedUserId: true } });
     if (!person?.linkedUserId) {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
@@ -4631,7 +4758,7 @@ export class AssistantService {
         audience: 'LEAD_ONLY',
       });
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
-      return rules('add_context', text('I have saved the note, and only you can read it.'));
+      return this.carryOn(organizationId, who, payload.groundId, 'I have saved the note, and only you can read it.', payload.carried);
     } catch (err: any) {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
       return rules('add_context', text(err?.message ?? 'That could not be saved.'));

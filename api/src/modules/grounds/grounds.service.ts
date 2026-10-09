@@ -88,6 +88,7 @@ import { notTheWordParty } from '../reports/not-the-word-party';
 import { theSituationIn, theTellingHolds, THE_TELLING_PROMPT, withoutTheSetupAnswers, theBriefAsTheLeadReadsIt, theirOwnFirstNameAsYour } from './what-a-participant-is-told-about-this';
 import { whatSomeoneWhoDoesNotRunItReads } from './what-someone-who-does-not-run-it-reads';
 import { ABOUT_SOMEBODY, mayBeShared, theLinesFor, WHY_A_LINE_ABOUT_SOMEBODY_STAYS_YOURS } from './what-this-check-in-knows';
+import { alreadyHowItIs, theLengthWasChosen } from './nothing-is-offered-that-changes-nothing';
 import { saidUntilIEndIt, nothingToTakeFrom, traceableToWhatTheySaid, aLengthTheyCouldHaveMeant, whatTheModelsReplyShows, withoutTheWordGround, aLengthAndNothingElse } from './nothing-proposed-that-nobody-said';
 import { whatTheyStillOweAShow } from './what-they-said-they-would-show';
 import { whatIsNotSettledAbout } from './a-target-nobody-has-defined';
@@ -3066,7 +3067,7 @@ export class GroundsService {
       where: { id: groundId },
       select: {
         id: true, label: true, scenario: true, initiatorId: true, timelineDays: true, runsUntilEnded: true,
-        cadence: true, brief: true, timelineStated: true, cadenceStated: true,
+        cadence: true, brief: true, timelineStated: true, cadenceStated: true, endsAt: true,
         organizationId: true, createdByUserId: true,
         participants: { select: { id: true, managingOnly: true, userId: true } },
         objectives: { select: { id: true } },
@@ -3181,7 +3182,7 @@ export class GroundsService {
        * empty. Passing the raw value made the duration question unaskable, which is the one thing
        * this conversation was built to ask.
        */
-      timelineDays: ground.timelineStated ? ground.timelineDays : null,
+      timelineDays: theLengthWasChosen(ground as any) ? ground.timelineDays : null,
       runsUntilEnded: !!(ground as any).runsUntilEnded,
       cadence: ground.cadenceStated ? ground.cadence : null,
       /* The success gap reads the baseline, not the brief - they are two different things and
@@ -3223,7 +3224,7 @@ export class GroundsService {
      * The first model call is made on the lead's first message.
      */
     if (history.length === 0) {
-      const opened = openingLine(ground.timelineStated ? ground.timelineDays : null, ground.cadenceStated ? ground.cadence : null, !!(ground as any).runsUntilEnded);
+      const opened = openingLine(theLengthWasChosen(ground as any) ? ground.timelineDays : null, ground.cadenceStated ? ground.cadence : null, !!(ground as any).runsUntilEnded);
       const ask = (gaps[0] as { ask?: string } | undefined)?.ask ?? null;
       return {
         reply: forHumans([opened, ask].filter(Boolean).join(' ')),
@@ -3465,6 +3466,12 @@ export class GroundsService {
     if (justALength) proposal = proposalFrom('timeline', { timelineDays: justALength } as any, [], lastFromLead);
     /* And "until I end it" is an answer to how long it runs, whatever question was open (request 37). */
     else if (lastFromLead && saidUntilIEndIt(lastFromLead, openGap === 'timeline')) proposal = proposalFrom('timeline', { runsUntilEnded: true }, [], lastFromLead);
+    /* B-085: what the lead said is what the check-in already has, so nothing is offered, and they are told it is so. */
+    const alreadyThere = alreadyHowItIs(ground as any, proposal as any);
+    if (alreadyThere) {
+      changeSay = alreadyThere;
+      proposal = { kind: 'none', why: alreadyThere } as any;
+    }
     if (proposal.kind !== 'none' && lastFromLead) {
       const untraceable =
         (proposal.kind === 'success' && !traceableToWhatTheySaid((proposal as any).text, lastFromLead))
@@ -3545,7 +3552,7 @@ export class GroundsService {
      * asked away a second time.
      */
     const isOpeningTurn = !history.some((h) => h.role === 'assistant');
-    const openedOn = isOpeningTurn ? openingLine(ground.timelineStated ? ground.timelineDays : null, ground.cadenceStated ? ground.cadence : null, !!(ground as any).runsUntilEnded) : null;
+    const openedOn = isOpeningTurn ? openingLine(theLengthWasChosen(ground as any) ? ground.timelineDays : null, ground.cadenceStated ? ground.cadence : null, !!(ground as any).runsUntilEnded) : null;
     /*
      * FIX 4: NOTHING SAYS IT WILL BE RECORDED UNLESS SOMETHING IS ACTUALLY BEING PROPOSED THIS TURN.
      * "I will record this as your read of Ben" was once said with no `lead_read` or `expectation`
@@ -3588,7 +3595,8 @@ export class GroundsService {
     const sayBack = proposal.kind === 'none'
       ? null
       : (proposal.kind as string) === 'everything' ? (proposal.say as string) : forHumans(proposal.say);
-    let replyText = forHumans(openedOn ? `${openedOn} ${spokenReply}`.trim() : spokenReply);
+    /* Told that it already is so, the lead is not also told the same thing as an opening line. */
+    let replyText = forHumans(openedOn && !alreadyThere ? `${openedOn} ${spokenReply}`.trim() : spokenReply);
     if (sayBack && (replyText === sayBack || replyText.includes(sayBack))) {
       replyText = openedOn ? forHumans(openedOn) : '';
     }
@@ -4236,7 +4244,7 @@ export class GroundsService {
       where: { id: groundId },
       select: {
         id: true, initiatorId: true, timelineDays: true, runsUntilEnded: true, cadence: true, brief: true, scenario: true,
-        timelineStated: true, cadenceStated: true, organizationId: true,
+        timelineStated: true, cadenceStated: true, endsAt: true, organizationId: true,
         participants: { select: { id: true, managingOnly: true, userId: true } },
         objectives: { select: { id: true } },
       },
@@ -4295,7 +4303,7 @@ export class GroundsService {
        * empty. Passing the raw value made the duration question unaskable, which is the one thing
        * this conversation was built to ask.
        */
-      timelineDays: ground.timelineStated ? ground.timelineDays : null,
+      timelineDays: theLengthWasChosen(ground as any) ? ground.timelineDays : null,
       runsUntilEnded: !!(ground as any).runsUntilEnded,
       cadence: ground.cadenceStated ? ground.cadence : null,
       /* The success gap reads the baseline, not the brief - they are two different things and
@@ -4543,6 +4551,9 @@ export class GroundsService {
      * a running ground's length and already appends to the audit log every party can now read. A
      * second path to the same column would be a second set of rules.
      */
+    /* B-085: a yes that would change nothing writes nothing, and no line goes into the history. */
+    const alreadyThere = alreadyHowItIs(ground as any, proposal as any);
+    if (alreadyThere) return { changed: 'nothing new', say: alreadyThere };
     if (proposal.kind === 'timeline') {
       // Days straight through. This used to round to whole weeks, so a proposal of 45 days
       // was applied as 42 - a silent change to a number somebody had agreed.
@@ -6940,19 +6951,22 @@ export class GroundsService {
     }
 
     if (requestedDays !== undefined || dto.cadence !== undefined || dto.workingDays !== undefined || dto.cadenceAnchorDay !== undefined) {
-      auditData.timeline.push({
-        changedAt: new Date().toISOString(),
-        changedBy: requestingUserId,
-        changes: {
-          ...(requestedDays !== undefined && { timelineDays: { from: (ground as any).runsUntilEnded ? null : ground.timelineDays, to: goesOnUntilEnded ? null : requestedDays } }),
-          ...(requestedDays !== undefined && ((ground as any).runsUntilEnded === true) !== goesOnUntilEnded && { runsUntilEnded: { from: !!(ground as any).runsUntilEnded, to: goesOnUntilEnded } }),
-          ...(dto.cadence !== undefined && { cadence: { from: ground.cadence, to: dto.cadence } }),
-          ...(dto.workingDays !== undefined && {
-            workingDays: { from: (ground as any).workingDays ?? [], to: workingDaysOf(dto.workingDays) },
-          }),
-          ...(dto.cadenceAnchorDay !== undefined && { cadenceAnchorDay: { from: (ground as any).cadenceAnchorDay ?? null, to: dto.cadenceAnchorDay } }),
-        },
-      });
+      const changes: Record<string, { from: unknown; to: unknown }> = {
+        ...(requestedDays !== undefined && { timelineDays: { from: (ground as any).runsUntilEnded ? null : ground.timelineDays, to: goesOnUntilEnded ? null : requestedDays } }),
+        ...(requestedDays !== undefined && ((ground as any).runsUntilEnded === true) !== goesOnUntilEnded && { runsUntilEnded: { from: !!(ground as any).runsUntilEnded, to: goesOnUntilEnded } }),
+        ...(dto.cadence !== undefined && { cadence: { from: ground.cadence, to: dto.cadence } }),
+        ...(dto.workingDays !== undefined && {
+          workingDays: { from: (ground as any).workingDays ?? [], to: workingDaysOf(dto.workingDays) },
+        }),
+        ...(dto.cadenceAnchorDay !== undefined && { cadenceAnchorDay: { from: (ground as any).cadenceAnchorDay ?? null, to: dto.cadenceAnchorDay } }),
+      };
+      /* B-085: only what actually changed is written to the history. "From FORTNIGHTLY to FORTNIGHTLY" is not a change, and a line saying so is not kept. */
+      for (const k of Object.keys(changes)) {
+        if (JSON.stringify(changes[k].from) === JSON.stringify(changes[k].to)) delete changes[k];
+      }
+      if (Object.keys(changes).length) {
+        auditData.timeline.push({ changedAt: new Date().toISOString(), changedBy: requestingUserId, changes });
+      }
     }
 
     if (requestedLabel && requestedLabel !== ground.label) {

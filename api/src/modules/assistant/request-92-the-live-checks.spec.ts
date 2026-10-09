@@ -149,13 +149,13 @@ describe('point 8: a no, and a yes to a change to a line, are answered in full s
     expect(changeContextLine).toHaveBeenCalled();
   });
 
-  it('a yes to a line reads "I have added the line to this check-in."', async () => {
+  it('a yes to a line reads "I have added the line to this check-in. Everybody in it can read it now."', async () => {
     const addContextLine = jest.fn(async () => ({}));
     const { service } = askGroundwork({
       groundsService: { addContextLine },
       parked: { id: 'pr1', kind: 'context_line', state: 'PARKED', payload: { groundId: 'g1', kind: 'NOTE', text: 'Visit every shop.' }, summary: 's' },
     });
-    expect(textOf(await service.respond('org-a', 'p1', 'yes', 'g1'))).toBe('I have added the line to this check-in.');
+    expect(textOf(await service.respond('org-a', 'p1', 'yes', 'g1'))).toBe('I have added the line to this check-in. Everybody in it can read it now.');
   });
 
   it('a doubled mark is never written: a quote that ends in its own punctuation takes no second one', async () => {

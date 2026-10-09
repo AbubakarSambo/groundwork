@@ -7034,6 +7034,7 @@ Read on test bed copy a, in the browser, as each person. None of these is new si
 | `client/src/pages/org/WaitingToBeLetIn.tsx` | Grace Achieng, on People | "People from outside Msingi Foods, invited to a check-in" over a list that holds Halima Yusuf (halima@msingi.test, `onTheOrganisationsOwnAddress: true`) | Already asked under B-096: read `onTheOrganisationsOwnAddress`, and say "People invited to a check-in, waiting to be added" when anyone on the list is on the organisation's own address. |
 | The old context chat on Context and resources | Wairimu Njoroge, on "Nakuru win-back" | Once, the first message sent from the chat was saved but the page moved to her own check-in (`/checkin/…`) before the reply came; going back showed her message with no reply, and sending it again worked (the message then shows twice). It did not happen again on the next send or the two confirmations after it. | Stay on the page until the reply comes. Worth a look at what navigates away while `POST /grounds/:id/context-chat` is still waiting. |
 
+<<<<<<< HEAD
 ## From the engine workspace, 9 October (late): request 210 row by row, B-124, and the sweep of each person's own suites data
 
 Nothing in `client/` was changed. Where a sentence is the screens' own, it is said so.
@@ -7067,3 +7068,23 @@ I signed in as eight people of Msingi Foods on the test bed and read every suite
 Please, for the open pull request:
 1. Build your 18 serious audit fixes on a branch made from `mine/wip/release` (for example `wip/prototype-ui-release`), without `wip/next` in it, and say in `docs/requests-to-engine.md` when it is ready. Hafsah has said yes to the pattern-ordering change reaching the release through you (decision 127), once you have checked it at every width: if you want it in, cherry-pick `3a59fe349` alone onto that branch.
 2. Keep merging `wip/next` into your own working branch for the next round as you like.
+=======
+## From the engine workspace, wip/next, piece 1: Context and resources into Ask (for the screens workspace)
+
+The engine side of B-083, B-084 and B-085 is built and tested on `wip/next`. **The old context chat is still switched on, and Ask's own promise to take context is not back yet**, because the live proof with the real model has not yet been run (the test bed API could not be started in this worktree without model access). Nothing below changes until that proof passes. No file in `client/` was changed.
+
+What Ask does now, through `POST /ask` with `openedFrom: "check_in_setup"` or with the check-in chosen under "About":
+
+- **A fact, a rule, a decision, a strategy or something not settled** (B-083): said back as "Shall I add "<the lead's own words>" to this check-in's context as a note? Everybody in this check-in will read it." with Yes and No. The yes writes the same row the typed-in line writes, and says "I have added the line to this check-in. Everybody in it can read it now." If a set-up question was open, it is asked again straight after the yes or the no.
+- **A private thought about a person**: "Shall I keep "<words>" as a private note about <name> that only you can see?" Nobody else reads it.
+- **A question for one person**: said back word for word first (decision 34), as before.
+- **A goal, a measure, what doing well looks like, how long, how often**: the set-up conversation, as before.
+- **"I want to add a document"** (B-084): never read as a measure. Ask answers with a `next_step` block, `kind: "upload_a_document"`, `label: "Choose a file"`, `id` and `context.groundId` both the check-in's id, and the sentence "It will go on "<check-in>", and only you will be able to see it until you say otherwise." It never mentions a paperclip. After the file is uploaded the lead says "I have just added the document." (or the screen sends it); Ask says what it read, or, when the file is still being read, "I am still reading <file>. Tell me again that you have added it in a moment, and I will say what I found." Numbers in the file are said back and kept only on a yes.
+- **A check-in that is already set up** (B-085): an end date now counts as a length somebody chose, so Ask does not ask how long it runs; a length or rhythm the check-in already has is answered "This check-in already runs for 90 days, so nothing needs to change." or "People already check in every two weeks, so nothing needs to change.", with no Yes and No; and a yes that would change nothing leaves no line in the check-in's history.
+
+**What the screens must do** (requests, nothing drawn by the engine):
+
+1. **A file control wherever Ask is drawn.** The side panel (`AskGroundwork.tsx`) already draws a `next_step` of `kind: "upload_a_document"`. The full-page Ask (`/chat`, `/chat?about=<check-in>`) did not: B-084 saw only Send. Please draw the same control there, from the same block, uploading to `POST /grounds/<context.groundId>/documents` with `consentConfirmed`, then send "I have just added the document." once the upload has returned. Do not add a paperclip by the box unless it is the same control.
+2. **Show the Yes and No under every proposal in the set-up conversation** exactly as for the other proposals (it is the `proposal` block; the sentence is also in the preceding `text` block and is to be shown once).
+3. **When the engine says it is ready** (a later note here, after the live proof), hide the old chat on `oldContextChatIsOpen: false` (already built) and show Ask's line under its caption from `addLine` as before.
+>>>>>>> 85edceb9f (Ask sorts what a lead says while setting up (B-083, B-084) and offers nothing that changes nothing (B-085))

@@ -7,6 +7,8 @@ context chat, and the Context page around it, does today, before anything change
 Every item below says what it does in plain words, where the code is, the rule it keeps, the tests
 that cover it, and whether Ask Groundwork already does it.
 
+> **Status on `wip/next` (piece 1).** Ask now sorts what a lead says while setting up (a fact, a rule, a decision, a strategy, something not settled, a private note, a question for one person, a document to add, or an answer) and sends each to the door that writes the same rows as the old chat. It reads what a check-in already has and offers no change that changes nothing. This is built and covered by specs; the table of each item run live through Ask beside the old chat is in `docs/run-log.md` once the live run has been made. Until that run passes, every "In Ask Groundwork today" line below that says "not at all" is still the last live finding, and the old context chat stays on.
+
 ## 1. The setup conversation itself
 
 The lead (or an org admin) opens a chat about the check-in's setup, not about a person. It works

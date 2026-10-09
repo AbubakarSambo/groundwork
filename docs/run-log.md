@@ -1384,3 +1384,9 @@ Not seen rendered on the bed: the follow-up that names the finding, and the valu
 | Ruth, the board | "Groundwork has heard from both people." (before: "all two people"). | Pass |
 
 **The existing users' check.** `journey/existing-clients-carry-on.spec.ts`, pointed at the local copy of the existing clients' database: 12 of 12 pass. The whole API suite: 19,141 passed, 2 failed (both caused by this work and fixed in `a4cce26a`), 2 skipped.
+
+## Context and resources into Ask, piece 1 (wip/next, 9 October 2026): built and unit-checked, live run not yet made
+
+**What was run.** Specs only: `ask-sorts-what-the-lead-says-while-setting-up.spec.ts` (B-083, B-084), `nothing-is-offered-that-changes-nothing.spec.ts` (B-085), the four specs that asserted old wording (changed, with the reason in the commit), the assistant, ask and grounds folders (309 of 313 suites then; the 4 failures were those four, now updated) and the existing users' check (`existing-clients-carry-on.spec.ts` and `existing-clients-check.spec.ts`, 26 of 26).
+
+**What was not run.** The side-by-side journey (`journey/context-through-ask-side-by-side-with-the-old-chat.ts`, now with sections 6b to 6d for a fact, a document through Ask and a check-in that is already set up) needs the test bed API with the real model, and this worktree has no model access (no `api/.env`, and none may be copied or read here). So the table of the same words writing the same rows is not yet made, and the old context chat has not been switched off.

@@ -186,6 +186,53 @@ const stamp = Date.now();
   show('Wanjiru', 'Ask, reading the whole document', d2);
   check('Through Ask, the document is said back and read, and the yes writes rows (the old chat says back its numbers only)', up1.status < 300 && up2.status < 300 && !!askDoc.p && d2.length > 0, said(askDoc.first));
 
+  console.log('\n==================== 6b. A FACT FOR EVERYONE, TYPED TO ASK WHILE A SET-UP QUESTION IS OPEN (B-083) ====================');
+  const fact = await pair('Fact');
+  const FACT = 'The Westlands depot is closed from 20 to 27 October, so no deliveries leave Westlands that week.';
+  await call(`/grounds/${fact.old.id}/context`, T.wanjiru, 'POST', { kind: 'NOTE', text: FACT });
+  const factOpen = await call('/ask', T.wanjiru, 'POST', { message: '', groundId: fact.ask.id, openedFrom: 'check_in_setup' });
+  console.log(`    Ask opens on: ${said(factOpen).slice(0, 300)}`);
+  const factAsk = await askYes(fact.ask.id, T.wanjiru, `I do not want to answer that now. I want to add a fact to this check-in. ${FACT} Everyone in this check-in should know this.`, 'check_in_setup');
+  console.log(`    Through Ask, with a set-up question open, the lead types the fact and reads: ${said(factAsk.first)} ... after yes: ${factAsk.done ? said(factAsk.done) : '(no yes asked)'}`);
+  const f1 = await snapshot(fact.old.id); const f2 = await snapshot(fact.ask.id);
+  show('Wanjiru', 'the old typed-in line', f1); show('Wanjiru', 'Ask', f2);
+  const kindAndAudience = (rows: string[]) => rows.map((r) => r.split(' | ').slice(0, 2).join(' | '));
+  check('The fact is said back as a line everybody reads, with Yes and No, and the yes writes the same kind of row for the same readers as the old typed-in line', !!factAsk.p && /everybody in this check-in will read it/i.test(said(factAsk.first)) && !/what doing well looks like/i.test(said(factAsk.first)) && f1.length === 1 && f2.length === 1 && same(kindAndAudience(f1), kindAndAudience(f2)) && /Westlands/.test(f2[0]), `${f1} | ${f2} | ${said(factAsk.first)}`);
+  const noteGround = await pair('Fact then note');
+  const noteAsk = await askYes(noteGround.ask.id, T.wanjiru, 'Miriam keeps missing the Friday call and I want to remember that, just for me.', 'check_in_setup');
+  const nSnap = await snapshot(noteGround.ask.id);
+  console.log(`    A private thought about Miriam, typed to Ask: ${said(noteAsk.first)} ... after yes: ${noteAsk.done ? said(noteAsk.done) : '(none)'}`);
+  show('Wanjiru', 'Ask', nSnap);
+  check('A private thought about a person is kept as a private note for the lead alone, and Miriam reads none of it', nSnap.length === 1 && /^NOTE \| LEAD_ONLY/.test(nSnap[0]) && !/Friday call/.test((await call(`/grounds/${noteGround.ask.id}/context`, T.miriam)).text));
+
+  console.log('\n==================== 6c. ADDING A DOCUMENT THROUGH ASK (B-084) ====================');
+  const docAsk = await pair('Document through Ask');
+  const wants = await call('/ask', T.wanjiru, 'POST', { message: 'I want to add a document to this check-in.', groundId: docAsk.ask.id, openedFrom: 'check_in_setup' });
+  const step = (wants.data?.blocks ?? []).find((b: any) => b.type === 'next_step');
+  console.log(`    Wanjiru says she wants to add a document and reads: ${said(wants)} | the control served: ${JSON.stringify(step)}`);
+  check('Ask serves a file control for this check-in, says nothing about a paperclip and does not read it as a measure, and writes nothing', step?.kind === 'upload_a_document' && step?.context?.groundId === docAsk.ask.id && !/paperclip|icon|measure|aim of|doing well/i.test(said(wants)) && !proposalOf(wants) && (await snapshot(docAsk.ask.id)).length === 0, JSON.stringify(wants.data));
+  const upDoc = new FormData(); upDoc.append('file', new Blob([docText], { type: 'text/plain' }), 'q3-plan.txt'); upDoc.append('consentConfirmed', 'true');
+  const up3 = await call(`/grounds/${docAsk.ask.id}/documents`, T.wanjiru, 'POST', undefined, upDoc);
+  await new Promise((r) => setTimeout(r, 15000));
+  let added = await call('/ask', T.wanjiru, 'POST', { message: 'I have just added the document.', groundId: docAsk.ask.id, openedFrom: 'check_in_setup' });
+  for (let i = 0; i < 8 && /still reading/i.test(said(added)); i++) { await new Promise((r) => setTimeout(r, 15000)); added = await call('/ask', T.wanjiru, 'POST', { message: 'I have just added the document.', groundId: docAsk.ask.id, openedFrom: 'check_in_setup' }); }
+  console.log(`    After the file (${up3.status}), Wanjiru says she has added it and reads: ${said(added).slice(0, 900)}`);
+  check('Ask says back what it read in the file, and keeps nothing until she says yes', up3.status < 300 && said(added).length > 40 && !/paperclip/i.test(said(added)) && (await snapshot(docAsk.ask.id)).length === 0, said(added));
+
+  console.log('\n==================== 6d. A CHECK-IN THAT IS ALREADY SET UP (B-085) ====================');
+  const set = await makeGround('Already set up (Ask)', wanjiru);
+  await prisma.ground.update({ where: { id: set.id }, data: { timelineDays: 90, timelineStated: true, cadence: 'FORTNIGHTLY' as any, cadenceStated: true, endsAt: new Date(Date.now() + 90 * 86400000) } });
+  const setOpen = await call('/ask', T.wanjiru, 'POST', { message: '', groundId: set.id, openedFrom: 'check_in_setup' });
+  console.log(`    Ask opens on a check-in that already runs 90 days, every two weeks: ${said(setOpen).slice(0, 400)}`);
+  check('Ask does not ask how long it runs or how often people check in', !/how long should|how often should/i.test(said(setOpen)), said(setOpen));
+  const again = await askYes(set.id, T.wanjiru, '90 days', 'check_in_setup');
+  console.log(`    Wanjiru says "90 days": ${said(again.first)}`);
+  const hist = (await prisma.ground.findUnique({ where: { id: set.id }, select: { groundAuditLog: true } }))?.groundAuditLog as any;
+  check('She is told it already runs for 90 days, no change is offered, and the history holds no change from a value to itself', !again.p && /already runs for 90 days/.test(said(again.first)) && !/FORTNIGHTLY/.test(JSON.stringify(hist ?? {})), JSON.stringify(hist));
+  const factOnSet = await askYes(set.id, T.wanjiru, `${FACT} Everyone in this check-in should know this.`, 'check_in_setup');
+  console.log(`    The Westlands fact on the same check-in: ${said(factOnSet.first)}`);
+  check('The fact is not read as a rhythm or a length', !!factOnSet.p && !/check in once a week|run for \d+ days/i.test(said(factOnSet.first)), said(factOnSet.first));
+
   console.log('\n==================== 7. WHO MAY: A LEAD, AN ADMIN, A PERSON IN THE CHECK-IN ====================');
   const who = await pair('Who');
   const graceOld = await call(`/grounds/${who.old.id}/context-chat`, T.grace, 'POST', { history: [] });

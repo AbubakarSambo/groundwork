@@ -238,7 +238,7 @@ describe('the question this whole feature exists to ask', () => {
      * THE FIX ITSELF. Passing `ground.timelineDays` made the question unaskable; passing null when
      * it was never stated is what makes it askable.
      */
-    expect(CODE).toMatch(/timelineDays: ground\.timelineStated \? ground\.timelineDays : null/);
+    expect(CODE).toMatch(/timelineDays: theLengthWasChosen\(ground as any\) \? ground\.timelineDays : null/);
     expect(CODE).toMatch(/cadence: ground\.cadenceStated \? ground\.cadence : null/);
   });
 

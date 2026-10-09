@@ -46,7 +46,7 @@ describe('the setup chat goes through the boundary', () => {
     expect(CHAT).toContain("whatTheModelsReplyShows(withoutTheWordGround(reply), proposal.kind !== 'none')");
     expect(CHAT).toContain("const withoutFalsePromises = changeSay ?? (yesOrNoOnly ? '' :");
     expect(CHAT).toContain('const spokenReply = isOpeningTurn ? withoutTheOpeningGreeting(withoutFalsePromises) : withoutFalsePromises;');
-    expect(CHAT).toContain('let replyText = forHumans(openedOn ? `${openedOn} ${spokenReply}`.trim() : spokenReply);');
+    expect(CHAT).toContain('let replyText = forHumans(openedOn && !alreadyThere ? `${openedOn} ${spokenReply}`.trim() : spokenReply);');
   });
 
   /**
