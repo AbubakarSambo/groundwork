@@ -204,7 +204,7 @@ export function whatHappened(row: PersonRow, reason: Reason, roundsPlanned: numb
         ? `${start} was not let in by ${row.notLetIn.by}, so there is nobody to ask.`
         : `${start} was not let in, so there is nobody to ask.`;
     case 'has not answered':
-      return `${start} has not checked in for this round yet.`;
+      return `${start} has not checked in for this session yet.`;
     case 'stuck and not chasing': {
       const oldest = sittingUnchased(row)[0];
       /* The day it began, never a count of days from the reading (request 117, part 9). */

@@ -78,7 +78,7 @@ describe('request 117 (3): the board says the same session to every reader', () 
   it('the lead reads Baraka and Neema as having checked in for this round, and Faraji as not', async () => {
     const board = await boardAs(review5(), ...RUKIA_RUNS_IT);
     const says = Object.fromEntries((board.eachPerson as any[]).map((r) => [r.who, r.says]));
-    expect(says['Faraji Odhiambo']).toBe('Faraji Odhiambo has not checked in for this round yet.');
+    expect(says['Faraji Odhiambo']).toBe('Faraji Odhiambo has not checked in for this session yet.');
     expect(says['Baraka Mwangi']).toMatch(/^Baraka Mwangi has checked in/);
     expect(says['Neema Achieng']).toMatch(/^Neema Achieng has checked in/);
   });
