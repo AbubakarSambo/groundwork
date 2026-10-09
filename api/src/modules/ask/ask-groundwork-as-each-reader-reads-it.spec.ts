@@ -266,9 +266,9 @@ const BARIDI_ASK = {
   caption: 'Ask about the company, your work or your check-ins.',
   /* Left out while `release.contextInAskGroundwork` is off (these tests switch it off with { on: false }). */
   addLine: null,
-  /* Request 169: whether Ask can add context for this reader. False while it is off here, and for everyone who runs no check-in. The old chat is off unless its own switch says on. */
+  /* Request 169: whether Ask can add context for this reader. False while it is off here, and for everyone who runs no check-in. The old chat is open unless its own switch says off (decision 124). */
   addsContext: false,
-  oldContextChatIsOpen: false,
+  oldContextChatIsOpen: true,
   /* Decision 101: four of the five need a check-in, so a reader with none is left with the one
      that does not. One true starter rather than four invented ones. */
   starters: ["What are the company's priorities right now?", 'Ask for leave, or to spend money.'],

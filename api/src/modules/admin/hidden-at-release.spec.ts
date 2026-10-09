@@ -187,12 +187,13 @@ describe('onboarding and project check-ins get their board without a kind', () =
   });
 });
 
-describe('the old context chat switch (8 October)', () => {
-  it('is OFF with no row, off when the row cannot be read, and open only when the row says on', async () => {
-    expect(await theOldContextChatIsOpen(settings({}))).toBe(false);
-    expect(await theOldContextChatIsOpen({ platformSetting: { findUnique: async () => { throw new Error('down'); } } } as any)).toBe(false);
-    expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': 'garbage' }))).toBe(false);
+describe('the old context chat switch (decision 124: it stays on)', () => {
+  it('is ON with no row, on when the row cannot be read, and off only when the row says off', async () => {
+    expect(await theOldContextChatIsOpen(settings({}))).toBe(true);
+    expect(await theOldContextChatIsOpen({ platformSetting: { findUnique: async () => { throw new Error('down'); } } } as any)).toBe(true);
+    expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': 'garbage' }))).toBe(true);
     expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': { on: false } }))).toBe(false);
+    expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': false }))).toBe(false);
     expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': { on: true } }))).toBe(true);
     expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': true }))).toBe(true);
   });
