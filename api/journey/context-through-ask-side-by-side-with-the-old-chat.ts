@@ -265,6 +265,28 @@ const stamp = Date.now();
   console.log(`    A success statement was written in ${oldWith} of 3 old-chat runs and ${askWith} of 3 Ask runs (the first runs above: old 2 of 2, Ask 0 of 1).`);
   check('Ask writes the success statement from a paste as often as the old chat does, within the model\'s own variation (both ways use the same reading)', askWith >= 1 && oldWith >= 1, `${oldWith} / ${askWith}`);
 
+  console.log('\n==================== 6f. THE REST OF WHAT THE OLD CHAT DID: A CHANGE, COACHING, BANK DETAILS ====================');
+  const chg = await makeGround('Change a line (Ask)', wanjiru);
+  const addedLine = await askYes(chg.id, T.wanjiru, 'decision: we will drop the pilot', 'check_in_setup');
+  const reworded = await askYes(chg.id, T.wanjiru, 'reword the line "we will drop the pilot" to "we will pause the pilot until January"', 'check_in_setup');
+  console.log(`    A line added, then reworded through Ask: ${said(reworded.first).slice(0, 300)} ... after yes: ${reworded.done ? said(reworded.done) : '(none)'}`);
+  const retired = await askYes(chg.id, T.wanjiru, 'retire the line "we will pause the pilot until January"', 'check_in_setup');
+  const chgSnap = await snapshot(chg.id);
+  show('Wanjiru', 'Ask', chgSnap);
+  check('A line already on the record is reworded, then retired, only after a yes each time (item 7)', !!addedLine.p && !!reworded.p && !!retired.p && chgSnap.length === 1 && /pause the pilot until January/.test(chgSnap[0]) && /closed/.test(chgSnap[0]), chgSnap.join(' | '));
+
+  const coach = await makeGround('Coaching (Ask)', wanjiru);
+  await call('/ask', T.wanjiru, 'POST', { message: '', groundId: coach.id, openedFrom: 'check_in_setup' });
+  const struggle = await call('/ask', T.wanjiru, 'POST', { message: 'Miriam is struggling and honestly she is difficult to work with.', groundId: coach.id, openedFrom: 'check_in_setup' });
+  console.log(`    Wanjiru says Miriam is struggling and reads: ${said(struggle).slice(0, 500)}`);
+  check('The lead is not shut down or sent elsewhere: Ask asks what she has seen, and writes nothing about Miriam (item 10)', !/cannot|not the right place|talk to HR/i.test(said(struggle)) && (await snapshot(coach.id)).length === 0 && /\?/.test(said(struggle)), said(struggle));
+
+  const bank = await makeGround('Bank details (Ask)', wanjiru);
+  const bankSaid = await askYes(bank.id, T.wanjiru, 'Suppliers are paid into account number 0123456789012 at Stanbic Bank, every Friday, so nobody needs to chase.', 'check_in_setup');
+  const bankSnap = await snapshot(bank.id);
+  console.log(`    A fact with a bank account number in it: ${said(bankSaid.first).slice(0, 300)} | kept: ${bankSnap.join(' ; ')}`);
+  check('A bank account number is never said back or kept (item 18)', !/0123456789012/.test(said(bankSaid.first)) && !/0123456789012/.test(bankSnap.join(' ')), `${said(bankSaid.first)} | ${bankSnap}`);
+
   console.log('\n==================== 7. WHO MAY: A LEAD, AN ADMIN, A PERSON IN THE CHECK-IN ====================');
   const who = await pair('Who');
   const graceOld = await call(`/grounds/${who.old.id}/context-chat`, T.grace, 'POST', { history: [] });

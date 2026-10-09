@@ -71,7 +71,7 @@ const TOOL = {
           + 'decision: something already decided. '
           + 'strategy: the plan or direction. '
           + 'unsettled: something not yet decided. '
-          + 'private_note: something the lead wants to keep to themselves, usually about one person. '
+          + 'private_note: only when the lead says they want to keep, remember or note something privately. A worry or a judgement about a person ("she is struggling", "he is difficult") is NOT a private note; it is "answer", because the set-up conversation talks it through first. '
           + 'question_for_person: the lead wants one named person to be asked something. '
           + 'answer: anything else, including a goal, a target or measure for the team or for a person, what doing well looks like, how long it runs, how often people check in, or a direct answer to the question that was asked.',
       },
