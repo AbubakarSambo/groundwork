@@ -49,6 +49,7 @@ export function TheCheckInHeader({
   endedSaying,
   canRunThisCheckIn,
   isAParty,
+  hasOpenSessionNow,
   active,
   trailing,
   tabs: tabsOverride,
@@ -64,6 +65,14 @@ export function TheCheckInHeader({
   endedSaying?: string | null
   canRunThisCheckIn: boolean
   isAParty: boolean
+  /**
+   * B-142: whether a session is actually open for this party right now. Only changes the label -
+   * "Start my check-in" when one is open, "Back to the check-in" when none is - never the
+   * destination, which is always the check-in's own page either way. Left undefined by callers
+   * that have not been taught to compute it keeps the old "Start my check-in" label, so nothing
+   * that already worked changes.
+   */
+  hasOpenSessionNow?: boolean
   active: string
   /**
    * U.10 PICTURE-CHECK ROUND 6, ITEM A: drawn at the right of the tab row, in the same slot the
@@ -168,7 +177,9 @@ export function TheCheckInHeader({
           */}
           {(canRunThisCheckIn || isAParty) && (
             <Link to={`/grounds/${id}`} className="gwui-plain-link">
-              {isAParty && !canRunThisCheckIn ? 'Start my check-in' : 'Your check-in'}
+              {isAParty && !canRunThisCheckIn
+                ? (hasOpenSessionNow === false ? 'Back to the check-in' : 'Start my check-in')
+                : 'Your check-in'}
             </Link>
           )}
           <button type="button" onClick={showAsk} className="gwui-plain-link">

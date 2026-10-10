@@ -212,6 +212,23 @@ export default function SessionReportPage() {
   const contextEnabled = (ground as any)?.contextEnabled === true
 
   /**
+   * B-142: "Start my check-in" PROMISED A SESSION THAT WAS NOT THERE.
+   *
+   * The header's link always said "Start my check-in" for a party who does not run the check-in,
+   * even when nothing is open for them right now - pressing it landed on "No check-in open right
+   * now". The same rule GroundParticipantPage already uses for its own "due now" state
+   * (an open check-in that has actually started, or whose available date has passed) decides
+   * whether this page may still offer that label.
+   */
+  const myParticipantForOpenCheck = ((ground as any)?.participants ?? []).find((p: any) => p.userId === viewerUserId)
+  const myOpenCheckIn = ((ground as any)?.checkIns ?? []).find(
+    (ci: any) => ci.participantId === myParticipantForOpenCheck?.id && ci.status !== 'COMPLETED',
+  )
+  const myOpenAvailableFrom = myOpenCheckIn?.availableFrom ?? null
+  const myOpenOpensLater = !!myOpenAvailableFrom && new Date(myOpenAvailableFrom).getTime() > Date.now() && myOpenCheckIn?.status !== 'IN_PROGRESS'
+  const hasOpenSessionNow = !!myOpenCheckIn && !myOpenOpensLater
+
+  /**
    * A PARTICIPANT ID, SAID AS A NAME, THE WAY THIS READER MAY READ IT.
    *
    * `peopleLabels` is the one function that decides this correctly for a given reader (a real name
@@ -251,6 +268,7 @@ export default function SessionReportPage() {
           plannedSessions={plannedSessions}
           canRunThisCheckIn={amTheInitiator}
           isAParty
+          hasOpenSessionNow={hasOpenSessionNow}
           active="report"
           tabs={checkInHeaderTabs({ id: data.groundId as string, contextEnabled, canRunThisCheckIn: amTheInitiator, isAParty: true })}
         />
