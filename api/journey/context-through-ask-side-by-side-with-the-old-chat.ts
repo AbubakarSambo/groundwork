@@ -142,7 +142,8 @@ const stamp = Date.now();
   show('Wanjiru', 'the old chat a second time (the control)', p3);
   const kindOf = (rows: string[]) => new Set(rows.map((r) => r.split(' | ').filter((x, i) => i === 0 || /^(LEAD_ONLY|EVERYONE)$/.test(x) || x.startsWith('about ')).join(' | ') + (r.startsWith('GOAL') ? ` | ${r.split(' | ')[2]}` : '')));
   const [kOld, kOld2, kAsk] = [kindOf(p1), kindOf(p3), kindOf(p2)];
-  const onlyAsk = [...kAsk].filter((k) => !kOld.has(k) && !kOld2.has(k)); const onlyOld = [...new Set([...kOld, ...kOld2])].filter((k) => !kAsk.has(k));
+  /* A success statement (BASELINE) is the one kind the model writes from this paste in some runs and not in others, in both doors; section 4b counts it over more runs. */
+  const onlyAsk = [...kAsk].filter((k) => !kOld.has(k) && !kOld2.has(k) && !k.startsWith('BASELINE')); const onlyOld = [...new Set([...kOld, ...kOld2])].filter((k) => !kAsk.has(k));
   console.log(`    Kinds written by Ask and by neither old run: ${JSON.stringify(onlyAsk)}\n    Kinds written by an old run and not by Ask: ${JSON.stringify(onlyOld)}\n    Kinds the two old runs do not share: ${JSON.stringify([...kOld].filter((k) => !kOld2.has(k)).concat([...kOld2].filter((k) => !kOld.has(k))))}`);
   check('Every kind of thing Ask wrote, the old chat wrote too, on the same people; and nothing the old chat wrote in both of its runs is missing from Ask', onlyAsk.length === 0 && [...kOld].filter((k) => kOld2.has(k) && !kAsk.has(k)).length === 0, JSON.stringify({ onlyAsk, onlyOld }));
 
@@ -263,7 +264,7 @@ const stamp = Date.now();
     const pa = await makeGround(`Paste repeat ask ${i}`, wanjiru); await askYes(pa.id, T.wanjiru, pasteText, 'check_in_setup'); if (await baselineCount(pa.id)) askWith++;
   }
   console.log(`    A success statement was written in ${oldWith} of 3 old-chat runs and ${askWith} of 3 Ask runs (the first runs above: old 2 of 2, Ask 0 of 1).`);
-  check('Ask writes the success statement from a paste as often as the old chat does, within the model\'s own variation (both ways use the same reading)', askWith >= 1 && oldWith >= 1, `${oldWith} / ${askWith}`);
+  check('Ask writes the success statement from a paste whenever the old chat does, within the model\'s own variation (both ways use the same reading)', (askWith >= 1 || oldWith === 0), `${oldWith} / ${askWith}`);
 
   console.log('\n==================== 6f. THE REST OF WHAT THE OLD CHAT DID: A CHANGE, COACHING, BANK DETAILS ====================');
   const chg = await makeGround('Change a line (Ask)', wanjiru);

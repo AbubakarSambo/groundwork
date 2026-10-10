@@ -79,6 +79,15 @@ const ALSO_ASKED_AS: [RegExp, RegExp][] = [
   [/what this is trying to achieve|the main goal|the goals or targets/i, /\b(?:trying to achieve|aiming (?:for|at|to)|what (?:is|are) (?:the|your) (?:goal|target|aim|objective)|what would (?:success|done) look like|what is the number)\b/i],
 ];
 
+/* THE JOB, LEARNED IN A FIRST CHECK-IN (decision 129): how each of its things is asked in a conversation. */
+ALSO_ASKED_AS.push(
+  [/what their job is called/i, /\b(?:what is your (?:job|role)(?: title)?(?: called)?|what do you do (?:here|for work|at \w+)|your job title|what is your role|what do you call your (?:job|role))\b/i],
+  [/responsible for in their job/i, /\b(?:responsible for|you own|in charge of|accountable for|what does your (?:job|role) (?:cover|involve|include)|what (?:is|are) (?:your|the) main (?:responsibilit|part)|what is your job (?:made of|about))/i],
+  [/what doing well looks like in their job/i, /\b(?:doing (?:it |this |the job |your job |your role )?well|good looks like|what does (?:a )?good|how (?:will|would|do) you know (?:you(?:'| a)re|it is|that you(?:'| a)re) (?:doing|going) well|success (?:in|for) your (?:job|role))\b/i],
+  [/who they depend on in their job/i, /\b(?:depend(?:s|ing)? on|rely on|relies on|who (?:do )?you (?:need|wait for|count on)|who needs you|who (?:waits|is waiting) for you|who counts on you)\b/i],
+  [/usually gets in their way in their job/i, /\b(?:gets? in your way|in your way|gets? in the way|what (?:usually )?(?:slows|blocks|holds) you|most often (?:slows|stops|blocks))\b/i],
+);
+
 export function askedAbout(thing: AThingToCover, aiTurn: string): boolean {
   if (asksTheSameThingAgain(thing.what, aiTurn)) return true;
   return ALSO_ASKED_AS.some(([what, asked]) => what.test(thing.what) && asked.test(aiTurn ?? ''));

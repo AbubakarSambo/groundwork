@@ -1,0 +1,318 @@
+import { CheckInStatus, TurnRole } from '@prisma/client';
+import { traceableToWhatTheySaid } from '../grounds/nothing-proposed-that-nobody-said';
+import { whatThisSessionHasCovered, sayWhatHasBeenCovered, type AThingToCover } from './what-this-session-has-covered';
+
+/**
+ * THE ROLE INTERVIEW, IN A PERSON'S FIRST CHECK-IN (decision 129).
+ *
+ * Before this, an admin sent four fixed questions and the person answered them in Ask Groundwork
+ * (assistant/the-role-interview.ts, request 25). That still works. This is the other door, and the one
+ * that reaches everybody: in a person's FIRST check-in, the conversation also learns what they are
+ * responsible for, what doing well looks like for them, who they depend on and who depends on them, and
+ * what usually gets in their way.
+ *
+ * THE CONVERSATION STAYS THE MODEL'S. The model is given the four things as context and a checklist
+ * (which of them this session has already covered, which are left), and asks in its own words, one at a
+ * time, where they fit. Nothing here is a script and nothing here holds the close.
+ *
+ * WHAT IS KEPT, AND WHO READS IT. After the check-in, a second, small reading takes out of the person's
+ * own words what they said about their job, and every part must be words they said (a line the person did
+ * not say is dropped). It is kept as a row only the person reads, until they say yes in Ask Groundwork to
+ * the role map showing what they own. Their job title is set only if there is none yet. A title that is
+ * already there is never changed without their yes.
+ */
+
+export const FIRST_CHECK_IN_ROLE_KEY = 'first_check_in_role';
+export const ROLE_READING_KEY = 'role_reading';
+/** A request waiting for the person in Ask Groundwork: may the role map show what they said they own. */
+export const SHARE_WITH_THE_ROLE_MAP_KIND = 'role_share_from_check_in';
+
+/** What the person is asked in Ask Groundwork after their first check-in, in plain sentences. Their words are quoted, never reworded. */
+export const theRoleMapQuestion = (roleName: string, owns: string): string =>
+  `In your first check-in you told me about your job as ${roleName}. You said you are responsible for "${owns.replace(/["\u201c\u201d]/g, "'")}". Shall I let the role map show this under ${roleName}? It is about the job and not about you. Everything else you said about your job stays private to you.`;
+
+/** The things the conversation learns about the job, in the words used about them. Never questions to be read out. */
+export const ROLE_TOPICS: (AThingToCover & { field: 'roleName' | 'owns' | 'doingWell' | 'dependsOn' | 'inTheWay' })[] = [
+  { id: 'role-name', field: 'roleName', what: 'what their job is called' },
+  { id: 'role-owns', field: 'owns', what: 'what they are responsible for in their job' },
+  { id: 'role-good', field: 'doingWell', what: 'what doing well looks like in their job' },
+  { id: 'role-depends', field: 'dependsOn', what: 'who they depend on in their job, and who depends on them' },
+  { id: 'role-way', field: 'inTheWay', what: 'what usually gets in their way in their job' },
+];
+
+/**
+ * THE WORDS THE MODEL IS GIVEN FOR THIS PART OF A FIRST CHECK-IN. Stored as a prompt version (`first_check_in_role`), so
+ * the version that runs is the one stored, this text is what a start seeds and the fallback, and the version that asked
+ * is written on the row it led to.
+ */
+export const FIRST_CHECK_IN_ROLE_PROMPT = [
+  'THIS IS THE FIRST TIME THIS PERSON HAS DONE A CHECK-IN, AND WE DO NOT YET KNOW THEIR JOB WELL.',
+  'As well as everything else, learn these things about their job, in their own words:',
+  '- what they are responsible for',
+  '- what doing well looks like in their job',
+  '- who they depend on to do it, and who depends on them',
+  '- what usually gets in their way',
+  'Fold them into the conversation where they fit. Ask one question at a time, in your own words, and never as your first question. It is a short and friendly part of the conversation and not a form, so ask four short questions at most for all of it.',
+  'If they have already told you one of these without being asked, do not ask it again. Say back what you heard in a few of their own words and move on. If they do not want to say, or do not know, leave it and move on.',
+  'Ask about the job and the work, never about how good they are. Do not say that this is a part of a first check-in, that something is outstanding, or that it is saved anywhere. Nobody is being marked.',
+  'If the conversation is close to its end and some of these are still not covered, ask only the one that matters most for understanding their work.',
+].join('\n');
+
+export const ROLE_READING_PROMPT = [
+  'You read what one person said in their first check-in, and pick out only what they said about their own job.',
+  'Use only their own words. Copy each answer from what they said, trimmed to the part that answers it. Never write anything of your own, never combine two parts into a new sentence, and never guess. If they did not say it, leave it out.',
+  'roleName: what they call their job, if they said it, in a few words such as "sales representative". Otherwise leave it out.',
+  'owns: what they said they are responsible for.',
+  'doingWell: what they said doing well looks like in their job.',
+  'dependsOn: who they said they depend on, and who depends on them. One entry for both is fine.',
+  'inTheWay: what they said usually gets in their way.',
+  'Only the person\'s own turns are given. The questions they were asked are not.',
+].join('\n');
+
+export const ROLE_READING_SCHEMA = {
+  name: 'what_they_said_about_their_job',
+  description: 'What the person said about their own job, copied from their own words, and nothing else.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      roleName: { type: 'string', description: 'What they call their job, in a few words, only if they said it.' },
+      owns: { type: 'string', description: 'What they said they are responsible for, in their words.' },
+      doingWell: { type: 'string', description: 'What they said doing well looks like in their job, in their words.' },
+      dependsOn: { type: 'string', description: 'Who they said they depend on, and who depends on them, in their words.' },
+      inTheWay: { type: 'string', description: 'What they said usually gets in their way, in their words.' },
+    },
+  },
+} as const;
+
+export type WhatTheySaidAboutTheirJob = Partial<Record<'roleName' | 'owns' | 'doingWell' | 'dependsOn' | 'inTheWay', string>>;
+
+/** The longest piece kept for any one part. A longer one is cut at a word, so the row stays what they said and stays readable. */
+export const LONGEST_PART = 600;
+
+/**
+ * Only what the person's own turns hold. A part the model wrote that is not in their words is dropped, so what is kept
+ * is always theirs. A job name has to be short, and has to appear in what they said.
+ */
+export function onlyWhatTheySaid(read: WhatTheySaidAboutTheirJob | null | undefined, theirTurns: string[]): WhatTheySaidAboutTheirJob {
+  const said = theirTurns.join('\n');
+  const out: WhatTheySaidAboutTheirJob = {};
+  for (const key of ['roleName', 'owns', 'doingWell', 'dependsOn', 'inTheWay'] as const) {
+    let v = String((read as any)?.[key] ?? '').replace(/\s+/g, ' ').trim();
+    if (!v) continue;
+    if (key === 'roleName') {
+      if (v.split(/\s+/).length > 6 || v.length > 80 || !said.toLowerCase().includes(v.toLowerCase().replace(/[.!?]+$/, ''))) continue;
+      out.roleName = v.replace(/[.!?]+$/, '');
+      continue;
+    }
+    if (v.length > LONGEST_PART) v = `${v.slice(0, LONGEST_PART).replace(/\s+\S*$/, '')}`;
+    if (!traceableToWhatTheySaid(v, said)) continue;
+    out[key] = v;
+  }
+  return out;
+}
+
+/** The kinds of check-in that do not learn the role: a team update has one line and a setup conversation is not an account. */
+export const NOT_FOR_THE_ROLE = new Set(['TEAM_UPDATES']);
+
+interface Deps {
+  prisma: any;
+  anthropic: { extract: <T>(system: string, history: any[], tool: any, options?: any) => Promise<T | null> };
+  prompts?: { getActive?: (key: string) => Promise<{ id: string; content: string } | null> } | null;
+}
+
+/** A read that must never break the conversation or the close: a failure, or a missing table in a hand-built test, is an empty answer. */
+async function attempt<T>(read: () => Promise<T> | T, otherwise: T): Promise<T> {
+  try { const v = await read(); return v === undefined ? otherwise : v; } catch { return otherwise; }
+}
+
+/** The stored version of a prompt that runs, else the code's text. */
+async function theVersionThatRuns(deps: Deps, key: string, fallback: string): Promise<{ content: string; id: string | null }> {
+  const stored = await attempt(() => deps.prompts?.getActive?.(key) ?? null, null);
+  return stored?.content?.trim() ? { content: stored.content, id: stored.id ?? null } : { content: fallback, id: null };
+}
+
+/** What we know of a person's job already, in their own words: their own title on their account, else the roster's. */
+export async function whatIsKnownOfTheirJob(deps: Deps, userId: string, organizationId?: string): Promise<{ roleName: string; from: 'account' | 'roster' } | null> {
+  const user = await attempt(() => deps.prisma.user?.findUnique?.({ where: { id: userId }, select: { jobTitle: true, organizationId: true } }), null);
+  if (user?.jobTitle?.trim()) return { roleName: user.jobTitle.trim(), from: 'account' };
+  const person = await attempt(() => deps.prisma.person?.findFirst?.({
+    where: { linkedUserId: userId, ...(organizationId ? { organizationId } : {}) },
+    select: { title: true },
+  }), null);
+  if (person?.title?.trim()) return { roleName: person.title.trim(), from: 'roster' };
+  return null;
+}
+
+/**
+ * IS THIS THE PERSON'S FIRST CHECK-IN. No earlier finished check-in of theirs anywhere (a setup conversation is not one), and
+ * nothing about their job kept yet. Somebody who has no sign-in is not read: there is nobody to keep it for.
+ */
+export async function isTheirFirstCheckIn(deps: Deps, checkIn: { id: string; participantId: string }): Promise<{ userId: string; organizationId: string } | null> {
+  const participant = await attempt(() => deps.prisma.groundParticipant?.findUnique?.({
+    where: { id: checkIn.participantId },
+    select: { userId: true, ground: { select: { organizationId: true, scenario: true } } },
+  }), null);
+  const userId = participant?.userId as string | null | undefined;
+  const organizationId = participant?.ground?.organizationId as string | undefined;
+  if (!userId || !organizationId) return null;
+  if (NOT_FOR_THE_ROLE.has(String(participant?.ground?.scenario ?? ''))) return null;
+  const finishedBefore = await attempt(() => deps.prisma.checkIn?.count?.({
+    where: { id: { not: checkIn.id }, status: CheckInStatus.COMPLETED, isSetup: false, participant: { userId } },
+  }), 0);
+  if (finishedBefore) return null;
+  const person = await attempt(() => deps.prisma.person?.findFirst?.({ where: { organizationId, linkedUserId: userId }, select: { externalId: true } }), null);
+  if (person?.externalId) {
+    const kept = await attempt(() => deps.prisma.roleInterviewAnswer?.count?.({ where: { organizationId, personExternalId: person.externalId } }), 0);
+    if (kept) return null;
+  }
+  return { userId, organizationId };
+}
+
+/**
+ * THE BLOCK THE CONVERSATION GETS, ONLY IN A PERSON'S FIRST CHECK-IN. The text that runs is the stored `first_check_in_role`
+ * version, then what this session has already covered and what is left, in the product's words. Empty for the opener, for a
+ * check-in that is not a person's first, and for a person we cannot keep it for.
+ */
+export async function theRoleBlock(
+  deps: Deps,
+  checkIn: { id: string; participantId: string },
+  turns: { role: 'AI' | 'PERSON'; content: string }[],
+  how: { forTheOpener?: boolean } = {},
+): Promise<{ block: string; promptVersionId: string | null }> {
+  if (how.forTheOpener) return { block: '', promptVersionId: null };
+  const first = await isTheirFirstCheckIn(deps, checkIn);
+  if (!first) return { block: '', promptVersionId: null };
+  const known = await whatIsKnownOfTheirJob(deps, first.userId, first.organizationId);
+  const topics = ROLE_TOPICS.filter((t) => !(known && t.field === 'roleName'));
+  const covered = whatThisSessionHasCovered(topics, turns);
+  const said = sayWhatHasBeenCovered(topics, covered);
+  const version = await theVersionThatRuns(deps, FIRST_CHECK_IN_ROLE_KEY, FIRST_CHECK_IN_ROLE_PROMPT);
+  const lines = [version.content];
+  if (known) lines.push(`WE ALREADY KNOW THEIR JOB AS: "${known.roleName}". Do not ask what it is called.`);
+  if (!said.notAsked.length && !said.vague.length) lines.push('Everything above is covered for this session. Do not ask about their job again.');
+  else {
+    if (said.notAsked.length) lines.push(`NOT ASKED YET:\n${said.notAsked.map((t) => `- ${t.what}`).join('\n')}`);
+    if (said.block) lines.push(said.block);
+  }
+  return { block: lines.join('\n'), promptVersionId: version.id };
+}
+
+/**
+ * AFTER THE CHECK-IN: THE READING THAT KEEPS WHAT THEY SAID ABOUT THEIR JOB. One small model call on the person's own turns.
+ * Writes one private row, sets their title only if they have none, and leaves a request for them in Ask Groundwork asking
+ * whether the role map may show what they own. Never throws into the close.
+ */
+export async function keepWhatTheySaidAboutTheirJob(
+  deps: Deps,
+  checkIn: { id: string; participantId: string },
+  log: { log: (m: string) => void; warn: (m: string) => void } = { log() {}, warn() {} },
+): Promise<{ kept: boolean; roleSet: boolean; versionId: string | null } | null> {
+  const first = await isTheirFirstCheckIn(deps, checkIn);
+  if (!first) return null;
+  const turns = await deps.prisma.conversationTurn.findMany({
+    where: { checkInId: checkIn.id, role: TurnRole.PERSON },
+    orderBy: { createdAt: 'asc' },
+    select: { content: true },
+  });
+  const theirs = (turns as { content: string | null }[]).map((t) => (t.content ?? '').trim()).filter(Boolean);
+  if (theirs.join(' ').split(/\s+/).length < 12) return { kept: false, roleSet: false, versionId: null };
+
+  const reading = await theVersionThatRuns(deps, ROLE_READING_KEY, ROLE_READING_PROMPT);
+  let read: WhatTheySaidAboutTheirJob | null = null;
+  try {
+    read = await deps.anthropic.extract<WhatTheySaidAboutTheirJob>(
+      reading.content,
+      [{ role: 'user', content: theirs.map((t, i) => `Turn ${i + 1}: ${t}`).join('\n\n') }],
+      ROLE_READING_SCHEMA as any,
+      { fast: true, temperature: 0 },
+    );
+  } catch (err) {
+    log.warn(`Check-in ${checkIn.id}: the reading of what they said about their job failed: ${(err as Error)?.message}`);
+    return null;
+  }
+  const mine = onlyWhatTheySaid(read, theirs);
+  const known = await whatIsKnownOfTheirJob(deps, first.userId, first.organizationId);
+  const roleName = known?.roleName ?? mine.roleName ?? null;
+  const anything = mine.owns || mine.doingWell || mine.dependsOn || mine.inTheWay || mine.roleName;
+  if (!anything) return { kept: false, roleSet: false, versionId: reading.id };
+
+  const person = await deps.prisma.person.findFirst({
+    where: { organizationId: first.organizationId, linkedUserId: first.userId },
+    select: { id: true, externalId: true, title: true },
+  });
+  let roleSet = false;
+  /* A job title is set only when there is none. One that is there stays until the person says yes to a change. */
+  if (!known && mine.roleName) {
+    await deps.prisma.user.update({ where: { id: first.userId }, data: { jobTitle: mine.roleName } }).catch(() => undefined);
+    if (person && !person.title?.trim()) await deps.prisma.person.update({ where: { id: person.id }, data: { title: mine.roleName } }).catch(() => undefined);
+    roleSet = true;
+  }
+  if (!person?.externalId || !roleName) {
+    log.log(`Check-in ${checkIn.id}: what they said about their job was read, but there is ${person?.externalId ? 'no job name' : 'no roster entry'} to keep it under.`);
+    return { kept: false, roleSet, versionId: reading.id };
+  }
+  const asked = await theVersionThatRuns(deps, FIRST_CHECK_IN_ROLE_KEY, FIRST_CHECK_IN_ROLE_PROMPT);
+  const row = await deps.prisma.roleInterviewAnswer.create({
+    data: {
+      organizationId: first.organizationId,
+      personExternalId: person.externalId,
+      roleName,
+      owns: mine.owns ?? null,
+      doingWell: mine.doingWell ?? null,
+      dependsOn: mine.dependsOn ?? null,
+      inTheWay: mine.inTheWay ?? null,
+      source: 'first_check_in',
+      sharedAt: null,
+      checkInId: checkIn.id,
+      promptVersionId: reading.id,
+      askedWithPromptVersionId: asked.id,
+    },
+  });
+  /* Their words stay theirs. Whether the role map may show what they own is asked in Ask Groundwork, and only a yes shows it. */
+  if (mine.owns) {
+    const say = theRoleMapQuestion(roleName, mine.owns);
+    await deps.prisma.assistantProposal.create({
+      data: { organizationId: first.organizationId, personExternalId: person.externalId, kind: SHARE_WITH_THE_ROLE_MAP_KIND, summary: say, payload: { rowId: row.id, roleName } as never },
+    }).catch(() => undefined);
+  }
+  log.log(`Check-in ${checkIn.id}: kept what they said about their job (row ${row.id}, reading version ${reading.id ?? 'the code'}, asked with version ${asked.id ?? 'the code'}).`);
+  return { kept: true, roleSet, versionId: reading.id };
+}
+
+/** The person's latest row about their job, with the person it belongs to. */
+export async function theirJobAsKept(deps: Deps, userId: string, organizationId: string) {
+  const person = await attempt(() => deps.prisma.person?.findFirst?.({ where: { organizationId, linkedUserId: userId }, select: { externalId: true } }), null);
+  if (!person?.externalId) return null;
+  return attempt(() => deps.prisma.roleInterviewAnswer?.findFirst?.({
+    where: { organizationId, personExternalId: person.externalId },
+    orderBy: { createdAt: 'desc' },
+  }), null);
+}
+
+/**
+ * WHAT THEY TOLD US ABOUT THEIR JOB, FOR THEIR OWN LATER CHECK-INS. Their own words, in their own conversation, so the
+ * questions are about their actual work. Not in a person's first check-in (that is the part above), and never in anybody
+ * else's conversation: it is read by the person's own check-in only.
+ */
+export async function theirJobAsTheyToldUs(deps: Deps, checkIn: { id: string; participantId: string }): Promise<string> {
+  const participant = await attempt(() => deps.prisma.groundParticipant?.findUnique?.({
+    where: { id: checkIn.participantId },
+    select: { userId: true, ground: { select: { organizationId: true } } },
+  }), null);
+  const userId = participant?.userId as string | undefined;
+  const organizationId = participant?.ground?.organizationId as string | undefined;
+  if (!userId || !organizationId) return '';
+  const row = await theirJobAsKept(deps, userId, organizationId);
+  if (!row) return '';
+  const parts: [string, string | null | undefined][] = [
+    ['what they are responsible for', row.owns], ['what they decide themselves', row.decides],
+    ['what doing well looks like in their job', row.doingWell], ['who they depend on', row.dependsOn],
+    ['who depends on them', row.dependedOnBy], ['what usually gets in their way', row.inTheWay],
+  ];
+  const told = parts.filter(([, v]) => (v ?? '').trim());
+  if (!told.length) return '';
+  return [
+    `WHAT THEY HAVE TOLD US ABOUT THEIR JOB (${row.roleName}), IN THEIR OWN WORDS. This is private to them. Use it to ask about their actual work, and to notice when what they say now does not fit what they said about their job. Never read it back as a list, never quote it as a record, and never refer to where it came from. If what they say now shows it has changed, ask them whether their job has changed.`,
+    ...told.map(([k, v]) => `- ${k}: "${String(v).replace(/\s+/g, ' ').trim().slice(0, 400)}"`),
+  ].join('\n');
+}

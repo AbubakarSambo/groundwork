@@ -2582,12 +2582,29 @@ model RoleInterviewAnswer {
   decides          String?  @db.Text
   dependsOn        String?  @map("depends_on") @db.Text
   dependedOnBy     String?  @map("depended_on_by") @db.Text
+  /// What the person said they know doing well looks like in their job, and what usually gets in their way.
+  /// Written only by the reading of a first check-in or by the person's own correction, and read by the person
+  /// themselves and by their own conversations. The role map never shows these two.
+  doingWell        String?  @map("doing_well") @db.Text
+  inTheWay         String?  @map("in_the_way") @db.Text
+  /// 'interview' (an admin sent it and the person said yes), 'first_check_in' (read from the person's first
+  /// check-in) or 'correction' (the person corrected it, in Ask or by the route).
+  source           String   @default("interview") @db.VarChar(40)
+  /// When the person said yes to the role map showing what they own. Null until then. Rows from 'interview'
+  /// were agreed to when written. The role map reads only rows that were agreed to.
+  sharedAt         DateTime? @map("shared_at")
+  /// The first check-in a 'first_check_in' row was read from.
+  checkInId        String?  @map("check_in_id")
+  /// The stored version of the prompt that read the person's words (role_reading).
   promptVersionId  String?  @map("prompt_version_id")
+  /// The stored version of the prompt that told the conversation to learn the role (first_check_in_role).
+  askedWithPromptVersionId String? @map("asked_with_prompt_version_id")
   createdAt        DateTime @default(now()) @map("created_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, roleName])
+  @@index([organizationId, personExternalId])
   @@map("role_interview_answers")
 }
 
