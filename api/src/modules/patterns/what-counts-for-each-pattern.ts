@@ -29,10 +29,10 @@ export const WHAT_COUNTS_BY_CODE: Record<string, string> = {
   R2: 'Counts when others are named as coming back to ask, or as confused, because of this person\'s work or messages. The person being unclear about their own plans, with nobody affected, does not count.',
   B1: 'Counts when upbeat reporting upward sits beside a different picture from the team or the record. Good news that the record backs up does not count.',
   D6: 'Counts when the person says that only they, or only one named person, can run, explain or fix something, or that nobody else could step in. Owning a task, or being busy, does not count, and neither does a handover they describe as working.',
-  K1: 'Counts when what is described is decks, proposals or sales material, and no named person with the power to say yes is named as having had a conversation. It does not count when a named decision-maker has been spoken to, even if a deck was also made.',
+  K1: 'Counts when the person describes decks, proposals or sales material and names no decision-maker with the power to say yes. It does not count when a named decision-maker has been spoken to, whatever else was made.',
   D3: 'Counts when the person describes a goal, target or measure of done that differs from the one they stated earlier, and does not say that it changed. A change they name and explain does not count, and neither does the first time a goal is stated.',
   F1: 'Counts when the person talks mostly about ideas, thinking and plans, and names nothing that now exists because of them. It does not count when they name something produced.',
   A1: 'Counts when the person says they did the coordinating, chasing or joining-up that other people were meant to do. Coordinating their own work does not count.',
   D1: 'Counts when the person says something is finished and, in this check-in or the earlier record, somebody else says it does not work for them. A completion nobody has contradicted does not count.',
-  M1: 'Counts when the person names a specific output they delivered against a goal they stated, with something anybody could check, such as a number, a date or a document. General progress does not count.',
+  M1: 'Counts when the person names a specific output that was delivered. It needs a goal they stated and something anybody could check, such as a number, a date or a document. General progress does not count.',
 };

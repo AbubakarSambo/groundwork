@@ -330,8 +330,9 @@ describe('release night, for a check-in that already exists', () => {
        88 since 6 October: an address can always stop the mail, one new empty table, email_address_preferences (row 88).
        89 since 7 October: Hafsah's address stays a platform admin, one flag set true on one row, never off (row 89).
        90 since 8 October: a decided review can be appealed, nine empty columns on performance_reviews and nothing else (docs/deploy.md row 90).
-       91 since 9 October: an organisation can have its own time zone, one empty column, organizations.time_zone (docs/deploy.md row 91). */
-    expect(names).toHaveLength(91);
+       91 since 9 October: an organisation can have its own time zone, one empty column, organizations.time_zone (docs/deploy.md row 91).
+       92 since 10 October: a pattern records which version of the detector's prompt read it (decision 128), one empty column, pattern_detections.prompt_version_id (docs/deploy.md row 92). */
+    expect(names).toHaveLength(92);
     // The six statements deploy.md lists, plus the WhatsApp prices (five updates and one insert).
     expect(o.dataChangesRun).toBeGreaterThanOrEqual(8);
   }));
