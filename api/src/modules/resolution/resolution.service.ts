@@ -7,6 +7,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { IntelligenceService } from '../intelligence';
 import { ReportsService } from '../reports';
 import { EmailService } from '../email/email.service';
+/** What the lead reads when they choose "not settled yet" at the ending. */
+export const NOT_SETTLED_KEEPS_IT_RUNNING = 'Nothing has ended. This check-in keeps running. If it needs more time, choose "Give it more time".';
 import { endStatesFor, isValidEndState, closingNeedsEveryone } from './end-states';
 import { GroundStatus, PartyType } from '@prisma/client';
 import { SuggestionsService } from '../suggestions/suggestions.service';
@@ -125,6 +127,16 @@ export class ResolutionService {
       throw new BadRequestException(
         'Say why, in a sentence or two. The people in this check-in read it with the outcome.',
       );
+    }
+
+    /*
+     * "NOT SETTLED YET" DOES NOT END THE CHECK-IN (B-149, 10 October 2026). One of the outcomes read "It is not settled yet, and more sessions are needed.", and
+     * choosing it closed the check-in it says needs more sessions. It keeps the check-in running and records nothing as the ending. A proper way to extend
+     * from here is on the roadmap; "Give it more time" exists meanwhile.
+     */
+    if (endState === 'NOT_YET') {
+      this.logger.log(`Ground ${groundId}: "not settled yet" was chosen at the ending, so the check-in keeps running and nothing was closed.`);
+      return { ...(await this.buildState(groundId, userId)), keptRunning: true, saying: NOT_SETTLED_KEEPS_IT_RUNNING };
     }
 
     // GW-16: detect a proposal change BEFORE upserting so we can clear stale
