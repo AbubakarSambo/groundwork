@@ -1,5 +1,5 @@
 import {
-  FIRST_CHECK_IN_ROLE_PROMPT, ROLE_READING_PROMPT, ROLE_TOPICS, asksAboutTheirJob, THE_REPLY_DID_NOT_ASK_ABOUT_THEIR_JOB, isTheirFirstCheckIn, keepWhatTheySaidAboutTheirJob, onlyWhatTheySaid,
+  FIRST_CHECK_IN_ROLE_PROMPT, ROLE_READING_PROMPT, ROLE_TOPICS, asksAboutTheirJob, THE_REPLY_DID_NOT_ASK_ABOUT_THEIR_JOB, SAYS_WHICH_CHECK_IN_THIS_IS, isTheirFirstCheckIn, keepWhatTheySaidAboutTheirJob, onlyWhatTheySaid,
   theRoleBlock, theirJobAsTheyToldUs, theRoleMapQuestion,
 } from './their-role-in-the-first-check-in';
 
@@ -109,7 +109,7 @@ describe('what the conversation is given', () => {
     expect((await theRoleBlock(world().deps, CHECK_IN, one)).thisTurn).toBe('');
     const two = [...one, ...turns(['AI', 'By when?'], ['PERSON', 'The 30th of November.'])];
     const r = await theRoleBlock(world().deps, CHECK_IN, two);
-    expect(r.thisTurn).toBe('FOR THIS TURN, ABOUT THEIR JOB. This turn, do not ask your next question about the work. Start with one short sentence that responds to what they just said (if they voiced a worry, acknowledge it), then ask ONE friendly question, in your own words, about what their job is, and what they are responsible for in it. Say in a few plain words why you are asking, in a different way each time, for example by tying it to what they just said. Never open two of these questions with the same words. It is the only question in this turn. Next turn, go back to the work.');
+    expect(r.thisTurn).toBe('FOR THIS TURN, ABOUT THEIR JOB. This turn, do not ask your next question about the work. Open with one short sentence that responds to what they just said (if they voiced a worry, acknowledge it) and leads into your question. Then ask ONE friendly question, in your own words, about what their job is, and what they are responsible for in it. Do not explain why you are asking, do not add a sentence after the question, and do not say what check-in this is. It is the only question in this turn. Next turn, go back to the work.');
     const asked = [...two, ...turns(['AI', 'What are you responsible for in your job?'], ['PERSON', 'I look after the Nairobi accounts and the monthly number.'])];
     expect((await theRoleBlock(world().deps, CHECK_IN, asked)).thisTurn).toBe('');
     const later = [...asked, ...turns(['AI', 'What is the biggest risk?'], ['PERSON', 'The Serena committee, they sit once a month.'])];
@@ -141,7 +141,24 @@ describe('a turn that was meant to ask about the job', () => {
     expect(asksAboutTheirJob(owns, 'What is the next thing you will do about the Serena account, and by when?')).toBe(false);
   });
   it('is asked again with one plain line', () => {
-    expect(THE_REPLY_DID_NOT_ASK_ABOUT_THEIR_JOB(owns.what)).toBe('YOUR REPLY DID NOT ASK ABOUT THEIR JOB, AND THIS TURN IS THE ONE FOR IT. Write the reply again: one short sentence that responds to what they just said (if they voiced a worry, acknowledge it), then ONE friendly question, in your own words, about what they are responsible for in their job. Say in a few plain words why you are asking, in a different way from your earlier questions. It is the only question in the reply. Do not ask your next question about the work in this reply.');
+    expect(THE_REPLY_DID_NOT_ASK_ABOUT_THEIR_JOB(owns.what)).toBe('YOUR REPLY DID NOT ASK ABOUT THEIR JOB, AND THIS TURN IS THE ONE FOR IT. Write the reply again: one short sentence that responds to what they just said (if they voiced a worry, acknowledge it), then ONE friendly question, in your own words, about what they are responsible for in their job. Do not explain why you are asking, do not add a sentence after the question, and do not say what check-in this is. It is the only question in the reply.');
+  });
+});
+
+describe('a reply that says what kind of check-in this is', () => {
+  it.each([
+    'This is your first check-in for this check-in, and it helps to understand how your work fits in.',
+    'This is your first check-in, so I would like to learn about your job.',
+    'As part of your first check-in, what are you responsible for?',
+  ])('"%s" is caught', (reply) => {
+    expect(SAYS_WHICH_CHECK_IN_THIS_IS.test(reply)).toBe(true);
+  });
+  it.each([
+    'What are you responsible for in your job?',
+    'Your first priority is the Serena contract, so what happens first?',
+    'The first check-in you had with Mercy was about the budget, what changed?',
+  ])('"%s" is not', (reply) => {
+    expect(SAYS_WHICH_CHECK_IN_THIS_IS.test(reply)).toBe(false);
   });
 });
 

@@ -1,5 +1,5 @@
 import { HELD_FOR_A_SEAT } from '../participants/held-for-a-seat';
-import { theRoleBlock, keepWhatTheySaidAboutTheirJob, theirJobAsTheyToldUs, theirJobAsKept, asksAboutTheirJob, THE_REPLY_DID_NOT_ASK_ABOUT_THEIR_JOB } from './their-role-in-the-first-check-in';
+import { theRoleBlock, keepWhatTheySaidAboutTheirJob, theirJobAsTheyToldUs, theirJobAsKept, asksAboutTheirJob, THE_REPLY_DID_NOT_ASK_ABOUT_THEIR_JOB, SAYS_WHICH_CHECK_IN_THIS_IS, NEVER_SAY_WHICH_CHECK_IN_THIS_IS } from './their-role-in-the-first-check-in';
 import { whereASessionsReportStands } from './where-a-sessions-report-stands';
 import { theAimsNameKeepsItsShare, theNameWithItsSum } from './the-aims-name-keeps-its-share';
 import { theParticipantAsServed, theFitAsServed, theCheckInRowAsServed, theyAreTheirOwnWords } from './a-transcript-serves-only-what-is-theirs';
@@ -2585,16 +2585,18 @@ export class ConversationService {
        * again is read for the words we do not use like any other, and those stay the last guards. When the turn was meant to and the reply did not, it is
        * asked again once with the one line, and the second is kept only if it does. Never on a reply that closes, and never blocks the turn.
        */
-      const jobThing = this.aboutTheirJobThisTurn.get(checkIn.id) ?? null;
-      if (jobThing && !closingNow && !asksAboutTheirJob(jobThing, screened.text)) {
-        this.logger.warn(`Check-in ${checkIn.id}: this turn was for a question about their job and the reply did not ask it; asking again.`);
+      const inTheirFirst = this.aboutTheirJobThisTurn.get(checkIn.id) ?? null;
+      const jobThing = inTheirFirst?.thing ?? null;
+      const saysWhichCheckInThisIs = !!inTheirFirst && SAYS_WHICH_CHECK_IN_THIS_IS.test(screened.text);
+      if (inTheirFirst && !closingNow && ((jobThing && !asksAboutTheirJob(jobThing, screened.text)) || saysWhichCheckInThisIs)) {
+        this.logger.warn(`Check-in ${checkIn.id}: ${saysWhichCheckInThisIs ? 'the reply said what kind of check-in this is' : 'this turn was for a question about their job and the reply did not ask it'}; asking again.`);
         const moved = await this.anthropic
-          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${THE_REPLY_DID_NOT_ASK_ABOUT_THEIR_JOB(jobThing.what)}`), history)
+          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${saysWhichCheckInThisIs ? NEVER_SAY_WHICH_CHECK_IN_THIS_IS : THE_REPLY_DID_NOT_ASK_ABOUT_THEIR_JOB(jobThing!.what)}`), history)
           .catch(() => '');
         const second = moved.trim()
           ? screen(withoutQuotesTheyDidNotSay(forHumans(moved), theirWords), known, readerName, conversationSoFar)
           : null;
-        if (second?.text && !second.hits.length && asksAboutTheirJob(jobThing, second.text)) screened = second;
+        if (second?.text && !second.hits.length && !SAYS_WHICH_CHECK_IN_THIS_IS.test(second.text) && (!jobThing || saysWhichCheckInThisIs || asksAboutTheirJob(jobThing, second.text))) screened = second;
       }
 
       /*
@@ -5068,9 +5070,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * through in its own words. In their later check-ins it is given what they told us, so its questions are about their actual work.
      */
     const theirJobDeps = { prisma: this.prisma as any, anthropic: this.anthropic as any, prompts: this.prompts as any };
-    const learningTheirJob = await theRoleBlock(theirJobDeps, checkIn as any, turnsThisSession as any, how).catch(() => ({ block: '', thisTurn: '', thing: null as AThingToCover | null, promptVersionId: null as string | null }));
+    const learningTheirJob = await theRoleBlock(theirJobDeps, checkIn as any, turnsThisSession as any, how).catch(() => ({ block: '', thisTurn: '', thing: null as AThingToCover | null, promptVersionId: null as string | null, first: false }));
     const theJobThisTurn = learningTheirJob.thisTurn;
-    this.aboutTheirJobThisTurn.set(checkIn.id, learningTheirJob.thing);
+    this.aboutTheirJobThisTurn.set(checkIn.id, learningTheirJob.first ? { thing: learningTheirJob.thing } : null);
     const theirJobSoFar = learningTheirJob.block ? '' : await theirJobAsTheyToldUs(theirJobDeps, checkIn as any).catch(() => '');
     const theJob = learningTheirJob.block || theirJobSoFar;
     if (learningTheirJob.block) this.logger.log(`first-check-in-role check-in=${checkIn.id} prompt-version=${learningTheirJob.promptVersionId ?? 'the file'} this-turn=${theJobThisTurn ? 'asks about their job' : 'no'}`);
@@ -5657,10 +5659,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   }
   /* The anchor's weekly words for this turn, written by composeSystemPrompt and read by the reply path that puts them after the rest. */
   /** The thing about their job that this turn of a first check-in was told to ask, if any (decision 129). */
-  private _aboutTheirJobThisTurn?: Map<string, AThingToCover | null>;
+  private _aboutTheirJobThisTurn?: Map<string, { thing: AThingToCover | null } | null>;
   /** Made when first needed, because several specs build the service without its constructor. */
-  private get aboutTheirJobThisTurn(): Map<string, AThingToCover | null> {
-    if (!this._aboutTheirJobThisTurn) this._aboutTheirJobThisTurn = new Map<string, AThingToCover | null>();
+  private get aboutTheirJobThisTurn(): Map<string, { thing: AThingToCover | null } | null> {
+    if (!this._aboutTheirJobThisTurn) this._aboutTheirJobThisTurn = new Map<string, { thing: AThingToCover | null } | null>();
     return this._aboutTheirJobThisTurn;
   }
   private _anchorWeekForThisTurn?: Map<string, { text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo>; isTheBaseline?: boolean; followUp?: WhatToFollowUp | null; closing?: boolean } | null>;

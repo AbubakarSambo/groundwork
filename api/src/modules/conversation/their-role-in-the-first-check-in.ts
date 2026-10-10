@@ -222,7 +222,7 @@ export function theTurnToAskIt(notAsked: AThingToCover[], turns: { role: 'AI' | 
   const lastAi = [...turns].reverse().find((t) => t.role === 'AI')?.content ?? '';
   if (Object.values(ASKED_AS).some((re) => re.test(lastAi))) return none;
   const next = notAsked[0];
-  const text = `FOR THIS TURN, ABOUT THEIR JOB. This turn, do not ask your next question about the work. Start with one short sentence that responds to what they just said (if they voiced a worry, acknowledge it), then ask ONE friendly question, in your own words, about ${next.what}. Say in a few plain words why you are asking, in a different way each time, for example by tying it to what they just said. Never open two of these questions with the same words. It is the only question in this turn. Next turn, go back to the work.`;
+  const text = `FOR THIS TURN, ABOUT THEIR JOB. This turn, do not ask your next question about the work. Open with one short sentence that responds to what they just said (if they voiced a worry, acknowledge it) and leads into your question. Then ask ONE friendly question, in your own words, about ${next.what}. Do not explain why you are asking, do not add a sentence after the question, and do not say what check-in this is. It is the only question in this turn. Next turn, go back to the work.`;
   return { text, thing: next };
 }
 
@@ -231,7 +231,12 @@ export const asksAboutTheirJob = (thing: AThingToCover, reply: string): boolean 
 
 /** The one line a reply is given again with, when a turn was meant to ask about the job and the reply did not. */
 export const THE_REPLY_DID_NOT_ASK_ABOUT_THEIR_JOB = (what: string): string =>
-  `YOUR REPLY DID NOT ASK ABOUT THEIR JOB, AND THIS TURN IS THE ONE FOR IT. Write the reply again: one short sentence that responds to what they just said (if they voiced a worry, acknowledge it), then ONE friendly question, in your own words, about ${what}. Say in a few plain words why you are asking, in a different way from your earlier questions. It is the only question in the reply. Do not ask your next question about the work in this reply.`;
+  `YOUR REPLY DID NOT ASK ABOUT THEIR JOB, AND THIS TURN IS THE ONE FOR IT. Write the reply again: one short sentence that responds to what they just said (if they voiced a worry, acknowledge it), then ONE friendly question, in your own words, about ${what}. Do not explain why you are asking, do not add a sentence after the question, and do not say what check-in this is. It is the only question in the reply.`;
+
+/** A reply that tells a person what kind of check-in this is, or that it is their first, is saying our instructions out loud. */
+export const SAYS_WHICH_CHECK_IN_THIS_IS = /\b(?:this is|it is|it's)\s+(?:your|the|a)\s+first\s+(?:check-?in|session|time)\b|\bfirst\s+check-?in\s+for\s+this\b|\b(?:part of|as part of)\s+(?:your|a|the)\s+first\b/i;
+export const NEVER_SAY_WHICH_CHECK_IN_THIS_IS =
+  'YOUR REPLY TOLD THEM WHAT KIND OF CHECK-IN THIS IS. Never say that this is their first check-in or that you are learning about their job. Write the reply again without it, and keep the rest of what it said.';
 
 /**
  * THE BLOCK THE CONVERSATION GETS, ONLY IN A PERSON'S FIRST CHECK-IN. The text that runs is the stored `first_check_in_role`
@@ -243,10 +248,10 @@ export async function theRoleBlock(
   checkIn: { id: string; participantId: string },
   turns: { role: 'AI' | 'PERSON'; content: string }[],
   how: { forTheOpener?: boolean } = {},
-): Promise<{ block: string; thisTurn: string; thing: AThingToCover | null; promptVersionId: string | null }> {
-  if (how.forTheOpener) return { block: '', thisTurn: '', thing: null, promptVersionId: null };
+): Promise<{ block: string; thisTurn: string; thing: AThingToCover | null; promptVersionId: string | null; first: boolean }> {
+  if (how.forTheOpener) return { block: '', thisTurn: '', thing: null, promptVersionId: null, first: false };
   const first = await isTheirFirstCheckIn(deps, checkIn);
-  if (!first) return { block: '', thisTurn: '', thing: null, promptVersionId: null };
+  if (!first) return { block: '', thisTurn: '', thing: null, promptVersionId: null, first: false };
   const known = await whatIsKnownOfTheirJob(deps, first.userId, first.organizationId);
   /* Where the job's name is not known, it is asked in the same breath as what they are responsible for. */
   const topics = ROLE_TOPICS.map((t) => (t.field === 'owns' && !known ? { ...t, what: 'what their job is, and what they are responsible for in it' } : t));
@@ -259,7 +264,7 @@ export async function theRoleBlock(
   if (!notAsked.length) lines.push('Everything above is covered for this session. Do not ask about their job again.');
   else lines.push(`NOT ASKED YET:\n${notAsked.map((t) => `- ${t.what}`).join('\n')}`);
   const turn = theTurnToAskIt(notAsked, turns);
-  return { block: lines.join('\n'), thisTurn: turn.text, thing: turn.thing, promptVersionId: version.id };
+  return { block: lines.join('\n'), thisTurn: turn.text, thing: turn.thing, promptVersionId: version.id, first: true };
 }
 
 /**
