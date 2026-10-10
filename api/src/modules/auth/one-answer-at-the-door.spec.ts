@@ -9,16 +9,19 @@ import * as path from 'path';
 import { THE_SAME_ANSWER_EITHER_WAY } from './one-answer-at-the-door';
 
 describe('the one answer', () => {
-  it('is true whichever branch produced it', () => {
-    expect(THE_SAME_ANSWER_EITHER_WAY).toMatch(/if we know that address/i);
+  /* 10 October 2026 (communications check): it used to say "We have emailed you a sign-in link, if we know that address", which was false for a wrong password and
+     for an unknown address, where nothing is sent. It now says only what is true in every branch. */
+  it('is true whichever branch produced it: it says nothing was emailed', () => {
+    expect(THE_SAME_ANSWER_EITHER_WAY).not.toMatch(/emailed you/i);
+    expect(THE_SAME_ANSWER_EITHER_WAY).toMatch(/did not work/i);
   });
 
   it('is actionable for somebody who does have a password', () => {
-    expect(THE_SAME_ANSWER_EITHER_WAY).toMatch(/check it and try again/i);
+    expect(THE_SAME_ANSWER_EITHER_WAY).toMatch(/check them and try again/i);
   });
 
   it('and for somebody who does not', () => {
-    expect(THE_SAME_ANSWER_EITHER_WAY).toMatch(/emailed you a sign-in link/);
+    expect(THE_SAME_ANSWER_EITHER_WAY).toMatch(/ask for a sign-in link or a password reset/);
   });
 
   it('reveals nothing about the account', () => {
@@ -78,8 +81,7 @@ describe('the one answer is written the way a person reads', () => {
   it('in full sentences, with nothing joined by a dash', () => {
     expect(THE_SAME_ANSWER_EITHER_WAY).toBe(
       /* Reworded on 5 October (request 141) so the point comes first and the copy guard counts one line fewer. */
-      'We have emailed you a sign-in link, if we know that address. Check your inbox. ' +
-      'Did you use a password? Check it and try again.',
+      'That address and password did not work. Check them and try again, or ask for a sign-in link or a password reset from this page.',
     );
     expect(THE_SAME_ANSWER_EITHER_WAY).not.toMatch(/ - /);
   });
