@@ -2,6 +2,75 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## Decision 129 on wip/release: Context in Ask, the role interview in a first check-in, and the pattern run (10 October)
+
+All on the test bed (copy a, the real model, `api/journey/sweep/bed.sh`), built from the main folder. Nothing from `wip/next` except the commits named in the task.
+
+### 1. Context in Ask, side by side with the old chat (`journey/context-through-ask-side-by-side-with-the-old-chat.ts`, 35 checks)
+
+Three live runs on `wip/release` after the five commits came over. Each passed 34 of 35, and the one failure was different each time.
+
+| Run | Failed check | Cause |
+| --- | --- | --- |
+| 1 | "Miriam is struggling and honestly she is difficult to work with." was answered "I will set this to run until you end it." | The model set the "until I end it" flag from words that said nothing about an end. A length or an end now counts only when the lead's words say something about one (`what-the-context-chat-heard.ts`). The model's own reading of a worry as a private note is also refused unless the lead asked to keep, remember or note it privately. |
+| 1 | The bank-number fact was said back with the number hidden, but the printed answer was "I cannot answer that one yet. Here is what I can do with "Suppliers are paid into account number [account number hi…"". | The coaching message of the step before had left a say-back waiting. The bank message was not a yes or no, so the waiting say-back was dropped and the words were answered again without the check-in they were typed on and without the set-up door. The dropped message now keeps both (`resolveParked`). |
+| 2 | The paste check: Ask wrote a "what doing well looks like" line and the control run of the old chat did not. | The model writes that line in some runs and not in others, in both doors (section 4b counts it). The check now ignores that one kind and section 4b requires Ask to write it whenever the old chat does. |
+| 3 | Section 4b: old chat 0 of 3, Ask 1 of 3. | The same variation, in the other direction. |
+
+After the fixes the coaching message reads "I hear that you're finding Miriam difficult to work with and that Miriam is struggling. What have you seen Miriam do that makes you say Miriam is struggling?" and the bank fact reads "Shall I add "Suppliers are paid into account number [account number hidden] at Stanbic Bank, every Friday, so nobody needs to chase." to this check-in's context as a way of working? Everybody in this check-in will read it." and keeps `WAY_OF_WORKING | EVERYONE` with the number hidden. Specs: `a-worry-and-a-bank-fact-are-met-where-they-are-said.spec.ts` (the bank case fails without the fix).
+
+### 2. The role interview: what the live product had, and what it does now
+
+**What the live product had** (staging at `59533562`, and `be8b48d9`; identical files to this branch): request 25. An admin sends it (`POST /suites/roles/interview`). The person finds it waiting in Ask Groundwork and answers four fixed questions (what they own, what they decide, who they depend on, who depends on them), no model in it; it is said back and a yes writes one `role_interview_answers` row. The role map (admins only) shows the latest "owns" for each role. It lives in `assistant/the-role-interview.ts`, `suites/the-role-interview.*` and `suites/the-role-map.service.ts`, and all of it still works unchanged.
+
+**What it does now, as well** (decision 129): in a person's first check-in the conversation learns what they are responsible for (and what their job is called, when it is not known), what doing well looks like, who they depend on and who depends on them, and what usually gets in their way. The model is given the four things as context and a checklist (`first_check_in_role`, a stored prompt version); the product names which turn asks about the job (from the second answer, on every other turn, never as the opener, never once it is covered), and a reply that was meant to ask and did not is asked again once. Afterwards a second small reading (`role_reading`, also stored) keeps only words that run on unbroken inside one of the person's own answers, as a private row. Their job title is set only when they have none. A request waits in Ask: "may the role map show what the job owns", and only a yes shows it, and only that. The person can ask Ask "What do you know about my job?", correct it in Ask (said back, written on a yes) or with `PUT /suites/roles/interview/mine`. Later check-ins of theirs are given what they told us, in their own conversation only, and the function read (board, probes, coaching) uses their title and what they said they own.
+
+**The first run found it did not work as written.** Seven turns of a sales conversation, not one question about the job: the model followed the check-in's own questions and closed. The checklist alone was not enough; hence the named turn and the check at the end. Further faults found live and fixed: the question opened with the same words in four turns of one conversation (it had been given a sentence to copy); "This is your first check-in for this check-in" was said to a person (a reply that says what kind of check-in this is is now asked again); a part stitched from two answers was kept (now dropped).
+
+**The three live walks (final code), as each person read them**
+
+*Amina Okoth, backend engineer, a billing move.* After "I work on it, I'm one of the engineers doing the actual migration." and her first answer about the move, Groundwork asked "It sounds like most of your work is engineering. Is that right?" (the existing function check), then "It sounds like you are the one who picks it up when payments break. What does doing well look like in your job?", later "Who depends on you for this?" and "What usually gets in your way in your job?". Kept: job "backend developer"; responsible for "I write and review the payments code, I'm on call for it when charges fail, and I own the webhook handlers. If payments break it comes to me."; doing well "Honestly doing well is when nobody notices me. No failed charges, no pages at night, and the other devs can add a payment method without asking me how it works."; depends on "I depend on Paystack's support for sandbox access, they are slow, and on Daniel in finance for the reconciliation reports. Customer support and the mobile team depend on me."; in the way "Interruptions mostly. Support pings me directly instead of opening a ticket, and incident days wipe out my planned work." Her title on her account was set to "backend developer" (she had none); the function read became ENGINEERING at 0.86. In her second check-in the opener was "Last time you told us that customer support depends on you when a charge fails, and the mobile team depends on you for the API changes." and the engineering probes were present.
+
+*Naledi Dube, finance officer, a month-end pulse.* "What parts of that work to produce those accurate numbers do you own, as opposed to depend on somebody else for?", "Your work is in finance. Is that right?", "You've described what you do in your role. What does doing well look like in that job?", "What usually gets in the way of getting your job done by the time you expect to?". Kept: job "finance officer"; responsible for "I do the bank and mobile money reconciliations, the payables run every Friday and I prepare the monthly management accounts."; doing well "Doing well is the books closed on time with no reconciling items older than 30 days."; depends on the sales team, the mobile money provider, "Mercy, the finance manager" and the auditors. The function read became FINANCE. Her second check-in opened "Last time you mentioned the September close landed on the 14th, six days late" and went straight to the invoices she had raised as a blocker. In Ask she was asked "In your first check-in you told me about your job as finance officer. You said you are responsible for "I do the bank and mobile money reconciliations, the payables run every Friday and I prepare the monthly management accounts". Shall I let the role map show this under finance officer? It is about the job and not about you. Everything else you said about your job stays private to you."; after her yes the role map lists the job (it needed her roster title, now set on the yes).
+
+*Joseph Mwangi, sales rep, Q4 goals.* He volunteered his job before he was asked, so the job was not asked again; Groundwork asked "What does doing well look like in your job?" and "What usually gets in your way in your job?". Kept: job "sales rep"; doing well, depends on and in the way in his own words. His "responsible for" was not kept in the final walk: the model's reading did not run on unbroken in one answer, so it was dropped (the earlier walk of the same persona kept it). That is the strict rule doing what it is for, and it cost a field and no request to the role map; a line in the log now says which parts the reading offered and were dropped.
+
+Specs: `their-role-in-the-first-check-in.spec.ts`, `my-job-in-ask.spec.ts`, `suites/what-they-told-us-about-their-job-is-theirs.spec.ts`. Privacy: `journey/role-privacy-sweep.ts`.
+
+### 3. The 24-scenario run on wip/release, scored against `docs/baseline.json`
+
+Two runs on the same code, the same test bed, four shards, the scenarios' own sessions.
+
+| Engine value | Baseline | Run 1 (9 answers a person, as the baseline was made) | Run 2 (12 answers) |
+| --- | --- | --- | --- |
+| proof asked for | 42 | 40 | 39 |
+| past words | 25 | 36 | 26 |
+| specific detail | 88 | 78 | 120 |
+| blocker checked | 37 | 32 | 64 |
+| differences | 29 | 37 | 38 |
+| agreements | 56 | 93 | 86 |
+| findings | 81 | 87 | 87 |
+| patterns found | 100 | 83 | 93 |
+| commitments | 33 | 51 | 66 |
+| central question | 29 | 29 | 29 |
+| judgement present | 21 | 29 | 29 |
+| Every problem | 0 | 0 | 0 |
+| turns that ask more than one question | 37 | 0 | 0 |
+| jargon in Groundwork's turns | 42 | 17 | 16 |
+
+Scorer verdict: run 1 WORSE (specific detail 88 to 78, blocker checked 37 to 32, patterns found 100 to 83); run 2 "Nothing got worse than the baseline" (`api/journey/all-24/run-oct10/score-vs-baseline.txt`, `run-oct10b/score-vs-baseline.txt`).
+
+**Why the two differ, and what it means.** The runner stops a simulated person after 9 answers. Before the role interview 56 of 87 check-ins closed on their own inside that limit (oct7c), with 776 Groundwork turns. In run 1, 15 of 87 did, with 849 turns: the job questions add about three turns to a first check-in, so the close ("what will you do about it, and by when") and the turns after it fall outside the limit. Run 2 gives the person 12 answers and 47 of 87 closed on their own. So the engine still does everything it did, and **a first check-in is about three questions longer**. That is the price of decision 129, and it is Hafsah's to weigh; the number under the like-for-like limit is run 1. Patterns found in run 2 is 93, inside the 89 to 99 spread of the earlier runs and below the baseline's 100, as in all of them.
+
+**Prompt versions on this run** (run 2, from the database): 69 pattern readings, all with a version, all `pattern_detection` v2 (the active one); 24 reports, all `report_synthesis` v1; 24 grounds, all `system` v1; 69 role rows, each with `role_reading` v2 and `first_check_in_role` v2. None without a version. (v2 of `pattern_detection` is v1 with one "what counts" line, B9, put point-first so the engine's copy guard stays at 35 on this branch; it is a different text from the one stored on `wip/next`.)
+
+### 4. Other
+
+- Whole API suite after the role work: all pass except what is listed in the commits (see the changed-test notes: the role-interview spec's database, a source check in `a-line-somebody-unsaid-counts-toward-nothing`, the retry count in `our-instructions-never-reach-them`).
+- The existing-users check (`journey/existing-clients-carry-on.spec.ts`): 12 of 12, with 93 migrations counted.
+- Client typecheck clean (`tsc -b`); client vitest 774 files, 5,005 tests pass after merging `mine/wip/prototype-ui-release`.
+- Decision 131: `the-eight-submitted-templates-are-frozen.spec.ts` pins each of Hafsah's eight to `docs/whatsapp-templates.md` and to the code.
+
 ## Piece 2: the pattern detector's prompt is a stored version, and a sharper version of it is kept active (10 October)
 
 **Verdict: kept active, with one caution.** The same words now give the same codes more often, measured two ways (the noise on eight borderline check-ins, and agreement between two readings of the same conversations), and patterns found stayed inside the oct9a and oct9b spread in one full run and rose to the baseline in another (91 and 100; oct9a 89, oct9b 94). Across separate runs, whose conversations are different each time, steadiness did not show an improvement (see 3). The prompt also names more codes in each read, so more patterns are named for each person (see 6).
