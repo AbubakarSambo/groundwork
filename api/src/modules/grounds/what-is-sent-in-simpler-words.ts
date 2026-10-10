@@ -69,9 +69,9 @@ export const THE_EMAILS = {
   /** "Your check-in for X is still open." and the line when the other person has already answered. */
   nudge: (simplerWords?: boolean | null) =>
     simplerWords
-      ? { stillOpen: 'is still open. It takes about five minutes.', theOtherHasAnswered: 'The other person has already answered. Yours is the last answer we need.' }
-      : { stillOpen: 'is still open.', theOtherHasAnswered: 'They have already shared their side. Yours is the last one we are waiting for.' },
+      ? { stillOpen: 'is still open. It takes about five minutes. Your answers go into the report.', theOtherHasAnswered: 'The other person has already answered. Yours is the last answer we need.' }
+      : { stillOpen: 'is still open. Five minutes now puts your view into the shared picture, and you read it too.', theOtherHasAnswered: 'They have already shared their side. Yours is the last one we are waiting for.' },
   /** "A new check-in is ready for X." */
   nextCheckInOpen: (simplerWords?: boolean | null) =>
-    simplerWords ? { before: 'Your next check-in for', after: ' is open. It takes about five minutes.' } : { before: 'A new check-in is ready for', after: '.' },
+    simplerWords ? { before: 'Your next check-in for', after: ' is open. It takes about five minutes. Your answers go into the report.' } : { before: 'A new check-in is ready for', after: '. Answering keeps the picture you and your team read up to date.' },
 } as const;

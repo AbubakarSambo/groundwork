@@ -58,14 +58,17 @@ describe('a reminder, as the person reads it', () => {
 });
 
 describe('an email about a check-in', () => {
-  it('says what it always said with the switch off', () => {
-    expect(THE_EMAILS.nudge(false).stillOpen).toBe('is still open.');
+  /* Decision 131: a reminder says in one short sentence what the person gets from answering. The email's words, never a submitted template's. */
+  it('says what it always said with the switch off, and what the person gets from answering', () => {
+    expect(THE_EMAILS.nudge(false).stillOpen).toBe('is still open. Five minutes now puts your view into the shared picture, and you read it too.');
+    expect(THE_EMAILS.nextCheckInOpen(false).after).toBe('. Answering keeps the picture you and your team read up to date.');
     expect(THE_EMAILS.nudge(false).theOtherHasAnswered).toBe('They have already shared their side. Yours is the last one we are waiting for.');
     expect(THE_EMAILS.nextCheckInOpen().before).toBe('A new check-in is ready for');
   });
   it('says it in plain sentences with the switch on', () => {
+    expect(THE_EMAILS.nudge(true).stillOpen).toBe('is still open. It takes about five minutes. Your answers go into the report.');
     expect(THE_EMAILS.nudge(true).theOtherHasAnswered).toBe('The other person has already answered. Yours is the last answer we need.');
-    expect(THE_EMAILS.nextCheckInOpen(true)).toEqual({ before: 'Your next check-in for', after: ' is open. It takes about five minutes.' });
+    expect(THE_EMAILS.nextCheckInOpen(true)).toEqual({ before: 'Your next check-in for', after: ' is open. It takes about five minutes. Your answers go into the report.' });
   });
 });
 

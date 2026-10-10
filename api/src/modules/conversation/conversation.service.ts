@@ -1175,9 +1175,13 @@ export class ConversationService {
             if (!g) return;
             const initiatorEmail = g.participants[0]?.email;
             if (!initiatorEmail) return;
-            const participantEmail = checkIn.participant.email;
             const groundUrl = `${this.config.get<string>('resend.frontendUrl') ?? ''}/grounds/${g.id}`;
-            this.email.sendParticipantBlockedNudge(initiatorEmail, g.label, participantEmail, groundUrl).catch(() => undefined);
+            /* Their name, never their address (decision 115). */
+            this.prisma.groundParticipant.findUnique({ where: { id: checkIn.participantId }, select: { nameGiven: true, user: { select: { firstName: true, lastName: true } } } })
+              .then((row: any) => {
+                const name = [row?.user?.firstName, row?.user?.lastName].filter(Boolean).join(' ').trim() || (row?.nameGiven ?? '').trim() || null;
+                return this.email.sendParticipantBlockedNudge(initiatorEmail, g.label, name, groundUrl);
+              }).catch(() => undefined);
           }).catch(() => undefined);
 
           /**

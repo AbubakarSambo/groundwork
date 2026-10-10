@@ -1654,12 +1654,16 @@ export class EmailService implements OnModuleInit {
   }
 
   /** Nudge to the check-in lead when a participant is blocked by billing. */
-  async sendParticipantBlockedNudge(adminEmail: string, groundLabel: string, participantEmail: string, groundUrl: string): Promise<void> {
+  /**
+   * The person who tried to check in is named, never shown by their address (decision 115): `who` is their name, or null for "Somebody you invited".
+   */
+  async sendParticipantBlockedNudge(adminEmail: string, groundLabel: string, who: string | null, groundUrl: string): Promise<void> {
+    const name = who?.trim() || 'Somebody you invited';
     await this.sendEmail({
       to: adminEmail,
-      subject: `${participantEmail} tried to check in - add a session to unblock them`,
+      subject: `${name} tried to check in - add a session to unblock them`,
       html: this.layout(
-        `<p><strong>${escapeHtml(participantEmail)}</strong> tried to check in on <strong>${escapeHtml(groundLabel)}</strong> but there are no sessions remaining.</p>
+        `<p><strong>${escapeHtml(name)}</strong> tried to check in on <strong>${escapeHtml(groundLabel)}</strong> but there are no sessions remaining.</p>
          <p>Resubscribe or apply an access code to unblock them. Their record and the report are safe in the meantime.</p>
          <p><a href="${groundUrl}">Go to the check-in</a></p>`,
       ),
@@ -1711,10 +1715,10 @@ export class EmailService implements OnModuleInit {
     const renewal = onTheDay(renewalDate);
     await this.sendEmail({
       to: email,
-      subject: 'Your Groundwork organization subscription is active',
+      subject: 'Your Groundwork organisation subscription is active',
       html: this.layout(
         `<p>Thank you for supporting Groundwork.</p>
-         <p>Your organization is now on the <strong>${planLabel}</strong> plan. Unlimited check-ins and unlimited sessions are active for your team.</p>
+         <p>Your organisation is now on the <strong>${planLabel}</strong> plan. Unlimited check-ins and unlimited sessions are active for your team.</p>
          <p>Your next billing date is ${renewal}. You can pause or cancel your subscription at any time from your billing page.</p>
          <p>Your payment helps us continue building a product that helps teams align, make better decisions, and solve problems together.</p>
          <p><a href="${this.frontendUrl}/billing">View your subscription</a></p>`,
@@ -1745,7 +1749,7 @@ export class EmailService implements OnModuleInit {
       subject: 'Action required: payment failed for your Groundwork subscription',
       html: this.layout(
         `<p>We were unable to charge the card on file for your <strong>${planLabel}</strong> subscription.</p>
-         <p>Your subscription will be paused if payment is not resolved. Please update your payment method to keep your organization's access active.</p>
+         <p>Your subscription will be paused if payment is not resolved. Please update your payment method to keep your organisation's access active.</p>
          <p>Your records are safe regardless of payment status.</p>
          <p><a href="${portalUrl}">Update payment method</a></p>`,
       ),
@@ -1802,8 +1806,8 @@ export class EmailService implements OnModuleInit {
       subject: 'Your Groundwork plan has reached its member limit',
       html: this.layout(
         `<p>Your <strong>${planLabel}</strong> plan supports up to ${capCount} members. You currently have ${currentCount} members.</p>
-         <p>To add more members, upgrade your organization plan.</p>
-         <p><a href="${this.frontendUrl}/billing">Upgrade your organization</a></p>`,
+         <p>To add more members, upgrade your organisation plan.</p>
+         <p><a href="${this.frontendUrl}/billing">Upgrade your organisation</a></p>`,
       ),
     }, undefined, 'sendMemberCapWarning');
   }
