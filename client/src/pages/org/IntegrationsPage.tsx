@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { API_ORIGIN } from '@/lib/where-the-api-lives'
@@ -9,7 +10,7 @@ import { useAreYouSure, Confirm } from '@/components/gw/a-second-press-before-it
 import { copy } from '@/components/gw/copying-can-fail'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { possessiveOf } from '@/lib/a-possessive'
-import { OnlyAnAdmin } from '@/pages/connections/ConnectionsPage'
+import { OnlyAnAdmin, WANT, type WantKey } from '@/pages/connections/ConnectionsPage'
 import {
   Page, PageTitle, Section, Panel, Stack, FieldRows, FieldRow, Folded, Steps, Step,
   Button, Tag, TextField, TextArea, Select, FieldLabel, Note, OpsConsoleExample, EmbedWidgetExample, WhatsAppConversationExample,
@@ -101,16 +102,28 @@ export function IntegrationsPage() {
   const whatsappOn = useWhatsAppIsOn()
   const sure = useAreYouSure<string>()
 
-  const [creatingKey, setCreatingKey] = useState(false)
-  const [credName, setCredName] = useState('')
-  const [credScopes, setCredScopes] = useState<string[]>(['subjects:write', 'findings:read'])
+  /*
+   * B-144, HAFSAH, 10 OCTOBER: THE CHOICE MADE ON CONNECTIONS ARRIVES HERE AS `?want=`.
+   * Connections groups its own eleven buttons into fewer, each opening a choice inline before
+   * sending somebody on; `want` is that choice, read once on arrival, so what was actually asked
+   * for still reaches Groundwork - in `whatFor` before access is approved, and pre-ticked as the
+   * right permission on a new key once it is. Read once, not kept in sync with the address bar
+   * afterwards: this only starts the form where the choice points, it does not pin it there.
+   */
+  const [searchParams] = useSearchParams()
+  const wantKey = searchParams.get('want') as WantKey | null
+  const wanted = wantKey && WANT[wantKey] ? WANT[wantKey] : null
+
+  const [creatingKey, setCreatingKey] = useState(() => !!wanted?.scope)
+  const [credName, setCredName] = useState(() => wanted?.title ?? '')
+  const [credScopes, setCredScopes] = useState<string[]>(() => (wanted?.scope ? [wanted.scope] : ['subjects:write', 'findings:read']))
   const [freshSecret, setFreshSecret] = useState<{ clientId: string; clientSecret: string } | null>(null)
 
   const [hookUrl, setHookUrl] = useState('')
   const [hookEvents, setHookEvents] = useState<string[]>(['checkin.completed'])
   const [freshHookSecret, setFreshHookSecret] = useState<string | null>(null)
 
-  const [whatFor, setWhatFor] = useState('')
+  const [whatFor, setWhatFor] = useState(() => wanted?.sentence ?? '')
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [termsOpen, setTermsOpen] = useState(false)
 
@@ -254,6 +267,9 @@ export function IntegrationsPage() {
         <Section heading="Put check-ins inside your own product">
           <Panel>
             <Stack gap={12}>
+              {wanted && access.data?.status !== 'PENDING' && (
+                <p className="gwui-fine">You chose “{wanted.title}” on Connections. Edit the message below if you want to say it differently.</p>
+              )}
               <p className="gwui-panel-text-muted">
                 Your people can check in from inside your own system, in a panel on your own page or
                 on screens your developer builds. You ask for it rather than buy it. Say what you
@@ -389,6 +405,9 @@ export function IntegrationsPage() {
               {creatingKey && (
                 <form onSubmit={e => { e.preventDefault(); if (credName.trim()) issue.mutate() }}>
                   <Stack gap={10}>
+                    {wanted?.scope && (
+                      <p className="gwui-fine">You chose “{wanted.title}” on Connections. The permission it needs is already ticked below.</p>
+                    )}
                     <div>
                       <FieldLabel htmlFor="tools-key-name">What is it for?</FieldLabel>
                       <TextField id="tools-key-name" placeholder="For example, your billing system" value={credName} onChange={e => setCredName(e.target.value)} />

@@ -24,10 +24,10 @@ let whatsappOn = false
 vi.mock('@/lib/whatsapp-is-on', () => ({ useWhatsAppIsOn: () => whatsappOn }))
 import { IntegrationsPage } from './IntegrationsPage'
 
-function open(user: any) {
+function open(user: any, path = '/settings/tools') {
   useAuthStore.setState({ user, token: 't', isAuthenticated: true } as any)
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(<QueryClientProvider client={qc}><MemoryRouter><IntegrationsPage /></MemoryRouter></QueryClientProvider>)
+  return render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={[path]}><IntegrationsPage /></MemoryRouter></QueryClientProvider>)
 }
 
 beforeEach(() => { calls.length = 0; whatsappOn = false })
@@ -214,6 +214,38 @@ describe('before access is approved', () => {
     expect(screen.getByText(/I accept the terms for connecting your own tools\./)).toBeTruthy()
     expect(container.textContent).not.toMatch(/\(version/)
     expect(screen.getByRole('button', { name: 'Read them' })).toBeTruthy()
+  })
+
+  /*
+   * B-144, HAFSAH, 10 OCTOBER: THE CHOICE MADE ON CONNECTIONS ARRIVES HERE AS `?want=`, AND IS NOT
+   * LOST. Connections now groups its own buttons, with the specific thing somebody asked for
+   * carried on in the address; before access is approved, it pre-fills the free-text request so
+   * that specific thing still reaches Groundwork, in the same field this page already sends.
+   */
+  it('pre-fills "What do you want to build with it?" from a choice made on Connections', async () => {
+    open({ id: 'u-g', role: 'ADMIN', organizationName: 'Baridi Appliances' }, '/settings/tools?want=handbook')
+    await screen.findByText('Put check-ins inside your own product')
+    expect(screen.getByText('You chose “Your handbook” on Connections. Edit the message below if you want to say it differently.')).toBeTruthy()
+    expect(screen.getByRole('textbox', { name: 'What do you want to build with it?' })).toHaveValue(
+      'I want our handbook connected, so people can ask it questions in plain words.',
+    )
+  })
+})
+
+/**
+ * B-144, HAFSAH, 10 OCTOBER: ONCE APPROVED, THE SAME CHOICE OPENS "CREATE A KEY" WITH THE RIGHT
+ * PERMISSION ALREADY TICKED, instead of a blank form somebody has to remember to tick it on.
+ */
+describe('once approved, arriving with a choice from Connections', () => {
+  beforeEach(() => {
+    served.myApiAccess = { status: 'APPROVED', approved: true, whatFor: 'syncing sales', requestedAt: null, decidedAt: null, note: null, says: '' }
+  })
+
+  it('opens "Create a key" with the name filled in and the matching permission ticked', async () => {
+    open({ id: 'u-g', role: 'ADMIN', organizationName: 'Baridi Appliances' }, '/settings/tools?want=start')
+    await screen.findByText('You chose “Start a check-in from your own system” on Connections. The permission it needs is already ticked below.')
+    expect(screen.getByLabelText('What is it for?')).toHaveValue('Start a check-in from your own system')
+    expect((screen.getByRole('checkbox', { name: /Open check-ins/ }) as HTMLInputElement).checked).toBe(true)
   })
 })
 

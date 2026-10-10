@@ -226,9 +226,30 @@ describe('Grace, an admin, reads Connections', () => {
     expect(nums.textContent).toContain('Groundwork reads which invoices are paid and which deals are won.')
     await within(nums).findByText('Connected')
     expect(within(nums).getByText('Needs a key')).toBeTruthy()
-    expect(hrefOf(nums, 'Set it up')).toBe('/settings/tools')
-    expect(hrefOf(nums, 'Connect')).toBe('/settings/tools')
     expect(nums.textContent).not.toMatch(/Paystack|Flutterwave|M-Pesa|spreadsheet|Upload|MarketView/)
+  })
+
+  /*
+   * HAFSAH, 10 OCTOBER (B-144): ONE GROUPED BUTTON, NOT TWO, EACH OPENING A CHOICE INLINE.
+   * This used to pin two separate buttons ("Set it up", "Connect"), both opening /settings/tools
+   * with nothing to say which of the two somebody actually wanted. The second deep page audit
+   * found all eleven of Connections' buttons collapsed into the one generic "Ask for access" page
+   * that way. Hafsah's answer groups them as the prototype's own sections already are: one button
+   * per group, opening the choice right there, which is then carried on to /settings/tools?want=.
+   */
+  it('"Your numbers" offers one "Connect" button, which opens a choice of the two things here', async () => {
+    serve({ glance: { whatsapp: null, figures: { fromYourProduct: true } } })
+    open(GRACE)
+    const nums = await screen.findByRole('region', { name: 'Your numbers' })
+    expect(within(nums).queryByRole('link', { name: 'Set it up' })).toBeNull()
+    expect(within(nums).queryByRole('link', { name: 'Connect' })).toBeNull()
+    fireEvent.click(within(nums).getByRole('button', { name: 'Connect' }))
+    expect(within(nums).getByRole('radio', { name: /Your own product sends its numbers/ })).toBeTruthy()
+    expect(within(nums).getByRole('radio', { name: /Accounting or sales tools/ })).toBeTruthy()
+    const continueLink = within(nums).getByRole('button', { name: 'Continue' })
+    expect(continueLink.hasAttribute('disabled')).toBe(true)
+    fireEvent.click(within(nums).getByRole('radio', { name: /Accounting or sales tools/ }))
+    expect(hrefOf(nums, 'Continue')).toBe('/settings/tools?want=accounting')
   })
 
   /* UPDATED 29 September, item 11: "Your own address" used to stay on the page as "Not set up",
@@ -333,8 +354,26 @@ describe('Grace, an admin, reads Connections', () => {
       const region = within(more).getByRole('region', { name })
       expect(within(region).getByText('Not set up')).toBeTruthy()
       expect(within(region).queryByText('Needs a key')).toBeNull()
-      expect(hrefOf(region, 'Set up')).toBe('/settings/tools')
     }
+  })
+
+  /*
+   * HAFSAH, 10 OCTOBER (B-144): ONE GROUPED "SET UP" BUTTON FOR THE WHOLE SECTION, NOT SIX.
+   * This used to pin a "Set up" link on every card, each one opening /settings/tools with no way
+   * to tell which of the six was meant. Grouped now, the same way as "Your numbers" above, with the
+   * choice opening inline and carried on to /settings/tools?want=.
+   */
+  it('"More you can connect" offers one "Set up" button, which opens a choice of all six', async () => {
+    serve()
+    open(GRACE)
+    const more = await screen.findByRole('region', { name: 'More you can connect' })
+    expect(within(more).queryAllByRole('link', { name: 'Set up' })).toHaveLength(0)
+    fireEvent.click(within(more).getByRole('button', { name: 'Set up' }))
+    for (const title of ['Your people come in', 'Your goals come in', 'Roles and handovers', 'Your handbook', 'Start a check-in from your own system', 'The brief before a hard conversation']) {
+      expect(within(more).getByRole('radio', { name: new RegExp(title) })).toBeTruthy()
+    }
+    fireEvent.click(within(more).getByRole('radio', { name: /Your handbook/ }))
+    expect(hrefOf(more, 'Continue')).toBe('/settings/tools?want=handbook')
   })
 
   it('no label on a person anywhere on the page', async () => {
