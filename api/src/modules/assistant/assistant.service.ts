@@ -2350,6 +2350,9 @@ export class AssistantService {
     const row = rowId ? await this.prisma.roleInterviewAnswer.findUnique({ where: { id: rowId }, select: { roleName: true, organizationId: true } }) : null;
     if (!row || row.organizationId !== organizationId) return rules('role_interview', text('I could not find what you told me, so nothing was shown.'));
     await this.prisma.roleInterviewAnswer.update({ where: { id: rowId! }, data: { sharedAt: new Date() } });
+    /* If they corrected something since, the newest row is the one the map reads, and it carries the agreement too. */
+    const newest = await this.prisma.roleInterviewAnswer.findFirst({ where: { organizationId, personExternalId: (parked.payload as any)?.personExternalId ?? who }, orderBy: { createdAt: 'desc' }, select: { id: true, sharedAt: true } }).catch(() => null);
+    if (newest && newest.id !== rowId && !newest.sharedAt) await this.prisma.roleInterviewAnswer.update({ where: { id: newest.id }, data: { sharedAt: new Date() } });
     return rules('role_interview', text(`I have let the role map show what the ${row.roleName} job owns. It is about the job and not about you. Everything else you told me stays private to you.`));
   }
 

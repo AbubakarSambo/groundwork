@@ -30,7 +30,7 @@ export function parseAJobCorrection(m: string): { part: APart; value: string } |
   return null;
 }
 
-const q = (t: string) => `"${t.replace(/["“”]/g, "'")}"`;
+const q = (t: string) => `"${t.replace(/["“”]/g, "'").replace(/[.!?\s]+$/, '')}"`;
 
 /** The change said back in a plain sentence, with their words quoted and not reworded. */
 export function theCorrectionSaidBack(part: APart, value: string, old: string | null): string {

@@ -29,7 +29,7 @@ export const SHARE_WITH_THE_ROLE_MAP_KIND = 'role_share_from_check_in';
 
 /** What the person is asked in Ask Groundwork after their first check-in, in plain sentences. Their words are quoted, never reworded. */
 export const theRoleMapQuestion = (roleName: string, owns: string): string =>
-  `In your first check-in you told me about your job as ${roleName}. You said you are responsible for "${owns.replace(/["\u201c\u201d]/g, "'")}". Shall I let the role map show this under ${roleName}? It is about the job and not about you. Everything else you said about your job stays private to you.`;
+  `In your first check-in you told me about your job as ${roleName}. You said you are responsible for "${owns.replace(/["\u201c\u201d]/g, "'").replace(/[.!?\s]+$/, '')}". Shall I let the role map show this under ${roleName}? It is about the job and not about you. Everything else you said about your job stays private to you.`;
 
 /** The things the conversation learns about the job, in the words used about them. Never questions to be read out. */
 /** How each thing is asked in a conversation. Only these words count as having asked it, so a turn about something else is never taken for one of these. */
