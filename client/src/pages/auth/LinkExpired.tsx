@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { authApi } from '@/api/auth'
 import { Button, Stack } from '@/components/gw/ui'
@@ -58,6 +59,7 @@ export function LinkDidNotWork({ kind }: { kind: 'sign-in' | 'reset' }) {
 
 function AskForAFreshLink({ kind, title, sub, button }: { kind: 'sign-in' | 'reset'; title: string; sub: string; button: string }) {
   const trap = useTheTrap()
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [error, setError] = useState('')
   const [sent, setSent] = useState(false)
@@ -92,6 +94,10 @@ function AskForAFreshLink({ kind, title, sub, button }: { kind: 'sign-in' | 'res
           <Button type="submit" wide disabled={send.isPending}>
             {send.isPending ? 'Sending…' : button}
           </Button>
+          {/* B-130: this page was a dead end for anyone who already has a password and just wants to
+              sign in rather than wait for a new link. The invite and join pages already offer this
+              way out (LinkProblem's "Sign in instead"); this one did not. */}
+          <Button kind="quiet" wide type="button" onClick={() => navigate('/auth')}>Sign in instead</Button>
         </Stack>
       </form>
     </AuthCard>
