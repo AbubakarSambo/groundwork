@@ -46,7 +46,7 @@ export function EquipmentPage() {
       <PageTitle
         crumbs={[{ label: 'Suites', to: '/settings/suites' }, { label: 'Equipment' }]}
         title="Equipment"
-        subtitle="See who has each laptop, phone and demo freezer, and what needs fixing."
+        subtitle="See who has each laptop, phone and other piece of equipment, and what needs fixing."
       />
 
       {isLoading && <Note>Loading…</Note>}

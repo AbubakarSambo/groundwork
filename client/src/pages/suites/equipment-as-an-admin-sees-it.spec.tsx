@@ -57,7 +57,7 @@ describe('Grace, an admin', () => {
      * FAULT 5 OF THE LIVE WALK (6 October): "People update it by telling Groundwork." is dropped -
      * it was never true, since no assistant lane reads or writes equipment yet (request 29).
      */
-    expect(screen.getByText('See who has each laptop, phone and demo freezer, and what needs fixing.')).toBeInTheDocument()
+    expect(screen.getByText('See who has each laptop, phone and other piece of equipment, and what needs fixing.')).toBeInTheDocument()
     expect(screen.queryByText(/People update it by telling Groundwork/)).toBeNull()
   })
 
