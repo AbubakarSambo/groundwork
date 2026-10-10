@@ -4,6 +4,7 @@ import { customersApi } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { Page, PageTitle, Panel, Button, Note, Empty } from '@/components/gw/ui'
+import { SuiteOffMessage } from '@/lib/suite-is-off'
 
 /**
  * CUSTOMERS AND DEALS (E9, #/suite/customers, group 2 piece 4). What each reader is given is the
@@ -54,7 +55,7 @@ export function CustomersPage() {
       {isLoading && <Note>Loading…</Note>}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
-          <Note tone="error">{refused.data?.message ?? 'Only an admin or a lead can open this board.'}</Note>
+          <Note tone="error"><SuiteOffMessage message={refused.data?.message ?? 'Only an admin or a lead can open this board.'} role={user?.role} /></Note>
         ) : (
           <div>
             <Note tone="error">The board did not load.</Note>

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { equipmentApi, type EquipmentBoard } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { Page, PageTitle, Section, Panel, Button, Note, Empty, FieldLabel, Select, TextField } from '@/components/gw/ui'
+import { SuiteOffMessage } from '@/lib/suite-is-off'
 
 /**
  * EQUIPMENT (E10, #/suite/equipment, group 2 piece 4). ADMINS ONLY, on the server. The wording is
@@ -52,7 +53,7 @@ export function EquipmentPage() {
       {isLoading && <Note>Loading…</Note>}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
-          <Note tone="error">{refused.data?.message ?? 'Only an admin can open this board.'}</Note>
+          <Note tone="error"><SuiteOffMessage message={refused.data?.message ?? 'Only an admin can open this board.'} role={user?.role} /></Note>
         ) : (
           <div>
             <Note tone="error">The board did not load.</Note>
