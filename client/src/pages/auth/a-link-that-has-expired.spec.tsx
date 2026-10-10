@@ -54,12 +54,15 @@ function readable(container: HTMLElement) {
    module lives, so that a remount cannot verify the same link twice. */
 const refused = (message: string) => ({ response: { status: 400, data: { message } } })
 
+/* UPDATED FOR B-130: "Sign in instead" is now on this card too (a dead end otherwise, for anyone
+   who already has a password), so the expected full text grew that one button. */
 const THE_CARD = [
   'Groundwork',
   'That link has expired',
   'Links from our emails work for a short while. Nothing is lost; ask for a fresh one.',
   'Email',
   'Send me a fresh link',
+  'Sign in instead',
 ].join('')
 
 beforeEach(() => {
@@ -102,7 +105,7 @@ describe('an old sign-in link (/verify-email)', () => {
     expect(readable(container)).toBe(
       'Groundwork' + 'That link didn’t work' +
       'It may have been cut short when it was copied, or it has already been used. Open it again from the email, or ask for a new one.' +
-      'Email' + 'Send me a new link',
+      'Email' + 'Send me a new link' + 'Sign in instead',
     )
     expect(screen.queryByText('That link has expired')).toBeNull()
   })

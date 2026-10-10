@@ -30,6 +30,14 @@ describe('a link with no code at all', () => {
     expect(screen.getByRole('link', { name: 'Sign in' })).toBeTruthy()
     expect(screen.getByRole('link', { name: 'go to the Groundwork home page' })).toBeTruthy()
   })
+
+  /* B-158: this state had no heading at all - one of five different readings (or none) the deep
+     page audit found for "a link does not work". It now reads "That link didn't work", the
+     prototype's own heading for the same state (F4-small-states/badlink.txt). */
+  it('also carries the heading every other broken link uses', async () => {
+    open('/answer')
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'That link didn’t work' })).toBeTruthy())
+  })
 })
 
 describe('a code the server does not recognise', () => {

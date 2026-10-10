@@ -40,7 +40,13 @@ export function LinkProblem({ kind, detail }: { kind: 'invite' | 'join' | 'sign-
   return (
     <div style={{ textAlign: 'center' }}>
       <Stack gap={12}>
-        <PageTitle title={`This ${what} did not work`} />
+        {/* B-158: one heading for every link that does not work, the same words wherever this
+            happens - the deep page audit found five different headings for the same one state
+            across /invite, /join, /j/:code, /answer and /verify-email. "That link didn't work"
+            is the prototype's own wording (F4-small-states/badlink.txt), already used on
+            /verify-email, /set-password and /reset-password (LinkExpired.tsx's LinkDidNotWork) -
+            not the audit's own suggested rewrite, which did not match it. */}
+        <PageTitle title="That link didn’t work" />
         <Note>
           {/* A sentence of the page's or the server's own already says what to do. Adding the general
               one after it said the same thing twice ("ask whoever added you to send a new invite. Ask

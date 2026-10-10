@@ -204,7 +204,12 @@ export function AnswerFirstPage() {
   if (problem && !what) return (
     <div style={{ ...card, justifyContent: 'center', textAlign: 'center' }}>
       <Mark />
-      <p style={{ color: 'var(--gw-sub)', marginTop: 18, lineHeight: 1.5 }}>{problem}</p>
+      {/* B-158: this state had no heading at all, one of five different readings the deep page
+          audit found for the same "a link does not work" state. "That link didn't work" is the
+          prototype's own heading for it (F4-small-states/badlink.txt), used wherever else a link
+          fails; `problem` is the detail sentence underneath it, as LinkProblem.tsx already does. */}
+      <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--gw-text)', marginTop: 18 }}>That link didn’t work</h1>
+      <p style={{ color: 'var(--gw-sub)', marginTop: 8, lineHeight: 1.5 }}>{problem}</p>
       <p style={{ marginTop: 18, fontSize: 14.5 }}>
         <a href="/auth" style={{ color: 'var(--gw-navy)', fontWeight: 600 }}>Sign in</a>
         {', or '}
