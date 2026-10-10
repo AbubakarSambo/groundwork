@@ -128,6 +128,9 @@ function goOnTo<T extends object>(res: T, kept: string | null | undefined): T & 
  * NEVER "ACCOUNT" IN WHAT A PERSON READS (Hafsah's standing rule; request 141, review of 5 October 2026).
  * The sign-up answer names the address only because it is the person's own: they typed it a moment ago.
  */
+/** Said to somebody who set a password and never opened the link. */
+export const YOUR_SIGN_UP_IS_NOT_FINISHED = 'You have not finished creating your account yet. We have emailed you the link again. Open it, say where you work, and then sign in with your password.';
+
 export const theConfirmationLinkWasSent = (email: string): string =>
   `Check your email. We sent a link to ${email} to confirm it is yours. Open it on any device.`;
 export const YOU_CAN_NO_LONGER_SIGN_IN_HERE =
@@ -317,7 +320,22 @@ export class AuthService {
       throw new UnauthorizedException(THE_SAME_ANSWER_EITHER_WAY);
     };
 
-    if (!user || user.deletedAt) refuse('no such account');
+    if (!user || user.deletedAt) {
+      /*
+       * SOMEBODY WHO SET A PASSWORD AND NEVER FINISHED (B-192, server half). Their account does not exist until the link is opened and an organisation chosen, so the password
+       * "did not work" and the one answer at the door told them to check it. If the password is the one they set, that proves the address is theirs, so they are told plainly
+       * what is left and the link is sent again (new, in case the old one ran out). Anybody else reads the same answer as before, so nothing is learnt about a stranger's address.
+       */
+      const pending = !user ? await this.prisma.pendingSignup.findUnique({ where: { email: dto.email.toLowerCase() } }).catch(() => null) : null;
+      if (pending?.passwordHash && (await bcrypt.compare(dto.password, pending.passwordHash).catch(() => false))) {
+        const token = crypto.randomBytes(32).toString('hex');
+        await this.prisma.pendingSignup.update({ where: { id: pending.id }, data: { token, expiresAt: expiresAtFor('verify an address') } });
+        await this.emailService.sendVerificationEmail(pending.email, pending.firstName, token).catch((err) => this.logger.error(`Failed to send the sign-up link again to ${pending.email}: ${err?.message}`));
+        this.logger.log(`Sign-in refused for ${dto.email.toLowerCase()}: the sign-up was never finished; the link was sent again.`);
+        throw new UnauthorizedException(YOUR_SIGN_UP_IS_NOT_FINISHED);
+      }
+      refuse('no such account');
+    }
     if (!user.isActive) refuse('the account is deactivated');
     if (!user.isEmailVerified) refuse('the address is not verified');
 
