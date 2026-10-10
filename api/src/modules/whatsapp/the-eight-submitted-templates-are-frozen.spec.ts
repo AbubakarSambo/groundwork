@@ -19,7 +19,8 @@ const THE_EIGHT: Record<string, { kind: string; body: string }> = {
   lead_daily_summary: { kind: 'lead-summary', body: 'Good morning {{1}}. Here is today\'s summary of your check-ins. {{2}} You can open your board for the full picture here {{3}} If you would rather not hear from us here again today, reply "not now".' },
 };
 
-const DOC = fs.readFileSync(path.join(__dirname, '..', '..', '..', '..', 'docs', 'whatsapp-templates.md'), 'utf8');
+/* A markdown file has no code comments to strip; the replace is here only because the repository's ratchet asks every spec that reads a file to strip them. */
+const DOC = fs.readFileSync(path.join(__dirname, '..', '..', '..', '..', 'docs', 'whatsapp-templates.md'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
 const eightSection = DOC.slice(DOC.indexOf("## Hafsah's eight"), DOC.indexOf('\n## ', DOC.indexOf("## Hafsah's eight") + 10));
 const docBody = (name: string): string => {
   const at = eightSection.indexOf(`\`${name}\``);

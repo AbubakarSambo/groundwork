@@ -79,13 +79,13 @@ describe('the emails', () => {
   }
   it('the reminder: off is the old sentence, on is the plainer one', async () => {
     const nudge = (s?: boolean) => (e: any) => e.sendNudge('a@k.test', 'Sales team, Q4', 'https://x/y', undefined, true, null, 'p1', s);
-    expect(await render(nudge())).toBe('Your check-in for Sales team, Q4 is still open. They have already shared their side. Yours is the last one we are waiting for. Check in');
-    expect(await render(nudge(true))).toBe('Your check-in for Sales team, Q4 is still open. It takes about five minutes. The other person has already answered. Yours is the last answer we need. Check in');
+    expect(await render(nudge())).toBe('Your check-in for Sales team, Q4 is still open. Five minutes now puts your view into the shared picture, and you read it too. They have already shared their side. Yours is the last one we are waiting for. Check in');
+    expect(await render(nudge(true))).toBe('Your check-in for Sales team, Q4 is still open. It takes about five minutes. Your answers go into the report. The other person has already answered. Yours is the last answer we need. Check in');
   });
   it('the next check-in: off is the old sentence, on is the plainer one', async () => {
     const ready = (s?: boolean) => (e: any) => e.sendSessionReady('a@k.test', 'Sales team, Q4', 'https://x/y', s);
-    expect(await render(ready())).toBe('A new check-in is ready for Sales team, Q4. Check in');
-    expect(await render(ready(true))).toBe('Your next check-in for Sales team, Q4 is open. It takes about five minutes. Check in');
+    expect(await render(ready())).toBe('A new check-in is ready for Sales team, Q4. Answering keeps the picture you and your team read up to date. Check in');
+    expect(await render(ready(true))).toBe('Your next check-in for Sales team, Q4 is open. It takes about five minutes. Your answers go into the report. Check in');
   });
 });
 
