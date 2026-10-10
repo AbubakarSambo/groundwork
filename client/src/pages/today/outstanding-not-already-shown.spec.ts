@@ -153,6 +153,19 @@ describe('the lead’s daily nudge is not said twice on Today', () => {
       expect(outstandingNotAlreadyShown([], sentences, about)).toEqual(sentences)
     })
 
+    it('B-191: falls back to the wording check when the id an entry carries is not one the existing row can be matched by', () => {
+      /* The real shape from the release branch: `GET /today/outstanding` sends `{ kind: 'requests',
+         ids: ['leave:<uuid>'] }` for a leave sentence, but "What needs you" keys its own leave row
+         by position ("approve-leave-0"), never by the request's id - so the id match alone could
+         never find it, and the sentence was kept (said twice) instead of falling back to the
+         wording check that would have caught it, exactly as Chidi's (and Amani's) leave was. */
+      const existing = [need('Chidi asked for leave from Thursday 12 November to Friday 13 November.', 'It is waiting for you to approve.')]
+      ;(existing[0] as any).key = 'approve-leave-0'
+      const sentences = ["Chidi's leave from Thursday 12 November to Friday 13 November is waiting for you to approve or decline."]
+      const about = [{ kind: 'requests' as const, ids: ['leave:3d7651fc-b708-4567-9153-12be9b3b324b'] }]
+      expect(outstandingNotAlreadyShown(existing, sentences, about)).toEqual([])
+    })
+
     it('falls back to the wording check for a row an older server sends no entry for', () => {
       const existing = [need('Decide whether a price range counts as a budget', 'Brian and Miriam both raised it.')]
       const sentences = [

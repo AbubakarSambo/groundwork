@@ -136,10 +136,25 @@ export function outstandingNotAlreadyShown(existingNeeds: Need[], sentences: str
 
   return sentences.filter((sentence, i) => {
     const entry = about?.[i]
-    /* REQUEST 205: matched by what the sentence is about, not by its words, whenever the server
-       says what that is. The wording checks below run only where it does not (an older server, or
-       a row `about` has nothing for). */
-    if (entry) return !alreadyShownByAbout(entry, existingNeeds)
+    /*
+     * B-191: AN `about` ENTRY THAT SAYS "NOT FOUND" NO LONGER SKIPS THE WORDING CHECKS BELOW.
+     *
+     * This used to stop here once `about` had an entry at all: "found by id, keep; not found by id,
+     * keep" - on the reasoning (request 205) that the wording checks were only a fallback for a
+     * server that sent no `about`. That held as long as every row `about` could point at carried the
+     * matching id on its own key. It broke for leave: `GET /today/outstanding` now sends
+     * `{ kind: 'requests', ids: ['leave:<uuid>'] }` for "Chidi's leave ... is waiting for you to
+     * approve or decline.", but "What needs you" (`GET /today`) keys its own leave row
+     * `approve-leave-0` - a position, not the request's id (the same shape `spendRequestKey`'s own
+     * comment already describes for spend) - so `alreadyShownByAbout` could never find it, and
+     * Chidi's leave (and Amani's, the same shape) was said twice on the same page.
+     *
+     * The id match still runs first and is still trusted on its own when it DOES find a row - it is
+     * the more precise test and nothing here should make it less certain. Only when it comes back
+     * "not shown" does this now fall through to the same wording checks a sentence with no `about`
+     * at all already relies on, so a row `about`'s ids cannot reach is still caught by what it says.
+     */
+    if (entry && alreadyShownByAbout(entry, existingNeeds)) return false
 
     if (alreadyOnScreen.some((text) => text.includes(sentence) || sentence.includes(text))) return false
 
