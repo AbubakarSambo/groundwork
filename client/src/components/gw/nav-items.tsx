@@ -113,14 +113,21 @@ const NAV_ITEMS = [
       plainly - "where do I go to see the archive and all team boards" - and there was nowhere to
       send anybody. It sits beside People because it is the same kind of thing: a view across the
       organisation rather than into one piece of work.
-      WHO GETS THE DOOR. Anybody overseeing more than one check-in: an admin, who sees the
-      organisation's, and a LEAD, who sees their department's. A participant reads the board of the
-      check-in they are on and reaches it from that check-in, so a second address across several
-      would be a page holding one row - and the member's rail is deliberately two items.
+
+      WHO GETS THE DOOR, AND WHAT EACH ONE SEES (HAFSAH, 10 OCTOBER, B-146): everybody signed in.
+      This item used to be gated to an admin or a lead, on the reasoning that "a participant reads
+      the board of the check-in they are on and reaches it from that check-in" - but the second
+      deep page audit found that /boards already works for a member (groundsApi.list already
+      scopes to who-may-read-this-check-in: an admin gets the organisation's, a lead their
+      department's, everybody else what they take part in, TeamBoardsPage.tsx's own words), and
+      neither her side menu nor her More menu had a way there. The fix is this door, for everybody
+      signed in; no new restriction is added here, because the page it opens is already the
+      server's own answer to "what may this person read". Not for somebody signed out - there is
+      no "their own check-ins" to show.
     */
     label: 'Boards',
     to: '/boards',
-    oversightOnly: true,
+    requiresSignIn: true,
     icon: (active: boolean) => (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
         <rect x="2" y="3" width="16" height="14" rx="2" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0} />
@@ -286,11 +293,16 @@ export function navItemsFor(
     /* A lead of this organisation, by role, or anybody else the approver's queue currently serves
        something to. An admin has the same page under the organisation's name. */
     if ((item as any).leadOnly) return user?.role === 'LEAD' || !!opts.queueServesThem
-    /* An ordinary member, and only once a suite of their own is actually on (or they have a review
-       to show) - never a lead or an admin, who already have "Suites" above by role. */
-    if ((item as any).memberSuiteOnly) return user?.role === 'MEMBER' && !!opts.suiteOnForMember
-    /* Whoever oversees more than one check-in: the org's, or a department's. */
-    if ((item as any).oversightOnly) return user?.role === 'ADMIN' || user?.role === 'LEAD'
+    /*
+     * An ordinary member, and only once a suite of their own is actually on (or they have a review
+     * to show) - never a lead or an admin, who already have "Suites" above by role. BUG B-187:
+     * a member a queue serves (Fatuma, looking after finance; Peter, deciding an HR step) reads
+     * `leadOnly`'s own "Suites" too (`queueServesThem`, just above), so without this they read
+     * "Suites" twice in the same rail - once for the queue's settings page, once for their own.
+     */
+    if ((item as any).memberSuiteOnly) return user?.role === 'MEMBER' && !!opts.suiteOnForMember && !opts.queueServesThem
+    /* Boards: everybody signed in (B-146) - nobody signed out, since there is no "their own check-ins" to show. */
+    if ((item as any).requiresSignIn) return !!user
     /* Everybody in the organisation, and not a guest from another company. */
     if ((item as any).membersOnly) return !!user && user.role !== 'GUEST'
     return true

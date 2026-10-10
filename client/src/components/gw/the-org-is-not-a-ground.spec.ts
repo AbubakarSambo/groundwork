@@ -57,8 +57,14 @@ describe('who sees what', () => {
     expect(labels(lead)).toEqual(['Today', 'Company', 'You', 'Suites', 'All check-ins', 'Boards', 'Settings'])
   })
 
-  it('a team member sees the check-ins and their own settings, and nothing that would bounce them', () => {
-    expect(labels(member)).toEqual(['Today', 'Company', 'You', 'All check-ins', 'Settings'])
+  /*
+   * HAFSAH, 10 OCTOBER (B-146): A MEMBER NOW HAS "BOARDS" TOO. The second deep page audit found
+   * /boards already worked for a member - the server already scopes it to what they take part in
+   * - but there was no door to it in her rail or her More menu. This used to pin that gap; it now
+   * reads with the door this reader was missing.
+   */
+  it('a team member sees the check-ins, Boards and their own settings, and nothing that would bounce them', () => {
+    expect(labels(member)).toEqual(['Today', 'Company', 'You', 'All check-ins', 'Boards', 'Settings'])
   })
 
   it('a guest from another company is not offered this organisation\'s Company page', () => {
