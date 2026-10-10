@@ -772,12 +772,19 @@ export function CheckInPeopleAndSetup(props: {
           </>
         )}
 
-        {isInitiator && (
+        {/*
+          B-152: "DELETE THIS CHECK-IN" WAS STILL OFFERED ONCE IT COULD NOT WORK. Once somebody
+          else has answered, deleting is a record, not a test, and the server refuses it - but the
+          button stayed on screen, next to a sentence that then sent people to "Ask us to end it
+          instead", which does not exist (the lead already has "Decide how it ends", just above).
+          `whoIsInThisParties` is the same roster this tab already reads elsewhere for who has
+          answered; once anyone but the initiator has, this panel has nothing left to offer.
+        */}
+        {isInitiator && !(props.whoIsInThisParties ?? []).some((p) => p.done && !p.isSelf) && (
           <Panel>
             <Note>
               If this was only a test, you can delete it. Everything goes, including the conversation,
-              the sessions and anything uploaded. If somebody else has already answered, it cannot be
-              deleted, because it is now a record. Ask us to end it instead.
+              the sessions and anything uploaded.
             </Note>
             {props.deleteError && <Note tone="error">{props.deleteError}</Note>}
             {props.confirmDelete ? (
