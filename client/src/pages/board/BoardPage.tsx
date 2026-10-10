@@ -2448,7 +2448,20 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           "Views ▾" slot (not built - nothing answers what that menu would offer), restyled for a
           light ground. NOT WHEN THE BOARDS PAGE IS ALREADY SWITCHING: on /boards the tabs above do
           this job, and two switchers is a reader asking which of them is the real one.
+
+          B-151... B-150, RATHER: NONE OF THIS WHEN /boards IS ALREADY SHOWING ITS OWN SWITCHER.
+          The comment above only ever silenced this header's OWN inner board-switcher
+          (`trailing`), gated on `!groundId` - the breadcrumb, the serif title, "Your check-in",
+          "Ask" and the full six-tab bar were never gated at all, so TeamBoardsPage, which passes
+          `groundId` as a prop precisely so it can draw its own tab strip above the board, got this
+          whole header a second time underneath it: a second "Check-ins / <name>", a second title,
+          and all six tabs where the deep page audit found them. `groundId` (present only when a
+          caller supplies it, as TeamBoardsPage does; absent on this page's own route,
+          `/grounds/:id/board`, where `id` comes from `useParams` instead) is exactly the flag the
+          `trailing` line already reasoned from - so the rest of the header now reasons from it
+          too, rather than only the one piece of it that happened to get checked.
         */}
+        {!groundId && (
         <CheckInHeader
           crumbs={[{ label: 'Check-ins', to: '/grounds' }, { label: b.title }]}
           title={b.title}
@@ -2498,6 +2511,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           tabs={headerTabs}
           trailing={!groundId ? <TheOtherBoardsYouAreIn groundId={id!} /> : undefined}
         />
+        )}
 
         {/*
           WHEN IT LAST CHANGED, AND THAT OPENING IT CHANGES NOTHING (U.10). The same line for every
