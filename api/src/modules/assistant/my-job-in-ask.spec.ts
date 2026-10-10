@@ -128,6 +128,7 @@ describe('after the first check-in, may the role map show what they own', () => 
     const r = await w.service.respond('org-a', 'p1', 'yes');
     expect(said(r)).toBe('I have let the role map show what the Sales representative job owns. It is about the job and not about you. Everything else you told me stays private to you.');
     expect(w.written[0].updated.data.sharedAt).toBeInstanceOf(Date);
+    expect(w.persons[0]).toMatchObject({ data: { title: 'Sales representative' } });
   });
   it('a no shows nothing', async () => {
     const w = svc({ row: ROW, parked });

@@ -2351,6 +2351,9 @@ export class AssistantService {
     const row = rowId ? await this.prisma.roleInterviewAnswer.findUnique({ where: { id: rowId }, select: { roleName: true, organizationId: true } }) : null;
     if (!row || row.organizationId !== organizationId) return rules('role_interview', text('I could not find what you told me, so nothing was shown.'));
     await this.prisma.roleInterviewAnswer.update({ where: { id: rowId! }, data: { sharedAt: new Date() } });
+    /* The role map lists the jobs people hold by their roster title, so a person made by Ask after their check-in gets the title they gave (only when they have none). */
+    const mePerson = await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { id: true, title: true } }).catch(() => null);
+    if (mePerson && !mePerson.title?.trim() && row.roleName) await this.prisma.person.update({ where: { id: mePerson.id }, data: { title: row.roleName } }).catch(() => undefined);
     /* If they corrected something since, the newest row is the one the map reads, and it carries the agreement too. */
     const newest = await this.prisma.roleInterviewAnswer.findFirst({ where: { organizationId, personExternalId: (parked.payload as any)?.personExternalId ?? who }, orderBy: { createdAt: 'desc' }, select: { id: true, sharedAt: true } }).catch(() => null);
     if (newest && newest.id !== rowId && !newest.sharedAt) await this.prisma.roleInterviewAnswer.update({ where: { id: newest.id }, data: { sharedAt: new Date() } });

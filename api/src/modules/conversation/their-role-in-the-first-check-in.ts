@@ -303,6 +303,8 @@ export async function keepWhatTheySaidAboutTheirJob(
     return null;
   }
   const mine = onlyWhatTheySaid(read, theirs);
+  const dropped = (['roleName', 'owns', 'doingWell', 'dependsOn', 'inTheWay'] as const).filter((k) => (read as any)?.[k] && !mine[k]);
+  if (dropped.length) log.log(`Check-in ${checkIn.id}: the reading offered ${dropped.join(', ')}, which did not run on unbroken in one of their answers, so it was not kept.`);
   const known = await whatIsKnownOfTheirJob(deps, first.userId, first.organizationId);
   const roleName = known?.roleName ?? mine.roleName ?? NOT_NAMED_YET;
   const anything = mine.owns || mine.doingWell || mine.dependsOn || mine.inTheWay || mine.roleName;
