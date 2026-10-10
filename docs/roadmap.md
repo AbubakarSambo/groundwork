@@ -25,6 +25,18 @@ Each item says what it is, where it stands, where any partial work lives, and th
 | The style clean-up | Moving the screens' one-off styles onto the shared parts. | Stopped where no exact shared class exists. | `wip/prototype-ui` | U17 |
 | Prompt wording | The anchor's member questions (B-11 rest), "..." in suggested replies, back-to-front lines, "they" for one named person, model-written sentences from the sweep (15 bugs in `docs/bug-log-engine.md`). Each needs a full 24-scenario run. | Listed, not started. | `api/src/modules/conversation/prompt-library.ts` | 128 |
 
+## From the screens' request 222 (new features, nothing built)
+
+| Item | What it is | Decisions |
+| --- | --- | --- |
+| Extending a check-in from the ending | A proper way to extend a check-in when choosing "more sessions needed", distinct from "Give it more time", which exists. Until then, that choice keeps the check-in running (B-149). | 129 |
+| Owners and teams on the Company page | Owners and the two "teams" sections, and a way to set them (B-125). | 129 |
+| Starting a review when none is due | Starting a review from the suite outside its schedule. | 125 |
+| One session count from the server | A single count every surface reads (B-133). | 129 |
+| "Near a decision" | A signal for decision 70 (B-137). | 70 |
+| An offline queue | Something written offline is sent later. | 129 |
+| How often and by which channel | A person choosing how often and how they hear from Groundwork (request 199, deferred by Hafsah). | 129 |
+
 ## From `docs/known-issues.md` (not bugs)
 
 | Item | Status |
