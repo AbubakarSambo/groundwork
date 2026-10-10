@@ -102,7 +102,7 @@ The totals for the final wording (91) and the first (100) sit inside or above th
 
 ### 5. Full jest
 
-`npx jest --maxWorkers=2` in `api/`: 19,435 passed, 3 failed before the two follow-ups below and none after them: the release-night test counted 92 migrations and now counts 93 (existing test `journey/existing-clients-carry-on.spec.ts`, changed for that reason only), the engine's copy guard (fixed by rewording two lines), and `the-whole-app-resolves.spec.ts`, which needs `JWT_SECRET` in the environment and passes with one set.
+`npx jest --maxWorkers=2` in `api/`: 19,435 passed and 3 failed on the whole run. I then fixed the three and re-ran those specs and the whole `src/modules/patterns` folder (all pass), not the whole suite again: the release-night test counted 92 migrations and now counts 93 (existing test `journey/existing-clients-carry-on.spec.ts`, changed for that reason only), the engine's copy guard (fixed by rewording two lines), and `the-whole-app-resolves.spec.ts`, which needs `JWT_SECRET` in the environment and passes with one set.
 
 ### 6. For Hafsah
 
