@@ -1,4 +1,5 @@
 import { HELD_FOR_A_SEAT } from '../participants/held-for-a-seat';
+import { whereASessionsReportStands } from './where-a-sessions-report-stands';
 import { theAimsNameKeepsItsShare, theNameWithItsSum } from './the-aims-name-keeps-its-share';
 import { theParticipantAsServed, theFitAsServed, theCheckInRowAsServed, theyAreTheirOwnWords } from './a-transcript-serves-only-what-is-theirs';
 import { theNumberInTheNameIsKept } from './an-aim-said-twice-is-one-aim';
@@ -10723,8 +10724,11 @@ ${told}` : '';
         participant: { select: { partyType: true } },
       },
     });
+    const report = (row?.sessionReport ?? null) as Record<string, unknown> | null;
     return {
-      report: (row?.sessionReport ?? null) as Record<string, unknown> | null,
+      report,
+      /* Whether the report is there, will not come, or the session is still open, in a sentence. A finished session with no report is never going to get one. */
+      ...whereASessionsReportStands({ report, finishedAt: row?.completedAt ?? null }),
       finishedAt: row?.completedAt ?? null,
       sessionNumber: row?.sessionNumber ?? null,
       groundId: row?.groundId ?? null,
