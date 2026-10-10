@@ -9,12 +9,12 @@ import {
  */
 const CHECK_IN = { id: 'ci-1', participantId: 'pt-1' };
 
-function world(opts: { earlier?: number; kept?: number; scenario?: string; userId?: string | null; jobTitle?: string | null; rosterTitle?: string | null; stored?: Record<string, { id: string; content: string }>; read?: any; turns?: string[]; row?: any } = {}) {
+function world(opts: { setup?: boolean; clarification?: boolean; correction?: boolean; earlier?: number; kept?: number; scenario?: string; userId?: string | null; jobTitle?: string | null; rosterTitle?: string | null; stored?: Record<string, { id: string; content: string }>; read?: any; turns?: string[]; row?: any } = {}) {
   const created: any[] = []; const users: any[] = []; const persons: any[] = [];
   const proposalsList: any[] = [];
   const prisma: any = {
     groundParticipant: { findUnique: jest.fn(async () => ({ userId: opts.userId === undefined ? 'u-1' : opts.userId, ground: { organizationId: 'org-1', scenario: opts.scenario ?? 'PULSE_CHECK' } })) },
-    checkIn: { count: jest.fn(async () => opts.earlier ?? 0) },
+    checkIn: { count: jest.fn(async () => opts.earlier ?? 0), findUnique: jest.fn(async () => ({ isSetup: !!opts.setup, isClarification: !!opts.clarification, isSelfCorrection: !!opts.correction })) },
     person: {
       findFirst: jest.fn(async () => ({ id: 'per-1', externalId: 'p-1', title: opts.rosterTitle ?? null })),
       update: jest.fn(async (a: any) => { persons.push(a); return {}; }),
@@ -48,6 +48,9 @@ describe('who this is for', () => {
     ['somebody whose job is already kept', { kept: 1 }],
     ['a team update, which has one line', { scenario: 'TEAM_UPDATES' }],
     ['somebody with no sign-in, who there is nobody to keep it for', { userId: null }],
+    ['a set-up conversation', { setup: true }],
+    ['a clarification', { clarification: true }],
+    ['a correction of an earlier check-in', { correction: true }],
   ])('%s is not', async (_name, opts) => {
     expect(await isTheirFirstCheckIn(world(opts as any).deps, CHECK_IN)).toBeNull();
   });

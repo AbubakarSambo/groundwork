@@ -112,7 +112,8 @@ async function runScenario(prisma: any, model: AnthropicService, s: AScenario) {
    * also what a real customer hit ("the free trial refusing invites past 5 people"). Recorded, and
    * the org is marked covered here so the rest of the scenario can actually be tested.
    */
-  if (s.people.length > 5 && process.env.COVER_THE_ORG === '1') {
+  /* COVER_THE_ORG=all covers every organisation: on the test bed the free trial's switch is on, so a new organisation has no plan and cannot open a check-in. */
+  if ((s.people.length > 5 && process.env.COVER_THE_ORG === '1') || process.env.COVER_THE_ORG === 'all') {
     await prisma.organization.update({
       where: { id: org.id },
       data: { freeUntil: new Date(Date.now() + 90 * 86400000), freePlan: 'GROWTH' as any },

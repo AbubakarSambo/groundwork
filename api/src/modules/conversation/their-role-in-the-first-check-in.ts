@@ -168,6 +168,9 @@ export async function isTheirFirstCheckIn(deps: Deps, checkIn: { id: string; par
   const organizationId = participant?.ground?.organizationId as string | undefined;
   if (!userId || !organizationId) return null;
   if (NOT_FOR_THE_ROLE.has(String(participant?.ground?.scenario ?? ''))) return null;
+  /* A set-up conversation, a clarification and a correction are not a person's first check-in. */
+  const thisOne = await attempt(() => deps.prisma.checkIn?.findUnique?.({ where: { id: checkIn.id }, select: { isSetup: true, isClarification: true, isSelfCorrection: true } }), null);
+  if (thisOne && (thisOne.isSetup || thisOne.isClarification || thisOne.isSelfCorrection)) return null;
   const finishedBefore = await attempt(() => deps.prisma.checkIn?.count?.({
     where: { id: { not: checkIn.id }, status: CheckInStatus.COMPLETED, isSetup: false, participant: { userId } },
   }), 0);
