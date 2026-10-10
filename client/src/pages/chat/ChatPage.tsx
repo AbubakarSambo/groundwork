@@ -438,6 +438,24 @@ export function ChatPage() {
             setOpenFailed(false)
             return
           }
+          /* B-129: the same "a completed check-in has no turns of its own on this endpoint
+             unless this page opened it" case as the mount effect above, reached here when that
+             effect's own transcript read raced the open request. A 400 "already finished" or
+             "already complete" over a check-in the server itself calls COMPLETED is the settled
+             state, not a failure to retry. */
+          if (t.checkIn?.groundId && !groundId) setGroundId(t.checkIn.groundId)
+          if (t.brief) setBrief(t.brief)
+          if (t.mayCompleteAfter) setMayCompleteAfter(t.mayCompleteAfter)
+          if (t.checkIn?.status === 'COMPLETED') {
+            setDone(true); setCompleted(true); setJustFinished(true)
+            setOpened(true); setOpenFailed(false)
+            return
+          }
+          if (t.checkIn?.status === 'DECLINED') {
+            setDone(true); setDeclined(true)
+            setOpened(true); setOpenFailed(false)
+            return
+          }
         } catch { /* no transcript either; fall through to the failure banner below */ }
       }
       setOpenFailedMessage(message || 'Could not open your session. This is usually a temporary issue.')
@@ -759,23 +777,36 @@ export function ChatPage() {
               content: turn.id === lastTurnId ? closingMessageText(turn.content, t.endCard) : turn.content,
               suggestedAnswers: turn.suggestedAnswers, ideaOffer: turn.ideaOffer, requestOffer: turn.requestOffer, openTheRequest: turn.openTheRequest,
             })))
-            /**
-              * ROUND 6, ITEM 4: A SESSION THAT WAS ALREADY FINISHED GETS THE SAME DONE PAGE AS
-              * ONE JUST FINISHED NOW.
-              *
-              * Loading `/checkin/:id` for a session completed earlier used to set `completed`
-              * alone - `justFinished` was only ever set by the two live-finish paths below (the
-              * normal finish, and the "already complete" refusal caught while sending) - so the
-              * early return to `TheDonePage` never fired here, and the OLD inline "already
-              * complete" block further down rendered instead: its own report blocks, a dash-joined
-              * sentence, "Open the team board →", and a "Back to check-ins" link cut off at the
-              * bottom - none of it the prototype's Done page. `justFinished` is what that early
-              * return actually keys on, so this sets it too - the prototype shows the same Done
-              * page whether you just finished or are opening a finished check-in fresh.
-              */
-            if (t.checkIn?.status === 'COMPLETED') { setDone(true); setCompleted(true); setJustFinished(true) }
-            /** Reopening a session already declined must show the settled state, not the composer. */
-            if (t.checkIn?.status === 'DECLINED') { setDone(true); setDeclined(true) }
+          }
+          /**
+            * ROUND 6, ITEM 4: A SESSION THAT WAS ALREADY FINISHED GETS THE SAME DONE PAGE AS
+            * ONE JUST FINISHED NOW.
+            *
+            * Loading `/checkin/:id` for a session completed earlier used to set `completed`
+            * alone - `justFinished` was only ever set by the two live-finish paths below (the
+            * normal finish, and the "already complete" refusal caught while sending) - so the
+            * early return to `TheDonePage` never fired here, and the OLD inline "already
+            * complete" block further down rendered instead: its own report blocks, a dash-joined
+            * sentence, "Open the team board →", and a "Back to check-ins" link cut off at the
+            * bottom - none of it the prototype's Done page. `justFinished` is what that early
+            * return actually keys on, so this sets it too - the prototype shows the same Done
+            * page whether you just finished or are opening a finished check-in fresh.
+            *
+            * B-129: NOT NESTED INSIDE THE TURNS CHECK ANY MORE. A session this page has never
+            * opened keeps no turns of its own on this endpoint - only a session that was actually
+            * opened here has any - so `t.turns` is empty for a check-in completed without ever
+            * going through this page's own composer, and this whole branch was unreachable for
+            * it. That left a real, server-confirmed "you have already finished this check-in"
+            * falling through to `openSession.mutate()`, whose 400 then painted the generic
+            * failure banner - "Try again" (which can never work), a message box, and "Opening
+            * your session…" stuck forever - over what is, in truth, a finished session like any
+            * other. `status` is read from the check-in itself, same as `sessionNumber` and
+            * `groundId` just above, never from whether turns happened to come back.
+            */
+          if (t.checkIn?.status === 'COMPLETED') { setDone(true); setCompleted(true); setJustFinished(true) }
+          /** Reopening a session already declined must show the settled state, not the composer. */
+          if (t.checkIn?.status === 'DECLINED') { setDone(true); setDeclined(true) }
+          if ((t.turns && t.turns.length > 0) || t.checkIn?.status === 'COMPLETED' || t.checkIn?.status === 'DECLINED') {
             setOpened(true)
             setOpenFailed(false)
             setKnowWhatIsHere(true)
@@ -1103,6 +1134,28 @@ export function ChatPage() {
    * file and still render where somebody is deciding whether to take part - the invitation, and
    * the admin's guide - which is where a promise belongs. Not in front of every session.
    */
+
+  /**
+   * B-129: A CHECK-IN THAT IS NOT YOURS TO OPEN IS A REFUSAL, NOT A LOAD FAILURE.
+   *
+   * An admin who opens a colleague's check-in by its conversation link (rather than its own page)
+   * was shown the generic failure banner - "That check-in is not yours to open, so go back to
+   * your own check-ins." over a live "Try again" (which can only ever fail the same way again),
+   * a message box, and a composer, none of which this reader can use. One sentence and one way
+   * back is all this state needs; the server's own wording decides when it fires.
+   */
+  if (openFailed && /not yours to open/i.test(openFailedMessage) && !bareFrame) {
+    return (
+      <div className="gwui-ci-done-wrap">
+        <p className="gwui-ci-finished-note">{openFailedMessage}</p>
+        <div className="gwui-ci-back-wrap">
+          <button onClick={() => navigate('/grounds')} className="gwui-ci-back-link">
+            ← Back to your check-ins
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   if (justFinished && groundId && checkInId && !bareFrame) {
     return (
