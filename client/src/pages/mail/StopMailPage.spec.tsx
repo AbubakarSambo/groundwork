@@ -38,9 +38,16 @@ describe('the unsubscribe page', () => {
     expect(screen.queryByText('That did not go through')).toBeNull()
   })
 
-  it('an unknown link says so kindly, never "broken"', async () => {
+  /*
+   * UPDATED FOR B-131: an unknown token used to leave the page headed by whatever the server's own
+   * `title` said (or "Done." when it sent none), with nothing to press but the logo - the same
+   * dead end the deep page audit found on its sibling, Stop reminders. It now says plainly that
+   * the reminders could not be found, and offers a way to Settings.
+   */
+  it('an unknown link says plainly that it could not be found, with a way to Settings, never "broken"', async () => {
     open({ success: true, data: { known: false, stopped: true, says: ['That link is not one we recognise, which usually means these emails have already stopped.'] } })
-    expect(await screen.findByText(/That link is not one we recognise/)).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'We could not find those reminders' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Sign in to change your emails in Settings' })).toBeTruthy()
     expect(document.body.textContent).not.toMatch(/broken/i)
   })
 

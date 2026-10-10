@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { AuthCard } from '@/pages/auth/auth-kit'
 import { Button, Stack } from '@/components/gw/ui'
@@ -39,6 +39,9 @@ export function StopMailPage({ which }: { which: Which }) {
      only this link to come back by). From the engine's review of the opt-out (1fe53cb2). */
   const [doneTitle, setDoneTitle] = useState('Done.')
   const [canUndo, setCanUndo] = useState(false)
+  /* B-131: a link whose token matches nothing is not the same as a successful unsubscribe, and
+     reads differently - it offers a way to Settings instead of "Turn them back on". */
+  const [unknownToken, setUnknownToken] = useState(false)
   async function answer(path: '' | '/undo') {
     setBusy(true)
     try {
@@ -77,15 +80,24 @@ export function StopMailPage({ which }: { which: Which }) {
           /* An API from before decision 109 answers `says` as one sentence and no question; the page
              must still read it (the client and the API are not always released at the same moment). */
           const lines: string[] = Array.isArray(q?.says) ? q.says : (typeof q?.says === 'string' ? [q.says] : [])
+          /* B-131: a token that matches nothing, whether or not the server also sent a question's
+             title, is not a successful unsubscribe - it reads as "we could not find those
+             reminders", with a way to Settings, never "Done." with nothing to press. */
+          if (q?.known === false) {
+            setUnknownToken(true)
+            setDoneTitle('We could not find those reminders')
+            setSays(lines.join(' '))
+            setState('done')
+            return
+          }
           if (!q?.title) {
             setSays(lines.join(' ') || 'No more of this mail is going to you.')
             setState('done')
             return
           }
           setQuestion({ ...q, says: lines })
-          setState(q?.known === false ? 'done' : 'asking')
+          setState('asking')
           setSays(lines.join(' '))
-          if (q?.known === false) setDoneTitle(q?.title ?? 'That link is not one we recognise')
           return
         }
         /* THE ENVELOPE. Every API response here is wrapped as `{ success, data }`, so reading
@@ -139,6 +151,9 @@ export function StopMailPage({ which }: { which: Which }) {
     <AuthCard title={which === 'unsubscribe' ? doneTitle : 'Done.'} sub={says}>
       {which === 'unsubscribe' && canUndo && (
         <Button kind="secondary" disabled={busy} onClick={() => void answer('/undo')}>Turn them back on</Button>
+      )}
+      {which === 'unsubscribe' && unknownToken && (
+        <p className="gw-auth-small"><Link to="/settings">Sign in to change your emails in Settings</Link></p>
       )}
     </AuthCard>
   )
