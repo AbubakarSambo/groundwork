@@ -2,6 +2,34 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## The control run: the same engine with the role interview switched off (10 October, night)
+
+**What was run.** `run-oct10e-control`: all 24 scenarios at 9 answers, on `wip/release`'s engine, with the first check-in's role interview switched off by a run-only edit (two lines reading `process.env.CONTROL_RUN` in `conversation.service.ts`). The edit was undone with `git checkout` after the run and never committed. It finished all 24 scenarios. Score: `api/journey/all-24/run-oct10e-control/score-vs-baseline.txt`; the scorer's verdict is "Nothing got worse than the baseline", every problem 0.
+
+| Engine value | Baseline | Interview on, run c | Interview on, run d | **Interview off (control)** |
+| --- | --- | --- | --- | --- |
+| proof asked for | 42 | 30 | 26 | **45** |
+| past words | 25 | 37 | 36 | 32 |
+| specific detail | 88 | 111 | 102 | 93 |
+| blocker checked | 37 | 55 | 60 | 41 |
+| differences | 29 | 41 | 38 | 38 |
+| agreements | 56 | 78 | 86 | 78 |
+| findings | 81 | 87 | 87 | 87 |
+| patterns found | 100 | 102 | 119 | 90 |
+| commitments | 33 | 59 | 50 | 49 |
+| judgement present | 21 | 29 | 29 | 29 |
+| every problem | 0 | 0 | 0 | 0 |
+
+**What the proof turns were.** The count is any Groundwork turn with one of the scorer's words in it. Split by the word that matched:
+
+| Run | Total | "picture" | Every other word (document, attach, receipt, screenshot, statement, photo) |
+| --- | --- | --- | --- |
+| Interview on, run c | 30 | 19 | 11 |
+| Interview on, run d | 26 | 12 | 14 |
+| Interview off (control) | 45 | 28 | 17 |
+
+**Verdict: clearly higher with the interview off.** 45 against 30 and 26, so the drop is not only the measure's own spread: the interview takes about one in three of these turns. Most of the difference is the word "picture" (usually "the full picture", not a request for one); the real requests for a document, receipt or screenshot are 17 against 11 and 14, a smaller gap from a handful of turns. The interview also brings things the control does not: specific detail 111 and 102 against 93, blocker checked 55 and 60 against 41, patterns found 102 and 119 against 90. As instructed, both tables went to Hafsah in the morning report and the work carried on.
+
 ## The role interview made lighter, and two more 24-scenario runs at 9 answers (10 October, evening)
 
 **Why.** Under the baseline's own conditions (9 answers a person) the first version of the interview scored WORSE on specific detail, blocker checked and patterns found, because it added about three turns. The coordinator asked for a lighter one that adds no more than one turn.
