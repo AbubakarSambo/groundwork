@@ -1,5 +1,29 @@
 # Morning report
 
+**10 October, 18:00: where things stand, for the next account to pick up.**
+
+- **The control run is still running.** It is run `oct10e-control` in `api/journey/all-24/run-oct10e-control/`: the same engine at 9 answers with the first check-in's role interview switched off. It shows whether "proof asked for" (baseline 42, run c 30, run d 26) is low because of the interview or because the number swings between runs. At 18:00 no scenario had finished yet (session 1 of 4 of the first scenario); a full run takes about an hour and a half.
+- **Uncommitted, and must never be committed:** the control run switches the interview off with a run-only edit in `api/src/modules/conversation/conversation.service.ts` (two lines reading `process.env.CONTROL_RUN`). When the run ends, undo it with `git checkout -- api/src/modules/conversation/conversation.service.ts`. Until then, commit by file name only.
+- **Next, in order:**
+  1. Score the control run against the baseline, add its table to `docs/run-log.md` beside runs c and d, and settle "proof asked for". If the control is also low, it is the number's own spread: tell Hafsah and move on. If the control is high, the interview costs proof requests: bring both tables to Hafsah before anything else.
+  2. Once settled, give Hafsah the one-line command to update the open pull request from `mine/wip/release`. She runs it herself; it is in the chat history.
+  3. Then the final evaluation exactly as Hafsah set it out:
+     - on `wip/release`'s code, with no code changes while it runs;
+     - real model calls and complete sessions; one month of four weekly check-ins per person, with the clock moved properly;
+     - test 1, lazy staff: six or more profiles across sales, project and onboarding;
+     - test 2, busy managers with blind spots: six or more, each with a team of 4 to 6;
+     - test 3, admin, finance and HR in the Client and Big organisations, with suites on; missing pieces go to `docs/roadmap.md`;
+     - one file per profile in `docs/final-evaluation/`: every session word for word, every report and board as the person, the lead, a colleague and the admin see it, every email and WhatsApp message, and scores from 1 to 5 with reasons;
+     - then `docs/final-evaluation/summary.md` with the score table and the ten most important problems, each marked as a bug before release or a roadmap item;
+     - one profile and one helper at a time. Fix nothing until Hafsah has read the summary.
+- **Already done for the release:** Context in Ask passes 35 of 35. The lighter role interview recovers every 9-answer number except "proof asked for".
+- **Needs Hafsah:**
+  1. Whether to accept "proof asked for" as spread if the control run is also low, or to stop the control run and start the evaluation now.
+  2. How small WhatsApp approvals are defined (proposed: at or below the line manager's limit; with no limit set, all count as small).
+  3. Whether more patterns per person under the new pattern prompt (1.67 against 1.35) is fine.
+  4. On `wip/next`: admins reading no evidence from check-ins they are not in, receipt storage, appeal-changed ratings, older budgets escalating, and request 212.
+  5. Old test databases to drop by hand (`gw_sweep_old_*`, `gw_rev_*_1009`, `gw_rel_*_1008`, `gw_next_p2*`, `gw_next_run*`, `gw_e1`).
+
 **9 October, evening: ready for the next pull request.** `wip/release` (after `0bdfd3687`): the privacy leak B-091/B-013 closed, the old context chat kept on (decision 124), appeals by email and in the app, request 208's engine faults fixed, and a final check that passed with nothing blocking (API 19,301, client 4,831, migrations on live's schema with rows unchanged, privacy on every changed piece, existing users unchanged). The write-up is `docs/pull-request.md`; the commands are in the chat.
 
 **9 October, 06:15: the drop was noise; the pull request is ready.** A second run on exactly this release's engine (run-oct9b, 23 of 24 scenarios; discovery was still running at the stop) brought "patterns found" back to 94, and the scorer's verdict is "Nothing got worse than the baseline", every problem 0. Across four runs patterns found reads 97, 96, 89, 94 on the same scenarios: the scenarios that fell in one run rose in the next. It is never held at 100: a code is named in about half of the model's readings, which is the steadiness question for Hafsah. Every report and judgement carried the current prompt versions.
