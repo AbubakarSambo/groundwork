@@ -12,7 +12,7 @@ import { SCENARIO_LABELS, SCENARIO_GROUPS, scenarioLabel, SCENARIO_FACTS, CADENC
 import { groupOfCard } from '@/pages/grounds/CreateGroundPage'
 import { useSearchParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { entryApi, entryAnchorApi } from '@/api/entry'
+import { entryApi, entryAnchorApi, type OnboardResult } from '@/api/entry'
 import { billingApi } from '@/api/billing'
 import { authApi } from '@/api/auth'
 import { PeoplePicker } from '@/components/gw/PeoplePicker'
@@ -67,6 +67,10 @@ function asSomeoneToInvite(entry: string, displayNames?: Record<string, string>)
 
 /** What a person may say in one message. The API's cap on every door; the same number here so a turn is never refused. */
 const A_MESSAGE_MAX = 8000
+
+/* B-193: how long a set-up message may go without even its first delta before the watchdog in
+   `sendOnboarding` gives up on it. See the comment at its call site. */
+const ENTRY_SEND_MAY_TAKE = 45_000
 
 const STORAGE_KEY = 'gw_entry_session'
 /** Where the API lives, for the one place we hand the browser away (Google). */
@@ -2323,11 +2327,29 @@ export function EntryChatPage() {
        */
       setOnboardingDraft('')
       let draft = ''
-      const res = await entryApi.onboardStream(
+      let gotAnyDelta = false
+      /*
+       * B-193: A HUNG STREAM USED TO LEAVE THE SCREEN SILENT FOREVER.
+       *
+       * `onboardStream` had no watchdog, unlike `ChatPage`'s own `open()` (see "A WATCHDOG" there).
+       * If the stream never sent a delta and never settled - the real shape of "Entry stream
+       * failed" on the server, seen live as a description that sat on screen for 90 seconds with
+       * no writing indicator and no error, even after reopening the page - nothing here ever threw,
+       * so the `catch` below never ran: no message, no composer text restored, no way forward.
+       *
+       * `entryStreamPromise` is raced against a timeout that only fires if NOT ONE delta has
+       * arrived yet - a reply that is genuinely streaming (even slowly) is never cut off, only one
+       * that has said nothing at all in 45 seconds, the same generous allowance ChatPage's own
+       * watchdog uses for a request that never truly started. The original promise is left running
+       * and given a no-op `catch` so a late answer arriving after the timeout has already fired
+       * does not surface as an unhandled rejection; if it resolves anyway, the reply is simply
+       * never shown; a sent message is already not lost either way (persisted just above).
+       */
+      const entryStreamPromise = entryApi.onboardStream(
         withoutPickedOpener(newHistory) as Turn[],
         isAnchorDraft() ? 'HELP_TEAM_UNDERSTAND' : (onboardingSelections.classifiedScenario || (scenarioNow === undefined ? pickedScenario : scenarioNow) || scenario || undefined),
         onboardingSelections.mode === 'something_new' ? 'STARTING' : undefined,
-        (text) => { draft += text; setOnboardingDraft(draft) },
+        (text) => { gotAnyDelta = true; draft += text; setOnboardingDraft(draft) },
         /*
          * WHAT THE LAST TURN ALREADY WORKED OUT, HANDED BACK.
          *
@@ -2344,6 +2366,15 @@ export function EntryChatPage() {
           ...(plannedFrom?.timelineDays ? { timelineDays: plannedFrom.timelineDays } : {}),
         },
       )
+      entryStreamPromise.catch(() => { /* a late answer after the watchdog already fired - see above */ })
+      const res = await Promise.race([
+        entryStreamPromise,
+        new Promise<OnboardResult>((_, reject) => {
+          setTimeout(() => {
+            if (!gotAnyDelta) reject(Object.assign(new Error('The conversation could not be reached just now.'), { isTimeout: true }))
+          }, ENTRY_SEND_MAY_TAKE)
+        }),
+      ])
       setOnboardingDraft('')
       // Safety net: if the endpoint says we are ready to wrap up but the reply
       // still asks a question, showing the wrap-up card would strand that
@@ -2483,7 +2514,7 @@ export function EntryChatPage() {
       setTimeout(() => {
         if (msgsRef.current) msgsRef.current.scrollTop = msgsRef.current.scrollHeight
       }, 50)
-    } catch {
+    } catch (err: any) {
       /**
        * IT SAID THE MESSAGE WAS STILL HERE AND PUT IT NOWHERE.
        *
@@ -2496,7 +2527,18 @@ export function EntryChatPage() {
        */
       setOnboardingHistory(onboardingHistory)
       setInput(text.trim())
-      toast.error('That did not send - your message is back in the box. Try again.')
+      /*
+       * B-193: THE WATCHDOG'S OWN FAILURE SAYS SO, LIKE THE CHECK-IN CHAT DOES.
+       *
+       * `err.isTimeout` is only set by the race above - a stream that genuinely sent nothing in
+       * 45 seconds, Groundwork's own version of what the check-in chat calls "The conversation
+       * could not be reached just now". An ordinary send failure (a 400, a dropped connection that
+       * rejected quickly) keeps the plainer "That did not send" wording, since it is not the same
+       * fact: that one failed and said so at once; this one never answered at all.
+       */
+      toast.error(err?.isTimeout
+        ? 'The conversation could not be reached just now, so this cannot continue this minute. Nothing you wrote is lost - it is back in the box below. Try again.'
+        : 'That did not send - your message is back in the box. Try again.')
     } finally {
       setOnboardingLoading(false)
     }
