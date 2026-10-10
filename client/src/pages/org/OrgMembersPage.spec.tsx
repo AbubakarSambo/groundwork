@@ -219,6 +219,21 @@ describe('everyone at Baridi', () => {
   })
 
   /*
+   * B-154. The role filter used to say "Take part" while every row for that same role read
+   * "Takes part" (`roleWord`'s own word) - the same role, two different words, one letter apart.
+   * The filter now says "Takes part" too, and still finds exactly the people with that role.
+   */
+  it('the "Takes part" filter says the same word the table itself uses for that role', async () => {
+    open()
+    await screen.findByText('Miriam Wanjiku', { selector: '.gwui-person-name' })
+    expect(screen.queryByRole('radio', { name: 'Take part' })).toBeNull()
+    fireEvent.click(screen.getByRole('radio', { name: 'Takes part' }))
+    expect(screen.getByText('2 people shown.')).toBeTruthy()
+    expect(screen.getByText('Miriam Wanjiku', { selector: '.gwui-person-name' })).toBeTruthy()
+    expect(screen.getAllByText('Takes part').length).toBeGreaterThan(1)
+  })
+
+  /*
    * HAFSAH'S FAULT 4: A SEARCH BOX ABOVE THE TABLE THAT ALSO FINDS A CHECK-IN SOMEBODY IS IN, so an
    * admin can find the two or three people on a check-in among thirty without scrolling the whole
    * table by eye.
