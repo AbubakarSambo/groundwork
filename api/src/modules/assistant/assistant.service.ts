@@ -376,7 +376,7 @@ export class AssistantService {
         await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } }).catch(() => undefined);
         parked = null;
       }
-      if (parked) return this.resolveParked(organizationId, personId, who, parked, message);
+      if (parked) return this.resolveParked(organizationId, personId, who, parked, message, { groundId, userId, forceAddContext });
     }
 
     /*
@@ -2315,7 +2315,15 @@ export class AssistantService {
    * have been deprovisioned, or their organisation disconnected. A parked action carries the
    * authorisation it had when it was offered, and that is exactly what must not be trusted.
    */
-  private async resolveParked(organizationId: string, personId: string, who: string, parked: any, message: string): Promise<Reply> {
+  private async resolveParked(
+    organizationId: string,
+    personId: string,
+    who: string,
+    parked: any,
+    message: string,
+    /** Where the person is and what the screen said this message is for, so a dropped yes/no does not lose it. */
+    where?: { groundId?: string; userId?: string | null; forceAddContext?: boolean },
+  ): Promise<Reply> {
     /*
      * A DOCUMENT IS ANSWERED BEFORE THE YES/NO READING, because its question is not a yes/no one.
      * "Everyone" is not a confirmation and "just me" is not a refusal, and running them through
@@ -2405,7 +2413,8 @@ export class AssistantService {
        * every lane answer "I cannot find you" immediately after a dropped proposal - which reads as
        * the product breaking at the exact moment somebody changed the subject.
        */
-      return this.answer(organizationId, personId, who, message, true);
+      /* The check-in they are on and the set-up door they came through stay with the message (found live, 10 October 2026: a fact typed on one check-in, after a say-back was left waiting on another, was answered "I cannot answer that one yet"). */
+      return this.answer(organizationId, personId, who, message, true, where?.groundId, where?.userId, where?.forceAddContext);
     }
 
     /*

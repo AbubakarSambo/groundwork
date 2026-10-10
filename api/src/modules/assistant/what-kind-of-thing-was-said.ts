@@ -132,6 +132,8 @@ export async function whatKindOfThingWasSaid(engine: Reader, message: string, op
   if (!heard?.kind) return { kind: 'answer' };
   const own = (t: string | undefined) => (t && t.trim() && traceableToWhatTheySaid(t, said) ? t.trim() : said);
   if (heard.kind in LINE_KINDS) return { kind: heard.kind as KindOfLine, text: own(heard.text) };
+  /* A private note needs the lead to ask for one. A worry or a judgement about a person is talked through, however the model read it (found live, 10 October 2026). */
+  if (heard.kind === 'private_note' && !/\b(?:keep|remember|note|noted|private|privately|jot|to\s+myself|between\s+us|just\s+for\s+me|only\s+for\s+me)\b/i.test(said)) return { kind: 'answer' };
   if (heard.kind === 'private_note') return { kind: 'private_note', text: own(heard.text), about: heard.about?.trim() || null };
   if (heard.kind === 'question_for_person' && heard.about?.trim()) {
     return { kind: 'question_for_person', about: heard.about.trim(), question: (heard.question ?? '').trim() || said };
