@@ -458,8 +458,15 @@ export function ChatPage() {
           }
         } catch { /* no transcript either; fall through to the failure banner below */ }
       }
+      /*
+       * B-194: NO TOAST HERE. A toast duplicated the banner's own sentence - the same long
+       * message once in the fading red toast and again, permanently, in the banner below with
+       * "Try again" - and at 390px the toast sat over the tab row. The comment just above this
+       * block already says why the banner, not a toast, is the right place: the state is
+       * persistent ("this check-in is on hold", "not yet theirs") until "Try again" is pressed,
+       * not a blip that fades on its own. One sentence, said once, is enough.
+       */
       setOpenFailedMessage(message || 'Could not open your session. This is usually a temporary issue.')
-      toast.error(message || 'Could not open session.')
       setOpenFailed(true)
     },
   })
