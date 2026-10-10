@@ -209,7 +209,24 @@ export function OnePersonPage() {
           label={`Role at ${orgName}`}
           value={m.role}
           disabled={isOwner || isMe || role.isPending}
-          onChange={(next) => role.mutate({ what: next as RoleWrite, first })}
+          onChange={(next) => {
+            /*
+             * B-169: MAKING SOMEBODY AN ADMIN ASKS FIRST. Every other role here changes what one
+             * person can do; this one changes who else can be made an admin, see every member's
+             * organisation-wide data, and change anyone else's role in turn - the one choice this
+             * page cannot undo by picking something else, the way the deep page audit's own click
+             * test found out by accident (B-169's write-up: a single press changed a real role on
+             * this computer's database, with nothing asking first). The other three roles still
+             * apply the moment they are chosen, as "Changes apply straight away" still promises.
+             */
+            if (next === 'ADMIN') {
+              if (window.confirm(`Make ${name} an admin of ${orgName}?\n\nAn admin can see everyone's check-ins, change anyone's role, and manage billing.`)) {
+                role.mutate({ what: next as RoleWrite, first })
+              }
+              return
+            }
+            role.mutate({ what: next as RoleWrite, first })
+          }}
           options={ROLE_CHOICES.map((c) => ({ key: c.value, title: c.title, description: c.says }))}
         />
         {ownerId === user?.id && !isMe && m.role === 'ADMIN' && (

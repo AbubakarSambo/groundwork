@@ -152,6 +152,32 @@ describe('what Grace can change', () => {
     fireEvent.click(await screen.findByRole('radio', { name: /^Guest/ }))
     await waitFor(() => expect(patch).toHaveBeenCalledWith('/users/miriam', { role: 'GUEST' }))
   })
+
+  /*
+   * B-169. A single press on "Admin" changed a real role on this computer's database during the
+   * deep page audit's own click test, with no "are you sure" - every other role change applies
+   * straight away, which is right for them, but making somebody an admin is the one choice here
+   * that cannot be undone by picking something else: it hands them everyone's data and the power
+   * to change anyone else's role in turn.
+   */
+  it('making somebody an admin asks first, and does nothing on Cancel', async () => {
+    const patch = vi.spyOn(apiClient, 'patch').mockResolvedValue({ data: {} } as any)
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    open()
+    fireEvent.click(await screen.findByRole('radio', { name: /^Admin/ }))
+    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('Make Miriam Wanjiku an admin'))
+    expect(patch).not.toHaveBeenCalled()
+    confirmSpy.mockRestore()
+  })
+
+  it('making somebody an admin, confirmed, applies the change', async () => {
+    const patch = vi.spyOn(apiClient, 'patch').mockResolvedValue({ data: {} } as any)
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    open()
+    fireEvent.click(await screen.findByRole('radio', { name: /^Admin/ }))
+    await waitFor(() => expect(patch).toHaveBeenCalledWith('/users/miriam', { role: 'ADMIN' }))
+    confirmSpy.mockRestore()
+  })
 })
 
 describe('removing somebody from the organisation', () => {
