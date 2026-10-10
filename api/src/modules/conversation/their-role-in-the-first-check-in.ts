@@ -1,5 +1,4 @@
 import { CheckInStatus, TurnRole } from '@prisma/client';
-import { traceableToWhatTheySaid } from '../grounds/nothing-proposed-that-nobody-said';
 import { NOT_NAMED_YET } from '../suites/correct-their-job';
 import { theyDeclined, type AThingToCover } from './what-this-session-has-covered';
 
@@ -35,15 +34,13 @@ export const theRoleMapQuestion = (roleName: string, owns: string): string =>
 /** The things the conversation learns about the job, in the words used about them. Never questions to be read out. */
 /** How each thing is asked in a conversation. Only these words count as having asked it, so a turn about something else is never taken for one of these. */
 const ASKED_AS: Record<string, RegExp> = {
-  'role-name': /\b(?:what is your (?:job|role)(?: title)?(?: called)?|what do you do (?:here|for work|at \w+)|your job title|what is your role|what do you call your (?:job|role)|what (?:would|do) you call (?:your|the) (?:job|role))\b/i,
-  'role-owns': /\b(?:responsible for|you own|in charge of|accountable for|what does your (?:job|role) (?:cover|involve|include)|what (?:is|are) (?:your|the) main (?:responsibilit|part)|what is your job (?:made of|about)|your day[- ]to[- ]day)/i,
+  'role-owns': /\b(?:what is your (?:job|role)(?: title)?(?: called)?|what do you do (?:here|for work|at \w+)|your job title|what do you call your (?:job|role)|what (?:would|do) you call (?:your|the) (?:job|role)|responsible for|you own|in charge of|accountable for|what does your (?:job|role) (?:cover|involve|include)|what (?:is|are) (?:your|the) main (?:responsibilit|part)|what is your job (?:made of|about)|your day[- ]to[- ]day)/i,
   'role-good': /\b(?:doing (?:it |this |the job |your job |your role )?well|good looks like|what does (?:a )?good|how (?:will|would|do) you know (?:you(?:'| a)re|it is|that you(?:'| a)re) (?:doing|going) well|success (?:in|for) your (?:job|role))\b/i,
   'role-depends': /\b(?:depend(?:s|ing)? on|rely on|relies on|who (?:do )?you (?:need|wait for|count on)|who needs you|who (?:waits|is waiting) for you|who counts on you)\b/i,
   'role-way': /\b(?:gets? in your way|in your way|gets? in the way|what (?:usually )?(?:slows|blocks|holds) you|most often (?:slows|stops|blocks))\b/i,
 };
 
-export const ROLE_TOPICS: (AThingToCover & { field: 'roleName' | 'owns' | 'doingWell' | 'dependsOn' | 'inTheWay' })[] = [
-  { id: 'role-name', field: 'roleName', what: 'what their job is called' },
+export const ROLE_TOPICS: (AThingToCover & { field: 'owns' | 'doingWell' | 'dependsOn' | 'inTheWay' })[] = [
   { id: 'role-owns', field: 'owns', what: 'what they are responsible for in their job' },
   { id: 'role-good', field: 'doingWell', what: 'what doing well looks like in their job' },
   { id: 'role-depends', field: 'dependsOn', what: 'who they depend on in their job, and who depends on them' },
@@ -70,13 +67,14 @@ export const FIRST_CHECK_IN_ROLE_PROMPT = [
 
 export const ROLE_READING_PROMPT = [
   'You read what one person said in their first check-in, and pick out only what they said about their own job.',
-  'Use only their own words. Copy each answer from what they said, trimmed to the part that answers it. Never write anything of your own, never combine two parts into a new sentence, and never guess. If they did not say it, leave it out.',
+  'Use only their own words. Copy each part from ONE of their answers, exactly as they said it, trimmed to the sentence or sentences that answer it. Never write anything of your own, never join words from two different answers, and never guess. If they did not say it, leave it out.',
+  'Each answer is shown under the question it answered, so you can tell which part of their job it is about. Take a part only from the answer to the question about it, or from an answer where they volunteered it. A worry about a customer or a deal is not part of their job.',
   'roleName: what they call their job, if they said it, in a few words such as "sales representative". Otherwise leave it out.',
   'owns: what they said they are responsible for.',
   'doingWell: what they said doing well looks like in their job.',
   'dependsOn: who they said they depend on, and who depends on them. One entry for both is fine.',
   'inTheWay: what they said usually gets in their way.',
-  'Only the person\'s own turns are given. The questions they were asked are not.',
+  'Copy only from the lines that start with "They said". The lines that start with "They were asked" are only there so you know what was being answered.',
 ].join('\n');
 
 export const ROLE_READING_SCHEMA = {
@@ -104,18 +102,21 @@ export const LONGEST_PART = 600;
  * is always theirs. A job name has to be short, and has to appear in what they said.
  */
 export function onlyWhatTheySaid(read: WhatTheySaidAboutTheirJob | null | undefined, theirTurns: string[]): WhatTheySaidAboutTheirJob {
-  const said = theirTurns.join('\n');
+  const norm = (t: string) => t.toLowerCase().replace(/[\u2018\u2019]/g, "'").replace(/[^a-z0-9' ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const turns = theirTurns.map(norm);
   const out: WhatTheySaidAboutTheirJob = {};
   for (const key of ['roleName', 'owns', 'doingWell', 'dependsOn', 'inTheWay'] as const) {
     let v = String((read as any)?.[key] ?? '').replace(/\s+/g, ' ').trim();
     if (!v) continue;
+    if (v.length > LONGEST_PART) v = `${v.slice(0, LONGEST_PART).replace(/\s+\S*$/, '')}`;
+    const wanted = norm(v.replace(/[.!?]+$/, ''));
+    /* One answer, as they said it: the words must run on unbroken inside a single turn, never be stitched from two. */
+    if (!wanted || !turns.some((t) => t.includes(wanted))) continue;
     if (key === 'roleName') {
-      if (v.split(/\s+/).length > 6 || v.length > 80 || !said.toLowerCase().includes(v.toLowerCase().replace(/[.!?]+$/, ''))) continue;
+      if (v.split(/\s+/).length > 6 || v.length > 80) continue;
       out.roleName = v.replace(/[.!?]+$/, '');
       continue;
     }
-    if (v.length > LONGEST_PART) v = `${v.slice(0, LONGEST_PART).replace(/\s+\S*$/, '')}`;
-    if (!traceableToWhatTheySaid(v, said)) continue;
     out[key] = v;
   }
   return out;
@@ -204,6 +205,31 @@ export function coverageOf(topics: AThingToCover[], turns: { role: 'AI' | 'PERSO
 }
 
 /**
+ * WHICH TURN ASKS ABOUT THE JOB. The model works through the spine of the check-in and, left alone, closes before it ever asks about the
+ * job (a first live walk, 10 October 2026: seven turns, not one question about it). So the shape is the product's and the words are the model's:
+ * from the person's second answer, on every other turn, the one thing not yet asked is named for THIS turn, to be asked in the model's own
+ * words before it goes back to what it was doing. Never twice in a row, never once everything is covered, never as the opener.
+ */
+export function theTurnToAskIt(notAsked: AThingToCover[], turns: { role: 'AI' | 'PERSON'; content: string }[]): { text: string; thing: AThingToCover | null } {
+  const none = { text: '', thing: null };
+  if (!notAsked.length) return none;
+  const theirAnswers = turns.filter((t) => t.role === 'PERSON').length;
+  if (theirAnswers < 2) return none;
+  const lastAi = [...turns].reverse().find((t) => t.role === 'AI')?.content ?? '';
+  if (Object.values(ASKED_AS).some((re) => re.test(lastAi))) return none;
+  const next = notAsked[0];
+  const text = `FOR THIS TURN, ABOUT THEIR JOB. This turn, do not ask your next question about the work. Start with one short sentence that responds to what they just said (if they voiced a worry, acknowledge it), then ask ONE friendly question, in your own words, about ${next.what}. Make it clear that you are asking so that you understand their work, for example "So that I understand your work better, ...". It is the only question in this turn. Next turn, go back to the work.`;
+  return { text, thing: next };
+}
+
+/** Whether a reply asks about this thing, in the words used to ask it. */
+export const asksAboutTheirJob = (thing: AThingToCover, reply: string): boolean => !!ASKED_AS[thing.id]?.test(reply ?? '');
+
+/** The one line a reply is given again with, when a turn was meant to ask about the job and the reply did not. */
+export const THE_REPLY_DID_NOT_ASK_ABOUT_THEIR_JOB = (what: string): string =>
+  `YOUR REPLY DID NOT ASK ABOUT THEIR JOB, AND THIS TURN IS THE ONE FOR IT. Write the reply again: one short sentence that responds to what they just said (if they voiced a worry, acknowledge it), then ONE friendly question, in your own words, about ${what}, so that you understand their work. It is the only question in the reply. Do not ask your next question about the work in this reply.`;
+
+/**
  * THE BLOCK THE CONVERSATION GETS, ONLY IN A PERSON'S FIRST CHECK-IN. The text that runs is the stored `first_check_in_role`
  * version, then what this session has already covered and what is left, in the product's words. Empty for the opener, for a
  * check-in that is not a person's first, and for a person we cannot keep it for.
@@ -213,12 +239,13 @@ export async function theRoleBlock(
   checkIn: { id: string; participantId: string },
   turns: { role: 'AI' | 'PERSON'; content: string }[],
   how: { forTheOpener?: boolean } = {},
-): Promise<{ block: string; promptVersionId: string | null }> {
-  if (how.forTheOpener) return { block: '', promptVersionId: null };
+): Promise<{ block: string; thisTurn: string; thing: AThingToCover | null; promptVersionId: string | null }> {
+  if (how.forTheOpener) return { block: '', thisTurn: '', thing: null, promptVersionId: null };
   const first = await isTheirFirstCheckIn(deps, checkIn);
-  if (!first) return { block: '', promptVersionId: null };
+  if (!first) return { block: '', thisTurn: '', thing: null, promptVersionId: null };
   const known = await whatIsKnownOfTheirJob(deps, first.userId, first.organizationId);
-  const topics = ROLE_TOPICS.filter((t) => !(known && t.field === 'roleName'));
+  /* Where the job's name is not known, it is asked in the same breath as what they are responsible for. */
+  const topics = ROLE_TOPICS.map((t) => (t.field === 'owns' && !known ? { ...t, what: 'what their job is, and what they are responsible for in it' } : t));
   const { notAsked, answered, left } = coverageOf(topics, turns);
   const version = await theVersionThatRuns(deps, FIRST_CHECK_IN_ROLE_KEY, FIRST_CHECK_IN_ROLE_PROMPT);
   const lines = [version.content];
@@ -227,7 +254,8 @@ export async function theRoleBlock(
   if (left.length) lines.push(`LEAVE THESE. They were declined or asked twice. Do not ask again in any wording:\n${left.map((t) => `- ${t.what}`).join('\n')}`);
   if (!notAsked.length) lines.push('Everything above is covered for this session. Do not ask about their job again.');
   else lines.push(`NOT ASKED YET:\n${notAsked.map((t) => `- ${t.what}`).join('\n')}`);
-  return { block: lines.join('\n'), promptVersionId: version.id };
+  const turn = theTurnToAskIt(notAsked, turns);
+  return { block: lines.join('\n'), thisTurn: turn.text, thing: turn.thing, promptVersionId: version.id };
 }
 
 /**
@@ -242,12 +270,14 @@ export async function keepWhatTheySaidAboutTheirJob(
 ): Promise<{ kept: boolean; roleSet: boolean; versionId: string | null } | null> {
   const first = await isTheirFirstCheckIn(deps, checkIn);
   if (!first) return null;
-  const turns = await deps.prisma.conversationTurn.findMany({
-    where: { checkInId: checkIn.id, role: TurnRole.PERSON },
+  const all = await deps.prisma.conversationTurn.findMany({
+    where: { checkInId: checkIn.id },
     orderBy: { createdAt: 'asc' },
-    select: { content: true },
+    select: { role: true, content: true },
   });
-  const theirs = (turns as { content: string | null }[]).map((t) => (t.content ?? '').trim()).filter(Boolean);
+  const turnsInOrder = (all as { role: string; content: string | null }[]).map((t) => ({ role: t.role, text: (t.content ?? '').trim() })).filter((t) => t.text);
+  const theirs = turnsInOrder.filter((t) => t.role === TurnRole.PERSON).map((t) => t.text);
+  const pairs = turnsInOrder.map((t, i) => (t.role === TurnRole.PERSON ? `They were asked: ${(turnsInOrder[i - 1]?.role === TurnRole.AI ? turnsInOrder[i - 1].text : '(nothing)').slice(0, 300)}\nThey said: ${t.text}` : '')).filter(Boolean);
   if (theirs.join(' ').split(/\s+/).length < 12) return { kept: false, roleSet: false, versionId: null };
 
   const reading = await theVersionThatRuns(deps, ROLE_READING_KEY, ROLE_READING_PROMPT);
@@ -255,7 +285,7 @@ export async function keepWhatTheySaidAboutTheirJob(
   try {
     read = await deps.anthropic.extract<WhatTheySaidAboutTheirJob>(
       reading.content,
-      [{ role: 'user', content: theirs.map((t, i) => `Turn ${i + 1}: ${t}`).join('\n\n') }],
+      [{ role: 'user', content: pairs.join('\n\n') }],
       ROLE_READING_SCHEMA as any,
       { fast: true, temperature: 0 },
     );

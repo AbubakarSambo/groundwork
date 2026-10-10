@@ -1,5 +1,5 @@
 import {
-  FIRST_CHECK_IN_ROLE_PROMPT, ROLE_READING_PROMPT, ROLE_TOPICS, isTheirFirstCheckIn, keepWhatTheySaidAboutTheirJob, onlyWhatTheySaid,
+  FIRST_CHECK_IN_ROLE_PROMPT, ROLE_READING_PROMPT, ROLE_TOPICS, asksAboutTheirJob, THE_REPLY_DID_NOT_ASK_ABOUT_THEIR_JOB, isTheirFirstCheckIn, keepWhatTheySaidAboutTheirJob, onlyWhatTheySaid,
   theRoleBlock, theirJobAsTheyToldUs, theRoleMapQuestion,
 } from './their-role-in-the-first-check-in';
 
@@ -25,7 +25,7 @@ function world(opts: { earlier?: number; kept?: number; scenario?: string; userI
       create: jest.fn(async ({ data }: any) => { created.push(data); return { id: 'row-1', ...data }; }),
       findFirst: jest.fn(async () => opts.row ?? null),
     },
-    conversationTurn: { findMany: jest.fn(async () => (opts.turns ?? []).map((content) => ({ content }))) },
+    conversationTurn: { findMany: jest.fn(async () => (opts.turns ?? []).flatMap((content) => [{ role: 'AI', content: 'A question.' }, { role: 'PERSON', content }])) },
     assistantProposal: { create: jest.fn(async ({ data }: any) => { proposalsList.push(data); return data; }) },
   };
   const anthropic = { extract: jest.fn(async () => opts.read ?? {}) };
@@ -90,10 +90,27 @@ describe('what the conversation is given', () => {
     expect(block.split('NOT ASKED YET:')[1].split('ALREADY')[0]).not.toContain('responsible for');
   });
 
+  it('where the job\'s name is not known, it is asked in the same breath as what they are responsible for', async () => {
+    const { block } = await theRoleBlock(world().deps, CHECK_IN, turns(['AI', 'Hello.']));
+    expect(block).toMatch(/NOT ASKED YET:\n- what their job is, and what they are responsible for in it/);
+  });
+
   it('a person whose job we know is not asked what it is called', async () => {
     const { block } = await theRoleBlock(world({ jobTitle: 'Sales representative' }).deps, CHECK_IN, turns(['AI', 'Hello.']));
     expect(block).toContain('WE ALREADY KNOW THEIR JOB AS: "Sales representative". Do not ask what it is called.');
-    expect(block).not.toMatch(/NOT ASKED YET:[\s\S]*what their job is called/);
+    expect(block).toMatch(/NOT ASKED YET:\n- what they are responsible for in their job/);
+  });
+
+  it('from their second answer, on every other turn, one thing is named for this turn, and never twice in a row', async () => {
+    const one = turns(['AI', 'What are you aiming for in Q4?'], ['PERSON', 'More big accounts, 18 million.']);
+    expect((await theRoleBlock(world().deps, CHECK_IN, one)).thisTurn).toBe('');
+    const two = [...one, ...turns(['AI', 'By when?'], ['PERSON', 'The 30th of November.'])];
+    const r = await theRoleBlock(world().deps, CHECK_IN, two);
+    expect(r.thisTurn).toBe('FOR THIS TURN, ABOUT THEIR JOB. This turn, do not ask your next question about the work. Start with one short sentence that responds to what they just said (if they voiced a worry, acknowledge it), then ask ONE friendly question, in your own words, about what their job is, and what they are responsible for in it. Make it clear that you are asking so that you understand their work, for example "So that I understand your work better, ...". It is the only question in this turn. Next turn, go back to the work.');
+    const asked = [...two, ...turns(['AI', 'What are you responsible for in your job?'], ['PERSON', 'I look after the Nairobi accounts and the monthly number.'])];
+    expect((await theRoleBlock(world().deps, CHECK_IN, asked)).thisTurn).toBe('');
+    const later = [...asked, ...turns(['AI', 'What is the biggest risk?'], ['PERSON', 'The Serena committee, they sit once a month.'])];
+    expect((await theRoleBlock(world().deps, CHECK_IN, later)).thisTurn).toMatch(/about what doing well looks like in their job\./);
   });
 
   it('nothing at all for somebody who has done a check-in before', async () => {
@@ -102,9 +119,26 @@ describe('what the conversation is given', () => {
 
   it('the topics are what decision 129 lists', () => {
     expect(ROLE_TOPICS.map((t) => t.what)).toEqual([
-      'what their job is called', 'what they are responsible for in their job', 'what doing well looks like in their job',
+      'what they are responsible for in their job', 'what doing well looks like in their job',
       'who they depend on in their job, and who depends on them', 'what usually gets in their way in their job',
     ]);
+  });
+});
+
+describe('a turn that was meant to ask about the job', () => {
+  const owns = ROLE_TOPICS[0];
+  it.each([
+    'So that I understand your work better, what are you responsible for in your job?',
+    'What is your role here, and what does it cover?',
+    'Tell me what you are in charge of day to day.',
+  ])('"%s" asks it', (reply) => {
+    expect(asksAboutTheirJob(owns, reply)).toBe(true);
+  });
+  it('a question about the work does not', () => {
+    expect(asksAboutTheirJob(owns, 'What is the next thing you will do about the Serena account, and by when?')).toBe(false);
+  });
+  it('is asked again with one plain line', () => {
+    expect(THE_REPLY_DID_NOT_ASK_ABOUT_THEIR_JOB(owns.what)).toBe('YOUR REPLY DID NOT ASK ABOUT THEIR JOB, AND THIS TURN IS THE ONE FOR IT. Write the reply again: one short sentence that responds to what they just said (if they voiced a worry, acknowledge it), then ONE friendly question, in your own words, about what they are responsible for in their job, so that you understand their work. It is the only question in the reply. Do not ask your next question about the work in this reply.');
   });
 });
 
@@ -119,6 +153,19 @@ describe('what is kept after the check-in', () => {
     expect(kept.inTheWay).toBe('waiting for stock to be confirmed');
     expect(kept.doingWell).toBeUndefined();
     expect(kept.roleName).toBeUndefined();
+  });
+
+  it('words stitched together from two different answers are dropped, never kept', () => {
+    const kept = onlyWhatTheySaid({ owns: 'the Nairobi accounts, and I answer for the monthly sales number. Waiting for stock to be confirmed by the depot', inTheWay: 'the monthly sales number and waiting for stock' }, SAID);
+    expect(kept.owns).toBeUndefined();
+    expect(kept.inTheWay).toBeUndefined();
+  });
+
+  it('the reading is shown each answer under the question it answered', async () => {
+    const w = world({ turns: SAID, read: { owns: 'the Nairobi accounts, and I answer for the monthly sales number' } });
+    await keepWhatTheySaidAboutTheirJob(w.deps, CHECK_IN);
+    const sent = (w.anthropic.extract as jest.Mock).mock.calls[0][1][0].content as string;
+    expect(sent).toMatch(/^They were asked: A question\.\nThey said: I am a sales representative/);
   });
 
   it('a short job name they said is kept, a long one is not', () => {

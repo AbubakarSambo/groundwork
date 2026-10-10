@@ -1,5 +1,5 @@
 import { HELD_FOR_A_SEAT } from '../participants/held-for-a-seat';
-import { theRoleBlock, keepWhatTheySaidAboutTheirJob, theirJobAsTheyToldUs, theirJobAsKept } from './their-role-in-the-first-check-in';
+import { theRoleBlock, keepWhatTheySaidAboutTheirJob, theirJobAsTheyToldUs, theirJobAsKept, asksAboutTheirJob, THE_REPLY_DID_NOT_ASK_ABOUT_THEIR_JOB } from './their-role-in-the-first-check-in';
 import { whereASessionsReportStands } from './where-a-sessions-report-stands';
 import { theAimsNameKeepsItsShare, theNameWithItsSum } from './the-aims-name-keeps-its-share';
 import { theParticipantAsServed, theFitAsServed, theCheckInRowAsServed, theyAreTheirOwnWords } from './a-transcript-serves-only-what-is-theirs';
@@ -2769,6 +2769,24 @@ export class ConversationService {
         );
       }
 
+      /*
+       * THE JOB IS ASKED ON THE TURN THAT WAS GIVEN TO IT (decision 129). The model works through the check-in's own questions and, told in
+       * the prompt alone, asked about the job on about half the turns it was told to. This runs LAST, after every guard that can replace a reply with the
+       * product's own line, because a first live walk (10 October 2026) showed those lines taking the turn back. When the turn was meant to and the reply did not, it is
+       * asked again once with the one line, and the second is kept only if it does. Never on a reply that closes, and never blocks the turn.
+       */
+      const jobThing = this.aboutTheirJobThisTurn.get(checkIn.id) ?? null;
+      if (jobThing && !closingNow && !asksAboutTheirJob(jobThing, screened.text)) {
+        this.logger.warn(`Check-in ${checkIn.id}: this turn was for a question about their job and the reply did not ask it; asking again.`);
+        const moved = await this.anthropic
+          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${THE_REPLY_DID_NOT_ASK_ABOUT_THEIR_JOB(jobThing.what)}`), history)
+          .catch(() => '');
+        const second = moved.trim()
+          ? screen(withoutQuotesTheyDidNotSay(forHumans(moved), theirWords), known, readerName, conversationSoFar)
+          : null;
+        if (second?.text && !second.hits.length && asksAboutTheirJob(jobThing, second.text)) screened = second;
+      }
+
       /* A bare "Ok." that the screen left nothing to reply to is answered, not told it did not come out right (adversarial run, 20 Sep 2026). */
       reply = screened.text || (isAnAcknowledgement(message) ? 'Noted.' : ASK_AGAIN);
 
@@ -5049,10 +5067,12 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * through in its own words. In their later check-ins it is given what they told us, so its questions are about their actual work.
      */
     const theirJobDeps = { prisma: this.prisma as any, anthropic: this.anthropic as any, prompts: this.prompts as any };
-    const learningTheirJob = await theRoleBlock(theirJobDeps, checkIn as any, turnsThisSession as any, how).catch(() => ({ block: '', promptVersionId: null as string | null }));
+    const learningTheirJob = await theRoleBlock(theirJobDeps, checkIn as any, turnsThisSession as any, how).catch(() => ({ block: '', thisTurn: '', thing: null as AThingToCover | null, promptVersionId: null as string | null }));
+    const theJobThisTurn = learningTheirJob.thisTurn;
+    this.aboutTheirJobThisTurn.set(checkIn.id, learningTheirJob.thing);
     const theirJobSoFar = learningTheirJob.block ? '' : await theirJobAsTheyToldUs(theirJobDeps, checkIn as any).catch(() => '');
     const theJob = learningTheirJob.block || theirJobSoFar;
-    if (learningTheirJob.block) this.logger.log(`first-check-in-role check-in=${checkIn.id} prompt-version=${learningTheirJob.promptVersionId ?? 'the file'}`);
+    if (learningTheirJob.block) this.logger.log(`first-check-in-role check-in=${checkIn.id} prompt-version=${learningTheirJob.promptVersionId ?? 'the file'} this-turn=${theJobThisTurn ? 'asks about their job' : 'no'}`);
     /*
      * AND THE HOLE IN WHAT THEY HAVE ALREADY SAID, WHICH IS WHAT THE NOTES ARE FOR.
      *
@@ -5522,7 +5542,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ['theirWeek', theirWeek], ['howWeDoIt', howWeDoIt], ['styleBlock', styleBlock],
       ['clarificationContext', clarificationContext], ['selfCorrectionContext', selfCorrectionContext],
       ['finalSessionContext', finalSessionContext], ['howLongThisRuns', howLongThisRuns], ['returningUserContext', returningUserContext],
-      ['roleProbeBlock', roleProbeBlock], ['theirJob', theJob], ['coachingBlock', coachingBlock],
+      ['roleProbeBlock', roleProbeBlock], ['theirJob', theJob], ['theJobThisTurn', theJobThisTurn], ['coachingBlock', coachingBlock],
       ['patternProbeBlock', patternProbeBlock], ['theHole', theHole], ['theOneThingBack', theOneThingBack],
       ['theFloorGiveBack', theFloorGiveBack], ['whoCarriesWhichPart', numbersAndOwners.whoCarries], ['whereTheNumberStands', numbersAndOwners.whereItStands], ['whoSecuredIt', whoSecuredIt],
       ['oneThingToDoBetter', oneThingToDoBetter],
@@ -5600,7 +5620,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       return theBaselineParts.filter(Boolean).join('\n\n');
     })();
     if (theBaselinePrompt) return theBaselinePrompt;
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, theJob, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, burden, putThisToThem, askedWhenThisEnds, theirHedge, theHole, heldBack, proofKindly, whereItIs, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, theJob, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, burden, putThisToThem, askedWhenThisEnds, theirHedge, theHole, heldBack, proofKindly, whereItIs, cannotBeMissed, askedLastTurn, patternProbeBlock, theJobThisTurn].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -5635,6 +5655,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     return this._anchorVersionForThisTurn;
   }
   /* The anchor's weekly words for this turn, written by composeSystemPrompt and read by the reply path that puts them after the rest. */
+  /** The thing about their job that this turn of a first check-in was told to ask, if any (decision 129). */
+  private aboutTheirJobThisTurn = new Map<string, AThingToCover | null>();
   private _anchorWeekForThisTurn?: Map<string, { text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo>; isTheBaseline?: boolean; followUp?: WhatToFollowUp | null; closing?: boolean } | null>;
   private get anchorWeekForThisTurn() {
     if (!this._anchorWeekForThisTurn) this._anchorWeekForThisTurn = new Map<string, { text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo>; isTheBaseline?: boolean; followUp?: WhatToFollowUp | null; closing?: boolean } | null>();
