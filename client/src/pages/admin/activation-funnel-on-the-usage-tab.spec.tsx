@@ -42,7 +42,11 @@ describe('the activation funnel on the usage tab', () => {
 
     expect(screen.getByText('How far check-ins get')).toBeTruthy()
     expect(screen.getByText('Created')).toBeTruthy()
-    expect(screen.getByText('A second round finished')).toBeTruthy()
+    /* UPDATED FOR B-147: this funnel stage is about a second SESSION of one check-in finishing,
+       not a second check-in, so it now says "session" - the product's one word for that, not
+       "round" (which this label already said, not "check-in" - a different B-147 cleanup from
+       the one below). */
+    expect(screen.getByText('A second session finished')).toBeTruthy()
     expect(screen.getByText('10')).toBeTruthy()
 
     expect(screen.getByText('Leads who came back')).toBeTruthy()

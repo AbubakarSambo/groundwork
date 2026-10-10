@@ -81,7 +81,10 @@ export function WaitingForAnAdminPage() {
           <Step>{`${who ?? 'An admin'} lets you in`}</Step>
         </Steps>
         <p className="gwui-pt-sub gwui-pt-sub-ink">
-          {`We’ll email you the moment ${who ?? 'they do'}${who ? ' does' : ''}, and your first session will be waiting.`}
+          {/* B-147 follow-up: the prototype's own exact sentence (A3-organisations-and-joining/
+              join-waiting.txt) says "check-in" here, not "session" - left as the prototype has
+              it rather than swept into the session rename. */}
+          {`We’ll email you the moment ${who ?? 'they do'}${who ? ' does' : ''}, and your first check-in will be waiting.`}
         </p>
       </Stack>
 

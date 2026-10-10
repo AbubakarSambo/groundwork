@@ -79,11 +79,16 @@ const WAS_ROUND = [
   /Do the second round/i,
   /their last 10 check-ins/i,
   /build from the next round/i,
-  /Your first check-in opens/i,
-  /first check-in opens at the start time/i,
-  /first check-in will be waiting/i,
+  /* NOT LISTED, ON PURPOSE: "Your first check-in opens on..." (InvitePage.tsx), "The first
+     check-in opens at the start time." (TheSetup.tsx) and "...your first check-in will be
+     waiting." (WaitingForAnAdminPage.tsx) are the prototype's own exact sentences, word for word
+     (B1-starting-a-check-in/new.txt and setup.txt, A3-organisations-and-joining/join-waiting.txt)
+     - reverted after a full run caught them, wrongly swept into this rename. The prototype's own
+     words win over the repeat-word rule. */
   /waiting for the first check-in/i,
-  /Avg days to first check-in/i,
+  /* NOT LISTED: "Avg days to first check-in" (AdminPage.tsx) measures days from signup to an
+     organisation's first check-in being CREATED - a fact about the check-in as an entity, not a
+     session within one, so "check-in" is right here. Reverted after a full run caught it. */
   /A second round finished/i,
   /leads with a second check-in/i,
 ]

@@ -943,7 +943,11 @@ export function DropoffsTab({ data }: { data: UsageFunnelData }) {
       </section>
 
       <section>
-        <div style={SL}>Avg days to first session</div>
+        {/* B-147 follow-up: `avgDaysToFirstCheckin` measures days from an organisation signing up
+            to its first check-in being CREATED (an activation metric, like every other stat in
+            this section) - a fact about the check-in as an entity, not about a session within
+            one, so this was never the word B-147 was about. Reverted after a full run caught it. */}
+        <div style={SL}>Avg days to first check-in</div>
         <div style={{ ...C, display: 'inline-block' }}>
           <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--gw-navy)' }}>{data.avgDaysToFirstCheckin.value ?? ' - '}</div>
           <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 2 }}>days, over {data.avgDaysToFirstCheckin.n} first sessions</div>
