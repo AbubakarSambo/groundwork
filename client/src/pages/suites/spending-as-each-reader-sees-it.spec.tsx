@@ -253,3 +253,16 @@ describe('everybody else', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('The spending suite is not switched on.')
   })
 })
+
+/*
+ * B-155. A category tag ran straight into the sentence before it with no space - "...for the
+ * Mombasa depotLabels" - because nothing separated the two inline elements.
+ */
+describe('B-155: a category tag never runs into the sentence before it', () => {
+  it('reads with a space between the line and its tag', async () => {
+    open(GRACE, { ...GRACES, waiting: [{ ...KAMAU, category: 'Fuel' }] })
+    const item = (await screen.findByRole('list', { name: 'Waiting for a yes or no' })).querySelector('li')!
+    expect(item.textContent).not.toMatch(/\wFuel\b/)
+    expect(item.textContent).toMatch(/\sFuel\b/)
+  })
+})
