@@ -18,9 +18,7 @@ import { EntryChatPage } from './EntryChatPage'
  * started. The composer gets the words back and a message says what the check-in chat already
  * says in the same state.
  */
-let neverResolves!: () => void
-const onboardStream = vi.fn().mockImplementation(() =>
-  new Promise(() => { neverResolves = () => {} }))
+const onboardStream = vi.fn().mockImplementation(() => new Promise(() => { /* never settles */ }))
 vi.mock('@/api/entry', () => ({
   entryApi: {
     opener: vi.fn().mockResolvedValue({ reply: '' }),
