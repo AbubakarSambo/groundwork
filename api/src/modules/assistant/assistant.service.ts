@@ -2340,9 +2340,10 @@ export class AssistantService {
     const decision = resolveConfirmation(message);
     if (decision === 'drop') {
       const reply = await this.answer(organizationId, personId, who, message, true, where?.groundId, where?.userId, where?.forceAddContext);
-      if ((parked.payload as any)?.reminded) return reply;
+      /* Not on top of a say-back of its own, and only once: a second question under an answer is one too many. */
+      if ((parked.payload as any)?.reminded || reply.blocks.some((b: any) => b.type === 'proposal')) return reply;
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { payload: { ...(parked.payload as any), reminded: true } as never } });
-      return { ...reply, blocks: [...reply.blocks, text(parked.summary)] };
+      return { ...reply, blocks: [...reply.blocks, text(parked.summary), { type: 'proposal', proposalId: parked.id, summary: parked.summary }] };
     }
     await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: decision === 'accept' ? 'ACCEPTED' : 'DECLINED', resolvedAt: new Date() } });
     if (decision === 'decline') return rules('role_interview', text('That is fine. The role map will not show anything, and what you told me about your job stays private to you.'));

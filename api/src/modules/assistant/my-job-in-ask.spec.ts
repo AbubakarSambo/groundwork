@@ -139,6 +139,7 @@ describe('after the first check-in, may the role map show what they own', () => 
     const r: any = await w.service.respond('org-a', 'p1', 'What do you know about my job?');
     expect(said(r)).toMatch(/^I have your job as "Sales representative"\./);
     expect(said(r)).toContain(parked.summary);
+    expect(r.blocks.filter((b: any) => b.type === 'proposal')).toEqual([{ type: 'proposal', proposalId: 'ps', summary: parked.summary }]);
     expect(w.states.some((s) => s.data.state === 'DROPPED')).toBe(false);
     expect(w.written).toHaveLength(0);
   });
