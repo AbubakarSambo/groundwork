@@ -172,10 +172,20 @@ export default function SessionReportPage() {
    * was last written is `updatedAt` (a regenerated report is upserted, so `createdAt` stays at the
    * first one), with `createdAt` only for a report written before that column existed.
    */
+  /*
+   * B-198: ONLY ASKED ONCE THE CHECK-IN SAYS IT HAS ONE.
+   *
+   * `GET /grounds/:id/report` answers 404 for "no report yet" by design (GW-PRI-04, the same 404 a
+   * check-in that does not exist answers, so the two cannot be told apart) - but a check-in's first
+   * session has no team report at all, so every first visit to its own session-1 report page asked
+   * anyway and logged a 404 that nothing was wrong about. `ground.report` already carries whether
+   * one exists (the same field `GroundParticipantPage`'s matching query is gated on), known from the
+   * `ground` query just above, so this waits for that rather than asking blind.
+   */
   const { data: groundReport } = useQuery({
     queryKey: ['report', data?.groundId],
     queryFn: () => reportsApi.get(data!.groundId as string),
-    enabled: !!data?.groundId,
+    enabled: !!data?.groundId && !!(ground as any)?.report,
     retry: false,
     refetchInterval: (q: any) => (theTeamsReportIsBehind(q?.state?.data, ground) ? 5_000 : false),
   })
