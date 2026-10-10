@@ -1,0 +1,9 @@
+ac855d85-618d-406c-a N 10 codes named 8 split(2..N-2) 2 mean pair agreement 0.89 mentions 73  sure(>=0.8N): 7
+2c7168a2-5985-4b2d-a N 10 codes named 6 split(2..N-2) 3 mean pair agreement 0.77 mentions 47  sure(>=0.8N): 3
+efb5bb40-fe3e-4de7-9 N 10 codes named 9 split(2..N-2) 3 mean pair agreement 0.84 mentions 71  sure(>=0.8N): 6
+dac8e128-7ff5-4c89-9 N 10 codes named 8 split(2..N-2) 2 mean pair agreement 0.82 mentions 66  sure(>=0.8N): 6
+a8b11f78-a82a-4c7c-9 N 10 codes named 8 split(2..N-2) 2 mean pair agreement 0.81 mentions 61  sure(>=0.8N): 5
+82279b78-a6c7-464e-8 N 10 codes named 14 split(2..N-2) 10 mean pair agreement 0.74 mentions 83  sure(>=0.8N): 7
+581bf55d-da7b-48f4-9 N 10 codes named 12 split(2..N-2) 4 mean pair agreement 0.81 mentions 73  sure(>=0.8N): 7
+bdcb15a0-da2a-485d-b N 10 codes named 12 split(2..N-2) 6 mean pair agreement 0.75 mentions 70  sure(>=0.8N): 6
+TOTAL check-ins 8 codes named 77 split 32 (42%) mean pair agreement 0.797 mentions 544

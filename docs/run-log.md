@@ -2,6 +2,115 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## Piece 2: the pattern detector's prompt is a stored version, and a sharper version of it is kept active (10 October)
+
+**Verdict: kept active, with one caution.** The same words now give the same codes more often, measured two ways (the noise on eight borderline check-ins, and agreement between two readings of the same conversations), and patterns found stayed inside the oct9a and oct9b spread in one full run and rose to the baseline in another (91 and 100; oct9a 89, oct9b 94). Across separate runs, whose conversations are different each time, steadiness did not show an improvement (see 3). The prompt also names more codes in each read, so more patterns are named for each person (see 6).
+
+### 1. Decision 128: the prompt has a stored version, and each pattern says which one read it
+
+- The prompt is stored under the key `pattern_detection` (`PATTERN_DETECTION_PROMPT_KEY` in `api/src/modules/patterns/pattern-library.ts`), seeded on start with the other prompts (`SEED_PROMPTS` in `api/src/modules/conversation/prompt-library.ts`) and served by `/prompts`. A start never replaces a version somebody activated by hand (decision 74, item 6), because it goes through the same seeding.
+- `PatternsService` reads the active version once for each check-in (`theDetectorPrompt`), gives the text to every read of that check-in (the five and the five more), and uses the text in the code only when nothing is stored.
+- Each pattern row keeps `promptVersionId` (new column `pattern_detections.prompt_version_id`, nullable, migration `20261010100000`, row 93 of `docs/deploy.md`). It is set when a read keeps the code, on the first sighting and on each later one, so it names the version that read the check-in that last kept the pattern. A pattern the number-based rule alone found (R3) has no id. Rows written before this stay valid with no id.
+- Specs: `api/src/modules/patterns/the-detector-prompt-is-a-stored-version.spec.ts` (seeded under its key with the code text; the stored version runs and its id is reported; the code text is the fallback; the id is written on a new row and moved on a later one; an empty id never blanks a stored id; the prompt carries the new rules; the schema asks for the quote ahead of the observation and does not require it).
+- Proof in run-p2b (the final wording): in `gw_next_p2run2`, `prompt_versions` holds one `pattern_detection` version, `0d9b3ed0-a105-4602-a89d-573e87f8ab66`, active, activated by "seeded on start", 14,157 characters (md5 `9370fab1abb8b1c8487860675fd5c393`), containing "DECIDE EVERY CODE THE SAME WAY". Every one of the 63 pattern rows that run wrote carries that id as `promptVersionId`. The other 7,525 rows in that copy are earlier history and have no id, as intended. (Run-p2, the first wording, was the same: one version `025fba46-950b-412b-b756-51aad2d390ec`, 14,190 characters, on all 67 of its rows.) Both runs' reports still carry `dfce4b13` (report_synthesis v8) and the judgements `1d03ffef`.
+
+### 2. What was changed in the prompt (the codes, their signals, the confirming call, the filters and the three-period rule are untouched)
+
+- A rule to decide every code the same way: go through the codes one at a time, in the order listed, and for each ask whether a sentence said by the person (or a line of the record) does what the code's signal says. If so, emit it once and copy that sentence into `quote`; if not, do not. Do not stop after the first one or two, do not hold one back because others are emitted, do not emit one to balance the others.
+- A rule that a hint is not a sentence that does what the signal says (a vague phrase, a mood, something only implied, a signal true of an earlier period, or something only Groundwork said), and that a clear sentence counts even when it is the only one, so the bar is not raised.
+- When one sentence could fit two codes, emit each code whose "counts" line it meets.
+- A "counts / does not count" line for seven more of the codes that came and went in the noise measurement: D6, K1, D3, F1, A1, D1, M1 (`what-counts-for-each-pattern.ts`; B11, E2, K3, K5, B2, B6, B5 and D4 already had one).
+- A `quote` field in the schema, ahead of the observation. It is not required in the schema, so the earlier text, which does not ask for it, still works if it is ever stored again. It is not used downstream.
+- Two of the new lines (K1, M1) were reworded after the first full run, because the engine's copy guard (`the-engines-copy-does-not-sound-like-yoda.spec.ts`) counted them as lines that bury the point and went from 35 to 37. The meaning is the same, the guard is back at 35, and everything below was measured again on the final wording (run-p2b, the second noise measurement, and the second within-run measurement).
+
+### 3. Steadiness, before and after
+
+All reads at the steadiest setting (temperature 0, fixed seed), through the product's own `whatOneReadKeeps`.
+
+| Measure | Before | First wording | Final wording |
+| --- | --- | --- | --- |
+| Noise on the 8 borderline check-ins (`scratchpad/ids.txt`, 10 extractions each): codes named at least once | 66 | 77 | 82 |
+| ... of those, named in only 2 to 8 of the 10 | 40 (61%) | 32 (42%) | 38 (46%) |
+| ... mean agreement between two extractions on a code | 0.676 | 0.797 | 0.749 |
+| ... codes named in at least 8 of 10 | 21 | 47 | 43 |
+| Within a run: 68 check-ins (six-a), 13 people, 4 copies of 5 reads. Shown person-and-pattern pairs two readings agree on | 78.0% | 81.9% | 85.7% |
+| ... people with exactly the same patterns in both readings | 66.7% | 76.9% | 76.9% |
+| ... real patterns found (by the majority of all 20 reads) | 90.7% | 89.6% | 92.8% |
+| ... patterns shown for each person | 1.35 | 1.68 | 1.67 |
+| ... shown that the majority of the reads did not back, for each person | 0.090 | 0.026 | 0.026 |
+| ... codes kept for each read | 2.06 | 2.54 | 2.61 |
+
+Repeating the same measure on the same text moves by about 0.05 in the noise measure (the two "after" columns are two samples of two near-identical texts), so read the improvement from 0.676 to 0.75 to 0.80, not any one figure. Thirteen people are too few to put a decimal on the within-run figures; six-a is one of the two stored sets (68 of 135 check-ins), because reading a set 20 times takes about an hour.
+
+**Across separate runs (different conversations each time): no improvement shown.** The script's average of "the same scenario gave the same patterns", for pairs of runs: oct9a with oct9b 29% (both the old prompt); run-p2 with run-p2b 19% (both the new); old with new 32%, 35%, 20% and 30%. These pairs differ in the simulated people's words as much as in the detector, and they move between 19% and 35% whichever prompt is used, so they cannot show a change of this size either way. I report it because it is the figure the earlier entries used.
+
+Files: `api/journey/all-24/run-p2/` and `run-p2b/` (`noise-before.txt`, `noise-after.txt`, `noise-summary-*.txt`, `within-run-agreement*.txt`, `score-vs-baseline.txt`). Scripts: `api/journey/where-the-noise-is.ts` (unchanged), `where-the-noise-is-summary.py` and `pattern-steadiness-before-and-after-a-prompt.py` (new).
+
+### 4. The 24-scenario runs, run-p2 (first wording) and run-p2b (final wording)
+
+Same set-up as oct9a: a worktree of `wip/next`, its own `nest build`, a database copy of `gw_pw9_1786222102` with migrations applied (`gw_next_p2run`, `gw_next_p2run2`), one API (ports 3093 and 3094), four shards, `EMAIL_SENDS_FOR_REAL=false`, a test JWT secret and a throwaway settings key only in the start command, the model run with the main folder's api as working directory. No scenario failed in either. "REPORT SETTLED SHORT" printed 22 and 24 times, as in oct9a and oct9b. All 24 scenarios finished in both (oct9b had 23).
+
+Every scorer problem is 0 in both. The scorer says "WORSE THAN THE BASELINE" for one number in both, proof asked for (31 and 35, baseline 42). It counts Groundwork's turns that ask for a photo, document or copy; the pattern prompt writes none of Groundwork's questions, and the number has been 27, 34, 41, 40, 31, 35 in the last six runs (single scenarios move by 0 to 8: implementation 8, 2, 1, 4; sales 7, 3, 2, 2). I did not rerun it.
+
+| Engine value | oct9a | oct9b (23) | run-p2 | run-p2b | Baseline |
+| --- | --- | --- | --- | --- | --- |
+| proof asked for | 41 | 40 | 31 | 35 | 42 |
+| past words | 27 | 35 | 28 | 35 | 25 |
+| specific detail | 101 | 101 | 92 | 103 | 88 |
+| blocker checked | 56 | 53 | 54 | 60 | 37 |
+| differences | 38 | 36 | 35 | 36 | 29 |
+| agreements | 82 | 78 | 78 | 77 | 56 |
+| findings | 83 | 81 | 83 | 81 | 81 |
+| patterns found | 89 | 94 | **100** | **91** | 100 |
+| commitments | 66 | 56 | 69 | 67 | 33 |
+| central question | 29 | 28 | 29 | 29 | 29 |
+| judgement present | 29 | 28 | 29 | 29 | 21 |
+| jargon in Groundwork's turns | 17 | 26 | 29 | 19 | 42 |
+| Groundwork turns | 772 | 748 | 761 | 770 | 747 |
+
+Patterns found by scenario (the sessions' cumulative lists, as the scorer counts them):
+
+| Scenario | oct9a | oct9b | run-p2 | run-p2b |
+| --- | --- | --- | --- | --- |
+| advisor | 0 | 1 | 0 | 0 |
+| board | 2 | 0 | 1 | 1 |
+| cofounder | 0 | 0 | 0 | 0 |
+| contractreview | 2 | 0 | 3 | 0 |
+| crisis | 4 | 2 | 3 | 1 |
+| discovery | 0 | not run | 0 | 3 |
+| drift | 3 | 2 | 5 | 3 |
+| handover | 2 | 2 | 3 | 0 |
+| implementation | 4 | 4 | 3 | 4 |
+| loans | 1 | 4 | 1 | 2 |
+| newmanager | 5 | 2 | 2 | 3 |
+| openread | 1 | 1 | 0 | 1 |
+| pip | 1 | 2 | 2 | 1 |
+| project | 1 | 0 | 2 | 0 |
+| pulse | 0 | 2 | 1 | 1 |
+| realign | 5 | 9 | 4 | 4 |
+| recognition | 0 | 0 | 0 | 1 |
+| renewal | 7 | 4 | 1 | 5 |
+| sales | 27 | 38 | 36 | 33 |
+| seniorhire | 16 | 13 | 26 | 23 |
+| shock | 3 | 3 | 3 | 1 |
+| snapshot | 0 | 0 | 0 | 1 |
+| updates | 4 | 3 | 4 | 2 |
+| workplan | 1 | 2 | 0 | 1 |
+| Total | 89 | 94 | 100 | 91 |
+
+The totals for the final wording (91) and the first (100) sit inside or above the oct9a and oct9b spread (89 and 94); it is not below it. By scenario it moves both ways, as it did between oct9a and oct9b (renewal 7, 4, 1, 5; handover 2, 2, 3, 0; seniorhire 16, 13, 26, 23), so read the total. The long scenarios (sales, seniorhire) carry most of it, and they rose; the short ones with one or two patterns are as unstable as before. Nothing was hidden to get these numbers: the three-period rule, the confirming call and every filter are as they were.
+
+### 5. Full jest
+
+`npx jest --maxWorkers=2` in `api/`: 19,435 passed, 3 failed before the two follow-ups below and none after them: the release-night test counted 92 migrations and now counts 93 (existing test `journey/existing-clients-carry-on.spec.ts`, changed for that reason only), the engine's copy guard (fixed by rewording two lines), and `the-whole-app-resolves.spec.ts`, which needs `JWT_SECRET` in the environment and passes with one set.
+
+### 6. For Hafsah
+
+- The prompt names more codes (2.06 to 2.6 a read; 1.35 to 1.67 patterns shown for each person in the within-run sample). "Decide every code, and do not hold one back" lifts codes the old text named about half the time as well as dropping those with no sentence to point to. A smaller share of the shown ones lack majority backing (0.090 to 0.026), but a person may read more patterns than before. Nothing is hidden or removed. If you want what a person is shown kept to the old size, that is a rule on top (a code needs a stronger majority), not a prompt change; I have not made it.
+- "8 in 10" (decision 74, item 2) is still not reached across runs; within a run it is now about 86% for the pairs shown, and 77% of people get exactly the same set of patterns.
+- The code text is the new version, so a fresh install stores it as version 1. A database where somebody activated a `pattern_detection` version by hand keeps it, and the new words wait as an inactive version.
+- The two databases `gw_next_p2run` and `gw_next_p2run2` (and the copies `gw_next_p2`) are on this computer only and can be dropped.
+
 ## A second 24-scenario run, run-oct9b, to tell noise from a real drop in "patterns found" (9 October)
 
 **How it was run.** The same worktree, put on `e312faf3d` (the engine exactly as on `wip/release`) for the run and back on `wip/next` after. Its own `nest build`, a new database copy `gw_next_run3` (from `gw_pw9_1786222102`, migrations applied), one API on port 3092, `EMAIL_SENDS_FOR_REAL=false`, a test JWT secret and a throwaway settings key only in the start command. Three shards instead of four, started 04:16 and stopped at 06:13 (the time set for the report). 23 of the 24 scenarios finished. `discovery`, the last one in its shard, was still running when I stopped it, so it has no file (it scored 2, 0 and 0 in the three earlier runs). Every one of the 26 reports written in the run carries `dfce4b13` as `promptVersionId`, and every one of the 26 judgements carries `1d03ffef`. "REPORT SETTLED SHORT" still printed 23 times, with three shards, as it did with four: it is the runner's minute-long wait in the middle sessions, and every finished scenario has its lead report and judgement. So fewer shards did not remove it; only a longer wait in `run.ts` would, and I did not change the runner.

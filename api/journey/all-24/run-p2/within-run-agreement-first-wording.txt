@@ -1,0 +1,2 @@
+before   people 13 check-ins 68  agree 46/59=78.0%  peopleSame 66.7%  real found 98/108=90.7%  shown 1.35/person-reading  beyond 0.090  kept codes per read 2.06
+after    people 13 check-ins 68  agree 59/72=81.9%  peopleSame 76.9%  real found 129/144=89.6%  shown 1.68/person-reading  beyond 0.026  kept codes per read 2.54

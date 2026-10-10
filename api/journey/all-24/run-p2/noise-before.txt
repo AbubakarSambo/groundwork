@@ -1,0 +1,75 @@
+CHECK-IN ac855d85-618d-406c-a38d-1dd33427c617 period 4: 10 extractions answered; the number of detections each gave: 3,5,5,3,5,4,5,5,5,5
+  E2: named in 10 of 10 extractions (5 distinct wordings); confirming the SAME first wording 4 times: NNNN; the last wording: NNNN
+  D6: named in 7 of 10 extractions (3 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  K1: named in 6 of 10 extractions (4 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  D3: named in 6 of 10 extractions (2 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  B6: named in 5 of 10 extractions (2 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  B1: named in 4 of 10 extractions (1 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  B11: named in 2 of 10 extractions (1 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  B2: named in 2 of 10 extractions (1 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  K3: named in 1 of 10 extractions (1 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: 
+  R2: named in 1 of 10 extractions (1 distinct wordings); confirming the SAME first wording 4 times: NNYN; the last wording: 
+  K5: named in 1 of 10 extractions (1 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: 
+CHECK-IN 2c7168a2-5985-4b2d-abb3-3fd33c04ecce period 3: 10 extractions answered; the number of detections each gave: 5,4,4,5,6,4,3,4,3,4
+  K3: named in 10 of 10 extractions (7 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  B5: named in 7 of 10 extractions (6 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  A1 (not confirmed): named in 7 of 10
+  B2: named in 5 of 10 extractions (4 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  B11: named in 5 of 10 extractions (4 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  K5: named in 4 of 10 extractions (3 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  M4 (not confirmed): named in 2 of 10
+  A2 (not confirmed): named in 1 of 10
+  K4: named in 1 of 10 extractions (1 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: 
+CHECK-IN efb5bb40-fe3e-4de7-9969-4d8dbba27be5 period 4: 10 extractions answered; the number of detections each gave: 7,7,7,5,4,3,3,4,5,3
+  K3: named in 10 of 10 extractions (5 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  B5: named in 8 of 10 extractions (4 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  M1 (not confirmed): named in 6 of 10
+  B2: named in 6 of 10 extractions (3 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  B11: named in 5 of 10 extractions (2 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  K5: named in 5 of 10 extractions (3 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  D6: named in 4 of 10 extractions (2 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  A1 (not confirmed): named in 4 of 10
+CHECK-IN dac8e128-7ff5-4c89-993b-c5d957f01903 period 6: 10 extractions answered; the number of detections each gave: 6,6,6,5,6,4,4,7,5,6
+  K3: named in 10 of 10 extractions (6 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  B11: named in 10 of 10 extractions (6 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  K1: named in 10 of 10 extractions (6 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YNYN
+  E2: named in 8 of 10 extractions (5 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: NNNN
+  K5: named in 8 of 10 extractions (5 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  B5: named in 6 of 10 extractions (4 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  K4: named in 2 of 10 extractions (1 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  B2: named in 1 of 10 extractions (1 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: 
+CHECK-IN a8b11f78-a82a-4c7c-93b9-0c57b6eadae9 period 3: 10 extractions answered; the number of detections each gave: 5,3,4,4,4,3,5,3,4,5
+  M1 (not confirmed): named in 10 of 10
+  K3: named in 9 of 10 extractions (5 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  E2: named in 7 of 10 extractions (4 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  K1: named in 5 of 10 extractions (3 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  B2: named in 4 of 10 extractions (3 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  B6: named in 4 of 10 extractions (2 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  R3 (not confirmed): named in 1 of 10
+CHECK-IN 82279b78-a6c7-464e-827c-5ab387c5faf9 period 3: 10 extractions answered; the number of detections each gave: 3,5,3,5,3,5,5,3,5,5
+  K3: named in 10 of 10 extractions (6 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  E2: named in 10 of 10 extractions (6 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: NNNN
+  B5: named in 7 of 10 extractions (3 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  F1: named in 5 of 10 extractions (3 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  K1: named in 4 of 10 extractions (3 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  D3: named in 4 of 10 extractions (2 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  B11: named in 2 of 10 extractions (1 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+CHECK-IN 581bf55d-da7b-48f4-9d36-3028271818bc period 5: 10 extractions answered; the number of detections each gave: 6,7,7,6,6,5,7,5,6,6
+  K3: named in 10 of 10 extractions (5 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  E2: named in 10 of 10 extractions (5 distinct wordings); confirming the SAME first wording 4 times: NNNN; the last wording: NNNN
+  B11: named in 10 of 10 extractions (5 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  K1: named in 10 of 10 extractions (5 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  K5: named in 9 of 10 extractions (4 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  B2: named in 7 of 10 extractions (2 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  D1: named in 3 of 10 extractions (2 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  B5: named in 2 of 10 extractions (2 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+CHECK-IN bdcb15a0-da2a-485d-bcf2-538a48a50e4c period 3: 10 extractions answered; the number of detections each gave: 5,5,5,4,5,5,6,5,5,4
+  E2: named in 10 of 10 extractions (7 distinct wordings); confirming the SAME first wording 4 times: YNYY; the last wording: NYYY
+  K3: named in 10 of 10 extractions (7 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  B2: named in 8 of 10 extractions (6 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  F1: named in 7 of 10 extractions (4 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  D4: named in 6 of 10 extractions (4 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  B6: named in 6 of 10 extractions (5 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: YYYY
+  B11: named in 1 of 10 extractions (1 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: 
+  K5: named in 1 of 10 extractions (1 distinct wordings); confirming the SAME first wording 4 times: YYYY; the last wording: 
+done
