@@ -2907,7 +2907,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {onlyOnePersonHere && kindOfWorkKey !== "founder's own check-in" && (
           <div role="status" className="gwui-rule-amber gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14 gwui-mt-12 gwui-fs-15 gwui-ink-amber" style={{background: 'var(--gw-amber-bg)', borderRadius: 12, lineHeight: 1.6}}>
             This board compares what people said, and there is one person on this check-in.{' '}
-            {b.canEditFrame ? 'Add somebody and it will build from the next round.' : 'It will build once the person running this check-in adds somebody.'}
+            {b.canEditFrame ? 'Add somebody and it will build from the next session.' : 'It will build once the person running this check-in adds somebody.'}
           </div>
         )}
 
@@ -3107,7 +3107,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {!foldTeam && shown.eachPerson && (
           <Section
             heading="The team today"
-            note="Each person’s line, their last 10 check-ins, and what keeps coming up."
+            note="Each person’s line, their last 10 sessions, and what keeps coming up."
             /*
               BOARD REVIEW, SALES PIECE C, ITEM 10: THE PROTOTYPE'S OWN FOOTNOTE, ONLY WHEN IT IS
               TRUE. board-as-lead.txt ends this section: "These are about the work. Open anyone to
@@ -3318,7 +3318,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             {shown.eachPerson && (
               <Section
                 heading="The team today"
-                note="Each person’s line, their last 10 check-ins, and what keeps coming up."
+                note="Each person’s line, their last 10 sessions, and what keeps coming up."
                 foot="These are about the work."
               >
                 {activeLineForTheLead && <Note>{activeLineForTheLead}</Note>}

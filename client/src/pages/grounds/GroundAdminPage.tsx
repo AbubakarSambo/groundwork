@@ -1404,7 +1404,7 @@ export function GroundAdminPage() {
       : (ground as any).status === 'REPORT_READY'
         ? 'the report is ready. It has not been shared yet'
         : (ground as any).report
-          ? (everyoneIn ? 'everyone is in, report on its way' : clockRoundDone > 0 ? 'report being written' : 'waiting for the first check-in')
+          ? (everyoneIn ? 'everyone is in, report on its way' : clockRoundDone > 0 ? 'report being written' : 'waiting for the first session')
           : 'no report yet'
   // contact-visibility toggle state (default: hidden). true = peers cannot see each other's email.
   /**

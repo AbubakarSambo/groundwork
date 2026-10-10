@@ -417,7 +417,7 @@ export function InvitePage() {
             */}
             {opensLater && (
               <p role="status" className="gwui-callout">
-                {`Your first check-in opens on ${theDayOf(opensLater)}.`}
+                {`Your first session opens on ${theDayOf(opensLater)}.`}
               </p>
             )}
 

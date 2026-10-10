@@ -116,7 +116,7 @@ export function theAnchorStartSucceededForThisTab(): boolean {
 
 export const THE_SETUP = {
   whenItStarts: 'When it starts',
-  opensAtTheStart: 'The first check-in opens at the start time.',
+  opensAtTheStart: 'The first session opens at the start time.',
   invitationsWhenItStarts: 'Adding someone sends their invitation when it starts.',
   now: 'Now',
   tomorrow: 'Tomorrow',

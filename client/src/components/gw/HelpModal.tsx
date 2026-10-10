@@ -221,8 +221,8 @@ const TRY_IT = [
     body: 'Add anything after a + in your own address and it still arrives with you, but Groundwork treats it as somebody else. Invite you+sam@ as the second person, and open their invitation in a private window. You cannot be both people in one browser.',
   },
   {
-    title: 'Do the second round today',
-    body: 'On the Setup tab, set the rhythm to "When the lead checks in". There is no clock on that one, so the next round opens the moment you finish yours. The second round is where the product starts referring back to what was said the first time.',
+    title: 'Do the second session today',
+    body: 'On the Setup tab, set the rhythm to "When the lead checks in". There is no clock on that one, so the next session opens the moment you finish yours. The second session is where Groundwork starts referring back to what was said the first time.',
   },
   {
     title: 'See how it ends',

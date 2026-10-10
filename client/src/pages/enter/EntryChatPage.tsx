@@ -2936,7 +2936,7 @@ export function EntryChatPage() {
     if (history.length === 0) {
       setShowSave(false)
       setClosed(false)
-      toast.info('Nothing is on record yet. Your first check-in opens now; save when it closes.')
+      toast.info('Nothing is on record yet. Your first session opens now; save when it closes.')
       startCheckin.mutate()
       return
     }

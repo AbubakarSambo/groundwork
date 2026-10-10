@@ -81,7 +81,7 @@ export function WaitingForAnAdminPage() {
           <Step>{`${who ?? 'An admin'} lets you in`}</Step>
         </Steps>
         <p className="gwui-pt-sub gwui-pt-sub-ink">
-          {`We’ll email you the moment ${who ?? 'they do'}${who ? ' does' : ''}, and your first check-in will be waiting.`}
+          {`We’ll email you the moment ${who ?? 'they do'}${who ? ' does' : ''}, and your first session will be waiting.`}
         </p>
       </Stack>
 

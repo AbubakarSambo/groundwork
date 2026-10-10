@@ -41,6 +41,20 @@ const SURFACES = {
   'the scenario cards': read('pages', 'grounds', 'CreateGroundPage.tsx'),
   'the history panel': read('components', 'gw', 'HowThisHasMoved.tsx'),
   'the connect page': read('pages', 'org', 'IntegrationsPage.tsx'),
+  /* B-147: the deep page audit found "check-in" and "round" still standing in for a single
+     session on My work, the just-finished panel, the board, who-is-still-out, the help modal,
+     an invitation, setup, the waiting-for-an-admin page, the entry chat and the staff dashboard. */
+  'my work (the session count tile)': read('components', 'gw', 'checkin', 'YourWork.tsx'),
+  'what the report can say yet': read('components', 'gw', 'WhatTheReportCanSayYet.tsx'),
+  'the just-finished panel': read('components', 'gw', 'TheCheckInYouJustFinished.tsx'),
+  'the board': read('pages', 'board', 'BoardPage.tsx'),
+  'who is still out': read('components', 'gw', 'WhoIsStillOut.tsx'),
+  'the help modal': read('components', 'gw', 'HelpModal.tsx'),
+  'the invitation': read('pages', 'invite', 'InvitePage.tsx'),
+  'the setup strings': read('pages', 'enter', 'TheSetup.tsx'),
+  'waiting for an admin': read('pages', 'join', 'WaitingForAnAdminPage.tsx'),
+  'the entry chat': read('pages', 'enter', 'EntryChatPage.tsx'),
+  'the staff dashboard': read('pages', 'admin', 'AdminPage.tsx'),
 }
 
 /** The exact sentences that used to say "round". Each was a thing a person reads. */
@@ -55,6 +69,23 @@ const WAS_ROUND = [
   /* The closing phase, settled later than the rest - screen, route, service method and prompt. */
   /closing round/i,
   /Begin closing round/i,
+  /* B-147's own finds. */
+  /Check-in \$\{sessionNumber\}/,
+  /check-ins so far/i,
+  /Needs a second round/i,
+  /said no to this round/i,
+  /the next round opens/i,
+  /The second round is/i,
+  /Do the second round/i,
+  /their last 10 check-ins/i,
+  /build from the next round/i,
+  /Your first check-in opens/i,
+  /first check-in opens at the start time/i,
+  /first check-in will be waiting/i,
+  /waiting for the first check-in/i,
+  /Avg days to first check-in/i,
+  /A second round finished/i,
+  /leads with a second check-in/i,
 ]
 
 describe('one word and it is session', () => {
