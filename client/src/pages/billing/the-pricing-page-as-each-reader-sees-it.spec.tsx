@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, waitFor } from '@testing-library/react'
+import { render, waitFor, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { PricingPage } from './PricingPage'
@@ -117,5 +117,30 @@ describe('somebody signed in', () => {
     renderIt()
     await waitFor(() => expect(text()).toContain('$410 a month'))
     expect(text()).not.toContain('Your current plan')
+  })
+
+  it('has a way back into the product, not only "Subscribe"', async () => {
+    m.user = { id: 'u1', role: 'ADMIN', organization: { subscriptionPlan: null } }
+    m.status = FREE
+    renderIt()
+    await waitFor(() => expect(text()).toContain('Your current plan'))
+    expect(screen.getByRole('link', { name: 'Go to your check-ins' })).toHaveAttribute('href', '/today')
+    expect(screen.queryByRole('link', { name: 'Sign in' })).toBeNull()
+  })
+})
+
+/*
+ * B-162. A signed-out visitor had no logo, no sign in and no sign up - only five "Subscribe"
+ * buttons, each of which demands an account anyway. Every other public page carries the logo
+ * (it always goes home); this one had neither it nor a way in besides the browser's own back
+ * button.
+ */
+describe('B-162: a signed-out visitor has a way in, not only "Subscribe"', () => {
+  it('offers the logo, Sign in and Sign up', async () => {
+    renderIt()
+    await waitFor(() => expect(text()).toContain('$410 a month'))
+    expect(screen.getByRole('link', { name: 'Groundwork' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/auth')
+    expect(screen.getByRole('link', { name: 'Sign up' })).toHaveAttribute('href', '/auth?mode=signup')
   })
 })
