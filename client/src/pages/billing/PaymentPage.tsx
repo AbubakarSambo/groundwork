@@ -69,8 +69,12 @@ export function PaymentPage() {
 
         <button type="button" style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 20, cursor: 'pointer' }} onClick={back.onClick}>{back.label}</button>
 
+        {/* B-145: this page titled itself "Add sessions to this check-in" and then said, right
+            underneath, that sessions are not charged for - a title that contradicted its own
+            body. The only thing left to do here is redeem an access code (the session-purchase
+            form is gone; see the comment below), so the title now says that. */}
         <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 4 }}>
-          {ground?.isFreeGround ? 'This check-in' : 'Add sessions to this check-in'}
+          {ground?.isFreeGround ? 'This check-in' : 'Use an access code'}
         </div>
         {groundName && (
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 20 }}>{groundName}</div>
@@ -94,8 +98,9 @@ export function PaymentPage() {
                 grants access and costs nobody anything. */}
             <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '12px 16px', marginBottom: 14 }}>
               <div style={{ fontSize: 13, color: 'var(--gw-green-t)', lineHeight: 1.6 }}>
-                <strong>Sessions are not charged for.</strong> Every check-in on the free tier runs
-                unlimited sessions and reports; a subscription lifts the ten check-in cap.
+                <strong>Sessions are not charged for.</strong> Every check-in runs as many sessions
+                and reports as it needs. An access code is only for the number of check-ins your
+                organisation can run at once.
               </div>
             </div>
           </>
