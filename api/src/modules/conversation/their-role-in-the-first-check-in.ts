@@ -1,6 +1,7 @@
 import { CheckInStatus, TurnRole } from '@prisma/client';
 import { traceableToWhatTheySaid } from '../grounds/nothing-proposed-that-nobody-said';
-import { whatThisSessionHasCovered, sayWhatHasBeenCovered, type AThingToCover } from './what-this-session-has-covered';
+import { NOT_NAMED_YET } from '../suites/correct-their-job';
+import { theyDeclined, type AThingToCover } from './what-this-session-has-covered';
 
 /**
  * THE ROLE INTERVIEW, IN A PERSON'S FIRST CHECK-IN (decision 129).
@@ -32,6 +33,15 @@ export const theRoleMapQuestion = (roleName: string, owns: string): string =>
   `In your first check-in you told me about your job as ${roleName}. You said you are responsible for "${owns.replace(/["\u201c\u201d]/g, "'")}". Shall I let the role map show this under ${roleName}? It is about the job and not about you. Everything else you said about your job stays private to you.`;
 
 /** The things the conversation learns about the job, in the words used about them. Never questions to be read out. */
+/** How each thing is asked in a conversation. Only these words count as having asked it, so a turn about something else is never taken for one of these. */
+const ASKED_AS: Record<string, RegExp> = {
+  'role-name': /\b(?:what is your (?:job|role)(?: title)?(?: called)?|what do you do (?:here|for work|at \w+)|your job title|what is your role|what do you call your (?:job|role)|what (?:would|do) you call (?:your|the) (?:job|role))\b/i,
+  'role-owns': /\b(?:responsible for|you own|in charge of|accountable for|what does your (?:job|role) (?:cover|involve|include)|what (?:is|are) (?:your|the) main (?:responsibilit|part)|what is your job (?:made of|about)|your day[- ]to[- ]day)/i,
+  'role-good': /\b(?:doing (?:it |this |the job |your job |your role )?well|good looks like|what does (?:a )?good|how (?:will|would|do) you know (?:you(?:'| a)re|it is|that you(?:'| a)re) (?:doing|going) well|success (?:in|for) your (?:job|role))\b/i,
+  'role-depends': /\b(?:depend(?:s|ing)? on|rely on|relies on|who (?:do )?you (?:need|wait for|count on)|who needs you|who (?:waits|is waiting) for you|who counts on you)\b/i,
+  'role-way': /\b(?:gets? in your way|in your way|gets? in the way|what (?:usually )?(?:slows|blocks|holds) you|most often (?:slows|stops|blocks))\b/i,
+};
+
 export const ROLE_TOPICS: (AThingToCover & { field: 'roleName' | 'owns' | 'doingWell' | 'dependsOn' | 'inTheWay' })[] = [
   { id: 'role-name', field: 'roleName', what: 'what their job is called' },
   { id: 'role-owns', field: 'owns', what: 'what they are responsible for in their job' },
@@ -161,11 +171,36 @@ export async function isTheirFirstCheckIn(deps: Deps, checkIn: { id: string; par
   }), 0);
   if (finishedBefore) return null;
   const person = await attempt(() => deps.prisma.person?.findFirst?.({ where: { organizationId, linkedUserId: userId }, select: { externalId: true } }), null);
-  if (person?.externalId) {
-    const kept = await attempt(() => deps.prisma.roleInterviewAnswer?.count?.({ where: { organizationId, personExternalId: person.externalId } }), 0);
-    if (kept) return null;
-  }
+  /* A person who has never used Ask has no roster entry yet. Ask makes theirs with their account id as its key, so what is kept before that is kept under the same key. */
+  const kept = await attempt(() => deps.prisma.roleInterviewAnswer?.count?.({ where: { organizationId, personExternalId: { in: [person?.externalId, userId].filter(Boolean) } } }), 0);
+  if (kept) return null;
   return { userId, organizationId };
+}
+
+const AN_ACKNOWLEDGEMENT = /^\s*(ok(ay)?|yes|yeah|yep|no|fine|sure|good|noted|right|alright)[\s.!,]*$/i;
+
+/**
+ * WHAT THIS SESSION HAS DONE WITH EACH THING, READ OFF THE TURNS. A thing is asked when an AI turn asks it in the words above, and is
+ * answered by the person's next turn when it says something (five words or more) and does not decline. A thing asked twice, or declined,
+ * is left. Free words about a job are not numbers, so unlike the record's own check there is no asking for "the specific".
+ */
+export function coverageOf(topics: AThingToCover[], turns: { role: 'AI' | 'PERSON'; content: string }[]) {
+  const notAsked: AThingToCover[] = []; const left: AThingToCover[] = []; const answered: { what: string; answer: string }[] = [];
+  for (const topic of topics) {
+    let asked = 0; let best: string | null = null; let declined = false;
+    turns.forEach((t, i) => {
+      if (t.role !== 'AI' || !ASKED_AS[topic.id]?.test(t.content ?? '')) return;
+      asked += 1;
+      const reply = (turns.slice(i + 1).find((x) => x.role === 'PERSON')?.content ?? '').trim();
+      if (!reply || AN_ACKNOWLEDGEMENT.test(reply)) return;
+      if (theyDeclined(reply)) { declined = true; return; }
+      if (reply.split(/\s+/).length >= 5) best = reply;
+    });
+    if (best) answered.push({ what: topic.what, answer: (best as string).replace(/\s+/g, ' ').slice(0, 240) });
+    else if (declined || asked >= 2) left.push(topic);
+    else notAsked.push(topic);
+  }
+  return { notAsked, left, answered };
 }
 
 /**
@@ -184,16 +219,14 @@ export async function theRoleBlock(
   if (!first) return { block: '', promptVersionId: null };
   const known = await whatIsKnownOfTheirJob(deps, first.userId, first.organizationId);
   const topics = ROLE_TOPICS.filter((t) => !(known && t.field === 'roleName'));
-  const covered = whatThisSessionHasCovered(topics, turns);
-  const said = sayWhatHasBeenCovered(topics, covered);
+  const { notAsked, answered, left } = coverageOf(topics, turns);
   const version = await theVersionThatRuns(deps, FIRST_CHECK_IN_ROLE_KEY, FIRST_CHECK_IN_ROLE_PROMPT);
   const lines = [version.content];
   if (known) lines.push(`WE ALREADY KNOW THEIR JOB AS: "${known.roleName}". Do not ask what it is called.`);
-  if (!said.notAsked.length && !said.vague.length) lines.push('Everything above is covered for this session. Do not ask about their job again.');
-  else {
-    if (said.notAsked.length) lines.push(`NOT ASKED YET:\n${said.notAsked.map((t) => `- ${t.what}`).join('\n')}`);
-    if (said.block) lines.push(said.block);
-  }
+  if (answered.length) lines.push(`ALREADY ANSWERED THIS SESSION. Build on these and never ask for them again:\n${answered.map((a) => `- ${a.what}: they said "${a.answer}"`).join('\n')}`);
+  if (left.length) lines.push(`LEAVE THESE. They were declined or asked twice. Do not ask again in any wording:\n${left.map((t) => `- ${t.what}`).join('\n')}`);
+  if (!notAsked.length) lines.push('Everything above is covered for this session. Do not ask about their job again.');
+  else lines.push(`NOT ASKED YET:\n${notAsked.map((t) => `- ${t.what}`).join('\n')}`);
   return { block: lines.join('\n'), promptVersionId: version.id };
 }
 
@@ -232,14 +265,15 @@ export async function keepWhatTheySaidAboutTheirJob(
   }
   const mine = onlyWhatTheySaid(read, theirs);
   const known = await whatIsKnownOfTheirJob(deps, first.userId, first.organizationId);
-  const roleName = known?.roleName ?? mine.roleName ?? null;
+  const roleName = known?.roleName ?? mine.roleName ?? NOT_NAMED_YET;
   const anything = mine.owns || mine.doingWell || mine.dependsOn || mine.inTheWay || mine.roleName;
   if (!anything) return { kept: false, roleSet: false, versionId: reading.id };
 
-  const person = await deps.prisma.person.findFirst({
+  const person = await attempt(() => deps.prisma.person.findFirst({
     where: { organizationId: first.organizationId, linkedUserId: first.userId },
     select: { id: true, externalId: true, title: true },
-  });
+  }), null);
+  const key: string = person?.externalId ?? first.userId;
   let roleSet = false;
   /* A job title is set only when there is none. One that is there stays until the person says yes to a change. */
   if (!known && mine.roleName) {
@@ -247,15 +281,11 @@ export async function keepWhatTheySaidAboutTheirJob(
     if (person && !person.title?.trim()) await deps.prisma.person.update({ where: { id: person.id }, data: { title: mine.roleName } }).catch(() => undefined);
     roleSet = true;
   }
-  if (!person?.externalId || !roleName) {
-    log.log(`Check-in ${checkIn.id}: what they said about their job was read, but there is ${person?.externalId ? 'no job name' : 'no roster entry'} to keep it under.`);
-    return { kept: false, roleSet, versionId: reading.id };
-  }
   const asked = await theVersionThatRuns(deps, FIRST_CHECK_IN_ROLE_KEY, FIRST_CHECK_IN_ROLE_PROMPT);
   const row = await deps.prisma.roleInterviewAnswer.create({
     data: {
       organizationId: first.organizationId,
-      personExternalId: person.externalId,
+      personExternalId: key,
       roleName,
       owns: mine.owns ?? null,
       doingWell: mine.doingWell ?? null,
@@ -269,10 +299,10 @@ export async function keepWhatTheySaidAboutTheirJob(
     },
   });
   /* Their words stay theirs. Whether the role map may show what they own is asked in Ask Groundwork, and only a yes shows it. */
-  if (mine.owns) {
+  if (mine.owns && roleName !== NOT_NAMED_YET) {
     const say = theRoleMapQuestion(roleName, mine.owns);
     await deps.prisma.assistantProposal.create({
-      data: { organizationId: first.organizationId, personExternalId: person.externalId, kind: SHARE_WITH_THE_ROLE_MAP_KIND, summary: say, payload: { rowId: row.id, roleName } as never },
+      data: { organizationId: first.organizationId, personExternalId: key, kind: SHARE_WITH_THE_ROLE_MAP_KIND, summary: say, payload: { rowId: row.id, roleName } as never },
     }).catch(() => undefined);
   }
   log.log(`Check-in ${checkIn.id}: kept what they said about their job (row ${row.id}, reading version ${reading.id ?? 'the code'}, asked with version ${asked.id ?? 'the code'}).`);
@@ -282,9 +312,8 @@ export async function keepWhatTheySaidAboutTheirJob(
 /** The person's latest row about their job, with the person it belongs to. */
 export async function theirJobAsKept(deps: Deps, userId: string, organizationId: string) {
   const person = await attempt(() => deps.prisma.person?.findFirst?.({ where: { organizationId, linkedUserId: userId }, select: { externalId: true } }), null);
-  if (!person?.externalId) return null;
   return attempt(() => deps.prisma.roleInterviewAnswer?.findFirst?.({
-    where: { organizationId, personExternalId: person.externalId },
+    where: { organizationId, personExternalId: { in: [person?.externalId, userId].filter(Boolean) } },
     orderBy: { createdAt: 'desc' },
   }), null);
 }
@@ -312,7 +341,7 @@ export async function theirJobAsTheyToldUs(deps: Deps, checkIn: { id: string; pa
   const told = parts.filter(([, v]) => (v ?? '').trim());
   if (!told.length) return '';
   return [
-    `WHAT THEY HAVE TOLD US ABOUT THEIR JOB (${row.roleName}), IN THEIR OWN WORDS. This is private to them. Use it to ask about their actual work, and to notice when what they say now does not fit what they said about their job. Never read it back as a list, never quote it as a record, and never refer to where it came from. If what they say now shows it has changed, ask them whether their job has changed.`,
+    `WHAT THEY HAVE TOLD US ABOUT THEIR JOB${row.roleName && row.roleName !== NOT_NAMED_YET ? ` (${row.roleName})` : ''}, IN THEIR OWN WORDS. This is private to them. Use it to ask about their actual work, and to notice when what they say now does not fit what they said about their job. Never read it back as a list, never quote it as a record, and never refer to where it came from. If what they say now shows it has changed, ask them whether their job has changed.`,
     ...told.map(([k, v]) => `- ${k}: "${String(v).replace(/\s+/g, ' ').trim().slice(0, 400)}"`),
   ].join('\n');
 }

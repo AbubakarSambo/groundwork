@@ -49,8 +49,11 @@ function world(opts: { scenario?: string; peers?: boolean; clearedAt?: Date | nu
       findMany: jest.fn(async ({ where }: any) => proposals.filter((p) => p.personExternalId === where.personExternalId && p.state === 'PARKED' && p.kind === where.kind)),
       create: jest.fn(async ({ data }: any) => { proposals.push({ state: 'PARKED', ...data }); return data; }),
     },
+    /* 10 October 2026: reading your own answers now also reads the title on your account and your latest row (decision 129), so the hand-built database has both. */
+    user: { findUnique: jest.fn(async () => ({ jobTitle: null })) },
     roleInterviewAnswer: {
-      findMany: jest.fn(async ({ where }: any) => interviews.filter((i) => !where.personExternalId || i.personExternalId === where.personExternalId)),
+      findMany: jest.fn(async ({ where }: any) => interviews.filter((i) => !where.personExternalId || (where.personExternalId.in ?? [where.personExternalId]).includes(i.personExternalId))),
+      findFirst: jest.fn(async ({ where }: any) => interviews.filter((i) => !where.personExternalId || (where.personExternalId.in ?? [where.personExternalId]).includes(i.personExternalId))[0] ?? null),
     },
     groundDependency: {
       findMany: jest.fn(async () => [{
@@ -124,7 +127,8 @@ describe('who reads the answers', () => {
     const mine = await w.interview.mine(w.as('u-miriam'));
     expect(mine.answers).toHaveLength(1);
     expect(mine.answers[0].owns).toBe('My own customers');
-    expect(w.prisma.roleInterviewAnswer.findMany.mock.calls[0][0].where.personExternalId).toBe('p-miriam');
+    /* Its own roster key, and the account id under which a person who never used Ask yet is kept (decision 129). Nobody else's key. */
+    expect(w.prisma.roleInterviewAnswer.findMany.mock.calls[0][0].where.personExternalId).toEqual({ in: ['p-miriam', 'u-miriam'] });
   });
 
   it('a colleague reads none of Miriam answers through the person route', async () => {

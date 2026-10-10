@@ -13,7 +13,7 @@ describe('a line somebody unsaid counts toward nothing', () => {
      * line could pick the role map somebody is coached and probed against for the rest of the run,
      * and the louder the misreading the more it looked like a function.
      */
-    const at = SERVICE.indexOf('detectFunction(\n      p.roleAsDescribed');
+    const at = SERVICE.indexOf('detectFunction(\n      [p.roleAsDescribed');
     const from = SERVICE.lastIndexOf('recordEntry.findMany({', at);
     expect(from).toBeGreaterThan(-1);
     expect(SERVICE.slice(from, at)).toContain('disputedAt: null');

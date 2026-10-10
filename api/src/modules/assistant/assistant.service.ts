@@ -1,4 +1,7 @@
 import { WAITING_TO_BE_LET_IN } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
+import { asksWhatWeKnowOfTheirJob, parseAJobCorrection, theCorrectionSaidBack, whatTheyToldUs, SHARE_KIND as JOB_CORRECTION_KIND } from './my-job-in-ask';
+import { correctTheirJob, theirJobForThem } from '../suites/correct-their-job';
+import { SHARE_WITH_THE_ROLE_MAP_KIND } from '../conversation/their-role-in-the-first-check-in';
 import { withoutComparisonsAnywhere } from '../reports/no-comparison-between-people';
 import { A_LINK_IS_NOT_READ } from './a-link-is-not-read';
 import { namesTheyCanTellApart } from '../../common/check-ins-you-can-tell-apart';
@@ -405,6 +408,12 @@ export class AssistantService {
      * the leave, hours and spending lanes, because the words hold "leave", "hours" or "spending". Asked
      * one question at a time, said back, and written only on a yes. See a-suite-set-up-by-talking.ts.
      */
+    /* What they told us about their own job, or a correction of it (decision 129): theirs alone, said back, and written only on a yes. */
+    if (who && userId) {
+      const theirs = await this.aboutTheirJob(organizationId, who, userId, message);
+      if (theirs) return theirs;
+    }
+
     if (who) {
       const suite = asksToSetUpASuite(message);
       if (suite) return this.setUpASuite(organizationId, who, userId ?? null, suite, message);
@@ -2282,6 +2291,68 @@ export class AssistantService {
     return theirSignIn(this.prisma, organizationId, me).catch(() => me?.linkedUserId ?? null);
   }
 
+  /**
+   * WHAT THEY TOLD US ABOUT THEIR JOB, AND CORRECTING IT (decision 129). Private to the person. A correction is said back with their
+   * words quoted, and written only on a yes, through the same writer the route uses. A person who has told us nothing yet is not
+   * hijacked by a sentence that merely starts "I own": only "my job is" and "change my job to" are read without a row.
+   */
+  private async aboutTheirJob(organizationId: string, who: string, userId: string, message: string): Promise<Reply | null> {
+    const wants = parseAJobCorrection(message);
+    const asks = !wants && asksWhatWeKnowOfTheirJob(message);
+    if (!wants && !asks) return null;
+    const mine = await theirJobForThem(this.prisma, { userId, organizationId }).catch(() => null);
+    if (!mine) return null;
+    if (asks) return rules('role_interview', text(whatTheyToldUs(mine)));
+    if (wants!.part !== 'roleName' && !mine.roleName) return null;
+    const old = wants!.part === 'roleName' ? mine.roleName : (mine as any)[wants!.part] ?? null;
+    if (old && old.trim().toLowerCase() === wants!.value.trim().toLowerCase()) {
+      return rules('role_interview', text('That is already what I have, so nothing needs to change.'));
+    }
+    const say = theCorrectionSaidBack(wants!.part, wants!.value, old);
+    const proposal = await this.prisma.assistantProposal.create({
+      data: { organizationId, personExternalId: who, kind: JOB_CORRECTION_KIND, summary: say, payload: { part: wants!.part, value: wants!.value } as never },
+    });
+    return rules('role_interview', text(say), { type: 'proposal', proposalId: proposal.id, summary: say });
+  }
+
+  /** The yes writes one new row through the route's own writer. The no writes nothing. */
+  private async resolveParkedJobCorrection(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
+    if (decision === 'decline') {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
+      return rules('role_interview', text('I have left it as it was. Nothing was changed.'));
+    }
+    const userId = await this.signedInAs(organizationId, who);
+    await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
+    if (!userId) return rules('role_interview', text('I could not change that, because I can no longer see you in your organisation records.'));
+    try {
+      const done = await correctTheirJob(this.prisma, { userId, organizationId }, { [parked.payload.part]: parked.payload.value });
+      return rules('role_interview', text(`I have changed it. I have your job as "${done.roleName}". It is private to you, and the role map only shows what you own if you have agreed to that.`));
+    } catch (err) {
+      return rules('role_interview', text(err instanceof RangeError ? err.message : 'I could not change that just now. Please try again in a moment.'));
+    }
+  }
+
+  /**
+   * AFTER THEIR FIRST CHECK-IN: MAY THE ROLE MAP SHOW WHAT THEY OWN. Waits for the person. A message that is not a yes or a no is
+   * answered as usual and the request stays, with the question put once more; only a yes shows it, and only what they own.
+   */
+  private async resolveParkedRoleShare(organizationId: string, personId: string, who: string, parked: any, message: string, where?: { groundId?: string; userId?: string | null; forceAddContext?: boolean }): Promise<Reply> {
+    const decision = resolveConfirmation(message);
+    if (decision === 'drop') {
+      const reply = await this.answer(organizationId, personId, who, message, true, where?.groundId, where?.userId, where?.forceAddContext);
+      if ((parked.payload as any)?.reminded) return reply;
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { payload: { ...(parked.payload as any), reminded: true } as never } });
+      return { ...reply, blocks: [...reply.blocks, text(parked.summary)] };
+    }
+    await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: decision === 'accept' ? 'ACCEPTED' : 'DECLINED', resolvedAt: new Date() } });
+    if (decision === 'decline') return rules('role_interview', text('That is fine. The role map will not show anything, and what you told me about your job stays private to you.'));
+    const rowId = (parked.payload as any)?.rowId as string | undefined;
+    const row = rowId ? await this.prisma.roleInterviewAnswer.findUnique({ where: { id: rowId }, select: { roleName: true, organizationId: true } }) : null;
+    if (!row || row.organizationId !== organizationId) return rules('role_interview', text('I could not find what you told me, so nothing was shown.'));
+    await this.prisma.roleInterviewAnswer.update({ where: { id: rowId! }, data: { sharedAt: new Date() } });
+    return rules('role_interview', text(`I have let the role map show what the ${row.roleName} job owns. It is about the job and not about you. Everything else you told me stays private to you.`));
+  }
+
   /** The yes writes one row. The no writes nothing, and the interview can be started again. */
   private async resolveParkedInterviewConfirm(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
     const p = parked.payload as ConfirmPayload;
@@ -2396,6 +2467,11 @@ export class AssistantService {
       return this.resolveParkedInterview(organizationId, personId, who, parked, message);
     }
 
+    /* After a first check-in: may the role map show what they own (decision 129). Not dropped by another message. */
+    if (parked.kind === SHARE_WITH_THE_ROLE_MAP_KIND) {
+      return this.resolveParkedRoleShare(organizationId, personId, who, parked, message, where);
+    }
+
     const decision = resolveConfirmation(message);
 
     if (decision === 'drop') {
@@ -2481,6 +2557,9 @@ export class AssistantService {
     }
     if (parked.kind === 'question_for_person') {
       return this.resolveParkedQuestionForPerson(organizationId, who, parked, decision);
+    }
+    if (parked.kind === JOB_CORRECTION_KIND) {
+      return this.resolveParkedJobCorrection(organizationId, who, parked, decision);
     }
     if (parked.kind === ROLE_INTERVIEW_CONFIRM_KIND) {
       return this.resolveParkedInterviewConfirm(organizationId, who, parked, decision);
