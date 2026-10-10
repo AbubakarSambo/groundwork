@@ -4330,7 +4330,7 @@ export class AssistantService {
         nowWaitsFor = await Promise.resolve(this.timeSheets.nowWaitingFor?.(organizationId, personId, weekOf)).catch(() => null) ?? null;
       }
       reply = aDecisionDone(request, outcome, nowWaitsFor);
-      if (reason && outcome === 'declined') reply = reply.replace(/ know\.$/, ' know, with your reason.');
+      if (reason && outcome === 'declined') reply = reply.replace(/ know\.$/, ' know. They can read your reason in Groundwork.');
     } catch (err: any) {
       const why = typeof err?.message === 'string' && err.message ? err.message : NOTHING_TO_DECIDE;
       reply = why === NOTHING_TO_DECIDE ? why : `I could not do that. ${why}`;

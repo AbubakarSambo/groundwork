@@ -198,7 +198,7 @@ describe('Fatuma declines with a reason', () => {
     expect(await o.says('u-fatuma', 'decline Kamau\'s spending because we had one last week')).toBe(
       'You are declining Kamau\'s request to spend KES 4,000 for a team lunch, and I will tell Kamau your reason, “we had one last week.” Is that right?',
     );
-    expect(await o.says('u-fatuma', 'yes')).toBe('Kamau\'s request to spend KES 4,000 for a team lunch is declined now. I have let Kamau know, with your reason.');
+    expect(await o.says('u-fatuma', 'yes')).toBe('Kamau\'s request to spend KES 4,000 for a team lunch is declined now. I have let Kamau know. They can read your reason in Groundwork.');
     expect(o.requests.find((r) => r.id === o.lunchId).declineReason).toBe('we had one last week');
   });
 
