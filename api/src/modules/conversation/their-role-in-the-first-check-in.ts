@@ -222,7 +222,7 @@ export function theTurnToAskIt(notAsked: AThingToCover[], turns: { role: 'AI' | 
   const lastAi = [...turns].reverse().find((t) => t.role === 'AI')?.content ?? '';
   if (Object.values(ASKED_AS).some((re) => re.test(lastAi))) return none;
   const next = notAsked[0];
-  const text = `FOR THIS TURN, ABOUT THEIR JOB. This turn, do not ask your next question about the work. Start with one short sentence that responds to what they just said (if they voiced a worry, acknowledge it), then ask ONE friendly question, in your own words, about ${next.what}. Make it clear that you are asking so that you understand their work, for example "So that I understand your work better, ...". It is the only question in this turn. Next turn, go back to the work.`;
+  const text = `FOR THIS TURN, ABOUT THEIR JOB. This turn, do not ask your next question about the work. Start with one short sentence that responds to what they just said (if they voiced a worry, acknowledge it), then ask ONE friendly question, in your own words, about ${next.what}. Say in a few plain words why you are asking, in a different way each time, for example by tying it to what they just said. Never open two of these questions with the same words. It is the only question in this turn. Next turn, go back to the work.`;
   return { text, thing: next };
 }
 
@@ -231,7 +231,7 @@ export const asksAboutTheirJob = (thing: AThingToCover, reply: string): boolean 
 
 /** The one line a reply is given again with, when a turn was meant to ask about the job and the reply did not. */
 export const THE_REPLY_DID_NOT_ASK_ABOUT_THEIR_JOB = (what: string): string =>
-  `YOUR REPLY DID NOT ASK ABOUT THEIR JOB, AND THIS TURN IS THE ONE FOR IT. Write the reply again: one short sentence that responds to what they just said (if they voiced a worry, acknowledge it), then ONE friendly question, in your own words, about ${what}, so that you understand their work. It is the only question in the reply. Do not ask your next question about the work in this reply.`;
+  `YOUR REPLY DID NOT ASK ABOUT THEIR JOB, AND THIS TURN IS THE ONE FOR IT. Write the reply again: one short sentence that responds to what they just said (if they voiced a worry, acknowledge it), then ONE friendly question, in your own words, about ${what}. Say in a few plain words why you are asking, in a different way from your earlier questions. It is the only question in the reply. Do not ask your next question about the work in this reply.`;
 
 /**
  * THE BLOCK THE CONVERSATION GETS, ONLY IN A PERSON'S FIRST CHECK-IN. The text that runs is the stored `first_check_in_role`

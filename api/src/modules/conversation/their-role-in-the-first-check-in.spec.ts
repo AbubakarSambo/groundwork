@@ -109,7 +109,7 @@ describe('what the conversation is given', () => {
     expect((await theRoleBlock(world().deps, CHECK_IN, one)).thisTurn).toBe('');
     const two = [...one, ...turns(['AI', 'By when?'], ['PERSON', 'The 30th of November.'])];
     const r = await theRoleBlock(world().deps, CHECK_IN, two);
-    expect(r.thisTurn).toBe('FOR THIS TURN, ABOUT THEIR JOB. This turn, do not ask your next question about the work. Start with one short sentence that responds to what they just said (if they voiced a worry, acknowledge it), then ask ONE friendly question, in your own words, about what their job is, and what they are responsible for in it. Make it clear that you are asking so that you understand their work, for example "So that I understand your work better, ...". It is the only question in this turn. Next turn, go back to the work.');
+    expect(r.thisTurn).toBe('FOR THIS TURN, ABOUT THEIR JOB. This turn, do not ask your next question about the work. Start with one short sentence that responds to what they just said (if they voiced a worry, acknowledge it), then ask ONE friendly question, in your own words, about what their job is, and what they are responsible for in it. Say in a few plain words why you are asking, in a different way each time, for example by tying it to what they just said. Never open two of these questions with the same words. It is the only question in this turn. Next turn, go back to the work.');
     const asked = [...two, ...turns(['AI', 'What are you responsible for in your job?'], ['PERSON', 'I look after the Nairobi accounts and the monthly number.'])];
     expect((await theRoleBlock(world().deps, CHECK_IN, asked)).thisTurn).toBe('');
     const later = [...asked, ...turns(['AI', 'What is the biggest risk?'], ['PERSON', 'The Serena committee, they sit once a month.'])];
@@ -141,7 +141,7 @@ describe('a turn that was meant to ask about the job', () => {
     expect(asksAboutTheirJob(owns, 'What is the next thing you will do about the Serena account, and by when?')).toBe(false);
   });
   it('is asked again with one plain line', () => {
-    expect(THE_REPLY_DID_NOT_ASK_ABOUT_THEIR_JOB(owns.what)).toBe('YOUR REPLY DID NOT ASK ABOUT THEIR JOB, AND THIS TURN IS THE ONE FOR IT. Write the reply again: one short sentence that responds to what they just said (if they voiced a worry, acknowledge it), then ONE friendly question, in your own words, about what they are responsible for in their job, so that you understand their work. It is the only question in the reply. Do not ask your next question about the work in this reply.');
+    expect(THE_REPLY_DID_NOT_ASK_ABOUT_THEIR_JOB(owns.what)).toBe('YOUR REPLY DID NOT ASK ABOUT THEIR JOB, AND THIS TURN IS THE ONE FOR IT. Write the reply again: one short sentence that responds to what they just said (if they voiced a worry, acknowledge it), then ONE friendly question, in your own words, about what they are responsible for in their job. Say in a few plain words why you are asking, in a different way from your earlier questions. It is the only question in the reply. Do not ask your next question about the work in this reply.');
   });
 });
 
