@@ -1,5 +1,103 @@
 # Morning report
 
+**11 October, overnight (fresh account): the four things you asked for at the top.**
+
+### 1. The control run's verdict: the role interview takes some of "proof asked for"
+
+The control run (`run-oct10e-control`, the role interview switched off) finished all 24 scenarios. The scorer says "Nothing got worse than the baseline", and every problem is 0.
+
+| Engine value | Baseline | Interview on, run c | Interview on, run d | Interview off (control) |
+| --- | --- | --- | --- | --- |
+| proof asked for | 42 | 30 | 26 | **45** |
+| past words | 25 | 37 | 36 | 32 |
+| specific detail | 88 | 111 | 102 | 93 |
+| blocker checked | 37 | 55 | 60 | 41 |
+| differences | 29 | 41 | 38 | 38 |
+| agreements | 56 | 78 | 86 | 78 |
+| findings | 81 | 87 | 87 | 87 |
+| patterns found | 100 | 102 | 119 | 90 |
+| commitments | 33 | 59 | 50 | 49 |
+| judgement present | 21 | 29 | 29 | 29 |
+
+| What the proof turns were | Total | The word "picture" | Real requests (document, attach, receipt, screenshot, statement, photo) |
+| --- | --- | --- | --- |
+| Interview on, run c | 30 | 19 | 11 |
+| Interview on, run d | 26 | 12 | 14 |
+| Interview off (control) | 45 | 28 | 17 |
+
+With the interview off, the number is clearly higher, so the drop is not only the measure's own spread. Most of the difference is the word "picture", which is usually "the full picture" and not a request for proof. The real requests for a document, receipt or screenshot are 17 against 11 and 14, a smaller gap made from a handful of turns. The interview also gives things the control does not: more specific detail, more blockers checked and more patterns found. As you asked, I carried on. Your decision: keep the interview as it is, or ask for a change so it leaves room for proof requests. The run-only edit is undone with `git checkout`, nothing of it was committed, and `git status` was clean. The test bed's API had been left running with the interview switched off; I stopped it and rebuilt `api/dist` from the clean code before anything else ran.
+
+### 2. The command to update the open pull request (`groundwork-next-release`)
+
+`mine/wip/release` is at `c8dba61bd` and moves `groundwork-next-release` forward without force. Run these two yourself. I have not run them.
+
+```bash
+git fetch mine && git push origin mine/wip/release:groundwork-next-release
+```
+
+```bash
+gh pr edit --repo AbubakarSambo/groundwork groundwork-next-release --body-file docs/pull-request.md
+```
+
+The final check results, all in `docs/pull-request.md` under "Every result":
+- API tests: 19,498 pass. Client tests: 5,005 pass. Both typechecks are clean, and the production start passes.
+- Migrations: all 368 apply on an empty database. On live's schema, our 7 apply and existing rows stay unchanged.
+- Context in Ask: 35 of 35. Role interview privacy sweep: 27 of 27. Engine journeys: 29 of 29. Existing users' carry-on check: 12 of 12.
+- 24-scenario runs at 9 answers with the lighter interview: every problem is 0 and every number is at or above the baseline, except "proof asked for" (30 and 26 against 42). The control run above shows the interview causes some of that drop.
+
+The write-up now includes the control run.
+
+### 3. Your question: what a lead is asked about checking in themselves
+
+**What they are asked.** In the setup chat, Groundwork's last line says the next screen asks whether they will check in too. That screen shows what Groundwork has so far, and sometimes "From what you wrote, you are one of the people involved." Then there are two buttons:
+- "I set this up and check in myself"
+- "I check in once to set the context, then only they check in"
+
+Both buttons take the lead straight into their own first check-in. You decided on 15 September that setting up is not the lead's first check-in, so every lead does a first check-in whichever button they press. Some ways of starting a check-in skip the question: "Ask your team one thing" always treats the lead as only running it, and starting a check-in from Ask always makes the lead a full member.
+
+**If they choose "I set this up and check in myself":**
+- The lead is a member like everyone else.
+- They get every session, reminders, and their own report.
+- Their answers go into the record, the board, the team's counts and the reads about each person.
+- The team is told that the lead also answers a check-in. The team can read what the lead says word for word, as with anyone in the check-in, and can see the lead's promises, except on evaluation check-ins.
+
+**If they choose "I check in once to set the context, then only they check in":**
+- The lead answers the first check-in only and never gets a second session or a reminder.
+- They are waited for in the first round only. After that they are left out of the team's counts and out of the reads about each person.
+- The team is not told the lead answers.
+- The lead's screens say "You run this check-in and do not check in yourself."
+- Patterns can never form about the lead, because a pattern needs several sessions.
+
+Either way, the lead takes one of the five places in a free check-in.
+
+**Adding context later.**
+- **Through Ask.** Its line reads "You can also add context or documents to your check-ins here." Ask sorts each thing the lead says, says it back, and writes it only after a yes. Only the lead can do this, or an admin once the lead has left.
+- **On the check-in's Context and resources page:**
+  - an "Add context with Ask" button;
+  - the lead's own setup words;
+  - a place to add a line of strategy, a note or how we work, shared with the team or kept as theirs only;
+  - documents, which start private and can be shared with everyone.
+- **The old context chat** is closed at release (decision 124's switch) and points to Ask.
+
+**Checking in later.** A lead who chose "only they check in" has no way to start checking in later. Nothing in the product turns it back. If they try to add themselves, they are told "That person is already in this check-in, so there is no need to add them again." A comment in the code says the lead can add themselves on Setup with one click, but that control does not exist. If you want it, it is a small piece for next month.
+
+**After they read their reports.** Nothing changes, because the product does not record that a lead read a report.
+- "Your report is ready" emails go only to members who have not opened their own report, at most twice, and never to the lead.
+- A week after a report is released, the lead gets one follow-up if no new session has started, whether they read it or not.
+- The daily nudge is about what is outstanding, not about reading.
+- A pattern reaches the lead after the person has answered it, or after 3 or 7 days, whatever the lead has read.
+- The report shows the lead a question they could ask to hear the person's side, and asks nothing of them.
+- The lead may release the team's report early or send it to everyone. Neither is required.
+- The pattern screen shows the lead "talked about it" and "right, wrong, not sure". The server has routes for these, but no screen calls them, so the lead cannot use them today.
+
+Two small things for you to know, nothing changed:
+- When a lead only runs the check-in, the database note still says they never answer, though they do answer the first check-in.
+- In the first round, one count leaves such a lead out while the readiness check waits for them, so the two counts can disagree.
+
+### 4. The final evaluation: in progress
+
+Started on `c8dba61bd`, on the test bed, with no product code changed. Your brief and how it is run are in `docs/final-evaluation/README.md`. Progress is written here as each profile finishes.
+
 **10 October, 18:00: where things stand, for the next account to pick up.**
 
 - **The control run is still running.** It is run `oct10e-control` in `api/journey/all-24/run-oct10e-control/`: the same engine at 9 answers with the first check-in's role interview switched off. It shows whether "proof asked for" (baseline 42, run c 30, run d 26) is low because of the interview or because the number swings between runs. At 18:00 no scenario had finished yet (session 1 of 4 of the first scenario); a full run takes about an hour and a half.
