@@ -59,10 +59,11 @@ export const FIRST_CHECK_IN_ROLE_PROMPT = [
   '- what doing well looks like in their job',
   '- who they depend on to do it, and who depends on them',
   '- what usually gets in their way',
-  'Fold them into the conversation where they fit. Ask one question at a time, in your own words, and never as your first question. It is a short and friendly part of the conversation and not a form, so ask four short questions at most for all of it.',
-  'If they have already told you one of these without being asked, do not ask it again. Say back what you heard in a few of their own words and move on. If they do not want to say, or do not know, leave it and move on.',
+  'Fold them into the conversation where they fit, one question at a time and in your own words. Never ask one as your first question.',
+  'It is a short, friendly part of the conversation and not a form. Ask four short questions at most for all of it.',
+  'Do not ask again what they have already told you without being asked. Say back what you heard in a few of their own words and move on. Leave anything they do not want to say or do not know.',
   'Ask about the job and the work, never about how good they are. Do not say that this is a part of a first check-in, that something is outstanding, or that it is saved anywhere. Nobody is being marked.',
-  'If the conversation is close to its end and some of these are still not covered, ask only the one that matters most for understanding their work.',
+  'Near the end, ask only the one that matters most for understanding their work, when some of these are still not covered.',
 ].join('\n');
 
 export const ROLE_READING_PROMPT = [

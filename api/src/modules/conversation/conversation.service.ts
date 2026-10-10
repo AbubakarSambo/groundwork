@@ -2579,6 +2579,25 @@ export class ConversationService {
       }
 
       /*
+       * THE JOB IS ASKED ON THE TURN THAT WAS GIVEN TO IT (decision 129). The model works through the check-in's own questions and, told in
+       * the prompt alone, asked about the job on about half the turns it was told to. This runs after the guards that can replace a reply with the
+       * product's own line (a first live walk, 10 October 2026, showed those lines taking the turn back), and before the two vocabulary checks, so a reply asked for
+       * again is read for the words we do not use like any other, and those stay the last guards. When the turn was meant to and the reply did not, it is
+       * asked again once with the one line, and the second is kept only if it does. Never on a reply that closes, and never blocks the turn.
+       */
+      const jobThing = this.aboutTheirJobThisTurn.get(checkIn.id) ?? null;
+      if (jobThing && !closingNow && !asksAboutTheirJob(jobThing, screened.text)) {
+        this.logger.warn(`Check-in ${checkIn.id}: this turn was for a question about their job and the reply did not ask it; asking again.`);
+        const moved = await this.anthropic
+          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${THE_REPLY_DID_NOT_ASK_ABOUT_THEIR_JOB(jobThing.what)}`), history)
+          .catch(() => '');
+        const second = moved.trim()
+          ? screen(withoutQuotesTheyDidNotSay(forHumans(moved), theirWords), known, readerName, conversationSoFar)
+          : null;
+        if (second?.text && !second.hits.length && asksAboutTheirJob(jobThing, second.text)) screened = second;
+      }
+
+      /*
        * AND NO MANAGEMENT WORD THEY DID NOT USE FIRST. Task 2.3, week 3: "pipeline", "escalate",
        * "deliverable" and the rest, when Groundwork reached for them itself. Asked again once, with
        * the sentence quoted and a plain way offered; if the second try is no better, the first
@@ -2767,24 +2786,6 @@ export class ConversationService {
         this.logger.warn(
           `Check-in ${checkIn.id}: shipping ${shipping} words (closing turn: ${thisIsTheClosingTurn}).`,
         );
-      }
-
-      /*
-       * THE JOB IS ASKED ON THE TURN THAT WAS GIVEN TO IT (decision 129). The model works through the check-in's own questions and, told in
-       * the prompt alone, asked about the job on about half the turns it was told to. This runs LAST, after every guard that can replace a reply with the
-       * product's own line, because a first live walk (10 October 2026) showed those lines taking the turn back. When the turn was meant to and the reply did not, it is
-       * asked again once with the one line, and the second is kept only if it does. Never on a reply that closes, and never blocks the turn.
-       */
-      const jobThing = this.aboutTheirJobThisTurn.get(checkIn.id) ?? null;
-      if (jobThing && !closingNow && !asksAboutTheirJob(jobThing, screened.text)) {
-        this.logger.warn(`Check-in ${checkIn.id}: this turn was for a question about their job and the reply did not ask it; asking again.`);
-        const moved = await this.anthropic
-          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${THE_REPLY_DID_NOT_ASK_ABOUT_THEIR_JOB(jobThing.what)}`), history)
-          .catch(() => '');
-        const second = moved.trim()
-          ? screen(withoutQuotesTheyDidNotSay(forHumans(moved), theirWords), known, readerName, conversationSoFar)
-          : null;
-        if (second?.text && !second.hits.length && asksAboutTheirJob(jobThing, second.text)) screened = second;
       }
 
       /* A bare "Ok." that the screen left nothing to reply to is answered, not told it did not come out right (adversarial run, 20 Sep 2026). */
@@ -5620,7 +5621,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       return theBaselineParts.filter(Boolean).join('\n\n');
     })();
     if (theBaselinePrompt) return theBaselinePrompt;
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, theJob, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, burden, putThisToThem, askedWhenThisEnds, theirHedge, theHole, heldBack, proofKindly, whereItIs, cannotBeMissed, askedLastTurn, patternProbeBlock, theJobThisTurn].filter(Boolean).join('\n\n');
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, theJob, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, burden, putThisToThem, askedWhenThisEnds, theJobThisTurn, theirHedge, theHole, heldBack, proofKindly, whereItIs, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -5656,7 +5657,12 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   }
   /* The anchor's weekly words for this turn, written by composeSystemPrompt and read by the reply path that puts them after the rest. */
   /** The thing about their job that this turn of a first check-in was told to ask, if any (decision 129). */
-  private aboutTheirJobThisTurn = new Map<string, AThingToCover | null>();
+  private _aboutTheirJobThisTurn?: Map<string, AThingToCover | null>;
+  /** Made when first needed, because several specs build the service without its constructor. */
+  private get aboutTheirJobThisTurn(): Map<string, AThingToCover | null> {
+    if (!this._aboutTheirJobThisTurn) this._aboutTheirJobThisTurn = new Map<string, AThingToCover | null>();
+    return this._aboutTheirJobThisTurn;
+  }
   private _anchorWeekForThisTurn?: Map<string, { text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo>; isTheBaseline?: boolean; followUp?: WhatToFollowUp | null; closing?: boolean } | null>;
   private get anchorWeekForThisTurn() {
     if (!this._anchorWeekForThisTurn) this._anchorWeekForThisTurn = new Map<string, { text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo>; isTheBaseline?: boolean; followUp?: WhatToFollowUp | null; closing?: boolean } | null>();

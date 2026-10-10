@@ -62,8 +62,8 @@ describe('what the conversation is given', () => {
     const { block } = await theRoleBlock(w.deps, CHECK_IN, turns(['AI', 'What are you working on this week?'], ['PERSON', 'The Mombasa pitch.']));
     for (const part of ['what they are responsible for', 'what doing well looks like in their job', 'who they depend on to do it, and who depends on them', 'what usually gets in their way']) expect(block).toContain(part);
     expect(block).toMatch(/one question at a time/);
-    expect(block).toMatch(/four short questions at most/);
-    expect(block).toMatch(/never as your first question/);
+    expect(block).toMatch(/Ask four short questions at most/);
+    expect(block).toMatch(/Never ask one as your first question/);
     expect(block).not.toMatch(/\brecord\b|\bround\b|\bslot\b|\bpackage\b/i);
   });
 
